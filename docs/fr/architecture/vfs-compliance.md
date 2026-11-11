@@ -6,20 +6,8 @@ Orkeon impose au code du framework un principe **Virtual File System (VFS) uniqu
 
 Ce document décrit :
 - l'analyseur Roslyn `Orkeon.Compliance.Vfs` qui applique la règle à la compilation
-- ses sept codes de diagnostic et leurs sévérités
+- ses sept codes de diagnostic `ORKVFS` et leurs sévérités (le même analyseur porte aussi `ORKCON001`, voir [Conformité console](console-compliance.md))
 - les périmètres exemptés et la manière d'opter pour une exception documentée
-- les critères de sortie du programme de migration VFS
-
-> **VFS-70 (2026-06-17) :** toutes les dépendances `IFileSystemService` des outils/services sont
-> désormais **requises** (non-nullables) — les fallbacks `EXCEPTION-BACKCOMPAT`
-> `if (_fs is null) { …System.IO… }` ont été éliminés, les shims `[Obsolete]` liés au FS supprimés,
-> et le chemin d'ingestion de connaissances entièrement routé par le VFS (le `KnowledgeService`
-> audité alors a été remplacé par les loaders `Orkeon.Rag` en RAG-02 — même règle VFS,
-> `FileDocumentLoaderBase`). La persistance SQLite (`SqliteMemoryProvider`,
-> `SqliteStateStore`) résout désormais son fichier `Data Source` via `ResolveAndValidate`
-> (décision 2F-A) ; la découverte batch RaggableTree s'appuie sur
-> `IFileSystemService.EnumerateFilesAsync` (décision 2E-A). Deux nouvelles règles (`ORKVFS006`,
-> `ORKVFS007`) ferment les angles morts auparavant non détectés.
 
 ## L'analyseur
 
@@ -85,21 +73,19 @@ L'argument `reason` est obligatoire et doit nommer la catégorie d'audit dont il
 - `EXCEPTION-WATCHER-BRIDGE` — adaptateur qui enveloppe `System.IO.FileSystemWatcher` pour implémenter un port watcher Orkeon.
 - `OUT-OF-SCOPE` — sondage au niveau de l'hôte (chemin d'installation du SDK, découverte de binaires système) qui ne cible jamais un mount VFS.
 
-> **Catégories retirées (VFS-70) :** `EXCEPTION-BACKCOMPAT` et `EXCEPTION-OBSOLETE` ne sont
-> **plus acceptées**. Tous les outils/services exigent un `IFileSystemService` non-nullable (un
-> nullable déclenche désormais `ORKVFS007`) et les shims `[Obsolete]` liés au FS ont été supprimés.
-> Ne pas réintroduire ces catégories.
+`EXCEPTION-BACKCOMPAT` et `EXCEPTION-OBSOLETE` ne sont pas des catégories acceptées : tout outil ou
+service prend un `IFileSystemService` non nullable (un nullable déclenche `ORKVFS007`).
 
 Toute nouvelle classe d'exception doit d'abord être consignée dans l'audit de conformité VFS (l'archive des mainteneurs, `audit-vfs-compliance-*`) avant l'ajout d'une suppression.
 
-### Exceptions permanentes ratifiées (2D)
+### Exceptions permanentes ratifiées
 
 Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement** autorisés via les marqueurs `[SuppressVfsCompliance]` inline (ou l'allowlist par chemin) :
 
 | Domaine | Emplacement | Catégorie | Justification |
 |---|---|---|---|
 | Implémentation VFS | `Domain/FileSystem/*`, `Infrastructure/FileSystem/*` | (l'abstraction) | C'*est* le VFS |
-| Bootstrap (pré-DI) | `SandboxSession`, ConsoleApp `Cli*MountBootstrapper`, `Hosting/Runner*`, `Hosting/CrewMountDeclarations` (pré-lit le bloc `mounts:` d'une crew, VFS-90) | `EXCEPTION-BOOTSTRAP` | Lisent appsettings + montent avant que le VFS existe. Couvre le *provisionnement* d'un montage, jamais l'exposition d'un chemin physique comme chemin virtuel — voir [ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md) |
+| Bootstrap (pré-DI) | `SandboxSession`, ConsoleApp `Cli*MountBootstrapper`, `Hosting/Runner*`, `Hosting/CrewMountDeclarations` (pré-lit le bloc `mounts:` d'une crew) | `EXCEPTION-BOOTSTRAP` | Lisent appsettings + montent avant que le VFS existe. Couvre le *provisionnement* d'un montage, jamais l'exposition d'un chemin physique comme chemin virtuel — voir [ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md) |
 | Sondage hôte | `DockerSandbox`, `HostProcessRunner`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Découvrent `docker`/`dotnet`/`git` sur le PATH, jamais un mount |
 | Toolchain | `Scripting/Toolchain/EsbuildTranspiler.cs` | `OUT-OF-SCOPE` | Localise le binaire `esbuild` + fichiers temp de transpilation ; chaîne d'outils hôte |
 | Toolchain (vérification de types) | `Scripting/Toolchain/TscTypeChecker.cs` | `OUT-OF-SCOPE` (localiser `tsc`), `EXCEPTION-BOOTSTRAP` (le dossier de travail) | `tsc` est un processus externe qui lit et imprime des chemins physiques : le vérificateur écrit un dossier de travail (roll-up des typings, tsconfig, copies du script et de ses modules importés dont le pragma `orkeon-script` est blanchi) sous le répertoire temporaire, hors du VFS et non monté : rien dans le framework ne le relit. Chaque chemin de la sortie du compilateur et d'un message d'échec est remappé vers son chemin virtuel avant affichage ; le dossier est supprimé à la fin, y compris sur annulation |
@@ -107,7 +93,7 @@ Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement
 | Primitive sécurité | `Security/PathValidator.cs` | (allowlist) | résolution symlink/realpath = son rôle |
 | Watcher bridge | `Analysis/.../FileSystemWatcherCodebaseWatcher.cs` | `EXCEPTION-WATCHER-BRIDGE` | Adapte `System.IO.FileSystemWatcher` vers `ICodebaseWatcher` |
 | Sonde RaggableTree | `Analysis/Core/FileSystemDiscoverer.cs` (sonde diagnostique uniquement) | `OUT-OF-SCOPE` | La *découverte batch elle-même* utilise `EnumerateFilesAsync` ; la sonde compte délibérément les entrées physiques pour distinguer « le VFS n'a rien renvoyé » de « le disque est vide » |
-| Persistance SQLite | `SqliteMemoryProvider`, `SqliteStateStore` | gouverné | Le moteur exige un chemin réel ; le `Data Source` est résolu via `ResolveAndValidate` (décision 2F-A) avant d'atteindre le driver |
+| Persistance SQLite | `SqliteMemoryProvider`, `SqliteStateStore` | gouverné | Le moteur exige un chemin réel ; le `Data Source` est résolu via `ResolveAndValidate` avant d'atteindre le driver |
 
 ## Ajouter un nouvel outil ou service
 
@@ -134,7 +120,7 @@ Un mount se déclare par une chaîne — `[<ulid>|]<physique>:<virtuel>:<droits>
 - `<droits>` vaut `ro` (`FileAccessRights.ReadOnly`), `rw` (`ReadWrite` = Read, Write, Create,
   Delete) ou `rwnd` (`ReadWriteNoDelete`) ; chaque `;<sous-chemin>:<droits>` redéfinit les
   droits d'un sous-arbre.
-- L'ULID facultatif de 26 caractères avant `|` identifie l'entrée (VFS-90) — voir la
+- L'ULID facultatif de 26 caractères avant `|` identifie l'entrée — voir la
   [référence de configuration](../reference/configuration.md).
 
 `FileAccessRights` est une énumération de drapeaux (`Read`, `Write`, `Create`, `Delete`) ;
@@ -168,8 +154,8 @@ d'exécution (`ScopedMountComposition`) garde celui du démarrage tant qu'il le 
 - Un chemin qui ne commence par aucun mount est refusé avec la forme d'une adresse :
   `No mount found for virtual path 'x': a path starts with a mount: /workspace/src/stats.js. Available mounts: ...`.
 - `shell_command` sans `working_directory` s'exécute dans la racine de l'agent, sinon dans le
-  répertoire de travail ; un `working_directory` relatif se résout de même. Il ne se replie plus
-  sur le premier mount qui accorde les droits (qui pouvait être `/session-history`) : avec des
+  répertoire de travail ; un `working_directory` relatif se résout de même. Il ne se replie jamais
+  sur le premier mount qui accorde les droits : avec des
   mounts mais sans répertoire de travail, l'appel est refusé et nomme les mounts. Le
   `working_directory` relatif devient absolu avant la garde de racine : `../p2` depuis une racine
   `/workspace/wt/p1` est refusé.
@@ -224,8 +210,9 @@ Absente, rien ne change : les mounts seuls confinent l'agent.
 
 Un runner monte pour lui-même quelques racines en montages **internes**
 (`Orkeon:FileSystem:InternalMounts`, `MountVisibility.Internal`) : `/llm-logs` (les fichiers
-d'échanges de `--llm-log`), `/sandbox` (où les sandboxes de code déposent ce qu'elles exécutent)
-et `/credentials` (les jetons OAuth des comptes e-mail — montée seulement quand un compte OAuth
+d'échanges de `--llm-log`), `/sandbox` (où les sandboxes de code déposent ce qu'elles exécutent),
+`/state` (le magasin de checkpoints), `/runs` (l'historique des runs), `/llm-mock` et
+`/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) et `/credentials` (les jetons OAuth des comptes e-mail — montée seulement quand un compte OAuth
 est déclaré). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
 un chemin inexistant : aucun outil destiné aux agents ne peut l'atteindre ni même le nommer
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les quelques composants qui
@@ -274,15 +261,14 @@ du mécanisme, puisque deux crews recevant chacun `/output` sur des dossiers dif
 précisément ce qu'un registre plat ne sait pas exprimer.
 
 Les deux moitiés du jeu de boot doivent survivre, pour des raisons différentes. Les mounts
-**internes** — `/llm-logs`, `/sandbox`, `/credentials` — relèvent de la confidentialité : les
+**internes** (`RunnerVirtualRoots` : `/llm-logs`, `/sandbox`, `/state`, `/runs`, `/credentials`, …) relèvent de la confidentialité : les
 perdre arrête la journalisation des échanges, les deux sandboxes de code et le magasin de jetons
 e-mail, et fait tomber `IsUnderInternalMountUnsafe`, le contrôle qui empêche l'un d'eux de gagner
 une seconde adresse atteignable par un agent via un mount de l'exécution. Les mounts **agent-facing** portent tout
 autant : `orkeon-host` monte le dossier de chaque crew hébergé sous `/crews` puis charge le crew
-*par ce chemin virtuel, depuis l'intérieur du scope*. Ne composer que les mounts de l'exécution
-rendait `Orkeon:Host:Crews:*:Mounts` — la clé de configuration de la fonctionnalité elle-même —
-incapable de charger le crew sur lequel elle était posée, et l'échec revenait sous forme d'un
-message générique parce qu'`ExistsAsync` avale le refus.
+*par ce chemin virtuel, depuis l'intérieur du scope*. Un registre composé des seuls mounts
+de l'exécution laisserait le crew injoignable, et `ExistsAsync`, qui avale le refus, le rendrait
+comme un échec de run générique.
 
 **Qui en entre un aujourd'hui.** `orkeon-host` est le seul hôte de runner livré qui le
 fasse, une fois par crew hébergé, depuis `Orkeon:Host:Crews:*:Mounts` — deux crews hébergés peuvent
@@ -303,12 +289,3 @@ comme ci-dessus).
 ## Comportement en CI
 
 Les sept diagnostics (`ORKVFS001`–`ORKVFS007`) sont tous des **erreurs**, donc la CI bloque tout merge qui réintroduit un accès fichier `System.IO`, un `StreamReader`/`StreamWriter` par chemin, un `Path.GetFullPath` sur entrée utilisateur, ou un `IFileSystemService` nullable dans le code du framework sans attribut `[SuppressVfsCompliance]` justifié.
-
-## Critères de sortie (du programme de migration VFS)
-
-- [x] `VIOLATION-HISTORIC == 0` — les 23 violations historiques ont été éliminées dans P5-VFS-50.
-- [x] `VIOLATION-NEW` réduit aux exceptions documentées derrière des gardes `[Obsolete]` / `if (_fs is null)`, toutes couvertes par `[SuppressVfsCompliance]`.
-- [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — 7 à la clôture du programme (un chiffre de ce moment, pas un compte actuel), toutes légitimes (`SandboxSession`). Le seuil portait sur les bibliothèques du framework ; les applications hôtes ajoutées depuis (runners, `orkeon-host`, le REPL) portent leurs propres portées de bootstrap, listées dans le tableau des exceptions ratifiées ci-dessus.
-- [x] Analyseur Roslyn `Orkeon.Compliance.Vfs` en place et câblé dans `src/Directory.Build.props`.
-- [x] Le build passe proprement ; un test négatif confirme qu'un `File.ReadAllText` délibéré dans le code du framework déclenche `ORKVFS001`.
-- [x] Éliminer les suppressions `EXCEPTION-BACKCOMPAT` résiduelles en migrant tous les appelants d'outils vers la DI — **fait dans VFS-70** : 0 `EXCEPTION-BACKCOMPAT` et 0 `EXCEPTION-OBSOLETE` lié au FS ne subsistent dans `src/` ; tous les outils fichier + le chemin d'ingestion de connaissances (désormais les loaders `Orkeon.Rag`, RAG-02) exigent un `IFileSystemService` non-nullable ; SQLite gouverné via `ResolveAndValidate` ; `ORKVFS004` promu en erreur et `ORKVFS006`/`ORKVFS007` ajoutés pour fermer les angles morts `StreamReader/Writer(string)` et `IFileSystemService` nullable.

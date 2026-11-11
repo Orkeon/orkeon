@@ -36,7 +36,9 @@ saves a screenshot. Pages run their JavaScript: what `web_scrape` cannot see, `f
 
 ```yaml
 agents:
-  - name: researcher
+  researcher:
+    role: "Researcher"
+    goal: "Find and summarise sources on the web"
     tools: [firefox]
 ```
 

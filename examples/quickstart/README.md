@@ -11,7 +11,7 @@ that is not empty is refused). No clone needed:
 
 ```bash
 ollama pull qwen2.5:1.5b
-dotnet tool install -g Orkeon.Scripting.Cli
+dotnet tool install -g Orkeon.Scripting.Cli --prerelease
 orkeon quickstart && cd orkeon-quickstart
 orkeon run crew.yaml --mount ./out:/output:rw
 ```

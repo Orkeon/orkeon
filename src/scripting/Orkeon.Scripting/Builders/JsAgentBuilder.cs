@@ -341,7 +341,7 @@ public sealed class JsAgentBuilder
             throw new InvalidScriptException(".concurrency must be positive.");
         if (ConcurrencyValue > 1)
             throw new InvalidScriptException(
-                "V1 supports .concurrency(1) only (mutex). N-holders semaphore is deferred to V1.5.");
+                ".concurrency(1) is the only value accepted: an agent's concurrency is a mutex.");
 
         var domain = DomainAgent.Create(
             role: DomainAgentRole.From(AgentRole!),

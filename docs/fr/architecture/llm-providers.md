@@ -6,13 +6,13 @@ Les fournisseurs de cette page servent la catégorie `Generation`. Les fournisse
 
 `HttpLlmProviderBase` (`Orkeon.Infrastructure.LLMs.Base`) fournit la base abstraite pour tous les fournisseurs LLM. Elle intègre la gestion HTTP (`IHttpClientFactory`), les politiques de retry Polly, et la sérialisation JSON.
 
-**Budget de retry.** `Llm:MaxRetries` (10 par défaut) couvre les échecs qui reviennent en quelques secondes — erreurs de requête, 5xx, 429 (sauf un solde épuisé, plus bas). Un appel bufferisé qui atteint `Llm:TimeoutSeconds` est réessayé **une fois** (`ResilienceDefaults.LlmTimeoutRetries` : chaque tentative coûte le délai entier), puis le provider répond par un échec qui nomme le réglage et les deux issues (un délai plus long, la réflexion coupée) ; une annulation de l'appelant n'est jamais réessayée. Un appel échoué voyage en `LlmResponse.Error` et, à travers l'adaptateur de chat client, en exception — il n'est jamais confondu avec une réponse vide, si bien que la boucle agent fait échouer la tâche immédiatement avec la raison du provider au lieu de relancer sans outils (LLM-11).
+**Budget de retry.** `Llm:MaxRetries` (10 par défaut) couvre les échecs qui reviennent en quelques secondes — erreurs de requête, 5xx, 429 (sauf un solde épuisé, plus bas). Un appel bufferisé qui atteint `Llm:TimeoutSeconds` est réessayé **une fois** (`ResilienceDefaults.LlmTimeoutRetries` : chaque tentative coûte le délai entier), puis le provider répond par un échec qui nomme le réglage et les deux issues (un délai plus long, la réflexion coupée) ; une annulation de l'appelant n'est jamais réessayée. Un appel échoué voyage en `LlmResponse.Error` et, à travers l'adaptateur de chat client, en exception — il n'est jamais confondu avec une réponse vide, si bien que la boucle agent fait échouer la tâche immédiatement avec la raison du provider au lieu de relancer sans outils.
 
 **Fenêtre de limite de débit.** Un 429, ou un 529 qui porte un en-tête de réinitialisation, n'est pas réessayé sur l'échelle de recul : l'appel attend la réinitialisation de la fenêtre, sur le chemin tamponné comme sur la connexion de flux (`RateLimitResetHeaders`). Il lit `Retry-After` (secondes ou date HTTP), `retry-after-ms` (millisecondes, envoyé par OpenAI et TypeSafe), `anthropic-ratelimit-requests-reset` et `anthropic-ratelimit-tokens-reset` (RFC 3339) et `x-ratelimit-reset-requests` et `x-ratelimit-reset-tokens` (durées OpenAI comme `6m0s`). `retry-after-ms`, quand il est envoyé, est le plus précis des deux en-têtes `Retry-After` et le remplace ; la plus longue de cette valeur et des en-têtes de réinitialisation l'emporte alors. Une valeur finie au-delà de la fenêtre fait échouer l'appel avec `LlmRateLimitException`, jamais avec un dépassement arithmétique. L'attente ne dépasse jamais `Llm:MaxRateLimitWait` (5 minutes par défaut, distinct du plafond de 30 secondes de l'échelle 5xx) : une réinitialisation au-delà fait échouer l'appel aussitôt avec la raison (`LlmRateLimitException`) au lieu de garer une exécution sans surveillance. Chaque attente est annoncée à `ILlmRetryObserver` avec la raison `rate-limit window` et le délai. Un 529 sans en-tête garde l'échelle.
 
-**Solde épuisé.** Un 429 dont le corps nomme un solde ou un quota dépensé — `insufficient_quota` d'OpenAI, `exceeded_current_quota_error` de Kimi, `Insufficient balance` de Z.AI — n'est pas une limite de débit : aucune attente ne le lève. Il n'est pas réessayé, ni sur l'échelle ni sur une fenêtre, sur le chemin tamponné comme sur la connexion de flux (`ResiliencePolicies`, `LlmFailureClassifier.IsBalanceExhausted`), et la ligne d'erreur ajoute `(account balance exhausted: ...)` après les mots du fournisseur. Il reste classé `rate_limited`, si bien que la chaîne de repli d'un profil passe au fournisseur suivant, et le modèle de décision le signale comme non transitoire. Quand le corps ne peut pas être lu, le 429 est traité comme une limite de débit, comme avant. Hors du champ : un solde refusé avec un autre statut (le `400` « credit balance is too low » d'Anthropic, un `402` de DeepSeek, MiniMax ou OpenRouter) n'est pas réessayé non plus, mais est classé `refused` et ne bascule pas ; le fournisseur d'embeddings du graphe de code (`Orkeon.Analysis`) a sa propre boucle de réessai et réessaie encore `insufficient_quota` (issue #328).
+**Solde épuisé.** Un 429 dont le corps nomme un solde ou un quota dépensé — `insufficient_quota` d'OpenAI, `exceeded_current_quota_error` de Kimi, `Insufficient balance` de Z.AI — n'est pas une limite de débit : aucune attente ne le lève. Il n'est pas réessayé, ni sur l'échelle ni sur une fenêtre, sur le chemin tamponné comme sur la connexion de flux (`ResiliencePolicies`, `LlmFailureClassifier.IsBalanceExhausted`), et la ligne d'erreur ajoute `(account balance exhausted: ...)` après les mots du fournisseur. Il reste classé `rate_limited`, si bien que la chaîne de repli d'un profil passe au fournisseur suivant, et le modèle de décision le signale comme non transitoire. Quand le corps ne peut pas être lu, le 429 est traité comme une limite de débit. Hors du champ : un solde refusé avec un autre statut (le `400` « credit balance is too low » d'Anthropic, un `402` de DeepSeek, MiniMax ou OpenRouter) n'est pas réessayé non plus, mais est classé `refused` et ne bascule pas ; le fournisseur d'embeddings du graphe de code (`Orkeon.Analysis`) a sa propre boucle de réessai et réessaie encore `insufficient_quota` (issue #328).
 
-**Un appel streamé est borné de la même façon (LLM-12).** Une requête streamée part en `ResponseHeadersRead`, et `HttpClient.Timeout` cesse de compter dès que les en-têtes sont arrivés : le corps était lu sur le seul token de l'appelant, si bien qu'un modèle qui réfléchit plusieurs minutes avant son premier token faisait pendre un run au-delà de tout `Llm:TimeoutSeconds`. Chaque chemin de streaming (dialecte OpenAI, Azure, Anthropic, Ollama — flux chat et flux texte) court désormais sous un `StreamReadBudget` : `Llm:TimeoutSeconds` borne l'appel entier, en-têtes et corps, et `Llm:StreamIdleSeconds`, optionnel, borne le silence entre deux lignes du corps (non posé par défaut). Une borne atteinte termine le flux chat par un événement `Completed` dont la réponse porte `error` (la phrase qui nomme le réglage) et `error_type` (`TaskCanceledException` pour la borne de l'appel entier, `StreamIdleTimeout` pour celle du silence) par-dessus le contenu déjà arrivé, sans `RawResponseBody` ; le flux texte lève une `HttpRequestException` portant la même phrase. Un flux que le provider ferme sans son marqueur de fin (`finish_reason` ou `[DONE]`, `message_stop`, `done: true`) est lui aussi un appel échoué quand aucun texte de réponse ni appel d'outil n'est arrivé (`error_type` `StreamTruncated`, la phrase disant combien de raisonnement a été streamé) ; avec un début de réponse, il est servi tel quel, marqué `stream_truncated` dans ses métadonnées. L'adaptateur de client de chat fait échouer un tour streamé sur tout `error`, contenu partiel ou non ; la phase des en-têtes renvoie une fois un `HttpClient.Timeout` atteint (`LlmTimeoutRetries`), comme le chemin bufferisé.
+**Un appel streamé est borné de la même façon.** Une requête streamée part en `ResponseHeadersRead`, et `HttpClient.Timeout` cesse de compter dès que les en-têtes sont arrivés : chaque chemin de streaming (dialecte OpenAI, Azure, Anthropic, Ollama — flux chat et flux texte) court donc sous un `StreamReadBudget` : `Llm:TimeoutSeconds` borne l'appel entier, en-têtes et corps, et `Llm:StreamIdleSeconds`, optionnel, borne le silence entre deux lignes du corps (non posé par défaut). Une borne atteinte termine le flux chat par un événement `Completed` dont la réponse porte `error` (la phrase qui nomme le réglage) et `error_type` (`TaskCanceledException` pour la borne de l'appel entier, `StreamIdleTimeout` pour celle du silence) par-dessus le contenu déjà arrivé, sans `RawResponseBody` ; le flux texte lève une `HttpRequestException` portant la même phrase. Un flux que le provider ferme sans son marqueur de fin (`finish_reason` ou `[DONE]`, `message_stop`, `done: true`) est lui aussi un appel échoué quand aucun texte de réponse ni appel d'outil n'est arrivé (`error_type` `StreamTruncated`, la phrase disant combien de raisonnement a été streamé) ; avec un début de réponse, il est servi tel quel, marqué `stream_truncated` dans ses métadonnées. L'adaptateur de client de chat fait échouer un tour streamé sur tout `error`, contenu partiel ou non ; la phase des en-têtes renvoie une fois un `HttpClient.Timeout` atteint (`LlmTimeoutRetries`), comme le chemin bufferisé.
 
 **La pensée est rejouée telle quelle (Anthropic).** Le tour assistant d'un appel d'outil garde ses blocs `thinking` et `redacted_thinking` (texte, `signature`, `data`) tels que le fournisseur les a envoyés, en réponse groupée ou en flux, dans `LlmMessage.RawThinkingBlocks` ; la requête suivante les réémet en tête, avant les blocs `text` et `tool_use` du tour, comme l'API l'exige pour la pensée étendue avec des outils. Les autres fournisseurs les ignorent. Un appel d'outil sans `id`, sans `name` ou dont les `arguments` ne sont pas un objet est refusé par une erreur qui nomme son index, son nom et le champ.
 
@@ -99,7 +99,7 @@ passée avec un appel **complète** celle avec laquelle le provider a été cons
 remplace pas. Chaque champ que l'appel laisse vide — nul, une chaîne vide ou blanche, aucune
 séquence d'arrêt — est celui du provider : la clé, `BaseUrl`, `TimeoutSeconds` (nullable : vide
 partout, 30 s), l'`ApiVersion` d'Azure, le `WorkspaceId` d'Anthropic, `Thinking`, `MaxTokens`,
-`Temperature` et `TopP` (nullables eux aussi depuis GAP-36), `Seed`, `SystemMessage`,
+`Temperature` et `TopP` (nullables eux aussi), `Seed`, `SystemMessage`,
 `ResponseFormat`, `Cache`, `Tools`, la grammaire et le modèle ; les paramètres personnalisés
 fusionnent, ceux de l'appel l'emportant. Chaque champ que l'appel fixe l'emporte. Les réglages qui
 ne peuvent pas être vides — les pénalités (0, le défaut de chaque vendeur) et le mode d'outil —
@@ -107,18 +107,13 @@ sont ceux de l'appelant, et `MaxRetries` et `Grammar` se lisent dans la configur
 quand il est construit. Un appel ne peut pas effacer ce que fixe son provider ; il le remplace
 (`Thinking = { Enabled = false }`, `LlmResponseFormat.Text()`). L'adaptateur de client de chat
 enregistré sans configuration de base part de celle du provider (`ILlmProvider.BaseConfig`).
-Avant, les providers prenaient la configuration d'un appel en entier (`config ?? Config`) : le
-planificateur, la mémoire cognitive, les résumés de fenêtre de contexte et de RaggableTree et les
-boucles d'agent hors du client de chat perdaient la clé — « API key is required » —, le point
-d'accès et le délai du provider qu'ils atteignaient (GAP-29).
 
-**Échantillonnage : ce qui est fixé part, ce qui ne l'est pas ne part pas** (GAP-36).
+**Échantillonnage : ce qui est fixé part, ce qui ne l'est pas ne part pas.**
 `Temperature` et `TopP` sont nuls quand rien ne les fixe — ni l'appel, ni l'agent, ni la tâche, ni
 le profil — et rien n'atteint alors le fil : le modèle applique son propre défaut (souvent 1 ;
-celui du Modelfile chez Ollama). Fixés, ils partent quelle que soit leur valeur. Le moteur prenait
-0,7 et 1,0 pour « non fixé » : un agent qui demandait exactement ces valeurs tournait sur celles de
-son profil, et le 0,7 qu'il posait sur chaque appel que personne ne configurait est refusé par les
-modèles par défaut d'OpenAI (`gpt-5.6-sol`) et d'Anthropic (`claude-sonnet-5`). Une exception
+celui du Modelfile chez Ollama). Fixés, ils partent quelle que soit leur valeur. Un modèle par défaut peut refuser une valeur
+d'échantillonnage qu'il ne prend pas (un 0,7 imposé sur `gpt-5.6-sol` ou `claude-sonnet-5`) : c'est
+pourquoi rien n'est envoyé tant que rien ne la fixe. Une exception
 mesurée : le dialecte de Mistral écrit `top_p: 1` quand rien n'en fixe (`AlwaysEmitTopP`). Les
 pénalités, la graine et les séquences d'arrêt de la configuration d'un agent passent elles aussi
 par le client de chat ; sur le fil, Ollama écrit `top_p`, `seed` et `stop` dans ses `options`, et
@@ -153,14 +148,14 @@ interrupteur.
 Et une n'est à aucun vendeur : `ReplaysPrompt`, déclarée par le seul fournisseur écho
 (`UndefinedLlmProvider`, le modèle d'un hôte sans section `Llm`), dit que ce qu'il rend est son
 prompt, jamais la réponse d'un modèle — le planificateur de la crew saute alors son appel avec un
-avertissement au lieu de relire le prompt comme un plan (GAP-31). Les décorateurs qui enveloppent un
+avertissement au lieu de relire le prompt comme un plan. Les décorateurs qui enveloppent un
 provider (`MeteredLlmProvider`, `RateLimitedLlmProvider`) transmettent les capacités.
 `OpenAICompatibleProviderBase` traduit la déclaration en dialecte OpenAI une seule fois
 (payloads vision, `response_format`, thinking, les diagnostics `CapabilityMismatchHint`) ;
 Anthropic et Ollama écrivent leur propre dialecte, et Qwen surcharge le hook pour les champs
 de réflexion de DashScope. Une option qu'un provider ne peut pas honorer produit un
 avertissement structuré (event id `110`, `Option '…' was declared but … does not support it —
-it was not sent`) — jamais un abandon silencieux ; depuis GAP-36, cela vaut pour
+it was not sent`) — jamais un abandon silencieux ; cela vaut pour
 `frequency_penalty` et `presence_penalty` dans chaque dialecte, et pour `seed` partout où le
 dialecte ne l'écrit pas (tous sauf Ollama). `CapabilityMismatchHint` (providers compatibles OpenAI et
 Ollama) couvre le versant par modèle : quand un vendeur refuse une capacité que le provider déclare (un modèle texte
@@ -172,8 +167,8 @@ fois (chemins generate et chat ; le streaming ne réessaie jamais). Kimi s'en se
 `invalid temperature: only 1 is allowed for this model` de Moonshot — la valeur imposée est
 lue dans le refus lui-même (quels modèles l'exigent est décidé côté serveur, une liste en
 dur dériverait) et la substitution est journalisée en avertissement structuré ; seule une
-température fixée et envoyée est remplacée, puisque celle que rien ne fixe ne part pas (GAP-36). Deux
-coutures de dialecte supplémentaires servent les agrégateurs (LLM-09) : `ReasoningFieldName`
+température fixée et envoyée est remplacée, puisque celle que rien ne fixe ne part pas. Deux
+coutures de dialecte supplémentaires servent les agrégateurs : `ReasoningFieldName`
 nomme le champ vendeur où la trace de raisonnement est lue (`reasoning_content` par défaut,
 `reasoning` chez OpenRouter — la clé de métadonnée Orkeon reste `reasoning_content`), et
 `usage.cost` devient la métadonnée `cost` partout où un vendeur facture dans la réponse —
@@ -190,7 +185,7 @@ chiffré, pour ses propres budgets ; cette estimation n'atteint jamais le fil. U
 chunk portant un `error` racine après le HTTP 200 termine un flux comme un refus pré-flux —
 métadonnée `error` sur le flux chat, `HttpRequestException` sur le flux texte — jamais
 comme une complétion propre. Les 16 providers sont des `IStreamingLlmProvider`. Le chemin de
-streaming de l'adaptateur de client de chat (`GetStreamingResponseAsync`, GAP-32) se construit
+streaming de l'adaptateur de client de chat (`GetStreamingResponseAsync`) se construit
 comme son chemin bufferisé — mêmes messages, mêmes rôles, mêmes outils, mêmes options — et lit
 le flux chat du provider (`ChatStreamingAsync`) : le texte au fil, puis une dernière mise à jour
 qui porte les appels d'outils (natifs ou du protocole texte), l'usage du provider, la raison de
@@ -201,10 +196,9 @@ rejoué au provider avec toutes les propriétés qu'il portait, bufferisé ou di
 avec les siennes : l'adaptateur garde l'élément `tool_calls[i]` du provider sur son
 `FunctionCallContent` et le rejoue entier, et la fusion des fragments diffusés garde ce qu'un
 fragment ajoute au-delà de `index`, `id`, `type` et `function` — la signature de pensée de
-Gemini (`extra_content.google.thought_signature`), que Gemini exige en retour, voyage ainsi
-(LLM-14) ; un appel qui ne portait rien d'autre est rejoué en `id`, `type` et `function`, comme
-avant. Les
-flux eux-mêmes ont dû dire ce que disent les réponses bufferisées : Anthropic assemble désormais
+Gemini (`extra_content.google.thought_signature`), que Gemini exige en retour, voyage ainsi ;
+un appel qui ne portait rien d'autre est rejoué en `id`, `type` et `function`. Un flux dit ce que
+dit la réponse bufferisée : Anthropic assemble
 les blocs `tool_use` qu'il diffuse ; MiniMax sépare son bloc `<think>` de tête des deltas de
 contenu (`LeadingReasoningTag`), si bien que le texte d'un flux est la réponse que garde sa
 réponse finale ; et, sur le protocole natif, le dialecte OpenAI et Anthropic donnent à une
@@ -212,7 +206,7 @@ réponse diffusée le corps que porte leur réponse bufferisée, où le repli du
 un appel que le modèle a écrit en texte. La matrice par provider vit dans [le comparatif des
 providers](../reference/llm-providers-comparison.md).
 
-**Deltas d'appels d'outils (FWK-20).** Le flux de chat informe son appelant d'un appel d'outil pendant que le modèle le construit : `LlmStreamEventKind.ToolCallDelta` porte `ToolCallDelta(Index, Id, Name, ArgumentsDelta)`, et l'événement final porte toujours l'appel entier, inchangé. Le dialecte OpenAI (les quatorze providers qui dérivent de `OpenAICompatibleProviderBase`, Azure OpenAI compris) émet un delta par fragment de `delta.tool_calls` ; Anthropic un à l'ouverture d'un bloc `tool_use` (id et nom) et un par `input_json_delta` ; Ollama un delta complet par appel, puisqu'il envoie les appels entiers. Aucun des 16 providers n'est muet : un test vérifie que les trois familles les couvrent, si bien qu'un provider ajouté plus tard doit rejoindre l'une d'elles ou dire qu'il ne le peut pas (un avertissement structuré, jamais un abandon silencieux). L'adaptateur de chat client transmet les fragments en mises à jour sans contenu, si bien que le repli du tour est celui d'avant ; `ILlmDeltaSink.OnToolCallDelta` les reçoit (vide par défaut) et ils voyagent dans l'événement `llm.delta` (`deltaKind: "tool_call"`). Les deltas de raisonnement ne sont pas transmis aux sinks. Avec un intercepteur DLP du canal de sortie externe enregistré (`AddOrkeonDlp`), les arguments de chaque appel sont retenus par index jusqu'à la fin du flux, scannés entiers et émis en un seul delta : un secret coupé entre deux fragments est rédigé ; sans intercepteur ils sortent au fil de l'eau. Une chaîne de repli (FWK-05) s'engage sur un provider à son premier événement, delta d'appel d'outil compris : les deltas partiels d'un provider tombé avant tout événement n'atteignent jamais l'appelant, et celui qui tombe après l'avoir atteint garde l'appel, son échec terminant le flux.
+**Deltas d'appels d'outils.** Le flux de chat informe son appelant d'un appel d'outil pendant que le modèle le construit : `LlmStreamEventKind.ToolCallDelta` porte `ToolCallDelta(Index, Id, Name, ArgumentsDelta)`, et l'événement final porte toujours l'appel entier, inchangé. Le dialecte OpenAI (les quatorze providers qui dérivent de `OpenAICompatibleProviderBase`, Azure OpenAI compris) émet un delta par fragment de `delta.tool_calls` ; Anthropic un à l'ouverture d'un bloc `tool_use` (id et nom) et un par `input_json_delta` ; Ollama un delta complet par appel, puisqu'il envoie les appels entiers. Aucun des 16 providers n'est muet : un test vérifie que les trois familles les couvrent, si bien qu'un provider ajouté plus tard doit rejoindre l'une d'elles ou dire qu'il ne le peut pas (un avertissement structuré, jamais un abandon silencieux). L'adaptateur de chat client transmet les fragments en mises à jour sans contenu, si bien que le repli du tour est celui d'avant ; `ILlmDeltaSink.OnToolCallDelta` les reçoit (vide par défaut) et ils voyagent dans l'événement `llm.delta` (`deltaKind: "tool_call"`). Les deltas de raisonnement ne sont pas transmis aux sinks. Avec un intercepteur DLP du canal de sortie externe enregistré (`AddOrkeonDlp`), les arguments de chaque appel sont retenus par index jusqu'à la fin du flux, scannés entiers et émis en un seul delta : un secret coupé entre deux fragments est rédigé ; sans intercepteur ils sortent au fil de l'eau. Une chaîne de repli s'engage sur un provider à son premier événement, delta d'appel d'outil compris : les deltas partiels d'un provider tombé avant tout événement n'atteignent jamais l'appelant, et celui qui tombe après l'avoir atteint garde l'appel, son échec terminant le flux.
 
 ### Points d'extension du dialecte de la base compatible OpenAI
 
@@ -427,8 +421,7 @@ Cohere, Voyage et pgvector ne sont pas livrés.
   `AddOrkeonInfrastructure()` n'enregistre aucun modèle à lui : `orkeon run`, `orkeon-host` et
   `orkeon-repl` enregistrent le leur depuis la section `Llm` — ou le provider écho quand elle
   manque —, et un conteneur qui n'en enregistre aucun échoue à sa première résolution LLM, en
-  nommant le service manquant. Son ancien repli, un provider OpenAI sans clé, était le client de
-  chat du REPL (GAP-29).
+  nommant le service manquant.
 - **`RateLimitedLlmProvider`** — le `RateLimiting` de l'hôte à l'entrée de chaque provider :
   chaque appel prend un bail de l'`ILlmRateLimiter` (global, par provider, concurrence) le temps
   de l'appel, un flux pour toute son énumération. Il est posé avec le compteur, autour de lui,
@@ -440,7 +433,7 @@ Cohere, Voyage et pgvector ne sont pas livrés.
   `MaxConcurrentRequests: 1`, il s'attendrait lui-même) ; un provider qui fait ses outils lui-même
   (`RunsOwnTools`, le pont Microsoft Agent Framework) n'est pas limité lui-même — ce qu'il appelle du
   modèle d'Orkeon l'est. Un refus est retenté cinq fois sur son `RetryAfter`, puis l'appel échoue
-  avec la raison du limiteur (GAP-38).
+  avec la raison du limiteur.
 - **Mode d'appel** — `CallModeLlmProvider` décide comment chaque appel d'un provider construit
   depuis un réglage atteint le modèle, pour tout appelant (boucle d'agent, manager, planificateur,
   juges, RAG). La clé `CallMode` du réglage (`Llm:CallMode`, `Llm:Profiles:<nom>:CallMode`) vaut

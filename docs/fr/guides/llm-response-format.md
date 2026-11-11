@@ -56,7 +56,7 @@ Un appel, en C# ou dans un script (`ctx.llm.complete/chat/stream(..., { response
 ```yaml
 llm:
   model: deepseek-flash
-  response_format: json_object   # every agent of this crew now replies in JSON
+  response_format: json_object   # every agent of this crew replies in JSON
 ```
 
 ### Override agent (gagne sur la crew)
@@ -195,7 +195,7 @@ Ce qu'un provider ne peut pas honorer n'est jamais abandonné en silence :
 Le mode JSON de DeepSeek exige que le prompt (message system **ou** user) contienne le mot
 `"json"` quelque part — faute de quoi l'API peut émettre un **flux d'espaces blancs sans fin**
 jusqu'à épuisement de `max_tokens`. Chaque provider qui déclare `RequiresJsonKeywordInPrompt`
-(DeepSeek aujourd'hui) logue un `Warning` structuré (event id `100`, `LogMissingJsonKeyword`)
+(DeepSeek seul) logue un `Warning` structuré (event id `100`, `LogMissingJsonKeyword`)
 quand il détecte la situation :
 
 ```
@@ -220,9 +220,9 @@ raison.
 | **Anthropic** | `JsonSchema` | Dialecte propre (`output_config`) — schéma uniquement, pas de `json_object` nu. |
 | **Ollama** | `JsonSchema` | Dialecte propre (`format`). |
 | **DeepSeek**, Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. DeepSeek exige en plus le mot-clé `json` (ci-dessus). |
-| **MiniMax** | `None` | Accepté mais non contraignant — mesuré le 2026-08-30 (schéma ignoré, `json_object` clôturé en markdown) ; un format déclaré produit l'avertissement structuré de capacité. |
-| **OpenRouter** | `JsonSchema` | Documenté par endpoint ; M8 vert sur les trois modèles campagnés le 2026-10-07. Le provider n'envoie pas `provider.require_parameters`, un schéma peut donc encore être ignoré par un endpoint qui ne le supporte pas — un M8 vert ne l'exclut pas. |
-| **Mammouth AI** | `None` | Accepté mais non contraignant — mesuré le 2026-10-07 (`json_object` rend du JSON nu, un schéma strict n'a pas contraint `gemini-3.7-flash`) ; un format déclaré produit l'avertissement structuré de capacité. |
+| **MiniMax** | `None` | Accepté mais non contraignant (un schéma est ignoré, `json_object` revient clôturé en markdown) ; un format déclaré produit l'avertissement structuré de capacité. |
+| **OpenRouter** | `JsonSchema` | Documenté par endpoint. Le provider n'envoie pas `provider.require_parameters` : un endpoint sans prise en charge du schéma peut donc encore l'ignorer. |
+| **Mammouth AI** | `None` | Accepté mais non contraignant (`json_object` rend du JSON nu, un schéma strict n'est pas appliqué) ; un format déclaré produit l'avertissement structuré de capacité. |
 
 ## Livrables `structured_output`
 
@@ -259,7 +259,6 @@ Les 6 stratégies de process (Sequential, Hierarchical, Autonomous, Graph, Paral
 - Value objects : `Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat`, `LlmJsonSchema`
 - Record de patch : `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride`
 - Fusion : `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve`
-- Traduction wire : `Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ApplyProviderSpecificOptions` (virtuelle — Qwen, OpenRouter et Together AI la surchargent et appellent la base pour `response_format`) ; `AnthropicLlmProvider` et `OllamaLlmProvider` pour leurs dialectes propres
+- Traduction wire : `Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ApplyProviderSpecificOptions` (virtuelle — Kimi, OpenRouter, Qwen, Together AI et Z.AI la surchargent et appellent la base pour `response_format`) ; `AnthropicLlmProvider` et `OllamaLlmProvider` pour leurs dialectes propres
 - Mapping YAML : `Orkeon.Infrastructure.Configuration.Yaml.YamlCrewMapper` (son `MapResponseFormat` privé) ; l'export est `Orkeon.Infrastructure.Configuration.YamlCrewExporter.MapResponseFormat`
-- Plan / spec : l'archive des mainteneurs (plan LLM-RESPONSE-FORMAT)
 - Doc API DeepSeek : https://api-docs.deepseek.com/api/create-chat-completion

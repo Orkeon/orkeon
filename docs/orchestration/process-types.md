@@ -69,11 +69,11 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 - **What it writes** — `{"plans": [{"task": 1, "plan": "1. …"}]}`: at most 8 numbered steps per task, naming the tools to use where a tool helps. The reply's shape is constrained as far as the provider can (`json_schema`, else `json_object`, else the prompt alone) and read tolerantly — a fence or a sentence around the object.
 - **Where it goes** — into the task's user prompt, after the task (description, expected output, deliverable) and before the context variables, under *Plan for this task, from the crew's planner — follow it where it helps; the task above prevails:*, cut at 2,000 characters. The Guardian screens it with the rest of the prompt, and each task's plan is logged on one line at `Information` (`--verbose 1`). The task itself is never changed: the knowledge query, the stored memory and the manager's prompts read the task, not its plan. The run holds its plan in a scope of its own (`CrewPlanScope`), read where every mode's executions compose their prompt — two runs of one crew never read each other's.
 - **In every mode** — Sequential, Parallel and Graph (each attempt): the task's agent. Hierarchical: the worker the manager assigns, and each revision it asks for; the manager's own prompts are unchanged. Consensual: every candidate answer — a ballot, a task of its own, does not. Autonomous: the agent that claims the task, and the peer it is handed to after a failure, which takes the task itself over.
-- **It changes neither the order nor the agents** — with or without a plan, a crew runs the same tasks, in the same order, on the same agents. (A plan used to return an order, agent assignments and parallel groups; its order was followed under the dependencies, so the crew's output, the context a task reads and Parallel's round-robin depended on it.)
+- **It changes neither the order nor the agents** — with or without a plan, a crew runs the same tasks, in the same order, on the same agents.
 - **When it goes wrong** — the plan is advice. A reply that cannot be read is asked for once more, with what could not be read, then the crew runs without a plan, with a warning — which says so when the reply stopped at the profile's `MaxTokens`. A task the plan leaves out runs without one, with a warning that names it; a number given twice keeps its first plan and an unknown number is ignored, each with a warning. Only a provider that fails — a refused key, an unreachable endpoint — fails the run, before its first task, with the provider's reason.
 - **On the echo provider** — the one a host without an `Llm` section runs on, which replays its prompt instead of answering it (`LlmProviderCapabilities.ReplaysPrompt`) — planning is skipped with a warning (*planning skipped — the echo provider cannot plan*, with the remedy, `orkeon init`), and the crew runs to the end like any keyless run.
 - **Cost** — one call per run (two after an unreadable reply), so one per input under `KickoffForEachAsync` and one per message in `orkeon-host`, its prompt growing with the crew; and each task's plan travels with every turn of that task's agent loop, which the 2,000-character bound contains.
-- **Streamed too** — a streamed run (`KickoffStreamingAsync`, a C# API) is the same run: it plans, and each task reads its plan, like `KickoffAsync` (GAP-32).
+- **Streamed too** — a streamed run (`KickoffStreamingAsync`, a C# API) is the same run: it plans, and each task reads its plan, like `KickoffAsync`.
 
 **Key classes**: `CrewPlanner` and `PlanningContext` (Domain), `ExecutionPlanParser`, `CrewPlanScope` and `AgentPromptComposer`.
 
@@ -83,7 +83,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 
 | Criterion | Sequential | Hierarchical | Parallel | Consensual | Graph | Autonomous |
 |---------|-----------|-------------|---------|-----------|-------|-----------|
-| **Execution model** | Linear | Linear + manager review | Dependency waves, concurrent inside a wave | Every agent per task + peer ballots | Linear + retry cycle | Manager-assigned, delegation on failure |
+| **Execution model** | Linear | Linear + manager review | Dependency waves, concurrent inside a wave | Every agent per task + peer ballots | Linear, or the nodes and edges of `graph:` (conditional edges, loops) | Manager-assigned, delegation on failure |
 | **Agent choice** | Declared, else selector | Manager LLM | Declared, else selector | All agents | Declared, else selector | Manager LLM |
 | **Task dependencies** | Order + skip on failure | Order + skip on failure | Waves + skip on failure | Order + skip on failure | Order + skip on failure | Order + skip on failure |
 | **A failed task fails the crew** | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ after its retries (dependents skipped) | ✅ (dependents skipped; an exhausted budget too) |
@@ -109,9 +109,9 @@ Decision tasks and `when` conditions are described in [Decision models](../archi
 
 Tasks execute **one by one** — except a task with `asyncExecution: true`, which runs alongside the tasks after it (see [Asynchronous tasks](#asynchronous-tasks-asyncexecution)). Each task receives the outputs of the tasks that ran before it as context. Agent assignment follows the rule above: the task's `agent:` when declared, otherwise the configured selector (round-robin by default).
 
-**Execution order** — with or without a plan, which never changes it: the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, so without the sort `consolidate.yaml` ran before the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused).
+**Execution order** — with or without a plan, which never changes it: the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, and the sort puts `consolidate.yaml` after the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused).
 
-**Failure handling (every mode)**: a task whose declared dependency did not succeed — failed, or skipped in its turn — is **skipped**, never run on a context that says `Task failed: …` where its input should have been: it shows as `⊘ skipped` in `AUTO_SUMMARY.md` and as a `task.completed` event with `skipped: true`, the tasks that do not depend on it still run, and the crew fails naming every failed and skipped task (LLM-11). The rule is the same in the six modes: a crew with a failed task returns `Success = false`, its hook hears `Failed` with the same reason, and `orkeon run` exits 2. A mode that tolerates a failure — Graph and its retries, Autonomous and its delegation — does so before the task counts as failed.
+**Failure handling (every mode)**: a task whose declared dependency did not succeed — failed, or skipped in its turn — is **skipped**, never run on a context that says `Task failed: …` where its input should have been: it shows as `⊘ skipped` in `AUTO_SUMMARY.md` and as a `task.completed` event with `skipped: true`, the tasks that do not depend on it still run, and the crew fails naming every failed and skipped task. The rule is the same in the six modes: a crew with a failed task returns `Success = false`, its hook hears `Failed` with the same reason, and `orkeon run` exits 2. A mode that tolerates a failure — Graph and its retries, Autonomous and its delegation — does so before the task counts as failed.
 
 ### Asynchronous tasks (`asyncExecution`)
 
@@ -157,8 +157,8 @@ Task 3 → Agent C → output₃ → final result
 ### YAML configuration
 
 ```yaml
-# Flat root — there is no crew: wrapper key, and agents:/tasks: are mappings
-# keyed by id (a crew:-wrapped file loads SILENTLY as an empty crew).
+# Flat root — there is no crew: wrapper key (a crew: key is refused at load as
+# unknown), and agents:/tasks: are mappings keyed by id.
 name: "pipeline"
 goal: "Sequential demo"
 process: sequential
@@ -212,7 +212,6 @@ var crew = new CrewBuilder()
 ### When not to use it
 
 - Many independent tasks that could all run in parallel — Parallel runs each dependency wave at once; `asyncExecution` suits a few concurrent steps of a pipeline
-- Workflows that should retry a flaky step (Graph)
 
 ---
 
@@ -255,7 +254,7 @@ A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates th
 - `AssignTaskAsync(task, availableAgents, context, llm)` → `TaskAssignment`
 - `ReviewOutputAsync(output, originalTask, llm, cancellationToken)` → `bool` (approved or not); the token is the run's: Ctrl+C, `RunTimeout` and `/stop` stop a review
 
-`llm` is the `ManagerLlm` the strategy resolved for the run (`ManagerLlmResolver`): the chat client the manager asks, the model it asks for, and its name in the log (`provider:<name>` or `profile:<name>`). Each of its calls first waits its turn in the manager agent's `maxRpm` window and in the crew's (GAP-38).
+`llm` is the `ManagerLlm` the strategy resolved for the run (`ManagerLlmResolver`): the chat client the manager asks, the model it asks for, and its name in the log (`provider:<name>` or `profile:<name>`). Each of its calls first waits its turn in the manager agent's `maxRpm` window and in the crew's.
 
 ### YAML configuration
 
@@ -505,7 +504,7 @@ The voting mechanism is **selectable via configuration**: `Orkeon:Consensus:Voti
 
 ### Principle
 
-The crew runs through a **typed state graph** (`StateGraph<CrewGraphState>`) with one node per task (ADR-018): the nodes are chained in execution order, and a task's attempts are its own `retry:` (applied below the strategy), not a loop of its node. A **3-mechanism circuit breaker** bounds the loop. Conditional edges and arbitrary topologies are available through the Domain `StateGraph<TState>` API in C#; the YAML mode does not declare its own graph.
+The crew runs through a **typed state graph** (`StateGraph<CrewGraphState>`) with one node per task (ADR-018): without nodes or edges the nodes are chained in execution order, and a task's attempts are its own `retry:` (applied below the strategy), not a loop of its node. A **3-mechanism circuit breaker** bounds the loop. The `graph:` block can declare its own nodes and edges — conditional edges on a decision task's answers, and loops (see [Graph orchestration](graph.md)).
 
 ### Internal mechanism
 
@@ -575,7 +574,7 @@ A loop is an edge leading back to a node; `maxVisits` bounds it. See [Graph orch
 ### Drawbacks
 
 - **10-minute default duration**: the Strict preset's `MaxTotalDuration` still bounds the run — raise `maxTotalDurationSeconds` for a long crew
-- **Fixed topology in YAML**: conditional routing needs the C# `StateGraph<TState>` API
+- **YAML routing on decisions only**: a conditional edge leaves a decision task on its answers; a routing function needs the C# `StateGraph<TState>` API
 
 ### When to use it
 
@@ -707,7 +706,7 @@ Do your tasks have dependencies between them?
     └── Is concurrency all you need — independent tasks together, each wave after its dependencies?
         ├── YES → Parallel (it runs by dependency waves)
         └── NO
-            └── Should a flaky task be retried automatically?
+            └── Must the run follow decision edges, be bounded, or hand a failed task to a peer?
                 │
                 ├── NO
                 │   └── Do you need a manager to assign and review?
@@ -715,8 +714,8 @@ Do your tasks have dependencies between them?
                 │       └── NO → Sequential
                 │
                 └── YES
-                    └── Retry the same task, or hand it to a peer?
-                        ├── Same task, bounded → Graph
+                    └── Decision edges and bounds, or a peer?
+                        ├── Decision edges, bounded → Graph
                         └── A peer, LLM-assigned → Autonomous
 ```
 

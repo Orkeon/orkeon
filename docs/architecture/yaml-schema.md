@@ -46,7 +46,7 @@ links:                    # EventHub ACL (optional) — who this crew may talk t
     direction: string     # "outbound" (default) | "inbound" | "bidirectional" (alias "both") — an unreadable value drops the entry with a warning
     allowed_topics: [string] # Omitted or empty = every topic
 
-mounts:                   # The virtual roots the crew uses (optional, VFS-90) — selects and validates, never restricts
+mounts:                   # The virtual roots the crew uses (optional) — selects and validates, never restricts
   - /output               # a root a settings entry (or a --mount) must provide; refused in one line when nothing does
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # a root pinned to ONE settings entry by its id, when several entries declare it
 
@@ -78,8 +78,8 @@ agents:
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
       profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section
       model: string       # LLM model id — omitted → the profile's own model
-      temperature: float  # Sent whatever its value — omitted = the profile's, else none is sent and the model applies its own (GAP-36)
-      maxTokens: int      # Output token pin, positive — omitted = the model's documented maximum (LLM-10); 0 or less fails the load
+      temperature: float  # Sent whatever its value — omitted = the profile's, else none is sent and the model applies its own
+      maxTokens: int      # Output token pin, positive — omitted = the model's documented maximum; 0 or less fails the load
       topP: float         # Nucleus sampling, sent whatever its value — omitted = the profile's, else none is sent (Mistral writes 1)
       thinking:           # Reasoning control (capability-gated per provider)
         enabled: bool
@@ -169,8 +169,8 @@ instead of ignoring it. And so does a task's `asyncExecution: true` outside `pro
 `process: parallel`: the four other modes order their tasks themselves, and the load names every task
 that asks for it rather than ignore the flag (see [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
 A `maxRpm` of 0 or less — on the crew or on an agent — and a `maxIter` of 0 or less fail the load too,
-naming the crew or the agent: leave `maxRpm:` out for no limit, `maxIter:` out for the default (20). They
-used to be replaced, by 10 and 15, without a word. A `max_tokens` of 0 or less — on the crew's `llm`, an agent's
+naming the crew or the agent: leave `maxRpm:` out for no limit, `maxIter:` out for the default (20).
+A `max_tokens` of 0 or less — on the crew's `llm`, an agent's
 `llm` or a task's `llm_override` — fails the load too, naming the crew, the agent or the task: omit the key to keep
 the inherited cap. The host's own caps on model calls — which bound an
 agent's `maxRpm`, the stricter winning — are the settings of
@@ -322,7 +322,7 @@ a tool name ignores case.
 
 ## Knowledge & RAG configuration
 
-Two complementary blocks (RAG-03/C4). The crew-level `rag:` block declares the **collections**
+Two complementary blocks. The crew-level `rag:` block declares the **collections**
 (ingestion sources, chunking) and crew-wide defaults. The agent-level `knowledge:` block
 **attaches** collections to an agent with its retrieval options. At execution-context assembly
 time each attached collection is queried with the task input through the retrieval half of its
@@ -336,10 +336,10 @@ every runner host registers (`orkeon run` in all its forms, `orkeon-host`): when
 `CrewFactoryOptions.PrepareRagCollections = false` skips it, as `--validate` does). On a host
 without the subsystem, a declared `rag:` block and each agent's `knowledge:` log a warning and
 inject nothing. Parsing the YAML itself never triggers ingestion. The document store is the
-host's (`Orkeon:Rag:Provider`, see [RAG pipeline](./rag-pipeline.md)); the former `rag.provider`
-key is gone and is refused at load, with the sentence that points to `Orkeon:Rag:Provider`.
+host's (`Orkeon:Rag:Provider`, see [RAG pipeline](./rag-pipeline.md)); a `rag.provider`
+key is refused at load, with the sentence that points to `Orkeon:Rag:Provider`.
 
-What a `sources` entry means (GAP-27): a path that does not start with `/` is relative to the
+What a `sources` entry means: a path that does not start with `/` is relative to the
 crew's folder — `/crew` under `orkeon run crew.yaml` or a crew directory, so
 `./data/faq.md` next to the crew file is `/crew/data/faq.md` — and an absolute one is a virtual
 path (`/kb/faq.md`, a mount of yours). A glob (`*`, `**`, `?`) is expanded through the VFS the
@@ -406,7 +406,7 @@ tasks:
       backoff: exponential # fixed (default) | exponential: 250 ms, then 500 ms, ... never more than 5 minutes
 ```
 
-A task that fails runs again, in **every** orchestration mode: one decorator, between the checkpoint and the execution core, applies the policy, so the strategies never retry and the six modes behave alike. In Graph there is no retry loop of its own any more: the former `graphConfig.maxRetryCycles`, a retry of a failed task that would have multiplied with this one, is **removed** with the `graphConfig` block, and refused at load.
+A task that fails runs again, in **every** orchestration mode: one decorator, between the checkpoint and the execution core, applies the policy, so the strategies never retry and the six modes behave alike. Graph has no retry loop of its own, and `maxRetryCycles` is refused at load.
 
 - **A new attempt replays the whole task**, model calls and tool calls included, the tool calls that already succeeded too. Nothing deduplicates them: a task whose tools write (a file, an e-mail, a payment) must be safe to run twice, and that is the crew author's to guarantee.
 - **Never retried**: a cancellation, a refusal of the guardian (`GuardianBlocked`), an exhausted budget. A refusal of the permission gate is a tool result inside an attempt, not a task failure. Retries of an invalid output stay inside one attempt. A decision task runs no agent and cannot declare `retry:` (the load fails, naming the task).
@@ -520,8 +520,7 @@ and a key nothing sets is not written at all.
 
 ## YAML models
 
-The YAML models include:
-All live in `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`); `YamlCrewMapper` turns them into the Domain `CrewConfiguration` and `CrewDefinitionValidator` checks it.
+All the YAML models live in `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`); `YamlCrewMapper` turns them into the Domain `CrewConfiguration` and `CrewDefinitionValidator` checks it. They include:
 
 - `CrewYamlConfig` (complete crew definition) and `CrewSettingsYamlConfig` (the crew settings file of the multi-file layouts — `crew.yaml` or `config.yaml`)
 - `AgentYamlConfig` (role, goal, backstory, tools, limits)
@@ -531,8 +530,8 @@ All live in `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructu
 - `DeliverableYamlConfig` (the task-level `deliverable:` block)
 - `GuardrailsYamlConfig` (agent- and task-level `guardrails:`)
 - `LinkYamlConfig` (the crew-level `links:` ACL)
-- `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (the crew-level `mounts:` block — `/root` or `<ulid>|/root` items) → `CrewConfiguration.Mounts` (`MountReference`, VFS-90)
-- `GraphYamlConfig` (circuitBreakerPreset, overrides)
+- `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (the crew-level `mounts:` block — `/root` or `<ulid>|/root` items) → `CrewConfiguration.Mounts` (`MountReference`)
+- `GraphYamlConfig` (start, nodes, edges, circuitBreakerPreset and its limits) with `GraphNodeYamlConfig`, `GraphEdgeYamlConfig`
 - `RagYamlConfig` (collections + sources/chunking, defaults — with `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (short/long form entries) → `KnowledgeAttachment`
 

@@ -49,6 +49,7 @@ public sealed partial class JsCrew
     private readonly Orkeon.Application.Crew.ToolCallDeltaDlp? _toolCallDlp;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
+    private readonly Orkeon.Application.Runs.IRunEventSink? _runEvents;
     private readonly Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? _mounts;
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
 
@@ -94,6 +95,7 @@ public sealed partial class JsCrew
         _toolCallDlp = definition.ToolCallDlp;
         _toolInvocation = definition.ToolInvocation;
         _agentMemoryStore = definition.AgentMemoryStore;
+        _runEvents = definition.RunEvents;
         _toolLimits = definition.ToolLimits;
         _mounts = definition.Mounts;
         _agents = new List<JsAgent>();
@@ -132,6 +134,7 @@ public sealed partial class JsCrew
         ToolCallDlp = _toolCallDlp,
         ToolInvocation = _toolInvocation,
         AgentMemoryStore = _agentMemoryStore,
+        RunEvents = _runEvents,
         ToolLimits = _toolLimits ?? new(),
         WorkingRoot = workingRoot,
         PermissionFloor = permissionFloor,

@@ -15,14 +15,14 @@ integration that launches its executables.
 
 ## Distribution
 
-**`Orkeon.Hosting` ships inside the `Orkeon.Scripting` package** (#229). Its own csproj stays
+**`Orkeon.Hosting` ships inside the `Orkeon.Scripting` package**. Its own csproj stays
 `IsPackable=false`, so there is no `Orkeon.Hosting` id on any feed: the
 [publication matrix](publication-matrix.md#the-nugetorg-lineup) lists the `Orkeon.Scripting`
 opt-in, whose wrapper (`src/packaging/Orkeon.Scripting/Orkeon.Scripting.Package.csproj`) embeds
 `Orkeon.Hosting.dll` next to `Orkeon.Scripting.dll`; `Orkeon.Constants.Cli` comes as a package dependency.
 
 ```bash
-dotnet add package Orkeon.Scripting
+dotnet add package Orkeon.Scripting --prerelease
 ```
 
 It is not in the `Orkeon` umbrella: the runner host composes every built-in tool family, so the
@@ -108,7 +108,7 @@ IHost host = RunnerHost.Build(
                                           // by the VFS, never listed to an agent (ADR-008)
         AllowExternalMounts = false,      // whitelist mount base paths outside the workspace root
         SelectedMountIds = [],            // --mount-id values, parsed: the settings entries kept when
-                                          // several declare one virtual root (VFS-90)
+                                          // several declare one virtual root
         CrewMountReferences = [],         // the crew's mounts: block — selects and validates, never restricts
         InputDirectories = [],            // folders a command reads as its inputs, readable without the
                                           // external-mounts opt-in
@@ -116,6 +116,11 @@ IHost host = RunnerHost.Build(
                                           // selecting one is withdrawn instead of refusing the host
         LlmLogVirtualPath = null,         // when set, a VIRTUAL directory the caller has mounted:
                                           // LLM HTTP exchanges are captured there as .jsonl
+        WorkingDirectory = null,          // the folder ./.orkeon/state resolves against (null: the process's)
+        RunHistoryByDefault = false,      // the run history on when the settings do not say (orkeon-host sets it)
+        LlmMockResponses = null,          // --llm-mock: a VIRTUAL JSONL file every LLM profile answers from
+        LlmRecordCassette = null,         // --llm-record: a VIRTUAL JSONL cassette every LLM call is written to
+        LlmReplayCassette = null,         // --llm-replay: a VIRTUAL JSONL cassette every LLM call is answered from
     },
     configureLogging: null,              // optional ILoggingBuilder customization
     configureServices: null,             // optional hook to register runner-specific services
@@ -130,8 +135,8 @@ A virtual path is always a name starting with `/` — never a disk path
 `RunnerVirtualRoots` — in the dependency-free `Orkeon.Constants.FileSystem` package
 ([ADR-009](../adr/ADR-009-shared-constants-satellites.md)) so the engine and the tooling read one
 declaration — names the roots the shipped runners take for themselves: `/crew` (the crew
-definition's directory), `/script` (a scripting entry point's directory), `/llm-logs`,
-`/sandbox` (where the code sandboxes stage what they run) and `/credentials` (the OAuth tokens
+definition's directory), `/script` (a scripting entry point's directory), `/llm-logs`, `/llm-mock` and `/llm-cassette`
+(the `--llm-mock` file and the recorded or replayed cassette), `/sandbox` (where the code sandboxes stage what they run) and `/credentials` (the OAuth tokens
 of the e-mail accounts, refused to a user mount by every command). `RunnerVirtualRoots.All` is the set a
 caller refuses a user `--mount` against; asking for the set rather than comparing the roots one by
 one is deliberate, because the omission of `/sandbox` survived a pairwise check for as long as it
@@ -149,7 +154,7 @@ It composes `Host.CreateDefaultBuilder()` with:
   the `settingsPath` file when it exists, then the `ORKEON_`-prefixed environment
   (`ORKEON_Llm__Model` overrides `Llm:Model`). Neither the `appsettings.json` and
   `appsettings.{Environment}.json` of the content root — the current directory — nor user secrets
-  (GAP-36). Then an in-memory layer carrying the mount
+  Then an in-memory layer carrying the mount
   decisions: the `--mount` values placed by virtual root, the internal mounts, the
   `/credentials` mount of the e-mail OAuth tokens, and the `PathSecurity:AdditionalAllowedDirectories`
   entries that let the path validator reach those mounts' folders (a `--mount` outside the working
@@ -157,7 +162,7 @@ It composes `Host.CreateDefaultBuilder()` with:
 - **Services** — `ConfigureRunnerServices` (below).
 - **`configureBuilder`** — invoked last, on the `IHostBuilder` itself.
 
-Once built, the host first judges its settings (GAP-40), whether the run uses them or not: every
+Once built, the host first judges its settings, whether the run uses them or not: every
 section a registration declared — its options created, so the binder converts them and their rules
 run, the names they hold among them —, the section names under `Orkeon:` and its groups, the keys of
 every declared section, and `Orkeon:Rag:LlmProfile` against the profiles it offers
@@ -186,7 +191,7 @@ The registration order is deliberate:
    provider (and its `IChatClient`, on that section's configuration) **before** `AddOrkeonApplication` /
    `AddOrkeonInfrastructure` — or the echo provider when the section is missing. The infrastructure
    registers no model of its own: a host that registers none fails at its first LLM resolution, naming
-   the missing service (GAP-29).
+   the missing service.
 3. **Core services** — `AddOrkeonApplication()` then `AddOrkeonInfrastructure()` (the
    parameterless overload), then `AddOrkeonTelemetry(configuration)` for the `Telemetry`
    section.
@@ -198,7 +203,7 @@ The registration order is deliberate:
    `Orkeon:Security:PermissionGate:Enabled`; a no-op otherwise).
 6. **Core tool suites** — file system, data, web, code, abstractions, session tools; then the
    in-memory EventHub plus its agent tools and the EventHub ACL (`AddOrkeonEventHubAcl`,
-   permissive default so a crew without a `links:` block behaves as before); then the e-mail
+   permissive default: a crew without a `links:` block sends to any other crew); then the e-mail
    tools (`AddOrkeonEmailTools(configuration)`, inert until an account is declared) and, when an
    OAuth e-mail account is declared, their token store over the internal `/credentials` root —
    mounted by the configuration step, reached through `PrivilegedFileSystemAccess`; then the drive tools
@@ -208,7 +213,7 @@ The registration order is deliberate:
 7. **VFS mounts** — `AddOrkeonFileSystem` when `Orkeon:FileSystem:Mounts` **or**
    `Orkeon:FileSystem:InternalMounts` exists **and holds at least one entry** (two empty arrays
    register nothing). Either list alone makes the VFS real: `--list-tools` has only the second.
-   Several entries of `Mounts` may declare one root when each carries an id (VFS-90):
+   Several entries of `Mounts` may declare one root when each carries an id:
    `MountSelection.Resolve` decides, while the configuration is composed, which one this run
    keeps — a `--mount` on the root, else `SelectedMountIds`, else `CrewMountReferences` — and
    writes the others to `null` at their own index; a selection nothing resolves throws with
@@ -220,7 +225,7 @@ The registration order is deliberate:
 9. **MCP** — `AddOrkeonMcp(configuration)` when the `MCP` section declares at least one
    server under `MCP:Servers` and `MCP:Enabled` is not `false`. Registering is not
    connecting: the servers are connected by the flows below, before the crew loads
-   (see [MCP](../architecture/mcp.md#activation)). No setting starts an MCP server (GAP-24).
+   (see [MCP](../architecture/mcp.md#activation)). No setting starts an MCP server.
 10. **Decision models** — `RegisterDecisionModels`: one active decision provider (TypeSafe, Liquid or Kev), named by `Orkeon:Decision:Provider` or deduced (the `Orkeon:TypeSafe` or `Orkeon:Liquid` section, even empty, else the one whose key variable is set; none when nothing is present), and the decision profiles of `Orkeon:Decision:Profiles`. The start is refused for an unknown provider name, for TypeSafe and Liquid both present without a named provider (both sections, or no section and both keys; with one section, its provider is chosen) (the message names both and the setting), for a Kev address without an `http` or `https` scheme (`Orkeon:Kev:BaseUrl`), for a Kev key towards a non-local `http` address. The start log names the active provider, its model, its address and how it was chosen; every provider section that is not the active one gets a warning ("is ignored: the active decision provider is …"), the Kev one adding, when no provider is named, that Kev is never deduced and must be named with `Orkeon:Decision:Provider`. See [Decision models](../architecture/decision-models.md).
 11. **Tool registry** — nothing of its own: `AddOrkeonInfrastructure()` already registered the default
     `ToolRegistry`, which reads every `IBaseTool` the steps above registered when it is first resolved.
@@ -240,7 +245,7 @@ registers under `IBaseTool`: a tool that is not registered cannot be resolved (a
 fails crew loading rather than silently dropping). `RegisterToolAsync` adds a tool at run time — the MCP
 client does — and **refuses** (returns `false`) a name another tool already holds. Reads and run-time
 registrations are safe to interleave: `orkeon-host` runs several crews while its MCP servers connect.
-The registry indexes names only — there is no lookup by tag or capability (GAP-11).
+The registry indexes names only — there is no lookup by tag or capability.
 
 ## `RunnerExecution` — execution flows
 
@@ -251,7 +256,7 @@ code.
 
 | Entry point | Purpose |
 |---|---|
-| `RunOneShotAsync(opts, loggerCategory, configureServices?, externalCt?)` | Runs a single crew kickoff end-to-end. Exit codes: **0** success, **1** config error, **2** crew failure, **130** canceled. |
+| `RunOneShotAsync(opts, loggerCategory, configureServices?, externalCt?)` | Runs a single crew kickoff end-to-end. Exit codes: **0** success, **1** config error, **2** crew failure, **75** the run stopped on a question and waits for its answer (`--resume`), **130** canceled. |
 | `RunInteractiveLoopAsync(opts, loggerCategory, stopWords, kickoffPerInputAsync, onSessionStart, …)` | REPL loop; each input drives a kickoff via the caller-supplied delegate; a stop word ends the loop (exit 0). |
 | `RunListToolsAsync(opts, loggerCategory, configureServices?)` | Builds the host with no crew and prints the sorted, de-duplicated runtime tool names to stdout (logs to stderr) — the runtime tool contract consumed by packaging/lint tooling. |
 | `RunValidateAsync(opts, loggerCategory, configureServices?, externalCt?)` | Dry-run behind `--validate`: builds the host and loads the crew (strict tool resolution) without probing the LLM or running a kickoff. |
@@ -268,8 +273,7 @@ Orkeon modules; `2`: Debug) and `IsScriptedCrewDefinition` (`.ork.ts` / `.ork.js
 
 A long-running service *can* simply wrap `RunnerHost.Build` — that is exactly what the
 `orkeon-host` daemon does (`Orkeon.Host/Program.cs`), passing `configureBuilder` for
-`UseSystemd()`/`UseWindowsService()`. The daemon stays out of the mount selection (VFS-90,
-D-11): its crews mount under per-crew roots (`/crews*`), so no root is ever declared twice
+`UseSystemd()`/`UseWindowsService()`. The daemon stays out of the mount selection: its crews mount under per-crew roots (`/crews*`), so no root is ever declared twice
 there, an operator `--mount` carrying an id prefix parses like any other, and no crew
 `mounts:` block is read. A host that already owns its `IHostBuilder` (an ASP.NET
 app, for example) instead **replicates `ConfigureRunnerServices`' registration order** inside its
@@ -329,7 +333,7 @@ GenAI conventions — see [Opt-in subsystems](opt-in-subsystems.md#traces-and-me
 
 The section also registers three health checks — `llm_provider`, `memory_provider` (which reads a key
 that does not exist: every provider serves it, Pinecone and ChromaDB included),
-`system_resources` — which no shipped runner exposes: `orkeon` serves no HTTP, and the only HTTP surface of `orkeon-host` is its opt-in A2A server (`Orkeon:Host:A2A`), which serves no health endpoint.
+`system_resources`. `orkeon` serves no HTTP; `orkeon-host` exposes them on its opt-in run API (`Orkeon:Host:Api`): `/healthz` runs `system_resources`, `/readyz` runs `memory_provider` and, when `ReadinessTags` lists `llm`, `llm_provider` (see [the host API](host-api.md#probes)).
 
 ## .NET Aspire — `Orkeon.Hosting.Aspire`
 
@@ -342,8 +346,8 @@ shipped executables, found on the `PATH` or named by `command`.
 **Install.** In an Aspire AppHost project (`Aspire.AppHost.Sdk`):
 
 ```bash
-dotnet add package Orkeon.Hosting.Aspire
-dotnet tool install -g Orkeon.Scripting.Cli   # the `orkeon` executable AddOrkeonCrewRun launches
+dotnet add package Orkeon.Hosting.Aspire --prerelease
+dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # the `orkeon` executable AddOrkeonCrewRun launches
 ```
 
 `orkeon-host` comes from the full installer archives or the per-machine service MSI — which
@@ -373,7 +377,7 @@ builder.Build().Run();
 
 | Member | What it does |
 |---|---|
-| `AddOrkeonHost(name, settingsPath?, workingDirectory?, command = "orkeon-host")` | An `OrkeonHostResource` (executable) started as `orkeon-host [--settings <settingsPath>] --allow-external-mounts`, in `workingDirectory` (default: the AppHost directory), with the OTLP exporter wired. No endpoint: the daemon serves no HTTP. |
+| `AddOrkeonHost(name, settingsPath?, workingDirectory?, command = "orkeon-host")` | An `OrkeonHostResource` (executable) started as `orkeon-host [--settings <settingsPath>] --allow-external-mounts`, in `workingDirectory` (default: the AppHost directory), with the OTLP exporter wired. No endpoint is declared: the daemon's run API and A2A server are opt-in settings (`Orkeon:Host:Api`, `Orkeon:Host:A2A`) the resource does not wire. |
 | `AddOrkeonCrewRun(name, crewPath, outputDirectory?, settingsPath?, command = "orkeon")` | An `OrkeonCrewRunResource` started as `orkeon run <crewPath> --mount <output>:/output:rw --allow-external-mounts [--settings <settingsPath>]` in the AppHost directory, with the OTLP exporter wired. The output directory (default `<AppHost>/out`) is created when the resource is declared. |
 | `WithOrkeonSetting(key, value)` | Sets any configuration key through the `ORKEON_` environment the runners read: `Llm:Model` becomes `ORKEON_Llm__Model`. The key is the full configuration path — the daemon's own keys live under `Orkeon:Host`, so `Orkeon:Host:RunTimeout`, not `Host:RunTimeout`. |
 | `WithOrkeonModel(baseUrl, model, apiKey?)` | Shorthand for `Llm:BaseUrl` (trailing `/` trimmed), `Llm:Model` and, when given, `Llm:ApiKey`. |

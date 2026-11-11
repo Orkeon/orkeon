@@ -106,7 +106,7 @@ vaut pour tous les fournisseurs.
   un 408 ou une adresse injoignable est réessayé avec un backoff exponentiel, jusqu'à `MaxRetries`
   fois, chaque tentative avec son propre `TimeoutSeconds` ; puis il échoue en nommant le
   fournisseur, et l'adresse seulement quand elle était injoignable ou n'a pas répondu à temps (un 429, 5xx ou 408
-  persistant donne `<Nom> answered <statut> : ...`, sans adresse). Un `usage` sans compteurs de tokens est mesuré à zéro, pas refusé.
+  persistant donne `<Nom> answered <statut>: ...`, sans adresse). Un `usage` sans compteurs de tokens est mesuré à zéro, pas refusé.
 - **Les en-têtes « danger zone »** se posent selon la requête : `TypeSafe-Danger-Zone-Images`
   quand elle porte des images ou une question `box`, `TypeSafe-Danger-Zone-Long-Context` quand
   `LongContext` est posé.
@@ -352,7 +352,7 @@ Circuit coupé, chaque tâche de décision répond par son **repli**, sans requ�
 - Avant la première tâche, une exécution au circuit coupé est **refusée**, en nommant la tâche, quand
   une tâche de décision n'a ni réponses `fallback` ni tâche `otherwise` sur elle
   (`Decision task 'triage' has neither a fallback nor an otherwise task.`).
-- Une crew sans tâche de décision tourne exactement comme avant, quel que soit le circuit.
+- Une crew sans tâche de décision tourne de la même façon quel que soit le circuit.
 
 ### Les limites de Jev et le contexte long
 

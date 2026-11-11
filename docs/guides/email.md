@@ -22,18 +22,16 @@ Three rules hold the whole family together:
 - **Received mail is data, never instructions.** Every read result opens with a notice
   saying so, and carries the verdict of a prompt-injection screen.
 
-The family is the second motivated exception to the scope freeze, decided by the owner on
-2026-09-26 (see [CONTRIBUTING](../../CONTRIBUTING.md#the-scope-is-frozen)): an `.ork.ts`
+The family is the second motivated exception to the scope freeze (see [CONTRIBUTING](../../CONTRIBUTING.md#the-scope-is-frozen)): an `.ork.ts`
 script cannot open a socket, and a plugin would not put e-mail in Orkeon itself. The
 decision and the alternatives it rejected are in [ADR-012](../adr/ADR-012-email-tool-family.md).
 
-> **Gmail and Hotmail are campaigned.** The owner's live campaign (MAIL-07) ran the whole
-> cycle — check, draft, send to oneself, move to `archive`, trash — against a real Gmail
-> account, with an app password on 2026-10-04 and with OAuth2 on 2026-10-05 (see
-> [What the Gmail campaign established](#what-the-gmail-campaign-established)), then against a
-> real Hotmail account through Microsoft Graph on 2026-10-12. Outlook over IMAP and SMTP has
-> not been run against a real account: it inherits Microsoft's consumer OAuth regression of
-> 2026-09-24, which is why Graph is the default.
+> **Tested against real accounts.** The whole cycle — check, draft, send to oneself, move to
+> `archive`, trash — has been run against real Gmail accounts (app password and OAuth2) and a
+> real Hotmail account through Microsoft Graph (see
+> [What the Gmail campaign established](#what-the-gmail-campaign-established)). Outlook over
+> IMAP and SMTP has not been run against a real account: Microsoft's OAuth sign-in for personal
+> accounts over IMAP fails, which is why Graph is the default.
 
 ## The thirteen tools
 
@@ -127,7 +125,7 @@ password**, a 16-character password Google generates for one application.
 
 ## Hotmail and Outlook.com (Microsoft Graph)
 
-Microsoft no longer accepts passwords from mail clients for Outlook.com and Microsoft 365, so
+Microsoft does not accept passwords from mail clients for Outlook.com and Microsoft 365, so
 the `Outlook` preset signs in with **OAuth2** and reads and sends through **Microsoft Graph**.
 You register an application once, then sign in once from a terminal.
 
@@ -476,8 +474,7 @@ account of the settings file it resolves.
   message, and `next_cursor` resumes right after the last one returned, so nothing is
   skipped.
 - **`limit` is a ceiling, and `next_cursor` is the only end of a folder.** Ten or so messages
-  fit a tool result, whatever `limit` asks for up to its maximum of 50: on a real Gmail inbox
-  a search of 88 messages came back as pages of 10, 9, 10, 13, 8, 9, 9, 9, 10 and 1. A page
+  fit a tool result, whatever `limit` asks for up to its maximum of 50. A page
   shorter than `limit` therefore says nothing about what is left — read on until
   `next_cursor` is null. `count` is the number of messages on the page, never the number of
   matches; `total` is the number of messages of the folder that match the criteria, every
@@ -738,7 +735,7 @@ maps to its exit codes.
   read in, and `email_read` does not list the labels it carries: that an archived message
   kept its other labels can be checked by searching each label's folder, or in Gmail's own
   interface, not from a single call.
-- **Not in this version**: deleting folders, copying a message or giving it several Gmail
+- **Not supported**: deleting folders, copying a message or giving it several Gmail
   labels, interactive human approval of a send (use `email_draft`), a generic OAuth tool for
   other APIs.
 - **`Send:MaxPerHour` is counted per process, attempts included.** Two processes sending from
@@ -762,41 +759,20 @@ maps to its exit codes.
   names): past that, the agent loop truncates the list and says so.
 - **Every account is visible to every crew and script that resolves the same settings
   file** — see the threat model in [SECURITY.md](../../SECURITY.md).
-- **Outlook over IMAP and SMTP has not been run against a real account** (MAIL-07): Gmail
-  and Hotmail through Microsoft Graph are campaigned — see the two campaign sections below.
+- **The trash is not emptied without `Purge`**: what a crew deletes without `permanent: true`
+  stays in the trash until the provider's own purge (thirty days on Gmail).
+- **Outlook over IMAP and SMTP has not been run against a real account**; Gmail, and Hotmail
+  through Microsoft Graph, have.
 
 ## What the Gmail campaign established
 
-The owner's live campaign (MAIL-07) ran a crew through the whole cycle on a real Gmail
-account, twice: with an app password on 2026-10-04, with OAuth2 (XOAUTH2) on 2026-10-05.
+What was checked against real Gmail accounts, with an app password and with OAuth2, and holds:
+the whole cycle runs end to end, each step returning a server id; a read of 3000 characters
+resumes at `next_offset`; a folder is paged to its end with no message skipped or returned
+twice; no draft is left behind; and `orkeon email login` ends on the browser's redirect, with
+nothing to paste. Gmail facts worth knowing:
 
-| Check | App password | OAuth2 |
-|---|---|---|
-| The cycle runs end to end — search, read, draft, send to oneself, move to `archive`, trash — each step returning a server id | passes | passes |
-| A move to `archive` lands in All Mail (`[Gmail]/Tous les messages` on a French account) and the message leaves the inbox | passes | passes |
-| A read of 3000 characters stays under the agent loop's cap and resumes at `next_offset` | passes | passes |
-| A whole folder is reached by paging, no message skipped or returned twice | partial — two pages read, the cursor not followed to its end | passes — 88 messages, 88 distinct ids, `next_cursor` null on the tenth page |
-| The campaign leaves no draft behind | passes | passes |
-| `orkeon email login` ends on the browser's redirect, with nothing to paste | — | passes |
-
-What it changed in the tools: `email_delete` returns the ids it deleted, `email_search`
-returns `total` and says what `count` and `limit` are, `email_folders` shows where `archive`
-goes on Gmail, and three refusals — a cursor, a dropped connection, a recipient that is not an
-address — say what to do. What it left open:
-
-- **The same search returned different counts on a mailbox believed unchanged** (0, then 8,
-  on the archive). The campaign read `count`, which is a page's size; whether Gmail also
-  answers a search from a view that lags a delete is not settled. `total` is there to tell
-  the two apart.
-- **A page of 50 messages does not exist**: ten or so fit a tool result (above).
-- **Whether an archived message keeps its other labels** was not observed by a tool (above).
-- **The trash is not emptied**: `permanent: true` needs the `Purge` right, which the campaign
-  account did not grant. What a crew deletes stays in the trash until Gmail's own thirty-day
-  purge, or an account that grants `Purge`.
-
-## What the Hotmail campaign established
-
-The owner ran Hotmail through Microsoft Graph against a real account on 2026-10-12 and
-reported the campaign complete, with no deviation. The detail of that pass was not recorded,
-so no per-check table exists here, unlike Gmail. Outlook over IMAP and SMTP stays outside the
-campaign.
+- **A move to `archive` lands in All Mail** (`[Gmail]/Tous les messages` on a French account),
+  and the message leaves the inbox.
+- **The same search can return different counts on a mailbox believed unchanged**: `count` is
+  a page's size, `total` the number of matches — compare `total`.

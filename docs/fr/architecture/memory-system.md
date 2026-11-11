@@ -59,9 +59,7 @@ On les découvre avec `provider.TryGetCapability<TCapability>(out var capability
 
 `LanceDbMemoryProvider` cible un serveur **LanceDB Cloud / Enterprise** via le
 protocole [Lance REST Namespace](https://docs.lancedb.com/api-reference/rest/)
-(`HttpClient` brut, aucun SDK). Il n'existe **plus de store local** : l'ancienne
-implémentation « fichier JSON (+gzip) sur le VFS avec scoring cosinus local » a été
-remplacée (décision R4.11 — implémenter LanceDB réellement).
+(`HttpClient` brut, aucun SDK). Il n'y a **pas de stockage local** : les données et le scoring vivent sur le serveur.
 
 ### Protocole
 
@@ -107,8 +105,7 @@ Tout chemin qui sélectionne `lancedb` lit cette section (voir [Sélection par c
 `services.AddOrkeonLanceDb(configuration)` expose en plus le `LanceDbMemoryProvider` partagé par sa
 classe, avec `LanceDbMigrationService` ; l'extension ne réassocie pas `IMemoryProvider`. Sans
 `Endpoint`, résoudre cette classe lève `InvalidOperationException`, et sélectionner `lancedb` par type
-aussi — `Memory:Provider` et `Orkeon:Rag:Provider` refusent le démarrage de l'hôte en nommant la clé
-(GAP-40) ; il retombait sur In-Memory avec un avertissement (voir plus bas).
+aussi — `Memory:Provider` et `Orkeon:Rag:Provider` refusent le démarrage de l'hôte en nommant la clé.
 
 ### Limites connues
 
@@ -138,9 +135,9 @@ aussi — `Memory:Provider` et `Orkeon:Rag:Provider` refusent le démarrage de l
 
 `ChromaDbMemoryProvider` cible l'**API REST v2** de ChromaDB
 (`/api/v2/tenants/{tenant}/databases/{database}/collections/...`), c'est-à-dire les
-**serveurs ChromaDB ≥ 0.6.x, y compris la série 1.x**. Les routes historiques
-`/api/v1` ont été retirées côté serveur (réponse HTTP 410) et ne sont plus utilisées
-par le provider — les serveurs ≤ 0.5.x (v1 uniquement) ne sont donc **pas supportés**.
+**serveurs ChromaDB ≥ 0.6.x, y compris la série 1.x**. Le fournisseur
+ne parle que les routes v2 ; les serveurs qui ne servent que `/api/v1` (≤ 0.5.x) ne sont donc
+**pas supportés** (les serveurs actuels répondent 410 sur `/api/v1`).
 
 Le tenant et la base de données ciblés sont configurables via `ChromaDbOptions`
 (section de configuration `Orkeon:ChromaDb`) et valent par défaut
@@ -199,8 +196,7 @@ distribue **une instance par type** : le provider de l'application, chaque crew 
 le store RAG de ce type la partagent — une connexion Redis, un client HTTP, une connexion SQLite. La
 factory possède ces instances et les libère avec le conteneur. Créer un provider ne connecte jamais ;
 la connexion s'ouvre à son premier appel. Un type qu'elle ne sert pas est refusé là où il est
-atteint, en nommant les types connus (GAP-40) — il retombait sur In-Memory avec un avertissement, et
-une crew censée se souvenir oubliait à la fin du run ; `SupportedTypes` liste les alias.
+atteint, en nommant les types connus ; `SupportedTypes` liste les alias.
 `Memory:Provider` et `Orkeon:Rag:Provider` sont jugés au démarrage de l'hôte, avec ce que le
 fournisseur nommé attend de sa section (`Orkeon:LanceDb:Endpoint` ; `Orkeon:Pinecone:ApiKey` et
 `IndexName`, ou `Host`), et le `memoryProvider:` d'une crew YAML à son chargement.
@@ -252,7 +248,7 @@ crew sans mémoire est refusé — au chargement (`memoryProvider: 'sqlite' need
    terme** (la mémoire court terme reste une fenêtre glissante in-process) à :
    - le provider partagé du type que la crew a déclaré, demandé à `MemoryProviderFactory` — connecté depuis
      la section de l'hôte ; un type auquel aucun provider ne répond est refusé — celui d'une crew YAML à
-     son chargement, celui d'une crew C# (`WithMemoryProvider`) au premier usage de sa mémoire (GAP-40) ;
+     son chargement, celui d'une crew C# (`WithMemoryProvider`) au premier usage de sa mémoire ;
    - sinon, pour une crew **nommée**, le provider par défaut de l'hôte — l'`IMemoryProvider` de
      l'application, dont le type est `Memory:Provider` (In-Memory s'il est absent) ;
    - sinon — une crew construite en C# sans nom — un magasin in-process à elle, qui finit avec le run :
@@ -299,7 +295,7 @@ qu'une tâche garde :
   quand le manager rejette les trois essais, ni quand le travailleur échoue
   ([Types de processus](../orchestration/process-types.md#2-hierarchical--manager--workers)) ;
 - en mode `Autonomous`, la sortie d'un pair qui a repris une tâche échouée : il s'exécute dans le contexte
-  de la tentative échouée, dérivé d'elle sous l'id de la crew (GAP-21), et sa sortie, quand elle réussit,
+  de la tentative échouée, dérivé d'elle sous l'id de la crew, et sa sortie, quand elle réussit,
   est le résultat de la tâche — rangée une fois, sous le pair ([Autonomous](../orchestration/autonomous.md)) ;
 - jamais la sous-réponse d'un collègue : `delegate_work_to_coworker` exécute le collègue dans le contexte
   de la tâche qui délègue, dérivé avec `StoreResultInMemory` à faux — même crew, même portée, réglages du
@@ -343,6 +339,9 @@ crew les plus proches de la tâche, et le prompt utilisateur les porte :
 Une crew relancée sans être rechargée — la boucle `KickoffAsync` en C#, le `CrewAgent` à crew fixe —
 retrouve ses tours précédents de la même façon : n'est écarté que ce que le prompt porte déjà.
 
+Le kickoff en streaming (`KickoffStreamingAsync`) est le même run que `KickoffAsync` : il rappelle et
+range la mémoire d'une crew, et lit sa connaissance, de la même façon.
+
 #### L'embedder, et les échecs
 
 Chaque souvenir est plongé à son rangement, et chaque rappel plonge sa requête, avec l'`IEmbeddingProvider`
@@ -365,10 +364,7 @@ La règle vit dans `MemoryCoordinator`, seul point d'entrée de la mémoire du r
 
 Les appels d'embedding ne sont pas comptés par le compteur de jetons ([Limites connues](../reference/limitations.md)).
 
-#### Ce qui n'est pas câblé
-
-Le kickoff en streaming (`KickoffStreamingAsync`) est le même run que `KickoffAsync` : il rappelle et
-range la mémoire d'une crew, et lit sa connaissance, de la même façon (GAP-32).
+#### Ce que le rappel ne fait pas
 
 - **Pas de LLM dans le rappel** : ni extraction de faits, ni rappel classé par LLM, ni score composite
   récence/importance (celui de CrewAI) : le rappel est vectoriel. La [mémoire cognitive](#mémoire-cognitive)
@@ -425,7 +421,7 @@ crew est une crew sans nom.
   fusionné plongé et retire ceux qu'il remplace, dans la même mémoire. Un souvenir qui revient sans son
   vecteur (ChromaDB n'en rend pas avec un résultat de similarité) reste un groupe à lui seul.
 
-### Dans un run (FWK-04)
+### Dans un run
 
 `orkeon`, `orkeon-host` et `orkeon-repl` branchent le service quand `Orkeon:CognitiveMemory:Enabled` vaut `true`
 (défaut `false` : l'analyse coûte des appels LLM, au compte de l'opérateur ; il n'y a pas de clé YAML pour cela).

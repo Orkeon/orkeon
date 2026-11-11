@@ -42,26 +42,23 @@ un `Llm__Model` nu est lu aussi, sous chacune des couches qui suivent :
    de cette racine** pour le run ; un `--mount` sur une racine neuve est ajouté après le plus
    haut index déclaré. Le montage `/crew` (ou `/script`) du runner et les `InternalMounts`
    sont toujours ajoutés. Une entrée déclarée peut porter un **identifiant** — l'ULID de
-   26 caractères devant un `|`, `01J9Z3K4M5N6P7Q8R9S0T1V2W3|C:\data:/output:rw` (VFS-90) —
+   26 caractères devant un `|`, `01J9Z3K4M5N6P7Q8R9S0T1V2W3|C:\data:/output:rw` —
    et plusieurs entrées peuvent déclarer une même racine si chacune en porte un :
    `--mount-id <ulid>`, sinon le bloc `mounts:` de la crew, sélectionne l'entrée que le run
    garde, et toute autre entrée de cette racine est **retirée** — sa clé est écrite à `null`
    à son propre index, son chemin de base n'est pas mis en liste blanche et son dossier
    n'est pas sondé. `orkeon-repl` place ses arguments `--mount` de la même façon, sur ses
    propres couches — sa ligne de commande (`--Orkeon:FileSystem:Mounts:<n>=…`) parmi elles,
-   jugée comme le fichier (GAP-49).
+   jugée comme le fichier.
 
 Les contrôles qu'une commande mène **avant son hôte** — une racine réservée, une racine déclarée
 deux fois, une sélection sans réponse, un dossier de montage absent — lisent ces mêmes couches
 (`RunnerSettings.ReadDeclaredMounts`, sur `RunnerSettings.ReadConfiguration`) : un montage déclaré
-par une variable, préfixée `ORKEON_` ou non, est jugé comme la même ligne du fichier (GAP-49).
+par une variable, préfixée `ORKEON_` ou non, est jugé comme la même ligne du fichier.
 
-**Rien d'autre n'est lu.** L'hôte .NET par défaut posait aussi, sous le fichier résolu,
-l'`appsettings.json` et l'`appsettings.{Environment}.json` du **répertoire courant** — depuis .NET 10,
-le `<binaire>.settings.json` et son jumeau d'environnement aussi (`orkeon.settings.json`) — et, en
-`Development`, ses secrets utilisateur : un fichier d'un autre projet — le dossier où se trouvait
-un terminal — ajoutait au run les profils, serveurs MCP ou montages qu'il déclarait, et aucun
-diagnostic ne les voyait. Ils ne sont plus lus (GAP-36). `orkeon-host` lit `./appsettings.json`
+**Rien d'autre n'est lu** : ni les `appsettings.json`, `appsettings.{Environment}.json` et
+`<binaire>.settings.json` du dossier courant, ni, en `Development`, les secrets utilisateur — un
+fichier d'un autre projet ajouterait sinon ses profils, serveurs MCP ou montages au run. `orkeon-host` lit `./appsettings.json`
 comme **son** fichier de réglages, quand `--settings` n'en nomme aucun, jamais sous celui qu'il
 nomme ; le REPL lit ses fichiers `--settings`, sinon le fichier global, puis sa ligne de commande,
 en dernier ([CLI](./cli.md#orkeon-repl--la-console-interactive-séparée)).
@@ -107,7 +104,7 @@ acceptent (les runners) ; un analyseur JSON strict, non.
 
 Chaque hôte livré — `orkeon run` sous toutes ses formes (`--validate`, `--list-tools`, `mcp serve`,
 la forge, `rag`, `email`), `orkeon-host` et `orkeon-repl` — juge tout réglage qu'il lit **à son
-démarrage**, que le run s'en serve ou non (GAP-40) : avant le chargement de la crew, avant tout appel
+démarrage**, que le run s'en serve ou non : avant le chargement de la crew, avant tout appel
 au modèle, avant qu'un avertissement ne s'imprime ou que la télémétrie ne démarre. Un refus tient en
 une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl`, `78` pour
 `orkeon-host` —, et `orkeon doctor` rapporte les mêmes refus sur le même fichier, une ligne
@@ -116,8 +113,8 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
 - **Une valeur** que le lieur de configuration ne convertit pas (`"Orkeon:Guardian:Enabled": "oui"`),
   ou qu'une règle de sa section refuse (`Orkeon:Rag:Retrieval:TopK` à `0`, un
   `Orkeon:Sqlite:TableName` qu'on ne peut pas donner à SQLite). La section `Llm` est lue aussi
-  strictement que ses profils : un `TimeoutSeconds` de `"600s"` est refusé, là où il tournait sur
-  30 s, `Thinking:Enabled` et `Grammar` valent `true` ou `false`, et une `Temperature` est un nombre
+  strictement que ses profils : un `TimeoutSeconds` de `"600s"` est refusé,
+  `Thinking:Enabled` et `Grammar` valent `true` ou `false`, et une `Temperature` est un nombre
   fini — `NaN`, `Infinity` ou `1e400` (lu comme l'infini) passaient la lecture, puis faisaient échouer
   chaque requête, JSON n'écrivant aucun tel nombre. De même pour tout nombre qu'une section lit en
   float ou en double (`Orkeon:Rag:Generation:Temperature`, `Orkeon:CrewMemory:MinScore`, …), que le
@@ -340,7 +337,7 @@ avec ses propres clés.
   [comparatif des fournisseurs](llm-providers-comparison.md#clés-dapi--la-variable-par-fournisseur).
   `ApiKey` est la clé en clair — déconseillé.
 - **`Temperature`.** Omise, rien n'est envoyé et le modèle applique la sienne — souvent 1 ;
-  écrivez `0.7` pour garder l'ancien défaut du moteur (GAP-36).
+  écrivez `0.7` pour une température modérée.
 - **`Thinking:Enabled`, `Thinking:Effort`** concernent les providers à raisonnement.
 - **`Profiles:<nom>`** porte les profils nommés qu'une crew choisit par agent ou par tâche,
   chacun avec les mêmes clés que la section elle-même ([plus bas](#profils-nommés-llmprofiles)) ;
@@ -356,12 +353,10 @@ avec ses propres clés.
 défaut, trop court pour un modèle qui réfléchit avant de répondre (Kimi K2.6, DeepSeek V4 et GLM
 le font par défaut) : mettez 600 s, ou coupez la réflexion avec `Thinking:Enabled = false`. Un
 appel qui atteint le délai est réessayé une fois, puis fait échouer sa tâche avec un message qui
-nomme le réglage — il n'est jamais rapporté comme une réponse vide (LLM-11).
+nomme le réglage — il n'est jamais rapporté comme une réponse vide.
 
-Le délai borne l'appel entier, en flux ou non : un appel en flux (tout run `--events`)
-n'était borné que jusqu'à l'arrivée de ses en-têtes, et un modèle qui réfléchissait plusieurs
-minutes avant son premier jeton suspendait le run (LLM-12). `StreamIdleSeconds` ajoute une
-seconde borne, omise par défaut : la plus longue absence de réponse entre deux fragments du flux.
+Le délai borne l'appel entier, en flux ou non, attente du premier jeton comprise.
+`StreamIdleSeconds` ajoute une seconde borne, omise par défaut : la plus longue absence de réponse entre deux fragments du flux.
 Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : fixez-la au-dessus de
 ce silence, ou coupez la réflexion. L'une ou l'autre borne atteinte est un appel échoué dont le
 message nomme le réglage — jamais une réponse vide.
@@ -372,11 +367,10 @@ message nomme le réglage — jamais une réponse vide.
 **épinglage** : absent, la requête porte le **maximum de sortie documenté** du modèle,
 lu dans le catalogue `LlmModelOutputLimits` (128K sur `gpt-5.6-sol` et la génération Claude 5,
 384K sur `deepseek-flash`, 131 072 sur les familles GLM-5 et Qwen 3.7/3.8, 65 536 sur Gemini 3.x
-Flash — voir la [table des plafonds](llm-providers-comparison.md#plafonds-de-sortie--le-maximum-documenté-par-modèle-llm-10)),
+Flash — voir la [table des plafonds](llm-providers-comparison.md#plafonds-de-sortie--le-maximum-documenté-par-modèle)),
 aucun plafond quand le fournisseur n'en documente pas (Mistral, un Ollama local), et **4096
-seulement pour un modèle inconnu du catalogue** — la valeur que le moteur envoyait pour tous
-les modèles, qu'un modèle raisonneur dépense à réfléchir avant d'écrire un mot et qui revient
-vide (une réponse finale vide fait échouer la tâche au lieu de passer pour une tâche
+seulement pour un modèle inconnu du catalogue** — un plafond qu'un modèle de raisonnement peut dépenser à
+réfléchir avant d'écrire un mot, pour revenir vide (une réponse finale vide fait échouer la tâche au lieu de passer pour une tâche
 accomplie). Épinglez-le quand le modèle n'est pas au catalogue ou pour un plafond plus serré ;
 un profil de modèle d'un client peut l'épingler en `ORKEON_Llm__MaxTokens`. Un plafond du
 catalogue que le point d'accès refuse est rejoué une fois sans le champ, avec un
@@ -422,8 +416,7 @@ Le nom est lu tel qu'il est écrit : Windows compare les noms de variable sans l
 avec. Une référence qui ne peut pas être un nom de variable — un `=`, une espace, un saut de
 ligne — refuse le démarrage de l'hôte, en nommant le chemin de configuration et jamais la valeur,
 qui peut être une clé collée dans le mauvais champ. Une `ApiKey` écrite comme un gabarit `${NOM}` —
-la forme que portaient les anciens gabarits d'`examples/appsettings`, que rien n'a jamais développée,
-si bien que le texte partait comme clé — refuse aussi le démarrage, avec la correction :
+jamais développé, si bien que le texte partirait comme clé — refuse aussi le démarrage, avec la correction :
 `"ApiKeyEnvVar": "NOM"` ([une référence n'est jamais développée](#une-référence-de-variable-nest-jamais-développée)). Au démarrage, l'hôte runner dit d'où vient chaque clé, jamais la clé ni le
 nom de la variable — `LLM resolved: … apiKey=from the variable named by Llm:ApiKeyEnvVar (user
 environment)`, puis une ligne `LLM profile <id>: apiKey=…` par profil offert aux crews (`from
@@ -793,7 +786,7 @@ absent → in-memory). Sa connexion est la section propre de ce provider (`Orkeo
 `memory: true` et sans `memoryProvider:` — voir
 [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration). Un autre nom,
 `lancedb` sans `Orkeon:LanceDb:Endpoint` ou `pinecone` sans `Orkeon:Pinecone:ApiKey` (ou `Host`)
-refuse le démarrage : il ne tourne plus sur le provider volatil
+refuse le démarrage au lieu de tourner sur le provider volatil
 ([quand un réglage est refusé](#quand-un-réglage-est-refusé)). Liée par
 `AddOrkeonInfrastructure()`.
 
@@ -1153,7 +1146,7 @@ Les dossiers qu'un run peut atteindre, et l'endroit où peut tourner le code qu'
 ### `Orkeon:FileSystem`
 
 **`Mounts`** — les montages VFS (voir [Conformité VFS](../architecture/vfs-compliance.md)). Une
-entrée peut porter un **identifiant** — `<ulid>|<physique>:<virtuel>:<droits>` (VFS-90) : ce par
+entrée peut porter un **identifiant** — `<ulid>|<physique>:<virtuel>:<droits>` : ce par
 quoi le bloc `mounts:` d'une crew, un sidecar d'équipe et `--mount-id` la désignent. Un `--mount` CLI sur la même racine
 virtuelle **remplace toutes les entrées de cette racine** pour ce run ; sur une racine neuve il est ajouté
 (jamais fusionné, jamais perdu). Une racine déclarée deux fois n'est légitime que si chacune de
@@ -1685,10 +1678,10 @@ livré : c'est celui qui est installé sur la machine. La fenêtre est visible s
 ### `MCP`
 
 Connexions client MCP (`MCP:Servers:<nom>`) et l'interrupteur `MCP:Enabled`. Aucun réglage ne
-démarre un serveur MCP (GAP-24) : une clé que la section ne porte pas est refusée au démarrage comme toute clé inconnue. Lue par `RunnerHost` (`orkeon run`, `orkeon-host`,
+démarre un serveur MCP : une clé que la section ne porte pas est refusée au démarrage comme toute clé inconnue. Lue par `RunnerHost` (`orkeon run`, `orkeon-host`,
 `orkeon mcp serve`) dès que `MCP:Servers` déclare au moins un serveur et que `MCP:Enabled` n'est
 pas `false` — les serveurs sont connectés avant le chargement de la crew,
-par `orkeon-host` une fois au démarrage, avant son premier message (GAP-11), et par
+par `orkeon-host` une fois au démarrage, avant son premier message, et par
 `orkeon mcp serve` avant qu'il serve ; les hôtes bibliothèque appellent
 `AddOrkeonMcp(configuration)` ou la surcharge `AddOrkeonInfrastructure(configuration)` — voir
 [Intégration MCP](../architecture/mcp.md).
@@ -1891,7 +1884,7 @@ sous `./.orkeon/state`, monté en `/state` comme montage interne (`Path` est un 
 
 ### `Orkeon:HumanInput`
 
-Comment un run se met en pause sur une question à un humain (FWK-23). Actif seulement avec `Orkeon:Checkpointing:Enabled`, qui donne à la question une session où être persistée. `Pause` vaut `Hold` (le run attend la réponse, jusqu'à `HoldTimeout`, puis suspend : la question reste persistée, rien n'est refusé) ou `Suspend` (le run s'arrête aussitôt : `run.finished` `status: waiting_for_input`, sortie 75). Sans valeur, un run qui a quelqu'un à interroger attend, un `orkeon run` simple sans personne suspend, et `orkeon-host` et `--events` attendent (30 minutes et sans limite). Un run se reprend avec `orkeon run <crew> --resume <id> --input "..."`.
+Comment un run se met en pause sur une question à un humain. Actif seulement avec `Orkeon:Checkpointing:Enabled`, qui donne à la question une session où être persistée. `Pause` vaut `Hold` (le run attend la réponse, jusqu'à `HoldTimeout`, puis suspend : la question reste persistée, rien n'est refusé) ou `Suspend` (le run s'arrête aussitôt : `run.finished` `status: waiting_for_input`, sortie 75). Sans valeur, un run qui a quelqu'un à interroger attend, un `orkeon run` simple sans personne suspend, et `orkeon-host` et `--events` attendent (30 minutes et sans limite). Un run se reprend avec `orkeon run <crew> --resume <id> --input "..."`.
 
 <!-- settings:Orkeon:HumanInput -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -2096,7 +2089,7 @@ Le démon (`Orkeon.Host`) :
   nommer — leurs agents, tâches et managers — et `Orkeon:Rag:LlmProfile` aussi ; absente, tous
   sont offerts, `["default"]` n'offre que le défaut ; une entrée qui nomme un profil non défini,
   ou un profil RAG que la liste écarte, refuse le démarrage.
-- **`A2A`** — le serveur A2A, éteint par défaut (GAP-23) : `Host` vaut `http://localhost`, et
+- **`A2A`** — le serveur A2A, éteint par défaut : `Host` vaut `http://localhost`, et
   `http://+` écoute sur toutes les interfaces ; `Crews` liste les crews que d'autres agents
   peuvent lancer, par nom — une compétence chacune, une tâche étant un run de cette crew ; aucune
   par défaut. Une section activée qui n'expose aucune crew ou une crew que `Crews` ne déclare

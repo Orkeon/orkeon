@@ -16,8 +16,8 @@ and its boundaries are recorded in [ADR-010](../adr/ADR-010-agent-framework-inte
 ## Install and register
 
 ```bash
-dotnet add package Orkeon.Interop.AgentFramework
-dotnet add package Microsoft.Agents.AI   # only to build MAF agents yourself (ChatClientAgent, AsAIAgent)
+dotnet add package Orkeon.Interop.AgentFramework --prerelease
+dotnet add package Microsoft.Agents.AI --prerelease   # only to build MAF agents yourself (ChatClientAgent, AsAIAgent)
 ```
 
 The package brings `Orkeon` and `Microsoft.Agents.AI.Abstractions` with it. The bridge needs an
@@ -126,7 +126,7 @@ tasks; what answers is the MAF agent.
   delegation tools, switch delegation off. One Orkeon agent cannot hold the same MAF agent both ways.
 - **Rate limits** — each turn Orkeon sends the MAF agent counts for the Orkeon agent and its crew,
   against their `maxRpm`. For the host's `RateLimiting`, what counts is the calls the MAF agent makes to
-  Orkeon's model, not those it makes elsewhere: the bridge itself takes no lease (GAP-38).
+  Orkeon's model, not those it makes elsewhere: the bridge itself takes no lease.
 - **One session, each message once, one call at a time** — the provider keeps one MAF session for its
   lifetime, created on first use, so a MAF agent with memory or context providers sees one continuous
   conversation. The agent loop sends the whole conversation on every turn; a call that extends the
@@ -145,7 +145,7 @@ tasks; what answers is the MAF agent.
   fragment, counted once.
 - **Options** — the bridge sends the MAF agent messages only: the options of a call's `LlmConfig`
   (model, temperature, max tokens, top-p, response format, thinking, grammar…) never reach it. Each one
-  a call declares — a temperature or a top-p whatever its value (GAP-36) — is a structured warning —
+  a call declares — a temperature or a top-p whatever its value — is a structured warning —
   `Option '<name>' was declared but agent-framework:<name> does not support it — it was not sent`
   (event 110, the HTTP providers' own) — once per crew run and per option, through the logger handed to
   `WithAgentFrameworkAgent`, else the `ILoggerFactory` the MAF agent exposes (`GetService`), else nowhere. A structured output expected from a MAF agent has the

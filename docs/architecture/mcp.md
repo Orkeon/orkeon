@@ -3,7 +3,7 @@
 # MCP Integration (Model Context Protocol)
 
 > **Status**: Experimental (`[Experimental("ORKEXP004")]` on every MCP type — see
-> [Experimental APIs](../reference/experimental-apis.md)). Dual-era since PUB-07.
+> [Experimental APIs](../reference/experimental-apis.md)). Dual-era: client and server speak both protocol lineages.
 > Code: `src/core/Orkeon.Infrastructure/MCP/`.
 
 The MCP integration works in both directions:
@@ -71,7 +71,7 @@ revision (`McpClient.SendAsync`).
   fields; legacy clients ignore these additive members.
 - Notifications (no `id`, or `notifications/*`) are never answered.
 - `tools/call` goes through `IToolInvocationPipeline`, the single invocation point of every
-  agent turn (GAP-09), under the caller `mcp` (its agent id and role): the guardian's tool
+  agent turn, under the caller `mcp` (its agent id and role): the guardian's tool
   phase (`ToolGuard` — path traversal, SSRF targets, SQL injection), the call, the one
   truncation rule (`AgentDefaults.ResolveMaxToolResultLength`), the result sanitizer
   (`Security:ToolResults` — under the default `Warn` a result arrives tagged as data,
@@ -105,10 +105,9 @@ singleton. It registers no server: `AddOrkeonMcpServer` registers `McpServer` (+
 `MaxResourceBytes` (1 MiB)), which serves the container's `IToolRegistry` and calls every tool through its
 `IToolInvocationPipeline` — `AddOrkeonInfrastructure()` and `AddOrkeonApplication()` register
 both. Registering is not serving: the host runs `RunStdioAsync` — what `orkeon mcp serve`
-does — or `ProcessRequestAsync` itself. No setting starts the server (GAP-24): the `MCP` section carries no such key, and every runner
+does — or `ProcessRequestAsync` itself. No setting starts the server: the `MCP` section carries no such key, and every runner
 built on `RunnerHost` refuses an unknown key at startup, servers declared or not. The server exposes tools, and `/output` as resources when `ExposeOutput` is on (below);
-`prompts/*` answer `Method not found` unless the host hands the server an `IMcpServerExtension` (`orkeon mcp serve --crew` does, FWK-24), and there is no option claiming otherwise (the inert
-`ExposeResources`/`ExposePrompts` were removed, GAP-11).
+`prompts/*` answer `Method not found` unless the host hands the server an `IMcpServerExtension` (`orkeon mcp serve --crew` does), and no option claims otherwise.
 The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself, never
 `AddOrkeonMcpServer`.
 
@@ -139,7 +138,7 @@ The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itse
 
 The client introduces itself as `Orkeon` `1.0.0`.
 
-**Per-server authentication, filter and timeout (FWK-03).** Each `MCP:Servers:<id>` accepts:
+**Per-server authentication, filter and timeout.** Each `MCP:Servers:<id>` accepts:
 
 - `Auth`: `Type` is `None` (default), `Bearer` (`Authorization: Bearer`, the token read from the variable
   `TokenEnv` names) or `Basic` (`UserEnv` and `PasswordEnv`). The variables are read on every request, so
@@ -161,7 +160,7 @@ The client introduces itself as `Orkeon` `1.0.0`.
   connects the server. A server that stays silent fails the connection with an error naming
   `MCP:Servers:<id>:ConnectTimeout`.
 
-**OAuth 2.0 (FWK-16).** `Auth:Type` also takes `oauth2-client-credentials` and `oauth2-device`
+**OAuth 2.0.** `Auth:Type` also takes `oauth2-client-credentials` and `oauth2-device`
 (`OAuth2ClientCredentials` and `OAuth2Device` are read too). The accepted spellings of `Auth:Type` are exactly `None`, `none`, `Bearer`, `bearer`, `Basic`, `basic`, `OAuth2ClientCredentials`, `oauth2-client-credentials`, `OAuth2Device` and `oauth2-device`; any other, a number included, is refused with that list, with these keys:
 
 ```json
@@ -226,7 +225,7 @@ same tool surface. A server that cannot be connected (a command that does not ex
 endpoint that does not answer, a handshake still pending after 30 s) costs one error line
 naming it, on the log and on stderr, and the run goes on. A stdio server's own stderr is
 read as it writes it — each line to the log at Debug (`MCP server '<id>' stderr: …`), so a
-server that writes a lot there no longer blocks on it — and a server that stops before
+server that writes a lot there never blocks on it — and a server that stops before
 answering says why: its exit code and the last line it wrote on stderr join that error line
 (`Transport disconnected: the MCP server exited with code 1; its last line on stderr: …`).
 The tools are registered under
@@ -236,7 +235,7 @@ MCP tool is not registered, one error line names the server and the tool (`The t
 'file_read' of MCP server 'x' collides with an already-registered tool and was not
 registered`), on the log and on stderr, and the tool that held the name keeps it, including
 after that server disconnects. The server's other tools are registered normally
-(`--list-tools` shows the merged surface). **`orkeon-host` connects them too (GAP-11):** built
+(`--list-tools` shows the merged surface). **`orkeon-host` connects them too:** built
 on `RunnerHost`, it reads the same section and runs the same step once, from its first hosted service, when
 the daemon starts — before the chat channel can deliver a message that loads a crew — and
 disconnects the servers when it stops, after the drain. The same settings give `orkeon run`
@@ -250,8 +249,7 @@ servers before it loads its commands; a server that fails costs the same one lin
 tools a server brings enter the tool registry, and the scripts' catalogue reads it beside the container's
 tools (`ScriptToolCatalogue`): a command's `tools` namespace, an agent's `.tools([...])` in a `.ork.ts` crew
 and `ctx.llm.act` reach an MCP server's tools — in the REPL, and under `orkeon run`, where a procedural
-script's servers are now connected before it runs too. Until then only a declarative crew, which resolves
-its tools through the registry, could. [Whisper through MCP](../guides/whisper-mcp.md) wires a
+script's servers are connected before it runs. [Whisper through MCP](../guides/whisper-mcp.md) wires a
 speech-to-text server this way.
 
 The library ships **no hosted service** for this: an embedding host resolves
@@ -302,7 +300,7 @@ stdout, one per line; closing stdin ends the server.
   aside: that tool answers for the operator of a run, and the client of an MCP server has a
   human of its own. No crew is loaded, so no tool a `.ork.ts` crew declares is served: those
   are registered when their crew loads.
-- **`--crew <a.yaml> [<b.yaml> …]` serves crews as tools (FWK-24).** Several crews go space-separated after
+- **`--crew <a.yaml> [<b.yaml> …]` serves crews as tools.** Several crews go space-separated after
   one flag, which cannot be repeated (like `--mount`). Each crew is loaded once at the start through the entry point
   `orkeon run` and `orkeon eval run --crew` load crews with, in a host of its own that carries what `orkeon run`
   gives a crew: the settings (`--settings`, else resolved from the crew's folder), the budget, the guardian, and the
@@ -378,7 +376,8 @@ stdout, one per line; closing stdin ends the server.
 - **Exit codes**: `0` the client closed the stream (or `--help`); `1` a usage error, a refused
   setting (an unknown key, a mount the settings declare that cannot be mounted, any other
   setting the runner host refuses — one `ERROR:` line names it), a `--tools` name the host does
-  not have, a serve started by another serve (below); `2` an unexpected error. Ctrl+C ends the
+  not have, a `--crew` refused at start (a crew that does not load, a name given twice, a
+  `run_crew_*` name a tool already holds), a serve started by another serve (below); `2` an unexpected error. Ctrl+C ends the
   process.
 
 A client configuration — Claude Desktop's `claude_desktop_config.json`:
@@ -403,8 +402,7 @@ inherits it, and it is cleared when the serve ends — and a serve that finds it
 start: exit `1`, and one line on stderr, which the serve that started it joins to its
 connection error
 (``orkeon mcp serve: refused to start: another `orkeon mcp serve` started this one (ORKEON_MCP_SERVE is set), …``).
-Settings that declare `orkeon mcp serve` itself under `MCP:Servers` therefore cost that one line, where each
-server used to start another before answering, until the first gave up after 30 s: remove the
+Settings that declare `orkeon mcp serve` itself under `MCP:Servers` therefore cost that one line: remove the
 entry, or declare both servers in the client. `orkeon run` and `orkeon-host` set no marker,
 and can use an `orkeon mcp serve` started on other settings. Like `ORKEON_DEBUG`, the variable
 is also read by the `ORKEON_` configuration layer, as a key (`MCP_SERVE`) no setting is.
@@ -414,7 +412,7 @@ is also read by the `ORKEON_` configuration layer, as a key (`MCP_SERVE`) no set
 - **Pagination.** `tools/list`, `resources/list` and `prompts/list` follow `nextCursor` until a page names none
   (`McpClient.ListToolsAsync`, `ListResourcesAsync`, `ListPromptsAsync`). A server whose cursor never ends fails
   the listing after 100 pages, or after 10 000 items, (`InvalidOperationException`) instead of growing it without end.
-- **Notifications.** A frame without an `id` is no longer dropped: `IMcpTransport.Notifications` is a
+- **Notifications.** A frame without an `id` is a notification: `IMcpTransport.Notifications` is a
   `ChannelReader<JsonRpcNotification>` (256 entries, `DropOldest`, one warning per dropped entry). The stdio
   transport feeds it from the server's stdout; the HTTP transport feeds it with the notifications of an SSE-framed answer (as they arrive, not after its final
   message), of the `GET` stream and of `subscriptions/listen`. A request the server sends to the client
@@ -445,14 +443,13 @@ is also read by the `ORKEON_` configuration layer, as a key (`MCP_SERVE`) no set
 
 ## Honest limitations
 
-Aligned with [Known limitations](../reference/limitations.md) and the PUB-07 changelog
-entry:
+Aligned with [Known limitations](../reference/limitations.md):
 
 - **Subscriptions** — `subscriptions/listen` runs on HTTP only (the stdio client hears every notification the server sends); the 2026-07-28 filter shape (`notifications.toolsListChanged`, `promptsListChanged`, `resourcesListChanged`, `resourceSubscriptions`) is the one this client sends, checked against its own fake servers and the reference server, not yet against the published schema.
 - **No sampling, roots or elicitation** — a server request for them is answered `-32601`: sampling would make Orkeon call an LLM for the server outside the budget, guard and cost of a run; roots would expose physical paths (VFS rule); elicitation waits for durable human-in-the-loop.
 - **No multi-round-trip requests (MRTR)** — a modern `input_required` interim result is
   surfaced as an explicit tool error, never as partial data.
-- **OAuth is client credentials and device flow only (FWK-16)** — no authorization-code flow, no protected-resource discovery (RFC 9728), no dynamic client registration (DCR); the device flow needs a host with a terminal (not `orkeon-host`); tokens are never persisted, so a device sign-in is asked again at the next run.
+- **OAuth is client credentials and device flow only** — no authorization-code flow, no protected-resource discovery (RFC 9728), no dynamic client registration (DCR); the device flow needs a host with a terminal (not `orkeon-host`); tokens are never persisted, so a device sign-in is asked again at the next run.
 - **HTTP+SSE 2024-11-05 not supported** — the transport with a separate message endpoint is refused; Streamable HTTP is the HTTP transport. Interop against the reference server runs nightly (`McpReferenceServerInteropTests`, [MCP interop](../guides/mcp-interop.md)).
 - **`2025-03-26` excluded** (mandatory JSON-RPC batching).
 - **The server speaks stdio only** (`orkeon mcp serve`, or `RunStdioAsync` /

@@ -83,8 +83,8 @@ Trois règles les bornent :
 2. **Aucune dépendance d'exécution.** Un satellite ne référence ni projet ni paquet. C'est ce qui
    le rend référençable de partout, y compris depuis `Orkeon.Domain`, sans rien inverser.
 3. **Des constantes et leurs propres aides de comparaison, rien d'autre.** Aucun comportement,
-   aucun type modélisant un concept — cela appartient au Domain. `LlmRoles.Is()` est la borne
-   haute : une aide de normalisation sur ses propres valeurs.
+   aucun type modélisant un concept — cela appartient au Domain. Une aide de normalisation sur ses
+   propres valeurs, du genre de `LlmRoles.Is()`, est la borne haute de ce qu'un satellite peut porter.
 
 ### Pourquoi cela ne casse pas la stratification
 
@@ -154,10 +154,12 @@ Un assemblage satellite s'expédie seul.
 
 Les « quatre nouveaux projets packagés » des Conséquences sont historiques. Il y a maintenant
 **cinq** satellites de constantes sous `src/constants/` (`Orkeon.Constants.Llm`, `.FileSystem`,
-`.Configuration`, `.Protocol`, `.Cli`), et **aucun n'est packagé** : tous portent
-`IsPackable=false` et sont embarqués dans le paquet parapluie `Orkeon` (PUB-25 ; voir
+`.Configuration`, `.Protocol`, `.Cli`), et **quatre ne sont pas packagés** :
+`Orkeon.Constants.Llm`, `.FileSystem`, `.Configuration` et `.Protocol` portent `IsPackable=false`
+et sont embarqués dans le paquet parapluie `Orkeon` (voir
 [la matrice de publication](../reference/publication-matrix.md)), et non publiés comme paquets
-NuGet distincts. La décision elle-même ne change pas ; une constante qui y est posée reste une
+NuGet distincts ; `Orkeon.Constants.Cli` est un paquet NuGet à part entière, dont dépend
+`Orkeon.Scripting`. La décision elle-même ne change pas ; une constante qui y est posée reste une
 surface publique figée du parapluie, et les `PublicAPI.*.txt` la gardent toujours.
 
 ## Amendement (2026-10-29)

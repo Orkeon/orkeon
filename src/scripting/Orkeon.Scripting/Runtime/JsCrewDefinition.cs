@@ -42,6 +42,9 @@ internal sealed record JsCrewDefinition
     /// <summary>Optional durable store behind <c>ctx.memory.agent</c> (RT-16).</summary>
     public Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
 
+    /// <summary>Optional run event stream a scripted spawn reports to (<c>agent.spawned</c>).</summary>
+    public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
+
     /// <summary>Optional cut of each tool result and fan-out bound of <c>ctx.llm.act</c>.</summary>
     public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
 

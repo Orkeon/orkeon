@@ -1,9 +1,11 @@
 using System.Text.Json;
 using Jint;
 using Jint.Native;
+using Orkeon.Application.Runs;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.Tools;
+using Orkeon.Scripting.Builders;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Scripting.Runtime;
@@ -89,6 +91,7 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
         var inheritedRoot = _environment.WorkingRoot;
         var floor = spawnerMode ?? _environment.PermissionFloor;
         var instanceId = instances.Register(agent, childBudget, stop, inheritedRoot, floor);
+        ReportSpawn(agent);
         var options = new Jint.Native.JsObject(engine);
         options.Set("signal", JsValue.FromObject(engine, stop.Token));
         options.Set("budget", JsValue.FromObject(engine, childBudget));
@@ -112,6 +115,22 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
         var onFailed = new Action<JsValue>(_ => instances.Finish(instanceId, succeeded: false));
         engine.Invoke(promise.Get("then"), promise, [JsValue.FromObject(engine, onCompleted), JsValue.FromObject(engine, onFailed)]);
         return promise;
+    }
+
+    /// <summary>
+    /// Tells the run's event stream the team grew (<c>agent.spawned</c>), with the keys the hosting
+    /// decorator gives an observed <c>spawn_agent</c> call (<c>role</c>, <c>reason</c>, here absent) plus the
+    /// crew agent's <c>name</c>. Never the input: the stream is read by a UI, and the input can carry anything.
+    /// This tool is built per context with <c>new</c>, so no decorator wraps it and this is its only report.
+    /// </summary>
+    private void ReportSpawn(JsAgent agent)
+    {
+        if (_environment.RunEvents is not { } events)
+            return;
+        events.Emit(
+            Orkeon.Constants.Protocol.RunEventKinds.AgentSpawned,
+            new RunEventScope { CorrelationId = Guid.NewGuid().ToString("N") },
+            new { role = agent.role, name = agent.name });
     }
 
     /// <inheritdoc />

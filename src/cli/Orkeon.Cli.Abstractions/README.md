@@ -7,7 +7,7 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 ## Install
 
 ```bash
-dotnet add package Orkeon.Cli.Abstractions
+dotnet add package Orkeon.Cli.Abstractions --prerelease
 ```
 
 See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md) for the rest of the lineup.

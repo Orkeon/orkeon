@@ -17,8 +17,8 @@ ses outils. La décision et ses limites sont consignées dans
 ## Installer et enregistrer
 
 ```bash
-dotnet add package Orkeon.Interop.AgentFramework
-dotnet add package Microsoft.Agents.AI   # seulement pour construire vous-même des agents MAF (ChatClientAgent, AsAIAgent)
+dotnet add package Orkeon.Interop.AgentFramework --prerelease
+dotnet add package Microsoft.Agents.AI --prerelease   # seulement pour construire vous-même des agents MAF (ChatClientAgent, AsAIAgent)
 ```
 
 Le paquet apporte `Orkeon` et `Microsoft.Agents.AI.Abstractions` avec lui. Le pont a besoin d'un hôte
@@ -131,7 +131,7 @@ son objectif et ses tâches ; ce qui répond, c'est l'agent MAF.
   Un même agent Orkeon ne peut pas tenir le même agent MAF des deux façons.
 - **Limites de débit** — chaque tour qu'Orkeon envoie à l'agent MAF compte pour l'agent Orkeon et sa
   crew, face à leur `maxRpm`. Pour le `RateLimiting` de l'hôte, comptent les appels que l'agent MAF fait
-  au modèle d'Orkeon, pas ceux qu'il fait ailleurs : le pont lui-même ne prend pas de bail (GAP-38).
+  au modèle d'Orkeon, pas ceux qu'il fait ailleurs : le pont lui-même ne prend pas de bail.
 - **Une session, chaque message une fois, un appel à la fois** — le fournisseur garde une seule session
   MAF pour toute sa durée de vie, créée au premier usage, si bien qu'un agent MAF doté de mémoire ou de
   fournisseurs de contexte voit une conversation continue. La boucle d'agent renvoie toute la
@@ -153,7 +153,7 @@ son objectif et ses tâches ; ce qui répond, c'est l'agent MAF.
 - **Options** — le pont n'envoie à l'agent MAF que des messages : les options du `LlmConfig` d'un appel
   (modèle, température, jetons max, top-p, format de réponse, réflexion, grammaire…) ne l'atteignent
   jamais. Chacune qu'un appel déclare — une température ou un top-p quelle que soit sa valeur
-  (GAP-36) — produit un avertissement structuré — `Option '<nom>' was declared
+  — produit un avertissement structuré — `Option '<nom>' was declared
   but agent-framework:<nom> does not support it — it was not sent` (événement 110, celui des
   fournisseurs HTTP) —, une fois par run d'une crew et par option, par le logger passé à
   `WithAgentFrameworkAgent`, sinon par l'`ILoggerFactory` qu'expose l'agent MAF (`GetService`), sinon

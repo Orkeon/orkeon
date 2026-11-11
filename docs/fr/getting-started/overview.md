@@ -275,7 +275,7 @@ Orkeon.sln
 │   │   └── Orkeon.Infrastructure/  # Implémentations, providers LLM, mémoire, DI
 │   ├── tools/                      # 11 packs d'outils
 │   │   ├── Orkeon.Tools.Abstractions/     # Classes de base des outils
-│   │   ├── Orkeon.Tools.Analysis/         # Outils agents RaggableTree (15)
+│   │   ├── Orkeon.Tools.Analysis/         # Outils agents RaggableTree (29)
 │   │   ├── Orkeon.Tools.Code/             # Outils code (ShellCommand)
 │   │   ├── Orkeon.Tools.Data/             # Outils données (CSV, PDF, JSON, SQL, MongoDB…)
 │   │   ├── Orkeon.Tools.Drive/            # Outils Google Drive et OneDrive
@@ -288,14 +288,14 @@ Orkeon.sln
 │   ├── rag/                        # Sous-système RAG (Abstractions, Rag, Onnx, Onnx.Model)
 │   ├── analysis/                   # Moteur RaggableTree (Abstractions, Analysis)
 │   ├── scripting/                  # DSL .ork.ts (Orkeon.Scripting) + la CLI `orkeon` (Orkeon.Scripting.Cli)
-│   ├── cli/                        # Briques CLI (Abstractions, Cli, Cli.Scripting, Commands.Scripting, TerminalGui)
+│   ├── cli/                        # Briques CLI (Abstractions, Cli, Commands.Scripting, TerminalGui)
 │   ├── hosting/                    # Orkeon.Hosting (RunnerHost), Orkeon.Host (daemon `orkeon-host`), Orkeon.Hosting.Aspire
 │   ├── plugins/                    # Orkeon.Plugins (chargement de plugins au runtime)
 │   ├── interop/                    # Orkeon.Interop.AgentFramework (pont Microsoft Agent Framework)
 │   ├── generators/                 # Orkeon.Generators (générateurs de source)
 │   ├── constants/                  # Satellites de constantes PARTAGÉES, zéro dépendance d'exécution (ADR-009)
 │   ├── analyzers/                  # Orkeon.Compliance.Vfs (analyseur Roslyn)
-│   ├── packaging/                  # Projets d'empaquetage NuGet (Orkeon, Orkeon.Tools + 4 wrappers opt-in)
+│   ├── packaging/                  # Projets d'empaquetage NuGet (Orkeon, Orkeon.Tools, 6 enveloppes optionnelles et Orkeon.Templates)
 │   └── apps/
 │       └── Orkeon.ConsoleApp/      # REPL interactif (`orkeon-repl`)
 ├── tests/                          # 34 projets (miroirs de src + e2e, shared)

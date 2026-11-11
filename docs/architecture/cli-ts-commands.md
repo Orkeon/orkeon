@@ -65,10 +65,13 @@ TUI hides at startup.
 | `--no-script-commands`            | Disable discovery entirely: no `*.cmd.ts` is loaded, and only `help-cmd` and the default commands remain. |
 | `--strict-commands`               | Equivalent to `FailFastOnInvalidScript=true + ContinueOnConflict=false` (CI).       |
 | `--settings <path>`               | Explicit appsettings path (repeatable — later files override earlier ones).         |
-| `--mount <phys:virt:rights>`      | Add a VFS mount (repeatable) — e.g. to make a commands directory reachable. Placed and guarded as for `orkeon run` (GAP-49): on a root the settings declare it replaces that root's entries for the session, on a new root it is appended; a mount the REPL cannot honour — `/sandbox`, `/credentials`, a root it mounts itself (`/cli-commands…`, `/crews…` while a `--commands-dir` or `--crews-dir` puts them there), a root twice on the command line, a missing folder — is refused before the console opens, exit `1`, wherever it was declared. Without `--commands-dir`, `--mount <folder>:/cli-commands:ro` still reaches a commands directory. |
+| `--mount <phys:virt:rights>`      | Add a VFS mount (repeatable) — e.g. to make a commands directory reachable. Placed and guarded as for `orkeon run`: on a root the settings declare it replaces that root's entries for the session, on a new root it is appended; a mount the REPL cannot honour — `/sandbox`, `/credentials`, a root it mounts itself (`/cli-commands…`, `/crews…` while a `--commands-dir` or `--crews-dir` puts them there), a root twice on the command line, a missing folder — is refused before the console opens, exit `1`, wherever it was declared. Without `--commands-dir`, `--mount <folder>:/cli-commands:ro` still reaches a commands directory. |
 | `--allow-external-mounts`         | A `--mount` outside the working directory is readable (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), as for `orkeon run`; without it, the REPL refuses to start (exit code `1`) before the console opens. Every settings entry in force (one chosen by id included) and the `--commands-dir` and `--crews-dir` folders — entries of the REPL, like the script of `orkeon run` — are readable wherever they are, without it. |
 | `--crews-dir <path>`              | Add a crew-resolution directory (repeatable; mounted read-only as `/crews`, `/crews-1`, …) — what makes `script-host` / `runCrewAsync("name")` resolvable. |
 | `--llm-log` / `--llm-log-path <dir>` | The LLM exchange log of `orkeon run`: JSONL under `./llm-logs`, or `<dir>`, which implies `--llm-log` (the last `--llm-log-path` wins). A folder outside the working directory needs `--allow-external-mounts`; without it, the REPL refuses to start (exit code `1`). |
+| `--replay <file>` | Feeds the lines of the file to the REPL as if typed, then exits (0 passed, 1 stopped on an error, 2 file missing or unreadable); see the [CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console). |
+| `--interactive` | With `--replay`: the REPL stays open after the file. Alone, a usage error (exit `2`). |
+| `--log-level <level>` | Minimum log level (`Trace` … `None`). |
 
 Every value flag accepts `--flag value` and `--flag=value`. `--commands-dir`, `--settings`,
 `--mount` and `--crews-dir` add up when repeated; `--allow-external-mounts` also takes `=true` or
@@ -323,7 +326,7 @@ responds and returns the `CommandResponse` (so `await` on it resolves to the
 value — a sync command is meant to block). Its `streamed` is true when any turn of
 the request was written to the console in the foreground
 (`Orkeon:Cli:ConsoleStreaming:Enabled`); background and labelled output report false.
-Print `payload` only when it is false, or the answer shows twice (#228):
+Print `payload` only when it is false, or the answer shows twice:
 
 ```typescript
 defineCommand({
@@ -582,7 +585,7 @@ the selection displays that thread's screen, so moving it with `↑` / `↓` swi
 shown, and `main` shows the main one (see "The bottom area"). The selection follows its task when the list re-sorts, and the field
 takes the focus back, with `main` as recipient, when the list empties. Sending to a task needs the
 host's `TuiIntegration.SendToTask` (`(ticket, text) → bool`); while no host provides it, `Enter`
-with a task recipient prints that sending to a task is not supported yet, and the text stays in the
+with a task recipient prints that sending to a task is not supported, and the text stays in the
 field, neither sent nor recorded. These keys stand down while a modal dialog has focus.
 
 **The bottom area.** Under the transcript come the spinner line (glyph and verb in the accent, the
@@ -629,8 +632,8 @@ finished. These lines go to the `main` screen. The recipient stays on a task tha
 only when the host forgets the recipient task, while the prompt has focus; a poll whose row provider throws writes nothing and leaves the rows, the list and the recipient as they were.
 `Esc Esc` prints `⎿  Interrupted · What should Orkeon do instead?`. Colours come from semantic roles (Normal, Dim, Accent, Ok, Alert, Error) on the
 terminal's own background, in 24-bit when `COLORTERM` is `truecolor` or `24bit` and in 16 named
-colours otherwise. `--glyphs ascii` turns
-`❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` into `> * o v x - > | * - ^ v ...`, the hint bar's `↑/↓` and the cut
+colours otherwise. With `TerminalGuiOptions.Glyphs` set to `GlyphMode.Never`,
+`❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` become `> * o v x - > | * - ^ v ...`, the hint bar's `↑/↓` and the cut
 phrase included.
 
 **The model witness.** The right-aligned witness of the hint bar names the selected model (24
@@ -648,8 +651,8 @@ state (`ISessionBufferService`, which a command reaches with `session_store`'s `
 `acceptEdits` → `plan` → `bypassPermissions`), and `selected_model`
 (`SessionStateKeys.SelectedModel`), the model the witness names. A product's `/mode` command writes
 the first key, so the console shows its choice: the keys are a contract and keep their names.
-Orkeon Code's `/model` does not write `selected_model` yet; until it does, the witness falls back to
-the `Llm:Model` setting.
+A product's `/model` command writes the second key to name the model; without it, the witness falls
+back to the `Llm:Model` setting.
 
 **Tool-call approvals.** With the permission gate on, `orkeon-repl` registers an approval channel
 (`AddConsoleToolApproval`): a call the mode asks about is put to the operator, whose next line
@@ -696,7 +699,7 @@ for (const a of approvals) ctx.writeLine(`[${a.taskId}] ${a.command} waits for a
 
 **Saving and loading the session.** `orkeon-repl` persists its session per project
 (`Orkeon:Cli:Session:Persist`, on unless the settings turn it off): it is saved after each turn and
-at exit to `<SessionsDirectory>/<project>/last.json`, and reloaded at start. While it is persisted,
+at exit to `<SessionsDirectory>/<project>-<hash>/last.json`, and reloaded at start. While it is persisted,
 `ctx.services.get("session")` serves two calls. `save()` writes that file now, in the same shape,
 and resolves to its virtual path; `save(path)` writes the session in the same shape to another
 virtual file instead, which `load` accepts back, and resolves to that path (a blank path rejects).
@@ -792,7 +795,7 @@ for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.pro
 ## Constraints (worth knowing)
 
 - **Discovery at startup only.** Edit a script, restart the runner. No hot
-  reload (deliberate — spec §14).
+  reload (deliberate).
 - **One engine per script file, kept warm.** Every command a file declares shares
   that file's Jint state across invocations; commands from different files are
   isolated.

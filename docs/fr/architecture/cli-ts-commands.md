@@ -67,10 +67,13 @@ a pas. Le message qu'une commande rend via `ctx.continue(...)` est ce que le REP
 | `--no-script-commands`            | Désactive entièrement la découverte : aucun `*.cmd.ts` n'est chargé, seuls `help-cmd` et les commandes par défaut restent. |
 | `--strict-commands`               | Équivalent à `FailFastOnInvalidScript=true + ContinueOnConflict=false` (CI).        |
 | `--settings <chemin>`             | Chemin d'appsettings explicite (répétable — les fichiers suivants surchargent les précédents). |
-| `--mount <phys:virt:droits>`      | Ajoute un montage VFS (répétable) — p. ex. pour rendre un dossier de commandes accessible. Placé et gardé comme pour `orkeon run` (GAP-49) : sur une racine que les settings déclarent, il remplace les entrées de cette racine pour la session, sur une racine neuve il s'ajoute ; un montage que le REPL ne peut honorer — `/sandbox`, `/credentials`, une racine qu'il monte lui-même (`/cli-commands…`, `/crews…` tant qu'un `--commands-dir` ou un `--crews-dir` les y met), une racine deux fois en ligne de commande, un dossier absent — est refusé avant que la console s'ouvre, code `1`, d'où qu'il ait été déclaré. Sans `--commands-dir`, `--mount <dossier>:/cli-commands:ro` atteint toujours un dossier de commandes. |
+| `--mount <phys:virt:droits>`      | Ajoute un montage VFS (répétable) — p. ex. pour rendre un dossier de commandes accessible. Placé et gardé comme pour `orkeon run` : sur une racine que les settings déclarent, il remplace les entrées de cette racine pour la session, sur une racine neuve il s'ajoute ; un montage que le REPL ne peut honorer — `/sandbox`, `/credentials`, une racine qu'il monte lui-même (`/cli-commands…`, `/crews…` tant qu'un `--commands-dir` ou un `--crews-dir` les y met), une racine deux fois en ligne de commande, un dossier absent — est refusé avant que la console s'ouvre, code `1`, d'où qu'il ait été déclaré. Sans `--commands-dir`, `--mount <dossier>:/cli-commands:ro` atteint toujours un dossier de commandes. |
 | `--allow-external-mounts`         | Un `--mount` hors du répertoire de travail est lisible (ou `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), comme pour `orkeon run` ; sans lui, le REPL refuse de démarrer (code de sortie `1`) avant l'ouverture de la console. Toute entrée des settings en vigueur (une entrée choisie par id comprise) et les dossiers de `--commands-dir` et `--crews-dir` — des entrées du REPL, comme le script d'`orkeon run` — sont lisibles où qu'ils soient, sans lui. |
 | `--crews-dir <chemin>`            | Ajoute un répertoire de résolution de crews (répétable ; monté en lecture seule comme `/crews`, `/crews-1`, …) — ce qui rend `script-host` / `runCrewAsync("nom")` résoluble. |
 | `--llm-log` / `--llm-log-path <rép>` | Le journal des échanges LLM d'`orkeon run` : JSONL sous `./llm-logs`, ou `<rép>`, qui implique `--llm-log` (le dernier `--llm-log-path` l'emporte). Un dossier hors du répertoire de travail demande `--allow-external-mounts` ; sans lui, le REPL refuse de démarrer (code de sortie `1`). |
+| `--replay <fichier>` | Joue les lignes du fichier comme si elles étaient tapées, puis sort (0 réussi, 1 arrêt sur erreur, 2 fichier absent ou illisible) ; voir la [référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée). |
+| `--interactive` | Avec `--replay` : le REPL reste ouvert après le fichier. Seul, erreur d'usage (code `2`). |
+| `--log-level <niveau>` | Niveau minimal des journaux (`Trace` … `None`). |
 
 Chaque option à valeur accepte `--option valeur` et `--option=valeur`. `--commands-dir`,
 `--settings`, `--mount` et `--crews-dir` s'additionnent quand on les répète ;
@@ -327,7 +330,7 @@ résout en la valeur — une commande sync est faite pour bloquer). Son `streame
 vrai quand un tour quelconque de la requête a été écrit sur la console au premier plan
 (`Orkeon:Cli:ConsoleStreaming:Enabled`) ; une sortie en arrière-plan ou étiquetée
 rapporte faux. N'imprimez `payload` que s'il est faux, sinon la réponse s'affiche
-deux fois (#228) :
+deux fois :
 
 ```typescript
 defineCommand({
@@ -602,7 +605,7 @@ montre celui de main (voir « La zone du bas »). La sélection suit sa tâche q
 retrie, et le champ reprend le focus, avec `main` pour destinataire, quand la liste se vide. Envoyer
 à une tâche demande le `TuiIntegration.SendToTask` de l'hôte (`(ticket, texte) → bool`) ; tant
 qu'aucun hôte ne le fournit, `Entrée` avec une tâche pour destinataire imprime que l'envoi à une
-tâche n'est pas encore pris en charge, et le texte reste dans le champ, ni envoyé ni enregistré. Ces
+tâche n'est pas pris en charge, et le texte reste dans le champ, ni envoyé ni enregistré. Ces
 touches s'effacent tant qu'une boîte de dialogue modale a le focus.
 
 **La zone du bas.** Sous le transcript viennent la ligne du spinner (glyphe et verbe dans l'accent,
@@ -649,8 +652,8 @@ se lit comme terminée. Ces lignes vont à l'écran `main`. Le destinataire rest
 seulement quand l'hôte l'oublie, tant que le prompt a le focus ; un sondage dont le fournisseur de lignes lève une
 exception n'écrit rien et laisse les lignes, la liste et le destinataire tels quels. `Échap Échap` imprime `⎿  Interrupted · What should Orkeon do instead?`. Les couleurs viennent de rôles sémantiques
 (Normal, Dim, Accent, Ok, Alert, Error) sur le fond du terminal, en 24 bits quand `COLORTERM` vaut
-`truecolor` ou `24bit` et en 16 couleurs nommées sinon. `--glyphs ascii` change
-`❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` en `> * o v x - > | * - ^ v ...`, les `↑/↓` de la barre d'aide et la
+`truecolor` ou `24bit` et en 16 couleurs nommées sinon. Avec `TerminalGuiOptions.Glyphs` réglé sur `GlyphMode.Never`,
+`❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` deviennent `> * o v x - > | * - ^ v ...`, les `↑/↓` de la barre d'aide et la
 phrase coupée compris.
 
 **Le témoin du modèle.** Le témoin aligné à droite de la barre d'aide nomme le modèle sélectionné
@@ -669,8 +672,8 @@ session (`ISessionBufferService`, qu'une commande atteint par `get_state` et `se
 (`default` → `acceptEdits` → `plan` → `bypassPermissions`), et `selected_model`
 (`SessionStateKeys.SelectedModel`), le modèle que nomme le témoin. La commande `/mode` d'un produit
 écrit la première clé, et la console affiche son choix : les clés sont un contrat et gardent leur
-nom. La commande `/model` d'Orkeon Code n'écrit pas encore `selected_model` ; d'ici là, le témoin
-retombe sur le réglage `Llm:Model`.
+nom. La commande `/model` d'un produit écrit la seconde clé pour nommer le modèle ; sans elle, le témoin
+se rabat sur le réglage `Llm:Model`.
 
 **Approbations des appels d'outils.** Avec le contrôle des permissions activé, `orkeon-repl`
 enregistre un canal d'approbation (`AddConsoleToolApproval`) : un appel pour lequel le mode demande
@@ -720,7 +723,7 @@ for (const a of approvals) ctx.writeLine(`[${a.taskId}] ${a.command} waits for a
 
 **Enregistrer et charger la session.** `orkeon-repl` conserve sa session par projet
 (`Orkeon:Cli:Session:Persist`, actif sauf si les réglages le désactivent) : elle est enregistrée après
-chaque tour et à la sortie dans `<SessionsDirectory>/<projet>/last.json`, et rechargée au démarrage.
+chaque tour et à la sortie dans `<SessionsDirectory>/<projet>-<hash>/last.json`, et rechargée au démarrage.
 Tant qu'elle est conservée, `ctx.services.get("session")` sert deux appels. `save()` écrit ce fichier
 tout de suite, sous la même forme, et se résout en son chemin virtuel ; `save(path)` écrit la session
 sous la même forme dans un autre fichier virtuel, que `load` accepte en retour, et se résout en ce
@@ -822,7 +825,7 @@ for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.pro
 ## Contraintes (bonnes à connaître)
 
 - **Découverte au démarrage uniquement.** Modifiez un script, redémarrez le
-  runner. Pas de hot reload (délibéré — spec §14).
+  runner. Pas de hot reload (délibéré).
 - **Un moteur par fichier de script, gardé chaud.** Toutes les commandes qu'un
   fichier déclare partagent l'état Jint de ce fichier d'une invocation à l'autre ;
   les commandes de fichiers différents sont isolées.

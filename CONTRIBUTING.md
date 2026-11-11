@@ -102,7 +102,7 @@ src projects are mirrored one-for-one by a test project; `tests/e2e` and `tests/
 up the other two test projects. Sixteen src projects carry no test mirror by design: the five
 `Orkeon.Constants.*` satellites and `Orkeon.Rag.Onnx.Model` hold constants and embedded
 resources only, `Orkeon.Analysis.Abstractions` is exercised through `Orkeon.Analysis.Tests`,
-and the eight `src/packaging/` projects are packaging-only:
+and the nine `src/packaging/` projects are packaging-only:
 
 ```
 src/
@@ -121,7 +121,8 @@ src/
 ├── interop/     # Orkeon.Interop.AgentFramework (Microsoft Agent Framework bridge, ADR-010)
 ├── generators/  # Orkeon.Generators (source generators)
 ├── analyzers/   # Orkeon.Compliance.Vfs (VFS-only Roslyn analyzer)
-├── packaging/   # NuGet packaging projects (PUB-25): Orkeon (the framework in one nupkg), Orkeon.Tools,
+├── packaging/   # NuGet packaging projects: Orkeon (the framework in one nupkg), Orkeon.Tools,
+│                #   Orkeon.Templates (`dotnet new` templates),
 │                #   + the Rag.Onnx / Tools.Embeddings.Local / Interop.AgentFramework / Hosting.Aspire
 │                #   / Scripting / Cli.TerminalGui wrappers depending on the Orkeon umbrella
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl)
@@ -328,7 +329,7 @@ project, exposing plain fields or properties to configure answers and inspect ca
 
 ### The scope is frozen
 
-Orkeon already ships 16 LLM providers (fourteen vendors and two aggregators), 91
+Orkeon already ships 16 LLM providers (fourteen vendors and two aggregators),
 built-in tools, 6 memory stores, two RAG pipelines, RaggableTree, a scripting
 DSL, plugins, MCP and A2A — maintained by one person. Until real users
 ask for more, **the functional surface does not grow**:
@@ -391,7 +392,8 @@ matter of opinion — it is **recorded in the repository** and enforced at build
   with no `[Obsolete]` step: each removal gets a `*REMOVED*` line in the API file and a
   `**[breaking]**` CHANGELOG entry with a migration note.
 - **`[Experimental]` surfaces are outside this commitment.** A2A, Autonomous
-  orchestration, corrective RAG and the MCP integration carry
+  orchestration, corrective RAG, the MCP integration, per-model capabilities, host HTTP
+  security and the run history ports carry
   `[Experimental("ORKEXP00x")]` diagnostics: referencing them is a compile error you
   suppress explicitly, which is your opt-in to a surface that may change in any
   release. See [docs/reference/experimental-apis.md](docs/reference/experimental-apis.md).

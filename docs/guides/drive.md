@@ -22,10 +22,9 @@ operator allows:
 - **Every account signs in once with OAuth2** (`orkeon drive login` in a terminal), and the
   tools refresh the access token by themselves.
 
-> **Campaign status.** The family is covered by offline tests against scripted Google and
-> Microsoft APIs. A campaign pass (DRIVE-07) ran on 2026-10-24 and revealed two `drive_search`
-> gaps, fixed since (see the CHANGELOG). The DRIVE-07 card is not closed, and this page does not
-> claim what the pass covered. Report what differs.
+> **Test coverage.** The family is covered by offline tests against scripted Google and
+> Microsoft APIs; it has not been verified here against every live account configuration.
+> Report what differs.
 
 ## The eleven tools
 

@@ -106,7 +106,7 @@ Trente-deux projets src ont un projet de tests miroir ; `tests/e2e` et `tests/sh
 forment les deux autres. Seize projets src n'ont volontairement pas de miroir : les cinq
 satellites `Orkeon.Constants.*` et `Orkeon.Rag.Onnx.Model` ne portent que des constantes et
 des ressources embarquées, `Orkeon.Analysis.Abstractions` est exercé via
-`Orkeon.Analysis.Tests`, et les huit projets `src/packaging/` sont de pur empaquetage :
+`Orkeon.Analysis.Tests`, et les neuf projets `src/packaging/` sont de pur empaquetage :
 
 ```
 src/
@@ -125,7 +125,8 @@ src/
 ├── interop/     # Orkeon.Interop.AgentFramework (pont Microsoft Agent Framework, ADR-010)
 ├── generators/  # Orkeon.Generators (générateurs de source)
 ├── analyzers/   # Orkeon.Compliance.Vfs (analyseur Roslyn VFS-only)
-├── packaging/   # Projets d'empaquetage NuGet (PUB-25) : Orkeon (le framework en un nupkg), Orkeon.Tools,
+├── packaging/   # Projets d'empaquetage NuGet : Orkeon (le framework en un nupkg), Orkeon.Tools,
+│                #   Orkeon.Templates (modèles `dotnet new`),
 │                #   + les wrappers Rag.Onnx / Tools.Embeddings.Local / Interop.AgentFramework /
 │                #   Hosting.Aspire / Scripting / Cli.TerminalGui dépendant de l'ombrelle Orkeon
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl)
@@ -343,7 +344,7 @@ réponses et inspecter les appels. La référence est
 ### Le périmètre est gelé
 
 Orkeon embarque déjà 16 fournisseurs LLM (quatorze vendeurs et deux
-agrégateurs), 91 outils intégrés, 6 stores de mémoire, deux pipelines RAG,
+agrégateurs), des outils intégrés, 6 stores de mémoire, deux pipelines RAG,
 RaggableTree, un DSL de scripting, des plugins, MCP et A2A —
 maintenus par une seule personne. Tant que de vrais utilisateurs n'en
 demandent pas davantage, **la surface fonctionnelle ne grandit pas** :
@@ -409,7 +410,8 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
   une ligne `*REMOVED*` dans le fichier d'API et une entrée CHANGELOG `**[breaking]**`
   avec une note de migration.
 - **Les surfaces `[Experimental]` sont hors de cet engagement.** A2A, l'orchestration
-  Autonomous, le RAG correctif et l'intégration MCP portent des diagnostics
+  Autonomous, le RAG correctif, l'intégration MCP, les capacités par modèle, la sécurité HTTP de
+  l'hôte et les ports d'historique des exécutions portent des diagnostics
   `[Experimental("ORKEXP00x")]` : les référencer est une erreur de compilation à
   supprimer explicitement — c'est votre opt-in à une surface qui peut changer dans
   n'importe quelle version. Voir

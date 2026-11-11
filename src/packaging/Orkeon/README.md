@@ -4,12 +4,12 @@ Build and orchestrate AI agent teams in .NET, described in declarative YAML, pro
 
 **Orkeon** is the complete framework in a single package: the domain model (Agent, Crew, CrewTask, the 6 orchestration modes), the application services, and the adapters — 16 LLM providers (OpenAI, Anthropic, Azure OpenAI, Ollama, Mistral, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI, Gemini, Grok, MiniMax, and the OpenRouter and Mammouth AI aggregators), 6 memory stores (InMemory, Redis, SQLite, ChromaDB, Pinecone, LanceDB), the staged RAG pipeline with its corrective graph, the RaggableTree semantic codebase analysis, the virtual file system, and the A2A channel. One install, a working framework.
 
-The package carries the framework assemblies (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Rag`, `Orkeon.Analysis`, the shared contracts and constants) — namespaces are unchanged, so code written against the earlier per-layer packages compiles as-is.
+The package carries the framework assemblies (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Rag`, `Orkeon.Analysis`, the shared contracts and constants).
 
 ## Install
 
 ```
-dotnet add package Orkeon
+dotnet add package Orkeon --prerelease
 ```
 
 Add [Orkeon.Tools](https://www.nuget.org/packages/Orkeon.Tools) for the built-in agent tool families, and [Orkeon.Rag.Onnx](https://www.nuget.org/packages/Orkeon.Rag.Onnx) for the offline ONNX reranker.

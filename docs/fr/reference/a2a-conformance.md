@@ -17,7 +17,7 @@ Cette page est la référence de ce qui interopère et de ce qui n'interopère p
 |---|---|---|---|
 | Send Message | `POST /a2a/tasks/send` | 🟡 Partiel | Forme d'ère 0.x (`A2ATaskRequest` : id/skillId/input/inputMode/metadata), pas le modèle `Message`/`Part` v1.0. Le `skillId` est l'`id` d'une skill de la carte d'agent ; l'agent s'exécute et la réponse porte sa sortie — voir [Exécution des tâches](#exécution-des-tâches). |
 | Send Streaming Message | `POST /a2a/tasks/sendSubscribe` (SSE) | 🟡 Partiel | `Working` → une mise à jour `Working` par ligne de progression que rapporte le routeur, la ligne dans `message` → update final → `[DONE]` ; pas d'événements typés `TaskStatusUpdateEvent`/`TaskArtifactUpdateEvent`, pas de keep-alive. |
-| Get Task | `GET /a2a/tasks/{id}` | 🟡 Partiel | **Réel depuis PUB-08** quand la persistance des tâches est activée (`AddOrkeonA2ATaskPersistence()` sur un `IStateStore` de checkpointing) : 200 avec l'état enregistré, 404 pour un id inconnu. Sans l'opt-in : `501` explicite (jamais d'état fabriqué). |
+| Get Task | `GET /a2a/tasks/{id}` | 🟡 Partiel | **Réel** quand la persistance des tâches est activée (`AddOrkeonA2ATaskPersistence()` sur un `IStateStore` de checkpointing) : 200 avec l'état enregistré, 404 pour un id inconnu. Sans l'opt-in : `501` explicite (jamais d'état fabriqué). |
 | List Tasks | — | 🔴 Absent | |
 | Cancel Task | `DELETE /a2a/tasks/{id}` | 🟡 Partiel | Une tâche sur laquelle l'agent travaille encore est **interrompue** : le jeton de son exécution est annulé et la requête qui l'a soumise répond `Cancelled`. Avec persistance, un enregistrement laissé `Working` par un serveur arrêté passe à `Cancelled` ; une tâche terminée répond 409 et garde son état. Un id inconnu (ou, sans persistance, toute tâche qui ne tourne pas) répond 404. |
 | Subscribe to (existing) Task | — | 🔴 Absent | Le streaming n'existe qu'à la soumission. |
@@ -50,7 +50,7 @@ est la première marche naturelle quand cette surface sera promue.
 | Vérification de l'identité du client | mTLS (fail-closed : `RequireMutualTls` refuse de démarrer sans ancre de confiance ; chaîne CA ou empreintes épinglées ; 403 en cas d'échec) + `AllowedAuthSchemes` (401) : un jeton `Bearer` validé par un `IAuthenticationProvider` (Azure AD, OIDC, ou celui de l'hôte), une `ApiKey` comparée en temps constant aux secrets nommés par `ApiKeySecretNames` ; un schéma déclaré sans validateur refuse de démarrer | 🟢 Les deux identifiants sont validés, pas seulement reconnus. `A2AClient` envoie le sien (`ClientAuthScheme` + `ClientCredentialSecretName`, plus bas). |
 | Accès à la carte d'agent | `GET /.well-known/agent.json` | 🟢 Publique par conception : les contrôles de sécurité ne s'appliquent qu'aux endpoints de tâche. |
 | Déclaration `securitySchemes` dans l'AgentCard | — | 🔴 Les schémas sont imposés mais pas annoncés. |
-| Révocation de certificats | Non vérifiée | 🟡 **Décision (PUB-08 T3) : préférer les certificats à courte durée de vie à CRL/OCSP.** Le modèle de confiance mTLS d'A2A vise des CA privées, où les endpoints CRL/OCSP existent rarement et où OCSP ajoute une dépendance de disponibilité ; une durée de vie de 24–72 h borne la fenêtre d'exposition sans nouvelle dépendance runtime, et la rotation s'inscrit dans les options existantes (une nouvelle instance de client recharge le PFX). Le support CRL reste hors périmètre tant qu'un déploiement n'en prouve pas le besoin. |
+| Révocation de certificats | Non vérifiée | 🟡 **Décision : préférer les certificats à courte durée de vie à CRL/OCSP.** Le modèle de confiance mTLS d'A2A vise des CA privées, où les endpoints CRL/OCSP existent rarement et où OCSP ajoute une dépendance de disponibilité ; une durée de vie de 24–72 h borne la fenêtre d'exposition sans nouvelle dépendance runtime, et la rotation s'inscrit dans les options existantes (une nouvelle instance de client recharge le PFX). Le support CRL reste hors périmètre tant qu'un déploiement n'en prouve pas le besoin. |
 | Auth des webhooks de push notification | — | 🔴 Pas de webhooks. |
 
 ## Exécution des tâches
@@ -146,7 +146,7 @@ aucun outil d'agent livré n'en appelle un.
   ses agents, `orkeon-host` pour les crews qu'il expose (sans enregistrement de
   tâche : son `GET` répond `501`).
 - **Orkeon ↔ agents tiers v1.0** : pas encore — attendre (ou contribuer à)
-  l'alignement sur le binding HTTP+JSON suivi par la suite de PUB-08.
+  l'alignement sur le binding HTTP+JSON.
 
 Chaque écart ci-dessus est un périmètre assumé, pas un oubli : la surface est
 marquée `[Experimental]` (`ORKEXP001`) précisément pour pouvoir être remodelée

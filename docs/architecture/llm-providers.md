@@ -6,13 +6,13 @@ The providers on this page serve the `Generation` category. Embedding, reranking
 
 `HttpLlmProviderBase` (`Orkeon.Infrastructure.LLMs.Base`) provides the abstract base for all LLM providers. It integrates HTTP handling (`IHttpClientFactory`), the Polly retry policies, and JSON serialization.
 
-**Retry budget.** `Llm:MaxRetries` (10 by default) covers the failures that come back in seconds — request errors, 5xx, 429 (except an exhausted balance, below). A buffered call that hits `Llm:TimeoutSeconds` is retried **once** (`ResilienceDefaults.LlmTimeoutRetries`: every attempt costs the whole timeout), then the provider answers with a failure naming the setting and the two ways out (a longer timeout, thinking off); a caller's cancellation is never retried. A failed call travels as `LlmResponse.Error` and, through the chat-client adapter, as an exception — it is never mistaken for an empty answer, so the agent loop fails the task at once with the provider's reason instead of retrying without tools (LLM-11).
+**Retry budget.** `Llm:MaxRetries` (10 by default) covers the failures that come back in seconds — request errors, 5xx, 429 (except an exhausted balance, below). A buffered call that hits `Llm:TimeoutSeconds` is retried **once** (`ResilienceDefaults.LlmTimeoutRetries`: every attempt costs the whole timeout), then the provider answers with a failure naming the setting and the two ways out (a longer timeout, thinking off); a caller's cancellation is never retried. A failed call travels as `LlmResponse.Error` and, through the chat-client adapter, as an exception — it is never mistaken for an empty answer, so the agent loop fails the task at once with the provider's reason instead of retrying without tools.
 
 **Rate-limit window.** A 429, or a 529 that carries a reset header, is not retried on the backoff ladder: the call waits until the window resets, on the buffered path and on the streaming connect alike (`RateLimitResetHeaders`). It reads `Retry-After` (seconds or an HTTP date), `retry-after-ms` (milliseconds, sent by OpenAI and TypeSafe), `anthropic-ratelimit-requests-reset` and `anthropic-ratelimit-tokens-reset` (RFC 3339) and `x-ratelimit-reset-requests` and `x-ratelimit-reset-tokens` (OpenAI durations such as `6m0s`). `retry-after-ms`, when sent, is the more precise of the two `Retry-After` headers and replaces it; the longest of that value and the reset headers then wins. A finite value beyond the window fails the call with `LlmRateLimitException`, never with an arithmetic overflow. The wait never exceeds `Llm:MaxRateLimitWait` (5 minutes by default, separate from the 30-second cap of the 5xx ladder): a reset beyond it fails the call at once with the reason (`LlmRateLimitException`) instead of parking an unattended run. Each wait is announced to `ILlmRetryObserver` with the reason `rate-limit window` and the delay. A 529 without a header keeps the ladder.
 
-**Exhausted balance.** A 429 whose body names a spent balance or quota — OpenAI's `insufficient_quota`, Kimi's `exceeded_current_quota_error`, Z.AI's `Insufficient balance` — is not a rate limit: no wait clears it. It is not retried, neither on the ladder nor on a window, on the buffered path and on the streaming connect alike (`ResiliencePolicies`, `LlmFailureClassifier.IsBalanceExhausted`), and the error line adds `(account balance exhausted: ...)` after the vendor's words. It still classes as `rate_limited`, so a profile's fallback chain moves on to the next provider, and the decision model reports it as not transient. When the body cannot be read, the 429 is treated as a rate limit, as before. Out of scope: a balance refused with another status (Anthropic's `400` "credit balance is too low", a `402` from DeepSeek, MiniMax or OpenRouter) is not retried either, but classes as `refused` and does not fail over; the code-graph embedding provider (`Orkeon.Analysis`) has its own retry loop and still retries `insufficient_quota` (issue #328).
+**Exhausted balance.** A 429 whose body names a spent balance or quota — OpenAI's `insufficient_quota`, Kimi's `exceeded_current_quota_error`, Z.AI's `Insufficient balance` — is not a rate limit: no wait clears it. It is not retried, neither on the ladder nor on a window, on the buffered path and on the streaming connect alike (`ResiliencePolicies`, `LlmFailureClassifier.IsBalanceExhausted`), and the error line adds `(account balance exhausted: ...)` after the vendor's words. It still classes as `rate_limited`, so a profile's fallback chain moves on to the next provider, and the decision model reports it as not transient. When the body cannot be read, the 429 is treated as a rate limit. Out of scope: a balance refused with another status (Anthropic's `400` "credit balance is too low", a `402` from DeepSeek, MiniMax or OpenRouter) is not retried either, but classes as `refused` and does not fail over; the code-graph embedding provider (`Orkeon.Analysis`) has its own retry loop and still retries `insufficient_quota` (issue #328).
 
-**A streamed call is bounded the same way (LLM-12).** A streamed request is sent with `ResponseHeadersRead`, and `HttpClient.Timeout` stops counting once the headers are in: the body used to be read on the caller's token alone, so a model that thinks for minutes before its first token hung a run past any `Llm:TimeoutSeconds`. Every streaming path (the OpenAI dialect, Azure, Anthropic, Ollama — chat and text streams) now runs under a `StreamReadBudget`: `Llm:TimeoutSeconds` bounds the whole call, headers and body, and the optional `Llm:StreamIdleSeconds` bounds the silence between two lines of the body (unset by default). An elapsed bound ends the chat stream with a `Completed` event whose response carries `error` (the sentence naming the setting) and `error_type` (`TaskCanceledException` for the whole-call bound, `StreamIdleTimeout` for the idle one) over whatever content had arrived, with no `RawResponseBody`; the text stream throws an `HttpRequestException` with the same sentence. A stream the provider closes without its finish marker (`finish_reason` or `[DONE]`, `message_stop`, `done: true`) is a failed call too when no answer text and no tool call arrived (`error_type` `StreamTruncated`, the sentence saying how much reasoning was streamed); with some answer it is served as it came, flagged `stream_truncated` in its metadata. The chat-client adapter fails a streamed turn on any `error`, partial content or not; the headers phase re-sends an elapsed `HttpClient.Timeout` once (`LlmTimeoutRetries`), like the buffered path.
+**A streamed call is bounded the same way.** A streamed request is sent with `ResponseHeadersRead`, and `HttpClient.Timeout` stops counting once the headers are in, so every streaming path (the OpenAI dialect, Azure, Anthropic, Ollama — chat and text streams) runs under a `StreamReadBudget`: `Llm:TimeoutSeconds` bounds the whole call, headers and body, and the optional `Llm:StreamIdleSeconds` bounds the silence between two lines of the body (unset by default). An elapsed bound ends the chat stream with a `Completed` event whose response carries `error` (the sentence naming the setting) and `error_type` (`TaskCanceledException` for the whole-call bound, `StreamIdleTimeout` for the idle one) over whatever content had arrived, with no `RawResponseBody`; the text stream throws an `HttpRequestException` with the same sentence. A stream the provider closes without its finish marker (`finish_reason` or `[DONE]`, `message_stop`, `done: true`) is a failed call too when no answer text and no tool call arrived (`error_type` `StreamTruncated`, the sentence saying how much reasoning was streamed); with some answer it is served as it came, flagged `stream_truncated` in its metadata. The chat-client adapter fails a streamed turn on any `error`, partial content or not; the headers phase re-sends an elapsed `HttpClient.Timeout` once (`LlmTimeoutRetries`), like the buffered path.
 
 **Thinking is replayed unchanged (Anthropic).** The assistant turn of a tool call carries its `thinking` and `redacted_thinking` blocks (text, `signature`, `data`) as the provider sent them, buffered or streamed, in `LlmMessage.RawThinkingBlocks`; the next request re-emits them first, before the turn's `text` and `tool_use` blocks, which the API requires for extended thinking with tools. Other providers ignore them. A tool call without `id`, `name` or an object `arguments` is refused with an error that names its index, its name and the field.
 
@@ -97,25 +97,21 @@ providers): a configuration passed with a call **completes** the one the provide
 it does not replace it. Every field the call leaves unset — null, an empty or blank string, no
 stop sequence — is the provider's: the key, `BaseUrl`, `TimeoutSeconds` (nullable: unset
 everywhere, 30 s), Azure's `ApiVersion`, Anthropic's `WorkspaceId`, `Thinking`, `MaxTokens`,
-`Temperature` and `TopP` (nullable too since GAP-36), `Seed`, `SystemMessage`, `ResponseFormat`,
+`Temperature` and `TopP` (nullable too), `Seed`, `SystemMessage`, `ResponseFormat`,
 `Cache`, `Tools`, the grammar and the model; custom parameters merge, the call's keys winning.
 Every field the call sets wins. The settings that cannot be unset — the penalties (0, every
 vendor's default) and the tool mode — are the caller's, and `MaxRetries` and `Grammar` are read
 from the provider's configuration when it is built. A call cannot unset what its provider sets;
 it overrides it (`Thinking = { Enabled = false }`, `LlmResponseFormat.Text()`). The chat client
 adapter registered without a base configuration starts from the provider's own
-(`ILlmProvider.BaseConfig`). Before, the providers took a call's configuration whole
-(`config ?? Config`): the planner, the cognitive memory, the context-window and RaggableTree
-summarizers and the agent loops outside the chat client lost the key — "API key is required" —,
-the endpoint and the timeout of the provider they reached (GAP-29).
+(`ILlmProvider.BaseConfig`).
 
-**Sampling: what is set is sent, what is not set is not** (GAP-36). `Temperature` and `TopP`
+**Sampling: what is set is sent, what is not set is not.** `Temperature` and `TopP`
 are null when nothing sets them — not the call, not the agent, not the task, not the profile —
 and then nothing reaches the wire: the model applies its own default (often 1; the Modelfile's
-on Ollama). Set, they are sent whatever their value. The engine used to take 0.7 and 1.0 for
-"not set": an agent asking for exactly those ran on its profile's, and the 0.7 it pinned on every
-call nobody configured is refused by the default models of OpenAI (`gpt-5.6-sol`) and Anthropic
-(`claude-sonnet-5`). One measured exception: Mistral's dialect writes `top_p: 1` when nothing sets
+on Ollama). Set, they are sent whatever their value. A default model may refuse a sampling value it does not
+support (a pinned 0.7 on `gpt-5.6-sol` or `claude-sonnet-5`), which is why nothing is sent unless
+something sets it. One measured exception: Mistral's dialect writes `top_p: 1` when nothing sets
 one (`AlwaysEmitTopP`). The penalties, the seed and the stop sequences of an agent's configuration
 travel through the chat client too; on the wire, Ollama writes `top_p`, `seed` and `stop` in its
 `options`, and a dialect that has no field for a penalty or a seed says so with the structured
@@ -148,14 +144,14 @@ providers or Ollama — `ILlmProvider.Capabilities` is the declaration plus that
 And one is no vendor's at all: `ReplaysPrompt`, declared by the echo provider alone
 (`UndefinedLlmProvider`, the model of a host without an `Llm` section), says that what it returns
 is its prompt, never a model's answer — the crew's planner then skips its call with a warning
-instead of reading the prompt back as a plan (GAP-31). The decorators a provider is wrapped in
+instead of reading the prompt back as a plan. The decorators a provider is wrapped in
 (`MeteredLlmProvider`, `RateLimitedLlmProvider`) pass the capabilities through.
 `OpenAICompatibleProviderBase` translates the declaration into the OpenAI dialect once
 (vision payloads, `response_format`, thinking, the `CapabilityMismatchHint` diagnostics);
 Anthropic and Ollama write their own dialects, and Qwen overrides the hook for DashScope's
 thinking fields. An option a provider cannot honour produces a structured warning (event id
 `110`, `Option '…' was declared but … does not support it — it was not sent`) — never a
-silent drop; since GAP-36 that includes `frequency_penalty` and `presence_penalty` on every
+silent drop; that includes `frequency_penalty` and `presence_penalty` on every
 dialect, and `seed` wherever the dialect does not write it (all but Ollama). `CapabilityMismatchHint` (OpenAI-compatible providers and Ollama) covers the
 per-model side: when a vendor refuses a
 capability the provider declares (a text-only model sent an image, a model without thinking
@@ -167,8 +163,8 @@ streaming never retries). Kimi uses it for Moonshot's `invalid temperature: only
 allowed for this model` — the mandated value is read from the rejection itself (which
 models mandate it is decided server-side, a hard-coded list would drift) and the
 substitution is logged as a structured warning; only a temperature that was set and sent is
-replaced, since one nothing sets is not sent (GAP-36). Two more dialect seams serve the
-aggregators (LLM-09): `ReasoningFieldName` names the vendor field the reasoning trace is
+replaced, since one nothing sets is not sent. Two more dialect seams serve the
+aggregators: `ReasoningFieldName` names the vendor field the reasoning trace is
 read from (`reasoning_content` by default, `reasoning` on OpenRouter — the Orkeon metadata
 key stays `reasoning_content`), and `usage.cost` becomes the `cost` metadata wherever a
 vendor bills in the response — buffered or streamed — with `cost_currency` beside it when the
@@ -184,7 +180,7 @@ budgets; that estimate never reaches the wire. A chunk carrying a root-level `er
 the HTTP 200 ends a stream the way a pre-stream refusal does — `error` metadata on the chat stream, an
 `HttpRequestException` on the token stream — never as a clean completion. All 16 providers
 are `IStreamingLlmProvider`s. The chat client adapter's streaming path
-(`GetStreamingResponseAsync`, GAP-32) is built like its buffered one — the same messages,
+(`GetStreamingResponseAsync`) is built like its buffered one — the same messages,
 roles, tools and options — and reads the provider's chat stream (`ChatStreamingAsync`): the
 text as it arrives, then one last update carrying the tool calls (native or of the text
 protocol), the provider's usage, the finish reason, the model, the vendor's cost and the
@@ -195,16 +191,15 @@ property it carried, buffered or streamed, each call with its own: the adapter k
 provider's `tool_calls[i]` element on its `FunctionCallContent` and replays it whole, and the
 merge of streamed fragments keeps what a fragment adds beyond `index`, `id`, `type` and
 `function` — Gemini's thought signature (`extra_content.google.thought_signature`), which
-Gemini requires back, travels that way (LLM-14); a call that carried nothing else is replayed
-as `id`, `type` and `function`, as before. The streams themselves had to say what the buffered
-answers say: Anthropic now assembles the `tool_use` blocks it streams; MiniMax splits its
+Gemini requires back, travels that way; a call that carried nothing else is replayed
+as `id`, `type` and `function`. A stream says what the buffered answer says: Anthropic assembles the `tool_use` blocks it streams; MiniMax splits its
 leading `<think>` block out of the content deltas (`LeadingReasoningTag`), so the text a stream
 carries is the answer its final response keeps; and on the native protocol, the OpenAI dialect
 and Anthropic give a streamed answer the body their buffered answer carries, in which the
 text-protocol fallback reads a call the model wrote as text. The per-provider matrix lives in
 [the provider comparison](../reference/llm-providers-comparison.md).
 
-**Tool-call deltas (FWK-20).** The chat stream tells its caller about a tool call while the model builds it: `LlmStreamEventKind.ToolCallDelta` carries `ToolCallDelta(Index, Id, Name, ArgumentsDelta)`, and the terminal event still holds the whole call, unchanged. The OpenAI dialect (the fourteen providers that derive from `OpenAICompatibleProviderBase`, Azure OpenAI included) emits one delta per `delta.tool_calls` fragment; Anthropic one when a `tool_use` block opens (id and name) and one per `input_json_delta`; Ollama one complete delta per call, since it sends calls whole. None of the 16 providers is mute: a test checks that the three families cover them, so a provider added later must join one of them or say that it cannot (a structured warning, never a silent drop). The chat client adapter passes the fragments on as updates that carry no content, so the fold of the turn is the one it was; `ILlmDeltaSink.OnToolCallDelta` receives them (empty by default) and they ride the `llm.delta` event (`deltaKind: "tool_call"`). Reasoning deltas are not forwarded to the sinks. With a DLP interceptor of the external-output channel registered (`AddOrkeonDlp`), the arguments of each call are held by index until the stream ends, scanned whole and emitted as one delta, so a secret cut between two fragments is redacted; without one they stream as they arrive. A fallback chain (FWK-05) commits to a provider at its first event, a tool-call delta included: the partial deltas of a provider that failed before any event never reach the caller, and one that fails after reaching it keeps the call, its failure ending the stream.
+**Tool-call deltas.** The chat stream tells its caller about a tool call while the model builds it: `LlmStreamEventKind.ToolCallDelta` carries `ToolCallDelta(Index, Id, Name, ArgumentsDelta)`, and the terminal event still holds the whole call, unchanged. The OpenAI dialect (the fourteen providers that derive from `OpenAICompatibleProviderBase`, Azure OpenAI included) emits one delta per `delta.tool_calls` fragment; Anthropic one when a `tool_use` block opens (id and name) and one per `input_json_delta`; Ollama one complete delta per call, since it sends calls whole. None of the 16 providers is mute: a test checks that the three families cover them, so a provider added later must join one of them or say that it cannot (a structured warning, never a silent drop). The chat client adapter passes the fragments on as updates that carry no content, so the fold of the turn is the one it was; `ILlmDeltaSink.OnToolCallDelta` receives them (empty by default) and they ride the `llm.delta` event (`deltaKind: "tool_call"`). Reasoning deltas are not forwarded to the sinks. With a DLP interceptor of the external-output channel registered (`AddOrkeonDlp`), the arguments of each call are held by index until the stream ends, scanned whole and emitted as one delta, so a secret cut between two fragments is redacted; without one they stream as they arrive. A fallback chain commits to a provider at its first event, a tool-call delta included: the partial deltas of a provider that failed before any event never reach the caller, and one that fails after reaching it keeps the call, its failure ending the stream.
 
 ### Dialect seams of the OpenAI-compatible base
 
@@ -412,8 +407,7 @@ Cohere, Voyage and pgvector are not shipped.
   `AddOrkeonInfrastructure()` registers no model of its own: `orkeon run`, `orkeon-host` and
   `orkeon-repl` register theirs from the `Llm` section — or the echo provider when there is
   none — and a container that registers none fails at its first LLM resolution, naming the
-  missing service. Its former fallback, a keyless OpenAI provider, was the REPL's chat client
-  (GAP-29).
+  missing service.
 - **`RateLimitedLlmProvider`** — the host's `RateLimiting` at the entrance of each provider:
   every call takes one lease of the `ILlmRateLimiter` (global, per provider, concurrency) for
   the time of the call, a stream for its whole enumeration. It is applied with the meter, around
@@ -424,7 +418,7 @@ Cohere, Voyage and pgvector are not shipped.
   another limited call takes no lease (under `MaxConcurrentRequests: 1` it would wait on
   itself); a provider that runs its own tools (`RunsOwnTools`, the Microsoft Agent Framework
   bridge) is not limited itself — what it calls of Orkeon's model is. A refusal is retried five
-  times on its `RetryAfter`, then the call fails with the limiter's reason (GAP-38).
+  times on its `RetryAfter`, then the call fails with the limiter's reason.
 - **Call mode** — `CallModeLlmProvider` decides how each call of a provider built from a setting
   reaches the model, for every caller (agent loop, manager, planner, judges, RAG). The setting's
   `CallMode` key (`Llm:CallMode`, `Llm:Profiles:<name>:CallMode`) is `Auto` (absent or empty),

@@ -4123,6 +4123,7 @@ override Orkeon.Infrastructure.LLMs.HuggingFaceLlmProvider.DefaultModel.get -> s
 override Orkeon.Infrastructure.LLMs.HuggingFaceLlmProvider.ExtractResponseMetadata(System.Text.Json.JsonDocument! doc, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata) -> void
 override Orkeon.Infrastructure.LLMs.HuggingFaceLlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.HuggingFaceLlmProvider.ProviderDisplayName.get -> string!
+override Orkeon.Infrastructure.LLMs.KimiLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
 override Orkeon.Infrastructure.LLMs.KimiLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
 override Orkeon.Infrastructure.LLMs.KimiLlmProvider.DefaultBaseUrl.get -> System.Uri!
 override Orkeon.Infrastructure.LLMs.KimiLlmProvider.DefaultModel.get -> string!
@@ -4191,6 +4192,7 @@ override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.DefaultModel.get -> st
 override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.ExtractResponseMetadata(System.Text.Json.JsonDocument! doc, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata) -> void
 override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.ProviderDisplayName.get -> string!
+override Orkeon.Infrastructure.LLMs.ZaiLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
 override Orkeon.Infrastructure.LLMs.ZaiLlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
 override Orkeon.Infrastructure.LLMs.ZaiLlmProvider.DefaultBaseUrl.get -> System.Uri!
 override Orkeon.Infrastructure.LLMs.ZaiLlmProvider.DefaultModel.get -> string!

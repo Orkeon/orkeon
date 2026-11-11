@@ -2,8 +2,7 @@
 
 # Contenu multi-modal (vision)
 
-> Depuis le chantier R3.9, la vision est **réelle** : les contenus image circulent de
-> bout en bout, des abstractions `MultiModalContent` (Domain) jusqu'aux payloads des
+> Les contenus image circulent de bout en bout, des abstractions `MultiModalContent` (Domain) jusqu'aux payloads des
 > providers — blocs de contenu Anthropic, parts de contenu OpenAI (écrites une seule fois pour
 > les quatorze providers compatibles OpenAI) et tableau `images` d'Ollama. Ce guide décrit le
 > flux, les formats émis sur le fil, l'activation opt-in et les limites.
@@ -122,7 +121,7 @@ envoi, comme chez Anthropic et les providers compatibles OpenAI.
 
 ## Activation (opt-in)
 
-Le sous-système reste **opt-in** (décision R4.9) — voir
+Le sous-système reste **opt-in** — voir
 [Sous-systèmes opt-in](../reference/opt-in-subsystems.md) :
 
 ```csharp
@@ -147,7 +146,7 @@ redimensionnée : une image au-delà de la taille limite échoue à la validatio
 
 | Capacité | Supporté |
 |---|---|
-| Providers vision (capacité `Vision = true`) | Les 16 : Anthropic, OpenAI, Azure OpenAI, DeepSeek (natif sur `deepseek-flash` depuis V4.1 ; `deepseek-v4-pro` reste texte seul), Gemini, Grok, HuggingFace, Kimi, MiniMax (par modèle : `MiniMax-M3` voit, le `MiniMax-M2` par défaut non), Mistral, Ollama (`images` natif, par modèle), Qwen, Together AI (par modèle : `zai-org/GLM-5.3-Flash` voit, le Llama par défaut non), Z.AI (par modèle : le `glm-5.3-flashx` par défaut et `glm-5.3-flash` voient, `glm-5.2` non), OpenRouter (par modèle, non campagné) et Mammouth AI (par modèle, d'après la liste `text, image` du vendeur — non campagné) |
+| Providers vision (capacité `Vision = true`) | Les 16 : Anthropic, OpenAI, Azure OpenAI, DeepSeek (natif sur `deepseek-flash` depuis V4.1 ; `deepseek-v4-pro` reste texte seul), Gemini, Grok, HuggingFace, Kimi, MiniMax (par modèle : le `MiniMax-M3` par défaut voit, `MiniMax-M2` non), Mistral, Ollama (`images` natif, par modèle), Qwen, Together AI (par modèle : le `zai-org/GLM-5.3-Flash` par défaut voit), Z.AI (par modèle : le `glm-5.3-flashx` par défaut et `glm-5.3-flash` voient, `glm-5.2` non), OpenRouter (par modèle) et Mammouth AI (par modèle, d'après la liste `text, image` du vendeur) |
 | Modèle sans vision derrière un provider vision | Le refus du vendeur lui-même, attribué par `CapabilityMismatchHint` sur les providers compatibles OpenAI et Ollama (la capacité est déclarée par provider, la réalité est par modèle) |
 | Provider sans la capacité (un `ILlmProvider` tiers qui ne déclare rien) | Dégradation vers le repli texte `LlmMessage.Content`, avec un avertissement structuré nommant les parts abandonnées |
 | Types MIME image | `image/png`, `image/jpeg`, `image/gif`, `image/webp` |
@@ -161,10 +160,9 @@ Ollama refuse une part audio/fichier de la même façon.
 
 ## Interop Microsoft.Extensions.AI
 
-`ContentConverter.ToAIContents`/`FromAIContents` convertissent désormais les parts
-image/audio/fichier vers les types natifs `DataContent` (bytes) et `UriContent` (URI)
-de Microsoft.Extensions.AI (et inversement), au lieu de l'ancienne dégradation en
-descriptions textuelles.
+`ContentConverter.ToAIContents`/`FromAIContents` convertissent les parts
+image/audio/fichier vers les types natifs de Microsoft.Extensions.AI `DataContent` (octets)
+et `UriContent` (URI), et inversement.
 
 ## Tests
 

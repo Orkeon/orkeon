@@ -119,7 +119,7 @@ Markdown est un langage de premier rang de l'index, hors du chemin Tree-sitter :
 - un nœud `Section` par titre (niveaux 1 à 6, FQN imbriqué `<fichier>::Titre/Sous`, niveau L3) dont la plage court jusqu'au titre suivant de même niveau ou supérieur ;
 - un nœud `CodeFence` par bloc délimité (le langage est son tag ; un bloc `mermaid` porte aussi le tag `mermaid`), un nœud `Link` par lien (tag `target:<cible brute>`, plus `resolved:<fqn>` quand `MarkdownDocumentMapper.ResolveLinksAsync` retrouve la cible dans le store, par chemin ou par nom local ; un lien non résolu ne garde que sa cible brute) et un nœud `FrontMatter` pour un bloc YAML initial (les clés de premier niveau sont ses tags), tous de niveau L4.
 
-Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`), comme pour les autres langages. Les quatre nouvelles valeurs de `UniversalNodeKind` (`Section`, `CodeFence`, `Link`, `FrontMatter`) sont ajoutées après `Unknown` car le graphe persisté stocke l'enum par nom ; `Control` (un bouton, un champ, une liste d'une page web) les suit, pour l'outil `firefox`, dont `PageOutlineMapper` projette une page de la même façon — une `Section` par titre ou repère, un `Link` par lien, un `Control` par contrôle, dans un magasin propre à la page ([guide](../guides/firefox.md)). `codebase_search` restreint au langage `markdown` (son option `FilterLanguages`) renvoie les sections. Limites : un fichier `.md` n'a pas de nœud module dans l'arbre, donc un lien fichier vers fichier ne se résout que contre un store qui en contient un, et le build n'appelle pas encore `ResolveLinksAsync`.
+Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`), comme pour les autres langages. Les quatre valeurs Markdown de `UniversalNodeKind` (`Section`, `CodeFence`, `Link`, `FrontMatter`) sont ajoutées après `Unknown` car le graphe persisté stocke l'enum par nom ; `Control` (un bouton, un champ, une liste d'une page web) les suit, pour l'outil `firefox`, dont `PageOutlineMapper` projette une page de la même façon — une `Section` par titre ou repère, un `Link` par lien, un `Control` par contrôle, dans un magasin propre à la page ([guide](../guides/firefox.md)). `codebase_search` restreint au langage `markdown` (son option `FilterLanguages`) renvoie les sections. Limites : un fichier `.md` n'a pas de nœud module dans l'arbre, donc un lien fichier vers fichier ne se résout que contre un store qui en contient un, et le build n'appelle pas encore `ResolveLinksAsync`.
 
 ## Catalogue de tools
 
@@ -322,8 +322,8 @@ Le framework expose `ICodebaseContextProvider` qui produit un résumé compact d
 
 ## Recherche hybride
 
-`codebase_search` (et `IRaggableStore.SemanticSearchAsync`) est **hybride** depuis le
-chantier fraîcheur : un classement cosinus par embeddings et un classement lexical BM25
+`codebase_search` (et `IRaggableStore.SemanticSearchAsync`) est **hybride** : un
+classement cosinus par embeddings et un classement lexical BM25
 sont fusionnés par Reciprocal Rank Fusion (`SemanticQuery.Mode` : `Hybrid` par défaut /
 `Vector` / `Lexical`). Le versant lexical utilise un **tokenizer conscient du code**
 (`CodeTokenizer`) : les identifiants sont découpés aux frontières camelCase / snake_case /
@@ -333,7 +333,7 @@ exact gardent leur signal fort tandis que les requêtes conceptuelles gagnent en
 Chaque `SearchHit` porte `MatchOrigin` (`hybrid`/`vector`/`bm25`) ; les scores hybrides
 sont des **agrégats de rangs** RRF (pas des similarités — ne jamais les comparer entre
 origines). Sans embedder câblé, `Hybrid` dégrade vers `Lexical` au lieu de renvoyer vide ;
-un `Vector` explicite conserve le contrat historique.
+un `Vector` explicite ne renvoie aucun résultat sans embedder.
 
 ## Fraîcheur (coordination édition ↔ recherche)
 
@@ -351,8 +351,7 @@ L'index reste fidèle à un workspace en cours d'édition grâce à une concepti
   `codebase_search` rapportent `refreshed_files` ; `index_status` rapporte
   `dirty_count`/`dirty_paths`, de sorte que le « périmé » est observable.
 - **Sûreté du store** — `InMemoryRaggableStore` détient un `ReaderWriterLockSlim` : les
-  recherches énumèrent en sécurité PENDANT une réindexation incrémentale (auparavant une
-  recherche concurrente pouvait lever sur les dictionnaires mutés). Le rafraîchissement
+  recherches énumèrent en sécurité PENDANT une réindexation incrémentale. Le rafraîchissement
   publie `RaggableTreeUpdated` sur l'`IRaggableTreeEventBus`.
 - **Borne** — la réindexation remplace les nœuds et arêtes de chaque fichier modifié et
   réutilise tous les autres nœuds : son coût est proportionnel aux fichiers modifiés, pas
@@ -363,13 +362,9 @@ L'index reste fidèle à un workspace en cours d'édition grâce à une concepti
   conserve la dette de saleté pour la tentative suivante : un résultat périmé vaut mieux
   qu'une recherche morte.
 
-Note historique : une version antérieure de ce document décrivait trois modes de
-synchronisation pilotés par le watcher (`frozen`/`live`/`breakOnChange` via
-`RaggableTreeIndexMode`). Ces modes n'ont jamais été consommés par aucun code — l'enum
-existait, rien ne la lisait, et elle a été supprimée avec la clé `IndexMode` (GAP-15). La conception de fraîcheur ci-dessus remplace cette fiction ;
-`ICodebaseWatcher` (`FileSystemWatcherCodebaseWatcher`, qu'aucun hôte livré n'enregistre)
-reste disponible pour les hôtes qui veulent une invalidation en push
-par-dessus la passe paresseuse.
+Il n'existe pas de mode de synchronisation piloté par un watcher : `ICodebaseWatcher`
+(`FileSystemWatcherCodebaseWatcher`, qu'aucun hôte livré n'enregistre) reste disponible pour
+les hôtes qui veulent une invalidation poussée en plus de la passe paresseuse.
 
 ## Sélecteurs
 
@@ -439,7 +434,7 @@ Les outils de nœuds et les outils structurels lisent un fichier dans toute gram
 | `doc_section` | `Section` |
 | `test` | nœud `Method` portant le tag `test` |
 
-`EdgeKind` gagne `Tests`, `Documents` et `ProjectDepends` (flags `1<<5` à `1<<7`). Il n'y a pas de genre `references` : rien ne le produit. Les arêtes `documents` relient une section Markdown aux symboles qu'elle nomme (voir [Requêtes sur le graphe](#requêtes-sur-le-graphe)).
+`EdgeKind` compte aussi `Tests`, `Documents` et `ProjectDepends` (flags `1<<5` à `1<<7`). Il n'y a pas de genre `references` : rien ne le produit. Les arêtes `documents` relient une section Markdown aux symboles qu'elle nomme (voir [Requêtes sur le graphe](#requêtes-sur-le-graphe)).
 
 ### Utiliser les noms
 
@@ -474,7 +469,6 @@ Entrée : `changed_files` ou `base` (une ref git dont le diff donne les fichiers
 - Une extension neutre (`.md`, `.txt`, `.png`, ...) est exemptée. `.claude/` et le dossier de travail sont ignorés.
 - `all` vaut `true` quand un fichier non neutre n'est pas dans l'index, n'a pas de projet propriétaire, ou quand l'expansion est tronquée.
 - Limites : `project_depends` vient des seuls csproj ; les tests TypeScript sont étiquetés mais sans arêtes `tests` ; une arête `tests` entre fichiers n'existe qu'après une réindexation complète.
-- Parité : la réponse correspond au script du harness `affected-tests.py`.
 
 ### `batch_anchors`
 
@@ -573,7 +567,7 @@ Cinq membres existent sur `EmbeddingProviderKind` :
 
 Implémenté par `Orkeon.Tools.Embeddings.Local` (package opt-in, package upstream `SmartComponents.LocalEmbeddings` v0.1.0-preview10148, modèle BGE-micro-v2). Adapté aux contextes CLI dev, indexation CI offline, démos sans clé d'API.
 
-**Trade-off qualité / coût** (cf. spec §10) :
+**Trade-off qualité / coût** :
 
 - 384 dimensions vs 1536 (OpenAI) — recherche sémantique moins fine sur du Q&A factuel hors-domaine.
 - Score MTEB ~58.5 vs ~62.3 — acceptable pour l'indexation de code (les signatures, FQN et docstrings sont des signaux structurés moins ambigus que du texte long).
@@ -582,7 +576,7 @@ Implémenté par `Orkeon.Tools.Embeddings.Local` (package opt-in, package upstre
 - Démarrage à froid ~150-300 ms (chargement ONNX en mémoire) ; ~5-15 ms / texte sur CPU x86_64 moderne.
 - Empreinte RAM ~200 MB une fois le modèle chargé.
 
-#### Configuration minimale (`appsettings.json`, cf. spec §7.2)
+#### Configuration minimale (`appsettings.json`)
 
 ```jsonc
 {
@@ -609,7 +603,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 });
 ```
 
-#### Configuration étendue avec `ModelPath` VFS (cf. spec §7.3)
+#### Configuration étendue avec `ModelPath` VFS
 
 Pour pointer vers un autre modèle ONNX que le BGE-micro-v2 embarqué, déclarer un mount VFS lecture seule et passer un chemin **virtuel** dans `LocalEmbeddingOptions.ModelPath` (`Orkeon.Analysis.Abstractions.DependencyInjection`). Les chemins physiques (`C:/...`, `/var/...`) sont rejetés par `IFileSystemService` — voir [vfs-compliance.md](./vfs-compliance.md). Ces options se positionnent **en C#** : le runner host ne lit pas de section `RaggableTree:Embedding:Local` et enregistre toujours le modèle embarqué avec ses défauts.
 

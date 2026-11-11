@@ -58,11 +58,10 @@ agents et ne regarde jamais les tâches. L'adaptateur déclaratif n'invoque jama
 **La règle :** si vous écrivez `.body()`, vous êtes en procédural. Si vous écrivez `withTask`,
 vous êtes en déclaratif. Jamais les deux dans un fichier.
 
-L'échec que cela prévient était silencieux. Une crew avec trois tâches soigneusement écrites
-qui se termine par `await crew.run()` s'exécute toujours, affiche un résultat et **ignore
-chaque tâche** — mais elle journalise désormais un avertissement qui le dit, et la forme
-déclarative avertit symétriquement pour le `.body()` qu'elle n'invoquera jamais. L'exécution
-reste fausse ; elle n'est plus muette. C'est l'erreur la plus coûteuse de ce DSL, d'où sa
+Une crew avec trois tâches soigneusement écrites qui se termine par `await crew.run()`
+s'exécute, affiche un résultat et **ignore chaque tâche** ; elle journalise un avertissement
+qui le dit, et la forme déclarative avertit symétriquement pour le `.body()` qu'elle
+n'invoquera jamais. L'exécution reste fausse, mais pas en silence. C'est l'erreur la plus coûteuse de ce DSL, d'où sa
 place en tête de page plutôt qu'en note de bas de page.
 
 ## Forme A — la crew déclarative
@@ -326,13 +325,13 @@ vaut mieux connaître avant d'en être surpris :
 
 | Message | Cause |
 |---|---|
-| `did not assign globalThis.crew` | `--validate`, ou un runner qui veut la forme déclarative, sur un fichier finissant par `await crew.run()`. |
+| `did not assign globalThis.crew` | Un runner qui ne charge que la forme déclarative (le démon `orkeon-host`, un hôte qui appelle `ScriptHost.LoadCrewFromFileAsync`) recevant un fichier finissant par `await crew.run()`. |
 | La crew tourne mais chaque tâche est ignorée | L'inverse : `withTask` dans un fichier finissant par `await crew.run()`. |
 | `Crew configuration references unknown tool(s): x` | Un nom dans `.tools([...])` absent du catalogue de l'hôte. Le message liste tous les noms disponibles. |
 | `Agent 'a' lists unknown tool(s) in .tools([...])` (une `UnknownToolError`) | Le pendant procédural : `ctx.llm.act` refuse de tourner, avant tout appel au modèle, pour un agent dont `.tools([...])` nomme un outil que l'hôte n'offre pas. Le message liste ceux qui sont disponibles. |
 | `FSM transition 'a.b' targets undeclared state 'c'` | Un `target` qui n'est pas une clé de `states`. |
 | `stateGraph literal must declare an edge from START` | `edges` écrit comme un tableau. C'est un objet indexé par nœud source. |
-| `stateGraph has no path from START to END` | Aucune route statique ; ajoutez-en une ou passez par une arête conditionnelle. |
+| `stateGraph '…' has an invalid topology: … Graph has no path from START to END.` | Aucune route statique ; ajoutez-en une ou passez par une arête conditionnelle. |
 | `StateMutationOutsideWithException` | `ctx.state.x = …` au lieu de `ctx.state.with(...)`. |
 | `.concurrency must be positive` / `V1 supports .concurrency(1) only` | Le sémaphore à N détenteurs est en V1.5. |
 | `RecursiveAgentInvocationException` | `ctx.spawn` d'un agent portant le nom de l'appelant, ou `ctx.delegate` / `crew.runAgent` de l'agent appelant lui-même. |
@@ -342,7 +341,9 @@ vaut mieux connaître avant d'en être surpris :
 
 ## Hors périmètre, volontairement
 
-`budget()` et `globalThis.inputs` ne font rien sur le chemin déclaratif ; `.body()` non plus.
+Sur le chemin déclaratif, `globalThis.inputs` n'est jamais planté, et `budget()` ne borne la
+crew que sous `.process("autonomous")` — tout autre process refuse la crew ; `.body()` n'y fait
+rien non plus.
 Il n'existe pas de méthode d'inclusion conditionnelle — gardez l'appel `withAgent`/`withTask`
 avec un `if` à la place. `ctx.llm.embed` rend un vecteur bidon. La liste complète, avec ce que chacun
 fait réellement, est dans

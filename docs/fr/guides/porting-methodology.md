@@ -331,6 +331,6 @@ else
     // Échec — la raison, puis les tasks en erreur
     Console.Error.WriteLine($"Crew failed: {output.Error}");
     foreach (var failed in output.TaskOutputs.Where(t => !t.Success))
-        Console.Error.WriteLine($"Task {failed.TaskId} failed: {failed.RawOutput}");
+        Console.Error.WriteLine($"Task {failed.TaskId} failed: {failed.Content}");
 }
 ```

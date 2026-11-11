@@ -195,5 +195,19 @@ class DocsCountTests(unittest.TestCase):
         self.assertEqual("", self.errors_for("102 built-in tools", "docs/fr/adr/ADR-099.md"))
 
 
+class VersionMentionTests(unittest.TestCase):
+    def test_a_release_candidate_is_a_version_mention(self) -> None:
+        for line in ("install 1.0.0-rc.7", "the rc.7 cut", "1.0.0~rc.2 on apt"):
+            self.assertIsNotNone(gate.VERSION_MENTION.search(line), line)
+
+    def test_a_final_version_after_the_product_name_is_a_version_mention(self) -> None:
+        for line in ("Orkeon 1.0.0 ships it", "since Orkeon v1.2.3"):
+            self.assertIsNotNone(gate.VERSION_MENTION.search(line), line)
+
+    def test_a_bare_final_version_is_not_one(self) -> None:
+        for line in ('"version": "1.0.0"', "`1.0.1-dev.<n>` after `1.0.0`", "range [1.0.0,2.0.0)"):
+            self.assertIsNone(gate.VERSION_MENTION.search(line), line)
+
+
 if __name__ == "__main__":
     unittest.main()

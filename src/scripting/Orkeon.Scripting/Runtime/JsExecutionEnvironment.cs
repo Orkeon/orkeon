@@ -68,6 +68,9 @@ internal sealed record JsExecutionEnvironment
     /// <summary>Optional durable store behind <c>ctx.memory.agent</c> (RT-16).</summary>
     public Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
 
+    /// <summary>Optional run event stream: told each time this agent spawns a child (<c>agent.spawned</c>).</summary>
+    public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
+
     /// <summary>
     /// The configured tool-result cuts and fan-out bound of <c>ctx.llm.act</c>; a host sets it from
     /// <c>IOptions&lt;ToolResultLimitsOptions&gt;</c>, the defaults apply otherwise.

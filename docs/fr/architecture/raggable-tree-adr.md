@@ -118,12 +118,17 @@ le texte ci-dessus est conservé tel quel :
 
 ## Amendement 2026-10-29
 
-Quatre affirmations de l'enregistrement et de ses amendements ci-dessus sont
+Six affirmations de l'enregistrement et de ses amendements ci-dessus sont
 périmées ; l'enregistrement ci-dessus est conservé tel quel.
 
-- **Tools** : `AddRaggableTreeTools` enregistre désormais **28** tools, et non 15
+- **Tools** : `AddRaggableTreeTools` enregistre **29** tools, et non 15
   (amendement du 2026-08-18) ; les « 27 points d'extension » qui en étaient
-  dérivés ne tiennent plus. [Le guide RaggableTree](./raggable-tree.md) les liste.
+  dérivés ne tiennent pas. [Le guide RaggableTree](./raggable-tree.md) les liste.
+- **Adapters** : douze adapters de langage intégrés, et non cinq.
+- **Cache d'index** : le cache des risques acceptés est une base SQLite versionnée
+  (`RaggableTreeCache`, `PRAGMA user_version`), enregistrée par `AddRaggableTree` et
+  utilisée par `index_codebase` dans chaque hôte livré ; voir
+  [Cache d'index](./raggable-tree.md#cache-dindex).
 - **Arêtes** : `EdgeKind` a huit valeurs, et non les cinq nommées sous Décision :
   `Imports`, `Calls`, `Extends`, `Implements`, `Contains`, plus `Tests`,
   `Documents` et `ProjectDepends`.

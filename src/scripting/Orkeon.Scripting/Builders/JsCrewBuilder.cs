@@ -65,6 +65,9 @@ public sealed partial class JsCrewBuilder
     /// <summary>The durable store behind <c>ctx.memory.agent</c> the host wired (RT-16).</summary>
     internal Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
 
+    /// <summary>The run's event stream a scripted spawn reports to (<c>agent.spawned</c>); null when nobody watches.</summary>
+    internal Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
+
     /// <summary>The host's DLP for streamed tool calls; null streams the fragments as they arrive.</summary>
     internal Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
 
@@ -227,6 +230,7 @@ public sealed partial class JsCrewBuilder
             ToolCallDlp = ToolCallDlp,
             ToolInvocation = _toolInvocation,
             AgentMemoryStore = AgentMemoryStore,
+            RunEvents = RunEvents,
             ToolLimits = ToolLimits,
             AgentInstances = AgentInstances,
             Mounts = Mounts,

@@ -6,18 +6,8 @@ Orkeon enforces a **Virtual File System (VFS) only** principle on framework code
 
 This document describes:
 - the `Orkeon.Compliance.Vfs` Roslyn analyzer that enforces the rule at build time
-- its seven diagnostic codes and their severities
+- its seven `ORKVFS` diagnostic codes and their severities (the same analyzer also carries `ORKCON001`, see [Console compliance](console-compliance.md))
 - the exempt scopes and how to opt out for documented exceptions
-- the exit criteria from the VFS migration programme
-
-> **VFS-70 (2026-06-17):** all tool/service `IFileSystemService` dependencies are now
-> **required** (non-nullable) — the `EXCEPTION-BACKCOMPAT` `if (_fs is null) { …System.IO… }`
-> fallbacks have been eliminated, the FS-related `[Obsolete]` shims removed, and the knowledge
-> ingestion path fully routed through the VFS (the `KnowledgeService` audited then was replaced
-> by the `Orkeon.Rag` loaders in RAG-02 — same VFS rule, `FileDocumentLoaderBase`). SQLite persistence (`SqliteMemoryProvider`, `SqliteStateStore`) now
-> resolves its `Data Source` file through `ResolveAndValidate` (decision 2F-A); the RaggableTree
-> batch discovery runs on `IFileSystemService.EnumerateFilesAsync` (decision 2E-A). Two new rules
-> (`ORKVFS006`, `ORKVFS007`) close the previously-undetected blind spots.
 
 ## The analyzer
 
@@ -83,21 +73,19 @@ The `reason` argument is mandatory and should name the audit category it belongs
 - `EXCEPTION-WATCHER-BRIDGE` — adapter that wraps `System.IO.FileSystemWatcher` to implement an Orkeon watcher port.
 - `OUT-OF-SCOPE` — host-level probing (SDK install path, system binary discovery) that never targets a VFS mount.
 
-> **Retired categories (VFS-70):** `EXCEPTION-BACKCOMPAT` and `EXCEPTION-OBSOLETE` are **no longer
-> accepted**. All tools/services require a non-nullable `IFileSystemService` (a nullable one now
-> trips `ORKVFS007`) and the FS-related `[Obsolete]` shims were deleted. Do not reintroduce either
-> category.
+`EXCEPTION-BACKCOMPAT` and `EXCEPTION-OBSOLETE` are not accepted categories: every tool or service
+takes a non-nullable `IFileSystemService` (a nullable one trips `ORKVFS007`).
 
 Any new class of exception should first be captured in the VFS compliance audit (the maintainers' archive, `audit-vfs-compliance-*`) before a suppression is added.
 
-### Ratified permanent exceptions (2D)
+### Ratified permanent exceptions
 
 These accesses cannot go through the VFS by nature and are **permanently** allowed via the inline `[SuppressVfsCompliance]` markers above (or the path allowlist):
 
 | Area | Location | Category | Why |
 |---|---|---|---|
 | VFS implementation | `Domain/FileSystem/*`, `Infrastructure/FileSystem/*` | (the abstraction) | It *is* the VFS |
-| Bootstrap (pre-DI) | `SandboxSession`, ConsoleApp `Cli*MountBootstrapper`, `Hosting/Runner*`, `Hosting/CrewMountDeclarations` (pre-reads a crew's `mounts:` block, VFS-90) | `EXCEPTION-BOOTSTRAP` | Read appsettings + mount before the VFS exists. Covers *provisioning* a mount, never exposing a physical path as a virtual one — see [ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md) |
+| Bootstrap (pre-DI) | `SandboxSession`, ConsoleApp `Cli*MountBootstrapper`, `Hosting/Runner*`, `Hosting/CrewMountDeclarations` (pre-reads a crew's `mounts:` block) | `EXCEPTION-BOOTSTRAP` | Read appsettings + mount before the VFS exists. Covers *provisioning* a mount, never exposing a physical path as a virtual one — see [ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md) |
 | Host probing | `DockerSandbox`, `HostProcessRunner`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Discover `docker`/`dotnet`/`git` on PATH, never a mount |
 | Toolchain | `Scripting/Toolchain/EsbuildTranspiler.cs` | `OUT-OF-SCOPE` | Locates the `esbuild` binary + transpile temp files; host toolchain |
 | Toolchain (type check) | `Scripting/Toolchain/TscTypeChecker.cs` | `OUT-OF-SCOPE` (locating `tsc`), `EXCEPTION-BOOTSTRAP` (the scratch folder) | `tsc` is an external process that reads and prints physical paths, so the checker writes a scratch folder (typings roll-up, tsconfig, copies of the script and of its imported modules with the `orkeon-script` pragma blanked) under the temp directory, outside the VFS and unmounted: nothing in the framework reads it back. Every path of the compiler's output and of a failure message is mapped to its virtual path before display; the folder is deleted at the end, also on cancellation |
@@ -105,7 +93,7 @@ These accesses cannot go through the VFS by nature and are **permanently** allow
 | Security primitive | `Security/PathValidator.cs` | (allowlist) | symlink/realpath resolution is its job |
 | Watcher bridge | `Analysis/.../FileSystemWatcherCodebaseWatcher.cs` | `EXCEPTION-WATCHER-BRIDGE` | Adapts `System.IO.FileSystemWatcher` to `ICodebaseWatcher` |
 | RaggableTree probe | `Analysis/Core/FileSystemDiscoverer.cs` (diagnostic probe only) | `OUT-OF-SCOPE` | The *batch discovery itself* runs on `EnumerateFilesAsync`; the probe deliberately counts physical entries to distinguish "VFS yielded nothing" from "disk empty" |
-| SQLite persistence | `SqliteMemoryProvider`, `SqliteStateStore` | governed | The engine needs a real path; the `Data Source` is resolved via `ResolveAndValidate` (decision 2F-A) before reaching the driver |
+| SQLite persistence | `SqliteMemoryProvider`, `SqliteStateStore` | governed | The engine needs a real path; the `Data Source` is resolved via `ResolveAndValidate` before reaching the driver |
 
 ## Adding a new tool or service
 
@@ -132,7 +120,7 @@ A mount is declared as a string — `[<ulid>|]<physical>:<virtual>:<rights>[;<su
 - `<rights>` is `ro` (`FileAccessRights.ReadOnly`), `rw` (`ReadWrite` = Read, Write, Create,
   Delete) or `rwnd` (`ReadWriteNoDelete`); each `;<subpath>:<rights>` overrides the rights of a
   subtree.
-- The optional 26-character ULID before `|` identifies the entry (VFS-90) — see the
+- The optional 26-character ULID before `|` identifies the entry — see the
   [configuration reference](../reference/configuration.md).
 
 `FileAccessRights` is a flags enum (`Read`, `Write`, `Create`, `Delete`); every operation
@@ -158,7 +146,7 @@ the boot one while it still mounts it.
   (`WorkingDirectoryResolver.Absolutize`): `src/./lib/../stats.js` becomes
   `/workspace/src/stats.js`, every later call addresses that path, and the response echoes it. The path is made absolute
   **before** the mount check and the root guard, so `../p2/x` from a root `/workspace/wt/p1` is
-  refused as outside the root. With no working directory a relative path is refused as before.
+  refused as outside the root. With no working directory a relative path is refused.
   `structural_search` and `structural_rewrite` (`paths`), `txt_search` and `mdx_search` (`path`)
   resolve the same way, and every tool of this list, `node_outline` and `node_read` included,
   refuses a path outside the agent's root before any I/O.
@@ -167,8 +155,8 @@ the boot one while it still mounts it.
 - A path that starts with no mount is refused with the shape of an address:
   `No mount found for virtual path 'x': a path starts with a mount: /workspace/src/stats.js. Available mounts: ...`.
 - `shell_command` without `working_directory` runs in the agent's root, else in the working
-  directory; a relative `working_directory` resolves the same way. It no longer falls back to the
-  first mount that grants the rights (which could be `/session-history`): with mounts but no
+  directory; a relative `working_directory` resolves the same way. It never falls back to the
+  first mount that grants the rights: with mounts but no
   working directory the call is refused and names the mounts. The relative `working_directory` is
   made absolute before the root guard, so `../p2` from a root `/workspace/wt/p1` is refused.
 - A **write directory** (`FileSystemRegistry.WriteDirectory`, `IFileSystemService.WriteDirectory`)
@@ -217,7 +205,8 @@ Absent, nothing changes: the mounts alone confine the agent.
 
 A runner mounts a few roots for itself as **internal** mounts (`Orkeon:FileSystem:InternalMounts`,
 `MountVisibility.Internal`): `/llm-logs` (the `--llm-log` exchange files), `/sandbox` (where the
-code sandboxes stage what they run) and `/credentials` (the OAuth tokens of the e-mail accounts —
+code sandboxes stage what they run), `/state` (the checkpoint store), `/runs` (the run history),
+`/llm-mock` and `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) and `/credentials` (the OAuth tokens of the e-mail accounts —
 mounted only when an OAuth account is declared). The registry refuses an internal mount to every
 ordinary caller and reports it like a path that does not exist, so no agent-facing tool can reach
 or even name one ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). The few
@@ -264,15 +253,14 @@ virtual paths they claim; substitution rather than addition is the point of the 
 two crews each granted `/output` over different folders is exactly what one flat registry cannot
 express.
 
-Both halves of the boot set have to survive, for different reasons. The **Internal** ones —
-`/llm-logs`, `/sandbox`, `/credentials` — are a confidentiality matter: dropping them stops
+Both halves of the boot set have to survive, for different reasons. The **Internal** ones
+(`RunnerVirtualRoots`: `/llm-logs`, `/sandbox`, `/state`, `/runs`, `/credentials`, …) are a confidentiality matter: dropping them stops
 exchange logging, both code sandboxes and the e-mail token store resolving, and it drops
 `IsUnderInternalMountUnsafe`, the check that stops any of them gaining a second, agent-reachable
 address through one of the execution's own mounts. The **agent-facing** ones are just as load-bearing: `orkeon-host` mounts each hosted
 crew's directory under `/crews` and then loads the crew *by that virtual path, from inside the
-scope*. Composing only the execution's own mounts made `Orkeon:Host:Crews:*:Mounts` — the
-feature's own configuration key — unable to load the crew it was set on, and the failure came back
-as a generic run-failed message because `ExistsAsync` swallows the denial.
+scope*. A registry composed of the execution's own mounts alone would leave the crew unreachable, and
+`ExistsAsync`, which swallows the denial, would surface it as a generic run failure.
 
 **Who enters one today.** `orkeon-host` is the one shipped runner host that does, once per
 hosted crew, from `Orkeon:Host:Crews:*:Mounts` — so two hosted crews may each address their own
@@ -290,12 +278,3 @@ the scoped `FileSystemRegistry`'s lifetime (`Enter` does not dispose it — disp
 ## CI behaviour
 
 All seven diagnostics (`ORKVFS001`–`ORKVFS007`) are **errors**, so CI blocks any merge that reintroduces `System.IO` file access, a string-path `StreamReader`/`StreamWriter`, a `Path.GetFullPath` on user input, or a nullable `IFileSystemService` in framework code without a justified `[SuppressVfsCompliance]` attribute.
-
-## Exit criteria (from the VFS migration programme)
-
-- [x] `VIOLATION-HISTORIC == 0` — the 23 historic violations were eliminated in P5-VFS-50.
-- [x] `VIOLATION-NEW` reduced to documented exceptions behind `[Obsolete]` / `if (_fs is null)` guards, all covered by `[SuppressVfsCompliance]`.
-- [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — 7 at the programme's close (a figure of that moment, not a current count), all legitimate (`SandboxSession`). The threshold measured the framework libraries; the host applications added since (runners, `orkeon-host`, the REPL) carry their own bootstrap scopes, listed in the ratified table above.
-- [x] Roslyn analyzer `Orkeon.Compliance.Vfs` in place and wired in `src/Directory.Build.props`.
-- [x] Build passes clean; negative test confirms a deliberate `File.ReadAllText` in framework code trips `ORKVFS001`.
-- [x] Eliminate residual `EXCEPTION-BACKCOMPAT` suppressions by migrating all tool callers to DI — **done in VFS-70**: 0 `EXCEPTION-BACKCOMPAT` and 0 FS-related `EXCEPTION-OBSOLETE` remain in `src/`; all file tools + the knowledge ingestion path (now the `Orkeon.Rag` loaders, RAG-02) require a non-nullable `IFileSystemService`; SQLite governed via `ResolveAndValidate`; `ORKVFS004` promoted to error and `ORKVFS006`/`ORKVFS007` added to close the `StreamReader/Writer(string)` and nullable-`IFileSystemService` blind spots.

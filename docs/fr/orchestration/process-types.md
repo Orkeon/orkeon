@@ -69,11 +69,11 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 - **Ce qu'il écrit** — `{"plans": [{"task": 1, "plan": "1. …"}]}` : au plus 8 étapes numérotées par tâche, qui nomment les outils à employer là où un outil aide. La forme de la réponse est contrainte autant que le fournisseur le peut (`json_schema`, sinon `json_object`, sinon le prompt seul) et lue avec tolérance — un bloc entre ```` ``` ```` ou une phrase autour de l'objet.
 - **Où il va** — dans le prompt utilisateur de la tâche, après la tâche (description, sortie attendue, livrable) et avant les variables de contexte, sous *Plan for this task, from the crew's planner — follow it where it helps; the task above prevails:*, coupé à 2 000 caractères. Le Guardian le filtre avec le reste du prompt, et le plan de chaque tâche est journalisé sur une ligne en `Information` (`--verbose 1`). La tâche elle-même n'est jamais modifiée : la requête de connaissance, le souvenir rangé et les prompts du manager lisent la tâche, pas son plan. Le run tient son plan dans une portée à lui (`CrewPlanScope`), lue là où les exécutions de chaque mode composent leur prompt — deux runs d'une même crew ne lisent jamais le plan l'un de l'autre.
 - **Dans chaque mode** — Sequential, Parallel et Graph (chaque essai) : l'agent de la tâche. Hierarchical : le travailleur que choisit le manager, et chaque révision qu'il demande ; les prompts du manager ne changent pas. Consensual : chaque réponse candidate — un bulletin, tâche à part, non. Autonomous : l'agent qui prend la tâche, et le pair à qui elle est confiée après un échec, qui reprend la tâche elle-même.
-- **Il ne change ni l'ordre ni les agents** — avec ou sans plan, une crew exécute les mêmes tâches, dans le même ordre, sur les mêmes agents. (Un plan rendait un ordre, des affectations d'agents et des groupes parallèles ; son ordre était suivi sous les dépendances, si bien que la sortie de la crew, le contexte d'une tâche et le tourniquet de Parallel en dépendaient.)
+- **Il ne change ni l'ordre ni les agents** — avec ou sans plan, une crew exécute les mêmes tâches, dans le même ordre, sur les mêmes agents.
 - **Quand ça se passe mal** — le plan est un conseil. Une réponse illisible est redemandée une fois, avec ce qui n'a pas pu être lu, puis la crew tourne sans plan, avec un avertissement — qui le dit quand la réponse s'est arrêtée au `MaxTokens` du profil. Une tâche que le plan oublie s'exécute sans plan, avec un avertissement qui la nomme ; un numéro donné deux fois garde son premier plan et un numéro inconnu est ignoré, chacun avec un avertissement. Seul un fournisseur en panne — une clé refusée, un point d'accès injoignable — fait échouer le run, avant sa première tâche, avec la raison du fournisseur.
 - **Sur le fournisseur écho** — celui d'un hôte sans section `Llm`, qui renvoie son prompt au lieu d'y répondre (`LlmProviderCapabilities.ReplaysPrompt`) — la planification est sautée avec un avertissement (*planning skipped — the echo provider cannot plan*, avec le remède, `orkeon init`), et la crew va au bout comme tout run sans clé.
 - **Coût** — un appel par run (deux après une réponse illisible), donc un par entrée sous `KickoffForEachAsync` et un par message dans `orkeon-host`, dont le prompt croît avec la crew ; et le plan de chaque tâche voyage avec chaque tour de la boucle de son agent, ce que la borne de 2 000 caractères contient.
-- **En streaming aussi** — un run en streaming (`KickoffStreamingAsync`, une API C#) est le même run : il planifie, et chaque tâche lit son plan, comme avec `KickoffAsync` (GAP-32).
+- **En streaming aussi** — un run en streaming (`KickoffStreamingAsync`, une API C#) est le même run : il planifie, et chaque tâche lit son plan, comme avec `KickoffAsync`.
 
 **Classes clés** : `CrewPlanner` et `PlanningContext` (Domain), `ExecutionPlanParser`, `CrewPlanScope` et `AgentPromptComposer`.
 
@@ -83,7 +83,7 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 
 | Critère | Sequential | Hierarchical | Parallel | Consensual | Graph | Autonomous |
 |---------|-----------|-------------|---------|-----------|-------|-----------|
-| **Modèle d'exécution** | Linéaire | Linéaire + revue du manager | Vagues de dépendances, concurrence dans une vague | Tous les agents par tâche + bulletins de pairs | Linéaire + cycle de retry | Assignation par le manager, délégation sur échec |
+| **Modèle d'exécution** | Linéaire | Linéaire + revue du manager | Vagues de dépendances, concurrence dans une vague | Tous les agents par tâche + bulletins de pairs | Linéaire, ou les nœuds et arêtes de `graph:` (arêtes conditionnelles, boucles) | Assignation par le manager, délégation sur échec |
 | **Choix de l'agent** | Déclaré, sinon sélecteur | LLM manager | Déclaré, sinon sélecteur | Tous les agents | Déclaré, sinon sélecteur | LLM manager |
 | **Dépendances entre tâches** | Ordre + saut sur échec | Ordre + saut sur échec | Vagues + saut sur échec | Ordre + saut sur échec | Ordre + saut sur échec | Ordre + saut sur échec |
 | **Une tâche échouée fait échouer la crew** | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ après ses retries (dépendantes sautées) | ✅ (dépendantes sautées ; un budget épuisé aussi) |
@@ -109,9 +109,9 @@ Les tâches de décision et les conditions `when` sont décrites dans [Modèles 
 
 Les tâches s'exécutent **une par une** — sauf une tâche `asyncExecution: true`, qui tourne pendant les tâches qui la suivent (voir [Tâches asynchrones](#tâches-asynchrones-asyncexecution)). Chaque tâche reçoit en contexte les sorties des tâches exécutées avant elle. L'assignation des agents suit la règle ci-dessus : l'`agent:` de la tâche s'il est déclaré, sinon le sélecteur configuré (round-robin par défaut).
 
-**Ordre d'exécution** — avec ou sans plan, qui ne le change jamais : les tâches s'exécutent dans un **ordre topologique stable sur leurs `dependencies` déclarées** — une tâche passe après toutes celles dont elle dépend, et partout où les dépendances le permettent l'ordre déclaré est conservé, si bien qu'une crew qui ne déclare aucune dépendance s'exécute exactement comme écrite. Cela vaut dans toutes les dispositions : la disposition multi-fichiers (`tasks/*.yaml`) liste les tâches dans l'ordre ordinal de leurs noms de fichier, si bien que sans ce tri `consolidate.yaml` passait avant l'`extract.yaml` dont elle dépend. Une dépendance qui nomme un identifiant de tâche inconnu est ignorée ; un cycle ne fait jamais échouer la crew — l'ordre déclaré est conservé pour les tâches prises dedans et un avertissement les nomme. La même règle ordonne les modes hierarchical, consensual, graph et autonomous, qui distribuent eux aussi leurs tâches l'une après l'autre ; le mode parallel garde sa propre sémantique (des **vagues** de dépendances, et un cycle y est refusé).
+**Ordre d'exécution** — avec ou sans plan, qui ne le change jamais : les tâches s'exécutent dans un **ordre topologique stable sur leurs `dependencies` déclarées** — une tâche passe après toutes celles dont elle dépend, et partout où les dépendances le permettent l'ordre déclaré est conservé, si bien qu'une crew qui ne déclare aucune dépendance s'exécute exactement comme écrite. Cela vaut dans toutes les dispositions : la disposition multi-fichiers (`tasks/*.yaml`) liste les tâches dans l'ordre ordinal de leurs noms de fichier, et le tri place `consolidate.yaml` après l'`extract.yaml` dont elle dépend. Une dépendance qui nomme un identifiant de tâche inconnu est ignorée ; un cycle ne fait jamais échouer la crew — l'ordre déclaré est conservé pour les tâches prises dedans et un avertissement les nomme. La même règle ordonne les modes hierarchical, consensual, graph et autonomous, qui distribuent eux aussi leurs tâches l'une après l'autre ; le mode parallel garde sa propre sémantique (des **vagues** de dépendances, et un cycle y est refusé).
 
-**Gestion des échecs (tous les modes)** : une tâche dont une dépendance déclarée n'a pas réussi — échouée, ou elle-même sautée — est **sautée**, jamais exécutée sur un contexte qui dit `Task failed: …` là où son entrée aurait dû se trouver : elle apparaît comme `⊘ skipped` dans `AUTO_SUMMARY.md` et comme un événement `task.completed` avec `skipped: true`, les tâches qui n'en dépendent pas s'exécutent quand même, et la crew échoue en nommant chaque tâche échouée ou sautée (LLM-11). La règle est la même dans les six modes : une crew dont une tâche a échoué rend `Success = false`, son hook reçoit `Failed` avec la même raison, et `orkeon run` sort en 2. Un mode qui tolère un échec — Graph et ses retries, Autonomous et sa délégation — le fait avant que la tâche compte comme échouée.
+**Gestion des échecs (tous les modes)** : une tâche dont une dépendance déclarée n'a pas réussi — échouée, ou elle-même sautée — est **sautée**, jamais exécutée sur un contexte qui dit `Task failed: …` là où son entrée aurait dû se trouver : elle apparaît comme `⊘ skipped` dans `AUTO_SUMMARY.md` et comme un événement `task.completed` avec `skipped: true`, les tâches qui n'en dépendent pas s'exécutent quand même, et la crew échoue en nommant chaque tâche échouée ou sautée. La règle est la même dans les six modes : une crew dont une tâche a échoué rend `Success = false`, son hook reçoit `Failed` avec la même raison, et `orkeon run` sort en 2. Un mode qui tolère un échec — Graph et ses retries, Autonomous et sa délégation — le fait avant que la tâche compte comme échouée.
 
 ### Tâches asynchrones (`asyncExecution`)
 
@@ -157,9 +157,8 @@ Tâche 3 → Agent C → sortie₃ → résultat final
 ### Configuration YAML
 
 ```yaml
-# Racine plate — il n'y a pas de clé enveloppe crew:, et agents:/tasks: sont des
-# mappings indexés par id (un fichier enveloppé dans crew: se charge SILENCIEUSEMENT
-# comme une crew vide).
+# Racine plate — il n'y a pas de clé enveloppe crew: (une clé crew: est refusée au
+# chargement comme inconnue), et agents:/tasks: sont des mappings indexés par id.
 name: "pipeline"
 goal: "Démo séquentielle"
 process: sequential
@@ -213,7 +212,6 @@ var crew = new CrewBuilder()
 ### Quand ne pas l'utiliser
 
 - Beaucoup de tâches indépendantes qui pourraient toutes tourner en parallèle — Parallel exécute chaque vague de dépendances d'un coup ; `asyncExecution` convient à quelques étapes concurrentes d'un pipeline
-- Workflows qui devraient relancer une étape instable (Graph)
 
 ---
 
@@ -256,7 +254,7 @@ Un **manager** (`IManagerAgent`, implémenté par `LlmBasedManager`) coordonne l
 - `AssignTaskAsync(task, availableAgents, context, llm)` → `TaskAssignment`
 - `ReviewOutputAsync(output, originalTask, llm, cancellationToken)` → `bool` (approuvée ou non) ; le jeton est celui du run : Ctrl+C, `RunTimeout` et `/stop` arrêtent une revue
 
-`llm` est le `ManagerLlm` que la stratégie a résolu pour le run (`ManagerLlmResolver`) : le client de chat que le manager interroge, le modèle qu'il demande, et son nom dans le journal (`provider:<nom>` ou `profile:<nom>`). Chacun de ses appels attend d'abord son tour dans la fenêtre `maxRpm` de l'agent manager et dans celle de la crew (GAP-38).
+`llm` est le `ManagerLlm` que la stratégie a résolu pour le run (`ManagerLlmResolver`) : le client de chat que le manager interroge, le modèle qu'il demande, et son nom dans le journal (`provider:<nom>` ou `profile:<nom>`). Chacun de ses appels attend d'abord son tour dans la fenêtre `maxRpm` de l'agent manager et dans celle de la crew.
 
 ### Configuration YAML
 
@@ -506,7 +504,7 @@ Le mécanisme de vote est **sélectionnable par configuration** : `Orkeon:Consen
 
 ### Principe
 
-La crew s'exécute à travers un **graphe d'états typé** (`StateGraph<CrewGraphState>`) à un nœud par tâche (ADR-018) : les nœuds sont enchaînés dans l'ordre d'exécution, et les tentatives d'une tâche sont son propre `retry:` (appliqué sous la stratégie), pas une boucle de son nœud. Un **circuit breaker à 3 mécanismes** borne la boucle. Les arêtes conditionnelles et les topologies arbitraires sont disponibles via l'API Domain `StateGraph<TState>` en C# ; le mode YAML ne déclare pas son propre graphe.
+La crew s'exécute à travers un **graphe d'états typé** (`StateGraph<CrewGraphState>`) à un nœud par tâche (ADR-018) : sans nœuds ni arêtes, les nœuds sont enchaînés dans l'ordre d'exécution, et les tentatives d'une tâche sont son propre `retry:` (appliqué sous la stratégie), pas une boucle de son nœud. Un **circuit breaker à 3 mécanismes** borne la boucle. Le bloc `graph:` peut déclarer ses propres nœuds et arêtes — arêtes conditionnelles sur les réponses d'une tâche de décision, et boucles (voir [Orchestration par graphe](graph.md)).
 
 ### Mécanisme interne
 
@@ -576,7 +574,7 @@ Une boucle est une arête qui revient sur un nœud ; `maxVisits` la borne. Voir 
 ### Inconvénients
 
 - **Durée par défaut de 10 minutes** : la `MaxTotalDuration` du preset Strict borne encore le run — relevez `maxTotalDurationSeconds` pour une crew longue
-- **Topologie fixe en YAML** : le routage conditionnel exige l'API C# `StateGraph<TState>`
+- **Routage YAML sur décisions uniquement** : une arête conditionnelle quitte une tâche de décision sur ses réponses ; une fonction de routage exige l'API C# `StateGraph<TState>`
 
 ### Quand l'utiliser
 
@@ -708,7 +706,7 @@ Vos tâches ont-elles des dépendances entre elles ?
     └── La concurrence suffit-elle — les tâches indépendantes ensemble, chaque vague après ses dépendances ?
         ├── OUI → Parallel (il s'exécute par vagues de dépendances)
         └── NON
-            └── Une tâche instable doit-elle être relancée automatiquement ?
+            └── Le run doit-il suivre des arêtes de décision, être borné, ou confier une tâche échouée à un pair ?
                 │
                 ├── NON
                 │   └── Avez-vous besoin d'un manager qui assigne et revoit ?
@@ -716,8 +714,8 @@ Vos tâches ont-elles des dépendances entre elles ?
                 │       └── NON → Sequential
                 │
                 └── OUI
-                    └── Relancer la même tâche, ou la confier à un pair ?
-                        ├── Même tâche, bornée → Graph
+                    └── Arêtes de décision et bornes, ou un pair ?
+                        ├── Arêtes de décision, borné → Graph
                         └── Un pair, assigné par LLM → Autonomous
 ```
 

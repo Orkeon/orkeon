@@ -5,7 +5,7 @@
 **Scope**: `orkeon-host` — the daemon that hosts crews, the gateway that lets people reach them from a chat channel, and the A2A server that lets other agents run them.
 **Audience**: whoever installs and operates Orkeon on a server.
 
-Until this, Orkeon could be run from a terminal or embedded in a program. Both assume a human in front of a screen, on the same machine, for the length of one process. The service host lifts all three assumptions; the Discord channel gives the first place people can talk to it from somewhere they already are.
+Run from a terminal or embedded in a program, Orkeon assumes a human in front of a screen, on the same machine, for the length of one process. The service host lifts all three assumptions; the Discord channel gives the first place people can talk to it from somewhere they already are.
 
 ---
 
@@ -125,7 +125,7 @@ The configuration is **validated at start**: no crew under `Orkeon:Host:Crews`, 
 
 The start also refuses a `${NAME}` or `%NAME%` reference in a setting the host passes as written, naming the path and never the value, with exit 78 and before any MCP server connects: Orkeon never expands a variable ([the list](../reference/configuration.md#a-variable-reference-is-never-expanded)).
 
-The whole sequence that precedes the start runs under that barrier: the configuration the daemon boots from, its own sections — `Orkeon:Host` with its `A2A`, `Orkeon:Host:Discord`, and the `A2A` section —, **read once, at start**, and the runner host itself. Each refusal is one line naming the key — or the file, with the line and the position of what its JSON gets wrong — on stderr and, under the Windows SCM, in the Application event log. A value the binder cannot convert used to surface later, as a crash when the host built its services; a settings typo used to crash the daemon outright, and systemd restarted it every ten seconds.
+The whole sequence that precedes the start runs under that barrier: the configuration the daemon boots from, its own sections — `Orkeon:Host` with its `A2A`, `Orkeon:Host:Discord`, and the `A2A` section —, **read once, at start**, and the runner host itself. Each refusal is one line naming the key — or the file, with the line and the position of what its JSON gets wrong — on stderr and, under the Windows SCM, in the Application event log.
 
 Crews are read **once**, at start: there is no directory scan and no reload. Adding a crew is an edit of the file and a restart.
 
@@ -139,10 +139,8 @@ Crews are read **once**, at start: there is no directory scan and no reload. Add
 |---|---|---|
 | `MaxConcurrentRuns` | `4` | A daemon accepting every request that arrives dies under its first burst, and a chat channel makes bursts trivial. |
 
-The profile deliberately carries nothing else. Earlier drafts sketched `Interactive`,
-`Persistent` and `Chat` flags; the review found them bound from configuration and read by
-nothing — an operator could flip them and change nothing at all. Configuration surface that
-does nothing is worse than absent, so the host ships the one knob that works.
+The profile deliberately carries nothing else: configuration surface that does nothing is
+worse than absent.
 
 A request beyond the ceiling is **refused with an answer**, not queued: "we are busy, try again shortly" is something a channel relays to a person; an invisible queue is not. The ceiling is the crew's, whichever way the runs came in: chat conversations and A2A tasks share it.
 
@@ -152,7 +150,7 @@ A request beyond the ceiling is **refused with an answer**, not queued: "we are 
 
 Each run gets its own dependency-injection scope, and each run's per-crew state is released when it ends. Between them they carry the defence against the risk the gateway design calls its most serious: state leaking between conversations.
 
-Two mechanisms, stated precisely because an earlier version of this section overstated what stood behind them. The **scope** is what isolates the scoped services — the crew repository above all, so one conversation's crew is never resolvable from another's run. The **release** is what keeps the process-wide services honest: every message loads a fresh crew with a fresh id, and the memory service and provider registry drop their entry for it when the run ends — otherwise a daemon accumulates one per conversation, forever. Memory outliving a hosted run is impossible by construction — there is no flag to get wrong.
+Two mechanisms, stated precisely. The **scope** is what isolates the scoped services — the crew repository above all, so one conversation's crew is never resolvable from another's run. The **release** is what keeps the process-wide services honest: every message loads a fresh crew with a fresh id, and the memory service and provider registry drop their entry for it when the run ends — otherwise a daemon accumulates one per conversation, forever. Memory outliving a hosted run is impossible by construction — there is no flag to get wrong.
 
 Each run also carries its own deadline (`RunTimeout`). A daemon has nobody watching to press Ctrl-C, so a run with no timeout is a stuck daemon waiting on a model that will never answer.
 
@@ -166,7 +164,7 @@ A message becomes a run in a fixed order: **authorize, route, acknowledge, work.
 
 > **An empty allow list denies everyone**, and the channel refuses to start rather than answering nobody in silence. The opposite default is how a bot invited to a public server ends up spending someone's API budget on strangers.
 
-**Route.** The host ships one strategy: **a thread is a run**, and **the room picks the crew** (GAP-11). A thread opened in a Discord channel listed under `Discord:Routes` (channel id → crew name) starts that crew; a thread anywhere else starts `Discord:DefaultCrew` — the first crew of `Orkeon:Host:Crews` when it is unset. In the example above, threads of the channel `234567890123456789` reach `veille`, and every other channel's reach `support`. A hosted crew no room reaches is named by a warning at startup. Channel ids are what Discord shows with Developer Mode on (right-click the channel → Copy Channel ID); a thread inside a forum channel follows the forum's route. It is the mapping a person can predict without being told — `#billing` answers billing, and what happens in this thread is one job — and it gives parallelism without inventing a notion of session anyone has to learn. A second message in a running thread is refused with an explanation rather than starting a second run whose answers nobody could tell apart.
+**Route.** The host ships one strategy: **a thread is a run**, and **the room picks the crew**. A thread opened in a Discord channel listed under `Discord:Routes` (channel id → crew name) starts that crew; a thread anywhere else starts `Discord:DefaultCrew` — the first crew of `Orkeon:Host:Crews` when it is unset. In the example above, threads of the channel `234567890123456789` reach `veille`, and every other channel's reach `support`. A hosted crew no room reaches is named by a warning at startup. Channel ids are what Discord shows with Developer Mode on (right-click the channel → Copy Channel ID); a thread inside a forum channel follows the forum's route. It is the mapping a person can predict without being told — `#billing` answers billing, and what happens in this thread is one job — and it gives parallelism without inventing a notion of session anyone has to learn. A second message in a running thread is refused with an explanation rather than starting a second run whose answers nobody could tell apart.
 
 **Acknowledge.** Every chat platform's response window is measured in seconds; a crew is measured in minutes. The acknowledgement rides on **admission**: it goes out the moment the run's slot is reserved — still before any crew work, and carrying the stop button, so a run can be interrupted from its first second. A refusal (unknown crew, busy) is answered without an acknowledgement: "working on it" plus a Stop button, followed by "we are busy", would be a promise retracted by its own next line — with a button attached to nothing.
 
@@ -250,13 +248,11 @@ journalctl -u orkeon-host -f
 
 The health probes of the [host API](../reference/host-api.md) (`GET /healthz`, `GET /readyz`, off unless `Orkeon:Host:Api:Enabled`) are what a Docker `HEALTHCHECK` or a Kubernetes probe calls; systemd keeps `Type=notify` as its own readiness.
 
-The health probes of the [host API](../reference/host-api.md) (`GET /healthz`, `GET /readyz`, off unless `Orkeon:Host:Api:Enabled`) are what a Docker `HEALTHCHECK` or a Kubernetes probe calls; systemd keeps `Type=notify` as its own readiness.
-
 There is deliberately **no `WatchdogSec`**: the .NET systemd integration sends `READY=1` and `STOPPING=1` and no watchdog keepalive, so arming one would make systemd kill a healthy host on its first missed — never-sent — ping.
 
 `TimeoutStopSec` is deliberately longer than `ShutdownGracePeriod`, so runs in flight get their grace before systemd loses patience. **Raise one without the other and the one left behind stops meaning anything.** On a stop the host first closes admission: **from that moment no run starts** — a chat message or an A2A task that arrives during the grace is answered "The host is stopping: this run was not started. Send it again once the host is back.", without an acknowledgement or a Stop button, and an A2A peer reads it as `Failed`; nothing is loaded, no model is called. It then waits up to `ShutdownGracePeriod` for the runs in flight — the channel and the A2A server stay up meanwhile, to deliver their answers, and `/status` and `/stop` keep answering —, then stops every one of them and gives them five more seconds to wind down; the generic host's own shutdown budget is set to the grace period plus ten seconds to cover both.
 
-The log is quiet by default: the runner host logs at **Warning**, so the Information lines — each hosted crew at start, each run started and finished, the Discord connection — only appear once the settings raise the level, for instance `"Logging": { "LogLevel": { "Orkeon": "Information" } }`. A level is one of `Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`, `None`, any case: another word refuses the start with exit code 78, naming its key — it used to crash the daemon, which systemd restarted every ten seconds.
+The log is quiet by default: the runner host logs at **Warning**, so the Information lines — each hosted crew at start, each run started and finished, the Discord connection — only appear once the settings raise the level, for instance `"Logging": { "LogLevel": { "Orkeon": "Information" } }`. A level is one of `Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`, `None`, any case: another word refuses the start with exit code 78, naming its key.
 
 Secrets go in `/etc/orkeon/orkeon-host.env`, readable only by the service user. The unit file stays free of them.
 
@@ -355,7 +351,7 @@ process holds, a port under 1024 without the privilege — names the prefix and
 
 **Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, the Discord channel with registered `/status` and `/stop` slash commands and the stop button — one authorized path for all three — and the opt-in A2A server, one skill per exposed crew.
 
-**Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, adding or removing hosted crews while the daemon runs, every chat channel other than Discord, and any HTTP surface beyond the A2A server and the [host API](../reference/host-api.md) (off by default: health probes and the run routes, no human-input route yet) — no A2A task records (`GET /a2a/tasks/{id}` answers `501`). One runner feature stays out of the daemon too: the `semantic_search` tool is not registered (the MCP servers of the `MCP` section are connected at startup, like a run's — see [MCP integration](mcp.md)). The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
+**Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, adding or removing hosted crews while the daemon runs, every chat channel other than Discord, and any HTTP surface beyond the A2A server and the [host API](../reference/host-api.md) (off by default: health probes, the run routes and `POST /runs/{id}/input`) — no A2A task records (`GET /a2a/tasks/{id}` answers `501`). One runner feature stays out of the daemon too: the `semantic_search` tool is not registered (the MCP servers of the `MCP` section are connected at startup, like a run's — see [MCP integration](mcp.md)). The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
 
 **One thing cannot be verified in CI**: the specification's own acceptance criterion — launching a crew from a real Discord thread, watching it progress, stopping it by button, with the service running as a systemd daemon. It needs a Discord account and a server, which is an owner action. What CI does hold is everything either side of the socket: the message translation, the two platform limits, authorization, routing, throttling and isolation.
 

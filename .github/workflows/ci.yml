@@ -178,24 +178,19 @@ jobs:
       # the suite exits 0 — 17 runs in a row. Any exit code is a failure again.
       - run: dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build --filter "Category=Integration|Category=Slow"
 
-  # .NET 11 readiness (GA on 2026-11-10, during .NET Conf). Everything still targets
-  # net10.0 and global.json still pins the 10.0.300 feature band -- this job is the
-  # early warning, not the migration: it builds and tests the same solution with the
-  # .NET 11 SDK (preview channel until GA) so a breaking change in the compiler, the
-  # SDK targets or a NuGet resolution shows up weeks before the day the tag moves.
+  # .NET 11 readiness. Everything still targets net10.0 and global.json still pins the
+  # 10.0.300 feature band -- this job is the early warning, not the migration: it builds and
+  # tests the same solution with the .NET 11 SDK so a breaking change in the compiler, the
+  # SDK targets or a NuGet resolution shows up before the day the tag moves.
   # global.json's `latestFeature` would refuse an 11.x SDK, so the job widens the
   # roll-forward on the runner only; the committed file does not change.
-  # continue-on-error until GA: a preview SDK may break for reasons that are not ours;
-  # the job result stays visible on the run page either way.
-  build-test-net11-preview:
+  build-test-net11:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: '11.0.x'
-          dotnet-quality: preview
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           # The restore fills packages/ (RestorePackagesPath, Directory.Build.props), not

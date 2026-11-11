@@ -54,7 +54,7 @@ Ce document consolide les décisions architecturales prises pour la couche de me
             └──────────────┬───────────────────────┘
                            │
                 ┌──────────▼──────────┐
-                │   Middleware chain  │  log · trace · ACL · idempotence
+                │   Middleware chain  │  log · trace · ACL · idempotence · validation
                 └──────────┬──────────┘
                            │
               ┌────────────┴────────────┐
@@ -482,7 +482,7 @@ Le préfixe `_system.` est réservé : un agent ne peut pas publier sur un topic
 
 Un wait lié à l'`AgentExecutionBudget` de la crew s'arrête avec `BudgetExhaustedException` quand le budget est épuisé — distinct d'un timeout. Permet au superviseur de distinguer « pas de message en temps voulu » de « budget épuisé ».
 
-Le design dérivait le `CancellationToken` du wait d'un `AgentExecutionBudget.LinkedToken`, membre que le budget n'a pas. Ce qui est livré, c'est `EventHubBudgetExtensions.WaitForAsync(hub, descriptor, timeout, budget, ct)` (une surcharge prend l'intervalle de sondage) : elle sonde `budget.IsExhausted` toutes les 25 ms, annule le wait quand il bascule, et lève `BudgetExhaustedException` sur la dimension `WallTime`. Les outils d'agent ne l'appellent pas — leurs waits sont bornés par `timeout_ms` et par l'annulation propre du run.
+`EventHubBudgetExtensions.WaitForAsync(hub, descriptor, timeout, budget, ct)` (une surcharge prend l'intervalle de sondage) sonde `budget.IsExhausted` toutes les 25 ms, annule le wait quand il bascule, et lève `BudgetExhaustedException` sur la dimension `WallTime`. Les outils d'agent ne l'appellent pas — leurs waits sont bornés par `timeout_ms` et par l'annulation propre du run.
 
 ---
 
@@ -516,7 +516,7 @@ L'étage ACL refuse les `Post` / `Send` / `Publish` scopé qu'aucune `CrewLink` 
 | Cas | Décision | Pourquoi |
 |---|---|---|
 | Message **sans cible** (`Publish` global, ou boîte `topic://`) | passe | une diffusion est une offre, pas une remise ; les abonnés filtrent de leur côté |
-| Crew n'ayant **jamais déclaré** de bloc `links:` | passe par défaut | le hub a été livré sans aucune ACL : refuser le trafic non déclaré le jour où l'étage s'allume casserait toutes les crews existantes. Un déploiement qui veut une porte fermée enregistre `RestrictiveCrewLinkPolicy` — et sous elle, un émetteur non déclaré passe encore quand la *cible* lui a accordé un lien `inbound` (§10.3) |
+| Crew n'ayant **jamais déclaré** de bloc `links:` | passe par défaut | la politique par défaut est permissive : une crew écrite sans `links:` continue de fonctionner quand l'étage ACL est enregistré. Un déploiement qui veut une porte fermée enregistre `RestrictiveCrewLinkPolicy` — et sous elle, un émetteur non déclaré passe encore quand la *cible* lui a accordé un lien `inbound` (§10.3) |
 | Crew ayant **déclaré** des liens | tenue à ses liens — bloc déclaré-mais-vide compris, qui refuse tout | déclarer est le geste qui ferme la porte ; un bloc dont toutes les entrées ont échoué au parsing doit la fermer, jamais l'ouvrir |
 | Crew dont un lien déclaré correspond | passe | pour un publish scopé, le lien doit nommer la cible **et** autoriser le topic ; pour `Post`/`Send`, le lien suffit — voir ci-dessous |
 
@@ -694,7 +694,7 @@ Le contrat de middleware ne sait que laisser passer ou lever ; « écarte ce dou
 
 ### 12.3 Ce que la validation valide
 
-Que le contrat déclaré **existe** dans `IEventSchemaRegistry` — pas que la charge utile s'y conforme. Aucun moteur JSON Schema n'est embarqué ici, et la moitié d'un moteur ressemblerait à une garantie sans en être une. Ce que l'étage attrape est réel : une faute de frappe dans un `schema_id`, ou un type d'événement que le déploiement n'a jamais déclaré.
+Que le contrat déclaré **existe** dans `IEventSchemaRegistry` — pas que la charge utile s'y conforme. Aucun moteur JSON Schema n'est embarqué ici, et la moitié d'un moteur ressemblerait à une garantie sans en être une. Ce que l'étage attrape est réel : une faute de frappe dans un identifiant de schéma, ou un type d'événement que le déploiement n'a jamais déclaré.
 
 Un message portant `Message.NoDeclaredSchemaId` (`"_none"` — délibérément pas un id plausible : un déploiement pourrait légitimement enregistrer `application/json`, et une sentinelle en collision passerait sans contrôle, en silence) ne déclare aucun contrat — c'est le cas de tout `Post`, `Send` et `Reply` — et passe. Déclarer un schéma est le geste qui engage le contrôle, comme déclarer un lien ferme la porte de l'ACL. Le refus est levé à la **publication**, car un abonné ne peut rien à un schéma déclaré par quelqu'un d'autre.
 

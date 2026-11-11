@@ -38,10 +38,10 @@ exceptions are called out in their row — a service registered unconditionally
 > file tools and the deliverables all read and write through it. And no model is
 > registered: a container without one fails at its first LLM resolution, naming the missing
 > service — register yours with `AddOrkeonLlmProvider(...)` (see [Bootstrap](./bootstrap.md)).
-> The keyless OpenAI provider that stood in for it is gone (GAP-29). The `orkeon` CLI,
+> The `orkeon` CLI,
 > `orkeon-host` and `orkeon-repl` behave differently: with no `Llm` section they run on the
 > echo provider and say so. A crew with `planning: true` then skips its plan, with a warning:
-> the echo provider replays its prompt, so there is nothing to plan with (GAP-31).
+> the echo provider replays its prompt, so there is nothing to plan with.
 
 ## The genuinely silent defaults
 
@@ -51,7 +51,7 @@ These are harmless by construction and stay at Debug or emit nothing:
 |---|---|---|
 | Step/task callbacks | `Null*Callback` | No-op observability hooks; Debug by design. |
 | `IMemoryScope` | `NullMemoryScope` | Explicit "no memory in this context" marker — asked for, not fallen into. |
-| `IMemoryProvider` | config-driven factory | The in-memory provider when `Memory:Provider` is unset; an **unrecognized** type refuses the host's start (GAP-40). |
+| `IMemoryProvider` | config-driven factory | The in-memory provider when `Memory:Provider` is unset; an **unrecognized** type refuses the host's start. |
 
 Fully-functional `TryAdd` defaults (e.g. `IPathValidator → PathValidator`) are not
 listed here on purpose: they are the real implementation, not a stand-in — replace

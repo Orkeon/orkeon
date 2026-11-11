@@ -54,7 +54,7 @@ This document consolidates the architectural decisions made for Orkeon's inter-a
             └──────────────┬───────────────────────┘
                            │
                 ┌──────────▼──────────┐
-                │   Middleware chain  │  log · trace · ACL · idempotence
+                │   Middleware chain  │  log · trace · ACL · idempotence · validation
                 └──────────┬──────────┘
                            │
               ┌────────────┴────────────┐
@@ -482,7 +482,7 @@ The `_system.` prefix is reserved: an agent cannot publish on a topic starting w
 
 A wait bound to the crew's `AgentExecutionBudget` stops with `BudgetExhaustedException` when the budget runs out — distinct from a timeout. This lets the supervisor distinguish "no message in time" from "budget exhausted".
 
-The design derived the wait's `CancellationToken` from an `AgentExecutionBudget.LinkedToken`, a member the budget does not have. What ships is `EventHubBudgetExtensions.WaitForAsync(hub, descriptor, timeout, budget, ct)` (an overload takes the poll interval): it polls `budget.IsExhausted` every 25 ms, cancels the wait when it flips, and throws `BudgetExhaustedException` on the `WallTime` dimension. The agent tools do not call it — their waits are bounded by `timeout_ms` and the run's own cancellation.
+`EventHubBudgetExtensions.WaitForAsync(hub, descriptor, timeout, budget, ct)` (an overload takes the poll interval) polls `budget.IsExhausted` every 25 ms, cancels the wait when it flips, and throws `BudgetExhaustedException` on the `WallTime` dimension. The agent tools do not call it — their waits are bounded by `timeout_ms` and the run's own cancellation.
 
 ---
 
@@ -516,7 +516,7 @@ The ACL stage rejects `Post` / `Send` / scoped `Publish` calls that no `CrewLink
 | Case | Decision | Why |
 |---|---|---|
 | Message with **no target** (global `Publish`, or a `topic://` mailbox) | passes | a broadcast is an offer, not a delivery; subscribers filter on their own side |
-| Crew that **never declared** a `links:` block | passes by default | the hub shipped without any ACL, so refusing undeclared traffic the day the stage is switched on would break every existing crew. A deployment that wants a closed door registers `RestrictiveCrewLinkPolicy` — and under it, an undeclared sender still gets through when the *target* granted it an `inbound` link (§10.3) |
+| Crew that **never declared** a `links:` block | passes by default | the default policy is permissive, so a crew written without `links:` keeps working when the ACL stage is registered. A deployment that wants a closed door registers `RestrictiveCrewLinkPolicy` — and under it, an undeclared sender still gets through when the *target* granted it an `inbound` link (§10.3) |
 | Crew that **did** declare links | held to them — a declared-but-empty block included, which refuses everything | declaring is the act that closes the door; a block whose entries all failed to parse must close it, never open it |
 | Crew whose declared link matches | passes | for a crew-scoped publish, the link must name the target **and** authorize the topic; for `Post`/`Send`, the link itself authorizes — see below |
 

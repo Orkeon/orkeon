@@ -3,8 +3,8 @@ using System.Runtime.Serialization;
 namespace Orkeon.Scripting.Exceptions;
 
 /// <summary>
-/// Thrown in V1 when an agent attempts to invoke itself recursively (directly or via
-/// <c>ctx.spawn</c>). Reentrant invocation is V1.5.
+/// Thrown when an agent attempts to invoke itself recursively (directly or via
+/// <c>ctx.spawn</c>): an agent's invocation is not reentrant.
 /// </summary>
 [Serializable]
 public sealed class RecursiveAgentInvocationException : Exception
@@ -14,7 +14,7 @@ public sealed class RecursiveAgentInvocationException : Exception
 
     /// <inheritdoc />
     public RecursiveAgentInvocationException(string agentName)
-        : base($"Recursive invocation of agent '{agentName}' is not supported in V1.")
+        : base($"Recursive invocation of agent '{agentName}' is not supported.")
     {
         AgentName = agentName;
     }

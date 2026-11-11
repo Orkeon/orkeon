@@ -23,10 +23,9 @@ déplace, renomme, supprime et partage — dans les limites de ce qu'autorise l'
 - **Chaque compte se connecte une fois en OAuth2** (`orkeon drive login` dans un terminal), et
   les outils rafraîchissent eux-mêmes le jeton d'accès.
 
-> **État de la campagne.** La famille est couverte par des tests hors ligne contre des API Google
-> et Microsoft scriptées. Un passage de campagne (DRIVE-07) a eu lieu le 2026-10-24 et a révélé deux
-> défauts de `drive_search`, corrigés depuis (voir le CHANGELOG). La fiche DRIVE-07 n'est pas close,
-> et cette page ne dit pas ce que le passage a couvert. Signalez ce qui diffère.
+> **Couverture de test.** La famille est couverte par des tests hors ligne contre des API Google
+> et Microsoft scriptées ; elle n'est pas vérifiée ici contre toutes les configurations de
+> comptes réels. Signalez ce qui diffère.
 
 ## Les onze outils
 

@@ -2,7 +2,7 @@
 
 # Système de plugins
 
-> **Statut** : v1 (chantier R1.6). Assembly `Orkeon.Plugins`
+> **Statut** : v1. Assembly `Orkeon.Plugins`
 > (`src/plugins/Orkeon.Plugins`) — **non livrée comme paquet NuGet** ; voir
 > [Construire un projet de plugin](#construire-un-projet-de-plugin).
 > La spécification d'origine (permissions, hot-reload, configuration par
@@ -70,18 +70,14 @@ projet de plugin référence `Orkeon` (le modèle `orkeon-plugin` le fait).
 `dotnet add package Orkeon.Plugins` ne se résout sur aucun flux — NuGet.org comme GitHub Packages
 (`NU1101`).
 
-Un auteur de plugin construit donc **depuis les sources** : cloner
-[`Orkeon/orkeon`](https://github.com/Orkeon/orkeon) et pointer une `ProjectReference` vers
-`src/plugins/Orkeon.Plugins/Orkeon.Plugins.csproj`. Les autres contrats que touche un plugin
-(`IBaseTool`, `IFileSystemService`, les interfaces de providers) viennent, eux, du paquet publié
-`Orkeon` : seul le point d'entrée `IOrkeonPlugin` exige la référence aux sources.
+`IOrkeonPlugin` vient donc du paquet publié `Orkeon`, comme les autres contrats que touche un
+plugin (`IBaseTool`, `IFileSystemService`, les interfaces de providers). On le référence pour la
+compilation seulement, pour que la copie de l'hôte reste la seule identité de types :
 
 ```xml
 <ItemGroup>
-  <!-- Contrats seulement : ExcludeAssets="runtime" garde Orkeon.Plugins.dll hors de la sortie
-       du plugin, pour que la copie de l'hôte reste la seule identité de types. -->
-  <ProjectReference Include="../orkeon/src/plugins/Orkeon.Plugins/Orkeon.Plugins.csproj"
-                    ExcludeAssets="runtime" />
+  <!-- Contrats seulement : ExcludeAssets="runtime" garde les assemblies du framework hors de la
+       sortie du plugin, pour que la copie de l'hôte reste la seule identité de types. -->
   <PackageReference Include="Orkeon" ExcludeAssets="runtime" />
 </ItemGroup>
 <PropertyGroup>
@@ -99,19 +95,19 @@ elle, construit depuis les montages déclarés (`Orkeon:FileSystem:Mounts`, et `
 pour un dossier que les agents ne doivent pas voir) : les contrôles du registre tiennent — le
 montage, ses droits, aucun chemin qui en sorte — mais pas le validateur de chemins des agents,
 qui refuse tout `.dll` quel que soit le montage. `orkeon run` et `orkeon-host` ne chargent aucun
-plugin ; un autre hôte appelle lui-même `AddOrkeonPlugins(...)`, in-tree ou contre votre propre
-clone.
+plugin ; un autre hôte appelle lui-même `AddOrkeonPlugins(...)`.
 
 ## Découverte (VFS)
 
 La découverte passe par `IFileSystemService` : `OrkeonPluginsOptions.Directory` est un
 **chemin virtuel** (ex. `/plugins`) qui doit résoudre dans un mount configuré. Une seule
 disposition est reconnue, au premier niveau uniquement : **un sous-dossier par plugin**, qui contient
-`plugin.json` et l'assembly d'entrée qu'il nomme.
+`plugin.json` et l'assembly d'entrée qu'il nomme. Une assembly posée à plat dans le répertoire
+est refusée, pas ignorée.
 
 ```
 /plugins/
-├── Stray.dll                     # à plat : ignoré, jamais chargé
+├── Stray.dll                     # à plat : refusé (PluginManifestException), jamais chargé
 └── WeatherPlugin/
     ├── plugin.json               # le manifeste, lu avant le chargement de l'assembly
     ├── WeatherPlugin.dll         # l'assembly d'entrée que nomme le manifeste
@@ -125,7 +121,8 @@ refusé (`PluginManifestException`) quand il contient un `.dll` quelconque, et i
 d'entrée qui ne satisfait pas `SearchPattern` ou que les droits du mount refusent est refusé aussi, pas ignoré. La résolution du chemin physique
 exigée par les API `AssemblyLoadContext` utilise le mécanisme du VFS
 (`IFileSystemService.ResolveAndValidate` avec `FileAccessRights.Read`, contrôle des mounts
-compris) ; un fichier refusé par la politique de mount est simplement exclu. Les messages
+compris) ; une assembly d'entrée refusée par la politique de mount est refusée, comme tout
+manifeste inutilisable. Les messages
 d'erreur du système de plugins ne référencent que des chemins virtuels.
 
 - `Directory` doit commencer par `/` — toute autre valeur lève une `ArgumentException` à l'appel.
@@ -201,8 +198,8 @@ décharger reste une décision explicite de l'hôte.
 
 ## Activation DI (opt-in)
 
-Cohérent avec le pattern des [sous-systèmes opt-in](../reference/opt-in-subsystems.md)
-(R4.9) : **rien n'est chargé par défaut**, ni par `AddOrkeonApplication()`, ni par
+Cohérent avec le pattern des [sous-systèmes opt-in](../reference/opt-in-subsystems.md) :
+**rien n'est chargé par défaut**, ni par `AddOrkeonApplication()`, ni par
 `AddOrkeonInfrastructure()`. L'hôte appelle explicitement, une seule fois :
 
 ```csharp
@@ -247,8 +244,8 @@ Particularités :
 - un plugin dont l'assembly d'entrée n'a aucun `IOrkeonPlugin` nommé par le manifeste est refusé et
   son contexte déchargé ;
 - `ContinueOnError = true` consigne les échecs dans `IPluginRegistry.Failures` au lieu
-  de lever `PluginLoadException` (sans rollback des enregistrements déjà contribués
-  par le plugin fautif) ;
+  de lever `PluginLoadException` ; les enregistrements du plugin refusé sont annulés
+  dans les deux cas et son contexte déchargé ;
 - `IPluginRegistry` (singleton) expose `Assemblies`, `Plugins` (nom/version) et
   `Failures` pour l'introspection.
 

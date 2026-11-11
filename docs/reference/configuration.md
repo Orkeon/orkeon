@@ -39,25 +39,22 @@ reaches the OpenTelemetry exporter through them ([telemetry](./hosting.md#teleme
    `--mount` on a new root is appended after the highest declared index. The runner's own
    `/crew` (or `/script`) mount and the `InternalMounts` are always appended. A declared
    entry may carry an **id** — the 26-character ULID before a `|`,
-   `01J9Z3K4M5N6P7Q8R9S0T1V2W3|C:\data:/output:rw` (VFS-90) — and several entries may
+   `01J9Z3K4M5N6P7Q8R9S0T1V2W3|C:\data:/output:rw` — and several entries may
    declare one root when each carries one: `--mount-id <ulid>`, else the crew's `mounts:`
    block, selects the entry the run keeps, and every other entry of that root is
    **withdrawn** — its key is written to `null` at its own index, its base path is not
    whitelisted and its folder is not probed. `orkeon-repl` places its `--mount` arguments the
    same way, over its own layers — its command line (`--Orkeon:FileSystem:Mounts:<n>=…`) among
-   them, judged as the file is (GAP-49).
+   them, judged as the file is.
 
 The checks a command runs **before its host** — a reserved root, a root declared twice, a
 selection with no answer, a mount folder that does not exist — read these same layers
 (`RunnerSettings.ReadDeclaredMounts`, over `RunnerSettings.ReadConfiguration`): a mount declared
-by a variable, `ORKEON_`-prefixed or not, is judged as the same line of the file (GAP-49).
+by a variable, `ORKEON_`-prefixed or not, is judged as the same line of the file.
 
-**Nothing else is read.** The default .NET host also laid, under the resolved file, the
-`appsettings.json` and `appsettings.{Environment}.json` of the **current directory** — since .NET 10,
-`<binary>.settings.json` and its environment twin too (`orkeon.settings.json`) — and, in
-`Development`, its user secrets: a file of another project — the folder a terminal happened to be
-in — added the profiles, MCP servers or mounts it declared to the run, and no diagnostic saw them.
-They are not read any more (GAP-36). `orkeon-host` reads `./appsettings.json` as **its** settings
+**Nothing else is read**: neither the `appsettings.json`, `appsettings.{Environment}.json` and
+`<binary>.settings.json` of the current directory nor, in `Development`, the user secrets — a file
+of another project would otherwise add its profiles, MCP servers or mounts to the run. `orkeon-host` reads `./appsettings.json` as **its** settings
 file, when `--settings` names none, never under the one it names; the REPL reads its `--settings`
 files, else the global file, then its command line, last ([CLI](./cli.md#orkeon-repl--the-separate-interactive-console)).
 
@@ -99,7 +96,7 @@ strict JSON parser does not.
 
 Every shipped host — `orkeon run` in every form (`--validate`, `--list-tools`, `mcp serve`, the
 forge, `rag`, `email`), `orkeon-host` and `orkeon-repl` — judges every setting it reads **at its
-start**, whether the run uses it or not (GAP-40): before the crew loads, before any model is called,
+start**, whether the run uses it or not: before the crew loads, before any model is called,
 before a warning is printed or the telemetry starts. A refusal is one line naming the key — exit code
 `1` for `orkeon` and `orkeon-repl`, `78` for `orkeon-host` — and `orkeon doctor` reports the same
 refusals on the same file, one `runner-settings` row each. What is refused:
@@ -107,7 +104,7 @@ refusals on the same file, one `runner-settings` row each. What is refused:
 - **A value** the configuration binder cannot convert (`"Orkeon:Guardian:Enabled": "oui"`), or that
   a rule of its section refuses (`Orkeon:Rag:Retrieval:TopK` at `0`, an `Orkeon:Sqlite:TableName`
   SQLite cannot be given). The `Llm` section is read as strictly as its profiles: a
-  `TimeoutSeconds` of `"600s"` is refused, where it used to run on 30 s, `Thinking:Enabled` and
+  `TimeoutSeconds` of `"600s"` is refused, `Thinking:Enabled` and
   `Grammar` are `true` or `false`, and a `Temperature` is a finite number — `NaN`, `Infinity` or
   `1e400` (which reads as infinity) parsed, then failed every request, since JSON writes no such
   number. So is every number a section reads as a float or a double (`Orkeon:Rag:Generation:Temperature`,
@@ -322,7 +319,7 @@ the same way with its own keys.
   [provider comparison](llm-providers-comparison.md#api-keys-the-variable-per-provider). `ApiKey`
   is the key in clear text — discouraged.
 - **`Temperature`.** Left out, none is sent and the model applies its own — often 1; write `0.7`
-  to keep the engine's former default (GAP-36).
+  for a moderate one.
 - **`Thinking:Enabled`, `Thinking:Effort`** are for thinking-capable providers.
 - **`Profiles:<name>`** holds the named profiles a crew picks per agent or per task, each with
   the same keys as the section itself ([below](#named-profiles-llmprofiles)); a client can write
@@ -336,11 +333,10 @@ the same way with its own keys.
 too short for a model that thinks before it answers (Kimi K2.6, DeepSeek V4 and GLM do so by
 default): set 600 s, or turn thinking off with `Thinking:Enabled = false`. A call that hits the
 timeout is retried once, then fails its task with a message naming the setting — it is never
-reported as an empty answer (LLM-11).
+reported as an empty answer.
 
-The timeout bounds the whole call, streamed or not: a streamed call (every `--events`
-run) used to be bounded only until its headers arrived, and a model that thought for minutes
-before its first token hung the run (LLM-12). `StreamIdleSeconds` adds a second bound, unset by
+The timeout bounds the whole call, streamed or not, the wait for the first token included.
+`StreamIdleSeconds` adds a second bound, unset by
 default: the longest silence between two streamed chunks. A model that thinks before it writes
 may stay silent for a while, so set it above that silence, or turn thinking off. Either bound
 elapsing is a failed call whose message names the setting — never an empty answer.
@@ -351,10 +347,9 @@ elapsing is a failed call whose message names the setting — never an empty ans
 out, the request carries the model's **documented maximum output** from the
 `LlmModelOutputLimits` catalogue (128K on `gpt-5.6-sol` and the Claude 5 generation, 384K on
 `deepseek-flash`, 131 072 on the GLM-5 and Qwen 3.7/3.8 families, 65 536 on Gemini 3.x Flash —
-see the [output caps table](llm-providers-comparison.md#output-caps--the-documented-maximum-per-model-llm-10)),
+see the [output caps table](llm-providers-comparison.md#output-caps--the-documented-maximum-per-model)),
 no cap at all where the vendor documents none (Mistral, a local Ollama), and **4096 only for a
-model the catalogue does not know** — the value the engine used to send for every model, which
-a reasoning model spends thinking before it writes a word and answers empty (an empty final
+model the catalogue does not know** — a cap a reasoning model may spend thinking before it writes a word and answers empty (an empty final
 answer fails the task rather than passing for a completed one). Pin it when the model is not in
 the catalogue or when you want a tighter cap; a client's model profile can pin it as
 `ORKEON_Llm__MaxTokens`. A catalogue cap the endpoint refuses is retried once without the
@@ -399,8 +394,8 @@ the name, never the key — in the `Llm` section and in every profile:
 The name is read as written: Windows compares variable names without case, Linux with. A
 reference that cannot be a variable's name — an `=`, a space, a line break — refuses the host
 start, naming the configuration path and never the value, which may be a key pasted in the wrong
-field. An `ApiKey` written as a `${NAME}` placeholder — the shape the old `examples/appsettings`
-templates carried, which nothing ever expanded, so the text went out as the key — refuses the start
+field. An `ApiKey` written as a `${NAME}` placeholder — never expanded, so the text would go out as
+the key — refuses the start
 too, with the fix: `"ApiKeyEnvVar": "NAME"` ([a reference is never expanded](#a-variable-reference-is-never-expanded)). At startup the runner host says where each key came
 from, never the key nor the variable's name — `LLM resolved: … apiKey=from the variable named by
 Llm:ApiKeyEnvVar (user environment)`, then one `LLM profile <id>: apiKey=…` line per profile
@@ -763,7 +758,7 @@ in-memory). Its connection is that provider's own section (`Orkeon:Redis`, `Orke
 below). It is also where the memory of a named crew with `memory: true` and no `memoryProvider:`
 lives — see [Memory system](../architecture/memory-system.md#selection-by-configuration). Another
 name, `lancedb` without `Orkeon:LanceDb:Endpoint` or `pinecone` without `Orkeon:Pinecone:ApiKey`
-(or `Host`) refuses the start: it no longer runs on the volatile provider
+(or `Host`) refuses the start rather than running on the volatile provider
 ([when a setting is refused](#when-a-setting-is-refused)). Bound by `AddOrkeonInfrastructure()`.
 
 <!-- settings:Memory -->
@@ -1119,7 +1114,7 @@ The folders a run may reach, and where the code an agent writes may run.
 ### `Orkeon:FileSystem`
 
 **`Mounts`** — the VFS mounts (see [VFS compliance](../architecture/vfs-compliance.md)). An entry
-may carry an **id** — `<ulid>|<physical>:<virtual>:<rights>` (VFS-90): what a crew's `mounts:`
+may carry an **id** — `<ulid>|<physical>:<virtual>:<rights>`: what a crew's `mounts:`
 block, a team sidecar and `--mount-id` name it by. A CLI `--mount` on the same virtual root
 **replaces every entry of that root** for that run; on a new root it is appended (never
 merged, never dropped). One root declared twice is legitimate only when every entry of it
@@ -1634,10 +1629,10 @@ not do is listed in [Known limitations](limitations.md).
 ### `MCP`
 
 MCP client connections (`MCP:Servers:<name>`) and the switch `MCP:Enabled`. No setting starts an
-MCP server (GAP-24): a key the section does not carry is refused at startup like any unknown key.
+MCP server: a key the section does not carry is refused at startup like any unknown key.
 Read by `RunnerHost` (`orkeon run`, `orkeon-host`, `orkeon mcp serve`) when `MCP:Servers` declares
 at least one server and `MCP:Enabled` is not `false` — the servers are connected before the crew
-loads, by `orkeon-host` once at startup, before its first message (GAP-11), and by
+loads, by `orkeon-host` once at startup, before its first message, and by
 `orkeon mcp serve` before it serves; library hosts call `AddOrkeonMcp(configuration)` or the
 `AddOrkeonInfrastructure(configuration)` overload — see
 [MCP integration](../architecture/mcp.md).
@@ -1839,7 +1834,7 @@ under `./.orkeon/state`, mounted at `/state` as an internal mount (`Path` is a v
 
 ### `Orkeon:HumanInput`
 
-How a run pauses on a question to a human (FWK-23). Active only with `Orkeon:Checkpointing:Enabled`, which gives the question a session to be persisted with. `Pause` is `Hold` (the run waits for the answer, up to `HoldTimeout`, then suspends: the question stays persisted, nothing is refused) or `Suspend` (the run stops at once: `run.finished` `status: waiting_for_input`, exit 75). Unset, a run with a person to ask holds, a plain `orkeon run` with nobody suspends, and `orkeon-host` and `--events` hold (30 minutes and no limit). A run is resumed with `orkeon run <crew> --resume <id> --input "..."`.
+How a run pauses on a question to a human. Active only with `Orkeon:Checkpointing:Enabled`, which gives the question a session to be persisted with. `Pause` is `Hold` (the run waits for the answer, up to `HoldTimeout`, then suspends: the question stays persisted, nothing is refused) or `Suspend` (the run stops at once: `run.finished` `status: waiting_for_input`, exit 75). Unset, a run with a person to ask holds, a plain `orkeon run` with nobody suspends, and `orkeon-host` and `--events` hold (30 minutes and no limit). A run is resumed with `orkeon run <crew> --resume <id> --input "..."`.
 
 <!-- settings:Orkeon:HumanInput -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -2043,7 +2038,7 @@ The daemon (`Orkeon.Host`):
   tasks and managers — and `Orkeon:Rag:LlmProfile` too; unset offers them all, `["default"]` the
   default alone; an entry naming an undefined profile, or a RAG profile the list leaves out,
   refuses the start.
-- **`A2A`** — the A2A server, off by default (GAP-23): `Host` is `http://localhost`, and
+- **`A2A`** — the A2A server, off by default: `Host` is `http://localhost`, and
   `http://+` listens on every interface; `Crews` lists the crews other agents may run, by name —
   one skill each, a task being a run of that crew; none by default. An enabled section that exposes
   no crew or a crew `Crews` does not declare, a malformed `Host` or `Port`, or a listener beyond

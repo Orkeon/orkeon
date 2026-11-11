@@ -48,7 +48,7 @@ links:                    # ACL EventHub (optionnel) — à qui cette crew peut 
     direction: string     # "outbound" (défaut) | "inbound" | "bidirectional" (alias "both") — une valeur illisible écarte l'entrée avec un warning
     allowed_topics: [string] # Omis ou vide = tous les topics
 
-mounts:                   # Les racines virtuelles que la crew utilise (optionnel, VFS-90) — sélectionne et valide, ne restreint jamais
+mounts:                   # Les racines virtuelles que la crew utilise (optionnel) — sélectionne et valide, ne restreint jamais
   - /output               # une racine qu'une entrée des settings (ou un --mount) doit fournir ; refusée en une ligne si rien ne le fait
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # une racine épinglée à UNE entrée des settings par son identifiant, quand plusieurs la déclarent
 
@@ -80,8 +80,8 @@ agents:
     llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) : le fournisseur de cet agent ; "default" = la section Llm
       model: string       # Identifiant du modèle LLM — omis → le modèle propre du profil
-      temperature: float  # Envoyée quelle que soit sa valeur — omise = celle du profil, sinon rien n'est envoyé et le modèle applique la sienne (GAP-36)
-      maxTokens: int      # Plafond de tokens en sortie, positif — omis = le maximum documenté du modèle (LLM-10) ; 0 ou moins fait échouer le chargement
+      temperature: float  # Envoyée quelle que soit sa valeur — omise = celle du profil, sinon rien n'est envoyé et le modèle applique la sienne
+      maxTokens: int      # Plafond de tokens en sortie, positif — omis = le maximum documenté du modèle ; 0 ou moins fait échouer le chargement
       topP: float         # Nucleus sampling, envoyé quelle que soit sa valeur — omis = celui du profil, sinon rien n'est envoyé (Mistral écrit 1)
       thinking:           # Contrôle du raisonnement (gaté par capacité selon le provider)
         enabled: bool
@@ -175,7 +175,7 @@ autres modes ordonnent leurs tâches eux-mêmes, et le chargement nomme chaque t
 d'ignorer le drapeau (voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
 Un `maxRpm` de 0 ou moins — sur la crew ou sur un agent — et un `maxIter` de 0 ou moins font échouer le
 chargement aussi, en nommant la crew ou l'agent : omettre `maxRpm:`, c'est n'avoir aucune limite, omettre
-`maxIter:`, c'est le défaut (20). Ils étaient remplacés, par 10 et 15, sans un mot. Un `max_tokens` de 0 ou moins — sur le `llm` de la crew, le `llm` d'un agent ou le
+`maxIter:`, c'est le défaut (20). Un `max_tokens` de 0 ou moins — sur le `llm` de la crew, le `llm` d'un agent ou le
 `llm_override` d'une tâche — fait échouer le chargement aussi, en nommant la crew, l'agent ou la tâche : omettre
 la clé, c'est garder le plafond hérité. Les plafonds propres
 de l'hôte sur les appels au modèle — qui bornent le `maxRpm` d'un agent, le plus strict l'emportant — sont
@@ -331,7 +331,7 @@ sous deux clés de `toolRules` (`file_write` et `File_Write`) : un nom d'outil i
 
 ## Configuration Knowledge & RAG
 
-Deux blocs complémentaires (RAG-03/C4). Le bloc crew `rag:` déclare les **collections**
+Deux blocs complémentaires. Le bloc crew `rag:` déclare les **collections**
 (sources d'ingestion, chunking) et les défauts globaux. Le bloc agent `knowledge:` **attache**
 des collections à un agent avec ses options de récupération. À l'assemblage du contexte
 d'exécution, chaque collection attachée est interrogée avec l'entrée de la tâche par la moitié
@@ -347,10 +347,10 @@ enregistre (`orkeon run` sous toutes ses formes, `orkeon-host`) : à la **créat
 `--validate`). Sur un hôte sans le sous-système, un bloc `rag:` déclaré et les `knowledge:` de
 chaque agent journalisent un warning et n'injectent rien. Le parsing du YAML lui-même ne
 déclenche jamais d'ingestion. Le document store relève de l'hôte (`Orkeon:Rag:Provider`, voir
-[Pipeline RAG](./rag-pipeline.md)) ; l'ancienne clé `rag.provider` a disparu et est refusée au
+[Pipeline RAG](./rag-pipeline.md)) ; une clé `rag.provider` est refusée au
 chargement, avec la phrase qui renvoie à `Orkeon:Rag:Provider`.
 
-Ce que veut dire une entrée de `sources` (GAP-27) : un chemin qui ne commence pas par `/` est
+Ce que veut dire une entrée de `sources` : un chemin qui ne commence pas par `/` est
 relatif au dossier de la crew — `/crew` sous `orkeon run crew.yaml` ou un répertoire de crew,
 donc `./data/faq.md` à côté du fichier de crew est `/crew/data/faq.md` — et un chemin absolu est
 un chemin virtuel (`/kb/faq.md`, un de vos montages). Un glob (`*`, `**`, `?`) est développé à
@@ -420,7 +420,7 @@ tasks:
       backoff: exponential # fixed (défaut) | exponential : 250 ms, puis 500 ms, ... jamais plus de 5 minutes
 ```
 
-Une tâche qui échoue est rejouée dans **chaque** mode d'orchestration : un seul décorateur, entre le checkpoint et le cœur d'exécution, applique la politique ; les stratégies ne réessaient donc jamais et les six modes se comportent pareil. En Graph il n'y a plus de boucle de retry propre : l'ancien `graphConfig.maxRetryCycles`, un retry de tâche échouée qui se serait multiplié avec celui-ci, est **retiré** et refusé au chargement comme clé inconnue.
+Une tâche qui échoue est rejouée dans **chaque** mode d'orchestration : un seul décorateur, entre le checkpoint et le cœur d'exécution, applique la politique ; les stratégies ne réessaient donc jamais et les six modes se comportent pareil. Graph n'a pas de boucle de retry propre, et `maxRetryCycles` est refusé au chargement.
 
 - **Une nouvelle tentative rejoue la tâche entière**, appels au modèle et appels d'outils compris, y compris les appels d'outils déjà réussis. Rien ne les déduplique : une tâche dont les outils écrivent (un fichier, un e-mail, un paiement) doit pouvoir tourner deux fois sans dommage, et c'est à l'auteur de la crew de le garantir.
 - **Jamais réessayés** : une annulation, un refus du gardien (`GuardianBlocked`), un budget épuisé. Le refus de la porte de permission est un résultat d'outil à l'intérieur d'une tentative, pas un échec de tâche. Les retries d'une sortie invalide restent à l'intérieur d'une tentative. Une tâche de décision n'exécute aucun agent et ne peut pas déclarer `retry:` (le chargement échoue, en nommant la tâche).
@@ -537,8 +537,7 @@ camelCase, et une clé que rien ne fixe n'est pas écrite du tout.
 
 ## Modèles YAML
 
-Les modèles YAML incluent :
-Tous vivent dans `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`) ; `YamlCrewMapper` les transforme en `CrewConfiguration` du Domain et `CrewDefinitionValidator` la vérifie.
+Tous les modèles YAML vivent dans `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`) ; `YamlCrewMapper` les transforme en `CrewConfiguration` du Domain et `CrewDefinitionValidator` la vérifie. Ils comprennent :
 
 - `CrewYamlConfig` (définition complète d'une crew) et `CrewSettingsYamlConfig` (le fichier de réglages de crew des formats multi-fichiers — `crew.yaml` ou `config.yaml`)
 - `AgentYamlConfig` (rôle, objectif, backstory, outils, limites)
@@ -548,8 +547,8 @@ Tous vivent dans `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrast
 - `DeliverableYamlConfig` (le bloc `deliverable:` de tâche)
 - `GuardrailsYamlConfig` (les `guardrails:` d'agent et de tâche)
 - `LinkYamlConfig` (l'ACL `links:` de crew)
-- `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (le bloc `mounts:` de crew — items `/racine` ou `<ulid>|/racine`) → `CrewConfiguration.Mounts` (`MountReference`, VFS-90)
-- `GraphYamlConfig` (circuitBreakerPreset, surcharges)
+- `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (le bloc `mounts:` de crew — items `/racine` ou `<ulid>|/racine`) → `CrewConfiguration.Mounts` (`MountReference`)
+- `GraphYamlConfig` (start, nœuds, arêtes, circuitBreakerPreset et ses limites) avec `GraphNodeYamlConfig`, `GraphEdgeYamlConfig`
 - `RagYamlConfig` (collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (entrées forme courte/longue) → `KnowledgeAttachment`
 

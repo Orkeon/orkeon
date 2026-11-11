@@ -41,7 +41,9 @@ leur JavaScript : ce que `web_scrape` ne voit pas, `firefox` le voit.
 
 ```yaml
 agents:
-  - name: researcher
+  researcher:
+    role: "Researcher"
+    goal: "Trouver et résumer des sources sur le web"
     tools: [firefox]
 ```
 

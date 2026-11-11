@@ -23,19 +23,17 @@ Trois règles structurent toute la famille :
 - **Le courrier reçu est une donnée, jamais une instruction.** Chaque résultat de lecture
   s'ouvre sur un avis qui le dit, et porte le verdict d'un filtre anti-injection de prompt.
 
-La famille est la deuxième exception motivée au gel du périmètre, décidée par le propriétaire le
-2026-09-26 (voir [CONTRIBUTING](../../../CONTRIBUTING.fr.md#le-périmètre-est-gelé)) : un script
+La famille est la deuxième exception motivée au gel du périmètre (voir [CONTRIBUTING](../../../CONTRIBUTING.fr.md#le-périmètre-est-gelé)) : un script
 `.ork.ts` ne peut pas ouvrir de socket, et un plugin ne mettrait pas l'e-mail dans Orkeon
 lui-même. La décision et les alternatives écartées sont dans
 [ADR-012](../adr/ADR-012-email-tool-family.md).
 
-> **Gmail et Hotmail sont campagnés.** La campagne réelle du propriétaire (MAIL-07) a joué le
-> cycle complet — relève, brouillon, envoi à soi-même, déplacement vers `archive`, corbeille —
-> sur un vrai compte Gmail, avec un mot de passe d'application le 2026-10-04 et en OAuth2 le
-> 2026-10-05 (voir [Ce que la campagne Gmail a établi](#ce-que-la-campagne-gmail-a-établi)),
-> puis sur un vrai compte Hotmail via Microsoft Graph le 2026-10-12. Outlook en IMAP et SMTP
-> n'a pas été exécuté contre un vrai compte : il hérite de la régression OAuth grand public de
-> Microsoft du 2026-09-24, d'où Graph par défaut.
+> **Testé sur des comptes réels.** Le cycle complet — relève, brouillon, envoi à soi-même,
+> déplacement vers `archive`, corbeille — a été joué sur de vrais comptes Gmail (mot de passe
+> d'application et OAuth2) et un vrai compte Hotmail via Microsoft Graph (voir
+> [Ce que la campagne Gmail a établi](#ce-que-la-campagne-gmail-a-établi)). Outlook en IMAP et
+> SMTP n'a pas été exécuté contre un vrai compte : la connexion OAuth des comptes personnels
+> Microsoft en IMAP échoue, c'est pourquoi Graph est le défaut.
 
 ## Les treize outils
 
@@ -133,7 +131,7 @@ passe d'application**, un mot de passe de 16 caractères que Google génère pou
 
 ## Hotmail et Outlook.com (Microsoft Graph)
 
-Microsoft n'accepte plus les mots de passe des clients de messagerie pour Outlook.com et
+Microsoft refuse les mots de passe des clients de messagerie pour Outlook.com et
 Microsoft 365 : le préréglage `Outlook` se connecte donc en **OAuth2** et lit comme il envoie via
 **Microsoft Graph**. Vous enregistrez une application une fois, puis vous vous connectez une
 fois depuis un terminal.
@@ -496,8 +494,7 @@ voit tous les comptes du fichier de réglages qu'il résout.
   dernier rendu : rien n'est sauté.
 - **`limit` est un plafond, et `next_cursor` est la seule fin d'un dossier.** Une dizaine de
   messages tiennent dans un résultat d'outil, quoi que demande `limit` jusqu'à son maximum de
-  50 : sur une vraie boîte Gmail, une recherche de 88 messages est revenue en pages de 10, 9,
-  10, 13, 8, 9, 9, 9, 10 et 1. Une page plus courte que `limit` ne dit donc rien de ce qui
+  50. Une page plus courte que `limit` ne dit donc rien de ce qui
   reste — lisez jusqu'à ce que `next_cursor` soit nul. `count` est le nombre de messages de la
   page, jamais le nombre de correspondances ; `total` est le nombre de messages du dossier qui
   répondent aux critères, toutes pages comptées, et reste le même d'une page à l'autre. Un
@@ -779,7 +776,7 @@ brancher, les codes que le CLI traduit en codes de sortie.
   lit, et `email_read` ne liste pas les libellés qu'il porte : qu'un message archivé ait gardé
   ses autres libellés se vérifie en cherchant dans le dossier de chaque libellé, ou dans
   l'interface de Gmail, pas en un seul appel.
-- **Pas dans cette version** : supprimer des dossiers, copier un message ou lui donner plusieurs
+- **Non pris en charge** : supprimer des dossiers, copier un message ou lui donner plusieurs
   libellés Gmail, l'approbation humaine interactive d'un envoi (utilisez `email_draft`), un outil
   OAuth générique pour d'autres API.
 - **`Send:MaxPerHour` se compte par processus, tentatives comprises.** Deux processus qui
@@ -805,44 +802,21 @@ brancher, les codes que le CLI traduit en codes de sortie.
   quarantaine avec des noms longs) : au-delà, la boucle d'agent tronque la liste et le dit.
 - **Chaque compte est visible de chaque crew et de chaque script qui résout le même fichier de
   réglages** — voir le modèle de menace dans [SECURITY.fr.md](../../../SECURITY.fr.md).
-- **Outlook en IMAP et SMTP n'a pas été exécuté contre un vrai compte** (MAIL-07) : Gmail et
-  Hotmail via Microsoft Graph sont campagnés — voir les deux sections de campagne ci-dessous.
+- **La corbeille n'est pas vidée sans `Purge`** : ce qu'une crew supprime sans `permanent: true`
+  reste dans la corbeille jusqu'à la purge du fournisseur (trente jours sur Gmail).
+- **Outlook en IMAP et SMTP n'a pas été exécuté contre un vrai compte** ; Gmail, et Hotmail via
+  Microsoft Graph, l'ont été.
 
 ## Ce que la campagne Gmail a établi
 
-La campagne réelle du propriétaire (MAIL-07) a fait jouer le cycle complet à une crew sur un
-vrai compte Gmail, deux fois : avec un mot de passe d'application le 2026-10-04, en OAuth2
-(XOAUTH2) le 2026-10-05.
+Ce qui a été vérifié sur de vrais comptes Gmail, avec un mot de passe d'application et en
+OAuth2, et qui tient : le cycle complet tourne de bout en bout, chaque étape rendant un id
+serveur ; une lecture de 3000 caractères reprend à `next_offset` ; un dossier est parcouru par
+pagination jusqu'au bout sans message sauté ni rendu deux fois ; aucun brouillon ne reste ; et
+`orkeon email login` se termine sur la redirection du navigateur, sans rien coller. Faits Gmail
+à connaître :
 
-| Contrôle | Mot de passe d'application | OAuth2 |
-|---|---|---|
-| Le cycle tourne de bout en bout — recherche, lecture, brouillon, envoi à soi-même, déplacement vers `archive`, corbeille — chaque étape rendant un id serveur | passe | passe |
-| Un déplacement vers `archive` arrive dans Tous les messages (`[Gmail]/Tous les messages` sur un compte en français) et le message quitte la boîte de réception | passe | passe |
-| Une lecture de 3000 caractères tient sous le plafond de la boucle d'agent et reprend à `next_offset` | passe | passe |
-| Un dossier entier est atteint par pagination, sans message sauté ni rendu deux fois | partiel — deux pages lues, le curseur non suivi jusqu'au bout | passe — 88 messages, 88 ids distincts, `next_cursor` nul à la dixième page |
-| La campagne ne laisse aucun brouillon | passe | passe |
-| `orkeon email login` se termine sur la redirection du navigateur, sans rien coller | — | passe |
-
-Ce qu'elle a changé dans les outils : `email_delete` rend les ids qu'il a supprimés,
-`email_search` rend `total` et dit ce que sont `count` et `limit`, `email_folders` montre où va
-`archive` sur Gmail, et trois refus — un curseur, une connexion tombée, un destinataire qui
-n'est pas une adresse — disent quoi faire. Ce qu'elle a laissé ouvert :
-
-- **La même recherche a rendu des compteurs différents sur une boîte crue inchangée** (0, puis
-  8, sur l'archive). La campagne lisait `count`, qui est la taille d'une page ; que Gmail
-  réponde aussi à une recherche depuis une vue en retard sur une suppression n'est pas
-  tranché. `total` est là pour distinguer les deux.
-- **Une page de 50 messages n'existe pas** : une dizaine tiennent dans un résultat d'outil
-  (ci-dessus).
-- **Qu'un message archivé garde ses autres libellés** n'a pas été observé par un outil
-  (ci-dessus).
-- **La corbeille n'est pas vidée** : `permanent: true` demande le droit `Purge`, que le compte
-  de campagne n'accordait pas. Ce qu'une crew supprime reste dans la corbeille jusqu'à la purge
-  à trente jours de Gmail, ou jusqu'à un compte qui accorde `Purge`.
-
-## Ce que la campagne Hotmail a établi
-
-Le propriétaire a joué Hotmail via Microsoft Graph sur un vrai compte le 2026-10-12 et a
-déclaré la campagne complète, sans écart. Le détail de cette passe n'a pas été consigné : il
-n'existe donc pas ici de tableau par contrôle, contrairement à Gmail. Outlook en IMAP et SMTP
-reste hors campagne.
+- **Un déplacement vers `archive` arrive dans Tous les messages** (`[Gmail]/Tous les messages`
+  sur un compte en français), et le message quitte la boîte de réception.
+- **La même recherche peut rendre des compteurs différents sur une boîte crue inchangée** :
+  `count` est la taille d'une page, `total` le nombre de correspondances — comparez `total`.

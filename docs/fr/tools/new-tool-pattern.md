@@ -192,9 +192,9 @@ et la porte CI lit l'une ou l'autre forme.
 public class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse> { … }
 ```
 
-Trois autres propriétés virtuelles méritent d'être déclarées :
+Quatre autres membres virtuels méritent d'être déclarés :
 
-| Propriété | Défaut | Qui la lit |
+| Membre | Défaut | Qui la lit |
 |---|---|---|
 | `Access` | `ToolAccess.Unspecified` | La permission gate par appel (`Read` / `Edit` / `Execute`) ; non spécifié est classé en fail-closed |
 | `AccessFor(arguments)` | `Access` | La classe d'un appel, pour un outil dont les opérations diffèrent (`github`, `http_api`) ; renvoyer la classe la plus restrictive pour des arguments non reconnus |
@@ -290,6 +290,7 @@ Pour un outil appelant une API externe, utiliser `HttpToolBase<TRequest, TRespon
 
 ```csharp
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
@@ -333,19 +334,19 @@ public sealed record WeatherResponse
 public sealed class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse>
 {
     private const string BaseUrl = "https://api.weatherapi.com/v1";
-    private readonly string _apiKey;
+    private readonly ISecretProvider _secrets;
 
     // Ctor simple (HttpClient statique partagé, redirections refusées). Pour brancher
     // l'IUrlValidator et le HttpHeaderSanitizer de l'hôte, utiliser le ctor
     // base(IUrlValidator, HttpHeaderSanitizer, HttpClient?, ILogger?) ; sans eux,
     // ValidateUrlAsync applique la garde par défaut fail-closed.
     public WeatherTool(
-        string apiKey,
+        ISecretProvider secrets,
         HttpClient? httpClient = null,
         ILogger<WeatherTool>? logger = null)
         : base(httpClient, logger)
     {
-        _apiKey = apiKey;
+        _secrets = secrets;
     }
 
     public override ToolAccess Access => ToolAccess.Read;
@@ -354,9 +355,10 @@ public sealed class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse>
         WeatherRequest request,
         CancellationToken cancellationToken)
     {
+        using var secret = await _secrets.GetSecretAsync("WEATHER_API_KEY", cancellationToken).ConfigureAwait(false);
         try
         {
-            var url = new Uri($"{BaseUrl}/current.json?key={_apiKey}&q={Uri.EscapeDataString(request.City)}");
+            var url = new Uri($"{BaseUrl}/current.json?key={secret.Value}&q={Uri.EscapeDataString(request.City)}");
 
             // Contrôle SSRF — obligatoire dès qu'une partie de l'URL vient de l'agent
             var check = await ValidateUrlAsync(url, cancellationToken).ConfigureAwait(false);
@@ -406,7 +408,7 @@ public sealed class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse>
 L'approche la plus simple : instancier l'outil et le passer au builder d'agent.
 
 ```csharp
-var weatherTool = new WeatherTool(apiKey: "my-api-key");
+var weatherTool = new WeatherTool(secretProvider); // l'ISecretProvider de l'hôte
 
 var agent = new AgentBuilder()
     .Role("Weather Reporter")
@@ -423,11 +425,8 @@ Pour une intégration complète dans le pipeline d'injection de dépendances :
 // Dans une méthode d'extension ou au démarrage
 services.AddSingleton<IBaseTool>(sp =>
 {
-    var config = sp.GetRequiredService<IConfiguration>();
     var logger = sp.GetService<ILogger<WeatherTool>>();
-    return new WeatherTool(
-        apiKey: config["Weather:ApiKey"]!,
-        logger: logger);
+    return new WeatherTool(sp.GetRequiredService<ISecretProvider>(), logger: logger);
 });
 ```
 
@@ -585,6 +584,9 @@ Si l'outil est destiné à être distribué dans un package, créer une extensio
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Security;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Tools.MyPackage;
 
@@ -596,9 +598,9 @@ public static class ServiceCollectionExtensions
         // Un enregistrement IBaseTool par outil. PAS TryAddSingleton<IBaseTool, …>
         // deux fois : TryAdd est indexé sur le type de SERVICE, le second appel
         // serait un no-op silencieux. Les outils à arguments de ctor hors-DI
-        // (l'apiKey de WeatherTool) exigent la forme factory.
+        // exigent la forme factory.
         services.AddSingleton<IBaseTool>(sp => new WeatherTool(
-            apiKey: sp.GetRequiredService<IConfiguration>()["Weather:ApiKey"]!,
+            sp.GetRequiredService<ISecretProvider>(),
             logger: sp.GetService<ILogger<WeatherTool>>()));
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, TranslateTool>());
 

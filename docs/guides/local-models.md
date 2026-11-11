@@ -33,7 +33,7 @@ containing `/engines/` is Docker Model Runner, driven through the OpenAI dialect
 (`OpenAIProvider`); port `11434` goes to the native Ollama provider
 (`OllamaLlmProvider`); any other address is an OpenAI-compatible server. Another such server
 (vLLM, LM Studio, llama.cpp...) is written with its `/v1` path and, when it checks no key,
-`"ApiKey": "not-needed"` — an address with no path is reported as silent. See [provider resolution](../architecture/llm-providers.md#provider-resolution).
+`"ApiKey": "not-needed"` — an address with no path is read as an OpenAI-compatible server at its root, with a notice asking for its path. See [provider resolution](../architecture/llm-providers.md#provider-resolution).
 
 Outside a container, `orkeon init --provider docker-model-runner` (or `--provider ollama`)
 writes the same settings with `localhost` in place of `host.docker.internal`
@@ -57,7 +57,7 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
 orkeon-example run 1
 ```
 
-**Pitfalls we hit so you don't have to:**
+**Pitfalls:**
 
 - **Catalog tags**: `docker model pull` resolves against the Docker Hub `ai/`
   catalog. A tag that is not in the catalog fails with
@@ -149,7 +149,7 @@ docker run -it --rm -e ORKEON_RUNNER=shell \
   -v "$PWD/out:/output" ghcr.io/orkeon/orkeon-runners
 ```
 
-Note (observed on Docker Desktop, July 2026): `configure show` reports the
+Note: `configure show` reports the
 configuration against the canonical reference (`docker.io/ai/gemma4:latest`) —
 it is keyed by the model **ID**, which both tags share, so the setting applies
 to every tag of the same model; `-e ORKEON_Llm__Model=gemma4` picks it up.
@@ -180,7 +180,7 @@ Two things to keep straight:
   which is also what an unpinned value falls back to on Docker Model Runner (no documented
   cap for a local model); on Ollama an unpinned value sends no `num_predict` at all, and the
   model writes up to its context (see
-  [output caps](../reference/llm-providers-comparison.md#output-caps--the-documented-maximum-per-model-llm-10)).
+  [output caps](../reference/llm-providers-comparison.md#output-caps--the-documented-maximum-per-model)).
 
 ### Concurrency: keep `MaxConcurrentRequests` at 1
 

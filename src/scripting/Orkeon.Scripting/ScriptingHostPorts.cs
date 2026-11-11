@@ -62,6 +62,12 @@ public sealed record ScriptingHostPorts
     /// </summary>
     public Orkeon.Domain.Graph.IGraphNodeObserver? GraphObserver { get; init; }
 
+    /// <summary>
+    /// The run's event stream: told each time a script spawns a child agent (<c>agent.spawned</c>), through
+    /// <c>ctx.llm.act</c>'s <c>spawn_agent</c> or <c>ctx.spawnBackground</c>. Null = nobody watches.
+    /// </summary>
+    public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
+
     /// <summary>The transcript caps of an agent instance. Null keeps the defaults.</summary>
     public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
 }

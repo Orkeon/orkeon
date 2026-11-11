@@ -12,11 +12,12 @@ câblées plus bas (`AddOrkeonFileSystemTools`, `AddOrkeonDataTools`, `AddOrkeon
 `AddOrkeonCodeTools`, `AddOrkeonEmailTools` ; le paquet porte d'autres suites, comme `AddOrkeonDriveTools`) vivent dans un second, `Orkeon.Tools` :
 
 ```bash
-dotnet add package Orkeon
-dotnet add package Orkeon.Tools
+dotnet add package Orkeon --prerelease
+dotnet add package Orkeon.Tools --prerelease
 ```
 
-Les deux commandes écrivent les entrées
+`--prerelease` est nécessaire tant qu'Orkeon ne publie que des pré-versions ; il
+disparaît une fois une version finale publiée. Les deux commandes écrivent les entrées
 `<PackageReference>` correspondantes dans votre `.csproj` — une édition à la main donne
 exactement le même résultat.
 
@@ -35,7 +36,7 @@ quand vous en avez besoin. La liste complète est la
 
 ### Partir d'un modèle
 
-`dotnet new install Orkeon.Templates` ajoute trois modèles, chacun un projet qui compile
+`dotnet new install Orkeon.Templates --prerelease` ajoute trois modèles, chacun un projet qui compile
 contre les paquets de la même version, écrite en clair dans son `.csproj` :
 
 | Commande | Génère |
@@ -92,7 +93,7 @@ var host = Host.CreateDefaultBuilder(args)
         // Data : CSV, PDF, JSON, XML, DOCX, XLSX, requêtes SQL, requêtes MongoDB, etc.
         services.AddOrkeonDataTools();
 
-        // Web : WebScrape, ScrapeElement, HttpApi, GitHub, ImageGeneration
+        // Web : WebScrape, ScrapeElement, HttpApi, GitHub, ImageGeneration, Firefox
         // (WebSearch/BraveSearch/Slack/CacheSearch ont leurs propres extensions opt-in)
         services.AddOrkeonWebTools();
 
@@ -196,7 +197,7 @@ Deux surcharges existent et produisent des conteneurs aux capacités **différen
 > est présente. Le sous-système RAG n'est câblé par **aucune** des deux surcharges —
 > c'est toujours la paire explicite `AddOrkeonRag(configuration)` + `AddOrkeonRagTools()`.
 
-> **Sous-systèmes opt-in (R4.9)** : A2A, monitoring backend, MultiModal, NIST, DLP,
+> **Sous-systèmes optionnels** : A2A, monitoring backend, MultiModal, NIST, DLP,
 > rate-limiting d'outils, rotation de clés, benchmarking, hooks de kickoff — et de
 > même le **sous-système RAG** (`AddOrkeonRag` + `AddOrkeonRagTools`),
 > **RaggableTree** (`AddRaggableTree`), le **système de plugins**
@@ -341,9 +342,7 @@ var batchOutput = await orchestrator.KickoffForEachAsync(crew.Id, inputs);
 ```
 
 Chaque entrée est un run complet de la crew — démarré, terminé, ses événements dispatchés — et le
-suivant commence quand le précédent est rendu, comme le `kickoff_for_each` de CrewAI. (Les entrées
-démarraient toutes à la fois sur la même crew, et tous les runs sauf le premier échouaient avec
-« Crew is already executing ».)
+suivant commence quand le précédent est rendu, comme le `kickoff_for_each` de CrewAI.
 
 **Mode streaming** :
 ```csharp
