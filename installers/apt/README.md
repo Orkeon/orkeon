@@ -15,13 +15,10 @@ the same bytes). The build is reproducible; a given version is built once, and i
 bytes are reused afterwards, never rebuilt. `scripts/apt/check-signing-key.sh` guards the
 certificate in CI.
 
-> [!WARNING]
-> **The committed certificate is a development placeholder.** It was made from a throwaway
-> key, whose secret part was destroyed: nothing can sign with it. Its armor carries the header
-> line `Comment: PLACEHOLDER - throwaway key, ...`, which is how the guard tells it apart:
-> `scripts/apt/check-signing-key.sh` prints a notice on it, and fails on it with
-> `--require-real`. It must be replaced by the output of the key ceremony below before any
-> apt index is published.
+The committed certificate comes from the key ceremony below. The guard also recognises a
+development placeholder: a certificate made from a throwaway key, whose armor carries the
+header line `Comment: PLACEHOLDER - throwaway key, ...`. It prints a notice on one, and fails
+on one with `--require-real`.
 
 ## The key
 
@@ -93,7 +90,7 @@ Where each piece goes:
 | `orkeon-archive-revocation.rev` | Offline, apart from the primary key. |
 | `orkeon-archive-signing-subkey.asc` | The `APT_SIGNING_KEY` secret of the `apt-signing` GitHub environment (paste the whole armored block), then `shred -u` it. |
 | The subkey passphrase chosen at step 5 | The `APT_SIGNING_PASSPHRASE` secret of the same environment. |
-| `orkeon-archive-keyring.asc` | Replaces the placeholder in this directory, committed; set `keyring.version` to the ceremony date. |
+| `orkeon-archive-keyring.asc` | Replaces the certificate in this directory, committed; set `keyring.version` to the ceremony date. |
 | The fingerprint and the keyring SHA-256 (step 6) | `SECURITY.md` and `SECURITY.fr.md`, in the marker lines below. |
 | The subkey expiry date | A calendar reminder, 6 months before it. |
 
@@ -121,8 +118,7 @@ orkeon-archive-keyring.gpg sha256: <64 hex digits>
 
 The first is the primary key fingerprint (`gpg --fingerprint`), the second the SHA-256 of the
 binary keyring (`gpg --dearmor < orkeon-archive-keyring.asc | sha256sum`), which is also
-the file the package installs. Every marker present must match. Once the placeholder is
-replaced, `SECURITY.md` and `SECURITY.fr.md` must carry both.
+the file the package installs. Every marker present must match, and `SECURITY.md` and `SECURITY.fr.md` carry both.
 
 ## Extending or rotating the signing subkey
 
@@ -177,9 +173,6 @@ Every push to `apt` goes through `scripts/apt/publish-apt-channel.sh`, which rep
 channel directories and retries on top of a branch that moved meanwhile, so the two groups
 never overwrite each other. The first publication creates the `apt` branch.
 
-**Order for the first publication.** Run the ceremony and merge its certificate first: a tag
-pushed while the certificate is the placeholder attaches no keyring package and its
-`apt-publish` job fails on purpose. Then seed the Releases published before the repository
-existed (`apt-maintenance.yml`, mode `seed`, targets: the tags of those Releases) **after** the
-first publishing tag: that tag brings the `orkeon-archive-keyring` package, without which the
-documented installation block cannot install it.
+A tag pushed while the committed certificate is a placeholder attaches no keyring package, and
+its `apt-publish` job fails on purpose. `apt-maintenance.yml`, mode `seed`, adds Releases that
+were published before the repository existed (targets: their tags).
