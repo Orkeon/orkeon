@@ -125,6 +125,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Interop Microsoft Agent Framework](./reference/agent-framework-interop.md) | Une crew Orkeon comme `AIAgent` MAF (`CrewAgent`, `AddOrkeonAgentFramework`) ; un agent MAF comme modèle d'un agent Orkeon (`WithAgentFrameworkAgent`) ou comme outil (`WithAgentFrameworkTool`) |
 | [Gabarit de README d'exemple](./templates/example-readme.md) | Gabarit pour `examples/**/README.md` : Ce qu'il fait / Prérequis / Données requises / L'exécuter / Sortie attendue / Durée & coût |
 | [Comparatif des fournisseurs LLM](./reference/llm-providers-comparison.md) | Matrice de capacités par provider (streaming SSE, tool calling natif, grammaire GBNF, `response_format`, thinking, métriques, résilience), dérivée du code source |
+| [Résultats des campagnes LLM](./reference/llm-campaign-results.md) | Le dernier résultat contre l'API réelle de chaque modèle campagné, mode par mode, régénéré par le kit de campagne après chaque campagne |
 | [Matrice de publication](./reference/publication-matrix.md) | **Source de vérité** de ce qui est publié où : NuGet.org vs GitHub Packages, tools dotnet, artefacts d'installation, flux de version, le canal dev (le dernier `main` entre deux tags) |
 
 ---

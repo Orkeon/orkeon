@@ -266,6 +266,10 @@ Haiku 5 at 0.10 / 0.50 and Haiku 4.5 at 1 / 5. Cache tariffs: a 5-minute write a
 
 ## Models served and their default options — catalogue read of 2026-11-11
 
+> The latest result of every campaigned model, regenerated after each campaign, is on
+> [LLM campaign results](llm-campaign-results.md); the scores below are the ones this
+> catalogue read recorded.
+
 The campaign of 2026-11-11 read each provider's own catalogue endpoint with the campaign key
 (`orkeon llm models -p <provider>` returns the same identifiers), then played the protocol on
 every default, on the candidates of the reviews, and on the current chat models the listing
@@ -558,6 +562,7 @@ Every row is backed by unit tests asserting the emitted payload — against a **
 handler**. A mock proves Orkeon sends what we believe it sends; it does not prove the vendor
 accepts it. Real-execution evidence is archived separately by the campaign kit
 ([`llmproviders-test/`](https://github.com/Orkeon/orkeon/tree/main/llmproviders-test), whose
-README carries the campaign journal); run a campaign with
+README carries the campaign journal; the latest result per model is on
+[LLM campaign results](llm-campaign-results.md)); run a campaign with
 `orkeon llm probe --provider <name> --archive <dir>`, or the kit's `run-campaign.sh`
 ([validating a provider](../architecture/llm-providers.md#validating-a-provider-against-its-real-api)).

@@ -284,6 +284,10 @@ Haiku 5 à 0,10 / 0,50 et Haiku 4.5 à 1 / 5. Tarifs de cache : écriture 5 minu
 
 ## Modèles servis et leurs options par défaut — lecture des catalogues du 2026-11-11
 
+> Le dernier résultat de chaque modèle campagné, régénéré après chaque campagne, est sur
+> [Résultats des campagnes LLM](llm-campaign-results.md) ; les scores ci-dessous sont ceux
+> qu'a relevés cette lecture des catalogues.
+
 La campagne du 2026-11-11 a lu l'endpoint de catalogue de chaque fournisseur avec la clé de
 campagne (`orkeon llm models -p <fournisseur>` rend les mêmes identifiants), puis joué le
 protocole sur chaque défaut, sur les candidats des revues, et sur les modèles de chat courants
@@ -590,6 +594,7 @@ Chaque ligne est adossée à des tests unitaires qui vérifient le payload émis
 HTTP mocké**. Un mock prouve qu'Orkeon envoie ce que nous croyons envoyer ; il ne prouve pas que
 le fournisseur l'accepte. Les preuves d'exécution réelle sont archivées séparément par le kit
 de campagne ([`llmproviders-test/`](https://github.com/Orkeon/orkeon/tree/main/llmproviders-test),
-dont le README porte le journal des campagnes) ; lancez une campagne avec
+dont le README porte le journal des campagnes ; le dernier résultat par modèle est sur
+[Résultats des campagnes LLM](llm-campaign-results.md)) ; lancez une campagne avec
 `orkeon llm probe --provider <nom> --archive <dossier>`, ou le `run-campaign.sh` du kit
 ([valider un fournisseur](../architecture/llm-providers.md#valider-un-fournisseur-contre-son-api-réelle)).
