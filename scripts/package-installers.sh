@@ -256,8 +256,12 @@ for RID in $RIDS; do
       continue
     fi
     echo "    publish $name (self-contained=$selfcontained)"
+    # RestoreLockedMode=false: the packages.lock.json files record the RID-less net10.0 graph
+    # (Directory.Build.targets), a restore with -r resolves a per-RID graph they do not hold
+    # (NU1004 in locked mode). The versions of every package are still pinned by
+    # Directory.Packages.props; only the transitive resolution of this RID is not locked.
     dotnet publish "$REPO_ROOT/$csproj" -c "$CONFIG" -r "$RID" \
-      --self-contained "$selfcontained" -p:PublishTrimmed=false \
+      --self-contained "$selfcontained" -p:PublishTrimmed=false -p:RestoreLockedMode=false \
       -p:Version="$VERSION" -p:SkipScriptingNpmInstall=true \
       -p:ErrorOnDuplicatePublishOutputFiles=false \
       -o "$ROOT/libexec/$name" --nologo -v quiet

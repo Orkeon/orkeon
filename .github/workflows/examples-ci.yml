@@ -85,7 +85,7 @@ jobs:
           path: |
             packages
             ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
           restore-keys: nuget-${{ runner.os }}-
       - name: Build the examples solution (warnings are errors)
         run: dotnet build examples/Orkeon.Examples.sln -c Release -warnaserror

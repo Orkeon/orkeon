@@ -314,6 +314,9 @@ réponses et inspecter les appels. La référence est
   La gate `file-modes.yml` lit le mode dans l'index git — le seul qu'un clone macOS/Linux
   restaure —, si bien qu'un arbre de travail sur un montage NTFS où tout fichier paraît
   exécutable ne prouve rien.
+* Un changement de paquet change aussi les fichiers de verrouillage NuGet : `dotnet restore`
+  réécrit le `packages.lock.json` des projets touchés (la CI restaure en mode verrouillé et
+  échoue sur un fichier périmé) — commitez-les avec le changement.
 * Un changement de paquet — une version de `Directory.Packages.props`, un paquet ajouté à
   un projet que livrent les outils, les installeurs ou les images de conteneur, ou retiré —
   change ce que ces binaires redistribuent : après la restauration, lancez

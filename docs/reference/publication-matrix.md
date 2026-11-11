@@ -486,4 +486,12 @@ print the runtime install commands rather than failing at first launch.
   `release.yml`, a run artefact named `sbom` in `publish.yml`. How to verify any of it, and
   why a nuget.org download must shed its repository signature first, is in
   [Verify what you install](../guides/verify-what-you-install.md).
+- **Locked dependency graphs.** The packages are built from locked dependency graphs: every
+  project of `Orkeon.sln` and of the examples commits a `packages.lock.json` next to it
+  (`Directory.Build.targets`), and CI restores in locked mode (`RestoreLockedMode` under the
+  `CI` variable), so a restore that would resolve a transitive package differently fails
+  instead of drifting. Two restores are deliberately unlocked: the `build-test-net11` lane
+  (another SDK, to see what it resolves) and the per-RID `dotnet publish -r` of
+  `package-installers.sh`/`.ps1` (a lock file records the RID-less graph); the
+  `dotnet new` template content ships no lock file.
 - Version flows from `src/Directory.Build.props`, the single source of truth: no project overrides it, and the publish workflow's tag guard refuses any `v*` tag that disagrees with it. The dev channel derives its `<version>.dev.<n>` from it, a build made from a checkout its `<version>.local.<stamp>` (see *Dev channel* above).
