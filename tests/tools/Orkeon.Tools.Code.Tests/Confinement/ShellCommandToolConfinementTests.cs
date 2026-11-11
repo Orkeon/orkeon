@@ -259,7 +259,8 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
     public async Task ShouldRefuseAWriteToAReadOnlyMount_WhenAScriptReachesItByItself()
     {
         SkipUnlessBubblewrapWorks();
-        await File.WriteAllTextAsync(Path.Combine(_workspace, "w.sh"), "echo x > /docs/f\n", Ct);
+        // LC_ALL=C: the assertion reads the C library's English message, whatever the host's locale.
+        await File.WriteAllTextAsync(Path.Combine(_workspace, "w.sh"), "export LC_ALL=C\necho x > /docs/f\n", Ct);
         using var tool = Confined(extraAllowedCommands: ["bash"]);
 
         var dict = Unpack(await tool.CallAsync(Request("bash /workspace/w.sh"), Ct));
