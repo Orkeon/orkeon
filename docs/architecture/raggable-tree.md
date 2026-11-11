@@ -122,7 +122,7 @@ Markdown is a first-class language of the index, outside the Tree-sitter path: f
 - a `Section` node per heading (levels 1-6, nested FQN `<file>::Title/Sub`, level L3) whose range runs to the next heading of the same or a higher level;
 - a `CodeFence` node per fenced block (the language is its tag; a `mermaid` fence is also tagged `mermaid`), a `Link` node per link (tag `target:<raw target>`, plus `resolved:<fqn>` when `MarkdownDocumentMapper.ResolveLinksAsync` finds the target in the store, by path or by local name; an unresolved link keeps only its raw target) and a `FrontMatter` node for a leading YAML block (the top-level keys are its tags), all L4.
 
-Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the other languages. The four new `UniversalNodeKind` values (`Section`, `CodeFence`, `Link`, `FrontMatter`) are appended after `Unknown` because the persisted graph stores the enum by name; `Control` (a button, a field, a list of a web page) follows them, for the `firefox` tool, whose `PageOutlineMapper` projects a page the same way — a `Section` per heading or landmark, a `Link` per link, a `Control` per control, in a store of the page's own ([guide](../guides/firefox.md)). `codebase_search` restricted to the language `markdown` (its `FilterLanguages` option) returns the section hits. Limits: a `.md` file has no module node in the tree, so a file-to-file link resolves only against a store that holds one, and the build does not call `ResolveLinksAsync` yet.
+Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the other languages. The four Markdown `UniversalNodeKind` values (`Section`, `CodeFence`, `Link`, `FrontMatter`) are appended after `Unknown` because the persisted graph stores the enum by name; `Control` (a button, a field, a list of a web page) follows them, for the `firefox` tool, whose `PageOutlineMapper` projects a page the same way — a `Section` per heading or landmark, a `Link` per link, a `Control` per control, in a store of the page's own ([guide](../guides/firefox.md)). `codebase_search` restricted to the language `markdown` (its `FilterLanguages` option) returns the section hits. Limits: a `.md` file has no module node in the tree, so a file-to-file link resolves only against a store that holds one, and the build does not call `ResolveLinksAsync` yet.
 
 ## Tool catalogue
 
@@ -316,8 +316,8 @@ The framework exposes `ICodebaseContextProvider`, which produces a compact summa
 
 ## Hybrid search
 
-`codebase_search` (and `IRaggableStore.SemanticSearchAsync`) is **hybrid** since the
-freshness work: an embedding cosine ranking and a BM25 lexical ranking are fused by
+`codebase_search` (and `IRaggableStore.SemanticSearchAsync`) is **hybrid**: an
+embedding cosine ranking and a BM25 lexical ranking are fused by
 Reciprocal Rank Fusion (`SemanticQuery.Mode`: `Hybrid` default / `Vector` / `Lexical`).
 The lexical half uses a **code-aware tokenizer** (`CodeTokenizer`): identifiers are split
 on camelCase / snake_case / digit boundaries and indexed both as sub-tokens and whole
@@ -325,7 +325,7 @@ on camelCase / snake_case / digit boundaries and indexed both as sub-tokens and 
 strong signal while concept queries gain recall. Each `SearchHit` carries `MatchOrigin`
 (`hybrid`/`vector`/`bm25`); hybrid scores are RRF **rank aggregates** (not similarities —
 never compare them across origins). With no embedder wired, `Hybrid` degrades to
-`Lexical` instead of returning empty; explicit `Vector` keeps the historical contract.
+`Lexical` instead of returning empty; explicit `Vector` returns no hit without an embedder.
 
 ## Freshness (edit ↔ search coordination)
 
@@ -342,8 +342,7 @@ lazy-reindex** design:
   trusted for 2 s). `codebase_search` responses report `refreshed_files`;
   `index_status` reports `dirty_count`/`dirty_paths`, so "stale" is observable.
 - **Store safety** — `InMemoryRaggableStore` holds a `ReaderWriterLockSlim`: searches
-  enumerate safely DURING an incremental reindex (previously a concurrent search could
-  throw on the mutated dictionaries). The refresh publishes `RaggableTreeUpdated` on the
+  enumerate safely DURING an incremental reindex. The refresh publishes `RaggableTreeUpdated` on the
   `IRaggableTreeEventBus`.
 - **Bound** — the reindex replaces the nodes and edges of each changed file and reuses
   every other node, so its cost is proportional to the changed files, not to the
@@ -353,12 +352,8 @@ lazy-reindex** design:
 - **Failure barrier** — a failed refresh serves the current (stale) index and keeps the
   dirty debt for the next attempt: stale results beat a dead search.
 
-Historical note: an earlier version of this document described three watcher-driven
-synchronization modes (`frozen`/`live`/`breakOnChange` via `RaggableTreeIndexMode`).
-Those modes were never consumed by any code — the enum existed, nothing read it, and it
-was removed with the `IndexMode` key (GAP-15). The
-freshness design above replaces that fiction; `ICodebaseWatcher`
-(`FileSystemWatcherCodebaseWatcher`, which no shipped host registers) remains available for
+There is no watcher-driven synchronization mode: `ICodebaseWatcher`
+(`FileSystemWatcherCodebaseWatcher`, which no shipped host registers) is available for
 hosts that want push-based invalidation on top of the lazy pass.
 
 ## Selectors
@@ -429,7 +424,7 @@ The node tools and the structural tools read a file in any grammar of `LanguageR
 | `doc_section` | `Section` |
 | `test` | `Method` node carrying the `test` tag |
 
-`EdgeKind` gains `Tests`, `Documents` and `ProjectDepends` (flags `1<<5` to `1<<7`). There is no `references` kind: nothing produces it. `documents` edges link a Markdown section to the symbols it names (see [Graph queries](#graph-queries)).
+`EdgeKind` also has `Tests`, `Documents` and `ProjectDepends` (flags `1<<5` to `1<<7`). There is no `references` kind: nothing produces it. `documents` edges link a Markdown section to the symbols it names (see [Graph queries](#graph-queries)).
 
 ### Using the names
 
@@ -464,7 +459,6 @@ Input: `changed_files` or `base` (a git ref whose diff gives the files); with ne
 - A neutral extension (`.md`, `.txt`, `.png`, ...) is exempt. `.claude/` and the work folder are skipped.
 - `all` is `true` when a non-neutral file is not in the index, has no owning project, or when the expansion is truncated.
 - Limits: `project_depends` comes from csproj files only; TypeScript tests are tagged but carry no `tests` edges; a cross-file `tests` edge exists only after a full reindex.
-- Parity: the answer matches the harness script `affected-tests.py`.
 
 ### `batch_anchors`
 
@@ -563,7 +557,7 @@ Five members exist on `EmbeddingProviderKind`:
 
 Implemented by `Orkeon.Tools.Embeddings.Local` (opt-in package, upstream package `SmartComponents.LocalEmbeddings` v0.1.0-preview10148, BGE-micro-v2 model). Suited to dev CLI contexts, offline CI indexing, and demos without an API key.
 
-**Quality / cost trade-off** (see spec §10):
+**Quality / cost trade-off**:
 
 - 384 dimensions vs 1536 (OpenAI) — less fine-grained semantic search on out-of-domain factual Q&A.
 - MTEB score ~58.5 vs ~62.3 — acceptable for code indexing (signatures, FQNs, and docstrings are structured signals that are less ambiguous than long-form text).
@@ -572,7 +566,7 @@ Implemented by `Orkeon.Tools.Embeddings.Local` (opt-in package, upstream package
 - Cold start ~150-300 ms (loading the ONNX model into memory); ~5-15 ms / text on a modern x86_64 CPU.
 - RAM footprint ~200 MB once the model is loaded.
 
-#### Minimal configuration (`appsettings.json`, see spec §7.2)
+#### Minimal configuration (`appsettings.json`)
 
 ```jsonc
 {
@@ -599,7 +593,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 });
 ```
 
-#### Extended configuration with a VFS `ModelPath` (see spec §7.3)
+#### Extended configuration with a VFS `ModelPath`
 
 To point to an ONNX model other than the embedded BGE-micro-v2, declare a read-only VFS mount and pass a **virtual** path in `LocalEmbeddingOptions.ModelPath` (`Orkeon.Analysis.Abstractions.DependencyInjection`). Physical paths (`C:/...`, `/var/...`) are rejected by `IFileSystemService` — see [vfs-compliance.md](./vfs-compliance.md). These options are set **from C#**: the runner host does not read a `RaggableTree:Embedding:Local` section and always registers the embedded model with its defaults.
 

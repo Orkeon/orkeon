@@ -33,9 +33,9 @@ Every outbound line is an object carrying these keys, and only these as reserved
 
 **An absent key is omitted, never written as `null`.** A client treats every identity field as optional.
 
-**`v` moves only for a change an existing client would misread** — a field removed, renamed, or given another meaning. Adding is not such a change: a client ignores the kinds and fields it does not know (§6), so a new kind or a new payload field keeps `v: 2`. That is how `task.started` arrived, and how `cost.updated` gained the prompt/completion split, the vendor's cost and the estimated part (`estimatedTokens`).
+**`v` moves only for a change an existing client would misread** — a field removed, renamed, or given another meaning. Adding is not such a change: a client ignores the kinds and fields it does not know (§6), so a new kind or a new payload field keeps `v: 2`.
 
-The eight names above are **reserved**: a payload field colliding with one is dropped rather than allowed to impersonate the envelope. This is not theoretical — the human-input payload originally called its field `kind` and lost it, which is why the wire name is `inputKind`.
+The eight names above are **reserved**: a payload field colliding with one is dropped rather than allowed to impersonate the envelope. This is why the human-input payload names its field `inputKind`.
 
 Payload fields sit **flat** beside the envelope, not nested under a `payload` key. The one exception is `hub.message`, whose payload is opaque to the protocol and is carried as-is.
 
@@ -48,7 +48,7 @@ The vocabulary is declared once, in the dependency-free `Orkeon.Constants.Protoc
 | `kind` | Payload | When |
 |---|---|---|
 | `run.started` | `target`, `stream` | The run begins. |
-| `task.started` | `taskId`, `agentRole`, `attempt` | A task begins, in every orchestration mode — the moment its agent is chosen and before it is asked anything. Between this and the matching `task.completed` a watcher shows the task as in progress; the payload is deliberately thin because nothing has been measured yet. An older CLI says nothing here, and a client must not refuse a `task.completed` it never saw started. `attempt` (integer, always present) is 1 for the first run of the task and 2, 3, … for its retries ([Task retry](yaml-schema.md#task-retry)): a task with a `retry:` announces itself again at each retry, and a client treats a repeated `task.started` for a task already in progress as the same task. |
+| `task.started` | `taskId`, `agentRole`, `attempt` | A task begins, in every orchestration mode — the moment its agent is chosen and before it is asked anything. Between this and the matching `task.completed` a watcher shows the task as in progress; the payload is deliberately thin because nothing has been measured yet. A client must not refuse a `task.completed` it never saw started. `attempt` (integer, always present) is 1 for the first run of the task and 2, 3, … for its retries ([Task retry](yaml-schema.md#task-retry)): a task with a `retry:` announces itself again at each retry, and a client treats a repeated `task.started` for a task already in progress as the same task. |
 | `task.completed` | `taskId`, `agentRole`, `success`, `skipped`, `resumed`, `attempt`, `durationMs`, `tokens`, `toolCalls`, `skipReason`, `defaulted`, `isDecision`, `decision` | Each task finishes, in every orchestration mode — failure and cancellation included (see `error`). `attempt` (integer, always present) is the attempt that ended the task: 1 when it ran once, 3 for a task whose third attempt it is ([Task retry](yaml-schema.md#task-retry)); a task that never ran says 1. `resumed: true` marks a task of a resumed run (`orkeon run --resume`) whose result came back from the checkpoint: no model was asked for it (`false` otherwise, always present, in every orchestration mode). `skipped: true` marks a task that never ran, either because a task it depends on did not succeed or because its `when` condition did not hold (`success` is then `false` and `durationMs` `0`). `tokens` and `toolCalls` are `0` when the mode does not track them, never absent. `skipReason` (string or `null`) says why a skipped task did not run: the dependency that did not succeed, or the `when` condition that did not hold ([ADR-016](../adr/ADR-016-decision-tasks-and-conditional-fan-out.md)); it is `null` unless `skipped` is `true`. `isDecision` (boolean) is `true` for a decision task, which has no agent; `decision` is then its answers as a compact JSON string, and `null` otherwise. `defaulted` (boolean) is `true` for a decision task that answered from its fallback because the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled=false` or no decision model configured). All four are always present. |
 | `tool.called` | `toolName`, `argsSummary?` | A tool is invoked. `argsSummary` is a digest of the argument names, never the arguments: a call can carry a whole file. |
 | `tool.returned` | `toolName`, `success`, `durationMs` | The tool finished — **including when it threw**, so a watcher never shows a step running forever. Correlated with its `tool.called`. For a fanned-out turn (parallel read-class calls), the `tool.called` events of a parallel group may all precede their `tool.returned` events, and the `tool.returned` events follow the call order. |
@@ -70,7 +70,7 @@ A run that reports nothing is not a run going well — it is a run reporting not
 
 ### What the meter counts
 
-Every generation call of the run, measured in one place: the provider factory wraps every provider it builds in a metering decorator, and a host that registers a provider of its own does it through `AddOrkeonLlmProvider`, which wraps it the same way. A call is therefore counted by the provider it went to, whoever made it — never by the caller, never twice. Before, only the agent loop and the scripting facade reported, and the manager, the planner, the RAG pipelines, the memory services, the flows, the judges and the agent's own retries spent tokens neither the live meter nor `run.finished` ever showed.
+Every generation call of the run, measured in one place: the provider factory wraps every provider it builds in a metering decorator, and a host that registers a provider of its own does it through `AddOrkeonLlmProvider`, which wraps it the same way. A call is therefore counted by the provider it went to, whoever made it — never by the caller, never twice.
 
 Each reading says whose call it was. The orchestrator opens a scope for every task — the crew, the agent, the task — and the part of the run that makes a call names the work, which the reading carries as `operation`: `agent`, `manager`, `planning`, `rag`, `memory`, `judge`, or the `ctx.llm.*` method. A RAG pipeline queried by an agent's tool stays that agent's. A call nothing claimed is counted all the same — `unattributed` in the engine's own reports, and no `operation` on the wire.
 
@@ -84,7 +84,7 @@ One JSON document per line on stdin. Each verb maps onto a member of `IEventHub`
 
 | `kind` | Payload | Effect |
 |---|---|---|
-| `input.given` | `correlationId?` (or `requestId?`), `value` | Answers a pending `input.needed`. Outbound too, since FWK-23: `{requestId}` when a held run received its answer (`POST /runs/{id}/input`) or a resumed run was given one (`--input`). |
+| `input.given` | `correlationId?` (or `requestId?`), `value` | Answers a pending `input.needed`. Also outbound: `{requestId}` when a held run received its answer (`POST /runs/{id}/input`) or a resumed run was given one (`--input`). |
 | `post` | `to`, `payload` | `IEventHub.PostAsync` — writes to one mailbox. |
 | `send` | `to`, `payload`, `timeoutMs?`, `correlationId?` | `SendAsync` (`timeoutMs` defaults to 30 s); the answer comes back as a correlated `hub.message`. |
 | `publish` | `topic`, `payload`, `retainAs?` | `PublishAsync`. |
@@ -93,7 +93,7 @@ One JSON document per line on stdin. Each verb maps onto a member of `IEventHub`
 
 An `input.given` **without** a correlation id answers the oldest question waiting: a human typing into a terminal has no identifier to quote. A durable question's id is its `requestId`: `correlationId` or `requestId` may carry it.
 
-**A question that outlives the process (FWK-23).** With `Orkeon:Checkpointing:Enabled`, a question to a human is persisted with the run's checkpoint session (`PendingInput`, session phase `WaitingForInput`) under a stable id, `<TaskKey>#<n>.<q>` (`n` the invocation of the task, `q` the question within it). `Orkeon:HumanInput:Pause` says what the run does while nobody has answered: `Hold` waits, up to `HoldTimeout`, then suspends; `Suspend` stops at once. Unset, a run with a person to ask (a terminal, a stream a client reads) holds, one with nobody (a plain `orkeon run`) suspends; the daemon and `--events` hold by default (30 minutes, none). A suspended run ends with `run.finished` `status: "waiting_for_input"`, `exitCode: 75`, `success: false` and the question's `requestId`: it is neither a success nor a failure. It resumes with `orkeon run <crew> --resume <id> --input "..."`: the task that asked is replayed (granularity: the task), asks the same question under the same id, and finds the answer; the prompt shown is the one persisted the first time, never recomputed, and the answer is matched by `requestId` alone. The first answer wins.
+**A question that outlives the process.** With `Orkeon:Checkpointing:Enabled`, a question to a human is persisted with the run's checkpoint session (`PendingInput`, session phase `WaitingForInput`) under a stable id, `<TaskKey>#<n>.<q>` (`n` the invocation of the task, `q` the question within it). `Orkeon:HumanInput:Pause` says what the run does while nobody has answered: `Hold` waits, up to `HoldTimeout`, then suspends; `Suspend` stops at once. Unset, a run with a person to ask (a terminal, a stream a client reads) holds, one with nobody (a plain `orkeon run`) suspends; the daemon and `--events` hold by default (30 minutes, none). A suspended run ends with `run.finished` `status: "waiting_for_input"`, `exitCode: 75`, `success: false` and the question's `requestId`: it is neither a success nor a failure. It resumes with `orkeon run <crew> --resume <id> --input "..."`: the task that asked is replayed (granularity: the task), asks the same question under the same id, and finds the answer; the prompt shown is the one persisted the first time, never recomputed, and the answer is matched by `requestId` alone. The first answer wins.
 
 A hub command that arrives before the run's hub exists is held — up to 64 of them — and replayed once it does; beyond that it is dropped, like any other line the run cannot use.
 
@@ -119,7 +119,7 @@ links:
     allowed_topics: [run.progress]
 ```
 
-Without a declared link the ACL's default policy still lets traffic through — the hub shipped without an ACL, and refusing undeclared traffic would break every existing crew — but a crew that declares any link is held to what it declared. The full rules are in [EventHub §10](event-hub-and-crew-lifecycle.md).
+Without a declared link the ACL's default policy lets traffic through, so a crew that declares nothing keeps working — but a crew that declares any link is held to what it declared. The full rules are in [EventHub §10](event-hub-and-crew-lifecycle.md).
 
 ---
 
@@ -155,7 +155,7 @@ Two rules worth building against. **Ignore a `kind` you do not know** — a newe
 
 - **Desktop and terminal front-ends** read the stream to show progress — the task in progress and the tool at work, from `task.started` and `tool.called`, as well as the tasks done — cost and the run's questions instead of scrollback. Such a client can also staff the hub seat: an agent's `send` to `client://<name>` (marked `expectsReply`) appears as a request the user answers, and the reply travels back down stdin; hub posts are listed rather than dropped. Silence past the agent's own timeout is still a refusal — the same rule silence follows everywhere on this bus — the client just gives a human the chance to speak before it. `RunClient`-style peers that take the seat headlessly follow the same shape: subscribe, post, and reply.
 
-The same envelope carries [the Atelier](../reference/cli.md#orkeon-forge)'s own stream and the [`orkeon usecases`](../reference/cli.md#orkeon-usecases) session (`usecases search --events jsonl`, whose kinds `UseCaseEventKinds` declares beside `RunEventKinds`), so a client that reads one reads all three — and the sign-in of an e-mail account, [`orkeon email login --events jsonl`](../reference/cli.md#orkeon-email), whose five kinds `EmailEventKinds` declares.
+The same envelope carries [the Atelier](../reference/cli.md#orkeon-forge)'s own stream and the [`orkeon usecases`](../reference/cli.md#orkeon-usecases) session (`usecases search --events jsonl`, whose kinds `UseCaseEventKinds` declares beside `RunEventKinds`), so a client that reads one reads them all — and the sign-in of an e-mail account, [`orkeon email login --events jsonl`](../reference/cli.md#orkeon-email), whose kinds `EmailEventKinds` declares (five `email.*` kinds and `error`).
 
 ## 8. Where the events go: sinks and the run history
 
@@ -163,8 +163,8 @@ The observers of a run (`RunEventObserver`, `ObservedTool`, `RunEventsLlmCallObs
 `IRunEventSink` (`Orkeon.Application.Runs`, experimental `ORKEXP007`), a `RunEventPublisher`. The publisher stamps each event
 once (`seq`, `ts`, the run identity) and hands it to every destination, so every destination holds the same lines:
 
-- **`StdoutJsonLinesRunEventSink`** (the CLI): the stream of `orkeon run --events jsonl`. It is unchanged byte for byte: a
-  golden test (`StdoutEventContractGoldenTests`) pins it. The other streaming verbs (`forge`, `email`, `drive`, `usecases`)
+- **`StdoutJsonLinesRunEventSink`** (the CLI): the stream of `orkeon run --events jsonl`. Its bytes are pinned by a
+  golden test (`StdoutEventContractGoldenTests`). The other streaming verbs (`forge`, `email`, `drive`, `usecases`)
   keep their own writer, which shares the envelope code and the model-call observer.
 - **`JsonLinesFileRunEventSink`** (`Orkeon.Hosting`): `<run id>.jsonl` and an `index.jsonl` under the `/runs` mount, through the
   VFS, one serialized writer per run.

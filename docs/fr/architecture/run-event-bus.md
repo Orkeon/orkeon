@@ -33,9 +33,9 @@ Chaque ligne sortante est un objet portant ces clés, et elles seules comme noms
 
 **Une clé absente est omise, jamais écrite à `null`.** Un client traite tout champ d'identité comme optionnel.
 
-**`v` ne bouge que pour un changement qu'un client existant lirait de travers** — un champ retiré, renommé ou qui change de sens. Ajouter n'en est pas un : un client ignore les kinds et les champs qu'il ne connaît pas (§6), si bien qu'un nouveau kind ou un nouveau champ de charge utile garde `v: 2`. C'est ainsi que `task.started` est arrivé, et que `cost.updated` a reçu la répartition prompt / completion, le coût du fournisseur et la part estimée (`estimatedTokens`).
+**`v` ne bouge que pour un changement qu'un client existant lirait de travers** — un champ retiré, renommé ou qui change de sens. Ajouter n'en est pas un : un client ignore les kinds et les champs qu'il ne connaît pas (§6), si bien qu'un nouveau kind ou un nouveau champ de charge utile garde `v: 2`.
 
-Les huit noms ci-dessus sont **réservés** : un champ de charge utile qui entre en collision avec l'un d'eux est supprimé plutôt qu'autorisé à se faire passer pour l'enveloppe. Ce n'est pas théorique — la charge utile de l'entrée humaine appelait d'abord son champ `kind` et le perdait, d'où le nom `inputKind` sur le fil.
+Les huit noms ci-dessus sont **réservés** : un champ de charge utile qui entre en collision avec l'un d'eux est supprimé plutôt qu'autorisé à se faire passer pour l'enveloppe. C'est pourquoi la charge utile de l'entrée humaine nomme son champ `inputKind`.
 
 Les champs de charge utile sont **à plat** à côté de l'enveloppe, pas imbriqués sous une clé `payload`. Seule exception : `hub.message`, dont la charge est opaque au protocole et transportée telle quelle.
 
@@ -48,7 +48,7 @@ Le vocabulaire est déclaré une seule fois, dans le satellite sans dépendance 
 | `kind` | Charge utile | Quand |
 |---|---|---|
 | `run.started` | `target`, `stream` | Le run commence. |
-| `task.started` | `taskId`, `agentRole`, `attempt` | Une tâche commence, dans les six modes d'orchestration — au moment où son agent est choisi, avant qu'on ne lui demande quoi que ce soit. Entre ce kind et son `task.completed`, un observateur montre la tâche en cours ; la charge utile est volontairement mince, rien n'a encore été mesuré. Un CLI plus ancien ne dit rien ici, et un client ne doit pas refuser un `task.completed` dont il n'a jamais vu le départ. `attempt` (entier, toujours présent) vaut 1 pour la première exécution de la tâche et 2, 3, … pour ses retries ([Retry d'une tâche](yaml-schema.md#retry-dune-tâche)) : une tâche avec un `retry:` s'annonce de nouveau à chaque retry, et un client traite un `task.started` répété pour une tâche déjà en cours comme la même tâche. |
+| `task.started` | `taskId`, `agentRole`, `attempt` | Une tâche commence, dans les six modes d'orchestration — au moment où son agent est choisi, avant qu'on ne lui demande quoi que ce soit. Entre ce kind et son `task.completed`, un observateur montre la tâche en cours ; la charge utile est volontairement mince, rien n'a encore été mesuré. Un client ne doit pas refuser un `task.completed` dont il n'a jamais vu le départ. `attempt` (entier, toujours présent) vaut 1 pour la première exécution de la tâche et 2, 3, … pour ses retries ([Retry d'une tâche](yaml-schema.md#retry-dune-tâche)) : une tâche avec un `retry:` s'annonce de nouveau à chaque retry, et un client traite un `task.started` répété pour une tâche déjà en cours comme la même tâche. |
 | `task.completed` | `taskId`, `agentRole`, `success`, `skipped`, `resumed`, `attempt`, `durationMs`, `tokens`, `toolCalls`, `skipReason`, `defaulted`, `isDecision`, `decision` | Chaque tâche se termine, **dans les six modes d'orchestration** — échec et annulation compris (voir `error`). `attempt` (entier, toujours présent) est la tentative qui a clos la tâche : 1 quand elle a tourné une fois, 3 pour une tâche dont c'est la troisième tentative ([Retry d'une tâche](yaml-schema.md#retry-dune-tâche)) ; une tâche qui n'a pas tourné dit 1. `resumed: true` marque une tâche d'un run repris (`orkeon run --resume`) dont le résultat est revenu du checkpoint : aucun modèle n'a été interrogé pour elle (`false` sinon, toujours présent, dans tous les modes d'orchestration). `skipped: true` marque une tâche qui n'a jamais tourné, soit parce qu'une tâche dont elle dépend n'a pas réussi, soit parce que sa condition `when` n'était pas vraie (`success` vaut alors `false` et `durationMs` `0`). `tokens` et `toolCalls` valent `0` quand le mode ne les mesure pas, jamais absents. `skipReason` (chaîne ou `null`) dit pourquoi une tâche ignorée n'a pas tourné : la dépendance qui n'a pas réussi, ou la condition `when` qui n'était pas vraie ([ADR-016](../adr/ADR-016-decision-tasks-and-conditional-fan-out.md)) ; il vaut `null` tant que `skipped` n'est pas `true`. `isDecision` (booléen) vaut `true` pour une tâche de décision, qui n'a pas d'agent ; `decision` est alors ses réponses en chaîne JSON compacte, et `null` sinon. `defaulted` (booléen) vaut `true` pour une tâche de décision qui a répondu par son repli parce que le circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enabled=false` ou aucun modèle de décision configuré). Les quatre sont toujours présents. |
 | `tool.called` | `toolName`, `argsSummary?` | Un outil est invoqué. `argsSummary` résume les **noms** d'arguments, jamais leur contenu : un appel peut porter un fichier entier. |
 | `tool.returned` | `toolName`, `success`, `durationMs` | L'outil a fini — **y compris s'il a levé**, pour qu'un observateur n'affiche jamais une étape éternellement en cours. Corrélé à son `tool.called`. Pour un tour déployé en parallèle (appels en lecture), les `tool.called` d'un groupe parallèle peuvent tous précéder leurs `tool.returned`, et les `tool.returned` suivent l'ordre des appels. |
@@ -70,7 +70,7 @@ Un run qui ne rapporte rien n'est pas un run qui se passe bien — c'est un run 
 
 ### Ce que le compteur compte
 
-Chaque appel de génération du run, mesuré en un seul endroit : la fabrique de fournisseurs enveloppe chaque fournisseur qu'elle construit dans un décorateur de mesure, et un hôte qui enregistre son propre fournisseur le fait par `AddOrkeonLlmProvider`, qui l'enveloppe de la même façon. Un appel est donc compté par le fournisseur qui l'a reçu, quel que soit l'appelant — jamais par l'appelant, jamais deux fois. Auparavant, seuls la boucle d'agent et la façade de script rapportaient leurs appels : le manager, le planificateur, les pipelines RAG, les services mémoire, les flows, les juges et les relances de l'agent lui-même dépensaient des jetons que ni le compteur en direct ni `run.finished` ne montraient.
+Chaque appel de génération du run, mesuré en un seul endroit : la fabrique de fournisseurs enveloppe chaque fournisseur qu'elle construit dans un décorateur de mesure, et un hôte qui enregistre son propre fournisseur le fait par `AddOrkeonLlmProvider`, qui l'enveloppe de la même façon. Un appel est donc compté par le fournisseur qui l'a reçu, quel que soit l'appelant — jamais par l'appelant, jamais deux fois.
 
 Chaque lecture dit à qui revient l'appel. L'orchestrateur ouvre une portée pour chaque tâche — la crew, l'agent, la tâche — et la partie du run qui fait un appel nomme le travail, que la lecture porte sous `operation` : `agent`, `manager`, `planning`, `rag`, `memory`, `judge`, ou la méthode `ctx.llm.*`. Un pipeline RAG interrogé par l'outil d'un agent reste l'affaire de cet agent. Un appel que personne ne revendique est compté quand même — `unattributed` dans les rapports du moteur, et aucun `operation` sur le fil.
 
@@ -84,7 +84,7 @@ Un document JSON par ligne sur stdin. Chaque verbe se projette sur un membre d'`
 
 | `kind` | Charge | Effet |
 |---|---|---|
-| `input.given` | `correlationId?` (ou `requestId?`), `value` | Répond à un `input.needed` en attente. Sortant aussi, depuis FWK-23 : `{requestId}` quand un run en attente a reçu sa réponse (`POST /runs/{id}/input`) ou qu'un run repris en a reçu une (`--input`). |
+| `input.given` | `correlationId?` (ou `requestId?`), `value` | Répond à un `input.needed` en attente. Aussi sortant : `{requestId}` quand un run en attente a reçu sa réponse (`POST /runs/{id}/input`) ou qu'un run repris en a reçu une (`--input`). |
 | `post` | `to`, `payload` | `IEventHub.PostAsync` — écrit dans une boîte aux lettres. |
 | `send` | `to`, `payload`, `timeoutMs?`, `correlationId?` | `SendAsync` (`timeoutMs` vaut 30 s par défaut) ; la réponse revient en `hub.message` corrélé. |
 | `publish` | `topic`, `payload`, `retainAs?` | `PublishAsync`. |
@@ -95,7 +95,7 @@ Un `input.given` **sans** identifiant de corrélation répond à la plus ancienn
 
 Un `input.given` **sans** id de corrélation répond à la plus ancienne question en attente. L'id d'une question durable est son `requestId` : `correlationId` ou `requestId` peut le porter.
 
-**Une question qui survit au processus (FWK-23).** Avec `Orkeon:Checkpointing:Enabled`, une question à un humain est persistée avec la session de checkpoint du run (`PendingInput`, phase `WaitingForInput`) sous un id stable, `<TaskKey>#<n>.<q>` (`n` l'invocation de la tâche, `q` la question dans celle-ci). `Orkeon:HumanInput:Pause` dit ce que fait le run tant que personne n'a répondu : `Hold` attend, jusqu'à `HoldTimeout`, puis suspend ; `Suspend` s'arrête aussitôt. Sans valeur, un run qui a quelqu'un à interroger (un terminal, un flux qu'un client lit) attend, un run sans personne (un `orkeon run` simple) suspend ; le démon et `--events` attendent par défaut (30 minutes, sans limite). Un run suspendu finit par `run.finished` `status: "waiting_for_input"`, `exitCode: 75`, `success: false` et le `requestId` de la question : ni un succès ni un échec. Il reprend avec `orkeon run <crew> --resume <id> --input "..."` : la tâche qui a posé la question est rejouée (granularité : la tâche), pose la même question sous le même id et trouve la réponse ; le prompt montré est celui persisté la première fois, jamais recalculé, et la réponse est rapprochée par `requestId` seul. La première réponse gagne.
+**Une question qui survit au processus.** Avec `Orkeon:Checkpointing:Enabled`, une question à un humain est persistée avec la session de checkpoint du run (`PendingInput`, phase `WaitingForInput`) sous un id stable, `<TaskKey>#<n>.<q>` (`n` l'invocation de la tâche, `q` la question dans celle-ci). `Orkeon:HumanInput:Pause` dit ce que fait le run tant que personne n'a répondu : `Hold` attend, jusqu'à `HoldTimeout`, puis suspend ; `Suspend` s'arrête aussitôt. Sans valeur, un run qui a quelqu'un à interroger (un terminal, un flux qu'un client lit) attend, un run sans personne (un `orkeon run` simple) suspend ; le démon et `--events` attendent par défaut (30 minutes, sans limite). Un run suspendu finit par `run.finished` `status: "waiting_for_input"`, `exitCode: 75`, `success: false` et le `requestId` de la question : ni un succès ni un échec. Il reprend avec `orkeon run <crew> --resume <id> --input "..."` : la tâche qui a posé la question est rejouée (granularité : la tâche), pose la même question sous le même id et trouve la réponse ; le prompt montré est celui persisté la première fois, jamais recalculé, et la réponse est rapprochée par `requestId` seul. La première réponse gagne.
 
 Une commande du hub qui arrive avant que le hub du run existe est retenue — jusqu'à 64 — puis rejouée dès qu'il existe ; au-delà, elle est ignorée, comme toute autre ligne dont le run ne peut rien faire.
 
@@ -121,7 +121,7 @@ links:
     allowed_topics: [run.progress]
 ```
 
-Sans lien déclaré, la politique par défaut de l'ACL laisse quand même passer — le hub a été livré sans ACL, et refuser le trafic non déclaré casserait toutes les crews existantes — mais une crew qui déclare un lien est tenue à ce qu'elle a déclaré. Les règles complètes sont dans [EventHub §10](event-hub-and-crew-lifecycle.md).
+Sans lien déclaré, la politique par défaut de l'ACL laisse passer le trafic, si bien qu'une crew qui ne déclare rien fonctionne — mais une crew qui déclare un lien est tenue à ce qu'elle a déclaré. Les règles complètes sont dans [EventHub §10](event-hub-and-crew-lifecycle.md).
 
 ---
 
@@ -157,7 +157,7 @@ Deux règles à respecter en construisant votre client. **Ignorez un `kind` que 
 
 - **Les front-ends de bureau et de terminal** lisent le flux pour montrer la progression — la tâche en cours et l'outil au travail, depuis `task.started` et `tool.called`, autant que les tâches terminées — le coût et les questions du run au lieu d'un défilement. Un tel client peut aussi occuper le siège du hub : le `send` d'un agent vers `client://<nom>` (marqué `expectsReply`) apparaît comme une demande à laquelle l'utilisateur répond, et la réponse repart par stdin ; les posts du hub sont listés au lieu d'être perdus. Le silence au-delà du timeout propre à l'agent reste un refus — la règle que le silence suit partout sur ce bus — le client donne simplement à un humain la chance de parler avant. Un pair qui prend le siège sans écran suit la même forme : subscribe, post, reply.
 
-La même enveloppe porte le flux de [l'Atelier](../reference/cli.md#orkeon-forge) et la session [`orkeon usecases`](../reference/cli.md#orkeon-usecases) (`usecases search --events jsonl`, dont `UseCaseEventKinds` déclare les kinds à côté de `RunEventKinds`), donc un client qui lit l'un lit les trois — et la connexion d'un compte e-mail, [`orkeon email login --events jsonl`](../reference/cli.md#orkeon-email), dont `EmailEventKinds` déclare les cinq kinds.
+La même enveloppe porte le flux de [l'Atelier](../reference/cli.md#orkeon-forge) et la session [`orkeon usecases`](../reference/cli.md#orkeon-usecases) (`usecases search --events jsonl`, dont `UseCaseEventKinds` déclare les kinds à côté de `RunEventKinds`), donc un client qui lit l'un les lit tous — et la connexion d'un compte e-mail, [`orkeon email login --events jsonl`](../reference/cli.md#orkeon-email), dont `EmailEventKinds` déclare les kinds (cinq kinds `email.*` et `error`).
 
 ## 8. Où vont les événements : les sinks et l'historique de run
 
@@ -165,8 +165,8 @@ Les observateurs d'un run (`RunEventObserver`, `ObservedTool`, `RunEventsLlmCall
 un seul `IRunEventSink` (`Orkeon.Application.Runs`, expérimental `ORKEXP007`), un `RunEventPublisher`. Le publisher estampille
 chaque événement une fois (`seq`, `ts`, l'identité du run) et le remet à chaque destination : toutes tiennent les mêmes lignes.
 
-- **`StdoutJsonLinesRunEventSink`** (la CLI) : le flux de `orkeon run --events jsonl`. Il est inchangé à l'octet près : un
-  test golden (`StdoutEventContractGoldenTests`) le fige. Les autres verbes qui streament (`forge`, `email`, `drive`,
+- **`StdoutJsonLinesRunEventSink`** (la CLI) : le flux de `orkeon run --events jsonl`. Ses octets sont figés par un
+  test golden (`StdoutEventContractGoldenTests`). Les autres verbes qui streament (`forge`, `email`, `drive`,
   `usecases`) gardent leur propre writer, qui partage le code de l'enveloppe et l'observateur d'appels de modèle.
 - **`JsonLinesFileRunEventSink`** (`Orkeon.Hosting`) : `<run id>.jsonl` et un `index.jsonl` sous le montage `/runs`, par le VFS,
   un writer sérialisé par run.

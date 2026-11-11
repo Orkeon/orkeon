@@ -117,12 +117,17 @@ the text above is kept as written:
 
 ## Amendment 2026-10-29
 
-Four statements of the record and its amendments above are out of date; the
+Six statements of the record and its amendments above are out of date; the
 record above is kept as written.
 
-- **Tools**: `AddRaggableTreeTools` now registers **28** tools, not 15 (the
+- **Tools**: `AddRaggableTreeTools` registers **29** tools, not 15 (the
   2026-08-18 amendment); the "27 extension points" it derived from that count
-  no longer holds. [The RaggableTree guide](./raggable-tree.md) lists them.
+  do not hold. [The RaggableTree guide](./raggable-tree.md) lists them.
+- **Adapters**: twelve built-in language adapters, not five.
+- **Index cache**: the cache of the accepted risks is a versioned SQLite database
+  (`RaggableTreeCache`, `PRAGMA user_version`), registered by `AddRaggableTree` and
+  used by `index_codebase` in every shipped host; see
+  [Index cache](./raggable-tree.md#index-cache).
 - **Edges**: `EdgeKind` has eight values, not the five named under Decision:
   `Imports`, `Calls`, `Extends`, `Implements`, `Contains`, plus `Tests`,
   `Documents` and `ProjectDepends`.

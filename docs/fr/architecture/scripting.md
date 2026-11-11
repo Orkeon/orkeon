@@ -47,7 +47,7 @@ src/
     │   ├── Testing/              ← doublures LLM / outil (non exposées aux scripts)
     │   ├── Toolchain/            ← EsbuildTranspiler, PassThroughTranspiler
     │   └── Typings/              ← les déclarations *.d.ts
-    └── Orkeon.Scripting.Cli/     ← l'outil `orkeon` : `run`, `quickstart`, `init`, `doctor`, `settings`, `llm`, `rag`, `forge`, `usecases`, `email`, `drive`, `typings`, `mcp`
+    └── Orkeon.Scripting.Cli/     ← l'outil `orkeon` : `run`, `quickstart`, `init`, `doctor`, `settings`, `llm`, `rag`, `eval`, `forge`, `usecases`, `email`, `drive`, `typings`, `mcp`, `runs`
 ```
 
 ## Démarrage rapide
@@ -61,7 +61,8 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
 ```
 
 La CLI émet le résultat du script en JSON sur stdout ; les codes de sortie suivent la
-convention habituelle (`0` ok, `1` erreur de script, `2` erreur runtime, `130` annulé).
+convention habituelle (`0` ok, `1` erreur de script, `2` erreur runtime, `130` annulé ;
+`75` quand un run de crew s'arrête sur une question humaine durable).
 
 Le même verbe `run` accepte aussi un **crew YAML** — la cible sélectionne
 la voie (`.yaml`/`.yml` **ou un dossier portant une crew multi-fichiers** → le runner de
@@ -132,8 +133,8 @@ script a déclaré, et rien d'autre (épinglé par `ReplAutonomousToolActTests`)
 
 ## Options de act
 
-`ctx.llm.act(prompt, options)` accepte quatre options en plus des réglages du modèle. Elles sont fixées
-au début de l'appel (une `ActSession` par appel) :
+Cinq options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la liste complète est
+`ActOptions` dans `context.d.ts`). Elles sont fixées au début de l'appel (une `ActSession` par appel) :
 
 - **`tools: ["file_read"]`** n'offre au modèle que ce sous-ensemble des outils de l'agent. Un nom que
   l'agent ne possède pas lève `UnknownToolError` avant que le modèle soit interrogé. Un appel que le
@@ -263,7 +264,7 @@ réponse de l'outil `spawn_agent` ne change pas.
 - **`crew.stop(id)`** annule aussitôt une instance en cours et renvoie `true` (`false` pour un
   identifiant terminé ou inconnu). Le créneau de la porte est libéré quand l'`act` s'achève, après la
   fin des appels d'outils en vol.
-- **Bornes** (un seul propriétaire, APP-05) : `crew.maxInstances(n)` (32 par défaut) garde au plus `n`
+- **Bornes** : `crew.maxInstances(n)` (32 par défaut) garde au plus `n`
   instances, en évinçant la plus ancienne terminée, jamais une instance en cours ; chaque
   transcription est plafonnée en nombre de messages et en nombre total de caractères, les plus anciens
   messages étant retirés d'abord. Un `act` échoué ou annulé ne stocke aucune transcription (la
@@ -273,12 +274,12 @@ réponse de l'outil `spawn_agent` ne change pas.
 ### Mémoire durable d'agent : `ctx.memory.agent`
 
 `ctx.memory.agent` (`store`, `get`, `search`, `delete`) survit à l'exécution quand l'hôte fournit un
-`IScriptAgentMemoryStore` : la CLI orkeon et le runner hébergé le font, avec un fichier JSON par
-projet et par agent sous `/workspace/.orkeon/agent-memory/<projet>/`. Une valeur stockée par l'agent
+`IScriptAgentMemoryStore` : le runner partagé (crews YAML et scripts déclaratifs sous `orkeon run`,
+`orkeon-host`) et les commandes `*.cmd.ts` du REPL le font, avec un fichier JSON par projet et par agent sous `/workspace/.orkeon/agent-memory/<projet>/`. Une valeur stockée par l'agent
 `a` est renvoyée à l'exécution suivante pour `a`, jamais pour `b` ; la clé est
 `agent:<projet>:<nom de l'agent>`. Une écriture remplace tout le fichier sous un verrou par fichier et
 restaure une sauvegarde si elle échoue ; une clé contenant un saut de ligne est refusée. Les hôtes sans
-ce port (`run`, l'assistant et le banc d'essai de Forge) gardent `ctx.memory.agent` en mémoire, le
+ce port (un script procédural sous `orkeon run`, l'assistant et le banc d'essai de Forge) gardent `ctx.memory.agent` en mémoire, le
 temps de l'exécution.
 
 ## Coexistence avec YAML
@@ -286,16 +287,14 @@ temps de l'exécution.
 La voie de configuration YAML reste supportée et inchangée. Les scripts et les crews
 YAML peuvent partager la même application hôte : le DSL est l'une des surfaces
 d'écriture parmi d'autres, pas un remplacement. L'outil `orkeon` publié exécute
-désormais **les deux** surfaces directement (`orkeon run crew.yaml` et
-`orkeon run crew.ork.ts`), si bien qu'un consommateur externe qui ne dépend que des
-packages publiés n'a plus à compiler un runner sur mesure pour exécuter des crews YAML.
+**les deux** surfaces directement (`orkeon run crew.yaml` et `orkeon run crew.ork.ts`) :
+un consommateur des packages publiés n'a besoin d'aucun runner à lui pour exécuter des crews YAML.
 
 ## Appels bloquants depuis les scripts
 
 Jint exécute un script sur un seul thread : un appel hôte qui attend son
 résultat bloque tout le script — et le REPL qui l'héberge — jusqu'à son retour.
-Deux ponts CLI conservent délibérément ce contrat synchrone (audités comme
-ANT-007/ANT-010, « bloquants assumés ») :
+Deux ponts CLI conservent délibérément ce contrat synchrone (bloquants par conception) :
 
 - `ctx.services.get("script-host").runCrew(name, input?)` — exécute un crew et
   attend sa sortie. **Crews courts uniquement.** L'attente est bornée par un
@@ -347,13 +346,9 @@ defineAsyncCommand({
 Un moteur Jint n'est pas lié à un thread, mais il n'a qu'un **seul draineur** : un thread à
 la fois exécute les jobs de sa boucle d'événements, et un drain lancé depuis l'intérieur
 d'un job ne peut pas pomper — il attendrait des jobs que seul le thread qu'il bloque pourrait
-exécuter. La famille de défauts que SCR-25 a supprimée (un run de crew qui pendait après
-n'importe quel `await` de tête, un graphe d'états dont les nœuds suspendent qui expirait
-depuis un corps, des appels `ctx.state.with` concurrents qui faisaient planter le moteur, un
-handler de topic ou un hook FSM qui suspend, un callback `onDelta` sur un thread du pool, un
-`runStream` non itérable) venait toute de code CLR qui rentrait dans le moteur du mauvais
-côté : après un `await`, ou en drainant depuis l'intérieur d'un job. Le runtime suit
-désormais une règle, que les reproducteurs de
+exécuter. Un appel CLR qui rentre dans le moteur du mauvais côté — après un `await`, ou en
+drainant depuis un job — fait pendre un run de crew, expirer un graphe d'états ou planter des
+appels `ctx.state.with` concurrents. Le runtime suit une règle, que les reproducteurs de
 `tests/scripting/Orkeon.Scripting.Tests/Runtime/EngineThreadingContractTests.cs` fixent :
 
 - **Toute boucle qui rappelle du code de script vit en JavaScript.** Le run de crew
@@ -385,21 +380,20 @@ désormais une règle, que les reproducteurs de
   `crew.run()`.
 - **Les pompes du script et de la crew tournent sur un thread dédié, pas sur un worker du
   pool.** Une pompe bloque son thread jusqu'à ce que la promesse se règle : sur le pool, elle
-  retenait un worker pendant tout le run, et un pool plafonné s'affamait. `ScriptHost.EvaluateAsync`
+  tiendrait un worker pendant tout le run et affamerait un pool plafonné. `ScriptHost.EvaluateAsync`
   et `JsCrew.RunAsync` démarrent la leur par `RootPump.Start`
   (`TaskCreationOptions.LongRunning | DenyChildAttach`) : un thread par script et par run de
   crew piloté depuis C#, sans borne sur leur nombre, libéré à la fin du run. `JsTool.CallAsync`
   fait exception et reste sur un worker du pool par `Task.Run` : un appel d'outil est court, et
   un thread dédié par appel coûtait 145 à 164 µs par démarrage pour environ 10 µs l'appel
   (médiane +1491 % contre un seuil de 1 %). La garde permanente `EngineThreadingGuardTests`
-  nomme cette exemption (commentaire `GAP-57 CH-03` ; sa règle `task-run-around-pump` saute
+  nomme cette exemption (`IsJsToolTaskRunExemption` ; sa règle `task-run-around-pump` saute
   cette lambda) et refuse un `Task.Run` autour de toute autre pompe.
 - **L'annulation est la seule borne d'une attente ; `ExecutionTimeout` borne l'exécution.**
   Aucun timeout de promesse ne subsiste dans le runtime : une pompe racine draine jusqu'à ce
   que sa promesse se règle ou que son jeton se déclenche. L'`ExecutionTimeout` du bac à sable
-  (temps mural, `Orkeon:Scripting:Limits`) borne l'évaluation elle-même et couvre désormais un
-  run entier piloté par le CLR, comme il couvrait déjà un script entier (`MemoryLimitBytes`
-  aussi). Son horloge s'arrête pendant que le contrôle des permissions décide d'un appel d'outil
+  (temps mural, `Orkeon:Scripting:Limits`) borne l'évaluation elle-même, un script entier ou un
+  run entier piloté par le CLR (`MemoryLimitBytes` aussi). Son horloge s'arrête pendant que le contrôle des permissions décide d'un appel d'outil
   de `ctx.llm.act`, car un canal d'approbation peut attendre un opérateur ; celle du budget de
   temps mural de l'agent aussi. Un `RunAsync` annulé laisse à la boucle un court délai de grâce pour se dérouler —
   ses blocs `finally`, `onCrewError` — avant d'abandonner le run et de libérer ce que le CLR
@@ -470,8 +464,8 @@ sa forme référence.
 
 ## Vérification des types d'un script
 
-esbuild retire les types et ne signale que la syntaxe : un type faux n'apparaissait qu'à
-l'exécution. `orkeon run --validate` sur un `.ork.ts` lance désormais d'abord le compilateur
+esbuild retire les types et ne signale que la syntaxe. `orkeon run --validate` sur un `.ork.ts`
+lance donc d'abord le compilateur
 TypeScript (après la connexion des serveurs MCP, avant le chargement du crew) contre le roll-up
 `orkeon.d.ts` que ce build embarque, `test.d.ts` compris. `Orkeon:Scripting:Toolchain:TypeCheck`
 choisit le moment : `Off` jamais, `Validate` (défaut) dans `--validate`, `Always` dans `--validate`

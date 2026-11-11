@@ -46,9 +46,7 @@ Three consumption surfaces share the same pipelines: agent tools (`rag_search`,
 `Orkeon.Rag.Abstractions` is a secondary shared kernel (same status as
 `Orkeon.Analysis.Abstractions`, [ADR-003](../adr/ADR-003-shared-kernels-secondaires.md)):
 `Orkeon.Application` references it for the ports; `Orkeon.Infrastructure` references
-`Orkeon.Rag` solely as DI composition wiring. The legacy
-`Orkeon.Infrastructure.Knowledge` / `Orkeon.Application.{Interfaces.Rag,Rag}`
-namespaces were removed without shims (migration table in `CHANGELOG.md`).
+`Orkeon.Rag` solely as DI composition wiring.
 
 ## Quick start
 
@@ -89,7 +87,7 @@ The host must provide an `IEmbeddingProvider` and an `IChatClient`;
 order for embeddings: container-registered local/Analysis provider →
 `Orkeon:Embeddings` configuration → fail-fast at first use, never silently).
 
-**Which model the subsystem asks** (GAP-19): the host's default profile, unless
+**Which model the subsystem asks**: the host's default profile, unless
 `Orkeon:Rag:LlmProfile` names another of its profiles (`Llm:Profiles:<name>`,
 through `ILlmProfileRegistry`). Then grounded generation, the query transformers,
 the listwise reranker, the corrective graph's evaluator and groundedness checker,
@@ -118,7 +116,7 @@ safe to call on their own:
 |---|---|
 | `AddOrkeonRag(configuration)` | The whole subsystem: options, loaders, validation, document store + hybrid decorator, manifests, both pipelines, profile resolver, and every extension below except the ONNX reranker and `AddOrkeonEphemeralSearch` |
 | `AddOrkeonQueryTransforms()` | `QueryTransformerFactory` with `none` / `multi-query` / `rag-fusion` / `hyde` |
-| `AddOrkeonRagReranking()` | `RerankerFactory` with `none` / `llm` plus every `IRerankerRegistrar` |
+| `AddOrkeonRagReranking()` | `RerankerFactory` with `none` / `llm` / `decision` plus every `IRerankerRegistrar` |
 | `AddOrkeonQueryRouting(configuration)` | The `IQueryComplexityClassifier` named by `Orkeon:Rag:QueryRouting:Classifier` |
 | `AddOrkeonHybridRetrieval(configuration, …)` | The `HybridSearchDocumentStore` decorator (BM25 + RRF) around the `IDocumentStore` |
 | `AddOrkeonCorrectiveRag(configuration)` | `IRetrievalEvaluator`, `IGroundednessChecker`, `CorrectiveRagPipeline` (experimental, `ORKEXP003`) |
@@ -305,11 +303,11 @@ configuration section.
 | Retrieval | vector only, `CandidateK = TopK` | hybrid BM25 + RRF, `CandidateK = 50` | hybrid, `CandidateK = 100` | routed (see below) | hybrid, graph `retrieve` node (see [CRAG](#corrective-rag-crag)) |
 | Rerank | off | ONNX cross-encoder 50 → 5 | ONNX cross-encoder | routed | none — the graph corrects by looping, not reranking |
 | Groundedness | off | off | on | routed | native `check_groundedness` graph node |
-| Needs | nothing | `Orkeon.Rag.Onnx` | `Orkeon.Rag.Onnx` | classifier + chat client | chat client (grader/rewrite; heuristic fallbacks without one) |
+| Needs | nothing | `Orkeon.Rag.Onnx` | `Orkeon.Rag.Onnx` | `Orkeon.Rag.Onnx` (its `SingleShot` route runs `balanced`) + classifier + chat client | chat client (grader/rewrite; heuristic fallbacks without one) |
 
 `fast` is the out-of-the-box default because `balanced` requires the opt-in ONNX
 package — defaulting to it would make every bare `AddOrkeonRag()` host refuse to
-start, naming `onnx` (the effective options are judged at the host's start, GAP-40).
+start, naming `onnx` (the effective options are judged at the host's start).
 Opt into `balanced` with one configuration line.
 
 `IRagProfileResolver` (`ProfileRagPipelineResolver`) memoizes **one pipeline per
@@ -336,9 +334,8 @@ deterministic rules, zero LLM call) or `llm` (one constrained lightweight chat
 call; when selected without an `IChatClient` the heuristic is the documented
 fallback, with a warning).
 
-Since RAG-06 the `Iterative` route delegates to the memoized **`corrective`**
-graph pipeline (see [Corrective RAG](#corrective-rag-crag)) — the RAG-05
-documented fallback to `quality` is lifted. The `route` trace step carries
+The `Iterative` route delegates to the memoized **`corrective`**
+graph pipeline (see [Corrective RAG](#corrective-rag-crag)); the `route` trace step carries
 `delegate=corrective` and `RagTrace.Route` records the decision.
 
 ## Configuration reference (`Orkeon:Rag`)
@@ -353,7 +350,7 @@ Bound over the selected preset — every key is an individual override.
 | `Orkeon:Rag:Provider` | ambient | Document-store provider type (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance`; unknown fails loudly); unset = ambient `IMemoryProvider`. The connection is that provider's own host section (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), and the store shares the factory's instance of that type with crew memory |
 | `Orkeon:Rag:Retrieval:TopK` | 5 | Chunks kept for context assembly (call-site `RagQuery.TopN` wins) |
 | `Orkeon:Rag:Retrieval:CandidateK` | 5 (`fast`) | Wide stage of the cascade (always ≥ final TopN); `fast` has none and takes `TopK`, a profile that reranks takes 50, `quality` 100 |
-| `Orkeon:Rag:Retrieval:MinScore` | none | Optional raw-score floor (the legacy global 0.7 floor is deliberately gone) |
+| `Orkeon:Rag:Retrieval:MinScore` | none | Optional raw-score floor; unset, no floor applies |
 | `Orkeon:Rag:Retrieval:Hybrid:Enabled` | false (`fast`) | Default hybrid mode; flat shorthand `Retrieval:Hybrid = true` accepted |
 | `Orkeon:Rag:Retrieval:Hybrid:RrfK` | 60 | Reciprocal Rank Fusion constant |
 | `Orkeon:Rag:Retrieval:Mmr:Enabled` | false | MMR diversification at the fuse stage |
@@ -450,10 +447,10 @@ redirect, so an approved URL cannot be bounced to an internal address.
   `rag:` block). An `http://` / `https://` address is never a pattern: the `?` of
   its query string or a `*` stay part of it, and it reaches `WebPageLoader` as
   written, without the VFS being asked (`SourceGlobExpander.IsWebAddress`, one
-  rule for every surface — GAP-19). The crew block also takes a directory, which stands for every
+  rule for every surface). The crew block also takes a directory, which stands for every
   file below it, and resolves a relative path against the crew's folder — all
   of it decided in `RagCollectionsBootstrapper`, which warns, naming the
-  collection, about a pattern or a directory that yields no file (GAP-27).
+  collection, about a pattern or a directory that yields no file.
 
 ## Crew YAML integration
 
@@ -494,7 +491,7 @@ of [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/example
 calls `AddOrkeonRag` itself. `orkeon run --validate` loads the crew without
 ingesting anything. Nothing of the subsystem is built until a crew uses it: a
 crew without `rag:`/`knowledge:` loads no embedding model for it. Its settings are
-judged at the host's start, though, whether a crew uses them or not (GAP-40): an
+judged at the host's start, though, whether a crew uses them or not: an
 unknown `Orkeon:Rag:Provider`, profile, reranker, query transformer, context
 ordering, classifier or chunking strategy refuses the start, with the list of known
 names ([when a setting is refused](../reference/configuration.md#when-a-setting-is-refused)). Ingestion
@@ -515,14 +512,13 @@ YAML keys:
 | `knowledge:` long form `profile` | The retrieval pipeline: the attachment's `profile`, else `rag.defaults.profile`, else `Orkeon:Rag:Profile` (`fast` when unset). `fast`, `balanced` and `quality` retrieve alone; `corrective` and `adaptive` cannot (their graphs generate as they go) and fail the task with a message saying so; an unknown name fails as the resolver does. `balanced`/`quality` also need the ONNX reranker, which `orkeon`, `orkeon-host` and `orkeon-repl` register |
 
 The document store is the host's choice (`Orkeon:Rag:Provider`), not the crew's:
-the former `rag.provider` key is gone, and a crew that still writes it is
-refused at load (`'rag.provider' is retired: the document store is the host's
+a crew that writes `rag.provider` is refused at load (`'rag.provider' is retired: the document store is the host's
 choice — set Orkeon:Rag:Provider in the settings`).
 
 ## Scripting and CLI surfaces
 
 - **Scripting DSL** (`.ork.ts`): first-class `rag.ingest({ collection, sources,
-  chunkingStrategy?, reindex? })`, `rag.query(question, { collection, profile?,
+  chunkingStrategy?, reindex?, prune? })`, `rag.query(question, { collection, profile?,
   topN? })` and `rag.retrieve(question, { … })` globals — see
   `examples/scripting/08-rag.ork.ts`. The namespace is always registered; calls
   fail with an actionable message when the host did not wire the subsystem.
@@ -536,7 +532,7 @@ choice — set Orkeon:Rag:Provider in the settings`).
 | Tool | Parameters | Behaviour |
 |---|---|---|
 | `rag_search` | `question` (required), `top_k` (default 3), `collection` (default `Orkeon:Rag:Collection`, else `default`) | `IRagPipeline.QueryAsync` → answer + `Sources:` block with scores; `collection = "raggable-tree"` routes to the RaggableTree code index when one is registered |
-| `rag_ingest` | `collection`, `sources` (paths / globs / http(s) addresses) — both required; `chunking_strategy`, `reindex` | `IIngestionPipeline` with glob expansion; prints the ingestion report |
+| `rag_ingest` | `collection`, `sources` (paths / globs / http(s) addresses) — both required; `chunking_strategy`, `reindex`, `prune` | `IIngestionPipeline` with glob expansion; prints the ingestion report |
 | `rag_eval` | `dataset` (required), `collection`, `profile` (default `default`), `compare`, `k` (default 5), `use_llm_judge`, `reindex` | The offline harness below |
 
 A crew agent that lists one of the three tools (`tools: [rag_search]`) receives it
@@ -550,12 +546,8 @@ first call.
 `IRagRetrievalCapable.RetrieveAsync` runs stages 1-5 and stops. Same query, same
 passages, no LLM call.
 
-The reason it exists is a measurement rather than a preference: a caller that
-quotes the retrieved passages — because it wants the evidence, not a summary of
-it — was still paying for a grounded generation. On the gap round of 2026-08-04,
-seven `rag.query` calls whose answers were discarded by design cost
-**14 748 completion tokens, 68 % of them reasoning tokens, and 394 s of wall
-time**. Nothing in the API let the caller stop after `assemble`.
+A caller that quotes the retrieved passages does not need a generated answer:
+`retrieve` skips the generation call and its tokens.
 
 ```csharp
 if (pipeline is IRagRetrievalCapable retriever)
@@ -579,7 +571,7 @@ Two properties worth knowing before relying on it:
 
 ## Evaluation (golden datasets, CI gate)
 
-The offline harness (`IRagEvalHarness`, RAG-04/C1) turns retrieval quality into a
+The offline harness (`IRagEvalHarness`) turns retrieval quality into a
 published number instead of a claim:
 
 - **Dataset** (`examples/rag/eval/golden.yaml`): a corpus directory plus cases —
@@ -727,10 +719,9 @@ chunks — just graded `Incorrect` — close it.
 The `corrective` preset feeds the graph's nodes: hybrid BM25 + RRF retrieval
 (rewritten probes need the lexical leg to bridge vocabulary gaps) and **no
 linear rerank stage** — the graph corrects through evaluate → rewrite loops
-instead of reranking, so the profile needs no opt-in ONNX package. Since
-RAG-06 the `adaptive` profile's `Iterative` route delegates to the memoized
-`corrective` pipeline (fallback to `quality` lifted, `route` step traces
-`delegate=corrective`).
+instead of reranking, so the profile needs no opt-in ONNX package. The
+`adaptive` profile's `Iterative` route delegates to the memoized
+`corrective` pipeline (the `route` step traces `delegate=corrective`).
 
 ### Measured honesty
 
@@ -755,11 +746,11 @@ The RAG subsystem's decision record is
 `Orkeon.Rag.Abstractions`, allowed couplings, legacy namespaces removed without
 shims). The phase decisions layered on top of it: the double ONNX package
 (`Orkeon.Rag.Onnx` runtime + `Orkeon.Rag.Onnx.Model` embedded int8 weights —
-guaranteed offline, RAG-04), profile presets + per-key overrides with `fast` as
-the safe default (RAG-04), query transformers with per-kind fusion semantics
-(RAG-05), CRAG built on the Domain `StateGraph` rather than a bespoke loop
-(RAG-06), and the strictly opt-in, injection-validated web fallback with its
-policy/transport section split (RAG-06, this page and ADR-006).
+guaranteed offline), profile presets + per-key overrides with `fast` as
+the safe default, query transformers with per-kind fusion semantics,
+CRAG built on the Domain `StateGraph` rather than a bespoke loop,
+and the strictly opt-in, injection-validated web fallback with its
+policy/transport section split (this page and ADR-006).
 
 ## V1 limitations
 
@@ -767,8 +758,8 @@ policy/transport section split (RAG-06, this page and ADR-006).
   (LanceDB) is preferred at scale — automatic when the provider supports it.
 - MMR uses lexical similarity between candidates (embeddings are not
   re-computed at the fuse stage).
-- `balanced` / `quality` require the opt-in ONNX packages; without them use
-  `Rerank:Kind = llm` or stay on `fast`.
+- `balanced` / `quality` / `adaptive` require the opt-in ONNX packages; without them use
+  `Rerank:Kind = llm` or stay on `fast` or `corrective`.
 - Without a real `IChatClient` the corrective graph's LLM nodes (grader,
   rewrite, groundedness) degrade — offline evaluation measures the loop's guard
   rails, not rewrite quality (honest analysis in `examples/rag/eval/README.md`
