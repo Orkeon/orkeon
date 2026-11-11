@@ -33,7 +33,7 @@ de base. Une URL contenant `/engines/` désigne Docker Model Runner, piloté par
 OpenAI (`OpenAIProvider`) ; le port `11434` va au provider Ollama natif
 (`OllamaLlmProvider`) ; toute autre adresse est un serveur compatible OpenAI. Un autre serveur
 de ce type s'écrit avec son chemin `/v1` et, s'il ne vérifie
-aucune clé, `"ApiKey": "not-needed"` — une adresse sans chemin est signalée comme muette. Voir [la résolution du provider](../architecture/llm-providers.md#résolution-du-provider).
+aucune clé, `"ApiKey": "not-needed"` — une adresse sans chemin est lue comme un serveur compatible OpenAI à sa racine, avec un avis qui demande son chemin. Voir [la résolution du provider](../architecture/llm-providers.md#résolution-du-provider).
 
 Hors conteneur, `orkeon init --provider docker-model-runner` (ou `--provider ollama`) écrit
 les mêmes settings avec `localhost` à la place de `host.docker.internal`
@@ -57,7 +57,7 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
 orkeon-example run 1
 ```
 
-**Pièges rencontrés (pour vous les épargner) :**
+**Pièges :**
 
 - **Tags du catalogue** : `docker model pull` résout dans le catalogue Docker
   Hub `ai/`. Un tag absent du catalogue échoue avec
@@ -151,7 +151,7 @@ docker run -it --rm -e ORKEON_RUNNER=shell \
   -v "$PWD/out:/output" ghcr.io/orkeon/orkeon-runners
 ```
 
-Note (observé sur Docker Desktop, juillet 2026) : `configure show` rapporte la
+Note : `configure show` rapporte la
 configuration sur la référence canonique (`docker.io/ai/gemma4:latest`) — elle
 est indexée par l'**ID** du modèle, que les deux tags partagent, donc le
 réglage s'applique à tous les tags du même modèle ;

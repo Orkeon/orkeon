@@ -2,7 +2,7 @@
 
 # Multi-modal content (vision)
 
-> Since the R3.9 work item, vision is **real**: image content flows end to end, from the
+> Image content flows end to end, from the
 > `MultiModalContent` abstractions (Domain) down to the provider payloads — Anthropic content
 > blocks, OpenAI content parts (written once for the fourteen OpenAI-compatible providers) and
 > Ollama's `images` array. This guide describes the flow, the formats emitted on the wire,
@@ -121,7 +121,7 @@ OpenAI-compatible providers.
 
 ## Activation (opt-in)
 
-The subsystem remains **opt-in** (decision R4.9) — see
+The subsystem remains **opt-in** — see
 [Opt-in subsystems](../reference/opt-in-subsystems.md):
 
 ```csharp
@@ -146,7 +146,7 @@ an image over the size limit fails validation.
 
 | Capability | Supported |
 |---|---|
-| Vision providers (capability `Vision = true`) | All 16: Anthropic, OpenAI, Azure OpenAI, DeepSeek (native on `deepseek-flash` since V4.1; `deepseek-v4-pro` is text-only), Gemini, Grok, HuggingFace, Kimi, MiniMax (per model: `MiniMax-M3` sees, the default `MiniMax-M2` does not), Mistral, Ollama (native `images`, per model), Qwen, Together AI (per model: `zai-org/GLM-5.3-Flash` sees, the default Llama does not), Z.AI (per model: the default `glm-5.3-flashx` and `glm-5.3-flash` see, `glm-5.2` does not), OpenRouter (per model, not campaigned) and Mammouth AI (per model, from the vendor's `text, image` list — not campaigned) |
+| Vision providers (capability `Vision = true`) | All 16: Anthropic, OpenAI, Azure OpenAI, DeepSeek (native on `deepseek-flash` since V4.1; `deepseek-v4-pro` is text-only), Gemini, Grok, HuggingFace, Kimi, MiniMax (per model: the default `MiniMax-M3` sees, `MiniMax-M2` does not), Mistral, Ollama (native `images`, per model), Qwen, Together AI (per model: the default `zai-org/GLM-5.3-Flash` sees), Z.AI (per model: the default `glm-5.3-flashx` and `glm-5.3-flash` see, `glm-5.2` does not), OpenRouter (per model) and Mammouth AI (per model, from the vendor's `text, image` list) |
 | Model without vision behind a vision provider | The vendor's own refusal, attributed by `CapabilityMismatchHint` on the OpenAI-compatible providers and Ollama (the capability is declared per provider, the reality is per model) |
 | Provider without the capability (a third-party `ILlmProvider` declaring nothing) | Degradation to the `LlmMessage.Content` text fallback, with a structured warning naming the dropped parts |
 | Image MIME types | `image/png`, `image/jpeg`, `image/gif`, `image/webp` |
@@ -160,10 +160,9 @@ audio/file part the same way.
 
 ## Microsoft.Extensions.AI interop
 
-`ContentConverter.ToAIContents`/`FromAIContents` now convert the image/audio/file
+`ContentConverter.ToAIContents`/`FromAIContents` convert the image/audio/file
 parts to the native Microsoft.Extensions.AI types `DataContent` (bytes) and
-`UriContent` (URI) (and back), instead of the former degradation into textual
-descriptions.
+`UriContent` (URI), and back.
 
 ## Tests
 

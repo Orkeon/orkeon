@@ -20,7 +20,7 @@ The engine serves two audiences:
 | Sequential | Crew | No | No | No |
 | Hierarchical | Crew | Review loop (3 reviews) | Manager LLM | No |
 | Parallel | Crew | No | No | No |
-| **Graph** | **Crew** | **Yes (the task's `retry:`)** | **Fixed in YAML; free with the C# API** | **Yes (built-in)** |
+| **Graph** | **Crew** | **Yes (an edge back to a node, bounded by `maxVisits`)** | **Decision edges (`when`) in YAML; any router with the C# API** | **Yes (built-in)** |
 | FSM | Any (generic Domain engine) | Yes (guards) | Yes (events/guards) | Yes (built-in) |
 
 The FSM is a generic engine (`orkeon forge` runs on it) that no crew strategy uses (see [FSM](./fsm.md)); the Graph mode shares its `CircuitBreakerPolicy`.
@@ -80,11 +80,11 @@ The engine components live in `Orkeon.Domain.Graph`:
 START ──► [first] ──► [second] ──► … ──► [last] ──► END
 ```
 
-A crew in the Graph process builds one node per task (ADR-018). A node's id is its task's name (the task id when the name is missing or taken), the nodes are chained in the order resolved from the plan or the declared `dependencies`, and the last one leads to END. A crew with no task goes from START to END.
+A crew in the Graph process builds one node per task (ADR-018). A node's id is its task's name (the task id when the name is missing or taken), without nodes or edges in `graph:`, the nodes are chained in the stable topological order of the declared `dependencies` (`CrewTaskSequencer`), and the last one leads to END. A crew with no task goes from START to END.
 
 A node picks its agent — the task's `agent:` when declared, otherwise the configured selector (round-robin by default, see [agent selection](./process-types.md#who-runs-a-task-that-names-no-agent)) — executes the task and accumulates the result into `CrewGraphState`. Agents with `allowDelegation: true` receive the delegation tools. A task skipped by its dependencies or its `when` condition still passes through its node.
 
-The edge out of a node is plain: it leads to the next node, or to END. The graph does not retry a failed task: its attempts are its own `retry:`, applied below the strategy.
+Without nodes or edges in `graph:`, the edge out of a node is plain: it leads to the next node, or to END. With them, the topology is the declared one (see [`graph:` schema](#graph-schema)). The graph does not retry a failed task: its attempts are its own `retry:`, applied below the strategy.
 
 The crew's output is the last result produced. A task still failing after its retries stays in the outputs as failed and **fails the crew**, as in every mode: `Success = false`, an error naming it, a `Failed` hook, exit code 2. The tasks that depend on it are **skipped**. A task's `retry:` runs inside its own turn, before the next task starts, so a dependant only ever sees a dependency that succeeded or gave up.
 
@@ -102,7 +102,7 @@ The circuit breaker is built into `GraphRunner<TState>` and checks three conditi
 
 The StateGraph reuses `CircuitBreakerPolicy` from `Orkeon.Domain.Common.StateMachine` (the same record as the FSM); its `StateTimeout` and `UseDegradedMode` are not used by the graph runner.
 
-In the Graph mode, each task attempt is one visit of the task's node, so:
+In the Graph mode, each entry into a node is one visit (a task's `retry:` attempts happen inside it), so:
 
 - `MaxStateVisits` (`maxVisits` in YAML) caps the **visits of one node**: a loop that enters a node again counts there;
 - `MaxTransitions` caps the node executions of the whole run.
@@ -143,7 +143,7 @@ A task's attempts are its own `retry:` block (`attempts`, `backoffMs`, `backoff`
 | Wait between attempts | `backoffMs` and `backoff` (`fixed` or `exponential`), on the host's `TimeProvider`, cancelled with the run |
 | Visits of a node | one per entry into the node (a loop enters it again): a task's attempts happen inside its visit, but they count in the default budget (below) |
 
-The default breaker bounds add the attempts up, so a crew whose tasks retry is never cut short by them: `maxVisits` defaults to the sum over the tasks of `1 + retries` (`retries` = `attempts - 1`), `maxTransitions` to twice that plus one. The former `graphConfig.maxRetryCycles` is **removed** (`[breaking]`) with the `graphConfig` block: it was a second retry of the same task and would have multiplied with `retry:`; a crew that still writes `graphConfig` is refused at load. There is no `maxCycles` key either: a bound on cycles is `maxVisits`. Each attempt of a task that is replayed is one `task.started` carrying its `attempt`.
+The default breaker bounds add the attempts up, so a crew whose tasks retry is never cut short by them: `maxVisits` defaults to the sum over the tasks of `1 + retries` (`retries` = `attempts - 1`), `maxTransitions` to twice that plus one. A `graphConfig` block (and any `maxRetryCycles`) is refused at load, pointing to `graph:`. There is no `maxCycles` key either: a bound on cycles is `maxVisits`. Each attempt of a task that is replayed is one `task.started` carrying its `attempt`.
 
 ## YAML configuration
 
@@ -177,7 +177,7 @@ graph:
 - **Edges.** Several `edges` from one `from` are one conditional edge, evaluated in the order declared: the first whose `when` holds wins, and the edge without `when` is the "otherwise". A `from` that carries `when` edges is a [decision task](../architecture/decision-models.md) and has exactly one edge without `when`; an ordinary task has exactly one edge. The `when` keeps the grammar of the task-level one, with its `<task>.` prefix: `<task>.<question>: [option, ...]`, `<task>.<question>: ">= 0.7"`, `<task>.<question>.<option>: ">= 0.25"`; the task is the `from` task, and its questions are checked at load. `otherwise` is not written: an edge without `when` is it.
 - **Refused at load**, each message naming the node: a `when` on a `from` that is not a decision task, a decision with no edge without `when`, two edges without `when` from one node, several edges on an ordinary task, an orphan node, a node with no way to `END`, an edge to an unknown node, a `graph:` outside `process: graph`, and a task-level `when:` or `dependencies:` in a crew that has nodes or edges (the edges order the tasks, a second router would contradict them). The topology faults come from `GraphTopologyValidator`, all at once, and the export checks the same rules before it writes.
 - **Budgets.** `maxVisits` is the Domain's `MaxStateVisits`, counted per node: a node entered more often than that trips the breaker. Left unset, `maxVisits` is the sum over the tasks of `1 + retries` and `maxTransitions` twice that plus one; an explicit value wins.
-- **Removed (`[breaking]`).** The `graphConfig:` block (its budgets moved into `graph:`, `maxStateVisits` becoming `maxVisits`), `maxRetryCycles` and any `maxCycles`: a bound on cycles is `maxVisits`, and a retry is the task's `retry:`. A crew that still writes `graphConfig` is refused at load, pointing to `graph:`.
+- **Refused keys.** `graphConfig:`, `maxRetryCycles` and `maxCycles` are refused at load, pointing to `graph:` (a bound on cycles is `maxVisits`; a retry is the task's `retry:`).
 - **Execution.** The Domain engine runs every crew of the Graph process, with a `graph:` block or without; `JsStateGraph` runs only the `stateGraph(...)` of a `.ork.ts` script. A resumed run walks the graph again: the executions of a task that already ended are answered from the checkpoint, keyed `<task>#<n>` by their order, so a node entered twice has two entries. The export writes `graph:` back, so import, export and import give the same graph.
 
 The `agents:` and `tasks:` are the sequential schema; a decision task is a task with a `decision:` block ([decision tasks](../architecture/decision-models.md)).
@@ -193,7 +193,7 @@ Without a graph block:
 3. CircuitBreakerPolicy.Strict       (fallback: supplies the duration only)
 ```
 
-`graph:` is the crew's only circuit-breaker setting: a `circuitBreaker:` block, at the crew root or on a task, is refused at load. Whatever the level, `maxVisits` and `maxTransitions` left unset are **computed from the crew** rather than taken from the preset (see [Circuit breaker](#circuit-breaker)); the preset supplies the duration. A failed task is retried by its own `retry:` (see [Retry](#retry)), never by the graph: `graphConfig` (and its `maxRetryCycles`) is removed and refused at load.
+`graph:` is the crew's only circuit-breaker setting: a `circuitBreaker:` block, at the crew root or on a task, is refused at load. Whatever the level, `maxVisits` and `maxTransitions` left unset are **computed from the crew** rather than taken from the preset (see [Circuit breaker](#circuit-breaker)); the preset supplies the duration. A failed task is retried by its own `retry:` (see [Retry](#retry)), never by the graph: a `graphConfig` block is refused at load.
 
 ### Configuration flow to execution
 
@@ -207,7 +207,7 @@ The `graph:` block travels all the way to the running graph:
    Reading from the crew (not from the shared, scoped strategy instance) keeps per-crew settings from
    leaking between concurrent executions.
 
-When the crew carries neither block, the strategy computes the visit and transition bounds on the Strict preset's duration; its `CircuitPolicy` property, null by default, replaces that computed policy when a C# caller sets it.
+When the crew carries no `graph:` block, the strategy computes the visit and transition bounds on the Strict preset's duration; its `CircuitPolicy` property, null by default, replaces that computed policy when a C# caller sets it.
 
 ### YAML models
 
@@ -358,7 +358,7 @@ Client code chooses via `ProcessType.Graph` or `process: "graph"` in the YAML.
 | Test file | Coverage |
 |-----------------|-----------|
 | `Orkeon.Domain.Tests/Graph/StateGraphTests.cs` (18) | Linear flow, conditional routing, controlled loops, circuit breaker (max transitions, cycle detection), observability (OnNodeCompleted, OnCircuitBroken), cancellation, graph validation, state mutation |
-| `Orkeon.Infrastructure.Tests/Strategies/GraphProcessStrategy/GraphProcessStrategyTests.cs` (17) | Happy path (0, 1, N tasks), controlled retry (success after retry, abandon after max), circuit breaker integration, unsupported entry points, missing tasks, missing agents |
+| `Orkeon.Infrastructure.Tests/Strategies/GraphProcessStrategy/GraphProcessStrategyTests.cs` (16) | Happy path (0, 1, N tasks), controlled retry (success after retry, abandon after max), circuit breaker integration, unsupported entry points, missing tasks, missing agents |
 | `Orkeon.Infrastructure.Tests/Configuration/CircuitBreakerPolicyFactoryGraphTests.cs` (4) | `ResolveGraph`: presets, overrides, fallback |
 
 ```bash

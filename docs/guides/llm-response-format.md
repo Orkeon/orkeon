@@ -55,7 +55,7 @@ A call, from C# or from a script (`ctx.llm.complete/chat/stream(..., { responseF
 ```yaml
 llm:
   model: deepseek-flash
-  response_format: json_object   # every agent of this crew now replies in JSON
+  response_format: json_object   # every agent of this crew replies in JSON
 ```
 
 ### Agent override (wins over crew)
@@ -192,7 +192,7 @@ What a provider cannot honour is never dropped in silence:
 DeepSeek's JSON mode requires the prompt (system **or** user message) to contain the word
 `"json"` somewhere — otherwise the API may emit an **unbounded whitespace stream** until
 `max_tokens` is exhausted. Every provider that declares `RequiresJsonKeywordInPrompt` (DeepSeek
-today) logs a structured `Warning` (event id `100`, `LogMissingJsonKeyword`) when it detects the
+alone) logs a structured `Warning` (event id `100`, `LogMissingJsonKeyword`) when it detects the
 situation:
 
 ```
@@ -216,9 +216,9 @@ own error, which surfaces as `LlmResponse.Error` and fails the task with that re
 | **Anthropic** | `JsonSchema` | Own dialect (`output_config`) — schema-only, no bare `json_object`. |
 | **Ollama** | `JsonSchema` | Own dialect (`format`). |
 | **DeepSeek**, Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | Well-formed JSON guaranteed; a schema is downgraded with a warning. DeepSeek also requires the `json` keyword (above). |
-| **MiniMax** | `None` | Accepted but non-binding — measured 2026-08-30 (schema ignored, `json_object` fenced in markdown); a declared format produces the structured capability warning. |
-| **OpenRouter** | `JsonSchema` | Documented per endpoint; M8 green on the three models campaigned on 2026-10-07. The provider does not send `provider.require_parameters`, so a schema may still be ignored by an endpoint that lacks it — a green M8 does not rule that out. |
-| **Mammouth AI** | `None` | Accepted but non-binding — measured 2026-10-07 (`json_object` returns bare JSON, a strict schema did not bind on `gemini-3.7-flash`); a declared format produces the structured capability warning. |
+| **MiniMax** | `None` | Accepted but non-binding (a schema is ignored, `json_object` comes back fenced in markdown); a declared format produces the structured capability warning. |
+| **OpenRouter** | `JsonSchema` | Documented per endpoint. The provider does not send `provider.require_parameters`, so an endpoint that lacks schema support may still ignore a schema. |
+| **Mammouth AI** | `None` | Accepted but non-binding (`json_object` returns bare JSON, a strict schema is not enforced); a declared format produces the structured capability warning. |
 
 ## `structured_output` deliverables
 
@@ -255,7 +255,6 @@ The 6 process strategies (Sequential, Hierarchical, Autonomous, Graph, Parallel,
 - Value objects: `Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat`, `LlmJsonSchema`
 - Patch record: `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride`
 - Fusion: `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve`
-- Wire translation: `Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ApplyProviderSpecificOptions` (virtual — Qwen, OpenRouter and Together AI override it and call the base for `response_format`); `AnthropicLlmProvider` and `OllamaLlmProvider` for their own dialects
+- Wire translation: `Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ApplyProviderSpecificOptions` (virtual — Kimi, OpenRouter, Qwen, Together AI and Z.AI override it and call the base for `response_format`); `AnthropicLlmProvider` and `OllamaLlmProvider` for their own dialects
 - YAML mapping: `Orkeon.Infrastructure.Configuration.Yaml.YamlCrewMapper` (its private `MapResponseFormat`); the export is `Orkeon.Infrastructure.Configuration.YamlCrewExporter.MapResponseFormat`
-- Plan / spec: the maintainers' archive (LLM-RESPONSE-FORMAT plan)
 - DeepSeek API doc: https://api-docs.deepseek.com/api/create-chat-completion

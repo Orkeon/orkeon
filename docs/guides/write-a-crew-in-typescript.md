@@ -56,11 +56,10 @@ agents and never looks at tasks. The declarative adapter never invokes a `.body(
 **The rule:** if you write `.body()`, you are procedural. If you write `withTask`, you are
 declarative. Never both in one file.
 
-The failure this prevents used to be silent. A crew with three carefully written tasks that
-ends with `await crew.run()` still runs, prints a result, and **ignores every task** — but it
-now logs a warning saying so, and the declarative shape warns symmetrically about the
-`.body()` it will never invoke. The run is still wrong; it is no longer quiet about it. That
-is the single most expensive mistake in this DSL, which is why it is the first thing on this
+A crew with three carefully written tasks that ends with `await crew.run()` still runs,
+prints a result, and **ignores every task**; it logs a warning saying so, and the declarative
+shape warns symmetrically about the `.body()` it will never invoke. The run is still wrong,
+but not silently. That is the single most expensive mistake in this DSL, which is why it is the first thing on this
 page rather than a footnote.
 
 ## Shape A — the declarative crew
@@ -315,13 +314,13 @@ knowing before you are surprised by them:
 
 | Message | Cause |
 |---|---|
-| `did not assign globalThis.crew` | `--validate`, or a runner that wants the declarative shape, on a file ending in `await crew.run()`. |
+| `did not assign globalThis.crew` | A runner that loads only the declarative shape (the `orkeon-host` daemon, a host calling `ScriptHost.LoadCrewFromFileAsync`) handed a file ending in `await crew.run()`. |
 | The crew runs but every task is ignored | The reverse: `withTask` in a file ending with `await crew.run()`. |
 | `Crew configuration references unknown tool(s): x` | A name in `.tools([...])` the host catalogue does not have. The message lists every name that *is* available. |
 | `Agent 'a' lists unknown tool(s) in .tools([...])` (an `UnknownToolError`) | The procedural twin: `ctx.llm.act` refuses to run, before any model call, on an agent whose `.tools([...])` names a tool the host does not offer. The message lists what is available. |
 | `FSM transition 'a.b' targets undeclared state 'c'` | A `target` that is not a key of `states`. |
 | `stateGraph literal must declare an edge from START` | `edges` written as an array. It is an object keyed by source node. |
-| `stateGraph has no path from START to END` | No static route; add one or use a conditional edge. |
+| `stateGraph '…' has an invalid topology: … Graph has no path from START to END.` | No static route; add one or use a conditional edge. |
 | `StateMutationOutsideWithException` | `ctx.state.x = …` instead of `ctx.state.with(...)`. |
 | `.concurrency must be positive` / `V1 supports .concurrency(1) only` | The N-holder semaphore is V1.5. |
 | `RecursiveAgentInvocationException` | `ctx.spawn` of an agent with the caller's own name, or `ctx.delegate` / `crew.runAgent` of the calling agent itself. |
@@ -331,8 +330,9 @@ knowing before you are surprised by them:
 
 ## Deliberately out of scope
 
-`budget()` and `globalThis.inputs` do nothing on the declarative path; `.body()` does nothing
-there either. There is no conditional-inclusion method — guard the `withAgent`/`withTask`
+On the declarative path `globalThis.inputs` is never planted, and `budget()` bounds the crew
+only under `.process("autonomous")` — any other process refuses the crew; `.body()` does
+nothing there either. There is no conditional-inclusion method — guard the `withAgent`/`withTask`
 call with an `if` instead. `ctx.llm.embed` returns a stub vector. The full list, with what
 each one actually does, is in
 [Design limits](../reference/scripting-dsl.md#design-limits).

@@ -521,7 +521,7 @@ public class OrderProcessingService
 
                 if (!taskOutput.Success)
                 {
-                    _logger.LogError("Task failed: {Output}", taskOutput.RawOutput);
+                    _logger.LogError("Task failed: {Output}", taskOutput.Content);
                 }
             }
 
@@ -642,7 +642,7 @@ public class OrderProcessingMessageConsumer : IMessageHandler
   },
   "Memory": {
     // The TYPE of the memory provider (unset → in-memory); its connection is its own
-    // section, Orkeon:Redis above — a Memory:ConnectionString is refused at start as an unknown key (GAP-40)
+    // section, Orkeon:Redis above — a Memory:ConnectionString is refused at start as an unknown key
     "Provider": "Redis"
   }
 }
