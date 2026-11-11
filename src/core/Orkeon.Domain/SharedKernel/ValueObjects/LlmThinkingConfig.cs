@@ -46,11 +46,13 @@ public sealed record LlmThinkingConfig
     /// The level a provider whose field knows <paramref name="known"/> sends for <paramref name="asked"/>:
     /// the level itself when known, else the highest known level below it (the lowest known one when none
     /// is). The provider that lowers a level reports it (LLM-02): an option is never silently changed.
+    /// A value outside <see cref="Levels"/> (a vendor's own, such as OpenAI's <c>"none"</c>) is no level and is
+    /// returned unchanged: the vendor judges it, rather than receiving a level the caller never asked for.
     /// </summary>
     public static string EffortFor(string asked, IReadOnlyList<string> known)
     {
         ArgumentNullException.ThrowIfNull(known);
-        if (known.Contains(asked))
+        if (known.Contains(asked) || Array.IndexOf(s_levels, asked) < 0)
             return asked;
 
         var rank = Array.IndexOf(s_levels, asked);

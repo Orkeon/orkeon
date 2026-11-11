@@ -2125,7 +2125,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             Content = "",
             Metadata = LlmResponseMetadata.CreateBuilder()
                 .AddProvider(Name)
-                .AddError($"{ProviderDisplayName} API error: {statusCode} - {error}{hint}")
+                .AddError($"{ProviderDisplayName} API error: {statusCode} - {error}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(statusCode, rawError)}{hint}")
                 .AddErrorType("APIError")
                 .Build()
                 .ToDictionary()
@@ -2234,7 +2234,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// </summary>
     [LoggerMessage(EventId = 110, Level = LogLevel.Warning,
         Message = "Option '{Option}' was declared but {ProviderName} does not support it — it was not sent. {Remedy}.")]
-    private partial void LogUnsupportedOption(string option, string providerName, string remedy);
+    private protected partial void LogUnsupportedOption(string option, string providerName, string remedy);
 
     /// <summary>
     /// The same rule for an effort the declared field does not know: the nearest known level is sent,

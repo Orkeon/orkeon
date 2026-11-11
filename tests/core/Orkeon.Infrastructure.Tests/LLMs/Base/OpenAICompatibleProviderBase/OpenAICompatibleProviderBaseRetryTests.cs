@@ -215,6 +215,79 @@ public class OpenAICompatibleProviderBaseRetryTests
     }
 
     [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldFailOnceAndSaySo_WhenGenerateAsyncMeetsA429ForAnExhaustedBalance()
+    {
+        var callCount = 0;
+        using var handler = new TestDoubles.TestHttpMessageHandler(_ =>
+        {
+            Interlocked.Increment(ref callCount);
+            return new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent("{\"error\":{\"code\":\"1113\",\"message\":\"Insufficient balance or no resource package. Please recharge.\"}}")
+            };
+        });
+        _httpClientFactory.RegisterClient("TestableOpenAICompatibleProvider", new HttpClient(handler));
+        var retryPolicy = ResiliencePolicies.GetLlmApiPolicy(_logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1));
+        using var provider = new TestableOpenAICompatibleProvider(_config, _httpClientFactory, retryPolicy, _logger);
+
+        var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, callCount);
+        var error = result.Metadata["error"].ToString();
+        Assert.Contains("TooManyRequests", error, StringComparison.Ordinal);
+        Assert.Contains("account balance exhausted", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldFailOnceAndSaySo_WhenStreamingConnectMeetsA429ForAnExhaustedBalance()
+    {
+        using var factory = new MockHttpClientFactory();
+        var handler = factory.SetupDefaultHandler();
+        handler.SetResponseFactory(_ => new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+        {
+            Content = new StringContent("{\"error\":{\"type\":\"insufficient_quota\",\"code\":\"insufficient_quota\"}}")
+        });
+        var config = LlmConfig.Create(TestModelName, TestApiKey) with { MaxRetries = 3 };
+        using var provider = new DelayRecordingProvider(config, factory, Policy.NoOpAsync<HttpResponseMessage>());
+
+        LlmResponse? final = null;
+        await foreach (var ev in provider.ChatStreamingAsync([LlmMessage.User("hi")], cancellationToken: TestContext.Current.CancellationToken))
+            if (ev.Kind == LlmStreamEventKind.Completed) final = ev.FinalResponse;
+
+        Assert.Equal(1, handler.SendCallCount);
+        Assert.Empty(provider.Delays);
+        Assert.NotNull(final);
+        Assert.Contains("account balance exhausted", final.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldThrowWithTheBalanceHint_WhenTheTextStreamMeetsA429ForAnExhaustedBalance()
+    {
+        using var factory = new MockHttpClientFactory();
+        var handler = factory.SetupDefaultHandler();
+        handler.SetResponseFactory(_ => new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+        {
+            Content = new StringContent("{\"error\":{\"type\":\"exceeded_current_quota_error\",\"message\":\"Your account is suspended\"}}")
+        });
+        var config = LlmConfig.Create(TestModelName, TestApiKey) with { MaxRetries = 3 };
+        using var provider = new DelayRecordingProvider(config, factory, Policy.NoOpAsync<HttpResponseMessage>());
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(async () =>
+        {
+            await foreach (var _ in provider.GenerateStreamingAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken)) { }
+        });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, ex.StatusCode);
+        Assert.Contains("TooManyRequests - ", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("account balance exhausted", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(1, handler.SendCallCount);
+        Assert.Empty(provider.Delays);
+    }
+
+    [Fact]
     public async Task ShouldNotRetryOn400_WhenGenerateAsyncWithBadRequest()
     {
         // Arrange — 400 is not a transient error, should not be retried

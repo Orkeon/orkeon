@@ -44,8 +44,8 @@ public class LlmModelOutputLimitsTests
     {
         [LlmProviderDefaultModels.Ollama] = "a local runtime: num_predict is left out, Ollama generates to its window",
         [LlmProviderDefaultModels.HuggingFace] = "the router's bound is the routed provider's context, which differs per route",
-        [LlmProviderDefaultModels.Together] = "no vendor figure, and its engines refuse the window even with context_length_exceeded_behavior: truncate (campaign 2026-09-21) — the fallback holds",
         [LlmProviderDefaultModels.DockerModelRunner] = "a local llama.cpp server; no vendor figure",
+        [LlmProviderDefaultModels.MiniMax] = "MiniMax-M3: the vendor publishes no output figure; the 4096 fallback carried its 10/0/2 campaign of 2026-11-11",
     };
 
     public static TheoryData<string, string> ProviderDefaults() => new()

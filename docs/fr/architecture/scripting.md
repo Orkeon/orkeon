@@ -165,8 +165,24 @@ au début de l'appel (une `ActSession` par appel) :
   l'hôte (le REPL, `orkeon run`), un appel que le Guardian ou la porte de permission a refusé (refus d'un
   opérateur compris) est aussi un résultat, `DENIED: …`, et `onToolResult` s'exécute dessus ; sans le
   pipeline, et pour un appel refusé par `onToolCall`, un appel refusé ne l'atteint jamais.
+- **`onContextPressure(pressure)`** élague les résultats d'outil périmés de la boucle (#327). Avant un tour
+  du modèle, dès que les messages de la boucle dépassent `contextPressure.thresholdTokens` (caractères / 4,
+  100000 par défaut) et qu'il reste des résultats anciens, il reçoit `{ usedTokens, thresholdTokens,
+  usedTokensByKind: { tool }, calls }` (chaque appel : `id`, `name`, `input`, `resultChars`, `age` en tours
+  du modèle). Seuls les résultats d'outils de lecture (`ToolAccess.Read`) exécutés sont proposés : en
+  relancer un est sans effet, à la différence d'une écriture, d'une commande ou d'un appel refusé. Les
+  `contextPressure.keepRecent` derniers messages (des messages, pas des tours, 4 par défaut), un résultat
+  repris d'un `act` précédent et un résultat qu'un verdict a déjà tranché ne sont jamais proposés. Il
+  répond par identifiant d'appel : `"keep"`, `"head"` (les `contextPressure.headChars` premiers
+  caractères, 1000 par défaut) ou `"drop"`. Un résultat élagué laisse une ligne qui nomme l'appel (son
+  entrée coupée à 200 caractères), dit ce qui a été coupé et que l'appel peut être relancé, pour que le
+  modèle ne prenne jamais l'absence pour un résultat vide ; l'appel lui-même reste dans les messages. Un
+  appel omis est conservé et proposé de nouveau ; un rappel qui lève, ou un retour qui n'est pas un objet,
+  n'élague rien. L'estimation compte le texte, les appels d'outil et le raisonnement des messages, ni les
+  images ni les schémas d'outils. `token_budget` lit le tampon de session, qui ne voit jamais les messages
+  de la boucle : il ne mesure pas cette pression.
 
-Les deux rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
+Les rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
 le modèle de threading ci-dessous) ; `onToolCall` passe toujours avant la porte de permission.
 
 ## Le budget de tokens d'act

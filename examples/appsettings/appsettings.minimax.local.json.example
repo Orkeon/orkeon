@@ -1,11 +1,12 @@
 {
   "_comment": "Settings template - MiniMax (OpenAI-compatible endpoint, international). Copy this file WITHOUT the .example suffix (-> appsettings.minimax.local.json), then set your key in the environment: ApiKeyEnvVar names the variable that holds it (MINIMAX_API_KEY), which every run reads — a terminal, a scheduled team, the REPL — and the key itself never goes in the file (ORKEON_Llm__ApiKey, when set, wins). Mainland-China accounts use https://api.minimaxi.com/v1 (separate keys per region). The factory auto-detects MiniMaxLlmProvider from either host.",
   "_models": [
-    "MiniMax-M2 - flagship, campaign-verified 2026-08-30 (7 green modes; system prompt and vision are model-level gaps)",
+    "MiniMax-M3 - default since 2026-11-11 (10/0/2 on that campaign; 1M context, reads images)",
+    "MiniMax-M2 - the former default, legacy (system prompt and vision are model-level gaps)",
     "MiniMax-VL family - vision models (per model, D-03)"
   ],
   "Llm": {
-    "Model": "MiniMax-M2",
+    "Model": "MiniMax-M3",
     "BaseUrl": "https://api.minimax.io/v1",
     "ApiKeyEnvVar": "MINIMAX_API_KEY",
     "Temperature": 0.2,

@@ -24,10 +24,19 @@ failed — colour right and number wrong is a model that cannot read, colour wro
 too is an image that probably never arrived.
 
 No Pillow dependency: the PNG is emitted by hand so this runs anywhere Python does.
+
+The decision probe's image (D4, a Box question) is the same picture centred on a
+320x320 red field: TypeSafe rejects any side under 280 pixels ("Invalid image
+dimensions", 2026-11-11), and a known position of the digits lets D4 check the box
+it gets back, not only its shape. Paste it over `DecisionProbeImagePng` in
+`DecisionProbeRunner.cs`:
+
+    python3 tools/probe-image/make-probe-image.py --decision
 """
 
 import base64
 import struct
+import sys
 import zlib
 
 # 5x7 pixel font, scaled up rather than anti-aliased — crisp edges survive the
@@ -76,6 +85,18 @@ def render():
     return width, height, rows
 
 
+DECISION_SIDE = 320  # TypeSafe's minimum side is 280 pixels
+
+
+def pad(width, height, rows, side):
+    """Centres the picture on a side x side field of the background colour."""
+    x0, y0 = (side - width) // 2, (side - height) // 2
+    canvas = [[BACKGROUND] * side for _ in range(side)]
+    for y, row in enumerate(rows):
+        canvas[y0 + y][x0:x0 + width] = row
+    return side, side, canvas
+
+
 def encode(width, height, rows):
     raw = bytearray()
     for row in rows:
@@ -96,11 +117,15 @@ def encode(width, height, rows):
 
 def main():
     width, height, rows = render()
+    name = "ProbeImagePng"
+    if "--decision" in sys.argv[1:]:
+        width, height, rows = pad(width, height, rows, DECISION_SIDE)
+        name = "DecisionProbeImagePng"
     png = encode(width, height, rows)
     b64 = base64.b64encode(png).decode()
 
     print("# %dx%d, %d bytes, %d base64 chars\n" % (width, height, len(png), len(b64)))
-    print("    private const string ProbeImagePng =")
+    print("    internal const string %s =" % name)
     lines = [b64[i:i + 78] for i in range(0, len(b64), 78)]
     for index, line in enumerate(lines):
         terminator = ";" if index == len(lines) - 1 else " +"

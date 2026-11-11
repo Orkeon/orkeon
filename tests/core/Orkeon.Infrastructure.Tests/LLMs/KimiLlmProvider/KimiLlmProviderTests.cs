@@ -391,3 +391,121 @@ public sealed class KimiTemperatureConstraintTests
         Assert.Single(handler.CapturedRequests);
     }
 }
+
+/// <summary>
+/// The K3 family (the default since 2026-11-11) fixes its temperature and top_p and refuses a
+/// <c>thinking</c> field: those fields are left out before the request leaves, on the buffered and
+/// the streaming paths alike, and each is reported as a structured warning.
+/// </summary>
+public sealed class KimiFixedSamplingTests
+{
+    private static string Success() => JsonSerializer.Serialize(new
+    {
+        choices = new[] { new { message = new { content = "ok" } } },
+        usage = new { total_tokens = 7 },
+    });
+
+    private static (KimiLlmProvider Provider, TestHttpMessageHandler Handler, TestLogger<KimiLlmProvider> Logger) Build(
+        LlmConfig config, string body)
+    {
+        var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, body);
+        var factory = new TestHttpClientFactory();
+        factory.RegisterClient("KimiLlmProvider", new HttpClient(handler));
+        var logger = new TestLogger<KimiLlmProvider>();
+        return (new KimiLlmProvider(config, factory, resiliencePolicy: null, logger), handler, logger);
+    }
+
+    private static async Task<JsonElement> SentBodyAsync(TestHttpMessageHandler handler)
+    {
+        var raw = await handler.CapturedRequests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(raw);
+        return doc.RootElement.Clone();
+    }
+
+    private static LlmConfig Steered(string model) => LlmConfig.Create(model, TestApiKey) with
+    {
+        Temperature = 0.2,
+        TopP = 0.9,
+        Thinking = new LlmThinkingConfig { Enabled = false },
+    };
+
+    [Theory]
+    [InlineData("kimi-k3.1-pro")]
+    [InlineData("kimi-k3")]
+    [InlineData("Kimi-K3.1-Pro-Highspeed")]
+    public async Task ShouldLeaveOutFixedFieldsAndWarn_WhenModelIsInTheK3Family(string model)
+    {
+        var (provider, handler, logger) = Build(Steered(model), Success());
+        using var owned = provider;
+
+        var result = await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("ok", result.Content);
+        var body = await SentBodyAsync(handler);
+        Assert.False(body.TryGetProperty("temperature", out _));
+        Assert.False(body.TryGetProperty("top_p", out _));
+        Assert.False(body.TryGetProperty("thinking", out _));
+        Assert.True(logger.HasLoggedWarning("Option 'temperature'"));
+        Assert.True(logger.HasLoggedWarning("Option 'top_p'"));
+        Assert.True(logger.HasLoggedWarning("Option 'thinking.enabled'"));
+    }
+
+    [Fact]
+    public async Task ShouldLeaveOutFixedFields_WhenTheK3ModelStreams()
+    {
+        const string sse = "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n";
+        var (provider, handler, logger) = Build(Steered("kimi-k3.1-pro"), sse);
+        using var owned = provider;
+
+        var tokens = new List<string>();
+        await foreach (var token in provider.GenerateStreamingAsync("hello", cancellationToken: TestContext.Current.CancellationToken))
+            tokens.Add(token);
+
+        Assert.Equal(["ok"], tokens);
+        var body = await SentBodyAsync(handler);
+        Assert.False(body.TryGetProperty("temperature", out _));
+        Assert.False(body.TryGetProperty("top_p", out _));
+        Assert.False(body.TryGetProperty("thinking", out _));
+        Assert.True(logger.HasLoggedWarning("Option 'temperature'"));
+    }
+
+    [Fact]
+    public async Task ShouldSendNoSamplingFieldAndNoWarning_WhenDefaultModelHasDefaultConfiguration()
+    {
+        var (provider, handler, logger) = Build(LlmConfig.OnProfile() with { ApiKey = TestApiKey }, Success());
+        using var owned = provider;
+
+        await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        var body = await SentBodyAsync(handler);
+        Assert.Equal("kimi-k3.1-pro", body.GetProperty("model").GetString());
+        Assert.False(body.TryGetProperty("temperature", out _));
+        Assert.False(body.TryGetProperty("thinking", out _));
+        Assert.False(logger.HasLoggedWarning("was declared"));
+    }
+
+    [Fact]
+    public async Task ShouldKeepTheSteeredFields_WhenModelIsOutsideTheK3Family()
+    {
+        var (provider, handler, logger) = Build(Steered("kimi-k2.7-code"), Success());
+        using var owned = provider;
+
+        await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        var body = await SentBodyAsync(handler);
+        Assert.Equal(0.2, body.GetProperty("temperature").GetDouble());
+        Assert.Equal(0.9, body.GetProperty("top_p").GetDouble());
+        Assert.Equal("disabled", body.GetProperty("thinking").GetProperty("type").GetString());
+        Assert.False(logger.HasLoggedWarning("was declared"));
+    }
+
+    [Theory]
+    [InlineData("kimi-k3", true)]
+    [InlineData("kimi-k3.1-pro", true)]
+    [InlineData("kimi-k3-preview", true)]
+    [InlineData("kimi-k30", false)]
+    [InlineData("kimi-k2.6", false)]
+    [InlineData(null, false)]
+    public void IsFixedSamplingModel_ShouldMatchTheK3FamilyAtABoundary(string? model, bool expected) =>
+        Assert.Equal(expected, KimiLlmProvider.IsFixedSamplingModel(model));
+}

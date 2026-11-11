@@ -38,6 +38,28 @@ public sealed class FallbackLlmProviderTests
     }
 
     [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task A_429_for_an_exhausted_balance_moves_the_call_to_the_next_profile()
+    {
+        var a = new FakeScriptedLlmProvider
+        {
+            Response = FakeScriptedLlmProvider.Failed(
+                "Z.AI API error: TooManyRequests - {\"error\":{\"code\":\"insufficient_quota\"}}" + LlmFailureClassifier.BalanceExhaustedNote,
+                "APIError"),
+        };
+        var b = new FakeScriptedLlmProvider { Response = new LlmResponse { Content = "from-b" } };
+        var observer = new FakeLlmFallbackObserver();
+        var chain = Chain(observer, links: [("a", a), ("b", b)]);
+
+        var answer = await chain.ChatAsync(Hello, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("from-b", answer.Content);
+        Assert.Equal(1, a.Calls);
+        Assert.Equal(1, b.Calls);
+        Assert.Equal(("main", "a", "b", "rate_limited"), Assert.Single(observer.Taken));
+    }
+
+    [Fact]
     public async Task Generate_follows_the_same_rule()
     {
         var a = new FakeScriptedLlmProvider { Response = FakeScriptedLlmProvider.Http(HttpStatusCode.BadGateway) };

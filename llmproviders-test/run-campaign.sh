@@ -21,6 +21,7 @@ KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$KIT_DIR/.." && pwd)"
 CLI_PROJECT="$REPO_ROOT/src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj"
 CATALOG="$KIT_DIR/lib/catalog.json"
+SERVED="$KIT_DIR/lib/served-models.json"
 
 PROVIDER=""
 ALL=0
@@ -36,6 +37,7 @@ MAX_MODELS=""
 DRY_RUN=0
 NO_RECAP=0
 PARALLEL=0
+PREFLIGHT=1
 OUT="$KIT_DIR"
 CONFIGURATION="Debug"
 # Empty means "let the harness decide": the probe already defaults to 180 s and temperature 0,
@@ -68,6 +70,7 @@ Options:
                          openai | anthropic | ollama | azure | together | qwen
                          | deepseek | kimi | mistral | huggingface | zai
                          | gemini | grok | minimax | openrouter | mammouth
+                         decision providers (modes D1–D8): typesafe | liquid | kev
       --all              every provider declared in the configuration (needs --config)
       --parallel         run the selected providers concurrently. Each provider's own models
                          still run one after another: they share its rate limit, and racing
@@ -86,6 +89,7 @@ Options:
                          records as candidateModels (review of 2026-09-19), same modes — the
                          campaign that can promote one of them to default. Automatic path only
       --dry-run          resolve and print the plan; place no call, write nothing
+      --no-preflight     skip the one-call check that opens each provider (see below)
       --no-recap         skip the index rebuild — for parallel runs; rebuild once at the end
                          with lib/recap.sh <out>
       --timeout <s>      per-request timeout, default 180 (a cold local model must load first)
@@ -98,6 +102,14 @@ Options:
 
 These campaigns spend real credits on real accounts. --dry-run resolves everything and
 prints the plan without placing a single call; use it first.
+
+Each provider opens with one call of its first mode on its first model. A refused key, an
+empty balance or an exhausted quota skips the provider there, instead of failing every mode
+of every model one after the other.
+
+After a provider's runs, its live catalogue is compared with lib/served-models.json: the
+identifiers it serves that the snapshot does not list, and those it no longer serves, are
+printed at the end of the campaign.
 
 API keys are never accepted as an argument — the harness refuses them there and this
 script does not work around it. A key arrives through the environment, or through the
@@ -124,6 +136,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run)        DRY_RUN=1; shift ;;
     --no-recap)       NO_RECAP=1; shift ;;
     --parallel)       PARALLEL=1; shift ;;
+    --no-preflight)   PREFLIGHT=0; shift ;;
     --timeout)        TIMEOUT="$2"; shift 2 ;;
     --temperature)    TEMPERATURE="$2"; shift 2 ;;
     --thinking-effort) THINKING_EFFORT="$2"; shift 2 ;;
@@ -237,6 +250,16 @@ resolve_orkeon() {
 
 COMMIT="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "")"
 
+# A report names the commit of the code that ran. With src/ changed and not committed, that
+# commit names code that did not run: the TypeSafe reports of 2026-11-11 said 925c13871 while
+# the probe they ran was still uncommitted. The suffix says so; the report stays honest.
+if [[ -n "$COMMIT" ]] && {
+     ! git -C "$REPO_ROOT" diff --quiet HEAD -- src 2>/dev/null \
+     || [[ -n "$(git -C "$REPO_ROOT" ls-files --others --exclude-standard -- src 2>/dev/null)" ]]
+   }; then
+  COMMIT="$COMMIT-dirty"
+fi
+
 # ── Model resolution ─────────────────────────────────────────────────────────
 
 # Live catalogue first, declared list as the fallback. A hand-maintained list is exactly
@@ -301,6 +324,9 @@ resolve_models() {
 
 FAILURES=0
 RAN=0
+# Providers the preflight stopped: counted in FAILURES for the exit status, named apart in the
+# closing line — "a failed mode" would send the reader to reports that were never written.
+SKIPPED=0
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -319,36 +345,8 @@ run_one() {
   fi
 
   resolve_orkeon
-  args=(llm probe -p "$provider" -m "$model" --modes "$modes" --format json -k "$key_env")
-  [[ -n "$base_url" ]] && args+=(-u "$base_url")
-  [[ -n "$api_version" ]] && args+=(--api-version "$api_version")
-  [[ -n "$workspace_id" ]] && args+=(--workspace-id "$workspace_id")
-  [[ -n "$COMMIT" ]] && args+=(--commit "$COMMIT")
-  [[ -n "$TIMEOUT" ]] && args+=(--timeout "$TIMEOUT")
-
-  # Temperature 0 is the default because a pinned temperature makes a verdict reproducible.
-  # Some models refuse it outright — `kimi-k2.6` answers every call with
-  # `invalid temperature: only 1 is allowed for this model`, which cost a whole campaign
-  # (2026-08-03: ten of twelve modes red, one cause). A provider that cannot take 0 declares
-  # what it can take in the catalogue, and the report prints the value it actually used, so a
-  # verdict is never silently less reproducible than it looks.
-  local temperature="$TEMPERATURE"
-  [[ -z "$temperature" ]] && temperature=$(catalog_model_param "$provider" "$model" "temperature")
-  [[ -n "$temperature" ]] && args+=(--temperature "$temperature")
-
-  # Same shape for the base thinking effort: gpt-5.6-sol refuses function tools on
-  # chat/completions unless reasoning is explicitly off (2026-08-30). Declared per model in
-  # the catalogue's requiredParams, printed by the report header; M7 keeps probing thinking
-  # with its own explicit effort.
-  local thinking_effort="$THINKING_EFFORT"
-  [[ -z "$thinking_effort" ]] && thinking_effort=$(catalog_model_param "$provider" "$model" "thinkingEffort")
-  [[ -n "$thinking_effort" ]] && args+=(--thinking-effort "$thinking_effort")
-
-  # M7's own effort, where a model's supported set excludes the default "low"
-  # (mistral-medium-2604: only high or none, 2026-08-30).
-  local m7_effort
-  m7_effort=$(catalog_model_param "$provider" "$model" "m7Effort")
-  [[ -n "$m7_effort" ]] && args+=(--m7-effort "$m7_effort")
+  probe_args "$provider" "$model" "$modes" "$key_env" "$base_url" "$api_version" "$workspace_id"
+  args=("${PROBE_ARGS[@]}")
 
   raw="$TMP_DIR/$provider-$slug.json"
   err="$TMP_DIR/$provider-$slug.stderr"
@@ -388,13 +386,120 @@ run_one() {
   return 0
 }
 
+# The arguments of one `orkeon llm probe` call, into PROBE_ARGS: shared by the campaign run
+# and the preflight, so the check calls exactly what the campaign will.
+PROBE_ARGS=()
+probe_args() {
+  local provider="$1" model="$2" modes="$3" key_env="$4" base_url="$5" api_version="$6" workspace_id="$7"
+  local args
+  args=(llm probe -p "$provider" -m "$model" --modes "$modes" --format json -k "$key_env")
+  [[ -n "$base_url" ]] && args+=(-u "$base_url")
+  [[ -n "$api_version" ]] && args+=(--api-version "$api_version")
+  [[ -n "$workspace_id" ]] && args+=(--workspace-id "$workspace_id")
+  [[ -n "$COMMIT" ]] && args+=(--commit "$COMMIT")
+  [[ -n "$TIMEOUT" ]] && args+=(--timeout "$TIMEOUT")
+
+  # Temperature 0 is the default because a pinned temperature makes a verdict reproducible.
+  # Some models refuse it outright — `kimi-k2.6` answers every call with
+  # `invalid temperature: only 1 is allowed for this model`, which cost a whole campaign
+  # (2026-08-03: ten of twelve modes red, one cause). A provider that cannot take 0 declares
+  # what it can take in the catalogue, and the report prints the value it actually used, so a
+  # verdict is never silently less reproducible than it looks.
+  local temperature="$TEMPERATURE"
+  [[ -z "$temperature" ]] && temperature=$(catalog_model_param "$provider" "$model" "temperature")
+  [[ -n "$temperature" ]] && args+=(--temperature "$temperature")
+
+  # Same shape for the base thinking effort: gpt-5.6-sol refuses function tools on
+  # chat/completions unless reasoning is explicitly off (2026-08-30). Declared per model in
+  # the catalogue's requiredParams, printed by the report header; M7 keeps probing thinking
+  # with its own explicit effort.
+  local thinking_effort="$THINKING_EFFORT"
+  [[ -z "$thinking_effort" ]] && thinking_effort=$(catalog_model_param "$provider" "$model" "thinkingEffort")
+  [[ -n "$thinking_effort" ]] && args+=(--thinking-effort "$thinking_effort")
+
+  # M7's own effort, where a model's supported set excludes the default "low"
+  # (mistral-medium-2604: only high or none, 2026-08-30).
+  local m7_effort
+  m7_effort=$(catalog_model_param "$provider" "$model" "m7Effort")
+  [[ -n "$m7_effort" ]] && args+=(--m7-effort "$m7_effort")
+  PROBE_ARGS=("${args[@]}")
+}
+
+# An account-level refusal: the key, the balance or the quota, never the model or the mode.
+# Matched on the detail the probe archives, which carries the vendor's own body. Each
+# alternative was measured: MiniMax `PaymentRequired … insufficient_balance_error (2067)`
+# (2026-08-30), Z.AI `1113 Insufficient balance or no resource package` (2026-11-11), Kimi
+# `exceeded_current_quota_error` (2026-10-07).
+ACCOUNT_ERROR='Unauthorized|Forbidden|PaymentRequired|insufficient[ _]balance|insufficient_quota|exceeded_current_quota|"1113"|invalid[ _]api[ _]key|invalid_authentication|refused the key|HTTP 40[123][^0-9]'
+
+# One call of the provider's first mode on its first model. Returns 1 — skip the provider —
+# when that call shows the account cannot pay for the campaign or the key is refused, or the
+# probe could not start at all (no key exported). Any other outcome, red included, lets the
+# campaign run: a model-level red is a finding the full report must carry.
+#
+# The run that cost this check its place: Z.AI on 2026-11-11, an empty balance answered 429
+# and every mode of five models waited out its retries — 21 minutes for nothing. Since #328
+# that 429 is no longer retried; the check still spares the sixty calls that would each fail.
+preflight() {
+  local provider="$1" model="$2" mode="$3" key_env="$4" base_url="$5" api_version="$6" workspace_id="$7"
+  local raw="$TMP_DIR/$provider-preflight.json" err="$TMP_DIR/$provider-preflight.stderr" detail
+
+  probe_args "$provider" "$model" "$mode" "$key_env" "$base_url" "$api_version" "$workspace_id"
+  log "▷ $provider: preflight, $mode on $model"
+  set +e
+  "${ORKEON[@]}" "${PROBE_ARGS[@]}" > "$raw" 2>"$err"
+  set -e
+
+  if [[ ! -s "$raw" ]] || ! jq -e 'has("modes")' "$raw" >/dev/null 2>&1; then
+    warn "$provider: preflight could not run the probe — provider skipped."
+    if [[ -s "$err" ]]; then sed 's/^/    /' "$err" >&2; fi
+    return 1
+  fi
+
+  detail=$(jq -r '[.modes[] | select(.outcome == "failed") | .detail] | join(" ")' "$raw")
+  if [[ -n "$detail" ]] && grep -qiE "$ACCOUNT_ERROR" <<< "$detail"; then
+    warn "$provider: preflight refused at the account level — provider skipped, no mode run."
+    printf '    %s\n' "${detail:0:300}" >&2
+    return 1
+  fi
+  return 0
+}
+
+# The provider's live catalogue against lib/served-models.json: what it serves that the
+# snapshot does not list, and what the snapshot lists that it no longer serves. Printed at the
+# end of the campaign. Free — a catalogue listing, no inference — and silent when the provider
+# has no catalogue endpoint or no snapshot entry. glm-5.3-flashx-legal was noticed on
+# 2026-11-11 only because someone read the list by hand.
+served_diff() {
+  local provider="$1" key_env="$2" base_url="$3" canonical live known added removed args
+  [[ -f "$SERVED" ]] || return 0
+  canonical=$(jq -r --arg p "$provider" '.providers[$p].aliasOf // $p' "$CATALOG")
+  jq -e --arg p "$canonical" '.providers[$p].models' "$SERVED" >/dev/null 2>&1 || return 0
+
+  args=(llm models -p "$provider" -k "$key_env")
+  [[ -n "$base_url" ]] && args+=(-u "$base_url")
+  # Byte order on both sides: comm compares bytes, and a French locale's sort is not that.
+  live=$("${ORKEON[@]}" "${args[@]}" 2>/dev/null | grep -vE '\s' | LC_ALL=C sort -u || true)
+  [[ -n "$live" ]] || return 0
+  known=$(jq -r --arg p "$canonical" '.providers[$p].models | keys[]' "$SERVED" | LC_ALL=C sort -u)
+
+  added=$(LC_ALL=C comm -23 <(printf '%s\n' "$live") <(printf '%s\n' "$known") | paste -sd' ' - || true)
+  removed=$(LC_ALL=C comm -13 <(printf '%s\n' "$live") <(printf '%s\n' "$known") | paste -sd' ' - || true)
+  [[ -z "$added" ]] || printf '%s: new — %s\n' "$canonical" "$added" >> "$TMP_DIR/served-diff"
+  [[ -z "$removed" ]] || printf '%s: no longer served — %s\n' "$canonical" "$removed" >> "$TMP_DIR/served-diff"
+  return 0
+}
+
 run_provider() {
   local provider="$1"
   local modes key_env base_url api_version workspace_id cap models key_value
 
   # Command line wins over the configuration, which wins over the built-in default — the
   # usual precedence, so an operator can override one provider without editing the file.
-  modes="${MODES:-$(cfg "$provider" "modes" "$ALL_MODES")}"
+  # A decision provider (TypeSafe, Liquid, Kev) has its own modes, D1–D8 (D8 only when named): the catalogue names
+  # a provider's default set, so the chat modes are never sent where none of them applies.
+  modes="${MODES:-$(cfg "$provider" "modes" "$(catalog_field "$provider" "modes")")}"
+  modes="${modes:-$ALL_MODES}"
   key_env="${API_KEY_ENV:-$(cfg "$provider" "apiKeyEnv" "$(catalog_key_env "$provider")")}"
   key_env="${key_env:-ORKEON_LLM_API_KEY}"
   base_url="${BASE_URL:-$(cfg "$provider" "baseUrl")}"
@@ -425,6 +530,24 @@ run_provider() {
     # Say what was dropped. A silent cap reads as full coverage.
     warn "$provider: ${#models[@]} models matched, capping at $cap (--max-models). Not exercised: ${models[*]:$cap}"
     models=("${models[@]:0:$cap}")
+  fi
+
+  # One call before the many: an account that cannot pay fails here once, not per mode.
+  # Skipped on a dry run (it would place a call) and with --no-preflight.
+  # The cheapest mode of the family, not the first one asked: `--modes D8` must not pay its
+  # 100k tokens twice.
+  local pre_mode="M1"
+  [[ "$modes" == D* ]] && pre_mode="D1"
+  if [[ "$PREFLIGHT" -eq 1 && "$DRY_RUN" -eq 0 ]]; then
+    resolve_orkeon
+    if ! preflight "$provider" "${models[0]}" "$pre_mode" "$key_env" "$base_url" "$api_version" "$workspace_id"; then
+      FAILURES=$((FAILURES + 1))
+      SKIPPED=$((SKIPPED + 1))
+      [[ -z "$key_value" ]] || unset "$key_env"
+      return
+    fi
+  elif [[ "$PREFLIGHT" -eq 1 ]]; then
+    printf '  would check %-11s %s on %s first\n' "$provider" "$pre_mode" "${models[0]}"
   fi
 
   for model in "${models[@]}"; do
@@ -466,6 +589,8 @@ run_provider() {
       run_one "$provider" "$candidate" "$modes" "$key_env" "$base_url" "$api_version" "$workspace_id"
     done < <(catalog_candidates "$provider")
   fi
+
+  [[ "$DRY_RUN" -eq 1 ]] || served_diff "$provider" "$key_env" "$base_url"
 
   [[ -z "$key_value" ]] || unset "$key_env"
 }
@@ -510,7 +635,7 @@ if [[ "$PARALLEL" -eq 1 && "$DRY_RUN" -eq 0 && ${#providers[@]} -gt 1 ]]; then
     (
       set +e
       run_provider "$provider" >"$TMP_DIR/par-$i.out" 2>&1
-      printf '%s %s\n' "$RAN" "$FAILURES" >"$TMP_DIR/par-$i.tally"
+      printf '%s %s %s\n' "$RAN" "$FAILURES" "$SKIPPED" >"$TMP_DIR/par-$i.tally"
     ) &
     pids+=("$!")
     log "▶ $provider — started"
@@ -524,9 +649,10 @@ if [[ "$PARALLEL" -eq 1 && "$DRY_RUN" -eq 0 && ${#providers[@]} -gt 1 ]]; then
   for i in "${!providers[@]}"; do
     [[ ! -s "$TMP_DIR/par-$i.out" ]] || cat "$TMP_DIR/par-$i.out" >&2
     if [[ -s "$TMP_DIR/par-$i.tally" ]]; then
-      read -r ran failed < "$TMP_DIR/par-$i.tally"
+      read -r ran failed skipped < "$TMP_DIR/par-$i.tally"
       RAN=$((RAN + ran))
       FAILURES=$((FAILURES + failed))
+      SKIPPED=$((SKIPPED + skipped))
     else
       # No tally means the child died before it could write one — a crash, not a failed mode.
       # Counting it as a failure is what keeps the exit status honest.
@@ -538,6 +664,13 @@ else
   for provider in "${providers[@]}"; do
     run_provider "$provider"
   done
+fi
+
+if [[ -s "$TMP_DIR/served-diff" ]]; then
+  log ""
+  log "Catalogue changes since lib/served-models.json was read ($(jq -r '.readOn' "$SERVED")):"
+  sed 's/^/  /' "$TMP_DIR/served-diff" >&2
+  log "Re-read the snapshot when one of them matters: a new id is a candidate, a withdrawn one may be a default."
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -558,7 +691,12 @@ else
   log "$RAN campaign(s) archived under $OUT — index rebuilt."
 fi
 
+if [[ "$SKIPPED" -gt 0 ]]; then
+  log "$SKIPPED provider(s) skipped by the preflight: fix the key or the balance named above, then rerun them."
+fi
+if [[ "$FAILURES" -gt "$SKIPPED" ]]; then
+  log "$((FAILURES - SKIPPED)) campaign(s) reported a failed mode. That is the point of the exercise; read the reports."
+fi
 if [[ "$FAILURES" -gt 0 ]]; then
-  log "$FAILURES campaign(s) reported a failed mode. That is the point of the exercise; read the reports."
   exit 1
 fi

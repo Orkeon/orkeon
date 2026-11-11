@@ -758,6 +758,7 @@ public sealed partial class JsLlmFacade
             const onDelta = typeof cb === "function" ? cb : null;
             const onToolCall = options && typeof options.onToolCall === "function" ? options.onToolCall : null;
             const onToolResult = options && typeof options.onToolResult === "function" ? options.onToolResult : null;
+            const onContextPressure = options && typeof options.onContextPressure === "function" ? options.onContextPressure : null;
             const tcb = options ? options.onToolCallDelta : undefined;
             const onToolCallDelta = typeof tcb === "function" ? tcb : null;
             const s = beginAct(prompt, options, onDelta !== null, onToolCallDelta !== null);
@@ -782,6 +783,8 @@ public sealed partial class JsLlmFacade
                                 ? JSON.stringify(await onToolCall(JSON.parse(s.argumentsOf(id))))
                                 : kind === "onToolResult"
                                     ? JSON.stringify(await onToolResult(...(a => [a.call, a.result])(JSON.parse(s.argumentsOf(id)))))
+                                    : kind === "onContextPressure"
+                                        ? JSON.stringify((await onContextPressure(JSON.parse(s.argumentsOf(id)))) ?? null)
                                     : kind === "spawn"
                                         ? await s.spawn(s.argumentsOf(id))
                                         : await s.toolOf(id).execute(JSON.parse(s.argumentsOf(id))));
@@ -865,7 +868,9 @@ public sealed partial class JsLlmFacade
             ToolSchemas = Tools.Count > 0 ? Tools.Select(t => t.Schema).ToList() : null;
             HasToolCallback = HasCallback(options, "onToolCall");
             HasToolResultCallback = HasCallback(options, "onToolResult");
-            if (HasToolCallback || HasToolResultCallback || Tools.Any(t => t is ScriptToolProxy or SpawnToolProxy))
+            HasContextPressureCallback = HasCallback(options, "onContextPressure");
+            Pressure = ContextPressureSettings.From(options);
+            if (HasToolCallback || HasToolResultCallback || HasContextPressureCallback || Tools.Any(t => t is ScriptToolProxy or SpawnToolProxy))
                 _toolRequests = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
             // A conversation-level system message wins over any LlmConfig.SystemMessage fallback
@@ -937,6 +942,18 @@ public sealed partial class JsLlmFacade
 
         /// <summary>Whether the call declared an <c>onToolResult</c> function; fixed at construction.</summary>
         internal bool HasToolResultCallback { get; }
+
+        /// <summary>Whether the call declared an <c>onContextPressure</c> function; fixed at construction (#327).</summary>
+        internal bool HasContextPressureCallback { get; }
+
+        /// <summary>The <c>contextPressure</c> settings of the call, defaults filled in.</summary>
+        internal ContextPressureSettings Pressure { get; }
+
+        /// <summary>The results of the read tools the loop ran and added to <see cref="Messages"/>, in order: what <c>onContextPressure</c> is offered.</summary>
+        internal List<ActToolRecord> ToolRecords { get; } = [];
+
+        /// <summary>The loop's current iteration, 0 for the first model turn.</summary>
+        internal int Iteration { get; set; }
 
         /// <summary>The loop, as a Task of a CLR object — Jint settles it on the engine's own loop.</summary>
         public Func<Task<object>> run { get; }
@@ -1090,6 +1107,10 @@ public sealed partial class JsLlmFacade
             var payload = JsonSerializer.Serialize(new { call = new { name = toolName, input = arguments }, result = shown });
             return PostAsync(new PendingScriptToolCall("onToolResult", null, payload), cancellationToken);
         }
+
+        /// <summary>Posts one <c>onContextPressure</c> request to the JS pump; the response carries the verdicts as JSON.</summary>
+        internal Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallContextPressureCallbackAsync(string payload, CancellationToken cancellationToken)
+            => PostAsync(new PendingScriptToolCall("onContextPressure", null, payload), cancellationToken);
 
         private async Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> PostAsync(PendingScriptToolCall call, CancellationToken cancellationToken)
         {
@@ -1259,6 +1280,7 @@ public sealed partial class JsLlmFacade
     private async Task<object?> RunActIterationAsync(ActSession session, int i)
     {
         var messages = session.Messages;
+        session.Iteration = i;
         _ct.ThrowIfCancellationRequested();
         session.ThrowIfAborted();
         // Each completion of a background child is one user turn, delivered once.
@@ -1283,6 +1305,7 @@ public sealed partial class JsLlmFacade
         var cfg = session.ToolSchemas is null
             ? session.Config
             : session.Config with { Tools = session.ToolSchemas, ToolMode = ToolCallMode.Auto };
+        await RelieveContextPressureAsync(session).ConfigureAwait(false);
         var resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
         RecordCallTokens(resp, session);
 
@@ -1555,6 +1578,10 @@ public sealed partial class JsLlmFacade
                     if (session.HasToolResultCallback)
                         text = await ApplyToolResultCallbackAsync(session, p.Call.ToolName, p.Arguments, text).ConfigureAwait(false);
                 }
+                // Only a read that ran is offered to onContextPressure: running it again to get the result
+                // back changes nothing, unlike a write, a command or a refusal line.
+                if (p.Refusal is null && p.Tool?.Access == ToolAccess.Read)
+                    session.ToolRecords.Add(new ActToolRecord(messages.Count, $"call-{session.ToolRecords.Count + 1}", p.Call.ToolName, p.Arguments, session.Iteration));
                 messages.Add(new LlmMessage { Role = "tool", Content = text, ToolCallId = p.Call.Id });
             }
 

@@ -111,6 +111,17 @@ is not reported). `--no-decision` (a run without decisions) holds for every prov
 - **Usage** is metered once, as `decision` (`LlmUsageOperations.Decision`) against the active
   provider; Orkeon computes no cost.
 
+### Live campaign
+
+`orkeon llm probe -p typesafe` (or `liquid`, `kev`) runs seven modes against the real API through
+`SystemOneDecisionModel`: a `noul`, a `choice` and a `score` with obvious answers, a `box` on a PNG
+asset, the refusal of a state over the 64k context, a typed error for an unknown model, and
+cancellation. An eighth, D8, sends the same state with long context set and checks that a sentence
+buried in its middle is found; it costs about 100k input tokens, so it runs only when named
+(`--modes D8`). The LLM provider campaign kit runs it like the chat providers
+(`llmproviders-test/run-campaign.sh --provider typesafe`) and archives the report under
+`llmproviders-test/typesafe/`; its README lists the modes.
+
 ### The open d1 weights
 
 Orkeon does not serve the d1 weights itself. Served behind Kev or another System One-compatible

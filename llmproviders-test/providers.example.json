@@ -42,7 +42,7 @@
     "together": {
       "apiKeyEnv": "TOGETHER_API_KEY",
       "modes": "M1,M2,M3,M4,M5",
-      "models": ["meta-llama/Llama-3.3-70B-Instruct-Turbo"]
+      "models": ["zai-org/GLM-5.3-Flash"]
     },
 
     "deepseek": {
@@ -54,7 +54,7 @@
       "_comment": "International endpoint by default. Mainland China account: baseUrl https://api.moonshot.cn/v1.",
       "apiKeyEnv": "MOONSHOT_API_KEY",
       "modes": "M1,M2,M3,M4,M5",
-      "models": ["kimi-k2.6"]
+      "models": ["kimi-k3.1-pro"]
     },
 
     "qwen": {
@@ -79,7 +79,7 @@
 
     "zai": {
       "apiKeyEnv": "ZAI_API_KEY",
-      "models": ["glm-5.2"]
+      "models": ["glm-5.3-flashx"]
     },
 
     "grok": {
@@ -88,27 +88,33 @@
     },
 
     "minimax": {
-      "_comment": "Campaign 2026-08-30: 7 modes green on MiniMax-M2 (the red ones are on the model's side). Mainland endpoint: baseUrl https://api.minimaxi.com/v1.",
+      "_comment": "MiniMax-M3 is the default since 2026-11-11 (10/0/2, it reads the image; MiniMax-M2 6/4/2). Mainland endpoint: baseUrl https://api.minimaxi.com/v1.",
       "apiKeyEnv": "MINIMAX_API_KEY",
-      "models": ["MiniMax-M2"]
+      "models": ["MiniMax-M3"]
     },
 
     "gemini": {
       "_comment": "Google's OpenAI compatibility endpoint, not Vertex AI. M8 is fully exercised there since 2026-08-30 (json_object and json_schema accepted, schema validated server-side).",
       "apiKeyEnv": "GEMINI_API_KEY",
-      "models": ["gemini-3.7-flash"]
+      "models": ["gemini-3.8-flash"]
     },
 
     "openrouter": {
       "_comment": "Marketplace, vendor/model ids are mandatory. Campaigned 2026-10-07 (11/1, M10): the same model as the direct Gemini campaign, so a red here is a fact about the transport. Cheap text-only alternative: deepseek/deepseek-v4.1-flash.",
       "apiKeyEnv": "OPENROUTER_API_KEY",
-      "models": ["google/gemini-3.7-flash"]
+      "models": ["google/gemini-3.8-flash"]
     },
 
+    "typesafe": {
+      "_comment": "Decision provider (Jev): runs D1–D7, not the chat modes. The catalogue supplies the key variable and the default model.",
+      "models": [
+        "jev-latest"
+      ]
+    },
     "mammouth": {
       "_comment": "LiteLLM proxy, bare vendor ids — the key names the provider, never the model. Campaigned 2026-10-07 (10/0/2): the included subscription credits cover a full run on gemini-3.7-flash.",
       "apiKeyEnv": "MAMMOUTH_API_KEY",
-      "models": ["gemini-3.7-flash"]
+      "models": ["gemini-3.8-flash"]
     }
   }
 }

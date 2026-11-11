@@ -76,6 +76,76 @@ public class ZaiThinkingPayloadTests
         Assert.False(body.TryGetProperty("reasoning_effort", out _));
     }
 
+    [Theory]
+    [InlineData("glm-5.3-flashx")]
+    [InlineData("glm-5.3")]
+    [InlineData("GLM-5.3-Flash")]
+    public async Task GenerateAsync_ShouldNotSendDisabledThinkingAndWarn_WhenModelAlwaysReasons(string model)
+    {
+        using var handler = CreateOkHandler();
+        _httpClientFactory.RegisterClient("ZaiLlmProvider", new HttpClient(handler));
+
+        var config = LlmConfig.Create(model, TestApiKey) with
+        {
+            Thinking = new LlmThinkingConfig { Enabled = false }
+        };
+        using var provider = new ZaiLlmProvider(config, _httpClientFactory, _noOpPolicy, _logger);
+
+        await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        var body = await ReadRequestBodyAsync(handler.CapturedRequests.Single());
+        Assert.False(body.TryGetProperty("thinking", out _));
+        Assert.True(_logger.HasLoggedWarning("thinking.enabled"));
+        Assert.True(_logger.HasLoggedWarning("always reasons"));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ShouldKeepEnabledThinkingAndEffort_WhenModelAlwaysReasons()
+    {
+        using var handler = CreateOkHandler();
+        _httpClientFactory.RegisterClient("ZaiLlmProvider", new HttpClient(handler));
+
+        var config = LlmConfig.Create("glm-5.3-flashx", TestApiKey) with
+        {
+            Thinking = new LlmThinkingConfig { Enabled = true, Effort = "low" }
+        };
+        using var provider = new ZaiLlmProvider(config, _httpClientFactory, _noOpPolicy, _logger);
+
+        await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        var body = await ReadRequestBodyAsync(handler.CapturedRequests.Single());
+        Assert.Equal("enabled", body.GetProperty("thinking").GetProperty("type").GetString());
+        Assert.Equal("low", body.GetProperty("reasoning_effort").GetString());
+        Assert.False(_logger.HasLoggedWarning("thinking.enabled"));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ShouldSendNoThinkingAndNoWarning_WhenDefaultModelHasDefaultConfiguration()
+    {
+        using var handler = CreateOkHandler();
+        _httpClientFactory.RegisterClient("ZaiLlmProvider", new HttpClient(handler));
+
+        var config = LlmConfig.OnProfile() with { ApiKey = TestApiKey };
+        using var provider = new ZaiLlmProvider(config, _httpClientFactory, _noOpPolicy, _logger);
+
+        await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        var body = await ReadRequestBodyAsync(handler.CapturedRequests.Single());
+        Assert.Equal("glm-5.3-flashx", body.GetProperty("model").GetString());
+        Assert.False(body.TryGetProperty("thinking", out _));
+        Assert.False(_logger.HasLoggedWarning("was declared"));
+    }
+
+    [Theory]
+    [InlineData("glm-5.3", true)]
+    [InlineData("glm-5.3-flashx", true)]
+    [InlineData("glm-5.3.1", true)]
+    [InlineData("glm-5.2", false)]
+    [InlineData("glm-5.30", false)]
+    [InlineData(null, false)]
+    public void IsAlwaysThinkingModel_ShouldMatchTheGlm53FamilyAtABoundary(string? model, bool expected) =>
+        Assert.Equal(expected, ZaiLlmProvider.IsAlwaysThinkingModel(model));
+
     [Fact]
     public async Task GenerateAsync_ShouldOmitThinkingFields_WhenThinkingIsNull()
     {

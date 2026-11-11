@@ -195,7 +195,7 @@ options, all patching the host provider's configuration for that call only:
 model) and `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: the provider's thinking, on at that effort;
 any other value is refused with `effort must be low|medium|high|xhigh|max`) and `cache` (the prompt-cache request, as `agentBuilder().cache(...)` takes it). `act` takes more: see
 [Options of `act`](../architecture/scripting.md#options-of-act) (`tools`, `effort`, `onToolCall`,
-`onToolResult`, `waitFor`). There is no per-call provider, temperature or token cap, and no `signal` — the call
+`onToolResult`, `onContextPressure`, `waitFor`). There is no per-call provider, temperature or token cap, and no `signal` — the call
 already observes the context's.
 
 `chat` takes a bare message array or `{ messages: [...] }`. `extract(prompt, schema, opts)` takes

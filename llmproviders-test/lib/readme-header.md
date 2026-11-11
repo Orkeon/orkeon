@@ -59,11 +59,11 @@ On Windows, `run-campaign.ps1` exposes exactly the same options.
 
 | Option | Role |
 |---|---|
-| `--provider <keys>` | One key, or several separated by commas — `openai`, `anthropic`, `ollama`, `azure`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok`, `minimax`, `openrouter`, `mammouth` |
+| `--provider <keys>` | One key, or several separated by commas — `openai`, `anthropic`, `ollama`, `azure`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok`, `minimax`, `openrouter`, `mammouth`; the decision providers `typesafe`, `liquid`, `kev` (modes D1–D8) |
 | `--all` | Every provider declared in the JSON |
 | `--parallel` | Runs the selected providers simultaneously (see below) |
 | `--model <id\|glob>` | An identifier, or a pattern (`gpt-5.6-*`, `*flash*`) |
-| `--modes M1,M8` | Default: every mode of the harness |
+| `--modes M1,M8` | Default: the provider's own set from the catalog (`modes`: D1–D7 for a decision provider; the paid D8 only when named), else every chat mode of the harness |
 | `--config <file>` | Campaign configuration (see `providers.schema.json`) |
 | `--base-url <url>` | Endpoint override (Azure, regional mirrors) |
 | `--api-version <v>` | Azure `api-version` in deployment mode |
@@ -72,6 +72,7 @@ On Windows, `run-campaign.ps1` exposes exactly the same options.
 | `--max-models <n>` | Wildcard cap (default 5; `providers.example.json` lowers it to 3) |
 | `--candidates` | After each provider's default, also runs the successors the catalog records as `candidateModels` (review of 2026-09-19), same modes — the campaign that can promote one of them to default. Automatic path only |
 | `--dry-run` | Resolves and prints the plan, calls nothing |
+| `--no-preflight` | Skips the one-call check that opens each provider (below) |
 | `--no-recap` | Does not rebuild the index — for parallel launches |
 | `--timeout <s>` | Per-request deadline, default **180 s** (a cold local model has to load first) |
 | `--temperature <t>` | Sampling, default **0** — pinned so that a verdict is reproducible. Models that require another value are recorded **per model** in `requiredParams` (catalog) and resolved automatically |
@@ -103,6 +104,31 @@ immediately.
 
 **If a process dies** without reporting back, it is counted as a failure. A crash that passed
 for a success would be worse than a red.
+
+### What the script checks around the runs
+
+**A preflight opens each provider.** Before its models run, one call of the provider's first
+mode (M1, or D1 for a decision provider) goes to its first model. A refused key, an empty
+balance or an exhausted quota (`401`, `402`, `403`, `insufficient_balance`, Z.AI's `1113`,
+Kimi's `exceeded_current_quota_error`) skips the provider there, and the closing line counts
+it apart from the failed modes. Any other red lets the campaign run: a model-level red is a
+finding. On 2026-11-11 an empty Z.AI balance failed every mode of five models one after the
+other, each 429 retried as a rate limit — 21 minutes for nothing; the preflight turns that
+into one call. `--no-preflight` skips it. Since issue #328 that 429 is no longer retried:
+the preflight answers on its first call.
+
+**The commit names the code that ran.** The reports carry the short commit of `HEAD`, with
+`-dirty` when `src/` holds uncommitted changes: the commit alone would then name code that
+did not run.
+
+**The catalogue is compared with the snapshot.** After a provider's runs, its live listing
+(`orkeon llm models`, free) is compared with `lib/served-models.json`; the identifiers it
+serves that the snapshot does not list, and those it no longer serves, are printed at the
+end of the campaign. A new identifier is a candidate; a withdrawn one may be a default.
+
+**A report points at the notes, it does not copy them.** The provider's points of attention
+live in `lib/catalog.json` (`notes`) and change from one campaign to the next; a copy in each
+report went stale at the next one. The report names where they are kept.
 
 To launch several separate *processes* — several terminals, a scheduler — the precaution
 remains to **defer the index** with `--no-recap`, then rebuild it once:
@@ -154,24 +180,24 @@ Without `--model`, each provider gets **its own** model, not a generic one. Reso
 from the most explicit to the most general: `--model` > the `models` list of the campaign
 JSON > the catalog's `defaultModel`.
 
-| Provider | Default | Vision model | Candidates (`--candidates`, reviews of 2026-09-19 and 2026-10-07) |
+| Provider | Default | Vision model | Candidates (`--candidates`, reviews of 2026-09-19, 2026-10-07 and 2026-11-11) |
 |---|---|---|---|
-| `openai` | `gpt-5.6-sol` | | `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-6.1-sol` |
-| `anthropic` | `claude-sonnet-5` | | `claude-fable-5-1`, `claude-sonnet-5-5`, `claude-haiku-5-5`, `claude-opus-5-5` |
+| `openai` | `gpt-5.6-sol` | | `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-6.1-sol`, `gpt-6.1-terra` |
+| `anthropic` | `claude-sonnet-5` | | `claude-fable-5-1`, `claude-sonnet-5-5`, `claude-haiku-5-5`, `claude-opus-5-5`, `claude-fable-5-2` |
 | `azure` | *(none — see below)* | | |
 | `ollama` | `llama3.2` | `llava` | `qwen3.5:4b` *(pull it first)* |
-| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | `zai-org/GLM-5.3-Flash` *(serverless, reads the image since the 2026-09-21 campaign)* | `zai-org/GLM-5.3-Flash`, `Qwen/Qwen3.5-9B` |
+| `together` | `zai-org/GLM-5.3-Flash` *(since 2026-11-11: the Llama 3.3 default left serverless)* | *(the default sees)* | `Qwen/Qwen3.5-9B` |
 | `deepseek` | `deepseek-flash` *(renamed 2026-09-19, campaigned 2026-09-21)* | *(the default sees)* | |
-| `kimi` | `kimi-k2.6` | | `kimi-k3`, `kimi-k2.7-code` |
+| `kimi` | `kimi-k3.1-pro` | | `kimi-k2.6`, `kimi-k3`, `kimi-k2.7-code` |
 | `qwen` | `qwen3.7-plus` | | `qwen3.8-flash`, `qwen3.8-max` |
 | `mistral` | `mistral-medium-2604` | | `mistral-large-4`, `mistral-small-2603` |
 | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | `Qwen/Qwen3.5-9B` |
-| `zai` | `glm-5.2` | `glm-4.6v-flash` | `glm-5.3`, `glm-5.3-flash`, `glm-5.3-flashx` |
-| `gemini` | `gemini-3.7-flash` | *(the default sees)* | `gemini-3.8-flash` |
+| `zai` | `glm-5.3-flashx` | `glm-4.6v-flash` | `glm-5.2`, `glm-5.3`, `glm-5.3-flash` |
+| `gemini` | `gemini-3.8-flash` *(since 2026-11-11)* | *(the default sees)* | `gemini-3.7-flash`, `gemini-4-argon`, `gemini-4-carbon` |
 | `grok` | `grok-4.6` | *(the default sees)* | `grok-4.7` |
-| `minimax` | `MiniMax-M2` | `MiniMax-M3` *(the successor sees — measured 2026-09-21; the VL family is still absent from `/models`)* | `MiniMax-M3` |
-| `openrouter` | `google/gemini-3.7-flash` | *(the default sees — M9 green on 2026-10-07, as in direct)* | `google/gemini-3.8-flash` |
-| `mammouth` | `gemini-3.7-flash` | *(the default sees — M9 green through the proxy on 2026-10-07)* | `gemini-3.8-flash` |
+| `minimax` | `MiniMax-M3` *(since 2026-11-11)* | *(the default sees — M9 green since 2026-09-21; the VL family is still absent from `/models`)* | `MiniMax-M2`, `MiniMax-M3.1-Flash` |
+| `openrouter` | `google/gemini-3.8-flash` *(since 2026-11-11)* | *(the default sees, as in direct)* | `google/gemini-3.7-flash` |
+| `mammouth` | `gemini-3.8-flash` *(since 2026-11-11)* | *(the default sees — M9 green through the proxy)* | `gemini-3.7-flash` |
 
 ### What each provider serves — `lib/served-models.json`
 
@@ -188,7 +214,7 @@ only known by calling it, and lands in `requiredParams`.
 ```bash
 # The identifiers alone, live:
 orkeon llm models -p mistral -k MISTRAL_API_KEY --json
-# What changed since the snapshot:
+# The snapshot's identifiers (every campaign prints what changed since, at its end):
 jq -r '.providers.mistral.models | keys[]' llmproviders-test/lib/served-models.json
 ```
 
@@ -251,8 +277,37 @@ would read as complete coverage.
 
 ## The protocol modes
 
-The harness covers **M1 to M10, M12 and M13**. A `➖` in a report flags a mode the provider
+The harness covers **M1 to M10, M12 and M13** for a chat provider, **D1 to D8** for a decision
+provider (below). A `➖` in a report flags a mode the provider
 cannot satisfy — nothing was exercised, there is nothing to fix.
+
+### Decision providers — D1 to D8
+
+TypeSafe (Jev), Liquid and Kev are **decision models**: they answer typed questions about a
+state, and do not chat, stream or call tools, so no M mode applies to them.
+`orkeon llm probe -p typesafe` runs their own modes through `SystemOneDecisionModel`, the
+client the framework itself uses, and writes the same JSON, so the kit archives and indexes
+them like any other campaign. The catalog gives each one its mode set (`modes`), and the
+report says `Temperature: not pinned` because the wire has no sampling parameter.
+
+| Mode | What it checks |
+|---|---|
+| D1 | A `noul` with instructions and criteria leans yes (≥ 0.5) on an obvious yes, with input tokens counted |
+| D2 | A three-option `choice` picks the obvious option, with probabilities that sum to 1 |
+| D3 | A three-level `score` lands at 1 or above on an urgent message |
+| D4 | A `box` on a 320×320 PNG asset touches where the digits are, and is not the whole image; the IoU is reported, not judged. ➖ on Kev, which takes no box |
+| D5 | A state of about 100k tokens is refused as a non-transient 4xx that names the 64k context limit |
+| D6 | An invalid model is a typed, non-transient 4xx — never a retry loop |
+| D7 | A call cancelled after 50 ms stops |
+| D8 | With long context set, the same 100k-token state is answered, its input tokens counted over 64k, and the one sentence asking for a refund, buried halfway, is found. **Paid** (about 100k input tokens a run): in no default set, run only when named. ➖ where the provider serves no long context (only TypeSafe does) |
+
+```bash
+export TYPESAFE_API_KEY=…
+llmproviders-test/run-campaign.sh --provider typesafe --candidates   # jev-latest, then jev-preview
+llmproviders-test/run-campaign.sh --provider typesafe --modes D8       # the long context, paid
+```
+
+### M2 and its two shapes
 
 **M2 sends the conversation twice** (two billed calls instead of one), and that is
 deliberate. OpenAI-compatible providers have two chat paths, chosen on a criterion the caller

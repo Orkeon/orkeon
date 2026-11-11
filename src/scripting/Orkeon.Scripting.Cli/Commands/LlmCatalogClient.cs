@@ -116,6 +116,11 @@ internal static class LlmCatalogClient
         using var document = JsonDocument.Parse(body);
         var ids = IsOllama(provider) ? ReadOllamaTags(document) : ReadOpenAiStyleData(document);
 
+        // Gemini's OpenAI-compatible listing names every model "models/<id>", a form no config
+        // writes: the bare id is what the provider takes and what served-models.json records.
+        if (IsGemini(provider))
+            ids = [.. ids.Select(id => id.StartsWith(GeminiModelPrefix, StringComparison.Ordinal) ? id[GeminiModelPrefix.Length..] : id)];
+
         return [.. ids.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
     }
 
@@ -226,6 +231,12 @@ internal static class LlmCatalogClient
             .Select(name => name!)
             .ToList();
     }
+
+    private const string GeminiModelPrefix = "models/";
+
+    private static bool IsGemini(string provider) =>
+        string.Equals(provider, "gemini", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(provider, "google", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsOllama(string provider) =>
         string.Equals(provider, "ollama", StringComparison.OrdinalIgnoreCase);

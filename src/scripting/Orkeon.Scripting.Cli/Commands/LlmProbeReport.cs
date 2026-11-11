@@ -40,7 +40,7 @@ internal sealed record LlmProbeContext(
     string OrkeonVersion,
     string Commit,
     DateTimeOffset TimestampUtc,
-    double Temperature,
+    double? Temperature,
     string? ThinkingEffort = null,
     string? M7ThinkingEffort = null);
 
@@ -94,8 +94,8 @@ internal static class LlmProbeReport
         sb.Append("- **Orkeon version**: ").AppendLine(context.OrkeonVersion);
         sb.Append("- **Commit**: ").AppendLine(string.IsNullOrWhiteSpace(context.Commit) ? "not provided" : context.Commit);
         sb.Append("- **Endpoint**: ").AppendLine(context.EndpointHost);
-        sb.Append("- **Temperature**: ")
-          .AppendLine(context.Temperature.ToString("0.##", CultureInfo.InvariantCulture));
+        if (context.Temperature is { } temperature)
+            sb.Append("- **Temperature**: ").AppendLine(temperature.ToString("0.##", CultureInfo.InvariantCulture));
         if (!string.IsNullOrWhiteSpace(context.ThinkingEffort))
             sb.Append("- **Reasoning effort (base)**: ").AppendLine(context.ThinkingEffort);
         if (!string.IsNullOrWhiteSpace(context.M7ThinkingEffort))

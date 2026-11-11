@@ -53,13 +53,13 @@ public static class LlmProviderDefaultModels
     public const string Ollama = "llama3.2";
 
     /// <summary>
-    /// Together AI. Catalogue review 2026-09-19: still serverless and not scheduled for
-    /// removal, at 1.04 / 1.04 $/M; the serverless list now carries
-    /// <c>zai-org/GLM-5.3-Flash</c> (1 M context, tools + JSON, 0.15 / 0.50 $/M — Together's
-    /// own replacement target), <c>Qwen/Qwen3.5-9B</c> and <c>deepseek-ai/DeepSeek-V4.1-Flash</c>,
-    /// while Llama 4 left it. A candidate at a seventh of the price, once campaigned.
+    /// Together AI. Campaign of 2026-11-11: <c>meta-llama/Llama-3.3-70B-Instruct-Turbo</c>, the default
+    /// until then, is no longer serverless (every call answers "Unable to access non-serverless model").
+    /// <c>zai-org/GLM-5.3-Flash</c> replaces it: Together's own replacement target since the 2026-09-19
+    /// review, 1 M context, tools + JSON, reads images, 0.15 / 0.50 $/M; 11/0/1 on the last run of that day (10/1/1 on the
+    /// first, the red being M10: the endpoint reports no cached tokens there).
     /// </summary>
-    public const string Together = "meta-llama/Llama-3.3-70B-Instruct-Turbo";
+    public const string Together = "zai-org/GLM-5.3-Flash";
 
     /// <summary>
     /// DeepSeek — the vendor's rolling id for the Flash tier, V4.1 Flash since 2026-09-10
@@ -73,23 +73,26 @@ public static class LlmProviderDefaultModels
     public const string DeepSeek = "deepseek-flash";
 
     /// <summary>
-    /// Kimi (Moonshot AI). Catalogue review 2026-09-19: <c>kimi-k2.6</c> is served with no
-    /// retirement date (<c>kimi-k2.5</c> and the <c>moonshot-v1-*</c> series went on
-    /// 2026-08-31); the flagship <c>kimi-k3</c> (1 M context, 3 / 15 $/M) fixes
-    /// <c>temperature</c>, <c>top_p</c>, <c>n</c> and both penalties, refuses a
-    /// <c>thinking</c> field and always reasons — a candidate once the dialect strips those
-    /// and a campaign has archived an M1. The vendor docs moved to <c>platform.kimi.ai</c>.
+    /// Kimi (Moonshot AI). Campaign of 2026-11-11: <c>kimi-k3.1-pro</c>, the new top model of the
+    /// K3 family (1 M context, image + video + reasoning), 12/12 direct and on OpenRouter, where
+    /// <c>kimi-k2.6</c>, the default until then, stayed 10/1/1 (M8 JSON fenced in markdown, M10 no
+    /// cache breakdown). The family fixes <c>temperature</c> (only 1 is allowed), <c>top_p</c>,
+    /// <c>n</c> and both penalties, refuses a <c>thinking</c> field and always reasons (catalogue
+    /// review 2026-09-19): <c>KimiLlmProvider</c> leaves those fields out for it and reports each.
+    /// The vendor docs moved to <c>platform.kimi.ai</c>.
     /// </summary>
-    public const string Kimi = "kimi-k2.6";
+    public const string Kimi = "kimi-k3.1-pro";
 
     /// <summary>
-    /// Z.AI (Zhipu GLM). Catalogue review 2026-09-19: <c>glm-5.2</c> is still listed under
-    /// "Latest Models", at the price of <c>glm-5.3</c> (2026-08-18, 1.40 / 4.40 $/M). The 5.3
-    /// family (<c>glm-5.3-flash</c> 0.15 / 0.50 $/M with image and video input,
-    /// <c>glm-5.3-flashx</c>) cannot disable thinking, so the <c>Toggle</c> declaration needs
-    /// a per-model guard before any of them becomes the default, campaign included.
+    /// Z.AI (Zhipu GLM). Campaign of 2026-11-11: <c>glm-5.3-flashx</c>, 12/12 on its first run of that day
+    /// (as on 2026-10-07; the last run was 11/1, M10) - it reads images and its cache is read (8064
+    /// tokens, ratio 1.00) - where <c>glm-5.2</c>, the default until then, stayed 10/2 then 11/1 (M9
+    /// code 1210, text only; M10 0 cached on the first run).
+    /// The 5.3 family (<c>glm-5.3</c>, <c>glm-5.3-flash</c>, <c>glm-5.3-flashx</c>) cannot disable
+    /// thinking: <c>ZaiLlmProvider</c> does not send a <c>thinking: disabled</c> block to it and
+    /// reports the option instead.
     /// </summary>
-    public const string Zai = "glm-5.2";
+    public const string Zai = "glm-5.3-flashx";
 
     /// <summary>
     /// Qwen (Alibaba DashScope). Catalogue review 2026-09-19: <c>qwen3.7-plus</c> is still the
@@ -101,13 +104,13 @@ public static class LlmProviderDefaultModels
     public const string Qwen = "qwen3.7-plus";
 
     /// <summary>
-    /// Google Gemini, over its OpenAI-compatibility surface. Catalogue review 2026-09-19:
-    /// <c>gemini-3.8-flash</c> went GA on 2026-09-02 at the same 0.75 / 3.75 $/M (both rise to
-    /// 1.50 / 7.50 on 2027-01-01) and the vendor now labels 3.7 Flash "previous generation" —
-    /// still served, no shutdown date. The first candidate for a default bump across the three
-    /// transports (direct, OpenRouter, Mammouth), once campaigned.
+    /// Google Gemini, over its OpenAI-compatibility surface. Campaign of 2026-11-11:
+    /// <c>gemini-3.8-flash</c> (GA 2026-09-02, the same 0.75 / 3.75 $/M as 3.7 Flash, both rising
+    /// to 1.50 / 7.50 on 2027-01-01) is 12/12 on the three transports at once - direct, OpenRouter
+    /// and Mammouth (9/1/2 there, the same M10 as 3.7) - where <c>gemini-3.7-flash</c>, the default
+    /// until then and labelled "previous generation" by the vendor, stayed 11/0/1.
     /// </summary>
-    public const string Gemini = "gemini-3.7-flash";
+    public const string Gemini = "gemini-3.8-flash";
 
     /// <summary>
     /// Mistral AI — the dated snapshot of the medium 3.5 generation. The previous value,
@@ -135,10 +138,12 @@ public static class LlmProviderDefaultModels
     /// text-only vision). Catalogue review 2026-09-19: <c>MiniMax-M2</c> is listed as legacy
     /// with no retirement date; <c>MiniMax-M3</c> (2026-06-01, 1 M context, image and video
     /// input, the same 0.30 / 1.20 $/M) is the vendor's agentic pick, but its reasoning
-    /// format on the OpenAI-compatible endpoint is undocumented — bumping the default is the
-    /// maintainer's call, backed by a fresh campaign.
+    /// format on the OpenAI-compatible endpoint is undocumented. Campaign of 2026-11-11:
+    /// <c>MiniMax-M3</c> 10/0/2 (it reads the image, its inline <c>&lt;think&gt;</c> block is split
+    /// out as on M2) where <c>MiniMax-M2</c>, the default until then, stayed 6/4/2 (M2, M5, M9,
+    /// M10): M3 is the default since.
     /// </summary>
-    public const string MiniMax = "MiniMax-M2";
+    public const string MiniMax = "MiniMax-M3";
 
     /// <summary>
     /// HuggingFace, through the Inference Providers router. Catalogue review 2026-09-19: still
@@ -161,9 +166,10 @@ public static class LlmProviderDefaultModels
     /// can reproduce. Compiled from documentation only: a default is a claim until a
     /// campaign has archived an M1 on it — the Mistral lesson. Catalogue review 2026-09-19:
     /// <c>google/gemini-3.8-flash</c> is on the marketplace since 2026-09-02 at the same
-    /// price; the aggregator defaults follow the direct one, never the other way round.
+    /// price; the aggregator defaults follow the direct one, never the other way round - and
+    /// they did on 2026-11-11 (12/12 on <c>google/gemini-3.8-flash</c>, 11/1 on 3.7, M10).
     /// </summary>
-    public const string OpenRouter = "google/gemini-3.7-flash";
+    public const string OpenRouter = "google/gemini-3.8-flash";
 
     /// <summary>
     /// Mammouth AI — the fleet's Gemini default under its bare identifier (Mammouth serves
@@ -174,9 +180,9 @@ public static class LlmProviderDefaultModels
     /// reason as <c>openrouter/auto</c>. Compiled from documentation only: a default is a
     /// claim until a campaign has archived an M1 on it — the Mistral lesson, verbatim.
     /// Catalogue review 2026-09-19: <c>gemini-3.8-flash</c> is on the public list too; same
-    /// rule, the direct default leads.
+    /// rule, the direct default leads - and it did on 2026-11-11 (9/1/2 on both, M10).
     /// </summary>
-    public const string Mammouth = "gemini-3.7-flash";
+    public const string Mammouth = "gemini-3.8-flash";
 
     /// <summary>
     /// Docker Model Runner. Parity with the committed <c>examples/appsettings/appsettings.json</c>,

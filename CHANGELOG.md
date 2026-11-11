@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`act` prunes stale tool results on the script's word** (#327) — `ActOptions.onContextPressure` runs before a model turn once the loop's messages pass `contextPressure.thresholdTokens` (100000 estimated tokens by default). It is handed the loop's older results of read tools that ran (tool, input, result size, age in turns): a write, a command, a refused call and a result seeded from an earlier `act` are never offered, since running them again is not harmless. It answers `keep`, `head` or `drop` per call, and a verdict settles the call for the rest of the loop; a pruned result leaves a line naming the call (its input cut to 200 characters) and saying it can be run again, the call itself stays, and the tool share of the next turn's context drops. The estimate counts text, tool calls and reasoning, not images nor tool schemas; `token_budget` reads the session buffer and does not see the loop. A callback that throws, or no callback, prunes nothing.
+- **LLM campaign results page** — `docs/reference/llm-campaign-results.md` (and its French mirror) gives the latest real-API result of every campaigned model: score, failed modes, default marker and report, merging the reports of the model's latest campaign day so the vision companion's M9 and the paid D8 join the main run. The campaign kit's `lib/recap.sh` and `lib/recap.ps1` regenerate it after every campaign, together with the same table in `llmproviders-test/README.md`.
+- **`orkeon llm probe` runs the decision providers** — `-p typesafe`, `liquid` or `kev` runs seven
+  decision modes, D1–D7 (noul, choice, score, box on an image, the context-limit refusal, a typed
+  error for an unknown model, cancellation), through `SystemOneDecisionModel`, and writes the same
+  JSON as the chat modes. The LLM provider campaign kit takes `typesafe` like any provider: the
+  catalog gives it its modes, its key variable and `jev-preview` as candidate. An eighth mode, D8,
+  sends the oversized state with long context set and checks that a sentence buried halfway is
+  found; at about 100k input tokens a run it is in no default set and runs only when named.
+- **The LLM provider campaign kit checks around its runs** — each provider opens with one call
+  (`--no-preflight` to skip it), and a refused key, an empty balance or an exhausted quota skips the
+  provider there instead of failing every mode of every model; the reports carry `<commit>-dirty`
+  when `src/` holds uncommitted changes; the end of a campaign lists the identifiers each provider
+  serves that `lib/served-models.json` does not, and those it no longer serves; a report points at
+  the provider's notes in `lib/catalog.json` instead of copying them. The nightly integration run
+  passes the `TYPESAFE_API_KEY` repository secret to the TypeSafe integration tests.
+
+### Changed — Together AI's default model **[breaking]**
+
+- **`LlmProviderDefaultModels.Together`** **[breaking]** is now `zai-org/GLM-5.3-Flash`. `meta-llama/Llama-3.3-70B-Instruct-Turbo` is no longer serverless: every call to it answers `Unable to access non-serverless model` (LLM campaign of 2026-11-11), so a Together provider built without a model failed on its first call. GLM-5.3-Flash was Together's own replacement target since the 2026-09-19 review: 1 M context, tools and JSON, reads images, 0.15 / 0.50 $/M, 11/0/1 on the last run of that campaign day (10/1/1 on the first, M10 red). The value changes in `PublicAPI.Shipped.txt`.
+
+  | Before | After |
+  |---|---|
+  | no model, or `meta-llama/Llama-3.3-70B-Instruct-Turbo` on Together | `zai-org/GLM-5.3-Flash`, or a dedicated endpoint for the Llama model |
+
+### Changed — Gemini's, OpenRouter's, Mammouth's and MiniMax's default models **[breaking]**
+
+- **`LlmProviderDefaultModels.Gemini`** **[breaking]** is now `gemini-3.8-flash` (was `gemini-3.7-flash`, which the vendor labels "previous generation"), and **`OpenRouter`** and **`Mammouth`** follow it (`google/gemini-3.8-flash`, `gemini-3.8-flash`): on the full LLM campaign rerun of 2026-11-11, 3.8 Flash was 12/12 direct and on OpenRouter where 3.7 Flash was 11/0/1 and 11/1 (M10); Mammouth is 9/1/2 on both (M10). Same price until 2026-12-31, same 65 536 output cap. The values change in `PublicAPI.Shipped.txt`.
+- **`LlmProviderDefaultModels.MiniMax`** **[breaking]** is now `MiniMax-M3` (was `MiniMax-M2`, listed as legacy): 10/0/2 that day, reading the image, where `MiniMax-M2` was 6/4/2 (M2, M5, M9, M10). The vendor publishes no output cap for M3: it keeps the 4096 fallback it was campaigned on. The campaign kit retires its MiniMax vision companion, the default now sees.
+
+  | Before | After |
+  |---|---|
+  | no model on Gemini, OpenRouter or Mammouth, running Gemini 3.7 Flash | Gemini 3.8 Flash; pin `Model: gemini-3.7-flash` (`google/gemini-3.7-flash` on OpenRouter) to keep the former model |
+  | no model on MiniMax, running `MiniMax-M2` | `MiniMax-M3`; pin `Model: MiniMax-M2` to keep the former model |
+
+### Changed — Kimi's and Z.AI's default models **[breaking]**
+
+- **`LlmProviderDefaultModels.Kimi`** **[breaking]** is now `kimi-k3.1-pro` (was `kimi-k2.6`): 12/12 on the LLM campaign of 2026-11-11, where `kimi-k2.6` stayed 10/1/1 (M8 `json_object` fenced in markdown, M10 no cache breakdown). The K3 family fixes `temperature` (only 1 is allowed) and `top_p` and refuses a `thinking` field: `KimiLlmProvider` now leaves those three fields out of a K3 request, on the buffered and the streaming paths alike, and reports each as a structured warning (event 110) instead of letting the API answer 400. The output-cap catalogue pins `kimi-k3.1-pro` at 131 072 like `kimi-k3`. The value changes in `PublicAPI.Shipped.txt`.
+- **`LlmProviderDefaultModels.Zai`** **[breaking]** is now `glm-5.3-flashx` (was `glm-5.2`): 12/12 on 2026-10-07 and on the first run of 2026-11-11, 11/1 on the last run of that day (M10 red) (it reads images, its cache is read), where `glm-5.2` stayed 10/2 (M9 code `1210`, text only; M10 0 cached). The GLM-5.3 family cannot switch thinking off: `ZaiLlmProvider` no longer sends `thinking: disabled` to it and reports the option instead; an enabled toggle and the effort hint are sent as before. The value changes in `PublicAPI.Shipped.txt`.
+
+  | Before | After |
+  |---|---|
+  | no model on Kimi, running `kimi-k2.6` | `kimi-k3.1-pro`; pin `Model: kimi-k2.6` to keep the former model |
+  | `Temperature`, `TopP` or `Thinking.Enabled` set for a K3 model | not sent, one warning each; pick a `kimi-k2` model to steer them |
+  | no model on Z.AI, running `glm-5.2` | `glm-5.3-flashx`; pin `Model: glm-5.2` to keep the former model |
+  | `Thinking.Enabled = false` on a GLM-5.3 model | not sent, one warning; pick `glm-5.2` to turn reasoning off |
+
+### Fixed
+
+- **A 429 for an exhausted balance fails at once** (#328) — Z.AI (`Insufficient balance`), Kimi (`exceeded_current_quota_error`) and OpenAI (`insufficient_quota`) answer 429 when the account has no money left, and the retry policy waited each one out like a rate limit: a call that could never succeed spent the whole `Llm:MaxRetries` budget (21 minutes for one Z.AI campaign). The policy and the streaming connect now read a 429's body and do not retry one that names a spent balance; the error line adds `(account balance exhausted: ...)` (Anthropic's lines included), the decision model reports it as not transient, and a profile's fallback chain still moves to the next provider. A body that cannot be read leaves the 429 a rate limit; a balance refused as `400`/`402` and the code-graph embedding provider are out of scope (`docs/architecture/llm-providers.md`).
+- **`orkeon llm models -p gemini` lists usable identifiers** — Google's OpenAI-compatible `/models` names every model `models/<id>`, a form no configuration writes; the listing now drops the prefix. The LLM campaign kit compared those names with the bare ids of `lib/served-models.json` and reported every Gemini model both new and no longer served.
+- **The campaign catalogue's misfiled candidates run again** — `gpt-6.1-terra`, `claude-fable-5-2`, `gemini-4-argon`, `gemini-4-carbon` and `MiniMax-M3.1-Flash` sat in their provider's `notes` instead of `candidateModels`, so `--candidates` skipped them; they are candidates again, as the README already listed them.
+- **`reasoning_effort: none` reaches OpenAI again** — since the effort levels gained `xhigh` and `max` (#242), a value outside `low`…`max` was "lowered" to `low`, and the `gpt-5` row of the model capability table caught `gpt-5.6-*` and omitted `none` there: every GPT-5.6 and GPT-6 tier that needs `none` to take function tools on chat/completions answered tools and the messages-array shape with a 400 (LLM campaign of 2026-11-11). `LlmThinkingConfig.EffortFor` now returns a value outside the levels unchanged, for the vendor to judge, and `gpt-5.6` has its own unrestricted row.
+
 ## [1.0.0] - 2026-11-10
 
 The first stable release. Since `1.0.0-rc.6`: Orkeon Studio moves to its own repository

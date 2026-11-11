@@ -667,7 +667,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         // Same phrasing as the buffered path's error metadata, so a reader comparing M1 and M3
         // sees one wording and not two.
         return new HttpRequestException(
-            $"{providerDisplayName} API error: {response.StatusCode} - {Security.LogSanitizer.SanitizeString(body)}",
+            $"{providerDisplayName} API error: {response.StatusCode} - {Security.LogSanitizer.SanitizeString(body)}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(response.StatusCode, body)}",
             inner: null,
             statusCode: response.StatusCode);
     }
@@ -914,6 +914,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     private async Task<bool> KeepsStreamingResponseAsync(HttpResponseMessage response, int attempt, int maxAttempts, string? host, CancellationToken cancellationToken) =>
         attempt >= maxAttempts
         || !IsRetriableStreamingStatus(response.StatusCode)
+        || await ResiliencePolicies.IsBalanceExhaustedAsync(response, cancellationToken).ConfigureAwait(false)
         || !await WaitToRetryStreamingAsync(response, attempt, host, cancellationToken).ConfigureAwait(false);
 
     /// <summary>

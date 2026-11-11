@@ -84,6 +84,28 @@ internal static partial class LlmFailureClassifier
     public static bool IsTransientStatus(HttpStatusCode status) =>
         (int)status >= 500 || status is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests;
 
+    /// <summary>
+    /// The words a vendor's 429 body uses for an account with nothing left to spend, as opposed to
+    /// a rate limit: OpenAI's <c>insufficient_quota</c>, Kimi's <c>exceeded_current_quota_error</c>,
+    /// Z.AI's <c>Insufficient balance</c>. Such a 429 never clears by waiting (issue #328).
+    /// </summary>
+    private static readonly string[] BalanceExhaustedMarkers =
+        ["insufficient_quota", "exceeded_current_quota_error", "insufficient balance"];
+
+    /// <summary>The sentence an error line gains when the vendor's 429 names an exhausted balance.</summary>
+    public const string BalanceExhaustedNote =
+        " (account balance exhausted: the provider refuses every call until the account is topped up, so it was not retried)";
+
+    /// <summary>True when a 429 answer's body says the account's balance or quota is spent, not that a rate limit was hit.</summary>
+    public static bool IsBalanceExhausted(HttpStatusCode status, string? body) =>
+        status == HttpStatusCode.TooManyRequests
+        && body is { Length: > 0 }
+        && BalanceExhaustedMarkers.Any(marker => body.Contains(marker, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary><see cref="BalanceExhaustedNote"/> for an answer <see cref="IsBalanceExhausted"/> recognises, else empty.</summary>
+    public static string BalanceExhaustedHint(HttpStatusCode status, string? body) =>
+        IsBalanceExhausted(status, body) ? BalanceExhaustedNote : "";
+
     /// <summary>Whether a failure of this class moves the call to the next profile of a chain.</summary>
     public static bool FailsOver(LlmFailureKind kind) =>
         kind is LlmFailureKind.Transport or LlmFailureKind.ServerError or LlmFailureKind.RateLimited

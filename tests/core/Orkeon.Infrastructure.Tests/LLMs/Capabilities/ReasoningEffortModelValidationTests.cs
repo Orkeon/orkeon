@@ -79,6 +79,18 @@ public class ReasoningEffortModelValidationTests
         Assert.Single(sent.Warnings);
     }
 
+    [Theory]
+    [InlineData("gpt-5.6-sol")]
+    [InlineData("gpt-6-sol")]
+    public async Task The_none_effort_reaches_the_wire_unchanged(string model)
+    {
+        // Function tools on chat/completions need `reasoning_effort: none` on these models: sent as "low",
+        // or dropped because the `gpt-5` row caught `gpt-5.6`, every tool call is a 400 (campaign of 2026-11-11).
+        var sent = await SendAsync(Config(model, "none"), registry: null);
+
+        Assert.Equal("none", sent.Body.GetProperty("reasoning_effort").GetString());
+    }
+
     [Fact]
     public async Task An_unknown_model_gets_the_effort_as_asked_and_a_warning()
     {

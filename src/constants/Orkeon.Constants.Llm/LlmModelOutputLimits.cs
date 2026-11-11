@@ -67,7 +67,11 @@ public static class LlmModelOutputLimits
         // "256K − prompt_tokens" (troubleshooting page): half its window — the K3 default carried
         // over — is a pin, not a documented maximum; a prompt above 128K gets the field dropped on
         // the retry. The 4096 the engine used to send starved K3 into empty answers.
+        // K3.1 Pro (1M window, the default since 2026-11-11) takes the same pin: the quickstart
+        // documents the K3 default only, and "kimi-k3" does not claim "kimi-k3.1-pro" ('.' is not a
+        // separator), so without an entry it would fall back to the 4096 that starved K3.
         ["kimi-k3"] = 131_072,
+        ["kimi-k3.1-pro"] = 131_072,
         ["kimi-k2.6"] = 131_072,
 
         // Qwen — alibabacloud.com/help/en/model-studio/{qwen3-7-plus,qwen3-8-flash,qwen3-8-max},
@@ -81,11 +85,13 @@ public static class LlmModelOutputLimits
         ["glm-5.2"] = 131_072,
         ["glm-5.3"] = 131_072,
         ["glm-5.3-flash"] = 131_072,
+        ["glm-5.3-flashx"] = 131_072,
         ["glm-4.6v-flash"] = 32_768,
 
         // MiniMax — platform.minimax.io/docs/guides/models-intro, 2026-09-19: M2 "128k (including
         // CoT)". M3 is deliberately absent: the vendor publishes no output figure (512k appears
-        // only as a benchmark setting), so M3 stays on the fallback until it does.
+        // only as a benchmark setting), so M3 - the default since 2026-11-11 - stays on the fallback
+        // until it does (its 10/0/2 campaign of that day ran on the fallback).
         ["MiniMax-M2"] = 131_072,
 
         // xAI — docs.x.ai/developers/rest-api-reference/inference/chat-completions, 2026-09-19: no

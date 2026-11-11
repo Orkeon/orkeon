@@ -264,7 +264,7 @@ adresse → un serveur compatible OpenAI, signalé comme muet s'il n'a pas de ch
 qu'aucun run ne sert — pas une URL `http(s)` absolue, ou un hôte de vendeur sous `/anthropic` —
 refuse le démarrage) — puis, sans URL de base, motifs du nom de modèle, puis forme de la clé API ; défaut `openai`. Une section sans `Model` tourne sur le modèle par défaut de
 ce fournisseur (la colonne *Défaut (code)* du
-[comparatif des fournisseurs](llm-providers-comparison.md#défauts-et-modèles-plus-récents--revue-des-catalogues-du-2026-09-19)),
+[comparatif des fournisseurs](llm-providers-comparison.md#défauts-et-modèles-plus-récents--revues-des-catalogues-du-2026-09-19-du-2026-10-07-et-du-2026-11-11)),
 jamais sur celui d'OpenAI posé sur un autre vendeur. Sans
 section `Llm`, le
 runtime dégrade vers le provider écho et avertit une fois. Voir

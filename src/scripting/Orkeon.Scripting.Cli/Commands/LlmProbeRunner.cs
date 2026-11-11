@@ -15,7 +15,8 @@ using Orkeon.Infrastructure.LLMs.ToolCalling;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>
-/// One mode of the LLM provider test protocol (matrix §5).
+/// One mode of the LLM provider test protocol (matrix §5): M1–M13 for chat providers,
+/// D1–D8 for decision providers (<see cref="DecisionProbeRunner"/>).
 /// </summary>
 /// <remarks>
 /// The identifiers are the matrix's own, so a probe result can be transcribed into it without
@@ -59,6 +60,33 @@ internal enum LlmProbeMode
 
     /// <summary>M13 — a cancelled call stops promptly without throwing to the caller.</summary>
     M13,
+
+    /// <summary>D1 — a decision model answers a noul with a probability leaning the right way.</summary>
+    D1,
+
+    /// <summary>D2 — a decision model picks the obvious option of a choice.</summary>
+    D2,
+
+    /// <summary>D3 — a decision model places the state on a score's scale.</summary>
+    D3,
+
+    /// <summary>D4 — a decision model draws a box on an image asset.</summary>
+    D4,
+
+    /// <summary>D5 — a state over the standard context is refused with the limit named.</summary>
+    D5,
+
+    /// <summary>D6 — an invalid model is a typed, non-transient error.</summary>
+    D6,
+
+    /// <summary>D7 — a cancelled decision call stops promptly.</summary>
+    D7,
+
+    /// <summary>
+    /// D8 — with long context set, a state over the standard context is answered and a sentence
+    /// buried in it is found. Paid (about 100k input tokens): run only when named.
+    /// </summary>
+    D8,
 }
 
 /// <summary>How one mode ended.</summary>
@@ -134,7 +162,7 @@ internal sealed class LlmProbeRunner
     /// image that likely never arrived. One assertion could only ever have said "no".
     /// </para>
     /// </remarks>
-    private const string ProbeImagePng =
+    internal const string ProbeImagePng =
         "iVBORw0KGgoAAAANSUhEUgAAAKAAAABwCAIAAAAWk+xVAAABGklEQVR42u3awRHAIAhFQfpv2hSRwe" +
         "TDOq8Ah/Umdao0OCMALMACLMACLMACDFiABViABVgXgBNPx7wC7w8YMGDAgAEDBgwYMGDAgAEDBgwY" +
         "MGDAMcB/q2NAXz2a5vsABgwYMGDAgAEDBgwYMGDAgAEDBgwYMOCAQYfPATBgwIABAwYMGDBgwIABAw" +

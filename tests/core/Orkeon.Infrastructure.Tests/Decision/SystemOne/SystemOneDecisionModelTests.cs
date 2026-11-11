@@ -317,6 +317,26 @@ public class SystemOneDecisionModelTests
     }
 
     [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldSayTheBalanceIsExhaustedWithoutRetry_WhenTheApiAnswersA429ForAnExhaustedBalance()
+    {
+        const string body = """{"detail":"insufficient_quota: the account has no credit left"}""";
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.TooManyRequests, body);
+        var policy = ResiliencePolicies.GetLlmApiPolicy(maxRetryAttempts: 3, delay: (_, _) => System.Threading.Tasks.Task.CompletedTask);
+        var model = Create(handler, policy: policy);
+
+        var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(ChoiceRequest(), TestContext.Current.CancellationToken));
+
+        Assert.Equal(429, ex.StatusCode);
+        Assert.False(ex.IsTransient);
+        Assert.Contains("account balance exhausted", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("not retried", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("insufficient_quota: the account has no credit left", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("after the retries", ex.Message, StringComparison.Ordinal);
+        Assert.Single(handler.CapturedRequests);
+    }
+
+    [Fact]
     public async Task ShouldCiteTheFaultyField_WhenTheApiAnswers422()
     {
         const string body = """
