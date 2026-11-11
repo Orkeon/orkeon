@@ -22,7 +22,7 @@ opt-in, whose wrapper (`src/packaging/Orkeon.Scripting/Orkeon.Scripting.Package.
 `Orkeon.Hosting.dll` next to `Orkeon.Scripting.dll`; `Orkeon.Constants.Cli` comes as a package dependency.
 
 ```bash
-dotnet add package Orkeon.Scripting --prerelease
+dotnet add package Orkeon.Scripting
 ```
 
 It is not in the `Orkeon` umbrella: the runner host composes every built-in tool family, so the
@@ -346,8 +346,8 @@ shipped executables, found on the `PATH` or named by `command`.
 **Install.** In an Aspire AppHost project (`Aspire.AppHost.Sdk`):
 
 ```bash
-dotnet add package Orkeon.Hosting.Aspire --prerelease
-dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # the `orkeon` executable AddOrkeonCrewRun launches
+dotnet add package Orkeon.Hosting.Aspire
+dotnet tool install -g Orkeon.Scripting.Cli   # the `orkeon` executable AddOrkeonCrewRun launches
 ```
 
 `orkeon-host` comes from the full installer archives or the per-machine service MSI — which

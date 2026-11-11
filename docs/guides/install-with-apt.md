@@ -110,9 +110,9 @@ Your settings are not part of the package: `~/.config/Orkeon/appsettings.json`, 
 | `rc` | `raw/apt/rc/` | every tagged release — the release candidates **and** the final versions |
 | `dev` | `raw/apt/dev/` | builds of `main` between two releases — see [Follow `main`](#follow-main-dev-builds) |
 
-`stable` stays empty until a final version is published: a machine on `stable` installs
-nothing until then. To try a release candidate, use `rc` — every final version reaches `rc`
-too, so a machine on `rc` never misses one.
+`stable` carries the final releases: it is the channel to follow. The `rc` channel adds the
+release candidates of the next version — every final version reaches `rc` too, so a machine
+on `rc` never misses one — and `dev` carries the pre-release builds of `main`.
 
 **Switch channel** by editing the `Suites:` line, then update:
 

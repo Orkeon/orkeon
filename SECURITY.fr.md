@@ -6,10 +6,10 @@
 
 | Version | Prise en charge |
 |---|---|
-| 1.0.x (release candidates comprises) | ✅ |
+| 1.x (dernière mineure) | ✅ |
 | ≤ 0.9.x (beta) | ❌ |
 
-Seule la dernière release publiée (actuellement la ligne release-candidate 1.0.0) reçoit des correctifs de sécurité.
+Seule la dernière mineure de la ligne 1.x reçoit des correctifs de sécurité.
 
 ## Signaler une vulnérabilité
 

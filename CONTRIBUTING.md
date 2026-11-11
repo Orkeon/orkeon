@@ -384,23 +384,21 @@ matter of opinion — it is **recorded in the repository** and enforced at build
   fix does it for you — `dotnet format analyzers --diagnostics RS0016` on the project).
   At release time, `Unshipped` entries move to `Shipped`.
 - **A breaking change is any edit or removal of a line in `PublicAPI.Shipped.txt`.**
-  It requires a major version bump (a minor is acceptable only before 1.0), a
+  It requires a major version bump, a
   `*REMOVED*` entry in the API file, and a CHANGELOG entry that says so plainly.
-- **Deprecation window (from 1.0)**: once 1.0 ships, nothing public is removed without
-  shipping `[Obsolete]` for at least one minor version first, with the replacement named
-  in the message. Before 1.0, compatibility shims are removed directly,
-  with no `[Obsolete]` step: each removal gets a `*REMOVED*` line in the API file and a
-  `**[breaking]**` CHANGELOG entry with a migration note.
+- **Deprecation window**: nothing public is removed without shipping `[Obsolete]` for
+  at least one minor version first, with the replacement named in the message; the
+  removal itself lands in a major version, with a `*REMOVED*` line in the API file and
+  a `**[breaking]**` CHANGELOG entry with a migration note.
 - **`[Experimental]` surfaces are outside this commitment.** A2A, Autonomous
   orchestration, corrective RAG, the MCP integration, per-model capabilities, host HTTP
   security and the run history ports carry
   `[Experimental("ORKEXP00x")]` diagnostics: referencing them is a compile error you
   suppress explicitly, which is your opt-in to a surface that may change in any
   release. See [docs/reference/experimental-apis.md](docs/reference/experimental-apis.md).
-- **Stability commitment for the 1.x window**: once 1.0 ships, no breaking change to
-  a non-experimental shipped API before 2.0. Until then — while `main` is on
-  pre-release versions — breaking changes may still land between two
-  pre-releases, but are always called out in the CHANGELOG and the migration notes.
+- **Stability commitment for the 1.x line**: no breaking change to a non-experimental
+  shipped API before 2.0. The full policy is in
+  [docs/reference/stability.md](docs/reference/stability.md).
 
 ## Release Process
 

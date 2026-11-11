@@ -6,10 +6,10 @@
 
 | Version | Supported |
 |---|---|
-| 1.0.x (incl. release candidates) | ✅ |
+| 1.x (latest minor) | ✅ |
 | ≤ 0.9.x (beta) | ❌ |
 
-Only the latest published release (currently the 1.0.0 release-candidate line) receives security fixes.
+Only the latest minor of the 1.x line receives security fixes.
 
 ## Reporting a Vulnerability
 
