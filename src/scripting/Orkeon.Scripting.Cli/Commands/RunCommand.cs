@@ -979,6 +979,9 @@ internal static partial class RunCommand
                 DeltaSink = deltaSink,
                 ToolCallDlp = Orkeon.Application.Crew.ToolCallDeltaDlp.From(host.Services),
                 GraphObserver = host.Services.GetService<Orkeon.Domain.Graph.IGraphNodeObserver>(),
+                // A scripted spawn is built outside DI, so no ObservedTool reports it: it reports agent.spawned
+                // itself. The run registers its publisher by its own type (ObservedRunContext), null when unobserved.
+                RunEvents = host.Services.GetService<Orkeon.Hosting.Runs.RunEventPublisher>(),
                 // GAP-09: allowed ctx.llm.act calls go through the same guarded point as a crew's.
                 ToolInvocation = host.Services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.

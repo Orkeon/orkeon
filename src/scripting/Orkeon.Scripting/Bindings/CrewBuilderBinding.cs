@@ -49,6 +49,7 @@ public static class CrewBuilderBinding
             engine, services.Logger, services.LlmProvider, tools, services.PermissionGate, services.DeltaSink, services.ToolInvocation)
         {
             AgentMemoryStore = services.AgentMemoryStore,
+            RunEvents = services.RunEvents,
             ToolCallDlp = services.ToolCallDlp,
             ToolLimits = services.ToolLimits,
             AgentInstances = services.AgentInstances,
@@ -69,6 +70,9 @@ public static class CrewBuilderBinding
         public Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
         public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
         public Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
+
+        /// <summary>The run's event stream a scripted spawn reports to.</summary>
+        public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
         public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
         public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
         public Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }

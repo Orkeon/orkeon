@@ -75,6 +75,15 @@ compatibility shims are removed; and from this version on, the public API in
 - **The campaign catalogue's misfiled candidates run again** — `gpt-6.1-terra`, `claude-fable-5-2`, `gemini-4-argon`, `gemini-4-carbon` and `MiniMax-M3.1-Flash` sat in their provider's `notes` instead of `candidateModels`, so `--candidates` skipped them; they are candidates again, as the README already listed them.
 - **`reasoning_effort: none` reaches OpenAI again** — since the effort levels gained `xhigh` and `max` (#242), a value outside `low`…`max` was "lowered" to `low`, and the `gpt-5` row of the model capability table caught `gpt-5.6-*` and omitted `none` there: every GPT-5.6 and GPT-6 tier that needs `none` to take function tools on chat/completions answered tools and the messages-array shape with a 400 (LLM campaign of 2026-11-11). `LlmThinkingConfig.EffortFor` now returns a value outside the levels unchanged, for the vendor to judge, and `gpt-5.6` has its own unrestricted row.
 
+### Fixed — a scripted spawn emits `agent.spawned`
+
+A script's `spawn_agent` (the model calling it during `ctx.llm.act`) and `ctx.spawnBackground` were built with
+`new`, outside DI, so the hosting decorator never wrapped them and an observed run (`orkeon run --events`) showed
+no `agent.spawned` for a child a script started. The spawn now reports it itself, once the spawn is accepted (an
+unknown agent or a spent budget emits nothing): `role` is the child's role and `name` its crew agent name; the
+input is never in the event. The run's publisher reaches the script host through the new
+`ScriptingHostPorts.RunEvents`; null keeps a script unobserved.
+
 ### Fixed — Aspire is pinned to 13.6.5 (GHSA-f7vh-h5g3-7jrh)
 
 An advisory published on 2026-11-10 (high, CVE-2026-120006: elevation of privilege) flags `Aspire.Hosting`

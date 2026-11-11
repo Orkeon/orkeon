@@ -122,4 +122,66 @@ public sealed class SpawnAgentScriptToolTests
         Assert.Equal(writes, tool.CallCount);
         Assert.Equal(asks, channel.Asks.Count);
     }
+
+    // agent.spawned: a scripted spawn reaches the run's event stream, as an observed spawn_agent call does.
+    private static async Task<MockRunEventSink> RunObservedAsync(string rootBody, params ScriptStep[] script)
+    {
+        var events = new MockRunEventSink();
+        var provider = new FakeToolCallingLlmProvider(script);
+        var engine = new JsEngineFactory(llmProvider: provider, hostPorts: new ScriptingHostPorts { RunEvents = events }).Create();
+        var crew = (JsCrew)(await engine.EvaluateAsync($$"""
+            const root = agentBuilder().name("root").role("Lead").goal("G")
+                .body(async (input, ctx) => { {{rootBody}} })
+                .build();
+            const kid = agentBuilder().name("kid").role("Researcher").goal("G")
+                .body(async (input, ctx) => "kid-done")
+                .build();
+            crewBuilder().name("c").withAgent(root).withAgent(kid).build();
+            """, null, TestContext.Current.CancellationToken)).ToObject()!;
+        await crew.RunAsync(null, TestContext.Current.CancellationToken);
+        return events;
+    }
+
+    private static List<Orkeon.Application.Runs.RunEvent> Spawned(MockRunEventSink events)
+        => events.Events.Where(e => e.Kind == "agent.spawned").ToList();
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public async Task ShouldEmitOneAgentSpawnedEvent_WhenModelCallsSpawnAgentDuringAct()
+    {
+        var events = await RunObservedAsync(
+            "return (await ctx.llm.act(\"go\", { permissionMode: \"bypassPermissions\" })).output;",
+            ScriptStep.Call("spawn_agent", "{\"agent\":\"kid\",\"input\":\"secret-act-input\"}"),
+            ScriptStep.Answer("root-done"));
+
+        var spawned = Assert.Single(Spawned(events));
+        Assert.Equal("Researcher", spawned.Payload!["role"]!.GetValue<string>());
+        Assert.Equal("kid", spawned.Payload!["name"]!.GetValue<string>());
+        Assert.False(spawned.Payload!.ContainsKey("reason"));
+        Assert.False(string.IsNullOrEmpty(spawned.CorrelationId));
+        Assert.DoesNotContain("secret-act-input", spawned.Payload!.ToJsonString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-02")]
+    public async Task ShouldEmitOneAgentSpawnedEvent_WhenScriptSpawnsBackgroundAgent()
+    {
+        var events = await RunObservedAsync("ctx.spawnBackground(\"kid\", \"secret-bg-input\"); return \"root-done\";");
+
+        var spawned = Assert.Single(Spawned(events));
+        Assert.Equal("Researcher", spawned.Payload!["role"]!.GetValue<string>());
+        Assert.DoesNotContain("secret-bg-input", spawned.Payload!.ToJsonString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public async Task ShouldEmitNoAgentSpawnedEvent_WhenSpawnRefusedForUnknownAgent()
+    {
+        var events = await RunObservedAsync(
+            "return (await ctx.llm.act(\"go\", { permissionMode: \"bypassPermissions\" })).output;",
+            ScriptStep.Call("spawn_agent", "{\"agent\":\"ghost\",\"input\":\"x\"}"),
+            ScriptStep.Answer("root-done"));
+
+        Assert.Empty(Spawned(events));
+    }
 }
