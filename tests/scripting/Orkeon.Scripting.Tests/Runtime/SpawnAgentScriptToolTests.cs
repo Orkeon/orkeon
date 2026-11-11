@@ -124,7 +124,10 @@ public sealed class SpawnAgentScriptToolTests
     }
 
     // agent.spawned: a scripted spawn reaches the run's event stream, as an observed spawn_agent call does.
-    private static async Task<MockRunEventSink> RunObservedAsync(string rootBody, params ScriptStep[] script)
+    private static Task<MockRunEventSink> RunObservedAsync(string rootBody, params ScriptStep[] script)
+        => RunObservedAsync(rootBody, crewOptions: "", script);
+
+    private static async Task<MockRunEventSink> RunObservedAsync(string rootBody, string crewOptions, params ScriptStep[] script)
     {
         var events = new MockRunEventSink();
         var provider = new FakeToolCallingLlmProvider(script);
@@ -136,7 +139,7 @@ public sealed class SpawnAgentScriptToolTests
             const kid = agentBuilder().name("kid").role("Researcher").goal("G")
                 .body(async (input, ctx) => "kid-done")
                 .build();
-            crewBuilder().name("c").withAgent(root).withAgent(kid).build();
+            crewBuilder().name("c"){{crewOptions}}.withAgent(root).withAgent(kid).build();
             """, null, TestContext.Current.CancellationToken)).ToObject()!;
         await crew.RunAsync(null, TestContext.Current.CancellationToken);
         return events;
@@ -170,7 +173,22 @@ public sealed class SpawnAgentScriptToolTests
 
         var spawned = Assert.Single(Spawned(events));
         Assert.Equal("Researcher", spawned.Payload!["role"]!.GetValue<string>());
+        Assert.Equal("kid", spawned.Payload!["name"]!.GetValue<string>());
+        Assert.False(spawned.Payload!.ContainsKey("reason"));
         Assert.DoesNotContain("secret-bg-input", spawned.Payload!.ToJsonString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public async Task ShouldEmitNoAgentSpawnedEvent_WhenSpawnBudgetIsSpent()
+    {
+        // The budget's one spawn goes to the first child: the second is refused, and reports nothing.
+        var events = await RunObservedAsync(
+            "ctx.spawnBackground(\"kid\", \"first\");"
+            + " try { ctx.spawnBackground(\"kid\", \"second\"); return \"spawned\"; } catch (e) { return \"refused\"; }",
+            ".budget({ spawnedAgents: 1 })");
+
+        Assert.Single(Spawned(events));
     }
 
     [Fact]

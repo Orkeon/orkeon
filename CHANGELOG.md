@@ -102,7 +102,8 @@ A script's `spawn_agent` (the model calling it during `ctx.llm.act`) and `ctx.sp
 no `agent.spawned` for a child a script started. The spawn now reports it itself, once the spawn is accepted (an
 unknown agent or a spent budget emits nothing): `role` is the child's role and `name` its crew agent name; the
 input is never in the event. The run's publisher reaches the script host through the new
-`ScriptingHostPorts.RunEvents`; null keeps a script unobserved.
+`ScriptingHostPorts.RunEvents`, experimental like the `IRunEventSink` it holds (`ORKEXP007`); null keeps a script
+unobserved. A scripted spawn is no tool call on the stream: no `tool.called` precedes it, no `tool.returned` follows.
 
 ### Fixed — Aspire is pinned to 13.6.5 (GHSA-f7vh-h5g3-7jrh)
 
