@@ -264,8 +264,10 @@ une réponse typée et calibrée au lieu d'un appel LLM. La syntaxe est dans la
   forme : ses réponses sont indexées par position de niveau et elle ne porte pas de `chosen`, repli
   compris. Une dépendance rejouée est lue à sa dernière sortie réussie, sinon à sa dernière tentative.
   Le `TokensUsed` de la tâche est l'usage que le modèle rapporte.
-- Une crew composée uniquement de tâches de décision est admise sans agent. Une tâche sautée ne
-  prend aucun tour d'agent en round-robin.
+- Une tâche de décision ne prend pas d'agent, mais sa crew en déclare toujours un : le chargeur
+  YAML refuse une crew sans agent, et tous les modes refusent d'en démarrer une
+  (`Crew.StartExecution`), crew de script comprise.
+  Une tâche sautée ne prend aucun tour d'agent en round-robin.
 - La tâche envoie son état et **toutes ses questions en une seule requête**. L'état est la sortie de
   chaque tâche dont elle dépend qui a tourné, étiquetée de la clé de la tâche, ou seulement des tâches
   que `state` liste. Les seules répétitions sont les nouvelles tentatives de l'adaptateur sur cette même

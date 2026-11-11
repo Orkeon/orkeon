@@ -19,6 +19,21 @@ MCP tools, health probes and a run API on `orkeon-host` (FWK-01..28); decision t
 compatibility shims are removed; and from this version on, the public API in
 `PublicAPI.Shipped.txt` is the 1.x stability commitment.
 
+### Fixed — the host's cost budget is enforced **[breaking]**
+
+- **`Orkeon:CostTracking:DefaultCrewBudget`** **[breaking]**: `MaxTokens` and `MaxCostUsd` were recorded and never applied — no path read `IsWithinBudget`. Every LLM call now passes through `ICostBudgetManager.CheckBudget` at the provider entrance (`MeteredLlmProvider`, wired for YAML crews, `.ork.ts` scripts, the planner, the manager and the service host): once what a crew recorded reaches a cap, its next call is refused before anything is sent, with `BudgetExhaustedException` (dimension `Tokens`, or the new `BudgetDimension.Cost`; `BudgetExhaustedError.dimension` is `"cost"` in a script). The call that crosses a cap completes; a refused call ends its task `BudgetExhausted` (`ChatClientAgentLoop` no longer folds it into `LlmCallFailed`), and no retry asks again. The budget is summed per crew id — per run for a YAML or C# crew, which takes a new id at each load; a script's own `ctx.llm` calls are summed under the crew's name. A call outside a crew run is under no budget, and `Orkeon:CostTracking:Enabled = false` records without refusing. An event recorded twice (the meter and a host's usage sink) is counted once, and nested meters each record what the inner one left out (its sink, or the budget). The `TokenBudgetExceeded` and `CostBudgetExceeded` alerts are now raised when the total reaches the cap, as the refusal is, not only past it.
+- **`BudgetLimit.MaxCallsPerMinute` and `BudgetAlertType.RateLimitExceeded` are removed** **[breaking]**: the key was read by nothing that limited a call; [`RateLimiting`](docs/reference/configuration.md#ratelimiting) is the call limiter.
+- **Who carries the budget manager**: `MeteredLlmProvider.Wrap`, `ManagerLlmResolver` and `SequentialCrewOrchestrator` take it as an optional last argument, and `LlmProviderFactoryOptions.Budget` carries it to the factory; the host's registrations pass the one `AddOrkeonCostTracking` registers.
+
+  | Before | After |
+  |---|---|
+  | `DefaultCrewBudget: { MaxCallsPerMinute: 30 }` | `RateLimiting: { GlobalRequestsPerMinute: 30 }` |
+  | a custom `ICostBudgetManager` | implements `CheckBudget(crewId, agentId)` |
+
+### Documentation — what the qualification review found
+
+- `decision-models.md`: a decision task takes no agent, but its crew still declares one (the YAML loader refuses a crew with none). `llm-providers-comparison.md` and `yaml-schema.md`: an explicit thinking budget is honoured by Qwen **and OpenRouter**. `verify-what-you-install.md`: seventeen attestation subjects (fourteen nuget.org packages, two GitHub-only, the SBOM). `limitations.md`: the permission gate is off by default, a crew's `budget:` caps the autonomous mode only, and `Security:Audit:RetentionDays` is read by no purger.
+
 ### Removed — Orkeon Studio moved to its own repository (Orkeon/orkeon-studio) **[breaking]**
 
 - **Orkeon Studio** **[breaking]**: the desktop and terminal front-end lives in [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio) and is no longer built, tested, packaged or documented here. Removed from this repository: the `Orkeon.Studio.Core`, `Orkeon.Studio.Config`, `Orkeon.Studio.Run` and `Orkeon.Studio.Wpf` projects and their test projects, all out of `Orkeon.sln`; the `orkeon-studio`, `orkeon-studio-config` and `orkeon-studio-run` executables from the MSI, ZIP, tarball and `.deb` installers (the "Orkeon Studio" Start-menu shortcut included); the Studio smoke steps of the release pipeline; the Studio documentation page (`docs/architecture/studio.md`, EN and FR); and the third-party notices only Studio needed. Studio drives the `orkeon` CLI and its event protocol from its own repository; what it needs from them is generic (see the next section).

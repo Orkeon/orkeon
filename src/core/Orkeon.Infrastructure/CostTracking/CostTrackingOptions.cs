@@ -10,12 +10,13 @@ namespace Orkeon.Infrastructure.CostTracking;
 public class CostTrackingOptions
 {
     /// <summary>
-    /// Whether cost tracking is enabled (default: true).
+    /// Whether the budgets are enforced (default: true); false records the calls but refuses none.
     /// </summary>
     public bool Enabled { get; set; } = true;
 
     /// <summary>
-    /// Default budget limit applied to all crews unless overridden.
+    /// Default budget limit applied to every crew unless overridden: each crew's LLM calls are summed
+    /// for the life of the host, and a call is refused once the crew's total reaches a cap.
     /// </summary>
     public BudgetLimit? DefaultCrewBudget { get; set; }
 

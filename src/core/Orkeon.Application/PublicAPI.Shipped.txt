@@ -2093,15 +2093,12 @@ Orkeon.Application.Interfaces.Ports.BudgetAlertEventArgs.BudgetAlertEventArgs() 
 Orkeon.Application.Interfaces.Ports.BudgetAlertType
 Orkeon.Application.Interfaces.Ports.BudgetAlertType.CostBudgetExceeded = 1 -> Orkeon.Application.Interfaces.Ports.BudgetAlertType
 Orkeon.Application.Interfaces.Ports.BudgetAlertType.CostThresholdWarning = 0 -> Orkeon.Application.Interfaces.Ports.BudgetAlertType
-Orkeon.Application.Interfaces.Ports.BudgetAlertType.RateLimitExceeded = 3 -> Orkeon.Application.Interfaces.Ports.BudgetAlertType
 Orkeon.Application.Interfaces.Ports.BudgetAlertType.TokenBudgetExceeded = 2 -> Orkeon.Application.Interfaces.Ports.BudgetAlertType
 Orkeon.Application.Interfaces.Ports.BudgetLimit
 Orkeon.Application.Interfaces.Ports.BudgetLimit.AlertThresholdPercent.get -> decimal?
 Orkeon.Application.Interfaces.Ports.BudgetLimit.AlertThresholdPercent.init -> void
 Orkeon.Application.Interfaces.Ports.BudgetLimit.BudgetLimit() -> void
 Orkeon.Application.Interfaces.Ports.BudgetLimit.BudgetLimit(Orkeon.Application.Interfaces.Ports.BudgetLimit! original) -> void
-Orkeon.Application.Interfaces.Ports.BudgetLimit.MaxCallsPerMinute.get -> int?
-Orkeon.Application.Interfaces.Ports.BudgetLimit.MaxCallsPerMinute.init -> void
 Orkeon.Application.Interfaces.Ports.BudgetLimit.MaxCostUsd.get -> decimal?
 Orkeon.Application.Interfaces.Ports.BudgetLimit.MaxCostUsd.init -> void
 Orkeon.Application.Interfaces.Ports.BudgetLimit.MaxTokens.get -> int?
@@ -2188,6 +2185,7 @@ Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.GetAsync(int id, System
 Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ListAsync(string? category, bool newestFirst, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.MemoryEntry!>!>!
 Orkeon.Application.Interfaces.Ports.ICategoryMemoryStore.ReplaceAsync(int id, string! content, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Application.Interfaces.Ports.ICostBudgetManager
+Orkeon.Application.Interfaces.Ports.ICostBudgetManager.CheckBudget(string? crewId, string? agentId) -> Orkeon.Application.Interfaces.Ports.CostBudgetCheckResult!
 Orkeon.Application.Interfaces.Ports.ICostBudgetManager.GetActiveAlerts() -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.BudgetAlert!>!
 Orkeon.Application.Interfaces.Ports.ICostBudgetManager.GetReport(string? crewId = null, string? agentId = null) -> Orkeon.Application.Interfaces.Ports.CostReport!
 Orkeon.Application.Interfaces.Ports.ICostBudgetManager.GetReportForPeriod(System.DateTime from, System.DateTime toDate, string? crewId = null) -> Orkeon.Application.Interfaces.Ports.CostReport!

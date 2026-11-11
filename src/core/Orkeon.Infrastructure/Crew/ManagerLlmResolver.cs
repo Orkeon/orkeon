@@ -35,6 +35,7 @@ public sealed partial class ManagerLlmResolver
     private readonly ILlmProfileRegistry? _profiles;
     private readonly ILlmUsageSink? _usageSink;
     private readonly ILlmRateLimiter? _rateLimiter;
+    private readonly ICostBudgetManager? _budget;
     private readonly TimeProvider _time;
     private readonly int? _hostAgentLimit;
     private readonly ILogger _logger;
@@ -50,6 +51,7 @@ public sealed partial class ManagerLlmResolver
     /// <param name="time">The clock the manager's request windows count on; <see cref="TimeProvider.System"/> when null.</param>
     /// <param name="hostAgentLimit">The host's per-agent cap (<c>RateLimiting:AgentRequestsPerMinute</c>); null sets none.</param>
     /// <param name="logger">Where the line of a manager call that waited goes.</param>
+    /// <param name="budget">The host's budgets, enforced on a provider the crew sets; null enforces none.</param>
 #pragma warning disable S107 // DI constructor: the host's models, its meter and limiter, the windows' clock and cap, the log
     public ManagerLlmResolver(
         IChatClient defaultChatClient,
@@ -58,7 +60,8 @@ public sealed partial class ManagerLlmResolver
         ILlmRateLimiter? rateLimiter = null,
         TimeProvider? time = null,
         int? hostAgentLimit = null,
-        ILogger<ManagerLlmResolver>? logger = null)
+        ILogger<ManagerLlmResolver>? logger = null,
+        ICostBudgetManager? budget = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(defaultChatClient);
@@ -66,6 +69,7 @@ public sealed partial class ManagerLlmResolver
         _profiles = profiles;
         _usageSink = usageSink;
         _rateLimiter = rateLimiter;
+        _budget = budget;
         _time = time ?? TimeProvider.System;
         _hostAgentLimit = hostAgentLimit;
         _logger = logger ?? (ILogger)NullLogger.Instance;
@@ -93,7 +97,7 @@ public sealed partial class ManagerLlmResolver
             return new ManagerLlm
             {
                 ChatClient = TakingTurns(new LlmProviderToChatClientAdapter(
-                    LlmProviderEntrance.Enter(provider, _usageSink, _rateLimiter)), managerAgent),
+                    LlmProviderEntrance.Enter(provider, _usageSink, _rateLimiter, _budget)), managerAgent),
                 Name = name,
             };
         }
@@ -108,7 +112,7 @@ public sealed partial class ManagerLlmResolver
             return new ManagerLlm
             {
                 ChatClient = TakingTurns(new LlmProviderToChatClientAdapter(
-                    LlmProviderEntrance.Enter(own, _usageSink, _rateLimiter)), managerAgent),
+                    LlmProviderEntrance.Enter(own, _usageSink, _rateLimiter, _budget)), managerAgent),
                 Model = model,
                 Name = name,
             };

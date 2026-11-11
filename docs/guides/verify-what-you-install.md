@@ -169,10 +169,10 @@ central-directory record, and writes an end-of-central-directory record with the
 size and offset put back. It refuses to guess: if the signature is not the last entry of the
 archive it stops rather than emit something that would fail verification anyway.
 
-Measured on `Orkeon.<version>.nupkg`, the recovered digest has one statement (the `jq`
+For a tag of this lineup, `Orkeon.<version>.nupkg`'s recovered digest has one statement (the `jq`
 filter above prints it too): builder `.github/workflows/publish.yml@refs/tags/v<version>`,
-the commit the release assets were built from, twelve subjects — the nine packages pushed to
-nuget.org at that tag, the two that only reach GitHub Packages (`Orkeon.ConsoleApp`,
+the commit the release assets were built from, seventeen subjects — the fourteen packages pushed
+to nuget.org at that tag, the two that only reach GitHub Packages (`Orkeon.ConsoleApp`,
 `Orkeon.Generators`), and the SBOM. The attestation is literal: it lists what the workflow
 built, not what reached nuget.org.
 

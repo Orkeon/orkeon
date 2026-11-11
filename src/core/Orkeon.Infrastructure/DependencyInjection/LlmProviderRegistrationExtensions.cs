@@ -48,7 +48,7 @@ public static class LlmProviderRegistrationExtensions
         ArgumentNullException.ThrowIfNull(provider);
 
         services.AddSingleton<ILlmProvider>(sp =>
-            LlmProviderEntrance.Enter(provider(sp), sp.GetService<ILlmUsageSink>(), sp.GetService<ILlmRateLimiter>()));
+            LlmProviderEntrance.Enter(provider(sp), sp.GetService<ILlmUsageSink>(), sp.GetService<ILlmRateLimiter>(), sp.GetService<ICostBudgetManager>()));
         services.AddSingleton<IBasicLlmProvider>(sp =>
             new LlmProviderAdapter(sp.GetRequiredService<ILlmProvider>()));
         services.AddSingleton<IChatClient>(sp =>
@@ -86,7 +86,7 @@ public static class LlmProviderRegistrationExtensions
         // Metered and limited here, the second entrance of the metered path, like AddOrkeonLlmProvider.
         services.AddSingleton(new LlmProfileRegistration(
             name.Trim(),
-            sp => LlmProviderEntrance.Enter(provider(sp), sp.GetService<ILlmUsageSink>(), sp.GetService<ILlmRateLimiter>()),
+            sp => LlmProviderEntrance.Enter(provider(sp), sp.GetService<ILlmUsageSink>(), sp.GetService<ILlmRateLimiter>(), sp.GetService<ICostBudgetManager>()),
             baseConfig));
         services.TryAddSingleton<ILlmProfileRegistry, LlmProfileRegistry>();
         return services;
@@ -117,7 +117,7 @@ public static class LlmProviderRegistrationExtensions
 
         services.AddSingleton(new LlmProfileRegistration(
             name.Trim(),
-            sp => LlmProviderEntrance.Enter(provider(sp), sp.GetService<ILlmUsageSink>(), sp.GetService<ILlmRateLimiter>()),
+            sp => LlmProviderEntrance.Enter(provider(sp), sp.GetService<ILlmUsageSink>(), sp.GetService<ILlmRateLimiter>(), sp.GetService<ICostBudgetManager>()),
             baseConfig)
         { Fallback = fallback });
         services.TryAddSingleton<ILlmProfileRegistry, LlmProfileRegistry>();
@@ -164,7 +164,7 @@ public static class LlmProviderRegistrationExtensions
                         : throw new InvalidOperationException(
                             $"The LLM provider of profile '{name}' does not expose ILlmProvider."),
                     sp.GetService<ILlmUsageSink>(),
-                    sp.GetService<ILlmRateLimiter>()),
+                    sp.GetService<ILlmRateLimiter>(), sp.GetService<ICostBudgetManager>()),
                 config)
             {
                 Fallback = chain.Chain,

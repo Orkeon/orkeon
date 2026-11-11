@@ -473,7 +473,9 @@ public enum BudgetDimension
     /// <summary>Token consumption limit exceeded.</summary>
     Tokens,
     /// <summary>Spawned agent limit exceeded.</summary>
-    SpawnedAgents
+    SpawnedAgents,
+    /// <summary>The host's cost cap (<c>CostTracking</c> budget, <c>MaxCostUsd</c>) is spent.</summary>
+    Cost
 }
 
 /// <summary>Immutable snapshot of a budget's current state, suitable for logging and telemetry.</summary>

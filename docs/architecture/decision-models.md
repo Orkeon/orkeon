@@ -256,8 +256,10 @@ calibrated answer instead of an LLM call. The syntax is in the
   answers are keyed by level position and it carries no `chosen`, the fallback included. A dependency
   that was retried is read at its last successful output, else at its last attempt. The task's
   `TokensUsed` is the usage the model reports.
-- A crew made of decision tasks only is admitted with no agent. A skipped task takes no agent turn in
-  round-robin.
+- A decision task takes no agent, but its crew still declares one: the YAML loader refuses a crew
+  with no agent, and every mode refuses to start one (`Crew.StartExecution`), a script crew
+  included. A skipped task
+  takes no agent turn in round-robin.
 - The task sends its state and **all its questions in one request**. The state is the output of
   each task it depends on that ran, labelled with the task's key, or only the tasks `state` lists.
   The only repeats are the adapter's retries of that same request on a 429, a 5xx, a 408 or a network error.

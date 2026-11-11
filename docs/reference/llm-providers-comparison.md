@@ -40,7 +40,7 @@ details the `response_format` surfaces.
   **downgraded with a warning**, never in silence. **Anthropic is schema-only**: it has no
   equivalent of `json_object`, so a schema-less JSON request there is reported rather than sent.
 - **`thinking`** — `effort` accepts a level hint only; `toggle` can also switch reasoning on and
-  off; `budget` additionally accepts an explicit token budget (Qwen only — Anthropic rejects
+  off; `budget` additionally accepts an explicit token budget (Qwen and OpenRouter only — Anthropic rejects
   `budget_tokens` with a 400 on the current generation). On the wire, Anthropic's toggle is
   written as `thinking: {type: adaptive|disabled}` — a payload detail, not a capability level.
 - **Anything a provider does not support is reported.** An option declared in YAML on a provider

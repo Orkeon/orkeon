@@ -68,7 +68,7 @@ public sealed class CognitiveMemoryWiringTests
             services.AddSingleton<IMemoryService>(sp => new MemoryService(
                 new StubMemoryProviderFactory(Store), NullLogger<MemoryService>.Instance, Registry, Store));
             services.AddSingleton<ILlmProfileRegistry>(sp => new LlmProfileRegistry(
-                sp, [new LlmProfileRegistration("cheap", _ => LlmProviderEntrance.Enter(Named, Sink, null))]));
+                sp, [new LlmProfileRegistration("cheap", _ => LlmProviderEntrance.Enter(Named, Sink, null, null))]));
             services.AddOrkeonCognitiveMemory(configuration);
             Services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = false });
             Registry.Record(Crew, providerType: null, "news-desk", memoryEnabled: true);

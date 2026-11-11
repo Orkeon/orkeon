@@ -516,6 +516,12 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                     $"Agent exceeded its maximum execution time of {max.TotalSeconds}s",
                     AgentExitReason.ExecutionTimeExceeded, toolsUsed, startTime);
             }
+            catch (Exception ex) when (BudgetRefusal.Find(ex) is { } spent)
+            {
+                // The host refused the call before it was sent: the budget does not come back by
+                // asking again, so the task ends on that reason and the retry layer stops there.
+                return ExitedResult(spent.Message, AgentExitReason.BudgetExhausted, toolsUsed, startTime);
+            }
             catch (Exception ex)
             {
                 ExecutionLog.LogTaskExecutionError(_logger, ex, task.Id, agent.Id);

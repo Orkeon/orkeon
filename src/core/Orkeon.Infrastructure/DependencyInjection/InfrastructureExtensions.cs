@@ -209,6 +209,7 @@ public static class InfrastructureExtensions
             {
                 UsageSink = sp.GetService<ILlmUsageSink>(),
                 RateLimiter = sp.GetService<ILlmRateLimiter>(),
+                Budget = sp.GetService<ICostBudgetManager>(),
                 CallObserver = sp.GetService<ILlmCallObserver>(),
                 TokenCounter = sp.GetService<ITokenCounter>(),
                 Capabilities = sp.GetService<IModelCapabilityRegistry>(),
@@ -306,7 +307,8 @@ public static class InfrastructureExtensions
             sp.GetService<ILlmRateLimiter>(),
             sp.GetService<TimeProvider>(),
             sp.GetService<IOptions<RateLimitingOptions>>()?.Value.AgentRequestsPerMinute,
-            sp.GetService<ILogger<ManagerLlmResolver>>()));
+            sp.GetService<ILogger<ManagerLlmResolver>>(),
+            sp.GetService<ICostBudgetManager>()));
 
         // Add Memory Scope (no-op default — strategies require it)
         services.TryAddScoped<Application.Interfaces.Ports.IMemoryScope>(_ => Application.Context.NullMemoryScope.Instance);

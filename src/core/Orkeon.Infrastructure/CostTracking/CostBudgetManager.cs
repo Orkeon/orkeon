@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Common;
 
@@ -18,6 +19,9 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
     private readonly ConcurrentBag<BudgetAlert> _alerts = [];
     // The recorded calls nobody priced (no vendor charge, no registry price), by reference: their settled cost is 0.
     private readonly ConcurrentDictionary<CostUsageEvent, byte> _unpriced = new(ReferenceEqualityComparer.Instance);
+    // The answer given for each event recorded, by reference: the meter and a host's own sink may both hand
+    // the manager the same event, which is counted once. Weak: the table holds no event past its callers.
+    private readonly ConditionalWeakTable<CostUsageEvent, RecordedAnswer> _recorded = new();
     private readonly IModelPricingRegistry _pricingRegistry;
     private readonly ILogger<CostBudgetManager> _logger;
     private readonly CostTrackingOptions _options;
@@ -44,6 +48,12 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
     public CostBudgetCheckResult RecordUsage(CostUsageEvent usageEvent)
     {
         ArgumentNullException.ThrowIfNull(usageEvent);
+        // The first caller claims the event; a second one gets the first answer, or, while the first is
+        // still counting, an answer that refuses nothing — the next CheckBudget sees the total either way.
+        var answer = new RecordedAnswer();
+        if (!_recorded.TryAdd(usageEvent, answer))
+            return _recorded.TryGetValue(usageEvent, out var already) ? already.Result : CostBudgetCheckResult.WithinBudget();
+
         // The vendor's own figure whenever it billed — 0 included: a free model is free, and
         // reading 0 as "not provided" charged the registry price for a call that cost nothing.
         // Only a call nobody priced (null) is estimated, for this manager's accounting alone.
@@ -59,7 +69,52 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         LogRecordedUsageCrewAgentModel(usageEvent.CrewId ?? "", usageEvent.AgentId ?? "", usageEvent.Model ?? "", usageEvent.PromptTokens + usageEvent.CompletionTokens, cost);
 
         // Check budgets
-        return CheckBudgets(eventWithCost) with { Cost = priced ? cost : null };
+        var result = CheckBudgets(eventWithCost) with { Cost = priced ? cost : null };
+        answer.Result = result;
+        return result;
+    }
+
+    /// <inheritdoc />
+    public CostBudgetCheckResult CheckBudget(string? crewId, string? agentId)
+    {
+        if (!_options.Enabled || string.IsNullOrEmpty(crewId))
+            return CostBudgetCheckResult.WithinBudget();
+
+        if (ResolveCrewBudget(crewId) is { } crewBudget
+            && SpentOf(crewBudget, _history.Where(e => e.CrewId == crewId), crewId, null) is { } crewSpent)
+            return crewSpent;
+
+        if (!string.IsNullOrEmpty(agentId)
+            && _agentBudgets.TryGetValue(MakeAgentKey(crewId, agentId), out var agentBudget)
+            && SpentOf(agentBudget, _history.Where(e => e.CrewId == crewId && e.AgentId == agentId), crewId, agentId) is { } agentSpent)
+            return agentSpent;
+
+        return CostBudgetCheckResult.WithinBudget();
+    }
+
+    // The first cap of the budget that what was recorded has reached, as a result naming it; null while
+    // every cap leaves room. The alert it carries is not raised: the crossing raised its own.
+    private static CostBudgetCheckResult? SpentOf(BudgetLimit budget, IEnumerable<CostUsageEvent> events, string crewId, string? agentId)
+    {
+        if (budget is { MaxCostUsd: not > 0 } and { MaxTokens: not > 0 })
+            return null;
+
+        var recorded = events.ToList();
+        var totalCost = recorded.Sum(e => e.Cost ?? 0m);
+        long totalTokens = recorded.Sum(e => (long)e.PromptTokens + e.CompletionTokens);
+        var scope = agentId is not null ? $"agent '{agentId}' in crew '{crewId}'" : $"crew '{crewId}'";
+
+        if (budget.MaxCostUsd is decimal maxCost && maxCost > 0 && totalCost >= maxCost)
+            return CostBudgetCheckResult.BudgetExceeded(
+                Inv.Format($"Cost budget spent for {scope}: ${totalCost:F4} of ${maxCost:F4}"),
+                CreateAlert(crewId, agentId, BudgetAlertType.CostBudgetExceeded, totalCost, maxCost, totalCost / maxCost * 100m));
+
+        if (budget.MaxTokens is int maxTokens && maxTokens > 0 && totalTokens >= maxTokens)
+            return CostBudgetCheckResult.BudgetExceeded(
+                Inv.Format($"Token budget spent for {scope}: {totalTokens} of {maxTokens} tokens"),
+                CreateAlert(crewId, agentId, BudgetAlertType.TokenBudgetExceeded, totalTokens, maxTokens, (decimal)totalTokens / maxTokens * 100m));
+
+        return null;
     }
 
     private decimal EstimateCost(CostUsageEvent usageEvent)
@@ -198,10 +253,6 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         if (tokenResult is not null)
             return tokenResult;
 
-        var rateResult = CheckRateLimitBudget(budget, events, crewId, agentId, scope);
-        if (rateResult is not null)
-            return rateResult;
-
         return CostBudgetCheckResult.WithinBudget();
     }
 
@@ -213,13 +264,13 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
 
         var costPercent = totalCost / budget.MaxCostUsd.Value * 100m;
 
-        if (totalCost > budget.MaxCostUsd.Value)
+        if (totalCost >= budget.MaxCostUsd.Value)
         {
             var alert = CreateAlert(crewId, agentId, BudgetAlertType.CostBudgetExceeded,
                 totalCost, budget.MaxCostUsd.Value, costPercent);
             RaiseAlert(alert);
             return CostBudgetCheckResult.BudgetExceeded(
-                Inv.Format($"Cost budget exceeded for {scope}: ${totalCost:F4} > ${budget.MaxCostUsd.Value:F4}"), alert);
+                Inv.Format($"Cost budget spent for {scope}: ${totalCost:F4} of ${budget.MaxCostUsd.Value:F4}"), alert);
         }
 
         var threshold = budget.AlertThresholdPercent ?? 80m;
@@ -239,7 +290,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         if (!budget.MaxTokens.HasValue || budget.MaxTokens.Value <= 0)
             return null;
 
-        if (totalTokens <= budget.MaxTokens.Value)
+        if (totalTokens < budget.MaxTokens.Value)
             return null;
 
         var tokenPercent = (decimal)totalTokens / budget.MaxTokens.Value * 100m;
@@ -247,27 +298,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
             totalTokens, budget.MaxTokens.Value, tokenPercent);
         RaiseAlert(alert);
         return CostBudgetCheckResult.BudgetExceeded(
-            $"Token budget exceeded for {scope}: {totalTokens} > {budget.MaxTokens.Value}", alert);
-    }
-
-    private CostBudgetCheckResult? CheckRateLimitBudget(
-        BudgetLimit budget, List<CostUsageEvent> events, string crewId, string? agentId, string scope)
-    {
-        if (!budget.MaxCallsPerMinute.HasValue || budget.MaxCallsPerMinute.Value <= 0)
-            return null;
-
-        var oneMinuteAgo = DateTime.UtcNow.AddMinutes(-1);
-        var recentCalls = events.Count(e => e.Timestamp >= oneMinuteAgo);
-
-        if (recentCalls <= budget.MaxCallsPerMinute.Value)
-            return null;
-
-        var alert = CreateAlert(crewId, agentId, BudgetAlertType.RateLimitExceeded,
-            recentCalls, budget.MaxCallsPerMinute.Value,
-            (decimal)recentCalls / budget.MaxCallsPerMinute.Value * 100m);
-        RaiseAlert(alert);
-        return CostBudgetCheckResult.BudgetExceeded(
-            $"Rate limit exceeded for {scope}: {recentCalls} calls/min > {budget.MaxCallsPerMinute.Value}", alert);
+            $"Token budget spent for {scope}: {totalTokens} of {budget.MaxTokens.Value} tokens", alert);
     }
 
     private static BudgetAlert CreateAlert(
@@ -401,4 +432,16 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Budget alert: {AlertType} for crew '{CrewId}' agent '{AgentId}' - usage {UsagePercent:F1}%")]
     private partial void LogBudgetAlertForCrewAgent(BudgetAlertType alertType, string crewId, string agentId, decimal usagePercent);
 
+
+    /// <summary>The answer the manager gave for one recorded event; within budget until it is counted.</summary>
+    private sealed class RecordedAnswer
+    {
+        private CostBudgetCheckResult _result = CostBudgetCheckResult.WithinBudget();
+
+        public CostBudgetCheckResult Result
+        {
+            get => Volatile.Read(ref _result);
+            set => Volatile.Write(ref _result, value);
+        }
+    }
 }

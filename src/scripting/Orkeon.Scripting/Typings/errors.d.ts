@@ -83,9 +83,13 @@ declare global {
         readonly clr?: unknown;
     }
 
-    /** Thrown when an agent's execution budget is exhausted. */
+    /**
+     * Thrown when an agent's execution budget is exhausted, or when the host's budget
+     * (`Orkeon:CostTracking:DefaultCrewBudget`) is spent: `tokens` or `cost`, before the call that
+     * would go over it.
+     */
     class BudgetExhaustedError extends Error implements HostError {
-        readonly dimension: "toolCalls" | "delegationDepth" | "wallTime" | "tokens" | "spawnedAgents";
+        readonly dimension: "toolCalls" | "delegationDepth" | "wallTime" | "tokens" | "spawnedAgents" | "cost";
         readonly clrType?: string;
         readonly clr?: unknown;
     }

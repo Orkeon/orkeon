@@ -3795,6 +3795,7 @@ Orkeon.Domain.Tools.ToolUsageMetrics.ToolUsageMetrics() -> void
 [ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.TimeProvider.init -> void
 [ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.ToSnapshot() -> Orkeon.Domain.Autonomous.BudgetSnapshot!
 [ORKEXP002]Orkeon.Domain.Autonomous.BudgetDimension
+[ORKEXP002]Orkeon.Domain.Autonomous.BudgetDimension.Cost = 5 -> Orkeon.Domain.Autonomous.BudgetDimension
 [ORKEXP002]Orkeon.Domain.Autonomous.BudgetDimension.DelegationDepth = 1 -> Orkeon.Domain.Autonomous.BudgetDimension
 [ORKEXP002]Orkeon.Domain.Autonomous.BudgetDimension.SpawnedAgents = 4 -> Orkeon.Domain.Autonomous.BudgetDimension
 [ORKEXP002]Orkeon.Domain.Autonomous.BudgetDimension.Tokens = 3 -> Orkeon.Domain.Autonomous.BudgetDimension

@@ -36,6 +36,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILlmUsageSink? _usageSink;
     private readonly ILlmRateLimiter? _rateLimiter;
+    private readonly ICostBudgetManager? _budget;
     private readonly ILlmCallObserver _callObserver;
     private readonly ITokenCounter _tokenCounter;
     private readonly IModelCapabilityRegistry _capabilities;
@@ -77,6 +78,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         _loggerFactory = loggerFactory;
         _usageSink = options?.UsageSink;
         _rateLimiter = options?.RateLimiter;
+        _budget = options?.Budget;
         _callObserver = options?.CallObserver ?? NullLlmCallObserver.Instance;
         _tokenCounter = options?.TokenCounter ?? new SimpleTokenCounter();
         _capabilities = options?.Capabilities ?? ModelCapabilityRegistry.Default;
@@ -232,7 +234,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         // A replayed call is answered from the cassette and sends nothing: it is metered as recorded
         // (the usage the vendor reported) but takes no lease of the host's limiter (FWK review LLM-7).
         var limiter = _cassette is not null && _replayMode == LlmReplayMode.Replay ? null : _rateLimiter;
-        return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, limiter));
+        return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, limiter, _budget));
     }
 
     /// <summary>

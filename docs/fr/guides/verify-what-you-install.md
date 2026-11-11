@@ -175,10 +175,10 @@ avec les compteurs, la taille et l'offset rétablis. Il refuse de deviner : si l
 n'est pas la dernière entrée de l'archive, il s'arrête plutôt que d'émettre un fichier qui
 échouerait de toute façon.
 
-Mesuré sur `Orkeon.<version>.nupkg`, le digest retrouvé a une déclaration (le filtre `jq`
+Pour un tag de cette série, le digest retrouvé de `Orkeon.<version>.nupkg` a une déclaration (le filtre `jq`
 ci-dessus l'affiche aussi) : builder `.github/workflows/publish.yml@refs/tags/v<version>`,
-le commit dont sont issus les assets de la release, douze sujets — les neuf paquets poussés
-sur nuget.org à ce tag, les deux qui n'atteignent que GitHub Packages (`Orkeon.ConsoleApp`,
+le commit dont sont issus les assets de la release, dix-sept sujets — les quatorze paquets
+poussés sur nuget.org à ce tag, les deux qui n'atteignent que GitHub Packages (`Orkeon.ConsoleApp`,
 `Orkeon.Generators`), et le SBOM. L'attestation est littérale : elle liste ce que le workflow
 a construit, pas ce qui a atteint nuget.org.
 

@@ -88,14 +88,17 @@ public record CostUsageEvent
 /// </summary>
 public record BudgetLimit
 {
-    /// <summary>Maximum total cost in USD (null = unlimited).</summary>
+    /// <summary>
+    /// Maximum total cost in USD (null = unlimited): once the calls recorded reach it, the next LLM call
+    /// is refused (<c>BudgetExhaustedException</c>, dimension <c>Cost</c>).
+    /// </summary>
     public decimal? MaxCostUsd { get; init; }
 
-    /// <summary>Maximum total tokens (null = unlimited).</summary>
+    /// <summary>
+    /// Maximum total tokens (null = unlimited): once the calls recorded reach it, the next LLM call is
+    /// refused (<c>BudgetExhaustedException</c>, dimension <c>Tokens</c>).
+    /// </summary>
     public int? MaxTokens { get; init; }
-
-    /// <summary>Maximum LLM calls per minute (null = unlimited).</summary>
-    public int? MaxCallsPerMinute { get; init; }
 
     /// <summary>Percentage of budget at which a warning alert is fired (default: 80%).</summary>
     public decimal? AlertThresholdPercent { get; init; } = 80m;
@@ -113,10 +116,7 @@ public enum BudgetAlertType
     CostBudgetExceeded,
 
     /// <summary>Token budget has been exceeded.</summary>
-    TokenBudgetExceeded,
-
-    /// <summary>Rate limit has been exceeded.</summary>
-    RateLimitExceeded
+    TokenBudgetExceeded
 }
 
 /// <summary>
@@ -297,6 +297,16 @@ public interface ICostBudgetManager
     /// the registry.
     /// </summary>
     CostBudgetCheckResult RecordUsage(CostUsageEvent usageEvent);
+
+    /// <summary>
+    /// Whether the crew, and the agent in it, may start another call: the cost and tokens recorded
+    /// against their budgets, read without recording anything nor raising an alert. A budget is spent
+    /// once what was recorded reaches its cap; a null <paramref name="crewId"/> is under no budget.
+    /// </summary>
+    /// <param name="crewId">The crew the call is for; null for a call outside any crew.</param>
+    /// <param name="agentId">The agent the call is for; null for a crew-level call.</param>
+    /// <returns><see cref="CostBudgetCheckResult.WithinBudget"/>, or the first budget spent.</returns>
+    CostBudgetCheckResult CheckBudget(string? crewId, string? agentId);
 
     /// <summary>
     /// Gets a cost report, optionally filtered by crew and/or agent.

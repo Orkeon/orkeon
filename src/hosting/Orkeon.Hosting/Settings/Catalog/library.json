@@ -919,29 +919,23 @@
       "description": "Percentage of budget at which a warning alert is fired (default: 80%)."
     },
     {
-      "path": "Orkeon:CostTracking:DefaultCrewBudget:MaxCallsPerMinute",
-      "section": "Orkeon:CostTracking",
-      "type": "integer",
-      "description": "Maximum LLM calls per minute (null = unlimited)."
-    },
-    {
       "path": "Orkeon:CostTracking:DefaultCrewBudget:MaxCostUsd",
       "section": "Orkeon:CostTracking",
       "type": "number",
-      "description": "Maximum total cost in USD (null = unlimited)."
+      "description": "Maximum total cost in USD (null = unlimited): once the calls recorded reach it, the next LLM call is refused (`BudgetExhaustedException`, dimension `Cost`)."
     },
     {
       "path": "Orkeon:CostTracking:DefaultCrewBudget:MaxTokens",
       "section": "Orkeon:CostTracking",
       "type": "integer",
-      "description": "Maximum total tokens (null = unlimited)."
+      "description": "Maximum total tokens (null = unlimited): once the calls recorded reach it, the next LLM call is refused (`BudgetExhaustedException`, dimension `Tokens`)."
     },
     {
       "path": "Orkeon:CostTracking:Enabled",
       "section": "Orkeon:CostTracking",
       "type": "boolean",
       "default": true,
-      "description": "Whether cost tracking is enabled (default: true)."
+      "description": "Whether the budgets are enforced (default: true); false records the calls but refuses none."
     },
     {
       "path": "Orkeon:Decision:Enabled",

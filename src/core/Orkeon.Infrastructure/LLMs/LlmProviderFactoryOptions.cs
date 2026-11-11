@@ -21,6 +21,12 @@ public sealed class LlmProviderFactoryOptions
     /// </summary>
     public ILlmRateLimiter? RateLimiter { get; init; }
 
+    /// <summary>
+    /// The host's budgets (<c>CostTracking</c>): every call of a provider built is recorded against them, and a
+    /// call whose crew or agent has spent its budget is refused before it starts. Null enforces none.
+    /// </summary>
+    public ICostBudgetManager? Budget { get; init; }
+
     /// <summary>The host's call observer: every call of a provider built is announced to it. Null observes nothing.</summary>
     public ILlmCallObserver? CallObserver { get; init; }
 

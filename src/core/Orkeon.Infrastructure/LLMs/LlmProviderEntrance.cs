@@ -22,13 +22,14 @@ internal static class LlmProviderEntrance
     /// <param name="provider">The provider entering the runtime.</param>
     /// <param name="usageSink">The host's token meter; null meters nothing.</param>
     /// <param name="rateLimiter">The host's limiter; null limits nothing.</param>
+    /// <param name="budget">The host's budgets, recorded and enforced by the meter; null enforces none.</param>
     /// <returns>The provider the runtime calls.</returns>
-    public static ILlmProvider Enter(ILlmProvider provider, ILlmUsageSink? usageSink, ILlmRateLimiter? rateLimiter)
+    public static ILlmProvider Enter(ILlmProvider provider, ILlmUsageSink? usageSink, ILlmRateLimiter? rateLimiter, ICostBudgetManager? budget)
     {
         ArgumentNullException.ThrowIfNull(provider);
         if (provider is RateLimitedLlmProvider)
             return provider;
 
-        return RateLimitedLlmProvider.Wrap(TracedLlmProvider.Wrap(MeteredLlmProvider.Wrap(provider, usageSink)), rateLimiter);
+        return RateLimitedLlmProvider.Wrap(TracedLlmProvider.Wrap(MeteredLlmProvider.Wrap(provider, usageSink, budget)), rateLimiter);
     }
 }

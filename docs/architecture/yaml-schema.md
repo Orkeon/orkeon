@@ -84,7 +84,7 @@ agents:
       thinking:           # Reasoning control (capability-gated per provider)
         enabled: bool
         effort: string    # "low" | "medium" | "high" | "xhigh" | "max", exact case — any other value fails the load (a provider sends the nearest level its field knows)
-        budget_tokens: int # Honoured by Qwen only; other providers warn
+        budget_tokens: int # Honoured by Qwen and OpenRouter; other providers warn
       responseFormat: string # "text" (= provider default) | "json_object" | "json_schema" — any other value is forwarded as-is with a warning
       responseSchema:     # With responseFormat: json_schema (a schema alone implies json_schema)
         name: string      # default: "response"
