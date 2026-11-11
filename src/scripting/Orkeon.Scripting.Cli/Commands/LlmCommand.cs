@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
+using Orkeon.Infrastructure.Decision.SystemOne;
+using Microsoft.Extensions.Options;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.ToolCalling;
 using Orkeon.Constants.Configuration;
@@ -17,7 +19,7 @@ internal sealed class LlmProbeCommandOptions : CliOptions
 {
     /// <summary>Provider key, as accepted by <c>LlmProviderFactory</c>.</summary>
     [Option('p', "provider", Required = true,
-        HelpText = "Provider: openai | anthropic | ollama | azure | together | qwen | deepseek | kimi | mistral | huggingface | zai | gemini | grok | minimax | openrouter | mammouth.")]
+        HelpText = "Provider: openai | anthropic | ollama | azure | together | qwen | deepseek | kimi | mistral | huggingface | zai | gemini | grok | minimax | openrouter | mammouth; decision providers: typesafe | liquid | kev.")]
     public string Provider { get; set; } = "";
 
     /// <summary>Model identifier; defaults to the provider's own default when omitted.</summary>
@@ -66,7 +68,7 @@ internal sealed class LlmProbeCommandOptions : CliOptions
 
     /// <summary>Modes to exercise, comma-separated. Defaults to every supported mode.</summary>
     [Option("modes", Required = false,
-        HelpText = "Comma-separated protocol modes (e.g. M1,M2,M8). Defaults to every mode this harness supports.")]
+        HelpText = "Comma-separated protocol modes (e.g. M1,M2,M8; D1–D7 for a decision provider). Defaults to every mode the provider's family supports.")]
     public string? Modes { get; set; }
 
     /// <summary>Directory receiving the archived campaign report.</summary>
@@ -199,6 +201,9 @@ internal static class LlmCommand
 
     private static async Task<int> ExecuteProbeAsync(IRunnerConsole console, LlmProbeCommandOptions options)
     {
+        if (DecisionProviderDescriptor.Find(options.Provider) is { } decisionProvider)
+            return await ExecuteDecisionProbeAsync(console, options, decisionProvider).ConfigureAwait(false);
+
         var apiKey = Environment.GetEnvironmentVariable(options.ApiKeyEnv);
         var needsKey = !string.Equals(options.Provider, "ollama", StringComparison.OrdinalIgnoreCase);
         if (needsKey && string.IsNullOrWhiteSpace(apiKey))
@@ -210,7 +215,7 @@ internal static class LlmCommand
             return Program.ExitScriptError;
         }
 
-        if (!TryParseModes(options.Modes, out var modes, out var badMode))
+        if (!TryParseModes(options.Modes, LlmProbeRunner.SupportedModes, out var modes, out var badMode))
         {
             await console.ErrorOutput.WriteLineAsync(
                 $"orkeon llm probe: unknown mode '{badMode}'. Supported: " +
@@ -277,6 +282,100 @@ internal static class LlmCommand
         // what does not work, and a green exit code would bury it. A not-applicable mode is
         // not a failure — nothing was exercised, so there is nothing to act on.
         return results.All(r => r.Outcome != LlmProbeOutcome.Failed) ? Program.ExitOk : Program.ExitScriptError;
+    }
+
+    /// <summary>
+    /// Runs the decision modes against TypeSafe, Liquid or Kev. A decision model takes typed
+    /// questions, not a chat, so it gets its own runner (D1–D7) and no temperature; the report
+    /// is the chat probe's own JSON, which the campaign kit archives unchanged.
+    /// </summary>
+    private static async Task<int> ExecuteDecisionProbeAsync(
+        IRunnerConsole console, LlmProbeCommandOptions options, DecisionProviderDescriptor provider)
+    {
+        // The probe's default variable names no vendor: a decision provider reads its own.
+        var keyVariable = string.Equals(options.ApiKeyEnv, EnvironmentVariableNames.LlmCommandApiKey, StringComparison.Ordinal)
+            ? provider.DefaultApiKeyVariable
+            : options.ApiKeyEnv;
+        if (provider.KeyRequired && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(keyVariable)))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon llm probe: no API key found in ${keyVariable}. " +
+                "Export it, or point --api-key-env at the variable that holds it. " +
+                "Keys are never accepted as a command-line argument.").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        if (!TryParseModes(options.Modes, DecisionProbeRunner.SupportedModes, out var modes, out var badMode))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon llm probe: unknown mode '{badMode}' for the decision provider {provider.Key}. Supported: " +
+                string.Join(", ", DecisionProbeRunner.SupportedModes)).ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        var wantsJson = string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase);
+        if (!wantsJson && !string.Equals(options.Format, "md", StringComparison.OrdinalIgnoreCase))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon llm probe: unknown format '{options.Format}'. Supported: md, json.").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
+        var settings = BuildDecisionOptions(options, provider, keyVariable);
+        using var cts = new CancellationTokenSource();
+        using var interrupt = CancelOnInterrupt(console, cts);
+        using var httpClientFactory = new CliHttpClientFactory();
+        var model = new SystemOneDecisionModel(
+            provider, httpClientFactory, Options.Create(settings), NullLogger<SystemOneDecisionModel>.Instance);
+
+        IReadOnlyList<LlmProbeResult> results;
+        try
+        {
+            var runner = new DecisionProbeRunner(model) { SupportsBox = provider != DecisionProviderDescriptor.Kev };
+            results = await runner.RunAsync(modes, cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return Program.ExitCancelled;
+        }
+
+        var context = new LlmProbeContext(
+            Provider: provider.Key,
+            Model: settings.Model,
+            EndpointHost: settings.BaseUrl.Host,
+            OrkeonVersion: LlmProbeReport.ResolveVersion(),
+            Commit: options.Commit ?? "",
+            TimestampUtc: DateTimeOffset.UtcNow,
+            Temperature: null);
+        var report = wantsJson ? LlmProbeReport.ToJson(context, results) : LlmProbeReport.ToMarkdown(context, results);
+        await console.Output.WriteLineAsync(report).ConfigureAwait(false);
+
+        if (!string.IsNullOrWhiteSpace(options.Archive))
+        {
+            await ArchiveAsync(console.ErrorOutput, options.Archive!, provider.Key, settings.Model, report, wantsJson, cts.Token)
+                .ConfigureAwait(false);
+        }
+
+        return results.All(r => r.Outcome != LlmProbeOutcome.Failed) ? Program.ExitOk : Program.ExitScriptError;
+    }
+
+    /// <summary>
+    /// The decision client's options from the probe's: the provider's defaults, then the model,
+    /// base URL and timeout the command line names. The key stays in the environment: the client
+    /// reads the variable itself, so the value never reaches these options.
+    /// </summary>
+    internal static SystemOneProviderOptions BuildDecisionOptions(
+        LlmProbeCommandOptions options, DecisionProviderDescriptor provider, string keyVariable)
+    {
+        var settings = new SystemOneProviderOptions();
+        provider.ApplyDefaults(settings);
+        settings.ApiKeyEnvVar = keyVariable;
+        settings.TimeoutSeconds = options.TimeoutSeconds;
+        if (!string.IsNullOrWhiteSpace(options.Model))
+            settings.Model = options.Model!;
+        if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+            settings.BaseUrl = new Uri(options.BaseUrl!);
+        return settings;
     }
 
     private static LlmProbeContext BuildContext(LlmProbeCommandOptions options, LlmConfig config) =>
@@ -379,13 +478,13 @@ internal static class LlmCommand
     }
 
     private static bool TryParseModes(
-        string? raw, out IReadOnlyList<LlmProbeMode> modes, out string? invalid)
+        string? raw, IReadOnlyList<LlmProbeMode> supported, out IReadOnlyList<LlmProbeMode> modes, out string? invalid)
     {
         invalid = null;
 
         if (string.IsNullOrWhiteSpace(raw))
         {
-            modes = LlmProbeRunner.SupportedModes;
+            modes = supported;
             return true;
         }
 
@@ -393,7 +492,7 @@ internal static class LlmCommand
         foreach (var token in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             if (!Enum.TryParse<LlmProbeMode>(token, ignoreCase: true, out var mode)
-                || !LlmProbeRunner.SupportedModes.Contains(mode))
+                || !supported.Contains(mode))
             {
                 invalid = token;
                 modes = [];

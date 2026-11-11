@@ -115,6 +115,15 @@ vaut pour tous les fournisseurs.
 - **L'usage** est compté une seule fois, comme `decision` (`LlmUsageOperations.Decision`), pour le
   fournisseur actif ; Orkeon ne calcule aucun coût.
 
+### Campagne réelle
+
+`orkeon llm probe -p typesafe` (ou `liquid`, `kev`) exécute sept modes contre l'API réelle à travers
+`SystemOneDecisionModel` : un `noul`, un `choice` et un `score` aux réponses évidentes, un `box` sur
+une image PNG, le refus d'un état au-delà du contexte de 64k, une erreur typée pour un modèle
+inconnu, et l'annulation. Le kit de campagne des fournisseurs LLM l'exécute comme les fournisseurs
+de chat (`llmproviders-test/run-campaign.sh --provider typesafe`) et archive le rapport sous
+`llmproviders-test/typesafe/` ; son README liste les modes.
+
 ### Les poids ouverts de d1
 
 Orkeon ne sert pas lui-même les poids de d1. Servis derrière Kev ou un autre serveur local

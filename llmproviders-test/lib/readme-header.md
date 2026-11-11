@@ -59,11 +59,11 @@ On Windows, `run-campaign.ps1` exposes exactly the same options.
 
 | Option | Role |
 |---|---|
-| `--provider <keys>` | One key, or several separated by commas — `openai`, `anthropic`, `ollama`, `azure`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok`, `minimax`, `openrouter`, `mammouth` |
+| `--provider <keys>` | One key, or several separated by commas — `openai`, `anthropic`, `ollama`, `azure`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok`, `minimax`, `openrouter`, `mammouth`; the decision providers `typesafe`, `liquid`, `kev` (modes D1–D7) |
 | `--all` | Every provider declared in the JSON |
 | `--parallel` | Runs the selected providers simultaneously (see below) |
 | `--model <id\|glob>` | An identifier, or a pattern (`gpt-5.6-*`, `*flash*`) |
-| `--modes M1,M8` | Default: every mode of the harness |
+| `--modes M1,M8` | Default: the provider's own set from the catalog (`modes`: D1–D7 for a decision provider), else every chat mode of the harness |
 | `--config <file>` | Campaign configuration (see `providers.schema.json`) |
 | `--base-url <url>` | Endpoint override (Azure, regional mirrors) |
 | `--api-version <v>` | Azure `api-version` in deployment mode |
@@ -251,8 +251,35 @@ would read as complete coverage.
 
 ## The protocol modes
 
-The harness covers **M1 to M10, M12 and M13**. A `➖` in a report flags a mode the provider
+The harness covers **M1 to M10, M12 and M13** for a chat provider, **D1 to D7** for a decision
+provider (below). A `➖` in a report flags a mode the provider
 cannot satisfy — nothing was exercised, there is nothing to fix.
+
+### Decision providers — D1 to D7
+
+TypeSafe (Jev), Liquid and Kev are **decision models**: they answer typed questions about a
+state, and do not chat, stream or call tools, so no M mode applies to them.
+`orkeon llm probe -p typesafe` runs their own modes through `SystemOneDecisionModel`, the
+client the framework itself uses, and writes the same JSON, so the kit archives and indexes
+them like any other campaign. The catalog gives each one its mode set (`modes`), and the
+report says `Temperature: not pinned` because the wire has no sampling parameter.
+
+| Mode | What it checks |
+|---|---|
+| D1 | A `noul` with instructions and criteria leans yes (≥ 0.5) on an obvious yes, with input tokens counted |
+| D2 | A three-option `choice` picks the obvious option, with probabilities that sum to 1 |
+| D3 | A three-level `score` lands at 1 or above on an urgent message |
+| D4 | A `box` on a 320×320 PNG asset touches where the digits are, and is not the whole image; the IoU is reported, not judged. ➖ on Kev, which takes no box |
+| D5 | A state of about 100k tokens is refused as a non-transient 4xx that names the 64k context limit |
+| D6 | An invalid model is a typed, non-transient 4xx — never a retry loop |
+| D7 | A call cancelled after 50 ms stops |
+
+```bash
+export TYPESAFE_API_KEY=…
+llmproviders-test/run-campaign.sh --provider typesafe --candidates   # jev-latest, then jev-preview
+```
+
+### M2 and its two shapes
 
 **M2 sends the conversation twice** (two billed calls instead of one), and that is
 deliberate. OpenAI-compatible providers have two chat paths, chosen on a criterion the caller

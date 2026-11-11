@@ -33,10 +33,37 @@
     "M11": "Long context (manual)",
     "M12": "Errors & resilience",
     "M13": "Cancellation",
-    "M14": "End-to-end crew (manual)"
+    "M14": "End-to-end crew (manual)",
+    "D1": "Decision: noul",
+    "D2": "Decision: choice",
+    "D3": "Decision: score",
+    "D4": "Decision: box on an image",
+    "D5": "Decision: context limit named",
+    "D6": "Decision: invalid model typed",
+    "D7": "Decision: cancellation"
   },
 
   "providers": {
+    "typesafe": {
+      "label": "TypeSafe (Jev)",
+      "matrix": "decision",
+      "family": "decision",
+      "apiKeyEnv": "TYPESAFE_API_KEY",
+      "defaultModel": "jev-latest",
+      "modes": "D1,D2,D3,D4,D5,D6,D7",
+      "candidateModels": [
+        {
+          "id": "jev-preview",
+          "why": "The next Jev before it becomes jev-latest; the same model as jev-latest most of the time (both served jev-1.14.0 on 2026-11-11)."
+        }
+      ],
+      "notes": [
+        "A **decision provider**, not a chat one: none of M1–M13 applies. The probe runs the D modes (`orkeon llm probe -p typesafe`) through the same `SystemOneDecisionModel` the framework uses; `liquid` and `kev` take the same modes.",
+        "No temperature: the report header says `not pinned`, which is the truth — the System One wire has no sampling parameter.",
+        "D4 (Box) sends a 320×320 PNG: TypeSafe rejects an image with a side under 280 pixels (`Invalid image dimensions`). Box is *dreamer-ready* by TypeSafe's own word: on 2026-11-11 Jev 1.14 drew the box 0.1–0.15 too low, varying from call to call, so D4 passes on a box that touches the digits and reports the IoU rather than judging it.",
+        "2026-11-11, first campaign: jev-latest and jev-preview both serve `jev-1.14.0`, 7/7 each (D4 IoU about 0.4). The two integration tests sent a bare noul and were refused (`Noul question must have criteria or instructions`) — the tests were wrong, not the adapter; fixed in 925c13871."
+      ]
+    },
     "openai": {
       "label": "OpenAI",
       "matrix": "§6.1",

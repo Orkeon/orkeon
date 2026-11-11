@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`orkeon llm probe` runs the decision providers** — `-p typesafe`, `liquid` or `kev` runs seven
+  decision modes, D1–D7 (noul, choice, score, box on an image, the context-limit refusal, a typed
+  error for an unknown model, cancellation), through `SystemOneDecisionModel`, and writes the same
+  JSON as the chat modes. The LLM provider campaign kit takes `typesafe` like any provider: the
+  catalog gives it its modes, its key variable and `jev-preview` as candidate.
+
 ### Changed — Together AI's default model **[breaking]**
 
 - **`LlmProviderDefaultModels.Together`** **[breaking]** is now `zai-org/GLM-5.3-Flash`. `meta-llama/Llama-3.3-70B-Instruct-Turbo` is no longer serverless: every call to it answers `Unable to access non-serverless model` (LLM campaign of 2026-11-11), so a Together provider built without a model failed on its first call. GLM-5.3-Flash was Together's own replacement target since the 2026-09-19 review: 1 M context, tools and JSON, reads images, 0.15 / 0.50 $/M, 10/1/1 on that campaign. The value changes in `PublicAPI.Shipped.txt`.

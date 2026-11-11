@@ -13,7 +13,7 @@
 .PARAMETER Provider
   Provider key, or several separated by commas: openai, anthropic, ollama, azure,
   together, qwen, deepseek, kimi, mistral, huggingface, zai, gemini, grok, minimax,
-  openrouter, mammouth.
+  openrouter, mammouth; decision providers (modes D1-D7): typesafe, liquid, kev.
 .PARAMETER All
   Run every provider declared in the configuration. Requires -Config.
 .PARAMETER Parallel
@@ -432,7 +432,10 @@ function Invoke-Provider {
 
     # Command line wins over the configuration, which wins over the built-in default — the
     # usual precedence, so an operator can override one provider without editing the file.
-    $modeList = if ($Modes)     { $Modes }     else { Get-Setting $ProviderKey 'modes' $AllModes }
+    # A decision provider (TypeSafe, Liquid, Kev) has its own modes, D1-D7: the catalogue names
+    # a provider's default set, so the chat modes are never sent where none of them applies.
+    $catalogModes = Get-CatalogField $ProviderKey 'modes'
+    $modeList = if ($Modes)     { $Modes }     else { Get-Setting $ProviderKey 'modes' $(if ($catalogModes) { $catalogModes } else { $AllModes }) }
     $keyEnv   = if ($ApiKeyEnv) { $ApiKeyEnv } else { Get-Setting $ProviderKey 'apiKeyEnv' (Get-CatalogKeyEnv $ProviderKey) }
     if (-not $keyEnv) { $keyEnv = 'ORKEON_LLM_API_KEY' }
     $base     = if ($BaseUrl)   { $BaseUrl }   else { Get-Setting $ProviderKey 'baseUrl' }

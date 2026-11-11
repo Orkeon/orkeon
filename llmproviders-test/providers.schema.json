@@ -33,7 +33,7 @@
           "together", "togetherai", "qwen", "deepseek", "kimi", "moonshot",
           "mistral", "huggingface", "hf", "zai", "glm", "zhipu",
           "gemini", "google", "grok", "xai", "minimax",
-          "openrouter", "mammouth"
+          "openrouter", "mammouth", "typesafe", "liquid", "kev"
         ]
       },
       "additionalProperties": { "$ref": "#/$defs/provider" }
@@ -45,8 +45,8 @@
   "$defs": {
     "modes": {
       "type": "string",
-      "description": "Protocol modes, comma-separated. Only M1 to M10, M12 and M13 are automated: M11 (long context) and M14 (end-to-end crew) are manual and the harness rejects them — the pattern below therefore excludes them rather than letting through a configuration that would fail at run time.",
-      "pattern": "^M(10|12|13|[1-9])(,M(10|12|13|[1-9]))*$"
+      "description": "Protocol modes, comma-separated. Only M1 to M10, M12 and M13 are automated: M11 (long context) and M14 (end-to-end crew) are manual and the harness rejects them — the pattern below therefore excludes them rather than letting through a configuration that would fail at run time. A decision provider (typesafe, liquid, kev) takes D1 to D7 instead.",
+      "pattern": "^(M(10|12|13|[1-9])(,M(10|12|13|[1-9]))*|D[1-7](,D[1-7])*)$"
     },
 
     "maxModels": {

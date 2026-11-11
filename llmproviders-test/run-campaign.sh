@@ -68,6 +68,7 @@ Options:
                          openai | anthropic | ollama | azure | together | qwen
                          | deepseek | kimi | mistral | huggingface | zai
                          | gemini | grok | minimax | openrouter | mammouth
+                         decision providers (modes D1–D7): typesafe | liquid | kev
       --all              every provider declared in the configuration (needs --config)
       --parallel         run the selected providers concurrently. Each provider's own models
                          still run one after another: they share its rate limit, and racing
@@ -394,7 +395,10 @@ run_provider() {
 
   # Command line wins over the configuration, which wins over the built-in default — the
   # usual precedence, so an operator can override one provider without editing the file.
-  modes="${MODES:-$(cfg "$provider" "modes" "$ALL_MODES")}"
+  # A decision provider (TypeSafe, Liquid, Kev) has its own modes, D1–D7: the catalogue names
+  # a provider's default set, so the chat modes are never sent where none of them applies.
+  modes="${MODES:-$(cfg "$provider" "modes" "$(catalog_field "$provider" "modes")")}"
+  modes="${modes:-$ALL_MODES}"
   key_env="${API_KEY_ENV:-$(cfg "$provider" "apiKeyEnv" "$(catalog_key_env "$provider")")}"
   key_env="${key_env:-ORKEON_LLM_API_KEY}"
   base_url="${BASE_URL:-$(cfg "$provider" "baseUrl")}"

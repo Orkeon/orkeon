@@ -105,6 +105,12 @@
       "models": ["google/gemini-3.7-flash"]
     },
 
+    "typesafe": {
+      "_comment": "Decision provider (Jev): runs D1–D7, not the chat modes. The catalogue supplies the key variable and the default model.",
+      "models": [
+        "jev-latest"
+      ]
+    },
     "mammouth": {
       "_comment": "LiteLLM proxy, bare vendor ids — the key names the provider, never the model. Campaigned 2026-10-07 (10/0/2): the included subscription credits cover a full run on gemini-3.7-flash.",
       "apiKeyEnv": "MAMMOUTH_API_KEY",
