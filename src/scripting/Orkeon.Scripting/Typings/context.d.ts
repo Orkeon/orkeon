@@ -246,10 +246,56 @@ declare global {
         onToolResult?: (call: { name: string; input: unknown }, result: unknown) =>
             void | { context: string } | Promise<void | { context: string }>;
         /**
+         * Runs before a model turn once the loop's messages pass `contextPressure.thresholdTokens`
+         * (estimated as characters / 4) and older tool results remain to judge (#327). It is handed
+         * those calls (the last `contextPressure.keepRecent` messages are never offered, nor a result
+         * already pruned) and answers by call id: `"keep"`, `"head"` (the result cut to its first
+         * `contextPressure.headChars` characters) or `"drop"` (the result replaced by a line naming
+         * the call). A pruned result always leaves a line that says what was removed and that the
+         * call can be run again. A call left out keeps its result. A callback that throws, or a
+         * return that is not an object, prunes nothing and the loop goes on. Runs on the script's
+         * thread.
+         */
+        onContextPressure?: (pressure: ContextPressure) =>
+            Record<string, ContextPressureVerdict> | void | Promise<Record<string, ContextPressureVerdict> | void>;
+        /** When `onContextPressure` runs, and what `"head"` keeps. */
+        contextPressure?: {
+            /** Estimated tokens of the loop's messages from which the callback runs. Default 100000. */
+            thresholdTokens?: number;
+            /** Most recent messages whose tool results are never offered. Default 4. */
+            keepRecent?: number;
+            /** Characters a `"head"` verdict keeps. Default 1000. */
+            headChars?: number;
+        };
+        /**
          * Subset of the agent's tools to offer the model for this call. A name the agent does
          * not hold throws `UnknownToolError` before the model is asked. Omitted: all its tools.
          */
         tools?: string[];
+    }
+
+    /** What a verdict of `onContextPressure` does to one tool result. */
+    type ContextPressureVerdict = "keep" | "head" | "drop";
+
+    /** What `onContextPressure` is handed. */
+    interface ContextPressure {
+        /** Estimated tokens of the loop's messages (characters / 4). */
+        readonly usedTokens: number;
+        /** The `contextPressure.thresholdTokens` the loop passed. */
+        readonly thresholdTokens: number;
+        /** The share of `usedTokens` held by tool results. */
+        readonly usedTokensByKind: { readonly tool: number };
+        /** The tool calls whose result may be pruned, oldest first. */
+        readonly calls: ReadonlyArray<{
+            /** The key to answer with: `call-1`, `call-2`... in call order. */
+            readonly id: string;
+            readonly name: string;
+            readonly input: unknown;
+            /** Characters of the result the model is shown. */
+            readonly resultChars: number;
+            /** Model turns since the call ran. */
+            readonly age: number;
+        }>;
     }
 
     /** What `act(...)` resolves to. */

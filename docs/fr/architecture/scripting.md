@@ -165,8 +165,19 @@ au début de l'appel (une `ActSession` par appel) :
   l'hôte (le REPL, `orkeon run`), un appel que le Guardian ou la porte de permission a refusé (refus d'un
   opérateur compris) est aussi un résultat, `DENIED: …`, et `onToolResult` s'exécute dessus ; sans le
   pipeline, et pour un appel refusé par `onToolCall`, un appel refusé ne l'atteint jamais.
+- **`onContextPressure(pressure)`** élague les résultats d'outil périmés de la boucle (#327). Avant un tour
+  du modèle, dès que les messages de la boucle dépassent `contextPressure.thresholdTokens` (caractères / 4,
+  100000 par défaut) et qu'il reste des résultats anciens, il reçoit `{ usedTokens, thresholdTokens,
+  usedTokensByKind: { tool }, calls }` (chaque appel : `id`, `name`, `input`, `resultChars`, `age` en tours
+  du modèle ; les `contextPressure.keepRecent` derniers messages, 4 par défaut, et un résultat déjà élagué
+  ne sont jamais proposés). Il répond par identifiant d'appel : `"keep"`, `"head"` (les
+  `contextPressure.headChars` premiers caractères, 1000 par défaut) ou `"drop"`. Un résultat élagué laisse
+  une ligne qui nomme l'appel, dit ce qui a été coupé et que l'appel peut être relancé, pour que le modèle
+  ne prenne jamais l'absence pour un résultat vide. Un appel omis est conservé ; un rappel qui lève, ou un
+  retour qui n'est pas un objet, n'élague rien. Un script peut demander chaque verdict au modèle de
+  décision (`system_one_decide`) dans le rappel.
 
-Les deux rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
+Les rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
 le modèle de threading ci-dessous) ; `onToolCall` passe toujours avant la porte de permission.
 
 ## Le budget de tokens d'act

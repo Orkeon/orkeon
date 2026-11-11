@@ -162,8 +162,18 @@ the call starts (one `ActSession` per call):
   (the REPL, `orkeon run`) a call the guardian or the gate refused (an operator's refusal included) is a
   result too, `DENIED: …`, and `onToolResult` runs on it; without the pipeline, and for a call `onToolCall`
   denied, a refused call never reaches it.
+- **`onContextPressure(pressure)`** prunes stale tool results from the loop (#327). Before a model turn,
+  once the loop's messages pass `contextPressure.thresholdTokens` (characters / 4, 100000 by default) and
+  older results remain, it is handed `{ usedTokens, thresholdTokens, usedTokensByKind: { tool }, calls }`
+  (each call: `id`, `name`, `input`, `resultChars`, `age` in model turns; the last
+  `contextPressure.keepRecent` messages, 4 by default, and a result already pruned are never offered). It
+  answers by call id: `"keep"`, `"head"` (the first `contextPressure.headChars` characters, 1000 by
+  default) or `"drop"`. A pruned result leaves a line that names the call, says what was cut and that the
+  call can be run again, so the model never reads the absence as an empty result. A call left out is
+  kept; a callback that throws, or a return that is not an object, prunes nothing. A script can ask the
+  decision model (`system_one_decide`) for each verdict inside the callback.
 
-Both callbacks run on the engine thread, through the same pump as script tools (see the threading
+The callbacks run on the engine thread, through the same pump as script tools (see the threading
 model below); `onToolCall` always comes before the permission gate.
 
 ## The token budget of act

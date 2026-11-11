@@ -1,3 +1,4 @@
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Jint;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Tools;
@@ -238,4 +239,94 @@ public sealed class ActToolCallbacksTests
 
 
 
+
+    // #327: onContextPressure. Two reads of a large result, then an answer; the callback runs before
+    // the second and third model turns once the threshold is passed.
+    private sealed record PressureRun(FakeToolCallingLlmProvider Provider, string Recorded, string Output);
+
+    private static async Task<PressureRun> RunPressureAsync(string onContextPressureJs, string settingsJs)
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new StubLargeResultTool("file_read", 8_000);
+        var provider = new FakeToolCallingLlmProvider(
+            FakeToolCallingLlmProvider.ScriptStep.Call("file_read", "{\"path\":\"/a\"}"),
+            FakeToolCallingLlmProvider.ScriptStep.Call("file_read", "{\"path\":\"/b\"}"),
+            FakeToolCallingLlmProvider.ScriptStep.Answer("done"));
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards());
+
+        var options = await engine.EvaluateAsync(
+            "({ onContextPressure: " + onContextPressureJs + ", contextPressure: " + settingsJs + " })", null, TestContext.Current.CancellationToken);
+        var result = await facade.ActAsync(engine, "read both", options);
+        var recorded = (await engine.EvaluateAsync("globalThis.rec === undefined ? '' : JSON.stringify(globalThis.rec)", null, TestContext.Current.CancellationToken)).AsString();
+        return new PressureRun(provider, recorded, result.Get("output").AsString());
+    }
+
+    private const string Recording = "(p) => { globalThis.rec = (globalThis.rec ?? []).concat([p]); ";
+
+    private static int ToolChars(LlmMessage[] turn) => turn.Where(m => m.Role == "tool").Sum(m => m.Content.Length);
+
+    [Fact]
+    [Trait("BR", "CH-327")]
+    public async Task ShouldDropTheResultAndSaySo_WhenOnContextPressureAnswersDrop()
+    {
+        var run = await RunPressureAsync(Recording + "return { 'call-1': 'drop' }; }", "{ thresholdTokens: 0, keepRecent: 0 }");
+
+        Assert.Equal("done", run.Output);
+        var turn2 = run.Provider.Turns[1];
+        var pruned = turn2.Single(m => m.Role == "tool").Content;
+        Assert.StartsWith("[pruned to save context: the result of file_read {\"path\":\"/a\"}", pruned, StringComparison.Ordinal);
+        Assert.Contains("Call file_read again with the same input", pruned, StringComparison.Ordinal);
+
+        // The pressure the script saw before the prune, against the tool share of what the model was sent after it.
+        using var payloads = System.Text.Json.JsonDocument.Parse(run.Recorded);
+        var first = payloads.RootElement[0];
+        Assert.Equal("call-1", first.GetProperty("calls")[0].GetProperty("id").GetString());
+        Assert.Equal("file_read", first.GetProperty("calls")[0].GetProperty("name").GetString());
+        Assert.Equal("/a", first.GetProperty("calls")[0].GetProperty("input").GetProperty("path").GetString());
+        var toolBefore = first.GetProperty("usedTokensByKind").GetProperty("tool").GetInt32();
+        Assert.True(ToolChars(turn2) / 4 < toolBefore, $"tool tokens {ToolChars(turn2) / 4} after the prune, {toolBefore} before");
+
+        // A pruned call is never offered again: the second pressure names call-2 alone.
+        var second = payloads.RootElement[1].GetProperty("calls");
+        Assert.Equal("call-2", Assert.Single(second.EnumerateArray()).GetProperty("id").GetString());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-327")]
+    public async Task ShouldKeepTheHeadAndSaySo_WhenOnContextPressureAnswersHead()
+    {
+        var run = await RunPressureAsync("(p) => ({ 'call-1': 'head' })", "{ thresholdTokens: 0, keepRecent: 0, headChars: 100 }");
+
+        var pruned = run.Provider.Turns[1].Single(m => m.Role == "tool").Content;
+        Assert.StartsWith("{\"text\":\"xxxx", pruned, StringComparison.Ordinal);
+        Assert.Contains("\n[pruned to save context: ", pruned, StringComparison.Ordinal);
+        Assert.Contains("characters cut here. Call file_read {\"path\":\"/a\"} again for the full result.]", pruned, StringComparison.Ordinal);
+        Assert.True(pruned.Length < 400);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-327")]
+    [InlineData("(p) => { throw new Error('decision failed'); }")]
+    [InlineData("(p) => undefined")]
+    [InlineData("(p) => 'drop'")]
+    [InlineData("(p) => ({ 'call-1': 'keep' })")]
+    public async Task ShouldPruneNothing_WhenOnContextPressureFailsOrKeeps(string callback)
+    {
+        var run = await RunPressureAsync(callback, "{ thresholdTokens: 0, keepRecent: 0 }");
+
+        Assert.Equal("done", run.Output);
+        Assert.All(run.Provider.Turns[2].Where(m => m.Role == "tool"), m => Assert.True(m.Content.Length > 8_000));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-327")]
+    public async Task ShouldNotAsk_WhenTheLoopIsBelowTheThresholdOrEveryResultIsRecent()
+    {
+        var below = await RunPressureAsync(Recording + "return { 'call-1': 'drop' }; }", "{}");
+        var recent = await RunPressureAsync(Recording + "return { 'call-1': 'drop' }; }", "{ thresholdTokens: 0, keepRecent: 100 }");
+
+        Assert.Equal("", below.Recorded);
+        Assert.Equal("", recent.Recorded);
+        Assert.All(below.Provider.Turns[2].Where(m => m.Role == "tool"), m => Assert.True(m.Content.Length > 8_000));
+    }
 }

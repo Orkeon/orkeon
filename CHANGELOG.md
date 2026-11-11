@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`act` prunes stale tool results on the script's word** (#327) — `ActOptions.onContextPressure` runs before a model turn once the loop's messages pass `contextPressure.thresholdTokens` (100000 estimated tokens by default). It is handed the older tool calls (tool, input, result size, age in turns) and answers `keep`, `head` or `drop` per call; a pruned result leaves a line naming the call and saying it can be run again, and the tool share of the next turn's context drops. A callback that throws, or no callback, prunes nothing. A script can ask the decision model for each verdict.
 - **LLM campaign results page** — `docs/reference/llm-campaign-results.md` (and its French mirror) gives the latest real-API result of every campaigned model: score, failed modes, default marker and report, merging the reports of the model's latest campaign day so the vision companion's M9 and the paid D8 join the main run. The campaign kit's `lib/recap.sh` and `lib/recap.ps1` regenerate it after every campaign, together with the same table in `llmproviders-test/README.md`.
 
 - **`orkeon llm probe` runs the decision providers** — `-p typesafe`, `liquid` or `kev` runs seven

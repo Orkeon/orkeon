@@ -202,7 +202,7 @@ cet appel seulement : `responseFormat` (`"json_object"`, `"json_schema"`, `"text
 `llm: { model }` (un modèle par appel) et `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : la réflexion du fournisseur, activée à cet effort ;
 toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max`) et `cache` (la demande de cache de prompt, telle que la prend `agentBuilder().cache(...)`). `act` en prend davantage : voir
 [Options de `act`](../architecture/scripting.md#options-de-act) (`tools`, `effort`, `onToolCall`,
-`onToolResult`, `waitFor`). Il n'y a ni fournisseur, ni température, ni plafond de
+`onToolResult`, `onContextPressure`, `waitFor`). Il n'y a ni fournisseur, ni température, ni plafond de
 jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte.
 
 `chat` prend un tableau de messages nu ou `{ messages: [...] }`. `extract(prompt, schema, opts)`
