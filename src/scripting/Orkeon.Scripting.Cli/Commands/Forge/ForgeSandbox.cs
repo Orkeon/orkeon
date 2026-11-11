@@ -14,7 +14,7 @@ internal sealed record ForgeToolInfo(string Name, string Description);
 internal static class ForgeSandbox
 {
     /// <summary>
-    /// Tools that escape the VFS confinement and never enter a forged crew (V1): the shell and
+    /// Tools that escape the VFS confinement and never enter a forged crew: the shell and
     /// the interpreter. FORGE-10: the mailbox tools are offered — a try runs them on a trial
     /// mailbox, never on the operator's actual mail. DRIVE: the drive tools have no trial drive
     /// yet, and would read and change the operator's actual Google Drive or OneDrive: denied.

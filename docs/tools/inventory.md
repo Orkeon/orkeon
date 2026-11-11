@@ -342,7 +342,8 @@ and serves its tools to an MCP client, `human_input` aside — see
 | `semantic_search` | ✅ for a YAML crew (wired by the run command) | ❌ |
 | `human_input` | ✅ for a YAML crew (on the event stream under `--events`, auto-approved otherwise) | ✅ (console prompt) |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | per agent, when `AllowDelegation` is on | per agent |
-| `spawn_agent` | ❌ (host must register it) | ❌ |
+| `spawn_agent` (script, `SpawnAgentScriptTool`) | ✅ offered to the model in the `ctx.llm.act` of a crew agent's body | ❌ (a scripted command runs no crew agent) |
+| `spawn_agent` (C# `SpawnAgentTool`) | ❌ (host must register it) | ❌ |
 | `code_interpreter` | concrete-type registration only — not resolvable by name | idem |
 | `progress_report` | ❌ | ✅ (scripted commands) |
 | `system_one_decide` | ✅ when a decision provider is configured (`Orkeon:Decision:Provider`, or deduced from its section or API key) | ✅ same rule |

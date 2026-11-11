@@ -61,8 +61,8 @@ vous êtes en déclaratif. Jamais les deux dans un fichier.
 Une crew avec trois tâches soigneusement écrites qui se termine par `await crew.run()`
 s'exécute, affiche un résultat et **ignore chaque tâche** ; elle journalise un avertissement
 qui le dit, et la forme déclarative avertit symétriquement pour le `.body()` qu'elle
-n'invoquera jamais. L'exécution reste fausse, mais pas en silence. C'est l'erreur la plus coûteuse de ce DSL, d'où sa
-place en tête de page plutôt qu'en note de bas de page.
+n'invoquera jamais. L'exécution reste fausse, mais pas en silence. C'est l'erreur la plus
+coûteuse de ce DSL, d'où sa place en tête de page plutôt qu'en note de bas de page.
 
 ## Forme A — la crew déclarative
 

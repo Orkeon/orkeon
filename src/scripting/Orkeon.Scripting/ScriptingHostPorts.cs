@@ -66,6 +66,7 @@ public sealed record ScriptingHostPorts
     /// The run's event stream: told each time a script spawns a child agent (<c>agent.spawned</c>), through
     /// <c>ctx.llm.act</c>'s <c>spawn_agent</c> or <c>ctx.spawnBackground</c>. Null = nobody watches.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.Experimental("ORKEXP007", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
     public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
 
     /// <summary>The transcript caps of an agent instance. Null keeps the defaults.</summary>

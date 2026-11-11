@@ -349,7 +349,8 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 | `semantic_search` | ✅ pour un crew YAML (câblé par la commande run) | ❌ |
 | `human_input` | ✅ pour un crew YAML (sur le flux d'événements sous `--events`, approuvé automatiquement sinon)  | ✅ (invite console) |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | par agent, quand `AllowDelegation` est actif | par agent |
-| `spawn_agent` | ❌ (l'hôte doit l'enregistrer) | ❌ |
+| `spawn_agent` (script, `SpawnAgentScriptTool`) | ✅ proposé au modèle dans le `ctx.llm.act` du corps d'un agent de crew | ❌ (une commande scriptée n'exécute aucun agent de crew) |
+| `spawn_agent` (C# `SpawnAgentTool`) | ❌ (l'hôte doit l'enregistrer) | ❌ |
 | `code_interpreter` | enregistrement en type concret seulement — non résoluble par nom | idem |
 | `progress_report` | ❌ | ✅ (commandes scriptées) |
 | `system_one_decide` | ✅ quand un fournisseur de décision est configuré (`Orkeon:Decision:Provider`, ou déduit de sa section ou de sa clé d'API) | ✅ même règle |

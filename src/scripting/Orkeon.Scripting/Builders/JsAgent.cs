@@ -34,7 +34,7 @@ public sealed class JsAgent
 
     /// <summary>
     /// Current crew the agent is attached to, or <c>null</c> when detached.
-    /// V1 enforces mono-crew: an agent can join only one crew at a time. After
+    /// An agent can join only one crew at a time. After
     /// <c>crew.remove(agent)</c> the slot is cleared and the agent can be re-attached
     /// to another crew.
     /// </summary>

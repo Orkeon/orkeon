@@ -227,7 +227,8 @@ A router: the decision model picks the profile that fits the request.
 ```
 
 `small`, `large`, `code` and `general` are LLM profiles (`Llm:Profiles`). A crew uses a decision
-profile like any other: `llm: { profile: cascade }`.
+profile like any other: `llm: { profile: cascade }`; a script names it for one `ctx.llm` call
+with `{ llm: { profile: "cascade" } }`, and its stages judge that call.
 
 The host checks the section when it builds and names the key to fix: a stage `Kind` other than
 `route`, `guard` or `verify`, a missing `Target`, `Routes`, `Risks` or `EscalateTo`, a

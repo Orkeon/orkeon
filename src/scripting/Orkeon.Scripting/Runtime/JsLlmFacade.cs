@@ -146,15 +146,15 @@ public sealed partial class JsLlmFacade
 
     // chat {model} spans with the gen_ai.* attributes (Orkeon.Constants.Llm.GenAiAttributes),
     // like the C# execution loop: one backend view for both runtimes.
-    private Activity? StartChatActivity(string method)
+    private Activity? StartChatActivity(string method, ILlmProvider? provider)
     {
         // A provider configured without a model runs its own default, which only it knows.
-        var model = _provider?.BaseConfig?.Model is { } configured && !string.IsNullOrWhiteSpace(configured) ? configured : null;
+        var model = provider?.BaseConfig?.Model is { } configured && !string.IsNullOrWhiteSpace(configured) ? configured : null;
         var activity = ScriptingActivitySource.Instance.StartActivity(
             GenAiAttributes.SpanName(ScriptingActivitySource.LlmCallSpan, model), ActivityKind.Client);
         if (activity is null) return null;
         activity.SetTag(GenAiAttributes.OperationName, GenAiAttributes.OperationChat);
-        activity.SetTag(GenAiAttributes.ProviderName, Application.Telemetry.OrkeonActivitySources.ProviderName(_provider?.Name));
+        activity.SetTag(GenAiAttributes.ProviderName, Application.Telemetry.OrkeonActivitySources.ProviderName(provider?.Name));
         activity.SetTag(GenAiAttributes.RequestModel, model);
         activity.SetTag(GenAiAttributes.AgentName, _agentName);
         activity.SetTag("orkeon.llm.method", method);
@@ -193,11 +193,12 @@ public sealed partial class JsLlmFacade
     /// <summary>The CLR side of <c>complete</c>: one prompt, the rendered answer.</summary>
     internal Func<string, JsValue?, Task<string>> CompleteAsync => async (prompt, options) =>
     {
-        using var activity = StartChatActivity("complete");
+        var (provider, config) = CallFrom(options);
+        using var activity = StartChatActivity("complete", provider);
         activity?.SetTag("orkeon.llm.prompt.length", prompt.Length);
-        if (_provider is null) return $"<undefined-llm:{prompt}>";
+        if (provider is null) return $"<undefined-llm:{prompt}>";
         using var usage = BeginUsageScope("complete");
-        var resp = await _provider.GenerateAsync(prompt, ConfigFrom(options), _ct).ConfigureAwait(false);
+        var resp = await provider.GenerateAsync(prompt, config, _ct).ConfigureAwait(false);
         CompleteChatActivity(activity, resp);
         return RenderAnswer(resp);
     };
@@ -254,10 +255,11 @@ public sealed partial class JsLlmFacade
     internal Func<JsValue, JsValue?, Task<object>> ChatAsync => async (messages, options) =>
     {
         var msgs = ToMessages(messages);
-        if (_provider is null)
+        var (provider, config) = CallFrom(options);
+        if (provider is null)
             return new { content = $"<undefined-llm:chat:{msgs.Length} msgs>", tokensUsed = 0 };
         using var usage = BeginUsageScope("chat");
-        var resp = await _provider.ChatAsync(msgs, ConfigFrom(options), _ct).ConfigureAwait(false);
+        var resp = await provider.ChatAsync(msgs, config, _ct).ConfigureAwait(false);
         ThrowIfBlocked(resp);
         return new
         {
@@ -274,8 +276,11 @@ public sealed partial class JsLlmFacade
     /// </summary>
     public Func<string, JsValue?, JsValue> stream => (prompt, options) =>
     {
+        // The profile and the options are read when stream() is called, not at the first next():
+        // an unknown profile throws here, and a bag the script changes afterwards changes nothing.
+        var call = CallFrom(options);
         var observations = new StreamObservations();
-        return AsAsyncIterable(StreamCore(prompt, options, observations), observations);
+        return AsAsyncIterable(StreamCore(prompt, call, observations), observations);
     };
 
     /// <summary>
@@ -287,7 +292,7 @@ public sealed partial class JsLlmFacade
     /// protocol needs its own test.
     /// </summary>
     internal IAsyncEnumerable<string> StreamChunks(string prompt, JsValue? options)
-        => StreamCore(prompt, options, new StreamObservations());
+        => StreamCore(prompt, CallFrom(options), new StreamObservations());
 
     /// <summary>
     /// Wraps an <see cref="IAsyncEnumerable{T}"/> into a JS async-iterable object so
@@ -452,21 +457,20 @@ public sealed partial class JsLlmFacade
     /// missing credential, never an empty sequence that reads as "the model said nothing".</para>
     /// </remarks>
     private async IAsyncEnumerable<string> StreamCore(
-        string prompt, JsValue? options, StreamObservations observations)
+        string prompt, (ILlmProvider? Provider, LlmConfig? Config) call, StreamObservations observations)
     {
-        if (_provider is null)
+        var (provider, config) = call;
+        if (provider is null)
         {
             yield return $"<undefined-llm:{prompt}>";
             yield break;
         }
 
-        var config = ConfigFrom(options);
-
         // Open before the first yield: the metered provider reads the attribution when the
         // stream starts, and this iterator resumes from a yield without it.
         using var usage = BeginUsageScope("stream");
 
-        if (_provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider sp && sp.SupportsStreaming)
+        if (provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider sp && sp.SupportsStreaming)
         {
             await foreach (var ev in sp.ChatStreamingAsync([LlmMessage.User(prompt)], config, _ct)
                                .ConfigureAwait(false))
@@ -492,7 +496,7 @@ public sealed partial class JsLlmFacade
             yield break;
         }
 
-        var resp = await _provider.GenerateAsync(prompt, config, _ct).ConfigureAwait(false);
+        var resp = await provider.GenerateAsync(prompt, config, _ct).ConfigureAwait(false);
         yield return RenderAnswer(resp);
         observations.usage = ToStreamUsage(resp);
     }
@@ -541,7 +545,8 @@ public sealed partial class JsLlmFacade
     /// </summary>
     internal Func<JsValue, JsValue, JsValue?, Task<object?>> ExtractAsync => async (prompt, schema, options) =>
     {
-        if (_provider is null)
+        var (provider, _) = CallFrom(options);
+        if (provider is null)
         {
             using var empty = JsonDocument.Parse("{}");
             return JsonElementToObject(empty.RootElement);
@@ -556,11 +561,11 @@ public sealed partial class JsLlmFacade
         // the object anyway. Without these, any prose or markdown reply threw and aborted the whole crew.
         var instruction = ExtractInstruction(schema);
         var system = ResolveSystem(options);
-        var cfg = ConfigForExtract(options, schema);
+        var cfg = ConfigForExtract(options, schema, provider);
         using var usage = BeginUsageScope("extract");
         var resp = prompt.IsString() && system is null
-            ? await _provider.GenerateAsync(Append(prompt.AsString(), instruction), cfg, _ct).ConfigureAwait(false)
-            : await _provider.ChatAsync(ExtractMessages(prompt, system, instruction), cfg, _ct).ConfigureAwait(false);
+            ? await provider.GenerateAsync(Append(prompt.AsString(), instruction), cfg, _ct).ConfigureAwait(false)
+            : await provider.ChatAsync(ExtractMessages(prompt, system, instruction), cfg, _ct).ConfigureAwait(false);
         ThrowIfBlocked(resp);
         var content = StripJsonFences(resp.Content);
         try
@@ -636,13 +641,13 @@ public sealed partial class JsLlmFacade
     /// strict schema needs <c>additionalProperties: false</c> and a full <c>required</c> on every
     /// object, which a hand-written extract schema rarely carries.
     /// </summary>
-    private LlmConfig ConfigForExtract(JsValue? options, JsValue? schema)
+    private LlmConfig ConfigForExtract(JsValue? options, JsValue? schema, ILlmProvider provider)
     {
-        var cfg = ConfigFrom(options) ?? _provider?.BaseConfig ?? LlmConfig.OnProfile();
+        var cfg = ConfigFrom(options, provider) ?? provider.BaseConfig ?? LlmConfig.OnProfile();
         if (cfg.ResponseFormat is not null || CallerForcedText(options))
             return cfg;
         var schemaJson = TryDescribeSchema(schema);
-        var support = _provider?.Capabilities.ResponseFormat ?? ResponseFormatSupport.None;
+        var support = provider.Capabilities.ResponseFormat;
         if (schemaJson is not null && support >= ResponseFormatSupport.JsonSchema)
             return cfg with { ResponseFormat = LlmResponseFormat.JsonSchema("extract", schemaJson, strict: false) };
         return cfg with { ResponseFormat = LlmResponseFormat.JsonObject() };
@@ -678,10 +683,11 @@ public sealed partial class JsLlmFacade
         if (allowed.Length == 0)
             throw new ArgumentException("ctx.llm.decide requires a non-empty choices array.", nameof(choices));
         var decidePrompt = $"{prompt}\n\nReply with exactly one of: {string.Join(", ", allowed)}";
+        var (provider, config) = CallFrom(options);
         using var usage = BeginUsageScope("decide");
-        var resp = _provider is null
+        var resp = provider is null
             ? new LlmResponse { Content = allowed[0] }
-            : await _provider.GenerateAsync(decidePrompt, ConfigFrom(options), _ct).ConfigureAwait(false);
+            : await provider.GenerateAsync(decidePrompt, config, _ct).ConfigureAwait(false);
         ThrowIfBlocked(resp);
         var picked = allowed.FirstOrDefault(c =>
             resp.Content.Trim().StartsWith(c, StringComparison.OrdinalIgnoreCase));
@@ -851,7 +857,8 @@ public sealed partial class JsLlmFacade
             // this call rather than drop it in silence (#128).
             if (facade._permissionGate is null && facade._logger is not null && DeclaresPermissionMode(options))
                 LogUngatedPermissionMode(facade._logger, PermissionMode, facade._agentName);
-            Config = facade.ConfigFrom(options) ?? facade._provider?.BaseConfig ?? LlmConfig.OnProfile();
+            (Provider, var config) = facade.CallFrom(options);
+            Config = config ?? Provider?.BaseConfig ?? LlmConfig.OnProfile();
             // A script tool instance is offered through a proxy bound to this session: its calls
             // cross over to the JS tool pump instead of running on the loop's thread.
             var offered = TryResolveToolSubset(options, out var subset)
@@ -930,6 +937,9 @@ public sealed partial class JsLlmFacade
         internal bool WaitsForChildren { get; }
         internal string PermissionMode { get; }
         internal LlmConfig Config { get; }
+
+        /// <summary>The provider every turn of this call goes to: the agent's, or the one its <c>llm.profile</c> names (#331).</summary>
+        internal ILlmProvider? Provider { get; }
         internal IReadOnlyList<Orkeon.Domain.Tools.Protocol.ToolSchema>? ToolSchemas { get; }
 
         /// <summary>The tools this call offers: the built-ins as they are, the script tools behind a <see cref="ScriptToolProxy"/>.</summary>
@@ -1235,7 +1245,7 @@ public sealed partial class JsLlmFacade
         try
         {
             enteredRunScope = (_agentRunScope ?? ownedRunScope!).Enter();
-            if (_provider is null)
+            if (session.Provider is null)
                 return new { output = $"<undefined-llm:act:{session.Prompt}>", iterations = 0 };
 
             for (var i = 0; i < session.MaxIterations; i++)
@@ -1299,7 +1309,7 @@ public sealed partial class JsLlmFacade
         {
             return await WrapUpAsync(session, messages, spent, i).ConfigureAwait(false);
         }
-        using var activity = StartChatActivity("act");
+        using var activity = StartChatActivity("act", session.Provider);
         activity?.SetTag("orkeon.llm.act.iteration", i);
 
         var cfg = session.ToolSchemas is null
@@ -1444,7 +1454,7 @@ public sealed partial class JsLlmFacade
 
         messages.Add(new LlmMessage { Role = "user", Content = WrapUpNote });
         LlmResponse resp;
-        using (var activity = StartChatActivity("act"))
+        using (var activity = StartChatActivity("act", session.Provider))
         {
             activity?.SetTag("orkeon.llm.act.iteration", iteration);
             activity?.SetTag("orkeon.llm.act.budget_exhausted", true);
@@ -1516,10 +1526,10 @@ public sealed partial class JsLlmFacade
     private async Task<LlmResponse> SendChatAsync(LlmMessage[] messages, LlmConfig cfg, ActSession session)
     {
         if ((session.StreamsDeltas || _deltaSink is not null) &&
-            _provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider streamingProvider &&
+            session.Provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider streamingProvider &&
             streamingProvider.SupportsStreaming)
             return await ChatViaStreamAsync(streamingProvider, messages, cfg, session).ConfigureAwait(false);
-        return await _provider!.ChatAsync(messages, cfg, _ct).ConfigureAwait(false);
+        return await session.Provider!.ChatAsync(messages, cfg, _ct).ConfigureAwait(false);
     }
 
     private static IBaseTool? FindTool(ActSession session, string toolName) =>
@@ -2061,7 +2071,10 @@ public sealed partial class JsLlmFacade
     /// configuration gets one built from <see cref="LlmConfig.OnProfile"/>, which names no model
     /// (GAP-18) and no sampling.
     /// </remarks>
-    private LlmConfig? ConfigFrom(JsValue? options)
+    private LlmConfig? ConfigFrom(JsValue? options, ILlmProvider? provider)
+        => ConfigFrom(options, provider, LlmOf(options));
+
+    private LlmConfig? ConfigFrom(JsValue? options, ILlmProvider? provider, JsValue llm)
     {
         // The agent's own effort and cache apply to every call; a call's options win over them (#254).
         LlmConfig? config = AgentSettings is { Thinking: null, Cache: null } or null
@@ -2096,9 +2109,9 @@ public sealed partial class JsLlmFacade
         if (!cache.IsUndefined())
             config = (config ?? Inherited()) with { Cache = JsLlmConfig.CacheFrom(cache, "ctx.llm { cache }") };
 
-        // Nested `{ llm: { model: "..." } }` — the per-call model override: the agent's boot
-        // provider keeps its credentials and endpoint, only the model name changes.
-        var llm = options.Get("llm");
+        // Nested `{ llm: { model: "..." } }` — the per-call model override: the call's provider
+        // (the agent's, or the profile `{ llm: { profile } }` names) keeps its credentials and
+        // endpoint, only the model name changes.
         if (llm.IsObject())
         {
             var model = llm.Get("model");
@@ -2114,7 +2127,56 @@ public sealed partial class JsLlmFacade
         return config;
 
         // A provider that declares no configuration: the call names no model (GAP-18).
-        LlmConfig Inherited() => _provider?.BaseConfig ?? LlmConfig.OnProfile();
+        LlmConfig Inherited() => provider?.BaseConfig ?? LlmConfig.OnProfile();
+    }
+
+    /// <summary>
+    /// The provider and the configuration of one call: <c>{ llm: { profile } }</c> picks the host
+    /// profile the call runs on (#331), as <c>llm.profile(name)</c> does for an agent, and every other
+    /// setting of the bag (<c>model</c> included) patches that provider's own configuration. Without a
+    /// profile the call runs on the agent's provider.
+    /// </summary>
+    /// <exception cref="Orkeon.Scripting.Exceptions.InvalidScriptException">
+    /// The profile is not a name, or the host offers no such profile; the message lists the known ones.
+    /// </exception>
+    private (ILlmProvider? Provider, LlmConfig? Config) CallFrom(JsValue? options)
+    {
+        var llm = LlmOf(options);
+        var provider = ProfileNamed(llm) is { } profile
+            ? Orkeon.Scripting.Bindings.JsLlmNamespace.ProviderFor(_engine, profile, $"ctx.llm {{ llm: {{ profile: \"{profile}\" }} }}", _provider)
+            : _provider;
+        return (provider, ConfigFrom(options, provider, llm));
+    }
+
+    /// <summary>
+    /// The bag's <c>llm</c> value, read once. An <c>LlmConfig</c> (<c>llm.profile(...)</c>,
+    /// <c>.with(...)</c>) is refused: the call would read its profile and model and drop its temperature
+    /// and token cap, and a setting never vanishes.
+    /// </summary>
+    private static JsValue LlmOf(JsValue? options)
+    {
+        if (options is null || !options.IsObject()) return JsValue.Undefined;
+        var llm = options.Get("llm");
+        if (llm is Jint.Runtime.Interop.ObjectWrapper { Target: JsLlmConfig })
+            throw new Orkeon.Scripting.Exceptions.InvalidScriptException(
+                "ctx.llm { llm } takes { profile?, model? }, not an LlmConfig: name the profile and the model " +
+                "({ llm: { profile: cfg.profile, model: cfg.model } }), or configure the agent with .llm(cfg).");
+        return llm;
+    }
+
+    /// <summary>The profile <c>{ llm: { profile } }</c> names, or null when the bag names none.</summary>
+    private static string? ProfileNamed(JsValue llm)
+    {
+        if (!llm.IsObject()) return null;
+        var profile = llm.Get("profile");
+        if (profile.IsUndefined() || profile.IsNull()) return null;
+        if (!profile.IsString())
+            throw new Orkeon.Scripting.Exceptions.InvalidScriptException(
+                "ctx.llm { llm: { profile } } takes the profile name as a string.");
+        if (string.IsNullOrWhiteSpace(profile.AsString()))
+            throw new Orkeon.Scripting.Exceptions.InvalidScriptException(
+                "ctx.llm { llm: { profile } } takes a non-empty profile name.");
+        return profile.AsString().Trim();
     }
 
     /// <summary>

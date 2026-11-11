@@ -51,7 +51,7 @@ inferred.
 |---|---|---|
 | `name` | ✅ | ✅ |
 | `role` `goal` `backstory` | stored, not sent: `ctx.llm` sends your prompt alone; `role` only serves `crew.findByRole` | ✅ **the agent's prompt** — `build()` requires `role` |
-| `llm` | the provider only: an agent configured with `llm.profile("…")` has `ctx.llm` talk to that profile's provider, on the profile's model; otherwise `ctx.llm` uses the host's provider on its configured model (per call: `{ llm: { model } }`) | ✅ an `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — sets the agent's provider (one of the host's profiles), model, temperature and token cap. A string or a plain object is refused by `.llm(...)` |
+| `llm` | the provider only: an agent configured with `llm.profile("…")` has `ctx.llm` talk to that profile's provider, on the profile's model; otherwise `ctx.llm` uses the host's provider on its configured model (per call: `{ llm: { profile } }` for another host profile, `{ llm: { model } }` for another model) | ✅ an `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — sets the agent's provider (one of the host's profiles), model, temperature and token cap. A string or a plain object is refused by `.llm(...)` |
 | `tools([...])` built-ins by name | ✅ what `ctx.llm.act` may call — a name the host does not offer rejects `act` with an `UnknownToolError`, before any model call | ✅ strict: an unknown name fails the run |
 | `withAutonomousTool(s)` instances | callable from a body (`tool.execute(input)`) and offered to `ctx.llm.act`, which runs the tool's `execute` in the script | ✅ registered and resolved by name |
 | `effort(level)` — `"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: turns the provider's thinking on at that effort | ✅ sent on the agent's `ctx.llm` calls, unless a call sets its own `{ effort }` | ✅ |
@@ -180,15 +180,21 @@ state is a JS `Proxy` whose `set` trap exists to make that loud rather than lost
 `ctx.llm` — `complete(prompt)`, `chat(messages)`, `stream(prompt)` (async-iterable; `usage`
 and `reasoningChunks` are read after the loop), `extract(prompt, schema)`,
 `decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, and `interrupt()` /
-`isInterrupted`. Every call goes to the host's configured provider; without one, a
-`<undefined-llm:…>` echo answers, which is what lets the examples run keyless. A call takes three
-options, all patching the host provider's configuration for that call only:
+`isInterrupted`. Every call goes to the agent's provider (the host's, or its profile's), or to the
+profile `{ llm: { profile } }` names; without one, a `<undefined-llm:…>` echo answers, which is what lets the examples run keyless. A call takes these
+options, all for that call only: `llm: { profile }` runs it on the host profile of that name
+(`Llm:Profiles:<name>`) by the rule of `llm.profile(name)` — a name the host does not offer throws,
+listing the known ones, `"default"` is the host's own provider, and a decision profile applies its
+stages to the call — and the others patch the configuration of the call's provider:
 `responseFormat` (`"json_object"`, `"json_schema"`, `"text"`), `llm: { model }` (a per-call
-model) and `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: the provider's thinking, on at that effort;
+model, within the profile's provider when `profile` is set: `{ profile, model }` is
+`llm.profile(profile, { model })`; an `LlmConfig` is refused there, its temperature and token cap
+would not apply) and `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: the provider's thinking, on at that effort;
 any other value is refused with `effort must be low|medium|high|xhigh|max`) and `cache` (the prompt-cache request, as `agentBuilder().cache(...)` takes it). `act` takes more: see
 [Options of `act`](../architecture/scripting.md#options-of-act) (`tools`, `effort`, `onToolCall`,
-`onToolResult`, `onContextPressure`, `waitFor`). There is no per-call provider, temperature or token cap, and no `signal` — the call
-already observes the context's.
+`onToolResult`, `onContextPressure`, `waitFor`). There is no per-call vendor, temperature or token cap, and no `signal` — the call
+already observes the context's. `embed` is a local stub: it calls no provider and reads none of these
+options.
 
 `chat` takes a bare message array or `{ messages: [...] }`. `extract(prompt, schema, opts)` takes
 the same forms as its first argument, the caller's turns sent in order, plus a prompt string; its

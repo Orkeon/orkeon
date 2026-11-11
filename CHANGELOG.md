@@ -9,15 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0-rc.7] - 2026-11-11
 
-The last release candidate before 1.0.0. Since `1.0.0-rc.6`: Orkeon Studio moves to its own repository
+A release candidate for 1.0.0. Since `1.0.0-rc.6`: Orkeon Studio moves to its own repository
 and the CLI family ships to NuGet for it; the framework closes its gaps — record and
 replay of LLM calls, durable human-in-the-loop, a durable run history, one checkpoint per
 task and `orkeon run --resume`, a retry per task, an LLM judge, `orkeon eval`, the YAML
 `graph:` block, `dotnet new` templates, OAuth and Streamable HTTP for MCP, crews served as
 MCP tools, health probes and a run API on `orkeon-host` (FWK-01..28); decision tasks and
 `when` conditions serve three decision-model providers (ADR-015, ADR-016); the
-compatibility shims are removed; and from this version on, the public API in
-`PublicAPI.Shipped.txt` is the 1.x stability commitment.
+compatibility shims are removed; and the public API in `PublicAPI.Shipped.txt` is the
+candidate 1.x stability commitment.
 
 ### Added
 
@@ -37,6 +37,10 @@ compatibility shims are removed; and from this version on, the public API in
   serves that `lib/served-models.json` does not, and those it no longer serves; a report points at
   the provider's notes in `lib/catalog.json` instead of copying them. The nightly integration run
   passes the `TYPESAFE_API_KEY` repository secret to the TypeSafe integration tests.
+
+### Added — one `ctx.llm` call on another LLM profile
+
+- **`{ llm: { profile } }` runs one `ctx.llm` call on a host profile** (#331) — `LlmCallOptions.llm`, and so `ActOptions.llm`, takes `profile` beside `model`: `ctx.llm.act(brief, { llm: { profile: "small" } })` runs that call (and `complete`, `chat`, `stream`, `extract`, `decide`) on the provider of `Llm:Profiles:small`, while the agent keeps its own for its other calls. The rule is `llm.profile(name)`'s: a name the host does not offer throws, listing the known profiles; `"default"` is the host's own provider; a decision profile applies its stages to the call. A `model` beside the profile is the model within that profile's provider — `{ profile, model }` is `llm.profile(profile, { model })`. An `LlmConfig` passed as `llm` (`llm.profile(...).with(...)`) is refused, since its temperature and token cap would not apply; an empty profile name is refused; `stream` checks the profile when it is called, not at its first chunk; `embed`, a local stub, reads no option.
 
 ### Changed — Together AI's default model **[breaking]**
 
@@ -75,6 +79,22 @@ compatibility shims are removed; and from this version on, the public API in
 - **The campaign catalogue's misfiled candidates run again** — `gpt-6.1-terra`, `claude-fable-5-2`, `gemini-4-argon`, `gemini-4-carbon` and `MiniMax-M3.1-Flash` sat in their provider's `notes` instead of `candidateModels`, so `--candidates` skipped them; they are candidates again, as the README already listed them.
 - **`reasoning_effort: none` reaches OpenAI again** — since the effort levels gained `xhigh` and `max` (#242), a value outside `low`…`max` was "lowered" to `low`, and the `gpt-5` row of the model capability table caught `gpt-5.6-*` and omitted `none` there: every GPT-5.6 and GPT-6 tier that needs `none` to take function tools on chat/completions answered tools and the messages-array shape with a 400 (LLM campaign of 2026-11-11). `LlmThinkingConfig.EffortFor` now returns a value outside the levels unchanged, for the vendor to judge, and `gpt-5.6` has its own unrestricted row.
 
+### Fixed — the dotnet tools carry the natives of every desktop runtime
+
+- **`orkeon` and `orkeon-repl` run on Windows and macOS again** (#324) — the build trim that drops the
+  native assets of other runtimes also ran while `dotnet pack` packed a tool, so the `1.0.0-rc.6`
+  `Orkeon.Scripting.Cli` package, packed on Linux, held the linux-x64 and unix natives alone and did
+  not start on Windows or macOS. The trim now skips a tool project while it is packed (its plain
+  builds stay trimmed), and the iOS and Android natives are stripped from every tool package: both
+  tools weigh about 187 MB.
+
+### Changed — three runtime messages name no roadmap version
+
+- The refusal of an agent's `.concurrency(n)` other than 1 now reads `.concurrency(1) is the only
+  value accepted: an agent's concurrency is a mutex.`, `RecursiveAgentInvocationException`
+  `Recursive invocation of agent '<name>' is not supported.`, and a second waiter on an agent's
+  inbox `Only one waiter per inbox is supported.`; none names a version any more.
+
 ### Fixed — a scripted spawn emits `agent.spawned`
 
 A script's `spawn_agent` (the model calling it during `ctx.llm.act`) and `ctx.spawnBackground` were built with
@@ -82,7 +102,8 @@ A script's `spawn_agent` (the model calling it during `ctx.llm.act`) and `ctx.sp
 no `agent.spawned` for a child a script started. The spawn now reports it itself, once the spawn is accepted (an
 unknown agent or a spent budget emits nothing): `role` is the child's role and `name` its crew agent name; the
 input is never in the event. The run's publisher reaches the script host through the new
-`ScriptingHostPorts.RunEvents`; null keeps a script unobserved.
+`ScriptingHostPorts.RunEvents`, experimental like the `IRunEventSink` it holds (`ORKEXP007`); null keeps a script
+unobserved. A scripted spawn is no tool call on the stream: no `tool.called` precedes it, no `tool.returned` follows.
 
 ### Fixed — Aspire is pinned to 13.6.5 (GHSA-f7vh-h5g3-7jrh)
 
@@ -329,7 +350,7 @@ so the third-party notices are unchanged.
 - **[breaking]** a Graph run no longer checkpoints a task under a second ordinal (`second#2`) after a failure: the graph does not run a task twice, the attempts are inside one invocation. `ICheckpointManager.CheckpointAsync` gains a trailing `int retryCount = 0`.
 - **[breaking]** decision tasks lose the old graph retry: a decision-model failure used to be retried by the graph's retry cycles and now fails the task at once (the decision circuit's `fallback` is the recovery); the graph's `maxRetryCycles` is gone and a decision task cannot declare `retry:`.
 
-### Added - `orkeon eval` and the `Evaluation` section read by the runner hosts (FWK-09)
+### Added — `orkeon eval` and the `Evaluation` section read by the runner hosts (FWK-09)
 
 - **`orkeon eval run --dataset <json> [--evaluators ...] [--llm-judge] [--offline] [--output /output/eval] [--min-score 0.7] [--crew <file>]`** scores a dataset with the default suite and writes a JSON report; exit 1 under `--min-score`. With `--crew` the crew runs once per case first (its prompt is the case's `task_description`), offline on the mock provider with `--llm-mock`; its final output replaces `output` in the report and the dataset file is never modified. **`eval bench --runs N --baseline <json>`** and **`eval compare a.json b.json`** exit 1 on a regression.
 - **`RunnerHost` binds the `Evaluation` section** (`AddOrkeonEvaluation(configuration)`, next to the permission gate) and registers `AddOrkeonBenchmarking()`: `Evaluation:EnableLlmJudge` was bound by no shipped binary. `orkeon` and `orkeon-host` now list `Evaluation` among the sections they read.
@@ -337,7 +358,7 @@ so the third-party notices are unchanged.
 - **`--offline` with `--crew` refuses a crew that would reach a real model**: `CrewRunEntryPoint.RunAsync(..., offline: true)` checks, once the crew is loaded, the model of every agent (its own profile, its own provider, the host default) and of the manager, and refuses with the agent and the profile named. **`RedactingRunEventSink.Redact`** is now public: the strings of an eval report go through the redaction of the run history.
 - **`ReportExporter.ToJson`** (evaluation, benchmark and comparison reports, snake_case) and **`ReportExporter.ReadComparableReport`**.
 
-### Changed - `orkeon rag eval` is `orkeon eval rag` (FWK-09)
+### Changed — `orkeon rag eval` is `orkeon eval rag` (FWK-09)
 
 - **[breaking]** `orkeon rag eval` is now **`orkeon eval rag`**, with the same options and no alias; `rag` keeps `ingest` and `search`. Migration: replace `orkeon rag eval` with `orkeon eval rag` in scripts and CI (`rag-eval.yml` does). The error lines read `orkeon eval rag: ...`.
 

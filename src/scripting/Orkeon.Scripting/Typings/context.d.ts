@@ -79,6 +79,10 @@ declare global {
          */
         extract<T>(prompt: string | readonly Message[] | MessageList, schema: JsonSchema, opts?: ExtractOptions): Promise<T>;
         decide<T extends string>(prompt: string, choices: readonly T[], opts?: LlmCallOptions): Promise<T>;
+        /**
+         * A deterministic local vector per text, for exercising the API without a model: no provider is
+         * called, so `opts` is read by nothing (an unknown `llm.profile` does not throw here).
+         */
         embed(text: string | readonly string[], opts?: LlmCallOptions): Promise<readonly number[][]>;
         /**
          * The LLM ⇄ tool-call loop over the agent's tools: `.tools([...])` built-ins and
@@ -105,15 +109,25 @@ declare global {
     }
 
     /**
-     * The per-call options every `ctx.llm` method reads. Two settings, both PATCHING the host
-     * provider's configuration for this call only: the response format, and the model. There is
-     * no per-call provider, temperature or token cap (GAP-12: they were declared here and never
-     * read), and no `signal` — the call already observes the context's.
+     * The per-call options of the `ctx.llm` methods that send a call (`embed`, a local stub, reads
+     * none of them). The call runs on the agent's provider, or
+     * on the host profile `llm.profile` names; the response format and the model PATCH that
+     * provider's configuration for this call only. There is no per-call vendor, temperature or
+     * token cap (GAP-12: they were declared here and never read), and no `signal` — the call
+     * already observes the context's.
      */
     interface LlmCallOptions {
         responseFormat?: ResponseFormatType;
-        /** The per-call model: the host's provider keeps its credentials and endpoint. */
-        llm?: { model?: string };
+        /**
+         * The per-call LLM. `profile` runs this call on the host profile of that name
+         * (`Llm:Profiles:<name>`), by the rule of `llm.profile(name)`: a name the host does not offer
+         * throws, listing the known ones; `"default"` is the host's own provider; a decision profile
+         * applies its stages to the call. `model` is the per-call model within the call's provider
+         * (the profile's when `profile` is set, else the agent's): the provider keeps its
+         * credentials and endpoint — `{ profile, model }` is `llm.profile(profile, { model })`. An
+         * `LlmConfig` is not accepted here (it throws): its temperature and token cap would not apply.
+         */
+        llm?: { profile?: string; model?: string; provider?: never };
         /** Turns the provider's thinking on at this effort for the call. */
         effort?: "low" | "medium" | "high" | "xhigh" | "max";
         /**

@@ -59,8 +59,8 @@ declarative. Never both in one file.
 A crew with three carefully written tasks that ends with `await crew.run()` still runs,
 prints a result, and **ignores every task**; it logs a warning saying so, and the declarative
 shape warns symmetrically about the `.body()` it will never invoke. The run is still wrong,
-but not silently. That is the single most expensive mistake in this DSL, which is why it is the first thing on this
-page rather than a footnote.
+but not silently. That is the single most expensive mistake in this DSL, which is why it is
+the first thing on this page rather than a footnote.
 
 ## Shape A — the declarative crew
 
