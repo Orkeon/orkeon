@@ -54,7 +54,7 @@
       "_comment": "International endpoint by default. Mainland China account: baseUrl https://api.moonshot.cn/v1.",
       "apiKeyEnv": "MOONSHOT_API_KEY",
       "modes": "M1,M2,M3,M4,M5",
-      "models": ["kimi-k2.6"]
+      "models": ["kimi-k3.1-pro"]
     },
 
     "qwen": {
@@ -79,7 +79,7 @@
 
     "zai": {
       "apiKeyEnv": "ZAI_API_KEY",
-      "models": ["glm-5.2"]
+      "models": ["glm-5.3-flashx"]
     },
 
     "grok": {

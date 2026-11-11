@@ -73,23 +73,25 @@ public static class LlmProviderDefaultModels
     public const string DeepSeek = "deepseek-flash";
 
     /// <summary>
-    /// Kimi (Moonshot AI). Catalogue review 2026-09-19: <c>kimi-k2.6</c> is served with no
-    /// retirement date (<c>kimi-k2.5</c> and the <c>moonshot-v1-*</c> series went on
-    /// 2026-08-31); the flagship <c>kimi-k3</c> (1 M context, 3 / 15 $/M) fixes
-    /// <c>temperature</c>, <c>top_p</c>, <c>n</c> and both penalties, refuses a
-    /// <c>thinking</c> field and always reasons — a candidate once the dialect strips those
-    /// and a campaign has archived an M1. The vendor docs moved to <c>platform.kimi.ai</c>.
+    /// Kimi (Moonshot AI). Campaign of 2026-11-11: <c>kimi-k3.1-pro</c>, the new top model of the
+    /// K3 family (1 M context, image + video + reasoning), 12/12 direct and on OpenRouter, where
+    /// <c>kimi-k2.6</c>, the default until then, stayed 10/1/1 (M8 JSON fenced in markdown, M10 no
+    /// cache breakdown). The family fixes <c>temperature</c> (only 1 is allowed), <c>top_p</c>,
+    /// <c>n</c> and both penalties, refuses a <c>thinking</c> field and always reasons (catalogue
+    /// review 2026-09-19): <c>KimiLlmProvider</c> leaves those fields out for it and reports each.
+    /// The vendor docs moved to <c>platform.kimi.ai</c>.
     /// </summary>
-    public const string Kimi = "kimi-k2.6";
+    public const string Kimi = "kimi-k3.1-pro";
 
     /// <summary>
-    /// Z.AI (Zhipu GLM). Catalogue review 2026-09-19: <c>glm-5.2</c> is still listed under
-    /// "Latest Models", at the price of <c>glm-5.3</c> (2026-08-18, 1.40 / 4.40 $/M). The 5.3
-    /// family (<c>glm-5.3-flash</c> 0.15 / 0.50 $/M with image and video input,
-    /// <c>glm-5.3-flashx</c>) cannot disable thinking, so the <c>Toggle</c> declaration needs
-    /// a per-model guard before any of them becomes the default, campaign included.
+    /// Z.AI (Zhipu GLM). Campaign of 2026-11-11: <c>glm-5.3-flashx</c>, 12/12 for the second time
+    /// (first on 2026-10-07) - it reads images and its cache is read (8064 tokens, ratio 1.00) - where
+    /// <c>glm-5.2</c>, the default until then, stayed 10/2 (M9 code 1210, text only; M10 0 cached).
+    /// The 5.3 family (<c>glm-5.3</c>, <c>glm-5.3-flash</c>, <c>glm-5.3-flashx</c>) cannot disable
+    /// thinking: <c>ZaiLlmProvider</c> does not send a <c>thinking: disabled</c> block to it and
+    /// reports the option instead.
     /// </summary>
-    public const string Zai = "glm-5.2";
+    public const string Zai = "glm-5.3-flashx";
 
     /// <summary>
     /// Qwen (Alibaba DashScope). Catalogue review 2026-09-19: <c>qwen3.7-plus</c> is still the

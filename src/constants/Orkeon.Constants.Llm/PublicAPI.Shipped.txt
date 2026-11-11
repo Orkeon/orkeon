@@ -80,7 +80,7 @@ const Orkeon.Constants.Llm.LlmProviderDefaultModels.DockerModelRunnerApiKeyPlace
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.Gemini = "gemini-3.7-flash" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.Grok = "grok-4.6" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.HuggingFace = "meta-llama/Llama-3.1-8B-Instruct" -> string!
-const Orkeon.Constants.Llm.LlmProviderDefaultModels.Kimi = "kimi-k2.6" -> string!
+const Orkeon.Constants.Llm.LlmProviderDefaultModels.Kimi = "kimi-k3.1-pro" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.Mammouth = "gemini-3.7-flash" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.MiniMax = "MiniMax-M2" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.Mistral = "mistral-medium-2604" -> string!
@@ -89,7 +89,7 @@ const Orkeon.Constants.Llm.LlmProviderDefaultModels.OpenAI = "gpt-5.6-sol" -> st
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.OpenRouter = "google/gemini-3.7-flash" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.Qwen = "qwen3.7-plus" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.Together = "zai-org/GLM-5.3-Flash" -> string!
-const Orkeon.Constants.Llm.LlmProviderDefaultModels.Zai = "glm-5.2" -> string!
+const Orkeon.Constants.Llm.LlmProviderDefaultModels.Zai = "glm-5.3-flashx" -> string!
 const Orkeon.Constants.Llm.LlmProviderEndpoints.Anthropic = "https://api.anthropic.com" -> string!
 const Orkeon.Constants.Llm.LlmProviderEndpoints.DeepSeek = "https://api.deepseek.com" -> string!
 const Orkeon.Constants.Llm.LlmProviderEndpoints.DockerModelRunner = "http://localhost:12434/engines/llama.cpp/v1" -> string!
