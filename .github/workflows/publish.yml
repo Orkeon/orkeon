@@ -76,7 +76,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ "$(gh api "repos/${GITHUB_REPOSITORY}" --jq .private)" != "true" ]; then exit 0; fi
-          echo "::error::The repository is private. actions/attest-build-provenance requires a public repository or a paid plan, and it runs before either push — so nothing would be published even if every other step passed. Make the repository public (backstage PUB-26 §2), then re-run this workflow or re-push the tag."
+          echo "::error::The repository is private. actions/attest-build-provenance requires a public repository or a paid plan, and it runs before either push — so nothing would be published even if every other step passed. Make the repository public, then re-run this workflow or re-push the tag."
           exit 1
       - name: Free up runner disk space
         run: |

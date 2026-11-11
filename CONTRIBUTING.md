@@ -82,11 +82,6 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 > [Install from source](docs/getting-started/three-ways-to-run-orkeon.md#install-from-source).
 > Run it again after a `git pull`.
 
-> **Note** — this repository declares **private maintainer submodules**: clone
-> **without** `--recursive` (as above). The build, the tests and the whole contribution
-> workflow do not need them; a failing `git submodule update` on those paths is expected
-> and harmless.
-
 > **First build touches the network once**: the scripting layer bootstraps a small
 > esbuild toolchain (`npm ci` under `tools/scripting-esbuild/`, strictly from the
 > committed lockfile). To skip it (CI, no-npm machines):

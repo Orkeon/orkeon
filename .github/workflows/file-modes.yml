@@ -16,7 +16,7 @@
 # tracked text file whose FIRST line is a shebang (a .py/.mjs meant to be run directly).
 # A script with no shebang, invoked only as `python script.py`, may stay 100644.
 # Submodules (mode 160000) and symlinks (120000) are skipped: their entries carry no
-# executable bit of their own, and the submodules run this same rule in their own CI.
+# executable bit of their own.
 name: File modes
 on:
   push:

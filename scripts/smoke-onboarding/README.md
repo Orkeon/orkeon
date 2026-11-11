@@ -34,7 +34,7 @@ with durations — the budget fails out loud instead of on a reviewer's stopwatc
 | # | Path | What it exercises |
 |---|------|-------------------|
 | **A** | From sources | `docs/getting-started/run-your-first-example.md`: copy an `appsettings.*.local.json.example`, then run the `01-research-assistant` crew through the `orkeon` CLI (`orkeon run <crew.yaml>`). |
-| **B** | Experiments submodule | `experiments/09-factures-extraction/run.sh`: (1) missing settings must print the actionable `cp …` message and exit 1; (2) after `cp` of the template, the runner (source mode) starts and reaches the LLM call. |
+| **B** | Experiments repository | `experiments/09-factures-extraction/run.sh`: (1) missing settings must print the actionable `cp …` message and exit 1; (2) after `cp` of the template, the runner (source mode) starts and reaches the LLM call. |
 | **C** | No SDK | The same showcase crew from a **self-contained Releases binary** (`ORKEON_SMOKE_RELEASE_URL`) or the **container image** (`ORKEON_SMOKE_IMAGE`, or a locally-built `orkeon-runners` image) — nothing is compiled. |
 
 ## What "success" means
@@ -118,7 +118,7 @@ copies under `examples/` and `experiments/` in particular), so
 - **FAIL** — build/config/registry breakage, a wrong exit code, or a timeout. The
   last 15 log lines of the run are printed above the summary for triage.
 - **SKIP** — the scenario could not be attempted (e.g. scenario C with nothing to
-  run, or the experiments submodule not checked out). Skips never fail the smoke.
+  run, or the private experiments repository not cloned into `experiments/`). Skips never fail the smoke.
 
 The script exits `0` when no non-skipped scenario failed, `1` otherwise.
 

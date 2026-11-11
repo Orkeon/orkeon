@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Orkeon is a C# framework (.NET 10) for teams of AI agents that collaborate on tasks through LLMs: crews of agents, tasks and tools, run in six orchestration modes over 16 LLM providers with 124 built-in tool classes. The version lives in `src/Directory.Build.props` alone: never state it in prose. `git tag` is the authority on what is tagged: never assert tag state in prose.
-Start from `docs/INDEX.md` (`docs/fr/` is its full French mirror). Known gaps between what ships and what is wired are in `docs/reference/limitations.md`, tracked in `backstage/tasks/GAP-00-PLAN.md`: check there before assuming a registered surface is invoked.
+Start from `docs/INDEX.md` (`docs/fr/` is its full French mirror). Known gaps between what ships and what is wired are in `docs/reference/limitations.md`, tracked in the maintainers' `GAP-00-PLAN.md` (backstage repository): check there before assuming a registered surface is invoked.
 Decisions live in `docs/adr/`; breaking changes and migration tables in `CHANGELOG.md`.
 
 ## Commands
@@ -39,7 +39,7 @@ Bandwidth on this machine is capped. Never re-download anything that is already 
 
 ### Branching: never start work on `main`
 
-Before the first change of a new piece of work, read `git branch --show-current`. On `main`, create a branch before any file is touched: `feature/<slug>` (a new capability or behaviour), `fix/<slug>` (a bug, regression or CI repair) or `chore/<slug>` (no behaviour change: docs, refactoring, dependencies, tooling, submodule bumps). On any other branch, continue on it. The slug is short, lowercase and hyphenated. Nothing is ever committed directly to `main`.
+Before the first change of a new piece of work, read `git branch --show-current`. On `main`, create a branch before any file is touched: `feature/<slug>` (a new capability or behaviour), `fix/<slug>` (a bug, regression or CI repair) or `chore/<slug>` (no behaviour change: docs, refactoring, dependencies, tooling). On any other branch, continue on it. The slug is short, lowercase and hyphenated. Nothing is ever committed directly to `main`.
 
 ### Virtual File System: mandatory for all I/O
 
@@ -53,7 +53,7 @@ Spec: `docs/architecture/vfs-compliance.md`.
 
 ### Executable bit
 
-Every `.sh` script, and every script with a shebang meant to be run directly (`.py`, `.mjs`), is tracked as mode `100755`. An NTFS mount hides the problem (`chmod +x` does not persist, everything looks `rwxrwxrwx`); a Linux or macOS clone restores `100644` and fails with `permission denied`. Set the bit in the index with `git update-index --chmod=+x <path>`, then check `git ls-files -s -- '*.sh'` (every line starts with `100755`). The same rule holds in the `backstage` and `experiments` submodules.
+Every `.sh` script, and every script with a shebang meant to be run directly (`.py`, `.mjs`), is tracked as mode `100755`. An NTFS mount hides the problem (`chmod +x` does not persist, everything looks `rwxrwxrwx`); a Linux or macOS clone restores `100644` and fails with `permission denied`. Set the bit in the index with `git update-index --chmod=+x <path>`, then check `git ls-files -s -- '*.sh'` (every line starts with `100755`). The same rule holds in the `backstage` and `experiments` repositories.
 
 ### Test doubles and assertions
 
@@ -87,4 +87,4 @@ The repository holds **48 src projects** and **34 test projects** (`Orkeon.sln`;
 - `src/constants/`: zero-dependency shared-constant satellites. `src/analyzers/`: the VFS analyzer. `src/generators/`: source generators.
 - `tests/` mirrors `src/`; shared fixtures are in `tests/shared/Orkeon.Tests.Shared`.
 - `tools/`: npm bootstraps (esbuild, type checker), the vision-probe image generator. `scripts/`: Sonar, doc gates, example linters, third-party notices.
-- `backstage/` (private submodule): project management. Tasks are `backstage/tasks/<PREFIX>-<NN>-<slug>.md`, never a root `todo/`. `experiments/` (private submodule): experiments.
+- `backstage/` and `experiments/` are not part of this repository: they are the maintainers' private repositories (`Orkeon/backstage`, `Orkeon/experiments`), cloned on their own into those folders and excluded locally (`.git/info/exclude`), never submodules. `backstage` holds project management: tasks are `backstage/tasks/<PREFIX>-<NN>-<slug>.md`, never a root `todo/`; it is committed and pushed in its own repository, with no pointer to bump here.

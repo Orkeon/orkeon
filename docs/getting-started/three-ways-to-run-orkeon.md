@@ -92,8 +92,7 @@ installs it with the archive's own installer: `%LOCALAPPDATA%\Programs\Orkeon` o
 - **Debian and Ubuntu**: the [apt repository](../guides/install-with-apt.md)'s `dev` channel
   serves the builds of `main` without a build on your machine. The script says so, and
   carries on.
-- A shallow clone (`git clone --depth 1`) works. The private maintainer submodules are not
-  needed, and not touched.
+- A shallow clone (`git clone --depth 1`) works.
 
 ### Install the REPL from source
 
