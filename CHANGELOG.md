@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`reasoning_effort: none` reaches OpenAI again** — since the effort levels gained `xhigh` and `max` (#242), a value outside `low`…`max` was "lowered" to `low`, and the `gpt-5` row of the model capability table caught `gpt-5.6-*` and omitted `none` there: every GPT-5.6 and GPT-6 tier that needs `none` to take function tools on chat/completions answered tools and the messages-array shape with a 400 (LLM campaign of 2026-11-11). `LlmThinkingConfig.EffortFor` now returns a value outside the levels unchanged, for the vendor to judge, and `gpt-5.6` has its own unrestricted row.
+
 ## [1.0.0] - 2026-11-10
 
 The first stable release. Since `1.0.0-rc.6`: Orkeon Studio moves to its own repository

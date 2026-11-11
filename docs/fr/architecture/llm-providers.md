@@ -139,7 +139,8 @@ Chaque provider déclare un value object `LlmProviderCapabilities` (Domain, expo
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `EffortLevels`
 (les niveaux d'effort que le champ connaît, `low`, `medium`, `high` par défaut, les cinq avec `xhigh` et `max`
 pour Anthropic et OpenRouter, `max` sans `xhigh` pour DeepSeek et Z.ai : un niveau demandé qui n'est pas déclaré est
-envoyé comme le plus haut niveau déclaré en dessous, avec un avertissement dans le journal du provider), `Vision`,
+envoyé comme le plus haut niveau déclaré en dessous, avec un avertissement dans le journal du provider ; une valeur
+hors des cinq, comme le `none` d'OpenAI, n'est pas un niveau et part telle quelle, le vendeur en juge), `Vision`,
 `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`, `RunsOwnTools` (déclarée par le
 seul pont Microsoft Agent Framework : c'est un agent qui exécute ses propres outils).
 Une capacité n'est pas au vendeur de la déclarer : `GbnfGrammar`, qu'aucune API de vendeur ne

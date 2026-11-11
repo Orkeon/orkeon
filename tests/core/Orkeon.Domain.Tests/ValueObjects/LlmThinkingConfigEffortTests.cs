@@ -39,6 +39,16 @@ public class LlmThinkingConfigEffortTests
     }
 
     [Theory]
+    [InlineData("none")]
+    [InlineData("minimal")]
+    public void ShouldSendAVendorValueUnchanged_WhenItIsOutsideTheLevels(string asked)
+    {
+        // gpt-6-sol takes function tools on chat/completions only at `reasoning_effort: none`: lowering that
+        // value to "low" turns every tool call into a 400 (campaign of 2026-11-11).
+        Assert.Equal(asked, LlmThinkingConfig.EffortFor(asked, LlmThinkingConfig.ThreeLevels));
+    }
+
+    [Theory]
     [Trait("BR", "R-41")]
     [InlineData("low")]
     [InlineData("medium")]

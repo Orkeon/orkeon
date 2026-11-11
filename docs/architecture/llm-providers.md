@@ -135,7 +135,8 @@ to `LlmProviderCapabilities.Unknown`): `ResponseFormat`
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `EffortLevels`
 (the effort levels the field knows, `low`, `medium`, `high` by default, the five with `xhigh` and `max` for
 Anthropic and OpenRouter, `max` without `xhigh` for DeepSeek and Z.ai: a level asked that is not declared is sent as the
-highest declared level below it, with a warning in the provider's log), `Vision`, `ExplicitPromptCaching`,
+highest declared level below it, with a warning in the provider's log; a value outside the five, such as OpenAI's
+`none`, is no level and is sent unchanged for the vendor to judge), `Vision`, `ExplicitPromptCaching`,
 `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`, `RunsOwnTools` (declared by the Microsoft Agent Framework
 bridge alone: it is an agent that runs its own tools).
 One capability is not the vendor's to declare: `GbnfGrammar`, which no vendor API documents, is
