@@ -15,6 +15,7 @@ internal sealed partial class BiDiConnection : IAsyncDisposable
     private readonly IBiDiTransport _transport;
     private readonly TimeSpan _commandTimeout;
     private readonly ILogger? _logger;
+    private readonly TimeProvider _clock;
     private readonly ConcurrentDictionary<long, TaskCompletionSource<JsonObject>> _pending = new();
     private readonly CancellationTokenSource _closing = new();
     private readonly Task _receiveLoop;
@@ -22,12 +23,14 @@ internal sealed partial class BiDiConnection : IAsyncDisposable
     private volatile bool _closed;
     private int _disposed;
 
-    public BiDiConnection(IBiDiTransport transport, TimeSpan commandTimeout, ILogger? logger = null)
+    /// <summary>Opens the connection on <paramref name="transport"/>; <paramref name="clock"/> times the command timeout (tests move it by hand).</summary>
+    public BiDiConnection(IBiDiTransport transport, TimeSpan commandTimeout, ILogger? logger = null, TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(transport);
         _transport = transport;
         _commandTimeout = commandTimeout;
         _logger = logger;
+        _clock = clock ?? TimeProvider.System;
         _receiveLoop = Task.Run(ReceiveLoopAsync);
     }
 
@@ -68,7 +71,7 @@ internal sealed partial class BiDiConnection : IAsyncDisposable
 
             try
             {
-                return await completion.Task.WaitAsync(_commandTimeout, cancellationToken).ConfigureAwait(false);
+                return await completion.Task.WaitAsync(_commandTimeout, _clock, cancellationToken).ConfigureAwait(false);
             }
             catch (TimeoutException ex)
             {

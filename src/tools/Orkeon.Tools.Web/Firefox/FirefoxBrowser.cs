@@ -11,8 +11,11 @@ namespace Orkeon.Tools.Web.Firefox;
 /// session, and closes once the last session has left it - or hands itself to <see cref="Released"/>
 /// when an owner keeps it between sessions.
 /// </summary>
-internal sealed class FirefoxBrowser : IAsyncDisposable
+internal sealed partial class FirefoxBrowser : IAsyncDisposable
 {
+    /// <summary>How many browsers a start launches, at most, when the first leaves its session unanswered.</summary>
+    internal const int StartAttempts = 2;
+
     private readonly IFirefoxBrowser _process;
     private readonly BiDiConnection _connection;
     private readonly FirefoxSessionTimings _timings;
@@ -58,9 +61,13 @@ internal sealed class FirefoxBrowser : IAsyncDisposable
         }
     }
 
-    /// <summary>Starts a browser on <paramref name="profile"/> and opens the protocol session on its channel.</summary>
+    /// <summary>
+    /// Starts a browser on <paramref name="profile"/> and opens the protocol session on its channel. A
+    /// browser that leaves its first <c>session.new</c> unanswered is killed, its profile removed, and a
+    /// new one started once: a second silence fails the start.
+    /// </summary>
     /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing or held.</exception>
-    /// <exception cref="BiDiException">The browser refused the session.</exception>
+    /// <exception cref="BiDiException">The browser refused the session, or two browsers in a row left it unanswered.</exception>
     [SuppressMessage("Reliability", "CA2000", Justification = "The connection is handed to the browser returned, which disposes it; a start that fails disposes the browser.")]
     public static async Task<FirefoxBrowser> OpenAsync(
         IFirefoxLauncher launcher, FirefoxProfileChoice profile, FirefoxToolOptions options, FirefoxSessionTimings? timings, ILogger? logger,
@@ -70,18 +77,43 @@ internal sealed class FirefoxBrowser : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(options);
 
-        var process = await launcher.LaunchAsync(profile, cancellationToken).ConfigureAwait(false);
-        var connection = new BiDiConnection(process.Transport, TimeSpan.FromSeconds(options.CommandTimeoutSeconds), logger);
-        var browser = new FirefoxBrowser(process, connection, timings ?? FirefoxSessionTimings.Default);
-        try
+        timings ??= FirefoxSessionTimings.Default;
+        for (var attempt = 1; ; attempt++)
         {
-            await browser.StartAsync(cancellationToken).ConfigureAwait(false);
-            return browser;
-        }
-        catch
-        {
-            await browser.DisposeAsync().ConfigureAwait(false);
-            throw;
+            var process = await launcher.LaunchAsync(profile, cancellationToken).ConfigureAwait(false);
+            var connection = new BiDiConnection(process.Transport, TimeSpan.FromSeconds(options.CommandTimeoutSeconds), logger, timings.Clock);
+            var browser = new FirefoxBrowser(process, connection, timings);
+            try
+            {
+                try
+                {
+                    await browser.NewSessionAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (BiDiException ex) when (ex.Code == BiDiException.Timeout && attempt < StartAttempts)
+                {
+                    // Seen once on a CI runner (#335): Firefox announced its endpoint, took the connection,
+                    // and never answered the session. A fresh process and profile get past it.
+                    if (logger is not null)
+                        LogSessionUnanswered(logger, options.CommandTimeoutSeconds);
+                    await browser.DisposeAsync().ConfigureAwait(false);
+                    continue;
+                }
+                catch (BiDiException ex) when (ex.Code == BiDiException.Timeout)
+                {
+                    throw new BiDiException(
+                        BiDiException.Timeout,
+                        $"'session.new' got no answer within {options.CommandTimeoutSeconds} s, from Firefox started again after the first one did not answer either.",
+                        ex);
+                }
+
+                await browser.StartAsync(cancellationToken).ConfigureAwait(false);
+                return browser;
+            }
+            catch
+            {
+                await browser.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
         }
     }
 
@@ -218,13 +250,14 @@ internal sealed class FirefoxBrowser : IAsyncDisposable
         await _process.DisposeAsync().ConfigureAwait(false);
     }
 
-    private async Task StartAsync(CancellationToken cancellationToken)
-    {
-        await SendAsync("session.new", new JsonObject
+    private Task<JsonObject> NewSessionAsync(CancellationToken cancellationToken) =>
+        SendAsync("session.new", new JsonObject
         {
             ["capabilities"] = new JsonObject { ["alwaysMatch"] = new JsonObject { ["acceptInsecureCerts"] = false } },
-        }, cancellationToken).ConfigureAwait(false);
+        }, cancellationToken);
 
+    private async Task StartAsync(CancellationToken cancellationToken)
+    {
         // A named profile may restore the tabs of its last session: the blank one Firefox was started
         // on is the one to drive, the others are the user's.
         var tree = await SendAsync("browsingContext.getTree", new JsonObject { ["maxDepth"] = 0 }, cancellationToken).ConfigureAwait(false);
@@ -254,4 +287,8 @@ internal sealed class FirefoxBrowser : IAsyncDisposable
         foreach (var session in sessions)
             session.OnEvent(method, parameters);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Firefox did not answer 'session.new' within {TimeoutSeconds} s: the firefox tool kills it, removes its profile and starts it again once.")]
+    private static partial void LogSessionUnanswered(ILogger logger, int timeoutSeconds);
 }

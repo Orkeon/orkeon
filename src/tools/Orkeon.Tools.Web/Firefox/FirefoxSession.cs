@@ -27,6 +27,9 @@ internal sealed record FirefoxSessionTimings
 
     /// <summary>How long a browser asked to close is given to answer.</summary>
     public TimeSpan CloseWait { get; init; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>The clock the command timeout of the channel runs on.</summary>
+    public TimeProvider Clock { get; init; } = TimeProvider.System;
 }
 
 /// <summary>Where the browser is: the address and the title of the page shown.</summary>
