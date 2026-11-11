@@ -270,11 +270,11 @@ dans la colonne « Plus récent ».
 | Mistral AI | `mistral-medium-2604` | oui — 1,50 / 7,50 $/M, non déprécié | rien pour le chat depuis avril (OCR 4.1 seulement) | reste ; les ids `devstral-*` / magistral sont dans la table des dépréciés ; **2026-11-11** : le défaut et `mistral-large-4` 12/12, `mistral-small-2603` 11/1 (M9) |
 | HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | oui — mais outils sur un seul de ses quatre fournisseurs routés, et `:fastest` peut en choisir un autre | `Qwen/Qwen3.5-9B` (outils sur trois fournisseurs, dès 0,10 / 0,15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidat Qwen3.5-9B — **campagné le 2026-09-21** : 10/0/2, il voit et ses outils tiennent ; son premier passage a rendu un M1 vide après 4113 tokens de réflexion sur le repli 4096 du routeur — épingler `Llm:MaxTokens` (ou couper le thinking) avant d'en faire un défaut. Le routage explique toujours les rouges mouvants du défaut (M2 et M5 rouges ensemble au même passage) ; **2026-11-11** : le défaut 7/3/2 (M2, M5, M9), `Qwen/Qwen3.5-9B` 9/1/2 (M2) |
 | Z.AI | `glm-5.3-flashx` (était `glm-5.2`) | oui — `glm-5.2` toujours sous « Latest Models », 1,40 / 4,40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0,15 / 0,50, image + vidéo), `glm-5.3-flashx` | reste — **campagné le 2026-09-21** : `glm-5.3-flash` 12/12 deux fois (il voit, là où 5.2 et 5.3 répondent `1210` ; cache lu) — le candidat le plus net du parc, à un neuvième du prix ; `glm-5.3` 10/2 (M2, M9) n'apporte rien sur 5.2. La déclaration `Toggle` demande toujours une garde par modèle avant une montée ; **2026-11-11** : `glm-5.3-flashx` de nouveau à 12/12, `glm-5.3` 11/1 (M9), `glm-5.3-flash` 11/1 (M2), `glm-5.2` 10/2 ; **changé le 2026-11-11** : le défaut passe à `glm-5.3-flashx` (12/12 le 2026-10-07 et le 2026-11-11, il voit et son cache est lu). La famille 5.3 ne sait pas couper la réflexion : `ZaiLlmProvider` ne lui envoie pas `thinking: disabled` et signale l'option à la place |
-| Google Gemini | `gemini-3.7-flash` | oui — « génération précédente », sans date d'arrêt, 0,75 / 3,75 $/M jusqu'au 2026-12-31 puis 1,50 / 7,50 | `gemini-3.8-flash` (GA 2026-09-02, même prix, thinking `minimal` refusé) ; `gemini-4-argon`, `gemini-4-carbon` | premier candidat à une montée — **campagné le 2026-09-21** : `gemini-3.8-flash` 11/0/1 deux fois, identique à 3.7 mode pour mode sur le transport direct ; OpenRouter et Mammouth non joués (pas de clé) ; **2026-11-11** : le défaut 11/0/1, `gemini-3.8-flash` 12/0/0, `gemini-4-argon` et `gemini-4-carbon` 11/0/1 chacun ; `gemini-omni-1.2-flash` est listé mais réservé à l'API Interactions, hors de portée de ce provider et non campagné |
+| Google Gemini | `gemini-3.8-flash` (était `gemini-3.7-flash`) | oui — `gemini-3.7-flash` « génération précédente », sans date d'arrêt, 0,75 / 3,75 $/M jusqu'au 2026-12-31 puis 1,50 / 7,50 | `gemini-3.8-flash` (GA 2026-09-02, même prix, thinking `minimal` refusé) ; `gemini-4-argon`, `gemini-4-carbon` | premier candidat à une montée — **campagné le 2026-09-21** : `gemini-3.8-flash` 11/0/1 deux fois, identique à 3.7 mode pour mode sur le transport direct ; OpenRouter et Mammouth non joués (pas de clé) ; **2026-11-11** : le défaut 11/0/1, `gemini-3.8-flash` 12/0/0, `gemini-4-argon` et `gemini-4-carbon` 11/0/1 chacun ; `gemini-omni-1.2-flash` est listé mais réservé à l'API Interactions, hors de portée de ce provider et non campagné ; **changé le 2026-11-11 (campagne complète rejouée)** : `gemini-3.8-flash` 12/0/0 en direct et chez OpenRouter (9/1/2 chez Mammouth, le même M10 qu'en 3.7), le défaut 11/0/1 — le défaut passe à `gemini-3.8-flash`, OpenRouter et Mammouth le suivent |
 | Grok (x.AI) | `grok-4.6` | oui — recommandé, 2 / 6 $/M sous 200K tokens de prompt, 4 / 12 au-delà | aucun | reste (`grok-4.7` est listé depuis) ; **campagné le 2026-11-11** : `grok-4.6` et `grok-4.7` 12/12 |
-| MiniMax | `MiniMax-M2` | oui — listé « legacy », sans date de retrait | `MiniMax-M3` (2026-06-01, 1M, entrée image + vidéo, mêmes 0,30 / 1,20) ; `MiniMax-M3.1-Flash` | reste — **campagné le 2026-09-21** : `MiniMax-M3` 9/1/2 puis 8/1/3 — il lit l'image (désormais compagnon vision du kit), M2 rouge comme M2, le bloc `<think>` inline découpé comme sur M2, 128 tokens en cache une fois ; la question du format de raisonnement est tranchée ; **2026-11-11** : `MiniMax-M3.1-Flash` 10/0/2 (M7 et M8 non déclarés par le provider), M9 vert — il lit l'image là où `MiniMax-M3` lit `72` ; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9) |
-| OpenRouter | `google/gemini-3.7-flash` | oui | `google/gemini-3.8-flash` (2026-09-02, même prix) | suit le défaut direct — **campagné le 2026-10-07** : 11/1 sur les deux (M10 : champs de cache rendus à 0) ; **2026-11-11** : le défaut 12/0/0, `google/gemini-3.8-flash` 11/1/0 (M10), `moonshotai/kimi-k3.1-pro` 12/0/0 |
-| Mammouth AI | `gemini-3.7-flash` | oui | `gemini-3.8-flash` | suit le défaut direct — **campagné le 2026-10-07** : 10/0/2 sur les deux, tous les modes exercés verts ; **2026-11-11** : 9/1/2 sur les deux (M10 : 0 token en cache), `kimi-k3.1-pro` 10/0/2 |
+| MiniMax | `MiniMax-M3` (était `MiniMax-M2`) | oui — `MiniMax-M2` listé « legacy », sans date de retrait | `MiniMax-M3` (2026-06-01, 1M, entrée image + vidéo, mêmes 0,30 / 1,20) ; `MiniMax-M3.1-Flash` | reste — **campagné le 2026-09-21** : `MiniMax-M3` 9/1/2 puis 8/1/3 — il lit l'image (désormais compagnon vision du kit), M2 rouge comme M2, le bloc `<think>` inline découpé comme sur M2, 128 tokens en cache une fois ; la question du format de raisonnement est tranchée ; **2026-11-11** : `MiniMax-M3.1-Flash` 10/0/2 (M7 et M8 non déclarés par le provider), M9 vert — il lit l'image là où `MiniMax-M3` lit `72` ; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9) ; **changé le 2026-11-11 (campagne complète rejouée)** : `MiniMax-M3` 10/0/2 (il lit l'image), `MiniMax-M2` 6/4/2 (M2, M5, M9, M10) — le défaut passe à `MiniMax-M3` et le compagnon vision est retiré |
+| OpenRouter | `google/gemini-3.8-flash` (était `google/gemini-3.7-flash`) | oui | `google/gemini-3.8-flash` (2026-09-02, même prix) | suit le défaut direct — **campagné le 2026-10-07** : 11/1 sur les deux (M10 : champs de cache rendus à 0) ; **2026-11-11** : le défaut 12/0/0, `google/gemini-3.8-flash` 11/1/0 (M10), `moonshotai/kimi-k3.1-pro` 12/0/0 ; **changé le 2026-11-11 (campagne complète rejouée)** : `google/gemini-3.8-flash` 12/0/0, `google/gemini-3.7-flash` 11/1 (M10) — suit le défaut direct en 3.8 |
+| Mammouth AI | `gemini-3.8-flash` (était `gemini-3.7-flash`) | oui | `gemini-3.8-flash` | suit le défaut direct — **campagné le 2026-10-07** : 10/0/2 sur les deux, tous les modes exercés verts ; **2026-11-11** : 9/1/2 sur les deux (M10 : 0 token en cache), `kimi-k3.1-pro` 10/0/2 ; **changé le 2026-11-11 (campagne complète rejouée)** : 9/1/2 sur les deux à nouveau (M10) — suit le défaut direct en 3.8 |
 
 `ModelPricingRegistry` suit les mêmes pages : la famille GPT-5.6 et `gpt-6-astra`, et, pour
 Anthropic (lu le 2026-10-30), Fable 5.1 / Fable 5 à 10 / 50, Opus 5.5 à 4 / 20, Opus 5 et Opus 4.5 à 4.8 à 5 / 25, Sonnet 5 à 2 / 10,
@@ -350,15 +350,15 @@ les plafonds documentés sont ceux de la section suivante.
 | Z.AI | `glm-5.2` | — | — | — | — | 10/2/0 — ❌ M9, M10 |
 |  | `glm-5.3` | — | — | — | — | 11/1/0 — ❌ M9 |
 |  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 |
-|  | `glm-5.3-flashx` *(défaut)* | — | — | — | — | 12/0/0 |
+|  | `glm-5.3-flashx` *(défaut)* | — | — | — | — | 11/1/0 — ❌ M10 (12/0/0 plus tôt le même jour) |
 | Kimi | `kimi-k2.6` | 262 144 | — | image + vidéo + raisonnement | `temperature` = `1` | 10/1/1 — ❌ M8 |
 |  | `kimi-k3` | 1 048 576 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k3.1-pro` *(défaut)* | 1 048 576 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k3.1-pro-highspeed` | 1 048 576 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k2.7-code` | 262 144 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k2.7-code-highspeed` | 262 144 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
-| Google Gemini | `gemini-3.7-flash` *(défaut)* | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
-|  | `gemini-3.8-flash` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 |
+| Google Gemini | `gemini-3.7-flash` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
+|  | `gemini-3.8-flash` *(défaut)* | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 |
 |  | `gemini-4-argon` | 1 048 576 | 32 768 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
 |  | `gemini-4-carbon` | 1 048 576 | 32 768 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
 |  | `gemini-3.5-flash-lite` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 (2026-10-07) |
@@ -374,21 +374,21 @@ les plafonds documentés sont ceux de la section suivante.
 |  | `deepseek-v4.1-flash-1017` | — | — | — | — | 12/0/0 |
 | Grok (x.AI) | `grok-4.6` *(défaut)* | — | — | text + image · 2 / 0.5 / 6 $/M entrée / cache / sortie | — | 12/0/0 |
 |  | `grok-4.7` | — | — | text + image · 2 / 0.5 / 6 $/M entrée / cache / sortie | — | 12/0/0 |
-| MiniMax | `MiniMax-M2` *(défaut)* | — | — | — | — | 8/2/2 — ❌ M2, M9 |
+| MiniMax | `MiniMax-M2` | — | — | — | — | 6/4/2 — ❌ M2, M5, M9, M10 |
 |  | `MiniMax-M2.7` | — | — | — | — | 8/2/2 — ❌ M2, M9 (2026-10-07) |
-|  | `MiniMax-M3` | — | — | — | — | 9/1/2 — ❌ M9 |
+|  | `MiniMax-M3` *(défaut)* | — | — | — | — | 10/0/2 |
 |  | `MiniMax-M3.1-Flash` | — | — | — | — | 10/0/2 |
 | Together AI | `zai-org/GLM-5.3-Flash` *(défaut)* | 1 048 575 | — | 0.15 / 0.5 $/M | — | 10/1/1 — ❌ M10 |
 |  | `Qwen/Qwen3.5-9B` | 262 144 | — | 0.17 / 0.25 $/M | — | 10/1/1 — ❌ M10 |
 |  | `meta-llama/Llama-3.3-70B-Instruct-Turbo` *(ancien défaut)* | 131 072 | — | 1.04 / 1.04 $/M | — | 2/9/1 — plus serverless |
 | HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` *(défaut)* | jusqu'à 131 072 | — | 3 fournisseur(s) routé(s), 1 avec outils | — | 7/3/2 — ❌ M2, M5, M9 |
 |  | `Qwen/Qwen3.5-9B` | jusqu'à 262 144 | — | 3 fournisseur(s) routé(s), 2 avec outils | — | 9/1/2 — ❌ M2 |
-| OpenRouter | `google/gemini-3.7-flash` *(défaut)* | 1 048 576 | 65 536 | effort par défaut `medium` · raisonnement obligatoire | — | 12/0/0 |
-|  | `google/gemini-3.8-flash` | 1 048 576 | 65 536 | effort par défaut `medium` · raisonnement obligatoire | — | 11/1/0 — ❌ M10 |
+| OpenRouter | `google/gemini-3.7-flash` | 1 048 576 | 65 536 | effort par défaut `medium` · raisonnement obligatoire | — | 11/1/0 — ❌ M10 |
+|  | `google/gemini-3.8-flash` *(défaut)* | 1 048 576 | 65 536 | effort par défaut `medium` · raisonnement obligatoire | — | 12/0/0 |
 |  | `moonshotai/kimi-k3.1-pro` | 1 048 576 | 943 718 | effort par défaut `max` | — | 12/0/0 |
 |  | `deepseek/deepseek-v4.1-flash` | 1 048 576 | 943 718 | effort par défaut `high` | — | 4/0/0 (M5, M7, M8, M10) (2026-10-07) |
-| Mammouth AI | `gemini-3.7-flash` *(défaut)* | 1 048 576 | 65 536 | — | — | 9/1/2 — ❌ M10 |
-|  | `gemini-3.8-flash` | 1 048 576 | 65 536 | — | — | 9/1/2 — ❌ M10 |
+| Mammouth AI | `gemini-3.7-flash` | 1 048 576 | 65 536 | — | — | 9/1/2 — ❌ M10 |
+|  | `gemini-3.8-flash` *(défaut)* | 1 048 576 | 65 536 | — | — | 9/1/2 — ❌ M10 |
 |  | `kimi-k3.1-pro` | 1 048 576 | 943 718 | — | — | 10/0/2 |
 |  | `deepseek-v4.1-flash` | 1 048 576 | 1 048 576 | — | — | 1/0/2 (M5, M7, M8) (2026-10-07) |
 
@@ -513,7 +513,7 @@ lu le 2026-09-19 :
 | Qwen | `qwen3.7-plus`, `qwen3.8-flash`, `qwen3.8-max` | 131 072 | alibabacloud.com/help/en/model-studio | la chaîne de pensée a son propre `thinking_budget` ; 65 500 chez Mammouth |
 | Z.AI | `glm-5.2`, `glm-5.3`, `glm-5.3-flash`, `glm-5.3-flashx` | 131 072 | docs.z.ai/guides/overview/concept-param | maximum du schéma ; défaut 65 536 |
 | Z.AI | `glm-4.6v-flash` | 32 768 | docs.z.ai/guides/vlm/glm-4.6v | — |
-| MiniMax | `MiniMax-M2` | 131 072 | platform.minimax.io/docs/guides/models-intro | « 128k (CoT compris) » ; **M3 est absent** — le fournisseur ne publie aucun chiffre de sortie (512k n'apparaît que comme réglage de benchmark ; 512 000 chez Mammouth) |
+| MiniMax | `MiniMax-M2` | 131 072 | platform.minimax.io/docs/guides/models-intro | « 128k (CoT compris) » ; **M3 est absent**, défaut depuis le 2026-11-11 — le fournisseur ne publie aucun chiffre de sortie, il tourne donc sur le repli de 4096 (512k n'apparaît que comme réglage de benchmark ; 512 000 chez Mammouth) |
 | xAI | `grok-4.6` | 128 000 | docs.x.ai/developers/rest-api-reference | pas de plafond par modèle ; le défaut du fournisseur quand le champ manque, raisonnement exclu |
 | Mistral | `mistral-medium-2604` (`mistral-medium-3-5`) | **aucun** | docs.mistral.ai/api/endpoint/chat | pas de plafond de sortie, seulement « prompt + max_tokens ≤ contexte » : le champ est omis et le modèle écrit jusqu'à sa fenêtre |
 | Together | tous | 4096 (repli) | docs.together.ai/docs/serverless-models | aucun plafond de sortie par modèle, seulement prompt + `max_tokens` ≤ fenêtre. La fenêtre elle-même a été le plafond du 2026-09-19 au 2026-09-21, sur l'hypothèse que `context_length_exceeded_behavior: truncate` la ramène à fenêtre − prompt ; la campagne du 2026-09-21 a mesuré que deux des trois moteurs serverless refusent quand même (`max_new_tokens`, `context_length_exceeded`) et que le troisième ne tronque que sur le chemin bufferisé. Le repli tient, le drapeau part toujours, et le filet de rejeu retire le plafond sur ces formulations ; omis, le champ vaut 2048 (`finish_reason: length`) |

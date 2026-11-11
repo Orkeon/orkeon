@@ -252,11 +252,11 @@ says which campaign measured what, and the models they added to the candidates a
 | Mistral AI | `mistral-medium-2604` | yes — 1.50 / 7.50 $/M, not deprecated | nothing for chat since April (OCR 4.1 only) | stays; `devstral-*` / magistral ids sit in the deprecated table; **2026-11-11**: the default and `mistral-large-4` 12/12, `mistral-small-2603` 11/1 (M9) |
 | HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | yes — but tools on one of its four routed providers, and `:fastest` may pick another | `Qwen/Qwen3.5-9B` (tools on three providers, from 0.10 / 0.15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidate Qwen3.5-9B — **campaigned 2026-09-21**: 10/0/2, it sees and its tools hold; its first pass returned an empty M1 after 4113 tokens of thinking on the router's 4096 fallback — pin `Llm:MaxTokens` (or turn thinking off) before making it a default. The routing still explains the default's moving reds (M2 and M5 both red on the same pass); **2026-11-11**: the default 7/3/2 (M2, M5, M9), `Qwen/Qwen3.5-9B` 9/1/2 (M2) |
 | Z.AI | `glm-5.3-flashx` (was `glm-5.2`) | yes — `glm-5.2` still under "Latest Models", 1.40 / 4.40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0.15 / 0.50, image + video), `glm-5.3-flashx` | stays — **campaigned 2026-09-21**: `glm-5.3-flash` 12/12 twice (it sees, where 5.2 and 5.3 answer `1210`; cache read) — the cleanest candidate in the fleet, at a ninth of the price; `glm-5.3` 10/2 (M2, M9) brings nothing over 5.2. The `Toggle` declaration still needs a per-model guard before a bump; **2026-11-11**: `glm-5.3-flashx` 12/12 again, `glm-5.3` 11/1 (M9), `glm-5.3-flash` 11/1 (M2), `glm-5.2` 10/2; **changed 2026-11-11**: the default moves to `glm-5.3-flashx` (12/12 on 2026-10-07 and 2026-11-11, it sees and its cache is read). The 5.3 family cannot switch thinking off: `ZaiLlmProvider` does not send `thinking: disabled` to it and reports the option instead |
-| Google Gemini | `gemini-3.7-flash` | yes — "previous generation", no shutdown date, 0.75 / 3.75 $/M until 2026-12-31 then 1.50 / 7.50 | `gemini-3.8-flash` (GA 2026-09-02, same price, `minimal` thinking rejected); `gemini-4-argon`, `gemini-4-carbon` | first candidate for a bump — **campaigned 2026-09-21**: `gemini-3.8-flash` 11/0/1 twice, identical to 3.7 mode for mode on the direct transport; OpenRouter and Mammouth not played (no key); **2026-11-11**: the default 11/0/1, `gemini-3.8-flash` 12/0/0, `gemini-4-argon` and `gemini-4-carbon` 11/0/1 each; `gemini-omni-1.2-flash` is listed but Interactions-API only, so out of reach of this provider and not campaigned |
+| Google Gemini | `gemini-3.8-flash` (was `gemini-3.7-flash`) | yes — `gemini-3.7-flash` "previous generation", no shutdown date, 0.75 / 3.75 $/M until 2026-12-31 then 1.50 / 7.50 | `gemini-3.8-flash` (GA 2026-09-02, same price, `minimal` thinking rejected); `gemini-4-argon`, `gemini-4-carbon` | first candidate for a bump — **campaigned 2026-09-21**: `gemini-3.8-flash` 11/0/1 twice, identical to 3.7 mode for mode on the direct transport; OpenRouter and Mammouth not played (no key); **2026-11-11**: the default 11/0/1, `gemini-3.8-flash` 12/0/0, `gemini-4-argon` and `gemini-4-carbon` 11/0/1 each; `gemini-omni-1.2-flash` is listed but Interactions-API only, so out of reach of this provider and not campaigned; **changed 2026-11-11 (full rerun)**: `gemini-3.8-flash` 12/0/0 direct and on OpenRouter (9/1/2 on Mammouth, the same M10 as 3.7), the default 11/0/1 — the default moves to `gemini-3.8-flash`, and OpenRouter and Mammouth follow it |
 | Grok (x.AI) | `grok-4.6` | yes — recommended, 2 / 6 $/M below 200K prompt tokens, 4 / 12 above | none | stays (`grok-4.7` is listed since); **campaigned 2026-11-11**: `grok-4.6` and `grok-4.7` 12/12 |
-| MiniMax | `MiniMax-M2` | yes — listed as legacy, no retirement date | `MiniMax-M3` (2026-06-01, 1M, image + video input, same 0.30 / 1.20); `MiniMax-M3.1-Flash` | stays — **campaigned 2026-09-21**: `MiniMax-M3` 9/1/2 then 8/1/3 — it reads the image (now the kit's vision companion), M2 red like M2, the inline `<think>` block split out as on M2, 128 cached tokens once; the reasoning-format question is answered; **2026-11-11**: `MiniMax-M3.1-Flash` 10/0/2 (M7 and M8 not declared by the provider), M9 green — it reads the image where `MiniMax-M3` reads `72`; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9) |
-| OpenRouter | `google/gemini-3.7-flash` | yes | `google/gemini-3.8-flash` (2026-09-02, same price) | follows the direct default — **campaigned 2026-10-07**: 11/1 on both (M10: cache fields returned with 0); **2026-11-11**: the default 12/0/0, `google/gemini-3.8-flash` 11/1/0 (M10), `moonshotai/kimi-k3.1-pro` 12/0/0 |
-| Mammouth AI | `gemini-3.7-flash` | yes | `gemini-3.8-flash` | follows the direct default — **campaigned 2026-10-07**: 10/0/2 on both, every exercised mode green; **2026-11-11**: 9/1/2 on both (M10: 0 cached tokens), `kimi-k3.1-pro` 10/0/2 |
+| MiniMax | `MiniMax-M3` (was `MiniMax-M2`) | yes — `MiniMax-M2` listed as legacy, no retirement date | `MiniMax-M3` (2026-06-01, 1M, image + video input, same 0.30 / 1.20); `MiniMax-M3.1-Flash` | stays — **campaigned 2026-09-21**: `MiniMax-M3` 9/1/2 then 8/1/3 — it reads the image (now the kit's vision companion), M2 red like M2, the inline `<think>` block split out as on M2, 128 cached tokens once; the reasoning-format question is answered; **2026-11-11**: `MiniMax-M3.1-Flash` 10/0/2 (M7 and M8 not declared by the provider), M9 green — it reads the image where `MiniMax-M3` reads `72`; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9); **changed 2026-11-11 (full rerun)**: `MiniMax-M3` 10/0/2 (it reads the image), `MiniMax-M2` 6/4/2 (M2, M5, M9, M10) — the default moves to `MiniMax-M3` and the vision companion is retired |
+| OpenRouter | `google/gemini-3.8-flash` (was `google/gemini-3.7-flash`) | yes | `google/gemini-3.8-flash` (2026-09-02, same price) | follows the direct default — **campaigned 2026-10-07**: 11/1 on both (M10: cache fields returned with 0); **2026-11-11**: the default 12/0/0, `google/gemini-3.8-flash` 11/1/0 (M10), `moonshotai/kimi-k3.1-pro` 12/0/0; **changed 2026-11-11 (full rerun)**: `google/gemini-3.8-flash` 12/0/0, `google/gemini-3.7-flash` 11/1 (M10) — follows the direct default to 3.8 |
+| Mammouth AI | `gemini-3.8-flash` (was `gemini-3.7-flash`) | yes | `gemini-3.8-flash` | follows the direct default — **campaigned 2026-10-07**: 10/0/2 on both, every exercised mode green; **2026-11-11**: 9/1/2 on both (M10: 0 cached tokens), `kimi-k3.1-pro` 10/0/2; **changed 2026-11-11 (full rerun)**: 9/1/2 on both again (M10) — follows the direct default to 3.8 |
 
 `ModelPricingRegistry` follows the same pages: the GPT-5.6 family and `gpt-6-astra`, and, for
 Anthropic (read 2026-10-30), Fable 5.1 / Fable 5 at 10 / 50, Opus 5.5 at 4 / 20, Opus 5 and Opus 4.5 to 4.8 at 5 / 25, Sonnet 5 at 2 / 10,
@@ -330,15 +330,15 @@ caps are the ones of the next section.
 | Z.AI | `glm-5.2` | — | — | — | — | 10/2/0 — ❌ M9, M10 |
 |  | `glm-5.3` | — | — | — | — | 11/1/0 — ❌ M9 |
 |  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 |
-|  | `glm-5.3-flashx` *(default)* | — | — | — | — | 12/0/0 |
+|  | `glm-5.3-flashx` *(default)* | — | — | — | — | 11/1/0 — ❌ M10 (12/0/0 earlier the same day) |
 | Kimi | `kimi-k2.6` | 262 144 | — | image + video + reasoning | `temperature` = `1` | 10/1/1 — ❌ M8 |
 |  | `kimi-k3` | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k3.1-pro` *(default)* | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k3.1-pro-highspeed` | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k2.7-code` | 262 144 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k2.7-code-highspeed` | 262 144 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
-| Google Gemini | `gemini-3.7-flash` *(default)* | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
-|  | `gemini-3.8-flash` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 |
+| Google Gemini | `gemini-3.7-flash` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
+|  | `gemini-3.8-flash` *(default)* | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 |
 |  | `gemini-4-argon` | 1 048 576 | 32 768 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
 |  | `gemini-4-carbon` | 1 048 576 | 32 768 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
 |  | `gemini-3.5-flash-lite` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 (2026-10-07) |
@@ -354,21 +354,21 @@ caps are the ones of the next section.
 |  | `deepseek-v4.1-flash-1017` | — | — | — | — | 12/0/0 |
 | Grok (x.AI) | `grok-4.6` *(default)* | — | — | text + image · 2 / 0.5 / 6 $/M in / cached / out | — | 12/0/0 |
 |  | `grok-4.7` | — | — | text + image · 2 / 0.5 / 6 $/M in / cached / out | — | 12/0/0 |
-| MiniMax | `MiniMax-M2` *(default)* | — | — | — | — | 8/2/2 — ❌ M2, M9 |
+| MiniMax | `MiniMax-M2` | — | — | — | — | 6/4/2 — ❌ M2, M5, M9, M10 |
 |  | `MiniMax-M2.7` | — | — | — | — | 8/2/2 — ❌ M2, M9 (2026-10-07) |
-|  | `MiniMax-M3` | — | — | — | — | 9/1/2 — ❌ M9 |
+|  | `MiniMax-M3` *(default)* | — | — | — | — | 10/0/2 |
 |  | `MiniMax-M3.1-Flash` | — | — | — | — | 10/0/2 |
 | Together AI | `zai-org/GLM-5.3-Flash` *(default)* | 1 048 575 | — | 0.15 / 0.5 $/M | — | 10/1/1 — ❌ M10 |
 |  | `Qwen/Qwen3.5-9B` | 262 144 | — | 0.17 / 0.25 $/M | — | 10/1/1 — ❌ M10 |
 |  | `meta-llama/Llama-3.3-70B-Instruct-Turbo` *(former default)* | 131 072 | — | 1.04 / 1.04 $/M | — | 2/9/1 — no longer serverless |
 | HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` *(default)* | up to 131 072 | — | 3 routed provider(s), 1 with tools | — | 7/3/2 — ❌ M2, M5, M9 |
 |  | `Qwen/Qwen3.5-9B` | up to 262 144 | — | 3 routed provider(s), 2 with tools | — | 9/1/2 — ❌ M2 |
-| OpenRouter | `google/gemini-3.7-flash` *(default)* | 1 048 576 | 65 536 | default effort `medium` · reasoning mandatory | — | 12/0/0 |
-|  | `google/gemini-3.8-flash` | 1 048 576 | 65 536 | default effort `medium` · reasoning mandatory | — | 11/1/0 — ❌ M10 |
+| OpenRouter | `google/gemini-3.7-flash` | 1 048 576 | 65 536 | default effort `medium` · reasoning mandatory | — | 11/1/0 — ❌ M10 |
+|  | `google/gemini-3.8-flash` *(default)* | 1 048 576 | 65 536 | default effort `medium` · reasoning mandatory | — | 12/0/0 |
 |  | `moonshotai/kimi-k3.1-pro` | 1 048 576 | 943 718 | default effort `max` | — | 12/0/0 |
 |  | `deepseek/deepseek-v4.1-flash` | 1 048 576 | 943 718 | default effort `high` | — | 4/0/0 (M5, M7, M8, M10) (2026-10-07) |
-| Mammouth AI | `gemini-3.7-flash` *(default)* | 1 048 576 | 65 536 | — | — | 9/1/2 — ❌ M10 |
-|  | `gemini-3.8-flash` | 1 048 576 | 65 536 | — | — | 9/1/2 — ❌ M10 |
+| Mammouth AI | `gemini-3.7-flash` | 1 048 576 | 65 536 | — | — | 9/1/2 — ❌ M10 |
+|  | `gemini-3.8-flash` *(default)* | 1 048 576 | 65 536 | — | — | 9/1/2 — ❌ M10 |
 |  | `kimi-k3.1-pro` | 1 048 576 | 943 718 | — | — | 10/0/2 |
 |  | `deepseek-v4.1-flash` | 1 048 576 | 1 048 576 | — | — | 1/0/2 (M5, M7, M8) (2026-10-07) |
 
@@ -486,7 +486,7 @@ the 4096 fallback. Only documented figures go in, each read on 2026-09-19:
 | Qwen | `qwen3.7-plus`, `qwen3.8-flash`, `qwen3.8-max` | 131 072 | alibabacloud.com/help/en/model-studio | the chain of thought has its own `thinking_budget`; 65 500 on Mammouth |
 | Z.AI | `glm-5.2`, `glm-5.3`, `glm-5.3-flash`, `glm-5.3-flashx` | 131 072 | docs.z.ai/guides/overview/concept-param | schema maximum; default 65 536 |
 | Z.AI | `glm-4.6v-flash` | 32 768 | docs.z.ai/guides/vlm/glm-4.6v | — |
-| MiniMax | `MiniMax-M2` | 131 072 | platform.minimax.io/docs/guides/models-intro | "128k (including CoT)"; **M3 is absent** — the vendor publishes no output figure (512k appears only as a benchmark setting; 512 000 on Mammouth) |
+| MiniMax | `MiniMax-M2` | 131 072 | platform.minimax.io/docs/guides/models-intro | "128k (including CoT)"; **M3 is absent**, default since 2026-11-11 — the vendor publishes no output figure, so it runs on the 4096 fallback (512k appears only as a benchmark setting; 512 000 on Mammouth) |
 | xAI | `grok-4.6` | 128 000 | docs.x.ai/developers/rest-api-reference | no per-model cap; the vendor's own default when unset, reasoning excluded |
 | Mistral | `mistral-medium-2604` (`mistral-medium-3-5`) | **none** | docs.mistral.ai/api/endpoint/chat | no output cap, only "prompt + max_tokens ≤ context": the field is left out and the model writes to its window |
 | Together | any | 4096 (fallback) | docs.together.ai/docs/serverless-models | no per-model output cap, only prompt + `max_tokens` ≤ window. The window itself was the cap from 2026-09-19 to 2026-09-21, on the assumption that `context_length_exceeded_behavior: truncate` clamps it to window − prompt; the campaign of 2026-09-21 measured that two of three serverless engines refuse regardless (`max_new_tokens`, `context_length_exceeded`) and the third clamps on the buffered path only. The fallback holds, the flag is still sent, and the retry net drops the cap on those wordings; omitted, the field means 2048 (`finish_reason: length`) |

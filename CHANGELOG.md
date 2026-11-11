@@ -32,6 +32,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   |---|---|
   | no model, or `meta-llama/Llama-3.3-70B-Instruct-Turbo` on Together | `zai-org/GLM-5.3-Flash`, or a dedicated endpoint for the Llama model |
 
+### Changed — Gemini's, OpenRouter's, Mammouth's and MiniMax's default models **[breaking]**
+
+- **`LlmProviderDefaultModels.Gemini`** **[breaking]** is now `gemini-3.8-flash` (was `gemini-3.7-flash`, which the vendor labels "previous generation"), and **`OpenRouter`** and **`Mammouth`** follow it (`google/gemini-3.8-flash`, `gemini-3.8-flash`): on the full LLM campaign rerun of 2026-11-11, 3.8 Flash was 12/12 direct and on OpenRouter where 3.7 Flash was 11/0/1 and 11/1 (M10); Mammouth is 9/1/2 on both (M10). Same price until 2026-12-31, same 65 536 output cap. The values change in `PublicAPI.Shipped.txt`.
+- **`LlmProviderDefaultModels.MiniMax`** **[breaking]** is now `MiniMax-M3` (was `MiniMax-M2`, listed as legacy): 10/0/2 that day, reading the image, where `MiniMax-M2` was 6/4/2 (M2, M5, M9, M10). The vendor publishes no output cap for M3: it keeps the 4096 fallback it was campaigned on. The campaign kit retires its MiniMax vision companion, the default now sees.
+
+  | Before | After |
+  |---|---|
+  | no model on Gemini, OpenRouter or Mammouth, running Gemini 3.7 Flash | Gemini 3.8 Flash; pin `Model: gemini-3.7-flash` (`google/gemini-3.7-flash` on OpenRouter) to keep the former model |
+  | no model on MiniMax, running `MiniMax-M2` | `MiniMax-M3`; pin `Model: MiniMax-M2` to keep the former model |
+
 ### Changed — Kimi's and Z.AI's default models **[breaking]**
 
 - **`LlmProviderDefaultModels.Kimi`** **[breaking]** is now `kimi-k3.1-pro` (was `kimi-k2.6`): 12/12 on the LLM campaign of 2026-11-11, where `kimi-k2.6` stayed 10/1/1 (M8 `json_object` fenced in markdown, M10 no cache breakdown). The K3 family fixes `temperature` (only 1 is allowed) and `top_p` and refuses a `thinking` field: `KimiLlmProvider` now leaves those three fields out of a K3 request, on the buffered and the streaming paths alike, and reports each as a structured warning (event 110) instead of letting the API answer 400. The output-cap catalogue pins `kimi-k3.1-pro` at 131 072 like `kimi-k3`. The value changes in `PublicAPI.Shipped.txt`.
@@ -45,6 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | `Thinking.Enabled = false` on a GLM-5.3 model | not sent, one warning; pick `glm-5.2` to turn reasoning off |
 
 ### Fixed
+
+- **`orkeon llm models -p gemini` lists usable identifiers** — Google's OpenAI-compatible `/models` names every model `models/<id>`, a form no configuration writes; the listing now drops the prefix. The LLM campaign kit compared those names with the bare ids of `lib/served-models.json` and reported every Gemini model both new and no longer served.
+- **The campaign catalogue's misfiled candidates run again** — `gpt-6.1-terra`, `claude-fable-5-2`, `gemini-4-argon`, `gemini-4-carbon` and `MiniMax-M3.1-Flash` sat in their provider's `notes` instead of `candidateModels`, so `--candidates` skipped them; they are candidates again, as the README already listed them.
 
 - **`reasoning_effort: none` reaches OpenAI again** — since the effort levels gained `xhigh` and `max` (#242), a value outside `low`…`max` was "lowered" to `low`, and the `gpt-5` row of the model capability table caught `gpt-5.6-*` and omitted `none` there: every GPT-5.6 and GPT-6 tier that needs `none` to take function tools on chat/completions answered tools and the messages-array shape with a 400 (LLM campaign of 2026-11-11). `LlmThinkingConfig.EffortFor` now returns a value outside the levels unchanged, for the vendor to judge, and `gpt-5.6` has its own unrestricted row.
 

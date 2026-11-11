@@ -36,11 +36,11 @@ public class ProviderDefaultsPinningTests
         { nameof(HuggingFaceLlmProvider), "meta-llama/Llama-3.1-8B-Instruct" },
         { nameof(ZaiLlmProvider), "glm-5.3-flashx" },
         { nameof(GrokLlmProvider), "grok-4.6" },
-        { nameof(MiniMaxLlmProvider), "MiniMax-M2" },
+        { nameof(MiniMaxLlmProvider), "MiniMax-M3" },
         // LLM-09: one model, three transports — the fleet's Gemini default under each
         // aggregator's own identifier shape (D-03).
-        { nameof(OpenRouterLlmProvider), "google/gemini-3.7-flash" },
-        { nameof(MammouthLlmProvider), "gemini-3.7-flash" },
+        { nameof(OpenRouterLlmProvider), "google/gemini-3.8-flash" },
+        { nameof(MammouthLlmProvider), "gemini-3.8-flash" },
         // The two providers outside the compatible family declare theirs too since GAP-18:
         // every HTTP provider resolves an unnamed model the same way (HttpLlmProviderBase).
         { nameof(AnthropicLlmProvider), "claude-sonnet-5" },
@@ -139,10 +139,10 @@ public class ProviderDefaultsPinningTests
         { "glm", "glm-5.3-flashx" },
         { "grok", "grok-4.6" },
         { "xai", "grok-4.6" },
-        { "minimax", "MiniMax-M2" },
+        { "minimax", "MiniMax-M3" },
         { "zhipu", "glm-5.3-flashx" },
-        { "openrouter", "google/gemini-3.7-flash" },
-        { "mammouth", "gemini-3.7-flash" },
+        { "openrouter", "google/gemini-3.8-flash" },
+        { "mammouth", "gemini-3.8-flash" },
     };
 
     /// <summary>

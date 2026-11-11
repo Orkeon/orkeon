@@ -14,11 +14,11 @@ or drop an `appsettings.json` next to the crew's `config.yaml`.
 | `appsettings.openai.local.json.example` | OpenAI (`gpt-4o`). |
 | `appsettings.deepseek.local.json.example` | DeepSeek V4 Flash. |
 | `appsettings.glm.local.json.example` | Z.AI GLM-5.2. |
-| `appsettings.gemini.local.json.example` | Google Gemini (OpenAI-compatible endpoint, `gemini-3.7-flash`). |
+| `appsettings.gemini.local.json.example` | Google Gemini (OpenAI-compatible endpoint, `gemini-3.8-flash`). |
 | `appsettings.grok.local.json.example` | Grok / x.AI (OpenAI-compatible endpoint, `grok-4.6`). |
-| `appsettings.minimax.local.json.example` | MiniMax (OpenAI-compatible endpoint, `MiniMax-M2`; intl + mainland hosts). |
-| `appsettings.openrouter.local.json.example` | OpenRouter (model marketplace, `vendor/model` ids, `google/gemini-3.7-flash`). |
-| `appsettings.mammouth.local.json.example` | Mammouth AI (French subscription, LiteLLM proxy, bare vendor ids — `BaseUrl` first, `gemini-3.7-flash`). |
+| `appsettings.minimax.local.json.example` | MiniMax (OpenAI-compatible endpoint, `MiniMax-M3`; intl + mainland hosts). |
+| `appsettings.openrouter.local.json.example` | OpenRouter (model marketplace, `vendor/model` ids, `google/gemini-3.8-flash`). |
+| `appsettings.mammouth.local.json.example` | Mammouth AI (French subscription, LiteLLM proxy, bare vendor ids — `BaseUrl` first, `gemini-3.8-flash`). |
 | `appsettings.glm-medium.local.json.example` | Z.AI GLM-5.2 with `Thinking.Effort = medium`. |
 | `appsettings.local.json.example` | Neutral template (defaults to DeepSeek); edit `BaseUrl`/`Model`/`ApiKeyEnvVar` for any provider. |
 

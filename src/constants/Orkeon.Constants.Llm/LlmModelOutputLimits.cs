@@ -90,7 +90,8 @@ public static class LlmModelOutputLimits
 
         // MiniMax — platform.minimax.io/docs/guides/models-intro, 2026-09-19: M2 "128k (including
         // CoT)". M3 is deliberately absent: the vendor publishes no output figure (512k appears
-        // only as a benchmark setting), so M3 stays on the fallback until it does.
+        // only as a benchmark setting), so M3 - the default since 2026-11-11 - stays on the fallback
+        // until it does (its 10/0/2 campaign of that day ran on the fallback).
         ["MiniMax-M2"] = 131_072,
 
         // xAI — docs.x.ai/developers/rest-api-reference/inference/chat-completions, 2026-09-19: no

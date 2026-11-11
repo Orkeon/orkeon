@@ -74,7 +74,8 @@
         { "id": "gpt-6-astra", "why": "Top tier above Sol (10 / 50 $/M, 2026-09-04). Effort low\u2026max with no `none`: the modes that pair function tools with reasoning measure whether Sol's `reasoning_effort: none` workaround is unnecessary or impossible there." },
         { "id": "gpt-6-sol", "why": "Listed by the API on 2026-10-07, the 6 generation of the default's own tier. Keeps `reasoning_effort: none`, so Sol's two pins carry over unchanged (requiredParams): 11/1 on its first run, the red being M9 at the mandated temperature 1." },
         { "id": "gpt-6-luna", "why": "The small tier of the 6 generation, listed on 2026-10-07. Same two pins as Sol; 12/12 on its first run." },
-        { "id": "gpt-6.1-sol", "why": "Listed on 2026-10-07. Behaves like gpt-6-astra, not like gpt-6-sol: no `reasoning_effort: none`, so function tools are refused on chat/completions \u2014 M2 (messages array) and M5 red until the dialect speaks /v1/responses." }
+        { "id": "gpt-6.1-sol", "why": "Listed on 2026-10-07. Behaves like gpt-6-astra, not like gpt-6-sol: no `reasoning_effort: none`, so function tools are refused on chat/completions \u2014 M2 (messages array) and M5 red until the dialect speaks /v1/responses." },
+        { "id": "gpt-6.1-terra", "why": "Listed after 2026-10-07. Takes `reasoning_effort: none`, unlike gpt-6.1-sol, so Sol's two pins carry over (requiredParams): 12/12 on its first run, 2026-11-11." }
       ],
       "requiredParams": {
         "gpt-5.6-sol": { "temperature": 1, "thinkingEffort": "none" },
@@ -94,7 +95,6 @@
         "`gpt-5.6-sol` reasons by default and refuses function tools on chat/completions as long as `reasoning_effort` is not explicitly `none` (measured 2026-08-30, `none` unblocks the call). The catalog pins it for this model (`requiredParams`); M7 keeps probing thinking with its own explicit effort.",
         "`gpt-6-astra` refuses any temperature other than 1 (`'temperature' does not support 0 with this model. Only the default (1) value is supported`, measured 2026-09-21 — first candidate run 2/10 on that cause alone) and, unlike Sol, has NO `reasoning_effort: none`: pinning it as for Sol turned the run into 3/9 (`does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'`). Without it, function tools on chat/completions are refused outright (`Function tools with reasoning_effort are not supported for gpt-6-astra in /v1/chat/completions. To use function tools, use /v1/responses`) — the Sol workaround is impossible there, which is what the review of 2026-09-19 asked the campaign to settle. The catalog pins the temperature only; M5 is expected red until the dialect learns /v1/responses. Both refused reports (06:35, 06:52) are kept as the trace.",
         "Catalogue read of 2026-10-07 (133 ids, 5 never campaigned in the current chat tiers): `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-6-sol` and `gpt-6-luna` answer exactly like Sol — `'temperature' does not support 0 with this model. Only the default (1) value is supported.` and `Function tools with reasoning_effort are not supported for <model> in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.` — and take Sol's two pins (requiredParams): 11/1, 11/1, 11/1 and 12/12. `gpt-6.1-sol` quotes the same sentence but refuses `none` (`'reasoning_effort' does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'.`): pinned like `gpt-6-astra`, temperature only, 10/2 with M2 (messages array) and M5 red; its 3/9 report of 18:14, run with Sol's pins, is kept as the trace. M9 is the mode that moves at temperature 1: the default read `29`, `gpt-6-sol` `26`, `gpt-5.6-terra` `18` for 73 — model side, as on 2026-08-30 and 2026-09-21.",
-        { "id": "gpt-6.1-terra", "why": "Listed after 2026-10-07. Takes `reasoning_effort: none`, unlike gpt-6.1-sol, so Sol's two pins carry over (requiredParams): 12/12 on its first run, 2026-11-11." },
         "2026-11-11: M2 (messages array) and M5 were red on every model at 06:10 \u2014 Orkeon lowered the pinned `none` to `low` since #242, and the `gpt-5` row of the capability table caught `gpt-5.6-*`. Fixed in 58fe173e6 and replayed at 06:25: gpt-5.6-sol 11/1, gpt-6-sol 11/1 (M9 at the mandated temperature), gpt-6-luna and gpt-6.1-terra 12/12; gpt-6-astra and gpt-6.1-sol stay 10/2 (no `none`: tools need /v1/responses)."
       ]
     },
@@ -107,7 +107,8 @@
         { "id": "claude-fable-5-1", "why": "New top tier (2026-09-01, 10 / 50 $/M). Thinking always on, forced `tool_choice` refused, temperature pinned like Sonnet 5 (requiredParams)." },
         { "id": "claude-sonnet-5-5", "why": "The default's own tier, one generation on (listed 2026-09-28). Thinking adaptive only, temperature pinned (requiredParams); 12/12 on its first run, 2026-10-07." },
         { "id": "claude-haiku-5-5", "why": "The small tier, listed on the day of the campaign (2026-10-07). Temperature pinned; 11/1, the red being the probe's own M9 check \u2014 the model answers `Seventy-three red`, the check looks for the digits." },
-        { "id": "claude-opus-5-5", "why": "Listed 2026-09-21. Temperature pinned; 10/2 on 2026-10-07 (M5/M6 refused as `cyber`, `stop_reason: refusal`), 12/12 on 2026-11-11 with the same prompt: the classifier no longer meets the probe's wording." }
+        { "id": "claude-opus-5-5", "why": "Listed 2026-09-21. Temperature pinned; 10/2 on 2026-10-07 (M5/M6 refused as `cyber`, `stop_reason: refusal`), 12/12 on 2026-11-11 with the same prompt: the classifier no longer meets the probe's wording." },
+        { "id": "claude-fable-5-2", "why": "The top tier, listed 2026-11-09 (1 M context, 128 K output). Refuses an explicit temperature like the rest of the 5 family (requiredParams); 12/12 on its first run, 2026-11-11 \u2014 including the M6 that claude-fable-5-1 still misses." }
       ],
       "requiredParams": {
         "claude-sonnet-5": { "temperature": 1 },
@@ -126,8 +127,7 @@
         "Identity-linked keys require the `anthropic-workspace-id` header on every request (measured 2026-08-30). Declare `workspaceId` in the campaign JSON or pass `--workspace-id`; classic keys need nothing.",
         "`claude-sonnet-5` refuses any explicit temperature other than 1 (`temperature is deprecated for this model`, measured 2026-08-30: 1 and omission pass, 0 and 0.7 do not) — same class as `kimi-k2.6` and `gpt-5.6-sol`, same remedy: the catalog pins it for this model (requiredParams), the report header carries the value used.",
         "Catalogue read of 2026-10-07 (14 ids; the endpoint publishes context, output cap, effort levels and thinking types per model — see served-models.json). Four more models refuse a pinned temperature in the same words (`temperature is deprecated for this model.`): `claude-opus-5`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` — pinned to 1 (requiredParams); 12/12, 10/2, 12/12, 11/1. The listing itself needs the workspace header on an identity-linked key, and `orkeon llm models` cannot send it: the list was read with a direct call. `GET /v1/organizations/workspaces` answers that same key with the workspace ids.",
-        "A refusal is NOT an empty answer, and the provider reads it as one (measured 2026-10-07): on `claude-opus-5-5` the probe's M5/M6 prompt (`the sealed probe code … cannot be guessed`) comes back HTTP 200 with `content: []`, `stop_reason: \"refusal\"` and `stop_details: {category: \"cyber\", explanation: …}` — 3 of 4 M5 and 4 of 4 M6. `AnthropicLlmProvider` does not read `stop_reason`, so the report shows `no tool call in the reply:` followed by nothing. On that model those reds measure the classifier meeting the probe's wording, not tool calling — `claude-sonnet-5`, `claude-sonnet-5-5`, `claude-opus-5` and `claude-haiku-5-5` answer the same prompt. `claude-fable-5-1` shows the same empty M6 since 2026-09-21 (three more today), but one direct call with the same wording was answered (`end_turn`, a text block): its cause is not established.",
-        { "id": "claude-fable-5-2", "why": "The top tier, listed 2026-11-09 (1 M context, 128 K output). Refuses an explicit temperature like the rest of the 5 family (requiredParams); 12/12 on its first run, 2026-11-11 \u2014 including the M6 that claude-fable-5-1 still misses." }
+        "A refusal is NOT an empty answer, and the provider reads it as one (measured 2026-10-07): on `claude-opus-5-5` the probe's M5/M6 prompt (`the sealed probe code … cannot be guessed`) comes back HTTP 200 with `content: []`, `stop_reason: \"refusal\"` and `stop_details: {category: \"cyber\", explanation: …}` — 3 of 4 M5 and 4 of 4 M6. `AnthropicLlmProvider` does not read `stop_reason`, so the report shows `no tool call in the reply:` followed by nothing. On that model those reds measure the classifier meeting the probe's wording, not tool calling — `claude-sonnet-5`, `claude-sonnet-5-5`, `claude-opus-5` and `claude-haiku-5-5` answer the same prompt. `claude-fable-5-1` shows the same empty M6 since 2026-09-21 (three more today), but one direct call with the same wording was answered (`end_turn`, a text block): its cause is not established."
       ]
     },
     "azure": {
@@ -319,10 +319,10 @@
       "label": "MiniMax",
       "matrix": "§6.16",
       "apiKeyEnv": "MINIMAX_API_KEY",
-      "defaultModel": "MiniMax-M2",
-      "visionModel": "MiniMax-M3",
+      "defaultModel": "MiniMax-M3",
       "candidateModels": [
-        { "id": "MiniMax-M3", "why": "1M context, image + video input, same 0.30 / 1.20 $/M as M2. Whether the `<think>` block still arrives inline on the OpenAI-compatible endpoint is the campaign's question." }
+        { "id": "MiniMax-M2", "why": "The default until 2026-11-11 (legacy, 0.30 / 1.20 $/M): 6/4/2 that day \u2014 system ignored (M2), no native tool call (M5), text only (M9), no cache breakdown (M10)." },
+        { "id": "MiniMax-M3.1-Flash", "why": "Listed after 2026-10-07. 10/0/2 on its first run, 2026-11-11 (M7 and M8 not declared by the provider), M9 green: it reads the image where MiniMax-M3 misreads the number." }
       ],
       "notes": [
         "Fifteenth sheet, WITHOUT execution proof: integrated on 2026-08-30 from the vendor documentation, no key available. The first campaign is the pending proof — the Mistral lesson (compiled default never served) applies in full until a live M1 is archived.",
@@ -331,16 +331,18 @@
         "First campaign on 2026-08-30 (7/2/3 on `MiniMax-M2`, `sk-api-` key — `sk-cp-` keys are coding plans with their own quota). The three questions settled: (1) the trace arrives INLINE as a `<think>` block inside the content, no separate field — the Orkeon dialect extracts it to `reasoning_content` and re-injects it on replay as the doc requires; (2) no cache breakdown at 8k of prefix; (3) `response_format` accepted but NON-BINDING (schema ignored, json_object fenced in markdown) — the None declaration is a measurement.",
         "M2 and M9 red: model behaviour (system ignored on both shapes; text-only, `I'm unable to view the image`). The VL family does not appear in the platform's `/models` catalog — but `MiniMax-M3`, listed there, reads the image (M9 ✅ twice on 2026-09-21): it is the vision companion since, and the candidate for the default. Its `<think>` block is split out like M2's (6 characters returned for 199 billed tokens on M1); M10 saw 128 cached tokens once (ratio 0.02) and no breakdown the second time.",
         "2026-10-07 (8 ids, ids only: M2, M2.1, M2.5, M2.7 and their `-highspeed` twins, M3): `MiniMax-M2` 7/2/3 unchanged; `MiniMax-M3` 9/1/2 (M2 red, it sees, 128 cached tokens); `MiniMax-M2.7` campaigned for the first time — 8/2/2: text-only like M2 (`I'm unable to see the image`), system message ignored on both shapes, and the first full cache read on this vendor (8059 tokens, ratio 1.00).",
-        { "id": "MiniMax-M3.1-Flash", "why": "Listed after 2026-10-07. 10/0/2 on its first run, 2026-11-11 (M7 and M8 not declared by the provider), M9 green: it reads the image where MiniMax-M3 misreads the number." }
+        "2026-11-11 (full campaign with candidates): `MiniMax-M3` 10/0/2 and M9 green, `MiniMax-M2` 6/4/2 (M2, M5, M9, M10) \u2014 the default moves to `MiniMax-M3`, which reads the image itself, so the vision companion is retired."
       ]
     },
     "gemini": {
       "label": "Google Gemini",
       "matrix": "§6.13",
       "apiKeyEnv": "GEMINI_API_KEY",
-      "defaultModel": "gemini-3.7-flash",
+      "defaultModel": "gemini-3.8-flash",
       "candidateModels": [
-        { "id": "gemini-3.8-flash", "why": "GA 2026-09-02, same 0.75 / 3.75 $/M as 3.7 Flash until 2026-12-31; the vendor labels 3.7 previous generation. First candidate for a default bump, on the three transports at once." }
+        { "id": "gemini-3.7-flash", "why": "The default until 2026-11-11 (\"previous generation\", same price until 2026-12-31): 11/0/1 that day, where 3.8 Flash was 12/12." },
+        { "id": "gemini-4-argon", "why": "Listed after 2026-10-07 (1 M context, 32 K output, thinking). 11/0/1 on its first run, 2026-11-11 \u2014 the same line as the default." },
+        { "id": "gemini-4-carbon", "why": "Listed with gemini-4-argon. 11/0/1 on its first run, 2026-11-11." }
       ],
       "notes": [
         "Arrived **after** the 2026-07-27 audit: it carries no inherited G-xx gap, and its §6.13 sheet was opened without a campaign. This one is its first real execution proof.",
@@ -350,8 +352,6 @@
         "M7 is **effort only** (`reasoning_effort` translated to `thinking_level`): neither toggle nor token budget, unlike Qwen.",
         "The default model sees: M9 is exercised on it, with no companion vision campaign.",
         "2026-10-07: the native listing (`GET /v1beta/models`, 62 ids) publishes each model's options — 1 048 576 context and 65 536 output on every Flash and Pro text model, default `temperature` 1, `topP` 0.95, `topK` 64, `maxTemperature` 2. The default and `gemini-3.8-flash` are 11/0/1, mode for mode as on 2026-09-21. `gemini-3.5-flash-lite` 12/12 — the only Gemini model of the day whose cache breakdown comes back (4077 cached tokens, ratio 0.51); `gemini-3.1-pro-preview` 10/1/1, the red being one M5 with no tool call that three replays did not reproduce.",
-        { "id": "gemini-4-argon", "why": "Listed after 2026-10-07 (1 M context, 32 K output, thinking). 11/0/1 on its first run, 2026-11-11 \u2014 the same line as the default." },
-        { "id": "gemini-4-carbon", "why": "Listed with gemini-4-argon. 11/0/1 on its first run, 2026-11-11." },
         "2026-11-11: `gemini-omni-1.2-flash` is listed by `/v1beta/models` but answers `This model only supports Interactions API` on the OpenAI-compatible surface \u2014 out of this provider's reach, not campaigned."
       ]
     },
@@ -360,9 +360,9 @@
       "label": "OpenRouter",
       "matrix": "§6.17",
       "apiKeyEnv": "OPENROUTER_API_KEY",
-      "defaultModel": "google/gemini-3.7-flash",
+      "defaultModel": "google/gemini-3.8-flash",
       "candidateModels": [
-        { "id": "google/gemini-3.8-flash", "why": "Follows the direct Gemini candidate \u2014 the transport question is the same." }
+        { "id": "google/gemini-3.7-flash", "why": "The default until 2026-11-11, following the direct one: 11/1 that day (M10), where 3.8 Flash was 12/12." }
       ],
       "notes": [
         "First campaign on 2026-10-07 (LLM-09's pending proof): `google/gemini-3.7-flash` 11/1 and `google/gemini-3.8-flash` 11/1 — every mode green but M10. One model, three transports: direct Gemini is 11/0/1 the same day, the difference being M10 alone — the marketplace returns the cache fields with 0 where Google's own endpoint returns no breakdown at all.",
@@ -381,9 +381,9 @@
       "label": "Mammouth AI",
       "matrix": "§6.18",
       "apiKeyEnv": "MAMMOUTH_API_KEY",
-      "defaultModel": "gemini-3.7-flash",
+      "defaultModel": "gemini-3.8-flash",
       "candidateModels": [
-        { "id": "gemini-3.8-flash", "why": "Follows the direct Gemini candidate \u2014 what the proxy lets through is the question." }
+        { "id": "gemini-3.7-flash", "why": "The default until 2026-11-11, following the direct one: 9/1/2 that day like 3.8 Flash (M10, no cache breakdown through the proxy)." }
       ],
       "notes": [
         "First campaign on 2026-10-07 (LLM-09's pending proof): `gemini-3.7-flash` 10/0/2 and `gemini-3.8-flash` 10/0/2 — every exercised mode green; M7 and M8 are ➖ because the provider declares neither capability, not because the proxy refuses them.",

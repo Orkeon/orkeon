@@ -193,11 +193,11 @@ JSON > the catalog's `defaultModel`.
 | `mistral` | `mistral-medium-2604` | | `mistral-large-4`, `mistral-small-2603` |
 | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | `Qwen/Qwen3.5-9B` |
 | `zai` | `glm-5.3-flashx` | `glm-4.6v-flash` | `glm-5.2`, `glm-5.3`, `glm-5.3-flash` |
-| `gemini` | `gemini-3.7-flash` | *(the default sees)* | `gemini-3.8-flash`, `gemini-4-argon`, `gemini-4-carbon` |
+| `gemini` | `gemini-3.8-flash` *(since 2026-11-11)* | *(the default sees)* | `gemini-3.7-flash`, `gemini-4-argon`, `gemini-4-carbon` |
 | `grok` | `grok-4.6` | *(the default sees)* | `grok-4.7` |
-| `minimax` | `MiniMax-M2` | `MiniMax-M3` *(the successor sees — measured 2026-09-21; the VL family is still absent from `/models`)* | `MiniMax-M3`, `MiniMax-M3.1-Flash` |
-| `openrouter` | `google/gemini-3.7-flash` | *(the default sees — M9 green on 2026-10-07, as in direct)* | `google/gemini-3.8-flash` |
-| `mammouth` | `gemini-3.7-flash` | *(the default sees — M9 green through the proxy on 2026-10-07)* | `gemini-3.8-flash` |
+| `minimax` | `MiniMax-M3` *(since 2026-11-11)* | *(the default sees — M9 green since 2026-09-21; the VL family is still absent from `/models`)* | `MiniMax-M2`, `MiniMax-M3.1-Flash` |
+| `openrouter` | `google/gemini-3.8-flash` *(since 2026-11-11)* | *(the default sees, as in direct)* | `google/gemini-3.7-flash` |
+| `mammouth` | `gemini-3.8-flash` *(since 2026-11-11)* | *(the default sees — M9 green through the proxy)* | `gemini-3.7-flash` |
 
 ### What each provider serves — `lib/served-models.json`
 

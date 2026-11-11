@@ -103,13 +103,13 @@ public static class LlmProviderDefaultModels
     public const string Qwen = "qwen3.7-plus";
 
     /// <summary>
-    /// Google Gemini, over its OpenAI-compatibility surface. Catalogue review 2026-09-19:
-    /// <c>gemini-3.8-flash</c> went GA on 2026-09-02 at the same 0.75 / 3.75 $/M (both rise to
-    /// 1.50 / 7.50 on 2027-01-01) and the vendor now labels 3.7 Flash "previous generation" —
-    /// still served, no shutdown date. The first candidate for a default bump across the three
-    /// transports (direct, OpenRouter, Mammouth), once campaigned.
+    /// Google Gemini, over its OpenAI-compatibility surface. Campaign of 2026-11-11:
+    /// <c>gemini-3.8-flash</c> (GA 2026-09-02, the same 0.75 / 3.75 $/M as 3.7 Flash, both rising
+    /// to 1.50 / 7.50 on 2027-01-01) is 12/12 on the three transports at once - direct, OpenRouter
+    /// and Mammouth (9/1/2 there, the same M10 as 3.7) - where <c>gemini-3.7-flash</c>, the default
+    /// until then and labelled "previous generation" by the vendor, stayed 11/0/1.
     /// </summary>
-    public const string Gemini = "gemini-3.7-flash";
+    public const string Gemini = "gemini-3.8-flash";
 
     /// <summary>
     /// Mistral AI — the dated snapshot of the medium 3.5 generation. The previous value,
@@ -137,10 +137,12 @@ public static class LlmProviderDefaultModels
     /// text-only vision). Catalogue review 2026-09-19: <c>MiniMax-M2</c> is listed as legacy
     /// with no retirement date; <c>MiniMax-M3</c> (2026-06-01, 1 M context, image and video
     /// input, the same 0.30 / 1.20 $/M) is the vendor's agentic pick, but its reasoning
-    /// format on the OpenAI-compatible endpoint is undocumented — bumping the default is the
-    /// maintainer's call, backed by a fresh campaign.
+    /// format on the OpenAI-compatible endpoint is undocumented. Campaign of 2026-11-11:
+    /// <c>MiniMax-M3</c> 10/0/2 (it reads the image, its inline <c>&lt;think&gt;</c> block is split
+    /// out as on M2) where <c>MiniMax-M2</c>, the default until then, stayed 6/4/2 (M2, M5, M9,
+    /// M10): M3 is the default since.
     /// </summary>
-    public const string MiniMax = "MiniMax-M2";
+    public const string MiniMax = "MiniMax-M3";
 
     /// <summary>
     /// HuggingFace, through the Inference Providers router. Catalogue review 2026-09-19: still
@@ -163,9 +165,10 @@ public static class LlmProviderDefaultModels
     /// can reproduce. Compiled from documentation only: a default is a claim until a
     /// campaign has archived an M1 on it — the Mistral lesson. Catalogue review 2026-09-19:
     /// <c>google/gemini-3.8-flash</c> is on the marketplace since 2026-09-02 at the same
-    /// price; the aggregator defaults follow the direct one, never the other way round.
+    /// price; the aggregator defaults follow the direct one, never the other way round - and
+    /// they did on 2026-11-11 (12/12 on <c>google/gemini-3.8-flash</c>, 11/1 on 3.7, M10).
     /// </summary>
-    public const string OpenRouter = "google/gemini-3.7-flash";
+    public const string OpenRouter = "google/gemini-3.8-flash";
 
     /// <summary>
     /// Mammouth AI — the fleet's Gemini default under its bare identifier (Mammouth serves
@@ -176,9 +179,9 @@ public static class LlmProviderDefaultModels
     /// reason as <c>openrouter/auto</c>. Compiled from documentation only: a default is a
     /// claim until a campaign has archived an M1 on it — the Mistral lesson, verbatim.
     /// Catalogue review 2026-09-19: <c>gemini-3.8-flash</c> is on the public list too; same
-    /// rule, the direct default leads.
+    /// rule, the direct default leads - and it did on 2026-11-11 (9/1/2 on both, M10).
     /// </summary>
-    public const string Mammouth = "gemini-3.7-flash";
+    public const string Mammouth = "gemini-3.8-flash";
 
     /// <summary>
     /// Docker Model Runner. Parity with the committed <c>examples/appsettings/appsettings.json</c>,
