@@ -32,7 +32,7 @@ The Plugin System provides runtime extensibility for Orkeon by allowing third-pa
 
 - Plugin-to-plugin communication (plugins are leaf components).
 - UI extensibility (plugins provide tools only, not agent types or crew strategies).
-- Remote plugin stores or auto-update mechanisms (out of scope for V1).
+- Remote plugin stores or auto-update mechanisms (out of scope).
 - Centralized secret management (plugins store their own secrets; integration with Azure Key Vault / AWS Secrets Manager is future scope).
 
 ---
@@ -416,7 +416,7 @@ Behavior:
 - **Load**: Reads and deserializes `config.json`. Returns empty dictionary if file doesn't exist.
 - **Save**: Serializes to pretty-printed JSON. Creates file if it doesn't exist.
 - **Delete**: Deletes `config.json`. Does not throw if file doesn't exist.
-- **Sensitive values**: Stored in clear text in V1. Future versions may encrypt sensitive fields.
+- **Sensitive values**: Stored in clear text. Future versions may encrypt sensitive fields.
 
 ### 5.6 PluginConfiguration (Runtime Implementation)
 

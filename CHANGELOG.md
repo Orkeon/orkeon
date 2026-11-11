@@ -88,11 +88,12 @@ candidate 1.x stability commitment.
   builds stay trimmed), and the iOS and Android natives are stripped from every tool package: both
   tools weigh about 187 MB.
 
-### Changed — two runtime messages name no roadmap version
+### Changed — three runtime messages name no roadmap version
 
 - The refusal of an agent's `.concurrency(n)` other than 1 now reads `.concurrency(1) is the only
-  value accepted: an agent's concurrency is a mutex.`, and `RecursiveAgentInvocationException`
-  `Recursive invocation of agent '<name>' is not supported.`; neither names a version any more.
+  value accepted: an agent's concurrency is a mutex.`, `RecursiveAgentInvocationException`
+  `Recursive invocation of agent '<name>' is not supported.`, and a second waiter on an agent's
+  inbox `Only one waiter per inbox is supported.`; none names a version any more.
 
 ### Fixed — a scripted spawn emits `agent.spawned`
 

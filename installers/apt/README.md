@@ -118,7 +118,8 @@ orkeon-archive-keyring.gpg sha256: <64 hex digits>
 
 The first is the primary key fingerprint (`gpg --fingerprint`), the second the SHA-256 of the
 binary keyring (`gpg --dearmor < orkeon-archive-keyring.asc | sha256sum`), which is also
-the file the package installs. Every marker present must match, and `SECURITY.md` and `SECURITY.fr.md` carry both.
+the file the package installs. Every marker present must match, and `SECURITY.md` and
+`SECURITY.fr.md` carry both.
 
 ## Extending or rotating the signing subkey
 

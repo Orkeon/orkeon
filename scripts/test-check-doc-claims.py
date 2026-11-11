@@ -204,6 +204,17 @@ class VersionMentionTests(unittest.TestCase):
         for line in ("Orkeon 1.0.0 ships it", "since Orkeon v1.2.3"):
             self.assertIsNotNone(gate.VERSION_MENTION.search(line), line)
 
+    def test_a_final_version_after_a_package_id_a_flag_or_markup_is_a_version_mention(self) -> None:
+        for line in ("add Orkeon.Hosting 1.0.0", "it prints orkeon 1.0.0", "Orkeon **1.0.0** is out",
+                     "npx Orkeon@1.0.0", "dotnet add package Orkeon --version 1.0.0",
+                     "Orkeon.Scripting.Cli v1.2.3"):
+            self.assertIsNotNone(gate.VERSION_MENTION.search(line), line)
+
+    def test_a_version_next_to_the_name_but_not_after_it_is_not_one(self) -> None:
+        for line in ("`Orkeon` `1.0.0` (the MCP client's protocol version)",
+                     "orkeon-archive-keyring_2026.10.04_all.deb", "Orkeon on .NET 10.0"):
+            self.assertIsNone(gate.VERSION_MENTION.search(line), line)
+
     def test_a_bare_final_version_is_not_one(self) -> None:
         for line in ('"version": "1.0.0"', "`1.0.1-dev.<n>` after `1.0.0`", "range [1.0.0,2.0.0)"):
             self.assertIsNone(gate.VERSION_MENTION.search(line), line)

@@ -486,7 +486,7 @@ public sealed partial class JsCrew
 
     /// <summary>
     /// <c>runAgent</c>'s target: an <see cref="JsAgent"/> or an agent name, a member of this crew, and not
-    /// the agent whose body is executing — chapter 05 forbids re-entrance in V1, and failing loudly beats
+    /// the agent whose body is executing — chapter 05 forbids re-entrance, and failing loudly beats
     /// waiting on the semaphore that body already holds. The attribution is one crew-wide value, so under
     /// two interleaved runs of one crew this check is best-effort: a false positive is loud, the
     /// alternative is silent.

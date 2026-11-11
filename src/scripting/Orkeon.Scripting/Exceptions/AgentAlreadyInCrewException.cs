@@ -4,7 +4,7 @@ namespace Orkeon.Scripting.Exceptions;
 
 /// <summary>
 /// Thrown when <c>crew.add(agent)</c> is called for an agent that is already a member
-/// of another crew. V1 enforces mono-crew (one crew at a time per agent).
+/// of another crew: an agent belongs to one crew at a time.
 /// </summary>
 [Serializable]
 public sealed class AgentAlreadyInCrewException : Exception

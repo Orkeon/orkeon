@@ -287,10 +287,12 @@ def expect_absent(path: str, pattern: str, why: str) -> None:
 
 # --- no Orkeon version in the documentation ---------------------------------------------
 
-# A release candidate in any form, and a final version the product's name introduces ("Orkeon 1.2.0",
-# "Orkeon v1.2.0"): a bare final version stays allowed, the pages cite third-party and example ones.
+# A release candidate in any form, and a final version the product's name introduces, in any case,
+# after a package id or `--version`, or across markdown or `@` ("Orkeon 1.2.0", "orkeon v1.2.0",
+# "Orkeon.Hosting 1.2.0", "Orkeon --version 1.2.0", "Orkeon **1.2.0**", "Orkeon@1.2.0"): a bare final
+# version stays allowed, the pages cite third-party and example ones.
 VERSION_MENTION = re.compile(r"\b\d+\.\d+\.\d+[-~.]rc\b|\brc\.(?:\d+|\*|N)\b"
-                             r"|\bOrkeon\s+v?\d+\.\d+\.\d+\b")
+                             r"|(?i:\borkeon(?:\.[a-z]\w*)*(?:\s+--version)?[\s*@]+v?\d+\.\d+\.\d+\b)")
 
 
 def documentation_pages() -> list[Path]:

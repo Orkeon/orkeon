@@ -70,7 +70,7 @@ internal sealed class JsAgentChannel
                 if (_queue.TryDequeue(out var existing))
                     return existing;
                 if (_pendingWaiter is not null)
-                    throw new InvalidOperationException("Only one waiter per inbox is supported in V1.");
+                    throw new InvalidOperationException("Only one waiter per inbox is supported.");
                 tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _pendingWaiter = tcs;
             }
