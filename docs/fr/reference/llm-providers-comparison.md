@@ -269,7 +269,7 @@ dans la colonne « Plus récent ».
 | Qwen | `qwen3.7-plus` | oui — toujours le palier Plus, l'un des trois modèles recommandés | `qwen3.8-max` (= `qwen3.8-max-0902`), `qwen3.8-flash` ; pas de `qwen3.8-plus` | reste — **campagné le 2026-09-21** : `qwen3.8-max` 12/12, `qwen3.8-flash` 11/1 (M2), tous deux prêts, et `qwen3.7-plus` est toujours 12/12 ; la génération 3.8 ajoute `preserve_thinking` ; **2026-11-11** : `qwen3.7-plus`, `qwen3.8-flash` et `qwen3.8-max` 12/12 chacun |
 | Mistral AI | `mistral-medium-2604` | oui — 1,50 / 7,50 $/M, non déprécié | rien pour le chat depuis avril (OCR 4.1 seulement) | reste ; les ids `devstral-*` / magistral sont dans la table des dépréciés ; **2026-11-11** : le défaut et `mistral-large-4` 12/12, `mistral-small-2603` 11/1 (M9) |
 | HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | oui — mais outils sur un seul de ses quatre fournisseurs routés, et `:fastest` peut en choisir un autre | `Qwen/Qwen3.5-9B` (outils sur trois fournisseurs, dès 0,10 / 0,15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidat Qwen3.5-9B — **campagné le 2026-09-21** : 10/0/2, il voit et ses outils tiennent ; son premier passage a rendu un M1 vide après 4113 tokens de réflexion sur le repli 4096 du routeur — épingler `Llm:MaxTokens` (ou couper le thinking) avant d'en faire un défaut. Le routage explique toujours les rouges mouvants du défaut (M2 et M5 rouges ensemble au même passage) ; **2026-11-11** : le défaut 7/3/2 (M2, M5, M9), `Qwen/Qwen3.5-9B` 9/1/2 (M2) |
-| Z.AI | `glm-5.2` | oui — toujours sous « Latest Models », 1,40 / 4,40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0,15 / 0,50, image + vidéo), `glm-5.3-flashx` | reste — **campagné le 2026-09-21** : `glm-5.3-flash` 12/12 deux fois (il voit, là où 5.2 et 5.3 répondent `1210` ; cache lu) — le candidat le plus net du parc, à un neuvième du prix ; `glm-5.3` 10/2 (M2, M9) n'apporte rien sur 5.2. La déclaration `Toggle` demande toujours une garde par modèle avant une montée ; **2026-11-11** : non campagné — le compte n'a pas de solde (429 `Insufficient balance`) ; le catalogue a été lu |
+| Z.AI | `glm-5.2` | oui — toujours sous « Latest Models », 1,40 / 4,40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0,15 / 0,50, image + vidéo), `glm-5.3-flashx` | reste — **campagné le 2026-09-21** : `glm-5.3-flash` 12/12 deux fois (il voit, là où 5.2 et 5.3 répondent `1210` ; cache lu) — le candidat le plus net du parc, à un neuvième du prix ; `glm-5.3` 10/2 (M2, M9) n'apporte rien sur 5.2. La déclaration `Toggle` demande toujours une garde par modèle avant une montée ; **2026-11-11** : `glm-5.3-flashx` de nouveau à 12/12, `glm-5.3` 11/1 (M9), `glm-5.3-flash` 11/1 (M2), `glm-5.2` 10/2 — le défaut reste |
 | Google Gemini | `gemini-3.7-flash` | oui — « génération précédente », sans date d'arrêt, 0,75 / 3,75 $/M jusqu'au 2026-12-31 puis 1,50 / 7,50 | `gemini-3.8-flash` (GA 2026-09-02, même prix, thinking `minimal` refusé) ; `gemini-4-argon`, `gemini-4-carbon` | premier candidat à une montée — **campagné le 2026-09-21** : `gemini-3.8-flash` 11/0/1 deux fois, identique à 3.7 mode pour mode sur le transport direct ; OpenRouter et Mammouth non joués (pas de clé) ; **2026-11-11** : le défaut 11/0/1, `gemini-3.8-flash` 12/0/0, `gemini-4-argon` et `gemini-4-carbon` 11/0/1 chacun ; `gemini-omni-1.2-flash` est listé mais réservé à l'API Interactions, hors de portée de ce provider et non campagné |
 | Grok (x.AI) | `grok-4.6` | oui — recommandé, 2 / 6 $/M sous 200K tokens de prompt, 4 / 12 au-delà | aucun | reste (`grok-4.7` est listé depuis) ; **campagné le 2026-11-11** : `grok-4.6` et `grok-4.7` 12/12 |
 | MiniMax | `MiniMax-M2` | oui — listé « legacy », sans date de retrait | `MiniMax-M3` (2026-06-01, 1M, entrée image + vidéo, mêmes 0,30 / 1,20) ; `MiniMax-M3.1-Flash` | reste — **campagné le 2026-09-21** : `MiniMax-M3` 9/1/2 puis 8/1/3 — il lit l'image (désormais compagnon vision du kit), M2 rouge comme M2, le bloc `<think>` inline découpé comme sur M2, 128 tokens en cache une fois ; la question du format de raisonnement est tranchée ; **2026-11-11** : `MiniMax-M3.1-Flash` 10/0/2 (M7 et M8 non déclarés par le provider), M9 vert — il lit l'image là où `MiniMax-M3` lit `72` ; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9) |
@@ -287,9 +287,9 @@ Haiku 5 à 0,10 / 0,50 et Haiku 4.5 à 1 / 5. Tarifs de cache : écriture 5 minu
 La campagne du 2026-11-11 a lu l'endpoint de catalogue de chaque fournisseur avec la clé de
 campagne (`orkeon llm models -p <fournisseur>` rend les mêmes identifiants), puis joué le
 protocole sur chaque défaut, sur les candidats des revues, et sur les modèles de chat courants
-que la liste montrait et qu'aucune campagne n'avait encore rencontrés. Deux fournisseurs font
-exception : **Kimi** a été lu et campagné plus tard le même jour, avec une seconde clé (la
-première était refusée, 401), et **Z.AI** a été lu mais non campagné (le compte n'a pas de solde : 429,
+que la liste montrait et qu'aucune campagne n'avait encore rencontrés. Deux fournisseurs ont été
+campagnés plus tard le même jour : **Kimi** avec une seconde clé (la première était refusée, 401),
+et **Z.AI** sur une clé valide (le premier compte n'avait pas de solde : 429,
 `Insufficient balance or no resource package`). Un score marqué `(2026-10-07)` ci-dessous n'a
 pas été rejoué. Il
 en sort trois sortes de faits, tenues séparées à dessein :
@@ -347,10 +347,10 @@ les plafonds documentés sont ceux de la section suivante.
 |  | `claude-fable-5-2` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 12/0/0 |
 | DeepSeek | `deepseek-flash` *(défaut)* | 1 048 576 | 393 216 | effort par défaut `high` (sur `low` `high` `max`) · text + image | — | 12/0/0 |
 |  | `deepseek-v4-pro` | 1 048 576 | 393 216 | effort par défaut `high` (sur `low` `high` `max`) · text | — | 11/1/0 — ❌ M9 (2026-10-07) |
-| Z.AI | `glm-5.2` *(défaut)* | — | — | — | — | 10/2/0 — ❌ M9, M10 (2026-10-07) |
-|  | `glm-5.3` | — | — | — | — | 10/2/0 — ❌ M2, M9 (2026-10-07) |
-|  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 (2026-10-07) |
-|  | `glm-5.3-flashx` | — | — | — | — | 12/0/0 (2026-10-07) |
+| Z.AI | `glm-5.2` *(défaut)* | — | — | — | — | 10/2/0 — ❌ M9, M10 |
+|  | `glm-5.3` | — | — | — | — | 11/1/0 — ❌ M9 |
+|  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 |
+|  | `glm-5.3-flashx` | — | — | — | — | 12/0/0 |
 | Kimi | `kimi-k2.6` *(défaut)* | 262 144 | — | image + vidéo + raisonnement | `temperature` = `1` | 10/1/1 — ❌ M8 |
 |  | `kimi-k3` | 1 048 576 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k3.1-pro` | 1 048 576 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
@@ -446,11 +446,12 @@ Ce que le tableau ne dit pas tout seul :
   est aussi à 12/12 via OpenRouter, 10/0/2 via Mammouth.
 - **Z.AI** — `glm-5.3-flashx` est le deuxième modèle de la famille à passer tous les modes.
   La liste omet `glm-4.6v-flash`, qui est servi (le compagnon vision, M9 vert le même jour) :
-  un catalogue n'est pas toute l'offre. **Non campagné le 2026-11-11 :** le compte n'a pas de
-  solde (429, code 1113 `Insufficient balance or no resource package`) sur chaque modèle ; le
-  provider retente ce 429 comme une limite transitoire, la sonde de `glm-5.2` a donc été
-  arrêtée après 21 minutes sans rien archiver. Le catalogue a été lu (12 ids,
-  `glm-5.3-flashx-legal` est nouveau) ; tous les scores Z.AI ci-dessus sont du 2026-10-07.
+  un catalogue n'est pas toute l'offre. `glm-5.3-flashx` est de nouveau à 12/12 ; `glm-5.3`
+  passe M2 au vert (11/1, reste M9 `1210`) ; `glm-5.3-flash` garde M2 rouge, son message système
+  ignoré sous les deux formes — le modèle, pas Orkeon ; `glm-5.2` inchangé (M9 `1210`, M10
+  `0 cached`). La première clé du jour n'avait pas de solde (429, code 1113), que le provider a
+  retenté comme une limite transitoire pendant 21 minutes (issue #328). `glm-5.3-flashx-legal`
+  est nouveau dans la liste, non campagné.
 - **Qwen** — une clé internationale n'est servie que par `dashscope-intl.aliyuncs.com` ;
   l'endpoint compilé (`dashscope.aliyuncs.com`) lui répond 401. Régler `Llm:BaseUrl`. La liste
   internationale est tombée de 172 à 101 ids le 2026-11-11 (la lignée qwen3 open-weight et les

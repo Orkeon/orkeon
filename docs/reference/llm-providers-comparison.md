@@ -251,7 +251,7 @@ says which campaign measured what, and the models they added to the candidates a
 | Qwen | `qwen3.7-plus` | yes — still the Plus tier, one of the three recommended models | `qwen3.8-max` (= `qwen3.8-max-0902`), `qwen3.8-flash`; no `qwen3.8-plus` | stays — **campaigned 2026-09-21**: `qwen3.8-max` 12/12, `qwen3.8-flash` 11/1 (M2), both ready, and `qwen3.7-plus` is still 12/12; the 3.8 generation adds `preserve_thinking`; **2026-11-11**: `qwen3.7-plus`, `qwen3.8-flash` and `qwen3.8-max` 12/12 each |
 | Mistral AI | `mistral-medium-2604` | yes — 1.50 / 7.50 $/M, not deprecated | nothing for chat since April (OCR 4.1 only) | stays; `devstral-*` / magistral ids sit in the deprecated table; **2026-11-11**: the default and `mistral-large-4` 12/12, `mistral-small-2603` 11/1 (M9) |
 | HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | yes — but tools on one of its four routed providers, and `:fastest` may pick another | `Qwen/Qwen3.5-9B` (tools on three providers, from 0.10 / 0.15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidate Qwen3.5-9B — **campaigned 2026-09-21**: 10/0/2, it sees and its tools hold; its first pass returned an empty M1 after 4113 tokens of thinking on the router's 4096 fallback — pin `Llm:MaxTokens` (or turn thinking off) before making it a default. The routing still explains the default's moving reds (M2 and M5 both red on the same pass); **2026-11-11**: the default 7/3/2 (M2, M5, M9), `Qwen/Qwen3.5-9B` 9/1/2 (M2) |
-| Z.AI | `glm-5.2` | yes — still under "Latest Models", 1.40 / 4.40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0.15 / 0.50, image + video), `glm-5.3-flashx` | stays — **campaigned 2026-09-21**: `glm-5.3-flash` 12/12 twice (it sees, where 5.2 and 5.3 answer `1210`; cache read) — the cleanest candidate in the fleet, at a ninth of the price; `glm-5.3` 10/2 (M2, M9) brings nothing over 5.2. The `Toggle` declaration still needs a per-model guard before a bump; **2026-11-11**: not campaigned — the account has no balance (429 `Insufficient balance`); the catalogue was read |
+| Z.AI | `glm-5.2` | yes — still under "Latest Models", 1.40 / 4.40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0.15 / 0.50, image + video), `glm-5.3-flashx` | stays — **campaigned 2026-09-21**: `glm-5.3-flash` 12/12 twice (it sees, where 5.2 and 5.3 answer `1210`; cache read) — the cleanest candidate in the fleet, at a ninth of the price; `glm-5.3` 10/2 (M2, M9) brings nothing over 5.2. The `Toggle` declaration still needs a per-model guard before a bump; **2026-11-11**: `glm-5.3-flashx` 12/12 again, `glm-5.3` 11/1 (M9), `glm-5.3-flash` 11/1 (M2), `glm-5.2` 10/2 — the default stays |
 | Google Gemini | `gemini-3.7-flash` | yes — "previous generation", no shutdown date, 0.75 / 3.75 $/M until 2026-12-31 then 1.50 / 7.50 | `gemini-3.8-flash` (GA 2026-09-02, same price, `minimal` thinking rejected); `gemini-4-argon`, `gemini-4-carbon` | first candidate for a bump — **campaigned 2026-09-21**: `gemini-3.8-flash` 11/0/1 twice, identical to 3.7 mode for mode on the direct transport; OpenRouter and Mammouth not played (no key); **2026-11-11**: the default 11/0/1, `gemini-3.8-flash` 12/0/0, `gemini-4-argon` and `gemini-4-carbon` 11/0/1 each; `gemini-omni-1.2-flash` is listed but Interactions-API only, so out of reach of this provider and not campaigned |
 | Grok (x.AI) | `grok-4.6` | yes — recommended, 2 / 6 $/M below 200K prompt tokens, 4 / 12 above | none | stays (`grok-4.7` is listed since); **campaigned 2026-11-11**: `grok-4.6` and `grok-4.7` 12/12 |
 | MiniMax | `MiniMax-M2` | yes — listed as legacy, no retirement date | `MiniMax-M3` (2026-06-01, 1M, image + video input, same 0.30 / 1.20); `MiniMax-M3.1-Flash` | stays — **campaigned 2026-09-21**: `MiniMax-M3` 9/1/2 then 8/1/3 — it reads the image (now the kit's vision companion), M2 red like M2, the inline `<think>` block split out as on M2, 128 cached tokens once; the reasoning-format question is answered; **2026-11-11**: `MiniMax-M3.1-Flash` 10/0/2 (M7 and M8 not declared by the provider), M9 green — it reads the image where `MiniMax-M3` reads `72`; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9) |
@@ -269,10 +269,9 @@ Haiku 5 at 0.10 / 0.50 and Haiku 4.5 at 1 / 5. Cache tariffs: a 5-minute write a
 The campaign of 2026-11-11 read each provider's own catalogue endpoint with the campaign key
 (`orkeon llm models -p <provider>` returns the same identifiers), then played the protocol on
 every default, on the candidates of the reviews, and on the current chat models the listing
-showed that no campaign had met yet. Two providers are the exception: **Kimi** was read and
-campaigned later the same day, with a second key (the first was refused, 401), and **Z.AI** was
-read but not campaigned (the account has no balance: 429, `Insufficient balance or no
-resource package`). A score marked `(2026-10-07)` below was not replayed. Three kinds of facts come out of it, kept apart
+showed that no campaign had met yet. Two providers were campaigned later the same day:
+**Kimi** with a second key (the first was refused, 401), and **Z.AI** on a working key (the
+first account had no balance: 429, `Insufficient balance or no resource package`). A score marked `(2026-10-07)` below was not replayed. Three kinds of facts come out of it, kept apart
 on purpose:
 
 - **what the endpoint publishes** about a model — context, output cap, default sampling,
@@ -328,10 +327,10 @@ caps are the ones of the next section.
 |  | `claude-fable-5-2` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 12/0/0 |
 | DeepSeek | `deepseek-flash` *(default)* | 1 048 576 | 393 216 | default effort `high` (of `low` `high` `max`) · text + image | — | 12/0/0 |
 |  | `deepseek-v4-pro` | 1 048 576 | 393 216 | default effort `high` (of `low` `high` `max`) · text | — | 11/1/0 — ❌ M9 (2026-10-07) |
-| Z.AI | `glm-5.2` *(default)* | — | — | — | — | 10/2/0 — ❌ M9, M10 (2026-10-07) |
-|  | `glm-5.3` | — | — | — | — | 10/2/0 — ❌ M2, M9 (2026-10-07) |
-|  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 (2026-10-07) |
-|  | `glm-5.3-flashx` | — | — | — | — | 12/0/0 (2026-10-07) |
+| Z.AI | `glm-5.2` *(default)* | — | — | — | — | 10/2/0 — ❌ M9, M10 |
+|  | `glm-5.3` | — | — | — | — | 11/1/0 — ❌ M9 |
+|  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 |
+|  | `glm-5.3-flashx` | — | — | — | — | 12/0/0 |
 | Kimi | `kimi-k2.6` *(default)* | 262 144 | — | image + video + reasoning | `temperature` = `1` | 10/1/1 — ❌ M8 |
 |  | `kimi-k3` | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k3.1-pro` | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
@@ -422,11 +421,12 @@ What the table does not say by itself:
   12/12 through OpenRouter as well, 10/0/2 through Mammouth.
 - **Z.AI** — `glm-5.3-flashx` is the second model of the family to pass every mode. The
   listing omits `glm-4.6v-flash`, which is served (the vision companion, M9 green the same
-  day): a catalogue is not the whole offer. **Not campaigned on 2026-11-11:** the account has
-  no balance (429, code 1113 `Insufficient balance or no resource package`) on every model;
-  the provider retries that 429 as a transient limit, so the probe of `glm-5.2` was stopped
-  after 21 minutes with nothing archived. The catalogue was read (12 ids, `glm-5.3-flashx-legal`
-  is new); every Z.AI score above is of 2026-10-07.
+  day): a catalogue is not the whole offer. `glm-5.3-flashx` is 12/12 again; `glm-5.3` turns
+  M2 green (11/1, M9 `1210` left); `glm-5.3-flash` keeps M2 red, its system message ignored
+  on both shapes — the model, not Orkeon; `glm-5.2` unchanged (M9 `1210`, M10 `0 cached`).
+  The first key of the day had no balance (429, code 1113), which the provider retried as a
+  transient limit for 21 minutes (issue #328). `glm-5.3-flashx-legal` is new in the listing,
+  not campaigned.
 - **Qwen** — an international key is served by `dashscope-intl.aliyuncs.com` only; the
   compiled endpoint (`dashscope.aliyuncs.com`) answers it 401. Set `Llm:BaseUrl`. The
   international listing fell from 172 to 101 ids on 2026-11-11 (the qwen3 open-weight line and

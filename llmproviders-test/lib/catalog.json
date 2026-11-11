@@ -289,7 +289,7 @@
         "Traceability debt of its own: the only existing proof is a dated configuration comment. This campaign must produce an **archived output** for it.",
         "To revalidate after LLM-02, which refactored it onto the capabilities base.",
         "2026-10-07 (11 ids, ids only): `glm-5.2` 10/2 (M9 `1210`, M10 `0 cached`) and `glm-5.3` 10/2 (M2, M9 `1210`) unchanged; `glm-5.3-flash` 11/1 — M2 on the messages array, its first red in five runs; `glm-5.3-flashx` 12/12 on its first run. The three 5.3 models return no reasoning trace on M7 where `glm-5.2` does.",
-        "2026-11-11: not campaigned \u2014 the account has no balance (429, code 1113 `Insufficient balance or no resource package`) on every model. The provider retries that 429 as a transient limit: the probe of `glm-5.2` was still waiting after 21 minutes and was stopped, nothing archived. `glm-5.3-flashx-legal` is new in the listing."
+        "2026-11-11, morning: the account had no balance (429, code 1113 `Insufficient balance or no resource package`); the provider retried that 429 as a transient limit for 21 minutes (issue #328). Campaigned later that day on a working key: `glm-5.2` 10/2 (M9 `1210`, M10 `0 cached`), `glm-5.3` 11/1 (M9 `1210`; M2 green again), `glm-5.3-flash` 11/1 (M2, the system message ignored on both shapes \u2014 the model, not Orkeon), `glm-5.3-flashx` 12/12 for the second time, `glm-4.6v-flash` M9 green. `glm-5.3-flashx-legal` is new in the listing, not campaigned."
       ]
     },
     "glm": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" },
