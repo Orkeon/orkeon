@@ -38,6 +38,10 @@ public sealed class LlmCatalogClientTests
     private const string MammouthBody =
         """{"object":"list","data":[{"id":"gemini-3.7-flash","object":"model","owned_by":"openai"},{"id":"mammouth-recommended","object":"model","owned_by":"openai"}]}""";
 
+    /// <summary>Gemini's OpenAI-compatible catalogue shape (measured 2026-11-11): every id under <c>models/</c>.</summary>
+    private const string GeminiBody =
+        """{"object":"list","data":[{"id":"models/gemini-3.8-flash","object":"model","owned_by":"google"},{"id":"models/gemini-3.7-flash","object":"model","owned_by":"google"}]}""";
+
     private static async Task<IReadOnlyList<string>> ListAsync(
         StubHttpMessageHandler handler, string provider, string? apiKey = "unused-in-tests")
     {
@@ -95,6 +99,24 @@ public sealed class LlmCatalogClientTests
         var request = Assert.Single(handler.Requests);
         Assert.Equal("https://openrouter.ai/api/v1/models", request.RequestUri?.ToString());
         Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
+    }
+
+    /// <summary>
+    /// Gemini's OpenAI-compatible <c>/models</c> answers <c>models/gemini-3.8-flash</c>, a name no
+    /// config writes: the campaign of 2026-11-11 compared it with the bare ids of
+    /// <c>served-models.json</c> and reported every Gemini model both new and withdrawn. The
+    /// prefix is dropped so the listing gives the identifier a config uses.
+    /// </summary>
+    [Theory]
+    [InlineData("gemini")]
+    [InlineData("google")]
+    public async Task ShouldReadTheGeminiCatalogue_WithoutTheModelsPrefix(string provider)
+    {
+        using var handler = new StubHttpMessageHandler(GeminiBody);
+
+        var models = await ListAsync(handler, provider);
+
+        Assert.Equal(["gemini-3.7-flash", "gemini-3.8-flash"], models);
     }
 
     /// <summary>
