@@ -154,22 +154,22 @@ Without `--model`, each provider gets **its own** model, not a generic one. Reso
 from the most explicit to the most general: `--model` > the `models` list of the campaign
 JSON > the catalog's `defaultModel`.
 
-| Provider | Default | Vision model | Candidates (`--candidates`, reviews of 2026-09-19 and 2026-10-07) |
+| Provider | Default | Vision model | Candidates (`--candidates`, reviews of 2026-09-19, 2026-10-07 and 2026-11-11) |
 |---|---|---|---|
-| `openai` | `gpt-5.6-sol` | | `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-6.1-sol` |
-| `anthropic` | `claude-sonnet-5` | | `claude-fable-5-1`, `claude-sonnet-5-5`, `claude-haiku-5-5`, `claude-opus-5-5` |
+| `openai` | `gpt-5.6-sol` | | `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-6.1-sol`, `gpt-6.1-terra` |
+| `anthropic` | `claude-sonnet-5` | | `claude-fable-5-1`, `claude-sonnet-5-5`, `claude-haiku-5-5`, `claude-opus-5-5`, `claude-fable-5-2` |
 | `azure` | *(none — see below)* | | |
 | `ollama` | `llama3.2` | `llava` | `qwen3.5:4b` *(pull it first)* |
-| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | `zai-org/GLM-5.3-Flash` *(serverless, reads the image since the 2026-09-21 campaign)* | `zai-org/GLM-5.3-Flash`, `Qwen/Qwen3.5-9B` |
+| `together` | `zai-org/GLM-5.3-Flash` *(since 2026-11-11: the Llama 3.3 default left serverless)* | *(the default sees)* | `Qwen/Qwen3.5-9B` |
 | `deepseek` | `deepseek-flash` *(renamed 2026-09-19, campaigned 2026-09-21)* | *(the default sees)* | |
 | `kimi` | `kimi-k2.6` | | `kimi-k3`, `kimi-k2.7-code` |
 | `qwen` | `qwen3.7-plus` | | `qwen3.8-flash`, `qwen3.8-max` |
 | `mistral` | `mistral-medium-2604` | | `mistral-large-4`, `mistral-small-2603` |
 | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | `Qwen/Qwen3.5-9B` |
 | `zai` | `glm-5.2` | `glm-4.6v-flash` | `glm-5.3`, `glm-5.3-flash`, `glm-5.3-flashx` |
-| `gemini` | `gemini-3.7-flash` | *(the default sees)* | `gemini-3.8-flash` |
+| `gemini` | `gemini-3.7-flash` | *(the default sees)* | `gemini-3.8-flash`, `gemini-4-argon`, `gemini-4-carbon` |
 | `grok` | `grok-4.6` | *(the default sees)* | `grok-4.7` |
-| `minimax` | `MiniMax-M2` | `MiniMax-M3` *(the successor sees — measured 2026-09-21; the VL family is still absent from `/models`)* | `MiniMax-M3` |
+| `minimax` | `MiniMax-M2` | `MiniMax-M3` *(the successor sees — measured 2026-09-21; the VL family is still absent from `/models`)* | `MiniMax-M3`, `MiniMax-M3.1-Flash` |
 | `openrouter` | `google/gemini-3.7-flash` | *(the default sees — M9 green on 2026-10-07, as in direct)* | `google/gemini-3.8-flash` |
 | `mammouth` | `gemini-3.7-flash` | *(the default sees — M9 green through the proxy on 2026-10-07)* | `gemini-3.8-flash` |
 

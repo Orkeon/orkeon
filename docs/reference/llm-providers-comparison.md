@@ -229,31 +229,34 @@ Two endpoints are documented without the shape of their answer: MiniMax's Token 
 and Mammouth's `key/info`. An OpenAI-compatible endpoint (`custom`) exposes no balance anyone
 knows of, and a local one has no account.
 
-## Defaults and newer models — catalogue review of 2026-09-19
+## Defaults and newer models — catalogue reviews of 2026-09-19, 2026-10-07 and 2026-11-11
 
 Every vendor's own model and pricing pages were read on 2026-09-19, alongside the public
 catalogues of the two aggregators (OpenRouter, 447 models; Mammouth, 100). The rule is the
 one `LlmProviderDefaultModels` states: a default changes only when the vendor retires the
 name; otherwise a newer model is a **candidate** until a campaign has archived an M1 on it.
+The campaigns of 2026-10-07 and 2026-11-11 played the candidates again: the date in a verdict
+says which campaign measured what, and the models they added to the candidates are in the
+"Newer" column.
 
 | Provider | Default (code) | Served on 2026-09-19 | Newer on the vendor's API | Verdict |
 |---|---|---|---|---|
-| OpenAI | `gpt-5.6-sol` | yes — 4 / 20 $/M through 2026-11-21, the replacement target of both 2026 deprecation waves | `gpt-6-astra` (10 / 50, effort `low`…`max` with no `none`, 2× billing above 272K input tokens) | stays — **campaigned 2026-09-21**: `gpt-6-astra` 10/2 with `temperature: 1` pinned; it has no `reasoning_effort: none`, so function tools on `/v1/chat/completions` are refused (`use /v1/responses`) — not a default until the dialect speaks Responses; `gpt-6-astra-pro` is an aggregator label, not an OpenAI id |
-| Anthropic | `claude-sonnet-5` | yes — 2 / 10 $/M made permanent, active until at least 2027-06-30 | `claude-fable-5-1` (2026-09-01, 10 / 50, thinking always on, forced `tool_choice` refused) | stays — **campaigned 2026-09-21**: `claude-fable-5-1` 11/1 twice (the red is M6, the text-fallback protocol; native tools, schema, vision and cache all green) — viable, at five times the price; `claude-opus-5-fast` is a `speed` flag, not an id; `temperature` / `top_p` / `top_k` return 400 on every model from Opus 4.7 on |
+| OpenAI | `gpt-5.6-sol` | yes — 4 / 20 $/M through 2026-11-21, the replacement target of both 2026 deprecation waves | `gpt-6-astra` (10 / 50, effort `low`…`max` with no `none`, 2× billing above 272K input tokens); `gpt-6.1-terra` (listed after 2026-10-07) | stays — **campaigned 2026-09-21**: `gpt-6-astra` 10/2 with `temperature: 1` pinned; it has no `reasoning_effort: none`, so function tools on `/v1/chat/completions` are refused (`use /v1/responses`) — not a default until the dialect speaks Responses; `gpt-6-astra-pro` is an aggregator label, not an OpenAI id; **campaigned 2026-11-11** (after the fix that lets `reasoning_effort: none` reach the API again): `gpt-5.6-sol` 11/1, `gpt-6-sol` 11/1, `gpt-6-luna` 12/0/0, `gpt-6.1-terra` 12/0/0 — it takes `none`, unlike `gpt-6.1-sol`; `gpt-6-astra` 10/2 and `gpt-6.1-sol` 9/3 stay red on M2 and M5 (no `none`, tools need `/v1/responses`) |
+| Anthropic | `claude-sonnet-5` | yes — 2 / 10 $/M made permanent, active until at least 2027-06-30 | `claude-fable-5-1` (2026-09-01, 10 / 50, thinking always on, forced `tool_choice` refused); `claude-fable-5-2` (2026-11-09, 1M context, 128K output) | stays — **campaigned 2026-09-21**: `claude-fable-5-1` 11/1 twice (the red is M6, the text-fallback protocol; native tools, schema, vision and cache all green) — viable, at five times the price; `claude-opus-5-fast` is a `speed` flag, not an id; `temperature` / `top_p` / `top_k` return 400 on every model from Opus 4.7 on; **campaigned 2026-11-11**: the default 12/12, `claude-fable-5-2` 12/12 — including the M6 that `claude-fable-5-1` still misses (11/1) |
 | Azure OpenAI | deployment | — | — | nothing to default to |
 | Ollama | `llama3.2` | yes — 3B, text only, no thinking, a year old | `qwen3.5:4b`, `gemma4:e4b`, `granite4.2:3b` (tools + thinking, same size class) | stays: a new default means a pull on every machine |
-| Together AI | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | yes — 1.04 / 1.04 $/M, not scheduled | `zai-org/GLM-5.3-Flash` (1M, tools + JSON, 0.15 / 0.50), `Qwen/Qwen3.5-9B`, `deepseek-ai/DeepSeek-V4.1-Flash`; Llama 4 left serverless | candidate GLM-5.3-Flash, a seventh of the price — **campaigned 2026-09-21**: 11/0/1, it reads the image (the first serverless vision model on Together, now the kit's vision companion) and its cache is read (8000 tokens, 0.99); `Qwen/Qwen3.5-9B` 10/0/2. Both ready; the bump is the owner's call |
-| DeepSeek | `deepseek-flash` (was `deepseek-v4-flash`) | yes — V4.1 Flash, 0.30 / 1.20 $/M peak, native vision | it is the newest | **changed 2026-09-19**: the old name is a retired model "temporarily" routed here; **replayed 2026-09-21**: 12/12 twice — M2 and M9, red for five campaigns on `deepseek-v4-flash`, are green on `deepseek-flash` |
-| Kimi | `kimi-k2.6` | yes — 0.95 / 4.00 $/M, no retirement date | `kimi-k3` (July 2026, 1M, 3 / 15, fixed sampling, no `thinking` field, always reasons) | stays — **campaigned 2026-09-21**: `kimi-k3` 12/12 then 11/1 (M2 on the flattened shape), reasoning trace, cache 0.97, bare JSON where k2.6 now fences its `json_object` — ready, at three times the price; `kimi-k2.5` and `moonshot-v1-*` retired 2026-08-31; docs now on `platform.kimi.ai` |
-| Qwen | `qwen3.7-plus` | yes — still the Plus tier, one of the three recommended models | `qwen3.8-max` (= `qwen3.8-max-0902`), `qwen3.8-flash`; no `qwen3.8-plus` | stays — **campaigned 2026-09-21**: `qwen3.8-max` 12/12, `qwen3.8-flash` 11/1 (M2), both ready, and `qwen3.7-plus` is still 12/12; the 3.8 generation adds `preserve_thinking` |
-| Mistral AI | `mistral-medium-2604` | yes — 1.50 / 7.50 $/M, not deprecated | nothing for chat since April (OCR 4.1 only) | stays; `devstral-*` / magistral ids sit in the deprecated table |
-| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | yes — but tools on one of its four routed providers, and `:fastest` may pick another | `Qwen/Qwen3.5-9B` (tools on three providers, from 0.10 / 0.15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidate Qwen3.5-9B — **campaigned 2026-09-21**: 10/0/2, it sees and its tools hold; its first pass returned an empty M1 after 4113 tokens of thinking on the router's 4096 fallback — pin `Llm:MaxTokens` (or turn thinking off) before making it a default. The routing still explains the default's moving reds (M2 and M5 both red on the same pass) |
-| Z.AI | `glm-5.2` | yes — still under "Latest Models", 1.40 / 4.40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0.15 / 0.50, image + video), `glm-5.3-flashx` | stays — **campaigned 2026-09-21**: `glm-5.3-flash` 12/12 twice (it sees, where 5.2 and 5.3 answer `1210`; cache read) — the cleanest candidate in the fleet, at a ninth of the price; `glm-5.3` 10/2 (M2, M9) brings nothing over 5.2. The `Toggle` declaration still needs a per-model guard before a bump |
-| Google Gemini | `gemini-3.7-flash` | yes — "previous generation", no shutdown date, 0.75 / 3.75 $/M until 2026-12-31 then 1.50 / 7.50 | `gemini-3.8-flash` (GA 2026-09-02, same price, `minimal` thinking rejected) | first candidate for a bump — **campaigned 2026-09-21**: `gemini-3.8-flash` 11/0/1 twice, identical to 3.7 mode for mode on the direct transport; OpenRouter and Mammouth not played (no key) |
-| Grok (x.AI) | `grok-4.6` | yes — recommended, 2 / 6 $/M below 200K prompt tokens, 4 / 12 above | none | stays |
-| MiniMax | `MiniMax-M2` | yes — listed as legacy, no retirement date | `MiniMax-M3` (2026-06-01, 1M, image + video input, same 0.30 / 1.20) | stays — **campaigned 2026-09-21**: `MiniMax-M3` 9/1/2 then 8/1/3 — it reads the image (now the kit's vision companion), M2 red like M2, the inline `<think>` block split out as on M2, 128 cached tokens once; the reasoning-format question is answered |
-| OpenRouter | `google/gemini-3.7-flash` | yes | `google/gemini-3.8-flash` (2026-09-02, same price) | follows the direct default — **campaigned 2026-10-07**: 11/1 on both (M10: cache fields returned with 0) |
-| Mammouth AI | `gemini-3.7-flash` | yes | `gemini-3.8-flash` | follows the direct default — **campaigned 2026-10-07**: 10/0/2 on both, every exercised mode green |
+| Together AI | `zai-org/GLM-5.3-Flash` (was `meta-llama/Llama-3.3-70B-Instruct-Turbo`) | yes — 0.15 / 0.50 $/M (catalogue read of 2026-11-11); the former default is no longer served on serverless | `Qwen/Qwen3.5-9B`, `deepseek-ai/DeepSeek-V4.1-Flash`; Llama 4 left serverless | **changed 2026-11-11** — every call to the former default answered `Unable to access non-serverless model` (2/9/1), so the default moves to `zai-org/GLM-5.3-Flash`, Together's replacement target since 2026-09-19: 10/1/1 the same day (M10: no cached tokens reported; 11/0/1 on 2026-09-21), it reads the image, so the default sees and there is no separate vision companion; `Qwen/Qwen3.5-9B` 10/1/1 (M10), candidate |
+| DeepSeek | `deepseek-flash` (was `deepseek-v4-flash`) | yes — V4.1 Flash, 0.30 / 1.20 $/M peak, native vision | it is the newest | **changed 2026-09-19**: the old name is a retired model "temporarily" routed here; **replayed 2026-09-21**: 12/12 twice — M2 and M9, red for five campaigns on `deepseek-v4-flash`, are green on `deepseek-flash`; **replayed 2026-11-11**: `deepseek-flash` 12/12 |
+| Kimi | `kimi-k2.6` | yes — 0.95 / 4.00 $/M, no retirement date | `kimi-k3` (July 2026, 1M, 3 / 15, fixed sampling, no `thinking` field, always reasons) | stays — **campaigned 2026-09-21**: `kimi-k3` 12/12 then 11/1 (M2 on the flattened shape), reasoning trace, cache 0.97, bare JSON where k2.6 now fences its `json_object` — ready, at three times the price; `kimi-k2.5` and `moonshot-v1-*` retired 2026-08-31; docs now on `platform.kimi.ai`; **2026-11-11**: not campaigned — the campaign key is refused (401), the 2026-10-07 data stands |
+| Qwen | `qwen3.7-plus` | yes — still the Plus tier, one of the three recommended models | `qwen3.8-max` (= `qwen3.8-max-0902`), `qwen3.8-flash`; no `qwen3.8-plus` | stays — **campaigned 2026-09-21**: `qwen3.8-max` 12/12, `qwen3.8-flash` 11/1 (M2), both ready, and `qwen3.7-plus` is still 12/12; the 3.8 generation adds `preserve_thinking`; **2026-11-11**: `qwen3.7-plus`, `qwen3.8-flash` and `qwen3.8-max` 12/12 each |
+| Mistral AI | `mistral-medium-2604` | yes — 1.50 / 7.50 $/M, not deprecated | nothing for chat since April (OCR 4.1 only) | stays; `devstral-*` / magistral ids sit in the deprecated table; **2026-11-11**: the default and `mistral-large-4` 12/12, `mistral-small-2603` 11/1 (M9) |
+| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | yes — but tools on one of its four routed providers, and `:fastest` may pick another | `Qwen/Qwen3.5-9B` (tools on three providers, from 0.10 / 0.15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidate Qwen3.5-9B — **campaigned 2026-09-21**: 10/0/2, it sees and its tools hold; its first pass returned an empty M1 after 4113 tokens of thinking on the router's 4096 fallback — pin `Llm:MaxTokens` (or turn thinking off) before making it a default. The routing still explains the default's moving reds (M2 and M5 both red on the same pass); **2026-11-11**: the default 7/3/2 (M2, M5, M9), `Qwen/Qwen3.5-9B` 9/1/2 (M2) |
+| Z.AI | `glm-5.2` | yes — still under "Latest Models", 1.40 / 4.40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0.15 / 0.50, image + video), `glm-5.3-flashx` | stays — **campaigned 2026-09-21**: `glm-5.3-flash` 12/12 twice (it sees, where 5.2 and 5.3 answer `1210`; cache read) — the cleanest candidate in the fleet, at a ninth of the price; `glm-5.3` 10/2 (M2, M9) brings nothing over 5.2. The `Toggle` declaration still needs a per-model guard before a bump; **2026-11-11**: not campaigned — the account has no balance (429 `Insufficient balance`); the catalogue was read |
+| Google Gemini | `gemini-3.7-flash` | yes — "previous generation", no shutdown date, 0.75 / 3.75 $/M until 2026-12-31 then 1.50 / 7.50 | `gemini-3.8-flash` (GA 2026-09-02, same price, `minimal` thinking rejected); `gemini-4-argon`, `gemini-4-carbon` | first candidate for a bump — **campaigned 2026-09-21**: `gemini-3.8-flash` 11/0/1 twice, identical to 3.7 mode for mode on the direct transport; OpenRouter and Mammouth not played (no key); **2026-11-11**: the default 11/0/1, `gemini-3.8-flash` 12/0/0, `gemini-4-argon` and `gemini-4-carbon` 11/0/1 each; `gemini-omni-1.2-flash` is listed but Interactions-API only, so out of reach of this provider and not campaigned |
+| Grok (x.AI) | `grok-4.6` | yes — recommended, 2 / 6 $/M below 200K prompt tokens, 4 / 12 above | none | stays (`grok-4.7` is listed since); **campaigned 2026-11-11**: `grok-4.6` and `grok-4.7` 12/12 |
+| MiniMax | `MiniMax-M2` | yes — listed as legacy, no retirement date | `MiniMax-M3` (2026-06-01, 1M, image + video input, same 0.30 / 1.20); `MiniMax-M3.1-Flash` | stays — **campaigned 2026-09-21**: `MiniMax-M3` 9/1/2 then 8/1/3 — it reads the image (now the kit's vision companion), M2 red like M2, the inline `<think>` block split out as on M2, 128 cached tokens once; the reasoning-format question is answered; **2026-11-11**: `MiniMax-M3.1-Flash` 10/0/2 (M7 and M8 not declared by the provider), M9 green — it reads the image where `MiniMax-M3` reads `72`; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9) |
+| OpenRouter | `google/gemini-3.7-flash` | yes | `google/gemini-3.8-flash` (2026-09-02, same price) | follows the direct default — **campaigned 2026-10-07**: 11/1 on both (M10: cache fields returned with 0); **2026-11-11**: the default 12/0/0, `google/gemini-3.8-flash` 11/1/0 (M10), `moonshotai/kimi-k3.1-pro` 12/0/0 |
+| Mammouth AI | `gemini-3.7-flash` | yes | `gemini-3.8-flash` | follows the direct default — **campaigned 2026-10-07**: 10/0/2 on both, every exercised mode green; **2026-11-11**: 9/1/2 on both (M10: 0 cached tokens), `kimi-k3.1-pro` 10/0/2 |
 
 `ModelPricingRegistry` follows the same pages: the GPT-5.6 family and `gpt-6-astra`, and, for
 Anthropic (read 2026-10-30), Fable 5.1 / Fable 5 at 10 / 50, Opus 5.5 at 4 / 20, Opus 5 and Opus 4.5 to 4.8 at 5 / 25, Sonnet 5 at 2 / 10,
@@ -261,12 +264,16 @@ Haiku 5 at 0.10 / 0.50 and Haiku 4.5 at 1 / 5. Cache tariffs: a 5-minute write a
 (costed by the cost manager), a read at 0.1x (0.25 for Fable 5.1, 0.20 for Opus 5.5). The Haiku 5.5 tier above 100K prompt tokens
 (0.50 / 2.50) is not modelled.
 
-## Models served and their default options — catalogue read of 2026-10-07
+## Models served and their default options — catalogue read of 2026-11-11
 
-The campaign of 2026-10-07 read each provider's own catalogue endpoint with the campaign key
+The campaign of 2026-11-11 read each provider's own catalogue endpoint with the campaign key
 (`orkeon llm models -p <provider>` returns the same identifiers), then played the protocol on
-every default, on the candidates of the 2026-09-19 review, and on the current chat models the
-listing showed that no campaign had met yet. Three kinds of facts come out of it, kept apart
+every default, on the candidates of the reviews, and on the current chat models the listing
+showed that no campaign had met yet. Two providers are the exception: **Kimi** was not read
+again and not campaigned (the campaign key is refused, 401, on `api.moonshot.ai` and
+`api.moonshot.cn` — its four identifiers and scores are those of 2026-10-07), and **Z.AI** was
+read but not campaigned (the account has no balance: 429, `Insufficient balance or no
+resource package`). A score marked `(2026-10-07)` below was not replayed. Three kinds of facts come out of it, kept apart
 on purpose:
 
 - **what the endpoint publishes** about a model — context, output cap, default sampling,
@@ -276,7 +283,7 @@ on purpose:
   defaults) and recorded in `requiredParams`;
 - **what the campaign measured** on the twelve automated modes.
 
-The full listing — 1 442 identifiers across fourteen providers, each with the options its
+The full listing — 1 310 identifiers across fourteen providers, each with the options its
 endpoint publishes — is
 [`llmproviders-test/lib/served-models.json`](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/lib/served-models.json),
 a dated snapshot the next campaign diffs against. Azure OpenAI and Ollama have no row: one
@@ -284,19 +291,19 @@ serves an account's deployments, the other what a machine pulled.
 
 | Provider | Catalogue request | Identifiers | What it publishes per model |
 |---|---|---|---|
-| OpenAI | `GET api.openai.com/v1/models` | 133 | ids only |
-| Anthropic | `GET api.anthropic.com/v1/models` | 14 | context, output cap, effort levels, thinking types, modalities |
+| OpenAI | `GET api.openai.com/v1/models` | 96 | ids only |
+| Anthropic | `GET api.anthropic.com/v1/models` | 15 | context, output cap, effort levels, thinking types, modalities |
 | DeepSeek | `GET api.deepseek.com/models` | 2 | context, output cap, modalities, effort levels and default |
-| Z.AI | `GET api.z.ai/api/paas/v4/models` | 11 | ids only |
-| Kimi | `GET api.moonshot.ai/v1/models` | 4 | context, image/video input, reasoning |
+| Z.AI | `GET api.z.ai/api/paas/v4/models` | 12 | ids only |
+| Kimi | `GET api.moonshot.ai/v1/models` | 4 (read 2026-10-07) | context, image/video input, reasoning |
 | Google Gemini | `GET generativelanguage.googleapis.com/v1beta/models` | 62 | context, output cap, default temperature / topP / topK, maximum temperature, thinking |
-| Mistral AI | `GET api.mistral.ai/v1/models` | 55 | context, default temperature, capabilities, aliases, deprecation |
-| Qwen | `GET dashscope-intl.aliyuncs.com/compatible-mode/v1/models` | 172 | ids only |
+| Mistral AI | `GET api.mistral.ai/v1/models` | 64 | context, default temperature, capabilities, aliases, deprecation |
+| Qwen | `GET dashscope-intl.aliyuncs.com/compatible-mode/v1/models` | 101 | ids only |
 | Grok (x.AI) | `GET api.x.ai/v1/language-models` | 8 | modalities, prices in $ per million tokens, long-context threshold, aliases |
-| MiniMax | `GET api.minimax.io/v1/models` | 8 | ids only |
-| Together AI | `GET api.together.xyz/v1/models` | 264 | type, context, prices in $ per million tokens |
-| HuggingFace | `GET router.huggingface.co/v1/models` | 137 | modalities, and per routed provider: context, tools, structured output |
-| OpenRouter | `GET openrouter.ai/api/v1/models` | 465 | context, output cap of the top endpoint, default parameters, reasoning (mandatory, default effort, supported efforts) |
+| MiniMax | `GET api.minimax.io/v1/models` | 9 | ids only |
+| Together AI | `GET api.together.xyz/v1/models` | 270 | type, context, prices in $ per million tokens |
+| HuggingFace | `GET router.huggingface.co/v1/models` | 127 | modalities, and per routed provider: context, tools, structured output |
+| OpenRouter | `GET openrouter.ai/api/v1/models` | 433 | context, output cap of the top endpoint, default parameters, reasoning (mandatory, default effort, supported efforts) |
 | Mammouth AI | `GET api.mammouth.ai/v1/models` | 107 | context, output cap |
 
 The chat models of the current generation, provider by provider. An em dash in the two size
@@ -306,96 +313,147 @@ caps are the ones of the next section.
 | Provider | Model | Context | Max output | Published by the endpoint | Dictated by the model (measured) | Campaign ✅/❌/➖ |
 |---|---|---|---|---|---|---|
 | OpenAI | `gpt-5.6-sol` *(default)* | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` with function tools | 11/1/0 — ❌ M9 |
-|  | `gpt-5.6-terra` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` with function tools | 11/1/0 — ❌ M9 |
-|  | `gpt-5.6-luna` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` with function tools | 11/1/0 — ❌ M6 |
+|  | `gpt-5.6-terra` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` with function tools | 11/1/0 — ❌ M9 (2026-10-07) |
+|  | `gpt-5.6-luna` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` with function tools | 11/1/0 — ❌ M6 (2026-10-07) |
 |  | `gpt-6-sol` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` with function tools | 11/1/0 — ❌ M9 |
 |  | `gpt-6-luna` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` with function tools | 12/0/0 |
-|  | `gpt-6.1-sol` | — | — | — | `temperature` = `1` | 10/2/0 — ❌ M2, M5 |
+|  | `gpt-6.1-terra` | — | — | — | `temperature` = `1` · `reasoning_effort` = `none` with function tools | 12/0/0 |
+|  | `gpt-6.1-sol` | — | — | — | `temperature` = `1` | 9/3/0 — ❌ M2, M5, M9 |
 |  | `gpt-6-astra` | — | — | — | `temperature` = `1` | 10/2/0 — ❌ M2, M5 |
 | Anthropic | `claude-sonnet-5` *(default)* | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` `disabled` | `temperature` = `1` | 12/0/0 |
 |  | `claude-sonnet-5-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 12/0/0 |
-|  | `claude-haiku-5-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` `disabled` | `temperature` = `1` | 11/1/0 — ❌ M9 |
-|  | `claude-opus-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` `disabled` | `temperature` = `1` | 12/0/0 |
-|  | `claude-opus-5-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 10/2/0 — ❌ M5, M6 |
+|  | `claude-haiku-5-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` `disabled` | `temperature` = `1` | 12/0/0 |
+|  | `claude-opus-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` `disabled` | `temperature` = `1` | 12/0/0 (2026-10-07) |
+|  | `claude-opus-5-5` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 12/0/0 |
 |  | `claude-fable-5-1` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 11/1/0 — ❌ M6 |
+|  | `claude-fable-5-2` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 12/0/0 |
 | DeepSeek | `deepseek-flash` *(default)* | 1 048 576 | 393 216 | default effort `high` (of `low` `high` `max`) · text + image | — | 12/0/0 |
-|  | `deepseek-v4-pro` | 1 048 576 | 393 216 | default effort `high` (of `low` `high` `max`) · text | — | 11/1/0 — ❌ M9 |
-| Z.AI | `glm-5.2` *(default)* | — | — | — | — | 10/2/0 — ❌ M9, M10 |
-|  | `glm-5.3` | — | — | — | — | 10/2/0 — ❌ M2, M9 |
-|  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 |
-|  | `glm-5.3-flashx` | — | — | — | — | 12/0/0 |
-| Kimi | `kimi-k2.6` *(default)* | 262 144 | — | image + video + reasoning | `temperature` = `1` | 10/1/1 — ❌ M8 |
-|  | `kimi-k3` | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 11/1/0 — ❌ M2 |
-|  | `kimi-k2.7-code` | 262 144 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
+|  | `deepseek-v4-pro` | 1 048 576 | 393 216 | default effort `high` (of `low` `high` `max`) · text | — | 11/1/0 — ❌ M9 (2026-10-07) |
+| Z.AI | `glm-5.2` *(default)* | — | — | — | — | 10/2/0 — ❌ M9, M10 (2026-10-07) |
+|  | `glm-5.3` | — | — | — | — | 10/2/0 — ❌ M2, M9 (2026-10-07) |
+|  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 (2026-10-07) |
+|  | `glm-5.3-flashx` | — | — | — | — | 12/0/0 (2026-10-07) |
+| Kimi | `kimi-k2.6` *(default)* | 262 144 | — | image + video + reasoning | `temperature` = `1` | 10/1/1 — ❌ M8 (2026-10-07) |
+|  | `kimi-k3` | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 11/1/0 — ❌ M2 (2026-10-07) |
+|  | `kimi-k2.7-code` | 262 144 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 (2026-10-07) |
 | Google Gemini | `gemini-3.7-flash` *(default)* | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
-|  | `gemini-3.8-flash` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
-|  | `gemini-3.5-flash-lite` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 |
-|  | `gemini-3.1-pro-preview` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 10/1/1 — ❌ M5 |
-| Mistral AI | `mistral-medium-2604` *(default)* | 262 144 | — | `temperature` 1 · tools + reasoning + vision | `reasoning_effort` ∈ {`high`, `none`} | 11/1/0 — ❌ M10 |
-|  | `mistral-large-4` | 524 288 | — | `temperature` 1 · tools + reasoning + vision | `reasoning_effort` ∈ {`high`, `none`} | 11/1/0 — ❌ M10 (10/2/0 — ❌ M3, M6 before the stream fix) |
+|  | `gemini-3.8-flash` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 |
+|  | `gemini-4-argon` | 1 048 576 | 32 768 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
+|  | `gemini-4-carbon` | 1 048 576 | 32 768 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
+|  | `gemini-3.5-flash-lite` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 (2026-10-07) |
+|  | `gemini-3.1-pro-preview` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 10/1/1 — ❌ M5 (2026-10-07) |
+| Mistral AI | `mistral-medium-2604` *(default)* | 262 144 | — | `temperature` 1 · tools + reasoning + vision | `reasoning_effort` ∈ {`high`, `none`} | 12/0/0 |
+|  | `mistral-large-4` | 1 048 576 | — | `temperature` 1 · tools + reasoning + vision | `reasoning_effort` ∈ {`high`, `none`} | 12/0/0 |
 |  | `mistral-small-2603` | 262 144 | — | `temperature` 0.3 · tools + reasoning + vision | `reasoning_effort` ∈ {`high`, `none`} | 11/1/0 — ❌ M9 |
 | Qwen | `qwen3.7-plus` *(default)* | — | — | — | — | 12/0/0 |
-|  | `qwen3.7-flash` | — | — | — | — | 11/1/0 — ❌ M2 |
-|  | `qwen3.7-max` | — | — | — | — | 11/1/0 — ❌ M9 |
+|  | `qwen3.7-flash` | — | — | — | — | 11/1/0 — ❌ M2 (2026-10-07) |
+|  | `qwen3.7-max` | — | — | — | — | 11/1/0 — ❌ M9 (2026-10-07) |
 |  | `qwen3.8-flash` | — | — | — | — | 12/0/0 |
 |  | `qwen3.8-max` | — | — | — | — | 12/0/0 |
+|  | `deepseek-v4.1-flash-1017` | — | — | — | — | 12/0/0 |
 | Grok (x.AI) | `grok-4.6` *(default)* | — | — | text + image · 2 / 0.5 / 6 $/M in / cached / out | — | 12/0/0 |
-|  | `grok-4.7` | — | — | text + image · 2 / 0.5 / 6 $/M in / cached / out | — | 11/1/0 — ❌ M6 |
-| MiniMax | `MiniMax-M2` *(default)* | — | — | — | — | 7/2/3 — ❌ M2, M9 |
-|  | `MiniMax-M2.7` | — | — | — | — | 8/2/2 — ❌ M2, M9 |
-|  | `MiniMax-M3` | — | — | — | — | 9/1/2 — ❌ M2 |
-| Together AI | `meta-llama/Llama-3.3-70B-Instruct-Turbo` *(default)* | 131 072 | — | 1.04 / 1.04 $/M | — | 9/1/2 — ❌ M9 |
-|  | `zai-org/GLM-5.3-Flash` | 1 048 575 | — | 0.15 / 0.5 $/M | — | 11/0/1 |
-|  | `Qwen/Qwen3.5-9B` | 262 144 | — | 0.17 / 0.25 $/M | — | 10/0/2 |
-| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` *(default)* | up to 131 072 | — | 4 routed provider(s), 1 with tools | — | 7/3/2 — ❌ M2, M5, M9 |
-|  | `Qwen/Qwen3.5-9B` | up to 262 144 | — | 4 routed provider(s), 3 with tools | — | 10/0/2 |
-| OpenRouter | `google/gemini-3.7-flash` *(default)* | 1 048 576 | 65 536 | default effort `medium` · reasoning mandatory | — | 11/1/0 — ❌ M10 |
+|  | `grok-4.7` | — | — | text + image · 2 / 0.5 / 6 $/M in / cached / out | — | 12/0/0 |
+| MiniMax | `MiniMax-M2` *(default)* | — | — | — | — | 8/2/2 — ❌ M2, M9 |
+|  | `MiniMax-M2.7` | — | — | — | — | 8/2/2 — ❌ M2, M9 (2026-10-07) |
+|  | `MiniMax-M3` | — | — | — | — | 9/1/2 — ❌ M9 |
+|  | `MiniMax-M3.1-Flash` | — | — | — | — | 10/0/2 |
+| Together AI | `zai-org/GLM-5.3-Flash` *(default)* | 1 048 575 | — | 0.15 / 0.5 $/M | — | 10/1/1 — ❌ M10 |
+|  | `Qwen/Qwen3.5-9B` | 262 144 | — | 0.17 / 0.25 $/M | — | 10/1/1 — ❌ M10 |
+|  | `meta-llama/Llama-3.3-70B-Instruct-Turbo` *(former default)* | 131 072 | — | 1.04 / 1.04 $/M | — | 2/9/1 — no longer serverless |
+| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` *(default)* | up to 131 072 | — | 3 routed provider(s), 1 with tools | — | 7/3/2 — ❌ M2, M5, M9 |
+|  | `Qwen/Qwen3.5-9B` | up to 262 144 | — | 3 routed provider(s), 2 with tools | — | 9/1/2 — ❌ M2 |
+| OpenRouter | `google/gemini-3.7-flash` *(default)* | 1 048 576 | 65 536 | default effort `medium` · reasoning mandatory | — | 12/0/0 |
 |  | `google/gemini-3.8-flash` | 1 048 576 | 65 536 | default effort `medium` · reasoning mandatory | — | 11/1/0 — ❌ M10 |
-|  | `deepseek/deepseek-v4.1-flash` | 1 048 576 | 943 718 | default effort `high` | — | 4/0/0 (M5, M7, M8, M10) |
-| Mammouth AI | `gemini-3.7-flash` *(default)* | 1 048 576 | 65 536 | — | — | 10/0/2 |
-|  | `gemini-3.8-flash` | 1 048 576 | 65 536 | — | — | 10/0/2 |
-|  | `deepseek-v4.1-flash` | 1 048 576 | 1 048 576 | — | — | 1/0/2 (M5, M7, M8) |
+|  | `moonshotai/kimi-k3.1-pro` | 1 048 576 | 943 718 | default effort `max` | — | 12/0/0 |
+|  | `deepseek/deepseek-v4.1-flash` | 1 048 576 | 943 718 | default effort `high` | — | 4/0/0 (M5, M7, M8, M10) (2026-10-07) |
+| Mammouth AI | `gemini-3.7-flash` *(default)* | 1 048 576 | 65 536 | — | — | 9/1/2 — ❌ M10 |
+|  | `gemini-3.8-flash` | 1 048 576 | 65 536 | — | — | 9/1/2 — ❌ M10 |
+|  | `kimi-k3.1-pro` | 1 048 576 | 943 718 | — | — | 10/0/2 |
+|  | `deepseek-v4.1-flash` | 1 048 576 | 1 048 576 | — | — | 1/0/2 (M5, M7, M8) (2026-10-07) |
 
 What the table does not say by itself:
 
-- **OpenAI** — the 6 generation is listed (`gpt-6-sol`, `gpt-6-luna`, `gpt-6.1-sol`, beside
-  `gpt-6-astra`). `gpt-6-sol`, `gpt-6-luna` and the two untested 5.6 tiers behave like the
-  default: temperature 1 only, and function tools on `/v1/chat/completions` need
-  `reasoning_effort: none`. `gpt-6.1-sol` behaves like `gpt-6-astra`: it has no `none`, so
-  function tools stay refused there (M2 on the messages array, M5) until the dialect speaks
-  `/v1/responses`. M9 is the mode that moves at the mandated temperature: `29`, `26` and `18`
-  were read for 73 on three models.
+- **OpenAI** — the 6 generation is listed (`gpt-6-sol`, `gpt-6-luna`, `gpt-6.1-sol`,
+  `gpt-6.1-terra`, beside `gpt-6-astra`). `gpt-6-sol`, `gpt-6-luna`, `gpt-6.1-terra` and the
+  two 5.6 tiers not replayed behave like the default: temperature 1 only, and function tools
+  on `/v1/chat/completions` need `reasoning_effort: none`. `gpt-6.1-terra` takes `none`,
+  unlike `gpt-6.1-sol`, and is 12/12 on its first run. `gpt-6.1-sol` behaves like
+  `gpt-6-astra`: it has no `none`, so function tools stay refused there (M2 on the messages
+  array, M5) until the dialect speaks `/v1/responses`. The first pass of 2026-11-11 (06:10)
+  was red on M2 and M5 for every OpenAI model: Orkeon had been lowering the pinned `none` to
+  `low` since #242, and the `gpt-5` row of the capability table caught the `gpt-5.6-*` ids.
+  Fixed and replayed at 06:25: `gpt-5.6-sol` 11/1, `gpt-6-sol` 11/1, `gpt-6-luna` and
+  `gpt-6.1-terra` 12/12; `gpt-6-astra` and `gpt-6.1-sol` stay red, as expected. M9 is the mode
+  that moves at the mandated temperature: `29`, `26` and `18` were read for 73 on 2026-10-07,
+  `23`, `43` and `23` on 2026-11-11 (`gpt-5.6-sol`, `gpt-6-sol`, `gpt-6.1-sol`).
 - **Anthropic** — `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-haiku-5-5` are listed,
   the last on the day of the campaign. The four models campaigned for the first time refuse a
   pinned temperature in the words `claude-sonnet-5` uses. `claude-opus-5-5` answers the
   probe's tool prompt with HTTP 200, an empty `content` and `stop_reason: "refusal"`
   (category `cyber`): the provider does not read `stop_reason` and returns an empty answer —
   its M5 and M6 reds are that refusal, not tool calling. `claude-haiku-5-5`'s M9 red is the
-  probe's: the model answers `Seventy-three red`, the check looks for the digits.
+  probe's: the model answers `Seventy-three red`, the check looks for the digits. On
+  2026-11-11 `claude-haiku-5-5` is 12/12 and `claude-opus-5-5` is 12/12 with the same prompt:
+  the classifier no longer meets the probe's wording. `claude-fable-5-2` (listed 2026-11-09)
+  refuses an explicit temperature like the rest of the 5 family and is 12/12 on its first run,
+  including the M6 that `claude-fable-5-1` still misses (11/1).
 - **Mistral AI** — the account is no longer rate-limited, so the default has a result again
   (11/1, its 2026-08-30 line). `mistral-large-4` reasons by default and streams
   `delta.content` as an array of typed chunks: the text stream threw on it (M3) and the chat
   stream dropped the trace and the first words of the answer. Both streams read the two
-  shapes since 2026-10-07; replayed on that fix the model is 11/1, M3 green.
+  shapes since 2026-10-07; replayed on that fix the model was 11/1, M3 green, and it is 12/12
+  on 2026-11-11 (its published context went from 524 288 to 1 048 576). The default is 12/12
+  too. `/v1/models` now also lists models of other vendors served by Mistral —
+  `deepseek-v4-1-flash-1017` and `zai-glm-5-3-flash`, both 11/1 on their first run: the system
+  message is lost on the messages-array shape of M2 while the flattened shape honours it.
 - **Kimi** — played an hour after the others: the account was suspended for insufficient
   balance at first (HTTP 429, `exceeded_current_quota_error`, which the retry policy treats
   as a rate limit). `kimi-k2.6` still fences its `json_object` in markdown (M8, as on
   2026-09-21); `kimi-k2.7-code` is the one Kimi model with every mode green. It mandates
   temperature 1 too, which only its streams showed: on a buffered call the provider retries
-  once with the mandated value, the two streaming paths do not.
+  once with the mandated value, the two streaming paths do not. **Not read again on
+  2026-11-11:** the campaign key is refused (401 `Incorrect API key provided`) on
+  `api.moonshot.ai` and `api.moonshot.cn`, so the four identifiers and every Kimi score are
+  those of 2026-10-07. The new top model `kimi-k3.1-pro` was met through the aggregators
+  instead: 12/12 on OpenRouter (`moonshotai/kimi-k3.1-pro`), 10/0/2 on Mammouth.
 - **Z.AI** — `glm-5.3-flashx` is the second model of the family to pass every mode. The
   listing omits `glm-4.6v-flash`, which is served (the vision companion, M9 green the same
-  day): a catalogue is not the whole offer.
+  day): a catalogue is not the whole offer. **Not campaigned on 2026-11-11:** the account has
+  no balance (429, code 1113 `Insufficient balance or no resource package`) on every model;
+  the provider retries that 429 as a transient limit, so the probe of `glm-5.2` was stopped
+  after 21 minutes with nothing archived. The catalogue was read (12 ids, `glm-5.3-flashx-legal`
+  is new); every Z.AI score above is of 2026-10-07.
 - **Qwen** — an international key is served by `dashscope-intl.aliyuncs.com` only; the
-  compiled endpoint (`dashscope.aliyuncs.com`) answers it 401. Set `Llm:BaseUrl`.
+  compiled endpoint (`dashscope.aliyuncs.com`) answers it 401. Set `Llm:BaseUrl`. The
+  international listing fell from 172 to 101 ids on 2026-11-11 (the qwen3 open-weight line and
+  the qwen-vl / omni / tts families left it); `qwen3.7-plus`, `qwen3.8-flash` and
+  `qwen3.8-max` are 12/12, and `deepseek-v4.1-flash-1017`, served there, is 12/12 on its
+  first run.
 - **Gemini** — `gemini-3.5-flash-lite` is the one Gemini model whose cache breakdown came
   back (4077 cached tokens); the M5 red of `gemini-3.1-pro-preview` did not reproduce in
-  three replays.
+  three replays (not replayed on 2026-11-11). `gemini-3.8-flash` is 12/12 on 2026-11-11 and
+  the default 11/0/1. `gemini-4-argon` and `gemini-4-carbon` (1 048 576 context, 32 768
+  output, thinking) are 11/0/1 each on their first run. `gemini-omni-1.2-flash` is listed by
+  `/v1beta/models` but answers `This model only supports Interactions API` on the
+  OpenAI-compatible surface: out of this provider's reach, not campaigned.
+- **MiniMax** — `MiniMax-M3.1-Flash` is new in the listing (9 ids): 10/0/2 on its first run,
+  M7 and M8 not declared by the provider, M9 green — it reads the image where `MiniMax-M3`
+  misreads the number (`72`; 9/1/2). `MiniMax-M2` is 8/2/2 (M2, M9).
+- **Together AI** — `meta-llama/Llama-3.3-70B-Instruct-Turbo`, the former compiled default, is no
+  longer served on serverless: every call answers `Unable to access non-serverless model`
+  (2/9/1). The default moves to `zai-org/GLM-5.3-Flash` (10/1/1, M10 red: the endpoint
+  reports no cached tokens); `Qwen/Qwen3.5-9B` is 10/1/1 (M10). The default sees, so there is
+  no separate vision companion any more.
+- **HuggingFace** — the default is 7/3/2 (M2, M5, M9) and `Qwen/Qwen3.5-9B` 9/1/2 (M2); the
+  routing still decides how many of a model's providers carry tools.
 - **OpenRouter and Mammouth AI** — first campaigns, both on the fleet's Gemini default: one
   model, three transports. Direct 11/0/1, OpenRouter 11/1/0, Mammouth 10/0/2 — the marketplace
   returns the cache fields with 0 where Google returns none (M10), and Mammouth's two ➖ are
   the capabilities the provider does not declare. OpenRouter's catalogue is the richest of the
-  fleet: per model, the default parameters and whether reasoning is mandatory.
+  fleet: per model, the default parameters and whether reasoning is mandatory. Replayed on
+  2026-11-11: direct 11/0/1 (and `gemini-3.8-flash` 12/12), OpenRouter 12/0/0 on the default
+  and 11/1/0 on `gemini-3.8-flash` (M10), Mammouth 9/1/2 on both — its M10 now reads 0 cached
+  tokens where it was green on 2026-10-07.
 - **Also served, not campaigned** — among others `claude-fable-5`, `claude-opus-4-8`,
   `gemini-3.6-flash`, `gemini-3.5-flash`, `mistral-large-2512`, the `ministral` family,
   `grok-4.5`, `grok-4.3`, `MiniMax-M2.1`, `MiniMax-M2.5`, `glm-5.1`, `glm-5-turbo`,
@@ -460,10 +518,17 @@ breaking the sibling model. Every row below was measured live; nothing is inferr
 | OpenAI | `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-6-sol`, `gpt-6-luna` | `temperature` and `reasoning_effort` | as `gpt-5.6-sol`: `1`, and `"none"` with function tools | the two sentences of `gpt-5.6-sol`, the model name aside | 2026-10-07 |
 | OpenAI | `gpt-6.1-sol` | `temperature` and `reasoning_effort` | as `gpt-6-astra`: `1`, and **no `"none"` exists** | `'reasoning_effort' does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'.` | 2026-10-07 |
 | Anthropic | `claude-opus-5`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` | `temperature` | `1`, or omit the field | `` `temperature` is deprecated for this model.`` | 2026-10-07 |
+| Anthropic | `claude-fable-5-2` | `temperature` | `1`, or omit the field | refused like the rest of the 5 family — the sentence was not recorded for this model | 2026-11-11 |
+| OpenAI | `gpt-6.1-terra` | `temperature` and `reasoning_effort` | as `gpt-5.6-sol`: `1`, and `"none"` with function tools — unlike `gpt-6.1-sol`, this model has a `none` | the two sentences of `gpt-5.6-sol`, the model name aside; 12/12 with those two pins | 2026-11-11 |
 | Mistral | `mistral-large-4` | `reasoning_effort` | `high` or `none` only | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-10-07 |
 | Mistral | `mistral-small-2603` | `reasoning_effort` | `high` or `none` only | `reasoning_effort='low' is not supported for this model. Must be one of (<ReasoningEffort.none: 'none'>, <ReasoningEffort.high: 'high'>)` | 2026-10-07 |
 | Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` or `none` only | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-08-30 |
 | Mistral | `mistral-medium-2604` | `top_p` | explicit `1` when `temperature` is 0 and reasoning is on (omission is NOT 1 there) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |
+
+On OpenAI, the GPT-5.6 and GPT-6 tiers take function tools on `/v1/chat/completions` only with
+`reasoning_effort: none` (`gpt-6-astra` and `gpt-6.1-sol` have no `none`: tools need
+`/v1/responses`). The pin must reach the API as `none`: on 2026-11-11 a first pass had Orkeon
+lowering it to `low`, which turned M2 and M5 red on every OpenAI model until the fix.
 
 A temperature nothing sets is not sent (GAP-36): a host that pins none runs these models on their
 own default, which they accept — `orkeon init` writes none. A host that pins one must pin

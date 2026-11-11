@@ -42,7 +42,7 @@
     "together": {
       "apiKeyEnv": "TOGETHER_API_KEY",
       "modes": "M1,M2,M3,M4,M5",
-      "models": ["meta-llama/Llama-3.3-70B-Instruct-Turbo"]
+      "models": ["zai-org/GLM-5.3-Flash"]
     },
 
     "deepseek": {

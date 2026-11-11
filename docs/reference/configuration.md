@@ -248,7 +248,7 @@ OpenAI-compatible server, reported as silent when it has no path; an address no 
 not an absolute `http(s)` URL, or a vendor host under `/anthropic` — refuses the start) — then,
 without a base URL, model-name patterns, then API-key shape; default `openai`. A section without `Model` runs on that provider's own default
 model (the *Default (code)* column of the
-[provider comparison](llm-providers-comparison.md#defaults-and-newer-models--catalogue-review-of-2026-09-19)),
+[provider comparison](llm-providers-comparison.md#defaults-and-newer-models--catalogue-reviews-of-2026-09-19-2026-10-07-and-2026-11-11)),
 never on OpenAI's pinned onto another vendor. Without an `Llm` section the
 runtime degrades to the echo provider and warns once. See
 [LLM providers](../architecture/llm-providers.md); templates live in
