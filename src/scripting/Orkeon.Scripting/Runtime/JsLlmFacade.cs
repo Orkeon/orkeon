@@ -276,8 +276,11 @@ public sealed partial class JsLlmFacade
     /// </summary>
     public Func<string, JsValue?, JsValue> stream => (prompt, options) =>
     {
+        // The profile and the options are read when stream() is called, not at the first next():
+        // an unknown profile throws here, and a bag the script changes afterwards changes nothing.
+        var call = CallFrom(options);
         var observations = new StreamObservations();
-        return AsAsyncIterable(StreamCore(prompt, options, observations), observations);
+        return AsAsyncIterable(StreamCore(prompt, call, observations), observations);
     };
 
     /// <summary>
@@ -289,7 +292,7 @@ public sealed partial class JsLlmFacade
     /// protocol needs its own test.
     /// </summary>
     internal IAsyncEnumerable<string> StreamChunks(string prompt, JsValue? options)
-        => StreamCore(prompt, options, new StreamObservations());
+        => StreamCore(prompt, CallFrom(options), new StreamObservations());
 
     /// <summary>
     /// Wraps an <see cref="IAsyncEnumerable{T}"/> into a JS async-iterable object so
@@ -454,9 +457,9 @@ public sealed partial class JsLlmFacade
     /// missing credential, never an empty sequence that reads as "the model said nothing".</para>
     /// </remarks>
     private async IAsyncEnumerable<string> StreamCore(
-        string prompt, JsValue? options, StreamObservations observations)
+        string prompt, (ILlmProvider? Provider, LlmConfig? Config) call, StreamObservations observations)
     {
-        var (provider, config) = CallFrom(options);
+        var (provider, config) = call;
         if (provider is null)
         {
             yield return $"<undefined-llm:{prompt}>";
@@ -2069,6 +2072,9 @@ public sealed partial class JsLlmFacade
     /// (GAP-18) and no sampling.
     /// </remarks>
     private LlmConfig? ConfigFrom(JsValue? options, ILlmProvider? provider)
+        => ConfigFrom(options, provider, LlmOf(options));
+
+    private LlmConfig? ConfigFrom(JsValue? options, ILlmProvider? provider, JsValue llm)
     {
         // The agent's own effort and cache apply to every call; a call's options win over them (#254).
         LlmConfig? config = AgentSettings is { Thinking: null, Cache: null } or null
@@ -2106,7 +2112,6 @@ public sealed partial class JsLlmFacade
         // Nested `{ llm: { model: "..." } }` — the per-call model override: the call's provider
         // (the agent's, or the profile `{ llm: { profile } }` names) keeps its credentials and
         // endpoint, only the model name changes.
-        var llm = options.Get("llm");
         if (llm.IsObject())
         {
             var model = llm.Get("model");
@@ -2136,23 +2141,41 @@ public sealed partial class JsLlmFacade
     /// </exception>
     private (ILlmProvider? Provider, LlmConfig? Config) CallFrom(JsValue? options)
     {
-        var provider = ProfileNamed(options) is { } profile
+        var llm = LlmOf(options);
+        var provider = ProfileNamed(llm) is { } profile
             ? Orkeon.Scripting.Bindings.JsLlmNamespace.ProviderFor(_engine, profile, $"ctx.llm {{ llm: {{ profile: \"{profile}\" }} }}", _provider)
             : _provider;
-        return (provider, ConfigFrom(options, provider));
+        return (provider, ConfigFrom(options, provider, llm));
+    }
+
+    /// <summary>
+    /// The bag's <c>llm</c> value, read once. An <c>LlmConfig</c> (<c>llm.profile(...)</c>,
+    /// <c>.with(...)</c>) is refused: the call would read its profile and model and drop its temperature
+    /// and token cap, and a setting never vanishes.
+    /// </summary>
+    private static JsValue LlmOf(JsValue? options)
+    {
+        if (options is null || !options.IsObject()) return JsValue.Undefined;
+        var llm = options.Get("llm");
+        if (llm is Jint.Runtime.Interop.ObjectWrapper { Target: JsLlmConfig })
+            throw new Orkeon.Scripting.Exceptions.InvalidScriptException(
+                "ctx.llm { llm } takes { profile?, model? }, not an LlmConfig: name the profile and the model " +
+                "({ llm: { profile: cfg.profile, model: cfg.model } }), or configure the agent with .llm(cfg).");
+        return llm;
     }
 
     /// <summary>The profile <c>{ llm: { profile } }</c> names, or null when the bag names none.</summary>
-    private static string? ProfileNamed(JsValue? options)
+    private static string? ProfileNamed(JsValue llm)
     {
-        if (options is null || !options.IsObject()) return null;
-        var llm = options.Get("llm");
         if (!llm.IsObject()) return null;
         var profile = llm.Get("profile");
         if (profile.IsUndefined() || profile.IsNull()) return null;
-        if (!profile.IsString() || string.IsNullOrWhiteSpace(profile.AsString()))
+        if (!profile.IsString())
             throw new Orkeon.Scripting.Exceptions.InvalidScriptException(
                 "ctx.llm { llm: { profile } } takes the profile name as a string.");
+        if (string.IsNullOrWhiteSpace(profile.AsString()))
+            throw new Orkeon.Scripting.Exceptions.InvalidScriptException(
+                "ctx.llm { llm: { profile } } takes a non-empty profile name.");
         return profile.AsString().Trim();
     }
 

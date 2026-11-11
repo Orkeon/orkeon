@@ -180,19 +180,21 @@ state is a JS `Proxy` whose `set` trap exists to make that loud rather than lost
 `ctx.llm` — `complete(prompt)`, `chat(messages)`, `stream(prompt)` (async-iterable; `usage`
 and `reasoningChunks` are read after the loop), `extract(prompt, schema)`,
 `decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, and `interrupt()` /
-`isInterrupted`. Every call goes to the host's configured provider; without one, a
-`<undefined-llm:…>` echo answers, which is what lets the examples run keyless. A call takes these
+`isInterrupted`. Every call goes to the agent's provider (the host's, or its profile's), or to the
+profile `{ llm: { profile } }` names; without one, a `<undefined-llm:…>` echo answers, which is what lets the examples run keyless. A call takes these
 options, all for that call only: `llm: { profile }` runs it on the host profile of that name
 (`Llm:Profiles:<name>`) by the rule of `llm.profile(name)` — a name the host does not offer throws,
 listing the known ones, `"default"` is the host's own provider, and a decision profile applies its
 stages to the call — and the others patch the configuration of the call's provider:
 `responseFormat` (`"json_object"`, `"json_schema"`, `"text"`), `llm: { model }` (a per-call
 model, within the profile's provider when `profile` is set: `{ profile, model }` is
-`llm.profile(profile, { model })`) and `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: the provider's thinking, on at that effort;
+`llm.profile(profile, { model })`; an `LlmConfig` is refused there, its temperature and token cap
+would not apply) and `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: the provider's thinking, on at that effort;
 any other value is refused with `effort must be low|medium|high|xhigh|max`) and `cache` (the prompt-cache request, as `agentBuilder().cache(...)` takes it). `act` takes more: see
 [Options of `act`](../architecture/scripting.md#options-of-act) (`tools`, `effort`, `onToolCall`,
 `onToolResult`, `onContextPressure`, `waitFor`). There is no per-call vendor, temperature or token cap, and no `signal` — the call
-already observes the context's.
+already observes the context's. `embed` is a local stub: it calls no provider and reads none of these
+options.
 
 `chat` takes a bare message array or `{ messages: [...] }`. `extract(prompt, schema, opts)` takes
 the same forms as its first argument, the caller's turns sent in order, plus a prompt string; its

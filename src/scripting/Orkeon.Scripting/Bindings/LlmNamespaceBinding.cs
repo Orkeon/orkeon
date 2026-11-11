@@ -156,7 +156,7 @@ public sealed partial class JsLlmNamespace
     /// <paramref name="profileName"/> (#331), by the rule of <c>llm.profile(name)</c>: the default
     /// profile is the host's provider, another name one of the host's profiles — a decision profile's
     /// provider applies its stages to the call. An engine without the namespace offers the default
-    /// alone, which is then <paramref name="fallback"/>.
+    /// alone, which is then <paramref name="fallback"/>: the namespace is what knows the host's provider.
     /// </summary>
     /// <exception cref="Orkeon.Scripting.Exceptions.InvalidScriptException">
     /// The host offers no such profile; the message lists the known ones.
@@ -170,7 +170,11 @@ public sealed partial class JsLlmNamespace
                 Orkeon.Application.Interfaces.Ports.LlmProfiles.UnknownMessage(profileName, where, []));
         }
 
-        return ns.OnProfile(profileName, where).ProfileProvider ?? ns._defaultProvider ?? fallback;
+        // The default profile is the host's own provider, null included (the call then answers the
+        // <undefined-llm> echo): never the agent's provider, which may be another profile's.
+        return Orkeon.Application.Interfaces.Ports.LlmProfiles.IsDefault(profileName)
+            ? ns._defaultProvider
+            : ns.OnProfile(profileName, where).ProfileProvider ?? ns._defaultProvider;
     }
 
     private JsLlmConfig OnProfile(string profileName, string where)
@@ -187,8 +191,9 @@ public sealed partial class JsLlmNamespace
                     Orkeon.Application.Interfaces.Ports.LlmProfiles.UnknownMessage(
                         profileName, where, _profiles?.Names ?? []));
 
-            // The provider is built here, once per host: its name and model are what the script
-            // reads, and an agent configured with it reaches it through ctx.llm too.
+            // The registry builds the profile's provider once per host and caches it; its name and
+            // model are what the script reads, and an agent configured with it reaches it through
+            // ctx.llm too.
             var resolved = _profiles.Resolve(profileName);
             var profileModel = resolved.Provider.BaseConfig?.Model;
             var domain = (string.IsNullOrWhiteSpace(profileModel) ? LlmConfig.OnProfile() : LlmConfig.Create(profileModel))

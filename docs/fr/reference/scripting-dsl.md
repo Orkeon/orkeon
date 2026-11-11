@@ -189,7 +189,8 @@ Transmettez-le (`crew.run({ signal: ctx.signal })`) plutôt que de l'interroger.
 `ctx.llm` — `complete(prompt)`, `chat(messages)`, `stream(prompt)` (itérable async ;
 `usage` et `reasoningChunks` se lisent après la boucle), `extract(prompt, schema)`,
 `decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, et `interrupt()` /
-`isInterrupted`. Chaque appel part vers le fournisseur configuré de l'hôte ; sans fournisseur,
+`isInterrupted`. Chaque appel part vers le fournisseur de l'agent (celui de l'hôte, ou celui de son
+profil), ou vers le profil que nomme `{ llm: { profile } }` ; sans fournisseur,
 un écho `<undefined-llm:…>` répond, ce qui permet aux exemples de tourner sans clé. Un appel
 prend ces options, toutes pour cet appel seulement : `llm: { profile }` le fait tourner sur le profil
 de l'hôte de ce nom (`Llm:Profiles:<nom>`) selon la règle de `llm.profile(name)` — un nom que l'hôte
@@ -197,11 +198,13 @@ n'offre pas lève une erreur listant les profils connus, `"default"` est le four
 l'hôte, et un profil de décision applique ses étapes à l'appel — et les autres corrigent la
 configuration du fournisseur de l'appel : `responseFormat` (`"json_object"`, `"json_schema"`, `"text"`),
 `llm: { model }` (un modèle par appel, dans le fournisseur du profil quand `profile` est donné :
-`{ profile, model }` vaut `llm.profile(profile, { model })`) et `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : la réflexion du fournisseur, activée à cet effort ;
+`{ profile, model }` vaut `llm.profile(profile, { model })` ; un `LlmConfig` y est refusé, sa
+température et son plafond de jetons ne s'appliqueraient pas) et `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : la réflexion du fournisseur, activée à cet effort ;
 toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max`) et `cache` (la demande de cache de prompt, telle que la prend `agentBuilder().cache(...)`). `act` en prend davantage : voir
 [Options de `act`](../architecture/scripting.md#options-de-act) (`tools`, `effort`, `onToolCall`,
 `onToolResult`, `onContextPressure`, `waitFor`). Il n'y a ni fournisseur nommé, ni température, ni plafond de
-jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte.
+jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte. `embed` est un stub local :
+il n'appelle aucun fournisseur et ne lit aucune de ces options.
 
 `chat` prend un tableau de messages nu ou `{ messages: [...] }`. `extract(prompt, schema, opts)`
 prend les mêmes formes en premier argument, les tours de l'appelant envoyés dans l'ordre, en plus
