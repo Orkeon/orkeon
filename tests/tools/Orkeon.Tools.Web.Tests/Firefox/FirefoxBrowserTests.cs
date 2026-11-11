@@ -20,12 +20,22 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
             Launcher, FirefoxProfileChoice.Disposable, Options,
             Timings with { Clock = _clock, CloseWait = TimeSpan.Zero }, _logger, Ct);
 
-    /// <summary>Waits until browser <paramref name="count"/> waits for its session on the clock, then lets the command timeout pass.</summary>
-    private async Task TimeOutSessionOfBrowserAsync(int count)
+    /// <summary>
+    /// Waits until browser <paramref name="count"/> has sent <paramref name="method"/> and only its wait
+    /// is armed on the clock, then lets the command timeout pass. Waiting on the timer count alone races:
+    /// the wait of an answered <c>session.new</c> is armed for an instant before the answer disarms it.
+    /// </summary>
+    private async Task TimeOutAsync(int count, string method)
     {
-        await Polling.WaitUntilAsync(() => Launcher.Browsers.Count == count && _clock.PendingTimers == 1);
+        await Polling.WaitUntilAsync(() =>
+            Launcher.Browsers.Count == count
+            && Launcher.Browsers[count - 1].Wire.Methods is [.., var last] && last == method
+            && _clock.PendingTimers == 1);
         _clock.Advance(TimeSpan.FromSeconds(Options.CommandTimeoutSeconds));
     }
+
+    /// <summary>The start, bounded: a start that never ends fails the test instead of hanging the run.</summary>
+    private static Task<FirefoxBrowser> Bounded(Task<FirefoxBrowser> opening) => opening.WaitAsync(Polling.DefaultTimeout);
 
     [Fact]
     public async Task Should_StartAnotherBrowser_When_TheFirstLeavesTheSessionUnanswered()
@@ -38,8 +48,8 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
         };
 
         var opening = OpenBrowserAsync();
-        await TimeOutSessionOfBrowserAsync(1);
-        await using var browser = await opening;
+        await TimeOutAsync(1, "session.new");
+        await using var browser = await Bounded(opening);
 
         Assert.Equal(2, Launcher.Browsers.Count);
         Assert.True(Launcher.Browsers[0].Disposed);
@@ -57,9 +67,9 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
         Launcher.Configure += browser => browser.Wire.Unanswered.Add("session.new");
 
         var opening = OpenBrowserAsync();
-        await TimeOutSessionOfBrowserAsync(1);
-        await TimeOutSessionOfBrowserAsync(2);
-        var error = await Assert.ThrowsAsync<BiDiException>(() => opening);
+        await TimeOutAsync(1, "session.new");
+        await TimeOutAsync(2, "session.new");
+        var error = await Assert.ThrowsAsync<BiDiException>(() => Bounded(opening));
 
         Assert.Equal(BiDiException.Timeout, error.Code);
         Assert.Contains("started again", error.Message, StringComparison.Ordinal);
@@ -73,8 +83,8 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
         Launcher.Configure += browser => browser.Wire.Unanswered.Add("browsingContext.getTree");
 
         var opening = OpenBrowserAsync();
-        await TimeOutSessionOfBrowserAsync(1);
-        var error = await Assert.ThrowsAsync<BiDiException>(() => opening);
+        await TimeOutAsync(1, "browsingContext.getTree");
+        var error = await Assert.ThrowsAsync<BiDiException>(() => Bounded(opening));
 
         Assert.Equal(BiDiException.Timeout, error.Code);
         var browser = Assert.Single(Launcher.Browsers);
@@ -88,7 +98,7 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
         Launcher.Configure += browser =>
             browser.Wire.Handlers["session.new"] = _ => throw new FakeBiDiError("session not created", "Maximum number of active sessions");
 
-        var error = await Assert.ThrowsAsync<BiDiException>(OpenBrowserAsync);
+        var error = await Assert.ThrowsAsync<BiDiException>(() => Bounded(OpenBrowserAsync()));
 
         Assert.Equal("session not created", error.Code);
         Assert.True(Assert.Single(Launcher.Browsers).Disposed);
