@@ -37,7 +37,7 @@ public class SystemOneDecisionModelIntegrationTests
     {
         State = JsonValue.Create("Customer: my parcel never arrived and I want my money back."),
         Questions = ImmutableDictionary<string, DecisionQuestion>.Empty
-            .Add("refund", new NoulQuestion())
+            .Add("refund", new NoulQuestion { Instructions = JsonValue.Create("Does the customer ask for a refund?") })
             .Add("topic", new ChoiceQuestion
             {
                 Criteria = ImmutableDictionary<string, JsonNode?>.Empty
@@ -112,7 +112,7 @@ public class SystemOneDecisionModelIntegrationTests
     }
 
     private static ImmutableDictionary<string, DecisionQuestion> OneNoul(string key) =>
-        ImmutableDictionary<string, DecisionQuestion>.Empty.Add(key, new NoulQuestion());
+        ImmutableDictionary<string, DecisionQuestion>.Empty.Add(key, new NoulQuestion { Instructions = JsonValue.Create("Does the text mention a refund?") });
 
     private static async Task<bool> Answers(Uri address)
     {
