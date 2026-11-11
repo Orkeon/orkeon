@@ -116,7 +116,7 @@ jobs:
           path: |
             packages
             ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
           restore-keys: nuget-${{ runner.os }}-
       # The CLI set for the two linux RIDs only: the orkeon CLI the
       # package carries, cross-published from this x64 runner like release.yml does. The

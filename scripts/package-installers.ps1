@@ -145,8 +145,10 @@ foreach ($rid in $Rids) {
         if ($AppSet -eq 'cli' -and -not (Test-CliSetIncludes $app.Name $rid)) { continue }
         $selfContained = if ($app.SelfContained) { 'true' } else { 'false' }
         Write-Host "    publish $($app.Name) (self-contained=$selfContained)"
+        # RestoreLockedMode=false: the lock files record the RID-less graph, a -r restore is another
+        # one (NU1004 in locked mode); see package-installers.sh.
         dotnet publish (Join-Path $RepoRoot $app.Csproj) -c $Configuration -r $rid --self-contained $selfContained `
-            -p:PublishTrimmed=false `
+            -p:PublishTrimmed=false -p:RestoreLockedMode=false `
             -p:Version=$Version -p:SkipScriptingNpmInstall=true `
             -p:ErrorOnDuplicatePublishOutputFiles=false `
             -o (Join-Path $root "libexec\$($app.Name)") --nologo -v quiet

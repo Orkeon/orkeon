@@ -11,6 +11,19 @@ updates:
         update-types: [minor, patch]
     open-pull-requests-limit: 10
 
+  # The examples solution: its projects take their versions from the root
+  # Directory.Packages.props but carry their own packages.lock.json, which Dependabot
+  # only refreshes for a directory it is told about.
+  - package-ecosystem: nuget
+    directory: /examples
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      nuget-examples-minor-patch:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+
   # GitHub Actions pins.
   - package-ecosystem: github-actions
     directory: /

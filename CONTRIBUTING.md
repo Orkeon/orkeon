@@ -302,6 +302,9 @@ project, exposing plain fields or properties to configure answers and inspect ca
   `file-modes.yml` gate reads the mode from the git index — the only one a macOS/Linux
   clone restores — so a working tree on an NTFS mount that shows every file as executable
   proves nothing.
+* A package change also changes the NuGet lock files: `dotnet restore` rewrites the
+  `packages.lock.json` of the projects it touches (CI restores in locked mode and fails on a
+  stale one) — commit them with the change.
 * A package change — a version in `Directory.Packages.props`, a package added to or
   removed from a project the tools, the installers or the container images ship — changes
   what those binaries redistribute: after the restore, run

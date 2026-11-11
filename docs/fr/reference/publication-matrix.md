@@ -512,4 +512,13 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   `publish.yml`. Comment vérifier tout cela, et pourquoi un téléchargement nuget.org doit
   d'abord perdre sa signature repository, est dans
   [Vérifier ce que vous installez](../guides/verify-what-you-install.md).
+- **Graphes de dépendances verrouillés.** Les paquets sont construits à partir de graphes de
+  dépendances verrouillés : chaque projet de `Orkeon.sln` et des exemples commite un
+  `packages.lock.json` à côté de lui (`Directory.Build.targets`), et la CI restaure en mode
+  verrouillé (`RestoreLockedMode` sous la variable `CI`), si bien qu'une restauration qui
+  résoudrait autrement un paquet transitif échoue au lieu de dériver. Deux restaurations
+  restent volontairement déverrouillées : la voie `build-test-net11` (un autre SDK, pour voir
+  ce qu'il résout) et le `dotnet publish -r` par RID de `package-installers.sh`/`.ps1` (un
+  fichier de verrouillage enregistre le graphe sans RID) ; le contenu des modèles
+  `dotnet new` ne livre aucun fichier de verrouillage.
 - La version provient de `src/Directory.Build.props`, la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit. Le canal dev en dérive son `<version>.dev.<n>`, un build fait depuis un clone son `<version>.local.<horodatage>` (voir *Canal dev* plus haut).

@@ -77,7 +77,7 @@ jobs:
           path: |
             packages
             ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
           restore-keys: nuget-${{ runner.os }}-
       - run: dotnet restore Orkeon.sln
       - run: dotnet build Orkeon.sln -c Release --no-restore
@@ -234,7 +234,7 @@ jobs:
           path: |
             packages
             ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
           restore-keys: nuget-${{ runner.os }}-
       - run: dotnet restore tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj
       - run: dotnet build tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj -c Release --no-restore
@@ -293,7 +293,7 @@ jobs:
           path: |
             packages
             ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
           restore-keys: nuget-${{ runner.os }}-
       - run: dotnet restore tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj
       - run: dotnet build tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj -c Release --no-restore
