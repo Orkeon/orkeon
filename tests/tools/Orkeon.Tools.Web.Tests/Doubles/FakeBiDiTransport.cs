@@ -20,6 +20,9 @@ internal sealed class FakeBiDiTransport : IBiDiTransport
 
     public bool AutoAnswer { get; set; } = true;
 
+    /// <summary>Methods recorded and never answered, as a browser that went deaf would.</summary>
+    public HashSet<string> Unanswered { get; } = new(StringComparer.Ordinal);
+
     public Exception? SendFailure { get; set; }
 
     public bool Disposed { get; private set; }
@@ -45,7 +48,7 @@ internal sealed class FakeBiDiTransport : IBiDiTransport
         var method = envelope["method"]!.GetValue<string>();
         var parameters = envelope["params"]!.DeepClone().AsObject();
         lock (_sync) _commands.Add((method, parameters));
-        if (!AutoAnswer) return Task.CompletedTask;
+        if (!AutoAnswer || Unanswered.Contains(method)) return Task.CompletedTask;
 
         var id = envelope["id"]!.GetValue<long>();
         try

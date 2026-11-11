@@ -150,8 +150,11 @@ public sealed class StreamableHttpOAuthTests : IDisposable
         await Polling.WaitUntilAsync(() => Task.FromResult(server.Requests.Count(r => r.Verb == "GET") == 2 && _time.PendingTimers > 0), Polling.DefaultTimeout);
         Assert.Equal(2, _endpoint.Count);
 
-        // After the backoff the token may have expired meanwhile: it is renewed again, once.
-        _time.Advance(TimeSpan.FromMinutes(5));
+        // After the backoff the token may have expired meanwhile: it is renewed again, once. The clock moves
+        // by the backoff alone: a longer move would also fire the next backoff, armed meanwhile, and open the
+        // stream past the fourth GET.
+        Assert.Equal(StreamableHttpMcpTransport.Backoff(0), Assert.Single(_time.DueIns));
+        _time.Advance(StreamableHttpMcpTransport.Backoff(0));
         await Polling.WaitUntilAsync(() => Task.FromResult(server.Requests.Count(r => r.Verb == "GET") == 4 && _time.PendingTimers > 0), Polling.DefaultTimeout);
         Assert.Equal(3, _endpoint.Count);
     }

@@ -216,3 +216,8 @@ qu'un hôte tué avec ses navigateurs a laissé derrière lui.
 `Lifetime`, `ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`,
 `MaxTextLength`. Quand Firefox est un snap, la racine de profil par défaut est
 `~/snap/firefox/common/orkeon/profiles` : un snap ne lit pas le dossier temporaire du système.
+
+Un navigateur qui a ouvert son protocole distant mais laisse la première commande, `session.new`,
+sans réponse pendant `CommandTimeoutSeconds` est tué, son profil supprimé s'il est jetable, et
+redémarré une fois, avec un avertissement dans le journal ; un second silence fait échouer le
+démarrage avec une erreur qui dit que Firefox a été redémarré.

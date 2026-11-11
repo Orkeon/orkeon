@@ -183,6 +183,10 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         var ctxObj = PushContext(context.Console, context.RawInput, ct);
         try
         {
+            // The dispatch is work in flight until its completions are wired: an instance it launches can settle
+            // before WireCompletions attaches the completed() drain, and its own end of work must not let a waiter
+            // see no work while that drain is still to come.
+            using var launching = _dispatch?.Registry.BeginWork();
             using var scope = _dispatch is not null ? _dispatch.BeginCommand(_descriptor.Name, ct, promptLine: context.RawInput) : null;
 
             JsValue result;

@@ -299,8 +299,9 @@ public sealed class StreamableHttpSessionTests
         for (var i = 0; i < StreamableHttpMcpTransport.MaxConsecutiveReinitializations; i++)
         {
             // Each re-initialisation is followed by a wait: never a hot loop.
+            // The clock moves by this wait alone: a longer move would also fire the next one, armed meanwhile.
             await EventuallyAsync(() => clock.PendingTimers > 0);
-            clock.Advance(TimeSpan.FromMinutes(5));
+            clock.Advance(Assert.Single(clock.DueIns));
         }
 
         var cap = StreamableHttpMcpTransport.MaxConsecutiveReinitializations;
