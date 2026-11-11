@@ -38,6 +38,10 @@ compatibility shims are removed; and from this version on, the public API in
   the provider's notes in `lib/catalog.json` instead of copying them. The nightly integration run
   passes the `TYPESAFE_API_KEY` repository secret to the TypeSafe integration tests.
 
+### Added — one `ctx.llm` call on another LLM profile
+
+- **`{ llm: { profile } }` runs one `ctx.llm` call on a host profile** (#331) — `LlmCallOptions.llm`, and so `ActOptions.llm`, takes `profile` beside `model`: `ctx.llm.act(brief, { llm: { profile: "small" } })` runs that call (and `complete`, `chat`, `stream`, `extract`, `decide`) on the provider of `Llm:Profiles:small`, while the agent keeps its own for its other calls. The rule is `llm.profile(name)`'s: a name the host does not offer throws, listing the known profiles; `"default"` is the host's own provider; a decision profile applies its stages to the call. A `model` beside the profile is the model within that profile's provider — `{ profile, model }` is `llm.profile(profile, { model })`.
+
 ### Changed — Together AI's default model **[breaking]**
 
 - **`LlmProviderDefaultModels.Together`** **[breaking]** is now `zai-org/GLM-5.3-Flash`. `meta-llama/Llama-3.3-70B-Instruct-Turbo` is no longer serverless: every call to it answers `Unable to access non-serverless model` (LLM campaign of 2026-11-11), so a Together provider built without a model failed on its first call. GLM-5.3-Flash was Together's own replacement target since the 2026-09-19 review: 1 M context, tools and JSON, reads images, 0.15 / 0.50 $/M, 11/0/1 on the last run of that campaign day (10/1/1 on the first, M10 red). The value changes in `PublicAPI.Shipped.txt`.

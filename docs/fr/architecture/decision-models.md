@@ -234,7 +234,8 @@ Un routeur : le modèle de décision choisit le profil qui convient à la requê
 ```
 
 `small`, `large`, `code` et `general` sont des profils LLM (`Llm:Profiles`). Une crew utilise un
-profil de décision comme un autre : `llm: { profile: cascade }`.
+profil de décision comme un autre : `llm: { profile: cascade }` ; un script le nomme pour un seul
+appel de `ctx.llm` avec `{ llm: { profile: "cascade" } }`, et ses étapes jugent cet appel.
 
 L'hôte vérifie la section à sa construction et nomme la clé à corriger : un `Kind` autre que
 `route`, `guard` ou `verify`, un `Target`, des `Routes`, des `Risks` ou un `EscalateTo` manquant,

@@ -55,7 +55,7 @@ déduit.
 |---|---|---|
 | `name` | ✅ | ✅ |
 | `role` `goal` `backstory` | conservés, pas envoyés : `ctx.llm` envoie votre seul prompt ; `role` ne sert qu'à `crew.findByRole` | ✅ **le prompt de l'agent** — `build()` exige `role` |
-| `llm` | le fournisseur seulement : un agent configuré avec `llm.profile("…")` fait parler `ctx.llm` au fournisseur de ce profil, sur le modèle du profil ; sinon `ctx.llm` utilise le fournisseur de l'hôte sur son modèle configuré (par appel : `{ llm: { model } }`) | ✅ un `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — règle le fournisseur de l'agent (l'un des profils de l'hôte), son modèle, sa température et son plafond de jetons. Une chaîne ou un objet simple est refusé par `.llm(...)` |
+| `llm` | le fournisseur seulement : un agent configuré avec `llm.profile("…")` fait parler `ctx.llm` au fournisseur de ce profil, sur le modèle du profil ; sinon `ctx.llm` utilise le fournisseur de l'hôte sur son modèle configuré (par appel : `{ llm: { profile } }` pour un autre profil de l'hôte, `{ llm: { model } }` pour un autre modèle) | ✅ un `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — règle le fournisseur de l'agent (l'un des profils de l'hôte), son modèle, sa température et son plafond de jetons. Une chaîne ou un objet simple est refusé par `.llm(...)` |
 | `tools([...])` intégrés par nom | ✅ ce que `ctx.llm.act` peut appeler — un nom que l'hôte n'offre pas fait rejeter `act` par une `UnknownToolError`, avant tout appel au modèle | ✅ strict : un nom inconnu fait échouer le run |
 | `withAutonomousTool(s)` instances | appelables depuis un `body` (`tool.execute(input)`) et proposées à `ctx.llm.act`, qui exécute le `execute` de l'outil dans le script | ✅ enregistrées et résolues par nom |
 | `effort(level)` — `"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : active la réflexion du fournisseur à cet effort | ✅ envoyé sur les appels `ctx.llm` de l'agent, sauf si un appel fixe son propre `{ effort }` | ✅ |
@@ -191,12 +191,16 @@ Transmettez-le (`crew.run({ signal: ctx.signal })`) plutôt que de l'interroger.
 `decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, et `interrupt()` /
 `isInterrupted`. Chaque appel part vers le fournisseur configuré de l'hôte ; sans fournisseur,
 un écho `<undefined-llm:…>` répond, ce qui permet aux exemples de tourner sans clé. Un appel
-prend trois options, qui corrigent toutes la configuration du fournisseur de l'hôte pour
-cet appel seulement : `responseFormat` (`"json_object"`, `"json_schema"`, `"text"`),
-`llm: { model }` (un modèle par appel) et `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : la réflexion du fournisseur, activée à cet effort ;
+prend ces options, toutes pour cet appel seulement : `llm: { profile }` le fait tourner sur le profil
+de l'hôte de ce nom (`Llm:Profiles:<nom>`) selon la règle de `llm.profile(name)` — un nom que l'hôte
+n'offre pas lève une erreur listant les profils connus, `"default"` est le fournisseur propre de
+l'hôte, et un profil de décision applique ses étapes à l'appel — et les autres corrigent la
+configuration du fournisseur de l'appel : `responseFormat` (`"json_object"`, `"json_schema"`, `"text"`),
+`llm: { model }` (un modèle par appel, dans le fournisseur du profil quand `profile` est donné :
+`{ profile, model }` vaut `llm.profile(profile, { model })`) et `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : la réflexion du fournisseur, activée à cet effort ;
 toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max`) et `cache` (la demande de cache de prompt, telle que la prend `agentBuilder().cache(...)`). `act` en prend davantage : voir
 [Options de `act`](../architecture/scripting.md#options-de-act) (`tools`, `effort`, `onToolCall`,
-`onToolResult`, `onContextPressure`, `waitFor`). Il n'y a ni fournisseur, ni température, ni plafond de
+`onToolResult`, `onContextPressure`, `waitFor`). Il n'y a ni fournisseur nommé, ni température, ni plafond de
 jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte.
 
 `chat` prend un tableau de messages nu ou `{ messages: [...] }`. `extract(prompt, schema, opts)`

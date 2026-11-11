@@ -63,6 +63,7 @@ public static class LlmNamespaceBinding
 
         var ns = new JsLlmNamespace(log, defaultProvider, profiles, wrapProfileProvider);
         engine.SetValue(GlobalName, ns);
+        JsLlmNamespace.Attach(engine, ns);
     }
 }
 
@@ -80,6 +81,10 @@ public sealed partial class JsLlmNamespace
     private readonly Func<ILlmProvider, ILlmProvider>? _wrapProfileProvider;
     private JsLlmConfig? _default;
     private readonly Lock _defaultLock = new();
+
+    // The namespace each engine registered, for ctx.llm { llm: { profile } } (#331): held on the CLR
+    // side, so a script that shadows the global `llm` cannot change the profiles a call resolves.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Engine, JsLlmNamespace> s_byEngine = new();
 
     internal JsLlmNamespace(
         ILogger logger,
@@ -139,6 +144,37 @@ public sealed partial class JsLlmNamespace
             throw new Orkeon.Scripting.Exceptions.InvalidScriptException("llm.profile(name) takes the profile name as a string.");
 
         var profileName = name.AsString().Trim();
+        var onProfile = OnProfile(profileName, $"llm.profile(\"{profileName}\")");
+        return overrides is null ? onProfile : onProfile.with(overrides);
+    }
+
+    /// <summary>Records the namespace <paramref name="engine"/> registered.</summary>
+    internal static void Attach(Engine engine, JsLlmNamespace ns) => s_byEngine.AddOrUpdate(engine, ns);
+
+    /// <summary>
+    /// The provider one <c>ctx.llm</c> call runs on when its options name the profile
+    /// <paramref name="profileName"/> (#331), by the rule of <c>llm.profile(name)</c>: the default
+    /// profile is the host's provider, another name one of the host's profiles — a decision profile's
+    /// provider applies its stages to the call. An engine without the namespace offers the default
+    /// alone, which is then <paramref name="fallback"/>.
+    /// </summary>
+    /// <exception cref="Orkeon.Scripting.Exceptions.InvalidScriptException">
+    /// The host offers no such profile; the message lists the known ones.
+    /// </exception>
+    internal static ILlmProvider? ProviderFor(Engine engine, string profileName, string where, ILlmProvider? fallback)
+    {
+        if (!s_byEngine.TryGetValue(engine, out var ns))
+        {
+            if (Orkeon.Application.Interfaces.Ports.LlmProfiles.IsDefault(profileName)) return fallback;
+            throw new Orkeon.Scripting.Exceptions.InvalidScriptException(
+                Orkeon.Application.Interfaces.Ports.LlmProfiles.UnknownMessage(profileName, where, []));
+        }
+
+        return ns.OnProfile(profileName, where).ProfileProvider ?? ns._defaultProvider ?? fallback;
+    }
+
+    private JsLlmConfig OnProfile(string profileName, string where)
+    {
         JsLlmConfig onProfile;
         if (Orkeon.Application.Interfaces.Ports.LlmProfiles.IsDefault(profileName))
         {
@@ -149,7 +185,7 @@ public sealed partial class JsLlmNamespace
             if (_profiles is null || !_profiles.IsKnown(profileName))
                 throw new Orkeon.Scripting.Exceptions.InvalidScriptException(
                     Orkeon.Application.Interfaces.Ports.LlmProfiles.UnknownMessage(
-                        profileName, $"llm.profile(\"{profileName}\")", _profiles?.Names ?? []));
+                        profileName, where, _profiles?.Names ?? []));
 
             // The provider is built here, once per host: its name and model are what the script
             // reads, and an agent configured with it reaches it through ctx.llm too.
@@ -162,7 +198,7 @@ public sealed partial class JsLlmNamespace
             onProfile = new JsLlmConfig(resolved.Provider.Name, domain, profileProvider: provider);
         }
 
-        return overrides is null ? onProfile : onProfile.with(overrides);
+        return onProfile;
     }
 
     private JsLlmConfig ResolveDefault()

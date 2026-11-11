@@ -105,15 +105,23 @@ declare global {
     }
 
     /**
-     * The per-call options every `ctx.llm` method reads. Two settings, both PATCHING the host
-     * provider's configuration for this call only: the response format, and the model. There is
-     * no per-call provider, temperature or token cap (GAP-12: they were declared here and never
-     * read), and no `signal` — the call already observes the context's.
+     * The per-call options every `ctx.llm` method reads. The call runs on the agent's provider, or
+     * on the host profile `llm.profile` names; the response format and the model PATCH that
+     * provider's configuration for this call only. There is no per-call vendor, temperature or
+     * token cap (GAP-12: they were declared here and never read), and no `signal` — the call
+     * already observes the context's.
      */
     interface LlmCallOptions {
         responseFormat?: ResponseFormatType;
-        /** The per-call model: the host's provider keeps its credentials and endpoint. */
-        llm?: { model?: string };
+        /**
+         * The per-call LLM. `profile` runs this call on the host profile of that name
+         * (`Llm:Profiles:<name>`), by the rule of `llm.profile(name)`: a name the host does not offer
+         * throws, listing the known ones; `"default"` is the host's own provider; a decision profile
+         * applies its stages to the call. `model` is the per-call model within the call's provider
+         * (the profile's when `profile` is set, else the agent's): the provider keeps its
+         * credentials and endpoint — `{ profile, model }` is `llm.profile(profile, { model })`.
+         */
+        llm?: { profile?: string; model?: string };
         /** Turns the provider's thinking on at this effort for the call. */
         effort?: "low" | "medium" | "high" | "xhigh" | "max";
         /**
