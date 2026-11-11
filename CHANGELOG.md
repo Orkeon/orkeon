@@ -75,6 +75,15 @@ compatibility shims are removed; and from this version on, the public API in
 - **The campaign catalogue's misfiled candidates run again** — `gpt-6.1-terra`, `claude-fable-5-2`, `gemini-4-argon`, `gemini-4-carbon` and `MiniMax-M3.1-Flash` sat in their provider's `notes` instead of `candidateModels`, so `--candidates` skipped them; they are candidates again, as the README already listed them.
 - **`reasoning_effort: none` reaches OpenAI again** — since the effort levels gained `xhigh` and `max` (#242), a value outside `low`…`max` was "lowered" to `low`, and the `gpt-5` row of the model capability table caught `gpt-5.6-*` and omitted `none` there: every GPT-5.6 and GPT-6 tier that needs `none` to take function tools on chat/completions answered tools and the messages-array shape with a 400 (LLM campaign of 2026-11-11). `LlmThinkingConfig.EffortFor` now returns a value outside the levels unchanged, for the vendor to judge, and `gpt-5.6` has its own unrestricted row.
 
+### Fixed — Aspire is pinned to 13.6.5 (GHSA-f7vh-h5g3-7jrh)
+
+An advisory published on 2026-11-10 (high, CVE-2026-120006: elevation of privilege) flags `Aspire.Hosting`
+and `Aspire.Hosting.AppHost` below 13.6.5, so the restore audit (`NU1903`) failed every `-warnaserror` build
+that touches the Aspire integration: `Orkeon.Hosting.Aspire`, its NuGet package, its tests and the AppHost
+example. `Directory.Packages.props` takes both packages at 13.6.5 and the AppHost example the
+`Aspire.AppHost.Sdk` of the same version. No API change; the shipped applications do not redistribute Aspire,
+so the third-party notices are unchanged.
+
 ### Fixed — the host's cost budget is enforced **[breaking]**
 
 - **`Orkeon:CostTracking:DefaultCrewBudget`** **[breaking]**: `MaxTokens` and `MaxCostUsd` were recorded and never applied — no path read `IsWithinBudget`. Every LLM call now passes through `ICostBudgetManager.CheckBudget` at the provider entrance (`MeteredLlmProvider`, wired for YAML crews, `.ork.ts` scripts, the planner, the manager and the service host): once what a crew recorded reaches a cap, its next call is refused before anything is sent, with `BudgetExhaustedException` (dimension `Tokens`, or the new `BudgetDimension.Cost`; `BudgetExhaustedError.dimension` is `"cost"` in a script). The call that crosses a cap completes; a refused call ends its task `BudgetExhausted` (`ChatClientAgentLoop` no longer folds it into `LlmCallFailed`), and no retry asks again. The budget is summed per crew id — per run for a YAML or C# crew, which takes a new id at each load; a script's own `ctx.llm` calls are summed under the crew's name. A call outside a crew run is under no budget, and `Orkeon:CostTracking:Enabled = false` records without refusing. An event recorded twice (the meter and a host's usage sink) is counted once, and nested meters each record what the inner one left out (its sink, or the budget). The `TokenBudgetExceeded` and `CostBudgetExceeded` alerts are now raised when the total reaches the cap, as the refusal is, not only past it.

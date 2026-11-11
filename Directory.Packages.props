@@ -65,8 +65,8 @@
     <PackageVersion Include="Microsoft.Agents.AI" Version="1.20.0" />
     <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.26.0" />
     <!-- .NET Aspire (A-16): the AppHost integration Orkeon.Hosting.Aspire builds on. -->
-    <PackageVersion Include="Aspire.Hosting" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.5.3" />
+    <PackageVersion Include="Aspire.Hosting" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.6.5" />
     <!-- 2026-10: security pin (NU1902 GHSA-qhrr-8q5h-9q3h, MessagePack nested arrays past buffer
          limits, fixed in 2.5.303). Transitive only: Aspire.Hosting reaches it through StreamJsonRpc
          at 2.5.302. Central management pins no transitive version, so it is forced through a direct
