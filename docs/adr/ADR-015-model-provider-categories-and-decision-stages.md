@@ -5,7 +5,7 @@
 # ADR-015 — Model provider categories, and decision stages that judge without rewriting
 
 **Status**: Accepted · **Date**: 2026-10-27
-· **Scope**: `Orkeon.Constants.Llm` (`ModelProviderCategory`, `ModelProviderCatalog`), `Orkeon.Application` (`IDecisionModel`, `IDecisionStage`, `DecisionVerdict`, the decision DTOs), `Orkeon.Infrastructure` (`Decision/TypeSafe/`, `LLMs/Decision/`, `system_one_decide`), `Orkeon.Rag` (`DecisionModelReranker`)
+· **Scope**: `Orkeon.Constants.Llm` (`ModelProviderCategory`, `ModelProviderCatalog`), `Orkeon.Application` (`IDecisionModel`, `IDecisionStage`, `DecisionVerdict`, the decision DTOs), `Orkeon.Infrastructure` (`Decision/SystemOne/`, `Decision/LlmJudgeGuard.cs`, `LLMs/Decision/`, `system_one_decide`), `Orkeon.Rag` (`DecisionModelReranker`)
 
 ## Context
 

@@ -80,8 +80,8 @@ Three rules bound them:
 2. **No runtime dependency.** A satellite references no project and no package. This is what
    makes it referenceable from anywhere, including `Orkeon.Domain`, without inverting anything.
 3. **Constants and their own comparison helpers only.** No behaviour, no types that model a
-   concept — those belong to Domain. `LlmRoles.Is()` is the upper bound of what a satellite may
-   hold: a normalization helper over its own values.
+   concept — those belong to Domain. A normalization helper over its own values, of the kind of
+   `LlmRoles.Is()`, is the upper bound of what a satellite may hold.
 
 ### Why this does not break the layering
 
@@ -147,10 +147,11 @@ assembly ships alone.
 
 The Consequences' "Four new packable projects" is historical. There are now **five** constants
 satellites under `src/constants/` (`Orkeon.Constants.Llm`, `.FileSystem`, `.Configuration`,
-`.Protocol`, `.Cli`), and **none is packable**: all five carry `IsPackable=false` and ship
-inside the `Orkeon` umbrella package (PUB-25; see
-[the publication matrix](../reference/publication-matrix.md)), not as NuGet packages of their
-own. The decision itself is unchanged; a constant put there is still a frozen public surface of
+`.Protocol`, `.Cli`), and **four are not packable**: `Orkeon.Constants.Llm`, `.FileSystem`,
+`.Configuration` and `.Protocol` carry `IsPackable=false` and ship inside the `Orkeon` umbrella
+package (see [the publication matrix](../reference/publication-matrix.md)), not as NuGet packages
+of their own; `Orkeon.Constants.Cli` is a NuGet package of its own, which `Orkeon.Scripting`
+depends on. The decision itself is unchanged; a constant put there is still a frozen public surface of
 the umbrella, and `PublicAPI.*.txt` still guards it.
 
 ## Amendment (2026-10-29)

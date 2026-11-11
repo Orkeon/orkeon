@@ -4,7 +4,7 @@
 
 # ADR-018 — Two graph engines, one topology validation and one budget vocabulary, and a YAML `graph:` block
 
-**Status**: Accepted · **Date**: 2026-11-07
+**Status**: Accepted — implemented · **Date**: 2026-11-07
 · **Scope**: `Orkeon.Domain` (`Graph/StateGraph.cs`, `GraphRunner.cs`, `Configuration/GraphConfig.cs`), `Orkeon.Infrastructure` (`Crew/Strategies/GraphProcessStrategy.cs`, `Configuration/Yaml/`), `Orkeon.Scripting` (`Orchestration/JsStateGraph.cs`, `Bindings/StateGraphBinding.cs`, `Typings/graph.d.ts`). This ADR fixes semantics and ships no code; the work that implements it is FWK-27 (validation, implicit graph, `JsStateGraph`) and FWK-28 (the YAML block, export).
 
 ## Context
