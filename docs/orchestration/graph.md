@@ -80,7 +80,7 @@ The engine components live in `Orkeon.Domain.Graph`:
 START ──► [first] ──► [second] ──► … ──► [last] ──► END
 ```
 
-A crew in the Graph process builds one node per task (ADR-018). A node's id is its task's name (the task id when the name is missing or taken), without nodes or edges in `graph:`, the nodes are chained in the stable topological order of the declared `dependencies` (`CrewTaskSequencer`), and the last one leads to END. A crew with no task goes from START to END.
+A crew in the Graph process builds one node per task (ADR-018). A node's id is its task's name (the task id when the name is missing or taken). Without nodes or edges in `graph:`, the nodes are chained in the stable topological order of the declared `dependencies` (`CrewTaskSequencer`), and the last one leads to END. A crew with no task goes from START to END.
 
 A node picks its agent — the task's `agent:` when declared, otherwise the configured selector (round-robin by default, see [agent selection](./process-types.md#who-runs-a-task-that-names-no-agent)) — executes the task and accumulates the result into `CrewGraphState`. Agents with `allowDelegation: true` receive the delegation tools. A task skipped by its dependencies or its `when` condition still passes through its node.
 
@@ -143,7 +143,7 @@ A task's attempts are its own `retry:` block (`attempts`, `backoffMs`, `backoff`
 | Wait between attempts | `backoffMs` and `backoff` (`fixed` or `exponential`), on the host's `TimeProvider`, cancelled with the run |
 | Visits of a node | one per entry into the node (a loop enters it again): a task's attempts happen inside its visit, but they count in the default budget (below) |
 
-The default breaker bounds add the attempts up, so a crew whose tasks retry is never cut short by them: `maxVisits` defaults to the sum over the tasks of `1 + retries` (`retries` = `attempts - 1`), `maxTransitions` to twice that plus one. A `graphConfig` block (and any `maxRetryCycles`) is refused at load, pointing to `graph:`. There is no `maxCycles` key either: a bound on cycles is `maxVisits`. Each attempt of a task that is replayed is one `task.started` carrying its `attempt`.
+The default breaker bounds add the attempts up, so a crew whose tasks retry is never cut short by them: `maxVisits` defaults to the sum over the tasks of `1 + retries` (`retries` = `attempts - 1`), `maxTransitions` to twice that plus one. A `graphConfig` block is refused at load, pointing to `graph:`; a `maxRetryCycles` or `maxCycles` key is refused as a key Orkeon does not read: a bound on cycles is `maxVisits`. Each attempt of a task that is replayed is one `task.started` carrying its `attempt`.
 
 ## YAML configuration
 
@@ -177,7 +177,7 @@ graph:
 - **Edges.** Several `edges` from one `from` are one conditional edge, evaluated in the order declared: the first whose `when` holds wins, and the edge without `when` is the "otherwise". A `from` that carries `when` edges is a [decision task](../architecture/decision-models.md) and has exactly one edge without `when`; an ordinary task has exactly one edge. The `when` keeps the grammar of the task-level one, with its `<task>.` prefix: `<task>.<question>: [option, ...]`, `<task>.<question>: ">= 0.7"`, `<task>.<question>.<option>: ">= 0.25"`; the task is the `from` task, and its questions are checked at load. `otherwise` is not written: an edge without `when` is it.
 - **Refused at load**, each message naming the node: a `when` on a `from` that is not a decision task, a decision with no edge without `when`, two edges without `when` from one node, several edges on an ordinary task, an orphan node, a node with no way to `END`, an edge to an unknown node, a `graph:` outside `process: graph`, and a task-level `when:` or `dependencies:` in a crew that has nodes or edges (the edges order the tasks, a second router would contradict them). The topology faults come from `GraphTopologyValidator`, all at once, and the export checks the same rules before it writes.
 - **Budgets.** `maxVisits` is the Domain's `MaxStateVisits`, counted per node: a node entered more often than that trips the breaker. Left unset, `maxVisits` is the sum over the tasks of `1 + retries` and `maxTransitions` twice that plus one; an explicit value wins.
-- **Refused keys.** `graphConfig:`, `maxRetryCycles` and `maxCycles` are refused at load, pointing to `graph:` (a bound on cycles is `maxVisits`; a retry is the task's `retry:`).
+- **Refused keys.** `graphConfig:` is refused at load, pointing to `graph:`; `maxRetryCycles` and `maxCycles` are refused at load as keys Orkeon does not read (a bound on cycles is `maxVisits`; a retry is the task's `retry:`).
 - **Execution.** The Domain engine runs every crew of the Graph process, with a `graph:` block or without; `JsStateGraph` runs only the `stateGraph(...)` of a `.ork.ts` script. A resumed run walks the graph again: the executions of a task that already ended are answered from the checkpoint, keyed `<task>#<n>` by their order, so a node entered twice has two entries. The export writes `graph:` back, so import, export and import give the same graph.
 
 The `agents:` and `tasks:` are the sequential schema; a decision task is a task with a `decision:` block ([decision tasks](../architecture/decision-models.md)).
