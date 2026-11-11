@@ -46,7 +46,7 @@ is in [TypeScript CLI commands](cli-ts-commands.md).
 | Method | Semantics |
 |---|---|
 | `runCrew(name, input?)` | Loads `<crews-dir>/<name>/crew.ork.ts`, runs it via `ScriptHost.RunFromFileAsync` (honours `.body()` + `ctx.llm`), **waits**, returns `CrewRunOutput` (`{ ok, summary?, artifacts?, streamed, error? }`). Short crews: the wait is bounded by `RunCrewTimeout` (below), past which the script receives a `TimeoutException`. |
-| `runCrewAsync(name, input?, options?)` | Posts the run on a pool thread, returns a **ticket** immediately. Completion drains to a `defineAsyncCommand`'s `completed(result)` via the same ticket cycle as `commands.post`. Long workflows. `options` takes `{ chain: "continue" }` and `{ exclusive: true }` (refused while another exclusive launch of the same crew runs: `crew 'x' already running (ticket tN)`), described in [CLI TypeScript commands](./cli-ts-commands.md). |
+| `runCrewAsync(name, input?, options?)` | Posts the run on a pool thread, returns a **ticket** immediately. Completion drains to a `defineAsyncCommand`'s `completed(result)` via the same ticket cycle as `commands.post`. Long workflows. `options` takes `{ chain: "continue" }`, `{ onMain: true }` (the crew becomes the conversation) and `{ exclusive: true }` (refused while another exclusive launch of the same crew runs: `crew 'x' already running (ticket tN)`), described in [CLI TypeScript commands](./cli-ts-commands.md). |
 | `listCrews()` | Discovered crew names. |
 
 An unknown crew is not an exception: `runCrew` returns `ok: false` with
@@ -88,15 +88,14 @@ singleton `ISessionBufferService`.
 
 `ActOptions.system` seeds a **real `role:"system"` message** ahead of the user prompt,
 persisting across every iteration of the tool loop. Without it, `act()` sends a single user
-message — which is how scripted agents ran until this option existed: identity and tool
-policy travelled with user-level authority, and the providers' native system handling
-(Anthropic top-level `system`, `cache_control`) never fired. A conversation-level system
+message: identity and tool policy travel with user-level authority, and the providers' native
+system handling (Anthropic top-level `system`, `cache_control`) never fires. A conversation-level system
 message wins over `LlmConfig.SystemMessage` on every provider.
 
 `ActOptions.context` seeds the per-turn context (memory, repository state, earlier turns) as a
 user message of its own, after `system` and before the prompt. The prompt stays the last user
 message, the one the `guard` and `route` stages of a decision profile judge, so the context
-cannot dilute the risk of the request (#276); and `system` stays the same from turn to turn,
+cannot dilute the risk of the request; and `system` stays the same from turn to turn,
 keeping its prompt-cache hit.
 
 **Parallel read-class tool calls.** The tool calls of one model turn that are read-class — the
@@ -110,8 +109,10 @@ back to the model, keep the call order. Hooks: for each parallel group, `onToolC
 read first (sequentially, in call order, on the engine thread), then the executions, then
 `onToolResult` in call order; no callback ever runs concurrently with another. When a sibling
 faults, is cancelled or throws `BudgetExhaustedException`, the others complete and are recorded,
-and the first fault is rethrown after the group. The approvals that concurrent reads ask are
-serialised (`SerialisingToolApprovalChannel`, registered by `AddConsoleToolApproval`). The
+and the first fault is rethrown after the group. In a host that registers the channel with
+`AddConsoleToolApproval`, the approvals that concurrent reads ask are serialised
+(`SerialisingToolApprovalChannel`); `orkeon-repl` registers its channel directly, so there two
+concurrent asks are not queued one at a time ([Known limitations](../reference/limitations.md)). The
 native loops of a YAML crew and the chat dispatcher fan out the same way; the text-fallback sites
 (the `ChatToolDispatcher` text path and `LegacyTextAgentLoop`) stay sequential.
 

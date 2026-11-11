@@ -43,15 +43,14 @@ Nothing else carries it: a new executable gets one sink, a new console abstracti
 | Terminal UI (`Orkeon.Cli.TerminalGui`) | `ITerminalProbe`: redirection probes, `OutputIsUtf8`, `TreatControlCAsInput`, `Output`, `Diagnostics` | `SystemTerminalProbe.Instance`, carried by `TerminalGuiOptions.Terminal` |
 | Library adapters | `TextReader`/`TextWriter` parameters | `ConsoleHumanInputProvider(logger, input, output)`, `McpServer.RunStdioAsync(reader, writer, ct)` |
 
-`IRunnerConsole.OnInterrupt` replaces the `Console.CancelKeyPress` handlers each verb used to
-register; the registration is disposed when the verb ends.
+A verb handles Ctrl+C through `IRunnerConsole.OnInterrupt`, never through `Console.CancelKeyPress`;
+the registration is disposed when the verb ends.
 
 ## Operator warnings: the `Orkeon.Operator` category
 
 The runner host's startup warnings (tokens unavailable, LLM not configured, unresolved API key
-reference, MCP server unavailable) used to be written both to the logger and to `Console.Error`,
-because a host may keep its logger below `Error`. They now go only through the logger category
-`Orkeon.Operator`, served by its own provider whose minimum level is forced to `Warning` whatever
+reference, MCP server unavailable) go through the logger category `Orkeon.Operator` alone, because
+a host may keep its logger below `Error`: that category is served by its own provider whose minimum level is forced to `Warning` whatever
 `-v` says, and which writes one line to `IRunnerConsole.ErrorOutput`. `RunnerHost` adds it for the
 `orkeon` CLI and `orkeon-host`, after the caller's logging (so after a `ClearProviders`);
 `orkeon-repl` adds it in `ReplStartup`.

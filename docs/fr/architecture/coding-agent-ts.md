@@ -47,7 +47,7 @@ elle-même. Elle *parle* à un moteur côté hôte au travers de la whitelist de
 | Méthode | Sémantique |
 |---|---|
 | `runCrew(name, input?)` | Charge `<crews-dir>/<nom>/crew.ork.ts`, l'exécute via `ScriptHost.RunFromFileAsync` (honore `.body()` + `ctx.llm`), **attend**, rend un `CrewRunOutput` (`{ ok, summary?, artifacts?, streamed, error? }`). Crews courtes : l'attente est bornée par `RunCrewTimeout` (ci-dessous), au-delà de quoi le script reçoit une `TimeoutException`. |
-| `runCrewAsync(name, input?, options?)` | Poste l'exécution sur un thread du pool et rend un **ticket** immédiatement. La complétion est drainée vers le `completed(result)` d'un `defineAsyncCommand`, par le même cycle de tickets que `commands.post`. Workflows longs. `options` accepte `{ chain: "continue" }` et `{ exclusive: true }` (refusé tant qu'un autre lancement exclusif de la même crew tourne : `crew 'x' already running (ticket tN)`), décrits dans [Commandes TypeScript du CLI](./cli-ts-commands.md). |
+| `runCrewAsync(name, input?, options?)` | Poste l'exécution sur un thread du pool et rend un **ticket** immédiatement. La complétion est drainée vers le `completed(result)` d'un `defineAsyncCommand`, par le même cycle de tickets que `commands.post`. Workflows longs. `options` accepte `{ chain: "continue" }`, `{ onMain: true }` (la crew devient la conversation) et `{ exclusive: true }` (refusé tant qu'un autre lancement exclusif de la même crew tourne : `crew 'x' already running (ticket tN)`), décrits dans [Commandes TypeScript du CLI](./cli-ts-commands.md). |
 | `listCrews()` | Les noms de crews découverts. |
 
 Une crew inconnue n'est pas une exception : `runCrew` rend `ok: false` avec
@@ -90,16 +90,15 @@ conversation entre exécutions vient du singleton `ISessionBufferService`.
 
 `ActOptions.system` sème un **vrai message `role:"system"`** devant le prompt utilisateur, et
 il persiste à chaque itération de la boucle d'outils. Sans lui, `act()` envoie un seul message
-utilisateur — ce qui est la façon dont les agents scriptés ont tourné jusqu'à l'existence de
-cette option : l'identité et la politique d'outils voyageaient avec l'autorité d'un
-utilisateur, et la gestion native du system des fournisseurs (Anthropic `system` au premier
-niveau, `cache_control`) ne se déclenchait jamais. Un message system au niveau conversation
+utilisateur : l'identité et la politique d'outils voyagent avec l'autorité d'un utilisateur, et
+la gestion native du system des fournisseurs (Anthropic `system` au premier niveau,
+`cache_control`) ne se déclenche jamais. Un message system au niveau conversation
 l'emporte sur `LlmConfig.SystemMessage` chez tous les fournisseurs.
 
 `ActOptions.context` sème le contexte du tour (mémoire, état du dépôt, tours précédents) comme
 un message utilisateur à part, après `system` et devant le prompt. Le prompt reste le dernier
 message utilisateur, celui que jugent les étapes `guard` et `route` d'un profil de décision : le
-contexte ne peut plus diluer le risque de la requête (#276) ; et `system` reste le même d'un tour
+contexte ne peut pas diluer le risque de la requête ; et `system` reste le même d'un tour
 à l'autre, ce qui garde son accès au cache de prompt.
 
 **Appels d'outils en lecture, en parallèle.** Les appels d'outils d'un même tour du modèle qui
@@ -108,16 +107,18 @@ d'autorisation explicite (`file_read`, `directory_read`, `directory_search`, `co
 `glob`, `grep`, `rag_search`, `codebase_*`, `symbol_*`, `index_status`, `node_outline`,
 `node_read` ; la session shell n'y figure pas) — s'exécutent en parallèle, dans la limite de
 `MaxParallelToolCalls` (4 par défaut) de
-[`Orkeon:Tools:ResultLimits`](../../reference/configuration.md#orkeontoolsresultlimits). Un appel d'écriture, ou dont l'accès est `Unspecified`, est une
+[`Orkeon:Tools:ResultLimits`](../reference/configuration.md#orkeontoolsresultlimits). Un appel d'écriture, ou dont l'accès est `Unspecified`, est une
 barrière : une lecture placée après lui l'attend et voit son effet. Les résultats, et les messages
 d'outil renvoyés au modèle, gardent l'ordre des appels. Hooks : pour chaque groupe parallèle,
 `onToolCall` s'exécute d'abord pour toutes les lectures (séquentiellement, dans l'ordre des
 appels, sur le fil du moteur), puis les exécutions, puis `onToolResult` dans l'ordre des appels ;
 aucun callback ne s'exécute jamais en même temps qu'un autre. Quand un appel frère échoue, est
 annulé ou lève `BudgetExhaustedException`, les autres vont à leur terme et sont consignés, et la
-première erreur est relancée après le groupe. Les approbations que demandent les lectures
-concurrentes sont sérialisées (`SerialisingToolApprovalChannel`, enregistré par
-`AddConsoleToolApproval`). Les boucles natives d'une crew YAML et le dispatcher de chat se
+première erreur est relancée après le groupe. Dans un hôte qui enregistre le canal par
+`AddConsoleToolApproval`, les approbations que demandent les lectures concurrentes sont
+sérialisées (`SerialisingToolApprovalChannel`) ; `orkeon-repl` enregistre son canal directement :
+deux questions concurrentes n'y sont pas mises en file une à une
+([Limitations connues](../reference/limitations.md)). Les boucles natives d'une crew YAML et le dispatcher de chat se
 déploient de la même façon ; les sites en repli texte (le chemin texte de `ChatToolDispatcher` et
 `LegacyTextAgentLoop`) restent séquentiels.
 

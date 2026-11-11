@@ -341,7 +341,7 @@ marked **defaulted** (`defaulted` in the task's event; the question name `defaul
 - Before the first task, a run with the circuit off is **refused**, naming the task, when a decision
   task has neither `fallback` answers nor an `otherwise` task on it
   (`Decision task 'triage' has neither a fallback nor an otherwise task.`).
-- A crew without a decision task runs exactly as before, whatever the circuit.
+- A crew without a decision task runs the same whatever the circuit.
 
 ### Jev's limits and long context
 

@@ -44,15 +44,15 @@ un adaptateur.
 | Interface terminal (`Orkeon.Cli.TerminalGui`) | `ITerminalProbe` : sondes de redirection, `OutputIsUtf8`, `TreatControlCAsInput`, `Output`, `Diagnostics` | `SystemTerminalProbe.Instance`, porté par `TerminalGuiOptions.Terminal` |
 | Adaptateurs de bibliothèque | paramètres `TextReader`/`TextWriter` | `ConsoleHumanInputProvider(logger, input, output)`, `McpServer.RunStdioAsync(reader, writer, ct)` |
 
-`IRunnerConsole.OnInterrupt` remplace les gestionnaires `Console.CancelKeyPress` que chaque verbe
-enregistrait ; l'enregistrement est libéré à la fin du verbe.
+Un verbe gère Ctrl+C par `IRunnerConsole.OnInterrupt`, jamais par `Console.CancelKeyPress` ;
+l'enregistrement est libéré à la fin du verbe.
 
 ## Avertissements opérateur : la catégorie `Orkeon.Operator`
 
 Les avertissements de démarrage de l'hôte des runners (jetons indisponibles, LLM non configuré,
-référence de clé d'API non résolue, serveur MCP indisponible) étaient écrits à la fois dans le logger
-et sur `Console.Error`, parce qu'un hôte peut garder son logger sous `Error`. Ils passent désormais
-par la seule catégorie de logger `Orkeon.Operator`, servie par un fournisseur dédié dont le niveau
+référence de clé d'API non résolue, serveur MCP indisponible) passent par la seule catégorie de
+logger `Orkeon.Operator`, parce qu'un hôte peut garder son logger sous `Error` : cette catégorie est
+servie par un fournisseur dédié dont le niveau
 minimal est forcé à `Warning` quel que soit `-v`, et qui écrit une ligne sur
 `IRunnerConsole.ErrorOutput`. `RunnerHost` l'ajoute pour le CLI `orkeon` et `orkeon-host`, après la
 configuration de journalisation de l'appelant (donc après un `ClearProviders`) ; `orkeon-repl`
