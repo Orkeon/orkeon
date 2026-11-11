@@ -280,7 +280,12 @@ Agents never run these — a tool that finds no usable token answers
   invalid declaration, a password or client-secret variable that is not set, a sign-in still to
   do. It opens no connection and prints no secret; `--json` writes the same list as JSON, under
   the names `email_accounts` uses (`name`, `address`, `provider`, `reads`, `sends`, `rights`,
-  `auth`, `default`, `ready`, `problem`).
+  `auth`, `default`, `ready`, `problem`), plus `configuration_problems` (a list, empty when the
+  account resolves), `credential_problem` and the values a blank field resolves to:
+  `incoming_host`, `incoming_port`, `incoming_security`, `outgoing_host`, `outgoing_port`,
+  `outgoing_security`, `username`, `save_sent_copy`, `token_endpoint`. The text listing shows
+  the servers, login name and token endpoint of a resolved account on one line
+  ([e-mail guide](../guides/email.md)).
 - **`login`** signs an OAuth2 account in. A Microsoft account uses the device-code flow: the
   command prints the verification address Microsoft returns and a code, and waits while you
   sign in from any browser. A Google account uses the authorization code with PKCE: the
@@ -347,7 +352,8 @@ Agents never run these — a tool that finds no usable token answers
 - **`accounts`** lists every declared account — its provider, root folder and rights, whether it
   is the default — and says `ready`, or what to fix: an invalid declaration, a client-secret
   variable that is not set, a sign-in still to do. No network. `--json` writes one object per
-  account (`name`, `provider`, `rights`, `root`, `default`, `ready`, `problem`).
+  account (`name`, `provider`, `rights`, `root`, `default`, `ready`, `problem`,
+  `configuration_problems`, `credential_problem`, `token_endpoint`) ([drive guide](../guides/drive.md)).
 - **`login`** runs the OAuth sign-in: Microsoft's device code for OneDrive, Google's consent page
   with a loopback redirect (or the pasted address it ends on) for Google Drive. The tokens land
   in the `drive` subdirectory of the credentials directory, where every run looks for them.

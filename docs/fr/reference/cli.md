@@ -280,7 +280,12 @@ répond « run `orkeon email login <account>` ».
   définie, une connexion encore à faire. La commande n'ouvre aucune connexion et n'affiche aucun
   secret ; `--json` écrit la même liste en JSON, sous les noms qu'utilise `email_accounts`
   (`name`, `address`, `provider`, `reads`, `sends`, `rights`, `auth`, `default`, `ready`,
-  `problem`).
+  `problem`), plus `configuration_problems` (une liste, vide quand le compte se résout),
+  `credential_problem` et les valeurs auxquelles se résout un champ laissé vide :
+  `incoming_host`, `incoming_port`, `incoming_security`, `outgoing_host`, `outgoing_port`,
+  `outgoing_security`, `username`, `save_sent_copy`, `token_endpoint`. La liste en texte montre
+  les serveurs, l'identifiant de connexion et le point de terminaison des jetons d'un compte
+  résolu sur une ligne ([guide e-mail](../guides/email.md)).
 - **`login`** connecte un compte OAuth2. Un compte Microsoft passe par le flux par code
   d'appareil : la commande affiche l'adresse de vérification que renvoie Microsoft et un code,
   et attend pendant que vous vous connectez depuis n'importe quel navigateur. Un compte Google
@@ -350,7 +355,8 @@ utilisable répond « run `orkeon drive login <account>` ».
   s'il est le compte par défaut — et dit `ready`, ou ce qu'il faut corriger : une déclaration
   invalide, une variable de secret client non définie, une connexion encore à faire. Aucun accès
   réseau. `--json` écrit un objet par compte (`name`, `provider`, `rights`, `root`, `default`,
-  `ready`, `problem`).
+  `ready`, `problem`, `configuration_problems`, `credential_problem`, `token_endpoint`)
+  ([guide drive](../guides/drive.md)).
 - **`login`** lance la connexion OAuth : le code d'appareil de Microsoft pour OneDrive, la page de
   consentement de Google avec une redirection de bouclage (ou l'adresse collée où elle aboutit)
   pour Google Drive. Les jetons arrivent dans le sous-répertoire `drive` du répertoire

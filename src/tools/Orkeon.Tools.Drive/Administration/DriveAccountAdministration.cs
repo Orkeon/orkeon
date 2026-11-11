@@ -41,6 +41,26 @@ public sealed record DriveAccountStatus
     public string? Problem { get; init; }
 
     /// <summary>
+    /// What the configuration gets wrong, one sentence each and in order (the section's problems
+    /// first, then the account's own); empty when the account resolves. A setting that cannot even
+    /// be read is reported alone: the rules of the declaration are judged once it reads.
+    /// <see cref="Problem"/> joins them for an account set aside.
+    /// </summary>
+    [JsonPropertyName("configuration_problems")]
+    public IReadOnlyList<string> ConfigurationProblems { get; init; } = [];
+
+    /// <summary>
+    /// Why a resolved account cannot sign in yet (a variable not set, no token stored, an expired
+    /// sign-in); null when it is ready or when it was set aside. <see cref="Problem"/> repeats it.
+    /// </summary>
+    [JsonPropertyName("credential_problem")]
+    public string? CredentialProblem { get; init; }
+
+    /// <summary>The OAuth token endpoint, after presets (for OneDrive, it names the tenant); null for an account set aside.</summary>
+    [JsonPropertyName("token_endpoint")]
+    public string? TokenEndpoint { get; init; }
+
+    /// <summary>
     /// How many recipient patterns the account may share with (0: none). Read in-process
     /// (DriveRightsCheck); not part of the <c>--json</c> contract.
     /// </summary>
@@ -111,6 +131,7 @@ public sealed class DriveAccountAdministration
                     IsDefault = isDefault,
                     Ready = false,
                     Problem = string.Join("; ", resolution.Problems),
+                    ConfigurationProblems = [.. resolution.Problems],
                 });
                 continue;
             }
@@ -127,6 +148,8 @@ public sealed class DriveAccountAdministration
                 IsDefault = isDefault,
                 Ready = problem is null,
                 Problem = problem,
+                CredentialProblem = problem,
+                TokenEndpoint = account.OAuth.TokenEndpoint.AbsoluteUri,
             });
         }
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The e-mail and drive account statuses keep their problems as a list and show the effective connection values** (#339). `EmailAccountStatus` and `DriveAccountStatus` gain `ConfigurationProblems` (the registry's problems in order, the section's first; empty when the account resolves) and `CredentialProblem` (the diagnosis of a resolved account), which `Problem` used to merge into one joined string a sentence holding `; ` could not be split back from. `EmailAccountStatus` also carries what a blank field resolves to — `IncomingHost`/`Port`/`Security`, `OutgoingHost`/`Port`/`Security`, `Username`, `SaveSentCopy`, `TokenEndpoint` —, `DriveAccountStatus` its `TokenEndpoint`. `orkeon email accounts --json` and `orkeon drive accounts --json` write them in snake case, and the text listing of `orkeon email accounts` shows the connection on one line. A client such as Orkeon Studio checks a configuration through `ListAsync` instead of the internal binder. Additive: `Problem` keeps its text.
+
 ### Fixed
 
 - **A refused configuration stops the Windows service instead of crashing it** (#336). After a refusal (exit 78), `orkeon-host` used to leave without telling the SCM it had stopped. The SCM took that for a crash, and the MSI's recovery started the host again after 10 s, twice, on a configuration the operator had to fix first. The host now stops through its lifetime, which reports `SERVICE_STOPPED` with exit code 78 before the process leaves, so crash-only recovery stays out of it. The Windows service smokes also check the System log for an SCM crash record (events 7031 and 7034), which a status poll could miss.

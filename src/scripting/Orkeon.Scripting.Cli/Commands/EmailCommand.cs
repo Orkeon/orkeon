@@ -270,12 +270,35 @@ internal static class EmailCommand
                     .Append(" · signs in with ").Append(account.Auth)
                     .AppendLine();
                 text.Append("  rights: ").AppendLine(account.Rights);
+                var connection = Connection(account);
+                if (connection.Length > 0)
+                    text.Append("  ").AppendLine(connection);
             }
 
             text.Append("  ").AppendLine(account.Ready ? "ready" : "NOT READY: " + account.Problem);
         }
 
         return text.ToString();
+    }
+
+    /// <summary>
+    /// The effective connection values of a resolved account, in one line: the servers it reads
+    /// and sends through, the login name, the OAuth token endpoint.
+    /// </summary>
+    private static string Connection(EmailAccountStatus account)
+    {
+        var parts = new List<string>();
+        if (account.IncomingHost is not null)
+            parts.Add(string.Create(CultureInfo.InvariantCulture,
+                $"reads from {account.IncomingHost}:{account.IncomingPort} ({account.IncomingSecurity})"));
+        if (account.OutgoingHost is not null)
+            parts.Add(string.Create(CultureInfo.InvariantCulture,
+                $"sends through {account.OutgoingHost}:{account.OutgoingPort} ({account.OutgoingSecurity})"));
+        if (account.Username is not null)
+            parts.Add("as " + account.Username);
+        if (account.TokenEndpoint is not null)
+            parts.Add("token " + account.TokenEndpoint);
+        return string.Join(" · ", parts);
     }
 
     /// <summary>

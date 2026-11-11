@@ -65,6 +65,13 @@ public sealed class DriveCommandTests
             var perso = json.RootElement.EnumerateArray().Single(account => account.GetProperty("name").GetString() == "perso");
             Assert.Equal("/Orkeon/agents", perso.GetProperty("root").GetString());
             Assert.False(perso.TryGetProperty("allowedRecipients", out _));
+            Assert.Equal(perso.GetProperty("problem").GetString(), perso.GetProperty("credential_problem").GetString());
+            Assert.Empty(perso.GetProperty("configuration_problems").EnumerateArray());
+            Assert.Equal("https://oauth2.googleapis.com/token", perso.GetProperty("token_endpoint").GetString());
+            var broken = json.RootElement.EnumerateArray().Single(account => account.GetProperty("name").GetString() == "broken");
+            Assert.Contains(broken.GetProperty("configuration_problems").EnumerateArray(),
+                problem => problem.GetString()!.StartsWith("Rights is required", StringComparison.Ordinal));
+            Assert.Equal(JsonValueKind.Null, broken.GetProperty("credential_problem").ValueKind);
         }
     }
 

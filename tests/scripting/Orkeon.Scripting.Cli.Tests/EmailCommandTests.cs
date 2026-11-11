@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Orkeon.Scripting.Cli.Commands;
 using Orkeon.Scripting.Cli.Tests.Doubles;
 using Orkeon.Tests.Shared.Timing;
+using Orkeon.Tools.Email.Administration;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
@@ -84,7 +85,7 @@ public sealed partial class EmailCommandTests
     /// one it set aside alike.
     /// </summary>
     [Fact]
-    public async Task Accounts_Json_CarriesTheTenPropertiesAClientReads()
+    public async Task Accounts_Json_CarriesThePropertiesAClientReads()
     {
         using var scratch = new ScriptScratch();
         scratch.WriteFile("appsettings.json", """
@@ -102,7 +103,12 @@ public sealed partial class EmailCommandTests
         using var document = JsonDocument.Parse(console.Stdout);
         var accounts = document.RootElement.EnumerateArray().ToList();
         Assert.Equal(2, accounts.Count);
-        string[] expected = ["address", "auth", "default", "name", "problem", "provider", "reads", "ready", "rights", "sends"];
+        string[] expected =
+        [
+            "address", "auth", "configuration_problems", "credential_problem", "default", "incoming_host", "incoming_port",
+            "incoming_security", "name", "outgoing_host", "outgoing_port", "outgoing_security", "problem", "provider", "reads",
+            "ready", "rights", "save_sent_copy", "sends", "token_endpoint", "username",
+        ];
         foreach (var account in accounts)
             Assert.Equal(expected, account.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
 
@@ -115,6 +121,34 @@ public sealed partial class EmailCommandTests
         Assert.Equal("?", broken.GetProperty("provider").GetString());
         Assert.False(broken.GetProperty("ready").GetBoolean());
         Assert.Contains("Rights is required", broken.GetProperty("problem").GetString(), StringComparison.Ordinal);
+        var problems = broken.GetProperty("configuration_problems").EnumerateArray().Select(problem => problem.GetString()).ToList();
+        Assert.Contains(problems, problem => problem!.StartsWith("Rights is required", StringComparison.Ordinal));
+        Assert.Equal(JsonValueKind.Null, broken.GetProperty("credential_problem").ValueKind);
+        Assert.Equal(("imap.gmail.com", 993, "me@gmail.com"),
+            (perso.GetProperty("incoming_host").GetString(), perso.GetProperty("incoming_port").GetInt32(), perso.GetProperty("username").GetString()));
+        Assert.Equal(perso.GetProperty("problem").GetString(), perso.GetProperty("credential_problem").GetString());
+    }
+
+    [Fact]
+    public void Accounts_Text_ShowsTheEffectiveConnectionLine()
+    {
+        var text = EmailCommand.RenderAccounts(
+        [
+            new EmailAccountStatus
+            {
+                Name = "perso", Provider = "Gmail", Reads = "Imap", Sends = "Smtp", Rights = "Read", Auth = "Password", Ready = true,
+                IncomingHost = "imap.gmail.com", IncomingPort = 993, IncomingSecurity = "SslOnConnect",
+                OutgoingHost = "smtp.gmail.com", OutgoingPort = 465, OutgoingSecurity = "SslOnConnect", Username = "me@gmail.com",
+            },
+            new EmailAccountStatus
+            {
+                Name = "hotmail", Provider = "Outlook", Reads = "Graph", Sends = "Graph", Rights = "Read", Auth = "OAuth2", Ready = true,
+                Username = "me@outlook.com", TokenEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
+            },
+        ]);
+
+        Assert.Contains("  reads from imap.gmail.com:993 (SslOnConnect) · sends through smtp.gmail.com:465 (SslOnConnect) · as me@gmail.com", text, StringComparison.Ordinal);
+        Assert.Contains("  as me@outlook.com · token https://login.microsoftonline.com/consumers/oauth2/v2.0/token", text, StringComparison.Ordinal);
     }
 
     [Fact]

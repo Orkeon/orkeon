@@ -245,6 +245,14 @@ les résout, si bien que les jetons arrivent là où chaque run les cherche. `lo
 prennent aussi `--events jsonl` : une ligne d'événement par étape, pour un programme qui les
 pilote ([référence CLI](../reference/cli.md#orkeon-drive)).
 
+`accounts --json` écrit un objet par compte : `name`, `provider`, `rights`, `root`, `default`,
+`ready`, `problem`, plus `configuration_problems` (les problèmes de la configuration, une phrase
+chacun, ceux de la section d'abord ; vide quand le compte se résout), `credential_problem` (pourquoi
+un compte résolu ne peut pas encore se connecter, sinon null) et `token_endpoint` (le point de
+terminaison des jetons OAuth après préréglages : pour OneDrive il nomme le tenant ; null pour un
+compte mis de côté). `problem` garde son texte : les problèmes de configuration joints ou le
+diagnostic des identifiants.
+
 ## Où vivent les jetons
 
 Le runner les garde sous sa racine interne `/credentials`, qu'aucun outil destiné aux agents ne
