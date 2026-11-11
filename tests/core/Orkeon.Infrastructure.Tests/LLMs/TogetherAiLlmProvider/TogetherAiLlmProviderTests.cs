@@ -98,15 +98,15 @@ public class TogetherAiLlmProviderTests
     public async Task ShouldUseCorrectDefaultModel()
     {
         // Arrange — use a dummy model in config; the provider's DefaultModel should be
-        // "meta-llama/Llama-3.3-70B-Instruct-Turbo". We verify by inspecting the request body
+        // "zai-org/GLM-5.3-Flash". We verify by inspecting the request body
         // when the config model matches the expected default.
-        var configWithDefault = LlmConfig.Create("meta-llama/Llama-3.3-70B-Instruct-Turbo", TestApiKey);
+        var configWithDefault = LlmConfig.Create("zai-org/GLM-5.3-Flash", TestApiKey);
 
         using var handler = new TestHttpMessageHandler(request =>
         {
             var body = request.Content!.ReadAsStringAsync().Result;
             // Verify the default model is present in the request
-            Assert.Contains("meta-llama/Llama-3.3-70B-Instruct-Turbo", body);
+            Assert.Contains("zai-org/GLM-5.3-Flash", body);
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(JsonSerializer.Serialize(new

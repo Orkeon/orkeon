@@ -121,7 +121,8 @@ public sealed class OutputCapDefaultTests : IDisposable
     {
         // The window sat in the catalogue for two days (2026-09-19 → 21) on the assumption that
         // "truncate" clamps it; the campaign measured that two of three engines refuse regardless.
-        using var provider = new TogetherAiLlmProvider(LlmConfig.Create(LlmProviderDefaultModels.Together, TestApiKey), _httpClientFactory, _noOpPolicy);
+        // A model the output-cap table does not list: the default since 2026-11-11 (GLM-5.3-Flash) is listed.
+        using var provider = new TogetherAiLlmProvider(LlmConfig.Create("meta-llama/Llama-3.3-70B-Instruct-Turbo", TestApiKey), _httpClientFactory, _noOpPolicy);
 
         await provider.ChatAsync([LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken);
 

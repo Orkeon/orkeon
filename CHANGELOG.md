@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Together AI's default model **[breaking]**
+
+- **`LlmProviderDefaultModels.Together`** **[breaking]** is now `zai-org/GLM-5.3-Flash`. `meta-llama/Llama-3.3-70B-Instruct-Turbo` is no longer serverless: every call to it answers `Unable to access non-serverless model` (LLM campaign of 2026-11-11), so a Together provider built without a model failed on its first call. GLM-5.3-Flash was Together's own replacement target since the 2026-09-19 review: 1 M context, tools and JSON, reads images, 0.15 / 0.50 $/M, 10/1/1 on that campaign. The value changes in `PublicAPI.Shipped.txt`.
+
+  | Before | After |
+  |---|---|
+  | no model, or `meta-llama/Llama-3.3-70B-Instruct-Turbo` on Together | `zai-org/GLM-5.3-Flash`, or a dedicated endpoint for the Llama model |
+
 ### Fixed
 
 - **`reasoning_effort: none` reaches OpenAI again** — since the effort levels gained `xhigh` and `max` (#242), a value outside `low`…`max` was "lowered" to `low`, and the `gpt-5` row of the model capability table caught `gpt-5.6-*` and omitted `none` there: every GPT-5.6 and GPT-6 tier that needs `none` to take function tools on chat/completions answered tools and the messages-array shape with a 400 (LLM campaign of 2026-11-11). `LlmThinkingConfig.EffortFor` now returns a value outside the levels unchanged, for the vendor to judge, and `gpt-5.6` has its own unrestricted row.

@@ -53,13 +53,13 @@ public static class LlmProviderDefaultModels
     public const string Ollama = "llama3.2";
 
     /// <summary>
-    /// Together AI. Catalogue review 2026-09-19: still serverless and not scheduled for
-    /// removal, at 1.04 / 1.04 $/M; the serverless list now carries
-    /// <c>zai-org/GLM-5.3-Flash</c> (1 M context, tools + JSON, 0.15 / 0.50 $/M — Together's
-    /// own replacement target), <c>Qwen/Qwen3.5-9B</c> and <c>deepseek-ai/DeepSeek-V4.1-Flash</c>,
-    /// while Llama 4 left it. A candidate at a seventh of the price, once campaigned.
+    /// Together AI. Campaign of 2026-11-11: <c>meta-llama/Llama-3.3-70B-Instruct-Turbo</c>, the default
+    /// until then, is no longer serverless (every call answers "Unable to access non-serverless model").
+    /// <c>zai-org/GLM-5.3-Flash</c> replaces it: Together's own replacement target since the 2026-09-19
+    /// review, 1 M context, tools + JSON, reads images, 0.15 / 0.50 $/M; 10/1/1 on that campaign, the red
+    /// being M10 (the endpoint reports no cached tokens).
     /// </summary>
-    public const string Together = "meta-llama/Llama-3.3-70B-Instruct-Turbo";
+    public const string Together = "zai-org/GLM-5.3-Flash";
 
     /// <summary>
     /// DeepSeek — the vendor's rolling id for the Flash tier, V4.1 Flash since 2026-09-10
