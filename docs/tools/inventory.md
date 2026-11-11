@@ -33,7 +33,7 @@ what YAML references.
 | Tool | Class | Registration | Use case | Call example |
 |-------|--------|------|-------------|-----------------|
 | `semantic_search` | `SearchTool` | `AddSemanticSearchTool()` (`Orkeon.Hosting`, opt-in — `orkeon run` calls it for a YAML crew) | Embedding-based semantic search across memories | `{ "query": "customer churn patterns", "top_k": 5 }` |
-| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — every runner host calls both | RAG search in the collections `rag_ingest` filled (never the code index: `codebase_search`) over `IRagPipeline`. Typed result (`answer`, `citations[]`); structured `question` parameter only — the legacy raw-string entry is removed (**breaking**, same for `rag_eval` with `dataset`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
+| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — every runner host calls both | RAG search in the collections `rag_ingest` filled (never the code index: `codebase_search`) over `IRagPipeline`. Typed result (`answer`, `citations[]`); structured `question` parameter (`dataset` for `rag_eval`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
 | `rag_ingest` | `RagIngestTool` | Same opt-in as `rag_search` | Incremental ingestion into a RAG collection (manifest-driven — unchanged sources cost 0 embeddings) | `{ "collection": "docs", "sources": ["/kb/**/*.md"], "reindex": false }` |
 | `rag_eval` | `RagEvalTool` | Same opt-in as `rag_search` | Evaluate a collection against a golden YAML dataset: recall@k, precision@k, MRR, groundedness. Typed result (`metrics[]`, `cases[]`, `reports`) | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
 
@@ -63,7 +63,7 @@ what YAML references.
 | `session_cost` | `SessionCostTool` | Cumulative session cost in USD with a per-model breakdown |
 | `token_budget` | `TokenBudgetTool` | Context window size, used tokens and what fills them (`used_tokens_by_kind`: `system`, `user`, `assistant`, `tool`, `other`), available budget |
 | `memory_store` | `MemoryStoreTool` | List/add/replace/delete/get typed memories (user/project/feedback/reference): `add` returns the entry's `id`, every entry carries `created_at`, `list` takes `newest_first`, `replace` retires a stale fact in place (same `id` and category). Kept per project in `<Orkeon:Cli:Memory:RootDirectory>/<project slug>/memory.json` when `Orkeon:Cli:Memory:Persist` is on (the REPL's default); in memory otherwise |
-| `memory_recall` | `MemoryRecallTool` | Recall what the crew of the call remembers (`query`, `limit`), ranked by composite score; opt-in (`Orkeon:CognitiveMemory:Enabled`), held only by a crew with `memory: true` |
+| `memory_recall` | `MemoryRecallTool` | Registered by `AddOrkeonCognitiveMemory(configuration)`, not by `AddOrkeonSessionTools()`; `RunnerHost` calls it only when `Orkeon:CognitiveMemory:Enabled` is `true`. Recall what the crew of the call remembers (`query`, `limit`), ranked by composite score; opt-in (`Orkeon:CognitiveMemory:Enabled`), held only by a crew with `memory: true` |
 
 ## Decision tool (`Orkeon.Infrastructure`) — `AddOrkeonDecisionProvider(configuration)`
 
@@ -244,7 +244,7 @@ Twenty-nine tools over the RaggableTree semantic code graph — the full guide i
 | `symbol_detail` | `SymbolDetailTool` | Expanded L3 symbol detail: signature, doc, metrics, members, callers/callees; `expand: "inheritance"` gives `extends`, `implements`, `derived_by` and `implemented_by` as FQNs |
 | `symbol_source` | `SymbolSourceTool` | Deterministic source citation: path, lines, code, SHA-256, stable flag |
 | `codebase_search` | `CodebaseSearchTool` | Hybrid (vector + BM25) search with ranked, cited hits, at most `top_k` (10), `truncated` when more match |
-| `dependency_graph` | `DependencyGraphTool` | Dependency graph at a scope (L1 packages, L2 modules, L3 symbols): at most `max_nodes` nodes (200), `truncated` when the scope holds more, the cycles of the whole scope; `include_mermaid` / `include_dot` off by default |
+| `dependency_graph` | `DependencyGraphTool` | Dependency graph at a scope (L1 packages, L2 modules, L3 symbols): at most `max_nodes` nodes (200), `truncated` when the scope holds more, the cycles of the whole scope, at most `max_cycles` (20, largest first, `cycle_count` keeps the total) of at most `max_cycle_members` (50) members; `include_mermaid` / `include_dot` off by default |
 | `sub_graph` | `SubGraphTool` | Sub-graph expansion around seeds, Forward or Backward, bounded by `depth` and `max_nodes` (100); `include_mermaid` off by default |
 | `edge_list` | `EdgeListTool` | Every edge of the given `edge_kinds` (required) in the whole index, in a stable order and paginated (`cursor`, `page_size` up to 1000), each end as FQN and id, optionally kept to the edges with an end at or under `root_fqn` (a package or file by path, a type by FQN, a namespace by its files and name); `total` and `next_cursor`. Read-class |
 | `flow_trace` | `FlowTraceTool` | Trace the call flow from a symbol, the shortest path to a target or every path within `max_depth` and `max_paths` (20); `edge_kinds` takes the workflow names (`calls` by default, `inherits`) |
@@ -269,7 +269,7 @@ Twenty-nine tools over the RaggableTree semantic code graph — the full guide i
 
 | Tool | Class | Registration | Use case |
 |-------|--------|------|-------------|
-| `list_mounts` | `ListMountsTool` (`Orkeon.Tools.Abstractions`) | `AddOrkeonAbstractionTools()` | List the VFS mounts visible to the agent, with virtual paths and access rights. Typed result `{ mounts: [{ virtual_path, access, overrides: [{ virtual_path, access }] }] }`; **breaking rename** of the result fields (formerly `path` / `rights` / `overrides[{ path, rights }]`) |
+| `list_mounts` | `ListMountsTool` (`Orkeon.Tools.Abstractions`) | `AddOrkeonAbstractionTools()` | List the VFS mounts visible to the agent, with virtual paths and access rights. Typed result `{ mounts: [{ virtual_path, access, overrides: [{ virtual_path, access }] }] }` |
 | `local_embed_text` | `LocalEmbedTool` (`Orkeon.Tools.Embeddings.Local`) | `AddOrkeonLocalEmbeddings()` | Embed texts on-device (BGE-micro-v2 ONNX, 384 dims, CPU — no network, no API key) |
 
 ## Host-side tools
@@ -321,8 +321,8 @@ The two shipped composition roots do not register the same suites. Sources:
 the REPL. `orkeon run` builds a different host for a YAML crew (through `RunnerExecution`)
 and for an `.ork.ts` script (directly on `RunnerHost`); where the two differ, the table says
 so. The service host `orkeon-host` builds on the same `RunnerHost`, so it has the
-`RunnerHost` suite — everything in the first column except `semantic_search` and
-`human_input`. `orkeon mcp serve` builds the host of `orkeon run --list-tools`
+`RunnerHost` suite — everything in the first column except `semantic_search` — and
+registers `human_input` itself: a question waits for its answer on `POST /runs/{id}/input`. `orkeon mcp serve` builds the host of `orkeon run --list-tools`
 and serves its tools to an MCP client, `human_input` aside — see
 [MCP integration](../architecture/mcp.md#serving-the-tools-with-orkeon-mcp-serve).
 
@@ -338,17 +338,20 @@ and serves its tools to an MCP client, `human_input` aside — see
 | `web_search`, `cache_search` | ✅ | ❌ |
 | `brave_search` | ✅ only if `BRAVE_API_KEY` is set | ❌ |
 | `slack_send_message`, `slack_read_messages` | ❌ (host opt-in) | ❌ |
-| The tools of the MCP servers `MCP:Servers` declares | ✅ connected before the crew loads, under their own names — an agent lists them in `tools:` like any other tool (see the resolution pipeline below) | ❌ |
+| The tools of the MCP servers `MCP:Servers` declares | ✅ connected before the crew loads, under their own names — an agent lists them in `tools:` like any other tool (see the resolution pipeline below) | ✅ connected before the scripted commands load, under their own names |
 | `semantic_search` | ✅ for a YAML crew (wired by the run command) | ❌ |
 | `human_input` | ✅ for a YAML crew (on the event stream under `--events`, auto-approved otherwise) | ✅ (console prompt) |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | per agent, when `AllowDelegation` is on | per agent |
 | `spawn_agent` | ❌ (host must register it) | ❌ |
 | `code_interpreter` | concrete-type registration only — not resolvable by name | idem |
 | `progress_report` | ❌ | ✅ (scripted commands) |
+| `system_one_decide` | ✅ when a decision provider is configured (`Orkeon:Decision:Provider`, or deduced from its section or API key) | ✅ same rule |
+| `mcp_prompt_get` | ✅ when `MCP:Servers` declares servers | ✅ same rule |
+| `memory_recall` | ✅ when `Orkeon:CognitiveMemory:Enabled` = `true`, held by a crew with `memory: true` | ❌ |
 
 `orkeon forge` builds on the runner host but removes `shell_command` and `code_interpreter`
 from the catalogue a forged crew draws from. The twelve mailbox tools stay in it: a try runs
-them on a fictitious trial mailbox and never reaches the operator's real one (FORGE-10, see
+them on a fictitious trial mailbox and never reaches the operator's real one (see
 [Forged crews](../guides/email.md#forged-crews)). The eleven drive tools are removed too: there is
 no trial drive, and a try would read and change the operator's actual one.
 
@@ -447,6 +450,9 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `drive_search` | `DriveSearchTool` | `Orkeon.Tools.Drive` |
 | `drive_share` | `DriveShareTool` | `Orkeon.Tools.Drive` |
 | `drive_upload` | `DriveUploadTool` | `Orkeon.Tools.Drive` |
+| `edge_list` | `EdgeListTool` | `Orkeon.Tools.Analysis` |
+| `edit_batch` | `EditBatchTool` | `Orkeon.Tools.Analysis` |
+| `edit_file` | `EditFileTool` | `Orkeon.Tools.FileSystem` |
 | `email_accounts` | `EmailAccountsTool` | `Orkeon.Tools.Email` |
 | `email_create_folder` | `EmailCreateFolderTool` | `Orkeon.Tools.Email` |
 | `email_delete` | `EmailDeleteTool` | `Orkeon.Tools.Email` |
@@ -462,9 +468,6 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `email_send` | `EmailSendTool` | `Orkeon.Tools.Email` |
 | `file_read` | `FileReadTool` | `Orkeon.Tools.FileSystem` |
 | `file_write` | `FileWriteTool` | `Orkeon.Tools.FileSystem` |
-| `edge_list` | `EdgeListTool` | `Orkeon.Tools.Analysis` |
-| `edit_batch` | `EditBatchTool` | `Orkeon.Tools.Analysis` |
-| `edit_file` | `EditFileTool` | `Orkeon.Tools.FileSystem` |
 | `firefox` | `FirefoxTool` | `Orkeon.Tools.Web` |
 | `flow_trace` | `FlowTraceTool` | `Orkeon.Tools.Analysis` |
 | `get_last_value` | `GetLastValueTool` | `Orkeon.Tools.EventHub` |
@@ -487,8 +490,8 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `mariadb_query` | `MariaDbDatabaseTool` | `Orkeon.Tools.Data` |
 | `mcp_prompt_get` | `McpPromptGetTool` | `Orkeon.Infrastructure` |
 | `mdx_search` | `MdxSearchTool` | `Orkeon.Tools.Data` |
+| `memory_recall` | `MemoryRecallTool` | `Orkeon.Infrastructure` (opt-in, `AddOrkeonCognitiveMemory`) |
 | `memory_store` | `MemoryStoreTool` | `Orkeon.Infrastructure` |
-| `memory_recall` | `MemoryRecallTool` | Recall what the crew of the call remembers (`query`, `limit`), ranked by composite score; opt-in (`Orkeon:CognitiveMemory:Enabled`), held only by a crew with `memory: true` |
 | `mongodb_query` | `MongoDbTool` | `Orkeon.Tools.Data` |
 | `mongodb_schema` | `MongoDbSchemaTool` | `Orkeon.Tools.Data` |
 | `mysql_query` | `MySqlDatabaseTool` | `Orkeon.Tools.Data` |
@@ -521,6 +524,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `slack_read_messages` | `SlackReadTool` | `Orkeon.Tools.Web` (opt-in) |
 | `slack_send_message` | `SlackTool` | `Orkeon.Tools.Web` (opt-in) |
 | `spawn_agent` | `SpawnAgentTool` | `Orkeon.Infrastructure` (host-registered) |
+| `spawn_agent` | `SpawnAgentScriptTool` | `Orkeon.Scripting` (script host, offered in `act`) |
 | `sqlserver_query` | `SqlServerDatabaseTool` | `Orkeon.Tools.Data` |
 | `statement_query` | `StatementQueryTool` | `Orkeon.Tools.Analysis` |
 | `structural_rewrite` | `StructuralRewriteTool` | `Orkeon.Tools.Analysis` |
