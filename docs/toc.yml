@@ -134,6 +134,8 @@
       href: reference/configuration.md
     - name: Limits and constraints
       href: reference/limitations.md
+    - name: Stability and versioning policy
+      href: reference/stability.md
     - name: Experimental APIs
       href: reference/experimental-apis.md
     - name: A2A conformance matrix

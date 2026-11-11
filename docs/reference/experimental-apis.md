@@ -3,7 +3,7 @@
 # Experimental APIs
 
 Some Orkeon surfaces are shipped for early feedback but are **not yet covered by the
-API stability commitment** (see [CONTRIBUTING — Versioning and API stability](../../CONTRIBUTING.md#versioning-and-api-stability)).
+API stability commitment** (see the [stability and versioning policy](./stability.md)).
 They are marked with `[Experimental]`
 (`System.Diagnostics.CodeAnalysis.ExperimentalAttribute`): referencing them produces a
 **compiler error** with one of the diagnostic IDs below, which you must suppress

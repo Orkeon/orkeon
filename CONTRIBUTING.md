@@ -373,6 +373,8 @@ Aspire), and performance.
 
 ## Versioning and API stability
 
+The policy for consumers is in [docs/reference/stability.md](docs/reference/stability.md).
+
 Orkeon follows [Semantic Versioning 2.0](https://semver.org/). The public API is not a
 matter of opinion — it is **recorded in the repository** and enforced at build time:
 

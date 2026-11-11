@@ -389,6 +389,8 @@ Agent Framework, OpenTelemetry, .NET Aspire), et performance.
 
 ## Versionnement et stabilité API
 
+La politique côté utilisateur est dans [docs/fr/reference/stability.md](docs/fr/reference/stability.md).
+
 Orkeon suit le [Semantic Versioning 2.0](https://semver.org/). L'API publique n'est pas
 une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée au build :
 
