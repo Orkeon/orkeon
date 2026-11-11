@@ -468,7 +468,7 @@ What the table does not say by itself:
   `grok-4.5`, `grok-4.3`, `MiniMax-M2.1`, `MiniMax-M2.5`, `glm-5.1`, `glm-5-turbo`,
   `qwen3.6-plus`, `qwen3.5-plus`. The snapshot lists them all.
 
-## Output caps — the documented maximum per model (LLM-10)
+## Output caps — the documented maximum per model
 
 A request carries an output cap (`max_tokens`, `max_completion_tokens` at OpenAI, `num_predict`
 at Ollama). Left unpinned, the cap is **the model's documented maximum**, from the

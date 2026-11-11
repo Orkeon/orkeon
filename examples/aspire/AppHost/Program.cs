@@ -7,7 +7,7 @@ using Orkeon.Hosting.Aspire;
 //
 //   dotnet run --project examples/aspire/AppHost/OrkeonAppHost.csproj
 //
-// `orkeon` must be on the PATH (dotnet tool install -g Orkeon.Scripting.Cli)
+// `orkeon` must be on the PATH (dotnet tool install -g Orkeon.Scripting.Cli --prerelease)
 // or named through ORKEON_CLI (e.g. a source build: ORKEON_CLI=/path/to/orkeon). The model
 // is the quickstart's: Ollama on localhost with qwen2.5:1.5b.
 var builder = DistributedApplication.CreateBuilder(args);

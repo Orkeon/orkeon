@@ -87,7 +87,7 @@ scripting.
 
 **Migration** : le code source et les namespaces sont inchangés, le code consommateur compile
 donc tel quel — seule l'installation change. Désinstallez les paquets par couche et
-`dotnet add package Orkeon` (ajoutez `Orkeon.Tools` si vous utilisiez un paquet
+`dotnet add package Orkeon --prerelease` (ajoutez `Orkeon.Tools` si vous utilisiez un paquet
 `Orkeon.Tools.<famille>` autre qu'`Embeddings.Local`).
 
 ## État de NuGet.org

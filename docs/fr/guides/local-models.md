@@ -184,7 +184,7 @@ Deux notions à ne pas confondre :
   ce qui est aussi la valeur de repli d'une valeur non fixée sur Docker Model Runner (aucun
   plafond documenté pour un modèle local) ; sur Ollama, une valeur non fixée n'envoie aucun
   `num_predict`, et le modèle écrit jusqu'à son contexte (voir
-  [les plafonds de sortie](../reference/llm-providers-comparison.md#plafonds-de-sortie--le-maximum-documenté-par-modèle-llm-10)).
+  [les plafonds de sortie](../reference/llm-providers-comparison.md#plafonds-de-sortie--le-maximum-documenté-par-modèle)).
 
 ### Concurrence : gardez `MaxConcurrentRequests` à 1
 

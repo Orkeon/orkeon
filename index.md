@@ -34,14 +34,14 @@ runs on a local model with no API key — see the two-minute start in the
 ## Install
 
 ```bash
-dotnet add package Orkeon        # the complete framework in one package
-dotnet add package Orkeon.Tools  # optional: the built-in tool families
+dotnet add package Orkeon --prerelease        # the complete framework in one package
+dotnet add package Orkeon.Tools --prerelease  # optional: the built-in tool families
 ```
 
 The scripting CLI ships as a .NET tool:
 
 ```bash
-dotnet tool install -g Orkeon.Scripting.Cli
+dotnet tool install -g Orkeon.Scripting.Cli --prerelease
 orkeon run crew.ork.ts
 ```
 

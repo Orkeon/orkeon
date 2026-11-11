@@ -12,11 +12,12 @@ câblées plus bas (`AddOrkeonFileSystemTools`, `AddOrkeonDataTools`, `AddOrkeon
 `AddOrkeonCodeTools`, `AddOrkeonEmailTools` ; le paquet porte d'autres suites, comme `AddOrkeonDriveTools`) vivent dans un second, `Orkeon.Tools` :
 
 ```bash
-dotnet add package Orkeon
-dotnet add package Orkeon.Tools
+dotnet add package Orkeon --prerelease
+dotnet add package Orkeon.Tools --prerelease
 ```
 
-Les deux commandes écrivent les entrées
+`--prerelease` est nécessaire tant qu'Orkeon ne publie que des pré-versions ; il
+disparaît une fois une version finale publiée. Les deux commandes écrivent les entrées
 `<PackageReference>` correspondantes dans votre `.csproj` — une édition à la main donne
 exactement le même résultat.
 
@@ -35,7 +36,7 @@ quand vous en avez besoin. La liste complète est la
 
 ### Partir d'un modèle
 
-`dotnet new install Orkeon.Templates` ajoute trois modèles, chacun un projet qui compile
+`dotnet new install Orkeon.Templates --prerelease` ajoute trois modèles, chacun un projet qui compile
 contre les paquets de la même version, écrite en clair dans son `.csproj` :
 
 | Commande | Génère |

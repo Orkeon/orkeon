@@ -7,7 +7,7 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 ## Install
 
 ```
-dotnet tool install --global Orkeon.Scripting.Cli
+dotnet tool install --global Orkeon.Scripting.Cli --prerelease
 orkeon doctor
 ```
 

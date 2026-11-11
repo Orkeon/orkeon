@@ -493,7 +493,7 @@ Ce que le tableau ne dit pas tout seul :
   `grok-4.5`, `grok-4.3`, `MiniMax-M2.1`, `MiniMax-M2.5`, `glm-5.1`, `glm-5-turbo`,
   `qwen3.6-plus`, `qwen3.5-plus`. L'instantané les liste tous.
 
-## Plafonds de sortie — le maximum documenté par modèle (LLM-10)
+## Plafonds de sortie — le maximum documenté par modèle
 
 Une requête porte un plafond de sortie (`max_tokens`, `max_completion_tokens` chez OpenAI,
 `num_predict` chez Ollama). Non épinglé, le plafond est **le maximum documenté du modèle**, tiré

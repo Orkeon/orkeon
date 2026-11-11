@@ -367,7 +367,7 @@ message nomme le réglage — jamais une réponse vide.
 **épinglage** : absent, la requête porte le **maximum de sortie documenté** du modèle,
 lu dans le catalogue `LlmModelOutputLimits` (128K sur `gpt-5.6-sol` et la génération Claude 5,
 384K sur `deepseek-flash`, 131 072 sur les familles GLM-5 et Qwen 3.7/3.8, 65 536 sur Gemini 3.x
-Flash — voir la [table des plafonds](llm-providers-comparison.md#plafonds-de-sortie--le-maximum-documenté-par-modèle-llm-10)),
+Flash — voir la [table des plafonds](llm-providers-comparison.md#plafonds-de-sortie--le-maximum-documenté-par-modèle)),
 aucun plafond quand le fournisseur n'en documente pas (Mistral, un Ollama local), et **4096
 seulement pour un modèle inconnu du catalogue** — un plafond qu'un modèle de raisonnement peut dépenser à
 réfléchir avant d'écrire un mot, pour revenir vide (une réponse finale vide fait échouer la tâche au lieu de passer pour une tâche

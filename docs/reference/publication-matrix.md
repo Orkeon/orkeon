@@ -83,7 +83,7 @@ The following projects are **not packed under their own id** (`IsPackable=false`
 
 **Migration**: the source code and namespaces are unchanged, so consumer code compiles as-is —
 only the install changes. Uninstall the per-layer packages and
-`dotnet add package Orkeon` (add `Orkeon.Tools` if you used a
+`dotnet add package Orkeon --prerelease` (add `Orkeon.Tools` if you used a
 `Orkeon.Tools.<family>` package other than `Embeddings.Local`).
 
 ## NuGet.org state

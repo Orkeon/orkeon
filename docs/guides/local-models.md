@@ -180,7 +180,7 @@ Two things to keep straight:
   which is also what an unpinned value falls back to on Docker Model Runner (no documented
   cap for a local model); on Ollama an unpinned value sends no `num_predict` at all, and the
   model writes up to its context (see
-  [output caps](../reference/llm-providers-comparison.md#output-caps--the-documented-maximum-per-model-llm-10)).
+  [output caps](../reference/llm-providers-comparison.md#output-caps--the-documented-maximum-per-model)).
 
 ### Concurrency: keep `MaxConcurrentRequests` at 1
 

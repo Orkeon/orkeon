@@ -23,7 +23,7 @@ Dans ce dépôt, elle est consommée par `Orkeon.Scripting.Cli` (l'outil `orkeon
 embarque `Orkeon.Hosting.dll` à côté d'`Orkeon.Scripting.dll` ; `Orkeon.Constants.Cli` arrive comme dépendance de paquet.
 
 ```bash
-dotnet add package Orkeon.Scripting
+dotnet add package Orkeon.Scripting --prerelease
 ```
 
 Elle n'est pas dans le parapluie `Orkeon` : l'hôte de runner compose toutes les familles d'outils
@@ -363,8 +363,8 @@ lance les exécutables livrés, trouvés sur le `PATH` ou nommés par `command`.
 **Installer.** Dans un projet AppHost Aspire (`Aspire.AppHost.Sdk`) :
 
 ```bash
-dotnet add package Orkeon.Hosting.Aspire
-dotnet tool install -g Orkeon.Scripting.Cli   # l'exécutable `orkeon` que lance AddOrkeonCrewRun
+dotnet add package Orkeon.Hosting.Aspire --prerelease
+dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # l'exécutable `orkeon` que lance AddOrkeonCrewRun
 ```
 
 `orkeon-host` vient des archives d'installation complètes ou du MSI per-machine du service — qui

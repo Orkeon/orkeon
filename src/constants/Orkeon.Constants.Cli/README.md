@@ -15,7 +15,7 @@ user has no console to read.
 ## Install
 
 ```bash
-dotnet add package Orkeon.Constants.Cli
+dotnet add package Orkeon.Constants.Cli --prerelease
 ```
 
 See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md) for the rest of the lineup.

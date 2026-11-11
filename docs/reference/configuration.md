@@ -347,7 +347,7 @@ elapsing is a failed call whose message names the setting — never an empty ans
 out, the request carries the model's **documented maximum output** from the
 `LlmModelOutputLimits` catalogue (128K on `gpt-5.6-sol` and the Claude 5 generation, 384K on
 `deepseek-flash`, 131 072 on the GLM-5 and Qwen 3.7/3.8 families, 65 536 on Gemini 3.x Flash —
-see the [output caps table](llm-providers-comparison.md#output-caps--the-documented-maximum-per-model-llm-10)),
+see the [output caps table](llm-providers-comparison.md#output-caps--the-documented-maximum-per-model)),
 no cap at all where the vendor documents none (Mistral, a local Ollama), and **4096 only for a
 model the catalogue does not know** — a cap a reasoning model may spend thinking before it writes a word and answers empty (an empty final
 answer fails the task rather than passing for a completed one). Pin it when the model is not in

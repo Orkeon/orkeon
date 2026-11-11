@@ -9,7 +9,7 @@ The package carries the framework assemblies (`Orkeon.Domain`, `Orkeon.Applicati
 ## Install
 
 ```
-dotnet add package Orkeon
+dotnet add package Orkeon --prerelease
 ```
 
 Add [Orkeon.Tools](https://www.nuget.org/packages/Orkeon.Tools) for the built-in agent tool families, and [Orkeon.Rag.Onnx](https://www.nuget.org/packages/Orkeon.Rag.Onnx) for the offline ONNX reranker.
