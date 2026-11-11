@@ -112,9 +112,9 @@ Vos réglages ne font pas partie du paquet : `~/.config/Orkeon/appsettings.json`
 | `rc` | `raw/apt/rc/` | toutes les releases taguées — les release candidates **et** les versions finales |
 | `dev` | `raw/apt/dev/` | les builds de `main` entre deux releases — voir [Suivre `main`](#suivre-main-builds-dev) |
 
-`stable` reste vide tant qu'aucune version finale n'est publiée : une machine sur `stable`
-n'installe rien jusque-là. Pour essayer une release candidate, prenez `rc` — toute version
-finale arrive aussi dans `rc`, une machine sur `rc` n'en manque donc aucune.
+`stable` porte les releases finales : c'est le canal à suivre. Le canal `rc` y ajoute les
+release candidates de la version suivante — toute version finale arrive aussi dans `rc`, une
+machine sur `rc` n'en manque donc aucune — et `dev` porte les builds de pré-version de `main`.
 
 **Changer de canal** : modifiez la ligne `Suites:`, puis mettez à jour :
 

@@ -7,7 +7,7 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 ## Install
 
 ```
-dotnet add package Orkeon.Tools --prerelease
+dotnet add package Orkeon.Tools
 ```
 
 The package depends on `Orkeon`, which is restored automatically.

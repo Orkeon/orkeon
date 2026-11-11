@@ -50,7 +50,7 @@ Un modèle local, un agent, un dossier en écriture. Avec [Ollama](https://ollam
 <!-- quickstart:begin -->
 ```bash
 ollama pull qwen2.5:1.5b
-dotnet tool install -g Orkeon.Scripting.Cli --prerelease
+dotnet tool install -g Orkeon.Scripting.Cli
 orkeon quickstart && cd orkeon-quickstart
 orkeon run crew.yaml --mount ./out:/output:rw
 ```
@@ -77,7 +77,7 @@ Refusé avant qu'un octet n'atteigne le disque. La CI exécute les deux blocs à
 | **Orkeon Workshop** | Claude Code, harnaché. Une image de conteneur — Claude Code, le CLI Orkeon, des modèles locaux sur votre GPU — et une méthode : besoin → tests → équipe → exécutions → acceptée, chaque tentative et chaque décision gardées sur disque, une exécution payante qui attend votre accord. Les équipes en sortent prêtes pour le CLI `orkeon` ; le même harnais travaille sur Orkeon lui-même — [Orkeon/orkeon-workshop](https://github.com/Orkeon/orkeon-workshop). |
 | **Orkeon Code** | Un assistant de codage sur le runtime Orkeon. Travaillez en binôme dans le terminal sous le mode de permission de votre choix, ou laissez-le mener une tâche jusqu'au bout ; `/review`, `/commit`, `/security-review`, `/analyze` ; un seul projet monté, un shell en liste blanche. Alpha — [Orkeon/orkeon-code](https://github.com/Orkeon/orkeon-code). |
 | **Le CLI `orkeon`** | `orkeon run` exécute une équipe écrite en YAML ou en TypeScript (`.ork.ts`) ; `orkeon forge "…"` en rédige une à partir d'une phrase, la teste en bac à sable et la promeut ; `orkeon quickstart` écrit l'équipe « deux minutes » ci-dessus ; `init`, `doctor`, `email login` et `drive login` font la plomberie — [référence du CLI](docs/fr/reference/cli.md). |
-| **La bibliothèque** | `dotnet add package Orkeon --prerelease` — le même moteur dans votre produit : builders C#, Clean Architecture, typé de bout en bout — [Amorçage et exécution](docs/fr/getting-started/bootstrap.md). |
+| **La bibliothèque** | `dotnet add package Orkeon` — le même moteur dans votre produit : builders C#, Clean Architecture, typé de bout en bout — [Amorçage et exécution](docs/fr/getting-started/bootstrap.md). |
 
 L'équipe que vous forgez à partir d'une phrase est le YAML que le CLI exécute, et l'équipe que votre propre code .NET charge. Un seul runtime, les mêmes règles, quelle que soit la porte.
 
@@ -93,7 +93,7 @@ L'équipe que vous forgez à partir d'une phrase est le YAML que le CLI exécute
 | **Debian / Ubuntu** — CLI | `sudo apt install orkeon` après avoir ajouté la [source apt signée](docs/fr/guides/install-with-apt.md). |
 | **macOS** — CLI | L'archive `osx-arm64` / `osx-x64` depuis les releases, puis `./install.sh`. |
 | **Conteneur** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — les exemples embarqués. |
-| **Dans votre application .NET** | `dotnet add package Orkeon --prerelease` (+ `Orkeon.Tools` pour les outils intégrés). |
+| **Dans votre application .NET** | `dotnet add package Orkeon` (+ `Orkeon.Tools` pour les outils intégrés). |
 | **Depuis les sources** | `git clone`, puis `dotnet build Orkeon.sln` — [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources). Pour mettre ce que vous avez compilé sur votre `PATH` : `scripts/install-from-source.ps1` sous Windows, `scripts/install-from-source.sh` sous Linux et macOS — [Installer depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-depuis-les-sources), [avec le REPL](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-le-repl-depuis-les-sources). |
 
 Puis `orkeon init` pour choisir un fournisseur et un modèle ; `orkeon doctor` quand quelque chose cloche. Sommes de contrôle, attestations signées, mises à jour : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md) · [Vérifier ce que vous installez](docs/fr/guides/verify-what-you-install.md).

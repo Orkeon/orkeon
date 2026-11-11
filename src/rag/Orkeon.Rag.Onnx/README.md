@@ -7,7 +7,7 @@ ONNX Runtime and Microsoft.ML.Tokenizers are MIT.
 ## Install
 
 ```
-dotnet add package Orkeon.Rag.Onnx --prerelease
+dotnet add package Orkeon.Rag.Onnx
 ```
 
 > Published to NuGet.org as part of the consolidated lineup; depends on the [`Orkeon`](https://www.nuget.org/packages/Orkeon) package — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).

@@ -83,7 +83,7 @@ The following projects are **not packed under their own id** (`IsPackable=false`
 
 **Migration**: the source code and namespaces are unchanged, so consumer code compiles as-is —
 only the install changes. Uninstall the per-layer packages and
-`dotnet add package Orkeon --prerelease` (add `Orkeon.Tools` if you used a
+`dotnet add package Orkeon` (add `Orkeon.Tools` if you used a
 `Orkeon.Tools.<family>` package other than `Embeddings.Local`).
 
 ## NuGet.org state
@@ -158,7 +158,7 @@ dotnet nuget add source https://nuget.pkg.github.com/Orkeon/index.json \
   --username <your-github-username> \
   --password <PAT-with-read:packages> --store-password-in-clear-text
 
-dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # installed already: dotnet tool update, same arguments
+dotnet tool install -g Orkeon.Scripting.Cli   # installed already: dotnet tool update, same arguments
 # in a project: <PackageReference Include="Orkeon" Version="*-*" />
 ```
 

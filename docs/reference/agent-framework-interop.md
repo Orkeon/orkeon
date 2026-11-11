@@ -16,7 +16,7 @@ and its boundaries are recorded in [ADR-010](../adr/ADR-010-agent-framework-inte
 ## Install and register
 
 ```bash
-dotnet add package Orkeon.Interop.AgentFramework --prerelease
+dotnet add package Orkeon.Interop.AgentFramework
 dotnet add package Microsoft.Agents.AI --prerelease   # only to build MAF agents yourself (ChatClientAgent, AsAIAgent)
 ```
 

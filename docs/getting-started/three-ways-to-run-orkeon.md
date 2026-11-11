@@ -129,7 +129,7 @@ Each [GitHub Release](https://github.com/Orkeon/orkeon/releases) attaches a
 | **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | the `orkeon` CLI at `/usr/bin/orkeon` + the REPL at `/usr/bin/orkeon-repl` | none — self-contained | **Debian / Ubuntu** — best installed from the [apt repository](../guides/install-with-apt.md), which serves these same packages and their updates |
 | **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | the `orkeon` CLI alone + `install.sh` (the macOS onboarding channel stays CLI-only) | none — self-contained | **macOS**, Apple Silicon and Intel respectively |
 | **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **every** launcher (`orkeon`, `orkeon-repl`, `orkeon-host`…) + `install.sh` / `install.cmd` and `install.ps1` | mixed — see the command table below | The REPL and the service host |
-| **`dotnet tool install --global Orkeon.Scripting.Cli --prerelease`** | the `orkeon` CLI — **without esbuild**: a `.ork.ts` script needs `npm install -g esbuild` (or `ORKEON_ESBUILD_PATH`); YAML crews do not. `orkeon typings` writes the editor typings | .NET 10 **SDK** | Getting just the CLI on a dev box that already builds .NET |
+| **`dotnet tool install --global Orkeon.Scripting.Cli`** | the `orkeon` CLI — **without esbuild**: a `.ork.ts` script needs `npm install -g esbuild` (or `ORKEON_ESBUILD_PATH`); YAML crews do not. `orkeon typings` writes the editor typings | .NET 10 **SDK** | Getting just the CLI on a dev box that already builds .NET |
 
 `<rid>` is `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) or
 `win-x64` (`.zip`). In every file name, `<version>` is the tag's version — except the `.deb`
@@ -618,8 +618,8 @@ names the channel this install came through and the command that updates it.
 
 | Installed with | Move to the latest release |
 |---|---|
-| The dotnet tool | `dotnet tool update -g Orkeon.Scripting.Cli --prerelease` |
-| NuGet packages, in a project | `dotnet add package Orkeon --prerelease` — and `Orkeon.Tools` if the project references it — rewrites the version |
+| The dotnet tool | `dotnet tool update -g Orkeon.Scripting.Cli` |
+| NuGet packages, in a project | `dotnet add package Orkeon` — and `Orkeon.Tools` if the project references it — rewrites the version |
 | Windows zip, macOS or Linux tarball | Extract the new archive and run its `install.cmd` / `install.sh`: it deletes the previous install and puts the new one in its place. On Windows, let a running crew finish first: the installer refuses while a program of the installation is running |
 | Windows MSI | Run the new MSI: it replaces the installed one, between two pre-releases too |
 | The apt repository | `sudo apt update && sudo apt upgrade` |
@@ -664,8 +664,8 @@ installers and the container image are built from tags alone.
 3. **Install, then update.** The update takes you to the newest `main` each time you run it:
 
    ```bash
-   dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # the first time
-   dotnet tool update -g Orkeon.Scripting.Cli --prerelease    # every time after
+   dotnet tool install -g Orkeon.Scripting.Cli   # the first time
+   dotnet tool update -g Orkeon.Scripting.Cli    # every time after
    ```
 
    NuGet keeps a feed's version list for 30 minutes: right after a merge, add

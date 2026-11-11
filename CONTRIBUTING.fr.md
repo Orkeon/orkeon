@@ -400,15 +400,13 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
   fix de l'analyseur le fait pour vous — `dotnet format analyzers --diagnostics RS0016`
   sur le projet). À la release, les entrées `Unshipped` passent dans `Shipped`.
 - **Un breaking change est toute édition ou suppression d'une ligne de
-  `PublicAPI.Shipped.txt`.** Il exige une version majeure (une mineure n'est acceptable
-  qu'avant la 1.0), une entrée `*REMOVED*` dans le fichier d'API, et une entrée
+  `PublicAPI.Shipped.txt`.** Il exige une version majeure, une entrée `*REMOVED*` dans le fichier d'API, et une entrée
   CHANGELOG qui le dit sans détour.
-- **Fenêtre de dépréciation (à partir de la 1.0)** : une fois la 1.0 publiée, rien de
-  public n'est retiré sans avoir livré `[Obsolete]` pendant au moins une version mineure,
-  avec le remplaçant nommé dans le message. Avant la 1.0, les cales de
-  compatibilité sont retirées directement, sans étape `[Obsolete]` : chaque retrait reçoit
-  une ligne `*REMOVED*` dans le fichier d'API et une entrée CHANGELOG `**[breaking]**`
-  avec une note de migration.
+- **Fenêtre de dépréciation** : rien de public n'est retiré sans avoir livré
+  `[Obsolete]` pendant au moins une version mineure, avec le remplaçant nommé dans le
+  message ; le retrait lui-même arrive dans une version majeure, avec une ligne
+  `*REMOVED*` dans le fichier d'API et une entrée CHANGELOG `**[breaking]**` avec une
+  note de migration.
 - **Les surfaces `[Experimental]` sont hors de cet engagement.** A2A, l'orchestration
   Autonomous, le RAG correctif, l'intégration MCP, les capacités par modèle, la sécurité HTTP de
   l'hôte et les ports d'historique des exécutions portent des diagnostics
@@ -416,11 +414,9 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
   supprimer explicitement — c'est votre opt-in à une surface qui peut changer dans
   n'importe quelle version. Voir
   [docs/fr/reference/experimental-apis.md](docs/fr/reference/experimental-apis.md).
-- **Engagement de stabilité pour la fenêtre 1.x** : une fois la 1.0 publiée, aucun
-  breaking change sur une API livrée non expérimentale avant la 2.0. D'ici là — tant que
-  `main` est en pré-version — des breaking changes
-  peuvent encore arriver d'une pré-version à l'autre, mais sont toujours annoncés
-  dans le CHANGELOG et les notes de migration.
+- **Engagement de stabilité pour la ligne 1.x** : aucun breaking change sur une API
+  livrée non expérimentale avant la 2.0. La politique complète est dans
+  [docs/fr/reference/stability.md](docs/fr/reference/stability.md).
 
 ## Processus de release
 
