@@ -113,6 +113,11 @@ jobs:
           # solution restructure that stops selecting the suites still does. Raise it
           # when the real count grows durably; never lower it to make a red run green.
           MIN_TESTS: '60'
+          # SystemOneDecisionModelIntegrationTests call TypeSafe's live API and skip without a
+          # key. They had never run against it when, on 2026-11-11, the first live call showed
+          # their bare noul was refused (TypeSafe requires instructions). With the repository
+          # secret set they run every night; unset, they stay a skip.
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: |
           set +e
           out="$(dotnet test Orkeon.sln -c Release --no-build \

@@ -40,7 +40,8 @@
     "D4": "Decision: box on an image",
     "D5": "Decision: context limit named",
     "D6": "Decision: invalid model typed",
-    "D7": "Decision: cancellation"
+    "D7": "Decision: cancellation",
+    "D8": "Decision: long context (paid, opt-in)"
   },
 
   "providers": {

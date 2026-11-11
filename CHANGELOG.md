@@ -13,7 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decision modes, D1–D7 (noul, choice, score, box on an image, the context-limit refusal, a typed
   error for an unknown model, cancellation), through `SystemOneDecisionModel`, and writes the same
   JSON as the chat modes. The LLM provider campaign kit takes `typesafe` like any provider: the
-  catalog gives it its modes, its key variable and `jev-preview` as candidate.
+  catalog gives it its modes, its key variable and `jev-preview` as candidate. An eighth mode, D8,
+  sends the oversized state with long context set and checks that a sentence buried halfway is
+  found; at about 100k input tokens a run it is in no default set and runs only when named.
+- **The LLM provider campaign kit checks around its runs** — each provider opens with one call
+  (`--no-preflight` to skip it), and a refused key, an empty balance or an exhausted quota skips the
+  provider there instead of failing every mode of every model; the reports carry `<commit>-dirty`
+  when `src/` holds uncommitted changes; the end of a campaign lists the identifiers each provider
+  serves that `lib/served-models.json` does not, and those it no longer serves; a report points at
+  the provider's notes in `lib/catalog.json` instead of copying them. The nightly integration run
+  passes the `TYPESAFE_API_KEY` repository secret to the TypeSafe integration tests.
 
 ### Changed — Together AI's default model **[breaking]**
 

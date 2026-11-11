@@ -120,7 +120,9 @@ vaut pour tous les fournisseurs.
 `orkeon llm probe -p typesafe` (ou `liquid`, `kev`) exécute sept modes contre l'API réelle à travers
 `SystemOneDecisionModel` : un `noul`, un `choice` et un `score` aux réponses évidentes, un `box` sur
 une image PNG, le refus d'un état au-delà du contexte de 64k, une erreur typée pour un modèle
-inconnu, et l'annulation. Le kit de campagne des fournisseurs LLM l'exécute comme les fournisseurs
+inconnu, et l'annulation. Un huitième, D8, envoie le même état avec le contexte long activé et
+vérifie qu'une phrase enfouie en son milieu est trouvée ; il coûte environ 100k tokens d'entrée et
+ne s'exécute donc que nommé (`--modes D8`). Le kit de campagne des fournisseurs LLM l'exécute comme les fournisseurs
 de chat (`llmproviders-test/run-campaign.sh --provider typesafe`) et archive le rapport sous
 `llmproviders-test/typesafe/` ; son README liste les modes.
 

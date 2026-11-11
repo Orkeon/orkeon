@@ -103,11 +103,14 @@ foreach ($mode in $c.modes) {
 & $add '> ➖ = mode not applicable to this provider or this model. Nothing was exercised, so there is'
 & $add '> nothing to fix — it is an absence of capability, not a defect.'
 
+# The provider's notes are not copied: a copy is frozen the day it is written, and a note
+# about a campaign is stale at the next one. The report points at the one place the notes
+# are kept current (same rule as report.sh).
 if ($canonical -and $canonical.notes) {
     & $add ''
     & $add "## Points of attention (matrix $section)"
     & $add ''
-    foreach ($note in $canonical.notes) { & $add "- $note" }
+    & $add "Kept current in ``llmproviders-test/lib/catalog.json``, ``providers.$canonicalKey.notes``."
 }
 
 $sectionOrDefault = if ($section) { $section } else { '§6' }

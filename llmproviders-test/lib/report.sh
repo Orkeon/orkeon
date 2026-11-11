@@ -96,12 +96,15 @@ mkdir -p "$(dirname "$OUTPUT")"
   echo "> ➖ = mode not applicable to this provider or this model. Nothing was exercised, so there is"
   echo "> nothing to fix — it is an absence of capability, not a defect."
 
-  notes=$(jq -r --arg p "$canonical" '.providers[$p].notes // [] | .[] | "- " + .' "$CATALOG")
-  if [[ -n "$notes" ]]; then
+  # The provider's notes are not copied: a copy is frozen the day it is written, and a note
+  # about a campaign is stale at the next one — five Z.AI reports of 2026-11-11 had to be
+  # corrected by hand after their note changed the same afternoon. The report points at the
+  # one place the notes are kept current.
+  if jq -e --arg p "$canonical" '(.providers[$p].notes // []) | length > 0' "$CATALOG" >/dev/null; then
     echo
     echo "## Points of attention (matrix ${section})"
     echo
-    echo "$notes"
+    echo "Kept current in \`llmproviders-test/lib/catalog.json\`, \`providers.${canonical}.notes\`."
   fi
 
   echo

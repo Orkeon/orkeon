@@ -10,7 +10,7 @@ using Orkeon.Constants.Llm;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>
-/// Runs the decision modes (D1–D7) against a live decision provider — TypeSafe (Jev), Liquid
+/// Runs the decision modes (D1–D8) against a live decision provider — TypeSafe (Jev), Liquid
 /// or Kev — behind <c>orkeon llm probe -p typesafe</c>.
 /// </summary>
 /// <remarks>
@@ -86,12 +86,25 @@ internal sealed class DecisionProbeRunner
     /// </summary>
     public bool SupportsBox { get; init; } = true;
 
+    /// <summary>
+    /// Gets whether the provider serves a long context on request; when false D8 is not
+    /// applicable. Only TypeSafe documents one (its long-context header, 262k tokens).
+    /// </summary>
+    public bool SupportsLongContext { get; init; } = true;
+
     /// <summary>Gets the modes this runner exercises, in protocol order.</summary>
     public static IReadOnlyList<LlmProbeMode> SupportedModes { get; } =
     [
         LlmProbeMode.D1, LlmProbeMode.D2, LlmProbeMode.D3, LlmProbeMode.D4,
-        LlmProbeMode.D5, LlmProbeMode.D6, LlmProbeMode.D7,
+        LlmProbeMode.D5, LlmProbeMode.D6, LlmProbeMode.D7, LlmProbeMode.D8,
     ];
+
+    /// <summary>
+    /// Gets the modes run when none is named: every mode but D8, whose 100k input tokens are a
+    /// cost the caller must choose to pay.
+    /// </summary>
+    public static IReadOnlyList<LlmProbeMode> DefaultModes { get; } =
+        [.. SupportedModes.Where(m => m != LlmProbeMode.D8)];
 
     /// <summary>Runs the requested modes in order and returns one result per mode.</summary>
     /// <param name="modes">The modes to exercise.</param>
@@ -144,6 +157,7 @@ internal sealed class DecisionProbeRunner
             LlmProbeMode.D5 => ProbeContextLimitAsync(cancellationToken),
             LlmProbeMode.D6 => ProbeErrorHandlingAsync(cancellationToken),
             LlmProbeMode.D7 => ProbeCancellationAsync(cancellationToken),
+            LlmProbeMode.D8 => ProbeLongContextAsync(cancellationToken),
             _ => Task.FromResult((LlmProbeOutcome.Failed, $"mode {mode} is not a decision mode")),
         };
 
@@ -247,12 +261,9 @@ internal sealed class DecisionProbeRunner
     // D5: a state far over the standard context is refused with a non-transient 4xx that names the limit.
     private async Task<(LlmProbeOutcome, string)> ProbeContextLimitAsync(CancellationToken cancellationToken)
     {
-        // About 100k tokens of varied words: over the 64k standard context, under long context.
-        string[] words = ["parcel", "invoice", "refund", "delivery", "account", "support", "ticket", "order"];
-        var state = string.Join(' ', Enumerable.Range(0, 100_000).Select(i => words[i % words.Length] + i.ToString(CultureInfo.InvariantCulture)));
         var request = new DecisionRequest
         {
-            State = JsonValue.Create(state),
+            State = JsonValue.Create(OversizedState(needle: null)),
             Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add(
                 "refund", new NoulQuestion { Instructions = JsonValue.Create("Does the text mention a refund?") }),
         };
@@ -307,7 +318,50 @@ internal sealed class DecisionProbeRunner
         }
     }
 
+    // D8: with long context set, the same oversized state is answered, and the one sentence
+    // that asks for a refund, buried in its middle, is found — a model that read only a window
+    // of it would answer no.
+    private async Task<(LlmProbeOutcome, string)> ProbeLongContextAsync(CancellationToken cancellationToken)
+    {
+        if (!SupportsLongContext)
+            return (LlmProbeOutcome.NotApplicable, "the provider serves no long context");
+
+        var request = new DecisionRequest
+        {
+            State = JsonValue.Create(OversizedState(LongContextNeedle)),
+            LongContext = true,
+            Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add(
+                "refund",
+                new NoulQuestion { Instructions = JsonValue.Create("Does the customer ask for their money back?") }),
+        };
+
+        var response = await _model.DecideAsync(request, cancellationToken).ConfigureAwait(false);
+        var noul = response.Get<NoulAnswer>("refund").Noul;
+        var passed = noul is >= 0.5 and <= 1.0 && response.Usage.InputTokens > DecisionLimits.StandardContextTokens;
+        return (Verdict(passed),
+            $"noul={Format(noul)} (expected ≥ 0.5), tokens in over {DecisionLimits.StandardContextTokens} expected, {Usage(response)}");
+    }
+
     // ── Shared helpers ──────────────────────────────────────────────────────
+
+    /// <summary>The sentence D8 buries in the middle of the oversized state.</summary>
+    internal const string LongContextNeedle = "Customer: my parcel never arrived and I want my money back.";
+
+    /// <summary>
+    /// About 100k tokens of numbered filler words: over the 64k standard context, under the
+    /// 262k long context. None of the words asks for anything; <paramref name="needle"/>, when
+    /// given, is placed halfway.
+    /// </summary>
+    internal static string OversizedState(string? needle)
+    {
+        const int count = 100_000;
+        string[] words = ["parcel", "invoice", "shipment", "delivery", "account", "support", "ticket", "order"];
+        var parts = Enumerable.Range(0, count).Select(i => words[i % words.Length] + i.ToString(CultureInfo.InvariantCulture));
+        if (needle is null)
+            return string.Join(' ', parts);
+
+        return string.Join(' ', parts.Take(count / 2)) + " " + needle + " " + string.Join(' ', parts.Skip(count / 2));
+    }
 
     private Task<DecisionResponse> DecideAsync(string name, DecisionQuestion question, CancellationToken cancellationToken)
         => _model.DecideAsync(Request(name, question), cancellationToken);

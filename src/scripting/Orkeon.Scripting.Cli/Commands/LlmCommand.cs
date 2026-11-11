@@ -68,7 +68,7 @@ internal sealed class LlmProbeCommandOptions : CliOptions
 
     /// <summary>Modes to exercise, comma-separated. Defaults to every supported mode.</summary>
     [Option("modes", Required = false,
-        HelpText = "Comma-separated protocol modes (e.g. M1,M2,M8; D1–D7 for a decision provider). Defaults to every mode the provider's family supports.")]
+        HelpText = "Comma-separated protocol modes (e.g. M1,M2,M8; D1–D8 for a decision provider). Defaults to every mode the provider's family supports, except the paid D8.")]
     public string? Modes { get; set; }
 
     /// <summary>Directory receiving the archived campaign report.</summary>
@@ -215,7 +215,7 @@ internal static class LlmCommand
             return Program.ExitScriptError;
         }
 
-        if (!TryParseModes(options.Modes, LlmProbeRunner.SupportedModes, out var modes, out var badMode))
+        if (!TryParseModes(options.Modes, LlmProbeRunner.SupportedModes, LlmProbeRunner.SupportedModes, out var modes, out var badMode))
         {
             await console.ErrorOutput.WriteLineAsync(
                 $"orkeon llm probe: unknown mode '{badMode}'. Supported: " +
@@ -286,7 +286,7 @@ internal static class LlmCommand
 
     /// <summary>
     /// Runs the decision modes against TypeSafe, Liquid or Kev. A decision model takes typed
-    /// questions, not a chat, so it gets its own runner (D1–D7) and no temperature; the report
+    /// questions, not a chat, so it gets its own runner (D1–D8) and no temperature; the report
     /// is the chat probe's own JSON, which the campaign kit archives unchanged.
     /// </summary>
     private static async Task<int> ExecuteDecisionProbeAsync(
@@ -305,7 +305,7 @@ internal static class LlmCommand
             return Program.ExitScriptError;
         }
 
-        if (!TryParseModes(options.Modes, DecisionProbeRunner.SupportedModes, out var modes, out var badMode))
+        if (!TryParseModes(options.Modes, DecisionProbeRunner.SupportedModes, DecisionProbeRunner.DefaultModes, out var modes, out var badMode))
         {
             await console.ErrorOutput.WriteLineAsync(
                 $"orkeon llm probe: unknown mode '{badMode}' for the decision provider {provider.Key}. Supported: " +
@@ -331,7 +331,11 @@ internal static class LlmCommand
         IReadOnlyList<LlmProbeResult> results;
         try
         {
-            var runner = new DecisionProbeRunner(model) { SupportsBox = provider != DecisionProviderDescriptor.Kev };
+            var runner = new DecisionProbeRunner(model)
+            {
+                SupportsBox = provider != DecisionProviderDescriptor.Kev,
+                SupportsLongContext = provider == DecisionProviderDescriptor.TypeSafe,
+            };
             results = await runner.RunAsync(modes, cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -478,13 +482,17 @@ internal static class LlmCommand
     }
 
     private static bool TryParseModes(
-        string? raw, IReadOnlyList<LlmProbeMode> supported, out IReadOnlyList<LlmProbeMode> modes, out string? invalid)
+        string? raw,
+        IReadOnlyList<LlmProbeMode> supported,
+        IReadOnlyList<LlmProbeMode> defaults,
+        out IReadOnlyList<LlmProbeMode> modes,
+        out string? invalid)
     {
         invalid = null;
 
         if (string.IsNullOrWhiteSpace(raw))
         {
-            modes = supported;
+            modes = defaults;
             return true;
         }
 

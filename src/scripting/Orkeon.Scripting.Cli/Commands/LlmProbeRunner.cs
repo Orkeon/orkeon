@@ -16,7 +16,7 @@ namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>
 /// One mode of the LLM provider test protocol (matrix §5): M1–M13 for chat providers,
-/// D1–D7 for decision providers (<see cref="DecisionProbeRunner"/>).
+/// D1–D8 for decision providers (<see cref="DecisionProbeRunner"/>).
 /// </summary>
 /// <remarks>
 /// The identifiers are the matrix's own, so a probe result can be transcribed into it without
@@ -81,6 +81,12 @@ internal enum LlmProbeMode
 
     /// <summary>D7 — a cancelled decision call stops promptly.</summary>
     D7,
+
+    /// <summary>
+    /// D8 — with long context set, a state over the standard context is answered and a sentence
+    /// buried in it is found. Paid (about 100k input tokens): run only when named.
+    /// </summary>
+    D8,
 }
 
 /// <summary>How one mode ended.</summary>

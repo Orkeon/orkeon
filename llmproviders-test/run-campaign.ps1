@@ -13,7 +13,7 @@
 .PARAMETER Provider
   Provider key, or several separated by commas: openai, anthropic, ollama, azure,
   together, qwen, deepseek, kimi, mistral, huggingface, zai, gemini, grok, minimax,
-  openrouter, mammouth; decision providers (modes D1-D7): typesafe, liquid, kev.
+  openrouter, mammouth; decision providers (modes D1-D8): typesafe, liquid, kev.
 .PARAMETER All
   Run every provider declared in the configuration. Requires -Config.
 .PARAMETER Parallel
@@ -47,6 +47,10 @@
   them to default. Automatic path only: an explicit -Model is already a choice.
 .PARAMETER DryRun
   Resolve and print the plan; place no call and write nothing.
+.PARAMETER NoPreflight
+  Skip the one-call check that opens each provider. By default each provider opens with one
+  call of its first mode on its first model; a refused key, an empty balance or an exhausted
+  quota skips the provider there, instead of failing every mode of every model in turn.
 .PARAMETER NoRecap
   Skip the index rebuild — for parallel runs. Rebuild once at the end with lib/recap.ps1.
 .PARAMETER Timeout
@@ -81,6 +85,7 @@ param(
     [int]$MaxModels = 0,
     [switch]$DryRun,
     [switch]$NoRecap,
+    [switch]$NoPreflight,
     [switch]$Parallel,
     [string]$TallyFile = '',
     # Null means "let the harness decide". A plain 0 default could not express that for
@@ -100,6 +105,7 @@ $PSNativeCommandUseErrorActionPreference = $false
 $KitDir = $PSScriptRoot
 $RepoRoot = Split-Path -Parent $KitDir
 $CliProject = Join-Path $RepoRoot 'src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj'
+$ServedPath = Join-Path $KitDir 'lib/served-models.json'
 
 $DefaultMaxModels = 5
 # M11 (long context) and M14 (end-to-end crew) are manual on purpose — see the kit README.
@@ -270,6 +276,20 @@ function Resolve-Orkeon {
 
 $Commit = try { (git -C $RepoRoot rev-parse --short HEAD 2>$null).Trim() } catch { '' }
 
+# A report names the commit of the code that ran. With src/ changed and not committed, that
+# commit names code that did not run: the TypeSafe reports of 2026-11-11 said 925c13871 while
+# the probe they ran was still uncommitted. The suffix says so (same rule as the bash twin).
+if ($Commit) {
+    $dirty = $false
+    try {
+        git -C $RepoRoot diff --quiet HEAD -- src 2>$null
+        if ($LASTEXITCODE -ne 0) { $dirty = $true }
+        $untracked = git -C $RepoRoot ls-files --others --exclude-standard -- src 2>$null
+        if ($untracked) { $dirty = $true }
+    } catch { }
+    if ($dirty) { $Commit = "$Commit-dirty" }
+}
+
 function Invoke-Orkeon {
     param([string[]]$Arguments)
     Resolve-Orkeon
@@ -339,6 +359,10 @@ function Resolve-Models {
 
 $script:Failures = 0
 $script:Ran = 0
+# Providers the preflight stopped: counted in Failures for the exit status, named apart in the
+# closing line — "a failed mode" would send the reader to reports that were never written.
+$script:Skipped = 0
+$script:ServedDiff = @()
 $TmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("orkeon-campaign-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $TmpDir | Out-Null
 
@@ -360,6 +384,48 @@ function Invoke-Campaign {
             $ProviderKey, $ModelId, $ModeList, $ProviderKey, "$stamp-$slug.md")
         return
     }
+
+    $arguments = Get-ProbeArguments $ProviderKey $ModelId $ModeList $KeyEnv $Base $Version $Workspace
+
+    $raw = Join-Path $TmpDir "$ProviderKey-$slug.json"
+    $err = Join-Path $TmpDir "$ProviderKey-$slug.stderr"
+    Write-Log "▶ $ProviderKey / $ModelId  [$ModeList]"
+
+    # The probe exits non-zero when a mode fails. That is a result, not a crash: capture the
+    # output either way, and let the report say what broke. Its diagnostics go to a file
+    # rather than to $null — a probe that dies has already said why, and discarding that
+    # left the operator with a bare "no usable JSON" and nothing to act on.
+    $output = & { Invoke-Orkeon $arguments } 2>$err
+    [System.IO.File]::WriteAllText($raw, ($output -join "`n"), [System.Text.UTF8Encoding]::new($false))
+
+    # Assert on the fields the report actually reads, not merely that the payload parses:
+    # the bash twin archived a hollow report because its guard stopped at "is this JSON".
+    $campaign = $null
+    try { $campaign = Get-Content -Raw -LiteralPath $raw | ConvertFrom-Json } catch { }
+    if ((-not $campaign) -or ($null -eq $campaign.passed) -or ($null -eq $campaign.modes)) {
+        Write-Warn "$ProviderKey / $ModelId : the probe produced no usable JSON."
+        if (Test-Path -LiteralPath $err) {
+            Get-Content -LiteralPath $err | ForEach-Object { Write-Warn "    $_" }
+        }
+        $script:Failures++
+        return
+    }
+
+    & (Join-Path $KitDir 'lib/report.ps1') -Campaign $raw -Output $target | Out-Null
+    $script:Ran++
+
+    Write-Log ("  → {0} ✅  {1} ❌  {2} ➖   {3}/{4}" -f
+        $campaign.passed, $campaign.failed, $campaign.notApplicable, $ProviderKey, "$stamp-$slug.md")
+    if ($campaign.failed -gt 0) { $script:Failures++ }
+}
+
+# The arguments of one `orkeon llm probe` call: shared by the campaign run and the preflight,
+# so the check calls exactly what the campaign will.
+function Get-ProbeArguments {
+    param(
+        [string]$ProviderKey, [string]$ModelId, [string]$ModeList,
+        [string]$KeyEnv, [string]$Base, [string]$Version, [string]$Workspace
+    )
 
     $arguments = @('llm', 'probe', '-p', $ProviderKey, '-m', $ModelId,
                    '--modes', $ModeList, '--format', 'json', '-k', $KeyEnv)
@@ -394,37 +460,79 @@ function Invoke-Campaign {
     # (mistral-medium-2604: only high or none, 2026-08-30).
     $m7Effort = Get-CatalogModelParam -ProviderKey $ProviderKey -ModelId $ModelId -Field 'm7Effort'
     if ($m7Effort) { $arguments += @('--m7-effort', $m7Effort) }
+    return ,$arguments
+}
 
-    $raw = Join-Path $TmpDir "$ProviderKey-$slug.json"
-    $err = Join-Path $TmpDir "$ProviderKey-$slug.stderr"
-    Write-Log "▶ $ProviderKey / $ModelId  [$ModeList]"
+# An account-level refusal: the key, the balance or the quota, never the model or the mode.
+# Matched on the detail the probe archives, which carries the vendor's own body. Each
+# alternative was measured: MiniMax `PaymentRequired … insufficient_balance_error (2067)`
+# (2026-08-30), Z.AI `1113 Insufficient balance or no resource package` (2026-11-11), Kimi
+# `exceeded_current_quota_error` (2026-10-07). Same pattern as the bash twin.
+$AccountError = 'Unauthorized|Forbidden|PaymentRequired|insufficient[ _]balance|insufficient_quota|exceeded_current_quota|"1113"|invalid[ _]api[ _]key|invalid_authentication|refused the key|HTTP 40[123][^0-9]'
 
-    # The probe exits non-zero when a mode fails. That is a result, not a crash: capture the
-    # output either way, and let the report say what broke. Its diagnostics go to a file
-    # rather than to $null — a probe that dies has already said why, and discarding that
-    # left the operator with a bare "no usable JSON" and nothing to act on.
+# One call of the provider's first mode on its first model. Returns $false — skip the
+# provider — when that call shows the account cannot pay or the key is refused, or the probe
+# could not start at all. Any other outcome, red included, lets the campaign run: a
+# model-level red is a finding the full report must carry. Z.AI on 2026-11-11: an empty
+# balance answered 429 and every mode of five models waited out its retries, 21 minutes.
+function Test-Preflight {
+    param(
+        [string]$ProviderKey, [string]$ModelId, [string]$Mode,
+        [string]$KeyEnv, [string]$Base, [string]$Version, [string]$Workspace
+    )
+
+    $arguments = Get-ProbeArguments $ProviderKey $ModelId $Mode $KeyEnv $Base $Version $Workspace
+    $err = Join-Path $TmpDir "$ProviderKey-preflight.stderr"
+    Write-Log "▷ $ProviderKey : preflight, $Mode on $ModelId"
     $output = & { Invoke-Orkeon $arguments } 2>$err
-    [System.IO.File]::WriteAllText($raw, ($output -join "`n"), [System.Text.UTF8Encoding]::new($false))
 
-    # Assert on the fields the report actually reads, not merely that the payload parses:
-    # the bash twin archived a hollow report because its guard stopped at "is this JSON".
     $campaign = $null
-    try { $campaign = Get-Content -Raw -LiteralPath $raw | ConvertFrom-Json } catch { }
-    if ((-not $campaign) -or ($null -eq $campaign.passed) -or ($null -eq $campaign.modes)) {
-        Write-Warn "$ProviderKey / $ModelId : the probe produced no usable JSON."
+    try { $campaign = ($output -join "`n") | ConvertFrom-Json } catch { }
+    if ((-not $campaign) -or ($null -eq $campaign.modes)) {
+        Write-Warn "$ProviderKey : preflight could not run the probe — provider skipped."
         if (Test-Path -LiteralPath $err) {
             Get-Content -LiteralPath $err | ForEach-Object { Write-Warn "    $_" }
         }
-        $script:Failures++
-        return
+        return $false
     }
 
-    & (Join-Path $KitDir 'lib/report.ps1') -Campaign $raw -Output $target | Out-Null
-    $script:Ran++
+    $detail = (@($campaign.modes | Where-Object { $_.outcome -eq 'failed' } | ForEach-Object { $_.detail }) -join ' ')
+    if ($detail -and ($detail -match $AccountError)) {
+        Write-Warn "$ProviderKey : preflight refused at the account level — provider skipped, no mode run."
+        Write-Log ("    " + $detail.Substring(0, [Math]::Min(300, $detail.Length)))
+        return $false
+    }
+    return $true
+}
 
-    Write-Log ("  → {0} ✅  {1} ❌  {2} ➖   {3}/{4}" -f
-        $campaign.passed, $campaign.failed, $campaign.notApplicable, $ProviderKey, "$stamp-$slug.md")
-    if ($campaign.failed -gt 0) { $script:Failures++ }
+# The provider's live catalogue against lib/served-models.json: what it serves that the
+# snapshot does not list, and what the snapshot lists that it no longer serves. Printed at the
+# end of the campaign. Free — a catalogue listing, no inference — and silent when the provider
+# has no catalogue endpoint or no snapshot entry.
+function Compare-ServedModels {
+    param([string]$ProviderKey, [string]$KeyEnv, [string]$Base)
+
+    if (-not (Test-Path -LiteralPath $ServedPath)) { return }
+    Get-CatalogField $ProviderKey 'label' | Out-Null   # loads $script:Catalog
+    $entry = if ($script:Catalog) { $script:Catalog.providers.PSObject.Properties[$ProviderKey] } else { $null }
+    $canonicalKey = if ($entry -and $entry.Value.aliasOf) { $entry.Value.aliasOf } else { $ProviderKey }
+    $served = Get-Content -Raw -LiteralPath $ServedPath | ConvertFrom-Json
+    $snapshot = $served.providers.PSObject.Properties[$canonicalKey]
+    if (-not $snapshot -or -not $snapshot.Value.models) { return }
+
+    $arguments = @('llm', 'models', '-p', $ProviderKey, '-k', $KeyEnv)
+    if ($Base) { $arguments += @('-u', $Base) }
+    $live = @()
+    try {
+        $live = @(Invoke-Orkeon $arguments 2>$null | Where-Object { $_ -and ($_ -notmatch '\s') } | Sort-Object -Unique -CaseSensitive)
+    } catch { $live = @() }
+    if ($live.Count -eq 0) { return }
+    $known = @($snapshot.Value.models.PSObject.Properties.Name)
+
+    $added = @($live | Where-Object { $known -cnotcontains $_ })
+    $removed = @($known | Where-Object { $live -cnotcontains $_ } | Sort-Object -CaseSensitive)
+    if ($added.Count -gt 0) { $script:ServedDiff += "${canonicalKey}: new — $($added -join ' ')" }
+    if ($removed.Count -gt 0) { $script:ServedDiff += "${canonicalKey}: no longer served — $($removed -join ' ')" }
 }
 
 function Invoke-Provider {
@@ -432,7 +540,7 @@ function Invoke-Provider {
 
     # Command line wins over the configuration, which wins over the built-in default — the
     # usual precedence, so an operator can override one provider without editing the file.
-    # A decision provider (TypeSafe, Liquid, Kev) has its own modes, D1-D7: the catalogue names
+    # A decision provider (TypeSafe, Liquid, Kev) has its own modes, D1-D8 (D8 only when named): the catalogue names
     # a provider's default set, so the chat modes are never sent where none of them applies.
     $catalogModes = Get-CatalogField $ProviderKey 'modes'
     $modeList = if ($Modes)     { $Modes }     else { Get-Setting $ProviderKey 'modes' $(if ($catalogModes) { $catalogModes } else { $AllModes }) }
@@ -470,6 +578,20 @@ function Invoke-Provider {
             $models = $models | Select-Object -First $cap
         }
 
+        # One call before the many: an account that cannot pay fails here once, not per mode.
+        # Skipped on a dry run (it would place a call) and with -NoPreflight.
+        $firstMode = ($modeList -split ',')[0]
+        if ((-not $NoPreflight) -and (-not $DryRun)) {
+            if (-not (Test-Preflight $ProviderKey $models[0] $firstMode $keyEnv $base $version $workspace)) {
+                $script:Failures++
+                $script:Skipped++
+                return
+            }
+        }
+        elseif (-not $NoPreflight) {
+            Write-Output ('  would check {0,-11} {1} on {2} first' -f $ProviderKey, $firstMode, $models[0])
+        }
+
         foreach ($m in $models) { Invoke-Campaign $ProviderKey $m $modeList $keyEnv $base $version $workspace }
 
         # A vision companion run, when the provider's default model cannot see and it declares
@@ -504,6 +626,8 @@ function Invoke-Provider {
                 Invoke-Campaign $ProviderKey $candidate $modeList $keyEnv $base $version $workspace
             }
         }
+
+        if (-not $DryRun) { Compare-ServedModels $ProviderKey $keyEnv $base }
     }
     finally {
         if ($literalKey) { Remove-Item -Path "env:$keyEnv" -ErrorAction SilentlyContinue }
@@ -552,9 +676,21 @@ try {
         if ($WorkspaceId)   { $forwarded += @('-WorkspaceId', $WorkspaceId) }
         if ($ApiKeyEnv)     { $forwarded += @('-ApiKeyEnv', $ApiKeyEnv) }
         if ($MaxModels)     { $forwarded += @('-MaxModels', "$MaxModels") }
+        if ($Candidates)    { $forwarded += '-Candidates' }
+        if ($NoPreflight)   { $forwarded += '-NoPreflight' }
+        if ($ThinkingEffort) { $forwarded += @('-ThinkingEffort', $ThinkingEffort) }
         if ($null -ne $Timeout)     { $forwarded += @('-Timeout', "$Timeout") }
         if ($null -ne $Temperature) { $forwarded += @('-Temperature', "$Temperature") }
         $forwarded += @('-Out', $Out, '-Configuration', $Configuration, '-NoRecap')
+
+        # The host that runs this script, to run its children. PowerShell installed as a dotnet
+        # tool runs under `dotnet` itself: the process path is then dotnet, and the children
+        # need pwsh.dll in front of their arguments.
+        $hostPath = (Get-Process -Id $PID).Path
+        $hostPrefix = @()
+        if ([System.IO.Path]::GetFileNameWithoutExtension($hostPath) -eq 'dotnet') {
+            $hostPrefix = @(Join-Path $PSHOME 'pwsh.dll')
+        }
 
         $children = @()
         for ($i = 0; $i -lt $providers.Count; $i++) {
@@ -567,8 +703,8 @@ try {
                 Tally    = Join-Path $TmpDir "par-$i.tally"
                 Process  = $null
             }
-            $child.Process = Start-Process -FilePath (Get-Process -Id $PID).Path `
-                -ArgumentList (@('-NoProfile', '-File', $PSCommandPath,
+            $child.Process = Start-Process -FilePath $hostPath `
+                -ArgumentList ($hostPrefix + @('-NoProfile', '-File', $PSCommandPath,
                                  '-Provider', $child.Provider,
                                  '-TallyFile', $child.Tally) + $forwarded) `
                 -NoNewWindow -PassThru `
@@ -594,6 +730,9 @@ try {
                 $counts = (Get-Content -Raw -LiteralPath $child.Tally).Trim() -split '\s+'
                 $script:Ran      += [int]$counts[0]
                 $script:Failures += [int]$counts[1]
+                if ($counts.Count -gt 2) { $script:Skipped += [int]$counts[2] }
+                $servedFile = "$($child.Tally).served"
+                if (Test-Path -LiteralPath $servedFile) { $script:ServedDiff += @(Get-Content -LiteralPath $servedFile) }
             }
             else {
                 # No tally means the child died before it could write one — a crash, not a
@@ -613,12 +752,24 @@ try {
         exit 0
     }
 
+    # A child hands its catalogue changes to the parent, which prints them once at the end.
+    if ($TallyFile -and $script:ServedDiff.Count -gt 0) {
+        Set-Content -LiteralPath "$TallyFile.served" -Value $script:ServedDiff
+    }
+    elseif ($script:ServedDiff.Count -gt 0) {
+        $readOn = (Get-Content -Raw -LiteralPath $ServedPath | ConvertFrom-Json).readOn
+        Write-Log ''
+        Write-Log "Catalogue changes since lib/served-models.json was read ($readOn):"
+        $script:ServedDiff | ForEach-Object { Write-Log "  $_" }
+        Write-Log 'Re-read the snapshot when one of them matters: a new id is a candidate, a withdrawn one may be a default.'
+    }
+
     # A child of -Parallel reports its counts and stops here. Letting it print the closing
     # summary too would have the parent replay "index NOT rebuilt" once per provider, which
     # the bash twin never does — there the unit of parallelism is a subshell around one
     # function, not a whole run.
     if ($TallyFile) {
-        Set-Content -LiteralPath $TallyFile -Value "$script:Ran $script:Failures" -NoNewline
+        Set-Content -LiteralPath $TallyFile -Value "$script:Ran $script:Failures $script:Skipped" -NoNewline
         if ($script:Failures -gt 0) { exit 1 }
         exit 0
     }
@@ -636,10 +787,13 @@ try {
         Write-Log "$script:Ran campaign(s) archived under $Out — index rebuilt."
     }
 
-    if ($script:Failures -gt 0) {
-        Write-Log "$script:Failures campaign(s) reported a failed mode. That is the point of the exercise; read the reports."
-        exit 1
+    if ($script:Skipped -gt 0) {
+        Write-Log "$script:Skipped provider(s) skipped by the preflight: fix the key or the balance named above, then rerun them."
     }
+    if ($script:Failures -gt $script:Skipped) {
+        Write-Log "$($script:Failures - $script:Skipped) campaign(s) reported a failed mode. That is the point of the exercise; read the reports."
+    }
+    if ($script:Failures -gt 0) { exit 1 }
 }
 finally {
     Remove-Item -Recurse -Force -LiteralPath $TmpDir -ErrorAction SilentlyContinue

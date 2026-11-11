@@ -59,11 +59,11 @@ On Windows, `run-campaign.ps1` exposes exactly the same options.
 
 | Option | Role |
 |---|---|
-| `--provider <keys>` | One key, or several separated by commas — `openai`, `anthropic`, `ollama`, `azure`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok`, `minimax`, `openrouter`, `mammouth`; the decision providers `typesafe`, `liquid`, `kev` (modes D1–D7) |
+| `--provider <keys>` | One key, or several separated by commas — `openai`, `anthropic`, `ollama`, `azure`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok`, `minimax`, `openrouter`, `mammouth`; the decision providers `typesafe`, `liquid`, `kev` (modes D1–D8) |
 | `--all` | Every provider declared in the JSON |
 | `--parallel` | Runs the selected providers simultaneously (see below) |
 | `--model <id\|glob>` | An identifier, or a pattern (`gpt-5.6-*`, `*flash*`) |
-| `--modes M1,M8` | Default: the provider's own set from the catalog (`modes`: D1–D7 for a decision provider), else every chat mode of the harness |
+| `--modes M1,M8` | Default: the provider's own set from the catalog (`modes`: D1–D7 for a decision provider; the paid D8 only when named), else every chat mode of the harness |
 | `--config <file>` | Campaign configuration (see `providers.schema.json`) |
 | `--base-url <url>` | Endpoint override (Azure, regional mirrors) |
 | `--api-version <v>` | Azure `api-version` in deployment mode |
@@ -72,6 +72,7 @@ On Windows, `run-campaign.ps1` exposes exactly the same options.
 | `--max-models <n>` | Wildcard cap (default 5; `providers.example.json` lowers it to 3) |
 | `--candidates` | After each provider's default, also runs the successors the catalog records as `candidateModels` (review of 2026-09-19), same modes — the campaign that can promote one of them to default. Automatic path only |
 | `--dry-run` | Resolves and prints the plan, calls nothing |
+| `--no-preflight` | Skips the one-call check that opens each provider (below) |
 | `--no-recap` | Does not rebuild the index — for parallel launches |
 | `--timeout <s>` | Per-request deadline, default **180 s** (a cold local model has to load first) |
 | `--temperature <t>` | Sampling, default **0** — pinned so that a verdict is reproducible. Models that require another value are recorded **per model** in `requiredParams` (catalog) and resolved automatically |
@@ -103,6 +104,31 @@ immediately.
 
 **If a process dies** without reporting back, it is counted as a failure. A crash that passed
 for a success would be worse than a red.
+
+### What the script checks around the runs
+
+**A preflight opens each provider.** Before its models run, one call of the provider's first
+mode (M1, or D1 for a decision provider) goes to its first model. A refused key, an empty
+balance or an exhausted quota (`401`, `402`, `403`, `insufficient_balance`, Z.AI's `1113`,
+Kimi's `exceeded_current_quota_error`) skips the provider there, and the closing line counts
+it apart from the failed modes. Any other red lets the campaign run: a model-level red is a
+finding. On 2026-11-11 an empty Z.AI balance failed every mode of five models one after the
+other, each 429 retried as a rate limit — 21 minutes for nothing; the preflight turns that
+into one call. `--no-preflight` skips it. Until issue #328 makes that 429 non-transient, the
+preflight itself still waits its retries out — once.
+
+**The commit names the code that ran.** The reports carry the short commit of `HEAD`, with
+`-dirty` when `src/` holds uncommitted changes: the commit alone would then name code that
+did not run.
+
+**The catalogue is compared with the snapshot.** After a provider's runs, its live listing
+(`orkeon llm models`, free) is compared with `lib/served-models.json`; the identifiers it
+serves that the snapshot does not list, and those it no longer serves, are printed at the
+end of the campaign. A new identifier is a candidate; a withdrawn one may be a default.
+
+**A report points at the notes, it does not copy them.** The provider's points of attention
+live in `lib/catalog.json` (`notes`) and change from one campaign to the next; a copy in each
+report went stale at the next one. The report names where they are kept.
 
 To launch several separate *processes* — several terminals, a scheduler — the precaution
 remains to **defer the index** with `--no-recap`, then rebuild it once:
@@ -188,7 +214,7 @@ only known by calling it, and lands in `requiredParams`.
 ```bash
 # The identifiers alone, live:
 orkeon llm models -p mistral -k MISTRAL_API_KEY --json
-# What changed since the snapshot:
+# The snapshot's identifiers (every campaign prints what changed since, at its end):
 jq -r '.providers.mistral.models | keys[]' llmproviders-test/lib/served-models.json
 ```
 
@@ -251,11 +277,11 @@ would read as complete coverage.
 
 ## The protocol modes
 
-The harness covers **M1 to M10, M12 and M13** for a chat provider, **D1 to D7** for a decision
+The harness covers **M1 to M10, M12 and M13** for a chat provider, **D1 to D8** for a decision
 provider (below). A `➖` in a report flags a mode the provider
 cannot satisfy — nothing was exercised, there is nothing to fix.
 
-### Decision providers — D1 to D7
+### Decision providers — D1 to D8
 
 TypeSafe (Jev), Liquid and Kev are **decision models**: they answer typed questions about a
 state, and do not chat, stream or call tools, so no M mode applies to them.
@@ -273,10 +299,12 @@ report says `Temperature: not pinned` because the wire has no sampling parameter
 | D5 | A state of about 100k tokens is refused as a non-transient 4xx that names the 64k context limit |
 | D6 | An invalid model is a typed, non-transient 4xx — never a retry loop |
 | D7 | A call cancelled after 50 ms stops |
+| D8 | With long context set, the same 100k-token state is answered, its input tokens counted over 64k, and the one sentence asking for a refund, buried halfway, is found. **Paid** (about 100k input tokens a run): in no default set, run only when named. ➖ where the provider serves no long context (only TypeSafe does) |
 
 ```bash
 export TYPESAFE_API_KEY=…
 llmproviders-test/run-campaign.sh --provider typesafe --candidates   # jev-latest, then jev-preview
+llmproviders-test/run-campaign.sh --provider typesafe --modes D8       # the long context, paid
 ```
 
 ### M2 and its two shapes

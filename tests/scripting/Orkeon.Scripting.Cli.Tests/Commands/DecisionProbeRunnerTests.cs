@@ -222,6 +222,82 @@ public sealed class DecisionProbeRunnerTests
     }
 
     [Fact]
+    public async Task ShouldPassD8_WhenTheLongStateIsAnsweredYesOverTheStandardContext()
+    {
+        var model = new StubDecisionModel { InputTokens = 100_500 };
+
+        var result = await RunAsync(model, LlmProbeMode.D8);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+    }
+
+    [Fact]
+    public async Task ShouldSendTheOversizedStateWithLongContextAndTheNeedleInside_ForD8()
+    {
+        var model = new StubDecisionModel { InputTokens = 100_500 };
+
+        await RunAsync(model, LlmProbeMode.D8);
+
+        var request = Assert.Single(model.Requests);
+        Assert.True(request.LongContext);
+        var state = request.State!.GetValue<string>();
+        Assert.Equal(1, state.Split(DecisionProbeRunner.LongContextNeedle).Length - 1);
+        Assert.True(state.IndexOf(DecisionProbeRunner.LongContextNeedle, StringComparison.Ordinal) > state.Length / 4);
+    }
+
+    [Theory]
+    [InlineData(0.2, 100_500)]
+    [InlineData(0.9, 30_000)]
+    [InlineData(0.9, null)]
+    public async Task ShouldFailD8_WhenTheNeedleIsMissedOrTheStateWasNotReadWhole(double noul, int? tokens)
+    {
+        var model = new StubDecisionModel { Noul = new NoulAnswer { Noul = noul }, InputTokens = tokens };
+
+        var result = await RunAsync(model, LlmProbeMode.D8);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+    }
+
+    [Fact]
+    public async Task ShouldFailD8_WhenTheLongStateIsRefused()
+    {
+        var model = new StubDecisionModel { Failure = Refusal(400, false, "over the long context limit") };
+
+        var result = await RunAsync(model, LlmProbeMode.D8);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+    }
+
+    [Fact]
+    public async Task ShouldMarkD8NotApplicable_WhenTheProviderServesNoLongContext()
+    {
+        var model = new StubDecisionModel();
+        var runner = new DecisionProbeRunner(model) { SupportsLongContext = false };
+
+        var result = Assert.Single(await runner.RunAsync([LlmProbeMode.D8], TestContext.Current.CancellationToken));
+
+        Assert.Equal(LlmProbeOutcome.NotApplicable, result.Outcome);
+        Assert.Empty(model.Requests);
+    }
+
+    [Fact]
+    public void ShouldLeaveThePaidD8OutOfTheDefaultModes()
+    {
+        Assert.Contains(LlmProbeMode.D8, DecisionProbeRunner.SupportedModes);
+        Assert.DoesNotContain(LlmProbeMode.D8, DecisionProbeRunner.DefaultModes);
+        Assert.Equal(DecisionProbeRunner.SupportedModes.Count - 1, DecisionProbeRunner.DefaultModes.Count);
+    }
+
+    [Fact]
+    public void ShouldKeepTheOversizedStateFreeOfAnyRefundRequest_WithoutTheNeedle()
+    {
+        var state = DecisionProbeRunner.OversizedState(needle: null);
+
+        Assert.DoesNotContain("refund", state, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("money", state, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task ShouldRecordAFailure_RatherThanThrow_WhenTheModelThrowsUnexpectedly()
     {
         var model = new StubDecisionModel { Failure = new InvalidOperationException("boom") };
