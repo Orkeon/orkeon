@@ -247,7 +247,7 @@ says which campaign measured what, and the models they added to the candidates a
 | Ollama | `llama3.2` | yes — 3B, text only, no thinking, a year old | `qwen3.5:4b`, `gemma4:e4b`, `granite4.2:3b` (tools + thinking, same size class) | stays: a new default means a pull on every machine |
 | Together AI | `zai-org/GLM-5.3-Flash` (was `meta-llama/Llama-3.3-70B-Instruct-Turbo`) | yes — 0.15 / 0.50 $/M (catalogue read of 2026-11-11); the former default is no longer served on serverless | `Qwen/Qwen3.5-9B`, `deepseek-ai/DeepSeek-V4.1-Flash`; Llama 4 left serverless | **changed 2026-11-11** — every call to the former default answered `Unable to access non-serverless model` (2/9/1), so the default moves to `zai-org/GLM-5.3-Flash`, Together's replacement target since 2026-09-19: 10/1/1 the same day (M10: no cached tokens reported; 11/0/1 on 2026-09-21), it reads the image, so the default sees and there is no separate vision companion; `Qwen/Qwen3.5-9B` 10/1/1 (M10), candidate |
 | DeepSeek | `deepseek-flash` (was `deepseek-v4-flash`) | yes — V4.1 Flash, 0.30 / 1.20 $/M peak, native vision | it is the newest | **changed 2026-09-19**: the old name is a retired model "temporarily" routed here; **replayed 2026-09-21**: 12/12 twice — M2 and M9, red for five campaigns on `deepseek-v4-flash`, are green on `deepseek-flash`; **replayed 2026-11-11**: `deepseek-flash` 12/12 |
-| Kimi | `kimi-k2.6` | yes — 0.95 / 4.00 $/M, no retirement date | `kimi-k3` (July 2026, 1M, 3 / 15, fixed sampling, no `thinking` field, always reasons) | stays — **campaigned 2026-09-21**: `kimi-k3` 12/12 then 11/1 (M2 on the flattened shape), reasoning trace, cache 0.97, bare JSON where k2.6 now fences its `json_object` — ready, at three times the price; `kimi-k2.5` and `moonshot-v1-*` retired 2026-08-31; docs now on `platform.kimi.ai`; **2026-11-11**: not campaigned — the campaign key is refused (401), the 2026-10-07 data stands |
+| Kimi | `kimi-k2.6` | yes — 0.95 / 4.00 $/M, no retirement date | `kimi-k3` (July 2026, 1M, 3 / 15, fixed sampling, no `thinking` field, always reasons); `kimi-k3.1-pro` and the `-highspeed` variants (listed 2026-11-11) | stays — **campaigned 2026-09-21**: `kimi-k3` 12/12 then 11/1 (M2 on the flattened shape), reasoning trace, cache 0.97, bare JSON where k2.6 now fences its `json_object` — ready, at three times the price; `kimi-k2.5` and `moonshot-v1-*` retired 2026-08-31; docs now on `platform.kimi.ai`; **2026-11-11**: `kimi-k2.6` 10/1/1 (M8: its `json_object` still fenced), `kimi-k3` 12/12, `kimi-k3.1-pro` 12/12 — the new top model, candidate |
 | Qwen | `qwen3.7-plus` | yes — still the Plus tier, one of the three recommended models | `qwen3.8-max` (= `qwen3.8-max-0902`), `qwen3.8-flash`; no `qwen3.8-plus` | stays — **campaigned 2026-09-21**: `qwen3.8-max` 12/12, `qwen3.8-flash` 11/1 (M2), both ready, and `qwen3.7-plus` is still 12/12; the 3.8 generation adds `preserve_thinking`; **2026-11-11**: `qwen3.7-plus`, `qwen3.8-flash` and `qwen3.8-max` 12/12 each |
 | Mistral AI | `mistral-medium-2604` | yes — 1.50 / 7.50 $/M, not deprecated | nothing for chat since April (OCR 4.1 only) | stays; `devstral-*` / magistral ids sit in the deprecated table; **2026-11-11**: the default and `mistral-large-4` 12/12, `mistral-small-2603` 11/1 (M9) |
 | HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | yes — but tools on one of its four routed providers, and `:fastest` may pick another | `Qwen/Qwen3.5-9B` (tools on three providers, from 0.10 / 0.15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidate Qwen3.5-9B — **campaigned 2026-09-21**: 10/0/2, it sees and its tools hold; its first pass returned an empty M1 after 4113 tokens of thinking on the router's 4096 fallback — pin `Llm:MaxTokens` (or turn thinking off) before making it a default. The routing still explains the default's moving reds (M2 and M5 both red on the same pass); **2026-11-11**: the default 7/3/2 (M2, M5, M9), `Qwen/Qwen3.5-9B` 9/1/2 (M2) |
@@ -269,9 +269,8 @@ Haiku 5 at 0.10 / 0.50 and Haiku 4.5 at 1 / 5. Cache tariffs: a 5-minute write a
 The campaign of 2026-11-11 read each provider's own catalogue endpoint with the campaign key
 (`orkeon llm models -p <provider>` returns the same identifiers), then played the protocol on
 every default, on the candidates of the reviews, and on the current chat models the listing
-showed that no campaign had met yet. Two providers are the exception: **Kimi** was not read
-again and not campaigned (the campaign key is refused, 401, on `api.moonshot.ai` and
-`api.moonshot.cn` — its four identifiers and scores are those of 2026-10-07), and **Z.AI** was
+showed that no campaign had met yet. Two providers are the exception: **Kimi** was read and
+campaigned later the same day, with a second key (the first was refused, 401), and **Z.AI** was
 read but not campaigned (the account has no balance: 429, `Insufficient balance or no
 resource package`). A score marked `(2026-10-07)` below was not replayed. Three kinds of facts come out of it, kept apart
 on purpose:
@@ -283,7 +282,7 @@ on purpose:
   defaults) and recorded in `requiredParams`;
 - **what the campaign measured** on the twelve automated modes.
 
-The full listing — 1 310 identifiers across fourteen providers, each with the options its
+The full listing — 1 312 identifiers across fourteen providers, each with the options its
 endpoint publishes — is
 [`llmproviders-test/lib/served-models.json`](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/lib/served-models.json),
 a dated snapshot the next campaign diffs against. Azure OpenAI and Ollama have no row: one
@@ -295,7 +294,7 @@ serves an account's deployments, the other what a machine pulled.
 | Anthropic | `GET api.anthropic.com/v1/models` | 15 | context, output cap, effort levels, thinking types, modalities |
 | DeepSeek | `GET api.deepseek.com/models` | 2 | context, output cap, modalities, effort levels and default |
 | Z.AI | `GET api.z.ai/api/paas/v4/models` | 12 | ids only |
-| Kimi | `GET api.moonshot.ai/v1/models` | 4 (read 2026-10-07) | context, image/video input, reasoning |
+| Kimi | `GET api.moonshot.ai/v1/models` | 6 | context, image/video input, reasoning |
 | Google Gemini | `GET generativelanguage.googleapis.com/v1beta/models` | 62 | context, output cap, default temperature / topP / topK, maximum temperature, thinking |
 | Mistral AI | `GET api.mistral.ai/v1/models` | 64 | context, default temperature, capabilities, aliases, deprecation |
 | Qwen | `GET dashscope-intl.aliyuncs.com/compatible-mode/v1/models` | 101 | ids only |
@@ -333,9 +332,12 @@ caps are the ones of the next section.
 |  | `glm-5.3` | — | — | — | — | 10/2/0 — ❌ M2, M9 (2026-10-07) |
 |  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 (2026-10-07) |
 |  | `glm-5.3-flashx` | — | — | — | — | 12/0/0 (2026-10-07) |
-| Kimi | `kimi-k2.6` *(default)* | 262 144 | — | image + video + reasoning | `temperature` = `1` | 10/1/1 — ❌ M8 (2026-10-07) |
-|  | `kimi-k3` | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 11/1/0 — ❌ M2 (2026-10-07) |
-|  | `kimi-k2.7-code` | 262 144 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 (2026-10-07) |
+| Kimi | `kimi-k2.6` *(default)* | 262 144 | — | image + video + reasoning | `temperature` = `1` | 10/1/1 — ❌ M8 |
+|  | `kimi-k3` | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
+|  | `kimi-k3.1-pro` | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
+|  | `kimi-k3.1-pro-highspeed` | 1 048 576 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
+|  | `kimi-k2.7-code` | 262 144 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
+|  | `kimi-k2.7-code-highspeed` | 262 144 | — | image + video + reasoning | `temperature` = `1` | 12/0/0 |
 | Google Gemini | `gemini-3.7-flash` *(default)* | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
 |  | `gemini-3.8-flash` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 |
 |  | `gemini-4-argon` | 1 048 576 | 32 768 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 11/0/1 |
@@ -411,11 +413,13 @@ What the table does not say by itself:
   as a rate limit). `kimi-k2.6` still fences its `json_object` in markdown (M8, as on
   2026-09-21); `kimi-k2.7-code` is the one Kimi model with every mode green. It mandates
   temperature 1 too, which only its streams showed: on a buffered call the provider retries
-  once with the mandated value, the two streaming paths do not. **Not read again on
-  2026-11-11:** the campaign key is refused (401 `Incorrect API key provided`) on
-  `api.moonshot.ai` and `api.moonshot.cn`, so the four identifiers and every Kimi score are
-  those of 2026-10-07. The new top model `kimi-k3.1-pro` was met through the aggregators
-  instead: 12/12 on OpenRouter (`moonshotai/kimi-k3.1-pro`), 10/0/2 on Mammouth.
+  once with the mandated value, the two streaming paths do not. **2026-11-11**, with a
+  second key (the first was refused, 401 `Incorrect API key provided`): the listing grows to six
+  identifiers — `kimi-k3.1-pro` and the `-highspeed` variants of it and of `kimi-k2.7-code`.
+  All three mandate temperature 1 as well (6/6 at 0: M2, M3, M4, M5, M9 and M10 refused), and
+  are 12/12 once pinned; `kimi-k3` is 12/12 too, `kimi-k2.7-code` still 12/12. `kimi-k2.6`
+  stays 10/1/1 — M8 still fenced, M10 reports no cache-token breakdown. `kimi-k3.1-pro` is
+  12/12 through OpenRouter as well, 10/0/2 through Mammouth.
 - **Z.AI** — `glm-5.3-flashx` is the second model of the family to pass every mode. The
   listing omits `glm-4.6v-flash`, which is served (the vision companion, M9 green the same
   day): a catalogue is not the whole offer. **Not campaigned on 2026-11-11:** the account has
@@ -510,6 +514,7 @@ breaking the sibling model. Every row below was measured live; nothing is inferr
 |---|---|---|---|---|---|
 | Kimi | `kimi-k2.6` | `temperature` | `1` | `invalid temperature: only 1 is allowed for this model` | 2026-08-03 |
 | Kimi | `kimi-k2.7-code` | `temperature` | `1` — a buffered call is retried by the provider with that value, a stream is refused | `invalid temperature: only 1 is allowed for this model` | 2026-10-07 |
+| Kimi | `kimi-k3.1-pro`, `kimi-k3.1-pro-highspeed`, `kimi-k2.7-code-highspeed` | `temperature` | `1` — every streaming mode and M2, M5, M9, M10 refused at 0 | `invalid temperature: only 1 is allowed for this model` | 2026-11-11 |
 | OpenAI | `gpt-5.6-sol` | `temperature` | `1` | `'temperature' does not support 0 with this model. Only the default (1) value is supported.` | 2026-08-30 |
 | OpenAI | `gpt-5.6-sol` | `reasoning_effort` | `"none"` when the request carries function tools on `/v1/chat/completions` | `Function tools with reasoning_effort are not supported for gpt-5.6-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.` | 2026-08-30 |
 | OpenAI | `gpt-6-astra` | `temperature` | `1` | `'temperature' does not support 0 with this model. Only the default (1) value is supported.` | 2026-09-21 |

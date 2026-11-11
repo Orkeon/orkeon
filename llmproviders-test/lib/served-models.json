@@ -169,14 +169,15 @@
     "kimi": {
       "source": "GET https://api.moonshot.ai/v1/models",
       "publishes": "context, image/video input, reasoning",
-      "count": 4,
+      "count": 6,
       "models": {
         "kimi-k2.6": {"context":262144,"image":true,"video":true,"reasoning":true},
         "kimi-k2.7-code": {"context":262144,"image":true,"video":true,"reasoning":true},
         "kimi-k2.7-code-highspeed": {"context":262144,"image":true,"video":true,"reasoning":true},
-        "kimi-k3": {"context":1048576,"image":true,"video":true,"reasoning":true}
-      },
-      "note": "Not re-read on 2026-11-11: the campaign key was refused (401) on api.moonshot.ai and api.moonshot.cn. These four ids are the 2026-10-07 read."
+        "kimi-k3": {"context":1048576,"image":true,"video":true,"reasoning":true},
+        "kimi-k3.1-pro": {"context":1048576,"image":true,"video":true,"reasoning":true},
+        "kimi-k3.1-pro-highspeed": {"context":1048576,"image":true,"video":true,"reasoning":true}
+      }
     },
     "gemini": {
       "source": "GET https://generativelanguage.googleapis.com/v1beta/models (native listing; the OpenAI-compatible /models returns the same ids under models/…)",
