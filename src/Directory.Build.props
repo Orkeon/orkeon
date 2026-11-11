@@ -9,6 +9,7 @@
     
     <!-- NuGet Package Properties -->
     <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionSuffix>rc.7</VersionSuffix>
     <Authors>Orkeon Contributors</Authors>
     <Company>Orkeon</Company>
     <Product>Orkeon</Product>

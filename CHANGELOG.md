@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc.7] - 2026-11-11
+
+The last release candidate before 1.0.0. Since `1.0.0-rc.6`: Orkeon Studio moves to its own repository
+and the CLI family ships to NuGet for it; the framework closes its gaps — record and
+replay of LLM calls, durable human-in-the-loop, a durable run history, one checkpoint per
+task and `orkeon run --resume`, a retry per task, an LLM judge, `orkeon eval`, the YAML
+`graph:` block, `dotnet new` templates, OAuth and Streamable HTTP for MCP, crews served as
+MCP tools, health probes and a run API on `orkeon-host` (FWK-01..28); decision tasks and
+`when` conditions serve three decision-model providers (ADR-015, ADR-016); the
+compatibility shims are removed; and from this version on, the public API in
+`PublicAPI.Shipped.txt` is the 1.x stability commitment.
+
 ### Added
 
 - **`act` prunes stale tool results on the script's word** (#327) — `ActOptions.onContextPressure` runs before a model turn once the loop's messages pass `contextPressure.thresholdTokens` (100000 estimated tokens by default). It is handed the loop's older results of read tools that ran (tool, input, result size, age in turns): a write, a command, a refused call and a result seeded from an earlier `act` are never offered, since running them again is not harmless. It answers `keep`, `head` or `drop` per call, and a verdict settles the call for the rest of the loop; a pruned result leaves a line naming the call (its input cut to 200 characters) and saying it can be run again, the call itself stays, and the tool share of the next turn's context drops. The estimate counts text, tool calls and reasoning, not images nor tool schemas; `token_budget` reads the session buffer and does not see the loop. A callback that throws, or no callback, prunes nothing.
@@ -62,18 +74,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`orkeon llm models -p gemini` lists usable identifiers** — Google's OpenAI-compatible `/models` names every model `models/<id>`, a form no configuration writes; the listing now drops the prefix. The LLM campaign kit compared those names with the bare ids of `lib/served-models.json` and reported every Gemini model both new and no longer served.
 - **The campaign catalogue's misfiled candidates run again** — `gpt-6.1-terra`, `claude-fable-5-2`, `gemini-4-argon`, `gemini-4-carbon` and `MiniMax-M3.1-Flash` sat in their provider's `notes` instead of `candidateModels`, so `--candidates` skipped them; they are candidates again, as the README already listed them.
 - **`reasoning_effort: none` reaches OpenAI again** — since the effort levels gained `xhigh` and `max` (#242), a value outside `low`…`max` was "lowered" to `low`, and the `gpt-5` row of the model capability table caught `gpt-5.6-*` and omitted `none` there: every GPT-5.6 and GPT-6 tier that needs `none` to take function tools on chat/completions answered tools and the messages-array shape with a 400 (LLM campaign of 2026-11-11). `LlmThinkingConfig.EffortFor` now returns a value outside the levels unchanged, for the vendor to judge, and `gpt-5.6` has its own unrestricted row.
-
-## [1.0.0] - 2026-11-10
-
-The first stable release. Since `1.0.0-rc.6`: Orkeon Studio moves to its own repository
-and the CLI family ships to NuGet for it; the framework closes its gaps — record and
-replay of LLM calls, durable human-in-the-loop, a durable run history, one checkpoint per
-task and `orkeon run --resume`, a retry per task, an LLM judge, `orkeon eval`, the YAML
-`graph:` block, `dotnet new` templates, OAuth and Streamable HTTP for MCP, crews served as
-MCP tools, health probes and a run API on `orkeon-host` (FWK-01..28); decision tasks and
-`when` conditions serve three decision-model providers (ADR-015, ADR-016); the
-compatibility shims are removed; and from this version on, the public API in
-`PublicAPI.Shipped.txt` is the 1.x stability commitment.
 
 ### Fixed — the host's cost budget is enforced **[breaking]**
 
@@ -11652,8 +11652,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.6...v1.0.0
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.7...HEAD
+[1.0.0-rc.7]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.6...v1.0.0-rc.7
 [1.0.0-rc.6]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.5...v1.0.0-rc.6
 [1.0.0-rc.5]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.4...v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.3...v1.0.0-rc.4
