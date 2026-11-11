@@ -54,6 +54,40 @@ public sealed class ResiliencePoliciesTests : IDisposable
         Assert.True(_logger.HasLoggedWarning("LLM API retry"));
     }
 
+    [Theory]
+    [Trait("BR", "CH-328")]
+    [InlineData("{\"error\":{\"message\":\"You exceeded your current quota.\",\"type\":\"insufficient_quota\",\"code\":\"insufficient_quota\"}}")]
+    [InlineData("{\"error\":{\"message\":\"Your account is suspended due to insufficient balance\",\"type\":\"exceeded_current_quota_error\"}}")]
+    [InlineData("{\"error\":{\"code\":\"1113\",\"message\":\"Insufficient balance or no resource package. Please recharge.\"}}")]
+    public async Task ShouldNotRetry_WhenGetLlmApiPolicyMeetsA429ForAnExhaustedBalance(string body)
+    {
+        var policy = ResiliencePolicies.GetLlmApiPolicy(_logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1));
+        _httpHandler.SetupResponses(
+            new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new StringContent(body) },
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        var response = await policy.ExecuteAsync(async () => await _httpClient.GetAsync("http://test.com"));
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(1, _httpHandler.CallCount);
+        Assert.Equal(body, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldStillRetry_WhenGetLlmApiPolicyMeetsA429WithoutABalanceMarker()
+    {
+        var policy = ResiliencePolicies.GetLlmApiPolicy(_logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1));
+        _httpHandler.SetupResponses(
+            new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new StringContent("{\"error\":{\"code\":\"rate_limit_exceeded\"}}") },
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        var response = await policy.ExecuteAsync(async () => await _httpClient.GetAsync("http://test.com"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, _httpHandler.CallCount);
+    }
+
     [Fact]
     public void ShouldCapEveryWait_WhenLlmRetryDelayLadderGrows()
     {

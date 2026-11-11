@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A 429 for an exhausted balance fails at once** (#328) — Z.AI (`Insufficient balance`), Kimi (`exceeded_current_quota_error`) and OpenAI (`insufficient_quota`) answer 429 when the account has no money left, and the retry policy waited each one out like a rate limit: a call that could never succeed spent the whole `Llm:MaxRetries` budget (21 minutes for one Z.AI campaign). The policy and the streaming connect now read a 429's body and do not retry one that names a spent balance; the error line adds `(account balance exhausted: ...)`, and a profile's fallback chain still moves to the next provider.
 - **`orkeon llm models -p gemini` lists usable identifiers** — Google's OpenAI-compatible `/models` names every model `models/<id>`, a form no configuration writes; the listing now drops the prefix. The LLM campaign kit compared those names with the bare ids of `lib/served-models.json` and reported every Gemini model both new and no longer served.
 - **The campaign catalogue's misfiled candidates run again** — `gpt-6.1-terra`, `claude-fable-5-2`, `gemini-4-argon`, `gemini-4-carbon` and `MiniMax-M3.1-Flash` sat in their provider's `notes` instead of `candidateModels`, so `--candidates` skipped them; they are candidates again, as the README already listed them.
 

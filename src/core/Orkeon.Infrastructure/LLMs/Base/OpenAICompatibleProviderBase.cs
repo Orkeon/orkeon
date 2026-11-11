@@ -2125,7 +2125,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             Content = "",
             Metadata = LlmResponseMetadata.CreateBuilder()
                 .AddProvider(Name)
-                .AddError($"{ProviderDisplayName} API error: {statusCode} - {error}{hint}")
+                .AddError($"{ProviderDisplayName} API error: {statusCode} - {error}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(statusCode, rawError)}{hint}")
                 .AddErrorType("APIError")
                 .Build()
                 .ToDictionary()

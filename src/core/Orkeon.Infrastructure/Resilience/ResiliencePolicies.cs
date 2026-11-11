@@ -35,11 +35,32 @@ public static class ResiliencePolicies
     /// The transient failures: a request error, and the statuses <see cref="LlmFailureClassifier.IsTransientStatus"/>
     /// names (5xx, 408, 429), the same list a profile's fallback chain takes over once these retries are spent.
     /// </summary>
+    /// <remarks>A 429 the <see cref="BalanceExhaustionProbe"/> recognised as an exhausted balance is not transient: it fails at once.</remarks>
     private static PolicyBuilder<HttpResponseMessage> HandleTransientHttpStatusOrRequestError()
     {
         return Policy<HttpResponseMessage>
             .Handle<HttpRequestException>()
-            .OrResult(r => LlmFailureClassifier.IsTransientStatus(r.StatusCode));
+            .OrResult(r => LlmFailureClassifier.IsTransientStatus(r.StatusCode) && !BalanceExhaustedAnswers.TryGetValue(r, out _));
+    }
+
+    /// <summary>The answers the probe found to be an exhausted balance; Polly's result predicate is synchronous and cannot read a body.</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<HttpResponseMessage, object> BalanceExhaustedAnswers = [];
+
+    /// <summary>
+    /// True when <paramref name="response"/> is a 429 whose body names an exhausted balance or quota
+    /// (<see cref="LlmFailureClassifier.IsBalanceExhausted"/>). The body is buffered first, so the
+    /// provider still reads it to build its error.
+    /// </summary>
+    /// <param name="response">The answer to inspect.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    internal static async Task<bool> IsBalanceExhaustedAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        if (response.StatusCode != HttpStatusCode.TooManyRequests)
+            return false;
+        await response.Content.LoadIntoBufferAsync(cancellationToken).ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        return LlmFailureClassifier.IsBalanceExhausted(response.StatusCode, body);
     }
 
     /// <summary>
@@ -139,7 +160,23 @@ public static class ResiliencePolicies
                     onRetry?.Invoke(retryCount, timespan, reason);
                 });
 
-        return Policy.WrapAsync(new CallerTokenCarrier(), transient, timedOut);
+        return Policy.WrapAsync(new CallerTokenCarrier(), transient, timedOut, new BalanceExhaustionProbe());
+    }
+
+    /// <summary>Reads each 429's body once and records the answers that name an exhausted balance (issue #328).</summary>
+    private sealed class BalanceExhaustionProbe : AsyncPolicy<HttpResponseMessage>
+    {
+        protected override async Task<HttpResponseMessage> ImplementationAsync(
+            Func<Context, CancellationToken, Task<HttpResponseMessage>> action,
+            Context context,
+            CancellationToken cancellationToken,
+            bool continueOnCapturedContext)
+        {
+            var response = await action(context, cancellationToken).ConfigureAwait(continueOnCapturedContext);
+            if (await IsBalanceExhaustedAsync(response, cancellationToken).ConfigureAwait(continueOnCapturedContext))
+                BalanceExhaustedAnswers.AddOrUpdate(response, BalanceExhaustedAnswers);
+            return response;
+        }
     }
 
     /// <summary>Hands the caller's token to the retry hooks, which Polly gives none.</summary>

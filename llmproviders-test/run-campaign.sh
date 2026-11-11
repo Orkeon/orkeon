@@ -438,9 +438,8 @@ ACCOUNT_ERROR='Unauthorized|Forbidden|PaymentRequired|insufficient[ _]balance|in
 # campaign run: a model-level red is a finding the full report must carry.
 #
 # The run that cost this check its place: Z.AI on 2026-11-11, an empty balance answered 429
-# and every mode of five models waited out its retries — 21 minutes for nothing. Until #328
-# makes that 429 non-transient, the check itself still waits once; it waits once, not sixty
-# times.
+# and every mode of five models waited out its retries — 21 minutes for nothing. Since #328
+# that 429 is no longer retried; the check still spares the sixty calls that would each fail.
 preflight() {
   local provider="$1" model="$2" mode="$3" key_env="$4" base_url="$5" api_version="$6" workspace_id="$7"
   local raw="$TMP_DIR/$provider-preflight.json" err="$TMP_DIR/$provider-preflight.stderr" detail

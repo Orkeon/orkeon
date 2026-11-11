@@ -114,8 +114,8 @@ Kimi's `exceeded_current_quota_error`) skips the provider there, and the closing
 it apart from the failed modes. Any other red lets the campaign run: a model-level red is a
 finding. On 2026-11-11 an empty Z.AI balance failed every mode of five models one after the
 other, each 429 retried as a rate limit — 21 minutes for nothing; the preflight turns that
-into one call. `--no-preflight` skips it. Until issue #328 makes that 429 non-transient, the
-preflight itself still waits its retries out — once.
+into one call. `--no-preflight` skips it. Since issue #328 that 429 is no longer retried:
+the preflight answers on its first call.
 
 **The commit names the code that ran.** The reports carry the short commit of `HEAD`, with
 `-dirty` when `src/` holds uncommitted changes: the commit alone would then name code that
