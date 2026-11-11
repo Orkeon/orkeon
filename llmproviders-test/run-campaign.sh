@@ -535,16 +535,20 @@ run_provider() {
 
   # One call before the many: an account that cannot pay fails here once, not per mode.
   # Skipped on a dry run (it would place a call) and with --no-preflight.
+  # The cheapest mode of the family, not the first one asked: `--modes D8` must not pay its
+  # 100k tokens twice.
+  local pre_mode="M1"
+  [[ "$modes" == D* ]] && pre_mode="D1"
   if [[ "$PREFLIGHT" -eq 1 && "$DRY_RUN" -eq 0 ]]; then
     resolve_orkeon
-    if ! preflight "$provider" "${models[0]}" "${modes%%,*}" "$key_env" "$base_url" "$api_version" "$workspace_id"; then
+    if ! preflight "$provider" "${models[0]}" "$pre_mode" "$key_env" "$base_url" "$api_version" "$workspace_id"; then
       FAILURES=$((FAILURES + 1))
       SKIPPED=$((SKIPPED + 1))
       [[ -z "$key_value" ]] || unset "$key_env"
       return
     fi
   elif [[ "$PREFLIGHT" -eq 1 ]]; then
-    printf '  would check %-11s %s on %s first\n' "$provider" "${modes%%,*}" "${models[0]}"
+    printf '  would check %-11s %s on %s first\n' "$provider" "$pre_mode" "${models[0]}"
   fi
 
   for model in "${models[@]}"; do

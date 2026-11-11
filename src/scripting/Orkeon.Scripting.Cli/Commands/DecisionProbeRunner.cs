@@ -348,15 +348,20 @@ internal sealed class DecisionProbeRunner
     internal const string LongContextNeedle = "Customer: my parcel never arrived and I want my money back.";
 
     /// <summary>
-    /// About 100k tokens of numbered filler words: over the 64k standard context, under the
-    /// 262k long context. None of the words asks for anything; <paramref name="needle"/>, when
+    /// About 100k tokens of plain filler words: over the 64k standard context, under the 262k
+    /// long context. None of the words asks for anything; <paramref name="needle"/>, when
     /// given, is placed halfway.
     /// </summary>
+    /// <remarks>
+    /// Plain words, one token each. Numbered ones (<c>parcel12345</c>) cost several tokens
+    /// apiece: 100k of them went over the 262k long context, and TypeSafe refused D8
+    /// (2026-11-11). The order varies so the text is not one phrase repeated.
+    /// </remarks>
     internal static string OversizedState(string? needle)
     {
         const int count = 100_000;
         string[] words = ["parcel", "invoice", "shipment", "delivery", "account", "support", "ticket", "order"];
-        var parts = Enumerable.Range(0, count).Select(i => words[i % words.Length] + i.ToString(CultureInfo.InvariantCulture));
+        var parts = Enumerable.Range(0, count).Select(i => words[((i * 5) + (i / words.Length)) % words.Length]);
         if (needle is null)
             return string.Join(' ', parts);
 

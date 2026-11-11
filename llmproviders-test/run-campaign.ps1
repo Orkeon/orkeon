@@ -580,7 +580,9 @@ function Invoke-Provider {
 
         # One call before the many: an account that cannot pay fails here once, not per mode.
         # Skipped on a dry run (it would place a call) and with -NoPreflight.
-        $firstMode = ($modeList -split ',')[0]
+        # The cheapest mode of the family, not the first one asked: -Modes D8 must not pay its
+        # 100k tokens twice.
+        $firstMode = if ($modeList -like 'D*') { 'D1' } else { 'M1' }
         if ((-not $NoPreflight) -and (-not $DryRun)) {
             if (-not (Test-Preflight $ProviderKey $models[0] $firstMode $keyEnv $base $version $workspace)) {
                 $script:Failures++
