@@ -69,7 +69,7 @@ longue durée n'existe. Chaque release livre aussi `SHA256SUMS` (et `SHA256SUMS.
 les MSI) et — pour les releases coupées depuis l'arrivée de l'étape SBOM en septembre 2026 —
 un SBOM CycloneDX couvert par la même attestation. Deux choses ne portent **aucune**
 attestation : les builds dev de `main` (`<version>.dev.<numéro de run>`, sur GitHub Packages
-uniquement) et l'image conteneur `orkeon-runners` sur GHCR.
+uniquement) et l'image conteneur `ghcr.io/orkeon/orkeon` sur GHCR.
 
 ```bash
 gh attestation verify orkeon-cli-<version>-osx-arm64.tar.gz --repo Orkeon/orkeon

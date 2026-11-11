@@ -2287,7 +2287,7 @@ is also where a `.ork.ts` script looks for esbuild last; `HOME` is
 read when the system names no profile folder, to place the per-user settings. The variables
 written under `MCP:Servers:<name>:Env` are the operator's: Orkeon hands them to the server it
 starts and reads none. The container image has variables of its own, read by its entry script
-and not by the binaries — `ORKEON_RUNNER` and its neighbours
+and not by the binaries — `ORKEON_ENTRYPOINT` and its neighbours
 ([three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md#3-container)).
 
 ### Variables a setting names

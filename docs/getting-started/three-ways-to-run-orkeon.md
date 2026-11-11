@@ -386,7 +386,7 @@ installing: `./libexec/orkeon/orkeon run …`.
 
 ## 3. Container
 
-The `ghcr.io/orkeon/orkeon-runners` image (built from `Dockerfile.runners`,
+The `ghcr.io/orkeon/orkeon` image (built from `Dockerfile.runners`,
 published to GHCR) has the **`orkeon` CLI as its default entry point**, ships the
 **REPL** (`orkeon-repl`) next to it **plus the 104 bundled examples** — zero local
 .NET required. The service host is not in it: it has its own image, built from
@@ -394,7 +394,7 @@ published to GHCR) has the **`orkeon` CLI as its default entry point**, ships th
 
 The published image is multi-platform: one tag, `linux/amd64` and `linux/arm64`, and Docker
 pulls the one that matches your machine. On Apple Silicon, or any arm64 host, it runs
-natively, not under emulation. `docker manifest inspect ghcr.io/orkeon/orkeon-runners:<version>`
+natively, not under emulation. `docker manifest inspect ghcr.io/orkeon/orkeon:<version>`
 lists both.
 
 Every image keeps the license and the notices of what it redistributes under
@@ -407,7 +407,7 @@ Mount your project directory at `/workspace` and reference everything from
 there. **One volume, no extra flags**:
 
 ```bash
-docker run --rm -v "$PWD:/workspace" ghcr.io/orkeon/orkeon-runners \
+docker run --rm -v "$PWD:/workspace" ghcr.io/orkeon/orkeon \
   run /workspace/crews/my-crew/config.yaml \
   --settings /workspace/appsettings.local.json \
   --mount /workspace/data:/data:ro /workspace/output:/output:rw
@@ -442,8 +442,8 @@ that makes running them a one-liner. The simplest possible session:
 # one-time, on the host: pull the default model (Docker Desktop → Model Runner)
 docker model pull ai/granite-4.0-h-tiny
 
-docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
-  ghcr.io/orkeon/orkeon-runners
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD/out:/output" \
+  ghcr.io/orkeon/orkeon
 # then, inside the shell:
 orkeon-example list            # browse the 104 bundled examples
 orkeon-example run 1           # run #1 (research assistant)
@@ -515,18 +515,18 @@ container on the same URL shape the default settings already use. This variant i
 # Granite 4.0 h-tiny (Apache 2.0, ~4.2 GB of weights → ~6 GB image)
 docker build -f Dockerfile.runners --target local-llm \
   --build-arg LOCAL_MODEL_URL=https://huggingface.co/ibm-granite/granite-4.0-h-tiny-GGUF/resolve/main/granite-4.0-h-tiny-Q4_K_M.gguf \
-  -t orkeon-runners:granite .
+  -t orkeon:granite .
 
 # Gemma 4 E4B with a 128K context (Gemma license — keep the image local, don't push it)
 docker build -f Dockerfile.runners --target local-llm \
   --build-arg LOCAL_MODEL_URL=https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF/resolve/main/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf \
   --build-arg LOCAL_MODEL_NAME=ai/gemma4 \
   --build-arg LOCAL_MODEL_CTX=131072 \
-  -t orkeon-runners:gemma4 .
+  -t orkeon:gemma4 .
 # LOCAL_MODEL_CTX bakes the llama-server context size (default 8192); override
 # per run with -e ORKEON_LOCAL_LLM_CTX=… — at 128K plan several extra GB of RAM.
 
-docker run -it --rm -m 8g -e ORKEON_RUNNER=shell orkeon-runners:granite
+docker run -it --rm -m 8g -e ORKEON_ENTRYPOINT=shell orkeon:granite
 # the model loads at startup (30-90 s), then:
 orkeon-example run 1
 ```
@@ -542,22 +542,22 @@ One-shot (no shell) still works — the entry point **is** `orkeon`:
 ```bash
 docker run --rm \
   -v "$PWD/out:/output" \
-  ghcr.io/orkeon/orkeon-runners \
+  ghcr.io/orkeon/orkeon \
   run examples/01-enterprise/01-research-assistant/config.yaml \
   --mount /output:/output:rw
 ```
 
-### Other runners and the interactive shell
+### Other executables and the interactive shell
 
 The entry point **is** `orkeon`, so everything after the image name is CLI
-arguments (`run <config> …`). To launch a different runner, set the
-`ORKEON_RUNNER` env var — `orkeon` (the default), `repl` or `shell`; any other
+arguments (`run <config> …`). To start a different executable, set the
+`ORKEON_ENTRYPOINT` env var — `orkeon` (the default), `repl` or `shell`; any other
 value is rejected with a usage line:
 
 ```bash
-docker run -it --rm -e ORKEON_RUNNER=repl \
+docker run -it --rm -e ORKEON_ENTRYPOINT=repl \
   -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
-  ghcr.io/orkeon/orkeon-runners
+  ghcr.io/orkeon/orkeon
 ```
 
 There is no runner per example family: the finance crews are `main.ork.ts`
@@ -566,20 +566,20 @@ scripts the same `orkeon` CLI runs, like every other example.
 ```bash
 docker run --rm \
   -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
-  ghcr.io/orkeon/orkeon-runners \
+  ghcr.io/orkeon/orkeon \
   run examples/03-finance-trading/31-algo-trading/main.ork.ts \
   --settings /app/appsettings.local.json
 ```
 
-`ORKEON_RUNNER=shell` opens an interactive **zsh** inside the image (starting
+`ORKEON_ENTRYPOINT=shell` opens an interactive **zsh** inside the image (starting
 in `/workspace`) — handy for poking at the bundled examples or debugging mounts.
 A welcome banner lists the available commands and paths (suppress it with
 `-e ORKEON_NO_BANNER=1`), and every runner is on the PATH under the same names
 as the release archives (`orkeon`, `orkeon-repl`, …):
 
 ```bash
-docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
-  ghcr.io/orkeon/orkeon-runners
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD:/workspace" \
+  ghcr.io/orkeon/orkeon
 # orkeon /workspace % orkeon-example run 1
 # orkeon /workspace % orkeon run /workspace/crews/my-crew/config.yaml --validate
 ```
@@ -624,7 +624,7 @@ names the channel this install came through and the command that updates it.
 | Windows MSI | Run the new MSI: it replaces the installed one, between two pre-releases too |
 | The apt repository | `sudo apt update && sudo apt upgrade` |
 | A downloaded Debian package | `sudo apt install ./orkeon_<version>_amd64.deb` (`_arm64.deb` on ARM) — or move to the [apt repository](../guides/install-with-apt.md), which updates by itself |
-| Container | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` moves with each release |
+| Container | `docker pull ghcr.io/orkeon/orkeon` — `:latest` moves with each release |
 | From source | `git pull`; the next `dotnet run` rebuilds. An installation made [from the clone](#install-from-source): `git pull`, then run `scripts/install-from-source` again |
 
 `orkeon --version` then prints the version that runs: `orkeon <version>`. An install whose channel cannot be determined answers `unknown`.

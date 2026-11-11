@@ -2343,7 +2343,7 @@ l'endroit où un script `.ork.ts` cherche esbuild en dernier ; `HOME` est lue qu
 dossier de profil, pour placer les réglages par utilisateur. Les variables écrites sous
 `MCP:Servers:<nom>:Env` sont celles de l'opérateur : Orkeon les remet au serveur qu'il lance et
 n'en lit aucune. L'image de conteneur a ses propres variables, lues par son script d'entrée et
-non par les binaires — `ORKEON_RUNNER` et ses voisines
+non par les binaires — `ORKEON_ENTRYPOINT` et ses voisines
 ([trois façons de lancer Orkeon](../getting-started/three-ways-to-run-orkeon.md#3-conteneur)).
 
 ### Les variables qu'un réglage nomme

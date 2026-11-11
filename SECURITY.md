@@ -66,7 +66,7 @@ NuGet.org publishing goes through Trusted Publishing (OIDC): no long-lived API k
 Every release also ships `SHA256SUMS` (and `SHA256SUMS.msi` for the MSIs) and — for releases
 cut since the SBOM step landed in September 2026 — a CycloneDX SBOM covered by the same
 attestation. Two things carry **no** attestation: the dev builds of `main`
-(`<version>.dev.<run number>`, GitHub Packages only) and the `orkeon-runners` container
+(`<version>.dev.<run number>`, GitHub Packages only) and the `ghcr.io/orkeon/orkeon` container
 image on GHCR.
 
 ```bash

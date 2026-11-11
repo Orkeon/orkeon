@@ -1,18 +1,18 @@
-# Orkeon runners — container image (ghcr.io/orkeon/orkeon-runners)
+# Orkeon — container image (ghcr.io/orkeon/orkeon)
 #
 # Bundles every Orkeon executable together with the example crew definitions, so
 # any bundled crew can be run with nothing but Docker and an LLM endpoint. All
 # apps are framework-dependent inside the image (the .NET runtime ships in the
-# base image). Which executable runs is chosen by the ORKEON_RUNNER env var:
+# base image). Which executable runs is chosen by the ORKEON_ENTRYPOINT env var:
 #
 #   orkeon (default) | repl | shell
 #
 # Build:
-#   docker build -f Dockerfile.runners -t orkeon-runners .
+#   docker build -f Dockerfile.runners -t orkeon .
 # builds for the machine's own architecture (linux/amd64 or linux/arm64). The published
 # image is a manifest list of both, which release.yml pushes with buildx:
 #   docker buildx build -f Dockerfile.runners --platform linux/amd64,linux/arm64 \
-#     -t ghcr.io/orkeon/orkeon-runners:<version> --push .
+#     -t ghcr.io/orkeon/orkeon:<version> --push .
 # The publish and the esbuild fetch run on the build machine for either target; only
 # the RUN steps of the runtime stage execute in the target architecture, so a machine
 # of the other one needs QEMU (docker/setup-qemu-action in CI).
@@ -20,7 +20,7 @@
 # --- The /workspace convention (start here) -----------------------------------
 # Mount your project at /workspace and reference everything from there — no
 # extra flags needed:
-#   docker run --rm -v "$PWD:/workspace" ghcr.io/orkeon/orkeon-runners \
+#   docker run --rm -v "$PWD:/workspace" ghcr.io/orkeon/orkeon \
 #     run /workspace/crews/my-crew/config.yaml \
 #     --settings /workspace/appsettings/appsettings.local.json \
 #     --mount /workspace/data:/data:ro /workspace/output:/output:rw
@@ -32,8 +32,8 @@
 #      you on the host — no --user, no chmod (details at the dispatcher below).
 #   3. /workspace exists (and is writable) even when nothing is mounted.
 # For an interactive zsh inside the image (starts in /workspace):
-#   docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
-#     ghcr.io/orkeon/orkeon-runners
+#   docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD:/workspace" \
+#     ghcr.io/orkeon/orkeon
 #
 # --- Default runner: the `orkeon` CLI ----------------------------------------
 # `orkeon run <crew.yaml | crew.ork.ts>` runs both YAML crews and .ork.ts
@@ -43,7 +43,7 @@
 #   docker run --rm \
 #     -v "$PWD/out:/output" \
 #     -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
-#     ghcr.io/orkeon/orkeon-runners \
+#     ghcr.io/orkeon/orkeon \
 #     run examples/01-enterprise/01-research-assistant/config.yaml \
 #     --settings /app/appsettings.local.json
 #
@@ -51,12 +51,12 @@
 # transpile with no extra setup):
 #   docker run --rm \
 #     -v "$PWD/my.ork.ts:/script/my.ork.ts:ro" \
-#     ghcr.io/orkeon/orkeon-runners run /script/my.ork.ts
+#     ghcr.io/orkeon/orkeon run /script/my.ork.ts
 #
-# --- Selecting another runner ------------------------------------------------
+# --- Selecting another executable ---------------------------------------------
 # The REPL is a Terminal.Gui app that reads from stdin — it REQUIRES an
 # interactive TTY, so run it with `docker run -it`:
-#   docker run -it --rm -e ORKEON_RUNNER=repl ghcr.io/orkeon/orkeon-runners
+#   docker run -it --rm -e ORKEON_ENTRYPOINT=repl ghcr.io/orkeon/orkeon
 # NOTE (terminfo): the runtime:10.0 base image is Debian-slim and ships a minimal
 # terminfo database. Terminal.Gui apps generally cope (they fall back to a basic
 # profile), but exotic $TERM values may render degraded. If a richer terminal is
@@ -71,8 +71,8 @@
 #   orkeon-example show 42              print an example's README
 #   orkeon-example settings             show which LLM settings apply and why
 # Interactive session (recommended first contact):
-#   docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
-#     ghcr.io/orkeon/orkeon-runners
+#   docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD/out:/output" \
+#     ghcr.io/orkeon/orkeon
 #   orkeon-example run 1
 #
 # --- Settings profiles ---------------------------------------------------------
@@ -102,7 +102,7 @@
 #   ./data read-only at the virtual path /data, and collect output from /output:
 #     docker run --rm \
 #       -v "$PWD/data:/data:ro" -v "$PWD/out:/output" \
-#       ghcr.io/orkeon/orkeon-runners \
+#       ghcr.io/orkeon/orkeon \
 #       run examples/.../config.yaml \
 #       --mount /data:/data:ro /output:/output:rw
 #   Rights are ro (read-only) | rw (read-write) | rwnd (read-write, no delete);
@@ -223,7 +223,7 @@ RUN chmod -R a+rX /app/runners /app/esbuild-bin
 FROM mcr.microsoft.com/dotnet/runtime:10.0@sha256:8a153b5889d796b6450295b383596b13308c24c230515f8a7770ce1b94e0c460 AS runtime
 WORKDIR /app
 
-# zsh: interactive shell for `ORKEON_RUNNER=shell` sessions. gosu: lets the
+# zsh: interactive shell for `ORKEON_ENTRYPOINT=shell` sessions. gosu: lets the
 # root entrypoint drop to the bind-mount owner's uid (see the dispatcher below).
 # curl: the orkeon-example preflight check + the local-llm variant's health wait.
 RUN apt-get update \
@@ -257,7 +257,7 @@ RUN mkdir -p /etc/orkeon/zsh && cat /etc/orkeon/banner.txt > /etc/orkeon/motd &&
   '\033[36m──────────────────────────────────────────────────────────────────────────\033[0m' \
   '  \033[1mOrkeon\033[0m — interactive shell' \
   '  \033[2msource & docs\033[0m  https://github.com/Orkeon/orkeon' \
-  '  \033[2mimage\033[0m          ghcr.io/orkeon/orkeon-runners' \
+  '  \033[2mimage\033[0m          ghcr.io/orkeon/orkeon' \
   '\033[36m──────────────────────────────────────────────────────────────────────────\033[0m' \
   '' \
   '  \033[1;36mTry it now\033[0m \033[2m(copy-paste)\033[0m' \
@@ -305,7 +305,7 @@ ENV ZDOTDIR=/etc/orkeon/zsh
 # `orkeon` CLI and its wrappers are already on the PATH and esbuild is bundled,
 # so the ensure_* functions are no-ops.
 RUN printf '%s\n' \
-  '# orkeon.sh shim (orkeon-runners image) - cli mode only' \
+  '# orkeon.sh shim (ghcr.io/orkeon/orkeon image) - cli mode only' \
   'ORKEON_MODE=cli' \
   'orkeon_parse_mode() {' \
   '  ORKEON_ARGS=()' \
@@ -392,12 +392,12 @@ COPY docker/profiles/host-dmr.json examples/appsettings/appsettings.json
 # header in docker/orkeon-example for the full UX).
 COPY docker/orkeon-example /usr/local/bin/orkeon-example
 
-# Entry dispatcher: the `orkeon` CLI by default, or the runner named by
-# ORKEON_RUNNER (`shell` opens an interactive zsh, starting in /workspace). All
+# Entry dispatcher: the `orkeon` CLI by default, or the executable named by
+# ORKEON_ENTRYPOINT (`shell` opens an interactive zsh, starting in /workspace). All
 # `docker run` args after the image name are forwarded to the selected
 # executable verbatim. Maintained as a real file (docker/orkeon-entrypoint.sh)
 # now that it also hosts the embedded local-LLM startup — see that file for the
-# full story: runner dispatch, llama-server launch (local-llm variant only),
+# full story: entrypoint dispatch, llama-server launch (local-llm variant only),
 # and the gosu privilege drop to the /workspace bind-mount owner's uid.
 # chmod +x here rather than trusting context mode bits: exec bits can be lost
 # through Windows checkouts of the repo.
@@ -425,17 +425,17 @@ ENTRYPOINT ["orkeon-entrypoint"]
 # Granite 4.0 h-tiny (Apache 2.0, ~4.2 GB GGUF → ~6 GB image):
 #   docker build -f Dockerfile.runners --target local-llm \
 #     --build-arg LOCAL_MODEL_URL=https://huggingface.co/ibm-granite/granite-4.0-h-tiny-GGUF/resolve/main/granite-4.0-h-tiny-Q4_K_M.gguf \
-#     -t orkeon-runners:granite .
+#     -t orkeon:granite .
 #
 # Gemma 4 E4B with a 128K context window (Gemma license — keep the image local):
 #   docker build -f Dockerfile.runners --target local-llm \
 #     --build-arg LOCAL_MODEL_URL=https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF/resolve/main/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf \
 #     --build-arg LOCAL_MODEL_NAME=ai/gemma4 \
 #     --build-arg LOCAL_MODEL_CTX=131072 \
-#     -t orkeon-runners:gemma4 .
+#     -t orkeon:gemma4 .
 #
 # Then (CPU inference — give the container memory, expect ~5-15 tok/s):
-#   docker run -it --rm -m 8g -e ORKEON_RUNNER=shell orkeon-runners:granite
+#   docker run -it --rm -m 8g -e ORKEON_ENTRYPOINT=shell orkeon:granite
 #   orkeon-example run 1
 # The entrypoint starts the server before dispatch and waits for the model to
 # load (30-90 s); -e ORKEON_LOCAL_LLM=0 skips it. Tunables:

@@ -18,15 +18,15 @@ identifiers, YAML keys, and tool names are always English.
 
 ## Run in Docker (simplest path)
 
-All 104 examples ship inside the `ghcr.io/orkeon/orkeon-runners` image with an
+All 104 examples ship inside the `ghcr.io/orkeon/orkeon` image with an
 `orkeon-example` helper — no .NET, no checkout:
 
 ```bash
 # one-time, on the host: pull the default model (Docker Desktop → Model Runner)
 docker model pull ai/granite-4.0-h-tiny
 
-docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
-  ghcr.io/orkeon/orkeon-runners
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD/out:/output" \
+  ghcr.io/orkeon/orkeon
 # then, inside the shell:
 orkeon-example list            # browse the examples
 orkeon-example run 1           # run #1 — trading examples dispatch automatically

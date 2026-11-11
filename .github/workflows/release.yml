@@ -1013,12 +1013,12 @@ jobs:
       tag: ${{ github.ref_name }}
       scope: apt
 
-  # Builds and pushes the example-runners container image to GHCR. Same v* trigger
+  # Builds and pushes the Orkeon container image to GHCR. Same v* trigger
   # as the installers; runs independently (own job, package-scoped permissions).
   # On workflow_dispatch the image is BUILT (both platforms) but never pushed: no
   # GHCR login, `push: false`, no manifest read-back — a dry run proves the
   # Dockerfile builds without moving `latest` to a branch build.
-  runners-image:
+  docker-image:
     runs-on: ubuntu-latest
     # Gated on the smokes like the release job: a red smoke must not move the
     # :latest tag on GHCR either.
@@ -1069,7 +1069,7 @@ jobs:
       # provenance: false keeps the image as it was, unattested (publication-matrix.md): with a
       # docker-container builder the action would add attestation manifests, shown as
       # unknown/unknown platforms in the index.
-      - name: Build and push orkeon-runners image (linux/amd64, linux/arm64)
+      - name: Build and push ghcr.io/orkeon/orkeon image (linux/amd64, linux/arm64)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -1078,8 +1078,8 @@ jobs:
           provenance: false
           push: ${{ startsWith(github.ref, 'refs/tags/') }}
           tags: |
-            ghcr.io/orkeon/orkeon-runners:${{ steps.ver.outputs.version }}
-            ghcr.io/orkeon/orkeon-runners:latest
+            ghcr.io/orkeon/orkeon:${{ steps.ver.outputs.version }}
+            ghcr.io/orkeon/orkeon:latest
       # What the push produced is read back from the registry: a tag that lists one platform only
       # (a platforms: line lost, a builder that pushed the single image) fails the job here, not
       # on the first Apple Silicon machine that pulls it.
@@ -1089,14 +1089,14 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           for tag in "$VERSION" latest; do
-            ref="ghcr.io/orkeon/orkeon-runners:$tag"
-            docker manifest inspect "$ref" > "$RUNNER_TEMP/runners-manifest.json"
+            ref="ghcr.io/orkeon/orkeon:$tag"
+            docker manifest inspect "$ref" > "$RUNNER_TEMP/image-manifest.json"
             for arch in amd64 arm64; do
               if ! jq -e --arg arch "$arch" \
                    '[.manifests[]? | select(.platform.os == "linux" and .platform.architecture == $arch)] | length == 1' \
-                   "$RUNNER_TEMP/runners-manifest.json" >/dev/null; then
+                   "$RUNNER_TEMP/image-manifest.json" >/dev/null; then
                 echo "::error::$ref does not list exactly one linux/$arch manifest"
-                cat "$RUNNER_TEMP/runners-manifest.json"
+                cat "$RUNNER_TEMP/image-manifest.json"
                 exit 1
               fi
             done

@@ -19,7 +19,7 @@ public enum GlyphMode
 /// so tests cover both variants deterministically.
 /// </summary>
 /// <remarks>
-/// The container image (`orkeon-runners`) does not guarantee a UTF-8 locale — the session
+/// The container image (`ghcr.io/orkeon/orkeon`) does not guarantee a UTF-8 locale — the session
 /// logs themselves show `setlocale: LC_ALL: cannot change locale`. A `●` printed through a
 /// non-UTF-8 console arrives as mojibake in the exact pane an operator reads to debug, so
 /// the fallback is not cosmetic.

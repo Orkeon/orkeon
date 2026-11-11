@@ -41,7 +41,7 @@ flowchart LR
 
 **L'autonomie a un budget.** Appels d'outils, profondeur, temps, tokens, agents engendrés : l'exécution s'arrête quand le budget est épuisé, et des disjoncteurs attrapent les boucles. Une longue exécution pose des points de reprise et repart là où elle s'était arrêtée.
 
-**Ça se livre comme du logiciel.** Le même runtime tourne en service `orkeon-host`, en conteneur (`ghcr.io/orkeon/orkeon-runners`), en paquet apt ou en binaire autonome, ou embarqué dans votre propre service .NET — OpenTelemetry sur le tableau de bord .NET Aspire, interopérabilité Microsoft Agent Framework, client et serveur MCP, A2A entre agents. Et pour votre propre C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) : un analyseur Roslyn après lequel un `System.IO` brut ne compile pas.
+**Ça se livre comme du logiciel.** Le même runtime tourne en service `orkeon-host`, en conteneur (`ghcr.io/orkeon/orkeon`), en paquet apt ou en binaire autonome, ou embarqué dans votre propre service .NET — OpenTelemetry sur le tableau de bord .NET Aspire, interopérabilité Microsoft Agent Framework, client et serveur MCP, A2A entre agents. Et pour votre propre C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) : un analyseur Roslyn après lequel un `System.IO` brut ne compile pas.
 
 ## Essayez-le en deux minutes — sans clé d'API
 
@@ -92,7 +92,7 @@ L'équipe que vous forgez à partir d'une phrase est le YAML que le CLI exécute
 | **Windows** — CLI | `orkeon-cli-<version>-win-x64.zip` ou le `.msi` depuis les [releases](https://github.com/Orkeon/orkeon/releases), puis `install.cmd`. Autonome. |
 | **Debian / Ubuntu** — CLI | `sudo apt install orkeon` après avoir ajouté la [source apt signée](docs/fr/guides/install-with-apt.md). |
 | **macOS** — CLI | L'archive `osx-arm64` / `osx-x64` depuis les releases, puis `./install.sh`. |
-| **Conteneur** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — les exemples embarqués. |
+| **Conteneur** | `docker run -it --rm -e ORKEON_ENTRYPOINT=shell ghcr.io/orkeon/orkeon` — les exemples embarqués. |
 | **Dans votre application .NET** | `dotnet add package Orkeon --prerelease` (+ `Orkeon.Tools` pour les outils intégrés). |
 | **Depuis les sources** | `git clone`, puis `dotnet build Orkeon.sln` — [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources). Pour mettre ce que vous avez compilé sur votre `PATH` : `scripts/install-from-source.ps1` sous Windows, `scripts/install-from-source.sh` sous Linux et macOS — [Installer depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-depuis-les-sources), [avec le REPL](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-le-repl-depuis-les-sources). |
 

@@ -15,7 +15,7 @@
 #       (2) after `cp` of the template it must start and fail cleanly on the LLM
 #       endpoint (or complete when a real key is supplied).
 #   C — no SDK       : self-contained Releases binary (ORKEON_SMOKE_RELEASE_URL)
-#       or the container image (ORKEON_SMOKE_IMAGE / a local `orkeon-runners`
+#       or the container image (ORKEON_SMOKE_IMAGE / a local `orkeon`
 #       image) — run the same bundled crew without compiling anything.
 #
 # Success WITHOUT a real key: the whole onboarding chain is exercised (build,
@@ -212,14 +212,14 @@ scenario_c() {
   local image="$ORKEON_SMOKE_IMAGE"
   if [ -z "$image" ] && command -v docker >/dev/null 2>&1; then
     local cand
-    for cand in orkeon-runners:test orkeon-runners:latest ghcr.io/orkeon/orkeon-runners:latest; do
+    for cand in orkeon:test orkeon:latest ghcr.io/orkeon/orkeon:latest; do
       if docker image inspect "$cand" >/dev/null 2>&1; then image="$cand"; break; fi
     done
   fi
 
   if [ -z "$image" ]; then
     RESULT[C]=SKIP; SECS[C]=$(( SECONDS - start ))
-    NOTE[C]="no release binary (ORKEON_SMOKE_RELEASE_URL) and no runnable image (ORKEON_SMOKE_IMAGE / local orkeon-runners) — publish pending"
+    NOTE[C]="no release binary (ORKEON_SMOKE_RELEASE_URL) and no runnable image (ORKEON_SMOKE_IMAGE / local orkeon) — publish pending"
     info "${NOTE[C]}"
     return
   fi

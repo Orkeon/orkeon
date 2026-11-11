@@ -530,7 +530,7 @@ Codes de sortie : `0` listé ; `1` un nom qui ne désigne rien ou que le binaire
 
 `orkeon-repl` est un **outil distinct** construit depuis `src/apps/Orkeon.ConsoleApp` (commande dotnet tool `orkeon-repl`) : un REPL interactif complet pour piloter agents, crews et outils depuis une console Terminal.Gui à deux volets (logs + REPL), avec toute la pile du framework câblée — outils intégrés, RAG, analyse de code, embeddings locaux — et des commandes scriptées en TypeScript. Il ne partage volontairement pas le nom d'assembly `orkeon`.
 
-Il vous parvient comme dotnet tool, dans les archives de release multi-apps, dans l'image `orkeon-runners`, et dans le paquet Debian et Ubuntu (`/usr/bin/orkeon-repl`, self-contained : `apt install orkeon` n'exige aucun .NET). Depuis un clone, voir [Installer le REPL depuis les sources](../getting-started/three-ways-to-run-orkeon.md#installer-le-repl-depuis-les-sources). Il n'a ni `--help` ni `--version` : il ouvre sa console, et avec stdin fermé et `--ui plain` il affiche sa bannière et s'arrête à la fin de l'entrée.
+Il vous parvient comme dotnet tool, dans les archives de release multi-apps, dans l'image `ghcr.io/orkeon/orkeon`, et dans le paquet Debian et Ubuntu (`/usr/bin/orkeon-repl`, self-contained : `apt install orkeon` n'exige aucun .NET). Depuis un clone, voir [Installer le REPL depuis les sources](../getting-started/three-ways-to-run-orkeon.md#installer-le-repl-depuis-les-sources). Il n'a ni `--help` ni `--version` : il ouvre sa console, et avec stdin fermé et `--ui plain` il affiche sa bannière et s'arrête à la fin de l'entrée.
 
 | Option | Description |
 |---|---|

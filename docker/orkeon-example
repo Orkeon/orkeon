@@ -1,5 +1,5 @@
 #!/bin/sh
-# orkeon-example — run the examples bundled in the orkeon-runners image with
+# orkeon-example — run the examples bundled in the ghcr.io/orkeon/orkeon image with
 # zero friction. Baked into the image at /usr/local/bin/orkeon-example.
 #
 #   orkeon-example                    usage + category table
