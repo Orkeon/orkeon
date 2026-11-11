@@ -93,8 +93,7 @@ ailleurs.
   répertoire d'installation, l'installeur refuse et le script relaie sa phrase.
 - **Debian et Ubuntu** : le canal `dev` du [dépôt apt](../guides/install-with-apt.md) sert
   les builds de `main` sans rien compiler sur votre poste. Le script le dit, et continue.
-- Un clone superficiel (`git clone --depth 1`) convient. Les sous-modules privés des
-  mainteneurs ne sont ni nécessaires ni touchés.
+- Un clone superficiel (`git clone --depth 1`) convient.
 
 ### Installer le REPL depuis les sources
 

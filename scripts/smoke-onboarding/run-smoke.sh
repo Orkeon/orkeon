@@ -149,7 +149,7 @@ scenario_b() {
 
   if [ ! -f "$exp/run.sh" ]; then
     RESULT[B]=SKIP; SECS[B]=$(( SECONDS - start ))
-    NOTE[B]="experiments submodule not checked out (run: git submodule update --init experiments)"
+    NOTE[B]="experiments repository not cloned (run: git clone https://github.com/Orkeon/experiments.git experiments)"
     info "${NOTE[B]}"
     return
   fi
@@ -189,7 +189,7 @@ scenario_b() {
     bash -c 'cd "$1" && shift && exec bash run.sh "$@"' _ "$exp" "${run_args[@]}" \
     >"$log2" 2>&1
   local ec2=$?
-  # Remove the copy immediately so `git status` in the submodule stays clean.
+  # Remove the copy immediately so `git status` in the experiments clone stays clean.
   rm -f "$dst"
   SECS[B]=$(( SECONDS - start ))
   tail -n 15 "$log2" | sed 's/^/    | /'

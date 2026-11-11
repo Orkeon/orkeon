@@ -27,13 +27,13 @@ Nothing about Orkeon depends on its maintainer staying around:
 - **The licence is MIT.** Anyone may fork, rename, relicense their fork, and
   publish it — no permission to ask, no one to reach.
 - **The build is documented and reproducible from a public clone.** `git clone`
-  (without `--recursive`) + `dotnet build Orkeon.sln`; the container images pin
+  + `dotnet build Orkeon.sln`; the container images pin
   their base images by digest; every CI action is pinned by commit SHA; the
   release pipeline lives in `.github/workflows/` and needs nothing outside the
   repository except the publishing credentials any fork can replace with its own.
-- **No private infrastructure is on the path.** The private submodules hold
-  project-management material only — the build, the tests and the examples do
-  not read them. There is no hosted service, no licence server, no telemetry
+- **No private infrastructure is on the path.** The repository references no
+  private repository — the build, the tests and the examples need nothing
+  outside it. There is no hosted service, no licence server, no telemetry
   endpoint that a fork would lose.
 - **What you install is verifiable without trusting anyone** — see
   [Verify what you install](docs/guides/verify-what-you-install.md).

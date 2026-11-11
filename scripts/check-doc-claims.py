@@ -43,8 +43,8 @@ def git_files(root: Path, suffixes: tuple[str, ...]) -> list[Path]:
     Never a path .gitignore excludes: a working clone holds ignored trees a CI clone does
     not -- the third-party checkouts under examples/others/ are ~34,000 files, and walking
     them cost this gate more than ten minutes and some 361,000 false reports, locally only.
-    Never a submodule's content either (git lists the gitlink, not what it holds): a path
-    cited here must resolve in this repository. Tracked files deleted from the work tree
+    Never the content of a private repository cloned inside the tree (`backstage/`,
+    `experiments/`, excluded locally): a path cited here must resolve in this repository. Tracked files deleted from the work tree
     are skipped, and PRUNED_DIRS still apply to anything committed under such a name.
     A directory path, not a `**` pathspec: `git ls-files -- docs` lists docs/INDEX.md,
     where `'docs/**/*.md'` would silently skip it.
@@ -437,10 +437,10 @@ def check_lineup_copies(canonical: list[str]) -> None:
                  f"first (its dependents would expose an unrestorable package otherwise)")
 
 
-# --- private submodules must not leak into anything a public reader reads ----------------
+# --- private maintainer repositories must not leak into anything a public reader reads ----------------
 
-# `experiments/` and `backstage/` are private submodules and `project/` is the maintainer's
-# workspace above them: a public clone gets empty directories, or nothing at all. A pointer
+# `experiments/` and `backstage/` are the maintainers' private repositories and `project/` is
+# the maintainer's workspace above them: a public clone gets nothing at all. A pointer
 # into them is not a broken link -- docfx renders code spans as literal text and stays
 # green -- it is a dead end the reader only discovers by trying. The 2026-09-07 sweep found
 # 24 such lines across 14 files, plus 46 in `src/**` XML doc comments that docfx
@@ -460,8 +460,7 @@ PRIVATE_LEAK_PATTERNS: list[tuple[str, str]] = [
     (r"`chapters?/\d|See chapter \d", "private design-archive chapter"),
 ]
 
-# Legitimately mentions the submodules, and stays out of the scan:
-#   .gitmodules, .gitignore      -- the declarations themselves
+# Legitimately mentions those repositories, and stays out of the scan:
 #   CLAUDE.md                    -- maintainer-facing; docfx.json excludes it from the site
 #   scripts/smoke-onboarding/*   -- maintainer tooling that operates on those paths
 #   examples/others/README.md    -- its `backstage/` is github.com/backstage/backstage,
@@ -529,7 +528,7 @@ def private_leak_files() -> list[Path]:
 # --- a cited path must be a path that exists -------------------------------------------
 
 # The check above enumerates names, so it only ever catches the roots someone thought to
-# list. `project/` -- the maintainer workspace above the two submodules -- proves the
+# list. `project/` -- the maintainer workspace above the two private repositories -- proves the
 # failure mode: 11 citations (3 in `src/**`, all on public types whose XML doc docfx
 # republishes and the `orkeon` package ships; 6 in `tests/**`; 2 in CHANGELOG.md) survived
 # the whole sweep that invented the check above, because nobody had written "project" in a
@@ -554,17 +553,17 @@ CITED_PATH_SUFFIXES = (".cs", ".ts", ".js")
 def known_md_files() -> list[str]:
     """Every `.md` path in the tree, for suffix resolution.
 
-    What git would publish (git_files): the private submodules' contents and ignored
+    What git would publish (git_files): the private repositories' contents and ignored
     trees are not in it, so a citation resolves only against this repository.
     """
     return [p.relative_to(ROOT).as_posix() for p in git_files(ROOT, (".md",))]
 
 
 def check_private_submodule_leaks() -> None:
-    """Fail on any pointer to a private submodule in public-facing material.
+    """Fail on any pointer to a private maintainer repository in public-facing material.
 
     Deliberately NOT covered, so this gate is not itself a false claim: git history and
-    commit messages; the private submodules' own contents; `scripts/` tooling, which has
+    commit messages; the private repositories' own contents; `scripts/` tooling, which has
     to spell the names to match them; the files listed in PRIVATE_LEAK_EXCLUDED; and
     non-text assets. Lists through git_files(): directory paths, never a `**` pathspec,
     because `git grep -- 'docs/**/*.md'` silently skips `docs/INDEX.md` -- the globstar

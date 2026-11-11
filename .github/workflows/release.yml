@@ -55,7 +55,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ "$(gh api "repos/${GITHUB_REPOSITORY}" --jq .private)" != "true" ]; then exit 0; fi
-          echo "::error::The repository is private. The release job attests the assets with actions/attest-build-provenance, which requires a public repository or a paid plan, and it runs before the Release is created — so no Release and no assets would be published even if every smoke passed. Make the repository public (backstage PUB-26 §2) and re-push the tag. Use workflow_dispatch if you only want to validate the installers."
+          echo "::error::The repository is private. The release job attests the assets with actions/attest-build-provenance, which requires a public repository or a paid plan, and it runs before the Release is created — so no Release and no assets would be published even if every smoke passed. Make the repository public and re-push the tag. Use workflow_dispatch if you only want to validate the installers."
           exit 1
       - name: Free up runner disk space
         run: |
