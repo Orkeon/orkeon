@@ -83,10 +83,10 @@ foreach ($report in $reports) {
 }
 
 # The latest result of each model, one row per model. A row merges every report of the model's
-# latest campaign day, the latest result of each mode winning: the vision companion's M9 run and
-# the paid D8 run join the main run of their day, and a day older than the model's latest never
-# mixes in. The report linked is that day's with the most modes. Sorted ordinally, the same
-# order as the code-point sort of lib/recap.sh.
+# latest campaign day, the latest result of each mode winning: reports of the same model
+# (for example a D8 run made separately) are merged, a vision companion is a row of its own, and
+# a day older than the model's latest never mixes in. The report linked is that day's with the most modes. Sorted ordinally, the
+# same order as the code-point sort of lib/recap.sh.
 function Get-ModeKey([string]$Mode) { return [pscustomobject]@{ Letter = $Mode.Substring(0, 1); Number = [int]$Mode.Substring(1) } }
 
 function Compare-Mode([string]$A, [string]$B) {
@@ -228,7 +228,7 @@ else {
     $lines.Add('## Latest result per model')
     $lines.Add('')
     $lines.Add("One row per model: the latest result of each mode on the model's latest campaign day (the")
-    $lines.Add("vision companion's M9 and the paid D8 join the main run of their day). The same table is")
+    $lines.Add("reports of the same model are merged; a vision companion is a row of its own). The same table is")
     $lines.Add('published in the documentation, `docs/reference/llm-campaign-results.md`.')
     $lines.Add('')
     Add-ModelTable $lines 'en' ''
@@ -269,7 +269,7 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
         $page.Add('')
         $page.Add("Chaque modèle que le kit de campagne a exercé contre l'API réelle de son fournisseur, avec le")
         $page.Add('dernier résultat de chaque mode. Une ligne réunit les rapports du dernier jour de campagne du')
-        $page.Add('modèle : le M9 du compagnon vision et le D8 payant rejoignent la campagne principale de leur jour.')
+        $page.Add('modèle : seuls les rapports d''un même modèle sont réunis ; un compagnon vision est une ligne à part.')
         $page.Add("Les jours plus anciens sont dans le [journal des campagnes]($ReportUrl/README.md#campaigns-run).")
         $page.Add('')
         $page.Add('Les modes M1 à M13 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans')
@@ -288,8 +288,8 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
         $page.Add('> campaign: do not edit it by hand.')
         $page.Add('')
         $page.Add("Every model the campaign kit has run against its vendor's real API, with the latest result of")
-        $page.Add("each mode. A row merges the reports of the model's latest campaign day: the vision companion's")
-        $page.Add('M9 and the paid D8 join the main run of their day. Older days are in the')
+        $page.Add("each mode. A row merges the reports of the model's latest campaign day: only reports of the")
+        $page.Add('same model are merged, and a vision companion is a row of its own. Older days are in the')
         $page.Add("[campaign journal]($ReportUrl/README.md#campaigns-run).")
         $page.Add('')
         $page.Add('Modes M1 to M13 are the chat modes, D1 to D8 the decision-model modes; they are defined in the')

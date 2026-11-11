@@ -263,6 +263,31 @@ public class OpenAICompatibleProviderBaseRetryTests
     }
 
     [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldThrowWithTheBalanceHint_WhenTheTextStreamMeetsA429ForAnExhaustedBalance()
+    {
+        using var factory = new MockHttpClientFactory();
+        var handler = factory.SetupDefaultHandler();
+        handler.SetResponseFactory(_ => new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+        {
+            Content = new StringContent("{\"error\":{\"type\":\"exceeded_current_quota_error\",\"message\":\"Your account is suspended\"}}")
+        });
+        var config = LlmConfig.Create(TestModelName, TestApiKey) with { MaxRetries = 3 };
+        using var provider = new DelayRecordingProvider(config, factory, Policy.NoOpAsync<HttpResponseMessage>());
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(async () =>
+        {
+            await foreach (var _ in provider.GenerateStreamingAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken)) { }
+        });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, ex.StatusCode);
+        Assert.Contains("TooManyRequests - ", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("account balance exhausted", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(1, handler.SendCallCount);
+        Assert.Empty(provider.Delays);
+    }
+
+    [Fact]
     public async Task ShouldNotRetryOn400_WhenGenerateAsyncWithBadRequest()
     {
         // Arrange — 400 is not a transient error, should not be retried

@@ -51,6 +51,13 @@ public static class ResiliencePolicies
     /// (<see cref="LlmFailureClassifier.IsBalanceExhausted"/>). The body is buffered first, so the
     /// provider still reads it to build its error.
     /// </summary>
+    /// <remarks>
+    /// A body that cannot be read leaves no caller holding the answer unless this method returns, so
+    /// the read failures split in two. A transport failure (<see cref="HttpRequestException"/>,
+    /// <see cref="IOException"/>) counts as "not exhausted": the answer stays a plain 429 and follows
+    /// the rate-limit path it took before issue #328 (retried, then disposed by its owner). Any other
+    /// failure, a cancellation first, disposes the answer, since nobody else will, and rethrows.
+    /// </remarks>
     /// <param name="response">The answer to inspect.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     internal static async Task<bool> IsBalanceExhaustedAsync(HttpResponseMessage response, CancellationToken cancellationToken)
@@ -58,9 +65,21 @@ public static class ResiliencePolicies
         ArgumentNullException.ThrowIfNull(response);
         if (response.StatusCode != HttpStatusCode.TooManyRequests)
             return false;
-        await response.Content.LoadIntoBufferAsync(cancellationToken).ConfigureAwait(false);
-        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return LlmFailureClassifier.IsBalanceExhausted(response.StatusCode, body);
+        try
+        {
+            await response.Content.LoadIntoBufferAsync(cancellationToken).ConfigureAwait(false);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return LlmFailureClassifier.IsBalanceExhausted(response.StatusCode, body);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException && !cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
     }
 
     /// <summary>

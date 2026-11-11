@@ -7,7 +7,7 @@
 
 Chaque modèle que le kit de campagne a exercé contre l'API réelle de son fournisseur, avec le
 dernier résultat de chaque mode. Une ligne réunit les rapports du dernier jour de campagne du
-modèle : le M9 du compagnon vision et le D8 payant rejoignent la campagne principale de leur jour.
+modèle : seuls les rapports d'un même modèle sont réunis ; un compagnon vision est une ligne à part.
 Les jours plus anciens sont dans le [journal des campagnes](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#campaigns-run).
 
 Les modes M1 à M13 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans

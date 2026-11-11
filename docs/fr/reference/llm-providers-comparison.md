@@ -114,15 +114,15 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
   clôture markdown) : la déclaration None est une mesure (appels bruts, 2026-08-30,
   consignée dans la note MiniMax du catalogue de campagne — le M8 archivé montre ➖ parce
   que la déclaration None empêche l'option d'être envoyée). Vision par modèle (D-03) :
-  `MiniMax-M2` répond « I'm unable to view the image » ; `MiniMax-M3` lit l'image (campagne
-  du 2026-09-21) et sert de compagnon vision au kit.
+  `MiniMax-M2` répond « I'm unable to view the image » ; `MiniMax-M3`, le défaut depuis le 2026-11-11, lit l'image
+  (campagnes du 2026-09-21 et du 2026-11-11).
 - **Grok (x.AI)** : chaque capacité déclarée est une mesure en réel — une campagne complète de
   12 modes est passée contre `api.x.ai` via le dialecte OpenAI générique avant même que la
   classe du provider existe (2026-08-30, archivée sous `llmproviders-test/custom-endpoints/`).
   Les clés portent le préfixe `xai-`, que la factory infère.
 - **OpenRouter** : la place de marché (465 modèles le 2026-10-07) derrière une seule clé,
   intégrée documentation d'abord (LLM-09) et campagnée le 2026-10-07 (11/1 sur
-  `google/gemini-3.7-flash`, le rouge étant M10).
+  `google/gemini-3.7-flash`, le rouge étant M10 ; le défaut est `google/gemini-3.8-flash` depuis le 2026-11-11, 12/0/0).
   Les identifiants sont `vendeur/modèle` (préfixe obligatoire), avec les suffixes `:free` /
   `:nitro` / `:floor` et le slug routeur `openrouter/auto` (utilisable, refusé comme défaut :
   le modèle servi dérive — la métadonnée `served_model` dit qui a répondu). La trace de
@@ -143,10 +143,10 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
   ayant répondu.
 - **Mammouth AI** : l'abonnement multi-modèles français dont les crédits API inclus pilotent
   Orkeon, intégré documentation d'abord (LLM-09) et campagné le 2026-10-07 (10/0/2 sur
-  `gemini-3.7-flash` : tous les modes exercés verts). À trois
+  `gemini-3.7-flash` : tous les modes exercés verts ; le défaut est `gemini-3.8-flash` depuis le 2026-11-11, 9/1/2 avec M10 rouge). À trois
   indices concordants (2026-09-18) l'API est un proxy LiteLLM ; rien dans le provider n'en
   dépend. Les identifiants sont les chaînes nues des vendeurs (`gpt-5.6-sol`,
-  `claude-sonnet-5`, `gemini-3.7-flash`) : le provider se cible par hôte (`api.mammouth.ai`)
+  `claude-sonnet-5`, `gemini-3.8-flash`) : le provider se cible par hôte (`api.mammouth.ai`)
   ou par la clé de provider explicite `mammouth` (`LlmProviderFactory.Create("mammouth", …)`,
   `orkeon llm probe -p mammouth`) et n'est jamais inféré d'un nom de modèle — la même chaîne
   sans base URL continue d'aller chez le vendeur. Les settings d'un run ne portent aucune clé
@@ -157,7 +157,7 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
   qui raisonne revient dans `reasoning_content` (pas encore déclaré — avertissement
   structuré, jamais un drop silencieux) ; la vision est déclarée depuis la
   liste `text, image` du vendeur. Les tarifs sont les bornes hautes du vendeur
-  (`gemini-3.7-flash` à 1,5 / 7,5 $/M, le double du direct).
+  (`gemini-3.8-flash`, comme `gemini-3.7-flash` avant lui, à 1,5 / 7,5 $/M, le double du direct).
 - **Clés identity-linked Anthropic** : refusent toute requête sans en-tête
   `anthropic-workspace-id` (2026-08-30). Renseigner `LlmConfig.WorkspaceId`
   (CLI : `--workspace-id`) ; les clés classiques n'en ont pas besoin.
@@ -263,16 +263,16 @@ dans la colonne « Plus récent ».
 | Anthropic | `claude-sonnet-5` | oui — 2 / 10 $/M rendu définitif, actif au moins jusqu'au 2027-06-30 | `claude-fable-5-1` (2026-09-01, 10 / 50, thinking toujours actif, `tool_choice` forcé refusé) ; `claude-fable-5-2` (2026-11-09, contexte 1M, sortie 128K) | reste — **campagné le 2026-09-21** : `claude-fable-5-1` 11/1 deux fois (le rouge est M6, le protocole texte de repli ; outils natifs, schéma, vision et cache verts) — viable, à cinq fois le prix ; `claude-opus-5-fast` est un drapeau `speed`, pas un id ; `temperature` / `top_p` / `top_k` renvoient 400 sur tout modèle à partir d'Opus 4.7 ; **campagné le 2026-11-11** : le défaut 12/12, `claude-fable-5-2` 12/12 — y compris le M6 que `claude-fable-5-1` manque encore (11/1) |
 | Azure OpenAI | déploiement | — | — | rien à défauter |
 | Ollama | `llama3.2` | oui — 3B, texte seul, sans thinking, vieux d'un an | `qwen3.5:4b`, `gemma4:e4b`, `granite4.2:3b` (outils + thinking, même gabarit) | reste : un nouveau défaut impose un pull sur chaque machine |
-| Together AI | `zai-org/GLM-5.3-Flash` (était `meta-llama/Llama-3.3-70B-Instruct-Turbo`) | oui — 0,15 / 0,50 $/M (catalogue lu le 2026-11-11) ; l'ancien défaut n'est plus servi en serverless | `Qwen/Qwen3.5-9B`, `deepseek-ai/DeepSeek-V4.1-Flash` ; Llama 4 a quitté le serverless | **changé le 2026-11-11** — chaque appel à l'ancien défaut répondait `Unable to access non-serverless model` (2/9/1), le défaut passe donc à `zai-org/GLM-5.3-Flash`, cible de remplacement de Together depuis le 2026-09-19 : 10/1/1 le même jour (M10 : aucun token en cache rapporté ; 11/0/1 le 2026-09-21), il lit l'image, le défaut voit donc et il n'y a plus de compagnon vision séparé ; `Qwen/Qwen3.5-9B` 10/1/1 (M10), candidat |
+| Together AI | `zai-org/GLM-5.3-Flash` (était `meta-llama/Llama-3.3-70B-Instruct-Turbo`) | oui — 0,15 / 0,50 $/M (catalogue lu le 2026-11-11) ; l'ancien défaut n'est plus servi en serverless | `Qwen/Qwen3.5-9B`, `deepseek-ai/DeepSeek-V4.1-Flash` ; Llama 4 a quitté le serverless | **changé le 2026-11-11** — chaque appel à l'ancien défaut répondait `Unable to access non-serverless model` (2/9/1), le défaut passe donc à `zai-org/GLM-5.3-Flash`, cible de remplacement de Together depuis le 2026-09-19 : 11/0/1 au dernier essai du jour (10/1/1 au premier, M10 : aucun token en cache rapporté ; 11/0/1 le 2026-09-21), il lit l'image, le défaut voit donc et il n'y a plus de compagnon vision séparé ; `Qwen/Qwen3.5-9B` 10/1/1 (M10), candidat |
 | DeepSeek | `deepseek-flash` (était `deepseek-v4-flash`) | oui — V4.1 Flash, 0,30 / 1,20 $/M en pointe, vision native | c'est le plus récent | **changé le 2026-09-19** : l'ancien nom est un modèle retiré routé « temporairement » ici ; **rejoué le 2026-09-21** : 12/12 deux fois — M2 et M9, rouges pendant cinq campagnes sur `deepseek-v4-flash`, sont verts sur `deepseek-flash` ; **rejoué le 2026-11-11** : `deepseek-flash` 12/12 |
 | Kimi | `kimi-k3.1-pro` (était `kimi-k2.6`) | oui — `kimi-k2.6` 0,95 / 4,00 $/M, sans date de retrait | `kimi-k3` (juillet 2026, 1M, 3 / 15, échantillonnage figé, pas de champ `thinking`, raisonne toujours) ; `kimi-k3.1-pro` et les variantes `-highspeed` (listés le 2026-11-11) | reste — **campagné le 2026-09-21** : `kimi-k3` 12/12 puis 11/1 (M2 sur la forme aplatie), trace de raisonnement, cache 0,97, JSON nu là où k2.6 clôture désormais son `json_object` — prêt, à trois fois le prix ; `kimi-k2.5` et `moonshot-v1-*` retirés le 2026-08-31 ; docs désormais sur `platform.kimi.ai` ; **2026-11-11** : `kimi-k2.6` 10/1/1 (M8 : son `json_object` toujours clôturé), `kimi-k3` 12/12, `kimi-k3.1-pro` 12/12 — le nouveau modèle de tête ; **changé le 2026-11-11** : le défaut passe à `kimi-k3.1-pro` (12/12 en direct et sur OpenRouter). La famille K3 fige `temperature`, `top_p` et son raisonnement : `KimiLlmProvider` laisse `temperature`, `top_p` et `thinking` hors d'une requête K3 et signale chacun, si bien qu'un hôte qui les règle reçoit un avertissement, pas un 400 |
 | Qwen | `qwen3.7-plus` | oui — toujours le palier Plus, l'un des trois modèles recommandés | `qwen3.8-max` (= `qwen3.8-max-0902`), `qwen3.8-flash` ; pas de `qwen3.8-plus` | reste — **campagné le 2026-09-21** : `qwen3.8-max` 12/12, `qwen3.8-flash` 11/1 (M2), tous deux prêts, et `qwen3.7-plus` est toujours 12/12 ; la génération 3.8 ajoute `preserve_thinking` ; **2026-11-11** : `qwen3.7-plus`, `qwen3.8-flash` et `qwen3.8-max` 12/12 chacun |
 | Mistral AI | `mistral-medium-2604` | oui — 1,50 / 7,50 $/M, non déprécié | rien pour le chat depuis avril (OCR 4.1 seulement) | reste ; les ids `devstral-*` / magistral sont dans la table des dépréciés ; **2026-11-11** : le défaut et `mistral-large-4` 12/12, `mistral-small-2603` 11/1 (M9) |
 | HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | oui — mais outils sur un seul de ses quatre fournisseurs routés, et `:fastest` peut en choisir un autre | `Qwen/Qwen3.5-9B` (outils sur trois fournisseurs, dès 0,10 / 0,15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidat Qwen3.5-9B — **campagné le 2026-09-21** : 10/0/2, il voit et ses outils tiennent ; son premier passage a rendu un M1 vide après 4113 tokens de réflexion sur le repli 4096 du routeur — épingler `Llm:MaxTokens` (ou couper le thinking) avant d'en faire un défaut. Le routage explique toujours les rouges mouvants du défaut (M2 et M5 rouges ensemble au même passage) ; **2026-11-11** : le défaut 7/3/2 (M2, M5, M9), `Qwen/Qwen3.5-9B` 9/1/2 (M2) |
-| Z.AI | `glm-5.3-flashx` (était `glm-5.2`) | oui — `glm-5.2` toujours sous « Latest Models », 1,40 / 4,40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0,15 / 0,50, image + vidéo), `glm-5.3-flashx` | reste — **campagné le 2026-09-21** : `glm-5.3-flash` 12/12 deux fois (il voit, là où 5.2 et 5.3 répondent `1210` ; cache lu) — le candidat le plus net du parc, à un neuvième du prix ; `glm-5.3` 10/2 (M2, M9) n'apporte rien sur 5.2. La déclaration `Toggle` demande toujours une garde par modèle avant une montée ; **2026-11-11** : `glm-5.3-flashx` de nouveau à 12/12, `glm-5.3` 11/1 (M9), `glm-5.3-flash` 11/1 (M2), `glm-5.2` 10/2 ; **changé le 2026-11-11** : le défaut passe à `glm-5.3-flashx` (12/12 le 2026-10-07 et le 2026-11-11, il voit et son cache est lu). La famille 5.3 ne sait pas couper la réflexion : `ZaiLlmProvider` ne lui envoie pas `thinking: disabled` et signale l'option à la place |
+| Z.AI | `glm-5.3-flashx` (était `glm-5.2`) | oui — `glm-5.2` toujours sous « Latest Models », 1,40 / 4,40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0,15 / 0,50, image + vidéo), `glm-5.3-flashx` | reste — **campagné le 2026-09-21** : `glm-5.3-flash` 12/12 deux fois (il voit, là où 5.2 et 5.3 répondent `1210` ; cache lu) — le candidat le plus net du parc, à un neuvième du prix ; `glm-5.3` 10/2 (M2, M9) n'apporte rien sur 5.2. La déclaration `Toggle` demande toujours une garde par modèle avant une montée ; **2026-11-11** : `glm-5.3-flashx` de nouveau à 12/12, `glm-5.3` 11/1 (M9), `glm-5.3-flash` 11/1 (M2), `glm-5.2` 10/2 ; **changé le 2026-11-11** : le défaut passe à `glm-5.3-flashx` (12/12 le 2026-10-07 et au premier essai du 2026-11-11, 11/1 avec M10 rouge au dernier ; il voit et son cache est lu) ; derniers essais du jour : `glm-5.3-flash` 12/0/0, `glm-5.3` 10/2 (M2, M9), `glm-5.2` 11/1 (M9). La famille 5.3 ne sait pas couper la réflexion : `ZaiLlmProvider` ne lui envoie pas `thinking: disabled` et signale l'option à la place |
 | Google Gemini | `gemini-3.8-flash` (était `gemini-3.7-flash`) | oui — `gemini-3.7-flash` « génération précédente », sans date d'arrêt, 0,75 / 3,75 $/M jusqu'au 2026-12-31 puis 1,50 / 7,50 | `gemini-3.8-flash` (GA 2026-09-02, même prix, thinking `minimal` refusé) ; `gemini-4-argon`, `gemini-4-carbon` | premier candidat à une montée — **campagné le 2026-09-21** : `gemini-3.8-flash` 11/0/1 deux fois, identique à 3.7 mode pour mode sur le transport direct ; OpenRouter et Mammouth non joués (pas de clé) ; **2026-11-11** : le défaut 11/0/1, `gemini-3.8-flash` 12/0/0, `gemini-4-argon` et `gemini-4-carbon` 11/0/1 chacun ; `gemini-omni-1.2-flash` est listé mais réservé à l'API Interactions, hors de portée de ce provider et non campagné ; **changé le 2026-11-11 (campagne complète rejouée)** : `gemini-3.8-flash` 12/0/0 en direct et chez OpenRouter (9/1/2 chez Mammouth, le même M10 qu'en 3.7), le défaut 11/0/1 — le défaut passe à `gemini-3.8-flash`, OpenRouter et Mammouth le suivent |
 | Grok (x.AI) | `grok-4.6` | oui — recommandé, 2 / 6 $/M sous 200K tokens de prompt, 4 / 12 au-delà | aucun | reste (`grok-4.7` est listé depuis) ; **campagné le 2026-11-11** : `grok-4.6` et `grok-4.7` 12/12 |
-| MiniMax | `MiniMax-M3` (était `MiniMax-M2`) | oui — `MiniMax-M2` listé « legacy », sans date de retrait | `MiniMax-M3` (2026-06-01, 1M, entrée image + vidéo, mêmes 0,30 / 1,20) ; `MiniMax-M3.1-Flash` | reste — **campagné le 2026-09-21** : `MiniMax-M3` 9/1/2 puis 8/1/3 — il lit l'image (désormais compagnon vision du kit), M2 rouge comme M2, le bloc `<think>` inline découpé comme sur M2, 128 tokens en cache une fois ; la question du format de raisonnement est tranchée ; **2026-11-11** : `MiniMax-M3.1-Flash` 10/0/2 (M7 et M8 non déclarés par le provider), M9 vert — il lit l'image là où `MiniMax-M3` lit `72` ; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9) ; **changé le 2026-11-11 (campagne complète rejouée)** : `MiniMax-M3` 10/0/2 (il lit l'image), `MiniMax-M2` 6/4/2 (M2, M5, M9, M10) — le défaut passe à `MiniMax-M3` et le compagnon vision est retiré |
+| MiniMax | `MiniMax-M3` (était `MiniMax-M2`) | oui — `MiniMax-M2` listé « legacy », sans date de retrait | `MiniMax-M3` (2026-06-01, 1M, entrée image + vidéo, mêmes 0,30 / 1,20) ; `MiniMax-M3.1-Flash` | reste — **campagné le 2026-09-21** : `MiniMax-M3` 9/1/2 puis 8/1/3 — il lit l'image (alors compagnon vision du kit), M2 rouge comme M2, le bloc `<think>` inline découpé comme sur M2, 128 tokens en cache une fois ; la question du format de raisonnement est tranchée ; **2026-11-11** : `MiniMax-M3.1-Flash` 10/0/2 (M7 et M8 non déclarés par le provider), M9 vert — il lit l'image là où `MiniMax-M3` lit `72` ; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9) ; **changé le 2026-11-11 (campagne complète rejouée)** : `MiniMax-M3` 10/0/2 (il lit l'image), `MiniMax-M2` 6/4/2 (M2, M5, M9, M10) — le défaut passe à `MiniMax-M3` et le compagnon vision est retiré |
 | OpenRouter | `google/gemini-3.8-flash` (était `google/gemini-3.7-flash`) | oui | `google/gemini-3.8-flash` (2026-09-02, même prix) | suit le défaut direct — **campagné le 2026-10-07** : 11/1 sur les deux (M10 : champs de cache rendus à 0) ; **2026-11-11** : le défaut 12/0/0, `google/gemini-3.8-flash` 11/1/0 (M10), `moonshotai/kimi-k3.1-pro` 12/0/0 ; **changé le 2026-11-11 (campagne complète rejouée)** : `google/gemini-3.8-flash` 12/0/0, `google/gemini-3.7-flash` 11/1 (M10) — suit le défaut direct en 3.8 |
 | Mammouth AI | `gemini-3.8-flash` (était `gemini-3.7-flash`) | oui | `gemini-3.8-flash` | suit le défaut direct — **campagné le 2026-10-07** : 10/0/2 sur les deux, tous les modes exercés verts ; **2026-11-11** : 9/1/2 sur les deux (M10 : 0 token en cache), `kimi-k3.1-pro` 10/0/2 ; **changé le 2026-11-11 (campagne complète rejouée)** : 9/1/2 sur les deux à nouveau (M10) — suit le défaut direct en 3.8 |
 
@@ -351,12 +351,12 @@ les plafonds documentés sont ceux de la section suivante.
 |  | `claude-fable-5-2` | 1 000 000 | 128 000 | efforts `low` `medium` `high` `xhigh` `max` · thinking `adaptive` | `temperature` = `1` | 12/0/0 |
 | DeepSeek | `deepseek-flash` *(défaut)* | 1 048 576 | 393 216 | effort par défaut `high` (sur `low` `high` `max`) · text + image | — | 12/0/0 |
 |  | `deepseek-v4-pro` | 1 048 576 | 393 216 | effort par défaut `high` (sur `low` `high` `max`) · text | — | 11/1/0 — ❌ M9 (2026-10-07) |
-| Z.AI | `glm-5.2` | — | — | — | — | 10/2/0 — ❌ M9, M10 |
-|  | `glm-5.3` | — | — | — | — | 11/1/0 — ❌ M9 |
-|  | `glm-5.3-flash` | — | — | — | — | 11/1/0 — ❌ M2 |
+| Z.AI | `glm-5.2` | — | — | — | — | 11/1/0 — ❌ M9 (10/2/0 plus tôt le même jour) |
+|  | `glm-5.3` | — | — | — | — | 10/2/0 — ❌ M2, M9 (11/1/0 plus tôt le même jour) |
+|  | `glm-5.3-flash` | — | — | — | — | 12/0/0 (11/1/0, M2 rouge, plus tôt le même jour) |
 |  | `glm-5.3-flashx` *(défaut)* | — | — | — | — | 11/1/0 — ❌ M10 (12/0/0 plus tôt le même jour) |
 | Kimi | `kimi-k2.6` | 262 144 | — | image + vidéo + raisonnement | `temperature` = `1` | 10/1/1 — ❌ M8 |
-|  | `kimi-k3` | 1 048 576 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
+|  | `kimi-k3` | 1 048 576 | — | image + vidéo + raisonnement | `temperature` = `1` | 11/1/0 (M2) |
 |  | `kimi-k3.1-pro` *(défaut)* | 1 048 576 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k3.1-pro-highspeed` | 1 048 576 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
 |  | `kimi-k2.7-code` | 262 144 | — | image + vidéo + raisonnement | `temperature` = `1` | 12/0/0 |
@@ -382,7 +382,7 @@ les plafonds documentés sont ceux de la section suivante.
 |  | `MiniMax-M2.7` | — | — | — | — | 8/2/2 — ❌ M2, M9 (2026-10-07) |
 |  | `MiniMax-M3` *(défaut)* | — | — | — | — | 10/0/2 |
 |  | `MiniMax-M3.1-Flash` | — | — | — | — | 10/0/2 |
-| Together AI | `zai-org/GLM-5.3-Flash` *(défaut)* | 1 048 575 | — | 0.15 / 0.5 $/M | — | 10/1/1 — ❌ M10 |
+| Together AI | `zai-org/GLM-5.3-Flash` *(défaut)* | 1 048 575 | — | 0.15 / 0.5 $/M | — | 11/0/1 (10/1/1, M10 rouge, plus tôt le même jour) |
 |  | `Qwen/Qwen3.5-9B` | 262 144 | — | 0.17 / 0.25 $/M | — | 10/1/1 — ❌ M10 |
 |  | `meta-llama/Llama-3.3-70B-Instruct-Turbo` *(ancien défaut)* | 131 072 | — | 1.04 / 1.04 $/M | — | 2/9/1 — plus serverless |
 | HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` *(défaut)* | jusqu'à 131 072 | — | 3 fournisseur(s) routé(s), 1 avec outils | — | 7/3/2 — ❌ M2, M5, M9 |
@@ -448,12 +448,13 @@ Ce que le tableau ne dit pas tout seul :
   est à 12/12 aussi, `kimi-k2.7-code` toujours à 12/12. `kimi-k2.6` reste à 10/1/1 — M8
   toujours clôturé, M10 ne rapporte aucune ventilation des tokens en cache. `kimi-k3.1-pro`
   est aussi à 12/12 via OpenRouter, 10/0/2 via Mammouth.
-- **Z.AI** — `glm-5.3-flashx` est le deuxième modèle de la famille à passer tous les modes.
+- **Z.AI** — `glm-5.3-flashx` est le deuxième modèle de la famille à passer tous les modes (au premier essai du jour).
   La liste omet `glm-4.6v-flash`, qui est servi (le compagnon vision, M9 vert le même jour) :
-  un catalogue n'est pas toute l'offre. `glm-5.3-flashx` est de nouveau à 12/12 ; `glm-5.3`
-  passe M2 au vert (11/1, reste M9 `1210`) ; `glm-5.3-flash` garde M2 rouge, son message système
-  ignoré sous les deux formes — le modèle, pas Orkeon ; `glm-5.2` inchangé (M9 `1210`, M10
-  `0 cached`). La première clé du jour n'avait pas de solde (429, code 1113), que le provider a
+  un catalogue n'est pas toute l'offre. `glm-5.3-flashx` est de nouveau à 12/12 au premier essai, 11/1 au dernier (M10 rouge) ;
+  `glm-5.3` passe M2 au vert au premier essai (11/1, reste M9 `1210`) puis le repasse au rouge
+  au dernier (10/2) ; `glm-5.3-flash` garde M2 rouge au premier essai, son message système
+  ignoré sous les deux formes — le modèle, pas Orkeon — et est à 12/12 au dernier ; `glm-5.2` est
+  à 10/2 puis 11/1 (M9 `1210` ; M10 `0 cached` au premier essai). La première clé du jour n'avait pas de solde (429, code 1113), que le provider a
   retenté comme une limite transitoire pendant 21 minutes (issue #328). `glm-5.3-flashx-legal`
   est nouveau dans la liste, non campagné.
 - **Qwen** — une clé internationale n'est servie que par `dashscope-intl.aliyuncs.com` ;
@@ -471,11 +472,12 @@ Ce que le tableau ne dit pas tout seul :
   surface compatible OpenAI : hors de portée de ce provider, non campagné.
 - **MiniMax** — `MiniMax-M3.1-Flash` est nouveau dans la liste (9 ids) : 10/0/2 dès son premier
   essai, M7 et M8 non déclarés par le provider, M9 vert — il lit l'image là où `MiniMax-M3` se
-  trompe de nombre (`72` ; 9/1/2). `MiniMax-M2` est à 8/2/2 (M2, M9).
+  trompe de nombre (`72` ; 9/1/2 au premier essai, 10/0/2 au dernier : il lit l'image
+  aussi). `MiniMax-M2` est à 8/2/2 (M2, M9), puis 6/4/2 au dernier essai (M2, M5, M9, M10).
 - **Together AI** — `meta-llama/Llama-3.3-70B-Instruct-Turbo`, l'ancien défaut compilé, n'est plus
   servi en serverless : chaque appel répond `Unable to access non-serverless model` (2/9/1). Le
-  défaut passe à `zai-org/GLM-5.3-Flash` (10/1/1, M10 rouge : l'endpoint ne rapporte aucun
-  token en cache) ; `Qwen/Qwen3.5-9B` est à 10/1/1 (M10). Le défaut voit, il n'y a donc plus
+  défaut passe à `zai-org/GLM-5.3-Flash` (11/0/1 au dernier essai du jour, 10/1/1 au
+  premier avec M10 rouge : l'endpoint ne rapporte aucun token en cache) ; `Qwen/Qwen3.5-9B` est à 10/1/1 (M10). Le défaut voit, il n'y a donc plus
   de compagnon vision séparé.
 - **HuggingFace** — le défaut est à 7/3/2 (M2, M5, M9) et `Qwen/Qwen3.5-9B` à 9/1/2 (M2) ; le
   routage décide toujours du nombre de fournisseurs d'un modèle qui portent les outils.

@@ -89,6 +89,82 @@ public sealed class ResiliencePoliciesTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldStillRetry_WhenGetLlmApiPolicyMeetsGeminisQuotaRateLimit()
+    {
+        const string gemini = "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota, please check your plan and billing details.\",\"status\":\"RESOURCE_EXHAUSTED\"}}";
+        var policy = ResiliencePolicies.GetLlmApiPolicy(_logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1));
+        _httpHandler.SetupResponses(
+            new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new StringContent(gemini) },
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        var response = await policy.ExecuteAsync(async () => await _httpClient.GetAsync("http://test.com"));
+
+        Assert.False(Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.IsBalanceExhausted(HttpStatusCode.TooManyRequests, gemini));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, _httpHandler.CallCount);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldTreatTheAnswerAsARateLimit_WhenIsBalanceExhaustedAsyncMeetsAnIoFailure()
+    {
+        var content = new Doubles.StubFaultingHttpContent(new IOException("connection reset"));
+        using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = content };
+
+        var exhausted = await ResiliencePolicies.IsBalanceExhaustedAsync(response, TestContext.Current.CancellationToken);
+
+        Assert.False(exhausted);
+        Assert.Equal(1, content.Reads);
+        Assert.False(content.Disposed);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldDisposeTheAnswerAndRethrow_WhenIsBalanceExhaustedAsyncIsCancelledWhileReading()
+    {
+        var content = new Doubles.StubFaultingHttpContent(new OperationCanceledException("cancelled"));
+        using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = content };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => ResiliencePolicies.IsBalanceExhaustedAsync(response, TestContext.Current.CancellationToken));
+
+        Assert.True(content.Disposed);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldRetryAsBefore_WhenGetLlmApiPolicyCannotReadA429Body()
+    {
+        var policy = ResiliencePolicies.GetLlmApiPolicy(_logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1));
+        _httpHandler.SetupResponses(
+            new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new Doubles.StubFaultingHttpContent(new HttpRequestException("body lost")) },
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        var response = await policy.ExecuteAsync(async () => await _httpClient.GetAsync("http://test.com", HttpCompletionOption.ResponseHeadersRead));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, _httpHandler.CallCount);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-328")]
+    public async Task ShouldDisposeThe429_WhenGetLlmApiPolicyIsCancelledWhileReadingItsBody()
+    {
+        var policy = ResiliencePolicies.GetLlmApiPolicy(_logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1));
+        var content = new Doubles.StubFaultingHttpContent(new OperationCanceledException("cancelled"));
+        _httpHandler.SetupResponses(
+            new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = content },
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => policy.ExecuteAsync(async () => await _httpClient.GetAsync("http://test.com", HttpCompletionOption.ResponseHeadersRead)));
+
+        Assert.True(content.Disposed);
+        Assert.Equal(1, _httpHandler.CallCount);
+    }
+
+    [Fact]
     public void ShouldCapEveryWait_WhenLlmRetryDelayLadderGrows()
     {
         // Linear for the first two retries, ×3 after, capped at 30 s — a 10-retry budget

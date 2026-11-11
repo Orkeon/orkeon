@@ -13,7 +13,7 @@ or drop an `appsettings.json` next to the crew's `config.yaml`.
 | `appsettings.docker-model-runner.local.json.example` | Local Docker Model Runner profile (no key). |
 | `appsettings.openai.local.json.example` | OpenAI (`gpt-4o`). |
 | `appsettings.deepseek.local.json.example` | DeepSeek V4 Flash. |
-| `appsettings.glm.local.json.example` | Z.AI GLM-5.2. |
+| `appsettings.glm.local.json.example` | Z.AI GLM, the default model `glm-5.3-flashx`. |
 | `appsettings.gemini.local.json.example` | Google Gemini (OpenAI-compatible endpoint, `gemini-3.8-flash`). |
 | `appsettings.grok.local.json.example` | Grok / x.AI (OpenAI-compatible endpoint, `grok-4.6`). |
 | `appsettings.minimax.local.json.example` | MiniMax (OpenAI-compatible endpoint, `MiniMax-M3`; intl + mainland hosts). |

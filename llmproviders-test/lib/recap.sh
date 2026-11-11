@@ -70,9 +70,9 @@ done < <(find "$ROOT" -mindepth 2 -maxdepth 2 -name '*.md' -type f -not -path "$
 
 # The latest result of each model, one row per model, as TSV: provider, label, model, default
 # flag, date, passed, failed, not applicable, failed modes, report. A row merges every report
-# of the model's latest campaign day, the latest result of each mode winning: the vision
-# companion's M9 run and the paid D8 run join the main run of their day, and a day older than
-# the model's latest never mixes in. The report linked is that day's with the most modes.
+# of the model's latest campaign day, the latest result of each mode winning: reports of the
+# same model (for example a D8 run made separately) are merged, a vision companion is a row of
+# its own, and a day older than the model's latest never mixes in. The report linked is that day's with the most modes.
 # Sorted on code points (jq), the same order as the PowerShell mirror's ordinal sort.
 model_table_tsv() {
   local providers
@@ -162,7 +162,7 @@ model_count=$(printf '%s' "$model_table" | grep -c . || true)
     echo "## Latest result per model"
     echo
     echo "One row per model: the latest result of each mode on the model's latest campaign day (the"
-    echo "vision companion's M9 and the paid D8 join the main run of their day). The same table is"
+    echo "reports of the same model are merged; a vision companion is a row of its own). The same table is"
     echo "published in the documentation, \`docs/reference/llm-campaign-results.md\`."
     echo
     render_model_table en ""
@@ -200,7 +200,7 @@ write_docs_page() {
       echo
       echo "Chaque modèle que le kit de campagne a exercé contre l'API réelle de son fournisseur, avec le"
       echo "dernier résultat de chaque mode. Une ligne réunit les rapports du dernier jour de campagne du"
-      echo "modèle : le M9 du compagnon vision et le D8 payant rejoignent la campagne principale de leur jour."
+      echo "modèle : seuls les rapports d'un même modèle sont réunis ; un compagnon vision est une ligne à part."
       echo "Les jours plus anciens sont dans le [journal des campagnes](${REPORT_URL}/README.md#campaigns-run)."
       echo
       echo "Les modes M1 à M13 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans"
@@ -218,8 +218,8 @@ write_docs_page() {
       echo "> campaign: do not edit it by hand."
       echo
       echo "Every model the campaign kit has run against its vendor's real API, with the latest result of"
-      echo "each mode. A row merges the reports of the model's latest campaign day: the vision companion's"
-      echo "M9 and the paid D8 join the main run of their day. Older days are in the"
+      echo "each mode. A row merges the reports of the model's latest campaign day: only reports of the"
+      echo "same model are merged, and a vision companion is a row of its own. Older days are in the"
       echo "[campaign journal](${REPORT_URL}/README.md#campaigns-run)."
       echo
       echo "Modes M1 to M13 are the chat modes, D1 to D8 the decision-model modes; they are defined in the"

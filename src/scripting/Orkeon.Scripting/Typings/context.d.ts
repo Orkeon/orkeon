@@ -248,8 +248,9 @@ declare global {
         /**
          * Runs before a model turn once the loop's messages pass `contextPressure.thresholdTokens`
          * (estimated as characters / 4) and older tool results remain to judge (#327). It is handed
-         * those calls (the last `contextPressure.keepRecent` messages are never offered, nor a result
-         * already pruned) and answers by call id: `"keep"`, `"head"` (the result cut to its first
+         * the results of the read tools that ran (never a write, a command or a refused call; the last
+         * `contextPressure.keepRecent` messages are never offered, nor a result a verdict already
+         * settled) and answers by call id: `"keep"`, `"head"` (the result cut to its first
          * `contextPressure.headChars` characters) or `"drop"` (the result replaced by a line naming
          * the call). A pruned result always leaves a line that says what was removed and that the
          * call can be run again. A call left out keeps its result. A callback that throws, or a
@@ -262,7 +263,7 @@ declare global {
         contextPressure?: {
             /** Estimated tokens of the loop's messages from which the callback runs. Default 100000. */
             thresholdTokens?: number;
-            /** Most recent messages whose tool results are never offered. Default 4. */
+            /** Most recent messages (not turns) whose tool results are never offered. Default 4. */
             keepRecent?: number;
             /** Characters a `"head"` verdict keeps. Default 1000. */
             headChars?: number;

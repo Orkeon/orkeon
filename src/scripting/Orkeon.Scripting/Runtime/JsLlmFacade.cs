@@ -949,7 +949,7 @@ public sealed partial class JsLlmFacade
         /// <summary>The <c>contextPressure</c> settings of the call, defaults filled in.</summary>
         internal ContextPressureSettings Pressure { get; }
 
-        /// <summary>Every tool result the loop added to <see cref="Messages"/>, in order: what <c>onContextPressure</c> is offered.</summary>
+        /// <summary>The results of the read tools the loop ran and added to <see cref="Messages"/>, in order: what <c>onContextPressure</c> is offered.</summary>
         internal List<ActToolRecord> ToolRecords { get; } = [];
 
         /// <summary>The loop's current iteration, 0 for the first model turn.</summary>
@@ -1578,7 +1578,10 @@ public sealed partial class JsLlmFacade
                     if (session.HasToolResultCallback)
                         text = await ApplyToolResultCallbackAsync(session, p.Call.ToolName, p.Arguments, text).ConfigureAwait(false);
                 }
-                session.ToolRecords.Add(new ActToolRecord(messages.Count, $"call-{session.ToolRecords.Count + 1}", p.Call.ToolName, p.Arguments, session.Iteration));
+                // Only a read that ran is offered to onContextPressure: running it again to get the result
+                // back changes nothing, unlike a write, a command or a refusal line.
+                if (p.Refusal is null && p.Tool?.Access == ToolAccess.Read)
+                    session.ToolRecords.Add(new ActToolRecord(messages.Count, $"call-{session.ToolRecords.Count + 1}", p.Call.ToolName, p.Arguments, session.Iteration));
                 messages.Add(new LlmMessage { Role = "tool", Content = text, ToolCallId = p.Call.Id });
             }
 

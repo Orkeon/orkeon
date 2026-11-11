@@ -201,8 +201,11 @@ public sealed partial class SystemOneDecisionModel : IDecisionModel
     {
         var code = (int)status;
         var detail = Detail(body);
+        // A 429 naming a spent balance came back after one attempt (issue #328): waiting never clears it.
+        var balanceExhausted = LlmFailureClassifier.IsBalanceExhausted(status, body);
         var message = code switch
         {
+            429 when balanceExhausted => $"{Name} account balance exhausted (429): not retried, top the account up. {detail}",
             400 when body.Contains("max_tokens_exceeded", StringComparison.Ordinal) => longContext
                 ? $"{Name} refused the request: the state is over the model's long context limit ({DecisionLimits.LongContextTokens} tokens)."
                 : $"{Name} refused the request: the state is over the model's context limit ({DecisionLimits.StandardContextTokens} tokens); set long context on the task to use {DecisionLimits.LongContextTokens}.",
@@ -214,7 +217,7 @@ public sealed partial class SystemOneDecisionModel : IDecisionModel
         };
         if (!string.IsNullOrWhiteSpace(requestId))
             message += $" ({_provider.DisplayName} request {requestId.Trim()})";
-        return new DecisionModelException(message, code, isTransient: code is 429 or >= 500);
+        return new DecisionModelException(message, code, isTransient: !balanceExhausted && (code is 429 or >= 500));
     }
 
     /// <summary>

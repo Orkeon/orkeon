@@ -165,13 +165,17 @@ the call starts (one `ActSession` per call):
 - **`onContextPressure(pressure)`** prunes stale tool results from the loop (#327). Before a model turn,
   once the loop's messages pass `contextPressure.thresholdTokens` (characters / 4, 100000 by default) and
   older results remain, it is handed `{ usedTokens, thresholdTokens, usedTokensByKind: { tool }, calls }`
-  (each call: `id`, `name`, `input`, `resultChars`, `age` in model turns; the last
-  `contextPressure.keepRecent` messages, 4 by default, and a result already pruned are never offered). It
-  answers by call id: `"keep"`, `"head"` (the first `contextPressure.headChars` characters, 1000 by
-  default) or `"drop"`. A pruned result leaves a line that names the call, says what was cut and that the
-  call can be run again, so the model never reads the absence as an empty result. A call left out is
-  kept; a callback that throws, or a return that is not an object, prunes nothing. A script can ask the
-  decision model (`system_one_decide`) for each verdict inside the callback.
+  (each call: `id`, `name`, `input`, `resultChars`, `age` in model turns). Only results of read tools
+  (`ToolAccess.Read`) that ran are offered: running one again is harmless, unlike a write, a command or a
+  refused call. The last `contextPressure.keepRecent` messages (not turns, 4 by default), a result seeded
+  from an earlier `act`, and a result a verdict already settled are never offered. It answers by call id:
+  `"keep"`, `"head"` (the first `contextPressure.headChars` characters, 1000 by default) or `"drop"`. A
+  pruned result leaves a line that names the call (its input cut to 200 characters), says what was cut
+  and that the call can be run again, so the model never reads the absence as an empty result; the call
+  itself stays in the messages. A call left out is kept and offered again; a callback that throws, or a
+  return that is not an object, prunes nothing. The estimate counts the messages' text, tool calls and
+  reasoning, not images nor tool schemas. `token_budget` reads the session buffer, which never sees the
+  loop's messages, so it does not measure this pressure.
 
 The callbacks run on the engine thread, through the same pump as script tools (see the threading
 model below); `onToolCall` always comes before the permission gate.

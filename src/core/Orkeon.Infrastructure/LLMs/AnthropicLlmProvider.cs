@@ -179,7 +179,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                     Content = "",
                     Metadata = LlmResponseMetadata.CreateBuilder()
                         .AddProvider(Name)
-                        .AddError($"Anthropic API error: {response.StatusCode} - {error}")
+                        .AddError($"Anthropic API error: {response.StatusCode} - {error}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(response.StatusCode, error)}")
                         .AddErrorType("APIError")
                         .Build()
                         .ToDictionary()
@@ -303,7 +303,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             LogApiError(response.StatusCode, error);
-            return BuildErrorResponse($"Anthropic API error: {response.StatusCode} - {error}", "APIError");
+            return BuildErrorResponse($"Anthropic API error: {response.StatusCode} - {error}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(response.StatusCode, error)}", "APIError");
         }
 
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -905,7 +905,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                 var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 LogStreamingError(response.StatusCode);
                 yield return LlmStreamEvent.Complete(
-                    BuildErrorResponse($"Anthropic API error: {response.StatusCode} - {error}", "APIError"));
+                    BuildErrorResponse($"Anthropic API error: {response.StatusCode} - {error}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(response.StatusCode, error)}", "APIError"));
                 yield break;
             }
 

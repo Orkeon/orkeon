@@ -744,7 +744,7 @@ table row. Filling the matrix (LLM-08/C4) is mechanical.
 ## Latest result per model
 
 One row per model: the latest result of each mode on the model's latest campaign day (the
-vision companion's M9 and the paid D8 join the main run of their day). The same table is
+reports of the same model are merged; a vision companion is a row of its own). The same table is
 published in the documentation, `docs/reference/llm-campaign-results.md`.
 
 | Provider | Model | Date | ✅/❌/➖ | Failed modes | Report |

@@ -3,18 +3,19 @@ using Orkeon.Domain.Tools.Protocol;
 
 namespace Orkeon.Scripting.Tests.Doubles;
 
-/// <summary>A read tool whose every call answers <see cref="Size"/> characters of text: a result worth pruning.</summary>
+/// <summary>A tool (a read unless told otherwise) whose every call answers <see cref="Size"/> characters of text: a result worth pruning.</summary>
 internal sealed class StubLargeResultTool : IBaseTool
 {
-    public StubLargeResultTool(string name, int size)
+    public StubLargeResultTool(string name, int size, ToolAccess access = ToolAccess.Read)
     {
         Name = name;
         Size = size;
+        Access = access;
     }
 
     public string Name { get; }
     public int Size { get; }
-    public ToolAccess Access => ToolAccess.Read;
+    public ToolAccess Access { get; }
     public string Description => "test tool with a large result";
     public ToolSchema Schema => new(Name, Description, new Dictionary<string, ParameterSchema>());
 

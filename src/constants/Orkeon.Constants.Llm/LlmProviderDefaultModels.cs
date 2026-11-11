@@ -56,8 +56,8 @@ public static class LlmProviderDefaultModels
     /// Together AI. Campaign of 2026-11-11: <c>meta-llama/Llama-3.3-70B-Instruct-Turbo</c>, the default
     /// until then, is no longer serverless (every call answers "Unable to access non-serverless model").
     /// <c>zai-org/GLM-5.3-Flash</c> replaces it: Together's own replacement target since the 2026-09-19
-    /// review, 1 M context, tools + JSON, reads images, 0.15 / 0.50 $/M; 10/1/1 on that campaign, the red
-    /// being M10 (the endpoint reports no cached tokens).
+    /// review, 1 M context, tools + JSON, reads images, 0.15 / 0.50 $/M; 11/0/1 on the last run of that day (10/1/1 on the
+    /// first, the red being M10: the endpoint reports no cached tokens there).
     /// </summary>
     public const string Together = "zai-org/GLM-5.3-Flash";
 
@@ -84,9 +84,10 @@ public static class LlmProviderDefaultModels
     public const string Kimi = "kimi-k3.1-pro";
 
     /// <summary>
-    /// Z.AI (Zhipu GLM). Campaign of 2026-11-11: <c>glm-5.3-flashx</c>, 12/12 for the second time
-    /// (first on 2026-10-07) - it reads images and its cache is read (8064 tokens, ratio 1.00) - where
-    /// <c>glm-5.2</c>, the default until then, stayed 10/2 (M9 code 1210, text only; M10 0 cached).
+    /// Z.AI (Zhipu GLM). Campaign of 2026-11-11: <c>glm-5.3-flashx</c>, 12/12 on its first run of that day
+    /// (as on 2026-10-07; the last run was 11/1, M10) - it reads images and its cache is read (8064
+    /// tokens, ratio 1.00) - where <c>glm-5.2</c>, the default until then, stayed 10/2 then 11/1 (M9
+    /// code 1210, text only; M10 0 cached on the first run).
     /// The 5.3 family (<c>glm-5.3</c>, <c>glm-5.3-flash</c>, <c>glm-5.3-flashx</c>) cannot disable
     /// thinking: <c>ZaiLlmProvider</c> does not send a <c>thinking: disabled</c> block to it and
     /// reports the option instead.

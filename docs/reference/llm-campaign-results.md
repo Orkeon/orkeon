@@ -6,8 +6,8 @@
 > campaign: do not edit it by hand.
 
 Every model the campaign kit has run against its vendor's real API, with the latest result of
-each mode. A row merges the reports of the model's latest campaign day: the vision companion's
-M9 and the paid D8 join the main run of their day. Older days are in the
+each mode. A row merges the reports of the model's latest campaign day: only reports of the
+same model are merged, and a vision companion is a row of its own. Older days are in the
 [campaign journal](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#campaigns-run).
 
 Modes M1 to M13 are the chat modes, D1 to D8 the decision-model modes; they are defined in the

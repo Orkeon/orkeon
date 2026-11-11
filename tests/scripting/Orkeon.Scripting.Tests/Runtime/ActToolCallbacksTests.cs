@@ -244,10 +244,10 @@ public sealed class ActToolCallbacksTests
     // the second and third model turns once the threshold is passed.
     private sealed record PressureRun(FakeToolCallingLlmProvider Provider, string Recorded, string Output);
 
-    private static async Task<PressureRun> RunPressureAsync(string onContextPressureJs, string settingsJs)
+    private static async Task<PressureRun> RunPressureAsync(string onContextPressureJs, string settingsJs, ToolAccess access = ToolAccess.Read)
     {
         using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
-        var tool = new StubLargeResultTool("file_read", 8_000);
+        var tool = new StubLargeResultTool("file_read", 8_000, access);
         var provider = new FakeToolCallingLlmProvider(
             FakeToolCallingLlmProvider.ScriptStep.Call("file_read", "{\"path\":\"/a\"}"),
             FakeToolCallingLlmProvider.ScriptStep.Call("file_read", "{\"path\":\"/b\"}"),
@@ -328,5 +328,31 @@ public sealed class ActToolCallbacksTests
         Assert.Equal("", below.Recorded);
         Assert.Equal("", recent.Recorded);
         Assert.All(below.Provider.Turns[2].Where(m => m.Role == "tool"), m => Assert.True(m.Content.Length > 8_000));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-327")]
+    public async Task ShouldNotOfferTheResultAgain_WhenOnContextPressureKeepsIt()
+    {
+        var run = await RunPressureAsync(Recording + "return { 'call-1': 'keep' }; }", "{ thresholdTokens: 0, keepRecent: 0 }");
+
+        using var payloads = System.Text.Json.JsonDocument.Parse(run.Recorded);
+        Assert.Equal(2, payloads.RootElement.GetArrayLength());
+        var second = payloads.RootElement[1].GetProperty("calls");
+        Assert.Equal("call-2", Assert.Single(second.EnumerateArray()).GetProperty("id").GetString());
+        Assert.All(run.Provider.Turns[2].Where(m => m.Role == "tool"), m => Assert.True(m.Content.Length > 8_000));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-327")]
+    [InlineData(ToolAccess.Edit)]
+    [InlineData(ToolAccess.Execute)]
+    [InlineData(ToolAccess.Unspecified)]
+    public async Task ShouldNotOfferTheResult_WhenTheToolIsNotARead(ToolAccess access)
+    {
+        var run = await RunPressureAsync(Recording + "return { 'call-1': 'drop' }; }", "{ thresholdTokens: 0, keepRecent: 0 }", access);
+
+        Assert.Equal("done", run.Output);
+        Assert.Equal("", run.Recorded);
     }
 }
