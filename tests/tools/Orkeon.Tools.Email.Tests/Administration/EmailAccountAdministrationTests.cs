@@ -76,7 +76,15 @@ public sealed class EmailAccountAdministrationTests
         var options = new EmailToolsOptions();
         options.Accounts["perso"] = TestAccounts.Gmail(EmailRights.Read | EmailRights.Send);
         options.Accounts["hotmail"] = TestAccounts.Outlook(EmailRights.Read | EmailRights.Send);
-        options.Accounts["custom"] = TestAccounts.Custom();
+        var custom = TestAccounts.Custom();
+        custom.Incoming.Port = 1143;
+        custom.Incoming.Security = TransportSecurity.SslOnConnect;
+        custom.Outgoing.Port = 2587;
+        custom.Outgoing.Security = TransportSecurity.StartTls;
+        options.Accounts["custom"] = custom;
+        var readOnly = TestAccounts.Custom();
+        readOnly.Outgoing.Host = null;
+        options.Accounts["readonly"] = readOnly;
         options.Accounts["broken"] = TestAccounts.Custom(EmailRights.None);
         using var fixture = new AdministrationFixture(options);
 
@@ -91,9 +99,15 @@ public sealed class EmailAccountAdministrationTests
         Assert.Equal(((string?)null, (int?)null, (string?)null, (int?)null), (hotmail.IncomingHost, hotmail.IncomingPort, hotmail.OutgoingHost, hotmail.OutgoingPort));
         Assert.Equal("https://login.microsoftonline.com/consumers/oauth2/v2.0/token", hotmail.TokenEndpoint);
         Assert.Equal("someone@outlook.com", hotmail.Username);
-        var custom = statuses["custom"];
-        Assert.Equal(("imap.example.test", "smtp.example.test", (bool?)true), (custom.IncomingHost, custom.OutgoingHost, custom.SaveSentCopy));
+        var customStatus = statuses["custom"];
+        Assert.Equal(("imap.example.test", (int?)1143, "SslOnConnect"), (customStatus.IncomingHost, customStatus.IncomingPort, customStatus.IncomingSecurity));
+        Assert.Equal(("smtp.example.test", (int?)2587, "StartTls"), (customStatus.OutgoingHost, customStatus.OutgoingPort, customStatus.OutgoingSecurity));
+        Assert.True(customStatus.SaveSentCopy);
+        var readOnlyStatus = statuses["readonly"];
+        Assert.Equal(("imap.example.test", (string?)null, (int?)null, (bool?)null),
+            (readOnlyStatus.IncomingHost, readOnlyStatus.OutgoingHost, readOnlyStatus.OutgoingPort, readOnlyStatus.SaveSentCopy));
         var broken = statuses["broken"];
+        Assert.StartsWith("Rights is required", Assert.Single(broken.ConfigurationProblems), StringComparison.Ordinal);
         Assert.Equal(((string?)null, (string?)null, (bool?)null, (string?)null), (broken.IncomingHost, broken.Username, broken.SaveSentCopy, broken.TokenEndpoint));
     }
 

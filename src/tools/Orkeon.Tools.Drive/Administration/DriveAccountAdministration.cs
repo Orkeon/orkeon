@@ -42,8 +42,9 @@ public sealed record DriveAccountStatus
 
     /// <summary>
     /// What the configuration gets wrong, one sentence each and in order (the section's problems
-    /// first, then the account's own); empty when the account resolves. <see cref="Problem"/>
-    /// joins them for an account set aside.
+    /// first, then the account's own); empty when the account resolves. A setting that cannot even
+    /// be read is reported alone: the rules of the declaration are judged once it reads.
+    /// <see cref="Problem"/> joins them for an account set aside.
     /// </summary>
     [JsonPropertyName("configuration_problems")]
     public IReadOnlyList<string> ConfigurationProblems { get; init; } = [];

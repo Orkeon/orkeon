@@ -64,8 +64,9 @@ public sealed record EmailAccountStatus
 
     /// <summary>
     /// What the configuration gets wrong, one sentence each and in order (the section's problems
-    /// first, then the account's own); empty when the account resolves. <see cref="Problem"/>
-    /// joins them for an account set aside.
+    /// first, then the account's own); empty when the account resolves. A setting that cannot even
+    /// be read is reported alone: the rules of the declaration are judged once it reads.
+    /// <see cref="Problem"/> joins them for an account set aside.
     /// </summary>
     [JsonPropertyName("configuration_problems")]
     public IReadOnlyList<string> ConfigurationProblems { get; init; } = [];
@@ -77,27 +78,27 @@ public sealed record EmailAccountStatus
     [JsonPropertyName("credential_problem")]
     public string? CredentialProblem { get; init; }
 
-    /// <summary>The reading server's host, after presets and defaults; null for Graph or an account set aside.</summary>
+    /// <summary>The reading server's host, after presets and defaults; null for Graph, the trial's simulated account or an account set aside.</summary>
     [JsonPropertyName("incoming_host")]
     public string? IncomingHost { get; init; }
 
-    /// <summary>The reading server's port; null for Graph or an account set aside.</summary>
+    /// <summary>The reading server's port; null for Graph, the trial's simulated account or an account set aside.</summary>
     [JsonPropertyName("incoming_port")]
     public int? IncomingPort { get; init; }
 
-    /// <summary>The reading connection's security (<c>SslOnConnect</c>, <c>StartTls</c>, <c>None</c>); null for Graph or an account set aside.</summary>
+    /// <summary>The reading connection's security (<c>SslOnConnect</c>, <c>StartTls</c>, <c>None</c>); null for Graph, the trial's simulated account or an account set aside.</summary>
     [JsonPropertyName("incoming_security")]
     public string? IncomingSecurity { get; init; }
 
-    /// <summary>The SMTP server's host; null for Graph, an account that does not send, or one set aside.</summary>
+    /// <summary>The SMTP server's host; null for Graph, an account that does not send, the trial's simulated account or one set aside.</summary>
     [JsonPropertyName("outgoing_host")]
     public string? OutgoingHost { get; init; }
 
-    /// <summary>The SMTP server's port; null for Graph, an account that does not send, or one set aside.</summary>
+    /// <summary>The SMTP server's port; null for Graph, an account that does not send, the trial's simulated account or one set aside.</summary>
     [JsonPropertyName("outgoing_port")]
     public int? OutgoingPort { get; init; }
 
-    /// <summary>The SMTP connection's security; null for Graph, an account that does not send, or one set aside.</summary>
+    /// <summary>The SMTP connection's security; null for Graph, an account that does not send, the trial's simulated account or one set aside.</summary>
     [JsonPropertyName("outgoing_security")]
     public string? OutgoingSecurity { get; init; }
 
@@ -105,7 +106,7 @@ public sealed record EmailAccountStatus
     [JsonPropertyName("username")]
     public string? Username { get; init; }
 
-    /// <summary>Whether a sent message is appended to the Sent folder by Orkeon; null for an account set aside.</summary>
+    /// <summary>Whether a sent message is appended to the Sent folder by Orkeon; null for an account that does not send or one set aside.</summary>
     [JsonPropertyName("save_sent_copy")]
     public bool? SaveSentCopy { get; init; }
 
@@ -205,7 +206,7 @@ public sealed class EmailAccountAdministration
                 OutgoingPort = account.OutgoingEndpoint?.Port,
                 OutgoingSecurity = account.OutgoingEndpoint?.Security.ToString(),
                 Username = account.Auth.Username,
-                SaveSentCopy = account.SaveSentCopy,
+                SaveSentCopy = account.Outgoing is null ? null : account.SaveSentCopy,
                 TokenEndpoint = account.Auth.OAuth?.TokenEndpoint.AbsoluteUri,
             });
         }
