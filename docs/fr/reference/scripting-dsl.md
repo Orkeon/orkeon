@@ -28,7 +28,7 @@ aussi — et route selon ce qu'il trouve.
 | honore `withTask` / `process` / `manager` | **non — ignoré** | oui — `manager` là où le process en a un (`hierarchical`, `consensual`), refusé ailleurs |
 | `orkeon run --validate` | échoue (*did not assign globalThis.crew*) — **après avoir exécuté le script** : le charger l'évalue, `await crew.run()` compris | fonctionne — le script est évalué, la crew n'est pas exécutée |
 
-Ce sont des opposés, pas des variantes. La boucle procédurale (en JavaScript depuis SCR-25,
+Ce sont des opposés, pas des variantes. La boucle procédurale (en JavaScript,
 `JsCrew.Run.cs`, exécutée sous la propre pompe du script) parcourt les agents et ne regarde jamais les
 tâches ; `Process` n'atteint qu'un tag de télémétrie. L'adaptateur, symétriquement, n'invoque
 jamais un `body` : les seuls endroits où il en nomme un sont les avertissements qu'il émet
@@ -37,8 +37,7 @@ pour les déclarations qu'il ignore.
 **La règle :** écrivez `.body()` et vous êtes en procédural ; écrivez `withTask` et vous êtes
 en déclaratif. Jamais les deux dans un fichier. Une crew avec des tâches qui se termine par
 `await crew.run()` exécute ses agents et ignore chaque tâche écrite — en journalisant un
-avertissement qui le dit, seule raison pour laquelle l'erreur est désormais peu coûteuse à
-trouver.
+avertissement qui le dit exactement.
 
 C'est `orkeon run` qui route un script `globalThis.crew` vers le moteur déclaratif. Un hôte
 qui exécute le fichier via `ScriptHost` — le service `script-host` du REPL, un hôte C# qui
@@ -92,18 +91,16 @@ déduit.
 | `maxInstances(n)` — le plus grand nombre d'instances d'agent (`crew.instances()`) que la crew garde (32 par défaut ; la plus ancienne terminée part la première) | ✅ | ❌ (sans avertissement) |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
-Tout ce qui porte un ❌ du côté déclaratif, hors `concurrency` et `maxInstances`, est désormais **annoncé** : l'exécution journalise
+Tout ce qui porte un ❌ du côté déclaratif, hors `concurrency` et `maxInstances`, est **annoncé** : l'exécution journalise
 un avertissement par déclaration abandonnée, en nommant la méthode et l'agent sur lequel elle
-était écrite. C'est toujours abandonné — les deux formes sont deux moteurs — mais une crew ne
-peut plus exécuter un `.body()` jamais invoqué sans rien en dire.
+était écrite. C'est toujours abandonné — les deux formes sont deux moteurs.
 
 **Ce que rend `await crew.run()`** — un `CrewResult`, exactement ce que déclare `crew.d.ts` :
 `output`, le texte de la dernière sortie d'agent qui n'était pas `null` (`""` quand aucun agent
 n'a rien rendu), et `tasks`, une entrée `{ name, output, durationMs }` par exécution d'agent,
-dans l'ordre où ils ont tourné, `output` étant ce que le corps a rendu. Rien de plus : la table
-`artifacts` que déclaraient les typings n'était jamais remplie, et `crew.run<T>()` typait un
-`output` que le runtime sert toujours en chaîne — les deux ont disparu (GAP-27), et
-`TypingsRuntimeParityTests` compare les deux formes de résultat type par type.
+dans l'ordre où ils ont tourné, `output` étant ce que le corps a rendu. Rien de plus : aucune table
+`artifacts`, et `output` est toujours une chaîne ; `TypingsRuntimeParityTests` compare les deux
+formes de résultat type par type.
 
 #### `process("graph")` n'est pas `stateGraph`
 
@@ -112,10 +109,8 @@ stratégie graphe **du domaine** : un nœud par tâche, enchaînés dans l'ordre
 **vous** dessinez, et elle s'exécute quand vous appelez `.run()` dessus — depuis un `.body()`
 d'agent, donc en procédural.
 
-`crewBuilder().graph(g)` brouillait les deux : la méthode acceptait un `stateGraph`, le
-rangeait dans un champ qu'aucun moteur n'a jamais lu, et `process("graph")` refusait de se
-construire sans elle. Le mode était verrouillé derrière une méthode qui jetait son argument.
-La méthode a disparu ; `process("graph")` se construit maintenant seul.
+`crewBuilder()` n'a pas de méthode `graph(...)` : `process("graph")` se construit seul, et un
+`stateGraph` ne tourne que par son propre `.run()`.
 
 ### `taskBuilder()`
 
@@ -129,7 +124,7 @@ modèle propre de ce profil, et `"default"` la ramène au défaut de l'hôte ; u
 n'offre pas fait échouer le chargement en listant les profils connus). `name` est la clé de la
 tâche : `when(...)` et le `state` d'une décision désignent une tâche par elle, et une tâche de
 décision l'exige. Accepté mais sans effet : `expect` (consigné dans le contexte de la tâche en l'absence de
-`deliverable`, jamais validé). `withTaskTool` a disparu : rien ne le lisait, et `tools` le couvre.
+`deliverable`, jamais validé).
 
 `decision(spec)` fait de la tâche une tâche de décision : `spec` est un littéral d'objet `{ questions, minConfidence, state, longContext, fallback }`, la forme du bloc YAML `decision:`. Elle n'a pas besoin d'`agent`, et une tâche qui a les deux est refusée au chargement. `when(decisionTask, clauses)` n'exécute la tâche que si la tâche de décision nommée a répondu comme demandé : `clauses` est un objet de clauses (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) ou la chaîne `"otherwise"` ; `when()` ne lève une `InvalidScriptException` que pour un nom de tâche vide ou pour des `clauses` qui ne sont ni un objet ni une chaîne. Une chaîne autre que `"otherwise"`, une question ou une option inconnue, ou une clause mal formée passe le builder et est refusée au chargement. Deux tâches de décision de même `name` dans un script sont refusées au chargement (`Task '<name>' declares a decision twice.`). `state` liste les tâches dont la sortie est l'état de la décision (par défaut : chaque dépendance qui a tourné) ; circuit désactivé, ou par `--no-decision`, la tâche répond par son `fallback` (voir [Modèles de décision](../architecture/decision-models.md#le-circuit-de-décision-et-le-repli)). Les tâches de décision et les conditions ne s'exécutent que dans les processus Sequential, Parallel et Graph. Un second `.when()` sur une tâche lève une `InvalidScriptException` qui nomme la tâche. Un `state` qui n'est pas un tableau, un `fallback` qui n'est pas un objet, et une valeur de `choice`, une entrée de `score` ou une valeur de `fallback` qui n'est pas une chaîne sont refusés au chargement, en nommant la tâche et la clé. Deux tâches de même `name` sont refusées au chargement. Une tâche sans `.name()` est identifiée par sa description complète ; la troncature n'est que l'affichage. Voir [Modèles de décision](../architecture/decision-models.md).
 
@@ -143,8 +138,7 @@ refusée quand le run l'adapte, en nommant la tâche (voir
 
 L'`agent` d'une tâche et les tâches de son `withContext(s)` sont ceux de la crew (`withAgent(s)`,
 `withTask(s)`) : un agent ou une tâche que la crew ne tient pas est refusé quand le run adapte la
-crew, le message nommant la tâche, l'appel et ce que la crew a — la tâche tournait sur un autre
-agent, ou sans attendre ce qu'elle citait.
+crew, le message nommant la tâche, l'appel et ce que la crew a.
 
 ### `toolBuilder()`
 
@@ -210,7 +204,7 @@ prend les mêmes formes en premier argument, les tours de l'appelant envoyés da
 d'une chaîne de prompt ; ses options ajoutent `system`, envoyé en premier message avec l'instruction
 JSON ajoutée à sa suite, de sorte que le contenu utilisateur part intact. Sans `system`,
 l'instruction est ajoutée au prompt ou au dernier message utilisateur. Une relance porte la réponse
-refusée comme tour assistant (#285) :
+refusée comme tour assistant :
 
 ```ts
 const again = await ctx.llm.extract<Invoice>({ messages: [
@@ -243,8 +237,8 @@ de l'échec de chargement que la forme déclarative obtient pour le même nom ; 
 `onError` la lit comme `validation`. `ActOptions.system` sème un vrai message `role:"system"` qui persiste à chaque
 itération ; sans lui, `act()` envoie un seul message utilisateur. `ActOptions.context` sème un
 message utilisateur à part entre `system` et le prompt : le prompt reste le dernier message
-utilisateur, la requête que jugent les étapes `guard` et `route` d'un profil de décision, et le
-contexte ne peut plus en diluer le risque (#276). `permissionMode`
+utilisateur, la requête que jugent les étapes `guard` et `route` d'un profil de décision, si bien que le
+contexte n'en dilue pas le risque. `permissionMode`
 (`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) est vérifié auprès de la porte de
 permissions de l'hôte à chaque appel d'outil, quand l'hôte en a enregistré une : un appel pour
 lequel le mode demande attend l'opérateur quand l'hôte a un canal d'approbation (`orkeon-repl` en
@@ -331,8 +325,7 @@ Depuis .NET, `MockLlmProvider` et `MockTool` (`Orkeon.Scripting.Testing`) prenne
 
 ## `stateMachine` et `stateGraph`
 
-Les deux sont pilotés par littéral et les deux étaient **mal déclarés jusqu'au 2026-09-07** ;
-si vous travaillez avec un `orkeon.d.ts` plus ancien, c'est la section à lire.
+Les deux sont pilotés par littéral.
 
 `stateMachine` prend `{ name, initial, states }`. Les transitions vivent **dans chaque état**,
 indexées par nom d'événement, et le champ de destination est `target` :
@@ -408,20 +401,18 @@ limites de conception, chacune dite plutôt que silencieuse.
 | `budget()` en forme déclarative | Le budget de la crew quand le process est `"autonomous"`, le seul process qui le dépense (clés `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime` ; `contextTokens` y est refusé, la stratégie comptant les tokens de chaque tâche terminée, pas le prompt de chaque appel). Avec un autre process, la crew est refusée quand l'exécution l'adapte, l'erreur nommant le process. |
 | `.body()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme l'agent. La confusion la plus coûteuse du DSL, et la raison du tableau des formes ci-dessus. |
 | `globalThis.inputs` en forme déclarative | Jamais planté. Passer `--inputs`, `--inputs-file` ou `--memory-limit-mb` à un script déclaratif affiche un avertissement sur stderr au lieu de perdre l'option en silence. |
-| `ctx.llm.embed` | Rend un vecteur bidon. Les vrais embedders sont une suite. |
-| `concurrency(n)` avec `n > 1` | Rejeté au build avec un message clair — V1 est un mutex, le sémaphore à N détenteurs est V1.5. Bruyant, pas silencieux. |
-| Les locks n'ont pas de timeout | `LockTimeoutError` est V1.5. |
+| `ctx.llm.embed` | Rend un vecteur bidon déterministe, pas un vrai embedding. |
+| `concurrency(n)` avec `n > 1` | Rejeté au build avec un message clair : la concurrence d'un agent est un mutex. Bruyant, pas silencieux. |
+| Les locks n'ont pas de timeout | Il n'existe pas de `LockTimeoutError`. |
 | Les événements | En mémoire seulement ; pas de persistance Redis/NATS. |
-| Composition FSM/Graphe | Sous-états et sous-graphes en V1.5. |
+| Composition FSM/Graphe | Ni sous-états ni sous-graphes. |
 
 ### Inclusion conditionnelle
 
 La seule construction conditionnelle est `when(decisionTask, clauses)` sur un builder de tâche, qui
 exécute la tâche selon les réponses d'une tâche de décision à l'exécution (voir `decision(spec)`
 plus haut). Il n'y a pas de prédicat qui inclut ou exclut un agent ou une tâche à la construction du
-script : `when(predicate)` était déclarée sur les trois builders et n'était honorée par aucun moteur,
-si bien qu'elle a été retirée plutôt qu'implémentée, une méthode qui fait silencieusement l'inverse
-de ce qu'elle annonce valant moins que pas de méthode du tout.
+script.
 
 Gardez l'appel :
 
@@ -455,8 +446,7 @@ mkdir -p .orkeon && tar -xzf "orkeon-typings-$VER.tar.gz" --strip-components=1 -
 # entre deux versions, extrayez chacune dans son dossier puis :  diff -r typings-A typings-B
 ```
 
-Une Release faite avant l'existence de cet asset ne le porte pas ; pour celles-là, la source est
-`orkeon typings`. Copiez ensuite
+Quand une Release ne le porte pas, `orkeon typings` en est la source. Copiez ensuite
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json),
 qui est la configuration qu'utilise le garde-fou du dépôt lui-même.
 

@@ -16,7 +16,7 @@ Dans ce dépôt, elle est consommée par `Orkeon.Scripting.Cli` (l'outil `orkeon
 
 ## Distribution
 
-**`Orkeon.Hosting` est livrée dans le paquet `Orkeon.Scripting`** (#229). Son propre csproj reste
+**`Orkeon.Hosting` est livrée dans le paquet `Orkeon.Scripting`**. Son propre csproj reste
 `IsPackable=false`, il n'existe donc d'identifiant `Orkeon.Hosting` sur aucun flux : la
 [matrice de publication](publication-matrix.md#le-lineup-nugetorg) liste l'opt-in
 `Orkeon.Scripting`, dont le wrapper (`src/packaging/Orkeon.Scripting/Orkeon.Scripting.Package.csproj`)
@@ -113,7 +113,7 @@ IHost host = RunnerHost.Build(
                                           // par le VFS, jamais listés à un agent (ADR-008)
         AllowExternalMounts = false,      // autoriser des bases de montage hors de la racine du workspace
         SelectedMountIds = [],            // valeurs --mount-id, parsées : les entrées des settings gardées
-                                          // quand plusieurs déclarent une même racine virtuelle (VFS-90)
+                                          // quand plusieurs déclarent une même racine virtuelle
         CrewMountReferences = [],         // le bloc mounts: de la crew — sélectionne et valide, ne restreint jamais
         InputDirectories = [],            // dossiers qu'une commande lit comme entrées, lisibles sans l'opt-in
                                           // des montages externes
@@ -121,6 +121,11 @@ IHost host = RunnerHost.Build(
                                           // rien n'en choisisse une est retirée au lieu de refuser l'hôte
         LlmLogVirtualPath = null,         // si renseigné, un répertoire VIRTUEL que l'appelant a monté :
                                           // les échanges HTTP LLM y sont capturés en .jsonl
+        WorkingDirectory = null,          // le dossier contre lequel se résout ./.orkeon/state (null : celui du processus)
+        RunHistoryByDefault = false,      // l'historique des runs actif quand les réglages ne disent rien (orkeon-host le pose)
+        LlmMockResponses = null,          // --llm-mock : un fichier JSONL VIRTUEL dont répond chaque profil LLM
+        LlmRecordCassette = null,         // --llm-record : une cassette JSONL VIRTUELLE où s'écrit chaque appel LLM
+        LlmReplayCassette = null,         // --llm-replay : une cassette JSONL VIRTUELLE dont répond chaque appel LLM
     },
     configureLogging: null,              // personnalisation optionnelle de ILoggingBuilder
     configureServices: null,             // hook optionnel pour enregistrer les services du runner
@@ -136,7 +141,8 @@ Un chemin virtuel est toujours un nom commençant par `/` — jamais un chemin d
 ([ADR-009](../adr/ADR-009-shared-constants-satellites.md)), pour que le moteur et l'outillage
 lisent une seule déclaration — nomme les racines que les runners livrés se réservent : `/crew`
 (le dossier de définition du crew), `/script` (le dossier d'un point d'entrée scripté),
-`/llm-logs`, `/sandbox` (où les bacs à sable de code déposent ce qu'ils exécutent) et
+`/llm-logs`, `/llm-mock` et `/llm-cassette` (le fichier de `--llm-mock` et la cassette enregistrée ou
+rejouée), `/sandbox` (où les bacs à sable de code déposent ce qu'ils exécutent) et
 `/credentials` (les jetons OAuth des comptes e-mail, refusée à un montage utilisateur par toutes
 les commandes).
 `RunnerVirtualRoots.All` est l'ensemble contre lequel un appelant refuse un `--mount` utilisateur ;
@@ -156,7 +162,7 @@ Il compose `Host.CreateDefaultBuilder()` avec :
   variables d'environnement sans préfixe, le fichier `settingsPath` s'il existe, puis
   l'environnement préfixé `ORKEON_` (`ORKEON_Llm__Model` remplace `Llm:Model`). Ni
   l'`appsettings.json` et l'`appsettings.{Environment}.json` de la racine de contenu — le
-  répertoire courant —, ni les secrets utilisateur (GAP-36). Puis une couche en mémoire qui
+  répertoire courant —, ni les secrets utilisateur. Puis une couche en mémoire qui
   porte les décisions de montage : les valeurs `--mount` placées par racine virtuelle, les
   montages internes, le montage `/credentials` des jetons OAuth e-mail, et les entrées
   `PathSecurity:AdditionalAllowedDirectories` qui laissent le validateur de chemins atteindre les
@@ -165,7 +171,7 @@ Il compose `Host.CreateDefaultBuilder()` avec :
 - **Services** — `ConfigureRunnerServices` (ci-dessous).
 - **`configureBuilder`** — invoqué en dernier, sur l'`IHostBuilder` lui-même.
 
-Une fois construit, l'hôte juge d'abord ses réglages (GAP-40), que le run s'en serve ou non : chaque
+Une fois construit, l'hôte juge d'abord ses réglages, que le run s'en serve ou non : chaque
 section qu'une inscription a déclarée — ses options créées, donc converties par le lieur et soumises à
 leurs règles, les noms qu'elles portent compris —, les noms de section sous `Orkeon:` et ses groupes,
 les clés de chaque section déclarée, et `Orkeon:Rag:LlmProfile` contre les profils qu'il offre
@@ -196,7 +202,7 @@ L'ordre d'enregistrement est délibéré :
    le fournisseur (et son `IChatClient`, sur la configuration de cette section) **avant**
    `AddOrkeonApplication` / `AddOrkeonInfrastructure` — ou le fournisseur écho quand la section manque.
    L'infrastructure n'enregistre aucun modèle à elle : un hôte qui n'en enregistre aucun échoue à sa
-   première résolution LLM, en nommant le service manquant (GAP-29).
+   première résolution LLM, en nommant le service manquant.
 3. **Services cœur** — `AddOrkeonApplication()` puis `AddOrkeonInfrastructure()` (la surcharge
    sans paramètre), puis `AddOrkeonTelemetry(configuration)` pour la section `Telemetry`.
 4. **Outils stricts** — `CrewFactoryOptions.StrictTools` vaut `true` par défaut ici (un crew qui
@@ -207,7 +213,7 @@ L'ordre d'enregistrement est délibéré :
    `Orkeon:Security:PermissionGate:Enabled` ; no-op sinon).
 6. **Suites d'outils cœur** — système de fichiers, data, web, code, abstractions, outils de
    session ; puis l'EventHub en mémoire plus ses outils agents et l'ACL EventHub
-   (`AddOrkeonEventHubAcl`, défaut permissif : une crew sans bloc `links:` se comporte comme avant) ;
+   (`AddOrkeonEventHubAcl`, défaut permissif : une crew sans bloc `links:` envoie à toute autre crew) ;
    puis les outils e-mail (`AddOrkeonEmailTools(configuration)`, inertes tant qu'aucun compte n'est
    déclaré) et, quand un compte e-mail OAuth est déclaré, leur magasin de jetons sur la racine
    interne `/credentials` — montée par l'étape de configuration, atteinte par
@@ -218,7 +224,7 @@ L'ordre d'enregistrement est délibéré :
    `Orkeon:FileSystem:InternalMounts` existe **et contient au moins une entrée** (deux tableaux
    vides n'enregistrent rien). L'une ou l'autre liste suffit à rendre le VFS réel : `--list-tools`
    n'a que la seconde. Plusieurs entrées de `Mounts` peuvent déclarer une même racine si chacune
-   porte un identifiant (VFS-90) : `MountSelection.Resolve` décide, pendant la composition de la
+   porte un identifiant : `MountSelection.Resolve` décide, pendant la composition de la
    configuration, laquelle ce run garde — un `--mount` sur la racine, sinon `SelectedMountIds`,
    sinon `CrewMountReferences` — et écrit les autres à `null` à leur propre index ; une sélection
    que rien ne résout lève le texte même que les gardes des runners impriment, si bien qu'un
@@ -230,7 +236,7 @@ L'ordre d'enregistrement est délibéré :
 9. **MCP** — `AddOrkeonMcp(configuration)` quand la section `MCP` déclare au moins un serveur
    sous `MCP:Servers` et que `MCP:Enabled` n'est pas `false`. Enregistrer n'est pas connecter :
    les serveurs sont connectés par les flux ci-dessous, avant le chargement de la crew
-   (voir [MCP](../architecture/mcp.md#activation)). Aucun réglage ne démarre un serveur MCP (GAP-24).
+   (voir [MCP](../architecture/mcp.md#activation)). Aucun réglage ne démarre un serveur MCP.
 10. **Modèles de décision** — `RegisterDecisionModels` : un fournisseur de décision actif (TypeSafe, Liquid ou Kev), nommé par `Orkeon:Decision:Provider` ou déduit (la section `Orkeon:TypeSafe` ou `Orkeon:Liquid`, même vide, sinon celui dont la variable de clé est posée ; aucun quand rien n'est présent), et les profils de décision de `Orkeon:Decision:Profiles`. Le démarrage est refusé pour un nom de fournisseur inconnu, pour TypeSafe et Liquid tous deux présents sans fournisseur nommé (les deux sections, ou aucune section et les deux clés ; avec une seule section, son fournisseur est choisi) (le message cite les deux et le réglage), pour une adresse Kev sans schéma `http` ou `https` (`Orkeon:Kev:BaseUrl`), pour une clé Kev vers une adresse `http` non locale. Le journal de démarrage nomme le fournisseur actif, son modèle, son adresse et la façon dont il a été choisi ; chaque section de fournisseur qui n'est pas l'actif reçoit un avertissement (« is ignored: the active decision provider is … »), celui de Kev ajoutant, quand aucun fournisseur n'est nommé, que Kev n'est jamais déduit et doit être nommé par `Orkeon:Decision:Provider`. Voir [Modèles de décision](../architecture/decision-models.md).
 11. **Registre d'outils** — rien de propre : `AddOrkeonInfrastructure()` a déjà enregistré le `ToolRegistry`
     par défaut, qui lit chaque `IBaseTool` enregistré par les étapes ci-dessus à sa première résolution.
@@ -252,7 +258,7 @@ silencieusement ignoré). `RegisterToolAsync` ajoute un outil à l'exécution �
 client MCP — et **refuse** (rend `false`) un nom qu'un autre outil tient déjà. Lectures et
 enregistrements à l'exécution peuvent s'entrelacer sans risque : `orkeon-host` mène plusieurs crews
 pendant que ses serveurs MCP se connectent. Le registre n'indexe que des noms — aucune recherche par
-étiquette ni par capacité (GAP-11).
+étiquette ni par capacité.
 
 ## `RunnerExecution` — flux d'exécution
 
@@ -263,7 +269,7 @@ settings/montages et retournent un code de sortie processus.
 
 | Point d'entrée | Rôle |
 |---|---|
-| `RunOneShotAsync(opts, loggerCategory, configureServices?, externalCt?)` | Exécute un kickoff de crew de bout en bout. Codes de sortie : **0** succès, **1** erreur de config, **2** échec du crew, **130** annulé. |
+| `RunOneShotAsync(opts, loggerCategory, configureServices?, externalCt?)` | Exécute un kickoff de crew de bout en bout. Codes de sortie : **0** succès, **1** erreur de config, **2** échec du crew, **75** le run s'est arrêté sur une question et attend la réponse (`--resume`), **130** annulé. |
 | `RunInteractiveLoopAsync(opts, loggerCategory, stopWords, kickoffPerInputAsync, onSessionStart, …)` | Boucle REPL ; chaque entrée déclenche un kickoff via le délégué fourni par l'appelant ; un mot d'arrêt termine la boucle (exit 0). |
 | `RunListToolsAsync(opts, loggerCategory, configureServices?)` | Construit l'hôte sans crew et imprime sur stdout les noms d'outils runtime triés et dédupliqués (logs sur stderr) — le contrat d'outils runtime consommé par l'outillage de packaging/lint. |
 | `RunValidateAsync(opts, loggerCategory, configureServices?, externalCt?)` | Le dry-run derrière `--validate` : construit l'hôte et charge la crew (résolution stricte des outils) sans sonder le LLM ni lancer de kickoff. |
@@ -281,8 +287,7 @@ pour les modules Orkeon ; `2` : Debug) et `IsScriptedCrewDefinition` (`.ork.ts` 
 
 Un service longue durée *peut* simplement envelopper `RunnerHost.Build` — c'est exactement ce que
 fait le daemon `orkeon-host` (`Orkeon.Host/Program.cs`), en passant `configureBuilder` pour
-`UseSystemd()`/`UseWindowsService()`. Le daemon reste hors de la sélection des montages (VFS-90,
-D-11) : ses crews montent sous des racines par crew (`/crews*`), aucune racine n'y est donc jamais
+`UseSystemd()`/`UseWindowsService()`. Le daemon reste hors de la sélection des montages : ses crews montent sous des racines par crew (`/crews*`), aucune racine n'y est donc jamais
 déclarée deux fois, un `--mount` opérateur portant un préfixe d'identifiant se parse comme un
 autre, et aucun bloc `mounts:` de crew n'est lu. Un hôte qui possède déjà son `IHostBuilder` (une app ASP.NET,
 par exemple) **réplique l'ordre d'enregistrement de `ConfigureRunnerServices`** dans son propre
@@ -345,7 +350,7 @@ et de métriques suivent les conventions GenAI d'OpenTelemetry — voir
 
 La section enregistre aussi trois contrôles de santé — `llm_provider`, `memory_provider` (qui lit une
 clé absente : chaque provider le sert, Pinecone et ChromaDB compris),
-`system_resources` — qu'aucun runner livré n'expose : `orkeon` ne sert aucun HTTP, et la seule surface HTTP d'`orkeon-host` est son serveur A2A opt-in (`Orkeon:Host:A2A`), qui ne sert aucun point de santé.
+`system_resources`. `orkeon` ne sert aucun HTTP ; `orkeon-host` les expose sur son API de runs opt-in (`Orkeon:Host:Api`) : `/healthz` lance `system_resources`, `/readyz` lance `memory_provider` et, quand `ReadinessTags` contient `llm`, `llm_provider` (voir [l'API du host](host-api.md#sondes)).
 
 ## .NET Aspire — `Orkeon.Hosting.Aspire`
 
@@ -389,7 +394,7 @@ builder.Build().Run();
 
 | Membre | Ce qu'il fait |
 |---|---|
-| `AddOrkeonHost(name, settingsPath?, workingDirectory?, command = "orkeon-host")` | Une `OrkeonHostResource` (exécutable) lancée en `orkeon-host [--settings <settingsPath>] --allow-external-mounts`, dans `workingDirectory` (défaut : le dossier de l'AppHost), avec l'exportateur OTLP câblé. Aucun endpoint : le daemon ne sert pas de HTTP. |
+| `AddOrkeonHost(name, settingsPath?, workingDirectory?, command = "orkeon-host")` | Une `OrkeonHostResource` (exécutable) lancée en `orkeon-host [--settings <settingsPath>] --allow-external-mounts`, dans `workingDirectory` (défaut : le dossier de l'AppHost), avec l'exportateur OTLP câblé. Aucun endpoint n'est déclaré : l'API de runs et le serveur A2A du daemon sont des réglages opt-in (`Orkeon:Host:Api`, `Orkeon:Host:A2A`) que la ressource ne câble pas. |
 | `AddOrkeonCrewRun(name, crewPath, outputDirectory?, settingsPath?, command = "orkeon")` | Une `OrkeonCrewRunResource` lancée en `orkeon run <crewPath> --mount <sortie>:/output:rw --allow-external-mounts [--settings <settingsPath>]` dans le dossier de l'AppHost, avec l'exportateur OTLP câblé. Le dossier de sortie (défaut `<AppHost>/out`) est créé dès la déclaration de la ressource. |
 | `WithOrkeonSetting(key, value)` | Fixe n'importe quelle clé de configuration par l'environnement `ORKEON_` que lisent les runners : `Llm:Model` devient `ORKEON_Llm__Model`. La clé est le chemin de configuration complet — les clés propres au daemon vivent sous `Orkeon:Host`, donc `Orkeon:Host:RunTimeout`, pas `Host:RunTimeout`. |
 | `WithOrkeonModel(baseUrl, model, apiKey?)` | Raccourci pour `Llm:BaseUrl` (`/` final retiré), `Llm:Model` et, s'il est donné, `Llm:ApiKey`. |

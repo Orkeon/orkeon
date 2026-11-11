@@ -45,7 +45,9 @@ not contiguous.
 | `rag/` | The RAG subsystem: `basic-ingestion/`, `hybrid-retrieval/`, `custom-reranker/`, `crew-yaml/`, plus the offline evaluation dataset under `eval/` |
 | `raggable-tree/` | Semantic codebase analysis: `basic-indexing/`, `crew-yaml/`, `custom-adapter/` |
 | `quickstart/` | The README's two-minute crew: one agent, one `file_write`, a local Ollama model, one writable mount |
-| `scripting/` | The TypeScript DSL (`.ork.ts`), `01-hello-world` → `13-email-triage`: dynamic spawn, FSM/graph literals, custom tools and hooks, RAG (`08-rag.ork.ts`), inputs and memory, events; `crew-review-desk/` is a whole crew written in TypeScript with its own tools module |
+| `scripting/` | The TypeScript DSL (`.ork.ts`), `01-hello-world` → `14-decision-and-when`: dynamic spawn, FSM/graph literals, custom tools and hooks, RAG (`08-rag.ork.ts`), inputs and memory, events, decision tasks and `when` fan-out; `crew-review-desk/` is a whole crew written in TypeScript with its own tools module |
+| `autonomous-budget/` | An autonomous crew under an execution budget, with no tool and no network (`config.yaml`), run offline with `--llm-mock` |
+| `mock-responses/` | Recorded LLM answers (`*.jsonl`) that `--llm-mock` replays, so a few examples run offline and deterministically |
 | `cli-ts-commands/` | Interactive REPL commands in `*.cmd.ts`, loaded without .NET recompilation |
 | `local-embeddings/` | On-device BGE-micro-v2 embeddings (no network, no API key): three snippets ranked against a query by cosine similarity |
 | `crew-multifile/` | A crew described as a directory (`orkeon run <dir>`) |

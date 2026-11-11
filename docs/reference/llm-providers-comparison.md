@@ -2,8 +2,8 @@
 
 # LLM Provider Comparison — Orkeon
 
-> Status as of 2026-10-07, derived from the source code (`src/core/Orkeon.Infrastructure/LLMs/`)
-> and from each provider's declared `LlmProviderCapabilities`.
+> Derived from the source code (`src/core/Orkeon.Infrastructure/LLMs/`) and from each provider's
+> declared `LlmProviderCapabilities`; campaign figures carry their own date.
 > Legend: ✓ supported · ✗ absent · ◐ partial/generic. Every provider but Azure OpenAI has an
 > archived real-execution campaign; OpenRouter and Mammouth AI since 2026-10-07.
 
@@ -45,8 +45,7 @@ details the `response_format` surfaces.
   written as `thinking: {type: adaptive|disabled}` — a payload detail, not a capability level.
 - **Anything a provider does not support is reported.** An option declared in YAML on a provider
   that cannot honour it produces an actionable warning naming the option, the provider and the
-  remedy. This was the actual defect the 2026-07-27 audit found: not the missing wiring, but its
-  invisibility.
+  remedy.
 
 ## Notes
 
@@ -56,8 +55,8 @@ details the `response_format` surfaces.
   means the cache does nothing until a `cache_control` breakpoint is placed — opt in with
   `LlmCacheConfig` / the YAML `cache:` block of an agent or of a task (`llm_override:`). **✓ metrics** (DeepSeek) adds the vendor's own
   `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens` to the response metadata.
-- **Anthropic SSE**: `ChatStreamingAsync` parses the Messages API event stream natively since
-  LLM-05; it used to fall back to a buffered emulation, so no token arrived early.
+- **Anthropic SSE**: `ChatStreamingAsync` parses the Messages API event stream natively: tokens
+  arrive as they are produced.
 - **Ollama tool calling**: goes through `/api/chat` when the conversation declares tools, replays
   tool calls, or carries a non-text part; everything else keeps `/api/generate`. An audio or file
   part is refused there with `NotSupportedException`, as on OpenAI and Anthropic. The
@@ -68,7 +67,7 @@ details the `response_format` surfaces.
 - **HuggingFace**: model identifiers accept a routing suffix (`:fastest` / `:cheapest` /
   `:preferred` / `:<partner>`) — the only cost and latency lever on Inference Providers.
 - **top_p / stop**: written only when set, whatever the value — `temperature` too; nothing set,
-  nothing written and the model applies its own default (GAP-36). Mistral writes `top_p: 1` when
+  nothing written and the model applies its own default. Mistral writes `top_p: 1` when
   nothing sets one. Ollama writes them in its `options`, with `seed`. No dialect writes
   `frequency_penalty` or `presence_penalty`, and none but Ollama writes `seed`: setting one
   produces the structured warning naming it (event id `110`), never a silent drop.
@@ -87,12 +86,12 @@ details the `response_format` surfaces.
   the same day). The compatible vendors keep `max_tokens`: the retirement is OpenAI's alone.
 - **Gemini `response_format`**: undocumented on the compat surface when first audited
   (2026-08-18) and undeclared then; measured live on 2026-08-30, the surface accepts
-  `json_object` and `json_schema` and enforces the schema server-side, so the provider now
+  `json_object` and `json_schema` and enforces the schema server-side; the provider
   declares `JsonSchema`.
 - **DeepSeek vision**: arrived with `deepseek-v4-flash-vision-exp` (measured 2026-08-30) and
   is native on the Flash tier since V4.1 Flash (2026-09-10): the default `deepseek-flash`
-  sees, the experimental companion is retired. Per provider vs per model as everywhere
-  (D-03): `deepseek-v4-pro` stays text-only and answers an image with the vendor's own error.
+  sees, the experimental companion is retired. Per provider vs per model as everywhere:
+  `deepseek-v4-pro` stays text-only and answers an image with the vendor's own error.
   `deepseek-v4-flash` is a retired model's name the API "temporarily" routes to V4.1 Flash —
   the default moved to the vendor's own id on 2026-09-19.
 - **MiniMax**: campaign-backed since 2026-08-30 (7/2/3, same day it was integrated). The
@@ -102,14 +101,14 @@ details the `response_format` surfaces.
   ignored, `json_object` arrives fenced in markdown): the None declaration is a measurement
   (raw calls, 2026-08-30, recorded in the campaign catalog's MiniMax note — the archived M8
   shows ➖ because the None declaration keeps the option from ever being sent).
-  Vision is per model (D-03): `MiniMax-M2` answers "I'm unable to view the image";
+  Vision is per model: `MiniMax-M2` answers "I'm unable to view the image";
   `MiniMax-M3`, the default since 2026-11-11, reads the image (campaigns of 2026-09-21 and 2026-11-11).
 - **Grok (x.AI)**: every declared capability is a live measurement — a full 12-mode campaign
   passed against `api.x.ai` through the generic OpenAI dialect before the provider class
   existed (2026-08-30, archived under `llmproviders-test/custom-endpoints/`). Keys carry the
   `xai-` prefix, which the factory infers.
 - **OpenRouter**: the model marketplace (465 models on 2026-10-07) behind one key,
-  integrated documentation-first (LLM-09) and campaigned on 2026-10-07 (11/1 on
+  integrated documentation-first and campaigned on 2026-10-07 (11/1 on
   `google/gemini-3.7-flash`, the red being M10; the default has been `google/gemini-3.8-flash` since 2026-11-11, 12/0/0). Identifiers
   are `vendor/model` (mandatory prefix), with the `:free` / `:nitro` / `:floor` suffixes and
   the `openrouter/auto` router slug (usable, refused as a default: the served model drifts —
@@ -128,7 +127,7 @@ details the `response_format` surfaces.
   `usage.cost` on both paths, `message.reasoning` with `reasoning_details[]` on a reasoning
   model, and `openrouter/auto` echoing the model that answered.
 - **Mammouth AI**: the French multi-model subscription whose included API credits drive
-  Orkeon, integrated documentation-first (LLM-09) and campaigned on 2026-10-07 (10/0/2 on
+  Orkeon, integrated documentation-first and campaigned on 2026-10-07 (10/0/2 on
   `gemini-3.7-flash`: every exercised mode green; the default has been `gemini-3.8-flash` since 2026-11-11, 9/1/2 with M10 red). On three
   concordant clues (2026-09-18) the API is a LiteLLM proxy; nothing in the provider depends on
   it. Identifiers are the vendors' own bare strings (`gpt-5.6-sol`, `claude-sonnet-5`,
@@ -182,7 +181,7 @@ variable still reads `Llm:ApiKey` and `ORKEON_Llm__ApiKey` only.
 
 The suggested 600 s is not decorative. The four providers whose **default** model reasons
 before it answers overrun the engine's 30 s, and the run of 2026-09-20 was lost to two Kimi
-timeouts reported as an empty answer (LLM-11). A settings file needs `Llm:TimeoutSeconds` raised
+timeouts reported as an empty answer. A settings file needs `Llm:TimeoutSeconds` raised
 explicitly.
 
 Two names that are **not** this one, and get confused with it:
@@ -194,7 +193,7 @@ Two names that are **not** this one, and get confused with it:
   for `web_search`, `BRAVE_API_KEY` read as-is for `brave_search`. See the
   [configuration reference](./configuration.md).
 
-`orkeon init --api-key-env <name>` is no longer one of them: it writes `Llm:ApiKeyEnvVar: <name>`
+`orkeon init --api-key-env <name>` writes `Llm:ApiKeyEnvVar: <name>`
 into the generated file — nothing for `ORKEON_Llm__ApiKey`, which the runtime reads natively — so
 every run reads the variable it names.
 
@@ -247,14 +246,14 @@ says which campaign measured what, and the models they added to the candidates a
 | Ollama | `llama3.2` | yes — 3B, text only, no thinking, a year old | `qwen3.5:4b`, `gemma4:e4b`, `granite4.2:3b` (tools + thinking, same size class) | stays: a new default means a pull on every machine |
 | Together AI | `zai-org/GLM-5.3-Flash` (was `meta-llama/Llama-3.3-70B-Instruct-Turbo`) | yes — 0.15 / 0.50 $/M (catalogue read of 2026-11-11); the former default is no longer served on serverless | `Qwen/Qwen3.5-9B`, `deepseek-ai/DeepSeek-V4.1-Flash`; Llama 4 left serverless | **changed 2026-11-11** — every call to the former default answered `Unable to access non-serverless model` (2/9/1), so the default moves to `zai-org/GLM-5.3-Flash`, Together's replacement target since 2026-09-19: 11/0/1 on the last run of the day (10/1/1 on the first, M10: no cached tokens reported; 11/0/1 on 2026-09-21), it reads the image, so the default sees and there is no separate vision companion; `Qwen/Qwen3.5-9B` 10/1/1 (M10), candidate |
 | DeepSeek | `deepseek-flash` (was `deepseek-v4-flash`) | yes — V4.1 Flash, 0.30 / 1.20 $/M peak, native vision | it is the newest | **changed 2026-09-19**: the old name is a retired model "temporarily" routed here; **replayed 2026-09-21**: 12/12 twice — M2 and M9, red for five campaigns on `deepseek-v4-flash`, are green on `deepseek-flash`; **replayed 2026-11-11**: `deepseek-flash` 12/12 |
-| Kimi | `kimi-k3.1-pro` (was `kimi-k2.6`) | yes — `kimi-k2.6` 0.95 / 4.00 $/M, no retirement date | `kimi-k3` (July 2026, 1M, 3 / 15, fixed sampling, no `thinking` field, always reasons); `kimi-k3.1-pro` and the `-highspeed` variants (listed 2026-11-11) | stays — **campaigned 2026-09-21**: `kimi-k3` 12/12 then 11/1 (M2 on the flattened shape), reasoning trace, cache 0.97, bare JSON where k2.6 now fences its `json_object` — ready, at three times the price; `kimi-k2.5` and `moonshot-v1-*` retired 2026-08-31; docs now on `platform.kimi.ai`; **2026-11-11**: `kimi-k2.6` 10/1/1 (M8: its `json_object` still fenced), `kimi-k3` 12/12, `kimi-k3.1-pro` 12/12 — the new top model; **changed 2026-11-11**: the default moves to `kimi-k3.1-pro` (12/12 direct and on OpenRouter). The K3 family fixes `temperature`, `top_p` and its reasoning: `KimiLlmProvider` leaves `temperature`, `top_p` and `thinking` out of a K3 request and reports each, so a host that sets them gets a warning, not a 400 |
+| Kimi | `kimi-k3.1-pro` (was `kimi-k2.6`) | yes — `kimi-k2.6` 0.95 / 4.00 $/M, no retirement date | `kimi-k3` (July 2026, 1M, 3 / 15, fixed sampling, no `thinking` field, always reasons); `kimi-k3.1-pro` and the `-highspeed` variants (listed 2026-11-11) | **changed 2026-11-11** — **campaigned 2026-09-21**: `kimi-k3` 12/12 then 11/1 (M2 on the flattened shape), reasoning trace, cache 0.97, bare JSON where k2.6 now fences its `json_object` — ready, at three times the price; `kimi-k2.5` and `moonshot-v1-*` retired 2026-08-31; docs now on `platform.kimi.ai`; **2026-11-11**: `kimi-k2.6` 10/1/1 (M8: its `json_object` still fenced), `kimi-k3` 12/12, `kimi-k3.1-pro` 12/12 — the new top model; **changed 2026-11-11**: the default moves to `kimi-k3.1-pro` (12/12 direct and on OpenRouter). The K3 family fixes `temperature`, `top_p` and its reasoning: `KimiLlmProvider` leaves `temperature`, `top_p` and `thinking` out of a K3 request and reports each, so a host that sets them gets a warning, not a 400 |
 | Qwen | `qwen3.7-plus` | yes — still the Plus tier, one of the three recommended models | `qwen3.8-max` (= `qwen3.8-max-0902`), `qwen3.8-flash`; no `qwen3.8-plus` | stays — **campaigned 2026-09-21**: `qwen3.8-max` 12/12, `qwen3.8-flash` 11/1 (M2), both ready, and `qwen3.7-plus` is still 12/12; the 3.8 generation adds `preserve_thinking`; **2026-11-11**: `qwen3.7-plus`, `qwen3.8-flash` and `qwen3.8-max` 12/12 each |
 | Mistral AI | `mistral-medium-2604` | yes — 1.50 / 7.50 $/M, not deprecated | nothing for chat since April (OCR 4.1 only) | stays; `devstral-*` / magistral ids sit in the deprecated table; **2026-11-11**: the default and `mistral-large-4` 12/12, `mistral-small-2603` 11/1 (M9) |
 | HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | yes — but tools on one of its four routed providers, and `:fastest` may pick another | `Qwen/Qwen3.5-9B` (tools on three providers, from 0.10 / 0.15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidate Qwen3.5-9B — **campaigned 2026-09-21**: 10/0/2, it sees and its tools hold; its first pass returned an empty M1 after 4113 tokens of thinking on the router's 4096 fallback — pin `Llm:MaxTokens` (or turn thinking off) before making it a default. The routing still explains the default's moving reds (M2 and M5 both red on the same pass); **2026-11-11**: the default 7/3/2 (M2, M5, M9), `Qwen/Qwen3.5-9B` 9/1/2 (M2) |
-| Z.AI | `glm-5.3-flashx` (was `glm-5.2`) | yes — `glm-5.2` still under "Latest Models", 1.40 / 4.40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0.15 / 0.50, image + video), `glm-5.3-flashx` | stays — **campaigned 2026-09-21**: `glm-5.3-flash` 12/12 twice (it sees, where 5.2 and 5.3 answer `1210`; cache read) — the cleanest candidate in the fleet, at a ninth of the price; `glm-5.3` 10/2 (M2, M9) brings nothing over 5.2. The `Toggle` declaration still needs a per-model guard before a bump; **2026-11-11**: `glm-5.3-flashx` 12/12 again, `glm-5.3` 11/1 (M9), `glm-5.3-flash` 11/1 (M2), `glm-5.2` 10/2; **changed 2026-11-11**: the default moves to `glm-5.3-flashx` (12/12 on 2026-10-07 and on the first run of 2026-11-11, 11/1 with M10 red on the last; it sees and its cache is read); last runs of the day: `glm-5.3-flash` 12/0/0, `glm-5.3` 10/2 (M2, M9), `glm-5.2` 11/1 (M9). The 5.3 family cannot switch thinking off: `ZaiLlmProvider` does not send `thinking: disabled` to it and reports the option instead |
+| Z.AI | `glm-5.3-flashx` (was `glm-5.2`) | yes — `glm-5.2` still under "Latest Models", 1.40 / 4.40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0.15 / 0.50, image + video), `glm-5.3-flashx` | **changed 2026-11-11** — **campaigned 2026-09-21**: `glm-5.3-flash` 12/12 twice (it sees, where 5.2 and 5.3 answer `1210`; cache read) — the cleanest candidate in the fleet, at a ninth of the price; `glm-5.3` 10/2 (M2, M9) brings nothing over 5.2. The `Toggle` declaration still needs a per-model guard before a bump; **2026-11-11**: `glm-5.3-flashx` 12/12 again, `glm-5.3` 11/1 (M9), `glm-5.3-flash` 11/1 (M2), `glm-5.2` 10/2; **changed 2026-11-11**: the default moves to `glm-5.3-flashx` (12/12 on 2026-10-07 and on the first run of 2026-11-11, 11/1 with M10 red on the last; it sees and its cache is read); last runs of the day: `glm-5.3-flash` 12/0/0, `glm-5.3` 10/2 (M2, M9), `glm-5.2` 11/1 (M9). The 5.3 family cannot switch thinking off: `ZaiLlmProvider` does not send `thinking: disabled` to it and reports the option instead |
 | Google Gemini | `gemini-3.8-flash` (was `gemini-3.7-flash`) | yes — `gemini-3.7-flash` "previous generation", no shutdown date, 0.75 / 3.75 $/M until 2026-12-31 then 1.50 / 7.50 | `gemini-3.8-flash` (GA 2026-09-02, same price, `minimal` thinking rejected); `gemini-4-argon`, `gemini-4-carbon` | first candidate for a bump — **campaigned 2026-09-21**: `gemini-3.8-flash` 11/0/1 twice, identical to 3.7 mode for mode on the direct transport; OpenRouter and Mammouth not played (no key); **2026-11-11**: the default 11/0/1, `gemini-3.8-flash` 12/0/0, `gemini-4-argon` and `gemini-4-carbon` 11/0/1 each; `gemini-omni-1.2-flash` is listed but Interactions-API only, so out of reach of this provider and not campaigned; **changed 2026-11-11 (full rerun)**: `gemini-3.8-flash` 12/0/0 direct and on OpenRouter (9/1/2 on Mammouth, the same M10 as 3.7), the default 11/0/1 — the default moves to `gemini-3.8-flash`, and OpenRouter and Mammouth follow it |
 | Grok (x.AI) | `grok-4.6` | yes — recommended, 2 / 6 $/M below 200K prompt tokens, 4 / 12 above | none | stays (`grok-4.7` is listed since); **campaigned 2026-11-11**: `grok-4.6` and `grok-4.7` 12/12 |
-| MiniMax | `MiniMax-M3` (was `MiniMax-M2`) | yes — `MiniMax-M2` listed as legacy, no retirement date | `MiniMax-M3` (2026-06-01, 1M, image + video input, same 0.30 / 1.20); `MiniMax-M3.1-Flash` | stays — **campaigned 2026-09-21**: `MiniMax-M3` 9/1/2 then 8/1/3 — it reads the image (then the kit's vision companion), M2 red like M2, the inline `<think>` block split out as on M2, 128 cached tokens once; the reasoning-format question is answered; **2026-11-11**: `MiniMax-M3.1-Flash` 10/0/2 (M7 and M8 not declared by the provider), M9 green — it reads the image where `MiniMax-M3` reads `72`; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9); **changed 2026-11-11 (full rerun)**: `MiniMax-M3` 10/0/2 (it reads the image), `MiniMax-M2` 6/4/2 (M2, M5, M9, M10) — the default moves to `MiniMax-M3` and the vision companion is retired |
+| MiniMax | `MiniMax-M3` (was `MiniMax-M2`) | yes — `MiniMax-M2` listed as legacy, no retirement date | `MiniMax-M3` (2026-06-01, 1M, image + video input, same 0.30 / 1.20); `MiniMax-M3.1-Flash` | **changed 2026-11-11** — **campaigned 2026-09-21**: `MiniMax-M3` 9/1/2 then 8/1/3 — it reads the image (then the kit's vision companion), M2 red like M2, the inline `<think>` block split out as on M2, 128 cached tokens once; the reasoning-format question is answered; **2026-11-11**: `MiniMax-M3.1-Flash` 10/0/2 (M7 and M8 not declared by the provider), M9 green — it reads the image where `MiniMax-M3` reads `72`; `MiniMax-M3` 9/1/2 (M9), `MiniMax-M2` 8/2/2 (M2, M9); **changed 2026-11-11 (full rerun)**: `MiniMax-M3` 10/0/2 (it reads the image), `MiniMax-M2` 6/4/2 (M2, M5, M9, M10) — the default moves to `MiniMax-M3` and the vision companion is retired |
 | OpenRouter | `google/gemini-3.8-flash` (was `google/gemini-3.7-flash`) | yes | `google/gemini-3.8-flash` (2026-09-02, same price) | follows the direct default — **campaigned 2026-10-07**: 11/1 on both (M10: cache fields returned with 0); **2026-11-11**: the default 12/0/0, `google/gemini-3.8-flash` 11/1/0 (M10), `moonshotai/kimi-k3.1-pro` 12/0/0; **changed 2026-11-11 (full rerun)**: `google/gemini-3.8-flash` 12/0/0, `google/gemini-3.7-flash` 11/1 (M10) — follows the direct default to 3.8 |
 | Mammouth AI | `gemini-3.8-flash` (was `gemini-3.7-flash`) | yes | `gemini-3.8-flash` | follows the direct default — **campaigned 2026-10-07**: 10/0/2 on both, every exercised mode green; **2026-11-11**: 9/1/2 on both (M10: 0 cached tokens), `kimi-k3.1-pro` 10/0/2; **changed 2026-11-11 (full rerun)**: 9/1/2 on both again (M10) — follows the direct default to 3.8 |
 
@@ -472,11 +471,9 @@ What the table does not say by itself:
 ## Output caps — the documented maximum per model (LLM-10)
 
 A request carries an output cap (`max_tokens`, `max_completion_tokens` at OpenAI, `num_predict`
-at Ollama). The engine used to send **4096 for every model**; a reasoning model spends that
-budget thinking and answers empty, the tool-free retry that follows narrates the deliverable
-instead of writing it, and the run goes green with no file (owner recette 2026-09-19,
-`kimi-k3`). Since LLM-10 the cap left unpinned is **the model's documented maximum**, from the
-`LlmModelOutputLimits` catalogue in `Orkeon.Constants.Llm`; a pinned value (`Llm:MaxTokens`, a
+at Ollama). Left unpinned, the cap is **the model's documented maximum**, from the
+`LlmModelOutputLimits` catalogue in `Orkeon.Constants.Llm`: a fixed 4096 would let a reasoning
+model spend the budget thinking and answer empty. A pinned value (`Llm:MaxTokens`, a
 profile, a crew's `max_tokens`) always wins; a model the catalogue does not know keeps
 the 4096 fallback. Only documented figures go in, each read on 2026-09-19:
 
@@ -511,7 +508,7 @@ surfaces unchanged.
 ## Per-model mandatory parameter values
 
 Some models refuse a request unless a parameter carries one specific value. This is a
-different animal from the per-model capability gaps above (D-03 — a model lacking thinking or
+different animal from the per-model capability gaps above (a model lacking thinking or
 vision): here the capability exists, but the model dictates the value, and the vendor answers
 anything else with a 400. **The constraint is per model, never per provider** — the same
 vendor ships models with opposite demands, so a provider-level pin is one campaign away from
@@ -542,10 +539,9 @@ On OpenAI, the GPT-5.6 and GPT-6 tiers take function tools on `/v1/chat/completi
 `/v1/responses`). The pin must reach the API as `none`: on 2026-11-11 a first pass had Orkeon
 lowering it to `low`, which turned M2 and M5 red on every OpenAI model until the fix.
 
-A temperature nothing sets is not sent (GAP-36): a host that pins none runs these models on their
+A temperature nothing sets is not sent: a host that pins none runs these models on their
 own default, which they accept — `orkeon init` writes none. A host that pins one must pin
-the mandated value. Before GAP-36 the engine sent 0.7 when nothing was set — a value the two
-default models of the table, `gpt-5.6-sol` and `claude-sonnet-5`, refuse (measured above).
+the mandated value.
 
 The counter-example that makes the registry per-model: `gpt-4o-mini` — same provider as
 `gpt-5.6-sol` — rejects `reasoning_effort` outright (`Unrecognized request argument supplied:

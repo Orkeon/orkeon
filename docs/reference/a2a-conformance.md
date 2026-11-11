@@ -17,7 +17,7 @@ for what interoperates and what does not.
 |---|---|---|---|
 | Send Message | `POST /a2a/tasks/send` | 🟡 Partial | 0.x-era shape (`A2ATaskRequest`: id/skillId/input/inputMode/metadata), not the v1.0 `Message`/`Part` data model. The `skillId` is the `id` of a skill on the agent card; the agent runs and the response carries its output — see [Task execution](#task-execution). |
 | Send Streaming Message | `POST /a2a/tasks/sendSubscribe` (SSE) | 🟡 Partial | `Working` → one `Working` update per progress line the router reports, the line in `message` → final update → `[DONE]`; no `TaskStatusUpdateEvent`/`TaskArtifactUpdateEvent` typed events, no keep-alive. |
-| Get Task | `GET /a2a/tasks/{id}` | 🟡 Partial | **Real since PUB-08** when task persistence is enabled (`AddOrkeonA2ATaskPersistence()` over a checkpointing `IStateStore`): 200 with the recorded state, 404 for unknown ids. Without the opt-in: explicit `501` (never fabricated state). |
+| Get Task | `GET /a2a/tasks/{id}` | 🟡 Partial | **Real** when task persistence is enabled (`AddOrkeonA2ATaskPersistence()` over a checkpointing `IStateStore`): 200 with the recorded state, 404 for unknown ids. Without the opt-in: explicit `501` (never fabricated state). |
 | List Tasks | — | 🔴 Absent | |
 | Cancel Task | `DELETE /a2a/tasks/{id}` | 🟡 Partial | A task the agent is still working on is **interrupted**: its execution token is cancelled and the submitting request answers `Cancelled`. With persistence, a record left `Working` by a stopped server flips to `Cancelled`; a finished task answers 409 and keeps its state. Unknown ids (or, without persistence, any task not running) answer 404. |
 | Subscribe to (existing) Task | — | 🔴 Absent | Streaming exists only at submission time. |
@@ -50,7 +50,7 @@ step when this surface is promoted.
 | Client identity verification | mTLS (fail-closed: `RequireMutualTls` refuses to start without a trust anchor; CA chain or pinned thumbprints; 403 on failure) + `AllowedAuthSchemes` (401): a `Bearer` token validated by an `IAuthenticationProvider` (Azure AD, OIDC, or the host's), an `ApiKey` compared in constant time with the secrets named by `ApiKeySecretNames`; a scheme declared without a validator refuses to start | 🟢 Both credentials are validated, not just matched. `A2AClient` sends its own (`ClientAuthScheme` + `ClientCredentialSecretName`, below). |
 | Agent card access | `GET /.well-known/agent.json` | 🟢 Public by design: the security checks apply to the task endpoints only. |
 | `securitySchemes` declaration in the AgentCard | — | 🔴 Schemes are enforced but not advertised. |
-| Certificate revocation | Not checked | 🟡 **Decision (PUB-08 T3): prefer short-lived certificates over CRL/OCSP.** The A2A mTLS trust model targets private CAs, where CRL/OCSP endpoints rarely exist and OCSP adds an availability dependency; a 24–72 h certificate lifetime bounds the exposure window with no new runtime dependency, and rotation already fits the existing options (a new client instance picks up the new PFX). CRL support stays out of scope until a deployment proves the need. |
+| Certificate revocation | Not checked | 🟡 **Decision: prefer short-lived certificates over CRL/OCSP.** The A2A mTLS trust model targets private CAs, where CRL/OCSP endpoints rarely exist and OCSP adds an availability dependency; a 24–72 h certificate lifetime bounds the exposure window with no new runtime dependency, and rotation already fits the existing options (a new client instance picks up the new PFX). CRL support stays out of scope until a deployment proves the need. |
 | Push-notification webhook auth | — | 🔴 No webhooks. |
 
 ## Task execution
@@ -141,7 +141,7 @@ shipped agent tool calls one.
   persistence opt-in. A C# host enables it for its agents, `orkeon-host` for the
   crews it exposes (without task records: its `GET` answers `501`).
 - **Orkeon ↔ third-party v1.0 agents**: not yet — wait for (or contribute to)
-  the HTTP+JSON binding alignment tracked by the PUB-08 follow-up.
+  the HTTP+JSON binding alignment.
 
 Every gap above is deliberate scope, not an oversight: the surface is marked
 `[Experimental]` (`ORKEXP001`) precisely so it can be reshaped toward v1.0

@@ -27,15 +27,14 @@ what it finds.
 | honours `withTask` / `process` / `manager` | **no — ignored** | yes — `manager` where the process has one (`hierarchical`, `consensual`), refused elsewhere |
 | `orkeon run --validate` | fails (*did not assign globalThis.crew*) — **after running the script**: loading it evaluates it, `await crew.run()` included | works — the script is evaluated, the crew is not run |
 
-They are opposites, not variants. The procedural run loop (JavaScript since SCR-25,
+They are opposites, not variants. The procedural run loop (JavaScript,
 `JsCrew.Run.cs`, run under the script's own pump) walks the agents and never looks at tasks;
 `Process` reaches only a telemetry tag. The adapter, symmetrically, never invokes a `body`:
 the only places it names one are the warnings it emits for the declarations it drops.
 
 **The rule:** write `.body()` and you are procedural; write `withTask` and you are
 declarative. Never both in one file. A crew with tasks that ends with `await crew.run()`
-runs its agents and ignores every task you wrote — logging a warning that says exactly that,
-which is the only reason the mistake is now cheap to find.
+runs its agents and ignores every task you wrote — logging a warning that says exactly that.
 
 It is `orkeon run` that routes a `globalThis.crew` script to the declarative engine. A host that runs the file through
 `ScriptHost` — the REPL's `script-host` service, a C# host calling `RunFromFileAsync` — has no
@@ -88,18 +87,15 @@ inferred.
 | `maxInstances(n)` — the most agent instances (`crew.instances()`) the crew keeps (default 32; the oldest ended one goes first) | ✅ | ❌ (not warned) |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
-Everything marked ❌ on the declarative side, `concurrency` and `maxInstances` aside, is now **announced**: the run logs one warning
+Everything marked ❌ on the declarative side, `concurrency` and `maxInstances` aside, is **announced**: the run logs one warning
 per dropped declaration, naming the method and the agent it was written on. It is still
-dropped — the two shapes are two engines — but a crew no longer runs a body that was never
-invoked and says nothing about it.
+dropped — the two shapes are two engines.
 
 **What `await crew.run()` resolves to** — a `CrewResult`, exactly what `crew.d.ts` declares:
 `output`, the text of the last agent output that was not `null` (`""` when no agent returned
 anything), and `tasks`, one `{ name, output, durationMs }` per agent run, in the order they ran,
-`output` being what the body returned. Nothing more: the `artifacts` map the typings used to
-declare was never filled, and `crew.run<T>()` typed an `output` the runtime always serves as a
-string — both are gone (GAP-27), and `TypingsRuntimeParityTests` compares the two result shapes
-type by type.
+`output` being what the body returned. Nothing more: no `artifacts` map, and `output` is always a string;
+`TypingsRuntimeParityTests` compares the two result shapes type by type.
 
 #### `process("graph")` is not `stateGraph`
 
@@ -107,10 +103,8 @@ They are different facilities with a shared word. `process("graph")` runs the cr
 **domain's** graph strategy: one node per task, chained in execution order (a retry is the task's `retry:`), with a circuit breaker tuned by `GraphConfig`; a crew file can also describe its nodes and edges in a `graph:` block, which a script does not write. `stateGraph({ nodes, edges })` is the topology **you**
 draw, and it runs when you call `.run()` on it — from an agent `.body()`, so procedurally.
 
-`crewBuilder().graph(g)` used to blur the two: it accepted a `stateGraph`, stored it in a
-field no engine ever read, and `process("graph")` refused to build without it. The mode was
-gated behind a method that discarded its argument. The method is gone; `process("graph")`
-now builds on its own.
+`crewBuilder()` has no `graph(...)` method: `process("graph")` builds on its own, and a
+`stateGraph` runs only through its own `.run()`.
 
 ### `taskBuilder()`
 
@@ -122,8 +116,7 @@ this task alone runs on one of the host's profiles, on that profile's own model,
 brings it back to the host's default; a name the host does not offer fails the load, listing the
 known ones). `name` is the task's key: `when(...)` and a decision's `state` refer to a task by it, and a
 decision task requires it. Accepted but not acted on: `expect` (recorded in the
-task context when there is no `deliverable`, never validated). `withTaskTool` is gone: nothing ever
-read it, and `tools` covers it.
+task context when there is no `deliverable`, never validated).
 
 `decision(spec)` makes the task a decision task: `spec` is an object literal `{ questions, minConfidence, state, longContext, fallback }`, the shape of the YAML `decision:` block. It needs no `agent`, and a task that has both is refused at load. `when(decisionTask, clauses)` runs the task only when the decision task named answered as asked: `clauses` is a clause object (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) or the string `"otherwise"`; `when()` throws an `InvalidScriptException` only for an empty task name or for `clauses` that is neither an object nor a string. A string other than `"otherwise"`, an unknown question or option, or a malformed clause passes the builder and is refused at load. Two decision tasks with the same `name` in one script are refused at load (`Task '<name>' declares a decision twice.`). `state` lists the tasks whose output is the decision's state (default: each dependency that ran); with the circuit off, or by `--no-decision`, the task answers from `fallback` (see [Decision models](../architecture/decision-models.md#the-decision-circuit-and-the-fallback)). Decision tasks and conditions run in the Sequential, Parallel and Graph processes only. A second `.when()` on one task throws an `InvalidScriptException` naming the task. A `state` that is not an array, a `fallback` that is not an object, and a `choice` value, `score` entry or `fallback` value that is not a string are refused at load, naming the task and the key. Two tasks with the same `name` are refused at load. A task without `.name()` is keyed by its full description; truncation is display only. See [Decision models](../architecture/decision-models.md).
 
@@ -137,8 +130,7 @@ when the run adapts it, naming the task (see
 
 A task's `agent` and the tasks of its `withContext(s)` are the crew's own (`withAgent(s)`,
 `withTask(s)`): one the crew does not hold is refused when the run adapts the crew, naming the
-task, the call and what the crew has — the task used to run on another agent, or without waiting for
-what it cited.
+task, the call and what the crew has.
 
 ### `toolBuilder()`
 
@@ -202,7 +194,7 @@ already observes the context's.
 the same forms as its first argument, the caller's turns sent in order, plus a prompt string; its
 options add `system`, sent as the first message with the JSON instruction appended to it, so the
 user content goes untouched. Without `system`, the instruction is appended to the prompt or to the
-last user message. A re-ask carries the refused answer as an assistant turn (#285):
+last user message. A re-ask carries the refused answer as an assistant turn:
 
 ```ts
 const again = await ctx.llm.extract<Invoice>({ messages: [
@@ -231,7 +223,7 @@ handler reads it as `validation`. `ActOptions.system` seeds a real `role:"system
 persists across every iteration; without it `act()` sends a single user message.
 `ActOptions.context` seeds a user message of its own between `system` and the prompt: the prompt
 stays the last user message, the request a decision profile's `guard` and `route` stages judge,
-so the context cannot dilute its risk (#276).
+so the context cannot dilute its risk.
 `permissionMode` (`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) is checked against the
 host's permission gate on each tool call, when the host registered one: a call the mode asks
 about waits for the operator when the host has an approval channel (`orkeon-repl` has one), and
@@ -313,8 +305,7 @@ From .NET, `MockLlmProvider` and `MockTool` (`Orkeon.Scripting.Testing`) take th
 
 ## `stateMachine` and `stateGraph`
 
-Both are literal-driven and both were **declared wrongly until 2026-09-07**; if you are
-working from an older `orkeon.d.ts`, this is the section to read.
+Both are literal-driven.
 
 `stateMachine` takes `{ name, initial, states }`. Transitions live **inside each state**,
 keyed by event name, and the destination field is `target`:
@@ -388,19 +379,17 @@ each of them stated rather than silent.
 | `budget()` in the declarative shape | The crew's budget when the process is `"autonomous"`, the one process that spends it (keys `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`; `contextTokens` is refused there, the strategy counting each finished task's tokens, not each call's prompt). With another process the crew is refused when the run adapts it, the error naming the process. |
 | `.body()` in the declarative shape | Ignored, and said so: the run logs a warning naming the agent. The most expensive confusion in the DSL, and the reason for the shape table above. |
 | `globalThis.inputs` in the declarative shape | Never planted. Passing `--inputs`, `--inputs-file` or `--memory-limit-mb` to a declarative script prints a warning on stderr instead of dropping the flag in silence. |
-| `ctx.llm.embed` | Returns a stub vector. Real embedders are a follow-up. |
-| `concurrency(n)` with `n > 1` | Rejected at build with a clear message — V1 is a mutex, the N-holder semaphore is V1.5. Loud, not silent. |
-| Locks have no timeout | `LockTimeoutError` is V1.5. |
+| `ctx.llm.embed` | Returns a deterministic stub vector, not a real embedding. |
+| `concurrency(n)` with `n > 1` | Rejected at build with a clear message: an agent's concurrency is a mutex. Loud, not silent. |
+| Locks have no timeout | There is no `LockTimeoutError`. |
 | Events | In-memory only; no Redis/NATS persistence. |
-| FSM/Graph composition | Sub-states and sub-graphs are V1.5. |
+| FSM/Graph composition | Neither sub-states nor sub-graphs. |
 
 ### Conditional inclusion
 
 The only conditional construct is `when(decisionTask, clauses)` on a task builder, which runs the
 task on a decision task's answers at runtime (see `decision(spec)` above). There is no predicate
-that includes or excludes an agent or a task when the script is built: `when(predicate)` used to be
-declared on all three builders and was honoured by neither engine, so it was removed rather than
-implemented, a method that silently does the opposite of what it says being worse than no method.
+that includes or excludes an agent or a task when the script is built.
 
 Guard the call instead:
 
@@ -433,8 +422,7 @@ mkdir -p .orkeon && tar -xzf "orkeon-typings-$VER.tar.gz" --strip-components=1 -
 # between two versions, extract each into its own folder and:  diff -r typings-A typings-B
 ```
 
-A Release cut before this asset existed does not carry it; for those, `orkeon typings` is the
-source. Then copy
+When a Release does not carry it, `orkeon typings` is the source. Then copy
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json),
 which is the configuration the repository's own gate uses.
 

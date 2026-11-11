@@ -2,23 +2,21 @@
 
 # Opt-in subsystems
 
-> Decision R4.9 (QCM 2026-06-11): the 13 dormant DI ports identified by the audit
-> (MORT-003) and the associated subsystems are **kept**, **removed from
-> default registration** and **explicitly activatable**. None of these services
-> is registered by `AddOrkeonApplication()` or by `AddOrkeonInfrastructure()`
-> (both overloads): each one is enabled through its dedicated `AddOrkeonXxx()` extension.
+> The subsystems below are not registered by default: `AddOrkeonApplication()` and
+> `AddOrkeonInfrastructure()` (both overloads) leave them out unless a row says otherwise,
+> and each one is enabled through its dedicated `AddOrkeonXxx()` extension.
 
 ## Principle
 
-These subsystems are complete and unit-tested, but **no production execution
-path consumes them yet**: registering them by default bloated the DI container
-with no benefit and masked their real status. The move to opt-in makes their
-activation **intentional, documented and verifiable**.
+Some of these subsystems are consumed by no production execution path — the host
+invokes the service itself (*Experimental* below); others are wired by the shipped
+binaries, as the *Activation* column says. Registering all of them by default would bloat
+the DI container and mask their status: the opt-in makes their activation
+**intentional, documented and verifiable**.
 
-**No shipped binary activates them.** `orkeon run`, `orkeon-host` and `orkeon-repl` call none of
-the extensions that read these sections: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:MultiModal`, `Plugins`, `Evaluation`, `Orkeon:VectorSearch`,
-`Orkeon:Checkpointing` and `Orkeon:ExecutionState:Persistence`. Written in the
+**Six sections no shipped binary reads.** `orkeon run`, `orkeon-host` and `orkeon-repl` call none of
+the extensions that read `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
+`Orkeon:MultiModal` and `Orkeon:VectorSearch`. Written in the
 settings of one of those binaries, such a section is read by nothing: the run starts without the
 limit, the budget or the screening it describes. The binary says so at its start — one line on
 stderr per section, naming the extension a host written in C# reads it through — and
@@ -57,13 +55,13 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Tool rate-limiting & token budget | `AddOrkeonToolRateLimiting()` | Infrastructure | `IToolRateLimiter`, `ITokenBudgetTracker` | Experimental |
 | Key rotation | `AddOrkeonKeyRotation()` | Infrastructure | `IKeyRotationService` | Beta |
 | Evaluation benchmarking | `AddOrkeonBenchmarking()` — runner hosts register it | Infrastructure | `IBenchmarkRunner` | Beta |
-| Multi-modal content (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Beta (real since R3.9) |
+| Multi-modal content (vision) | `AddOrkeonMultiModal(...)` | Infrastructure | `IContentValidationService`, `IMultiModalContentLoader` | Beta |
 | Kickoff hooks | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Experimental |
 | Codebase context (RaggableTree) | `AddRaggableTree(options)` — ⚠️ **runner hosts opt out instead**: `RunnerHost` registers it by default and `RaggableTree:Enabled = false` disables it | Analysis | `ICodebaseContextProvider` | Beta |
-| RAG subsystem (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`); profiles `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (default `fast`); `balanced`/`quality`/`adaptive` need the ONNX cross-encoder — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, embedded weights, offline — registered by the three shipped binaries, `orkeon`, `orkeon-host` and the REPL, not by `RunnerHost`); `corrective` does not (the graph loops instead of reranking); the corrective web fallback is config-only — `AddOrkeonRag` already wires the transport, the two `Enabled` switches govern (`Orkeon:Rag:Corrective:WebFallback` policy, `Orkeon:Rag:WebFallback` transport) — see the detailed section below | Orkeon.Rag.Abstractions / Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx / Orkeon.Rag.Onnx.Model | `IRagPipeline` (staged / corrective graph), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Beta |
+| RAG subsystem | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`); profiles `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (default `fast`); `balanced`/`quality`/`adaptive` need the ONNX cross-encoder — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, embedded weights, offline — registered by the three shipped binaries, `orkeon`, `orkeon-host` and the REPL, not by `RunnerHost`); `corrective` does not (the graph loops instead of reranking); the corrective web fallback is config-only — `AddOrkeonRag` already wires the transport, the two `Enabled` switches govern (`Orkeon:Rag:Corrective:WebFallback` policy, `Orkeon:Rag:WebFallback` transport) — see the detailed section below | Orkeon.Rag.Abstractions / Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx / Orkeon.Rag.Onnx.Model | `IRagPipeline` (staged / corrective graph), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Beta |
 | Decision models (TypeSafe, Liquid, Kev) | `AddOrkeonDecisionProvider(configuration)` (the active provider, named by `Orkeon:Decision:Provider` or deduced from the sections `Orkeon:TypeSafe` / `Orkeon:Liquid` and the keys `TYPESAFE_API_KEY` / `LIQUID_API_KEY`; Kev is only ever named, its `KEV_API_KEY` is optional; also the model behind the guardian's LLM judge (`Orkeon:Guardian:Llm`, off by default), and `system_one_decide`) · `AddOrkeonDecisionProfiles(configuration)` (`Orkeon:Decision:Profiles`) — **the three shipped binaries call both**: the provider when one is named or deduced, the profiles always · `rerank.kind: decision` — see [Decision models](../architecture/decision-models.md) | Infrastructure / Orkeon.Rag | `IDecisionModel` (`SystemOneDecisionModel`, one client for the three providers), `DecisionLlmProvider` with the `route`/`guard`/`verify` stages, `DecisionInputGuard`, `DecisionModelReranker`, `system_one_decide` (`IBaseTool`) | Experimental |
 | EventHub middleware stages | `AddOrkeonEventHubObservability()` (logging + telemetry) · `AddOrkeonEventHubAcl(policy?)` (enforces the crews' `links:` blocks — **already wired by the runner host and `orkeon-host`, with the permissive default**: a crew that declares no links behaves as before, one that declares is held to them; only the closed policy is an opt-in) · `AddOrkeonEventHubIdempotency(capacity?)` (point-to-point only, in-memory, does not survive the process) · `AddOrkeonEventHubValidation()` (a declared `SchemaId` must be registered — the contract's existence, not the payload's conformance). Each is independent; registration order is the pipeline order — see [EventHub §12](../architecture/event-hub-and-crew-lifecycle.md) | Infrastructure | `IEventHubMiddleware`, `ICrewLinkProvider`/`ICrewLinkRegistry`, `IEventSchemaRegistry` | Beta |
-| Execution state persistence (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Beta |
+| Execution state persistence | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Beta |
 | Permission gate (per tool call) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consumed by the scripted `ctx.llm.act` loop and by YAML crews' tool calls (`ToolInvocationPipeline`) | Beta |
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |
 | Shell allowlist customization | config only: `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (full replacement — cancels `AllowInterpreters`) | Tools.Code | (shapes the `ShellCommandTool` executable allowlist; absent/empty section = defaults) | Beta |
@@ -123,7 +121,7 @@ partial (flagged case by case below).
 
 ## A2A server/protocol — `AddOrkeonA2A(...)`
 
-> **Task persistence add-on (PUB-08)**: `AddOrkeonA2ATaskPersistence()` stores A2A task
+> **Task persistence add-on**: `AddOrkeonA2ATaskPersistence()` stores A2A task
 > lifecycles over the opt-in checkpointing `IStateStore` (register one first), turning
 > `GET /a2a/tasks/{id}` into a real 200/404 endpoint instead of the explicit 501.
 
@@ -154,7 +152,7 @@ partial (flagged case by case below).
   `IDomainEventDispatcher`, `IUnitOfWork`, as well as — with the default router — the A2A
   agent directory (`IAgentRegistrationStore` singleton + `IAgentRepository` scoped, see
   below) when the host has not already wired them via `AddOrkeonInfrastructure()`.
-- **Agent repository lifecycle (R4.6 / ANT-001, "scoped per request" decision)**:
+- **Agent repository lifecycle (scoped per request)**:
   - `IAgentRepository` is **scoped**; the router (a singleton) never captures it — it
     opens a **DI scope per A2A request** (the card, each task) via
     `IServiceScopeFactory` and resolves the repository inside it. Resolution passes with
@@ -206,8 +204,8 @@ partial (flagged case by case below).
 Not an opt-in — every run emits them, and the runners (`orkeon run`, `orkeon-host`) export
 them wherever the standard `OTEL_EXPORTER_OTLP_ENDPOINT` points (a .NET Aspire AppHost sets
 it — see [ADR-011](../adr/ADR-011-aspire-dashboard-observability.md)) or the `Telemetry`
-section of the settings says (`Telemetry:OtlpEndpoint`). Since 2026-09-11 the execution path itself carries the
-spans (they used to live in helpers nothing in production called), named and attributed
+section of the settings says (`Telemetry:OtlpEndpoint`). The execution path itself carries the
+spans, named and attributed
 by the [OpenTelemetry generative-AI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 so Langfuse, Honeycomb, Application Insights or the Aspire dashboard read them without a
 mapping. The names are the constants of `Orkeon.Constants.Llm.GenAiAttributes`.
@@ -278,7 +276,7 @@ No attribute carries an id of a crew, task or agent.
   for the rest.
 - **Known limits**: the interceptors are **not** invoked automatically by
   the execution pipeline — the host resolves them (`GetServices<IDlpInterceptor>()`) and
-  applies them to the channels it wants to protect. One exception (FWK-20): the external-output
+  applies them to the channels it wants to protect. One exception: the external-output
   interceptor of a host that registered DLP is applied to the arguments of a streamed tool call, held
   until the call ends and emitted as one redacted delta. Not to be confused with the
   `PiiDetectionValidator` of the output validation pipeline, which remains registered
@@ -300,11 +298,11 @@ No attribute carries an id of a crew, task or agent.
   limiter/tracker around its tool calls. **LLM** rate-limiting
   (`ILlmRateLimiter`), for its part, remains registered by default because it is
   applied at the entrance of every provider the host builds or registers — each model
-  call takes one lease there, an agent's turn or not (GAP-38).
+  call takes one lease there, an agent's turn or not.
 
 ## Key rotation — `AddOrkeonKeyRotation()`
 
-- **Role**: **real** re-encryption (R2.8) of an encrypted memory store's entries during
+- **Role**: **real** re-encryption of an encrypted memory store's entries during
   a key rotation —
   `IKeyRotationService.RotateAsync(store, oldProvider, newProvider, options?)` — plus the
   generation and persistence of a new key via
@@ -347,7 +345,7 @@ No attribute carries an id of a crew, task or agent.
   `EncryptedMemoryProviderDecorator` decorator, type `MemoryProviderBase` for
   key enumeration) and assumes no concurrent write occurs during the
   rotation window. `AesEncryptionProvider.RotateKeyAsync` is neutralized
-  (`NotSupportedException`, no more false success log): an "in-place" rotation
+  (`NotSupportedException`): an "in-place" rotation
   would orphan the existing data — go through `IKeyRotationService`.
 
 ## Evaluation benchmarking — `AddOrkeonBenchmarking()`
@@ -368,7 +366,7 @@ No attribute carries an id of a crew, task or agent.
 
 - **Shipped binaries**: none activates it. `orkeon run`, `orkeon-host` and `orkeon-repl` do not
   read `Orkeon:MultiModal`, and say so at their start when the settings write it.
-- **Status: real (R3.9)** — vision is wired end to end: image contents
+- **Status: real** — vision is wired end to end: image contents
   flow from the `MultiModalContent` abstractions (Domain) to provider payloads via
   `LlmMessage.MultiModalContent`. `AnthropicLlmProvider` emits image content
   blocks conforming to the Messages API (`{"type":"image","source":{"type":"base64"|"url",…}}`);
@@ -389,8 +387,7 @@ No attribute carries an id of a crew, task or agent.
   (`AddOrkeonFileSystem(configuration)` in real hosts).
 - **Known limits**: vision payload composition is capability-driven
   (`LlmProviderCapabilities.Vision`, translated once by `OpenAICompatibleProviderBase`)
-  — **all 16 providers** declare it (DeepSeek since the 2026-08-30 campaign measured
-  `deepseek-v4-flash-vision-exp`, native on `deepseek-flash` since V4.1); a provider without the capability degrades
+  — **all 16 providers** declare it; a provider without the capability degrades
   multi-modal messages to their text fallback
   (`LlmMessage.Content`). Supported image formats: png, jpeg, gif, webp.
   Audio/file parts are not sent by any provider and throw an explicit
@@ -412,9 +409,7 @@ No attribute carries an id of a crew, task or agent.
   }); // registers the hook AND the runner
   ```
 - **Dependencies**: none (hook collections empty by default, optional logging).
-- **Known limits**: the orchestrator does not (yet) invoke the runner — wiring it
-  into the execution pipeline belongs to the orchestrator decomposition (R4.1).
-  In the meantime, the host calls it itself:
+- **Known limits**: the orchestrator does not invoke the runner: the host calls it itself:
   ```csharp
   var runner = provider.GetRequiredService<ICrewKickoffHookRunner>();
   await runner.RunBeforeKickoffAsync(crew, ct);
@@ -435,7 +430,7 @@ No attribute carries an id of a crew, task or agent.
   the host resolves it and injects the summaries wherever it wishes (system prompt,
   task context…).
 
-## RAG subsystem — `AddOrkeonRag(configuration)` (RAG-02…06)
+## RAG subsystem — `AddOrkeonRag(configuration)`
 
 - **Role**: retrieval-augmented generation — ingestion (loaders, chunking,
   validation, incremental manifest), staged retrieval pipeline (transform →
@@ -479,14 +474,14 @@ No attribute carries an id of a crew, task or agent.
   of the LLM-dependent nodes (`corrective`/`adaptive`), heuristic classifier by
   default, in-process BM25 unpersisted.
 
-## Execution state persistence — `AddCrewExecutionStatePersistence(...)` (R3.8)
+## Execution state persistence — `AddCrewExecutionStatePersistence(...)`
 
 - **Shipped binaries**: `orkeon run` and `orkeon-host` read `Orkeon:Checkpointing` (the store) and
   `Orkeon:ExecutionState:Persistence` (the switch). `Orkeon:Checkpointing:Enabled=true` with `Store`
   `json`, `sqlite` or `postgres` gives every run of the host a durable checkpoint session, and the
   persistence of execution states the same store. `json` and `sqlite` write under `./.orkeon/state`,
-  mounted at `/state` as an internal mount. `orkeon-repl` reads neither and says so at its start when
-  the settings write one.
+  mounted at `/state` as an internal mount. `orkeon-repl` reads neither; its start does not report them, since the other two
+  binaries read them.
 - **Run identity**: one run has one identifier, an `ExecutionId`: the checkpoint session id, the
   `correlationId` of the events `orkeon run --events` writes, and the id the no-wait kickoff returns.
   `KickoffOptions.ExecutionId` hands it in (resume, host); `IRunScope.Current` shows it to every
@@ -494,9 +489,9 @@ No attribute carries an id of a crew, task or agent.
   crew's name unless `KickoffOptions.CrewKey` names it; `orkeon run` and `orkeon-host` name it with the
   crew's name, the virtual path of its file and a digest of the file's full path, so that a session
   can be found again by a new process whatever the ids of the crew and its tasks, regenerated at each load.
-  Not unified yet: the A2A task id and the API's (FWK-14). A run kicked off inside another one enters its
+  The A2A task id and the API's are not unified with it. A run kicked off inside another one enters its
   own scope: its identifier overrides the outer one for its length.
-- **Checkpoint per task and `--resume`** (FWK-07): each task a crew run completes is written to the
+- **Checkpoint per task and `--resume`**: each task a crew run completes is written to the
   checkpoint session as it ends, by a decorator of `IAgentExecutionService` that every orchestration mode
   goes through (sequential, parallel, hierarchical, graph, autonomous, consensual), under the key
   `"{TaskKey}#{n}"`: `TaskKey` is the task's name in the crew definition, `n` the ordinal of that key's
@@ -557,7 +552,7 @@ No attribute carries an id of a crew, task or agent.
   YAML crews' tool calls (`ToolInvocationPipeline`)
   before EACH tool execution. Modes: `bypassPermissions` → allow all; `plan` → deny
   non-reads; `dontAsk` → allow reads, deny the rest without ever asking;
-  `acceptEdits` → auto-accept reads + `file_write`, ask for shell;
+  `acceptEdits` → auto-accept reads and edits (`file_write`, `spawn_agent`, the code-graph edits, any tool declaring `ToolAccess.Edit` such as `rag_ingest`), ask for everything else (`shell_command` among them);
   `default` → auto-accept reads, ask for everything else. With an approval channel, an ask
   waits for the operator, and the script's `ExecutionTimeout` and the agent's wall-time budget
   (`.budget({ wallTime })`) stop meanwhile; a refusal reads
@@ -642,10 +637,10 @@ No attribute carries an id of a crew, task or agent.
   label (`[task-1] `); a line of theirs that arrives while the
   foreground act is inside a line waits for that line's end. So two acts streaming at
   once — two background `runAgent` sub-runs, the tasks of a parallel crew wave — never
-  write into one another and no line is cut (#211). Turns that stream no visible
+  write into one another and no line is cut. Turns that stream no visible
   content (pure tool calls) emit nothing. The sink composes with a script-side `onDelta`
   (both receive every delta).
-- **Telling the script it already streamed** (#228): the `CommandResponse` a `request()`
+- **Telling the script it already streamed**: the `CommandResponse` a `request()`
   returns or a `completed(result)` receives, and the `CrewRunOutput` of `runCrew`, carry
   `streamed: boolean`, true when any turn of the request was written to the console in the
   foreground (inline, or as whole unprefixed lines); a script prints the payload only when
