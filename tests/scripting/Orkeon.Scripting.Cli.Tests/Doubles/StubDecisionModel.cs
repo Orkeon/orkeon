@@ -19,7 +19,7 @@ internal sealed class StubDecisionModel : IDecisionModel
     {
         Choice = "delivery",
         Confidence = 0.9,
-        Probabilities = ImmutableDictionary<string, double>.Empty.Add("delivery", 0.9).Add("billing", 0.05).Add("account", 0.05),
+        Probabilities = ImmutableDictionary.CreateRange([KeyValuePair.Create("delivery", 0.9), KeyValuePair.Create("billing", 0.05), KeyValuePair.Create("account", 0.05)]),
     };
 
     /// <summary>The answer given to every score question.</summary>
@@ -27,7 +27,7 @@ internal sealed class StubDecisionModel : IDecisionModel
     {
         Score = 2,
         Confidence = 0.9,
-        Probabilities = ImmutableDictionary<string, double>.Empty.Add("0", 0.05).Add("1", 0.05).Add("2", 0.9),
+        Probabilities = ImmutableDictionary.CreateRange([KeyValuePair.Create("0", 0.05), KeyValuePair.Create("1", 0.05), KeyValuePair.Create("2", 0.9)]),
     };
 
     /// <summary>The answer given to every box question.</summary>
