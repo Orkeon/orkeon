@@ -10,7 +10,7 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 dotnet add package Orkeon.Tools.Embeddings.Local
 ```
 
-> Published to NuGet.org as part of the consolidated lineup (since 2026-09-09; earlier versions reached the GitHub Packages feed only); depends on the [`Orkeon`](https://www.nuget.org/packages/Orkeon) package — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+> Published to NuGet.org as part of the consolidated lineup; depends on the [`Orkeon`](https://www.nuget.org/packages/Orkeon) package — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 ## Documentation
 

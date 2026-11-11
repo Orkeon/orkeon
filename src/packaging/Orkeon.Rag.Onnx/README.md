@@ -2,7 +2,7 @@
 
 Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#.
 
-This directory holds **no product code**. It is the PUB-25 packaging wrapper that packs the
+This directory holds **no product code**. It is the packaging wrapper that packs the
 `src/rag/Orkeon.Rag.Onnx` assembly as the public `Orkeon.Rag.Onnx` NuGet package, with a
 nuspec dependency on the `Orkeon` umbrella instead of the umbrella's constituent projects
 (they already ship inside it). The wrapped project keeps ordinary `ProjectReference`s, so

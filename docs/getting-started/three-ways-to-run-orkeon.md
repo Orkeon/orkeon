@@ -627,7 +627,7 @@ names the channel this install came through and the command that updates it.
 | Container | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` moves with each release |
 | From source | `git pull`; the next `dotnet run` rebuilds. An installation made [from the clone](#install-from-source): `git pull`, then run `scripts/install-from-source` again |
 
-`orkeon --version` then prints the version that runs: `orkeon <version>`. An install made before `orkeon doctor` learned to name its channel answers `unknown` there until it is updated once.
+`orkeon --version` then prints the version that runs: `orkeon <version>`. An install whose channel cannot be determined answers `unknown`.
 
 ### Follow `main`: the dev channel
 

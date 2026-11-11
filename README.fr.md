@@ -41,7 +41,7 @@ flowchart LR
 
 **L'autonomie a un budget.** Appels d'outils, profondeur, temps, tokens, agents engendrés : l'exécution s'arrête quand le budget est épuisé, et des disjoncteurs attrapent les boucles. Une longue exécution pose des points de reprise et repart là où elle s'était arrêtée.
 
-**Ça se livre comme du logiciel.** Le même runtime tourne en service `orkeon-host`, en conteneur (`ghcr.io/orkeon/orkeon-runners`), en paquet apt ou en binaire autonome, ou embarqué dans votre propre service .NET — OpenTelemetry sur le tableau de bord .NET Aspire, interopérabilité Microsoft Agent Framework, client et serveur MCP, A2A entre agents. Et pour votre propre C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) : un analyseur Roslyn après lequel un `System.IO` brut ne compile plus.
+**Ça se livre comme du logiciel.** Le même runtime tourne en service `orkeon-host`, en conteneur (`ghcr.io/orkeon/orkeon-runners`), en paquet apt ou en binaire autonome, ou embarqué dans votre propre service .NET — OpenTelemetry sur le tableau de bord .NET Aspire, interopérabilité Microsoft Agent Framework, client et serveur MCP, A2A entre agents. Et pour votre propre C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) : un analyseur Roslyn après lequel un `System.IO` brut ne compile pas.
 
 ## Essayez-le en deux minutes — sans clé d'API
 

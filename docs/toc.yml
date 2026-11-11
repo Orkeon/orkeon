@@ -30,6 +30,8 @@
   items:
     - name: Drive tools — Google Drive and OneDrive
       href: guides/drive.md
+    - name: The firefox tool
+      href: guides/firefox.md
     - name: orkeon drive commands
       href: reference/cli.md#orkeon-drive
 - name: Architecture
@@ -100,6 +102,8 @@
       href: guides/blueprint.md
     - name: Multi-modal content (vision)
       href: guides/multimodal.md
+    - name: Record and replay LLM calls
+      href: guides/testing.md
     - name: LLM response format
       href: guides/llm-response-format.md
     - name: SonarQube Quality Gate
@@ -110,6 +114,8 @@
       href: guides/verify-what-you-install.md
     - name: Install with apt
       href: guides/install-with-apt.md
+    - name: MCP interop
+      href: guides/mcp-interop.md
     - name: Whisper through MCP
       href: guides/whisper-mcp.md
 - name: Reference
@@ -120,6 +126,8 @@
       href: reference/examples-catalog.md
     - name: LLM provider comparison
       href: reference/llm-providers-comparison.md
+    - name: LLM campaign results
+      href: reference/llm-campaign-results.md
     - name: orkeon CLI reference
       href: reference/cli.md
     - name: Configuration reference
@@ -176,6 +184,10 @@
       href: adr/ADR-015-model-provider-categories-and-decision-stages.md
     - name: ADR-016 — Decision tasks and conditional fan-out
       href: adr/ADR-016-decision-tasks-and-conditional-fan-out.md
+    - name: ADR-017 — The transcript display model
+      href: adr/ADR-017-transcript-display-model.md
+    - name: ADR-018 — Graph engines and the YAML graph block
+      href: adr/ADR-018-graph-engines-shared-topology-and-yaml-graph-block.md
     - name: ADR — RaggableTree semantic graph
       href: architecture/raggable-tree-adr.md
 - name: Templates

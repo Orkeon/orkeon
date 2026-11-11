@@ -92,7 +92,7 @@ var host = Host.CreateDefaultBuilder(args)
         // Data : CSV, PDF, JSON, XML, DOCX, XLSX, requêtes SQL, requêtes MongoDB, etc.
         services.AddOrkeonDataTools();
 
-        // Web : WebScrape, ScrapeElement, HttpApi, GitHub, ImageGeneration
+        // Web : WebScrape, ScrapeElement, HttpApi, GitHub, ImageGeneration, Firefox
         // (WebSearch/BraveSearch/Slack/CacheSearch ont leurs propres extensions opt-in)
         services.AddOrkeonWebTools();
 
@@ -196,7 +196,7 @@ Deux surcharges existent et produisent des conteneurs aux capacités **différen
 > est présente. Le sous-système RAG n'est câblé par **aucune** des deux surcharges —
 > c'est toujours la paire explicite `AddOrkeonRag(configuration)` + `AddOrkeonRagTools()`.
 
-> **Sous-systèmes opt-in (R4.9)** : A2A, monitoring backend, MultiModal, NIST, DLP,
+> **Sous-systèmes optionnels** : A2A, monitoring backend, MultiModal, NIST, DLP,
 > rate-limiting d'outils, rotation de clés, benchmarking, hooks de kickoff — et de
 > même le **sous-système RAG** (`AddOrkeonRag` + `AddOrkeonRagTools`),
 > **RaggableTree** (`AddRaggableTree`), le **système de plugins**
@@ -341,9 +341,7 @@ var batchOutput = await orchestrator.KickoffForEachAsync(crew.Id, inputs);
 ```
 
 Chaque entrée est un run complet de la crew — démarré, terminé, ses événements dispatchés — et le
-suivant commence quand le précédent est rendu, comme le `kickoff_for_each` de CrewAI. (Les entrées
-démarraient toutes à la fois sur la même crew, et tous les runs sauf le premier échouaient avec
-« Crew is already executing ».)
+suivant commence quand le précédent est rendu, comme le `kickoff_for_each` de CrewAI.
 
 **Mode streaming** :
 ```csharp

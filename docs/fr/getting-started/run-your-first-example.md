@@ -74,9 +74,8 @@ export DEEPSEEK_API_KEY=sk-...
 > Un gabarit garde la clé hors du fichier : son `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`
 > nomme la variable qui la contient, que chaque run lit. `ORKEON_Llm__ApiKey`
 > (préfixe `ORKEON_`, `__` comme séparateur de section), quand elle est posée,
-> l'emporte sur elle. Une `ApiKey` écrite `${DEEPSEEK_API_KEY}` — ce que portaient
-> les gabarits, et que la configuration .NET n'a jamais développé — refuse
-> désormais le démarrage, avec la correction.
+> l'emporte sur elle. Une `ApiKey` écrite `${DEEPSEEK_API_KEY}` — un espace réservé que la configuration .NET ne
+> développe jamais — refuse le démarrage, avec la correction.
 
 > Si Docker Model Runner (ou un autre endpoint `localhost:12434`) tourne déjà, le
 > `examples/appsettings/appsettings.json` par défaut n'exige ni clé ni copie —

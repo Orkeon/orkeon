@@ -41,7 +41,7 @@ flowchart LR
 
 **Autonomy has a budget.** Tool calls, depth, wall time, tokens, spawned agents: the run stops when the budget is spent, and circuit breakers catch the loops. A long run checkpoints and resumes where it stopped.
 
-**It ships like software.** The same runtime runs as the `orkeon-host` service daemon, as a container (`ghcr.io/orkeon/orkeon-runners`), as an apt package or a self-contained binary, or embedded in your own .NET service — OpenTelemetry on the .NET Aspire dashboard, Microsoft Agent Framework interop, MCP client and server, A2A between agents. And for your own C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md): a Roslyn analyzer after which raw `System.IO` no longer compiles.
+**It ships like software.** The same runtime runs as the `orkeon-host` service daemon, as a container (`ghcr.io/orkeon/orkeon-runners`), as an apt package or a self-contained binary, or embedded in your own .NET service — OpenTelemetry on the .NET Aspire dashboard, Microsoft Agent Framework interop, MCP client and server, A2A between agents. And for your own C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md): a Roslyn analyzer after which raw `System.IO` does not compile.
 
 ## Try it in two minutes — no API key
 

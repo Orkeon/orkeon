@@ -274,7 +274,7 @@ Orkeon.sln
 │   │   └── Orkeon.Infrastructure/  # Implementations, LLM providers, memory, DI
 │   ├── tools/                      # 11 tool packs
 │   │   ├── Orkeon.Tools.Abstractions/     # Tool base classes
-│   │   ├── Orkeon.Tools.Analysis/         # RaggableTree agent tools (15)
+│   │   ├── Orkeon.Tools.Analysis/         # RaggableTree agent tools (29)
 │   │   ├── Orkeon.Tools.Code/             # Code tools (ShellCommand)
 │   │   ├── Orkeon.Tools.Data/             # Data tools (CSV, PDF, JSON, SQL, MongoDB…)
 │   │   ├── Orkeon.Tools.Drive/            # Google Drive and OneDrive tools
@@ -287,14 +287,14 @@ Orkeon.sln
 │   ├── rag/                        # RAG subsystem (Abstractions, Rag, Onnx, Onnx.Model)
 │   ├── analysis/                   # RaggableTree engine (Abstractions, Analysis)
 │   ├── scripting/                  # .ork.ts DSL (Orkeon.Scripting) + the `orkeon` CLI (Orkeon.Scripting.Cli)
-│   ├── cli/                        # CLI building blocks (Abstractions, Cli, Cli.Scripting, Commands.Scripting, TerminalGui)
+│   ├── cli/                        # CLI building blocks (Abstractions, Cli, Commands.Scripting, TerminalGui)
 │   ├── hosting/                    # Orkeon.Hosting (RunnerHost), Orkeon.Host (`orkeon-host` daemon), Orkeon.Hosting.Aspire
 │   ├── plugins/                    # Orkeon.Plugins (runtime plugin loading)
 │   ├── interop/                    # Orkeon.Interop.AgentFramework (Microsoft Agent Framework bridge)
 │   ├── generators/                 # Orkeon.Generators (source generators)
 │   ├── constants/                  # Satellites of SHARED constants, zero runtime dependency (ADR-009)
 │   ├── analyzers/                  # Orkeon.Compliance.Vfs (Roslyn analyzer)
-│   ├── packaging/                  # NuGet packaging projects (Orkeon, Orkeon.Tools + 4 opt-in wrappers)
+│   ├── packaging/                  # NuGet packaging projects (Orkeon, Orkeon.Tools, 6 opt-in wrappers and Orkeon.Templates)
 │   └── apps/
 │       └── Orkeon.ConsoleApp/      # Interactive REPL (`orkeon-repl`)
 ├── tests/                          # 34 projects (src mirrors + e2e, shared)

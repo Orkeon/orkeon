@@ -2,7 +2,7 @@
 
 Terminal.Gui v2-based split-pane console for Orkeon interactive runners.
 Routes `ILogger` writes into a dedicated **logs pane** at the top of the screen
-and the REPL into the **bottom pane** — so log lines no longer interleave with
+and the REPL into the **bottom pane** — so log lines do not interleave with
 the prompt.
 
 ## Install
@@ -224,8 +224,7 @@ From top to bottom, under the transcript:
 - the spinner line while a turn runs: glyph and verb in the accent, the
   parenthesis dim;
 - a dim `─` rule across the full width; while the recipient is a task other
-  than `main`, it ends with `── <task> ─` in the accent (it replaces the former
-  session chip);
+  than `main`, it ends with `── <task> ─` in the accent;
 - the prompt: `❯ ` in the accent and bold, the placeholder dim and italic;
 - a second, bare rule;
 - the status bar, indented by two columns, its parts joined by a dim ` · `: the
@@ -269,8 +268,8 @@ the asking task's screen.
 **Ended tasks.** In the split-pane console, ended tasks stay listed with their outcome
 until the host forgets them, after the live tasks, and so does their screen: a task
 that ends keeps its row, its screen and, when it was the recipient, the recipient.
-The row and the screen leave together when the host no longer retains the task
-(`TuiIntegration.FinishedAgentRows` no longer returns it). A poll whose ended feed
+The row and the screen leave together when the host does not retain the task any more
+(`TuiIntegration.FinishedAgentRows` does not return it). A poll whose ended feed
 fails keeps the ended rows of the last successful read: a fault is not the host
 forgetting a task. Only tasks of the feed (async tasks) get an ended row.
 

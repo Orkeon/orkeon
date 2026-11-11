@@ -164,6 +164,6 @@ que vous modifiez et envoyez — ou non.
 
 > **Gmail et Hotmail sont campagnés.** Le parcours de ce tutoriel — un
 > mot de passe d'application Gmail — a été joué sur un vrai compte le 2026-10-04, et Gmail en
-> OAuth2 le 2026-10-05 (MAIL-07) : voir
+> OAuth2 le 2026-10-05 : voir
 > [Ce que la campagne Gmail a établi](../guides/email.md#ce-que-la-campagne-gmail-a-établi).
 > Hotmail via Microsoft Graph a été joué sur un vrai compte le 2026-10-12.

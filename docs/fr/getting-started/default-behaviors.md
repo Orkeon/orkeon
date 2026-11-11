@@ -40,11 +40,11 @@ enregistrant le vôtre **après** l'appel Orkeon.
 > chargeur YAML, les outils fichier et les livrables lisent et écrivent tous à travers lui.
 > Et aucun modèle n'est enregistré : un conteneur qui n'en a pas échoue à sa première
 > résolution LLM, en nommant le service manquant — enregistrez le vôtre avec
-> `AddOrkeonLlmProvider(...)` (voir [Bootstrap](./bootstrap.md)). Le fournisseur OpenAI sans clé
-> qui en tenait lieu a disparu (GAP-29). La CLI `orkeon`, `orkeon-host` et `orkeon-repl` se
+> `AddOrkeonLlmProvider(...)` (voir [Bootstrap](./bootstrap.md)).
+> La CLI `orkeon`, `orkeon-host` et `orkeon-repl` se
 > comportent autrement : sans section `Llm`, ils tournent sur le fournisseur écho et le signalent.
 > Une crew `planning: true` y saute alors son plan, avec un avertissement : le fournisseur écho
-> renvoie son prompt, il n'y a rien avec quoi planifier (GAP-31).
+> renvoie son prompt, il n'y a rien avec quoi planifier.
 
 ## Les défauts véritablement silencieux
 
@@ -54,7 +54,7 @@ Inoffensifs par construction, ils restent en Debug ou n'émettent rien :
 |---|---|---|
 | Callbacks step/task | `Null*Callback` | Hooks d'observabilité no-op ; Debug par conception. |
 | `IMemoryScope` | `NullMemoryScope` | Marqueur explicite « pas de mémoire dans ce contexte » — demandé, pas subi. |
-| `IMemoryProvider` | factory pilotée par la config | Le provider in-memory quand `Memory:Provider` est absent ; un type **non reconnu** refuse le démarrage de l'hôte (GAP-40). |
+| `IMemoryProvider` | factory pilotée par la config | Le provider in-memory quand `Memory:Provider` est absent ; un type **non reconnu** refuse le démarrage de l'hôte. |
 
 Les défauts `TryAdd` pleinement fonctionnels (p. ex. `IPathValidator → PathValidator`)
 ne sont volontairement pas listés ici : c'est l'implémentation réelle, pas un

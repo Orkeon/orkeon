@@ -11,13 +11,13 @@
 dotnet add package Orkeon.Rag.Onnx.Model
 ```
 
-> Published to NuGet.org as part of the consolidated lineup (since 2026-09-09; earlier versions reached the GitHub Packages feed only). It declares **no dependency**: it is a pure weights package, referenced next to [`Orkeon.Rag.Onnx`](https://www.nuget.org/packages/Orkeon.Rag.Onnx), which is the package that depends on [`Orkeon`](https://www.nuget.org/packages/Orkeon) — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+> Published to NuGet.org as part of the consolidated lineup. It declares **no dependency**: it is a pure weights package, referenced next to [`Orkeon.Rag.Onnx`](https://www.nuget.org/packages/Orkeon.Rag.Onnx), which is the package that depends on [`Orkeon`](https://www.nuget.org/packages/Orkeon) — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 
 **Offline story**: the weights and the WordPiece vocab are committed to this repository and
 embedded as assembly resources. Referencing this package next to `Orkeon.Rag.Onnx` gives the
 cross-encoder reranker a **guaranteed offline** model source — zero network, zero download,
-CI-safe. This is the recommended setup for CI (RAG-04 acceptance criterion 3).
+CI-safe. This is the recommended setup for CI.
 
 ## What this package contains
 

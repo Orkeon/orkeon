@@ -89,7 +89,7 @@ var host = Host.CreateDefaultBuilder(args)
         // Data: CSV, PDF, JSON, XML, DOCX, XLSX, SQL queries, MongoDB queries, etc.
         services.AddOrkeonDataTools();
 
-        // Web: WebScrape, ScrapeElement, HttpApi, GitHub, ImageGeneration
+        // Web: WebScrape, ScrapeElement, HttpApi, GitHub, ImageGeneration, Firefox
         // (WebSearch/BraveSearch/Slack/CacheSearch have their own opt-in extensions)
         services.AddOrkeonWebTools();
 
@@ -192,7 +192,7 @@ Two overloads exist and produce containers with **different** capabilities:
 > is present. The RAG subsystem is wired by **neither** overload — it is always the
 > explicit `AddOrkeonRag(configuration)` + `AddOrkeonRagTools()` pair.
 
-> **Opt-in subsystems (R4.9)**: A2A, monitoring backend, MultiModal, NIST, DLP,
+> **Opt-in subsystems**: A2A, monitoring backend, MultiModal, NIST, DLP,
 > tool rate-limiting, key rotation, benchmarking, kickoff hooks — and likewise
 > the **RAG subsystem** (`AddOrkeonRag` + `AddOrkeonRagTools`), **RaggableTree**
 > (`AddRaggableTree`), the **plugin system** (`AddOrkeonPlugins`) and the
@@ -336,8 +336,7 @@ var batchOutput = await orchestrator.KickoffForEachAsync(crew.Id, inputs);
 ```
 
 Each input is a full run of the crew — started, ended, its events dispatched — and the next one
-starts once the previous one has returned, like CrewAI's `kickoff_for_each`. (The inputs used to
-start at once on the same crew, and every run but the first failed with "Crew is already executing".)
+starts once the previous one has returned, like CrewAI's `kickoff_for_each`.
 
 **Streaming mode**:
 ```csharp

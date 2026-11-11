@@ -657,7 +657,7 @@ un script.
 | Conteneur | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` avance à chaque release |
 | Depuis les sources | `git pull` ; le prochain `dotnet run` recompile. Une installation faite [depuis le clone](#installer-depuis-les-sources) : `git pull`, puis relancer `scripts/install-from-source` |
 
-`orkeon --version` affiche ensuite la version qui tourne : `orkeon <version>`. Une installation faite avant qu'`orkeon doctor` sache nommer son canal y répond `unknown` jusqu'à sa prochaine mise à jour.
+`orkeon --version` affiche ensuite la version qui tourne : `orkeon <version>`. Une installation dont le canal ne peut être déterminé répond `unknown`.
 
 ### Suivre `main` : le canal dev
 

@@ -73,8 +73,8 @@ export DEEPSEEK_API_KEY=sk-...
 > A template keeps the key out of the file: its `"ApiKeyEnvVar": "DEEPSEEK_API_KEY"`
 > names the variable that holds it, which every run reads. `ORKEON_Llm__ApiKey`
 > (prefix `ORKEON_`, `__` as section separator), when set, wins over it. An `ApiKey`
-> written `${DEEPSEEK_API_KEY}` — what the templates used to carry, which .NET
-> configuration never expanded — now refuses the start, with the fix.
+> written `${DEEPSEEK_API_KEY}` — a placeholder .NET configuration never expands —
+> refuses the start, with the fix.
 
 > If you have Docker Model Runner (or another `localhost:12434` endpoint)
 > running, the default `examples/appsettings/appsettings.json` needs no key and
