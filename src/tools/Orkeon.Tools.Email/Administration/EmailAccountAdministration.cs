@@ -63,6 +63,57 @@ public sealed record EmailAccountStatus
     public string? Problem { get; init; }
 
     /// <summary>
+    /// What the configuration gets wrong, one sentence each and in order (the section's problems
+    /// first, then the account's own); empty when the account resolves. <see cref="Problem"/>
+    /// joins them for an account set aside.
+    /// </summary>
+    [JsonPropertyName("configuration_problems")]
+    public IReadOnlyList<string> ConfigurationProblems { get; init; } = [];
+
+    /// <summary>
+    /// Why a resolved account cannot sign in yet (a variable not set, no token stored, an expired
+    /// sign-in); null when it is ready or when it was set aside. <see cref="Problem"/> repeats it.
+    /// </summary>
+    [JsonPropertyName("credential_problem")]
+    public string? CredentialProblem { get; init; }
+
+    /// <summary>The reading server's host, after presets and defaults; null for Graph or an account set aside.</summary>
+    [JsonPropertyName("incoming_host")]
+    public string? IncomingHost { get; init; }
+
+    /// <summary>The reading server's port; null for Graph or an account set aside.</summary>
+    [JsonPropertyName("incoming_port")]
+    public int? IncomingPort { get; init; }
+
+    /// <summary>The reading connection's security (<c>SslOnConnect</c>, <c>StartTls</c>, <c>None</c>); null for Graph or an account set aside.</summary>
+    [JsonPropertyName("incoming_security")]
+    public string? IncomingSecurity { get; init; }
+
+    /// <summary>The SMTP server's host; null for Graph, an account that does not send, or one set aside.</summary>
+    [JsonPropertyName("outgoing_host")]
+    public string? OutgoingHost { get; init; }
+
+    /// <summary>The SMTP server's port; null for Graph, an account that does not send, or one set aside.</summary>
+    [JsonPropertyName("outgoing_port")]
+    public int? OutgoingPort { get; init; }
+
+    /// <summary>The SMTP connection's security; null for Graph, an account that does not send, or one set aside.</summary>
+    [JsonPropertyName("outgoing_security")]
+    public string? OutgoingSecurity { get; init; }
+
+    /// <summary>The login name it signs in with (the address unless overridden); null for an account set aside.</summary>
+    [JsonPropertyName("username")]
+    public string? Username { get; init; }
+
+    /// <summary>Whether a sent message is appended to the Sent folder by Orkeon; null for an account set aside.</summary>
+    [JsonPropertyName("save_sent_copy")]
+    public bool? SaveSentCopy { get; init; }
+
+    /// <summary>The OAuth token endpoint (for Outlook, it names the tenant); null for a password account or one set aside.</summary>
+    [JsonPropertyName("token_endpoint")]
+    public string? TokenEndpoint { get; init; }
+
+    /// <summary>
     /// How many recipients the account may send to (0: none, so no send). Read in-process
     /// (EmailRightsCheck); not part of the <c>--json</c> contract.
     /// </summary>
@@ -124,6 +175,7 @@ public sealed class EmailAccountAdministration
                     IsDefault = isDefault,
                     Ready = false,
                     Problem = string.Join("; ", resolution.Problems),
+                    ConfigurationProblems = [.. resolution.Problems],
                 });
                 continue;
             }
@@ -145,6 +197,16 @@ public sealed class EmailAccountAdministration
                 IsDefault = isDefault,
                 Ready = problem is null,
                 Problem = problem,
+                CredentialProblem = problem,
+                IncomingHost = account.IncomingEndpoint?.Host,
+                IncomingPort = account.IncomingEndpoint?.Port,
+                IncomingSecurity = account.IncomingEndpoint?.Security.ToString(),
+                OutgoingHost = account.OutgoingEndpoint?.Host,
+                OutgoingPort = account.OutgoingEndpoint?.Port,
+                OutgoingSecurity = account.OutgoingEndpoint?.Security.ToString(),
+                Username = account.Auth.Username,
+                SaveSentCopy = account.SaveSentCopy,
+                TokenEndpoint = account.Auth.OAuth?.TokenEndpoint.AbsoluteUri,
             });
         }
 

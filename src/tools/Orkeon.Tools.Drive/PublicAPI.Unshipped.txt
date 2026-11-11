@@ -1,1 +1,7 @@
 #nullable enable
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.ConfigurationProblems.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.ConfigurationProblems.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.CredentialProblem.get -> string?
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.CredentialProblem.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.TokenEndpoint.get -> string?
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.TokenEndpoint.init -> void

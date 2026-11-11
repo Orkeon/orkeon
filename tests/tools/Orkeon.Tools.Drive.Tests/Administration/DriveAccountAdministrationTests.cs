@@ -42,6 +42,25 @@ public sealed class DriveAccountAdministrationTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_keep_the_configuration_problems_as_a_list_apart_from_the_credential_diagnosis()
+    {
+        await _fixture.Store.DeleteAsync(DriveCredentialProvider.TokenKey(_onedrive), Token);
+
+        var statuses = await _administration.ListAsync(Token);
+
+        var broken = statuses.Single(status => status.Name == "broken");
+        Assert.NotEmpty(broken.ConfigurationProblems);
+        Assert.Contains(broken.ConfigurationProblems, problem => problem.StartsWith("Provider is required", StringComparison.Ordinal));
+        Assert.Equal(string.Join("; ", broken.ConfigurationProblems), broken.Problem);
+        Assert.Equal(((string?)null, (string?)null), (broken.CredentialProblem, broken.TokenEndpoint));
+        var pro = statuses.Single(status => status.Name == "pro");
+        Assert.Empty(pro.ConfigurationProblems);
+        Assert.Equal("Drive account 'pro' needs an OAuth sign-in: run `orkeon drive login pro` in a terminal.", pro.CredentialProblem);
+        Assert.Equal(pro.CredentialProblem, pro.Problem);
+        Assert.Equal("https://login.microsoftonline.com/consumers/oauth2/v2.0/token", pro.TokenEndpoint);
+    }
+
+    [Fact]
     public async Task Should_say_a_login_is_needed_when_no_token_is_stored()
     {
         await _fixture.Store.DeleteAsync(DriveCredentialProvider.TokenKey(_onedrive), Token);

@@ -237,6 +237,13 @@ resolves them, so the tokens land where every run looks for them. `login` and `c
 `--events jsonl` too: one event line per step, for a program that drives them
 ([CLI reference](../reference/cli.md#orkeon-drive)).
 
+`accounts --json` writes one object per account: `name`, `provider`, `rights`, `root`, `default`,
+`ready`, `problem`, plus `configuration_problems` (the configuration's problems, one sentence each,
+the section's first; empty when the account resolves), `credential_problem` (why a resolved account
+cannot sign in yet, else null) and `token_endpoint` (the OAuth token endpoint after presets: for
+OneDrive it names the tenant; null for an account set aside). `problem` keeps its text: the joined
+configuration problems or the credential diagnosis.
+
 ## Where the tokens live
 
 The runner keeps them under its internal `/credentials` root, which no agent-facing tool resolves,

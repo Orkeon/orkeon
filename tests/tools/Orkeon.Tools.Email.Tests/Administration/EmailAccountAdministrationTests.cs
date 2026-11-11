@@ -47,6 +47,57 @@ public sealed class EmailAccountAdministrationTests
     }
 
     [Fact]
+    public async Task Should_keep_the_configuration_problems_as_a_list_apart_from_the_credential_diagnosis()
+    {
+        // A problem sentence may hold "; ": the list keeps each one whole, section problems first.
+        var options = new EmailToolsOptions();
+        options.SectionProblems.Add("Withhold 'maybe' is neither true nor false; write true or false");
+        options.Accounts["broken"] = TestAccounts.Custom();
+        options.AccountProblems["broken"] = ["Incoming:Port 'x' is not a number", "Rights 'Peek' is not a right; use Read, Send, ..."];
+        using var fixture = new AdministrationFixture(options);
+        using var resolving = new AdministrationFixture(Accounts(("hotmail", TestAccounts.Outlook())));
+
+        var broken = Assert.Single(await fixture.Administration.ListAsync(Token));
+        var hotmail = Assert.Single(await resolving.Administration.ListAsync(Token));
+
+        Assert.Equal(
+            ["Withhold 'maybe' is neither true nor false; write true or false", "Incoming:Port 'x' is not a number", "Rights 'Peek' is not a right; use Read, Send, ..."],
+            broken.ConfigurationProblems);
+        Assert.Equal(string.Join("; ", broken.ConfigurationProblems), broken.Problem);
+        Assert.Null(broken.CredentialProblem);
+        Assert.Empty(hotmail.ConfigurationProblems);
+        Assert.Equal("E-mail account 'hotmail' needs an OAuth sign-in: run `orkeon email login hotmail` in a terminal.", hotmail.CredentialProblem);
+        Assert.Equal(hotmail.CredentialProblem, hotmail.Problem);
+    }
+
+    [Fact]
+    public async Task Should_list_the_effective_connection_values_a_blank_field_resolves_to()
+    {
+        var options = new EmailToolsOptions();
+        options.Accounts["perso"] = TestAccounts.Gmail(EmailRights.Read | EmailRights.Send);
+        options.Accounts["hotmail"] = TestAccounts.Outlook(EmailRights.Read | EmailRights.Send);
+        options.Accounts["custom"] = TestAccounts.Custom();
+        options.Accounts["broken"] = TestAccounts.Custom(EmailRights.None);
+        using var fixture = new AdministrationFixture(options);
+
+        var statuses = (await fixture.Administration.ListAsync(Token)).ToDictionary(s => s.Name);
+
+        var perso = statuses["perso"];
+        Assert.Equal(("imap.gmail.com", (int?)993, "SslOnConnect"), (perso.IncomingHost, perso.IncomingPort, perso.IncomingSecurity));
+        Assert.Equal(("smtp.gmail.com", (int?)465, "SslOnConnect"), (perso.OutgoingHost, perso.OutgoingPort, perso.OutgoingSecurity));
+        Assert.Equal(("someone@gmail.com", (bool?)false, (string?)null), (perso.Username, perso.SaveSentCopy, perso.TokenEndpoint));
+        Assert.Null(perso.CredentialProblem);
+        var hotmail = statuses["hotmail"];
+        Assert.Equal(((string?)null, (int?)null, (string?)null, (int?)null), (hotmail.IncomingHost, hotmail.IncomingPort, hotmail.OutgoingHost, hotmail.OutgoingPort));
+        Assert.Equal("https://login.microsoftonline.com/consumers/oauth2/v2.0/token", hotmail.TokenEndpoint);
+        Assert.Equal("someone@outlook.com", hotmail.Username);
+        var custom = statuses["custom"];
+        Assert.Equal(("imap.example.test", "smtp.example.test", (bool?)true), (custom.IncomingHost, custom.OutgoingHost, custom.SaveSentCopy));
+        var broken = statuses["broken"];
+        Assert.Equal(((string?)null, (string?)null, (bool?)null, (string?)null), (broken.IncomingHost, broken.Username, broken.SaveSentCopy, broken.TokenEndpoint));
+    }
+
+    [Fact]
     public async Task Should_call_an_account_ready_When_its_password_is_only_in_the_user_scope()
     {
         // `orkeon email accounts` reads through the seam the run reads through: a password a client
