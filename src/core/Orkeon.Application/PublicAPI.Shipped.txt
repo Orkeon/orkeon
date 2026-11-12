@@ -29,7 +29,6 @@ Orkeon.Application.Agent.AgentWorkloadTracker.SelectLeastLoadedAgent(System.Coll
 Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand
 Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.Backstory.get -> string?
 Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.Backstory.init -> void
-Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.CreateAgentCommand(Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand! original) -> void
 Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.CreateAgentCommand(string! Role, string! Goal, string? Backstory, System.Collections.Generic.IReadOnlyList<string!>? Tools) -> void
 Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.Deconstruct(out string! Role, out string! Goal, out string? Backstory, out System.Collections.Generic.IReadOnlyList<string!>? Tools) -> void
 Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.Goal.get -> string!
@@ -137,7 +136,6 @@ Orkeon.Application.Agent.Queries.GetAgent.GetAgentHandler.GetAgentHandler(Orkeon
 Orkeon.Application.Agent.Queries.GetAgent.GetAgentHandler.HandleAsync(Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Agent.DTOs.AgentDto?>!
 Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery
 Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.Deconstruct(out System.Guid Id) -> void
-Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.GetAgentQuery(Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery! original) -> void
 Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.GetAgentQuery(System.Guid Id) -> void
 Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.Id.get -> System.Guid
 Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.Id.init -> void
@@ -330,19 +328,21 @@ Orkeon.Application.Common.DTOs.LlmResponseMetadata.TotalTokens.get -> int?
 Orkeon.Application.Common.DTOs.LlmResponseMetadata.TotalTokens.init -> void
 Orkeon.Application.Common.DTOs.LlmUsageMetadataKeys
 Orkeon.Application.Common.DTOs.TokenUsage
+Orkeon.Application.Common.DTOs.TokenUsage.<Clone>$() -> Orkeon.Application.Common.DTOs.TokenUsage!
 Orkeon.Application.Common.DTOs.TokenUsage.CompletionTokens.get -> int
-Orkeon.Application.Common.DTOs.TokenUsage.CompletionTokens.set -> void
+Orkeon.Application.Common.DTOs.TokenUsage.CompletionTokens.init -> void
+Orkeon.Application.Common.DTOs.TokenUsage.Equals(Orkeon.Application.Common.DTOs.TokenUsage? other) -> bool
 Orkeon.Application.Common.DTOs.TokenUsage.EstimatedCost.get -> decimal?
-Orkeon.Application.Common.DTOs.TokenUsage.EstimatedCost.set -> void
+Orkeon.Application.Common.DTOs.TokenUsage.EstimatedCost.init -> void
 Orkeon.Application.Common.DTOs.TokenUsage.Model.get -> string?
-Orkeon.Application.Common.DTOs.TokenUsage.Model.set -> void
+Orkeon.Application.Common.DTOs.TokenUsage.Model.init -> void
 Orkeon.Application.Common.DTOs.TokenUsage.PromptTokens.get -> int
-Orkeon.Application.Common.DTOs.TokenUsage.PromptTokens.set -> void
+Orkeon.Application.Common.DTOs.TokenUsage.PromptTokens.init -> void
 Orkeon.Application.Common.DTOs.TokenUsage.Provider.get -> string?
-Orkeon.Application.Common.DTOs.TokenUsage.Provider.set -> void
+Orkeon.Application.Common.DTOs.TokenUsage.Provider.init -> void
 Orkeon.Application.Common.DTOs.TokenUsage.TokenUsage() -> void
 Orkeon.Application.Common.DTOs.TokenUsage.TotalTokens.get -> int
-Orkeon.Application.Common.DTOs.TokenUsage.TotalTokens.set -> void
+Orkeon.Application.Common.DTOs.TokenUsage.TotalTokens.init -> void
 Orkeon.Application.Configuration.AgentSelectionStrategyKind
 Orkeon.Application.Configuration.AgentSelectionStrategyKind.Embedding = 1 -> Orkeon.Application.Configuration.AgentSelectionStrategyKind
 Orkeon.Application.Configuration.AgentSelectionStrategyKind.FirstFit = 0 -> Orkeon.Application.Configuration.AgentSelectionStrategyKind
@@ -445,7 +445,6 @@ Orkeon.Application.Context.SimpleExecutionContext.Variables.init -> void
 Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand
 Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.AgentIds.get -> System.Collections.Generic.IReadOnlyList<string!>?
 Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.AgentIds.init -> void
-Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.CreateCrewCommand(Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand! original) -> void
 Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.CreateCrewCommand(string! Name, string! Goal, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! ProcessType, System.Collections.Generic.IReadOnlyList<string!>? AgentIds) -> void
 Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.Deconstruct(out string! Name, out string! Goal, out Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! ProcessType, out System.Collections.Generic.IReadOnlyList<string!>? AgentIds) -> void
 Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.Goal.get -> string!
@@ -690,7 +689,6 @@ Orkeon.Application.Crew.Queries.GetCrew.GetCrewHandler.GetCrewHandler(Orkeon.Dom
 Orkeon.Application.Crew.Queries.GetCrew.GetCrewHandler.HandleAsync(Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Crew.DTOs.CrewDto?>!
 Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery
 Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.Deconstruct(out System.Guid Id) -> void
-Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.GetCrewQuery(Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery! original) -> void
 Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.GetCrewQuery(System.Guid Id) -> void
 Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.Id.get -> System.Guid
 Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.Id.init -> void
@@ -2533,7 +2531,6 @@ Orkeon.Application.Interfaces.SandboxExecutionRequest.MaxOutputBytes.init -> voi
 Orkeon.Application.Interfaces.SandboxExecutionRequest.Permissions.get -> Orkeon.Application.Interfaces.SandboxPermissions!
 Orkeon.Application.Interfaces.SandboxExecutionRequest.Permissions.init -> void
 Orkeon.Application.Interfaces.SandboxExecutionRequest.SandboxExecutionRequest() -> void
-Orkeon.Application.Interfaces.SandboxExecutionRequest.SandboxExecutionRequest(Orkeon.Application.Interfaces.SandboxExecutionRequest! original) -> void
 Orkeon.Application.Interfaces.SandboxExecutionRequest.Timeout.get -> System.TimeSpan
 Orkeon.Application.Interfaces.SandboxExecutionRequest.Timeout.init -> void
 Orkeon.Application.Interfaces.SandboxExecutionRequest.Variables.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>?
@@ -2579,7 +2576,6 @@ Orkeon.Application.Interfaces.SandboxPermissions.WorkingDirectory.init -> void
 Orkeon.Application.Interfaces.Security.AuditQuery
 Orkeon.Application.Interfaces.Security.AuditQuery.AgentRole.get -> string?
 Orkeon.Application.Interfaces.Security.AuditQuery.AgentRole.init -> void
-Orkeon.Application.Interfaces.Security.AuditQuery.AuditQuery(Orkeon.Application.Interfaces.Security.AuditQuery! original) -> void
 Orkeon.Application.Interfaces.Security.AuditQuery.AuditQuery(Orkeon.Domain.Security.AuditCategory? Category = null, string? CorrelationId = null, string? AgentRole = null, System.DateTime? From = null, System.DateTime? To = null, Orkeon.Domain.Security.AuditSeverity? MinSeverity = null, int Limit = 100) -> void
 Orkeon.Application.Interfaces.Security.AuditQuery.Category.get -> Orkeon.Domain.Security.AuditCategory?
 Orkeon.Application.Interfaces.Security.AuditQuery.Category.init -> void
@@ -3503,7 +3499,6 @@ Orkeon.Application.Interfaces.VotingOptions.UseWeightedVotes.get -> bool
 Orkeon.Application.Interfaces.VotingOptions.UseWeightedVotes.set -> void
 Orkeon.Application.Interfaces.VotingOptions.VotingOptions() -> void
 Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.AddMemoryCommand(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand! original) -> void
 Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.AddMemoryCommand(string! AgentId, string! Content, Orkeon.Domain.Memory.MemoryType MemoryType, float Importance, string? Source, System.Collections.Generic.IReadOnlyList<string!>? Tags) -> void
 Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.AgentId.get -> string!
 Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.AgentId.init -> void
@@ -3520,21 +3515,19 @@ Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.Tags.get -> System
 Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.Tags.init -> void
 Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommandHandler
 Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommandHandler.AddMemoryCommandHandler(Orkeon.Domain.Memory.IAgentMemoryStoreRepository! memoryStoreRepository, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommandHandler!>! logger) -> void
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommandHandler.HandleAsync(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand! command, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult!>!
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.AddMemoryResult(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult! original) -> void
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.AddMemoryResult(string! MemoryItemId, string! MemoryStoreId, bool PromotedToLongTerm) -> void
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.Deconstruct(out string! MemoryItemId, out string! MemoryStoreId, out bool PromotedToLongTerm) -> void
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.MemoryItemId.get -> string!
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.MemoryItemId.init -> void
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.MemoryStoreId.get -> string!
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.MemoryStoreId.init -> void
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.PromotedToLongTerm.get -> bool
-Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.PromotedToLongTerm.init -> void
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommandHandler.HandleAsync(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand! command, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse!>!
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.AddMemoryResponse(string! MemoryItemId, string! MemoryStoreId, bool PromotedToLongTerm) -> void
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.Deconstruct(out string! MemoryItemId, out string! MemoryStoreId, out bool PromotedToLongTerm) -> void
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.MemoryItemId.get -> string!
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.MemoryItemId.init -> void
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.MemoryStoreId.get -> string!
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.MemoryStoreId.init -> void
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.PromotedToLongTerm.get -> bool
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.PromotedToLongTerm.init -> void
 Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand
 Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.AgentId.get -> string!
 Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.AgentId.init -> void
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.CreateMemoryStoreCommand(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand! original) -> void
 Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.CreateMemoryStoreCommand(string! AgentId, int ShortTermCapacity, int LongTermCapacity) -> void
 Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.Deconstruct(out string! AgentId, out int ShortTermCapacity, out int LongTermCapacity) -> void
 Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.LongTermCapacity.get -> int
@@ -3543,19 +3536,18 @@ Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.Sh
 Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.ShortTermCapacity.init -> void
 Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommandHandler
 Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommandHandler.CreateMemoryStoreCommandHandler(Orkeon.Domain.Memory.IAgentMemoryStoreRepository! memoryStoreRepository, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommandHandler!>! logger) -> void
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommandHandler.HandleAsync(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand! command, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult!>!
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.AgentId.get -> string!
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.AgentId.init -> void
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.CreateMemoryStoreResult(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult! original) -> void
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.CreateMemoryStoreResult(string! MemoryStoreId, string! AgentId, int ShortTermCapacity, int LongTermCapacity) -> void
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.Deconstruct(out string! MemoryStoreId, out string! AgentId, out int ShortTermCapacity, out int LongTermCapacity) -> void
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.LongTermCapacity.get -> int
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.LongTermCapacity.init -> void
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.MemoryStoreId.get -> string!
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.MemoryStoreId.init -> void
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.ShortTermCapacity.get -> int
-Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.ShortTermCapacity.init -> void
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommandHandler.HandleAsync(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand! command, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse!>!
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.AgentId.get -> string!
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.AgentId.init -> void
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.CreateMemoryStoreResponse(string! MemoryStoreId, string! AgentId, int ShortTermCapacity, int LongTermCapacity) -> void
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.Deconstruct(out string! MemoryStoreId, out string! AgentId, out int ShortTermCapacity, out int LongTermCapacity) -> void
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.LongTermCapacity.get -> int
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.LongTermCapacity.init -> void
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.MemoryStoreId.get -> string!
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.MemoryStoreId.init -> void
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.ShortTermCapacity.get -> int
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.ShortTermCapacity.init -> void
 Orkeon.Application.Memory.CrewMemoryOptions
 Orkeon.Application.Memory.CrewMemoryOptions.ConsolidateOnRunEnd.get -> bool
 Orkeon.Application.Memory.CrewMemoryOptions.ConsolidateOnRunEnd.set -> void
@@ -3631,7 +3623,6 @@ Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.Importance.get -> f
 Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.Importance.init -> void
 Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.IsLongTerm.get -> bool
 Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.IsLongTerm.init -> void
-Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.MemoryItemDto(Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto! original) -> void
 Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.MemoryItemDto(string! Id, string! Content, float Importance, string! Source, System.Collections.Generic.IReadOnlyList<string!>! Tags, System.DateTime Timestamp, bool IsLongTerm) -> void
 Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.Source.get -> string!
 Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.Source.init -> void
@@ -3647,21 +3638,19 @@ Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.MaxResults.get 
 Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.MaxResults.init -> void
 Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.MemoryType.get -> Orkeon.Domain.Memory.MemoryType?
 Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.MemoryType.init -> void
-Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.SearchMemoryQuery(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery! original) -> void
 Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.SearchMemoryQuery(string! AgentId, string! SearchTerm, Orkeon.Domain.Memory.MemoryType? MemoryType, int MaxResults) -> void
 Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.SearchTerm.get -> string!
 Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.SearchTerm.init -> void
 Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQueryHandler
-Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQueryHandler.HandleAsync(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult!>!
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQueryHandler.HandleAsync(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse!>!
 Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQueryHandler.SearchMemoryQueryHandler(Orkeon.Domain.Memory.IAgentMemoryStoreRepository! memoryStoreRepository, Orkeon.Application.Interfaces.Services.IMemorySearchService! memorySearchService, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQueryHandler!>! logger) -> void
-Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult
-Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto!>! Items, out int TotalCount) -> void
-Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.Items.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto!>!
-Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.Items.init -> void
-Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.SearchMemoryResult(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult! original) -> void
-Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.SearchMemoryResult(System.Collections.Generic.IReadOnlyList<Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto!>! Items, int TotalCount) -> void
-Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.TotalCount.get -> int
-Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.TotalCount.init -> void
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.Deconstruct(out System.Collections.Generic.IReadOnlyList<Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto!>! Items, out int TotalCount) -> void
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.Items.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto!>!
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.Items.init -> void
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.SearchMemoryResponse(System.Collections.Generic.IReadOnlyList<Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto!>! Items, int TotalCount) -> void
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.TotalCount.get -> int
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.TotalCount.init -> void
 Orkeon.Application.Memory.RecalledMemory
 Orkeon.Application.Memory.RecalledMemory.<Clone>$() -> Orkeon.Application.Memory.RecalledMemory!
 Orkeon.Application.Memory.RecalledMemory.AgentRole.get -> string!
@@ -3773,7 +3762,6 @@ Orkeon.Application.Services.Security.ToolInvocationPipelineOptions.ToolInvocatio
 Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand
 Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.AgentId.get -> string?
 Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.AgentId.init -> void
-Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.CreateTaskCommand(Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand! original) -> void
 Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.CreateTaskCommand(string! Description, string! ExpectedOutput, string? AgentId) -> void
 Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.Deconstruct(out string! Description, out string! ExpectedOutput, out string? AgentId) -> void
 Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.Description.get -> string!
@@ -3811,7 +3799,6 @@ Orkeon.Application.Task.Queries.GetTask.GetTaskHandler.GetTaskHandler(Orkeon.Dom
 Orkeon.Application.Task.Queries.GetTask.GetTaskHandler.HandleAsync(Orkeon.Application.Task.Queries.GetTask.GetTaskQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Task.DTOs.TaskDto?>!
 Orkeon.Application.Task.Queries.GetTask.GetTaskQuery
 Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.Deconstruct(out System.Guid Id) -> void
-Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.GetTaskQuery(Orkeon.Application.Task.Queries.GetTask.GetTaskQuery! original) -> void
 Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.GetTaskQuery(System.Guid Id) -> void
 Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.Id.get -> System.Guid
 Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.Id.init -> void
@@ -4333,6 +4320,9 @@ override Orkeon.Application.Common.CQRS.Unit.ToString() -> string!
 override Orkeon.Application.Common.DTOs.LlmResponseMetadata.Equals(object? obj) -> bool
 override Orkeon.Application.Common.DTOs.LlmResponseMetadata.GetHashCode() -> int
 override Orkeon.Application.Common.DTOs.LlmResponseMetadata.ToString() -> string!
+override Orkeon.Application.Common.DTOs.TokenUsage.Equals(object? obj) -> bool
+override Orkeon.Application.Common.DTOs.TokenUsage.GetHashCode() -> int
+override Orkeon.Application.Common.DTOs.TokenUsage.ToString() -> string!
 override Orkeon.Application.Context.SimpleExecutionContext.Equals(object? obj) -> bool
 override Orkeon.Application.Context.SimpleExecutionContext.GetHashCode() -> int
 override Orkeon.Application.Context.SimpleExecutionContext.ToString() -> string!
@@ -4813,24 +4803,24 @@ override Orkeon.Application.Interfaces.VoteResult.ToString() -> string!
 override Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.Equals(object? obj) -> bool
 override Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.GetHashCode() -> int
 override Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.ToString() -> string!
-override Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.Equals(object? obj) -> bool
-override Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.GetHashCode() -> int
-override Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.ToString() -> string!
+override Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.Equals(object? obj) -> bool
+override Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.GetHashCode() -> int
+override Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.ToString() -> string!
 override Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.Equals(object? obj) -> bool
 override Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.GetHashCode() -> int
 override Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.ToString() -> string!
-override Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.Equals(object? obj) -> bool
-override Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.GetHashCode() -> int
-override Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.ToString() -> string!
+override Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.Equals(object? obj) -> bool
+override Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.GetHashCode() -> int
+override Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.ToString() -> string!
 override Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.Equals(object? obj) -> bool
 override Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.GetHashCode() -> int
 override Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.ToString() -> string!
 override Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.Equals(object? obj) -> bool
 override Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.GetHashCode() -> int
 override Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.ToString() -> string!
-override Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.Equals(object? obj) -> bool
-override Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.GetHashCode() -> int
-override Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.ToString() -> string!
+override Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.Equals(object? obj) -> bool
+override Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.GetHashCode() -> int
+override Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.ToString() -> string!
 override Orkeon.Application.Memory.RecalledMemory.Equals(object? obj) -> bool
 override Orkeon.Application.Memory.RecalledMemory.GetHashCode() -> int
 override Orkeon.Application.Memory.RecalledMemory.ToString() -> string!
@@ -4898,6 +4888,8 @@ static Orkeon.Application.Common.CQRS.Unit.operator ==(Orkeon.Application.Common
 static Orkeon.Application.Common.DTOs.LlmChatOptionsValues.AsWritten(float? value) -> double?
 static Orkeon.Application.Common.DTOs.LlmResponseMetadata.operator !=(Orkeon.Application.Common.DTOs.LlmResponseMetadata? left, Orkeon.Application.Common.DTOs.LlmResponseMetadata? right) -> bool
 static Orkeon.Application.Common.DTOs.LlmResponseMetadata.operator ==(Orkeon.Application.Common.DTOs.LlmResponseMetadata? left, Orkeon.Application.Common.DTOs.LlmResponseMetadata? right) -> bool
+static Orkeon.Application.Common.DTOs.TokenUsage.operator !=(Orkeon.Application.Common.DTOs.TokenUsage? left, Orkeon.Application.Common.DTOs.TokenUsage? right) -> bool
+static Orkeon.Application.Common.DTOs.TokenUsage.operator ==(Orkeon.Application.Common.DTOs.TokenUsage? left, Orkeon.Application.Common.DTOs.TokenUsage? right) -> bool
 static Orkeon.Application.Configuration.ClosestName.Of(string! written, System.Collections.Generic.IEnumerable<string!>! known) -> string?
 static Orkeon.Application.Configuration.SettingsDeclarationExtensions.DeclareSettings<TOptions>(this Microsoft.Extensions.Options.OptionsBuilder<TOptions!>! builder, string! sectionPath) -> Microsoft.Extensions.Options.OptionsBuilder<TOptions!>!
 static Orkeon.Application.Configuration.SettingsDeclarationExtensions.DeclareSettingsShape(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! sectionPath, System.Type! shape) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
@@ -5327,12 +5319,12 @@ static Orkeon.Application.Interfaces.VoteResult.operator !=(Orkeon.Application.I
 static Orkeon.Application.Interfaces.VoteResult.operator ==(Orkeon.Application.Interfaces.VoteResult? left, Orkeon.Application.Interfaces.VoteResult? right) -> bool
 static Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.operator !=(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand? left, Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand? right) -> bool
 static Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.operator ==(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand? left, Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand? right) -> bool
-static Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.operator !=(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult? left, Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult? right) -> bool
-static Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.operator ==(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult? left, Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult? right) -> bool
+static Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.operator !=(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse? left, Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse? right) -> bool
+static Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.operator ==(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse? left, Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse? right) -> bool
 static Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.operator !=(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand? left, Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand? right) -> bool
 static Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.operator ==(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand? left, Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand? right) -> bool
-static Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.operator !=(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult? left, Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult? right) -> bool
-static Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.operator ==(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult? left, Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult? right) -> bool
+static Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.operator !=(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse? left, Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse? right) -> bool
+static Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.operator ==(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse? left, Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse? right) -> bool
 static Orkeon.Application.Memory.CrewMemoryScope.Filter(string! scope) -> System.Collections.Generic.Dictionary<string!, object!>!
 static Orkeon.Application.Memory.CrewMemoryScope.Stamp(Orkeon.Domain.Memory.MemoryItem! item, string! scope) -> Orkeon.Domain.Memory.MemoryItem!
 static Orkeon.Application.Memory.MemoryProviderTypes.Canonical(string? type) -> string?
@@ -5347,8 +5339,8 @@ static Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.operator !=(
 static Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.operator ==(Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto? left, Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto? right) -> bool
 static Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.operator !=(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery? left, Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery? right) -> bool
 static Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.operator ==(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery? left, Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery? right) -> bool
-static Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.operator !=(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult? left, Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult? right) -> bool
-static Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.operator ==(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult? left, Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult? right) -> bool
+static Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.operator !=(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse? left, Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse? right) -> bool
+static Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.operator ==(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse? left, Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse? right) -> bool
 static Orkeon.Application.Memory.RecalledMemory.operator !=(Orkeon.Application.Memory.RecalledMemory? left, Orkeon.Application.Memory.RecalledMemory? right) -> bool
 static Orkeon.Application.Memory.RecalledMemory.operator ==(Orkeon.Application.Memory.RecalledMemory? left, Orkeon.Application.Memory.RecalledMemory? right) -> bool
 static Orkeon.Application.Services.Memory.MemorySearchResult.FromMemoryItem(Orkeon.Domain.Memory.MemoryItem! item, float score) -> Orkeon.Application.Services.Memory.MemorySearchResult!
@@ -5393,14 +5385,10 @@ virtual Orkeon.Application.Agent.AgentWorkloadInfo.<Clone>$() -> Orkeon.Applicat
 virtual Orkeon.Application.Agent.AgentWorkloadInfo.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Agent.AgentWorkloadInfo.Equals(Orkeon.Application.Agent.AgentWorkloadInfo? other) -> bool
 virtual Orkeon.Application.Agent.AgentWorkloadInfo.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.<Clone>$() -> Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand!
-virtual Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.Equals(Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand? other) -> bool
-virtual Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.<Clone>$() -> Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery!
-virtual Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.Equals(Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery? other) -> bool
-virtual Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.<Clone>$() -> Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand!
+Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.Equals(Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand? other) -> bool
+Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.<Clone>$() -> Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery!
+Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery.Equals(Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery? other) -> bool
 virtual Orkeon.Application.Callback.BaseCallbackHandler.OnStepCompletedAsync(Orkeon.Application.Callback.StepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 virtual Orkeon.Application.Callback.BaseCallbackHandler.OnStepStartedAsync(Orkeon.Application.Callback.StepStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 virtual Orkeon.Application.Callback.BaseCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
@@ -5437,18 +5425,14 @@ virtual Orkeon.Application.Context.SimpleExecutionContext.<Clone>$() -> Orkeon.A
 virtual Orkeon.Application.Context.SimpleExecutionContext.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Context.SimpleExecutionContext.Equals(Orkeon.Application.Context.SimpleExecutionContext? other) -> bool
 virtual Orkeon.Application.Context.SimpleExecutionContext.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.<Clone>$() -> Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand!
-virtual Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.Equals(Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand? other) -> bool
-virtual Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.<Clone>$() -> Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand!
+Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.Equals(Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand? other) -> bool
 virtual Orkeon.Application.Crew.CompositionRecommendation.<Clone>$() -> Orkeon.Application.Crew.CompositionRecommendation!
 virtual Orkeon.Application.Crew.CompositionRecommendation.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Crew.CompositionRecommendation.Equals(Orkeon.Application.Crew.CompositionRecommendation? other) -> bool
 virtual Orkeon.Application.Crew.CompositionRecommendation.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.<Clone>$() -> Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery!
-virtual Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.Equals(Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery? other) -> bool
-virtual Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.<Clone>$() -> Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery!
+Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery.Equals(Orkeon.Application.Crew.Queries.GetCrew.GetCrewQuery? other) -> bool
 virtual Orkeon.Application.Crew.SimulationParameters.<Clone>$() -> Orkeon.Application.Crew.SimulationParameters!
 virtual Orkeon.Application.Crew.SimulationParameters.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Crew.SimulationParameters.Equals(Orkeon.Application.Crew.SimulationParameters? other) -> bool
@@ -5569,10 +5553,8 @@ virtual Orkeon.Application.Interfaces.SandboxCapabilities.<Clone>$() -> Orkeon.A
 virtual Orkeon.Application.Interfaces.SandboxCapabilities.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Interfaces.SandboxCapabilities.Equals(Orkeon.Application.Interfaces.SandboxCapabilities? other) -> bool
 virtual Orkeon.Application.Interfaces.SandboxCapabilities.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Interfaces.SandboxExecutionRequest.<Clone>$() -> Orkeon.Application.Interfaces.SandboxExecutionRequest!
-virtual Orkeon.Application.Interfaces.SandboxExecutionRequest.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Interfaces.SandboxExecutionRequest.Equals(Orkeon.Application.Interfaces.SandboxExecutionRequest? other) -> bool
-virtual Orkeon.Application.Interfaces.SandboxExecutionRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Interfaces.SandboxExecutionRequest.<Clone>$() -> Orkeon.Application.Interfaces.SandboxExecutionRequest!
+Orkeon.Application.Interfaces.SandboxExecutionRequest.Equals(Orkeon.Application.Interfaces.SandboxExecutionRequest? other) -> bool
 virtual Orkeon.Application.Interfaces.SandboxExecutionResult.<Clone>$() -> Orkeon.Application.Interfaces.SandboxExecutionResult!
 virtual Orkeon.Application.Interfaces.SandboxExecutionResult.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Interfaces.SandboxExecutionResult.Equals(Orkeon.Application.Interfaces.SandboxExecutionResult? other) -> bool
@@ -5581,10 +5563,8 @@ virtual Orkeon.Application.Interfaces.SandboxPermissions.<Clone>$() -> Orkeon.Ap
 virtual Orkeon.Application.Interfaces.SandboxPermissions.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Interfaces.SandboxPermissions.Equals(Orkeon.Application.Interfaces.SandboxPermissions? other) -> bool
 virtual Orkeon.Application.Interfaces.SandboxPermissions.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Interfaces.Security.AuditQuery.<Clone>$() -> Orkeon.Application.Interfaces.Security.AuditQuery!
-virtual Orkeon.Application.Interfaces.Security.AuditQuery.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Interfaces.Security.AuditQuery.Equals(Orkeon.Application.Interfaces.Security.AuditQuery? other) -> bool
-virtual Orkeon.Application.Interfaces.Security.AuditQuery.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Interfaces.Security.AuditQuery.<Clone>$() -> Orkeon.Application.Interfaces.Security.AuditQuery!
+Orkeon.Application.Interfaces.Security.AuditQuery.Equals(Orkeon.Application.Interfaces.Security.AuditQuery? other) -> bool
 virtual Orkeon.Application.Interfaces.Security.AuthenticationResult.<Clone>$() -> Orkeon.Application.Interfaces.Security.AuthenticationResult!
 virtual Orkeon.Application.Interfaces.Security.AuthenticationResult.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Interfaces.Security.AuthenticationResult.Equals(Orkeon.Application.Interfaces.Security.AuthenticationResult? other) -> bool
@@ -5699,43 +5679,25 @@ virtual Orkeon.Application.Interfaces.VoteResult.<Clone>$() -> Orkeon.Applicatio
 virtual Orkeon.Application.Interfaces.VoteResult.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Interfaces.VoteResult.Equals(Orkeon.Application.Interfaces.VoteResult? other) -> bool
 virtual Orkeon.Application.Interfaces.VoteResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.<Clone>$() -> Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand!
-virtual Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.Equals(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand? other) -> bool
-virtual Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.<Clone>$() -> Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult!
-virtual Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.Equals(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult? other) -> bool
-virtual Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.<Clone>$() -> Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand!
-virtual Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.Equals(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand? other) -> bool
-virtual Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.<Clone>$() -> Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult!
-virtual Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.Equals(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult? other) -> bool
-virtual Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.<Clone>$() -> Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand!
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand.Equals(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryCommand? other) -> bool
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.<Clone>$() -> Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse!
+Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse.Equals(Orkeon.Application.Memory.Commands.AddMemory.AddMemoryResponse? other) -> bool
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.<Clone>$() -> Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand!
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand.Equals(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreCommand? other) -> bool
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.<Clone>$() -> Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse!
+Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse.Equals(Orkeon.Application.Memory.Commands.CreateMemoryStore.CreateMemoryStoreResponse? other) -> bool
 virtual Orkeon.Application.Memory.MemoryService.Dispose(bool disposing) -> void
-virtual Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.<Clone>$() -> Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto!
-virtual Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.Equals(Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto? other) -> bool
-virtual Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.<Clone>$() -> Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery!
-virtual Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.Equals(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery? other) -> bool
-virtual Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.<Clone>$() -> Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult!
-virtual Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.Equals(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult? other) -> bool
-virtual Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.<Clone>$() -> Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand!
-virtual Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.Equals(Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand? other) -> bool
-virtual Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.<Clone>$() -> Orkeon.Application.Task.Queries.GetTask.GetTaskQuery!
-virtual Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.Equals(Orkeon.Application.Task.Queries.GetTask.GetTaskQuery? other) -> bool
-virtual Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.<Clone>$() -> Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto!
+Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto.Equals(Orkeon.Application.Memory.Queries.SearchMemory.MemoryItemDto? other) -> bool
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.<Clone>$() -> Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery!
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery.Equals(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryQuery? other) -> bool
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.<Clone>$() -> Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse!
+Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse.Equals(Orkeon.Application.Memory.Queries.SearchMemory.SearchMemoryResponse? other) -> bool
+Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.<Clone>$() -> Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand!
+Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand.Equals(Orkeon.Application.Task.Commands.CreateTask.CreateTaskCommand? other) -> bool
+Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.<Clone>$() -> Orkeon.Application.Task.Queries.GetTask.GetTaskQuery!
+Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.Equals(Orkeon.Application.Task.Queries.GetTask.GetTaskQuery? other) -> bool
 virtual Orkeon.Application.Validation.ContentValidationResult.<Clone>$() -> Orkeon.Application.Validation.ContentValidationResult!
 virtual Orkeon.Application.Validation.ContentValidationResult.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Validation.ContentValidationResult.Equals(Orkeon.Application.Validation.ContentValidationResult? other) -> bool

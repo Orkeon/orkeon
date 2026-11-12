@@ -6,7 +6,7 @@ namespace Orkeon.Application.Agent.Commands.CreateAgent;
 /// <summary>
 /// Command to create a new agent.
 /// </summary>
-public record CreateAgentCommand(
+public sealed record CreateAgentCommand(
     string Role,
     string Goal,
     string? Backstory,

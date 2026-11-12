@@ -5,7 +5,7 @@ namespace Orkeon.Application.Interfaces;
 /// <summary>
 /// Request to execute code in a sandbox environment.
 /// </summary>
-public record SandboxExecutionRequest
+public sealed record SandboxExecutionRequest
 {
     /// <summary>Code to execute.</summary>
     public string Code { get; init; } = string.Empty;

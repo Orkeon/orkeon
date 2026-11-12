@@ -6,7 +6,7 @@ namespace Orkeon.Application.Task.Commands.CreateTask;
 /// <summary>
 /// Command to create a new task.
 /// </summary>
-public record CreateTaskCommand(
+public sealed record CreateTaskCommand(
     string Description,
     string ExpectedOutput,
     string? AgentId

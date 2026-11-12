@@ -8,7 +8,7 @@ namespace Orkeon.Application.Memory.Commands.AddMemory;
 /// <summary>
 /// Handler for adding a memory item to an agent's memory store.
 /// </summary>
-public partial class AddMemoryCommandHandler : ICommandHandler<AddMemoryCommand, AddMemoryResult>
+public partial class AddMemoryCommandHandler : ICommandHandler<AddMemoryCommand, AddMemoryResponse>
 {
     private readonly IAgentMemoryStoreRepository _memoryStoreRepository;
     private readonly ILogger<AddMemoryCommandHandler> _logger;
@@ -29,14 +29,14 @@ public partial class AddMemoryCommandHandler : ICommandHandler<AddMemoryCommand,
     /// <summary>
     /// Handle Async.
     /// </summary>
-    public System.Threading.Tasks.Task<AddMemoryResult> HandleAsync(
+    public System.Threading.Tasks.Task<AddMemoryResponse> HandleAsync(
         AddMemoryCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
         return HandleCoreAsync();
 
-        async System.Threading.Tasks.Task<AddMemoryResult> HandleCoreAsync()
+        async System.Threading.Tasks.Task<AddMemoryResponse> HandleCoreAsync()
         {
             LogAddingMemory(command.AgentId, command.MemoryType);
 
@@ -78,7 +78,7 @@ public partial class AddMemoryCommandHandler : ICommandHandler<AddMemoryCommand,
 
             LogMemoryAdded(command.AgentId, memoryItem.Id, promotedToLongTerm);
 
-            return new AddMemoryResult(
+            return new AddMemoryResponse(
                 MemoryItemId: memoryItem.Id.ToString(),
                 MemoryStoreId: store.Id.ToString(),
                 PromotedToLongTerm: promotedToLongTerm);
