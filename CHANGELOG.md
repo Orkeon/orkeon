@@ -58,15 +58,28 @@ included), `IMemorySystem`, `IContextWindowManager`, `IDynamicAgentService`,
 | `const` `LlmProviderDefaultModels.*`, `LlmDefaults.DefaultModelName`, `DockerModelRunnerDefaults.DefaultModel` | `static readonly` (a default model changes without recompiling the callers; no longer usable in an attribute or a `switch` case) |
 | `LlmConfig.ApiKeySecretName`, `LlmConfig.WithDefaultModelSecret(...)`, `LlmConfig.ClaudeWithSecret(...)` | removed: assign `ApiKey` (read the secret through `ISecretProvider` first) |
 | the binary-serialization constructors `(SerializationInfo, StreamingContext)` and `GetObjectData` of the exceptions | removed |
-| `Orkeon.Infrastructure.Stubs.*` | internal |
+| `Orkeon.Infrastructure.Stubs.*`: `InMemoryKnowledgeStore`, `InMemoryMemorySystem`, `NullLlmCache`, `NullAgentExecutionService`, `SimpleAgentSelectionService`, `HashBasedEmbeddingProvider` and their kin | internal: the defaults stay registered by `AddOrkeon*`, resolve them through their interfaces |
+| `TokenUsage` (`Orkeon.Application.Interfaces.Services`), the positional record of `CrewOutput.TokensUsed` | removed: `CrewOutput.TokensUsed` is the one `TokenUsage` of `Orkeon.Application.Common.DTOs`, which gains `CacheHitTokens`, `CacheMissTokens` and `CacheHitRatio`; build it with an initializer (`new TokenUsage { PromptTokens = …, CompletionTokens = …, TotalTokens = … }`) |
+| `TokenUsage` (`Orkeon.Application.Interfaces.Security`), the running total of `ITokenBudgetTracker` | `TokenBudgetUsage` (`Orkeon.Application.Common.DTOs`), `required` init properties, `TokenBudgetUsage.None` |
+| `TokenUsageReport` | `TokenBudgetReport` |
+| `IEmbeddingService` (`Orkeon.Application.Interfaces.Ports`), the twin of the Domain port, and `DomainEmbeddingServiceAdapter` | removed: implement and resolve `Orkeon.Domain.Memory.IEmbeddingService` |
+| `ToolCallProtocol` and `ToolCallRequest` (`Orkeon.Domain.Tools`), used by nothing | removed: a tool call is `Orkeon.Domain.Tools.Protocol.ToolCallRequest` |
 | `TokenUsage` (`Orkeon.Application.Common.DTOs`), a settable class | `sealed record` with `init` properties |
 | `AddMemoryResult`, `CreateMemoryStoreResult`, `SearchMemoryResult` | `AddMemoryResponse`, `CreateMemoryStoreResponse`, `SearchMemoryResponse` |
-| the DTO, command and query records of `Orkeon.Application` | `sealed` |
+| the DTO, command and query records of `Orkeon.Application`, and every public record of `Orkeon.Application` and `Orkeon.Domain` nothing derives from (`CrewInput`, `CrewOutput`, `BudgetCheckResult`, `ValidationResult`, `GuardResult`, `ToolCallRequest`, `AgentSkill`, `MemoryEntity` and their kin) | `sealed`: their `Equals(T)` is no longer virtual, `EqualityContract` and the copy constructor are private |
 
-Plumbing that was public by accident is internal: the tool-call parsers and formatters,
-`ContentConverter`, the serialization converters, `CsvHelperSerializer` (reach it through
-`ICsvSerializer`), `HtmlAgilityPackParser`, `MarkdownParser`, `AgentMapper`,
-`ControlFlowBuilder`, `DataFlowAnalyzer` and their kin.
+Plumbing that was public by accident is internal: the tool-call parsers, formatters and
+strategies (`AnthropicToolCallParser`, `AnthropicToolSchemaFormatter`,
+`AnthropicToolCallingStrategy`, `OpenAIToolCallParser`, `OpenAIToolSchemaFormatter`,
+`OpenAIToolCallingStrategy`, `NullToolCallingStrategy`, `TextFallbackToolCallParser`),
+`ContentConverter`, the serialization converters (`BoolTolerantConverter`,
+`DecimalInvariantConverter`, `DoubleInvariantConverter`, `IntTolerantConverter`,
+`LongTolerantConverter`, `UriTolerantConverter`, `ImmutableArrayStringTolerantConverter`,
+`RawObjectConverter`, `TolerantEnumConverter<TEnum>`, `TolerantEnumConverterFactory`,
+`JsonElementConverter`, `MemoryMetadataConverter`), `CsvHelperSerializer` (reach it through
+`ICsvSerializer`), `CrewExecutionStateMapper`, `JsonSchemaToGbnfConverter`,
+`HtmlAgilityPackParser`, `MarkdownParser`, `AgentMapper`, `ControlFlowBuilder`,
+`DataFlowAnalyzer` and their kin.
 
 ### Changed — the tool base classes expose their services as properties **[breaking]**
 
@@ -84,9 +97,30 @@ new members.
 ### Changed — Tree-sitter, Terminal.Gui, ML tokenizer and Jint plumbing is internal **[breaking]**
 
 `TreeSitterParserPool`, `ParsedTree`, `ITreeSitterParser`, `StatementExtractor`,
-`SchemeFactory`, `CrossEncoderBatchEncoder`, the `*Binding` classes of the script engine,
-`JsEngineFactory.Create`, `EsbuildTranspiler` and the Terminal.Gui shims of the REPL are
-internal, so no third-party type leaks through them. Register the analysis tools with
+`StatementExtractionResult`, `TreeSitterNodeExtensions`, `SchemeFactory`,
+`CrossEncoderBatchEncoder`, `JsEngineFactory.Create`, `EsbuildTranspiler` are internal, and
+so are:
+
+- the Jint plumbing of `Orkeon.Scripting`: the `*Binding` classes (`AgentBuilderBinding`,
+  `CrewBuilderBinding`, `TaskBuilderBinding`, `ToolBuilderBinding`, `ErrorActionBinding`,
+  `LlmNamespaceBinding`, `RagNamespaceBinding`, `ToolsNamespaceBinding`, `TestNamespaceBinding`,
+  `StateGraphBinding`, `StateMachineBinding`), the script-side builders and namespaces
+  (`JsCrewBuilder`, `JsTaskBuilder`, `JsToolBuilder`, `JsLlmNamespace`, `JsErrorActionFactory`,
+  `JsTestNamespace`) and the test mocks (`JsMockLlmHandle`, `JsMockLlmExpectationBuilder`,
+  `JsMockToolHandle`, `JsMockToolExpectationBuilder`). A script reaches them through the
+  `.ork.ts` API its typings declare;
+- the Jint plumbing of the scripted REPL commands (`Orkeon.Cli.Commands.Scripting`):
+  `ArgsSchemaParser`, `ConsoleShim`, `ConsoleShimBinding`, `ContextBinding`,
+  `DefineCommandBinding`, `DefineAsyncCommandBinding`, `AgentCommandRegistrar`,
+  `CommandRuntimeContext`, `CompletionDrainQueue`, `JsLogShim`, `PendingCompletion`,
+  `PromptDispatcher`, `ScriptCommandBinding`;
+- the Terminal.Gui shims of the REPL: `AcceptHandlers`, `MouseClipboardBehavior`,
+  `KeyCapturedEventArgs`, with `ReplPaneView.Input` and `ReplPaneView.KeyCaptured`;
+- the constructors of the Tree-sitter tools of `Orkeon.Tools.Analysis` (`EditBatchTool`,
+  `NodeEnsureTool`, `NodeInsertTool`, `NodeOutlineTool`, `NodeReadTool`, `NodeReplaceTool`,
+  `StructuralRewriteTool`, `StructuralSearchTool`), which took a `TreeSitterParserPool`.
+
+No third-party type leaks through them. Register the analysis tools with
 `AddRaggableTreeTools()`, and transpile through `IScriptTranspiler`. What still carries a type of
 Jint, TreeSitter.DotNet or Terminal.Gui follows the third-party clause of the
 [stability page](docs/reference/stability.md#types-of-a-third-party-library).

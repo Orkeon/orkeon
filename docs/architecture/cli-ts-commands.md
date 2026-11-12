@@ -462,9 +462,9 @@ found.
 
 `AddScriptCommands` registers the dispatch substrate as a singleton (its own
 in-memory channel — the CLI dispatch bus — plus the name directory and instance
-registry), which is what makes the optional `commands` key resolve. Agents are connected with
-`AgentCommandRegistrar.Register(agent, engine, engineLock, service.Channel, service.Directory, logger?)`,
-which registers the channel handler and the name→id mapping. The host does that itself:
+registry), which is what makes the optional `commands` key resolve. An agent is connected by
+the internal `AgentCommandRegistrar`, which registers the channel handler and the name→id
+mapping; no public API exposes it in this release, and no shipped host calls it:
 `orkeon-repl` loads `*.cmd.ts` files only and activates no agent, so until a host registers
 one, `request` and `post` throw `commands: unknown agent 'echo'. Registered: (none).`
 
