@@ -143,7 +143,7 @@ public partial class DirectoryReadTool : FileToolBase<DirectoryReadRequest, Dire
         {
             var pathValidation = ResolveVirtualPath(request.Path, FileAccessRights.Read);
             var resolvedPath = pathValidation.ResolvedPath!;
-            var displayPath = _fileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
+            var displayPath = FileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
 
             var vPath = AbsolutizePath(request.Path);
 
@@ -169,9 +169,9 @@ public partial class DirectoryReadTool : FileToolBase<DirectoryReadRequest, Dire
             var directories = MapEntries(dirEntries, dirBudget, "directory", includeSize: false);
 
             if (truncated)
-                LogTruncatedDirectory(displayPath, totalRawEntries, files.Count + directories.Count, maxResults);
+                LogTruncatedDirectory(Logger, displayPath, totalRawEntries, files.Count + directories.Count, maxResults);
             else
-                LogListedDirectory(displayPath, files.Count, directories.Count);
+                LogListedDirectory(Logger, displayPath, files.Count, directories.Count);
 
             var warning = await ResolveWarningAsync(cancellationToken).ConfigureAwait(false);
 
@@ -192,7 +192,7 @@ public partial class DirectoryReadTool : FileToolBase<DirectoryReadRequest, Dire
     private async Task EnsureDirectoryExistsAsync(
         string vPath, string displayPath, CancellationToken cancellationToken)
     {
-        var exists = await _fileSystemService.ExistsAsync(vPath, cancellationToken).ConfigureAwait(false);
+        var exists = await FileSystemService.ExistsAsync(vPath, cancellationToken).ConfigureAwait(false);
 
         if (!exists)
             throw new DirectoryNotFoundException($"Directory not found: {displayPath}");
@@ -206,7 +206,7 @@ public partial class DirectoryReadTool : FileToolBase<DirectoryReadRequest, Dire
     {
         var opts = new VirtualEnumerationOptions(Recursive: request.Recursive, SearchPattern: pattern);
         var entries = new List<VirtualFileEntry>();
-        await foreach (var entry in _fileSystemService.EnumerateFilesAsync(vPath, opts, cancellationToken).ConfigureAwait(false))
+        await foreach (var entry in FileSystemService.EnumerateFilesAsync(vPath, opts, cancellationToken).ConfigureAwait(false))
             entries.Add(entry);
         return entries;
     }
@@ -258,8 +258,8 @@ public partial class DirectoryReadTool : FileToolBase<DirectoryReadRequest, Dire
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Listed directory: {Path} ({Files} files, {Dirs} directories)")]
-    private partial void LogListedDirectory(string path, int files, int dirs);
+    private static partial void LogListedDirectory(ILogger logger, string path, int files, int dirs);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Directory listing truncated: {Path} had {TotalEntries} entries, returned {ReturnedEntries} (maxResults={MaxResults})")]
-    private partial void LogTruncatedDirectory(string path, int totalEntries, int returnedEntries, int maxResults);
+    private static partial void LogTruncatedDirectory(ILogger logger, string path, int totalEntries, int returnedEntries, int maxResults);
 }

@@ -93,20 +93,20 @@ public sealed class GlobTool : FileToolBase<GlobRequest, GlobResponse>
         request = request with { Path = AbsolutizePath(request.Path) };
         var root = request.Path.TrimEnd('/');
 
-        if (!await _fileSystemService.ExistsAsync(request.Path, cancellationToken).ConfigureAwait(false)
-            || await _fileSystemService.GetEntryKindAsync(request.Path, cancellationToken).ConfigureAwait(false) != VirtualEntryKind.Directory)
+        if (!await FileSystemService.ExistsAsync(request.Path, cancellationToken).ConfigureAwait(false)
+            || await FileSystemService.GetEntryKindAsync(request.Path, cancellationToken).ConfigureAwait(false) != VirtualEntryKind.Directory)
             throw new DirectoryNotFoundException($"Directory not found: {request.Path}");
 
         var location = $"{root}/{request.Pattern}";
         IEnumerable<string> matches;
         if (SourceGlobExpander.HasWildcard(request.Pattern))
         {
-            var descriptors = await SourceGlobExpander.ExpandAsync(_fileSystemService, [location], cancellationToken).ConfigureAwait(false);
+            var descriptors = await SourceGlobExpander.ExpandAsync(FileSystemService, [location], cancellationToken).ConfigureAwait(false);
             matches = descriptors.Select(d => d.Location);
         }
         else
         {
-            matches = (await _fileSystemService.TryGetEntryAsync(location, cancellationToken).ConfigureAwait(false))?.Kind == VirtualEntryKind.File ? [location] : [];
+            matches = (await FileSystemService.TryGetEntryAsync(location, cancellationToken).ConfigureAwait(false))?.Kind == VirtualEntryKind.File ? [location] : [];
         }
 
         var paths = ImmutableList.CreateBuilder<string>();

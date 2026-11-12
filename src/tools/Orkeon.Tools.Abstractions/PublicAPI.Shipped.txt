@@ -162,10 +162,10 @@ override Orkeon.Tools.Abstractions.Tools.OverrideDto.ToString() -> string!
 override sealed Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
 override sealed Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
 override sealed Orkeon.Tools.Abstractions.Base.ToolBase<TRequest, TResponse>.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
-readonly Orkeon.Tools.Abstractions.Base.FileToolBase._fileSystemService -> Orkeon.Domain.FileSystem.IFileSystemService!
-readonly Orkeon.Tools.Abstractions.Base.HttpToolBase._httpClient -> System.Net.Http.HttpClient!
-readonly Orkeon.Tools.Abstractions.Base.ToolBase._jsonOptions -> System.Text.Json.JsonSerializerOptions!
-readonly Orkeon.Tools.Abstractions.Base.ToolBase._logger -> Microsoft.Extensions.Logging.ILogger!
+Orkeon.Tools.Abstractions.Base.FileToolBase.FileSystemService.get -> Orkeon.Domain.FileSystem.IFileSystemService!
+Orkeon.Tools.Abstractions.Base.HttpToolBase.HttpClient.get -> System.Net.Http.HttpClient!
+Orkeon.Tools.Abstractions.Base.ToolBase.JsonOptions.get -> System.Text.Json.JsonSerializerOptions!
+Orkeon.Tools.Abstractions.Base.ToolBase.Logger.get -> Microsoft.Extensions.Logging.ILogger!
 static Orkeon.Tools.Abstractions.Base.ToolBase.ExtractErrorMessage(System.Collections.Generic.Dictionary<string!, object?>! responseDict) -> string?
 static Orkeon.Tools.Abstractions.Base.ToolBase.IsValidType(object! value, string! expectedType) -> bool
 static Orkeon.Tools.Abstractions.Base.ToolBase.StringArgument(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments, string! name, out bool present) -> string?

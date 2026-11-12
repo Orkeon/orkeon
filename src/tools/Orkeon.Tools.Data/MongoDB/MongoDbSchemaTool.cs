@@ -84,7 +84,7 @@ public partial class MongoDbSchemaTool : ToolBase<MongoDbSchemaRequest, MongoDbS
                 collections.Add(info);
             }
 
-            LogSchemaInspectionCompleted(request.Database, collections.Count);
+            LogSchemaInspectionCompleted(Logger, request.Database, collections.Count);
 
             return new MongoDbSchemaResponse
             {
@@ -241,5 +241,5 @@ public partial class MongoDbSchemaTool : ToolBase<MongoDbSchemaRequest, MongoDbS
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Schema inspection completed for database {Database}: {CollectionCount} collections")]
-    private partial void LogSchemaInspectionCompleted(string database, int collectionCount);
+    private static partial void LogSchemaInspectionCompleted(ILogger logger, string database, int collectionCount);
 }

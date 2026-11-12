@@ -72,14 +72,14 @@ public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteReques
     protected override string? ValidateTypedRequest(StructuralRewriteRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return StructuralSearchTool.PathsOutsideRoot(_fileSystemService, request.Paths);
+        return StructuralSearchTool.PathsOutsideRoot(FileSystemService, request.Paths);
     }
 
     protected override async Task<StructuralRewriteResponse> ExecuteTypedAsync(StructuralRewriteRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         var rule = await StructuralSearchTool.RuleOfAsync(
-            _fileSystemService, request.Pattern, request.Rule, request.RuleFile, request.Language, cancellationToken).ConfigureAwait(false);
+            FileSystemService, request.Pattern, request.Rule, request.RuleFile, request.Language, cancellationToken).ConfigureAwait(false);
         if (LanguageRegistry.Resolve(rule.Language) == StructuralFile.MarkdownLanguage)
             throw new ArgumentException("structural_rewrite rewrites source files only: markdown rules are refused.");
         var served = StructuralSearchTool.ServedLanguages.Where(l => l != StructuralFile.MarkdownLanguage);
@@ -96,7 +96,7 @@ public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteReques
         var scanned = 0;
         var truncated = false;
 
-        await foreach (var path in StructuralSearchTool.CandidateFilesAsync(_fileSystemService, request.Paths, request.Glob, grammar, cancellationToken).ConfigureAwait(false))
+        await foreach (var path in StructuralSearchTool.CandidateFilesAsync(FileSystemService, request.Paths, request.Glob, grammar, cancellationToken).ConfigureAwait(false))
         {
             if (scanned >= request.MaxFiles)
             {
@@ -119,7 +119,7 @@ public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteReques
         var rights = ResolveVirtualPath(path, FileAccessRights.Write);
         if (!rights.IsAllowed) return Refused(path, 0, rights.DenialReason ?? "Write access denied.");
 
-        var original = await _fileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+        var original = await FileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
         if (original is null) return null;
         var matches = matcher.Match(path, original, rule);
         if (matches.Count == 0) return new StructuralRewriteFileDto { Path = path, Matches = 0, Applied = 0, Diff = "" };

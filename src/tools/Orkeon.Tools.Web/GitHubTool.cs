@@ -269,7 +269,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
             }
             catch (HttpRequestException ex)
             {
-                LogGitHubRequestFailed(request.Action, ex.GetType().Name, Redact(ex.Message));
+                LogGitHubRequestFailed(Logger, request.Action, ex.GetType().Name, Redact(ex.Message));
                 return Redacted(new GitHubResponse
                 {
                     Success = false,
@@ -303,7 +303,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         if (!string.IsNullOrWhiteSpace(_personalAccessToken))
             message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _personalAccessToken);
 
-        return await _httpClient.SendAsync(message, ct).ConfigureAwait(false);
+        return await HttpClient.SendAsync(message, ct).ConfigureAwait(false);
     }
 
     /// <summary>Sends a GET and reads the body, throwing <see cref="HttpRequestException"/> on a failure status.</summary>
@@ -320,7 +320,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         var json = await GetStringAsync(url, ct).ConfigureAwait(false);
         var items = ParseItemArray(json);
 
-        LogGitHubAction("list_issues", request.Owner, request.Repo, items.Count);
+        LogGitHubAction(Logger, "list_issues", request.Owner, request.Repo, items.Count);
 
         return new GitHubResponse
         {
@@ -354,7 +354,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 
         var item = ParseSingleItem(responseBody);
 
-        LogGitHubAction("create_issue", request.Owner, request.Repo, 1);
+        LogGitHubAction(Logger, "create_issue", request.Owner, request.Repo, 1);
 
         return new GitHubResponse
         {
@@ -394,7 +394,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 
         var item = ParseSingleItem(responseBody);
 
-        LogGitHubAction("create_pr", request.Owner, request.Repo, 1);
+        LogGitHubAction(Logger, "create_pr", request.Owner, request.Repo, 1);
 
         return new GitHubResponse
         {
@@ -424,7 +424,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 
         var item = ParseSingleItem(responseBody);
 
-        LogGitHubAction("get_pr", request.Owner, request.Repo, 1);
+        LogGitHubAction(Logger, "get_pr", request.Owner, request.Repo, 1);
 
         return new GitHubResponse
         {
@@ -455,7 +455,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
             }
         }
 
-        LogGitHubAction("search_repos", request.Owner, request.Repo, items.Count);
+        LogGitHubAction(Logger, "search_repos", request.Owner, request.Repo, items.Count);
 
         return new GitHubResponse
         {
@@ -486,7 +486,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         using var doc = JsonDocument.Parse(responseBody);
         var item = ParseRepoItem(doc.RootElement);
 
-        LogGitHubAction("get_repo", request.Owner, request.Repo, 1);
+        LogGitHubAction(Logger, "get_repo", request.Owner, request.Repo, 1);
 
         return new GitHubResponse
         {
@@ -564,10 +564,10 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "GitHub API: {Action} on {Owner}/{Repo} returned {Count} items")]
-    private partial void LogGitHubAction(string action, string owner, string repo, int count);
+    private static partial void LogGitHubAction(ILogger logger, string action, string owner, string repo, int count);
 
     // The exception object stays out of the log: its message is logged with the token masked.
     [LoggerMessage(Level = LogLevel.Error,
         Message = "GitHub API request failed for action {Action}: {ExceptionType}: {Reason}")]
-    private partial void LogGitHubRequestFailed(string action, string exceptionType, string reason);
+    private static partial void LogGitHubRequestFailed(ILogger logger, string action, string exceptionType, string reason);
 }

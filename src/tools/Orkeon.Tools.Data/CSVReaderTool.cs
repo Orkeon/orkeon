@@ -109,7 +109,7 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
             // against the working directory, and every call below addresses that same file.
             var path = AbsolutizePath(request.Path);
 
-            if (!await _fileSystemService.ExistsAsync(path, cancellationToken).ConfigureAwait(false))
+            if (!await FileSystemService.ExistsAsync(path, cancellationToken).ConfigureAwait(false))
                 throw new FileNotFoundException($"File not found: {path}");
 
             var config = new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -121,9 +121,9 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
             };
 
             var (rows, headers, rowCount) = await ReadCsvDataVfsAsync(
-                _fileSystemService, path, config, request.HasHeader, request.MaxRows, cancellationToken).ConfigureAwait(false);
+                FileSystemService, path, config, request.HasHeader, request.MaxRows, cancellationToken).ConfigureAwait(false);
 
-            LogReadCsv(path, rows.Count, headers.Count);
+            LogReadCsv(Logger, path, rows.Count, headers.Count);
 
             return new CsvReaderResponse
             {
@@ -213,5 +213,5 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully read CSV: {Path} ({Rows} rows, {Cols} columns)")]
-    private partial void LogReadCsv(string path, int rows, int cols);
+    private static partial void LogReadCsv(ILogger logger, string path, int rows, int cols);
 }

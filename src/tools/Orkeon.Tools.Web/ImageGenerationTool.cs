@@ -268,7 +268,7 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
                 httpRequest.Headers.Add("Authorization", $"Bearer {secret.Value}");
             }
 
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
@@ -277,7 +277,7 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
                 throw new HttpRequestException(errorMessage);
             }
 
-            var apiResponse = JsonSerializer.Deserialize<OpenAiImageResponse>(responseBody, JsonOptions);
+            var apiResponse = JsonSerializer.Deserialize<OpenAiImageResponse>(responseBody, s_jsonOptions);
 
             var images = new List<GeneratedImage>();
 
@@ -293,7 +293,7 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
                 }
             }
 
-            LogImageGenerated(request.Prompt, images.Count, request.Model);
+            LogImageGenerated(Logger, request.Prompt, images.Count, request.Model);
 
             return new ImageGenerationResponse
             {
@@ -420,7 +420,7 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
             if (!urlValidation.IsAllowed)
                 throw new InvalidOperationException($"Image URL blocked: {urlValidation.DenialReason}");
 
-            var imageBytes = await _httpClient.GetByteArrayAsync(urlValidation.ValidatedUri!, cancellationToken).ConfigureAwait(false);
+            var imageBytes = await HttpClient.GetByteArrayAsync(urlValidation.ValidatedUri!, cancellationToken).ConfigureAwait(false);
             await _fileSystem.WriteAllBytesAsync(path, imageBytes, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -433,14 +433,14 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
         return Path.Combine(dir, $"{name}_{index}{ext}");
     }
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         MaxDepth = SerializationDefaults.JsonMaxDepth
     };
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Generated {Count} image(s) for prompt '{Prompt}' using model {Model}")]
-    private partial void LogImageGenerated(string prompt, int count, string model);
+    private static partial void LogImageGenerated(ILogger logger, string prompt, int count, string model);
 
     // ── OpenAI API response models (internal) ────────────────────────────
 

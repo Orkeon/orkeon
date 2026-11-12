@@ -118,7 +118,7 @@ public partial class ArcadeDbTool : ToolBase<ArcadeDbRequest, ArcadeDbResponse>
 
                     var counters = summary.Counters;
 
-                    LogQueryCompleted(records.Count, counters.NodesCreated, stopwatch.ElapsedMilliseconds);
+                    LogQueryCompleted(Logger, records.Count, counters.NodesCreated, stopwatch.ElapsedMilliseconds);
 
                     return new ArcadeDbResponse
                     {
@@ -179,5 +179,5 @@ public partial class ArcadeDbTool : ToolBase<ArcadeDbRequest, ArcadeDbResponse>
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "ArcadeDB query returned {RecordCount} records, {NodesCreated} nodes created in {ElapsedMs}ms")]
-    private partial void LogQueryCompleted(int recordCount, int nodesCreated, long elapsedMs);
+    private static partial void LogQueryCompleted(ILogger logger, int recordCount, int nodesCreated, long elapsedMs);
 }

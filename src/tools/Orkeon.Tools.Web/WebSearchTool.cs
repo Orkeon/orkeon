@@ -89,7 +89,7 @@ public partial class WebSearchTool : HttpToolBase<WebSearchRequest, WebSearchRes
             };
             httpRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
 
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -110,7 +110,7 @@ public partial class WebSearchTool : HttpToolBase<WebSearchRequest, WebSearchRes
                 Score = r.Score
             }).ToList() ?? [];
 
-            LogSearchCompleted(request.Query, results.Count);
+            LogSearchCompleted(Logger, request.Query, results.Count);
 
             return new WebSearchResponse
             {
@@ -147,5 +147,5 @@ public partial class WebSearchTool : HttpToolBase<WebSearchRequest, WebSearchRes
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Web search completed for query: \"{Query}\" ({ResultCount} results)")]
-    private partial void LogSearchCompleted(string query, int resultCount);
+    private static partial void LogSearchCompleted(ILogger logger, string query, int resultCount);
 }

@@ -144,7 +144,7 @@ public partial class SearchTool : ToolBase<SearchRequest, SearchResponse>
                 Tags = item.Tags?.ToList() ?? []
             }).ToList();
 
-            LogSearchCompleted(request.Query, resultList.Count);
+            LogSearchCompleted(Logger, request.Query, resultList.Count);
 
             return new SearchResponse
             {
@@ -158,5 +158,5 @@ public partial class SearchTool : ToolBase<SearchRequest, SearchResponse>
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Semantic search for '{Query}' returned {Count} results")]
-    private partial void LogSearchCompleted(string query, int count);
+    private static partial void LogSearchCompleted(ILogger logger, string query, int count);
 }

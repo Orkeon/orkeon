@@ -49,7 +49,7 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         // indicate an injection attempt that should be rejected at the boundary.
         if (!string.IsNullOrEmpty(request.TableFilter) && SqlInjectionPatternRegex().IsMatch(request.TableFilter))
         {
-            LogSuspiciousTableFilter(request.TableFilter);
+            LogSuspiciousTableFilter(Logger, request.TableFilter);
             return $"Table filter '{request.TableFilter}' contains invalid characters. Only alphanumeric characters, underscores, and wildcards (*) are allowed.";
         }
 
@@ -83,7 +83,7 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
 
             var dbName = ResolveDatabaseName(connection, request.ConnectionString);
 
-            LogSchemaIntrospectionCompleted(tables.Count, indexes?.Count ?? 0, foreignKeys?.Count ?? 0);
+            LogSchemaIntrospectionCompleted(Logger, tables.Count, indexes?.Count ?? 0, foreignKeys?.Count ?? 0);
 
             return new DatabaseSchemaResponse
             {
@@ -463,7 +463,7 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         {
             // Best-effort: some providers may not support column restrictions.
             // Trace it so a partial schema is not mistaken for an exhaustive one.
-            LogSchemaIntrospectionPartial(ex, "Columns", tableName);
+            LogSchemaIntrospectionPartial(Logger, ex, "Columns", tableName);
         }
 
         return columns;
@@ -499,7 +499,7 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         catch (Exception ex)
         {
             // Best-effort PK detection; trace failures so an incomplete key set is visible.
-            LogSchemaIntrospectionPartial(ex, "PrimaryKeys", tableName);
+            LogSchemaIntrospectionPartial(Logger, ex, "PrimaryKeys", tableName);
         }
 
         return pkColumns;
@@ -540,7 +540,7 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         catch (Exception ex)
         {
             // Best-effort index introspection; trace so a partial index list is visible.
-            LogSchemaIntrospectionPartial(ex, "Indexes", "*");
+            LogSchemaIntrospectionPartial(Logger, ex, "Indexes", "*");
         }
 
         return indexes;
@@ -570,7 +570,7 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         catch (Exception ex)
         {
             // Best-effort index-column introspection; trace partial results.
-            LogSchemaIntrospectionPartial(ex, "IndexColumns", tableName);
+            LogSchemaIntrospectionPartial(Logger, ex, "IndexColumns", tableName);
         }
 
         return columns;
@@ -613,7 +613,7 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         catch (Exception ex)
         {
             // Best-effort FK introspection; trace so a partial FK set is visible.
-            LogSchemaIntrospectionPartial(ex, "ForeignKeys", "*");
+            LogSchemaIntrospectionPartial(Logger, ex, "ForeignKeys", "*");
         }
 
         return foreignKeys;
@@ -701,13 +701,13 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Schema introspection completed: {TableCount} tables, {IndexCount} indexes, {FkCount} foreign keys")]
-    private partial void LogSchemaIntrospectionCompleted(int tableCount, int indexCount, int fkCount);
+    private static partial void LogSchemaIntrospectionCompleted(ILogger logger, int tableCount, int indexCount, int fkCount);
 
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Schema introspection for '{SchemaCollection}' (scope '{Target}') was partial; the reported schema may be incomplete.")]
-    private partial void LogSchemaIntrospectionPartial(Exception ex, string schemaCollection, string target);
+    private static partial void LogSchemaIntrospectionPartial(ILogger logger, Exception ex, string schemaCollection, string target);
 
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Rejected table filter containing suspicious SQL pattern: {Filter}")]
-    private partial void LogSuspiciousTableFilter(string filter);
+    private static partial void LogSuspiciousTableFilter(ILogger logger, string filter);
 }

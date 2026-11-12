@@ -164,7 +164,7 @@ public partial class CacheSearchTool : ToolBase<CacheSearchRequest, CacheSearchR
             }
 
             var urlFilterLabel = request.UrlFilter?.ToString() ?? "*";
-            LogCacheSearchCompleted(request.Query, hits.Count, request.Source ?? "*", urlFilterLabel);
+            LogCacheSearchCompleted(Logger, request.Query, hits.Count, request.Source ?? "*", urlFilterLabel);
 
             return new CacheSearchResponse
             {
@@ -228,5 +228,5 @@ public partial class CacheSearchTool : ToolBase<CacheSearchRequest, CacheSearchR
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "cache_search query=\"{Query}\" hits={HitCount} source={Source} url_filter={UrlFilter}")]
-    private partial void LogCacheSearchCompleted(string query, int hitCount, string source, string urlFilter);
+    private static partial void LogCacheSearchCompleted(ILogger logger, string query, int hitCount, string source, string urlFilter);
 }

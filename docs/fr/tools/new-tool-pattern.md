@@ -201,6 +201,14 @@ Quatre autres membres virtuels méritent d'être déclarés :
 | `Category` | la `Category` du contrat, sinon `"General"` (`"File Operations"` / `"Web Operations"` pour les deux bases spécialisées) | Catalogues et listes |
 | `RequiresHumanApproval` | `false` | Les appelants qui gèrent une approbation |
 
+Les bases donnent leurs services à un outil sous forme de propriétés protégées en lecture
+seule : `Logger` et `JsonOptions` (`ToolBase`), `HttpClient` (`HttpToolBase`),
+`FileSystemService` (`FileToolBase`). Le générateur de source `[LoggerMessage]` ne trouve
+qu'un *champ* logger : les méthodes de journalisation d'un outil sont donc `static partial`
+et prennent le logger en premier :
+`private static partial void LogFetched(ILogger logger, string city);`, appelée par
+`LogFetched(Logger, city)`.
+
 ### Pipeline automatique
 
 Avant le pipeline typé, `ToolBase.CallAsync` vérifie les paramètres de l'appel contre le
@@ -365,8 +373,8 @@ public sealed class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse>
             if (!check.IsAllowed)
                 return new WeatherResponse { Success = false, Error = check.DenialReason };
 
-            // HttpClient est disponible via le champ protégé _httpClient (hérité de HttpToolBase)
-            var response = await _httpClient.GetAsync(url, cancellationToken)
+            // HttpClient est la propriété protégée héritée de HttpToolBase
+            var response = await HttpClient.GetAsync(url, cancellationToken)
                 .ConfigureAwait(false);
 
             response.EnsureSuccessStatusCode();
@@ -542,7 +550,7 @@ lève `ComponentBase.DefaultSerializer has not been configured`.
 
 `FileReadTool.cs` (`Orkeon.Tools.FileSystem`) est la référence : la requête porte un chemin
 **virtuel**, l'outil le résout avec le droit dont il a besoin, et chaque octet passe par
-`_fileSystemService` :
+`FileSystemService`, la propriété protégée héritée de `FileToolBase` :
 
 ```csharp
 [ToolContract("line_count", Description = "Count the lines of a text file.")]
@@ -563,7 +571,7 @@ public sealed class LineCountTool : FileToolBase<LineCountRequest, LineCountResp
         if (!check.IsAllowed)
             return new LineCountResponse { Success = false, Error = check.DenialReason };
 
-        var stream = await _fileSystemService.OpenReadStreamAsync(request.Path, cancellationToken)
+        var stream = await FileSystemService.OpenReadStreamAsync(request.Path, cancellationToken)
             .ConfigureAwait(false);
         using var reader = new StreamReader(stream);
         var lines = 0;

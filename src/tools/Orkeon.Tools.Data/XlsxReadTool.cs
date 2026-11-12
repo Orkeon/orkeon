@@ -130,7 +130,7 @@ public partial class XlsxReadTool : FileToolBase<XlsxReadRequest, XlsxReadRespon
             if (!vfsResult.IsAllowed)
                 throw new InvalidOperationException(vfsResult.DenialReason ?? "path validation failed");
 
-            var bytes = await _fileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
+            var bytes = await FileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
                 ?? throw new FileNotFoundException($"File not found: {path}");
             var workbook = new XLWorkbook(new MemoryStream(bytes));
 
@@ -155,7 +155,7 @@ public partial class XlsxReadTool : FileToolBase<XlsxReadRequest, XlsxReadRespon
                     ? ExtractMetadata(workbook, allSheetNames)
                     : [];
 
-                LogReadXlsx(path, allSheetNames.Count, totalRows);
+                LogReadXlsx(Logger, path, allSheetNames.Count, totalRows);
 
                 return new XlsxReadResponse
                 {
@@ -253,5 +253,5 @@ public partial class XlsxReadTool : FileToolBase<XlsxReadRequest, XlsxReadRespon
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully read XLSX: {Path} ({SheetCount} sheets, {TotalRows} rows)")]
-    private partial void LogReadXlsx(string path, int sheetCount, int totalRows);
+    private static partial void LogReadXlsx(ILogger logger, string path, int sheetCount, int totalRows);
 }

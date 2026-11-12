@@ -71,7 +71,7 @@ public partial class BraveSearchTool : HttpToolBase<WebSearchRequest, WebSearchR
             httpRequest.Headers.Add("X-Subscription-Token", _apiKey);
             httpRequest.Headers.Add("Accept", "application/json");
 
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -81,7 +81,7 @@ public partial class BraveSearchTool : HttpToolBase<WebSearchRequest, WebSearchR
             }
 
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            var braveResponse = JsonSerializer.Deserialize<BraveApiResponse>(responseBody, JsonOptions);
+            var braveResponse = JsonSerializer.Deserialize<BraveApiResponse>(responseBody, s_jsonOptions);
 
             var results = new List<WebSearchResult>();
 
@@ -99,7 +99,7 @@ public partial class BraveSearchTool : HttpToolBase<WebSearchRequest, WebSearchR
                 }
             }
 
-            LogSearchCompleted(request.Query, results.Count);
+            LogSearchCompleted(Logger, request.Query, results.Count);
 
             return new WebSearchResponse
             {
@@ -110,14 +110,14 @@ public partial class BraveSearchTool : HttpToolBase<WebSearchRequest, WebSearchR
         }
     }
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         MaxDepth = SerializationDefaults.JsonMaxDepth
     };
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Brave search for '{Query}' returned {Count} results")]
-    private partial void LogSearchCompleted(string query, int count);
+    private static partial void LogSearchCompleted(ILogger logger, string query, int count);
 
     // ── Brave API response models (internal) ──────────────────────────────
     //

@@ -134,7 +134,7 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
                 })
                 .ToList();
 
-            LogSearchCompleted(request.Query, topResults.Count, outcome.Ingestion.ChunksCreated, pdfFiles.Count);
+            LogSearchCompleted(Logger, request.Query, topResults.Count, outcome.Ingestion.ChunksCreated, pdfFiles.Count);
 
             return new PdfSearchResponse
             {
@@ -287,5 +287,5 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "PDF search completed: query='{Query}', results={ResultCount}, chunksIndexed={ChunkCount}, files={FileCount}")]
-    private partial void LogSearchCompleted(string query, int resultCount, int chunkCount, int fileCount);
+    private static partial void LogSearchCompleted(ILogger logger, string query, int resultCount, int chunkCount, int fileCount);
 }

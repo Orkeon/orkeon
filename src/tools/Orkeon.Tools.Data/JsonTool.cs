@@ -165,7 +165,7 @@ public partial class JsonTool : ToolBase<JsonToolRequest, JsonToolResponse>
             }
             catch (JsonException ex)
             {
-                LogUnexpectedJsonError(ex);
+                LogUnexpectedJsonError(Logger, ex);
                 throw;
             }
         }
@@ -349,5 +349,5 @@ public partial class JsonTool : ToolBase<JsonToolRequest, JsonToolResponse>
     private sealed record QuerySegment(string Value, bool IsArrayIndex, int ArrayIndex);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Unexpected error in JSON tool")]
-    private partial void LogUnexpectedJsonError(Exception ex);
+    private static partial void LogUnexpectedJsonError(ILogger logger, Exception ex);
 }

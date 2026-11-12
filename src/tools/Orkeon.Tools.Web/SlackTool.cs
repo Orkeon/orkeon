@@ -137,12 +137,12 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
                 Encoding.UTF8,
                 "application/json");
 
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
-                LogSlackApiError(request.Channel, (int)response.StatusCode, responseBody);
+                LogSlackApiError(Logger, request.Channel, (int)response.StatusCode, responseBody);
                 return new SlackSendMessageResponse
                 {
                     Success = false,
@@ -155,7 +155,7 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
             if (slackResponse == null || !slackResponse.Ok)
             {
                 var errorMsg = slackResponse?.Error ?? "Unknown error";
-                LogSlackApiError(request.Channel, (int)response.StatusCode, errorMsg);
+                LogSlackApiError(Logger, request.Channel, (int)response.StatusCode, errorMsg);
                 return new SlackSendMessageResponse
                 {
                     Success = false,
@@ -163,7 +163,7 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
                 };
             }
 
-            LogMessageSent(request.Channel, slackResponse.Ts ?? "");
+            LogMessageSent(Logger, request.Channel, slackResponse.Ts ?? "");
 
             return new SlackSendMessageResponse
             {
@@ -174,7 +174,7 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
         }
         catch (HttpRequestException ex)
         {
-            LogHttpError(request.Channel, ex.Message);
+            LogHttpError(Logger, request.Channel, ex.Message);
             return new SlackSendMessageResponse
             {
                 Success = false,
@@ -183,7 +183,7 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            LogTimeout(request.Channel);
+            LogTimeout(Logger, request.Channel);
             return new SlackSendMessageResponse
             {
                 Success = false,
@@ -192,7 +192,7 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
         }
         catch (Exception ex)
         {
-            LogUnexpectedError(request.Channel, ex.Message);
+            LogUnexpectedError(Logger, request.Channel, ex.Message);
             return new SlackSendMessageResponse
             {
                 Success = false,
@@ -220,17 +220,17 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
     // ── Logging ────────────────────────────────────────────────────
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Message sent to Slack channel '{Channel}' with timestamp {Timestamp}")]
-    private partial void LogMessageSent(string channel, string timestamp);
+    private static partial void LogMessageSent(ILogger logger, string channel, string timestamp);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Slack API error for channel '{Channel}': HTTP {StatusCode} - {ErrorBody}")]
-    private partial void LogSlackApiError(string channel, int statusCode, string errorBody);
+    private static partial void LogSlackApiError(ILogger logger, string channel, int statusCode, string errorBody);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "HTTP request failed for Slack channel '{Channel}': {Error}")]
-    private partial void LogHttpError(string channel, string error);
+    private static partial void LogHttpError(ILogger logger, string channel, string error);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Slack request to channel '{Channel}' timed out")]
-    private partial void LogTimeout(string channel);
+    private static partial void LogTimeout(ILogger logger, string channel);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Unexpected error sending message to Slack channel '{Channel}': {Error}")]
-    private partial void LogUnexpectedError(string channel, string error);
+    private static partial void LogUnexpectedError(ILogger logger, string channel, string error);
 }

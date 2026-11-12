@@ -152,7 +152,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
             var channelId = await ResolveChannelIdAsync(request.Channel, cancellationToken).ConfigureAwait(false);
             if (string.IsNullOrEmpty(channelId))
             {
-                LogChannelNotFound(request.Channel);
+                LogChannelNotFound(Logger, request.Channel);
                 return new SlackReadMessagesResponse
                 {
                     Success = false,
@@ -178,12 +178,12 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
             using var httpRequest = new HttpRequestMessage(HttpMethod.Get, fullUrl);
             httpRequest.Headers.Add("Authorization", $"Bearer {_botToken}");
 
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
-                LogSlackApiError(request.Channel, (int)response.StatusCode, responseBody);
+                LogSlackApiError(Logger, request.Channel, (int)response.StatusCode, responseBody);
                 return new SlackReadMessagesResponse
                 {
                     Success = false,
@@ -197,7 +197,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
             if (slackResponse == null || !slackResponse.Ok)
             {
                 var errorMsg = slackResponse?.Error ?? "Unknown error";
-                LogSlackApiError(request.Channel, (int)response.StatusCode, errorMsg);
+                LogSlackApiError(Logger, request.Channel, (int)response.StatusCode, errorMsg);
                 return new SlackReadMessagesResponse
                 {
                     Success = false,
@@ -214,7 +214,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
                 UserId = m.UserId ?? ""
             }).ToList() ?? [];
 
-            LogMessagesRetrieved(request.Channel, messages.Count);
+            LogMessagesRetrieved(Logger, request.Channel, messages.Count);
 
             return new SlackReadMessagesResponse
             {
@@ -226,7 +226,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
         }
         catch (HttpRequestException ex)
         {
-            LogHttpError(request.Channel, ex.Message);
+            LogHttpError(Logger, request.Channel, ex.Message);
             return new SlackReadMessagesResponse
             {
                 Success = false,
@@ -236,7 +236,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            LogTimeout(request.Channel);
+            LogTimeout(Logger, request.Channel);
             return new SlackReadMessagesResponse
             {
                 Success = false,
@@ -246,7 +246,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
         }
         catch (Exception ex)
         {
-            LogUnexpectedError(request.Channel, ex.Message);
+            LogUnexpectedError(Logger, request.Channel, ex.Message);
             return new SlackReadMessagesResponse
             {
                 Success = false,
@@ -279,7 +279,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
             using var httpRequest = new HttpRequestMessage(HttpMethod.Get, url);
             httpRequest.Headers.Add("Authorization", $"Bearer {_botToken}");
 
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             var slackResponse = JsonSerializer.Deserialize<ConversationsListResponse>(responseBody);
@@ -353,20 +353,20 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
     // ── Logging ────────────────────────────────────────────────────
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Retrieved {MessageCount} messages from Slack channel '{Channel}'")]
-    private partial void LogMessagesRetrieved(string channel, int messageCount);
+    private static partial void LogMessagesRetrieved(ILogger logger, string channel, int messageCount);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Channel '{Channel}' not found")]
-    private partial void LogChannelNotFound(string channel);
+    private static partial void LogChannelNotFound(ILogger logger, string channel);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Slack API error for channel '{Channel}': HTTP {StatusCode} - {ErrorBody}")]
-    private partial void LogSlackApiError(string channel, int statusCode, string errorBody);
+    private static partial void LogSlackApiError(ILogger logger, string channel, int statusCode, string errorBody);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "HTTP request failed for Slack channel '{Channel}': {Error}")]
-    private partial void LogHttpError(string channel, string error);
+    private static partial void LogHttpError(ILogger logger, string channel, string error);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Slack request to channel '{Channel}' timed out")]
-    private partial void LogTimeout(string channel);
+    private static partial void LogTimeout(ILogger logger, string channel);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Unexpected error reading from Slack channel '{Channel}': {Error}")]
-    private partial void LogUnexpectedError(string channel, string error);
+    private static partial void LogUnexpectedError(ILogger logger, string channel, string error);
 }

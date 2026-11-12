@@ -21,8 +21,7 @@ public abstract class HttpToolBase : ToolBase
     private static readonly HttpClient s_sharedHttpClient = CreateSharedHttpClient();
 
     /// <summary>The underlying HTTP client used for outgoing requests.</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1051", Justification = "Established protected base-class field referenced directly by derived HTTP tools across multiple projects; converting to a property would break the inherited contract without behavioral benefit.")]
-    protected readonly HttpClient _httpClient;
+    protected HttpClient HttpClient { get; }
     private readonly bool _ownsHttpClient;
     private readonly IUrlValidator? _urlValidator;
     private readonly HttpHeaderSanitizer? _headerSanitizer;
@@ -46,9 +45,9 @@ public abstract class HttpToolBase : ToolBase
     protected HttpToolBase(IHttpClientFactory httpClientFactory, ILogger? logger = null) : base(logger)
     {
         ArgumentNullException.ThrowIfNull(httpClientFactory);
-        _httpClient = httpClientFactory.CreateClient(GetType().Name);
+        HttpClient = httpClientFactory.CreateClient(GetType().Name);
         _ownsHttpClient = false; // Factory manages the lifecycle
-        ConfigureHttpClient(_httpClient);
+        ConfigureHttpClient(HttpClient);
     }
 
     /// <summary>
@@ -75,14 +74,14 @@ public abstract class HttpToolBase : ToolBase
     {
         if (httpClient != null)
         {
-            _httpClient = httpClient;
+            HttpClient = httpClient;
             _ownsHttpClient = false;
-            ConfigureHttpClient(_httpClient);
+            ConfigureHttpClient(HttpClient);
         }
         else
         {
             // Use shared static HttpClient to avoid socket exhaustion
-            _httpClient = s_sharedHttpClient;
+            HttpClient = s_sharedHttpClient;
             _ownsHttpClient = false;
         }
     }
@@ -115,7 +114,7 @@ public abstract class HttpToolBase : ToolBase
             if (_urlValidator is not null)
                 return await _urlValidator.ValidateUrlAsync(url, ct).ConfigureAwait(false);
 
-            return await DefaultSsrfGuard.ValidateAsync(url, _logger, ct).ConfigureAwait(false);
+            return await DefaultSsrfGuard.ValidateAsync(url, Logger, ct).ConfigureAwait(false);
         }
     }
 
@@ -169,7 +168,7 @@ public abstract class HttpToolBase : ToolBase
     {
         if (disposing && _ownsHttpClient)
         {
-            _httpClient?.Dispose();
+            HttpClient?.Dispose();
         }
         base.Dispose(disposing);
     }

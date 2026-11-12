@@ -158,7 +158,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
 
             var resolvedPath = pathValidation.ResolvedPath!;
             var encoding = GetEncoding(request.Encoding);
-            var virtualFilePath = _fileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
+            var virtualFilePath = FileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
             await EnsureDirectoryExistsAsync(virtualFilePath, cancellationToken).ConfigureAwait(false);
 
             var backupVirtualPath = await CreateBackupIfRequestedAsync(request, virtualFilePath, cancellationToken).ConfigureAwait(false);
@@ -188,7 +188,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
                     // fails (the user can grep the runner-output instead of
                     // poking through C# code to find why fileWrite "failed
                     // with empty error").
-                    LogCitationValidationRejected(
+                    LogCitationValidationRejected(Logger, 
                         successResponse.Path,
                         validationResult.Violations.Length,
                         string.Join(" | ", validationResult.Violations));
@@ -212,14 +212,14 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
     {
         if (!request.CreateBackup) return null;
 
-        var fileExists = await _fileSystemService.ExistsAsync(virtualFilePath, ct).ConfigureAwait(false);
+        var fileExists = await FileSystemService.ExistsAsync(virtualFilePath, ct).ConfigureAwait(false);
         if (!fileExists) return null;
 
         var backupVirtualPath = BuildBackupVirtualPath(virtualFilePath);
 
-        await _fileSystemService.CopyAsync(virtualFilePath, backupVirtualPath, overwrite: true, ct).ConfigureAwait(false);
+        await FileSystemService.CopyAsync(virtualFilePath, backupVirtualPath, overwrite: true, ct).ConfigureAwait(false);
 
-        LogCreatedBackup(backupVirtualPath);
+        LogCreatedBackup(Logger, backupVirtualPath);
         return backupVirtualPath;
     }
 
@@ -230,7 +230,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
         {
             if (request.Append)
             {
-                var appendStream = await _fileSystemService.OpenAppendStreamAsync(virtualFilePath, ct).ConfigureAwait(false);
+                var appendStream = await FileSystemService.OpenAppendStreamAsync(virtualFilePath, ct).ConfigureAwait(false);
                 await using var __appendStream = appendStream.ConfigureAwait(false);
                 var appendWriter = new System.IO.StreamWriter(appendStream, encoding, bufferSize: -1, leaveOpen: false);
                 await using var __appendWriter = appendWriter.ConfigureAwait(false);
@@ -238,7 +238,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
             }
             else
             {
-                var writeStream = await _fileSystemService.OpenWriteStreamAsync(virtualFilePath, ct).ConfigureAwait(false);
+                var writeStream = await FileSystemService.OpenWriteStreamAsync(virtualFilePath, ct).ConfigureAwait(false);
                 await using var __writeStream = writeStream.ConfigureAwait(false);
                 var writer = new System.IO.StreamWriter(writeStream, encoding, bufferSize: -1, leaveOpen: false);
                 await using var __writer = writer.ConfigureAwait(false);
@@ -258,10 +258,10 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
 
         try
         {
-            if (await _fileSystemService.ExistsAsync(backupVirtualPath, ct).ConfigureAwait(false))
+            if (await FileSystemService.ExistsAsync(backupVirtualPath, ct).ConfigureAwait(false))
             {
-                await _fileSystemService.CopyAsync(backupVirtualPath, virtualFilePath, overwrite: true, ct).ConfigureAwait(false);
-                await _fileSystemService.DeleteAsync(backupVirtualPath, recursive: false, ct).ConfigureAwait(false);
+                await FileSystemService.CopyAsync(backupVirtualPath, virtualFilePath, overwrite: true, ct).ConfigureAwait(false);
+                await FileSystemService.DeleteAsync(backupVirtualPath, recursive: false, ct).ConfigureAwait(false);
             }
         }
         catch (System.IO.IOException) { /* Best effort restore */ }
@@ -272,9 +272,9 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
         FileWriteRequest request, string resolvedPath, Encoding encoding, string? backupVirtualPath)
     {
         var bytesWritten = encoding.GetByteCount(request.Content);
-        var displayPath = _fileSystemService?.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
+        var displayPath = FileSystemService?.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
 
-        LogWroteFile(displayPath, bytesWritten, request.Append);
+        LogWroteFile(Logger, displayPath, bytesWritten, request.Append);
 
         return new FileWriteResponse
         {
@@ -321,11 +321,11 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Created backup at: {BackupPath}")]
-    private partial void LogCreatedBackup(string backupPath);
+    private static partial void LogCreatedBackup(ILogger logger, string backupPath);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully wrote to file: {Path} ({BytesWritten} bytes, Append: {Append})")]
-    private partial void LogWroteFile(string path, int bytesWritten, bool append);
+    private static partial void LogWroteFile(ILogger logger, string path, int bytesWritten, bool append);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Citation validation rejected write to {Path} ({ViolationCount} violations): {Violations}")]
-    private partial void LogCitationValidationRejected(string path, int violationCount, string violations);
+    private static partial void LogCitationValidationRejected(ILogger logger, string path, int violationCount, string violations);
 }

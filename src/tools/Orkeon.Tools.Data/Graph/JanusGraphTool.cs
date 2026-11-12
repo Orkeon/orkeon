@@ -76,7 +76,7 @@ public partial class JanusGraphTool : ToolBase<JanusGraphRequest, JanusGraphResp
 
                 var resultType = DetectResultType(results);
 
-                LogTraversalCompleted(results.Count, resultType, stopwatch.ElapsedMilliseconds);
+                LogTraversalCompleted(Logger, results.Count, resultType, stopwatch.ElapsedMilliseconds);
 
                 return new JanusGraphResponse
                 {
@@ -139,5 +139,5 @@ public partial class JanusGraphTool : ToolBase<JanusGraphRequest, JanusGraphResp
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "JanusGraph traversal returned {ResultCount} results of type '{ResultType}' in {ElapsedMs}ms")]
-    private partial void LogTraversalCompleted(int resultCount, string resultType, long elapsedMs);
+    private static partial void LogTraversalCompleted(ILogger logger, int resultCount, string resultType, long elapsedMs);
 }

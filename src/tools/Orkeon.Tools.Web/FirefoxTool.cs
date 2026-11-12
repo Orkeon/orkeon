@@ -600,7 +600,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
 
         var checkedUrl = _urlValidator is not null
             ? await _urlValidator.ValidateUrlAsync(address, cancellationToken).ConfigureAwait(false)
-            : await DefaultSsrfGuard.ValidateAsync(address, _logger, cancellationToken).ConfigureAwait(false);
+            : await DefaultSsrfGuard.ValidateAsync(address, Logger, cancellationToken).ConfigureAwait(false);
         return checkedUrl.IsAllowed ? null : checkedUrl.DenialReason ?? "the address is refused by the URL policy";
     }
 
@@ -710,7 +710,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // No embedding provider, a store that is down: the browser is not at fault and stays open.
-            LogSearchFailed(_logger, ex);
+            LogSearchFailed(Logger, ex);
             throw new FirefoxException($"The page could not be searched ({ex.Message}): use find and read instead.", ex);
         }
 

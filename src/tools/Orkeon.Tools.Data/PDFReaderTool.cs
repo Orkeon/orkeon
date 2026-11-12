@@ -125,7 +125,7 @@ public partial class PdfReaderTool : FileToolBase<PdfReaderRequest, PdfReaderRes
             if (!vfsResult.IsAllowed)
                 throw new InvalidOperationException(vfsResult.DenialReason ?? "path validation failed");
 
-            var bytes = await _fileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
+            var bytes = await FileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
                 ?? throw new FileNotFoundException($"File not found: {path}");
 
             using (var document = PdfDocument.Open(bytes))
@@ -155,7 +155,7 @@ public partial class PdfReaderTool : FileToolBase<PdfReaderRequest, PdfReaderRes
                     allText.AppendLine(pageText);
                 }
 
-                LogReadPdf(path, pages.Count, totalPages);
+                LogReadPdf(Logger, path, pages.Count, totalPages);
 
                 return new PdfReaderResponse
                 {
@@ -214,5 +214,5 @@ public partial class PdfReaderTool : FileToolBase<PdfReaderRequest, PdfReaderRes
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully read PDF: {Path} ({Pages}/{Total} pages)")]
-    private partial void LogReadPdf(string path, int pages, int total);
+    private static partial void LogReadPdf(ILogger logger, string path, int pages, int total);
 }

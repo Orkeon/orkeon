@@ -194,6 +194,13 @@ Four more virtual members are worth declaring:
 | `Category` | the contract's `Category`, else `"General"` (`"File Operations"` / `"Web Operations"` for the two specialized bases) | Catalogues and listings |
 | `RequiresHumanApproval` | `false` | Approval-aware callers |
 
+The bases hand a tool their services as protected get-only properties: `Logger` and
+`JsonOptions` (`ToolBase`), `HttpClient` (`HttpToolBase`), `FileSystemService`
+(`FileToolBase`). The `[LoggerMessage]` source generator only finds a logger *field*, so a
+tool's logging methods are `static partial` and take the logger first:
+`private static partial void LogFetched(ILogger logger, string city);`, called as
+`LogFetched(Logger, city)`.
+
 ### Automatic pipeline
 
 Before the typed pipeline runs, `ToolBase.CallAsync` checks the call's parameters against the
@@ -356,8 +363,8 @@ public sealed class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse>
             if (!check.IsAllowed)
                 return new WeatherResponse { Success = false, Error = check.DenialReason };
 
-            // HttpClient is available through the protected _httpClient field (inherited from HttpToolBase)
-            var response = await _httpClient.GetAsync(url, cancellationToken)
+            // HttpClient is the protected property inherited from HttpToolBase
+            var response = await HttpClient.GetAsync(url, cancellationToken)
                 .ConfigureAwait(false);
 
             response.EnsureSuccessStatusCode();
@@ -532,7 +539,7 @@ Step 8), or the first call throws `ComponentBase.DefaultSerializer has not been 
 
 `FileReadTool.cs` (`Orkeon.Tools.FileSystem`) is the reference: the request carries a
 **virtual** path, the tool resolves it with the right it needs, and every byte goes through
-`_fileSystemService`:
+`FileSystemService`, the protected property inherited from `FileToolBase`:
 
 ```csharp
 [ToolContract("line_count", Description = "Count the lines of a text file.")]
@@ -553,7 +560,7 @@ public sealed class LineCountTool : FileToolBase<LineCountRequest, LineCountResp
         if (!check.IsAllowed)
             return new LineCountResponse { Success = false, Error = check.DenialReason };
 
-        var stream = await _fileSystemService.OpenReadStreamAsync(request.Path, cancellationToken)
+        var stream = await FileSystemService.OpenReadStreamAsync(request.Path, cancellationToken)
             .ConfigureAwait(false);
         using var reader = new StreamReader(stream);
         var lines = 0;

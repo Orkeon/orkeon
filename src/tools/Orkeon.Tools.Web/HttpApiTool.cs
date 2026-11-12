@@ -273,7 +273,7 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
             httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, request.ContentType);
         }
 
-        using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+        using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
         var responseHeaders = new Dictionary<string, string>();
@@ -286,7 +286,7 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
             responseHeaders[header.Key] = string.Join(", ", header.Value);
         }
 
-        LogHttpRequestCompleted(method, request.Url, (int)response.StatusCode);
+        LogHttpRequestCompleted(Logger, method, request.Url, (int)response.StatusCode);
 
         return new HttpApiResponse
         {
@@ -338,5 +338,5 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "HTTP {Method} {Url} -> {StatusCode}")]
-    private partial void LogHttpRequestCompleted(string method, Uri url, int statusCode);
+    private static partial void LogHttpRequestCompleted(ILogger logger, string method, Uri url, int statusCode);
 }

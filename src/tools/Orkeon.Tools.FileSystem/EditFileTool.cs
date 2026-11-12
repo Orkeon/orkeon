@@ -140,7 +140,7 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
             throw new InvalidOperationException(writeCheck.DenialReason ?? "Invalid or unsafe file path");
 
         var resolvedPath = writeCheck.ResolvedPath!;
-        var virtualPath = _fileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
+        var virtualPath = FileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
 
         var holderId = Guid.NewGuid().ToString("N");
         var lockedPaths = new[] { virtualPath };
@@ -159,7 +159,7 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
     /// <summary>The edit itself, under the lock of <paramref name="virtualPath"/>.</summary>
     private async Task<EditFileResponse> EditLockedAsync(EditFileRequest request, string virtualPath, CancellationToken cancellationToken)
     {
-        var original = await _fileSystemService.TryReadAllBytesAsync(virtualPath, cancellationToken).ConfigureAwait(false)
+        var original = await FileSystemService.TryReadAllBytesAsync(virtualPath, cancellationToken).ConfigureAwait(false)
             ?? throw new FileNotFoundException($"File not found: {virtualPath}");
 
         var (encoding, bom) = DetectEncoding(original);
@@ -173,7 +173,7 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
         if (request.CreateBackup)
         {
             backupPath = await FreeBackupPathAsync(FileWriteTool.BuildBackupVirtualPath(virtualPath), cancellationToken).ConfigureAwait(false);
-            await _fileSystemService.CopyAsync(virtualPath, backupPath, overwrite: false, cancellationToken).ConfigureAwait(false);
+            await FileSystemService.CopyAsync(virtualPath, backupPath, overwrite: false, cancellationToken).ConfigureAwait(false);
         }
 
         await WriteOrRestoreAsync(virtualPath, bytes, original, cancellationToken).ConfigureAwait(false);
@@ -259,13 +259,13 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
     {
         try
         {
-            await _fileSystemService.WriteAllBytesAsync(virtualPath, bytes, cancellationToken).ConfigureAwait(false);
+            await FileSystemService.WriteAllBytesAsync(virtualPath, bytes, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception writeError)
         {
             try
             {
-                await _fileSystemService.WriteAllBytesAsync(virtualPath, original, CancellationToken.None).ConfigureAwait(false);
+                await FileSystemService.WriteAllBytesAsync(virtualPath, original, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception restoreError)
             {
@@ -278,7 +278,7 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
 
     private async Task<string> FreeBackupPathAsync(string candidate, CancellationToken cancellationToken)
     {
-        if (!await _fileSystemService.ExistsAsync(candidate, cancellationToken).ConfigureAwait(false))
+        if (!await FileSystemService.ExistsAsync(candidate, cancellationToken).ConfigureAwait(false))
             return candidate;
         var extension = System.IO.Path.GetExtension(candidate);
         var stem = candidate[..^extension.Length];

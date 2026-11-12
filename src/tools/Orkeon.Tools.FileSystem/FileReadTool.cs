@@ -153,10 +153,10 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
                 throw new InvalidOperationException(pathValidation.DenialReason ?? "Invalid or unsafe file path");
 
             var resolvedPath = pathValidation.ResolvedPath!;
-            var displayPath = (_fileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path)) ?? resolvedPath;
+            var displayPath = (FileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path)) ?? resolvedPath;
             var virtualPath = displayPath;
 
-            var entry = await _fileSystemService.TryGetEntryAsync(virtualPath, cancellationToken).ConfigureAwait(false);
+            var entry = await FileSystemService.TryGetEntryAsync(virtualPath, cancellationToken).ConfigureAwait(false);
             if (entry is null || entry.Kind == VirtualEntryKind.Directory)
                 throw new FileNotFoundException($"File not found: {displayPath}");
 
@@ -194,7 +194,7 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
                 ServedFromCache = servedFromCache
             };
 
-            LogReadFile(displayPath, entry.SizeBytes);
+            LogReadFile(Logger, displayPath, entry.SizeBytes);
             return response;
         }
     }
@@ -225,7 +225,7 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
 
         try
         {
-            var stream = await _fileSystemService.OpenReadStreamAsync(virtualPath, ct).ConfigureAwait(false);
+            var stream = await FileSystemService.OpenReadStreamAsync(virtualPath, ct).ConfigureAwait(false);
             await using var __stream = stream.ConfigureAwait(false);
             using var reader = new System.IO.StreamReader(stream, encoding, detectEncodingFromByteOrderMarks: true, bufferSize: 4096, leaveOpen: false);
             var range = await ReadRangeAsync(reader, start, request.Limit, ct).ConfigureAwait(false);
@@ -286,7 +286,7 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
         try
         {
             // Open a read stream via the VFS and decode with the requested encoding.
-            var stream = await _fileSystemService.OpenReadStreamAsync(virtualPath, ct).ConfigureAwait(false);
+            var stream = await FileSystemService.OpenReadStreamAsync(virtualPath, ct).ConfigureAwait(false);
             await using var __stream = stream.ConfigureAwait(false);
             using var reader = new System.IO.StreamReader(stream, encoding, detectEncodingFromByteOrderMarks: true, bufferSize: 4096, leaveOpen: false);
             return await reader.ReadToEndAsync(ct).ConfigureAwait(false);
@@ -343,5 +343,5 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully read file: {Path} ({Size} bytes)")]
-    private partial void LogReadFile(string path, long size);
+    private static partial void LogReadFile(ILogger logger, string path, long size);
 }

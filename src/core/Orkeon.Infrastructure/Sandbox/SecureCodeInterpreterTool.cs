@@ -281,7 +281,7 @@ public class SecureCodeInterpreterTool : Base_ToolBase
 
         try
         {
-            var parsed = JsonSerializer.Deserialize<Dictionary<string, object>>(input, _jsonOptions);
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, object>>(input, JsonOptions);
             if (parsed == null || !parsed.ContainsKey("code"))
                 return ValidationResult.Failed("Input must contain a 'code' property");
 

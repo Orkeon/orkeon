@@ -182,7 +182,7 @@ public partial class XmlParserTool : FileToolBase<XmlParserRequest, XmlParserRes
             if (!vfsResult.IsAllowed)
                 throw new InvalidOperationException(vfsResult.DenialReason ?? "path validation failed");
 
-            var vfsContent = await _fileSystemService.TryReadAllTextAsync(path, cancellationToken).ConfigureAwait(false)
+            var vfsContent = await FileSystemService.TryReadAllTextAsync(path, cancellationToken).ConfigureAwait(false)
                 ?? throw new FileNotFoundException($"File not found: {path}");
             return (ParseSecure(vfsContent), true);
         }
@@ -211,7 +211,7 @@ public partial class XmlParserTool : FileToolBase<XmlParserRequest, XmlParserRes
         var root = doc.Root
             ?? throw new InvalidOperationException("XML document has no root element");
 
-        LogParsedXml(root.Name.LocalName);
+        LogParsedXml(Logger, root.Name.LocalName);
 
         return new XmlParserResponse
         {
@@ -253,5 +253,5 @@ public partial class XmlParserTool : FileToolBase<XmlParserRequest, XmlParserRes
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully parsed XML with root element: {Root}")]
-    private partial void LogParsedXml(string root);
+    private static partial void LogParsedXml(ILogger logger, string root);
 }
