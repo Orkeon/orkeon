@@ -273,7 +273,7 @@ public class ExecutionContextTests
                     new TransformedData
                     {
                         TransformedName = $"Transform-{Environment.CurrentManagedThreadId}",
-                        TransformedValue = data.Value * 2
+                        TransformedValue = data.Value * 2.0
                     })));
         }
 
