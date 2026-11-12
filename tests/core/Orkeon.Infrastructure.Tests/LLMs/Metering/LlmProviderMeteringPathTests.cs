@@ -64,7 +64,7 @@ public sealed class LlmProviderMeteringPathTests
             Assert.Equal(3, usage.CompletionTokens);
             Assert.False(usage.Estimated);
         });
-        Assert.IsType<OpenAIProvider>(MeteredLlmProvider.Unwrap(basic.UnderlyingProvider));
+        Assert.IsType<OpenAILlmProvider>(MeteredLlmProvider.Unwrap(basic.UnderlyingProvider));
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public sealed class LlmProviderMeteringPathTests
 
         var basic = Assert.IsType<LlmProviderAdapter>(factory.Create(OpenAiConfig()));
 
-        Assert.IsType<OpenAIProvider>(MeteredLlmProvider.Unwrap(basic.UnderlyingProvider));
+        Assert.IsType<OpenAILlmProvider>(MeteredLlmProvider.Unwrap(basic.UnderlyingProvider));
     }
 
     [Fact]

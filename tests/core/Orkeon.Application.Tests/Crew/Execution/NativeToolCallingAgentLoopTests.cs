@@ -471,7 +471,7 @@ public class NativeToolCallingAgentLoopTests
     {
         var probe = new ConcurrencyProbe(expected: 3);
         var inner = new RecordingApprovalChannel();
-        var gate = new Orkeon.Application.Services.Security.SerialisingToolApprovalChannel(inner);
+        var gate = new Orkeon.Application.Services.Security.SerializingToolApprovalChannel(inner);
         var tools = new IBaseTool[]
         {
             new GatedTool("file_read", ToolAccess.Read, probe, approval: gate),

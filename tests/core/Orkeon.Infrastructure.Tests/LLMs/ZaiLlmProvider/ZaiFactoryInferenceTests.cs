@@ -58,6 +58,6 @@ public class ZaiFactoryInferenceTests
         // it must fall through to the OpenAI default.
         var config = LlmConfig.Create("custom-model") with { BaseUrl = new Uri("https://api.xyz.ai/v1") };
         var adapter = CreateVia(f => (LlmProviderAdapter)f.Create(config));
-        Assert.IsType<OpenAIProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
+        Assert.IsType<OpenAILlmProvider>(MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider));
     }
 }

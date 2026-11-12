@@ -48,7 +48,7 @@ public sealed class OutputCapDefaultTests : IDisposable
     [Fact]
     public async Task OpenAI_sends_the_documented_maximum_when_nothing_pins_the_cap()
     {
-        using var provider = new OpenAIProvider(LlmConfig.Create("gpt-5.6-sol", TestApiKey), _httpClientFactory, _noOpPolicy);
+        using var provider = new OpenAILlmProvider(LlmConfig.Create("gpt-5.6-sol", TestApiKey), _httpClientFactory, _noOpPolicy);
 
         await provider.ChatAsync([LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken);
 

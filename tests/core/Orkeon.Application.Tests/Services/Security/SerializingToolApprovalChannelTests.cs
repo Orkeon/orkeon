@@ -6,7 +6,7 @@ using Orkeon.Application.Tests.Doubles;
 namespace Orkeon.Application.Tests.Services.Security;
 
 /// <summary>RT-07: prompts to the operator never overlap, whatever the number of concurrent askers.</summary>
-public class SerialisingToolApprovalChannelTests
+public class SerializingToolApprovalChannelTests
 {
     private static ToolApprovalRequest Request(string tool) => new()
     {
@@ -21,7 +21,7 @@ public class SerialisingToolApprovalChannelTests
     public async System.Threading.Tasks.Task ShouldForwardOneRequestAtATime_WhenTwoApprovalsAskedTogether()
     {
         var inner = new RecordingApprovalChannel();
-        var channel = new SerialisingToolApprovalChannel(inner);
+        var channel = new SerializingToolApprovalChannel(inner);
 
         var first = channel.RequestAsync(Request("file_read"), TestContext.Current.CancellationToken);
         var second = channel.RequestAsync(Request("grep"), TestContext.Current.CancellationToken);

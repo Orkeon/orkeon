@@ -21,11 +21,11 @@ public class CacheTtlCapabilityTests
         const string body = """{"choices":[{"message":{"content":"ok"}}],"usage":{"total_tokens":1,"prompt_tokens":1,"completion_tokens":0}}""";
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, body);
         var factory = new TestHttpClientFactory();
-        factory.RegisterClient(nameof(OpenAIProvider), new HttpClient(handler));
+        factory.RegisterClient(nameof(OpenAILlmProvider), new HttpClient(handler));
         var warnings = new List<(int Id, string Message)>();
         var config = LlmConfig.Create("test-model", TestApiKey) with { BaseUrl = new Uri("https://provider.test/v1") };
-        using var provider = new OpenAIProvider(
-            config, factory, Policy.NoOpAsync<HttpResponseMessage>(), new CollectingLogger<OpenAIProvider>(warnings));
+        using var provider = new OpenAILlmProvider(
+            config, factory, Policy.NoOpAsync<HttpResponseMessage>(), new CollectingLogger<OpenAILlmProvider>(warnings));
         using var adapter = new LlmProviderToChatClientAdapter(provider, config);
 
         var options = new ChatOptions
@@ -73,15 +73,15 @@ public class CacheTtlCapabilityTests
         const string body = """{"choices":[{"message":{"content":"ok"}}],"usage":{"total_tokens":1,"prompt_tokens":1,"completion_tokens":0}}""";
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, body);
         var factory = new TestHttpClientFactory();
-        factory.RegisterClient(nameof(OpenAIProvider), new HttpClient(handler));
+        factory.RegisterClient(nameof(OpenAILlmProvider), new HttpClient(handler));
         var warnings = new List<(int Id, string Message)>();
         var config = LlmConfig.Create("test-model", TestApiKey) with
         {
             BaseUrl = new Uri("https://provider.test/v1"),
             Cache = new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" },
         };
-        using var provider = new OpenAIProvider(
-            config, factory, Policy.NoOpAsync<HttpResponseMessage>(), new CollectingLogger<OpenAIProvider>(warnings));
+        using var provider = new OpenAILlmProvider(
+            config, factory, Policy.NoOpAsync<HttpResponseMessage>(), new CollectingLogger<OpenAILlmProvider>(warnings));
         using var adapter = new LlmProviderToChatClientAdapter(provider);
 
         await adapter.GetResponseAsync(

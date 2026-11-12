@@ -30,7 +30,7 @@ alternatives live in `/etc/orkeon/profiles` and are selected with
 
 No provider name appears in these files: Orkeon picks the provider from the base URL. A URL
 containing `/engines/` is Docker Model Runner, driven through the OpenAI dialect
-(`OpenAIProvider`); port `11434` goes to the native Ollama provider
+(`OpenAILlmProvider`); port `11434` goes to the native Ollama provider
 (`OllamaLlmProvider`); any other address is an OpenAI-compatible server. Another such server
 (vLLM, LM Studio, llama.cpp...) is written with its `/v1` path and, when it checks no key,
 `"ApiKey": "not-needed"` — an address with no path is read as an OpenAI-compatible server at its root, with a notice asking for its path. See [provider resolution](../architecture/llm-providers.md#provider-resolution).

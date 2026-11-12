@@ -130,7 +130,7 @@ public class ToolCallingIntegrationTests
         var strategy = CreateStrategy();
         var config = CreateConfig(tools: new List<ToolSchema> { SampleToolSchema }, toolMode: ToolCallMode.Auto);
 
-        using var provider = new OpenAIProvider(config, factory, strategy);
+        using var provider = new OpenAILlmProvider(config, factory, strategy);
 
         // Use ChatAsync with tool metadata to trigger the multi-turn path that injects tools
         var messages = new[]
@@ -192,7 +192,7 @@ public class ToolCallingIntegrationTests
         var strategy = CreateStrategy();
         var config = CreateConfig(tools: new List<ToolSchema> { SampleToolSchema });
 
-        using var provider = new OpenAIProvider(config, factory, strategy);
+        using var provider = new OpenAILlmProvider(config, factory, strategy);
 
         // --- Turn 1: user prompt → LLM returns tool call ---
         var firstResponse = await provider.GenerateAsync("List files in /src", config, TestContext.Current.CancellationToken);
@@ -270,7 +270,7 @@ public class ToolCallingIntegrationTests
         var strategy = CreateStrategy();
         var config = CreateConfig(tools: new List<ToolSchema> { SampleToolSchema, SecondToolSchema });
 
-        using var provider = new OpenAIProvider(config, factory, strategy);
+        using var provider = new OpenAILlmProvider(config, factory, strategy);
 
         // Act
         var response = await provider.GenerateAsync("Read files in /src", config, TestContext.Current.CancellationToken);
@@ -311,7 +311,7 @@ public class ToolCallingIntegrationTests
         // No tool calling strategy — use the constructor without strategy
         var config = CreateConfig(tools: new List<ToolSchema> { SampleToolSchema });
 
-        using var provider = new OpenAIProvider(config, factory, logger: null);
+        using var provider = new OpenAILlmProvider(config, factory, logger: null);
 
         // Act
         var response = await provider.GenerateAsync("Hello", config, TestContext.Current.CancellationToken);

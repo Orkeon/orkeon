@@ -5,39 +5,39 @@ using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
-public class OpenAIProviderTestsFixture
+public class OpenAILlmProviderTestsFixture
 {
     private readonly TestHttpClientFactory _httpClientFactory;
-    private readonly TestLogger<OpenAIProvider> _logger;
+    private readonly TestLogger<OpenAILlmProvider> _logger;
     private readonly LlmConfig _config;
 
-    public OpenAIProviderTestsFixture()
+    public OpenAILlmProviderTestsFixture()
     {
         _httpClientFactory = new TestHttpClientFactory();
-        _logger = new TestLogger<OpenAIProvider>();
+        _logger = new TestLogger<OpenAILlmProvider>();
         _config = LlmConfig.Create(ModelGpt4, TestApiKey);
     }
 
-    public OpenAIProviderTestsFixture WithHttpClientFactory(TestHttpClientFactory value)
+    public OpenAILlmProviderTestsFixture WithHttpClientFactory(TestHttpClientFactory value)
     {
         // Configure _httpClientFactory as needed
         return this;
     }
 
-    public OpenAIProviderTestsFixture WithLogger(TestLogger<OpenAIProvider> value)
+    public OpenAILlmProviderTestsFixture WithLogger(TestLogger<OpenAILlmProvider> value)
     {
         // Configure _logger as needed
         return this;
     }
 
-    public OpenAIProviderTestsFixture WithConfig(LlmConfig value)
+    public OpenAILlmProviderTestsFixture WithConfig(LlmConfig value)
     {
         // Configure _config as needed
         return this;
     }
 
     public TestHttpClientFactory GetHttpClientFactory() => _httpClientFactory;
-    public TestLogger<OpenAIProvider> GetLogger() => _logger;
+    public TestLogger<OpenAILlmProvider> GetLogger() => _logger;
     public LlmConfig GetConfig() => _config;
 
 }

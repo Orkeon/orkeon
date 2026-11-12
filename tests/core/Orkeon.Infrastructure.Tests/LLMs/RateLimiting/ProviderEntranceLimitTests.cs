@@ -107,7 +107,7 @@ public sealed class ProviderEntranceLimitTests
         await basic.ChatAsync("hello", cancellationToken: Ct);
 
         Assert.Equal(1, limiter.Acquired);
-        Assert.IsType<OpenAIProvider>(MeteredLlmProvider.Unwrap(basic.UnderlyingProvider));
+        Assert.IsType<OpenAILlmProvider>(MeteredLlmProvider.Unwrap(basic.UnderlyingProvider));
     }
 
     [Fact]

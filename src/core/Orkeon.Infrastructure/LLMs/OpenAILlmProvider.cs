@@ -11,7 +11,7 @@ namespace Orkeon.Infrastructure.LLMs;
 /// <summary>
 /// OpenAI provider implementation using the OpenAI-compatible base.
 /// </summary>
-public class OpenAIProvider : OpenAICompatibleProviderBase
+public class OpenAILlmProvider : OpenAICompatibleProviderBase
 {
     /// <inheritdoc />
     public override string Name => "OpenAI";
@@ -49,14 +49,14 @@ public class OpenAIProvider : OpenAICompatibleProviderBase
         Vision = true,
     };
 
-    /// <summary>Initializes a new instance of <see cref="OpenAIProvider"/>.</summary>
+    /// <summary>Initializes a new instance of <see cref="OpenAILlmProvider"/>.</summary>
     /// <param name="config">The LLM configuration.</param>
     /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <param name="logger">Optional logger.</param>
-    public OpenAIProvider(
+    public OpenAILlmProvider(
         LlmConfig config,
         IHttpClientFactory httpClientFactory,
-        ILogger<OpenAIProvider>? logger = null)
+        ILogger<OpenAILlmProvider>? logger = null)
         : base(config, httpClientFactory, logger)
     {
     }
@@ -66,11 +66,11 @@ public class OpenAIProvider : OpenAICompatibleProviderBase
     /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <param name="resiliencePolicy">Optional custom resilience policy.</param>
     /// <param name="logger">Optional logger.</param>
-    public OpenAIProvider(
+    public OpenAILlmProvider(
         LlmConfig config,
         IHttpClientFactory httpClientFactory,
         IAsyncPolicy<HttpResponseMessage>? resiliencePolicy,
-        ILogger<OpenAIProvider>? logger = null)
+        ILogger<OpenAILlmProvider>? logger = null)
         : base(config, httpClientFactory, resiliencePolicy, logger)
     {
     }
@@ -80,11 +80,11 @@ public class OpenAIProvider : OpenAICompatibleProviderBase
     /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <param name="toolCallingStrategy">Optional tool calling strategy for native tool support.</param>
     /// <param name="logger">Optional logger.</param>
-    public OpenAIProvider(
+    public OpenAILlmProvider(
         LlmConfig config,
         IHttpClientFactory httpClientFactory,
         IToolCallingStrategy? toolCallingStrategy,
-        ILogger<OpenAIProvider>? logger = null)
+        ILogger<OpenAILlmProvider>? logger = null)
         : base(config, httpClientFactory, toolCallingStrategy, logger)
     {
     }

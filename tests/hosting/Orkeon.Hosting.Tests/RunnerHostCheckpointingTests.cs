@@ -229,7 +229,7 @@ public sealed class RunnerHostCheckpointingTests : IDisposable
         public Task<BatchOutput> KickoffForEachAsync(Orkeon.Domain.Common.CrewId crewId, IEnumerable<CrewInput> inputs, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<CrewExecutionId> KickoffAsyncNoWait(Orkeon.Domain.Common.CrewId crewId, CrewInput input) =>
+        public Task<CrewExecutionId> KickoffNoWaitAsync(Orkeon.Domain.Common.CrewId crewId, CrewInput input, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<CrewExecutionStatus> GetExecutionStatusAsync(CrewExecutionId executionId, CancellationToken cancellationToken = default) =>

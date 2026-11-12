@@ -9,17 +9,17 @@ using static Orkeon.Tests.Shared.Constants.TestDataConstants;
 
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
-public class OpenAIProviderTests
+public class OpenAILlmProviderTests
 {
     private readonly TestHttpClientFactory _httpClientFactory;
-    private readonly TestLogger<OpenAIProvider> _logger;
+    private readonly TestLogger<OpenAILlmProvider> _logger;
     private readonly IAsyncPolicy<HttpResponseMessage> _noOpPolicy;
     private readonly LlmConfig _config;
 
-    public OpenAIProviderTests()
+    public OpenAILlmProviderTests()
     {
         _httpClientFactory = new TestHttpClientFactory();
-        _logger = new TestLogger<OpenAIProvider>();
+        _logger = new TestLogger<OpenAILlmProvider>();
         _noOpPolicy = Policy.NoOpAsync<HttpResponseMessage>();
         _config = LlmConfig.Create(ModelGpt4, TestApiKey);
     }
@@ -42,9 +42,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -60,7 +60,7 @@ public class OpenAIProviderTests
     {
         // Arrange
         var configWithoutKey = LlmConfig.Create(ModelGpt4, null);
-        using var provider = new OpenAIProvider(configWithoutKey, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(configWithoutKey, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -77,9 +77,9 @@ public class OpenAIProviderTests
         // Arrange
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.Unauthorized, "Unauthorized");
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -96,9 +96,9 @@ public class OpenAIProviderTests
         // Arrange
         using var handler = TestHttpMessageHandler.CreateWithException(new HttpRequestException("Network error"));
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -129,9 +129,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(configWithSystem, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(configWithSystem, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -162,9 +162,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(configWithTemp, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(configWithTemp, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -191,9 +191,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -219,9 +219,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.TooManyRequests, errorResponse);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -239,9 +239,9 @@ public class OpenAIProviderTests
         var invalidJson = "{ invalid json }";
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, invalidJson);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -267,9 +267,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -285,9 +285,9 @@ public class OpenAIProviderTests
         // Arrange
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.RequestTimeout, "");
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -319,9 +319,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(configWithModel, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(configWithModel, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -347,9 +347,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(longPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -385,9 +385,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync("What's the weather in San Francisco?", cancellationToken: TestContext.Current.CancellationToken);
@@ -406,9 +406,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, "{}");
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, null, cancellationTokenSource.Token);
@@ -434,9 +434,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(null!, cancellationToken: TestContext.Current.CancellationToken);
@@ -461,9 +461,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(string.Empty, cancellationToken: TestContext.Current.CancellationToken);
@@ -494,9 +494,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, overrideConfig, TestContext.Current.CancellationToken);
@@ -513,9 +513,9 @@ public class OpenAIProviderTests
         // Arrange
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.BadGateway, "Bad Gateway");
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -532,9 +532,9 @@ public class OpenAIProviderTests
         // Arrange
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.ServiceUnavailable, "Service Unavailable");
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -551,9 +551,9 @@ public class OpenAIProviderTests
         // Arrange
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.InternalServerError, "Internal Server Error");
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -579,9 +579,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -603,9 +603,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -631,9 +631,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(promptWithSpecialChars, cancellationToken: TestContext.Current.CancellationToken);
@@ -659,9 +659,9 @@ public class OpenAIProviderTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(unicodePrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -677,9 +677,9 @@ public class OpenAIProviderTests
         // Arrange
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.Forbidden, "Forbidden");
         var httpClient = new HttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", httpClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", httpClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
@@ -694,7 +694,7 @@ public class OpenAIProviderTests
     public void ShouldReturnOpenAI_WhenName()
     {
         // Arrange
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var name = provider.Name;

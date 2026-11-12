@@ -67,7 +67,7 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
         await Task.Run(() =>
         {
             Orkeon.Cli.Commands.Scripting.Progress.ProgressAmbient.CurrentInstance = instance;
-            _ = new Orkeon.Application.Services.Security.SerialisingToolApprovalChannel(_channel).RequestAsync(Request(), Ct);
+            _ = new Orkeon.Application.Services.Security.SerializingToolApprovalChannel(_channel).RequestAsync(Request(), Ct);
         }, Ct);
 
         Assert.Equal(instance.Ticket, Assert.Single(_channel.Pending).Ticket);
@@ -83,7 +83,7 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
         await Task.Run(() =>
         {
             Orkeon.Cli.Commands.Scripting.Progress.ProgressAmbient.CurrentInstance = instance;
-            _ = new Orkeon.Application.Services.Security.SerialisingToolApprovalChannel(_channel).RequestAsync(Request(), Ct);
+            _ = new Orkeon.Application.Services.Security.SerializingToolApprovalChannel(_channel).RequestAsync(Request(), Ct);
         }, Ct);
 
         Assert.Null(Assert.Single(_channel.Pending).Ticket);

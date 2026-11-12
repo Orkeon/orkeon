@@ -1543,10 +1543,10 @@ Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager
 Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager.IsContextExceeded(string! content, int maxTokens) -> bool
 Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager.OpenAIContextWindowManager(Orkeon.Domain.SharedKernel.ITokenCounter! tokenCounter, Orkeon.Domain.SharedKernel.ILlmProvider! llm, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager!>! logger, Orkeon.Domain.SharedKernel.ValueObjects.ContextWindowSettings? settings = null) -> void
 Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager.SummarizeIfNeededAsync(string! content, int maxTokens, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
-Orkeon.Infrastructure.LLMs.OpenAIProvider
-Orkeon.Infrastructure.LLMs.OpenAIProvider.OpenAIProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIProvider!>? logger = null) -> void
-Orkeon.Infrastructure.LLMs.OpenAIProvider.OpenAIProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIProvider!>? logger = null) -> void
-Orkeon.Infrastructure.LLMs.OpenAIProvider.OpenAIProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenAILlmProvider
+Orkeon.Infrastructure.LLMs.OpenAILlmProvider.OpenAILlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAILlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenAILlmProvider.OpenAILlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAILlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenAILlmProvider.OpenAILlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAILlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider
 Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider!>? logger = null) -> void
@@ -2115,7 +2115,7 @@ Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.GetExecutionStatusAsync(Orkeon.Application.Interfaces.Services.CrewExecutionId! executionId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewExecutionStatus!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, Orkeon.Application.Interfaces.Services.KickoffOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewOutput!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewOutput!>!
-Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffAsyncNoWait(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewExecutionId!>!
+Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffNoWaitAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewExecutionId!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffForEachAsync(Orkeon.Domain.Common.CrewId! crewId, System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Services.CrewInput!>! inputs, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.BatchOutput!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, Orkeon.Application.Interfaces.Services.KickoffOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>!
@@ -3852,7 +3852,7 @@ const Orkeon.Infrastructure.Checkpointing.JsonFileStateStore.DefaultMaxVersions 
 const Orkeon.Infrastructure.Consensus.SuperMajorityVotingStrategy.RoundingTolerancePercent = 0.05 -> float
 const Orkeon.Infrastructure.Constants.Llm.DockerModelRunnerDefaults.ApiKeyPlaceholder = "not-needed" -> string!
 const Orkeon.Infrastructure.Constants.Llm.DockerModelRunnerDefaults.BaseUrl = "http://localhost:12434/engines/llama.cpp/v1" -> string!
-const Orkeon.Infrastructure.Constants.Llm.DockerModelRunnerDefaults.DefaultModel = "ai/granite-4.0-h-tiny" -> string!
+static readonly Orkeon.Infrastructure.Constants.Llm.DockerModelRunnerDefaults.DefaultModel -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.AnthropicApiKeyHeader = "x-api-key" -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.AnthropicApiVersion = "2023-06-01" -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.AnthropicVersionHeader = "anthropic-version" -> string!
@@ -4160,12 +4160,12 @@ override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.GenerateStreamingAsync(str
 override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.RequiresApiKey.get -> bool
 override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.StreamsNatively.get -> bool
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.DefaultBaseUrl.get -> System.Uri!
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.DefaultModel.get -> string!
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.MaxTokensFieldName.get -> string!
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.Name.get -> string!
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.ProviderDisplayName.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.DefaultBaseUrl.get -> System.Uri!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.DefaultModel.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.MaxTokensFieldName.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.ProviderDisplayName.get -> string!
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ConfigureHttpClient(System.Net.Http.HttpClient! client, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config) -> void
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.CostCurrency.get -> string?

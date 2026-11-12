@@ -387,7 +387,7 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   circulent des abstractions `MultiModalContent` (Domain) aux payloads providers via
   `LlmMessage.MultiModalContent`. `AnthropicLlmProvider` émet des blocs de contenu
   image conformes à l'API Messages (`{"type":"image","source":{"type":"base64"|"url",…}}`) ;
-  `OpenAIProvider` émet des parts `image_url` conformes à Chat Completions (URL http(s)
+  `OpenAILlmProvider` émet des parts `image_url` conformes à Chat Completions (URL http(s)
   ou data URL base64). Voir le [guide multi-modal](../guides/multimodal.md).
 - **Rôle** : validation des contenus multi-modaux (taille, format, durée) via
   `IContentValidationService` (options `Orkeon:MultiModal`) et chargement d'images

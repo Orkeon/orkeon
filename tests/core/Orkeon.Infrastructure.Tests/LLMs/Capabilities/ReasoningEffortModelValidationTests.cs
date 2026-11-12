@@ -35,7 +35,7 @@ public class ReasoningEffortModelValidationTests
     {
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, OkBody);
         var http = new TestHttpClientFactory();
-        http.RegisterClient(nameof(OpenAIProvider), new HttpClient(handler));
+        http.RegisterClient(nameof(OpenAILlmProvider), new HttpClient(handler));
         using var loggers = new RecordingLoggerFactory();
         var factory = new LlmProviderFactory(
             http, loggers, LlmProviderFactory.MountlessFileSystem(), new LlmProviderFactoryOptions { Capabilities = registry });
@@ -142,7 +142,7 @@ public class ReasoningEffortModelValidationTests
     {
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, OkBody);
         var http = new TestHttpClientFactory();
-        http.RegisterClient(nameof(OpenAIProvider), new HttpClient(handler));
+        http.RegisterClient(nameof(OpenAILlmProvider), new HttpClient(handler));
         var factory = new LlmProviderFactory(http, NullLoggerFactory.Instance, LlmProviderFactory.MountlessFileSystem());
         var config = Config("gpt-4o");
         var message = new LlmMessage
@@ -165,7 +165,7 @@ public class ReasoningEffortModelValidationTests
     {
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, OkBody);
         var http = new TestHttpClientFactory();
-        http.RegisterClient(nameof(OpenAIProvider), new HttpClient(handler));
+        http.RegisterClient(nameof(OpenAILlmProvider), new HttpClient(handler));
         using var loggers = new RecordingLoggerFactory();
         var factory = new LlmProviderFactory(http, loggers, LlmProviderFactory.MountlessFileSystem());
         var provider = ((LlmProviderAdapter)factory.Create("openai", Config("acme-reasoner-9", "high"))).UnderlyingProvider;

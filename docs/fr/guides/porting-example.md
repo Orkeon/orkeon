@@ -440,9 +440,9 @@ var host = Host.CreateDefaultBuilder(args)
             Temperature = context.Configuration.GetValue<double?>("Llm:Temperature") // absente : rien n'est envoyé, le modèle applique la sienne
         };
         services.AddOrkeonLlmProvider(
-            sp => new OpenAIProvider(llm,
+            sp => new OpenAILlmProvider(llm,
                 sp.GetRequiredService<IHttpClientFactory>(),
-                sp.GetRequiredService<ILogger<OpenAIProvider>>()),
+                sp.GetRequiredService<ILogger<OpenAILlmProvider>>()),
             llm);
 
         services.AddScoped<OrderProcessingService>();

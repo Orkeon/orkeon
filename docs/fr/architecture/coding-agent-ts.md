@@ -116,7 +116,7 @@ aucun callback ne s'exécute jamais en même temps qu'un autre. Quand un appel f
 annulé ou lève `BudgetExhaustedException`, les autres vont à leur terme et sont consignés, et la
 première erreur est relancée après le groupe. Dans un hôte qui enregistre le canal par
 `AddConsoleToolApproval`, les approbations que demandent les lectures concurrentes sont
-sérialisées (`SerialisingToolApprovalChannel`) ; `orkeon-repl` enregistre son canal directement :
+sérialisées (`SerializingToolApprovalChannel`) ; `orkeon-repl` enregistre son canal directement :
 deux questions concurrentes n'y sont pas mises en file une à une
 ([Limitations connues](../reference/limitations.md)). Les boucles natives d'une crew YAML et le dispatcher de chat se
 déploient de la même façon ; les sites en repli texte (le chemin texte de `ChatToolDispatcher` et

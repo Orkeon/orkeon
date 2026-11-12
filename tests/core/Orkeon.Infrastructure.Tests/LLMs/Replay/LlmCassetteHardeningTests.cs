@@ -216,11 +216,11 @@ public sealed class LlmCassetteHardeningTests
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The provider and its factory live as long as the test.")]
     public async Task A_replayed_call_with_audio_for_a_model_that_takes_none_is_refused_as_a_live_call_is()
     {
-        var provider = new OpenAIProvider(
+        var provider = new OpenAILlmProvider(
             LlmConfig.Create("gpt-4o", "sk-test"),
             new Orkeon.Infrastructure.Tests.Doubles.MockHttpClientFactory(),
             new OpenAIToolCallingStrategy(NullLogger<OpenAIToolCallParser>.Instance),
-            NullLogger<OpenAIProvider>.Instance);
+            NullLogger<OpenAILlmProvider>.Instance);
         var spoken = new LlmMessage
         {
             Role = "user",

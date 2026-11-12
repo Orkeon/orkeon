@@ -55,7 +55,7 @@ services.AddHttpClient();
 services.AddSingleton<IFileSystemService>(
     new FileSystemService(registry, new AllowAllPathValidator(), NullLogger<FileSystemService>.Instance));
 services.AddOrkeonLlmProvider(
-    sp => new OpenAIProvider(llmConfig, sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<OpenAIProvider>>()),
+    sp => new OpenAILlmProvider(llmConfig, sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<OpenAILlmProvider>>()),
     llmConfig);
 services.AddOrkeonApplication();
 services.AddOrkeonInfrastructure();

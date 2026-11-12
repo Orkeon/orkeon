@@ -21,7 +21,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 /// The rename is OpenAI's own, not the compatible family's: DeepSeek, Together and the other
 /// OpenAI-compatible vendors still document and expect <c>max_tokens</c> — all of them
 /// passed their campaigns with it the same day. Hence the base keeps writing
-/// <c>max_tokens</c> and only <see cref="OpenAIProvider"/> overrides the field name.
+/// <c>max_tokens</c> and only <see cref="OpenAILlmProvider"/> overrides the field name.
 /// </remarks>
 public sealed class OpenAIMaxCompletionTokensTests : IDisposable
 {
@@ -56,7 +56,7 @@ public sealed class OpenAIMaxCompletionTokensTests : IDisposable
     [Fact]
     public async Task ShouldSendMaxCompletionTokens_OnThePromptPath()
     {
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy);
 
         await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
 
@@ -68,7 +68,7 @@ public sealed class OpenAIMaxCompletionTokensTests : IDisposable
     [Fact]
     public async Task ShouldSendMaxCompletionTokens_OnTheChatPath()
     {
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy);
 
         await provider.ChatAsync(
             [LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken);

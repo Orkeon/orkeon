@@ -46,7 +46,7 @@ public class SamplingPayloadTests
     /// <summary>Every provider, by the type name its HTTP client is registered under.</summary>
     public static TheoryData<string> AllProviders() =>
     [
-        nameof(OpenAIProvider), nameof(AzureOpenAILlmProvider),
+        nameof(OpenAILlmProvider), nameof(AzureOpenAILlmProvider),
         nameof(TogetherAiLlmProvider), nameof(MistralLlmProvider), nameof(KimiLlmProvider),
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
         nameof(DeepSeekLlmProvider), nameof(AnthropicLlmProvider), nameof(OllamaLlmProvider),
@@ -57,10 +57,10 @@ public class SamplingPayloadTests
     /// <summary>Every payload builder: the two of the OpenAI dialect, Anthropic's one, Ollama's three, Azure's stream.</summary>
     public static TheoryData<string, WirePath> EveryBuilder() => new()
     {
-        { nameof(OpenAIProvider), WirePath.Generate },
-        { nameof(OpenAIProvider), WirePath.Chat },
-        { nameof(OpenAIProvider), WirePath.GenerateStream },
-        { nameof(OpenAIProvider), WirePath.ChatStream },
+        { nameof(OpenAILlmProvider), WirePath.Generate },
+        { nameof(OpenAILlmProvider), WirePath.Chat },
+        { nameof(OpenAILlmProvider), WirePath.GenerateStream },
+        { nameof(OpenAILlmProvider), WirePath.ChatStream },
         { nameof(DeepSeekLlmProvider), WirePath.Chat },
         { nameof(AnthropicLlmProvider), WirePath.Generate },
         { nameof(AnthropicLlmProvider), WirePath.Chat },
@@ -141,9 +141,9 @@ public class SamplingPayloadTests
     }
 
     [Theory]
-    [InlineData(nameof(OpenAIProvider), "frequency_penalty")]
-    [InlineData(nameof(OpenAIProvider), "presence_penalty")]
-    [InlineData(nameof(OpenAIProvider), "seed")]
+    [InlineData(nameof(OpenAILlmProvider), "frequency_penalty")]
+    [InlineData(nameof(OpenAILlmProvider), "presence_penalty")]
+    [InlineData(nameof(OpenAILlmProvider), "seed")]
     [InlineData(nameof(DeepSeekLlmProvider), "seed")]
     [InlineData(nameof(AnthropicLlmProvider), "frequency_penalty")]
     [InlineData(nameof(AnthropicLlmProvider), "presence_penalty")]
@@ -165,7 +165,7 @@ public class SamplingPayloadTests
     }
 
     [Theory]
-    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(OpenAILlmProvider))]
     [InlineData(nameof(AnthropicLlmProvider))]
     [InlineData(nameof(OllamaLlmProvider))]
     public async Task Penalties_and_a_seed_nothing_sets_say_nothing(string providerTypeName)
@@ -266,7 +266,7 @@ public class SamplingPayloadTests
 
         private static HttpLlmProviderBase Create(string providerTypeName, IHttpClientFactory factory, List<Warning> warnings)
         {
-            var type = typeof(OpenAIProvider).Assembly.GetType(
+            var type = typeof(OpenAILlmProvider).Assembly.GetType(
                 $"Orkeon.Infrastructure.LLMs.{providerTypeName}", throwOnError: true)!;
 
             // The resilience-policy overload: every provider has one, with no retry.

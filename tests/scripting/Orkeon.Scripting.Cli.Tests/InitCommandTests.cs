@@ -325,8 +325,8 @@ public sealed class InitCommandTests
 
     [Theory]
     [InlineData("ollama", typeof(OllamaLlmProvider))]
-    [InlineData("docker-model-runner", typeof(OpenAIProvider))]
-    [InlineData("openai", typeof(OpenAIProvider))]
+    [InlineData("docker-model-runner", typeof(OpenAILlmProvider))]
+    [InlineData("openai", typeof(OpenAILlmProvider))]
     public async Task GeneratedBaseUrl_IsRecognisedByProviderDetection(string provider, Type expectedProvider)
     {
         using var scratch = new ScriptScratch();

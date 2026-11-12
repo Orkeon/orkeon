@@ -4,14 +4,14 @@ namespace Orkeon.Application.Services.Security;
 
 /// <summary>An <see cref="IToolApprovalChannel"/> decorator that lets one prompt through at a time.</summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "The semaphore never exposes its wait handle, so it holds no unmanaged resource; the channel lives as long as the host.")]
-public sealed class SerialisingToolApprovalChannel : IToolApprovalChannel
+public sealed class SerializingToolApprovalChannel : IToolApprovalChannel
 {
     private readonly IToolApprovalChannel _inner;
     private readonly SemaphoreSlim _turn = new(1, 1);
 
-    /// <summary>Initializes a new instance of <see cref="SerialisingToolApprovalChannel"/>.</summary>
+    /// <summary>Initializes a new instance of <see cref="SerializingToolApprovalChannel"/>.</summary>
     /// <param name="inner">The channel the requests are forwarded to.</param>
-    public SerialisingToolApprovalChannel(IToolApprovalChannel inner)
+    public SerializingToolApprovalChannel(IToolApprovalChannel inner)
     {
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;

@@ -379,7 +379,7 @@ No attribute carries an id of a crew, task or agent.
   flow from the `MultiModalContent` abstractions (Domain) to provider payloads via
   `LlmMessage.MultiModalContent`. `AnthropicLlmProvider` emits image content
   blocks conforming to the Messages API (`{"type":"image","source":{"type":"base64"|"url",…}}`);
-  `OpenAIProvider` emits `image_url` parts conforming to Chat Completions (http(s) URL
+  `OpenAILlmProvider` emits `image_url` parts conforming to Chat Completions (http(s) URL
   or base64 data URL). See the [multi-modal guide](../guides/multimodal.md).
 - **Role**: validation of multi-modal contents (size, format, duration) via
   `IContentValidationService` (`Orkeon:MultiModal` options) and image loading

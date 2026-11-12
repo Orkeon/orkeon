@@ -44,11 +44,14 @@ public interface ICrewOrchestrationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Executes crew asynchronously without waiting.
+    /// Starts the crew in the background and returns its execution id once the tracked state
+    /// exists, without waiting for the run. <paramref name="cancellationToken"/> covers the
+    /// start and is handed to the background run, which it cancels.
     /// </summary>
-    System.Threading.Tasks.Task<CrewExecutionId> KickoffAsyncNoWait(
+    System.Threading.Tasks.Task<CrewExecutionId> KickoffNoWaitAsync(
         CrewId crewId,
-        CrewInput input);
+        CrewInput input,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the status of an async execution.

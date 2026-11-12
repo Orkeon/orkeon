@@ -37,7 +37,7 @@ public sealed class OpenAIVisionPayloadTests : IDisposable
         _config = LlmConfig.Create("gpt-4o", TestApiKey);
     }
 
-    private OpenAIProvider CreateProvider() =>
+    private OpenAILlmProvider CreateProvider() =>
         new(_config, _httpClientFactory, _noOpPolicy);
 
     private async Task<JsonDocument> ReadSentPayloadAsync()

@@ -106,7 +106,7 @@ public sealed class LlmMeteringHostGuardTests : IDisposable
         Assert.Empty(await UnmeteredSurfacesAsync(host.Services, sink));
         Assert.Equal(vendor.Requests.Count, sink.Count);
         Assert.All(sink.Events, usage => Assert.Equal(10, usage.PromptTokens + usage.CompletionTokens));
-        Assert.IsType<OpenAIProvider>(MeteredLlmProvider.Unwrap(host.Services.GetRequiredService<ILlmProvider>()));
+        Assert.IsType<OpenAILlmProvider>(MeteredLlmProvider.Unwrap(host.Services.GetRequiredService<ILlmProvider>()));
     }
 
     [Fact]

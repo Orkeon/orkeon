@@ -3900,10 +3900,9 @@ const Orkeon.Domain.Constants.Llm.EmbeddingDefaults.LocalDimension = 384 -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultContextWindowTokens = 4096 -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultMaxRetries = 10 -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultMaxTokens = 4000 -> int
-const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultModelName = "gpt-5.6-sol" -> string!
+static readonly Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultModelName -> string!
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultTimeoutSeconds = 30 -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.FallbackMaxOutputTokens = 4096 -> int
-const Orkeon.Domain.Constants.Llm.LlmDefaults.LegacyModelName = "gpt-3.5-turbo" -> string!
 const Orkeon.Domain.Constants.Llm.LlmRoles.Assistant = "assistant" -> string!
 const Orkeon.Domain.Constants.Llm.LlmRoles.System = "system" -> string!
 const Orkeon.Domain.Constants.Llm.LlmRoles.Tool = "tool" -> string!

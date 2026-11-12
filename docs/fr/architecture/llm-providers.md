@@ -20,7 +20,7 @@ Fournisseurs implémentés :
 
 | Fournisseur | Classe | Namespace |
 |-------------|--------|-----------|
-| OpenAI | `OpenAIProvider` (via `OpenAICompatibleProviderBase`) | `Orkeon.Infrastructure.LLMs` |
+| OpenAI | `OpenAILlmProvider` (via `OpenAICompatibleProviderBase`) | `Orkeon.Infrastructure.LLMs` |
 | Anthropic | `AnthropicLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Azure OpenAI | `AzureOpenAILlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Ollama | `OllamaLlmProvider` | `Orkeon.Infrastructure.LLMs` |
@@ -40,7 +40,7 @@ Fournisseurs implémentés :
 Quatorze d'entre eux étendent `OpenAICompatibleProviderBase` (elle-même un
 `HttpLlmProviderBase`) ; Anthropic et Ollama étendent directement `HttpLlmProviderBase`, car
 leurs API ne suivent pas la forme OpenAI. Docker Model Runner et tout autre serveur compatible
-OpenAI n'ont pas de classe propre : `OpenAIProvider` les pilote via leur URL de base. Endpoints,
+OpenAI n'ont pas de classe propre : `OpenAILlmProvider` les pilote via leur URL de base. Endpoints,
 modèles par défaut et clés de provider sont des constantes partagées dans
 `Orkeon.Constants.Llm` (`LlmProviderEndpoints`, `LlmProviderDefaultModels`, `LlmProviderKeys`,
 `LlmModelOutputLimits`).

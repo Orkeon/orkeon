@@ -387,7 +387,7 @@ await foreach (var e in orchestrator.KickoffStreamingAsync(crew.Id, input))
 **Mode asynchrone non-bloquant (fire-and-forget)** :
 ```csharp
 // Démarrer l'exécution sans attendre la complétion
-var executionId = await orchestrator.KickoffAsyncNoWait(crew.Id, input);
+var executionId = await orchestrator.KickoffNoWaitAsync(crew.Id, input);
 
 Console.WriteLine($"Exécution démarrée avec ID : {executionId}");
 

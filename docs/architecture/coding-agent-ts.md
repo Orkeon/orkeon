@@ -111,7 +111,7 @@ read first (sequentially, in call order, on the engine thread), then the executi
 faults, is cancelled or throws `BudgetExhaustedException`, the others complete and are recorded,
 and the first fault is rethrown after the group. In a host that registers the channel with
 `AddConsoleToolApproval`, the approvals that concurrent reads ask are serialised
-(`SerialisingToolApprovalChannel`); `orkeon-repl` registers its channel directly, so there two
+(`SerializingToolApprovalChannel`); `orkeon-repl` registers its channel directly, so there two
 concurrent asks are not queued one at a time ([Known limitations](../reference/limitations.md)). The
 native loops of a YAML crew and the chat dispatcher fan out the same way; the text-fallback sites
 (the `ChatToolDispatcher` text path and `LegacyTextAgentLoop`) stay sequential.

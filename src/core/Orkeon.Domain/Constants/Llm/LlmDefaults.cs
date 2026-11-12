@@ -56,10 +56,5 @@ public static class LlmDefaults
     /// GPT-5.6 Sol — the previous default, <c>gpt-4</c>, reaches end of life 2026-10-23
     /// and caps the context window at 8 192 tokens.
     /// </summary>
-    public const string DefaultModelName = LlmProviderDefaultModels.OpenAI;
-
-    /// <summary>
-    /// The GPT-3.5 Turbo model name, still priced by the model pricing registry.
-    /// </summary>
-    public const string LegacyModelName = "gpt-3.5-turbo";
+    public static readonly string DefaultModelName = LlmProviderDefaultModels.OpenAI;
 }

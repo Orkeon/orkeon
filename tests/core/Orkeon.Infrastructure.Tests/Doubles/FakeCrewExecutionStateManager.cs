@@ -49,7 +49,7 @@ public sealed class FakeCrewExecutionStateManager : ICrewExecutionStateManager
 
     public Task UpdateStateAsync(ExecutionId executionId, Action<CrewExecutionState> update, CancellationToken ct = default)
     {
-        // Register the execution id lazily so KickoffAsyncNoWait updates land somewhere.
+        // Register the execution id lazily so KickoffNoWaitAsync updates land somewhere.
         if (!_byExec.TryGetValue(executionId.AsString(), out var s))
         {
             s = new CrewExecutionState(CrewId.Create(), executionId, CrewInput.Empty());

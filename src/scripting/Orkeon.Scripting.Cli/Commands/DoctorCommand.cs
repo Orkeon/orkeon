@@ -117,7 +117,7 @@ internal static class DoctorCommand
     private static readonly Dictionary<string, string> CatalogKeyByProviderType = new(StringComparer.Ordinal)
     {
         ["OllamaLlmProvider"] = "ollama",
-        ["OpenAIProvider"] = "openai",
+        ["OpenAILlmProvider"] = "openai",
         ["AnthropicLlmProvider"] = "anthropic",
         ["GrokLlmProvider"] = "grok",
         ["MiniMaxLlmProvider"] = "minimax",
