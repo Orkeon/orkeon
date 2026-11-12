@@ -151,6 +151,8 @@ Jint, TreeSitter.DotNet or Terminal.Gui follows the third-party clause of the
 - **NuGet.org waits for the release** — on a `v*` tag, `publish.yml` pushes to NuGet.org only once
   the `release.yml` run of the same tag has succeeded, so a package never precedes installers
   that failed their smokes. `docs.yml` pins docfx (2.81.0).
+- **The dev apt build restores without a shared cache** — `apt-dev.yml`, whose packages are signed
+  and published, no longer reads or writes an `actions/cache` (CodeQL `actions/cache-poisoning`).
 - **The container image follows the GitHub Release** — `release.yml` pushes
   `ghcr.io/orkeon/orkeon` after the Release, smokes the start of its REPL
   (`ORKEON_ENTRYPOINT=repl`) before the push, and labels it with the OCI `source`, `description`
