@@ -1,12 +1,9 @@
-using System.Runtime.Serialization;
-
 namespace Orkeon.Scripting.Exceptions;
 
 /// <summary>
 /// Thrown when <c>crew.add(agent)</c> is called for an agent that is already a member
 /// of another crew: an agent belongs to one crew at a time.
 /// </summary>
-[Serializable]
 public sealed class AgentAlreadyInCrewException : Exception
 {
     /// <summary>Name of the offending agent.</summary>
@@ -43,14 +40,4 @@ public sealed class AgentAlreadyInCrewException : Exception
         AgentName = string.Empty;
         CrewName = string.Empty;
     }
-
-    /// <summary>Deserialization constructor.</summary>
-#pragma warning disable SYSLIB0051 // Required by S3925 ISerializable pattern
-    private AgentAlreadyInCrewException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        AgentName = string.Empty;
-        CrewName = string.Empty;
-    }
-#pragma warning restore SYSLIB0051
 }

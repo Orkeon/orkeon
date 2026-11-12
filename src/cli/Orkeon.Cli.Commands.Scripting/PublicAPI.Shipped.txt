@@ -642,11 +642,9 @@ override Orkeon.Cli.Commands.Scripting.Configuration.CliScriptLimitsOptions.ToSt
 override Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.Equals(object? obj) -> bool
 override Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.GetHashCode() -> int
 override Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.ToString() -> string!
-override Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.Equals(object? obj) -> bool
 override Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.GetHashCode() -> int
 override Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.ToString() -> string!
-override Orkeon.Cli.Commands.Scripting.Dispatch.ExclusiveLaunchRefusedException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Equals(object? obj) -> bool
 override Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.GetHashCode() -> int
 override Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.ToString() -> string!

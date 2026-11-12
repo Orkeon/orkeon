@@ -2,8 +2,6 @@ using Orkeon.Domain.Common;
 
 namespace Orkeon.Domain.Exceptions;
 
-#pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10; ISerializable pattern not required
-
 /// <summary>
 /// Base domain exception.
 /// </summary>
@@ -18,11 +16,6 @@ public abstract class DomainException : Exception
     /// <param name="message">The exception message.</param>
     /// <param name="innerException">The inner exception.</param>
     protected DomainException(string message, Exception innerException) : base(message, innerException) { }
-    /// <summary>Initializes a new instance of <see cref="DomainException"/> from serialized data.</summary>
-    /// <param name="info">The serialized object data.</param>
-    /// <param name="context">The source of the serialized data.</param>
-    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
-    protected DomainException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
 }
 
 /// <summary>
@@ -271,5 +264,3 @@ public sealed class TimeoutException : DomainException
     }
 
 }
-
-#pragma warning restore S3925

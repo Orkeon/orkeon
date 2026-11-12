@@ -792,11 +792,6 @@ override Orkeon.Analysis.Core.DocumentingSection.ToString() -> string!
 override Orkeon.Analysis.Core.DocumentsOfResult.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.DocumentsOfResult.GetHashCode() -> int
 override Orkeon.Analysis.Core.DocumentsOfResult.ToString() -> string!
-override Orkeon.Analysis.Core.Editing.AmbiguousSelectorException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-override Orkeon.Analysis.Core.Editing.ParseBrokenException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-override Orkeon.Analysis.Core.Editing.SelectorNotFoundException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-override Orkeon.Analysis.Core.Editing.StaleHashException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-override Orkeon.Analysis.Core.Editing.UnsupportedExtensionException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Analysis.Core.IncrementalReindexResult.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.IncrementalReindexResult.GetHashCode() -> int
 override Orkeon.Analysis.Core.IncrementalReindexResult.ToString() -> string!
@@ -806,8 +801,6 @@ override Orkeon.Analysis.Core.RaggableEnrichmentServices.ToString() -> string!
 override Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.GetHashCode() -> int
 override Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.ToString() -> string!
-override Orkeon.Analysis.Core.Structural.UnboundMetavariableException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-override Orkeon.Analysis.Core.Structural.UnsupportedRuleKeyException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Analysis.DependencyInjection.EmbeddingOptions.Equals(object? obj) -> bool
 override Orkeon.Analysis.DependencyInjection.EmbeddingOptions.GetHashCode() -> int
 override Orkeon.Analysis.DependencyInjection.EmbeddingOptions.ToString() -> string!

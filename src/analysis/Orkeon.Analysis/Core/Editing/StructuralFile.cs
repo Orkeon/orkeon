@@ -1,5 +1,4 @@
 #pragma warning disable CA1032, CA1064 // the exceptions carry one domain constructor
-using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Text;
 using Orkeon.Analysis.Abstractions;
@@ -482,11 +481,8 @@ internal sealed class StructuralFile
     }
 }
 
-[Serializable]
 public sealed class AmbiguousSelectorException : Exception
 {
-    private const string CandidatesKey = "Candidates";
-
     public AmbiguousSelectorException(IReadOnlyList<string> candidates)
         : base($"Ambiguous selector; candidates: {string.Join(", ", candidates)}")
     {
@@ -494,28 +490,10 @@ public sealed class AmbiguousSelectorException : Exception
     }
 
     public IReadOnlyList<string> Candidates { get; }
-
-    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
-    private AmbiguousSelectorException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        Candidates = (string[]?)info.GetValue(CandidatesKey, typeof(string[])) ?? [];
-    }
-
-    /// <inheritdoc />
-    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
-    public override void GetObjectData(SerializationInfo info, StreamingContext context)
-    {
-        base.GetObjectData(info, context);
-        info.AddValue(CandidatesKey, Candidates.ToArray());
-    }
 }
 
-[Serializable]
 public sealed class SelectorNotFoundException : Exception
 {
-    private const string SuggestionsKey = "Suggestions";
-
     public SelectorNotFoundException(IReadOnlyList<string> suggestions)
         : base($"Selector not found; suggestions: {string.Join(", ", suggestions)}")
     {
@@ -523,28 +501,10 @@ public sealed class SelectorNotFoundException : Exception
     }
 
     public IReadOnlyList<string> Suggestions { get; }
-
-    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
-    private SelectorNotFoundException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        Suggestions = (string[]?)info.GetValue(SuggestionsKey, typeof(string[])) ?? [];
-    }
-
-    /// <inheritdoc />
-    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
-    public override void GetObjectData(SerializationInfo info, StreamingContext context)
-    {
-        base.GetObjectData(info, context);
-        info.AddValue(SuggestionsKey, Suggestions.ToArray());
-    }
 }
 
-[Serializable]
 public sealed class UnsupportedExtensionException : Exception
 {
-    private const string ExtensionKey = "Extension";
-
     public UnsupportedExtensionException(string extension)
         : base($"No tree-sitter grammar for extension '{extension}'")
     {
@@ -552,19 +512,4 @@ public sealed class UnsupportedExtensionException : Exception
     }
 
     public string Extension { get; }
-
-    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
-    private UnsupportedExtensionException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        Extension = info.GetString(ExtensionKey) ?? string.Empty;
-    }
-
-    /// <inheritdoc />
-    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
-    public override void GetObjectData(SerializationInfo info, StreamingContext context)
-    {
-        base.GetObjectData(info, context);
-        info.AddValue(ExtensionKey, Extension);
-    }
 }

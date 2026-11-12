@@ -211,7 +211,6 @@ internal sealed class JsMockToolExpectationBuilder
 /// Raised by the <c>test.assert*</c> helpers when an expectation is not met. Surfaces to the
 /// script as a plain error, and to a .NET host as the failure of the scripted assertion.
 /// </summary>
-[Serializable]
 public sealed class AssertionException : Exception
 {
     /// <summary>Creates an assertion failure carrying <paramref name="message"/>.</summary>
@@ -222,10 +221,5 @@ public sealed class AssertionException : Exception
 
     /// <summary>Creates an assertion failure wrapping <paramref name="innerException"/>.</summary>
     public AssertionException(string message, Exception innerException) : base(message, innerException) { }
-
-#pragma warning disable SYSLIB0051 // Required by S3925 ISerializable pattern
-    private AssertionException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
-        : base(info, context) { }
-#pragma warning restore SYSLIB0051
 }
 #pragma warning restore IDE1006

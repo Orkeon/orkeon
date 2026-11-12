@@ -1470,7 +1470,6 @@ Orkeon.Domain.Exceptions.CrewException.CrewException(string! message, System.Exc
 Orkeon.Domain.Exceptions.CrewException.CrewId.get -> Orkeon.Domain.Common.CrewId!
 Orkeon.Domain.Exceptions.DomainException
 Orkeon.Domain.Exceptions.DomainException.DomainException() -> void
-Orkeon.Domain.Exceptions.DomainException.DomainException(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 Orkeon.Domain.Exceptions.DomainException.DomainException(string! message) -> void
 Orkeon.Domain.Exceptions.DomainException.DomainException(string! message, System.Exception! innerException) -> void
 Orkeon.Domain.Exceptions.LlmRateLimitException
@@ -4215,7 +4214,6 @@ override Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.ToString() -> strin
 override Orkeon.Domain.EventHub.CrewLink.Equals(object? obj) -> bool
 override Orkeon.Domain.EventHub.CrewLink.GetHashCode() -> int
 override Orkeon.Domain.EventHub.CrewLink.ToString() -> string!
-override Orkeon.Domain.Exceptions.LlmRateLimitException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Domain.FileSystem.FileSystemMount.Equals(object? obj) -> bool
 override Orkeon.Domain.FileSystem.FileSystemMount.GetHashCode() -> int
 override Orkeon.Domain.FileSystem.FileSystemMount.ToString() -> string!

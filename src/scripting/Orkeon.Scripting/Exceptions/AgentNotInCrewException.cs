@@ -1,5 +1,3 @@
-using System.Runtime.Serialization;
-
 namespace Orkeon.Scripting.Exceptions;
 
 /// <summary>
@@ -7,7 +5,6 @@ namespace Orkeon.Scripting.Exceptions;
 /// agent currently detached from any crew (e.g. <c>ctx.delegate</c>, <c>ctx.send</c>,
 /// <c>ctx.receive</c> outside a crew).
 /// </summary>
-[Serializable]
 public sealed class AgentNotInCrewException : Exception
 {
     /// <summary>Name of the agent.</summary>
@@ -31,13 +28,4 @@ public sealed class AgentNotInCrewException : Exception
     {
         AgentName = string.Empty;
     }
-
-    /// <summary>Deserialization constructor.</summary>
-#pragma warning disable SYSLIB0051 // Required by S3925 ISerializable pattern
-    private AgentNotInCrewException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        AgentName = string.Empty;
-    }
-#pragma warning restore SYSLIB0051
 }

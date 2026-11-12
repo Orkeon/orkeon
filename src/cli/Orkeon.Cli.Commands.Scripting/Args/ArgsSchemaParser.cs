@@ -107,7 +107,6 @@ internal static class ArgsSchemaParser
 }
 
 /// <summary>Thrown by <see cref="ArgsSchemaParser"/> when a <c>defineCommand args</c> object is malformed.</summary>
-[Serializable]
 public sealed class ArgsSchemaException : Exception
 {
     public ArgsSchemaException(string message) : base(message) { }
@@ -117,12 +116,4 @@ public sealed class ArgsSchemaException : Exception
 
     /// <summary>Initializes a new instance with a message and inner exception.</summary>
     public ArgsSchemaException(string message, Exception innerException) : base(message, innerException) { }
-
-    /// <summary>Initializes a new instance for deserialization.</summary>
-#pragma warning disable SYSLIB0051 // Required by S3925 ISerializable pattern
-    private ArgsSchemaException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
-        : base(info, context)
-    {
-    }
-#pragma warning restore SYSLIB0051
 }
