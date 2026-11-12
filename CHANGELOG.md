@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-11-11
+## [1.0.0] - 2026-11-12
 
 The first final release. Since `1.0.0-rc.7`: the container image and its switch take their
 final names, the dependency graphs are locked, and the account statuses of the e-mail and
@@ -43,9 +43,11 @@ job that builds it is now `docker-image`. `Dockerfile.runners` keeps its name, s
 
 - **NuGet lock files** — every project of `Orkeon.sln` outside `examples/` restores with a
   committed `packages.lock.json`, and CI restores in locked mode (`CI=true`), so a package is
-  built from the dependency graph that was reviewed. The net11 lane, the per-RID installer
-  publishes and the `dotnet publish -r` steps inside `Dockerfile.runners` restore unlocked; the
-  examples, which ship nothing, and the `dotnet new` templates carry no lock file. A package change
+  built from the dependency graph that was reviewed. The net11 lane restores unlocked. A restore
+  with a runtime identifier (the per-RID installer publishes, the `dotnet publish -r` steps inside
+  `Dockerfile.runners`) resolves another graph: it writes its own lock file under the project's
+  intermediate folder and is not locked, so it never rewrites the committed one. The examples,
+  which ship nothing, and the `dotnet new` templates carry no lock file. A package change
   regenerates the lock files with `dotnet restore` (`CONTRIBUTING.md`).
 - **The install commands drop `--prerelease`** — the READMEs, the docs and the package READMEs
   install the final release; the dev channel keeps it. `SECURITY.md` supports the latest 1.x
@@ -59,6 +61,9 @@ job that builds it is now `docker-image`. `Dockerfile.runners` keeps its name, s
 - **Seven CodeQL `cs/unsynchronized-static-access` alerts** — the decision probe and its test
   double build their dictionaries with `ImmutableDictionary.CreateRange` instead of
   `ImmutableDictionary<K,V>.Empty.Add`; same contents, same comparer.
+- **The apt publication retries a push refused by git 2.53** — `publish-apt-channel.sh` took the
+  newer wording of a moved branch (`incorrect old value provided`) for a refusal of another kind
+  and gave up instead of applying the channel again on the new tip.
 
 ## [1.0.0-rc.7] - 2026-11-11
 

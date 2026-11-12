@@ -491,7 +491,9 @@ print the runtime install commands rather than failing at first launch.
   (`Directory.Build.targets`), and CI restores in locked mode (`RestoreLockedMode` under the
   `CI` variable), so a restore that would resolve a transitive package differently fails
   instead of drifting. Two restores are deliberately unlocked: the `build-test-net11` lane
-  (another SDK, to see what it resolves) and the per-RID `dotnet publish -r` of
-  `package-installers.sh`/`.ps1` (a lock file records the RID-less graph); the
+  (another SDK, to see what it resolves) and every restore with a runtime identifier — the
+  per-RID `dotnet publish -r` of `package-installers.sh`/`.ps1` and of `Dockerfile.runners`
+  (the committed lock file records the RID-less graph): such a restore writes its own lock file
+  under the project's intermediate folder and never rewrites the committed one. The
   `dotnet new` template content ships no lock file.
 - Version flows from `src/Directory.Build.props`, the single source of truth: no project overrides it, and the publish workflow's tag guard refuses any `v*` tag that disagrees with it. The dev channel derives its `<version>.dev.<n>` from it, a build made from a checkout its `<version>.local.<stamp>` (see *Dev channel* above).

@@ -18,7 +18,7 @@ namespace Orkeon.Infrastructure.EventHub;
 /// it and an unresolvable target would silently match nothing.
 /// </para>
 /// <para>
-/// In-process only, deliberately: rc.2's hub is in-process too. A distributed deployment needs
+/// In-process only, deliberately: the hub is in-process too. A distributed deployment needs
 /// a distributed hub first, and a shared link source is the smaller half of that problem.
 /// </para>
 /// </summary>

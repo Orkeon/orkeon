@@ -14,7 +14,7 @@ namespace Orkeon.Infrastructure.EventHub.Middleware;
 /// untouched, deliberately.
 /// </para>
 /// <para>
-/// **It does not survive the process.** rc.2's hub is in-memory — five dictionaries, a
+/// **It does not survive the process.** The hub is in-memory — five dictionaries, a
 /// correlation holding a <c>TaskCompletionSource</c> — so a durable ledger behind a volatile hub
 /// would guard against a scenario the rest of the subsystem cannot cross anyway. A restart
 /// clears the record and a replayed message would be processed again. That is a stated limit,

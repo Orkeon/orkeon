@@ -26,7 +26,7 @@ public sealed class ScriptRuntimeInfo
         this.channel = channel;
     }
 
-    /// <summary>The release, build metadata removed (<c>1.0.0-rc.6</c>), as <c>orkeon doctor</c> prints it.</summary>
+    /// <summary>The release, build metadata removed (<c>1.0.0</c>, <c>1.0.1-dev.42</c>), as <c>orkeon doctor</c> prints it.</summary>
     public string version { get; }
 
     /// <summary>
@@ -40,7 +40,7 @@ public sealed class ScriptRuntimeInfo
     /// </summary>
     public string channel { get; }
 
-    /// <summary>Splits an informational version (<c>1.0.0-rc.6+&lt;sha&gt;</c>) into the release and the commit.</summary>
+    /// <summary>Splits an informational version (<c>1.0.0+&lt;sha&gt;</c>) into the release and the commit.</summary>
     /// <param name="informationalVersion">The informational version; blank reads <see cref="Unknown"/>.</param>
     /// <param name="channel">The install channel; blank reads <see cref="Unknown"/>.</param>
     public static ScriptRuntimeInfo FromInformationalVersion(string? informationalVersion, string? channel)

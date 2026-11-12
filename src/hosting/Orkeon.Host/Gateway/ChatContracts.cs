@@ -95,7 +95,7 @@ internal interface IChatAuthorizer
 internal sealed record CommandInvocation(string CommandName, string ConversationId, string SenderId);
 
 /// <summary>
-/// The allow-list authorizer, and the only one rc.2 ships.
+/// The allow-list authorizer, and the only one the host ships.
 /// <para>
 /// **An empty list denies everyone.** The opposite default — empty means open — is how a bot
 /// invited to a public server ends up spending someone's API budget on strangers. Refusing to
@@ -130,7 +130,7 @@ internal sealed class AllowListChatAuthorizer : IChatAuthorizer
 /// <summary>
 /// Maps a conversation onto a run.
 /// <para>
-/// rc.2 ships one strategy — **thread equals run** — because it is the only mapping a user can
+/// The host ships one strategy — **thread equals run** — because it is the only mapping a user can
 /// predict without being told: what happens in this thread is one job. It also gives
 /// parallelism for free, without inventing a notion of session nobody asked for.
 /// </para>

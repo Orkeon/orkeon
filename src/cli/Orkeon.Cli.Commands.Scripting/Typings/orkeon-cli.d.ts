@@ -445,7 +445,7 @@ export interface PendingApproval {
  * the channel are the ones `orkeon doctor` prints; `version + "+" + commit` is the full build version.
  */
 export interface RuntimeInfo {
-  /** The release, build metadata removed (`1.0.0-rc.6`); `"unknown"` when the host carries none. */
+  /** The release, build metadata removed (`1.0.0`); `"unknown"` when the host carries none. */
   readonly version: string;
   /** The commit sha the build was made from (the metadata after `+`); null when the version carries none. */
   readonly commit: string | null;

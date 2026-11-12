@@ -124,6 +124,11 @@ les [Limitations connues](./limitations.md).
 *Expérimental* : implémentation fonctionnelle mais non câblée dans le
 pipeline d'exécution (l'hôte invoque le service lui-même), comportement encore
 partiel (signalé au cas par cas ci-dessous), ou API marquée `[Experimental]` (A2A, `ORKEXP001`).
+L'étiquette parle du comportement, pas de l'API : hors des membres marqués `[Experimental]`,
+l'API d'un sous-système *Expérimental* est figée par le même engagement 1.x que celle d'un
+sous-système *Stable* ; seuls son câblage et son comportement peuvent encore s'étendre. Aucune
+des deux étiquettes ne dit si les binaires livrés activent un sous-système : la ligne *Binaires
+livrés* de sa section le dit.
 
 ---
 

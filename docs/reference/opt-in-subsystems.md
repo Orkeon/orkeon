@@ -120,6 +120,10 @@ what it does not do yet, or what has not been run against a real service, is lis
 *Experimental*: functional implementation but not wired into the
 execution pipeline (the host invokes the service itself), behavior still
 partial (flagged case by case below), or an API marked `[Experimental]` (A2A, `ORKEXP001`).
+The label speaks of the behaviour, not of the API: outside the members marked `[Experimental]`,
+the API of an *Experimental* subsystem is frozen by the same 1.x commitment as a *Stable* one;
+only its wiring and behaviour may still grow. Neither label says whether the shipped binaries
+activate a subsystem: the *Shipped binaries* line of its section does.
 
 ---
 

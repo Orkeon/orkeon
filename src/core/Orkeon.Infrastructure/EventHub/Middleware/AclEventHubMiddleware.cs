@@ -7,7 +7,7 @@ namespace Orkeon.Infrastructure.EventHub.Middleware;
 
 /// <summary>
 /// Enforces <see cref="CrewLink"/> on the sender side (HUB-03, spec §10.2). This is the stage
-/// that lets rc.2 open a door out of the process: BUS-05 gives an external client a mailbox,
+/// that lets the hub open a door out of the process: BUS-05 gives an external client a mailbox,
 /// and a mailbox nobody guards is not a feature.
 /// <para>
 /// Four rules, each with a reason:

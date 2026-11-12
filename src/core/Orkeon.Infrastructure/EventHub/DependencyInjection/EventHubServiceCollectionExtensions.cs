@@ -104,7 +104,7 @@ public static class EventHubServiceCollectionExtensions
     /// consumed, and only there: a topic message legitimately reaches every subscriber, so
     /// deduplicating it by identifier would starve all but the first.
     /// <para>
-    /// The memory is bounded and does not survive the process — rc.2's hub is in-memory too, so
+    /// The memory is bounded and does not survive the process — the hub is in-memory too, so
     /// a durable ledger behind a volatile hub would guard a scenario the subsystem cannot cross.
     /// </para>
     /// </summary>

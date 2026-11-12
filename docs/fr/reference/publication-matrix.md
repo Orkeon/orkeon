@@ -518,7 +518,10 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   verrouillé (`RestoreLockedMode` sous la variable `CI`), si bien qu'une restauration qui
   résoudrait autrement un paquet transitif échoue au lieu de dériver. Deux restaurations
   restent volontairement déverrouillées : la voie `build-test-net11` (un autre SDK, pour voir
-  ce qu'il résout) et le `dotnet publish -r` par RID de `package-installers.sh`/`.ps1` (un
-  fichier de verrouillage enregistre le graphe sans RID) ; le contenu des modèles
-  `dotnet new` ne livre aucun fichier de verrouillage.
+  ce qu'il résout) et toute restauration avec un identifiant de runtime — le
+  `dotnet publish -r` par RID de `package-installers.sh`/`.ps1` et de `Dockerfile.runners` (le
+  fichier de verrouillage commité enregistre le graphe sans RID) : une telle restauration écrit
+  son propre fichier de verrouillage dans le dossier intermédiaire du projet et ne réécrit
+  jamais celui qui est commité. Le contenu des modèles `dotnet new` ne livre aucun fichier de
+  verrouillage.
 - La version provient de `src/Directory.Build.props`, la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit. Le canal dev en dérive son `<version>.dev.<n>`, un build fait depuis un clone son `<version>.local.<horodatage>` (voir *Canal dev* plus haut).
