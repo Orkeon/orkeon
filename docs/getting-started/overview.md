@@ -6,7 +6,14 @@
 
 ## What is Orkeon?
 
-Orkeon is a C#/.NET framework for orchestrating teams of collaborative AI agents. It lets you define specialized agents, assign them tasks, equip them with tools and have them collaborate within a *Crew* (team) orchestrated according to different execution strategies.
+Orkeon is an open-source framework for building and orchestrating teams of AI agents in .NET. It lets you define specialized agents, assign them tasks, equip them with tools and have them collaborate within a *Crew* (team) orchestrated according to different execution strategies.
+
+Two words come back throughout the documentation:
+
+- a **team** (a *crew* in the code) is a set of agents, each with a role, working together on a mission;
+- the **runtime** is the engine that executes the team and enforces the rules. There is only one, whether the team is written in YAML, in TypeScript (`.ork.ts`) or in C#.
+
+Two principles follow from it. **A boundary declared, then enforced**: every file, endpoint and budget an agent may use is declared, and the runtime applies it whatever the model decides. **No rewrite between the trial and the application**: the team you tuned is the one you integrate; only the configuration changes (the model, the mounted folders, the secrets). The [README](https://github.com/Orkeon/orkeon/blob/main/README.md) gives the full presentation, with what Orkeon guarantees and what it does not.
 
 The framework follows a Clean Architecture / DDD architecture and targets .NET 10.
 
