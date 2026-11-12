@@ -1,6 +1,8 @@
 # Orkeon
 
-Build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#.
+AI agent teams that stay inside the lines: every file, endpoint and budget an agent may use is declared, then enforced by the runtime.
+
+Build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#. One runtime executes all three, so the team you tuned is the team you integrate in your application, without a rewrite.
 
 **Orkeon** is the complete framework in a single package: the domain model (Agent, Crew, CrewTask, the 6 orchestration modes), the application services, and the adapters — 16 LLM providers (OpenAI, Anthropic, Azure OpenAI, Ollama, Mistral, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI, Gemini, Grok, MiniMax, and the OpenRouter and Mammouth AI aggregators), 6 memory stores (InMemory, Redis, SQLite, ChromaDB, Pinecone, LanceDB), the staged RAG pipeline with its corrective graph, the RaggableTree semantic codebase analysis, the virtual file system, and the A2A channel. One install, a working framework.
 

@@ -15,8 +15,8 @@
     <PackageProjectUrl>https://github.com/Orkeon/orkeon</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>AI;Agents;LLM;OpenAI;Anthropic;Orkeon</PackageTags>
-    <Description>Build and orchestrate AI agent teams in .NET</Description>
+    <PackageTags>AI;Agents;MultiAgent;LLM;RAG;MCP;A2A;OpenAI;Anthropic;dotnet;Orkeon</PackageTags>
+    <Description>AI agent teams that stay inside the lines, in .NET: every file, endpoint and budget an agent may use is declared, then enforced by the runtime.</Description>
     <Copyright>Copyright (c) 2024-2026 Orkeon Contributors</Copyright>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- Warnings policy (R6.8) — restore the async signal and freeze the debt.

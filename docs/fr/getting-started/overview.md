@@ -6,7 +6,14 @@
 
 ## Qu'est-ce qu'Orkeon ?
 
-Orkeon est un framework C#/.NET pour l'orchestration d'équipes d'agents IA collaboratifs. Il permet de définir des agents spécialisés, de leur assigner des tâches, de les équiper d'outils et de les faire collaborer au sein d'une *Crew* (équipe) orchestrée selon différentes stratégies d'exécution.
+Orkeon est un framework open source pour construire et orchestrer des équipes d'agents IA en .NET. Il permet de définir des agents spécialisés, de leur assigner des tâches, de les équiper d'outils et de les faire collaborer au sein d'une *Crew* (équipe) orchestrée selon différentes stratégies d'exécution.
+
+Deux mots reviennent dans toute la documentation :
+
+- une **équipe** (*crew* dans le code) est un ensemble d'agents, chacun avec un rôle, qui coopèrent pour accomplir une mission ;
+- le **runtime** est le moteur qui exécute l'équipe et qui applique les règles. Il n'y en a qu'un, que l'équipe soit écrite en YAML, en TypeScript (`.ork.ts`) ou en C#.
+
+Deux principes en découlent. **Un cadre déclaré, puis appliqué** : chaque fichier, chaque point d'accès et chaque budget qu'un agent peut utiliser est déclaré, et le runtime l'applique quoi que le modèle décide. **Pas de réécriture entre l'essai et l'application** : l'équipe mise au point est celle que l'on intègre ; seule la configuration change (le modèle, les dossiers montés, les secrets). Le [README](https://github.com/Orkeon/orkeon/blob/main/README.fr.md) en donne la présentation complète, avec ce qu'Orkeon garantit et ce qu'il ne garantit pas.
 
 Le framework suit une architecture Clean Architecture / DDD et cible .NET 10.
 

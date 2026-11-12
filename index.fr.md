@@ -6,20 +6,31 @@ title: Orkeon
 
 # Orkeon
 
-**Des équipes d'agents IA qui restent dans les clous — chaque fichier, endpoint et budget qu'un agent peut toucher est déclaré, puis appliqué. Décrites en YAML, TypeScript (`.ork.ts`) ou C# ; un seul runtime .NET exécute les trois.**
+**Des équipes d'agents IA qui restent dans le cadre — chaque fichier, chaque point d'accès et chaque budget qu'un agent peut utiliser est déclaré, puis appliqué par le runtime. Décrites en YAML, TypeScript (`.ork.ts`) ou C# ; un seul runtime .NET exécute les trois, et l'équipe mise au point est celle que l'on intègre, sans réécriture.**
 
 <p align="center">
   <img src="docs/assets/orkeon-mascot.png" alt="Mascotte Orkeon — un caméléon curieux" width="320">
 </p>
 
-Un agent lâché sur un dépôt écrit là où il ne devrait pas, parce que rien n'est là pour
-l'arrêter. Orkeon place la frontière devant le modèle : un système de fichiers virtuel où
-chaque chemin est un montage déclaré avec des droits déclarés, un sandbox pour le code, un
-budget d'exécution pour l'autonomie — et un analyseur Roslyn autonome (`Orkeon.Compliance.Vfs`)
-qui fait du `System.IO` brut une erreur de compilation dans votre propre code. Autour, un
-framework .NET complet pour des crews d'agents : six stratégies d'orchestration, 16
-fournisseurs LLM, mémoire, RAG, analyse de code. Il tourne sur un modèle local sans clé API —
-voir le démarrage en deux minutes du [README](README.fr.md#essayez-le-en-deux-minutes--sans-clé-dapi).
+Orkeon est un framework open source pour construire et orchestrer des équipes d'agents IA en
+.NET. Il repose sur deux convictions. **La confiance se construit dans le runtime, pas dans
+le prompt** : un système de fichiers virtuel où chaque chemin est un montage déclaré avec des
+droits déclarés, un bac à sable pour le code, un budget d'exécution pour l'autonomie, des
+capacités sensibles qui restent fermées tant qu'un humain ne les a pas ouvertes — et un
+analyseur Roslyn autonome (`Orkeon.Compliance.Vfs`) qui fait de l'accès direct aux fichiers par
+`System.IO` une erreur de compilation dans votre propre code. **Ce que l'on met au point est ce que l'on déploie** :
+le runtime qui exécute le premier essai est celui qui tourne dans l'application finale, et
+une équipe n'est jamais réécrite pour passer de l'essai au produit. Autour, un framework .NET
+complet pour des équipes d'agents : six stratégies d'orchestration, 16 fournisseurs LLM,
+mémoire, RAG, analyse de code. Il tourne sur un modèle local sans clé API — voir le démarrage
+en deux minutes du [README](README.fr.md#essayez-le-en-deux-minutes--sans-clé-dapi).
+
+Chaque porte d'entrée s'appuie sur le même runtime : [Orkeon Studio](https://github.com/Orkeon/orkeon-studio),
+une application de bureau pour Windows 10 et 11, sans code ni terminal ;
+[Orkeon Workshop](https://github.com/Orkeon/orkeon-workshop), un atelier prêt à l'emploi pour
+concevoir, tester et mesurer des équipes ; [Orkeon Code](https://github.com/Orkeon/orkeon-code),
+un assistant de codage dans le terminal ; la ligne de commande `orkeon` ; et le paquet NuGet
+`Orkeon`.
 
 ## Par où commencer
 
@@ -38,7 +49,7 @@ dotnet add package Orkeon        # le framework complet en un seul paquet
 dotnet add package Orkeon.Tools  # optionnel : les familles d'outils intégrés
 ```
 
-La CLI de scripting est distribuée comme outil .NET :
+Le CLI de scripting est distribué comme outil .NET :
 
 ```bash
 dotnet tool install -g Orkeon.Scripting.Cli
@@ -53,7 +64,7 @@ voir [Mettre à jour Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md
 
 ## Projet
 
-- [README](README.fr.md) — la présentation complète : ce qu'une équipe fait, comment ça marche, quelle porte choisir
+- [README](README.fr.md) — la présentation complète : pourquoi Orkeon, ce qu'une équipe fait, comment ça marche, quelle porte choisir, ce qu'Orkeon garantit et ce qu'il ne garantit pas
 - [CHANGELOG](CHANGELOG.md) — le contenu de chaque version (en anglais)
 - [Contribuer](CONTRIBUTING.fr.md) · [Support](SUPPORT.fr.md) · [Sécurité](SECURITY.fr.md)
 - [Sources sur GitHub](https://github.com/Orkeon/orkeon) · [Releases](https://github.com/Orkeon/orkeon/releases)

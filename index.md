@@ -6,20 +6,29 @@ title: Orkeon
 
 # Orkeon
 
-**AI agent teams that stay inside the lines — every file, endpoint and budget an agent may touch is declared, then enforced. Described in YAML, TypeScript (`.ork.ts`) or C#; one .NET runtime executes all three.**
+**AI agent teams that stay inside the lines — every file, endpoint and budget an agent may use is declared, then enforced by the runtime. Described in YAML, TypeScript (`.ork.ts`) or C#; one .NET runtime executes all three, and the team you tuned is the team you integrate, without a rewrite.**
 
 <p align="center">
   <img src="docs/assets/orkeon-mascot.png" alt="Orkeon mascot — a curious chameleon" width="320">
 </p>
 
-An agent let loose on a repository writes where it should not, because nothing is there to
-stop it. Orkeon puts the boundary in front of the model: a virtual file system where every
-path is a declared mount with declared rights, a sandbox for code, an execution budget for
-autonomy — and a standalone Roslyn analyzer (`Orkeon.Compliance.Vfs`) that makes raw
-`System.IO` a compile error in your own code. Around it, a complete .NET framework for crews
+Orkeon is an open-source framework for building and orchestrating teams of AI agents in
+.NET. It rests on two convictions. **Trust is built in the runtime, not in the prompt**: a
+virtual file system where every path is a declared mount with declared rights, a sandbox for
+code, an execution budget for autonomy, sensitive capabilities that stay closed until a
+person opens them — and a standalone Roslyn analyzer (`Orkeon.Compliance.Vfs`) that makes direct
+file access through `System.IO` a compile error in your own code. **What you tune is what you deploy**: the
+runtime that ran the first trial is the one inside the final application, so a team is never
+rewritten to go from trial to product. Around it, a complete .NET framework for teams
 of agents: six orchestration strategies, 16 LLM providers, memory, RAG, code analysis. It
 runs on a local model with no API key — see the two-minute start in the
 [README](README.md#try-it-in-two-minutes--no-api-key).
+
+Every door opens on the same runtime: [Orkeon Studio](https://github.com/Orkeon/orkeon-studio),
+a desktop application for Windows 10 and 11, with no code and no terminal;
+[Orkeon Workshop](https://github.com/Orkeon/orkeon-workshop), a ready-made workshop to design,
+test and measure teams; [Orkeon Code](https://github.com/Orkeon/orkeon-code), a coding
+assistant in the terminal; the `orkeon` command line; and the `Orkeon` NuGet package.
 
 ## Start here
 
@@ -53,7 +62,7 @@ update — to the latest release, or to the latest `main` between two releases �
 
 ## Project
 
-- [README](README.md) — the full presentation: what a team does, how it works, which door to take
+- [README](README.md) — the full presentation: why Orkeon, what a team does, how it works, which door to take, what Orkeon guarantees and what it does not
 - [CHANGELOG](CHANGELOG.md) — what shipped in each version
 - [Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md) · [Security](SECURITY.md)
 - [Source on GitHub](https://github.com/Orkeon/orkeon) · [Releases](https://github.com/Orkeon/orkeon/releases)
