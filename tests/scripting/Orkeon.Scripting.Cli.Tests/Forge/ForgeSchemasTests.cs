@@ -172,7 +172,7 @@ public class ForgeBlueprintTests
     public void A_mail_task_naming_a_client_address_is_refused()
     {
         // The mail test of 2026-10-12: the plan told the mailing agent to send "via the
-        // recipient's mailbox, e.g. client://cyril@egnx.com", and the agent passed that as the
+        // recipient's mailbox, e.g. client://someone@example.com", and the agent passed that as the
         // e-mail account. client:// is internal messaging, never a mailbox.
         var json = """
             {
