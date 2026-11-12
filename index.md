@@ -16,16 +16,16 @@ Orkeon is an open-source framework for building and orchestrating teams of AI ag
 .NET. It rests on two convictions. **Trust is built in the runtime, not in the prompt**: a
 virtual file system where every path is a declared mount with declared rights, a sandbox for
 code, an execution budget for autonomy, sensitive capabilities that stay closed until a
-person opens them — and a standalone Roslyn analyzer (`Orkeon.Compliance.Vfs`) that makes raw
-`System.IO` a compile error in your own code. **What you tune is what you deploy**: the
+person opens them — and a standalone Roslyn analyzer (`Orkeon.Compliance.Vfs`) that makes direct
+file access through `System.IO` a compile error in your own code. **What you tune is what you deploy**: the
 runtime that ran the first trial is the one inside the final application, so a team is never
-rewritten to go from trial to product. Around it, a complete .NET framework for crews
+rewritten to go from trial to product. Around it, a complete .NET framework for teams
 of agents: six orchestration strategies, 16 LLM providers, memory, RAG, code analysis. It
 runs on a local model with no API key — see the two-minute start in the
 [README](README.md#try-it-in-two-minutes--no-api-key).
 
 Every door opens on the same runtime: [Orkeon Studio](https://github.com/Orkeon/orkeon-studio),
-a desktop application for Windows with no code and no terminal;
+a desktop application for Windows 10 and 11, with no code and no terminal;
 [Orkeon Workshop](https://github.com/Orkeon/orkeon-workshop), a ready-made workshop to design,
 test and measure teams; [Orkeon Code](https://github.com/Orkeon/orkeon-code), a coding
 assistant in the terminal; the `orkeon` command line; and the `Orkeon` NuGet package.

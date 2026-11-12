@@ -17,16 +17,16 @@ Orkeon est un framework open source pour construire et orchestrer des équipes d
 le prompt** : un système de fichiers virtuel où chaque chemin est un montage déclaré avec des
 droits déclarés, un bac à sable pour le code, un budget d'exécution pour l'autonomie, des
 capacités sensibles qui restent fermées tant qu'un humain ne les a pas ouvertes — et un
-analyseur Roslyn autonome (`Orkeon.Compliance.Vfs`) qui fait du `System.IO` brut une erreur
-de compilation dans votre propre code. **Ce que l'on met au point est ce que l'on déploie** :
+analyseur Roslyn autonome (`Orkeon.Compliance.Vfs`) qui fait de l'accès direct aux fichiers par
+`System.IO` une erreur de compilation dans votre propre code. **Ce que l'on met au point est ce que l'on déploie** :
 le runtime qui exécute le premier essai est celui qui tourne dans l'application finale, et
 une équipe n'est jamais réécrite pour passer de l'essai au produit. Autour, un framework .NET
-complet pour des crews d'agents : six stratégies d'orchestration, 16 fournisseurs LLM,
+complet pour des équipes d'agents : six stratégies d'orchestration, 16 fournisseurs LLM,
 mémoire, RAG, analyse de code. Il tourne sur un modèle local sans clé API — voir le démarrage
 en deux minutes du [README](README.fr.md#essayez-le-en-deux-minutes--sans-clé-dapi).
 
 Chaque porte d'entrée s'appuie sur le même runtime : [Orkeon Studio](https://github.com/Orkeon/orkeon-studio),
-une application de bureau pour Windows, sans code ni terminal ;
+une application de bureau pour Windows 10 et 11, sans code ni terminal ;
 [Orkeon Workshop](https://github.com/Orkeon/orkeon-workshop), un atelier prêt à l'emploi pour
 concevoir, tester et mesurer des équipes ; [Orkeon Code](https://github.com/Orkeon/orkeon-code),
 un assistant de codage dans le terminal ; la ligne de commande `orkeon` ; et le paquet NuGet
