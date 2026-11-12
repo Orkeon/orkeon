@@ -188,7 +188,7 @@ qui pointe toujours un message `user` ou vaut `-1`), et un buffer qui contient m
 
 ## Les outils dans les commandes (`tools.*` dans `.cmd.ts`)
 
-`JsEngineFactory.Create()` enregistre l'espace de noms `tools`, et la factory de la CLI est
+Chaque moteur que construit `JsEngineFactory` porte l'espace de noms `tools`, et la factory de la CLI est
 construite avec les outils intégrés et le fournisseur LLM : `tools.<camelCase>(params)`
 fonctionne donc dans un handler `.cmd.ts` exactement comme dans une crew. C'est ainsi qu'une
 commande fait elle-même un petit travail plutôt que de payer une crew — lire un fichier,

@@ -179,7 +179,7 @@ fewer turns than asked is left untouched.
 
 ## Tools in commands (`tools.*` in `.cmd.ts`)
 
-`JsEngineFactory.Create()` registers the `tools` namespace, and the CLI factory is
+Every engine `JsEngineFactory` builds has the `tools` namespace, and the CLI factory is
 constructed with the built-in tools and the LLM provider, so `tools.<camelCase>(params)`
 works in a `.cmd.ts` handler exactly as it does in a crew. That is how a command does a small
 piece of work itself instead of paying for a crew — reading a file, formatting a report —

@@ -1916,7 +1916,7 @@ depth of 64 and 30 s by default.
 ### `Orkeon:Scripting:Toolchain`
 
 esbuild toolchain resolution: `EsbuildPath` comes first in the lookup order. Read by
-`EsbuildTranspiler.Create` — `orkeon run`, the shared runner, `orkeon doctor`, `orkeon forge`,
+the esbuild transpiler (`IScriptTranspiler`) of `orkeon run`, the shared runner, `orkeon doctor`, `orkeon forge`,
 `*.cmd.ts` commands.
 
 <!-- settings:Orkeon:Scripting:Toolchain -->

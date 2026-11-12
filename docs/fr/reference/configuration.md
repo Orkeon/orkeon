@@ -1966,7 +1966,7 @@ profondeur de récursion de 64 et 30 s par défaut.
 ### `Orkeon:Scripting:Toolchain`
 
 Résolution de la toolchain esbuild : `EsbuildPath` vient en premier dans l'ordre de recherche.
-Lue par `EsbuildTranspiler.Create` — `orkeon run`, le runner partagé, `orkeon doctor`,
+Lue par le transpileur esbuild (`IScriptTranspiler`) d'`orkeon run`, le runner partagé, `orkeon doctor`,
 `orkeon forge`, les commandes `*.cmd.ts`.
 
 <!-- settings:Orkeon:Scripting:Toolchain -->

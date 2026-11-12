@@ -64,8 +64,8 @@ scripted> /exit
 
 1. Au démarrage, `ScriptCommandLoader` énumère `*.cmd.ts` sous
    `examples/cli-ts-commands/` via `IFileSystemService.EnumerateFilesAsync`.
-2. Chaque script est transpilé par `EsbuildTranspiler` (ou
-   `PassThroughTranspiler` en fallback) puis évalué dans un nouveau
+2. Chaque script est transpilé par l'`IScriptTranspiler` enregistré (esbuild, ou
+   un transpileur sans transformation en fallback) puis évalué dans un nouveau
    `Jint.Engine` avec `globalThis.defineCommand` câblé sur un
    `CommandDescriptorCollector`.
 3. Le collector est figé après `engine.Evaluate(...)`; tout appel ultérieur de
