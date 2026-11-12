@@ -159,7 +159,7 @@ The full generated catalog (process, agents, tools per example) lives in [INDEX.
 | 03 | [Finance & Trading](03-finance-trading/) | 15 | Finance & trading — algo trading, fraud detection, compliance, ESG (TypeScript crews + the shared `_tools/` module) |
 | 04 | [Health & Wellness](04-health-wellness/) | 10 | Health & wellness — diagnosis, nutrition, clinical trials, telemedicine |
 | 05 | [Education](05-education/) | 10 | Education & training — tutoring, exams, gamification, mentoring |
-| 06 | [Engineering & DevOps](06-engineering-devops/) | 12 | Engineering & DevOps — CI/CD, incident response, chaos engineering, TS-scripted codebase crews |
+| 06 | [Engineering & DevOps](06-engineering-devops/) | 11 | Engineering & DevOps — CI/CD, incident response, chaos engineering, TS-scripted codebase crews |
 | 07 | [Creative & Media](07-creative-media/) | 10 | Creative & media — narrative, podcast, music, worldbuilding |
 | 08 | [IoT & Smart Systems](08-iot-smart-systems/) | 10 | IoT, physical world & smart systems — smart home, fleet, energy |
 | 09 | [Experimental](09-experimental/) | 7 | Avant-garde & experimental — self-adaptive crews, civilization sim, graph orchestration, streaming |

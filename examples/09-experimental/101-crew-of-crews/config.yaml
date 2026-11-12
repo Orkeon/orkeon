@@ -1,6 +1,5 @@
-# 101. Crew de Crews — L'Orchestre des Orchestres
+# 101. Crew of Crews — The Orchestra of Orchestras
 # Use case: meta-crew where each "agent" is itself a complete crew, routed by semantic embedding selection
-# TODO: feature planifiee — IConfigurationVersioning, semantic embedding selection for sub-crew routing
 
 name: "crew-of-crews"
 goal: "Orchestrate a meta-crew where each agent represents a complete sub-crew (Research, Development, Test, Documentation), with semantic embedding-based task routing, inter-crew A2A communication, multi-level checkpointing, and comprehensive audit trail"

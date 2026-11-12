@@ -1,18 +1,18 @@
-# 81. Worldbuilding Cohérent Consensus Croisé
+# 81. Coherent Worldbuilding: Cross-Validation Consensus
 
-> Quatre agents construisent un monde fictif en parallèle puis valident la cohérence croisée par consensus. La mémoire composite maintient la bible du monde.
+> Four agents build a fictional world (geography, history, society, language), then a Coherence Guardian cross-validates the dimensions by consensus and compiles the world bible.
 
 ## Quality
 
-✅ Fiabilite — Memoire composite, coherence verifiable par consensus croise inter-dimensions
+✅ Reliability — Coherence verified by cross-dimension consensus
 
 ## Architecture
 
 - **Process**: `consensual`
 - **Agents**: 5 — Geographer, Historian, Sociologist, Linguist, Coherence Guardian
 - **Tools**: `json_tool`, `file_write`, `file_read`
-- **Memory**: `SQLite` (Composite planned: ShortTerm + LongTerm world bible)
-- **Key features**: Composite memory (planned), IKnowledgeSource (world bible), cross-validation consensus, batch execution
+- **Memory**: crew memory enabled (`memory: true`)
+- **Key features**: IKnowledgeSource (world bible), cross-validation consensus, batch execution
 - **Runner**: `standard`
 
 ## Prerequisites

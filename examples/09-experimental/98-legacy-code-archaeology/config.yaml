@@ -1,9 +1,8 @@
-# 98. Archeologie Numerique de Codebase Legacy
-# Use case: five agents explore an unknown codebase and produce complete documentation using composite memory
-# TODO: feature planifiee — Composite memory (ShortTerm: session + LongTerm: codebase mental model)
+# 98. Legacy Codebase Archaeology
+# Use case: five agents explore an unknown codebase and produce complete documentation, sharing findings through crew memory
 
 name: "legacy-code-archaeology"
-goal: "Explore an unknown legacy codebase with five specialized agents that progressively build a mental model in composite memory and produce complete documentation including architecture diagrams, pattern analysis, and modernization recommendations"
+goal: "Explore an unknown legacy codebase with five specialized agents that progressively build a mental model in crew memory and produce complete documentation including architecture diagrams, pattern analysis, and modernization recommendations"
 process: "sequential"
 verbose: true
 memory: true
@@ -18,7 +17,7 @@ agents:
       You are the first explorer of the unknown codebase. You systematically
       traverse the directory tree, catalog file types, identify build systems,
       count lines of code per module, and map the overall architecture.
-      You build the initial mental model in composite memory that other
+      You build the initial mental model in crew memory that other
       agents will refine. You identify entry points (main, controllers,
       APIs) and configuration files that reveal the system's structure.
     tools:

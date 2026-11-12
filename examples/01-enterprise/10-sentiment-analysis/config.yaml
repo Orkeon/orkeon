@@ -1,9 +1,8 @@
 # 10. Analyse de Sentiment Client Multi-Plateforme
-# Use case: Multi-platform sentiment analysis with parallel collection and composite memory for trending
-# TODO: feature planifiee — Composite Memory (SQLite + Redis)
+# Use case: Multi-platform sentiment analysis with parallel collection and aggregation into thematic scores
 
 name: "sentiment-analysis"
-goal: "Collect and analyze customer sentiment from multiple platforms in parallel, aggregate into thematic scores with historical trending"
+goal: "Collect and analyze customer sentiment from multiple platforms in parallel, aggregate into thematic scores"
 process: "parallel"
 verbose: true
 memory: true

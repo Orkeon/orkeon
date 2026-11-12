@@ -1,18 +1,18 @@
-# 70. Documentation Technique Versionnée
+# 70. Documentation Technique Générée depuis le Code
 
-> Les agents extraient et documentent la doc technique. Le IConfigurationVersioning versionne chaque révision. Le IConfigurationDiffService montre les changements entre versions.
+> Agents extract technical documentation from a codebase, document the APIs, draw the architecture and have an editor check the coherence of the whole. The output is written as files, ready to be versioned with the code.
 
 ## Quality
 
-🎯 Simplicite — Doc versionnee comme du code, diff entre versions, extraction automatique
+🎯 Simplicity — Documentation generated from code, automatic extraction, coherence check
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 4 — Code Extractor, API Documenter, Architecture Diagrammer, Coherence Editor
 - **Tools**: `file_read`, `directory_read`, `github`, `json_tool`, `file_write`
-- **Memory**: `SQLite`
-- **Key features**: IConfigurationVersioning (planned), IConfigurationDiffService (planned), IDocumentLoader, ITextChunker
+- **Memory**: crew memory enabled (`memory: true`)
+- **Key features**: IDocumentLoader, ITextChunker
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -38,5 +38,5 @@ orkeon run examples/06-engineering-devops/70-versioned-documentation/config.yaml
 ## What this example demonstrates
 
 - Automatic code-to-documentation extraction pipeline
-- Documentation versioning with diff between revisions (planned feature)
+- Documentation written as plain files, ready to be versioned with the code
 - Coherence verification across all documentation sections

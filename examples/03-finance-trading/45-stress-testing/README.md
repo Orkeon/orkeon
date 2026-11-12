@@ -1,18 +1,18 @@
-# 45. Stress Testing Réglementaire Rejouable
+# 45. Regulatory Stress Testing
 
-> Scénarios de stress versionnés et rejouables. Le IConfigurationVersioning permet de rejouer n'importe quel scénario passe à l'identique. Conformité NIST complète. (Features planifiées: IConfigurationVersioning, IConfigurationRollbackService)
+> A sequential pipeline designs regulatory stress scenarios, models them, produces the regulatory report and closes with a NIST compliance audit.
 
 ## Quality
 
-:lock: Securite -- Scenarios versionnes, conformite NIST, audit trail, chiffrement
+:lock: Security -- NIST compliance audit, audit trail, output validation
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 4 -- Scenario Designer, Stress Test Modeler, Regulatory Reporter, Compliance Agent
 - **Tools**: `csv_reader`, `http_api`, `json_tool`, `database_query`, `file_write`
-- **Memory**: `EncryptedSQLite`
-- **Key features**: INistComplianceReporter, IConfigurationVersioning (planned), IConfigurationRollbackService (planned), AuditEventTypes, output validation
+- **Memory**: crew memory enabled (`.memory(true)`)
+- **Key features**: INistComplianceReporter, AuditEventTypes, output validation
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites
@@ -37,6 +37,6 @@ orkeon run examples/03-finance-trading/45-stress-testing/main.ork.ts \
 
 ## What this example demonstrates
 
-- Versioned and replayable regulatory stress test scenarios
+- Regulatory stress test scenario design (Basel III/IV, CCAR, EBA)
 - Sequential pipeline from scenario design through modeling, reporting, and NIST audit
-- Encrypted data storage with complete audit trail for regulatory compliance
+- Complete audit trail and NIST compliance review for regulatory use

@@ -92,7 +92,7 @@ Runner: `standard` · 15 examples · folder [`03-finance-trading/`](03-finance-t
 | 42 | [42. Pricing Dynamique Arbitrage Hiérarchique](03-finance-trading/42-dynamic-pricing/) | Hierarchical | 4 | 3 | `http_api`, `csv_reader`, `json_tool`, `web_scrape`, `file_write`, `market_regime_classification`, `alternative_data`, `dashboard_metrics` | ✅ |
 | 43 | [43. Optimisation Fiscale Multi-Juridictions](03-finance-trading/43-tax-optimization/) | Parallel | 5 | 5 | `http_api`, `pdf_reader`, `json_tool`, `csv_reader`, `file_write`, `regulatory_reporting`, `audit_trail` | ✅ |
 | 44 | [44. Analyse ESG Scoring Reproductible](03-finance-trading/44-esg-scoring/) | Parallel | 5 | 5 | `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`, `alternative_data`, `dashboard_metrics` | ✅ |
-| 45 | [45. Stress Testing Réglementaire Rejouable](03-finance-trading/45-stress-testing/) | Sequential | 4 | 4 | `csv_reader`, `http_api`, `json_tool`, `relational_database_query`, `file_write`, `stress_testing`, `var_calculation`, `cvar_calculation`, `factor_exposure`, `correlation_analysis`, `regulatory_reporting`, `audit_trail` | ✅ |
+| 45 | [45. Regulatory Stress Testing](03-finance-trading/45-stress-testing/) | Sequential | 4 | 4 | `csv_reader`, `http_api`, `json_tool`, `relational_database_query`, `file_write`, `stress_testing`, `var_calculation`, `cvar_calculation`, `factor_exposure`, `correlation_analysis`, `regulatory_reporting`, `audit_trail` | ✅ |
 
 ## 04 - Sante & Bien-etre (46-55)
 
@@ -138,7 +138,7 @@ Runner: `standard` · 11 examples · folder [`06-engineering-devops/`](06-engine
 | 67 | [67. Incident Response — Humain Valide en Prod](06-engineering-devops/67-incident-response/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `relational_database_query`, `file_write` | ✅ |
 | 68 | [68. Migration de Base de Données — Reprise Exacte](06-engineering-devops/68-database-migration/) | Sequential | 4 | 4 | `relational_database_query`, `json_tool`, `file_write`, `file_read` | ✅ |
 | 69 | [69. Analyse de Performance 4 Couches](06-engineering-devops/69-performance-analysis/) | Parallel | 5 | 5 | `http_api`, `json_tool`, `relational_database_query`, `file_write` | ✅ |
-| 70 | [70. Documentation Technique Versionnée](06-engineering-devops/70-versioned-documentation/) | Sequential | 4 | 4 | `file_read`, `directory_read`, `json_tool`, `github`, `file_write` | ✅ |
+| 70 | [70. Documentation Technique Générée depuis le Code](06-engineering-devops/70-versioned-documentation/) | Sequential | 4 | 4 | `file_read`, `directory_read`, `json_tool`, `github`, `file_write` | ✅ |
 | 71 | [71. Multi-Pillar Cloud Audit (NIST)](06-engineering-devops/71-cloud-audit-nist/) | Parallel | 6 | 6 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
 | 72 | [72. Test de Charge Trending Historique](06-engineering-devops/72-load-testing/) | Sequential | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
 | 73 | [73. Refactoring Sécurisé Sandbox](06-engineering-devops/73-secure-refactoring/) | Sequential | 4 | 4 | `file_read`, `directory_read`, `json_tool`, `file_write`, `shell_command` | ✅ |
@@ -152,12 +152,12 @@ Runner: `standard` · 10 examples · folder [`07-creative-media/`](07-creative-m
 
 | # | Example | Process | Agents | Tasks | Tools | README |
 |---|---------|---------|:------:|:-----:|-------|:------:|
-| 76 | [76. Studio Narratif Création-Révision](07-creative-media/76-narrative-studio/) | Sequential | 4 | 4 | `file_read`, `file_write`, `json_tool` | ✅ |
+| 76 | [76. Narrative Studio: Creation-Revision](07-creative-media/76-narrative-studio/) | Sequential | 4 | 4 | `file_read`, `file_write`, `json_tool` | ✅ |
 | 77 | [77. Production de Podcast Pipeline Typé](07-creative-media/77-podcast-production/) | Sequential | 4 | 4 | `web_scrape`, `http_api`, `json_tool`, `file_write`, `file_read` | ✅ |
 | 78 | [78. Privacy-Safe Synthetic Data](07-creative-media/78-synthetic-data/) | Sequential | 4 | 4 | `csv_reader`, `json_tool`, `file_write` | ✅ |
 | 79 | [79. Composition Musicale par Consensus](07-creative-media/79-music-composition/) | Consensual | 5 | 5 | `json_tool`, `file_write` | ✅ |
 | 80 | [80. Direction Artistique Délégation Report](07-creative-media/80-art-direction/) | Hierarchical | 5 | 4 | `json_tool`, `file_write`, `web_scrape`, `http_api` | ✅ |
-| 81 | [81. Worldbuilding Cohérent Consensus Croisé](07-creative-media/81-worldbuilding/) | Consensual | 5 | 5 | `json_tool`, `file_write`, `file_read` | ✅ |
+| 81 | [81. Coherent Worldbuilding: Cross-Validation Consensus](07-creative-media/81-worldbuilding/) | Consensual | 5 | 5 | `json_tool`, `file_write`, `file_read` | ✅ |
 | 82 | [82. Curation de Newsletter Scraping](07-creative-media/82-newsletter-curation/) | Parallel | 5 | 5 | `web_scrape`, `http_api`, `json_tool`, `pdf_reader`, `file_write` | ✅ |
 | 83 | [83. Fiction Interactive à Choix](07-creative-media/83-interactive-fiction/) | Sequential | 3 | 4 | `json_tool`, `file_write`, `file_read` | ✅ |
 | 84 | [84. Critique Multi-Perspectives](07-creative-media/84-multi-perspective-critique/) | Parallel | 4 | 4 | `file_read`, `json_tool`, `web_scrape`, `file_write` | ✅ |
@@ -188,10 +188,10 @@ Runner: `standard` · 7 examples · folder [`09-experimental/`](09-experimental/
 |---|---------|---------|:------:|:-----:|-------|:------:|
 | 96 | [96. Crew Évolutive Auto-Adaptative](09-experimental/96-self-adaptive-crew/) | Sequential | 4 | 5 | `json_tool`, `file_write`, `web_scrape` | ✅ |
 | 97 | [97. Multi-Party Negotiation](09-experimental/97-multi-party-negotiation/) | Consensual | 7 | 6 | `json_tool`, `file_write` | ✅ |
-| 98 | [98. Archéologie Numérique de Codebase Legacy](09-experimental/98-legacy-code-archaeology/) | Sequential | 5 | 5 | `directory_read`, `file_read`, `json_tool`, `file_write`, `github` | ✅ |
+| 98 | [98. Legacy Codebase Archaeology](09-experimental/98-legacy-code-archaeology/) | Sequential | 5 | 5 | `directory_read`, `file_read`, `json_tool`, `file_write`, `github` | ✅ |
 | 99 | [99. Jury Éthique Multi-Perspectives pour Décisions IA](09-experimental/99-ethics-jury/) | Parallel | 7 | 7 | `json_tool`, `file_write`, `web_scrape` | ✅ |
-| 100 | [100. Simulateur de Civilisation Émergente](09-experimental/100-civilization-simulator/) | Sequential | 8 | 9 | `json_tool`, `file_write` | ✅ |
-| 101 | [101. Crew de Crews — L'Orchestre des Orchestres](09-experimental/101-crew-of-crews/) | Hierarchical | 5 | 6 | `json_tool`, `file_write`, `semantic_search`, `web_scrape`, `http_api`, `file_read`, `shell_command`, `directory_read` | ✅ |
+| 100 | [100. Emergent Civilization Simulator](09-experimental/100-civilization-simulator/) | Sequential | 8 | 9 | `json_tool`, `file_write` | ✅ |
+| 101 | [101. Crew of Crews — The Orchestra of Orchestras](09-experimental/101-crew-of-crews/) | Hierarchical | 5 | 6 | `json_tool`, `file_write`, `semantic_search`, `web_scrape`, `http_api`, `file_read`, `shell_command`, `directory_read` | ✅ |
 | 102 | [102. Graph-Based Orchestration (LangGraph-Style)](09-experimental/102-graph-orchestration/) | Graph | 4 | 4 | `web_scrape`, `http_api`, `json_tool`, `file_write` | ✅ |
 
 ## Other examples (not in the numbered catalog)

@@ -1,18 +1,18 @@
-# 98. Archéologie Numérique de Codebase Legacy
+# 98. Legacy Codebase Archaeology
 
-> Five agents explore an unknown codebase and produce complete documentation. Composite memory progressively builds a mental model.
+> Five agents explore an unknown codebase and produce complete documentation. Crew memory (`SQLite`) progressively builds a mental model.
 
 ## Quality
 
-🎯 Simplicite — Point to a repository, get complete documentation with evolving composite memory
+🎯 Simplicite — Point to a repository, get complete documentation with evolving crew memory
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 5 — Structure Cartographer, Git Archaeologist, Pattern Decoder, Documenter, Modernization Planner
 - **Tools**: `directory_read`, `file_read`, `github`, `json_tool`, `file_write`
-- **Memory**: `SQLite` (composite: ShortTerm session + LongTerm codebase mental model, planned)
-- **Key features**: Composite memory (planned), IDocumentLoader, ITextChunker, IKnowledgeSource, IContextWindowManager
+- **Memory**: `SQLite`
+- **Key features**: IDocumentLoader, ITextChunker, IKnowledgeSource, IContextWindowManager
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -38,5 +38,5 @@ orkeon run examples/09-experimental/98-legacy-code-archaeology/config.yaml \
 ## What this example demonstrates
 
 - Progressive codebase understanding through specialized exploration agents
-- Composite memory that builds a mental model enriched by each exploration phase
+- Crew memory that builds a mental model enriched by each exploration phase
 - End-to-end pipeline from raw codebase to documentation and modernization plan

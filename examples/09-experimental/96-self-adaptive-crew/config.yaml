@@ -1,9 +1,8 @@
 # 96. Crew Evolutive Auto-Adaptative
 # Use case: meta-crew where an Architect agent observes performance and dynamically reconfigures the team
-# TODO: feature planifiee — IConfigurationVersioning, IConfigurationRollbackService, IConfigurationDiffService
 
 name: "self-adaptive-crew"
-goal: "Build a self-optimizing meta-crew where a Performance Monitor observes execution metrics and an Architect agent dynamically reconfigures the team composition, with configuration versioning and automatic rollback when performance degrades"
+goal: "Build a self-optimizing meta-crew where a Performance Monitor observes execution metrics and an Architect agent dynamically reconfigures the team composition; the proposed configuration is written out for review"
 process: "sequential"
 verbose: true
 memory: true
@@ -39,9 +38,8 @@ agents:
       a new crew configuration. You may add agents, remove underperforming
       ones, reassign tools, adjust iteration limits, modify task
       dependencies, or change the process type. Each new configuration
-      is versioned via IConfigurationVersioning. If the new configuration
-      performs worse, IConfigurationRollbackService restores the previous
-      version automatically.
+      is written out as a JSON document, with the rollback conditions
+      to apply if it performs worse.
     tools:
       - "json_tool"
       - "file_write"
@@ -115,8 +113,8 @@ tasks:
     humanInput: false
 
   reconfigure_crew:
-    description: "Generate an optimized crew configuration based on performance analysis, version it, and prepare for deployment with automatic rollback if performance degrades"
-    expectedOutput: "New versioned configuration with changes documented, expected improvements, rollback triggers defined, and diff from previous version"
+    description: "Generate an optimized crew configuration based on performance analysis, and document it with rollback conditions"
+    expectedOutput: "New configuration proposal with changes documented, expected improvements, rollback triggers defined, and differences from the previous configuration"
     agent: "architect_reconfigurator"
     dependencies: ["analyze_performance"]
     asyncExecution: false

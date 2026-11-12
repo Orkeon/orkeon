@@ -1,9 +1,8 @@
 /// <reference orkeon-script="1.0" />
 // orkeon-example: {"process":"sequential","agents":4,"tasks":4,"tools":["csv_reader","http_api","json_tool","relational_database_query","file_write","stress_testing","var_calculation","cvar_calculation","factor_exposure","correlation_analysis","regulatory_reporting","audit_trail"]}
 //
-// 45. Stress Testing Reglementaire Rejouable
-// Use case: Scenarios de stress versionnes et rejouables avec conformite NIST complete
-// TODO: feature planifiee — IConfigurationVersioning, IConfigurationRollbackService
+// 45. Regulatory Stress Testing
+// Use case: Regulatory stress test scenarios designed, modeled and reported with a NIST compliance audit
 
 import { pickTools } from "../_tools/index.ts";
 
@@ -98,7 +97,7 @@ const auditCompliance = taskBuilder()
 
 const crew = crewBuilder()
     .name("stress-testing")
-    .goal("Execute regulatory stress tests with versioned replayable scenarios, NIST audit compliance, and encrypted data")
+    .goal("Execute regulatory stress tests with NIST audit compliance and a full audit trail")
     .process("sequential")
     .memory(true)
     .verbose(true)
