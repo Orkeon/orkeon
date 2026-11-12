@@ -224,5 +224,46 @@ class VersionMentionTests(unittest.TestCase):
             self.assertIsNone(gate.VERSION_MENTION.search(line), line)
 
 
+class TagOrderTests(unittest.TestCase):
+    """The newest `v*` tag is the one the version order puts last: a final release comes after
+    its own release candidates, whatever the order the tags were created in."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp(prefix="doc-claims-tags-"))
+        self._saved_root = gate.ROOT
+        gate.ROOT = self.root
+        gate.ERRORS.clear()
+        _git(self.root, "init", "-q")
+        _git(self.root, "commit", "-q", "--allow-empty", "-m", "seed")
+
+    def tearDown(self) -> None:
+        gate.ROOT = self._saved_root
+        gate.ERRORS.clear()
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    def tag(self, *names: str) -> None:
+        for name in names:
+            _git(self.root, "tag", name)
+
+    def test_a_final_release_is_newer_than_its_release_candidates(self) -> None:
+        self.tag("v1.0.0-rc.9", "v1.0.0-rc.10", "v1.0.0")
+        self.assertEqual(["v1.0.0", "v1.0.0-rc.10", "v1.0.0-rc.9"], gate.git_tags())
+
+    def test_the_tagged_final_version_passes_next_to_its_release_candidates(self) -> None:
+        self.tag("v1.0.0-rc.7", "v1.0.0")
+        gate.check_tag_matches_version("1.0.0")
+        self.assertEqual([], gate.ERRORS)
+
+    def test_a_version_left_behind_a_newer_tag_is_reported(self) -> None:
+        self.tag("v1.0.0", "v1.0.1-rc.1")
+        gate.check_tag_matches_version("1.0.0")
+        self.assertEqual(1, len(gate.ERRORS))
+        self.assertIn("v1.0.1-rc.1 is newer", gate.ERRORS[0])
+
+    def test_a_clone_without_tags_proves_nothing(self) -> None:
+        gate.check_tag_matches_version("1.0.0")
+        self.assertEqual([], gate.ERRORS)
+
+
 if __name__ == "__main__":
     unittest.main()
