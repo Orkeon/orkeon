@@ -14,7 +14,7 @@ namespace Orkeon.Scripting.Builders;
 /// </summary>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop mirror of TaskBuilder in Typings/task.d.ts; that declaration is the contract scripts read.
-public sealed class JsTaskBuilder
+internal sealed class JsTaskBuilder
 {
     private string? _name;
     private string? _description;

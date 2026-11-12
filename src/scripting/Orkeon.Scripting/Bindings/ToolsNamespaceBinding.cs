@@ -19,7 +19,7 @@ namespace Orkeon.Scripting.Bindings;
 /// <see cref="IBaseTool"/> is exposed under its name converted from snake_case to
 /// camelCase (e.g. <c>file_read</c> → <c>tools.fileRead</c>).
 /// </summary>
-public static partial class ToolsNamespaceBinding
+internal static partial class ToolsNamespaceBinding
 {
     /// <summary>Name of the global namespace exposed to scripts.</summary>
     public const string GlobalName = "tools";

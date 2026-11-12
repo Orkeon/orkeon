@@ -6,7 +6,7 @@ namespace Orkeon.Scripting.Bindings;
 /// <summary>
 /// Registers the global <c>agentBuilder()</c> function on a Jint engine.
 /// </summary>
-public static class AgentBuilderBinding
+internal static class AgentBuilderBinding
 {
     /// <summary>Name of the global function exposed to scripts.</summary>
     public const string GlobalName = "agentBuilder";

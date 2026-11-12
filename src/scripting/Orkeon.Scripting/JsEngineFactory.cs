@@ -129,7 +129,7 @@ public sealed class JsEngineFactory
     /// </summary>
     /// <param name="options">The options being built for a new engine.</param>
     /// <returns>The same instance, so it can be chained.</returns>
-    public static Jint.Options ApplyInteropPolicy(Jint.Options options)
+    internal static Jint.Options ApplyInteropPolicy(Jint.Options options)
     {
         ArgumentNullException.ThrowIfNull(options);
         options.Interop.ArrayConversion = ArrayConversionMode.Copy;
@@ -159,7 +159,7 @@ public sealed class JsEngineFactory
     /// disposed, for a wait that belongs to the operator (a question the script asked). Null on an engine with no
     /// such clock.
     /// </summary>
-    public static IDisposable? PauseExecutionClock(Engine engine)
+    internal static IDisposable? PauseExecutionClock(Engine engine)
     {
         ArgumentNullException.ThrowIfNull(engine);
         return engine.Constraints.Find<Runtime.PausableTimeConstraint>()?.Pause();
@@ -177,7 +177,7 @@ public sealed class JsEngineFactory
     /// <summary>
     /// Creates a fresh, isolated <see cref="Engine"/> with the configured sandbox limits.
     /// </summary>
-    public Engine Create()
+    internal Engine Create()
     {
         var engine = new Engine(opt =>
         {

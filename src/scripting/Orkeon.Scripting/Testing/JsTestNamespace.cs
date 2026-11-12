@@ -10,7 +10,7 @@ namespace Orkeon.Scripting.Testing;
 /// (<c>test.assertLlmCalled</c>, <c>test.assertToolCalled</c>).
 /// </summary>
 #pragma warning disable IDE1006
-public sealed class JsTestNamespace
+internal sealed class JsTestNamespace
 {
     /// <summary>Provider the runtime binds in place of a real one; records every call it serves.</summary>
     public MockLlmProvider Llm { get; }
@@ -100,7 +100,7 @@ public sealed class JsTestNamespace
 /// <summary>
 /// Script handle exposed as <c>test.mockLlm</c>; opens an expectation on the mock provider.
 /// </summary>
-public sealed class JsMockLlmHandle
+internal sealed class JsMockLlmHandle
 {
     private readonly MockLlmProvider _provider;
     internal JsMockLlmHandle(MockLlmProvider provider) { _provider = provider; }
@@ -115,7 +115,7 @@ public sealed class JsMockLlmHandle
 /// <summary>
 /// Builds mock-LLM expectations in the scripting test namespace.
 /// </summary>
-public sealed class JsMockLlmExpectationBuilder
+internal sealed class JsMockLlmExpectationBuilder
 {
     private readonly MockLlmProvider _provider;
     private readonly JsValue _matcher;
@@ -158,7 +158,7 @@ public sealed class JsMockLlmExpectationBuilder
 /// <summary>
 /// Script handle exposed as <c>test.mockTool(name)</c>; configures one mock tool.
 /// </summary>
-public sealed class JsMockToolHandle
+internal sealed class JsMockToolHandle
 {
     private readonly MockTool _tool;
     internal JsMockToolHandle(MockTool tool) { _tool = tool; }
@@ -180,7 +180,7 @@ public sealed class JsMockToolHandle
 /// <summary>
 /// Builds mock-tool expectations in the scripting test namespace.
 /// </summary>
-public sealed class JsMockToolExpectationBuilder
+internal sealed class JsMockToolExpectationBuilder
 {
     private readonly MockTool _tool;
     private readonly JsValue _matcher;

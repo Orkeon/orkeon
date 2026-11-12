@@ -6,7 +6,7 @@ namespace Orkeon.Scripting.Bindings;
 /// <summary>
 /// Registers the global <c>toolBuilder()</c> function on a Jint engine.
 /// </summary>
-public static class ToolBuilderBinding
+internal static class ToolBuilderBinding
 {
     /// <summary>Name of the global function exposed to scripts.</summary>
     public const string GlobalName = "toolBuilder";
