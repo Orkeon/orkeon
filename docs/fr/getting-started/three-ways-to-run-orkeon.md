@@ -579,9 +579,16 @@ la variable d'environnement `ORKEON_ENTRYPOINT` — `orkeon` (la valeur par déf
 
 ```bash
 docker run -it --rm -e ORKEON_ENTRYPOINT=repl \
+  -v "$PWD:/workspace" \
   -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
-  ghcr.io/orkeon/orkeon
+  ghcr.io/orkeon/orkeon --settings /app/appsettings.local.json
 ```
+
+Tout ce qui suit le nom de l'image va au REPL, qui ne lit ses réglages que depuis
+`--settings` (un fichier monté n'est pas lu de lui-même), comme hors de Docker. L'image lui
+monte `/workspace` en lecture-écriture, le projet que vous y liez : un `--mount` sur
+`/workspace`, ou un fichier `--settings` qui déclare `Orkeon:FileSystem:Mounts`, remplace ce
+montage par défaut. Sans `--settings`, le REPL tourne sur le provider echo et le signale.
 
 Il n'y a pas d'exécutable par famille d'exemples : les crews finance sont des
 scripts `main.ork.ts` qu'exécute la même CLI `orkeon`, comme tous les autres

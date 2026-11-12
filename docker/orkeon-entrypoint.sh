@@ -36,7 +36,8 @@ fi
 # --- Entrypoint dispatch ---------------------------------------------------------
 case "${ORKEON_ENTRYPOINT:-orkeon}" in
   orkeon)       set -- dotnet /app/runners/orkeon/orkeon.dll "$@" ;;
-  repl)         set -- dotnet /app/runners/repl/Orkeon.ConsoleApp.dll "$@" ;;
+  # The wrapper gives the REPL its default /workspace mount (see Dockerfile.runners).
+  repl)         set -- /usr/local/bin/orkeon-repl "$@" ;;
   shell)        cd /workspace && set -- zsh "$@" ;;
   *) echo "Unknown ORKEON_ENTRYPOINT=$ORKEON_ENTRYPOINT (expected: orkeon|repl|shell)" >&2; exit 2 ;;
 esac

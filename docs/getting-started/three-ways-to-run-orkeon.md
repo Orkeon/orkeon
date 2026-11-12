@@ -556,9 +556,16 @@ value is rejected with a usage line:
 
 ```bash
 docker run -it --rm -e ORKEON_ENTRYPOINT=repl \
+  -v "$PWD:/workspace" \
   -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
-  ghcr.io/orkeon/orkeon
+  ghcr.io/orkeon/orkeon --settings /app/appsettings.local.json
 ```
+
+Everything after the image name goes to the REPL, which reads its settings only from
+`--settings` (a mounted file is not read on its own), as outside Docker. The image mounts
+`/workspace` read-write for it, the project you bind there: a `--mount` on `/workspace`, or a
+`--settings` file declaring `Orkeon:FileSystem:Mounts`, replaces that default. Without
+`--settings` the REPL runs on the echo provider and says so.
 
 There is no executable per example family: the finance crews are `main.ork.ts`
 scripts the same `orkeon` CLI runs, like every other example.

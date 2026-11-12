@@ -1076,6 +1076,23 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # The documented REPL start, smoked before anything is pushed: the linux/amd64 image is
+      # loaded locally (the builder's cache serves the push below), then `ORKEON_ENTRYPOINT=repl`
+      # with nothing else must reach its prompt and leave on `exit` with code 0. Its wrapper
+      # gives it the /workspace mount it cannot start without.
+      - name: Build the linux/amd64 image for the REPL smoke
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile.runners
+          platforms: linux/amd64
+          provenance: false
+          load: true
+          tags: orkeon-smoke:repl
+      - name: Start the REPL of the image and leave it
+        run: |
+          printf 'exit\n' | timeout 120 docker run -i --rm -e ORKEON_ENTRYPOINT=repl \
+            orkeon-smoke:repl --ui plain
       # provenance: false keeps the image as it was, unattested (publication-matrix.md): with a
       # docker-container builder the action would add attestation manifests, shown as
       # unknown/unknown platforms in the index.
