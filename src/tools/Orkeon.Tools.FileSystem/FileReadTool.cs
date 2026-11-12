@@ -23,32 +23,32 @@ public sealed class FileReadRequest
     /// <summary>The file path to read from.</summary>
     [JsonPropertyName("path")]
     [FieldSchema(Description = "The file path to read from", Example = "/workspace/config.json")]
-    public string Path { get; set; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
 
     /// <summary>The text encoding to use (default: UTF-8).</summary>
     [JsonPropertyName("encoding")]
     [FieldSchema(Description = "The text encoding to use (default: UTF-8)", IsRequired = false, Example = "UTF-8", Default = "UTF-8", Enum = new[] { "UTF-8", "ASCII", "Unicode", "UTF-32" })]
-    public string Encoding { get; set; } = FileDefaults.DefaultEncoding;
+    public string Encoding { get; init; } = FileDefaults.DefaultEncoding;
 
     /// <summary>Maximum number of characters to read (default: no limit).</summary>
     [JsonPropertyName("max_length")]
     [FieldSchema(Description = "Maximum number of characters to read (default: no limit). Applied after offset/limit: when it cuts a line range, only whole lines are kept and has_more is true, except that when the first line alone exceeds max_length it is cut by characters.", IsRequired = false, Example = 10000)]
-    public int? MaxLength { get; set; }
+    public int? MaxLength { get; init; }
 
     /// <summary>When true, attempts to serve content from the RaggableTree index if a module matches by path and SHA-256.</summary>
     [JsonPropertyName("use_raggable_cache")]
     [FieldSchema(Description = "Serve from RaggableTree index when available (path + SHA-256 match); falls back to disk otherwise.", IsRequired = false, Example = false, Default = false)]
-    public bool UseRaggableCache { get; set; }
+    public bool UseRaggableCache { get; init; }
 
     /// <summary>First line to return (1-based).</summary>
     [JsonPropertyName("offset")]
     [FieldSchema(Description = "First line to return (1-based, default 1 when limit is given). With offset/limit the file is streamed and not read beyond the range; max_length then caps the range", IsRequired = false, Example = 1)]
-    public int? Offset { get; set; }
+    public int? Offset { get; init; }
 
     /// <summary>Maximum number of lines to return.</summary>
     [JsonPropertyName("limit")]
     [FieldSchema(Description = "Maximum number of lines to return (default: up to the end of the file); max_length caps the result further", IsRequired = false, Example = 100)]
-    public int? Limit { get; set; }
+    public int? Limit { get; init; }
 
     /// <summary>Initializes a new instance of <see cref="FileReadRequest"/>.</summary>
     public FileReadRequest() { }
@@ -62,37 +62,37 @@ public sealed class FileReadResponse
     /// <summary>The text content of the file.</summary>
     [JsonPropertyName("content")]
     [ReturnSchema(Description = "The text content of the file", Example = "{\n  \"name\": \"config\"\n}")]
-    public string Content { get; set; } = string.Empty;
+    public string Content { get; init; } = string.Empty;
 
     /// <summary>File metadata: size, extension, last modified, etc.</summary>
     [JsonPropertyName("file_info")]
     [ReturnSchema(Description = "File metadata: size, extension, last modified, etc.")]
-    public Dictionary<string, object> FileInfo { get; init; } = [];
+    public IReadOnlyDictionary<string, object> FileInfo { get; init; } = System.Collections.ObjectModel.ReadOnlyDictionary<string, object>.Empty;
 
     /// <summary>Whether the content was truncated due to max_length.</summary>
     [JsonPropertyName("truncated")]
     [ReturnSchema(Description = "Whether the content was truncated due to max_length", Example = false)]
-    public bool Truncated { get; set; }
+    public bool Truncated { get; init; }
 
     /// <summary>First line served (1-based).</summary>
     [JsonPropertyName("start_line")]
     [ReturnSchema(Description = "First line served (1-based)", Example = 1)]
-    public int? StartLine { get; set; }
+    public int? StartLine { get; init; }
 
     /// <summary>Last line served.</summary>
     [JsonPropertyName("end_line")]
     [ReturnSchema(Description = "Last line served", Example = 100)]
-    public int? EndLine { get; set; }
+    public int? EndLine { get; init; }
 
     /// <summary>Whether the file continues after the served range.</summary>
     [JsonPropertyName("has_more")]
     [ReturnSchema(Description = "Whether the file continues after the served range", Example = false)]
-    public bool HasMore { get; set; }
+    public bool HasMore { get; init; }
 
     /// <summary>Whether the content was served from the RaggableTree index rather than disk.</summary>
     [JsonPropertyName("served_from_cache")]
     [ReturnSchema(Description = "True when the content was served from the RaggableTree index (path + SHA-256 match).", Example = false)]
-    public bool ServedFromCache { get; set; }
+    public bool ServedFromCache { get; init; }
 }
 
 // ── Tool implementation ──────────────────────────────────────────────────

@@ -180,7 +180,7 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
         };
     }
 
-    private static void AddParameters(System.Data.Common.DbCommand command, Dictionary<string, object>? parameters)
+    private static void AddParameters(System.Data.Common.DbCommand command, IReadOnlyDictionary<string, object>? parameters)
     {
         if (parameters is null) return;
 

@@ -20,40 +20,40 @@ namespace Orkeon.Tools.Web;
 /// </summary>
 public sealed class ImageGenerationRequest
 {
-    /// <summary>Gets or sets the text description of the image to generate.</summary>
+    /// <summary>Gets the text description of the image to generate.</summary>
     [JsonPropertyName("prompt")]
     [FieldSchema(Description = "Text description of the image to generate (max 4000 chars)", Example = "A cute baby sea otter floating on its back")]
-    public string Prompt { get; set; } = "";
+    public string Prompt { get; init; } = "";
 
-    /// <summary>Gets or sets the DALL-E model to use.</summary>
+    /// <summary>Gets the DALL-E model to use.</summary>
     [JsonPropertyName("model")]
     [FieldSchema(Description = "DALL-E model to use", IsRequired = false, Example = "dall-e-3")]
-    public string Model { get; set; } = "dall-e-3";
+    public string Model { get; init; } = "dall-e-3";
 
-    /// <summary>Gets or sets the image size.</summary>
+    /// <summary>Gets the image size.</summary>
     [JsonPropertyName("size")]
     [FieldSchema(Description = "Image size (e.g. 1024x1024, 1024x1792, 1792x1024)", IsRequired = false, Example = "1024x1024")]
-    public string Size { get; set; } = "1024x1024";
+    public string Size { get; init; } = "1024x1024";
 
-    /// <summary>Gets or sets the image quality.</summary>
+    /// <summary>Gets the image quality.</summary>
     [JsonPropertyName("quality")]
     [FieldSchema(Description = "Image quality: standard or hd", IsRequired = false, Example = "standard")]
-    public string Quality { get; set; } = "standard";
+    public string Quality { get; init; } = "standard";
 
-    /// <summary>Gets or sets the number of images to generate.</summary>
+    /// <summary>Gets the number of images to generate.</summary>
     [JsonPropertyName("number_of_images")]
     [FieldSchema(Description = "Number of images to generate (1 for dall-e-3, 1-10 for dall-e-2)", IsRequired = false, Example = "1")]
-    public int NumberOfImages { get; set; } = 1;
+    public int NumberOfImages { get; init; } = 1;
 
-    /// <summary>Gets or sets the response format.</summary>
+    /// <summary>Gets the response format.</summary>
     [JsonPropertyName("response_format")]
     [FieldSchema(Description = "Response format: url or b64_json", IsRequired = false, Example = "url")]
-    public string ResponseFormat { get; set; } = "url";
+    public string ResponseFormat { get; init; } = "url";
 
-    /// <summary>Gets or sets the optional path to save the generated image.</summary>
+    /// <summary>Gets the optional path to save the generated image.</summary>
     [JsonPropertyName("save_to_path")]
     [FieldSchema(Description = "Optional file path to save the generated image locally", IsRequired = false)]
-    public string? SaveToPath { get; set; }
+    public string? SaveToPath { get; init; }
 }
 
 /// <summary>
@@ -61,20 +61,20 @@ public sealed class ImageGenerationRequest
 /// </summary>
 public sealed class ImageGenerationResponse
 {
-    /// <summary>Gets or sets the list of generated images.</summary>
+    /// <summary>Gets the list of generated images.</summary>
     [JsonPropertyName("images")]
     [ReturnSchema(Description = "List of generated images")]
     public IReadOnlyList<GeneratedImage> Images { get; init; } = [];
 
-    /// <summary>Gets or sets the number of images generated.</summary>
+    /// <summary>Gets the number of images generated.</summary>
     [JsonPropertyName("image_count")]
     [ReturnSchema(Description = "Number of images generated", Example = 1)]
-    public int ImageCount { get; set; }
+    public int ImageCount { get; init; }
 
-    /// <summary>Gets or sets the model used for generation.</summary>
+    /// <summary>Gets the model used for generation.</summary>
     [JsonPropertyName("model")]
     [ReturnSchema(Description = "The model used for generation", Example = "dall-e-3")]
-    public string Model { get; set; } = "";
+    public string Model { get; init; } = "";
 }
 
 /// <summary>
@@ -82,21 +82,21 @@ public sealed class ImageGenerationResponse
 /// </summary>
 public sealed class GeneratedImage
 {
-    /// <summary>Gets or sets the URL of the generated image.</summary>
+    /// <summary>Gets the URL of the generated image.</summary>
     [JsonPropertyName("url")]
-    public Uri? Url { get; set; }
+    public Uri? Url { get; init; }
 
-    /// <summary>Gets or sets the Base64-encoded image data.</summary>
+    /// <summary>Gets the Base64-encoded image data.</summary>
     [JsonPropertyName("base64")]
-    public string? Base64 { get; set; }
+    public string? Base64 { get; init; }
 
-    /// <summary>Gets or sets the revised prompt (DALL-E 3 may rewrite prompts).</summary>
+    /// <summary>Gets the revised prompt (DALL-E 3 may rewrite prompts).</summary>
     [JsonPropertyName("revised_prompt")]
-    public string? RevisedPrompt { get; set; }
+    public string? RevisedPrompt { get; init; }
 
-    /// <summary>Gets or sets the local path where the image was saved.</summary>
+    /// <summary>Gets the local path where the image was saved.</summary>
     [JsonPropertyName("saved_path")]
-    public string? SavedPath { get; set; }
+    public string? SavedPath { get; init; }
 }
 
 // ── Tool implementation ──────────────────────────────────────────────────
@@ -287,9 +287,15 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
                 for (var i = 0; i < data.Count; i++)
                 {
                     var image = MapImage(data[i]);
-                    await SaveImageIfRequestedAsync(image, request.SaveToPath, i, data.Count, cancellationToken)
+                    var savedPath = await SaveImageIfRequestedAsync(image, request.SaveToPath, i, data.Count, cancellationToken)
                         .ConfigureAwait(false);
-                    images.Add(image);
+                    images.Add(savedPath is null ? image : new GeneratedImage
+                    {
+                        Url = image.Url,
+                        Base64 = image.Base64,
+                        RevisedPrompt = image.RevisedPrompt,
+                        SavedPath = savedPath,
+                    });
                 }
             }
 
@@ -376,7 +382,8 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
     /// Saves <paramref name="image"/> when a <paramref name="saveToPath"/> was requested, resolving
     /// the (possibly index-suffixed) target path and re-validating it through the VFS policy.
     /// </summary>
-    private async Task SaveImageIfRequestedAsync(
+    /// <returns>The path the image was saved to, or <see langword="null"/> when no save was requested.</returns>
+    private async Task<string?> SaveImageIfRequestedAsync(
         GeneratedImage image,
         string? saveToPath,
         int index,
@@ -384,7 +391,7 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
         CancellationToken cancellationToken)
     {
         if (saveToPath is null)
-            return;
+            return null;
 
         var savePath = total > 1
             ? AppendIndexToPath(saveToPath, index)
@@ -401,7 +408,7 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
         }
 
         await SaveImageAsync(image, savePath, cancellationToken).ConfigureAwait(false);
-        image.SavedPath = savePath;
+        return savePath;
     }
 
     private async Task SaveImageAsync(GeneratedImage image, string path, CancellationToken cancellationToken)

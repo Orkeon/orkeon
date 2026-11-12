@@ -32,20 +32,20 @@ public enum JsonOperation
 /// </summary>
 public sealed class JsonToolRequest
 {
-    /// <summary>Gets or sets the JSON string to process.</summary>
+    /// <summary>Gets the JSON string to process.</summary>
     [JsonPropertyName("input")]
     [FieldSchema(Description = "The JSON string to process", Example = "{\"name\": \"Alice\", \"age\": 30}")]
-    public string Input { get; set; } = string.Empty;
+    public string Input { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the operation to perform: Parse, Query, or Format.</summary>
+    /// <summary>Gets the operation to perform: Parse, Query, or Format.</summary>
     [JsonPropertyName("operation")]
     [FieldSchema(Description = "The operation to perform: parse, query, or format", Example = "Parse")]
-    public JsonOperation Operation { get; set; }
+    public JsonOperation Operation { get; init; }
 
-    /// <summary>Gets or sets the dot-notation path for the Query operation.</summary>
+    /// <summary>Gets the dot-notation path for the Query operation.</summary>
     [JsonPropertyName("query")]
     [FieldSchema(Description = "Dot-notation path for query operation (e.g., 'data.items[0].name')", Example = "name")]
-    public string? Query { get; set; }
+    public string? Query { get; init; }
 
     /// <summary>Initializes a new instance of <see cref="JsonToolRequest"/>.</summary>
     // Parameterless ctor required by ComponentBase deserialization
@@ -57,40 +57,40 @@ public sealed class JsonToolRequest
 /// </summary>
 public sealed class JsonToolResponse
 {
-    /// <summary>Gets or sets whether the JSON was successfully parsed.</summary>
+    /// <summary>Gets whether the JSON was successfully parsed.</summary>
     [JsonPropertyName("parsed")]
     [ReturnSchema(Description = "Whether the JSON was successfully parsed", Example = true)]
-    public bool? Parsed { get; set; }
+    public bool? Parsed { get; init; }
 
-    /// <summary>Gets or sets parse metadata such as type, validity, and property names.</summary>
+    /// <summary>Gets parse metadata such as type, validity, and property names.</summary>
     [JsonPropertyName("info")]
     [ReturnSchema(Description = "Parse metadata: type, validity, property count/names")]
-    public Dictionary<string, object>? Info { get; init; }
+    public IReadOnlyDictionary<string, object>? Info { get; init; }
 
-    /// <summary>Gets or sets the result value from a parse or query operation.</summary>
+    /// <summary>Gets the result value from a parse or query operation.</summary>
     [JsonPropertyName("value")]
     [ReturnSchema(Description = "Result value: raw text for parse, extracted value for query", Example = "Alice")]
-    public object? Value { get; set; }
+    public object? Value { get; init; }
 
-    /// <summary>Gets or sets the dot-notation query that was executed.</summary>
+    /// <summary>Gets the dot-notation query that was executed.</summary>
     [JsonPropertyName("query")]
     [ReturnSchema(Description = "The dot-notation query that was executed", Example = "data.items[0].name")]
-    public string? Query { get; set; }
+    public string? Query { get; init; }
 
-    /// <summary>Gets or sets the JSON value type of the query result.</summary>
+    /// <summary>Gets the JSON value type of the query result.</summary>
     [JsonPropertyName("type")]
     [ReturnSchema(Description = "JSON value type of the query result (String, Number, Object, etc.)", Example = "String")]
-    public string? Type { get; set; }
+    public string? Type { get; init; }
 
-    /// <summary>Gets or sets the formatted (pretty-printed) JSON string.</summary>
+    /// <summary>Gets the formatted (pretty-printed) JSON string.</summary>
     [JsonPropertyName("formatted")]
     [ReturnSchema(Description = "The formatted (pretty-printed) JSON string", Example = "{\n  \"name\": \"Alice\",\n  \"age\": 30\n}")]
-    public string? Formatted { get; set; }
+    public string? Formatted { get; init; }
 
-    /// <summary>Gets or sets the length of the formatted JSON string.</summary>
+    /// <summary>Gets the length of the formatted JSON string.</summary>
     [JsonPropertyName("length")]
     [ReturnSchema(Description = "Length of the formatted JSON string", Example = 42)]
-    public int? Length { get; set; }
+    public int? Length { get; init; }
 }
 
 // ── Tool implementation ──────────────────────────────────────────────────

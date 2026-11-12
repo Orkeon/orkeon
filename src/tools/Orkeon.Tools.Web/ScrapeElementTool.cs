@@ -45,7 +45,7 @@ public record ScrapedElement
     public string? Html { get; init; }
 
     /// <summary>Gets the HTML attributes (only populated when ExtractAttributes is true).</summary>
-    public Dictionary<string, string>? Attributes { get; init; }
+    public IReadOnlyDictionary<string, string>? Attributes { get; init; }
 
     /// <summary>Gets the zero-based position of this element in the result set.</summary>
     public int Index { get; init; }

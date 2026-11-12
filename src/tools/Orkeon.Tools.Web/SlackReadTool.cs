@@ -13,20 +13,20 @@ namespace Orkeon.Tools.Web;
 /// </summary>
 public sealed class SlackReadMessagesRequest
 {
-    /// <summary>Gets or sets the Slack channel name to read from.</summary>
+    /// <summary>Gets the Slack channel name to read from.</summary>
     [JsonPropertyName("channel")]
     [FieldSchema(Description = "Slack channel to read from (e.g., '#general', '#dev-team')", IsRequired = true, Example = "#general")]
-    public string Channel { get; set; } = string.Empty;
+    public string Channel { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the maximum number of messages to retrieve.</summary>
+    /// <summary>Gets the maximum number of messages to retrieve.</summary>
     [JsonPropertyName("limit")]
     [FieldSchema(Description = "Maximum number of messages to retrieve (default: 10, max: 100)", IsRequired = false, Example = 10)]
-    public int Limit { get; set; } = 10;
+    public int Limit { get; init; } = 10;
 
-    /// <summary>Gets or sets the optional timestamp to get messages after this time.</summary>
+    /// <summary>Gets the optional timestamp to get messages after this time.</summary>
     [JsonPropertyName("oldest")]
     [FieldSchema(Description = "Optional timestamp to get messages after this time (Unix epoch)", IsRequired = false, Example = "1234567890")]
-    public string? Oldest { get; set; }
+    public string? Oldest { get; init; }
 
     /// <summary>Initializes a new instance of <see cref="SlackReadMessagesRequest"/>.</summary>
     public SlackReadMessagesRequest() { }
@@ -63,30 +63,30 @@ public sealed record SlackMessage
 /// </summary>
 public sealed class SlackReadMessagesResponse
 {
-    /// <summary>Gets or sets whether the read operation was successful.</summary>
+    /// <summary>Gets whether the read operation was successful.</summary>
     [JsonPropertyName("success")]
     [ReturnSchema(Description = "Whether the read operation was successful", Example = true)]
-    public bool Success { get; set; }
+    public bool Success { get; init; }
 
-    /// <summary>Gets or sets the channel name.</summary>
+    /// <summary>Gets the channel name.</summary>
     [JsonPropertyName("channel")]
     [ReturnSchema(Description = "The channel name", Example = "#general")]
-    public string Channel { get; set; } = string.Empty;
+    public string Channel { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the list of retrieved messages.</summary>
+    /// <summary>Gets the list of retrieved messages.</summary>
     [JsonPropertyName("messages")]
     [ReturnSchema(Description = "List of retrieved messages")]
     public IReadOnlyList<SlackMessage> Messages { get; init; } = [];
 
-    /// <summary>Gets or sets the number of messages retrieved.</summary>
+    /// <summary>Gets the number of messages retrieved.</summary>
     [JsonPropertyName("message_count")]
     [ReturnSchema(Description = "Number of messages retrieved", Example = 5)]
-    public int MessageCount { get; set; }
+    public int MessageCount { get; init; }
 
-    /// <summary>Gets or sets optional error message if read failed.</summary>
+    /// <summary>Gets optional error message if read failed.</summary>
     [JsonPropertyName("error")]
     [ReturnSchema(Description = "Error message if the read operation failed", Example = "")]
-    public string? Error { get; set; }
+    public string? Error { get; init; }
 }
 
 // ── Tool implementation ────────────────────────────────────────────────────

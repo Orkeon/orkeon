@@ -41,7 +41,7 @@ public record RelationalDatabaseRequest
 
     /// <summary>Gets optional named parameters for parameterized queries.</summary>
     [FieldSchema(Description = "Optional named parameters for parameterized queries (e.g. {\"active\": true})", IsRequired = false)]
-    public Dictionary<string, object>? Parameters { get; init; }
+    public IReadOnlyDictionary<string, object>? Parameters { get; init; }
 
     /// <summary>Gets the maximum number of rows to return for SELECT queries.</summary>
     [FieldSchema(Description = "Maximum number of rows to return for SELECT queries", IsRequired = false, Example = "1000")]

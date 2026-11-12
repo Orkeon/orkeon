@@ -2,22 +2,22 @@
 Orkeon.Tools.FileSystem.CountPatternRequest
 Orkeon.Tools.FileSystem.CountPatternRequest.CountPatternRequest() -> void
 Orkeon.Tools.FileSystem.CountPatternRequest.DistinctMatches.get -> bool
-Orkeon.Tools.FileSystem.CountPatternRequest.DistinctMatches.set -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.DistinctMatches.init -> void
 Orkeon.Tools.FileSystem.CountPatternRequest.IncludeMatches.get -> bool
-Orkeon.Tools.FileSystem.CountPatternRequest.IncludeMatches.set -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.IncludeMatches.init -> void
 Orkeon.Tools.FileSystem.CountPatternRequest.MaxMatchesReturned.get -> int?
-Orkeon.Tools.FileSystem.CountPatternRequest.MaxMatchesReturned.set -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.MaxMatchesReturned.init -> void
 Orkeon.Tools.FileSystem.CountPatternRequest.Multiline.get -> bool
-Orkeon.Tools.FileSystem.CountPatternRequest.Multiline.set -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.Multiline.init -> void
 Orkeon.Tools.FileSystem.CountPatternRequest.Path.get -> string!
-Orkeon.Tools.FileSystem.CountPatternRequest.Path.set -> void
+Orkeon.Tools.FileSystem.CountPatternRequest.Path.init -> void
 Orkeon.Tools.FileSystem.CountPatternRequest.Patterns.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Tools.FileSystem.CountPatternRequest.Patterns.init -> void
 Orkeon.Tools.FileSystem.CountPatternResponse
 Orkeon.Tools.FileSystem.CountPatternResponse.BomStripped.get -> bool
-Orkeon.Tools.FileSystem.CountPatternResponse.BomStripped.set -> void
+Orkeon.Tools.FileSystem.CountPatternResponse.BomStripped.init -> void
 Orkeon.Tools.FileSystem.CountPatternResponse.BytesScanned.get -> int
-Orkeon.Tools.FileSystem.CountPatternResponse.BytesScanned.set -> void
+Orkeon.Tools.FileSystem.CountPatternResponse.BytesScanned.init -> void
 Orkeon.Tools.FileSystem.CountPatternResponse.CountPatternResponse() -> void
 Orkeon.Tools.FileSystem.CountPatternResponse.Counts.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.FileSystem.PatternCount!>!
 Orkeon.Tools.FileSystem.CountPatternResponse.Counts.init -> void
@@ -120,88 +120,88 @@ Orkeon.Tools.FileSystem.DirectorySearchTool
 Orkeon.Tools.FileSystem.DirectorySearchTool.DirectorySearchTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Rag.Abstractions.Interfaces.IEphemeralCollectionSearch! searchService, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.DirectorySearchTool!>? logger = null) -> void
 Orkeon.Tools.FileSystem.EditFileRequest
 Orkeon.Tools.FileSystem.EditFileRequest.CreateBackup.get -> bool
-Orkeon.Tools.FileSystem.EditFileRequest.CreateBackup.set -> void
+Orkeon.Tools.FileSystem.EditFileRequest.CreateBackup.init -> void
 Orkeon.Tools.FileSystem.EditFileRequest.EditFileRequest() -> void
 Orkeon.Tools.FileSystem.EditFileRequest.NewString.get -> string!
-Orkeon.Tools.FileSystem.EditFileRequest.NewString.set -> void
+Orkeon.Tools.FileSystem.EditFileRequest.NewString.init -> void
 Orkeon.Tools.FileSystem.EditFileRequest.OldString.get -> string!
-Orkeon.Tools.FileSystem.EditFileRequest.OldString.set -> void
+Orkeon.Tools.FileSystem.EditFileRequest.OldString.init -> void
 Orkeon.Tools.FileSystem.EditFileRequest.Path.get -> string!
-Orkeon.Tools.FileSystem.EditFileRequest.Path.set -> void
+Orkeon.Tools.FileSystem.EditFileRequest.Path.init -> void
 Orkeon.Tools.FileSystem.EditFileRequest.ReplaceAll.get -> bool
-Orkeon.Tools.FileSystem.EditFileRequest.ReplaceAll.set -> void
+Orkeon.Tools.FileSystem.EditFileRequest.ReplaceAll.init -> void
 Orkeon.Tools.FileSystem.EditFileResponse
 Orkeon.Tools.FileSystem.EditFileResponse.BackupPath.get -> string?
-Orkeon.Tools.FileSystem.EditFileResponse.BackupPath.set -> void
+Orkeon.Tools.FileSystem.EditFileResponse.BackupPath.init -> void
 Orkeon.Tools.FileSystem.EditFileResponse.EditFileResponse() -> void
 Orkeon.Tools.FileSystem.EditFileResponse.Errors.get -> System.Collections.Immutable.ImmutableList<string!>?
-Orkeon.Tools.FileSystem.EditFileResponse.Errors.set -> void
-Orkeon.Tools.FileSystem.EditFileResponse.FileInfo.get -> System.Collections.Generic.Dictionary<string!, object!>!
+Orkeon.Tools.FileSystem.EditFileResponse.Errors.init -> void
+Orkeon.Tools.FileSystem.EditFileResponse.FileInfo.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
 Orkeon.Tools.FileSystem.EditFileResponse.FileInfo.init -> void
 Orkeon.Tools.FileSystem.EditFileResponse.Path.get -> string!
-Orkeon.Tools.FileSystem.EditFileResponse.Path.set -> void
+Orkeon.Tools.FileSystem.EditFileResponse.Path.init -> void
 Orkeon.Tools.FileSystem.EditFileResponse.Replacements.get -> int
-Orkeon.Tools.FileSystem.EditFileResponse.Replacements.set -> void
+Orkeon.Tools.FileSystem.EditFileResponse.Replacements.init -> void
 Orkeon.Tools.FileSystem.EditFileResponse.Success.get -> bool
-Orkeon.Tools.FileSystem.EditFileResponse.Success.set -> void
+Orkeon.Tools.FileSystem.EditFileResponse.Success.init -> void
 Orkeon.Tools.FileSystem.EditFileTool
 Orkeon.Tools.FileSystem.EditFileTool.EditFileTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.EditFileTool!>? logger = null, Orkeon.Analysis.Abstractions.Interfaces.ICitationBlockValidator? citationValidator = null, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
 Orkeon.Tools.FileSystem.FileReadRequest
 Orkeon.Tools.FileSystem.FileReadRequest.Encoding.get -> string!
-Orkeon.Tools.FileSystem.FileReadRequest.Encoding.set -> void
+Orkeon.Tools.FileSystem.FileReadRequest.Encoding.init -> void
 Orkeon.Tools.FileSystem.FileReadRequest.FileReadRequest() -> void
 Orkeon.Tools.FileSystem.FileReadRequest.Limit.get -> int?
-Orkeon.Tools.FileSystem.FileReadRequest.Limit.set -> void
+Orkeon.Tools.FileSystem.FileReadRequest.Limit.init -> void
 Orkeon.Tools.FileSystem.FileReadRequest.MaxLength.get -> int?
-Orkeon.Tools.FileSystem.FileReadRequest.MaxLength.set -> void
+Orkeon.Tools.FileSystem.FileReadRequest.MaxLength.init -> void
 Orkeon.Tools.FileSystem.FileReadRequest.Offset.get -> int?
-Orkeon.Tools.FileSystem.FileReadRequest.Offset.set -> void
+Orkeon.Tools.FileSystem.FileReadRequest.Offset.init -> void
 Orkeon.Tools.FileSystem.FileReadRequest.Path.get -> string!
-Orkeon.Tools.FileSystem.FileReadRequest.Path.set -> void
+Orkeon.Tools.FileSystem.FileReadRequest.Path.init -> void
 Orkeon.Tools.FileSystem.FileReadRequest.UseRaggableCache.get -> bool
-Orkeon.Tools.FileSystem.FileReadRequest.UseRaggableCache.set -> void
+Orkeon.Tools.FileSystem.FileReadRequest.UseRaggableCache.init -> void
 Orkeon.Tools.FileSystem.FileReadResponse
 Orkeon.Tools.FileSystem.FileReadResponse.Content.get -> string!
-Orkeon.Tools.FileSystem.FileReadResponse.Content.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse.Content.init -> void
 Orkeon.Tools.FileSystem.FileReadResponse.EndLine.get -> int?
-Orkeon.Tools.FileSystem.FileReadResponse.EndLine.set -> void
-Orkeon.Tools.FileSystem.FileReadResponse.FileInfo.get -> System.Collections.Generic.Dictionary<string!, object!>!
+Orkeon.Tools.FileSystem.FileReadResponse.EndLine.init -> void
+Orkeon.Tools.FileSystem.FileReadResponse.FileInfo.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
 Orkeon.Tools.FileSystem.FileReadResponse.FileInfo.init -> void
 Orkeon.Tools.FileSystem.FileReadResponse.FileReadResponse() -> void
 Orkeon.Tools.FileSystem.FileReadResponse.HasMore.get -> bool
-Orkeon.Tools.FileSystem.FileReadResponse.HasMore.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse.HasMore.init -> void
 Orkeon.Tools.FileSystem.FileReadResponse.ServedFromCache.get -> bool
-Orkeon.Tools.FileSystem.FileReadResponse.ServedFromCache.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse.ServedFromCache.init -> void
 Orkeon.Tools.FileSystem.FileReadResponse.StartLine.get -> int?
-Orkeon.Tools.FileSystem.FileReadResponse.StartLine.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse.StartLine.init -> void
 Orkeon.Tools.FileSystem.FileReadResponse.Truncated.get -> bool
-Orkeon.Tools.FileSystem.FileReadResponse.Truncated.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse.Truncated.init -> void
 Orkeon.Tools.FileSystem.FileReadTool
 Orkeon.Tools.FileSystem.FileReadTool.FileReadTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore? raggableStore = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.FileReadTool!>? logger = null) -> void
 Orkeon.Tools.FileSystem.FileWriteRequest
 Orkeon.Tools.FileSystem.FileWriteRequest.Append.get -> bool
-Orkeon.Tools.FileSystem.FileWriteRequest.Append.set -> void
+Orkeon.Tools.FileSystem.FileWriteRequest.Append.init -> void
 Orkeon.Tools.FileSystem.FileWriteRequest.Content.get -> string!
-Orkeon.Tools.FileSystem.FileWriteRequest.Content.set -> void
+Orkeon.Tools.FileSystem.FileWriteRequest.Content.init -> void
 Orkeon.Tools.FileSystem.FileWriteRequest.CreateBackup.get -> bool
-Orkeon.Tools.FileSystem.FileWriteRequest.CreateBackup.set -> void
+Orkeon.Tools.FileSystem.FileWriteRequest.CreateBackup.init -> void
 Orkeon.Tools.FileSystem.FileWriteRequest.Encoding.get -> string!
-Orkeon.Tools.FileSystem.FileWriteRequest.Encoding.set -> void
+Orkeon.Tools.FileSystem.FileWriteRequest.Encoding.init -> void
 Orkeon.Tools.FileSystem.FileWriteRequest.FileWriteRequest() -> void
 Orkeon.Tools.FileSystem.FileWriteRequest.Path.get -> string!
-Orkeon.Tools.FileSystem.FileWriteRequest.Path.set -> void
+Orkeon.Tools.FileSystem.FileWriteRequest.Path.init -> void
 Orkeon.Tools.FileSystem.FileWriteResponse
 Orkeon.Tools.FileSystem.FileWriteResponse.BackupPath.get -> string?
-Orkeon.Tools.FileSystem.FileWriteResponse.BackupPath.set -> void
+Orkeon.Tools.FileSystem.FileWriteResponse.BackupPath.init -> void
 Orkeon.Tools.FileSystem.FileWriteResponse.BytesWritten.get -> int
-Orkeon.Tools.FileSystem.FileWriteResponse.BytesWritten.set -> void
+Orkeon.Tools.FileSystem.FileWriteResponse.BytesWritten.init -> void
 Orkeon.Tools.FileSystem.FileWriteResponse.Errors.get -> System.Collections.Immutable.ImmutableList<string!>?
-Orkeon.Tools.FileSystem.FileWriteResponse.Errors.set -> void
+Orkeon.Tools.FileSystem.FileWriteResponse.Errors.init -> void
 Orkeon.Tools.FileSystem.FileWriteResponse.FileWriteResponse() -> void
 Orkeon.Tools.FileSystem.FileWriteResponse.Path.get -> string!
-Orkeon.Tools.FileSystem.FileWriteResponse.Path.set -> void
+Orkeon.Tools.FileSystem.FileWriteResponse.Path.init -> void
 Orkeon.Tools.FileSystem.FileWriteResponse.Success.get -> bool
-Orkeon.Tools.FileSystem.FileWriteResponse.Success.set -> void
+Orkeon.Tools.FileSystem.FileWriteResponse.Success.init -> void
 Orkeon.Tools.FileSystem.FileWriteTool
 Orkeon.Tools.FileSystem.FileWriteTool.FileWriteTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.FileWriteTool!>? logger = null, Orkeon.Analysis.Abstractions.Interfaces.ICitationBlockValidator? citationValidator = null, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
 Orkeon.Tools.FileSystem.GlobRequest
@@ -291,13 +291,13 @@ Orkeon.Tools.FileSystem.GrepTool
 Orkeon.Tools.FileSystem.GrepTool.GrepTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.GrepTool!>? logger = null, System.TimeSpan? matchTimeout = null, System.TimeSpan? totalBudget = null) -> void
 Orkeon.Tools.FileSystem.PatternCount
 Orkeon.Tools.FileSystem.PatternCount.Count.get -> int
-Orkeon.Tools.FileSystem.PatternCount.Count.set -> void
+Orkeon.Tools.FileSystem.PatternCount.Count.init -> void
 Orkeon.Tools.FileSystem.PatternCount.Error.get -> string?
-Orkeon.Tools.FileSystem.PatternCount.Error.set -> void
+Orkeon.Tools.FileSystem.PatternCount.Error.init -> void
 Orkeon.Tools.FileSystem.PatternCount.Matches.get -> System.Collections.Generic.IReadOnlyList<string!>?
 Orkeon.Tools.FileSystem.PatternCount.Matches.init -> void
 Orkeon.Tools.FileSystem.PatternCount.Pattern.get -> string!
-Orkeon.Tools.FileSystem.PatternCount.Pattern.set -> void
+Orkeon.Tools.FileSystem.PatternCount.Pattern.init -> void
 Orkeon.Tools.FileSystem.PatternCount.PatternCount() -> void
 const Orkeon.Tools.FileSystem.GrepOutputModes.Count = "count" -> string!
 const Orkeon.Tools.FileSystem.GrepOutputModes.Hits = "hits" -> string!

@@ -40,7 +40,7 @@ Orkeon.Tools.Data.DocxReadResponse.Content.get -> string!
 Orkeon.Tools.Data.DocxReadResponse.Content.init -> void
 Orkeon.Tools.Data.DocxReadResponse.DocxReadResponse() -> void
 Orkeon.Tools.Data.DocxReadResponse.DocxReadResponse(Orkeon.Tools.Data.DocxReadResponse! original) -> void
-Orkeon.Tools.Data.DocxReadResponse.Metadata.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Tools.Data.DocxReadResponse.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 Orkeon.Tools.Data.DocxReadResponse.Metadata.init -> void
 Orkeon.Tools.Data.DocxReadResponse.ParagraphCount.get -> int
 Orkeon.Tools.Data.DocxReadResponse.ParagraphCount.init -> void
@@ -82,7 +82,7 @@ Orkeon.Tools.Data.Graph.ArcadeDbRequest.Database.get -> string!
 Orkeon.Tools.Data.Graph.ArcadeDbRequest.Database.init -> void
 Orkeon.Tools.Data.Graph.ArcadeDbRequest.MaxResults.get -> int
 Orkeon.Tools.Data.Graph.ArcadeDbRequest.MaxResults.init -> void
-Orkeon.Tools.Data.Graph.ArcadeDbRequest.Parameters.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Tools.Data.Graph.ArcadeDbRequest.Parameters.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>?
 Orkeon.Tools.Data.Graph.ArcadeDbRequest.Parameters.init -> void
 Orkeon.Tools.Data.Graph.ArcadeDbRequest.Password.get -> string?
 Orkeon.Tools.Data.Graph.ArcadeDbRequest.Password.init -> void
@@ -143,7 +143,7 @@ Orkeon.Tools.Data.Graph.GraphType
 Orkeon.Tools.Data.Graph.GraphType.ArcadeDB = 0 -> Orkeon.Tools.Data.Graph.GraphType
 Orkeon.Tools.Data.Graph.GraphType.JanusGraph = 1 -> Orkeon.Tools.Data.Graph.GraphType
 Orkeon.Tools.Data.Graph.JanusGraphRequest
-Orkeon.Tools.Data.Graph.JanusGraphRequest.Bindings.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Tools.Data.Graph.JanusGraphRequest.Bindings.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>?
 Orkeon.Tools.Data.Graph.JanusGraphRequest.Bindings.init -> void
 Orkeon.Tools.Data.Graph.JanusGraphRequest.GremlinEndpoint.get -> string!
 Orkeon.Tools.Data.Graph.JanusGraphRequest.GremlinEndpoint.init -> void
@@ -220,28 +220,28 @@ Orkeon.Tools.Data.JsonTool
 Orkeon.Tools.Data.JsonTool.JsonTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Data.JsonTool!>? logger = null) -> void
 Orkeon.Tools.Data.JsonToolRequest
 Orkeon.Tools.Data.JsonToolRequest.Input.get -> string!
-Orkeon.Tools.Data.JsonToolRequest.Input.set -> void
+Orkeon.Tools.Data.JsonToolRequest.Input.init -> void
 Orkeon.Tools.Data.JsonToolRequest.JsonToolRequest() -> void
 Orkeon.Tools.Data.JsonToolRequest.Operation.get -> Orkeon.Tools.Data.JsonOperation
-Orkeon.Tools.Data.JsonToolRequest.Operation.set -> void
+Orkeon.Tools.Data.JsonToolRequest.Operation.init -> void
 Orkeon.Tools.Data.JsonToolRequest.Query.get -> string?
-Orkeon.Tools.Data.JsonToolRequest.Query.set -> void
+Orkeon.Tools.Data.JsonToolRequest.Query.init -> void
 Orkeon.Tools.Data.JsonToolResponse
 Orkeon.Tools.Data.JsonToolResponse.Formatted.get -> string?
-Orkeon.Tools.Data.JsonToolResponse.Formatted.set -> void
-Orkeon.Tools.Data.JsonToolResponse.Info.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Tools.Data.JsonToolResponse.Formatted.init -> void
+Orkeon.Tools.Data.JsonToolResponse.Info.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>?
 Orkeon.Tools.Data.JsonToolResponse.Info.init -> void
 Orkeon.Tools.Data.JsonToolResponse.JsonToolResponse() -> void
 Orkeon.Tools.Data.JsonToolResponse.Length.get -> int?
-Orkeon.Tools.Data.JsonToolResponse.Length.set -> void
+Orkeon.Tools.Data.JsonToolResponse.Length.init -> void
 Orkeon.Tools.Data.JsonToolResponse.Parsed.get -> bool?
-Orkeon.Tools.Data.JsonToolResponse.Parsed.set -> void
+Orkeon.Tools.Data.JsonToolResponse.Parsed.init -> void
 Orkeon.Tools.Data.JsonToolResponse.Query.get -> string?
-Orkeon.Tools.Data.JsonToolResponse.Query.set -> void
+Orkeon.Tools.Data.JsonToolResponse.Query.init -> void
 Orkeon.Tools.Data.JsonToolResponse.Type.get -> string?
-Orkeon.Tools.Data.JsonToolResponse.Type.set -> void
+Orkeon.Tools.Data.JsonToolResponse.Type.init -> void
 Orkeon.Tools.Data.JsonToolResponse.Value.get -> object?
-Orkeon.Tools.Data.JsonToolResponse.Value.set -> void
+Orkeon.Tools.Data.JsonToolResponse.Value.init -> void
 Orkeon.Tools.Data.MongoDB.Models.CollectionInfo
 Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.CollectionInfo() -> void
 Orkeon.Tools.Data.MongoDB.Models.CollectionInfo.CollectionInfo(Orkeon.Tools.Data.MongoDB.Models.CollectionInfo! original) -> void
@@ -271,7 +271,7 @@ Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.IsSparse.get -> bool
 Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.IsSparse.init -> void
 Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.IsUnique.get -> bool
 Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.IsUnique.init -> void
-Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.Keys.get -> System.Collections.Generic.Dictionary<string!, int>!
+Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.Keys.get -> System.Collections.Generic.IReadOnlyDictionary<string!, int>!
 Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.Keys.init -> void
 Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.MongoIndexInfo() -> void
 Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo.MongoIndexInfo(Orkeon.Tools.Data.MongoDB.Models.MongoIndexInfo! original) -> void
@@ -488,7 +488,7 @@ Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.ConnectionString.get -> s
 Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.ConnectionString.init -> void
 Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.MaxRows.get -> int
 Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.MaxRows.init -> void
-Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.Parameters.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.Parameters.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>?
 Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.Parameters.init -> void
 Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.ProviderName.get -> string!
 Orkeon.Tools.Data.Relational.RelationalDatabaseRequest.ProviderName.init -> void
@@ -643,7 +643,7 @@ Orkeon.Tools.Data.XlsxReadRequest.SheetName.init -> void
 Orkeon.Tools.Data.XlsxReadRequest.XlsxReadRequest() -> void
 Orkeon.Tools.Data.XlsxReadRequest.XlsxReadRequest(Orkeon.Tools.Data.XlsxReadRequest! original) -> void
 Orkeon.Tools.Data.XlsxReadResponse
-Orkeon.Tools.Data.XlsxReadResponse.Metadata.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Tools.Data.XlsxReadResponse.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 Orkeon.Tools.Data.XlsxReadResponse.Metadata.init -> void
 Orkeon.Tools.Data.XlsxReadResponse.SheetCount.get -> int
 Orkeon.Tools.Data.XlsxReadResponse.SheetCount.init -> void
@@ -703,7 +703,7 @@ Orkeon.Tools.Data.XmlOperation
 Orkeon.Tools.Data.XmlOperation.Parse = 0 -> Orkeon.Tools.Data.XmlOperation
 Orkeon.Tools.Data.XmlOperation.Query = 1 -> Orkeon.Tools.Data.XmlOperation
 Orkeon.Tools.Data.XmlParserChildInfo
-Orkeon.Tools.Data.XmlParserChildInfo.Attributes.get -> System.Collections.Generic.Dictionary<string!, object!>!
+Orkeon.Tools.Data.XmlParserChildInfo.Attributes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
 Orkeon.Tools.Data.XmlParserChildInfo.Attributes.init -> void
 Orkeon.Tools.Data.XmlParserChildInfo.Name.get -> string!
 Orkeon.Tools.Data.XmlParserChildInfo.Name.init -> void
@@ -723,7 +723,7 @@ Orkeon.Tools.Data.XmlParserRequest.Xpath.init -> void
 Orkeon.Tools.Data.XmlParserResponse
 Orkeon.Tools.Data.XmlParserResponse.AttributeCount.get -> int?
 Orkeon.Tools.Data.XmlParserResponse.AttributeCount.init -> void
-Orkeon.Tools.Data.XmlParserResponse.Attributes.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Tools.Data.XmlParserResponse.Attributes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>?
 Orkeon.Tools.Data.XmlParserResponse.Attributes.init -> void
 Orkeon.Tools.Data.XmlParserResponse.ChildCount.get -> int?
 Orkeon.Tools.Data.XmlParserResponse.ChildCount.init -> void

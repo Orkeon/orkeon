@@ -72,7 +72,7 @@ public record XlsxReadResponse
 
     /// <summary>Gets the workbook metadata (if requested).</summary>
     [ReturnSchema(Description = "Workbook metadata")]
-    public Dictionary<string, string> Metadata { get; init; } = [];
+    public IReadOnlyDictionary<string, string> Metadata { get; init; } = System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
 }
 
 /// <summary>

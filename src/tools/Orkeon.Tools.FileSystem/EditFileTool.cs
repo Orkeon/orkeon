@@ -18,27 +18,27 @@ public sealed class EditFileRequest
     /// <summary>The file to edit.</summary>
     [JsonPropertyName("path")]
     [FieldSchema(Description = "The file to edit", Example = "/workspace/a.txt")]
-    public string Path { get; set; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
 
     /// <summary>The text to replace.</summary>
     [JsonPropertyName("old_string")]
     [FieldSchema(Description = "The text to replace", Example = "foo")]
-    public string OldString { get; set; } = string.Empty;
+    public string OldString { get; init; } = string.Empty;
 
     /// <summary>The replacement text.</summary>
     [JsonPropertyName("new_string")]
     [FieldSchema(Description = "The replacement text", Example = "bar")]
-    public string NewString { get; set; } = string.Empty;
+    public string NewString { get; init; } = string.Empty;
 
     /// <summary>Replace every occurrence.</summary>
     [JsonPropertyName("replace_all")]
     [FieldSchema(Description = "Replace every occurrence", IsRequired = false, Example = false, Default = false)]
-    public bool ReplaceAll { get; set; }
+    public bool ReplaceAll { get; init; }
 
     /// <summary>Create a backup before writing.</summary>
     [JsonPropertyName("create_backup")]
     [FieldSchema(Description = "Create a backup before writing", IsRequired = false, Example = false, Default = false)]
-    public bool CreateBackup { get; set; }
+    public bool CreateBackup { get; init; }
 }
 
 /// <summary>Strongly-typed response for EditFileTool.</summary>
@@ -47,32 +47,32 @@ public sealed class EditFileResponse
     /// <summary>Whether the edit succeeded.</summary>
     [JsonPropertyName("success")]
     [ReturnSchema(Description = "Whether the edit succeeded", Example = true)]
-    public bool Success { get; set; }
+    public bool Success { get; init; }
 
     /// <summary>Path of the edited file.</summary>
     [JsonPropertyName("path")]
     [ReturnSchema(Description = "Path of the edited file", Example = "/workspace/a.txt")]
-    public string Path { get; set; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
 
     /// <summary>Number of replacements made.</summary>
     [JsonPropertyName("replacements")]
     [ReturnSchema(Description = "Number of replacements made", Example = 1)]
-    public int Replacements { get; set; }
+    public int Replacements { get; init; }
 
     /// <summary>Size, extension and full path of the edited file.</summary>
     [JsonPropertyName("file_info")]
     [ReturnSchema(Description = "Size, extension and full path of the edited file")]
-    public Dictionary<string, object> FileInfo { get; init; } = [];
+    public IReadOnlyDictionary<string, object> FileInfo { get; init; } = System.Collections.ObjectModel.ReadOnlyDictionary<string, object>.Empty;
 
     /// <summary>Path of the backup file, if one was created.</summary>
     [JsonPropertyName("backup_path")]
     [ReturnSchema(Description = "Path of the backup file", Example = "/workspace/a.backup_20240115_093000.txt")]
-    public string? BackupPath { get; set; }
+    public string? BackupPath { get; init; }
 
     /// <summary>Citation validation violations.</summary>
     [JsonPropertyName("errors")]
     [ReturnSchema(Description = "Citation block validation violations")]
-    public ImmutableList<string>? Errors { get; set; }
+    public ImmutableList<string>? Errors { get; init; }
 }
 
 /// <summary>Replaces a unique string in a file.</summary>
@@ -181,9 +181,18 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
         // The bytes are on disk either way: mark the path stale before the citation verdict.
         _indexInvalidation?.MarkDirty(virtualPath);
 
-        var response = new EditFileResponse
+        ImmutableList<string>? citationErrors = null;
+        if (_citationValidator is not null && FileWriteTool.HasCitationHeaders(request.NewString))
         {
-            Success = true,
+            var verdict = await _citationValidator.ValidateAsync(request.NewString, cancellationToken).ConfigureAwait(false);
+            if (!verdict.IsValid)
+                citationErrors = [.. verdict.Violations];
+        }
+
+        return new EditFileResponse
+        {
+            Success = citationErrors is null,
+            Errors = citationErrors,
             Path = virtualPath,
             Replacements = count,
             BackupPath = backupPath,
@@ -194,18 +203,6 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
                 ["full_path"] = virtualPath,
             },
         };
-
-        if (_citationValidator is not null && FileWriteTool.HasCitationHeaders(request.NewString))
-        {
-            var verdict = await _citationValidator.ValidateAsync(request.NewString, cancellationToken).ConfigureAwait(false);
-            if (!verdict.IsValid)
-            {
-                response.Success = false;
-                response.Errors = [.. verdict.Violations];
-            }
-        }
-
-        return response;
     }
 
     /// <summary>The text of <paramref name="original"/>; refuses a file its encoding cannot decode.</summary>

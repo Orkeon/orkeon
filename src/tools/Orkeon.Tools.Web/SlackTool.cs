@@ -14,20 +14,20 @@ namespace Orkeon.Tools.Web;
 /// </summary>
 public sealed class SlackSendMessageRequest
 {
-    /// <summary>Gets or sets the Slack channel name (e.g., "#general") or user ID.</summary>
+    /// <summary>Gets the Slack channel name (e.g., "#general") or user ID.</summary>
     [JsonPropertyName("channel")]
     [FieldSchema(Description = "Slack channel (e.g., '#general', '#dev-team') or user ID (e.g., 'U1234567890')", IsRequired = true, Example = "#general")]
-    public string Channel { get; set; } = string.Empty;
+    public string Channel { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the message text to send.</summary>
+    /// <summary>Gets the message text to send.</summary>
     [JsonPropertyName("message")]
     [FieldSchema(Description = "The message text to send", IsRequired = true, Example = "Hello, team!")]
-    public string Message { get; set; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets optional thread timestamp for threaded replies.</summary>
+    /// <summary>Gets optional thread timestamp for threaded replies.</summary>
     [JsonPropertyName("thread_ts")]
     [FieldSchema(Description = "Optional thread timestamp for threaded replies", IsRequired = false, Example = "1234567890.123456")]
-    public string? ThreadTs { get; set; }
+    public string? ThreadTs { get; init; }
 
     /// <summary>Initializes a new instance of <see cref="SlackSendMessageRequest"/>.</summary>
     public SlackSendMessageRequest() { }
@@ -38,25 +38,25 @@ public sealed class SlackSendMessageRequest
 /// </summary>
 public sealed class SlackSendMessageResponse
 {
-    /// <summary>Gets or sets whether the message was sent successfully.</summary>
+    /// <summary>Gets whether the message was sent successfully.</summary>
     [JsonPropertyName("success")]
     [ReturnSchema(Description = "Whether the message was sent successfully", Example = true)]
-    public bool Success { get; set; }
+    public bool Success { get; init; }
 
-    /// <summary>Gets or sets the timestamp of the sent message.</summary>
+    /// <summary>Gets the timestamp of the sent message.</summary>
     [JsonPropertyName("timestamp")]
     [ReturnSchema(Description = "Timestamp of the sent message", Example = "1234567890.123456")]
-    public string Timestamp { get; set; } = string.Empty;
+    public string Timestamp { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the channel where the message was sent.</summary>
+    /// <summary>Gets the channel where the message was sent.</summary>
     [JsonPropertyName("channel")]
     [ReturnSchema(Description = "The channel where the message was sent", Example = "#general")]
-    public string Channel { get; set; } = string.Empty;
+    public string Channel { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets optional error message if send failed.</summary>
+    /// <summary>Gets optional error message if send failed.</summary>
     [JsonPropertyName("error")]
     [ReturnSchema(Description = "Error message if the send operation failed", Example = "")]
-    public string? Error { get; set; }
+    public string? Error { get; init; }
 }
 
 // ── Tool implementation ──────────────────────────────────────────────────

@@ -23,27 +23,27 @@ public sealed class FileWriteRequest
     /// <summary>The file path to write to.</summary>
     [JsonPropertyName("path")]
     [FieldSchema(Description = "The file path to write to", Example = "/workspace/output.txt")]
-    public string Path { get; set; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
 
     /// <summary>The content to write to the file.</summary>
     [JsonPropertyName("content")]
     [FieldSchema(Description = "The content to write to the file", Example = "Hello, World!")]
-    public string Content { get; set; } = string.Empty;
+    public string Content { get; init; } = string.Empty;
 
     /// <summary>The text encoding to use (default: UTF-8).</summary>
     [JsonPropertyName("encoding")]
     [FieldSchema(Description = "The text encoding to use (default: UTF-8)", IsRequired = false, Example = "UTF-8", Default = "UTF-8", Enum = new[] { "UTF-8", "ASCII", "Unicode", "UTF-32" })]
-    public string Encoding { get; set; } = FileDefaults.DefaultEncoding;
+    public string Encoding { get; init; } = FileDefaults.DefaultEncoding;
 
     /// <summary>Whether to append to the file instead of overwriting (default: false).</summary>
     [JsonPropertyName("append")]
     [FieldSchema(Description = "Whether to append to the file instead of overwriting (default: false)", IsRequired = false, Example = false, Default = false)]
-    public bool Append { get; set; }
+    public bool Append { get; init; }
 
     /// <summary>Whether to create a backup before writing (default: false).</summary>
     [JsonPropertyName("create_backup")]
     [FieldSchema(Description = "Whether to create a backup before writing (default: false)", IsRequired = false, Example = false, Default = false)]
-    public bool CreateBackup { get; set; }
+    public bool CreateBackup { get; init; }
 
     /// <summary>Initializes a new instance of <see cref="FileWriteRequest"/>.</summary>
     public FileWriteRequest() { }
@@ -57,22 +57,22 @@ public sealed class FileWriteResponse
     /// <summary>Whether the file was written successfully.</summary>
     [JsonPropertyName("success")]
     [ReturnSchema(Description = "Whether the file was written successfully", Example = true)]
-    public bool Success { get; set; }
+    public bool Success { get; init; }
 
     /// <summary>Absolute path of the written file.</summary>
     [JsonPropertyName("path")]
     [ReturnSchema(Description = "Absolute path of the written file", Example = "/workspace/output.txt")]
-    public string Path { get; set; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
 
     /// <summary>Number of bytes written to the file.</summary>
     [JsonPropertyName("bytes_written")]
     [ReturnSchema(Description = "Number of bytes written to the file", Example = 1024)]
-    public int BytesWritten { get; set; }
+    public int BytesWritten { get; init; }
 
     /// <summary>Path of the backup file, if create_backup was true.</summary>
     [JsonPropertyName("backup_path")]
     [ReturnSchema(Description = "Path of the backup file, if create_backup was true", Example = "/workspace/output.backup_20240115_093000.txt")]
-    public string? BackupPath { get; set; }
+    public string? BackupPath { get; init; }
 
     /// <summary>
     /// Citation-block validation violations, populated when citation validation fails.
@@ -80,7 +80,7 @@ public sealed class FileWriteResponse
     /// </summary>
     [JsonPropertyName("errors")]
     [ReturnSchema(Description = "Citation block validation violations; non-null and non-empty when the write is rejected due to fabricated SHA or code body.")]
-    public ImmutableList<string>? Errors { get; set; }
+    public ImmutableList<string>? Errors { get; init; }
 }
 
 // ── Tool implementation ──────────────────────────────────────────────────

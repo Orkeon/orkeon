@@ -43,7 +43,7 @@ public record DocxReadResponse
 
     /// <summary>Gets the document metadata (title, author, created date, etc.).</summary>
     [ReturnSchema(Description = "Document metadata")]
-    public Dictionary<string, string> Metadata { get; init; } = [];
+    public IReadOnlyDictionary<string, string> Metadata { get; init; } = System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
 
     /// <summary>Gets the number of paragraphs in the document.</summary>
     [ReturnSchema(Description = "Number of paragraphs", Example = 42)]

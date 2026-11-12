@@ -17,7 +17,7 @@ public record JanusGraphRequest
 
     /// <summary>Gets optional parameter bindings for the traversal.</summary>
     [FieldSchema(Description = "Parameter bindings for the traversal as key-value pairs", IsRequired = false)]
-    public Dictionary<string, object>? Bindings { get; init; }
+    public IReadOnlyDictionary<string, object>? Bindings { get; init; }
 
     /// <summary>Gets the maximum number of results to return.</summary>
     [FieldSchema(Description = "Maximum number of results to return", IsRequired = false, Example = "1000")]
