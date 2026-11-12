@@ -14,7 +14,7 @@ garantit ; la procédure côté contributeur est dans
 | Version | Peut changer | Ne peut pas changer |
 |---|---|---|
 | **Correctif** (`1.x.y`) | Corrections de bogues, documentation, code interne, performances. | Un membre public hors `[Experimental]` ; le comportement documenté. |
-| **Mineure** (`1.x`) | Ajoute des membres publics, des outils, des fournisseurs, des options et des réglages ; déprécie des membres avec `[Obsolete]` ; modifie tout ce qui est hors engagement (ci-dessous). | Retire un membre de la surface figée ou en change la signature. |
+| **Mineure** (`1.x`) | Ajoute des membres publics, des outils, des fournisseurs, des options et des réglages ; déprécie des membres avec `[Obsolete]` ; modifie tout ce qui est hors engagement (ci-dessous). | Retire un membre de la surface figée ou en change la signature, sauf sous la clause des bibliothèques tierces (ci-dessous). |
 | **Majeure** (`2.0`) | Retire ce qui était déprécié ; casse la surface figée. | — |
 
 Tout changement cassant est annoncé dans le `CHANGELOG.md` avec une note de migration.
@@ -33,6 +33,23 @@ public non déclaré fait échouer le build (`RS0016` et `RS0017` sont des erreu
   lors figées. `scripts/check-release-readiness.py` refuse une publication tant qu'un
   fichier `Unshipped` contient une entrée ou que la section `[Unreleased]` du CHANGELOG
   n'est pas vide.
+
+## Types d'une bibliothèque tierce
+
+Quelques membres publics portent dans leur signature un type d'une bibliothèque sur laquelle
+Orkeon s'appuie :
+
+- **Jint**, le moteur de scripts : les membres qu'atteignent les scripts sur les objets
+  d'exécution de `Orkeon.Scripting` et de `Orkeon.Cli.Commands.Scripting` (un paramètre
+  `JsValue`, par exemple) ;
+- **TreeSitter.DotNet** : `ILanguageAdapter`, le point d'extension d'un nouveau langage, et
+  les adaptateurs fournis par `Orkeon.Analysis`, qui reçoivent un `TreeSitter.Node` ;
+- **Terminal.Gui** : les vues de `Orkeon.Cli.TerminalGui`, qui dérivent de sa `View`.
+
+Un tel membre suit la version majeure de cette bibliothèque, pas celle d'Orkeon : quand
+Orkeon passe à une nouvelle majeure de la dépendance, le membre peut changer dans une
+mineure d'Orkeon, et le CHANGELOG le dit avec une note de migration. Tout membre dont la
+signature ne porte aucun type de ce genre reste sous l'engagement ci-dessus.
 
 ## Hors engagement
 

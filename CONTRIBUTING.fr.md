@@ -407,6 +407,11 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
 - **Un breaking change est toute édition ou suppression d'une ligne de
   `PublicAPI.Shipped.txt`.** Il exige une version majeure, une entrée `*REMOVED*` dans le fichier d'API, et une entrée
   CHANGELOG qui le dit sans détour.
+  Une exception : une ligne dont la signature porte un type de Jint, de TreeSitter.DotNet ou
+  de Terminal.Gui suit la version majeure de cette bibliothèque et peut changer dans une
+  mineure qui passe à une nouvelle majeure de celle-ci, avec une note de migration au
+  CHANGELOG ([clause des bibliothèques tierces](docs/fr/reference/stability.md#types-dune-bibliothèque-tierce)).
+  Gardez ces types hors de la surface publique : la plomberie qui en a besoin est `internal`.
 - **Fenêtre de dépréciation** : rien de public n'est retiré sans avoir livré
   `[Obsolete]` pendant au moins une version mineure, avec le remplaçant nommé dans le
   message ; le retrait lui-même arrive dans une version majeure, avec une ligne
@@ -420,7 +425,7 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
   n'importe quelle version. Voir
   [docs/fr/reference/experimental-apis.md](docs/fr/reference/experimental-apis.md).
 - **Engagement de stabilité pour la ligne 1.x** : aucun breaking change sur une API
-  livrée non expérimentale avant la 2.0. La politique complète est dans
+  livrée non expérimentale avant la 2.0, hors clause des bibliothèques tierces. La politique complète est dans
   [docs/fr/reference/stability.md](docs/fr/reference/stability.md).
 
 ## Processus de release

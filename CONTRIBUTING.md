@@ -391,6 +391,11 @@ matter of opinion — it is **recorded in the repository** and enforced at build
 - **A breaking change is any edit or removal of a line in `PublicAPI.Shipped.txt`.**
   It requires a major version bump, a
   `*REMOVED*` entry in the API file, and a CHANGELOG entry that says so plainly.
+  One exception: a line whose signature carries a type of Jint, TreeSitter.DotNet or
+  Terminal.Gui follows that library's major version and may change in a minor release that
+  moves to a new major of it, with a CHANGELOG migration note
+  ([third-party clause](docs/reference/stability.md#types-of-a-third-party-library)).
+  Keep such types off the public surface: plumbing that needs one is `internal`.
 - **Deprecation window**: nothing public is removed without shipping `[Obsolete]` for
   at least one minor version first, with the replacement named in the message; the
   removal itself lands in a major version, with a `*REMOVED*` line in the API file and
@@ -402,7 +407,7 @@ matter of opinion — it is **recorded in the repository** and enforced at build
   suppress explicitly, which is your opt-in to a surface that may change in any
   release. See [docs/reference/experimental-apis.md](docs/reference/experimental-apis.md).
 - **Stability commitment for the 1.x line**: no breaking change to a non-experimental
-  shipped API before 2.0. The full policy is in
+  shipped API before 2.0, the third-party clause aside. The full policy is in
   [docs/reference/stability.md](docs/reference/stability.md).
 
 ## Release Process

@@ -13,7 +13,7 @@ contributor-side procedure is in [CONTRIBUTING](../../CONTRIBUTING.md#versioning
 | Release | May change | May not change |
 |---|---|---|
 | **Patch** (`1.x.y`) | Bug fixes, documentation, internal code, performance. | Any public member outside `[Experimental]`; the documented behaviour. |
-| **Minor** (`1.x`) | Adds public members, tools, providers, options and settings; deprecates members with `[Obsolete]`; changes anything outside the commitment (below). | Removes or changes the signature of a member of the frozen surface. |
+| **Minor** (`1.x`) | Adds public members, tools, providers, options and settings; deprecates members with `[Obsolete]`; changes anything outside the commitment (below). | Removes or changes the signature of a member of the frozen surface, except under the third-party clause (below). |
 | **Major** (`2.0`) | Removes what was deprecated; breaks the frozen surface. | — |
 
 Every breaking change is called out in the `CHANGELOG.md` with a migration note.
@@ -31,6 +31,21 @@ public change fails the build (`RS0016` and `RS0017` are errors).
   there; at release, the entries move to `PublicAPI.Shipped.txt`, and from then on they are
   frozen. `scripts/check-release-readiness.py` refuses a release while any `Unshipped`
   file holds an entry or the `[Unreleased]` section of the CHANGELOG is not empty.
+
+## Types of a third-party library
+
+A few public members carry in their signature a type of a library Orkeon builds on:
+
+- **Jint**, the script engine: the members scripts reach on the runtime objects of
+  `Orkeon.Scripting` and `Orkeon.Cli.Commands.Scripting` (a `JsValue` parameter, for one);
+- **TreeSitter.DotNet**: `ILanguageAdapter`, the extension point for a new language, and the
+  built-in adapters of `Orkeon.Analysis`, which take a `TreeSitter.Node`;
+- **Terminal.Gui**: the views of `Orkeon.Cli.TerminalGui`, which derive from its `View`.
+
+Such a member follows the major version of that library, not Orkeon's: when Orkeon moves to
+a new major of the dependency, the member may change in a minor Orkeon release, and the
+CHANGELOG says so with a migration note. Every member whose signature carries no such type
+stays under the commitment above.
 
 ## Outside the commitment
 

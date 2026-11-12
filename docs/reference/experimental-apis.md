@@ -39,7 +39,9 @@ var budget = AgentExecutionBudget.Default;
 
 Everything not marked `[Experimental]` and listed in a package's `PublicAPI.Shipped.txt`
 is covered by the stability commitment: a change there is a **breaking change** and is
-treated as such by the versioning policy.
+treated as such by the versioning policy — save a member whose signature carries a type of
+Jint, TreeSitter.DotNet or Terminal.Gui, which follows that library's major version
+([third-party clause](./stability.md#types-of-a-third-party-library)).
 
 The attribute sits on the types, so the diagnostic fires where your code **names** one of
 them. Registering the stable entry points does not: `AddOrkeonInfrastructure(configuration)`

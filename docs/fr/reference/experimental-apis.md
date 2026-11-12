@@ -40,7 +40,10 @@ var budget = AgentExecutionBudget.Default;
 
 Tout ce qui n'est pas marqué `[Experimental]` et figure dans le `PublicAPI.Shipped.txt`
 d'un paquet est couvert par l'engagement de stabilité : y toucher est un **breaking
-change**, traité comme tel par la politique de versionnement.
+change**, traité comme tel par la politique de versionnement — sauf un membre dont la
+signature porte un type de Jint, de TreeSitter.DotNet ou de Terminal.Gui, qui suit la
+version majeure de cette bibliothèque
+([clause des bibliothèques tierces](./stability.md#types-dune-bibliothèque-tierce)).
 
 L'attribut est posé sur les types : le diagnostic se déclenche là où votre code **nomme**
 l'un d'eux. Enregistrer les points d'entrée stables ne le déclenche pas :
