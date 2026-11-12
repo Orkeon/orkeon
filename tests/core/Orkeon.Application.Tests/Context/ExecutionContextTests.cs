@@ -25,7 +25,7 @@ public class ExecutionContextTests
             ScopeId = scopeId ?? Guid.NewGuid().ToString();
         }
 
-        public async System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation)
+        public async System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation, CancellationToken cancellationToken = default)
         {
             ObjectDisposedException.ThrowIf(IsDisposed, typeof(TestMemoryScope));
 
@@ -33,7 +33,7 @@ public class ExecutionContextTests
             return await operation();
         }
 
-        public async System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation)
+        public async System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation, CancellationToken cancellationToken = default)
         {
             ObjectDisposedException.ThrowIf(IsDisposed, typeof(TestMemoryScope));
 

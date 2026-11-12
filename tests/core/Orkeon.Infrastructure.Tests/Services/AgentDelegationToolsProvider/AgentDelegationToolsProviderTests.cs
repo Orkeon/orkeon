@@ -654,13 +654,13 @@ internal class TestAgentCommunicationService : IAgentCommunicationService
 
     public IReadOnlyList<AgentMessage> SentMessages => _sentMessages;
 
-    public ValueTask SendMessageAsync(AgentMessage message)
+    public ValueTask SendMessageAsync(AgentMessage message, CancellationToken cancellationToken = default)
     {
         _sentMessages.Add(message);
         return ValueTask.CompletedTask;
     }
 
-    public async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId)
+    public async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var messages = _sentMessages.Where(m => m.To.Equals(agentId));
         foreach (var message in messages)
@@ -701,8 +701,8 @@ internal sealed class TestMemoryScope : Orkeon.Application.Interfaces.Ports.IMem
 {
     public string AgentId => "test-agent";
     public string ScopeId => "test-scope";
-    public System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation) => operation();
-    public System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation) => operation();
+    public System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation, CancellationToken cancellationToken = default) => operation();
+    public System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation, CancellationToken cancellationToken = default) => operation();
     public void Dispose() { }
 }
 

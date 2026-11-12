@@ -22,6 +22,6 @@ public sealed class DomainEmbeddingServiceAdapter : Domain.Memory.IEmbeddingServ
     public async System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
         // Application service doesn't take cancellation token, so we just call it
-        return await _applicationService.GetEmbeddingAsync(text).ConfigureAwait(false);
+        return await _applicationService.GetEmbeddingAsync(text, cancellationToken).ConfigureAwait(false);
     }
 }

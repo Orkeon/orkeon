@@ -68,6 +68,23 @@ public sealed class CovStubs_InMemoryMemorySystemTests
     private static InMemoryMemorySystem CreateSut() => new(NullLogger<InMemoryMemorySystem>.Instance);
 
     [Fact]
+    public async Task ShouldThrowOperationCanceled_WhenTheTokenIsCancelled()
+    {
+        var sut = CreateSut();
+        var agentId = AgentId.Create();
+        var cancelled = new CancellationToken(canceled: true);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.GetAgentMemoryStoreAsync(agentId, cancelled));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.CreateAgentMemoryStoreAsync(agentId, cancelled));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => sut.StoreMemoryAsync(agentId, MemoryItem.Create("m"), cancelled));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.RetrieveMemoriesAsync(agentId, "q", cancellationToken: cancelled));
+        // Nothing was stored by the cancelled calls.
+        Assert.Null(await sut.GetAgentMemoryStoreAsync(agentId, TestContext.Current.CancellationToken));
+        Assert.Empty(await sut.RetrieveMemoriesAsync(agentId, "q", cancellationToken: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public void Constructor_NullLogger_Throws()
         => Assert.Throws<ArgumentNullException>(() => new InMemoryMemorySystem(null!));
 
@@ -75,7 +92,7 @@ public sealed class CovStubs_InMemoryMemorySystemTests
     public async Task GetAgentMemoryStore_Unknown_ReturnsNull()
     {
         var sut = CreateSut();
-        Assert.Null(await sut.GetAgentMemoryStoreAsync(AgentId.Create()));
+        Assert.Null(await sut.GetAgentMemoryStoreAsync(AgentId.Create(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -84,9 +101,9 @@ public sealed class CovStubs_InMemoryMemorySystemTests
         var sut = CreateSut();
         var agentId = AgentId.Create();
 
-        var created = await sut.CreateAgentMemoryStoreAsync(agentId);
-        var again = await sut.CreateAgentMemoryStoreAsync(agentId);
-        var fetched = await sut.GetAgentMemoryStoreAsync(agentId);
+        var created = await sut.CreateAgentMemoryStoreAsync(agentId, TestContext.Current.CancellationToken);
+        var again = await sut.CreateAgentMemoryStoreAsync(agentId, TestContext.Current.CancellationToken);
+        var fetched = await sut.GetAgentMemoryStoreAsync(agentId, TestContext.Current.CancellationToken);
 
         Assert.Same(created, again);
         Assert.Same(created, fetched);
@@ -98,11 +115,11 @@ public sealed class CovStubs_InMemoryMemorySystemTests
         var sut = CreateSut();
         var agentId = AgentId.Create();
 
-        await sut.StoreMemoryAsync(agentId, MemoryItem.Create("first"));
-        await sut.StoreMemoryAsync(agentId, MemoryItem.Create("second"));
-        await sut.StoreMemoryAsync(agentId, MemoryItem.Create("third"));
+        await sut.StoreMemoryAsync(agentId, MemoryItem.Create("first"), TestContext.Current.CancellationToken);
+        await sut.StoreMemoryAsync(agentId, MemoryItem.Create("second"), TestContext.Current.CancellationToken);
+        await sut.StoreMemoryAsync(agentId, MemoryItem.Create("third"), TestContext.Current.CancellationToken);
 
-        var retrieved = (await sut.RetrieveMemoriesAsync(agentId, "q", limit: 2)).ToList();
+        var retrieved = (await sut.RetrieveMemoriesAsync(agentId, "q", limit: 2, TestContext.Current.CancellationToken)).ToList();
 
         Assert.Equal(2, retrieved.Count);
         Assert.Equal("second", retrieved[0].Content);
@@ -113,7 +130,7 @@ public sealed class CovStubs_InMemoryMemorySystemTests
     public async Task RetrieveMemories_Unknown_ReturnsEmpty()
     {
         var sut = CreateSut();
-        Assert.Empty(await sut.RetrieveMemoriesAsync(AgentId.Create(), "q"));
+        Assert.Empty(await sut.RetrieveMemoriesAsync(AgentId.Create(), "q", cancellationToken: TestContext.Current.CancellationToken));
     }
 }
 

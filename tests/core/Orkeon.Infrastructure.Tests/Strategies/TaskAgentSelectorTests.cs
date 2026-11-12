@@ -163,7 +163,7 @@ public sealed class TaskAgentSelectorTests
     {
         private static readonly float[] s_vector = [1f, 0f, 0f];
 
-        public System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text) =>
+        public System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default) =>
             System.Threading.Tasks.Task.FromResult(s_vector);
     }
 }

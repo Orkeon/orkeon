@@ -81,7 +81,7 @@ public sealed class McpDeviceFlowWiringTests : IDisposable
         var console = new FakeRunnerConsole();
         var opts = new TestOptions { SettingsPath = Settings(idp), AllowExternalMounts = true, RunnerConsole = console };
 
-        await RunnerExecution.RunListToolsAsync(opts, "Orkeon.Hosting.Tests");
+        await RunnerExecution.RunListToolsAsync(opts, "Orkeon.Hosting.Tests", externalCt: TestContext.Current.CancellationToken);
 
         Assert.Equal(1, idp.DeviceRequests);
         var shown = console.ErrorOutput.ToString();

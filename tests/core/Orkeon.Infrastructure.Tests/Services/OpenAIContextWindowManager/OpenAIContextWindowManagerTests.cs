@@ -92,7 +92,7 @@ public class OpenAIContextWindowManagerTests
         _tokenCounter.SetTokenCount(content, 50);
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(content, result);
@@ -109,7 +109,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse("Summarized content");
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("Summarized content", result);
@@ -128,7 +128,7 @@ public class OpenAIContextWindowManagerTests
         _tokenCounter.SetTokenCount(content, 100);
 
         // Act
-        var result = await manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(content, result);
@@ -145,7 +145,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse(""); // Empty response
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(content, result);
@@ -163,7 +163,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupException(new Exception("LLM error"));
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(content, result);
@@ -186,7 +186,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse("Summarized");
 
         // Act
-        await manager.SummarizeIfNeededAsync(content, maxTokens);
+        await manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         var lastConfig = _llmProvider.LastUsedConfig;
@@ -208,7 +208,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse("Summary");
 
         // Act
-        await manager.SummarizeIfNeededAsync(content, maxTokens);
+        await manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         var lastPrompt = _llmProvider.LastUsedPrompt;
@@ -271,7 +271,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse("Summary");
 
         // Act
-        await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         var lastConfig = _llmProvider.LastUsedConfig;
@@ -292,8 +292,8 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse("Summarized second content");
 
         // Act
-        var result1 = await _manager.SummarizeIfNeededAsync(content1, maxTokens);
-        var result2 = await _manager.SummarizeIfNeededAsync(content2, maxTokens);
+        var result1 = await _manager.SummarizeIfNeededAsync(content1, maxTokens, TestContext.Current.CancellationToken);
+        var result2 = await _manager.SummarizeIfNeededAsync(content2, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(content1, result1);
@@ -309,7 +309,7 @@ public class OpenAIContextWindowManagerTests
         _tokenCounter.SetTokenCount(content, 50);
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("...", result); // Should be truncated to just ellipsis
@@ -324,7 +324,7 @@ public class OpenAIContextWindowManagerTests
         _tokenCounter.SetTokenCount(content, 50);
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("...", result);
@@ -339,7 +339,7 @@ public class OpenAIContextWindowManagerTests
         _tokenCounter.SetTokenCount(content, 100);
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(content, result);
@@ -355,7 +355,7 @@ public class OpenAIContextWindowManagerTests
         _tokenCounter.SetTokenCount(content, 0);
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(content, result);
@@ -371,7 +371,7 @@ public class OpenAIContextWindowManagerTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(async () =>
-            await _manager.SummarizeIfNeededAsync(content!, maxTokens));
+            await _manager.SummarizeIfNeededAsync(content!, maxTokens, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -383,7 +383,7 @@ public class OpenAIContextWindowManagerTests
         _tokenCounter.SetTokenCount(content, 5);
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(content, result);
@@ -434,7 +434,7 @@ public class OpenAIContextWindowManagerTests
         using var cts = new CancellationTokenSource();
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("Summary", result);
@@ -451,7 +451,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse(""); // Empty response to trigger truncation
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.EndsWith("...", result);
@@ -471,7 +471,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse("Summary");
 
         // Act
-        await manager.SummarizeIfNeededAsync(content, maxTokens);
+        await manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         var lastConfig = _llmProvider.LastUsedConfig;
@@ -492,7 +492,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse("S");
 
         // Act
-        await manager.SummarizeIfNeededAsync(content, maxTokens);
+        await manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         var lastConfig = _llmProvider.LastUsedConfig;
@@ -509,7 +509,7 @@ public class OpenAIContextWindowManagerTests
         _tokenCounter.SetTokenCount(content, 50);
 
         // Act
-        await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(_logger.HasLoggedDebug("Content within token limit"));
@@ -526,7 +526,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse("Summary");
 
         // Act
-        await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(_logger.HasLoggedInformation("Summarizing content from 100"));
@@ -544,7 +544,7 @@ public class OpenAIContextWindowManagerTests
         _tokenCounter.SetTokenCount(content, 100);
 
         // Act
-        await manager.SummarizeIfNeededAsync(content, maxTokens);
+        await manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(_logger.HasLoggedWarning("Content exceeds token limit but auto-summarize is disabled"));
@@ -560,7 +560,7 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupException(new InvalidOperationException("LLM failure"));
 
         // Act
-        await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(_logger.HasLoggedError("Error during summarization"));
@@ -575,7 +575,7 @@ public class OpenAIContextWindowManagerTests
         _tokenCounter.SetTokenCount(content, 50);
 
         // Act
-        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens);
+        var result = await _manager.SummarizeIfNeededAsync(content, maxTokens, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(content, result);
@@ -595,8 +595,8 @@ public class OpenAIContextWindowManagerTests
         _llmProvider.SetupResponse("Summary");
 
         // Act
-        var task1 = _manager.SummarizeIfNeededAsync(content1, maxTokens);
-        var task2 = _manager.SummarizeIfNeededAsync(content2, maxTokens);
+        var task1 = _manager.SummarizeIfNeededAsync(content1, maxTokens, TestContext.Current.CancellationToken);
+        var task2 = _manager.SummarizeIfNeededAsync(content2, maxTokens, TestContext.Current.CancellationToken);
 
         var results = await Task.WhenAll(task1, task2);
 

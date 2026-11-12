@@ -17,14 +17,14 @@ public sealed class RecordingLongTermMemory : ILongTermMemory
     /// <summary>The key of every removal, in order.</summary>
     public List<string> Removed { get; } = [];
 
-    public Task AddAsync(MemoryItem item)
+    public Task AddAsync(MemoryItem item, CancellationToken cancellationToken = default)
     {
         Added.Add(item);
         _items.Add(item);
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10) =>
+    public Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<MemoryItem>>([.. _items.Where(i => i.Content.Contains(query, StringComparison.Ordinal)).Take(maxResults)]);
 
     public Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarAsync(
@@ -37,7 +37,7 @@ public sealed class RecordingLongTermMemory : ILongTermMemory
         return Task.FromResult(_items.RemoveAll(i => i.Id.ToString() == key) > 0);
     }
 
-    public Task ClearAsync()
+    public Task ClearAsync(CancellationToken cancellationToken = default)
     {
         _items.Clear();
         return Task.CompletedTask;

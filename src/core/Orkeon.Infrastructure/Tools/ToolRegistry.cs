@@ -52,9 +52,11 @@ public sealed class ToolRegistry : IToolRegistry
     }
 
     /// <inheritdoc />
-    public Task<bool> RegisterToolAsync(IBaseTool tool)
+    public Task<bool> RegisterToolAsync(IBaseTool tool, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(tool);
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled<bool>(cancellationToken);
         if (HoldsReservedName(tool))
             return Task.FromResult(false);
         var holder = _tools.GetOrAdd(tool.Name, tool);
@@ -62,12 +64,14 @@ public sealed class ToolRegistry : IToolRegistry
     }
 
     /// <inheritdoc />
-    public Task<bool> ReplaceToolAsync(IBaseTool current, IBaseTool replacement)
+    public Task<bool> ReplaceToolAsync(IBaseTool current, IBaseTool replacement, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(current);
         ArgumentNullException.ThrowIfNull(replacement);
         if (!string.Equals(current.Name, replacement.Name, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("A replacement carries the name of the tool it replaces.", nameof(replacement));
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled<bool>(cancellationToken);
         if (HoldsReservedName(replacement))
             return Task.FromResult(false);
         // One compare-and-swap: a reader finds the old instance or the new one, never a gap.
@@ -80,28 +84,40 @@ public sealed class ToolRegistry : IToolRegistry
         CoworkerDelegation.IsReservedName(tool.Name) && !CoworkerDelegation.IsDelegationTool(tool);
 
     /// <inheritdoc />
-    public Task<bool> UnregisterToolAsync(string toolId)
-        => Task.FromResult(_tools.TryRemove(toolId, out _));
+    public Task<bool> UnregisterToolAsync(string toolId, CancellationToken cancellationToken = default)
+        => cancellationToken.IsCancellationRequested
+            ? Task.FromCanceled<bool>(cancellationToken)
+            : Task.FromResult(_tools.TryRemove(toolId, out _));
 
     /// <inheritdoc />
-    public Task<IBaseTool?> GetToolAsync(string toolId)
-        => Task.FromResult(_tools.GetValueOrDefault(toolId));
+    public Task<IBaseTool?> GetToolAsync(string toolId, CancellationToken cancellationToken = default)
+        => cancellationToken.IsCancellationRequested
+            ? Task.FromCanceled<IBaseTool?>(cancellationToken)
+            : Task.FromResult(_tools.GetValueOrDefault(toolId));
 
     /// <inheritdoc />
-    public Task<IBaseTool?> GetToolByNameAsync(string name)
-        => Task.FromResult(_tools.GetValueOrDefault(name));
+    public Task<IBaseTool?> GetToolByNameAsync(string name, CancellationToken cancellationToken = default)
+        => cancellationToken.IsCancellationRequested
+            ? Task.FromCanceled<IBaseTool?>(cancellationToken)
+            : Task.FromResult(_tools.GetValueOrDefault(name));
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync()
-        => Task.FromResult<IReadOnlyList<IBaseTool>>(_tools.Values.ToList().AsReadOnly());
+    public Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync(CancellationToken cancellationToken = default)
+        => cancellationToken.IsCancellationRequested
+            ? Task.FromCanceled<IReadOnlyList<IBaseTool>>(cancellationToken)
+            : Task.FromResult<IReadOnlyList<IBaseTool>>(_tools.Values.ToList().AsReadOnly());
 
     /// <inheritdoc />
-    public Task<bool> IsRegisteredAsync(string toolId)
-        => Task.FromResult(_tools.ContainsKey(toolId));
+    public Task<bool> IsRegisteredAsync(string toolId, CancellationToken cancellationToken = default)
+        => cancellationToken.IsCancellationRequested
+            ? Task.FromCanceled<bool>(cancellationToken)
+            : Task.FromResult(_tools.ContainsKey(toolId));
 
     /// <inheritdoc />
-    public Task ClearAsync()
+    public Task ClearAsync(CancellationToken cancellationToken = default)
     {
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled(cancellationToken);
         _tools.Clear();
         return Task.CompletedTask;
     }

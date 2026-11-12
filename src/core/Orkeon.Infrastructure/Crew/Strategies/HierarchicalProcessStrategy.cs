@@ -351,7 +351,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     {
         LogManagerProcessingTask(task.Id);
 
-        var assignment = await _managerAgent.AssignTaskAsync(task, run.WorkerAgents, context, run.Manager).ConfigureAwait(false);
+        var assignment = await _managerAgent.AssignTaskAsync(task, run.WorkerAgents, context, run.Manager, cancellationToken).ConfigureAwait(false);
         LogManagerAssignedTaskToAgent(assignment.TaskId, assignment.AssignedAgent, assignment.Reason);
 
         var assignedAgent = run.WorkerAgents.FirstOrDefault(a => a.Id == assignment.AssignedAgent);

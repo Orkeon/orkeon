@@ -118,7 +118,7 @@ public sealed class CognitiveMemoryWiringTests
         harness.Named.SetChatResult("Consolidated: one fact");
         var memory = harness.Services.GetRequiredService<IMemoryService>().GetMemorySystem(harness.Crew).LongTerm;
         for (var i = 0; i < 5; i++)
-            await memory.AddAsync(MemoryItem.Create($"Redundant fact version {i}", embedding: [1f, 0f, 0f], importance: 0.5f));
+            await memory.AddAsync(MemoryItem.Create($"Redundant fact version {i}", embedding: [1f, 0f, 0f], importance: 0.5f), TestContext.Current.CancellationToken);
         await harness.Services.GetRequiredService<ICognitiveMemoryService>().ConsolidateAsync(harness.Crew, Ct);
 
         Assert.True(harness.Named.ChatCallCount > before);
@@ -317,8 +317,8 @@ public sealed class CognitiveMemoryWiringTests
         var fresh = MemoryItem.Create("old and similar", embedding: [1f, 0f, 0f], importance: 0.1f);
         var old = MemoryItem.Restore(fresh.Id, fresh.Content, fresh.Embedding, fresh.Importance,
             fresh.Metadata with { Access = fresh.Metadata.Access with { CreatedAt = DateTime.UtcNow.AddDays(-365) } });
-        await memory.AddAsync(old);
-        await memory.AddAsync(MemoryItem.Create("recent and important", embedding: [0.8f, 0.6f, 0f], importance: 1f));
+        await memory.AddAsync(old, TestContext.Current.CancellationToken);
+        await memory.AddAsync(MemoryItem.Create("recent and important", embedding: [0.8f, 0.6f, 0f], importance: 1f), TestContext.Current.CancellationToken);
         harness.Embedder.SetEmbeddingResult([1f, 0f, 0f]);
 
         var recalled = await service.RecallAsync(harness.Crew, "query", new RecallOptions { MinScore = 0f }, Ct);

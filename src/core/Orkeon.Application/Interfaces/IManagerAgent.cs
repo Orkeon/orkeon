@@ -18,12 +18,14 @@ public interface IManagerAgent
     /// <param name="availableAgents">The agents the task may go to — the crew's workers.</param>
     /// <param name="context">The run's execution context.</param>
     /// <param name="llm">The LLM the crew gives its manager.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The assignment, with the manager's reason.</returns>
     System.Threading.Tasks.Task<TaskAssignment> AssignTaskAsync(
         CrewTask task,
         IReadOnlyList<DomainAgent> availableAgents,
         SimpleExecutionContext context,
-        ManagerLlm llm
+        ManagerLlm llm,
+        CancellationToken cancellationToken = default
     );
 
     /// <summary>Reviews a task's output against the task.</summary>

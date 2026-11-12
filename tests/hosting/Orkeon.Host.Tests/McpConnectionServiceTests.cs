@@ -34,13 +34,13 @@ public sealed class McpConnectionServiceTests : IDisposable
             { "MCP": { "Servers": { "tracker": { "Transport": "Sse", "Url": "{{server.Url}}" } } } }
             """);
         var registry = host.Services.GetRequiredService<IToolRegistry>();
-        Assert.Null(await registry.GetToolByNameAsync("search_issues"));
+        Assert.Null(await registry.GetToolByNameAsync("search_issues", TestContext.Current.CancellationToken));
 
         await host.StartAsync(TestContext.Current.CancellationToken);
         try
         {
-            Assert.NotNull(await registry.GetToolByNameAsync("search_issues"));
-            Assert.NotNull(await registry.GetToolByNameAsync("create_issue"));
+            Assert.NotNull(await registry.GetToolByNameAsync("search_issues", TestContext.Current.CancellationToken));
+            Assert.NotNull(await registry.GetToolByNameAsync("create_issue", TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -48,7 +48,7 @@ public sealed class McpConnectionServiceTests : IDisposable
         }
 
         // Stopping the host disconnects the server: its tools leave the registry with it.
-        Assert.Null(await registry.GetToolByNameAsync("search_issues"));
+        Assert.Null(await registry.GetToolByNameAsync("search_issues", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public sealed class McpConnectionServiceTests : IDisposable
             await without.StartAsync(TestContext.Current.CancellationToken);
             await without.StopAsync(TestContext.Current.CancellationToken);
             Assert.Single(logs, line => line.Contains($"{variable}", StringComparison.Ordinal));
-            Assert.Null(await without.Services.GetRequiredService<IToolRegistry>().GetToolByNameAsync("search_issues"));
+            Assert.Null(await without.Services.GetRequiredService<IToolRegistry>().GetToolByNameAsync("search_issues", TestContext.Current.CancellationToken));
         }
 
         Environment.SetEnvironmentVariable(variable, "wr0ng-v4lue");
@@ -85,7 +85,7 @@ public sealed class McpConnectionServiceTests : IDisposable
             await right.StartAsync(TestContext.Current.CancellationToken);
             try
             {
-                Assert.NotNull(await right.Services.GetRequiredService<IToolRegistry>().GetToolByNameAsync("search_issues"));
+                Assert.NotNull(await right.Services.GetRequiredService<IToolRegistry>().GetToolByNameAsync("search_issues", TestContext.Current.CancellationToken));
             }
             finally
             {

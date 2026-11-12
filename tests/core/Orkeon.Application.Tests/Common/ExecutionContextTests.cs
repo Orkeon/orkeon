@@ -471,8 +471,8 @@ public sealed class ExecutionContextTests : IDisposable
         public string ScopeId => "test-scope";
         public string AgentId => "test-agent";
 
-        public System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation) => operation();
-        public System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation) => operation();
+        public System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation, CancellationToken cancellationToken = default) => operation();
+        public System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation, CancellationToken cancellationToken = default) => operation();
         public void Dispose() { }
     }
 }

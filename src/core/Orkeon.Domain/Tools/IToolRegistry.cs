@@ -17,38 +17,50 @@ public interface IToolRegistry
     /// delegation tools (<see cref="CoworkerDelegation.ToolNames"/>) are reserved: a tool that only
     /// carries one is refused (<see langword="false"/>).
     /// </remarks>
+    /// <param name="tool">The tool to register.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns><see langword="true"/> when <paramref name="tool"/> holds its name afterwards.</returns>
-    System.Threading.Tasks.Task<bool> RegisterToolAsync(IBaseTool tool);
+    System.Threading.Tasks.Task<bool> RegisterToolAsync(IBaseTool tool, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Unregisters a tool from the registry.
     /// </summary>
-    System.Threading.Tasks.Task<bool> UnregisterToolAsync(string toolId);
+    /// <param name="toolId">The identifier of the tool to remove.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<bool> UnregisterToolAsync(string toolId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a tool by its identifier.
     /// </summary>
-    System.Threading.Tasks.Task<IBaseTool?> GetToolAsync(string toolId);
+    /// <param name="toolId">The identifier of the tool.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<IBaseTool?> GetToolAsync(string toolId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a tool by its name.
     /// </summary>
-    System.Threading.Tasks.Task<IBaseTool?> GetToolByNameAsync(string name);
+    /// <param name="name">The name of the tool.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<IBaseTool?> GetToolByNameAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all registered tools.
     /// </summary>
-    System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync();
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a tool is registered.
     /// </summary>
-    System.Threading.Tasks.Task<bool> IsRegisteredAsync(string toolId);
+    /// <param name="toolId">The identifier of the tool.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<bool> IsRegisteredAsync(string toolId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Clears all registered tools.
     /// </summary>
-    System.Threading.Tasks.Task ClearAsync();
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task ClearAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Swaps <paramref name="current"/> for <paramref name="replacement"/>, which carries the same name, in
@@ -58,20 +70,21 @@ public interface IToolRegistry
     /// </summary>
     /// <param name="current">The registered instance to replace.</param>
     /// <param name="replacement">The instance to put in its place; same <c>Name</c>.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns><see langword="true"/> when the swap happened.</returns>
     /// <remarks>
     /// The default implementation unregisters then registers, which leaves a gap; a registry that
     /// serves concurrent readers overrides it with an atomic swap (<c>ToolRegistry</c> does).
     /// </remarks>
-    async System.Threading.Tasks.Task<bool> ReplaceToolAsync(IBaseTool current, IBaseTool replacement)
+    async System.Threading.Tasks.Task<bool> ReplaceToolAsync(IBaseTool current, IBaseTool replacement, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(current);
         ArgumentNullException.ThrowIfNull(replacement);
         if (!string.Equals(current.Name, replacement.Name, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("A replacement carries the name of the tool it replaces.", nameof(replacement));
-        if (await GetToolByNameAsync(current.Name).ConfigureAwait(false) is not { } holder || !ReferenceEquals(holder, current))
+        if (await GetToolByNameAsync(current.Name, cancellationToken).ConfigureAwait(false) is not { } holder || !ReferenceEquals(holder, current))
             return false;
-        await UnregisterToolAsync(current.Name).ConfigureAwait(false);
-        return await RegisterToolAsync(replacement).ConfigureAwait(false);
+        await UnregisterToolAsync(current.Name, cancellationToken).ConfigureAwait(false);
+        return await RegisterToolAsync(replacement, cancellationToken).ConfigureAwait(false);
     }
 }

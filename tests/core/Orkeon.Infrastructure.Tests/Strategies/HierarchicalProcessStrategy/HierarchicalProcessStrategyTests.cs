@@ -81,7 +81,7 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             _reviewOutputFunc = reviewOutputFunc;
         }
 
-        public Task<TaskAssignment> AssignTaskAsync(DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context, ManagerLlm llm)
+        public Task<TaskAssignment> AssignTaskAsync(DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context, ManagerLlm llm, CancellationToken cancellationToken = default)
         {
             if (_assignTaskFunc != null)
             {
@@ -164,12 +164,12 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
             ScopeId = Guid.NewGuid().ToString();
         }
 
-        public Task<T> ExecuteInScopeAsync<T>(Func<Task<T>> operation)
+        public Task<T> ExecuteInScopeAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default)
         {
             return operation();
         }
 
-        public Task ExecuteInScopeAsync(Func<Task> operation)
+        public Task ExecuteInScopeAsync(Func<Task> operation, CancellationToken cancellationToken = default)
         {
             return operation();
         }

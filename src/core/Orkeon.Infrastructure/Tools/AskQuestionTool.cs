@@ -112,7 +112,7 @@ public partial class AskQuestionTool : ToolBase<AskQuestionRequest, AskQuestionR
                 }
             );
 
-            await _communicationService.SendMessageAsync(message).ConfigureAwait(false);
+            await _communicationService.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
 
             LogAskedQuestion(Logger, targetAgentId, request.CoworkerRole);
 

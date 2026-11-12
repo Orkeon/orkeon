@@ -19,14 +19,14 @@ public sealed class AsyncAgentCommunicationService : IAgentCommunicationService,
     /// <summary>
     /// Sends a message asynchronously to the target agent's channel.
     /// </summary>
-    public ValueTask SendMessageAsync(AgentMessage message)
+    public ValueTask SendMessageAsync(AgentMessage message, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
-        return SendMessageCoreAsync(message);
+        return SendMessageCoreAsync(message, cancellationToken);
 
-        async ValueTask SendMessageCoreAsync(AgentMessage message)
+        async ValueTask SendMessageCoreAsync(AgentMessage message, CancellationToken cancellationToken)
         {
-            await _channelsLock.WaitAsync().ConfigureAwait(false);
+            await _channelsLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 // Ensure the target agent has a channel
@@ -41,7 +41,7 @@ public sealed class AsyncAgentCommunicationService : IAgentCommunicationService,
                 }
 
                 // Write the message to the target agent's channel
-                await targetChannel.Writer.WriteAsync(message).ConfigureAwait(false);
+                await targetChannel.Writer.WriteAsync(message, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -53,15 +53,15 @@ public sealed class AsyncAgentCommunicationService : IAgentCommunicationService,
     /// <summary>
     /// Receives messages asynchronously for a specific agent.
     /// </summary>
-    public IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId)
+    public IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(agentId);
-        return ReceiveMessagesAsyncCore(agentId);
+        return ReceiveMessagesAsyncCore(agentId, cancellationToken);
     }
 
     private async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsyncCore(
         AgentId agentId,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Channel<AgentMessage>? channel;
         await _channelsLock.WaitAsync(cancellationToken).ConfigureAwait(false);

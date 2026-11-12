@@ -27,8 +27,8 @@ public class InternalMemoryStoresTests
         var memory = new SimpleEntityMemory();
         var attributes = new Dictionary<string, string> { ["role"] = "ceo" };
 
-        await memory.AddEntityAsync("Alice", EntityType.Person, attributes);
-        var fetched = await memory.GetEntityAsync("Alice");
+        await memory.AddEntityAsync("Alice", EntityType.Person, attributes, TestContext.Current.CancellationToken);
+        var fetched = await memory.GetEntityAsync("Alice", TestContext.Current.CancellationToken);
 
         Assert.NotNull(fetched);
         Assert.Equal("Alice", fetched!.Name);
@@ -41,7 +41,7 @@ public class InternalMemoryStoresTests
     {
         var memory = new SimpleEntityMemory();
 
-        var fetched = await memory.GetEntityAsync("Unknown");
+        var fetched = await memory.GetEntityAsync("Unknown", TestContext.Current.CancellationToken);
 
         Assert.Null(fetched);
     }
@@ -50,12 +50,12 @@ public class InternalMemoryStoresTests
     public async System.Threading.Tasks.Task EntityMemory_GetEntitiesByType_FiltersByType()
     {
         var memory = new SimpleEntityMemory();
-        await memory.AddEntityAsync("Alice", EntityType.Person, new Dictionary<string, string>());
-        await memory.AddEntityAsync("Bob", EntityType.Person, new Dictionary<string, string>());
-        await memory.AddEntityAsync("Acme", EntityType.Organization, new Dictionary<string, string>());
+        await memory.AddEntityAsync("Alice", EntityType.Person, new Dictionary<string, string>(), TestContext.Current.CancellationToken);
+        await memory.AddEntityAsync("Bob", EntityType.Person, new Dictionary<string, string>(), TestContext.Current.CancellationToken);
+        await memory.AddEntityAsync("Acme", EntityType.Organization, new Dictionary<string, string>(), TestContext.Current.CancellationToken);
 
-        var people = await memory.GetEntitiesByTypeAsync(EntityType.Person);
-        var orgs = await memory.GetEntitiesByTypeAsync(EntityType.Organization);
+        var people = await memory.GetEntitiesByTypeAsync(EntityType.Person, TestContext.Current.CancellationToken);
+        var orgs = await memory.GetEntitiesByTypeAsync(EntityType.Organization, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, people.Count);
         Assert.Single(orgs);
@@ -66,9 +66,9 @@ public class InternalMemoryStoresTests
     public async System.Threading.Tasks.Task EntityMemory_GetEntitiesByType_NoMatch_ReturnsEmpty()
     {
         var memory = new SimpleEntityMemory();
-        await memory.AddEntityAsync("Alice", EntityType.Person, new Dictionary<string, string>());
+        await memory.AddEntityAsync("Alice", EntityType.Person, new Dictionary<string, string>(), TestContext.Current.CancellationToken);
 
-        var tools = await memory.GetEntitiesByTypeAsync(EntityType.Tool);
+        var tools = await memory.GetEntitiesByTypeAsync(EntityType.Tool, TestContext.Current.CancellationToken);
 
         Assert.Empty(tools);
     }
@@ -78,12 +78,12 @@ public class InternalMemoryStoresTests
     {
         var memory = new SimpleEntityMemory();
         await memory.AddEntityAsync("Alice", EntityType.Person,
-            new Dictionary<string, string> { ["role"] = "ceo" });
-        var before = (await memory.GetEntityAsync("Alice"))!;
+            new Dictionary<string, string> { ["role"] = "ceo" }, TestContext.Current.CancellationToken);
+        var before = (await memory.GetEntityAsync("Alice", TestContext.Current.CancellationToken))!;
 
         await memory.UpdateEntityAsync("Alice",
-            new Dictionary<string, string> { ["role"] = "cto", ["team"] = "eng" });
-        var after = (await memory.GetEntityAsync("Alice"))!;
+            new Dictionary<string, string> { ["role"] = "cto", ["team"] = "eng" }, TestContext.Current.CancellationToken);
+        var after = (await memory.GetEntityAsync("Alice", TestContext.Current.CancellationToken))!;
 
         Assert.Equal("cto", after.Attributes["role"]);
         Assert.Equal("eng", after.Attributes["team"]);
@@ -97,9 +97,9 @@ public class InternalMemoryStoresTests
 
         // Updating an entity that was never added must not throw and must not create it.
         await memory.UpdateEntityAsync("Ghost",
-            new Dictionary<string, string> { ["x"] = "y" });
+            new Dictionary<string, string> { ["x"] = "y" }, TestContext.Current.CancellationToken);
 
-        Assert.Null(await memory.GetEntityAsync("Ghost"));
+        Assert.Null(await memory.GetEntityAsync("Ghost", TestContext.Current.CancellationToken));
     }
 
     // ── SimpleContextualMemory ───────────────────────────────────
@@ -109,11 +109,11 @@ public class InternalMemoryStoresTests
     {
         var shortTerm = new SimpleShortTermMemory();
         using var longTerm = new InternalLongTermMemory();
-        await shortTerm.AddAsync(Item("short term note about kubernetes"));
-        await longTerm.AddAsync(Item("long term note about kubernetes"));
+        await shortTerm.AddAsync(Item("short term note about kubernetes"), TestContext.Current.CancellationToken);
+        await longTerm.AddAsync(Item("long term note about kubernetes"), TestContext.Current.CancellationToken);
         var contextual = new SimpleContextualMemory(shortTerm, longTerm);
 
-        var relevant = await contextual.GetRelevantMemoriesAsync("kubernetes", count: 10);
+        var relevant = await contextual.GetRelevantMemoriesAsync("kubernetes", count: 10, TestContext.Current.CancellationToken);
 
         Assert.NotEmpty(relevant);
         Assert.Contains(relevant, m => m.Content.Contains("short term", StringComparison.Ordinal));
@@ -125,11 +125,11 @@ public class InternalMemoryStoresTests
     {
         var shortTerm = new SimpleShortTermMemory();
         using var longTerm = new InternalLongTermMemory();
-        await shortTerm.AddAsync(Item("alpha"));
-        await longTerm.AddAsync(Item("beta keyword"));
+        await shortTerm.AddAsync(Item("alpha"), TestContext.Current.CancellationToken);
+        await longTerm.AddAsync(Item("beta keyword"), TestContext.Current.CancellationToken);
         var contextual = new SimpleContextualMemory(shortTerm, longTerm);
 
-        var context = await contextual.GetContextAsync("keyword", maxTokens: 1000);
+        var context = await contextual.GetContextAsync("keyword", maxTokens: 1000, TestContext.Current.CancellationToken);
 
         Assert.Contains("beta keyword", context, StringComparison.Ordinal);
     }
@@ -141,10 +141,10 @@ public class InternalMemoryStoresTests
         using var longTerm = new InternalLongTermMemory();
         // maxTokens * 4 is the char budget; build a payload that exceeds it.
         var maxTokens = 5;
-        await shortTerm.AddAsync(Item(new string('x', 500)));
+        await shortTerm.AddAsync(Item(new string('x', 500)), TestContext.Current.CancellationToken);
         var contextual = new SimpleContextualMemory(shortTerm, longTerm);
 
-        var context = await contextual.GetContextAsync("x", maxTokens);
+        var context = await contextual.GetContextAsync("x", maxTokens, TestContext.Current.CancellationToken);
 
         Assert.Equal(maxTokens * 4, context.Length);
     }
@@ -155,7 +155,7 @@ public class InternalMemoryStoresTests
         using var longTerm = new InternalLongTermMemory();
         var contextual = new SimpleContextualMemory(new SimpleShortTermMemory(), longTerm);
 
-        var context = await contextual.GetContextAsync("anything");
+        var context = await contextual.GetContextAsync("anything", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(string.Empty, context);
     }
@@ -167,9 +167,9 @@ public class InternalMemoryStoresTests
     {
         var memory = new SimpleShortTermMemory();
         for (int i = 0; i < 5; i++)
-            await memory.AddAsync(Item($"item-{i}"));
+            await memory.AddAsync(Item($"item-{i}"), TestContext.Current.CancellationToken);
 
-        var recent = await memory.GetRecentAsync(2);
+        var recent = await memory.GetRecentAsync(2, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, recent.Count);
         Assert.Equal("item-3", recent[0].Content);
@@ -182,9 +182,9 @@ public class InternalMemoryStoresTests
         var memory = new SimpleShortTermMemory();
         // MaxItems is 50; push 60 and ensure only the most recent survive.
         for (int i = 0; i < 60; i++)
-            await memory.AddAsync(Item($"item-{i}"));
+            await memory.AddAsync(Item($"item-{i}"), TestContext.Current.CancellationToken);
 
-        var recent = await memory.GetRecentAsync(100);
+        var recent = await memory.GetRecentAsync(100, TestContext.Current.CancellationToken);
 
         Assert.Equal(50, recent.Count);
         Assert.Equal("item-10", recent[0].Content);
@@ -197,11 +197,11 @@ public class InternalMemoryStoresTests
     public async System.Threading.Tasks.Task ShortTermMemory_Clear_RemovesAll()
     {
         var memory = new SimpleShortTermMemory();
-        await memory.AddAsync(Item("a"));
-        await memory.AddAsync(Item("b"));
+        await memory.AddAsync(Item("a"), TestContext.Current.CancellationToken);
+        await memory.AddAsync(Item("b"), TestContext.Current.CancellationToken);
 
         memory.Clear();
-        var recent = await memory.GetRecentAsync(10);
+        var recent = await memory.GetRecentAsync(10, TestContext.Current.CancellationToken);
 
         Assert.Empty(recent);
     }
@@ -212,12 +212,12 @@ public class InternalMemoryStoresTests
     public async System.Threading.Tasks.Task LongTermMemory_Search_MatchesByKeywordAndOrdersByRecency()
     {
         using var memory = new InternalLongTermMemory();
-        await memory.AddAsync(Item("oldest about ai"));
+        await memory.AddAsync(Item("oldest about ai"), TestContext.Current.CancellationToken);
         await System.Threading.Tasks.Task.Delay(5, TestContext.Current.CancellationToken);
-        await memory.AddAsync(Item("newest about ai"));
-        await memory.AddAsync(Item("unrelated text"));
+        await memory.AddAsync(Item("newest about ai"), TestContext.Current.CancellationToken);
+        await memory.AddAsync(Item("unrelated text"), TestContext.Current.CancellationToken);
 
-        var results = await memory.SearchAsync("ai", maxResults: 10);
+        var results = await memory.SearchAsync("ai", maxResults: 10, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, results.Count);
         Assert.Equal("newest about ai", results[0].Content);
@@ -228,9 +228,9 @@ public class InternalMemoryStoresTests
     {
         using var memory = new InternalLongTermMemory();
         for (int i = 0; i < 5; i++)
-            await memory.AddAsync(Item($"match {i}"));
+            await memory.AddAsync(Item($"match {i}"), TestContext.Current.CancellationToken);
 
-        var results = await memory.SearchAsync("match", maxResults: 2);
+        var results = await memory.SearchAsync("match", maxResults: 2, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, results.Count);
     }
@@ -239,10 +239,10 @@ public class InternalMemoryStoresTests
     public async System.Threading.Tasks.Task LongTermMemory_Clear_RemovesAll()
     {
         using var memory = new InternalLongTermMemory();
-        await memory.AddAsync(Item("persisted"));
+        await memory.AddAsync(Item("persisted"), TestContext.Current.CancellationToken);
 
-        await memory.ClearAsync();
-        var results = await memory.SearchAsync("persisted");
+        await memory.ClearAsync(TestContext.Current.CancellationToken);
+        var results = await memory.SearchAsync("persisted", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(results);
     }
@@ -252,11 +252,11 @@ public class InternalMemoryStoresTests
     {
         // GAP-30: the memory of an unnamed crew has no provider to search by vector.
         using var memory = new InternalLongTermMemory();
-        await memory.AddAsync(MemoryItem.Create("same direction", embedding: [1f, 0f], importance: 0.8f));
-        await memory.AddAsync(MemoryItem.Create("close", embedding: [0.8f, 0.6f], importance: 0.8f));
-        await memory.AddAsync(MemoryItem.Create("orthogonal", embedding: [0f, 1f], importance: 0.8f));
-        await memory.AddAsync(MemoryItem.Create("no vector", embedding: null, importance: 0.8f));
-        await memory.AddAsync(MemoryItem.Create("other dimension", embedding: [1f, 0f, 0f], importance: 0.8f));
+        await memory.AddAsync(MemoryItem.Create("same direction", embedding: [1f, 0f], importance: 0.8f), TestContext.Current.CancellationToken);
+        await memory.AddAsync(MemoryItem.Create("close", embedding: [0.8f, 0.6f], importance: 0.8f), TestContext.Current.CancellationToken);
+        await memory.AddAsync(MemoryItem.Create("orthogonal", embedding: [0f, 1f], importance: 0.8f), TestContext.Current.CancellationToken);
+        await memory.AddAsync(MemoryItem.Create("no vector", embedding: null, importance: 0.8f), TestContext.Current.CancellationToken);
+        await memory.AddAsync(MemoryItem.Create("other dimension", embedding: [1f, 0f, 0f], importance: 0.8f), TestContext.Current.CancellationToken);
 
         var results = await memory.SearchSimilarAsync([1f, 0f], maxResults: 10, minScore: 0.5f, TestContext.Current.CancellationToken);
 
@@ -270,7 +270,7 @@ public class InternalMemoryStoresTests
     {
         using var memory = new InternalLongTermMemory();
         for (var i = 0; i < 5; i++)
-            await memory.AddAsync(MemoryItem.Create($"match {i}", embedding: [1f, 0f], importance: 0.8f));
+            await memory.AddAsync(MemoryItem.Create($"match {i}", embedding: [1f, 0f], importance: 0.8f), TestContext.Current.CancellationToken);
 
         Assert.Equal(2, (await memory.SearchSimilarAsync([1f, 0f], 2, 0f, TestContext.Current.CancellationToken)).Count);
     }
@@ -281,8 +281,8 @@ public class InternalMemoryStoresTests
         using var memory = new InternalLongTermMemory();
         var kept = MemoryItem.Create("kept", embedding: [1f, 0f], importance: 0.8f);
         var removed = MemoryItem.Create("removed", embedding: [1f, 0f], importance: 0.8f);
-        await memory.AddAsync(kept);
-        await memory.AddAsync(removed);
+        await memory.AddAsync(kept, TestContext.Current.CancellationToken);
+        await memory.AddAsync(removed, TestContext.Current.CancellationToken);
 
         Assert.True(await memory.RemoveAsync(removed.Id.ToString(), TestContext.Current.CancellationToken));
         Assert.False(await memory.RemoveAsync(removed.Id.ToString(), TestContext.Current.CancellationToken));
@@ -319,5 +319,29 @@ public class InternalMemoryStoresTests
         var ex = Record.Exception(() => system.Dispose());
 
         Assert.Null(ex);
+    }
+
+    // ── Cancellation ─────────────────────────────────────────────
+
+    [Fact]
+    public async System.Threading.Tasks.Task LongTermMemory_ShouldThrowOperationCanceled_WhenTheLockWaitIsCancelled()
+    {
+        using var memory = new InternalLongTermMemory();
+        var cancelled = new CancellationToken(canceled: true);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => memory.AddAsync(Item("never stored"), cancelled));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => memory.SearchAsync("never", cancellationToken: cancelled));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => memory.ClearAsync(cancelled));
+        Assert.Empty(await memory.SearchAsync("never", cancellationToken: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ContextualMemory_ShouldThrowOperationCanceled_WhenTheTokenIsCancelled()
+    {
+        using var longTerm = new InternalLongTermMemory();
+        var contextual = new SimpleContextualMemory(new SimpleShortTermMemory(), longTerm);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => contextual.GetContextAsync("anything", cancellationToken: new CancellationToken(canceled: true)));
     }
 }

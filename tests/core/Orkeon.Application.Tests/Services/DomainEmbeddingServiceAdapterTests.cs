@@ -14,7 +14,7 @@ public class DomainEmbeddingServiceAdapterTests
         public bool ThrowException { get; set; }
         public Exception ExceptionToThrow { get; set; } = new InvalidOperationException("Test exception");
 
-        public async System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text)
+        public async System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
         {
             ProcessedTexts.Add(text);
 
@@ -24,7 +24,7 @@ public class DomainEmbeddingServiceAdapterTests
             }
 
             // Simulate async work
-            await System.Threading.Tasks.Task.Delay(10);
+            await System.Threading.Tasks.Task.Delay(10, cancellationToken);
             return EmbeddingToReturn;
         }
     }
@@ -175,7 +175,7 @@ public class DomainEmbeddingServiceAdapterTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldStillCallApplicationService_WhenGettingEmbeddingAsyncWithCancelledToken()
+    public async System.Threading.Tasks.Task ShouldForwardTheToken_WhenGettingEmbeddingAsyncWithCancelledToken()
     {
         // Arrange
         var applicationService = new TestEmbeddingService
@@ -187,13 +187,10 @@ public class DomainEmbeddingServiceAdapterTests
         await cts.CancelAsync(); // Cancel before calling
         var text = "Test with cancelled token";
 
-        // Act - The adapter doesn't use the cancellation token, so it should still work
-        var result = await adapter.GetEmbeddingAsync(text, cts.Token);
+        // Act - the adapter hands the token to the application service, whose wait observes it
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => adapter.GetEmbeddingAsync(text, cts.Token));
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Single(result);
-        Assert.Equal(0.5f, result[0]);
         Assert.Single(applicationService.ProcessedTexts);
         Assert.Equal(text, applicationService.ProcessedTexts[0]);
     }

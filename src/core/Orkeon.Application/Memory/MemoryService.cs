@@ -114,11 +114,11 @@ public partial class MemoryService : IMemoryService, IDisposable
 
             if (item.Importance > (float)SearchDefaults.DefaultSimilarityThreshold)
             {
-                await memorySystem.LongTerm.AddAsync(item).ConfigureAwait(false);
+                await memorySystem.LongTerm.AddAsync(item, cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                await memorySystem.ShortTerm.AddAsync(item).ConfigureAwait(false);
+                await memorySystem.ShortTerm.AddAsync(item, cancellationToken).ConfigureAwait(false);
             }
 
             LogMemorySaved(crewId);
@@ -145,13 +145,13 @@ public partial class MemoryService : IMemoryService, IDisposable
         // Search across memory types based on filter
         if (!typeFilter.HasValue || typeFilter.Value == DomainMemoryType.ShortTerm)
         {
-            var shortTermResults = await memorySystem.ShortTerm.GetRecentAsync(maxResults).ConfigureAwait(false);
+            var shortTermResults = await memorySystem.ShortTerm.GetRecentAsync(maxResults, cancellationToken).ConfigureAwait(false);
             results.AddRange(shortTermResults);
         }
 
         if (!typeFilter.HasValue || typeFilter.Value == DomainMemoryType.LongTerm)
         {
-            var longTermResults = await memorySystem.LongTerm.SearchAsync(query, maxResults).ConfigureAwait(false);
+            var longTermResults = await memorySystem.LongTerm.SearchAsync(query, maxResults, cancellationToken).ConfigureAwait(false);
             results.AddRange(longTermResults);
         }
 
@@ -174,12 +174,12 @@ public partial class MemoryService : IMemoryService, IDisposable
 
         if (!typeFilter.HasValue || typeFilter.Value == DomainMemoryType.ShortTerm)
         {
-            await memorySystem.ShortTerm.ClearAsync().ConfigureAwait(false);
+            await memorySystem.ShortTerm.ClearAsync(cancellationToken).ConfigureAwait(false);
         }
 
         if (!typeFilter.HasValue || typeFilter.Value == DomainMemoryType.LongTerm)
         {
-            await memorySystem.LongTerm.ClearAsync().ConfigureAwait(false);
+            await memorySystem.LongTerm.ClearAsync(cancellationToken).ConfigureAwait(false);
         }
 
         LogMemoryCleared(crewId, typeFilter);
@@ -290,7 +290,7 @@ internal class SimpleShortTermMemory : IShortTermMemory
     /// <summary>
     /// Add Async.
     /// </summary>
-    public System.Threading.Tasks.Task AddAsync(MemoryItem item)
+    public System.Threading.Tasks.Task AddAsync(MemoryItem item, CancellationToken cancellationToken = default)
     {
         _items.Enqueue(item);
         while (_items.Count > MaxItems && _items.TryDequeue(out _))
@@ -305,7 +305,7 @@ internal class SimpleShortTermMemory : IShortTermMemory
     /// <summary>
     /// Get Recent Async.
     /// </summary>
-    public System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> GetRecentAsync(int count = 10)
+    public System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> GetRecentAsync(int count = 10, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<MemoryItem> recent = _items.ToArray().TakeLast(count).ToList();
         return System.Threading.Tasks.Task.FromResult(recent);
@@ -314,7 +314,7 @@ internal class SimpleShortTermMemory : IShortTermMemory
     /// <summary>
     /// Clear Async.
     /// </summary>
-    public System.Threading.Tasks.Task ClearAsync()
+    public System.Threading.Tasks.Task ClearAsync(CancellationToken cancellationToken = default)
     {
         _items.Clear();
         return System.Threading.Tasks.Task.CompletedTask;
@@ -340,9 +340,9 @@ internal class InternalLongTermMemory : ILongTermMemory, IDisposable
     /// <summary>
     /// Add Async.
     /// </summary>
-    public async System.Threading.Tasks.Task AddAsync(MemoryItem item)
+    public async System.Threading.Tasks.Task AddAsync(MemoryItem item, CancellationToken cancellationToken = default)
     {
-        await _semaphore.WaitAsync().ConfigureAwait(false);
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             _items.Add(item);
@@ -356,9 +356,9 @@ internal class InternalLongTermMemory : ILongTermMemory, IDisposable
     /// <summary>
     /// Search Async.
     /// </summary>
-    public async System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10)
+    public async System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10, CancellationToken cancellationToken = default)
     {
-        await _semaphore.WaitAsync().ConfigureAwait(false);
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             // Simple keyword search
@@ -416,9 +416,9 @@ internal class InternalLongTermMemory : ILongTermMemory, IDisposable
     /// <summary>
     /// Clear Async.
     /// </summary>
-    public async System.Threading.Tasks.Task ClearAsync()
+    public async System.Threading.Tasks.Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        await _semaphore.WaitAsync().ConfigureAwait(false);
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             _items.Clear();
@@ -503,18 +503,18 @@ internal sealed class ProviderBackedLongTermMemory : ILongTermMemory
         _scope = scope;
     }
 
-    public async System.Threading.Tasks.Task AddAsync(MemoryItem item)
+    public async System.Threading.Tasks.Task AddAsync(MemoryItem item, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(item);
         var entry = CrewMemoryScope.Stamp(item, _scope);
         var key = entry.Id.ToString();
-        await _provider.StoreAsync(key, entry).ConfigureAwait(false);
+        await _provider.StoreAsync(key, entry, cancellationToken).ConfigureAwait(false);
         _storedKeys.TryAdd(key, 0);
     }
 
-    public async System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10)
+    public async System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10, CancellationToken cancellationToken = default)
     {
-        var results = await _provider.SearchAsync(query, maxResults, CrewMemoryScope.Filter(_scope)).ConfigureAwait(false);
+        var results = await _provider.SearchAsync(query, maxResults, CrewMemoryScope.Filter(_scope), cancellationToken).ConfigureAwait(false);
         return results.ToList();
     }
 
@@ -537,11 +537,11 @@ internal sealed class ProviderBackedLongTermMemory : ILongTermMemory
         return removed;
     }
 
-    public async System.Threading.Tasks.Task ClearAsync()
+    public async System.Threading.Tasks.Task ClearAsync(CancellationToken cancellationToken = default)
     {
         foreach (var key in _storedKeys.Keys)
         {
-            await _provider.DeleteAsync(key).ConfigureAwait(false);
+            await _provider.DeleteAsync(key, cancellationToken).ConfigureAwait(false);
             _storedKeys.TryRemove(key, out _);
         }
     }
@@ -557,7 +557,7 @@ internal class SimpleEntityMemory : IEntityMemory
     /// <summary>
     /// Add Entity Async.
     /// </summary>
-    public System.Threading.Tasks.Task AddEntityAsync(string entityName, EntityType type, Dictionary<string, string> attributes)
+    public System.Threading.Tasks.Task AddEntityAsync(string entityName, EntityType type, Dictionary<string, string> attributes, CancellationToken cancellationToken = default)
     {
         var entity = MemoryEntity.Create(entityName, type, attributes);
         _entities[entityName] = entity;
@@ -567,7 +567,7 @@ internal class SimpleEntityMemory : IEntityMemory
     /// <summary>
     /// Get Entity Async.
     /// </summary>
-    public System.Threading.Tasks.Task<MemoryEntity?> GetEntityAsync(string entityName)
+    public System.Threading.Tasks.Task<MemoryEntity?> GetEntityAsync(string entityName, CancellationToken cancellationToken = default)
     {
         _entities.TryGetValue(entityName, out var entity);
         return System.Threading.Tasks.Task.FromResult(entity);
@@ -576,7 +576,7 @@ internal class SimpleEntityMemory : IEntityMemory
     /// <summary>
     /// Get Entities By Type Async.
     /// </summary>
-    public System.Threading.Tasks.Task<IReadOnlyList<MemoryEntity>> GetEntitiesByTypeAsync(EntityType type)
+    public System.Threading.Tasks.Task<IReadOnlyList<MemoryEntity>> GetEntitiesByTypeAsync(EntityType type, CancellationToken cancellationToken = default)
     {
         var entities = _entities.Values
             .Where(e => e.Type == type)
@@ -587,7 +587,7 @@ internal class SimpleEntityMemory : IEntityMemory
     /// <summary>
     /// Update Entity Async.
     /// </summary>
-    public System.Threading.Tasks.Task UpdateEntityAsync(string entityName, Dictionary<string, string> attributes)
+    public System.Threading.Tasks.Task UpdateEntityAsync(string entityName, Dictionary<string, string> attributes, CancellationToken cancellationToken = default)
     {
         if (_entities.TryGetValue(entityName, out var entity))
         {
@@ -622,9 +622,9 @@ internal class SimpleContextualMemory : IContextualMemory
     /// <summary>
     /// Get Context Async.
     /// </summary>
-    public async System.Threading.Tasks.Task<string> GetContextAsync(string query, int maxTokens = 1000)
+    public async System.Threading.Tasks.Task<string> GetContextAsync(string query, int maxTokens = 1000, CancellationToken cancellationToken = default)
     {
-        var memories = await GetRelevantMemoriesAsync(query, 20).ConfigureAwait(false);
+        var memories = await GetRelevantMemoriesAsync(query, 20, cancellationToken).ConfigureAwait(false);
         var context = string.Join("\n", memories.Select(m => m.Content));
 
         // Truncate to max tokens (rough approximation)
@@ -639,10 +639,10 @@ internal class SimpleContextualMemory : IContextualMemory
     /// <summary>
     /// Get Relevant Memories Async.
     /// </summary>
-    public async System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> GetRelevantMemoriesAsync(string context, int count = 20)
+    public async System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> GetRelevantMemoriesAsync(string context, int count = 20, CancellationToken cancellationToken = default)
     {
-        var shortTermMemories = await _shortTerm.GetRecentAsync(count / 2).ConfigureAwait(false);
-        var longTermMemories = await _longTerm.SearchAsync(context, count / 2).ConfigureAwait(false);
+        var shortTermMemories = await _shortTerm.GetRecentAsync(count / 2, cancellationToken).ConfigureAwait(false);
+        var longTermMemories = await _longTerm.SearchAsync(context, count / 2, cancellationToken).ConfigureAwait(false);
 
         // Delegate relevance ranking to the Domain service
         return MemoryRelevanceService.RankByRelevance(

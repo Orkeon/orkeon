@@ -8,5 +8,7 @@ public interface IEmbeddingService
     /// <summary>
     /// Generates an embedding vector for the given text.
     /// </summary>
-    System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text);
+    /// <param name="text">The text to embed.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default);
 }

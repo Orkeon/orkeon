@@ -35,18 +35,22 @@ public sealed partial class InMemoryMemorySystem : IMemorySystem
     private partial void LogInMemoryFallback();
 
     /// <inheritdoc />
-    public Task<AgentMemoryStore?> GetAgentMemoryStoreAsync(AgentId agentId)
+    public Task<AgentMemoryStore?> GetAgentMemoryStoreAsync(AgentId agentId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(agentId);
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled<AgentMemoryStore?>(cancellationToken);
         WarnOnce();
         _stores.TryGetValue(agentId.Value.ToString(), out var store);
         return Task.FromResult(store);
     }
 
     /// <inheritdoc />
-    public Task<AgentMemoryStore> CreateAgentMemoryStoreAsync(AgentId agentId)
+    public Task<AgentMemoryStore> CreateAgentMemoryStoreAsync(AgentId agentId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(agentId);
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled<AgentMemoryStore>(cancellationToken);
         WarnOnce();
         var store = _stores.GetOrAdd(
             agentId.Value.ToString(),
@@ -55,9 +59,11 @@ public sealed partial class InMemoryMemorySystem : IMemorySystem
     }
 
     /// <inheritdoc />
-    public Task StoreMemoryAsync(AgentId agentId, MemoryItem memory)
+    public Task StoreMemoryAsync(AgentId agentId, MemoryItem memory, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(agentId);
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled(cancellationToken);
         WarnOnce();
         var key = agentId.Value.ToString();
         _memories.AddOrUpdate(
@@ -68,9 +74,11 @@ public sealed partial class InMemoryMemorySystem : IMemorySystem
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<MemoryItem>> RetrieveMemoriesAsync(AgentId agentId, string query, int limit = MemoryDefaults.DefaultSearchLimit)
+    public Task<IEnumerable<MemoryItem>> RetrieveMemoriesAsync(AgentId agentId, string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(agentId);
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled<IEnumerable<MemoryItem>>(cancellationToken);
         WarnOnce();
         var key = agentId.Value.ToString();
         if (_memories.TryGetValue(key, out var memories))

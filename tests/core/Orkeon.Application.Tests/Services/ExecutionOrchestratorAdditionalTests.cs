@@ -230,8 +230,8 @@ public class ExecutionOrchestratorAdditionalTests
     {
         public string ScopeId => "test";
         public string AgentId => "test-agent";
-        public System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> action) => action();
-        public System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> action) => action();
+        public System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> action, CancellationToken cancellationToken = default) => action();
+        public System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> action, CancellationToken cancellationToken = default) => action();
         public void Dispose() { }
     }
 

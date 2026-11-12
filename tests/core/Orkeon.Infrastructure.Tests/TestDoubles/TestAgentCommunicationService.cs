@@ -27,7 +27,7 @@ public class TestAgentCommunicationService : IAgentCommunicationService
         _exceptionToThrow = exception;
     }
 
-    public ValueTask SendMessageAsync(AgentMessage message)
+    public ValueTask SendMessageAsync(AgentMessage message, CancellationToken cancellationToken = default)
     {
         if (_exceptionToThrow != null)
         {
@@ -38,7 +38,7 @@ public class TestAgentCommunicationService : IAgentCommunicationService
         return ValueTask.CompletedTask;
     }
 
-    public async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId)
+    public async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (_agentMessages.TryGetValue(agentId, out var messages))
         {

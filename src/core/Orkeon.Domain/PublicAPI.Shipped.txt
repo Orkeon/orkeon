@@ -2070,10 +2070,10 @@ Orkeon.Domain.Memory.IMemoryProvider.SearchSimilarAsync(float[]! queryEmbedding,
 Orkeon.Domain.Memory.IMemoryProvider.StoreAsync(string! key, Orkeon.Domain.Memory.MemoryItem! item, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Domain.Memory.IMemoryProvider.StoreWithEmbeddingAsync(string! key, Orkeon.Domain.Memory.MemoryItem! item, float[]! embedding, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Domain.Memory.IMemorySystem
-Orkeon.Domain.Memory.IMemorySystem.CreateAgentMemoryStoreAsync(Orkeon.Domain.Common.AgentId! agentId) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.AgentMemoryStore!>!
-Orkeon.Domain.Memory.IMemorySystem.GetAgentMemoryStoreAsync(Orkeon.Domain.Common.AgentId! agentId) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.AgentMemoryStore?>!
-Orkeon.Domain.Memory.IMemorySystem.RetrieveMemoriesAsync(Orkeon.Domain.Common.AgentId! agentId, string! query, int limit = 10) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Orkeon.Domain.Memory.MemoryItem!>!>!
-Orkeon.Domain.Memory.IMemorySystem.StoreMemoryAsync(Orkeon.Domain.Common.AgentId! agentId, Orkeon.Domain.Memory.MemoryItem! memory) -> System.Threading.Tasks.Task!
+Orkeon.Domain.Memory.IMemorySystem.CreateAgentMemoryStoreAsync(Orkeon.Domain.Common.AgentId! agentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.AgentMemoryStore!>!
+Orkeon.Domain.Memory.IMemorySystem.GetAgentMemoryStoreAsync(Orkeon.Domain.Common.AgentId! agentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.AgentMemoryStore?>!
+Orkeon.Domain.Memory.IMemorySystem.RetrieveMemoriesAsync(Orkeon.Domain.Common.AgentId! agentId, string! query, int limit = 10, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Orkeon.Domain.Memory.MemoryItem!>!>!
+Orkeon.Domain.Memory.IMemorySystem.StoreMemoryAsync(Orkeon.Domain.Common.AgentId! agentId, Orkeon.Domain.Memory.MemoryItem! memory, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Domain.Memory.IScoredVectorSearch
 Orkeon.Domain.Memory.IScoredVectorSearch.SearchSimilarWithScoresAsync(System.ReadOnlyMemory<float> embedding, int topK, float minScore, Orkeon.Domain.Memory.MemoryFilter? filter = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.ScoredMemoryItem!>!>!
 Orkeon.Domain.Memory.MemoryAnalysis
@@ -2416,7 +2416,7 @@ Orkeon.Domain.SharedKernel.Events.IDomainEventHandler<TEvent>
 Orkeon.Domain.SharedKernel.Events.IDomainEventHandler<TEvent>.HandleAsync(TEvent! domainEvent, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Domain.SharedKernel.IContextWindowManager
 Orkeon.Domain.SharedKernel.IContextWindowManager.IsContextExceeded(string! content, int maxTokens) -> bool
-Orkeon.Domain.SharedKernel.IContextWindowManager.SummarizeIfNeededAsync(string! content, int maxTokens) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Domain.SharedKernel.IContextWindowManager.SummarizeIfNeededAsync(string! content, int maxTokens, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 Orkeon.Domain.SharedKernel.ILlmProvider
 Orkeon.Domain.SharedKernel.ILlmProvider.BaseConfig.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig?
 Orkeon.Domain.SharedKernel.ILlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
@@ -3521,14 +3521,14 @@ Orkeon.Domain.Tools.IToolCallParser
 Orkeon.Domain.Tools.IToolCallParser.FormatForLlm(Orkeon.Domain.SharedKernel.ValueObjects.ToolCall! toolCall) -> string!
 Orkeon.Domain.Tools.IToolCallParser.ParseFromLlmResponse(string! response) -> Orkeon.Domain.SharedKernel.ValueObjects.ToolCall?
 Orkeon.Domain.Tools.IToolRegistry
-Orkeon.Domain.Tools.IToolRegistry.ClearAsync() -> System.Threading.Tasks.Task!
-Orkeon.Domain.Tools.IToolRegistry.GetAllToolsAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
-Orkeon.Domain.Tools.IToolRegistry.GetToolAsync(string! toolId) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
-Orkeon.Domain.Tools.IToolRegistry.GetToolByNameAsync(string! name) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
-Orkeon.Domain.Tools.IToolRegistry.IsRegisteredAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Domain.Tools.IToolRegistry.RegisterToolAsync(Orkeon.Domain.Tools.IBaseTool! tool) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Domain.Tools.IToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Domain.Tools.IToolRegistry.UnregisterToolAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Domain.Tools.IToolRegistry.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Domain.Tools.IToolRegistry.GetAllToolsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+Orkeon.Domain.Tools.IToolRegistry.GetToolAsync(string! toolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+Orkeon.Domain.Tools.IToolRegistry.GetToolByNameAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+Orkeon.Domain.Tools.IToolRegistry.IsRegisteredAsync(string! toolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Domain.Tools.IToolRegistry.RegisterToolAsync(Orkeon.Domain.Tools.IBaseTool! tool, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Domain.Tools.IToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Domain.Tools.IToolRegistry.UnregisterToolAsync(string! toolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Domain.Tools.IToolWrapper
 Orkeon.Domain.Tools.IToolWrapper.Inner.get -> Orkeon.Domain.Tools.IBaseTool!
 Orkeon.Domain.Tools.ITypedToolParameters

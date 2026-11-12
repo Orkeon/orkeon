@@ -128,10 +128,10 @@ Orkeon.Application.Agent.IAgentWorkloadTracker.RecordTaskStarted(string! agentId
 Orkeon.Application.Agent.IAgentWorkloadTracker.ResetMetrics(string? agentId = null) -> void
 Orkeon.Application.Agent.IAgentWorkloadTracker.SelectLeastLoadedAgent(System.Collections.Generic.IEnumerable<string!>! agentIds) -> string!
 Orkeon.Application.Agent.IDynamicAgentService
-Orkeon.Application.Agent.IDynamicAgentService.AllowsDynamicAgentsAsync(Orkeon.Domain.Common.CrewId! crewId) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Application.Agent.IDynamicAgentService.GetMaxConcurrentDynamicAgentsAsync(Orkeon.Domain.Common.CrewId! crewId) -> System.Threading.Tasks.Task<int?>!
+Orkeon.Application.Agent.IDynamicAgentService.AllowsDynamicAgentsAsync(Orkeon.Domain.Common.CrewId! crewId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Application.Agent.IDynamicAgentService.GetMaxConcurrentDynamicAgentsAsync(Orkeon.Domain.Common.CrewId! crewId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int?>!
 Orkeon.Application.Agent.IDynamicAgentService.SpawnAgentAsync(Orkeon.Domain.Agent.AgentSpawnRequest! request, Orkeon.Application.Agent.DynamicAgentRegistry! registry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Agent.Agent!>!
-Orkeon.Application.Agent.IDynamicAgentService.TerminateAgentAsync(Orkeon.Domain.Common.AgentId! agentId, Orkeon.Application.Agent.DynamicAgentRegistry! registry, string? reason = null) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Application.Agent.IDynamicAgentService.TerminateAgentAsync(Orkeon.Domain.Common.AgentId! agentId, Orkeon.Application.Agent.DynamicAgentRegistry! registry, string? reason = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Application.Agent.Queries.GetAgent.GetAgentHandler
 Orkeon.Application.Agent.Queries.GetAgent.GetAgentHandler.GetAgentHandler(Orkeon.Domain.Agent.IAgentRepository! agentRepository, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.Queries.GetAgent.GetAgentHandler!>! logger) -> void
 Orkeon.Application.Agent.Queries.GetAgent.GetAgentHandler.HandleAsync(Orkeon.Application.Agent.Queries.GetAgent.GetAgentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Agent.DTOs.AgentDto?>!
@@ -419,8 +419,8 @@ Orkeon.Application.Constants.Orchestration.VotingDefaults
 Orkeon.Application.Context.NullMemoryScope
 Orkeon.Application.Context.NullMemoryScope.AgentId.get -> string!
 Orkeon.Application.Context.NullMemoryScope.Dispose() -> void
-Orkeon.Application.Context.NullMemoryScope.ExecuteInScopeAsync(System.Func<System.Threading.Tasks.Task!>! operation) -> System.Threading.Tasks.Task!
-Orkeon.Application.Context.NullMemoryScope.ExecuteInScopeAsync<T>(System.Func<System.Threading.Tasks.Task<T>!>! operation) -> System.Threading.Tasks.Task<T>!
+Orkeon.Application.Context.NullMemoryScope.ExecuteInScopeAsync(System.Func<System.Threading.Tasks.Task!>! operation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Context.NullMemoryScope.ExecuteInScopeAsync<T>(System.Func<System.Threading.Tasks.Task<T>!>! operation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
 Orkeon.Application.Context.NullMemoryScope.NullMemoryScope() -> void
 Orkeon.Application.Context.NullMemoryScope.ScopeId.get -> string!
 Orkeon.Application.Context.SimpleExecutionContext
@@ -1835,7 +1835,7 @@ Orkeon.Application.Interfaces.ICrewFactory.CreateFromConfigAsync(Orkeon.Domain.C
 Orkeon.Application.Interfaces.ICrewFactory.CreateFromDirectoryAsync(string! directoryPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!
 Orkeon.Application.Interfaces.ICrewFactory.CreateFromFileAsync(string! yamlFilePath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!
 Orkeon.Application.Interfaces.IManagerAgent
-Orkeon.Application.Interfaces.IManagerAgent.AssignTaskAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>! availableAgents, Orkeon.Application.Context.SimpleExecutionContext! context, Orkeon.Application.Interfaces.ManagerLlm! llm) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.TaskAssignment!>!
+Orkeon.Application.Interfaces.IManagerAgent.AssignTaskAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>! availableAgents, Orkeon.Application.Context.SimpleExecutionContext! context, Orkeon.Application.Interfaces.ManagerLlm! llm, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.TaskAssignment!>!
 Orkeon.Application.Interfaces.IManagerAgent.ReviewOutputAsync(Orkeon.Application.Execution.TaskOutput! output, Orkeon.Domain.Task.CrewTask! originalTask, Orkeon.Application.Interfaces.ManagerLlm! llm, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Application.Interfaces.IVotingStrategy
 Orkeon.Application.Interfaces.IVotingStrategy.TallyVotesAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Vote!>! votes, Orkeon.Application.Interfaces.VotingOptions! options, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.VoteResult!>!
@@ -1876,10 +1876,10 @@ Orkeon.Application.Interfaces.Infrastructure.IHttpClient.PostAsync<TRequest, TRe
 Orkeon.Application.Interfaces.Infrastructure.IHttpClient.PutAsync<TRequest, TResponse>(System.Uri! url, TRequest data, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<TResponse>!
 Orkeon.Application.Interfaces.Infrastructure.Serialization.ICsvSerializer
 Orkeon.Application.Interfaces.Infrastructure.Serialization.ICsvSerializer.Deserialize<T>(string! csv) -> System.Collections.Generic.IEnumerable<T>!
-Orkeon.Application.Interfaces.Infrastructure.Serialization.ICsvSerializer.DeserializeAsync<T>(System.IO.Stream! stream) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<T>!>!
+Orkeon.Application.Interfaces.Infrastructure.Serialization.ICsvSerializer.DeserializeAsync<T>(System.IO.Stream! stream, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<T>!>!
 Orkeon.Application.Interfaces.Infrastructure.Serialization.ICsvSerializer.DeserializeDynamic(string! csv) -> System.Collections.Generic.IEnumerable<dynamic!>!
 Orkeon.Application.Interfaces.Infrastructure.Serialization.ICsvSerializer.Serialize<T>(System.Collections.Generic.IEnumerable<T>! records) -> string!
-Orkeon.Application.Interfaces.Infrastructure.Serialization.ICsvSerializer.SerializeAsync<T>(System.Collections.Generic.IEnumerable<T>! records, System.IO.Stream! stream) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Infrastructure.Serialization.ICsvSerializer.SerializeAsync<T>(System.Collections.Generic.IEnumerable<T>! records, System.IO.Stream! stream, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Interfaces.Infrastructure.Serialization.IMarkdownParser
 Orkeon.Application.Interfaces.Infrastructure.Serialization.IMarkdownParser.ExtractHeaders(string! markdown) -> System.Collections.Generic.IEnumerable<(int Level, string! Text)>!
 Orkeon.Application.Interfaces.Infrastructure.Serialization.IMarkdownParser.ExtractLinks(string! markdown) -> System.Collections.Generic.IEnumerable<string!>!
@@ -2207,7 +2207,7 @@ Orkeon.Application.Interfaces.Ports.IEmbeddingProvider.GetEmbeddingsAsync(System
 Orkeon.Application.Interfaces.Ports.IEmbeddingProvider.Model.get -> string!
 Orkeon.Application.Interfaces.Ports.IEmbeddingProvider.Name.get -> string!
 Orkeon.Application.Interfaces.Ports.IEmbeddingService
-Orkeon.Application.Interfaces.Ports.IEmbeddingService.GetEmbeddingAsync(string! text) -> System.Threading.Tasks.Task<float[]!>!
+Orkeon.Application.Interfaces.Ports.IEmbeddingService.GetEmbeddingAsync(string! text, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<float[]!>!
 Orkeon.Application.Interfaces.Ports.IHumanInputProvider
 Orkeon.Application.Interfaces.Ports.IHumanInputProvider.AsksAPerson.get -> bool
 Orkeon.Application.Interfaces.Ports.IHumanInputProvider.GetChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
@@ -2244,8 +2244,8 @@ Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory.GetProvider(string! p
 Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory.SupportedTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Application.Interfaces.Ports.IMemoryScope
 Orkeon.Application.Interfaces.Ports.IMemoryScope.AgentId.get -> string!
-Orkeon.Application.Interfaces.Ports.IMemoryScope.ExecuteInScopeAsync(System.Func<System.Threading.Tasks.Task!>! operation) -> System.Threading.Tasks.Task!
-Orkeon.Application.Interfaces.Ports.IMemoryScope.ExecuteInScopeAsync<T>(System.Func<System.Threading.Tasks.Task<T>!>! operation) -> System.Threading.Tasks.Task<T>!
+Orkeon.Application.Interfaces.Ports.IMemoryScope.ExecuteInScopeAsync(System.Func<System.Threading.Tasks.Task!>! operation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Ports.IMemoryScope.ExecuteInScopeAsync<T>(System.Func<System.Threading.Tasks.Task<T>!>! operation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
 Orkeon.Application.Interfaces.Ports.IMemoryScope.ScopeId.get -> string!
 Orkeon.Application.Interfaces.Ports.IModelPricingRegistry
 Orkeon.Application.Interfaces.Ports.IModelPricingRegistry.CalculateCost(string! model, int promptTokens, int completionTokens) -> decimal
@@ -3229,8 +3229,8 @@ Orkeon.Application.Interfaces.Services.ExecutionTiming.StartTime.get -> System.D
 Orkeon.Application.Interfaces.Services.ExecutionTiming.StartTime.init -> void
 Orkeon.Application.Interfaces.Services.IAgentCommunicationService
 Orkeon.Application.Interfaces.Services.IAgentCommunicationService.IsAgentAvailableAsync(Orkeon.Domain.Common.AgentId! agentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Application.Interfaces.Services.IAgentCommunicationService.ReceiveMessagesAsync(Orkeon.Domain.Common.AgentId! agentId) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Domain.AgentCommunication.AgentMessage!>!
-Orkeon.Application.Interfaces.Services.IAgentCommunicationService.SendMessageAsync(Orkeon.Domain.AgentCommunication.AgentMessage! message) -> System.Threading.Tasks.ValueTask
+Orkeon.Application.Interfaces.Services.IAgentCommunicationService.ReceiveMessagesAsync(Orkeon.Domain.Common.AgentId! agentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Domain.AgentCommunication.AgentMessage!>!
+Orkeon.Application.Interfaces.Services.IAgentCommunicationService.SendMessageAsync(Orkeon.Domain.AgentCommunication.AgentMessage! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 Orkeon.Application.Interfaces.Services.IAgentExecutionService
 Orkeon.Application.Interfaces.Services.IAgentExecutionService.ExecuteTaskAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult!>!
 Orkeon.Application.Interfaces.Services.IAgentExecutionService.ExecuteTaskAsync<TOutput>(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult<TOutput!>!>!
@@ -3252,8 +3252,8 @@ Orkeon.Application.Interfaces.Services.ICognitiveMemoryService.ConsolidateAsync(
 Orkeon.Application.Interfaces.Services.ICognitiveMemoryService.RecallAsync(Orkeon.Domain.Common.CrewId! crewId, string! query, Orkeon.Domain.Memory.RecallOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.ScoredMemory!>!>!
 Orkeon.Application.Interfaces.Services.ICognitiveMemoryService.RememberAsync(Orkeon.Domain.Common.CrewId! crewId, string! content, string? context = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.MemoryItem!>!
 Orkeon.Application.Interfaces.Services.IContextualMemory
-Orkeon.Application.Interfaces.Services.IContextualMemory.GetContextAsync(string! query, int maxTokens = 1000) -> System.Threading.Tasks.Task<string!>!
-Orkeon.Application.Interfaces.Services.IContextualMemory.GetRelevantMemoriesAsync(string! context, int count = 20) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.MemoryItem!>!>!
+Orkeon.Application.Interfaces.Services.IContextualMemory.GetContextAsync(string! query, int maxTokens = 1000, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Application.Interfaces.Services.IContextualMemory.GetRelevantMemoriesAsync(string! context, int count = 20, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.MemoryItem!>!>!
 Orkeon.Application.Interfaces.Services.ICrewExecutionStateManager
 Orkeon.Application.Interfaces.Services.ICrewExecutionStateManager.CleanupExpiredExecutionsAsync(System.TimeSpan maxAge, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Interfaces.Services.ICrewExecutionStateManager.CompleteExecutionAsync(Orkeon.Application.Interfaces.Services.ExecutionId! executionId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
@@ -3276,17 +3276,17 @@ Orkeon.Application.Interfaces.Services.ICrewOrchestrationService.KickoffForEachA
 Orkeon.Application.Interfaces.Services.ICrewOrchestrationService.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, Orkeon.Application.Interfaces.Services.KickoffOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>!
 Orkeon.Application.Interfaces.Services.ICrewOrchestrationService.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>!
 Orkeon.Application.Interfaces.Services.IEntityMemory
-Orkeon.Application.Interfaces.Services.IEntityMemory.AddEntityAsync(string! entityName, Orkeon.Domain.Memory.EntityType type, System.Collections.Generic.Dictionary<string!, string!>! attributes) -> System.Threading.Tasks.Task!
-Orkeon.Application.Interfaces.Services.IEntityMemory.GetEntitiesByTypeAsync(Orkeon.Domain.Memory.EntityType type) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.MemoryEntity!>!>!
-Orkeon.Application.Interfaces.Services.IEntityMemory.GetEntityAsync(string! entityName) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.MemoryEntity?>!
-Orkeon.Application.Interfaces.Services.IEntityMemory.UpdateEntityAsync(string! entityName, System.Collections.Generic.Dictionary<string!, string!>! attributes) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Services.IEntityMemory.AddEntityAsync(string! entityName, Orkeon.Domain.Memory.EntityType type, System.Collections.Generic.Dictionary<string!, string!>! attributes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Services.IEntityMemory.GetEntitiesByTypeAsync(Orkeon.Domain.Memory.EntityType type, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.MemoryEntity!>!>!
+Orkeon.Application.Interfaces.Services.IEntityMemory.GetEntityAsync(string! entityName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.MemoryEntity?>!
+Orkeon.Application.Interfaces.Services.IEntityMemory.UpdateEntityAsync(string! entityName, System.Collections.Generic.Dictionary<string!, string!>! attributes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Interfaces.Services.IExecutionOrchestrator
 Orkeon.Application.Interfaces.Services.IExecutionOrchestrator.ExecuteTaskCoreAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult!>!
 Orkeon.Application.Interfaces.Services.ILongTermMemory
-Orkeon.Application.Interfaces.Services.ILongTermMemory.AddAsync(Orkeon.Domain.Memory.MemoryItem! item) -> System.Threading.Tasks.Task!
-Orkeon.Application.Interfaces.Services.ILongTermMemory.ClearAsync() -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Services.ILongTermMemory.AddAsync(Orkeon.Domain.Memory.MemoryItem! item, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Services.ILongTermMemory.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Interfaces.Services.ILongTermMemory.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Application.Interfaces.Services.ILongTermMemory.SearchAsync(string! query, int maxResults = 10) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.MemoryItem!>!>!
+Orkeon.Application.Interfaces.Services.ILongTermMemory.SearchAsync(string! query, int maxResults = 10, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.MemoryItem!>!>!
 Orkeon.Application.Interfaces.Services.ILongTermMemory.SearchSimilarAsync(float[]! queryEmbedding, int maxResults, float minScore, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.ScoredMemoryItem!>!>!
 Orkeon.Application.Interfaces.Services.IMemoryCoordinator
 Orkeon.Application.Interfaces.Services.IMemoryCoordinator.EnsureReadyAsync(Orkeon.Domain.Common.CrewId! crewId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
@@ -3305,10 +3305,10 @@ Orkeon.Application.Interfaces.Services.IRunScope
 Orkeon.Application.Interfaces.Services.IRunScope.Current.get -> Orkeon.Application.Interfaces.Services.RunScope?
 Orkeon.Application.Interfaces.Services.IRunScope.Enter(Orkeon.Application.Interfaces.Services.RunScope! scope) -> System.IDisposable!
 Orkeon.Application.Interfaces.Services.IShortTermMemory
-Orkeon.Application.Interfaces.Services.IShortTermMemory.AddAsync(Orkeon.Domain.Memory.MemoryItem! item) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Services.IShortTermMemory.AddAsync(Orkeon.Domain.Memory.MemoryItem! item, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Interfaces.Services.IShortTermMemory.Clear() -> void
-Orkeon.Application.Interfaces.Services.IShortTermMemory.ClearAsync() -> System.Threading.Tasks.Task!
-Orkeon.Application.Interfaces.Services.IShortTermMemory.GetRecentAsync(int count = 10) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.MemoryItem!>!>!
+Orkeon.Application.Interfaces.Services.IShortTermMemory.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Services.IShortTermMemory.GetRecentAsync(int count = 10, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.MemoryItem!>!>!
 Orkeon.Application.Interfaces.Services.IVectorMemoryStore
 Orkeon.Application.Interfaces.Services.IVectorMemoryStore.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Interfaces.Services.IVectorMemoryStore.CountAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!

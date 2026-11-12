@@ -32,7 +32,7 @@ public class MockToolRegistry : IToolRegistry
     }
 
     // --- IToolRegistry ---
-    public Task<bool> RegisterToolAsync(IBaseTool tool)
+    public Task<bool> RegisterToolAsync(IBaseTool tool, CancellationToken cancellationToken = default)
     {
         RegisterToolCallCount++;
         LastRegisteredTool = tool;
@@ -44,7 +44,7 @@ public class MockToolRegistry : IToolRegistry
         return Task.FromResult(true);
     }
 
-    public Task<bool> UnregisterToolAsync(string toolId)
+    public Task<bool> UnregisterToolAsync(string toolId, CancellationToken cancellationToken = default)
     {
         UnregisterToolCallCount++;
         LastUnregisteredToolId = toolId;
@@ -60,7 +60,7 @@ public class MockToolRegistry : IToolRegistry
 
     public int ReplaceToolCallCount { get; private set; }
 
-    public Task<bool> ReplaceToolAsync(IBaseTool current, IBaseTool replacement)
+    public Task<bool> ReplaceToolAsync(IBaseTool current, IBaseTool replacement, CancellationToken cancellationToken = default)
     {
         ReplaceToolCallCount++;
         if (!_toolsByName.TryGetValue(current.Name, out var holder) || !ReferenceEquals(holder, current))
@@ -71,34 +71,34 @@ public class MockToolRegistry : IToolRegistry
         return Task.FromResult(true);
     }
 
-    public Task<IBaseTool?> GetToolAsync(string toolId)
+    public Task<IBaseTool?> GetToolAsync(string toolId, CancellationToken cancellationToken = default)
     {
         GetToolCallCount++;
         _toolsById.TryGetValue(toolId, out var tool);
         return Task.FromResult(tool);
     }
 
-    public Task<IBaseTool?> GetToolByNameAsync(string name)
+    public Task<IBaseTool?> GetToolByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         GetToolByNameCallCount++;
         _toolsByName.TryGetValue(name, out var tool);
         return Task.FromResult(tool);
     }
 
-    public Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync()
+    public Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync(CancellationToken cancellationToken = default)
     {
         GetAllToolsCallCount++;
         IReadOnlyList<IBaseTool> tools = _toolsById.Values.ToList().AsReadOnly();
         return Task.FromResult(tools);
     }
 
-    public Task<bool> IsRegisteredAsync(string toolId)
+    public Task<bool> IsRegisteredAsync(string toolId, CancellationToken cancellationToken = default)
     {
         IsRegisteredCallCount++;
         return Task.FromResult(_toolsById.ContainsKey(toolId));
     }
 
-    public Task ClearAsync()
+    public Task ClearAsync(CancellationToken cancellationToken = default)
     {
         ClearCallCount++;
         _toolsById.Clear();

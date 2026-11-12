@@ -121,7 +121,7 @@ public sealed class ReplMcpAndPluginsTests : IDisposable
         using var before = factory.Create();
 
         await host.Services.GetRequiredService<IToolRegistry>()
-            .RegisterToolAsync(new Orkeon.Tests.Shared.Doubles.StubBaseTool("late_tool"));
+            .RegisterToolAsync(new Orkeon.Tests.Shared.Doubles.StubBaseTool("late_tool"), TestContext.Current.CancellationToken);
         using var after = factory.Create();
 
         Assert.False((await before.EvaluateAsync("Object.keys(tools).includes('lateTool')", cancellationToken: Ct)).AsBoolean());

@@ -253,7 +253,7 @@ public partial class CrewFactory : ICrewFactory
         foreach (var agentConfig in agentConfigs)
         {
             ct.ThrowIfCancellationRequested();
-            var resolvedTools = await ResolveToolsAsync(agentConfig.Tools).ConfigureAwait(false);
+            var resolvedTools = await ResolveToolsAsync(agentConfig.Tools, ct).ConfigureAwait(false);
 
             var agent = BuildAgent(agentConfig, resolvedTools, defaultKnowledgeProfile);
 
@@ -346,7 +346,7 @@ public partial class CrewFactory : ICrewFactory
         foreach (var taskConfig in taskConfigs.Where(t => t.Decision is not null).Concat(taskConfigs.Where(t => t.Decision is null)))
         {
             ct.ThrowIfCancellationRequested();
-            var resolvedTools = await ResolveToolsAsync(taskConfig.Tools).ConfigureAwait(false);
+            var resolvedTools = await ResolveToolsAsync(taskConfig.Tools, ct).ConfigureAwait(false);
 
             var task = BuildTask(taskConfig, resolvedTools, idByName, agentMap);
 
@@ -520,7 +520,7 @@ public partial class CrewFactory : ICrewFactory
     }
 
     private async Task<List<IBaseTool>> ResolveToolsAsync(
-        IReadOnlyList<string> toolNames)
+        IReadOnlyList<string> toolNames, CancellationToken ct)
     {
         var tools = new List<IBaseTool>();
         if (toolNames == null || toolNames.Count == 0)
@@ -529,7 +529,7 @@ public partial class CrewFactory : ICrewFactory
         List<string>? missing = null;
         foreach (var toolName in toolNames)
         {
-            var tool = await _toolRegistry.GetToolByNameAsync(toolName).ConfigureAwait(false);
+            var tool = await _toolRegistry.GetToolByNameAsync(toolName, ct).ConfigureAwait(false);
             if (tool is not null)
             {
                 tools.Add(tool);
@@ -544,14 +544,14 @@ public partial class CrewFactory : ICrewFactory
         }
 
         if (_strictTools && missing is { Count: > 0 })
-            throw await BuildMissingToolsExceptionAsync(missing).ConfigureAwait(false);
+            throw await BuildMissingToolsExceptionAsync(missing, ct).ConfigureAwait(false);
 
         return tools;
     }
 
-    private async Task<InvalidOperationException> BuildMissingToolsExceptionAsync(IReadOnlyList<string> missing)
+    private async Task<InvalidOperationException> BuildMissingToolsExceptionAsync(IReadOnlyList<string> missing, CancellationToken ct)
     {
-        var available = await _toolRegistry.GetAllToolsAsync().ConfigureAwait(false);
+        var available = await _toolRegistry.GetAllToolsAsync(ct).ConfigureAwait(false);
         var availableNames = available.Count > 0
             ? string.Join(", ", available.Select(t => t.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
             : "(none registered)";

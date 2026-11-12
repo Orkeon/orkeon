@@ -37,7 +37,8 @@ public partial class LlmBasedManager : IManagerAgent
         CrewTask task,
         IReadOnlyList<DomainAgent> availableAgents,
         SimpleExecutionContext context,
-        ManagerLlm llm)
+        ManagerLlm llm,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(task);
         // Validate inputs
@@ -49,7 +50,7 @@ public partial class LlmBasedManager : IManagerAgent
             throw new InvalidOperationException("No available agents to assign task");
         }
 
-        return AssignTaskCoreAsync(task, availableAgents, context, llm);
+        return AssignTaskCoreAsync(task, availableAgents, context, llm, cancellationToken);
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Manager fault barrier: any LLM/parse failure during assignment is logged and converted into a deterministic fallback assignment so the crew can still proceed (cancellation is rethrown).")]
@@ -57,7 +58,8 @@ public partial class LlmBasedManager : IManagerAgent
         CrewTask task,
         IReadOnlyList<DomainAgent> availableAgents,
         SimpleExecutionContext context,
-        ManagerLlm llm)
+        ManagerLlm llm,
+        CancellationToken cancellationToken)
     {
         LogManagerAssigningTask(task.Description.Value);
 
@@ -69,7 +71,11 @@ public partial class LlmBasedManager : IManagerAgent
 
         try
         {
-            var response = await SendPromptAsync(llm, prompt, context?.CancellationToken ?? CancellationToken.None).ConfigureAwait(false);
+            // The caller's token when it has one, else the run's (the context's).
+            var token = cancellationToken.CanBeCanceled
+                ? cancellationToken
+                : context?.CancellationToken ?? CancellationToken.None;
+            var response = await SendPromptAsync(llm, prompt, token).ConfigureAwait(false);
             var assignment = ParseAssignmentResponse(response, task, availableAgents);
 
             LogTaskAssignedToAgentWith(assignment.TaskId, assignment.AssignedAgent, assignment.Reason);

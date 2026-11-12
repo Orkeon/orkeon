@@ -42,7 +42,7 @@ public sealed class McpDeviceFlowWithoutInteractionTests : IDisposable
 
         var line = Assert.Single(logs, l => l.Contains("MCP server 'tracker' could not be connected", StringComparison.Ordinal));
         Assert.Contains("oauth2-device", line, StringComparison.Ordinal);
-        Assert.Null(await host.Services.GetRequiredService<IToolRegistry>().GetToolByNameAsync("search_issues"));
+        Assert.Null(await host.Services.GetRequiredService<IToolRegistry>().GetToolByNameAsync("search_issues", TestContext.Current.CancellationToken));
     }
 
     private IHost Build(string settingsJson, List<string> logs)

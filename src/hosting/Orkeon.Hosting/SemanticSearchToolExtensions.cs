@@ -83,9 +83,9 @@ internal sealed partial class EmbeddingServiceAdapter : IEmbeddingService
         _logger = logger;
     }
 
-    public async System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text)
+    public async System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
-        var vec = await _provider.GetEmbeddingAsync(text ?? string.Empty, CancellationToken.None)
+        var vec = await _provider.GetEmbeddingAsync(text ?? string.Empty, cancellationToken)
             .ConfigureAwait(false);
         if (vec is null || vec.Length == 0)
         {

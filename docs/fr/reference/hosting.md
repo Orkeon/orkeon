@@ -271,7 +271,7 @@ settings/montages et retournent un code de sortie processus.
 |---|---|
 | `RunOneShotAsync(opts, loggerCategory, configureServices?, externalCt?)` | Exécute un kickoff de crew de bout en bout. Codes de sortie : **0** succès, **1** erreur de config, **2** échec du crew, **75** le run s'est arrêté sur une question et attend la réponse (`--resume`), **130** annulé. |
 | `RunInteractiveLoopAsync(opts, loggerCategory, stopWords, kickoffPerInputAsync, onSessionStart, …)` | Boucle REPL ; chaque entrée déclenche un kickoff via le délégué fourni par l'appelant ; un mot d'arrêt termine la boucle (exit 0). |
-| `RunListToolsAsync(opts, loggerCategory, configureServices?)` | Construit l'hôte sans crew et imprime sur stdout les noms d'outils runtime triés et dédupliqués (logs sur stderr) — le contrat d'outils runtime consommé par l'outillage de packaging/lint. |
+| `RunListToolsAsync(opts, loggerCategory, configureServices?, externalCt?)` | Construit l'hôte sans crew et imprime sur stdout les noms d'outils runtime triés et dédupliqués (logs sur stderr) — le contrat d'outils runtime consommé par l'outillage de packaging/lint. |
 | `RunValidateAsync(opts, loggerCategory, configureServices?, externalCt?)` | Le dry-run derrière `--validate` : construit l'hôte et charge la crew (résolution stricte des outils) sans sonder le LLM ni lancer de kickoff. |
 | `LoadCrewAsync(host, factory, configPath, logger, ct, targetIsDirectory?)` | Charge et mappe la définition de crew depuis son chemin **virtuel** (fichier YAML, dossier de crew, script `.ork.ts`/`.ork.js`) — la brique que les flux ci-dessus partagent, et ce qu'`orkeon-host` appelle à chaque exécution. Elle ne connecte pas les serveurs MCP. |
 

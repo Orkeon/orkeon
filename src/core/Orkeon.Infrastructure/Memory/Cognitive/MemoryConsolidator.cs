@@ -116,7 +116,7 @@ public sealed partial class MemoryConsolidator
                 var merged = await MergeClusterAsync(cluster, cancellationToken).ConfigureAwait(false);
                 if (merged is not null)
                 {
-                    await memory.AddAsync(merged).ConfigureAwait(false);
+                    await memory.AddAsync(merged, cancellationToken).ConfigureAwait(false);
                     createdIds.Add(merged.Id);
 
                     foreach (var old in cluster)

@@ -11,12 +11,16 @@ public interface IAgentCommunicationService
     /// <summary>
     /// Sends a message asynchronously using the structured AgentMessage type.
     /// </summary>
-    ValueTask SendMessageAsync(AgentMessage message);
+    /// <param name="message">The message to send.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    ValueTask SendMessageAsync(AgentMessage message, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Receives messages asynchronously for a specific agent.
     /// </summary>
-    IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId);
+    /// <param name="agentId">The agent whose messages are read.</param>
+    /// <param name="cancellationToken">Cancellation token; ends the enumeration.</param>
+    IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if an agent is available for communication.

@@ -173,7 +173,7 @@ public class CsvHelperSerializerTests
         var stream = new MemoryStream();
 
         // Act
-        await _serializer.SerializeAsync(items, stream);
+        await _serializer.SerializeAsync(items, stream, TestContext.Current.CancellationToken);
 
         // Assert
         var bytes = stream.ToArray();
@@ -194,7 +194,7 @@ public class CsvHelperSerializerTests
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _serializer.SerializeAsync(items!, stream));
+            () => _serializer.SerializeAsync(items!, stream, TestContext.Current.CancellationToken));
         Assert.Equal("records", exception.ParamName);
     }
 
@@ -207,7 +207,7 @@ public class CsvHelperSerializerTests
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _serializer.SerializeAsync(items, stream!));
+            () => _serializer.SerializeAsync(items, stream!, TestContext.Current.CancellationToken));
         Assert.Equal("stream", exception.ParamName);
     }
 
@@ -222,7 +222,7 @@ public class CsvHelperSerializerTests
         using var stream = new MemoryStream(bytes);
 
         // Act
-        var items = await _serializer.DeserializeAsync<TestCsvObject>(stream);
+        var items = await _serializer.DeserializeAsync<TestCsvObject>(stream, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(items);
@@ -243,7 +243,7 @@ public class CsvHelperSerializerTests
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _serializer.DeserializeAsync<TestCsvObject>(stream!));
+            () => _serializer.DeserializeAsync<TestCsvObject>(stream!, TestContext.Current.CancellationToken));
         Assert.Equal("stream", exception.ParamName);
     }
 
@@ -378,12 +378,12 @@ public class CsvHelperSerializerTests
 
         // Act - Serialize to stream
         var serializeStream = new MemoryStream();
-        await _serializer.SerializeAsync(items, serializeStream);
+        await _serializer.SerializeAsync(items, serializeStream, TestContext.Current.CancellationToken);
 
         // Create a new stream from the serialized bytes for deserialization
         var bytes = serializeStream.ToArray();
         using var deserializeStream = new MemoryStream(bytes);
-        var deserialized = await _serializer.DeserializeAsync<TestCsvObject>(deserializeStream);
+        var deserialized = await _serializer.DeserializeAsync<TestCsvObject>(deserializeStream, TestContext.Current.CancellationToken);
 
         // Assert
         var deserializedList = deserialized.ToList();

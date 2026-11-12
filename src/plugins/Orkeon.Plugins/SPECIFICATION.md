@@ -1128,13 +1128,15 @@ Recommended: Plugin tools inherit `ToolBase<TReq, TRes>` from `Orkeon.Tools.Abst
 ```csharp
 public interface IToolRegistry
 {
-    Task<bool> RegisterToolAsync(IBaseTool tool);
-    Task<bool> UnregisterToolAsync(string toolId);
-    Task<IBaseTool?> GetToolAsync(string toolId);
-    Task<IBaseTool?> GetToolByNameAsync(string name);
-    Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync();
-    Task<bool> IsRegisteredAsync(string toolId);
-    Task ClearAsync();
+    Task<bool> RegisterToolAsync(IBaseTool tool, CancellationToken cancellationToken = default);
+    Task<bool> UnregisterToolAsync(string toolId, CancellationToken cancellationToken = default);
+    Task<IBaseTool?> GetToolAsync(string toolId, CancellationToken cancellationToken = default);
+    Task<IBaseTool?> GetToolByNameAsync(string name, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync(CancellationToken cancellationToken = default);
+    Task<bool> IsRegisteredAsync(string toolId, CancellationToken cancellationToken = default);
+    Task ClearAsync(CancellationToken cancellationToken = default);
+    // Default implementation: unregister then register; ToolRegistry overrides it with an atomic swap.
+    Task<bool> ReplaceToolAsync(IBaseTool current, IBaseTool replacement, CancellationToken cancellationToken = default);
 }
 ```
 

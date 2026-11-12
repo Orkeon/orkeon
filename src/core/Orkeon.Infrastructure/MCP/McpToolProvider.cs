@@ -891,13 +891,13 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             {
                 if (!current.TryGetValue(name, out var definition))
                 {
-                    await _toolRegistry.UnregisterToolAsync(name).ConfigureAwait(false);
+                    await _toolRegistry.UnregisterToolAsync(name, ct).ConfigureAwait(false);
                     entry.Forget(name);
                 }
                 else if (held.Signature != Fingerprint(definition))
                 {
                     var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout) { BeforeCall = BeforeCallOf(entry.SignIn) };
-                    if (await _toolRegistry.ReplaceToolAsync(held.Adapter, adapter).ConfigureAwait(false))
+                    if (await _toolRegistry.ReplaceToolAsync(held.Adapter, adapter, ct).ConfigureAwait(false))
                         entry.Remember(name, adapter, Fingerprint(definition));
                     else
                         entry.Forget(name); // the registry no longer holds our instance: the name is registered afresh below
@@ -910,7 +910,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                 if (entry.Holds(name))
                     continue;
                 var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout) { BeforeCall = BeforeCallOf(entry.SignIn) };
-                if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
+                if (await _toolRegistry.RegisterToolAsync(adapter, ct).ConfigureAwait(false))
                 {
                     entry.Remember(name, adapter, Fingerprint(definition));
                     LogRegisteredMcpTool(name, serverId);

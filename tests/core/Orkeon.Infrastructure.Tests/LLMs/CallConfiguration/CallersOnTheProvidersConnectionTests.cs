@@ -133,7 +133,7 @@ public sealed class CallersOnTheProvidersConnectionTests
         var manager = new OpenAIContextWindowManager(
             new SimpleTokenCounter(), vendor.Provider, NullLogger<OpenAIContextWindowManager>.Instance);
 
-        var summary = await manager.SummarizeIfNeededAsync(string.Join(' ', Enumerable.Repeat("word", 400)), maxTokens: 50);
+        var summary = await manager.SummarizeIfNeededAsync(string.Join(' ', Enumerable.Repeat("word", 400)), maxTokens: 50, TestContext.Current.CancellationToken);
 
         vendor.AssertTheProvidersConnection();
         Assert.Equal("A short summary.", summary);

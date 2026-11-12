@@ -9,9 +9,9 @@ namespace Orkeon.Infrastructure.Tests.Doubles;
 /// </summary>
 public sealed class MockAgentCommunicationService : IAgentCommunicationService
 {
-    public ValueTask SendMessageAsync(AgentMessage message) => ValueTask.CompletedTask;
+    public ValueTask SendMessageAsync(AgentMessage message, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
 
-    public async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId)
+    public async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
         yield break;

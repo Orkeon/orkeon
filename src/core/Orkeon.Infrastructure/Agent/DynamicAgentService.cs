@@ -101,17 +101,19 @@ public sealed partial class DynamicAgentService : IDynamicAgentService
     public Task<bool> TerminateAgentAsync(
         AgentId agentId,
         DynamicAgentRegistry registry,
-        string? reason = null)
+        string? reason = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(agentId);
         ArgumentNullException.ThrowIfNull(registry);
-        return TerminateAgentCoreAsync(agentId, registry, reason);
+        return TerminateAgentCoreAsync(agentId, registry, reason, cancellationToken);
     }
 
     private async Task<bool> TerminateAgentCoreAsync(
         AgentId agentId,
         DynamicAgentRegistry registry,
-        string? reason)
+        string? reason,
+        CancellationToken cancellationToken)
     {
         return await Task.Run(() =>
         {
@@ -131,21 +133,22 @@ public sealed partial class DynamicAgentService : IDynamicAgentService
             }
 
             return result;
-        }).ConfigureAwait(false);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Validates whether a crew allows dynamic agents, based on the configured
     /// <see cref="DynamicAgentServiceOptions"/> (per-crew override &gt; global default).
     /// </summary>
-    public Task<bool> AllowsDynamicAgentsAsync(CrewId crewId)
+    public Task<bool> AllowsDynamicAgentsAsync(CrewId crewId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(crewId);
-        return AllowsDynamicAgentsCoreAsync(crewId);
+        return AllowsDynamicAgentsCoreAsync(crewId, cancellationToken);
     }
 
-    private async Task<bool> AllowsDynamicAgentsCoreAsync(CrewId crewId)
+    private async Task<bool> AllowsDynamicAgentsCoreAsync(CrewId crewId, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var allowed = ResolveCrewOverride(crewId, out var crewPolicy)
             ? crewPolicy.AllowDynamicAgents
             : _options.AllowDynamicAgentsByDefault;
@@ -163,14 +166,15 @@ public sealed partial class DynamicAgentService : IDynamicAgentService
     /// <see cref="DynamicAgentServiceOptions"/> (per-crew override &gt; global default).
     /// Returns <see langword="null"/> when unlimited.
     /// </summary>
-    public Task<int?> GetMaxConcurrentDynamicAgentsAsync(CrewId crewId)
+    public Task<int?> GetMaxConcurrentDynamicAgentsAsync(CrewId crewId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(crewId);
-        return GetMaxConcurrentDynamicAgentsCoreAsync(crewId);
+        return GetMaxConcurrentDynamicAgentsCoreAsync(crewId, cancellationToken);
     }
 
-    private async Task<int?> GetMaxConcurrentDynamicAgentsCoreAsync(CrewId crewId)
+    private async Task<int?> GetMaxConcurrentDynamicAgentsCoreAsync(CrewId crewId, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var max = ResolveCrewOverride(crewId, out var crewPolicy)
             ? crewPolicy.MaxConcurrentDynamicAgents
             : _options.DefaultMaxConcurrentDynamicAgents;

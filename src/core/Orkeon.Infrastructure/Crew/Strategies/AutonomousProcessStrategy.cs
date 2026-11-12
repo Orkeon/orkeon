@@ -514,7 +514,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         var context = new SimpleExecutionContext(
             crewId, variables, _memoryScope, previousOutputs, cancellationToken);
 
-        var assignment = await _managerAgent.AssignTaskAsync(task, agents, context, taskContext.ManagerLlm).ConfigureAwait(false);
+        var assignment = await _managerAgent.AssignTaskAsync(task, agents, context, taskContext.ManagerLlm, cancellationToken).ConfigureAwait(false);
         var agent = agents.FirstOrDefault(a => a.Id == assignment.AssignedAgent)
                     ?? agents[0]; // fallback to first
 

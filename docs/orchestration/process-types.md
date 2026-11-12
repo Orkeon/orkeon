@@ -251,7 +251,7 @@ A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates th
 **Key classes**: `HierarchicalProcessStrategy`, `IManagerAgent`, `LlmBasedManager`, `TaskAssignment` (`TaskId`, `AssignedAgent`, `Reason`, `AssignedAt`)
 
 **`IManagerAgent` interface** (`Orkeon.Application.Interfaces`):
-- `AssignTaskAsync(task, availableAgents, context, llm)` → `TaskAssignment`
+- `AssignTaskAsync(task, availableAgents, context, llm, cancellationToken)` → `TaskAssignment`
 - `ReviewOutputAsync(output, originalTask, llm, cancellationToken)` → `bool` (approved or not); the token is the run's: Ctrl+C, `RunTimeout` and `/stop` stop a review
 
 `llm` is the `ManagerLlm` the strategy resolved for the run (`ManagerLlmResolver`): the chat client the manager asks, the model it asks for, and its name in the log (`provider:<name>` or `profile:<name>`). Each of its calls first waits its turn in the manager agent's `maxRpm` window and in the crew's.

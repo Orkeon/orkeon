@@ -151,7 +151,7 @@ public sealed class McpToolListChangedTests
     {
         var registry = new MockToolRegistry();
         var builtIn = new MockTool("shared");
-        await registry.RegisterToolAsync(builtIn);
+        await registry.RegisterToolAsync(builtIn, TestContext.Current.CancellationToken);
         var clock = new ManualTimeProvider();
         var server = new Server("a");
         await using var provider = new McpToolProvider(registry, timeProvider: clock);
@@ -161,9 +161,9 @@ public sealed class McpToolListChangedTests
         await NotifyAsync(server, clock);
 
         await EventuallyAsync(() => provider.GetServerStatuses().Single().RejectedToolNames.Contains("shared"));
-        Assert.Same(builtIn, await registry.GetToolByNameAsync("shared"));
+        Assert.Same(builtIn, await registry.GetToolByNameAsync("shared", TestContext.Current.CancellationToken));
         await provider.DisconnectServerAsync("srv");
-        Assert.Same(builtIn, await registry.GetToolByNameAsync("shared"));
+        Assert.Same(builtIn, await registry.GetToolByNameAsync("shared", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public sealed class McpToolListChangedTests
         await using var provider = new McpToolProvider(registry, timeProvider: clock);
         await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
         // What a task in progress holds: the tool instance it was given when it started.
-        var held = (await registry.GetToolByNameAsync("b"))!;
+        var held = (await registry.GetToolByNameAsync("b", TestContext.Current.CancellationToken))!;
 
         server.Tools = ["a"];
         await NotifyAsync(server, clock);
@@ -186,7 +186,7 @@ public sealed class McpToolListChangedTests
         var response = await held.CallAsync(new ToolCallRequest("b", []), TestContext.Current.CancellationToken);
         Assert.False(response.Success);
         Assert.Contains("Unknown tool", response.Error, StringComparison.Ordinal);
-        Assert.NotNull(await registry.GetToolByNameAsync("a"));
+        Assert.NotNull(await registry.GetToolByNameAsync("a", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -319,7 +319,7 @@ public sealed class McpToolListChangedTests
         var server = new Server("a", "b");
         await using var provider = new McpToolProvider(registry, timeProvider: clock);
         await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
-        var before = await registry.GetToolByNameAsync("a");
+        var before = await registry.GetToolByNameAsync("a", TestContext.Current.CancellationToken);
         var gaps = new List<string>();
         registry.OnUnregistered = name =>
         {
@@ -332,7 +332,7 @@ public sealed class McpToolListChangedTests
         await EventuallyAsync(
             async () => (await registry.GetToolByNameAsync("a"))?.Description == "a, now described differently");
 
-        var after = await registry.GetToolByNameAsync("a");
+        var after = await registry.GetToolByNameAsync("a", TestContext.Current.CancellationToken);
         Assert.NotSame(before, after);
         Assert.Empty(gaps);
         Assert.Equal(1, registry.ReplaceToolCallCount);

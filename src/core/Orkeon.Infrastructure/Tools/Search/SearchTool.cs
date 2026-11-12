@@ -124,7 +124,7 @@ public partial class SearchTool : ToolBase<SearchRequest, SearchResponse>
             var threshold = (float)Math.Clamp(request.Threshold, 0.0, 1.0);
 
             // Generate embedding for the query
-            var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Query).ConfigureAwait(false);
+            var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Query, cancellationToken).ConfigureAwait(false);
             var embeddingVector = new EmbeddingVector(queryEmbedding);
 
             // Search the vector store

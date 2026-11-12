@@ -18,16 +18,18 @@ public sealed class NullMemoryScope : IMemoryScope
     public string ScopeId => "null-scope";
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation)
+    public System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(operation);
+        cancellationToken.ThrowIfCancellationRequested();
         return operation();
     }
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation)
+    public System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(operation);
+        cancellationToken.ThrowIfCancellationRequested();
         return operation();
     }
 

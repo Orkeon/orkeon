@@ -36,7 +36,7 @@ public sealed partial class OpenAIContextWindowManager : IContextWindowManager
 
     /// <inheritdoc />
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Summarization fault barrier: if the LLM summarization call fails the content is deterministically truncated to the token limit so context-window management never throws.")]
-    public Task<string> SummarizeIfNeededAsync(string content, int maxTokens)
+    public Task<string> SummarizeIfNeededAsync(string content, int maxTokens, CancellationToken cancellationToken = default)
     {
         // Handle null content
         ArgumentNullException.ThrowIfNull(content);
@@ -63,9 +63,9 @@ public sealed partial class OpenAIContextWindowManager : IContextWindowManager
         var targetTokens = (int)(maxTokens * _settings.CompressionRatio);
         LogSummarizingContentFromToTokens(tokenCount, targetTokens);
 
-        return SummarizeIfNeededCoreAsync(content, maxTokens, targetTokens);
+        return SummarizeIfNeededCoreAsync(content, maxTokens, targetTokens, cancellationToken);
 
-        async Task<string> SummarizeIfNeededCoreAsync(string content, int maxTokens, int targetTokens)
+        async Task<string> SummarizeIfNeededCoreAsync(string content, int maxTokens, int targetTokens, CancellationToken cancellationToken)
         {
             var prompt = $"{_settings.SummaryPrompt}\n\nTarget length: approximately {targetTokens} tokens\n\nContent:\n{content}";
 
@@ -78,7 +78,7 @@ public sealed partial class OpenAIContextWindowManager : IContextWindowManager
                     MaxTokens = targetTokens
                 };
 
-                var response = await _llm.GenerateAsync(prompt, config).ConfigureAwait(false);
+                var response = await _llm.GenerateAsync(prompt, config, cancellationToken).ConfigureAwait(false);
 
                 if (!string.IsNullOrWhiteSpace(response.Content))
                 {
@@ -90,6 +90,10 @@ public sealed partial class OpenAIContextWindowManager : IContextWindowManager
                     LogSummarizationReturnedEmptyContentReturning();
                     return TruncateToTokenLimit(content, maxTokens);
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {

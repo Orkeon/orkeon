@@ -26,7 +26,7 @@ public class NullMemoryScopeTests
     public async System.Threading.Tasks.Task ExecuteInScopeAsync_WithReturn_ShouldInvokeAndReturnResult()
     {
         var result = await NullMemoryScope.Instance.ExecuteInScopeAsync(() =>
-            System.Threading.Tasks.Task.FromResult(42));
+            System.Threading.Tasks.Task.FromResult(42), TestContext.Current.CancellationToken);
 
         Assert.Equal(42, result);
     }
@@ -40,7 +40,7 @@ public class NullMemoryScopeTests
             executed = true;
             await System.Threading.Tasks.Task.CompletedTask;
             return true;
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.True(executed);
     }
@@ -53,7 +53,7 @@ public class NullMemoryScopeTests
         {
             executed = true;
             return System.Threading.Tasks.Task.CompletedTask;
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.True(executed);
     }

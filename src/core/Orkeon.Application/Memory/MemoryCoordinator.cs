@@ -353,7 +353,7 @@ public partial class MemoryCoordinator : IMemoryCoordinator
                     [StoredAtProperty] = Inv.ToString(DateTime.UtcNow, "O"),
                 });
 
-            await _memoryService.GetMemorySystem(context.CrewId).LongTerm.AddAsync(memory).ConfigureAwait(false);
+            await _memoryService.GetMemorySystem(context.CrewId).LongTerm.AddAsync(memory, cancellationToken).ConfigureAwait(false);
             span?.SetTag(OrkeonRunSpans.MemoryItemCount, 1);
             LogTaskResultStored(scope, task.Id, agent.Role.Value);
         }

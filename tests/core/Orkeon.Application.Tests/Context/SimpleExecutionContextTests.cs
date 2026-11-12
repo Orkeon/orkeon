@@ -11,8 +11,8 @@ public class SimpleExecutionContextTests
     {
         public string AgentId => "test-agent";
         public string ScopeId => "test-scope";
-        public async System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> op) => await op();
-        public async System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> op) => await op();
+        public async System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> op, CancellationToken cancellationToken = default) => await op();
+        public async System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> op, CancellationToken cancellationToken = default) => await op();
         public void Dispose() { }
     }
 

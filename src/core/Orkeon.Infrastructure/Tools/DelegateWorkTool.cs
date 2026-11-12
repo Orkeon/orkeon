@@ -190,7 +190,7 @@ public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWo
                 }
             );
 
-            await _communicationService.SendMessageAsync(message).ConfigureAwait(false);
+            await _communicationService.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
 
             LogDelegatedTask(Logger, targetAgentId, request.CoworkerRole);
 

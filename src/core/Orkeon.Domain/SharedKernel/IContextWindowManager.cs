@@ -10,8 +10,9 @@ public interface IContextWindowManager
     /// </summary>
     /// <param name="content">The content to potentially summarize.</param>
     /// <param name="maxTokens">The maximum allowed tokens.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The original content or a summarized version if needed.</returns>
-    Task<string> SummarizeIfNeededAsync(string content, int maxTokens);
+    Task<string> SummarizeIfNeededAsync(string content, int maxTokens, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if content exceeds the context window limit.

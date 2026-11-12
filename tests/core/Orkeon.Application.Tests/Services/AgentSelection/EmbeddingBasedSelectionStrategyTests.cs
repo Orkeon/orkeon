@@ -23,7 +23,7 @@ public class EmbeddingBasedSelectionStrategyTests
             _defaultVector = defaultVector ?? [0f, 0f, 0f];
         }
 
-        public System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text)
+        public System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
         {
             foreach (var kv in _vectors)
             {
