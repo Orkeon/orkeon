@@ -26,7 +26,7 @@ public interface IDynamicAgentService
     /// <param name="agentId">The agent to terminate.</param>
     /// <param name="registry">The registry managing the agent.</param>
     /// <param name="reason">Optional termination reason.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Accepted for the uniform async shape; a termination is a cleanup and runs to its end even when it is cancelled.</param>
     /// <returns>True if the agent was terminated, false if not found.</returns>
     Task<bool> TerminateAgentAsync(
         AgentId agentId,

@@ -106,14 +106,16 @@ public sealed partial class DynamicAgentService : IDynamicAgentService
     {
         ArgumentNullException.ThrowIfNull(agentId);
         ArgumentNullException.ThrowIfNull(registry);
-        return TerminateAgentCoreAsync(agentId, registry, reason, cancellationToken);
+        // A termination is a cleanup: it runs whatever the caller's token says. Handed to Task.Run, a token
+        // cancelled before the work item starts would skip it and leave the agent registered for good.
+        _ = cancellationToken;
+        return TerminateAgentCoreAsync(agentId, registry, reason);
     }
 
     private async Task<bool> TerminateAgentCoreAsync(
         AgentId agentId,
         DynamicAgentRegistry registry,
-        string? reason,
-        CancellationToken cancellationToken)
+        string? reason)
     {
         return await Task.Run(() =>
         {
@@ -133,7 +135,7 @@ public sealed partial class DynamicAgentService : IDynamicAgentService
             }
 
             return result;
-        }, cancellationToken).ConfigureAwait(false);
+        }, CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>

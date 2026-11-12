@@ -484,6 +484,59 @@ public class MemoryServiceTests
         Assert.Null(exception);
     }
 
+    /// <summary>A crew whose long-term memory lives in <paramref name="provider"/>, with two entries in each half.</summary>
+    private static async System.Threading.Tasks.Task<(MemoryService Service, CrewId CrewId)> CrewWithMemoryAsync(Doubles.CancellingMemoryProvider provider)
+    {
+        var registry = new CrewMemoryProviderRegistry();
+        var service = new MemoryService(new Doubles.StubMemoryProviderFactory(provider), new TestLogger(), registry);
+        var crewId = CreateTestCrewId();
+        registry.Record(crewId, providerType: "inmemory", crewName: "clearing", memoryEnabled: true);
+        var ct = TestContext.Current.CancellationToken;
+        await service.SaveMemoryAsync(crewId, MemoryItem.Create("long one", importance: 0.95f), ct);
+        await service.SaveMemoryAsync(crewId, MemoryItem.Create("long two", importance: 0.95f), ct);
+        await service.SaveMemoryAsync(crewId, MemoryItem.Create("short one", importance: 0.1f), ct);
+        await service.SaveMemoryAsync(crewId, MemoryItem.Create("short two", importance: 0.1f), ct);
+        return (service, crewId);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldClearBothHalves_WhenCancelledWhileClearing()
+    {
+        // Arrange
+        var provider = new Doubles.CancellingMemoryProvider();
+        var (service, crewId) = await CrewWithMemoryAsync(provider);
+        using var _ = service;
+        Assert.Equal(2, provider.Entries.Count);
+        using var source = new CancellationTokenSource();
+        provider.OnDelete = source.Cancel;
+
+        // Act
+        await service.ClearMemoryAsync(crewId, cancellationToken: source.Token);
+
+        // Assert: the cancellation landed after the first deletion, and the clearing still ran to its end.
+        Assert.True(source.IsCancellationRequested);
+        Assert.Empty(provider.Entries);
+        Assert.Empty(await service.GetMemorySystem(crewId).ShortTerm.GetRecentAsync(10, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldClearNothing_WhenCancelledBeforeClearing()
+    {
+        // Arrange
+        var provider = new Doubles.CancellingMemoryProvider();
+        var (service, crewId) = await CrewWithMemoryAsync(provider);
+        using var _ = service;
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+
+        // Act
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.ClearMemoryAsync(crewId, cancellationToken: source.Token));
+
+        // Assert
+        Assert.Equal(2, provider.Entries.Count);
+        Assert.Equal(2, (await service.GetMemorySystem(crewId).ShortTerm.GetRecentAsync(10, TestContext.Current.CancellationToken)).Count);
+    }
+
     #endregion
 
     #region Integration Tests

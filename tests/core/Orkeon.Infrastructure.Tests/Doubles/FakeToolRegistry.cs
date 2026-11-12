@@ -13,16 +13,25 @@ public sealed class FakeToolRegistry : IToolRegistry
     /// <summary>The token of every call, in call order, with the method's name.</summary>
     public List<(string Method, CancellationToken Token)> ReceivedTokens { get; } = [];
 
+    /// <summary>Runs right after <see cref="UnregisterToolAsync"/> removed a tool: a test cancels its token there.</summary>
+    public Action? AfterUnregister { get; set; }
+
     public Task<bool> RegisterToolAsync(IBaseTool tool, CancellationToken cancellationToken = default)
     {
         ReceivedTokens.Add((nameof(RegisterToolAsync), cancellationToken));
+        // A registry honours a cancelled token, as ToolRegistry does.
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(_tools.TryAdd(tool.Name, tool));
     }
 
     public Task<bool> UnregisterToolAsync(string toolId, CancellationToken cancellationToken = default)
     {
         ReceivedTokens.Add((nameof(UnregisterToolAsync), cancellationToken));
-        return Task.FromResult(_tools.Remove(toolId));
+        cancellationToken.ThrowIfCancellationRequested();
+        var removed = _tools.Remove(toolId);
+        if (removed)
+            AfterUnregister?.Invoke();
+        return Task.FromResult(removed);
     }
 
     public Task<IBaseTool?> GetToolAsync(string toolId, CancellationToken cancellationToken = default)

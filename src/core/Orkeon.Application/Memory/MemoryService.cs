@@ -172,14 +172,18 @@ public partial class MemoryService : IMemoryService, IDisposable
             return;
         }
 
+        // The token is honoured before the clearing starts, not during it: a cancellation between the
+        // short-term and the long-term halves would leave the crew's memory half cleared.
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (!typeFilter.HasValue || typeFilter.Value == DomainMemoryType.ShortTerm)
         {
-            await memorySystem.ShortTerm.ClearAsync(cancellationToken).ConfigureAwait(false);
+            await memorySystem.ShortTerm.ClearAsync(CancellationToken.None).ConfigureAwait(false);
         }
 
         if (!typeFilter.HasValue || typeFilter.Value == DomainMemoryType.LongTerm)
         {
-            await memorySystem.LongTerm.ClearAsync(cancellationToken).ConfigureAwait(false);
+            await memorySystem.LongTerm.ClearAsync(CancellationToken.None).ConfigureAwait(false);
         }
 
         LogMemoryCleared(crewId, typeFilter);
@@ -539,9 +543,11 @@ internal sealed class ProviderBackedLongTermMemory : ILongTermMemory
 
     public async System.Threading.Tasks.Task ClearAsync(CancellationToken cancellationToken = default)
     {
+        // Checked once, before the first deletion: a cancellation in the loop would leave the store half cleared.
+        cancellationToken.ThrowIfCancellationRequested();
         foreach (var key in _storedKeys.Keys)
         {
-            await _provider.DeleteAsync(key, cancellationToken).ConfigureAwait(false);
+            await _provider.DeleteAsync(key, CancellationToken.None).ConfigureAwait(false);
             _storedKeys.TryRemove(key, out _);
         }
     }

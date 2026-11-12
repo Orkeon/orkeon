@@ -887,17 +887,23 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             foreach (var definition in kept)
                 current.TryAdd(definition.Name, definition);
 
+            // The listing is read: from here the registry is brought in line with it as a whole. A cancellation
+            // in the middle would leave it half synchronised (a tool unregistered and not registered again, a
+            // replacement half made), so the token is checked once, here, and the mutations below do not take it.
+            ct.ThrowIfCancellationRequested();
+            var apply = CancellationToken.None;
+
             foreach (var (name, held) in entry.SnapshotTools())
             {
                 if (!current.TryGetValue(name, out var definition))
                 {
-                    await _toolRegistry.UnregisterToolAsync(name, ct).ConfigureAwait(false);
+                    await _toolRegistry.UnregisterToolAsync(name, apply).ConfigureAwait(false);
                     entry.Forget(name);
                 }
                 else if (held.Signature != Fingerprint(definition))
                 {
                     var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout) { BeforeCall = BeforeCallOf(entry.SignIn) };
-                    if (await _toolRegistry.ReplaceToolAsync(held.Adapter, adapter, ct).ConfigureAwait(false))
+                    if (await _toolRegistry.ReplaceToolAsync(held.Adapter, adapter, apply).ConfigureAwait(false))
                         entry.Remember(name, adapter, Fingerprint(definition));
                     else
                         entry.Forget(name); // the registry no longer holds our instance: the name is registered afresh below
@@ -910,7 +916,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                 if (entry.Holds(name))
                     continue;
                 var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout) { BeforeCall = BeforeCallOf(entry.SignIn) };
-                if (await _toolRegistry.RegisterToolAsync(adapter, ct).ConfigureAwait(false))
+                if (await _toolRegistry.RegisterToolAsync(adapter, apply).ConfigureAwait(false))
                 {
                     entry.Remember(name, adapter, Fingerprint(definition));
                     LogRegisteredMcpTool(name, serverId);

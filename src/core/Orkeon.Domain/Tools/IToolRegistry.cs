@@ -74,7 +74,9 @@ public interface IToolRegistry
     /// <returns><see langword="true"/> when the swap happened.</returns>
     /// <remarks>
     /// The default implementation unregisters then registers, which leaves a gap; a registry that
-    /// serves concurrent readers overrides it with an atomic swap (<c>ToolRegistry</c> does).
+    /// serves concurrent readers overrides it with an atomic swap (<c>ToolRegistry</c> does). The token is
+    /// honoured until the unregistration succeeds; the registration that follows is not cancelled, so a
+    /// cancellation never leaves the name without a tool.
     /// </remarks>
     async System.Threading.Tasks.Task<bool> ReplaceToolAsync(IBaseTool current, IBaseTool replacement, CancellationToken cancellationToken = default)
     {
@@ -84,7 +86,10 @@ public interface IToolRegistry
             throw new ArgumentException("A replacement carries the name of the tool it replaces.", nameof(replacement));
         if (await GetToolByNameAsync(current.Name, cancellationToken).ConfigureAwait(false) is not { } holder || !ReferenceEquals(holder, current))
             return false;
-        await UnregisterToolAsync(current.Name, cancellationToken).ConfigureAwait(false);
-        return await RegisterToolAsync(replacement, cancellationToken).ConfigureAwait(false);
+        if (!await UnregisterToolAsync(current.Name, cancellationToken).ConfigureAwait(false))
+            return false;
+        // The first half is done: the name is free. A cancellation now would leave it held by no tool for good,
+        // so the second half runs to its end whatever the caller's token says.
+        return await RegisterToolAsync(replacement, CancellationToken.None).ConfigureAwait(false);
     }
 }

@@ -116,6 +116,21 @@ public sealed class CovAgentMcp_DynamicAgentServiceTests
     }
 
     [Fact]
+    public async Task TerminateAgentAsync_ShouldStillTerminate_WhenTheTokenIsCancelled()
+    {
+        var service = new DynamicAgentService(new StubFactory());
+        var registry = new DynamicAgentRegistry(_crewId);
+        var agent = await service.SpawnAgentAsync(new AgentSpawnRequest(_role, _goal, _crewId), registry, TestContext.Current.CancellationToken);
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+
+        var result = await service.TerminateAgentAsync(agent.Id, registry, "cancelled run", source.Token);
+
+        Assert.True(result);
+        Assert.False(registry.IsAgentActive(agent.Id));
+    }
+
+    [Fact]
     public async Task TerminateAgentAsync_WithNullReason_UsesDefaultReason()
     {
         var service = new DynamicAgentService(new StubFactory());

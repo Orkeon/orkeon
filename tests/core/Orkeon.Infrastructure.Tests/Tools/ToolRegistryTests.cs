@@ -294,6 +294,26 @@ public sealed class ToolRegistryTests
         Assert.Equal(
             [nameof(IToolRegistry.GetToolByNameAsync), nameof(IToolRegistry.UnregisterToolAsync), nameof(IToolRegistry.RegisterToolAsync)],
             registry.ReceivedTokens.Select(r => r.Method));
-        Assert.All(registry.ReceivedTokens, r => Assert.Equal(source.Token, r.Token));
+        // The token reaches every call up to the unregistration; the registration that completes the swap
+        // runs uncancellable.
+        Assert.All(registry.ReceivedTokens.Take(2), r => Assert.Equal(source.Token, r.Token));
+        Assert.Equal(CancellationToken.None, registry.ReceivedTokens[2].Token);
+    }
+
+    [Fact]
+    public async Task DefaultReplaceToolAsync_ShouldStillRegisterTheReplacement_WhenCancelledBetweenTheTwoSteps()
+    {
+        var current = new MockTool("t");
+        var replacement = new MockTool("t");
+        var registry = new FakeToolRegistry();
+        await registry.RegisterToolAsync(current, TestContext.Current.CancellationToken);
+        using var source = new CancellationTokenSource();
+        registry.AfterUnregister = source.Cancel;
+
+        var swapped = await ((IToolRegistry)registry).ReplaceToolAsync(current, replacement, source.Token);
+
+        Assert.True(source.IsCancellationRequested);
+        Assert.True(swapped);
+        Assert.Same(replacement, await registry.GetToolByNameAsync("t", TestContext.Current.CancellationToken));
     }
 }
