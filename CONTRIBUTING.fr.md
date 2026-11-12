@@ -53,10 +53,10 @@ Les suggestions d'amélioration sont suivies via les issues GitHub. Lorsque vous
 git clone https://github.com/your-username/orkeon.git
 cd orkeon
 
-# Add upstream remote
+# Ajouter le remote upstream
 git remote add upstream https://github.com/Orkeon/orkeon.git
 
-# Install dependencies (once, and again only when a package reference changes)
+# Installer les dépendances (une fois, puis seulement quand une référence de paquet change)
 dotnet restore Orkeon.sln
 
 # Build (CI builds -c Release -warnaserror: the solution is kept at zero warnings)
@@ -436,7 +436,7 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    `## Release <version>`, ne laissant que son en-tête au fichier `Unshipped`.
    L'analyseur de suivi des releases lit ce titre comme un simple numéro
    `Majeur.Mineur.Correctif` et refuse un suffixe de pré-release (RS2007) : une version candidate n'y ajoute rien, ses règles
-   vont sous le titre de la version finale (`## Release 1.1.0` pour la ligne 1.1.0).
+   vont sous le titre de la version finale (`## Release <X.Y.Z>` pour la ligne `<X.Y.Z>`).
 5. Vérifier que la CI est verte sur le commit que vous taguez. Au-delà du build
    `-warnaserror` et des suites de tests, les gates qui doivent passer sont
    `scripts/check-docs-parity.sh`, `scripts/check-doc-claims.py` (qui compare aussi les
@@ -477,7 +477,7 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    les assets tels que téléchargés depuis la page de la Release.
 
 Entre deux tags, chaque push sur `main` dont la CI est verte est aussi packé en
-`<version>.dev.<numéro de run>` et poussé sur GitHub Packages uniquement — jamais sur
+`<X.Y.Z>-<pre>.dev.<numéro de run>` et poussé sur GitHub Packages uniquement — jamais sur
 NuGet.org —, sans attestation ni SBOM ; les builds dev plus anciens sont purgés.
 
 ## Des questions ?

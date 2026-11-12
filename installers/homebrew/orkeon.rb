@@ -3,18 +3,20 @@
 # never builds from source (the CLI is a self-contained .NET publish; building
 # it would require the SDK and defeat the point of the channel).
 #
-# `version`, both `url`s and both `sha256`s are rewritten by
-# scripts/update-homebrew-formula.sh from a release's SHA256SUMS -- do not
-# hand-edit those five values.
+# This file is a TEMPLATE, not a releasable formula: `version`, both `url`s and
+# both `sha256`s are rewritten by scripts/update-homebrew-formula.sh from a
+# release's SHA256SUMS -- do not hand-edit those five values. In the repository
+# they hold placeholders (version 0.0.0, PLACEHOLDER_SHA256_* digests) that
+# deliberately fail verification, so an accidental install never fetches
+# something unverified.
 #
 # This file is authored in the main repository. The published tap is
 # Orkeon/homebrew-tap, created and pushed at release time (MAC-00 §8): until
-# that first push `brew install orkeon` does not resolve, and the sha256 values
-# below are placeholders that deliberately fail verification.
+# that first push `brew install orkeon` does not resolve.
 class Orkeon < Formula
   desc "Multi-agent AI orchestration framework and CLI"
   homepage "https://github.com/Orkeon/orkeon"
-  version "0.9.2-beta"
+  version "0.0.0"
   license "MIT"
 
   # macOS-only: the formula pins the osx tarballs. Linux users take the .deb or
@@ -22,12 +24,12 @@ class Orkeon < Formula
   depends_on :macos
 
   on_arm do
-    url "https://github.com/Orkeon/orkeon/releases/download/v0.9.2-beta/orkeon-cli-0.9.2-beta-osx-arm64.tar.gz"
+    url "https://github.com/Orkeon/orkeon/releases/download/v0.0.0/orkeon-cli-0.0.0-osx-arm64.tar.gz"
     sha256 "PLACEHOLDER_SHA256_ARM64"
   end
 
   on_intel do
-    url "https://github.com/Orkeon/orkeon/releases/download/v0.9.2-beta/orkeon-cli-0.9.2-beta-osx-x64.tar.gz"
+    url "https://github.com/Orkeon/orkeon/releases/download/v0.0.0/orkeon-cli-0.0.0-osx-x64.tar.gz"
     sha256 "PLACEHOLDER_SHA256_X64"
   end
 

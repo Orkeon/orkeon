@@ -323,7 +323,7 @@ public record TaskOutput(
 
 ## Modes d'exécution alternatifs
 
-Orkeon supporte plusieurs modes d'exécution via `ICrewOrchestrationService` :
+Orkeon prend en charge plusieurs modes d'exécution via `ICrewOrchestrationService` :
 
 **Mode itératif (par lot)** :
 ```csharp

@@ -24,7 +24,7 @@ commentaires qui la suivent montrent ce qu'elle a affiché, la version de la rel
 | Orkeon installé avec apt | la clé de l'archive, une fois ; apt vérifie ensuite chaque paquet par l'index signé | [Vérifier la clé de signature APT](#vérifier-la-clé-de-signature-apt) |
 | Un `.nupkg` venu de nuget.org | sa signature repository, puis l'attestation des octets que nuget.org a reçus | [Vérifier un paquet NuGet](#vérifier-un-paquet-nuget) |
 | Un `.nupkg` d'une version taguée venu de GitHub Packages | son attestation, directement | [Vérifier un paquet NuGet](#vérifier-un-paquet-nuget) |
-| Un build dev (`<version>.dev.<n>`) ou l'image `ghcr.io/orkeon/orkeon` | rien à vérifier : aucun des deux n'est attesté | [Ce que la chaîne établit](#ce-que-la-chaîne-établit) |
+| Un build dev (`<X.Y.Z>-<pre>.dev.<n>`) ou l'image `ghcr.io/orkeon/orkeon` | rien à vérifier : aucun des deux n'est attesté | [Ce que la chaîne établit](#ce-que-la-chaîne-établit) |
 
 ## Ce que la chaîne établit
 
@@ -40,7 +40,7 @@ commentaires qui la suivent montrent ce qu'elle a affiché, la version de la rel
 | **Actions et images de base épinglées** | Chaque action qu'un workflow appelle par `uses:` est épinglée sur un SHA de commit (les seuls autres `uses:` appellent le workflow `release-verify.yml` du dépôt) ; chaque image `FROM` externe est épinglée par digest | Les actions et les images de base qui ont tourné sont, octet pour octet, celles que le dépôt nomme ; un tag déplacé en amont n'y change rien. |
 
 Deux choses ne portent **aucune** attestation : les builds dev de `main` sur GitHub Packages
-(`<version>.dev.<n>`, voir plus bas) et l'image conteneur `ghcr.io/orkeon/orkeon` sur GHCR.
+(`<X.Y.Z>-<pre>.dev.<n>`, voir plus bas) et l'image conteneur `ghcr.io/orkeon/orkeon` sur GHCR.
 
 Ce que la chaîne n'établit **pas** : quoi que ce soit sur la *qualité* du code. Une attestation
 dit que les octets sont sortis de `.github/workflows/publish.yml` au commit X — pas que le
@@ -183,7 +183,7 @@ poussés sur nuget.org à ce tag, les deux qui n'atteignent que GitHub Packages 
 a construit, pas ce qui a atteint nuget.org.
 
 Une version taguée téléchargée depuis **GitHub Packages** n'est pas re-signée et se vérifie
-directement, sans retrait. Les builds dev de ce flux (`<version>.dev.<n>`, voir la
+directement, sans retrait. Les builds dev de ce flux (`<X.Y.Z>-<pre>.dev.<n>`, voir la
 [matrice de publication](../reference/publication-matrix.md)) ne sont pas des releases et ne
 portent aucune attestation : il n'y a rien contre quoi les vérifier.
 

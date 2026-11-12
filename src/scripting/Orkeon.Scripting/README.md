@@ -10,7 +10,7 @@ Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI 
 dotnet add package Orkeon.Scripting
 ```
 
-The package embeds the Jint host, the esbuild bundler driver, the DSL typings and `Orkeon.Hosting`, the runner bootstrap of `orkeon run`; it depends on `Orkeon`, `Orkeon.Tools` and `Orkeon.Tools.Embeddings.Local`. esbuild itself is not shipped: put it on `PATH` (`npm install -g esbuild`) or point `ORKEON_ESBUILD_PATH` at a binary. See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+The package embeds the Jint host, the esbuild bundler driver, the DSL typings and `Orkeon.Hosting`, the runner bootstrap of `orkeon run`; it depends on `Orkeon`, `Orkeon.Tools`, `Orkeon.Tools.Embeddings.Local` and `Orkeon.Constants.Cli`. esbuild itself is not shipped: put it on `PATH` (`npm install -g esbuild`) or point `ORKEON_ESBUILD_PATH` at a binary. See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 ## Run a crew in-process
 

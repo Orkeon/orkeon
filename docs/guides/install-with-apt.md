@@ -46,8 +46,8 @@ sudo apt-get update && sudo apt-get install -y orkeon orkeon-archive-keyring
 <!-- apt-setup:end -->
 
 > **To install the dev build of `main`**, see [Install a dev build](#install-a-dev-build). The
-> block installs from `stable`, which carries final versions only: before the first one,
-> `apt-get update` stops on it with *"does not have a Release file"* (a channel never
+> block installs from `stable`, which carries final versions only: while that channel holds
+> nothing, `apt-get update` stops on it with *"does not have a Release file"* (a channel never
 > published) or the install with *"Unable to locate package orkeon"* (a channel still empty).
 
 Then, as with every other channel:
@@ -106,7 +106,7 @@ Your settings are not part of the package: `~/.config/Orkeon/appsettings.json`, 
 
 | Channel | `Suites:` line | Carries |
 |---|---|---|
-| `stable` | `raw/apt/stable/` | final versions only (a tag without a pre-release segment, such as `v1.0.0`) |
+| `stable` | `raw/apt/stable/` | final versions only (a tag without a pre-release segment, such as `vX.Y.Z`) |
 | `rc` | `raw/apt/rc/` | every tagged release — the release candidates **and** the final versions |
 | `dev` | `raw/apt/dev/` | builds of `main` between two releases — see [Follow `main`](#follow-main-dev-builds) |
 
@@ -169,7 +169,7 @@ else — the key, its SHA-256 check, the source file — stays as it is.
 ```bash
 sudo sed -i 's|^Suites: .*|Suites: raw/apt/dev/|' /etc/apt/sources.list.d/orkeon.sources
 sudo apt-get update && sudo apt-get install -y orkeon orkeon-archive-keyring
-orkeon --version   # <version>.dev.<n>
+orkeon --version   # <X.Y.Z>-<pre>.dev.<n>
 ```
 
 **Then, to take the newest dev build:** `sudo apt update && sudo apt upgrade`.

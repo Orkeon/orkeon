@@ -4,7 +4,7 @@
 
 [![Build](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml/badge.svg)](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Orkeon/orkeon)](https://github.com/Orkeon/orkeon/releases)
-[![NuGet](https://img.shields.io/nuget/vpre/Orkeon?label=nuget.org)](https://www.nuget.org/packages/Orkeon)
+[![NuGet](https://img.shields.io/nuget/v/Orkeon?label=nuget.org)](https://www.nuget.org/packages/Orkeon)
 [![Documentation](https://img.shields.io/badge/documentation-orkeon.github.io-blue.svg)](https://orkeon.github.io/orkeon/)
 [![Licence : MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE.md)
 
@@ -39,7 +39,7 @@ flowchart LR
 
 **La frontière est devant le modèle, pas derrière.** Un agent voit des dossiers virtuels (`/workspace`, `/output`), chacun un montage que vous avez déclaré avec les droits que vous avez donnés ; un chemin en dehors est refusé avant qu'un seul octet n'atteigne le disque. L'envoi de mails et le partage d'un drive restent fermés tant qu'un opérateur ne les ouvre pas. Le code s'exécute dans un bac à sable.
 
-**L'autonomie a un budget.** Appels d'outils, profondeur, temps, tokens, agents engendrés : l'exécution s'arrête quand le budget est épuisé, et des disjoncteurs attrapent les boucles. Une longue exécution pose des points de reprise et repart là où elle s'était arrêtée.
+**L'autonomie a un budget.** Appels d'outils, profondeur, temps réel, tokens, agents engendrés : l'exécution s'arrête quand le budget est épuisé, et des disjoncteurs interceptent les boucles. Une longue exécution pose des points de reprise et repart là où elle s'était arrêtée.
 
 **Ça se livre comme du logiciel.** Le même runtime tourne en service `orkeon-host`, en conteneur (`ghcr.io/orkeon/orkeon`), en paquet apt ou en binaire autonome, ou embarqué dans votre propre service .NET — OpenTelemetry sur le tableau de bord .NET Aspire, interopérabilité Microsoft Agent Framework, client et serveur MCP, A2A entre agents. Et pour votre propre C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) : un analyseur Roslyn après lequel un `System.IO` brut ne compile pas.
 

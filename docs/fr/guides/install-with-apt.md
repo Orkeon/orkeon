@@ -47,7 +47,7 @@ sudo apt-get update && sudo apt-get install -y orkeon orkeon-archive-keyring
 <!-- apt-setup:end -->
 
 > **Pour installer le build dev de `main`**, voyez [Installer un build dev](#installer-un-build-dev).
-> Le bloc installe depuis `stable`, qui ne porte que les versions finales : avant la première,
+> Le bloc installe depuis `stable`, qui ne porte que les versions finales : tant que ce canal est vide,
 > `apt-get update` s'y arrête sur *« does not have a Release file »* (canal jamais publié) ou
 > l'installation sur *« Unable to locate package orkeon »* (canal encore vide).
 
@@ -108,7 +108,7 @@ Vos réglages ne font pas partie du paquet : `~/.config/Orkeon/appsettings.json`
 
 | Canal | Ligne `Suites:` | Contenu |
 |---|---|---|
-| `stable` | `raw/apt/stable/` | les versions finales seulement (un tag sans segment de pré-version, comme `v1.0.0`) |
+| `stable` | `raw/apt/stable/` | les versions finales seulement (un tag sans segment de pré-version, comme `vX.Y.Z`) |
 | `rc` | `raw/apt/rc/` | toutes les releases taguées — les release candidates **et** les versions finales |
 | `dev` | `raw/apt/dev/` | les builds de `main` entre deux releases — voir [Suivre `main`](#suivre-main-builds-dev) |
 
@@ -147,7 +147,7 @@ Suites: raw/apt/dev/
 - **Les versions** ont la forme `<X.Y.Z>~<pre>.dev.<n>`, `n` étant le numéro de l'exécution de CI qui
   a validé le commit, donc croissant à chaque build : au-dessus de
   la release dont elles partent, en dessous de la suivante — une machine dev passe donc à la
-  release candidate suivante par un simple `apt upgrade` quand elle est publiée. Après une
+  release candidate suivante par un simple `apt upgrade` dès qu'elle est publiée. Après une
   version finale, les builds dev passent au patch suivant (`1.0.1~dev.<n>` après `1.0.0`), comme
   le fait le [canal dev NuGet](../reference/publication-matrix.md#canal-dev--le-dernier-main-entre-deux-tags).
 - **Seuls les trois derniers builds sont gardés.** Un build plus ancien quitte le canal ;
@@ -171,7 +171,7 @@ source — reste identique.
 ```bash
 sudo sed -i 's|^Suites: .*|Suites: raw/apt/dev/|' /etc/apt/sources.list.d/orkeon.sources
 sudo apt-get update && sudo apt-get install -y orkeon orkeon-archive-keyring
-orkeon --version   # <version>.dev.<n>
+orkeon --version   # <X.Y.Z>-<pre>.dev.<n>
 ```
 
 **Ensuite, pour prendre le build dev le plus récent :** `sudo apt update && sudo apt upgrade`.

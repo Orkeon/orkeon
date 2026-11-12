@@ -32,14 +32,14 @@ ou plus, le paquet `mcp` (sa classe `FastMCP`) et `faster-whisper` ;
 [uv](https://docs.astral.sh/uv/) récupère les deux au premier lancement.
 
 ```python
-# whisper_mcp.py - an MCP server exposing one tool, transcribe_audio, over stdio.
+# whisper_mcp.py - un serveur MCP exposant un outil, transcribe_audio, sur stdio.
 import os
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
-AUDIO_DIR = Path(os.environ["WHISPER_AUDIO_DIR"]).resolve()  # the folder Orkeon mounts as /audio
-OUT_DIR = Path(os.environ["WHISPER_OUT_DIR"]).resolve()      # the folder Orkeon mounts as /transcripts
+AUDIO_DIR = Path(os.environ["WHISPER_AUDIO_DIR"]).resolve()  # le dossier qu'Orkeon monte en /audio
+OUT_DIR = Path(os.environ["WHISPER_OUT_DIR"]).resolve()      # le dossier qu'Orkeon monte en /transcripts
 INLINE_LIMIT = 3500                                          # under Orkeon's 4000-character cap
 
 mcp = FastMCP("whisper")
@@ -47,7 +47,7 @@ _model = None
 
 
 def model():
-    # Loaded on the first call, never at startup: Orkeon waits 30 s for the handshake.
+    # Chargé au premier appel, jamais au démarrage : Orkeon attend 30 s la poignée de main.
     global _model
     if _model is None:
         from faster_whisper import WhisperModel

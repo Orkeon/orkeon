@@ -24,7 +24,7 @@ Un plafond de tokens (`max_tokens`, `MaxTokens`) est un entier positif ; omettez
 
 ## Configuration YAML
 
-Orkeon supporte la configuration complète des crews via YAML. Le loader `YamlCrewDefinitionLoader` (`Orkeon.Infrastructure.Configuration`) convertit les fichiers YAML en objets domaine.
+Orkeon prend en charge la configuration complète des crews via YAML. Le loader `YamlCrewDefinitionLoader` (`Orkeon.Infrastructure.Configuration`) convertit les fichiers YAML en objets domaine.
 
 ### Schéma de configuration (abrégé)
 
@@ -158,7 +158,7 @@ Il n'existe pas d'objet « configuration prédéfinie » au niveau du framework 
 
 ### Modes de chargement
 
-Le loader `YamlCrewDefinitionLoader` supporte les modes ci-dessous. Il lit à travers le
+Le loader `YamlCrewDefinitionLoader` prend en charge les modes ci-dessous. Il lit à travers le
 système de fichiers virtuel (`IFileSystemService`) : chaque chemin qu'il reçoit est donc un
 chemin **virtuel** sous un montage déclaré — `/crews/...` ci-dessous suppose un montage tel
 que `./crews:/crews:ro` ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)) ;
@@ -228,7 +228,7 @@ Côté CLI, `orkeon run <dossier>` accepte directement ces répertoires
 
 ## CrewFactory — Du YAML aux objets domaine
 
-La pipeline de création transforme la configuration YAML en objets domaine opérationnels via `CrewFactory` (`Orkeon.Infrastructure.Configuration`), qui implémente `ICrewFactory` (`Orkeon.Application.Interfaces`).
+Le pipeline de création transforme la configuration YAML en objets domaine opérationnels via `CrewFactory` (`Orkeon.Infrastructure.Configuration`), qui implémente `ICrewFactory` (`Orkeon.Application.Interfaces`).
 
 ### Pipeline de création
 

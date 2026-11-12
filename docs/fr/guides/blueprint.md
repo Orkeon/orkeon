@@ -27,7 +27,7 @@ Avant de commencer, décidez :
 **Fichier** : `src/core/Orkeon.Domain/SharedKernel/ValueObjects/ProcessType.cs`
 
 ```csharp
-/// <summary>Agents swarm over the task pool under a shared budget.</summary>
+/// <summary>Les agents essaiment sur le pool de tâches sous un budget partagé.</summary>
 public static readonly ProcessType Swarm = new("Swarm");
 
 private static readonly Dictionary<string, ProcessType> s_all = new(StringComparer.OrdinalIgnoreCase)

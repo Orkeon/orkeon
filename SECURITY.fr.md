@@ -6,10 +6,10 @@
 
 | Version | Prise en charge |
 |---|---|
-| 1.x (dernière mineure) | ✅ |
-| ≤ 0.9.x (beta) | ❌ |
+| Dernière release stable | ✅ |
+| Releases plus anciennes | ❌ |
 
-Seule la dernière mineure de la ligne 1.x reçoit des correctifs de sécurité.
+Seule la dernière release stable reçoit des correctifs de sécurité.
 
 ## Signaler une vulnérabilité
 
@@ -45,8 +45,8 @@ Les vulnérabilités dans ces couches (contournement d'allowlist, contournement 
   n'est enregistré que comme type concret, donc aucun agent ne peut l'appeler tant que vous ne
   l'exposez pas vous-même.
 - **`shell_command`, lui, est livré enregistré.** `AddOrkeonCodeTools()` l'enregistre comme
-  `IBaseTool`, et les deux runners livrés (`orkeon run`, `orkeon-repl`) appellent cette méthode
-  sans condition : l'outil est donc au catalogue par défaut. Son allowlist par défaut est en
+  `IBaseTool`, et les runners livrés (`orkeon run`, `orkeon-repl`, `orkeon-host`) appellent cette
+  méthode sans condition : l'outil est donc au catalogue par défaut. Son allowlist par défaut est en
   **lecture seule** (`ls`, `cat`, `pwd`, `grep`… plus les sous-commandes `git` non mutantes) ;
   les interpréteurs et le `git` mutant restent fermés tant que vous ne posez pas
   `Orkeon:Tools:Shell:AllowInterpreters`, qui est **équivalent à une RCE** et fait émettre à

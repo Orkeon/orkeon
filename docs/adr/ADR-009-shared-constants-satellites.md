@@ -92,10 +92,10 @@ ADR-003 (`Application → Analysis.Abstractions`), ADR-005 (`Tools.Web/EventHub 
 ADR-006 (`Orkeon.Rag.Abstractions`). What made each acceptable was that the referenced project
 carries contracts, not infrastructure. A satellite holding `const string` carries even less.
 
-**`Orkeon.Domain` may reference a satellite.** Domain has no project dependency today, and the
-one `ProjectReference` it does carry — the source generator — is `OutputItemType="Analyzer"` with
-`ReferenceOutputAssembly="false"`, so it vanishes at runtime. A satellite is different: it is a
-genuine runtime reference, the first Domain will have. It is accepted because a project that
+**`Orkeon.Domain` may reference a satellite.** Its one runtime project reference is
+`Orkeon.Constants.Llm`; the other `ProjectReference` it carries — the source generator — is
+`OutputItemType="Analyzer"` with `ReferenceOutputAssembly="false"`, so it vanishes at runtime. A
+satellite is different: it is a genuine runtime reference. It is accepted because a project that
 depends on nothing cannot drag anything in behind it, and because the alternative is what this
 ADR exists to end — Domain keeping its own copy of a value someone else also holds.
 

@@ -210,6 +210,10 @@ class VersionMentionTests(unittest.TestCase):
                      "Orkeon.Scripting.Cli v1.2.3"):
             self.assertIsNotNone(gate.VERSION_MENTION.search(line), line)
 
+    def test_a_pre_1_0_line_is_a_version_mention(self) -> None:
+        for line in ("version `0.9.x-beta`", "| <= 0.9.x (beta) | no |"):
+            self.assertIsNotNone(gate.VERSION_MENTION.search(line), line)
+
     def test_a_version_next_to_the_name_but_not_after_it_is_not_one(self) -> None:
         for line in ("`Orkeon` `1.0.0` (the MCP client's protocol version)",
                      "orkeon-archive-keyring_2026.10.04_all.deb", "Orkeon on .NET 10.0"):

@@ -114,8 +114,8 @@ L'autre tool dotnet, `Orkeon.Scripting.Cli` (commande `orkeon`), fait partie du 
 ### Canal dev : le dernier `main`, entre deux tags
 
 Dès que `ci.yml` passe au vert sur un push vers `main`, le job `publish-dev` de `publish.yml`
-packe les mêmes projets en `<version des props>.dev.<n>`, `n` étant le numéro de ce run de CI
-— `<version>.dev.412` est donc le commit validé par le run de CI n° 412 — et les pousse
+packe les mêmes projets en `<X.Y.Z>-<pre>.dev.<n>`, `n` étant le numéro de ce run de CI
+— `<X.Y.Z>-<pre>.dev.412` est donc le commit validé par le run de CI n° 412 — et les pousse
 **uniquement sur GitHub Packages** : jamais sur NuGet.org, qui sait masquer une version mais
 jamais la supprimer. `scripts/prune-dev-packages.sh` supprime ensuite les builds dev plus
 anciens : le feed contient **chaque version taggée plus le dernier `main` au vert**, rien
@@ -123,7 +123,7 @@ entre les deux. Une version taggée n'est jamais supprimée ; une version ni tag
 est signalée, pas supprimée — le même script les retire lors d'un passage ponctuel et relu
 (`--include-untagged`, à blanc d'abord).
 
-- En SemVer, `<version>.dev.<n>` est au-dessus de `<version>` et sous la pré-version suivante :
+- En SemVer, `<X.Y.Z>-<pre>.dev.<n>` est au-dessus de `<version>` et sous la pré-version suivante :
   `--prerelease` résout donc le build dev. Quand la version des props n'a pas de suffixe (une
   release stable), les builds dev passent au patch suivant — `1.0.1-dev.<n>` après `1.0.0` —
   car `1.0.0-dev.<n>` tomberait sous la release.
@@ -140,7 +140,7 @@ est signalée, pas supprimée — le même script les retire lors d'un passage p
 
   | Forme | D'où elle vient | Exemple |
   |---|---|---|
-  | `<version des props>.dev.<n>` | la CI seule — `publish.yml` et `apt-dev.yml`, `n` étant le numéro du run de CI | `<version>.dev.412` |
+  | `<X.Y.Z>-<pre>.dev.<n>` | la CI seule — `publish.yml` et `apt-dev.yml`, `n` étant le numéro du run de CI | `<X.Y.Z>-<pre>.dev.412` |
   | `<version des props>.local.<horodatage>` | un build fait depuis un clone — `scripts/package-installers.sh` ou `.ps1` sans version, un run manuel de `release.yml` | `<version>.local.202610080430` |
 
   `<horodatage>` est la date de commit du commit construit, `AAAAMMJJHHMM` en UTC : elle
@@ -306,9 +306,9 @@ natives sont en place, et un LLM non configuré n'y est qu'un avertissement.
 
 `version` et les deux couples `url` / `sha256` sont **générés**, jamais édités à la main :
 `scripts/update-homebrew-formula.sh --release <tag>` (ou `--sums <fichier>`) réécrit les cinq
-valeurs depuis le `SHA256SUMS` d'une release, de façon idempotente. Jusqu'à la première release
-taguée, les deux `sha256` valent littéralement `PLACEHOLDER_SHA256_ARM64` /
-`PLACEHOLDER_SHA256_X64` : une installation accidentelle échoue à la vérification plutôt que de
+valeurs depuis le `SHA256SUMS` d'une release, de façon idempotente. Le fichier du dépôt est un
+gabarit : il porte la version fictive `0.0.0` et les empreintes littérales `PLACEHOLDER_SHA256_ARM64` /
+`PLACEHOLDER_SHA256_X64` tant que les sommes d'une release n'y sont pas écrites : une installation accidentelle échoue à la vérification plutôt que de
 récupérer quoi que ce soit de non vérifié.
 
 Publier le dépôt `Orkeon/homebrew-tap` et y pousser la formule est une **action de release, pas
@@ -342,7 +342,7 @@ l'asset de la Release. La contrepartie est la limite de débit de GitHub sur les
 |---|---|---|
 | `stable` | `stable/` | chaque tag `v*` sans segment de pré-version — le même test qui fixe `prerelease:` sur la Release. Versions finales seulement : une release candidate n'y entre jamais |
 | `rc` | `rc/` | chaque tag `v*` : tout paquet de `stable` est donc aussi dans `rc` |
-| `dev` | `dev/` | le paquet `orkeon` de chaque push vert sur `main`, en version `<version des props avec ~>.dev.<n>` (`<X.Y.Z>~<pre>.dev.<n>`) ; ses assets sont sur l'unique prerelease à tag fixe `apt-dev` ; seuls les trois derniers builds sont gardés. Jamais publié sur NuGet.org, jamais attesté comme une release |
+| `dev` | `dev/` | le paquet `orkeon` de chaque push vert sur `main`, en version `<X.Y.Z>~<pre>.dev.<n>` ; ses assets sont sur l'unique prerelease à tag fixe `apt-dev` ; seuls les trois derniers builds sont gardés. Jamais publié sur NuGet.org, jamais attesté comme une release |
 
 Le fichier `Release` de chaque canal garde `Origin: Orkeon` et `Label: Orkeon` pour toujours (un
 changement obligerait chaque machine à le confirmer), fixe `Suite:` au chemin de la source sans
@@ -377,7 +377,7 @@ vers `main` (la garde du job `publish-dev` de `publish.yml`). Il publie le jeu C
 `linux-x64` et `linux-arm64` seulement, assemble les deux `.deb` avec `package-deb.sh --arch`, et
 n'appelle jamais `dotnet pack`, `publish.yml` ni un flux NuGet. La version est celle de
 `publish-dev`, avec `~` pour `-` dans le champ Debian : `<X.Y.Z>~<pre>.dev.<numéro de la CI>`, asset
-`orkeon_<version>.dev.<n>_<arch>.deb`. Ensuite, dans l'environnement `apt-signing`,
+`orkeon_<X.Y.Z>-<pre>.dev.<n>_<arch>.deb`. Ensuite, dans l'environnement `apt-signing`,
 `scripts/apt/publish-dev.sh` :
 
 1. crée la prerelease `apt-dev` si elle manque (jamais « latest » ; son tag, posé sur le commit
@@ -524,4 +524,4 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   son propre fichier de verrouillage dans le dossier intermédiaire du projet et ne réécrit
   jamais celui qui est commité. Le contenu des modèles `dotnet new` ne livre aucun fichier de
   verrouillage.
-- La version provient de `src/Directory.Build.props`, la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit. Le canal dev en dérive son `<version>.dev.<n>`, un build fait depuis un clone son `<version>.local.<horodatage>` (voir *Canal dev* plus haut).
+- La version provient de `src/Directory.Build.props`, la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit. Le canal dev en dérive son `<X.Y.Z>-<pre>.dev.<n>`, un build fait depuis un clone son `<version>.local.<horodatage>` (voir *Canal dev* plus haut).

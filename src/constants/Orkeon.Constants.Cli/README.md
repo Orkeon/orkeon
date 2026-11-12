@@ -25,6 +25,7 @@ See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/ref
 | Type | What it declares |
 |---|---|
 | `RunOptionNames` | The option names, bare (`settings`, not `--settings`), as `[Option(...)]` needs them — plus `Flag(name)` to compose the command-line spelling. |
+| `RunExitCodes` | The exit codes `orkeon run` adds to 0, 1, 2 and 130: `WaitingForInput` (75, `EX_TEMPFAIL`) — the run stopped on a question to a human and waits for the answer. |
 | `SessionStateKeys` | The keys of the REPL's session state the console reads or writes, shared with a product's scripted commands (`default_permission_mode`). |
 
 ## License

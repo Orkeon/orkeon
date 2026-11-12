@@ -417,7 +417,7 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    `## Release <version>` heading, leaving the `Unshipped` file with its header only.
    The release-tracking analyzer parses that heading as a plain `Major.Minor.Patch`
    number and rejects a prerelease suffix (RS2007): a release candidate adds nothing there, its rules go
-   under the heading of the final version (`## Release 1.1.0` for the 1.1.0 line).
+   under the heading of the final version (`## Release <X.Y.Z>` for the `<X.Y.Z>` line).
 5. Make sure CI is green on the commit you tag. Beyond the `-warnaserror` build and the
    test suites, the gates that must pass are `scripts/check-docs-parity.sh`,
    `scripts/check-doc-claims.py` (it also compares the hand-written copies of the NuGet
@@ -457,7 +457,7 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    the assets as downloaded from the Release page.
 
 Between two tags, every push to `main` whose CI is green is also packed as
-`<version>.dev.<run number>` and pushed to GitHub Packages only — never NuGet.org — with
+`<X.Y.Z>-<pre>.dev.<run number>` and pushed to GitHub Packages only — never NuGet.org — with
 no attestation or SBOM; older dev builds are pruned.
 
 ## Questions?

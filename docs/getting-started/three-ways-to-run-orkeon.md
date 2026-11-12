@@ -632,7 +632,7 @@ names the channel this install came through and the command that updates it.
 ### Follow `main`: the dev channel
 
 Between two releases, every commit CI validates on `main` is published as
-`<version>.dev.<n>` — `n` being the number of that CI run — to the Orkeon feed on GitHub
+`<X.Y.Z>-<pre>.dev.<n>` — `n` being the number of that CI run — to the Orkeon feed on GitHub
 Packages, where the next one replaces it. How the versions are numbered and pruned is in the
 [publication matrix](../reference/publication-matrix.md#dev-channel-the-latest-main-between-two-tags).
 The channel reaches the **NuGet channels**: the `orkeon` tool, the `orkeon-repl` tool
@@ -670,7 +670,7 @@ installers and the container image are built from tags alone.
 
    NuGet keeps a feed's version list for 30 minutes: right after a merge, add
    `--no-http-cache` to see the new build.
-4. **Check.** `orkeon --version` prints `orkeon <version>.dev.<n>`. Run `#<n>` of the
+4. **Check.** `orkeon --version` prints `orkeon <X.Y.Z>-<pre>.dev.<n>`. Run `#<n>` of the
    [CI workflow](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml) names the commit,
    and the `[Unreleased]` section of the [CHANGELOG](../../CHANGELOG.md) lists what changed
    since the last release. The documentation site follows the tags: for a dev build, read the
@@ -690,7 +690,7 @@ newest build. Under central package management the floating version goes in
 `<CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>` —
 without it, restore fails with NU1011. An exact pin on a dev build — a tool manifest, a
 `packages.lock.json` in locked mode — breaks as soon as the next build replaces it; a plain
-`Version="<version>.dev.<n>"` still restores, onto the next build, with warning NU1603. Pin a
+`Version="<X.Y.Z>-<pre>.dev.<n>"` still restores, onto the next build, with warning NU1603. Pin a
 release for anything that has to last.
 
 **Back to the releases:**

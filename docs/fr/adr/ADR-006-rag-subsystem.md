@@ -67,7 +67,7 @@ ajoutées par les lots de migration suivants.
   ADR.
 - **Rupture** : les anciens namespaces (`Orkeon.Application.Interfaces.Rag.*`,
   `Orkeon.Application.Rag.*`, `Orkeon.Infrastructure.Knowledge.*`) sont supprimés sans shims
-  (rupture assumée, version `0.9.x-beta` ; table de migration au `CHANGELOG.md`).
+  (rupture assumée ; table de migration au `CHANGELOG.md`).
   **Fait en RAG-02/C5 (2026-07-25)** — `rag_search` vit désormais dans `Orkeon.Tools.Rag`
   (`RagSearchTool` + `AddOrkeonRagTools()`), et l'opt-in du sous-système est
   `AddOrkeonRag(configuration)` dans `Orkeon.Rag.DependencyInjection`.

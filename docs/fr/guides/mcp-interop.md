@@ -40,7 +40,7 @@ voir ce que votre serveur envoie avant d'y pointer Orkeon :
 
 1. Démarrez votre serveur (Streamable HTTP, par exemple `http://127.0.0.1:3001/mcp`).
 2. `npx @modelcontextprotocol/inspector`, ouvrez l'URL affichée, choisissez le transport **Streamable HTTP**, saisissez l'URL.
-3. Connectez-vous, puis listez outils, ressources et prompts. Comparez avec ce que `orkeon mcp` rapporte pour la même
+3. Connectez-vous, puis listez outils, ressources et prompts. Comparez avec ce que `orkeon run --list-tools` affiche pour la même
    entrée `MCP:Servers`.
 4. Dans le volet History, vérifiez les en-têtes des POST : `Mcp-Session-Id` est renvoyé après `initialize`, une requête
    répondue `404` fait réinitialiser Orkeon.

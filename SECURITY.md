@@ -6,10 +6,10 @@
 
 | Version | Supported |
 |---|---|
-| 1.x (latest minor) | ✅ |
-| ≤ 0.9.x (beta) | ❌ |
+| Latest stable release | ✅ |
+| Older releases | ❌ |
 
-Only the latest minor of the 1.x line receives security fixes.
+Only the latest stable release receives security fixes.
 
 ## Reporting a Vulnerability
 
@@ -44,8 +44,8 @@ Vulnerabilities in these layers (allowlist bypass, SSRF filter bypass, VFS escap
 - **`code_interpreter` is never exposed as an `IBaseTool`**: `SecureCodeInterpreterTool` is
   registered as a concrete type only, so no agent can call it unless you expose it yourself.
 - **`shell_command` is different — it ships registered.** `AddOrkeonCodeTools()` registers it
-  as an `IBaseTool`, and both shipped runners (`orkeon run`, `orkeon-repl`) call that method
-  unconditionally, so the tool is in the catalogue out of the box. Its default allowlist is
+  as an `IBaseTool`, and the shipped runners (`orkeon run`, `orkeon-repl`, `orkeon-host`) call that
+  method unconditionally, so the tool is in the catalogue out of the box. Its default allowlist is
   **read-only** (`ls`, `cat`, `pwd`, `grep`… plus read-only `git` subcommands); interpreters
   and mutating `git` stay off unless you set `Orkeon:Tools:Shell:AllowInterpreters`, which is
   **RCE-equivalent** and makes the tool emit a security warning. Prefer adding the one command

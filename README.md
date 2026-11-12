@@ -4,7 +4,7 @@
 
 [![Build](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml/badge.svg)](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Orkeon/orkeon)](https://github.com/Orkeon/orkeon/releases)
-[![NuGet](https://img.shields.io/nuget/vpre/Orkeon?label=nuget.org)](https://www.nuget.org/packages/Orkeon)
+[![NuGet](https://img.shields.io/nuget/v/Orkeon?label=nuget.org)](https://www.nuget.org/packages/Orkeon)
 [![Documentation](https://img.shields.io/badge/documentation-orkeon.github.io-blue.svg)](https://orkeon.github.io/orkeon/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 

@@ -65,7 +65,7 @@ Orkeon), mais rien ne les annonce parce que rien ne manque.
 
 Un framework qui glisserait silencieusement un appel LLM, une dépendance réseau ou
 un store persistant derrière un défaut prendrait des décisions qui vous
-appartiennent. La contrepartie : un hôte fraîchement bootstrappé en fait moins
+appartiennent. La contrepartie : un hôte fraîchement amorcé en fait moins
 qu'un hôte configuré — et le dit dans le log, une fois par service, avec le
 correctif dans le message. Si vous voyez l'un de ces warnings en production, ce
 n'est jamais du bruit : une capacité que vous attendez probablement tourne sur son
