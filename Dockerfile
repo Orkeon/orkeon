@@ -1,7 +1,7 @@
 # Stage 1: Build
 # GA image + global.json: the 10.0-preview SDK band ships a Roslyn that breaks the
 # Orkeon.Generators source generator (CS8795 partial methods without implementation).
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:2fa828c68761b1b8c23d7662dc134421b9d3b59fe1425fdbc80804e390cdb24d AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0@sha256:65f3c7c6a25a239ab3e6719f2896147e7b68242ff2d8818dd70498bde6ef8bea AS build
 WORKDIR /src
 
 # The whole source tree in one layer, restore against it, publish.
