@@ -43,7 +43,7 @@ public sealed class NodeReplaceTool : FileToolBase<NodeReplaceRequest, NodeRepla
     private readonly StructuralEditEngine _engine;
     private readonly IIndexInvalidation? _indexInvalidation;
 
-    public NodeReplaceTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
+    internal NodeReplaceTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
         : base(fs)
     {
         _engine = new StructuralEditEngine(fs, pool);

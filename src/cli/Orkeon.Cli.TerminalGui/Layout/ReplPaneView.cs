@@ -278,7 +278,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     }
 
     /// <summary>Emitted on every key down on the input field. Used by the console adapter's <c>ReadKey</c>.</summary>
-    public event EventHandler<KeyCapturedEventArgs>? KeyCaptured;
+    internal event EventHandler<KeyCapturedEventArgs>? KeyCaptured;
 
     /// <summary>Raised by the second consecutive Esc.</summary>
     public event EventHandler? InterruptRequested;
@@ -288,7 +288,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     /// paste handler (<see cref="MouseClipboardBehavior.AttachRightClickPaste(Func{bool})"/>)
     /// can target the only writable surface in the split-pane.
     /// </summary>
-    public TextView Input => _input;
+    internal TextView Input => _input;
 
     /// <summary>
     /// Provides the Tab-completion source for <c>/command</c> and <c>@path</c> tokens. Called once

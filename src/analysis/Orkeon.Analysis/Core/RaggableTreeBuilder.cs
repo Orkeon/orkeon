@@ -50,7 +50,7 @@ public sealed class RaggableTreeBuilder
     {
     }
 
-    public RaggableTreeBuilder(
+    internal RaggableTreeBuilder(
         IEnumerable<ILanguageAdapter> adapters,
         IFileSystemDiscoverer discoverer,
         IFileSystemService fileSystem,

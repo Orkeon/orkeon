@@ -6,7 +6,7 @@ using TsNode = TreeSitter.Node;
 
 namespace Orkeon.Analysis.Core;
 
-public sealed class StatementExtractor
+internal sealed class StatementExtractor
 {
     private static readonly HashSet<string> BodyTypes = new(StringComparer.Ordinal)
     {
@@ -331,4 +331,4 @@ public sealed class StatementExtractor
     }
 }
 
-public sealed record StatementExtractionResult(IReadOnlyList<StatementNode> Statements, bool IsPartial);
+internal sealed record StatementExtractionResult(IReadOnlyList<StatementNode> Statements, bool IsPartial);

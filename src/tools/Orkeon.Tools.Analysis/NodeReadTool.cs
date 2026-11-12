@@ -39,7 +39,7 @@ public sealed class NodeReadTool : ToolBase<NodeReadRequest, NodeReadResponse>
     private readonly IFileSystemService _fs;
     private readonly TreeSitterParserPool _pool;
 
-    public NodeReadTool(IFileSystemService fs, TreeSitterParserPool pool)
+    internal NodeReadTool(IFileSystemService fs, TreeSitterParserPool pool)
     {
         _fs = fs;
         _pool = pool;

@@ -70,7 +70,7 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
     private readonly IBuildValidator? _buildValidator;
     private readonly IIndexInvalidation? _indexInvalidation;
 
-    public EditBatchTool(
+    internal EditBatchTool(
         IFileSystemService fs, TreeSitterParserPool pool, IBuildValidator? buildValidator = null, IIndexInvalidation? indexInvalidation = null)
         : base(fs)
     {

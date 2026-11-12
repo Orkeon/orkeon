@@ -3,7 +3,7 @@ using TsNode = TreeSitter.Node;
 
 namespace Orkeon.Analysis.TreeSitter;
 
-public static class TreeSitterNodeExtensions
+internal static class TreeSitterNodeExtensions
 {
     private static readonly Regex WhitespaceRegex = new(@"\s+", RegexOptions.Compiled, TimeSpan.FromMilliseconds(1000));
 

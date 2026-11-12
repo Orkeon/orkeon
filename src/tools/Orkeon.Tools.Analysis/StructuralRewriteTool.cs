@@ -57,7 +57,7 @@ public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteReques
     private readonly IIndexInvalidation? _indexInvalidation;
     private readonly StructuralEditEngine _engine;
 
-    public StructuralRewriteTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
+    internal StructuralRewriteTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
         : base(fs)
     {
         _pool = pool;

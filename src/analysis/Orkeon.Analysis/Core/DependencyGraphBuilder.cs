@@ -20,7 +20,7 @@ public sealed partial class DependencyGraphBuilder
     private readonly Dictionary<string, FileContext> _files =
         new(StringComparer.OrdinalIgnoreCase);
 
-    public DependencyGraphBuilder(ILanguageAdapter adapter, TreeSitterParserPool pool)
+    internal DependencyGraphBuilder(ILanguageAdapter adapter, TreeSitterParserPool pool)
     {
         _adapter = adapter ?? throw new ArgumentNullException(nameof(adapter));
         _pool = pool ?? throw new ArgumentNullException(nameof(pool));

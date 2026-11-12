@@ -9,7 +9,7 @@ namespace Orkeon.Rag.Onnx.Reranking;
 /// batch. Pure tokenization + shaping — no ONNX inference, hence unit-testable
 /// without the native runtime.
 /// </summary>
-public sealed class CrossEncoderBatchEncoder
+internal sealed class CrossEncoderBatchEncoder
 {
     private readonly BertTokenizer _tokenizer;
     private readonly int _maxSequenceLength;

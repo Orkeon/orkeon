@@ -14,9 +14,6 @@ Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.SequenceLength.get -> int
 Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.SequenceLength.init -> void
 Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.TokenTypeIds.get -> System.ReadOnlyMemory<long>
 Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch.TokenTypeIds.init -> void
-Orkeon.Rag.Onnx.Reranking.CrossEncoderBatchEncoder
-Orkeon.Rag.Onnx.Reranking.CrossEncoderBatchEncoder.CrossEncoderBatchEncoder(Microsoft.ML.Tokenizers.BertTokenizer! tokenizer, int maxSequenceLength = 512) -> void
-Orkeon.Rag.Onnx.Reranking.CrossEncoderBatchEncoder.Encode(string! query, System.Collections.Generic.IReadOnlyList<string!>! passages) -> Orkeon.Rag.Onnx.Reranking.CrossEncoderBatch!
 Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker
 Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker.Dispose() -> void
 Orkeon.Rag.Onnx.Reranking.OnnxCrossEncoderReranker.Name.get -> string!

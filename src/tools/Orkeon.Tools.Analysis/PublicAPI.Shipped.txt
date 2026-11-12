@@ -201,7 +201,6 @@ Orkeon.Tools.Analysis.EditBatchResponse.Operations.init -> void
 Orkeon.Tools.Analysis.EditBatchResponse.Validation.get -> string!
 Orkeon.Tools.Analysis.EditBatchResponse.Validation.init -> void
 Orkeon.Tools.Analysis.EditBatchTool
-Orkeon.Tools.Analysis.EditBatchTool.EditBatchTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IBuildValidator? buildValidator = null, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
 Orkeon.Tools.Analysis.FlowTraceTool
 Orkeon.Tools.Analysis.FlowTraceTool.FlowTraceTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.FlowTraceTool!>? logger = null, Orkeon.Analysis.Core.IndexFreshnessService? freshness = null) -> void
 Orkeon.Tools.Analysis.ImpactAnalysisTool
@@ -245,7 +244,6 @@ Orkeon.Tools.Analysis.NodeEnsureResponse.NodeEnsureResponse() -> void
 Orkeon.Tools.Analysis.NodeEnsureResponse.Range.get -> Orkeon.Tools.Analysis.NodeReplaceRange!
 Orkeon.Tools.Analysis.NodeEnsureResponse.Range.init -> void
 Orkeon.Tools.Analysis.NodeEnsureTool
-Orkeon.Tools.Analysis.NodeEnsureTool.NodeEnsureTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
 Orkeon.Tools.Analysis.NodeInsertRequest
 Orkeon.Tools.Analysis.NodeInsertRequest.<Clone>$() -> Orkeon.Tools.Analysis.NodeInsertRequest!
 Orkeon.Tools.Analysis.NodeInsertRequest.Equals(Orkeon.Tools.Analysis.NodeInsertRequest? other) -> bool
@@ -267,7 +265,6 @@ Orkeon.Tools.Analysis.NodeInsertResponse.NodeInsertResponse() -> void
 Orkeon.Tools.Analysis.NodeInsertResponse.Range.get -> Orkeon.Tools.Analysis.NodeReplaceRange!
 Orkeon.Tools.Analysis.NodeInsertResponse.Range.init -> void
 Orkeon.Tools.Analysis.NodeInsertTool
-Orkeon.Tools.Analysis.NodeInsertTool.NodeInsertTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
 Orkeon.Tools.Analysis.NodeOutlineEntryDto
 Orkeon.Tools.Analysis.NodeOutlineEntryDto.<Clone>$() -> Orkeon.Tools.Analysis.NodeOutlineEntryDto!
 Orkeon.Tools.Analysis.NodeOutlineEntryDto.EndByte.get -> int
@@ -297,7 +294,6 @@ Orkeon.Tools.Analysis.NodeOutlineResponse.Members.get -> System.Collections.Immu
 Orkeon.Tools.Analysis.NodeOutlineResponse.Members.init -> void
 Orkeon.Tools.Analysis.NodeOutlineResponse.NodeOutlineResponse() -> void
 Orkeon.Tools.Analysis.NodeOutlineTool
-Orkeon.Tools.Analysis.NodeOutlineTool.NodeOutlineTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool) -> void
 Orkeon.Tools.Analysis.NodeReadRequest
 Orkeon.Tools.Analysis.NodeReadRequest.<Clone>$() -> Orkeon.Tools.Analysis.NodeReadRequest!
 Orkeon.Tools.Analysis.NodeReadRequest.Equals(Orkeon.Tools.Analysis.NodeReadRequest? other) -> bool
@@ -329,7 +325,6 @@ Orkeon.Tools.Analysis.NodeReadResponse.StartLine.init -> void
 Orkeon.Tools.Analysis.NodeReadResponse.Text.get -> string!
 Orkeon.Tools.Analysis.NodeReadResponse.Text.init -> void
 Orkeon.Tools.Analysis.NodeReadTool
-Orkeon.Tools.Analysis.NodeReadTool.NodeReadTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool) -> void
 Orkeon.Tools.Analysis.NodeReplaceRange
 Orkeon.Tools.Analysis.NodeReplaceRange.<Clone>$() -> Orkeon.Tools.Analysis.NodeReplaceRange!
 Orkeon.Tools.Analysis.NodeReplaceRange.EndByte.get -> int
@@ -363,7 +358,6 @@ Orkeon.Tools.Analysis.NodeReplaceResponse.NodeReplaceResponse() -> void
 Orkeon.Tools.Analysis.NodeReplaceResponse.Range.get -> Orkeon.Tools.Analysis.NodeReplaceRange!
 Orkeon.Tools.Analysis.NodeReplaceResponse.Range.init -> void
 Orkeon.Tools.Analysis.NodeReplaceTool
-Orkeon.Tools.Analysis.NodeReplaceTool.NodeReplaceTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
 Orkeon.Tools.Analysis.PackageSummaryTool
 Orkeon.Tools.Analysis.PackageSummaryTool.PackageSummaryTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.PackageSummaryTool!>? logger = null) -> void
 Orkeon.Tools.Analysis.StatementQueryTool
@@ -433,7 +427,6 @@ Orkeon.Tools.Analysis.StructuralRewriteResponse.StructuralRewriteResponse() -> v
 Orkeon.Tools.Analysis.StructuralRewriteResponse.Truncated.get -> bool
 Orkeon.Tools.Analysis.StructuralRewriteResponse.Truncated.init -> void
 Orkeon.Tools.Analysis.StructuralRewriteTool
-Orkeon.Tools.Analysis.StructuralRewriteTool.StructuralRewriteTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
 Orkeon.Tools.Analysis.StructuralSearchRequest
 Orkeon.Tools.Analysis.StructuralSearchRequest.<Clone>$() -> Orkeon.Tools.Analysis.StructuralSearchRequest!
 Orkeon.Tools.Analysis.StructuralSearchRequest.Equals(Orkeon.Tools.Analysis.StructuralSearchRequest? other) -> bool
@@ -465,7 +458,6 @@ Orkeon.Tools.Analysis.StructuralSearchResponse.StructuralSearchResponse() -> voi
 Orkeon.Tools.Analysis.StructuralSearchResponse.Truncated.get -> bool
 Orkeon.Tools.Analysis.StructuralSearchResponse.Truncated.init -> void
 Orkeon.Tools.Analysis.StructuralSearchTool
-Orkeon.Tools.Analysis.StructuralSearchTool.StructuralSearchTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool) -> void
 Orkeon.Tools.Analysis.SubGraphTool
 Orkeon.Tools.Analysis.SubGraphTool.SubGraphTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.SubGraphTool!>? logger = null) -> void
 Orkeon.Tools.Analysis.SymbolDetailTool

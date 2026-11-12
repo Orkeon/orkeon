@@ -35,7 +35,7 @@ public sealed class NodeInsertTool : FileToolBase<NodeInsertRequest, NodeInsertR
     private readonly StructuralEditEngine _engine;
     private readonly IIndexInvalidation? _indexInvalidation;
 
-    public NodeInsertTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
+    internal NodeInsertTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
         : base(fs)
     {
         _engine = new StructuralEditEngine(fs, pool);

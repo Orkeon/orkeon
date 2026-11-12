@@ -54,7 +54,7 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
     private readonly IFileSystemService _fs;
     private readonly TreeSitterParserPool _pool;
 
-    public StructuralSearchTool(IFileSystemService fs, TreeSitterParserPool pool)
+    internal StructuralSearchTool(IFileSystemService fs, TreeSitterParserPool pool)
     {
         _fs = fs;
         _pool = pool;

@@ -38,7 +38,7 @@ public sealed class NodeOutlineTool : ToolBase<NodeOutlineRequest, NodeOutlineRe
     private readonly IFileSystemService _fs;
     private readonly TreeSitterParserPool _pool;
 
-    public NodeOutlineTool(IFileSystemService fs, TreeSitterParserPool pool)
+    internal NodeOutlineTool(IFileSystemService fs, TreeSitterParserPool pool)
     {
         _fs = fs;
         _pool = pool;

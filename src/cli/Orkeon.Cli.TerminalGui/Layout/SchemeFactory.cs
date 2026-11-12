@@ -67,7 +67,7 @@ public enum PaletteRole
 /// the nearest named ANSI colour, so a 16-colour terminal shows a deliberate palette
 /// instead of Terminal.Gui's downsampling guesses.
 /// </remarks>
-public static class SchemeFactory
+internal static class SchemeFactory
 {
     /// <summary>The terminal's announcement of its colour depth (not in the Orkeon variables catalog: a terminal standard).</summary>
     private const string ColorTermVariable = "COLORTERM";

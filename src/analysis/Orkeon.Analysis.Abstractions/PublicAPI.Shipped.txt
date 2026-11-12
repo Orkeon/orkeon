@@ -1244,8 +1244,6 @@ Orkeon.Analysis.Abstractions.Interfaces.IRaggableTreeEventBus.Publish(Orkeon.Ana
 Orkeon.Analysis.Abstractions.Interfaces.IRaggableTreeEventBus.Subscribe(System.Func<Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! handler) -> System.IDisposable!
 Orkeon.Analysis.Abstractions.Interfaces.IReferenceResolver
 Orkeon.Analysis.Abstractions.Interfaces.IReferenceResolver.ResolveAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.UnresolvedRef!>! refs, System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Models.RaggableNode!>! symbolsByFqn, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>>!
-Orkeon.Analysis.Abstractions.Interfaces.ITreeSitterParser
-Orkeon.Analysis.Abstractions.Interfaces.ITreeSitterParser.Parse(string! sourceCode, string! language) -> Orkeon.Analysis.Abstractions.Interfaces.ParsedTree!
 Orkeon.Analysis.Abstractions.Interfaces.IVectorStoreProvider
 Orkeon.Analysis.Abstractions.Interfaces.IVectorStoreProvider.DeleteAsync(System.Collections.Generic.IEnumerable<string!>! ids, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Analysis.Abstractions.Interfaces.IVectorStoreProvider.IndexAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.VectorDocument!>! documents, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
@@ -1266,19 +1264,6 @@ Orkeon.Analysis.Abstractions.Interfaces.NullNodeSummarizer
 Orkeon.Analysis.Abstractions.Interfaces.NullNodeSummarizer.EnrichBatchAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! candidates, System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodeIndex, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Analysis.Abstractions.Interfaces.NullNodeSummarizer.NullNodeSummarizer() -> void
 Orkeon.Analysis.Abstractions.Interfaces.NullNodeSummarizer.SummarizeAsync(Orkeon.Analysis.Abstractions.Models.RaggableNode! node, Orkeon.Analysis.Abstractions.Interfaces.SummarizationContext! context, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string?>!
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.<Clone>$() -> Orkeon.Analysis.Abstractions.Interfaces.ParsedTree!
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Deconstruct(out TreeSitter.Tree! Tree, out string! Language, out System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.Models.ParseDiagnostic!> Diagnostics) -> void
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Diagnostics.get -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.Models.ParseDiagnostic!>
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Diagnostics.init -> void
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Dispose() -> void
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Equals(Orkeon.Analysis.Abstractions.Interfaces.ParsedTree? other) -> bool
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Language.get -> string!
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Language.init -> void
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.ParsedTree(TreeSitter.Tree! Tree, string! Language, System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.Models.ParseDiagnostic!> Diagnostics) -> void
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Root.get -> TreeSitter.Node!
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Tree.get -> TreeSitter.Tree!
-Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Tree.init -> void
 Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated
 Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated.<Clone>$() -> Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated!
 Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated.AddedFqns.get -> System.Collections.Immutable.ImmutableArray<string!>
@@ -2006,9 +1991,6 @@ override Orkeon.Analysis.Abstractions.Interfaces.FileStamp.ToString() -> string!
 override Orkeon.Analysis.Abstractions.Interfaces.InlineFqnValidationResult.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.Interfaces.InlineFqnValidationResult.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.Interfaces.InlineFqnValidationResult.ToString() -> string!
-override Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.Equals(object? obj) -> bool
-override Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.GetHashCode() -> int
-override Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.ToString() -> string!
 override Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated.Equals(object? obj) -> bool
 override Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated.GetHashCode() -> int
 override Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated.ToString() -> string!
@@ -2246,8 +2228,6 @@ static Orkeon.Analysis.Abstractions.Interfaces.FileStamp.operator !=(Orkeon.Anal
 static Orkeon.Analysis.Abstractions.Interfaces.FileStamp.operator ==(Orkeon.Analysis.Abstractions.Interfaces.FileStamp? left, Orkeon.Analysis.Abstractions.Interfaces.FileStamp? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.InlineFqnValidationResult.operator !=(Orkeon.Analysis.Abstractions.Interfaces.InlineFqnValidationResult? left, Orkeon.Analysis.Abstractions.Interfaces.InlineFqnValidationResult? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.InlineFqnValidationResult.operator ==(Orkeon.Analysis.Abstractions.Interfaces.InlineFqnValidationResult? left, Orkeon.Analysis.Abstractions.Interfaces.InlineFqnValidationResult? right) -> bool
-static Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.operator !=(Orkeon.Analysis.Abstractions.Interfaces.ParsedTree? left, Orkeon.Analysis.Abstractions.Interfaces.ParsedTree? right) -> bool
-static Orkeon.Analysis.Abstractions.Interfaces.ParsedTree.operator ==(Orkeon.Analysis.Abstractions.Interfaces.ParsedTree? left, Orkeon.Analysis.Abstractions.Interfaces.ParsedTree? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated.operator !=(Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated? left, Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated.operator ==(Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated? left, Orkeon.Analysis.Abstractions.Interfaces.RaggableTreeUpdated? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.SummarizationContext.operator !=(Orkeon.Analysis.Abstractions.Interfaces.SummarizationContext? left, Orkeon.Analysis.Abstractions.Interfaces.SummarizationContext? right) -> bool
