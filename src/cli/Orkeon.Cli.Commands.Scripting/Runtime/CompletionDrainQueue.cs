@@ -17,7 +17,7 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// </remarks>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The type is a genuine FIFO queue abstraction (enqueue/drain) and the 'Queue' suffix accurately describes its semantics; it is not intended to derive from System.Collections.Queue.")]
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable", Justification = "The source lives from BeginDrain to the EndDrain every drain runs in a finally: nothing outlives the drain.")]
-public sealed class CompletionDrainQueue
+internal sealed class CompletionDrainQueue
 {
     private readonly List<PendingCompletion> _pending = new();
     private readonly Lock _lock = new();
@@ -80,4 +80,4 @@ public sealed class CompletionDrainQueue
 /// <summary>A terminal async instance and the <c>completed</c> closure to replay for it (if any).</summary>
 /// <param name="Completed">The descriptor's <c>completed(result, ctx)</c> closure, or <see langword="null"/>.</param>
 /// <param name="Instance">The terminal command instance.</param>
-public readonly record struct PendingCompletion(JsValue? Completed, CommandInstance Instance);
+internal readonly record struct PendingCompletion(JsValue? Completed, CommandInstance Instance);

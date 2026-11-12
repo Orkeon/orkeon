@@ -46,7 +46,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     // maxConcurrent; a sync command is naturally serialised by the engine lock.
     private readonly SemaphoreSlim? _admissionGate;
 
-    public ScriptCommand(
+    internal ScriptCommand(
         ScriptCommandBinding binding,
         ScriptCommandServices? hostServices = null)
     {
@@ -547,7 +547,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 /// <see cref="ScriptCommand"/> constructor narrow. Prompt handling is provided by the static
 /// <see cref="PromptDispatcher"/>, so it is no longer carried here.
 /// </summary>
-public sealed record ScriptCommandBinding
+internal sealed record ScriptCommandBinding
 {
     public required Engine Engine { get; init; }
     public required CommandDescriptor Descriptor { get; init; }

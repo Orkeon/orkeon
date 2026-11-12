@@ -41,7 +41,7 @@ public sealed class CommandDescriptorCollector
     /// <see cref="InvalidOperationException"/> after <see cref="Freeze"/> — surfaced to JS as a
     /// thrown exception, the "fail loudly" semantics demanded by spec §15.
     /// </summary>
-    public void Add(JsValue descRaw)
+    internal void Add(JsValue descRaw)
     {
         var (obj, name, description, aliases, argsSchemaJson, group) = ParseCommon(descRaw, "defineCommand");
 
@@ -69,7 +69,7 @@ public sealed class CommandDescriptorCollector
     /// Requires <c>dispatch</c>; <c>completed</c> is optional; <c>maxConcurrent</c>, when
     /// present, must be an integer ≥ 1 (design §8 item 7).
     /// </summary>
-    public void AddAsync(JsValue descRaw)
+    internal void AddAsync(JsValue descRaw)
     {
         var (obj, name, description, aliases, argsSchemaJson, group) = ParseCommon(descRaw, "defineAsyncCommand");
 

@@ -75,13 +75,13 @@ public sealed record CommandDescriptor
     public CommandKind Kind { get; init; } = CommandKind.Sync;
 
     /// <summary>JS handler closure for sync commands — captured at script evaluation time. <see langword="null"/> for async.</summary>
-    public JsValue? Handler { get; init; }
+    internal JsValue? Handler { get; init; }
 
     /// <summary>JS <c>dispatch(args, ctx)</c> closure for async commands — launches and returns the prompt. <see langword="null"/> for sync.</summary>
-    public JsValue? Dispatch { get; init; }
+    internal JsValue? Dispatch { get; init; }
 
     /// <summary>Optional JS <c>completed(result, ctx)</c> closure for async commands — replayed on the engine thread at the agent's response (design §4.3).</summary>
-    public JsValue? Completed { get; init; }
+    internal JsValue? Completed { get; init; }
 
     /// <summary>
     /// Per-command admission quota (design §5). Bounds the number of in-flight instances of
@@ -95,7 +95,7 @@ public sealed record CommandDescriptor
     /// <see cref="ArgsSchema"/> by the loader (Phase 3+). <see langword="null"/> here
     /// means the handler will receive <c>{ raw: string[] }</c>.
     /// </summary>
-    public JsValue? ArgsSchemaJson { get; init; }
+    internal JsValue? ArgsSchemaJson { get; init; }
 
     /// <summary>
     /// Typed args schema parsed from <see cref="ArgsSchemaJson"/>. <see langword="null"/>

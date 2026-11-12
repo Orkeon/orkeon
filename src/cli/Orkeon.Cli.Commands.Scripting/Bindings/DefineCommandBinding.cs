@@ -9,7 +9,7 @@ namespace Orkeon.Cli.Commands.Scripting.Bindings;
 /// forwards each call to a <see cref="CommandDescriptorCollector"/> owned by the loader
 /// for the script being evaluated.
 /// </summary>
-public static class DefineCommandBinding
+internal static class DefineCommandBinding
 {
     /// <summary>Name of the global function exposed to scripts.</summary>
     public const string GlobalName = "defineCommand";

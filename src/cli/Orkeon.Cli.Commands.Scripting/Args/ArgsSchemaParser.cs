@@ -20,7 +20,7 @@ namespace Orkeon.Cli.Commands.Scripting.Args;
 /// the script is marked invalid (skipped or fail-fast depending on options).
 /// </para>
 /// </remarks>
-public static class ArgsSchemaParser
+internal static class ArgsSchemaParser
 {
     /// <summary>Parses the JS <c>args</c> object. Returns an empty list when <paramref name="schemaJs"/> is null/undefined.</summary>
     public static ImmutableArray<ArgSpec> Parse(JsValue? schemaJs)
