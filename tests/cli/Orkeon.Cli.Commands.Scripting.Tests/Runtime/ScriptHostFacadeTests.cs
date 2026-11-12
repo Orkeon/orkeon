@@ -430,21 +430,32 @@ public sealed class ScriptHostFacadeTests : IDisposable
     }
 
     [Fact]
-    public async Task RunCrew_wait_does_not_count_the_time_the_operator_takes_to_answer()
+    public void RunCrew_wait_does_not_count_the_time_the_operator_takes_to_answer()
     {
+        var clock = new ManualTimeProvider();
         var console = new Fixtures.ScriptedTestConsole();
         var channel = Owned(new ConsoleToolApprovalChannel(() => console));
-        var answer = Task.Run(async () =>
+        // The operator takes two hours to read the question, on the wait's own clock, then denies.
+        console.OnReadLine = () =>
         {
-            await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            clock.Advance(TimeSpan.FromHours(2));
             console.EnqueueLine("n");
-        }, TestContext.Current.CancellationToken);
+        };
 
-        // One second of budget, two seconds to answer: only the crew's own time counts.
-        var result = ScriptHostFacade.WaitAnsweringApprovals(RunAsking(channel), TimeSpan.FromSeconds(1), channel);
+        // The crew goes on a moment after the answer, so the wait checks its budget again before the end;
+        // that moment is real time, the budget is read on the manual clock, which it does not move.
+        var crew = Task.Run(async () =>
+        {
+            var decision = (await channel.RequestAsync(Question(), CancellationToken.None)).ToString();
+            await Task.Delay(TimeSpan.FromMilliseconds(200), CancellationToken.None);
+            return decision;
+        });
+
+        // One second of budget, two hours to answer: only the crew's own time counts.
+        var result = ScriptHostFacade.WaitAnsweringApprovals(crew, TimeSpan.FromSeconds(1), channel, clock);
 
         Assert.Equal("Deny", result);
-        await answer;
+        Assert.Equal(TimeSpan.FromHours(2), clock.Elapsed);
     }
 
     [Fact]

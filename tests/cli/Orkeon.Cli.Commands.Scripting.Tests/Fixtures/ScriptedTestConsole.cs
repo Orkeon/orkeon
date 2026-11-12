@@ -30,8 +30,12 @@ internal sealed class ScriptedTestConsole : IConsoleAdapter
         lock (_lock) _output.AppendLine(text);
     }
 
+    /// <summary>Runs as each <see cref="ReadLine"/> starts, on the reading thread: the operator at work.</summary>
+    public Action? OnReadLine { get; set; }
+
     public string? ReadLine()
     {
+        OnReadLine?.Invoke();
         try
         {
             return _inputs.Reader.ReadAsync().AsTask().GetAwaiter().GetResult();
