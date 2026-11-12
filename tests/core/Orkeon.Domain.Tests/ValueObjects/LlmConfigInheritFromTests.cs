@@ -20,7 +20,6 @@ public sealed class LlmConfigInheritFromTests
     private static LlmConfig Provider() => LlmConfig.Create("provider-model", "sk-provider") with
     {
         Profile = "claude",
-        ApiKeySecretName = "PROVIDER_KEY",
         BaseUrl = ProviderUrl,
         MaxTokens = 2048,
         Seed = 7,
@@ -51,7 +50,6 @@ public sealed class LlmConfigInheritFromTests
         var effective = (LlmConfig.OnProfile() with { Temperature = 0.3 }).InheritFrom(Provider());
 
         Assert.Equal("sk-provider", effective.ApiKey);
-        Assert.Equal("PROVIDER_KEY", effective.ApiKeySecretName);
         Assert.Equal(ProviderUrl, effective.BaseUrl);
         Assert.Equal(600, effective.TimeoutSeconds);
         Assert.Equal("2025-04-01-preview", effective.ApiVersion);
@@ -89,7 +87,6 @@ public sealed class LlmConfigInheritFromTests
         var call = LlmConfig.Create("call-model", "sk-call") with
         {
             Profile = "local",
-            ApiKeySecretName = "CALL_KEY",
             BaseUrl = new Uri("https://call.example.test"),
             MaxTokens = 100,
             Seed = 1,
@@ -114,7 +111,6 @@ public sealed class LlmConfigInheritFromTests
         Assert.Equal(1.0, effective.TopP);
         Assert.Equal("local", effective.Profile);
         Assert.Equal("sk-call", effective.ApiKey);
-        Assert.Equal("CALL_KEY", effective.ApiKeySecretName);
         Assert.Equal(new Uri("https://call.example.test"), effective.BaseUrl);
         Assert.Equal(100, effective.MaxTokens);
         Assert.Equal(1, effective.Seed);

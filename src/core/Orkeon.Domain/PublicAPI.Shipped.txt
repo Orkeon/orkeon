@@ -2652,8 +2652,6 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiKey.get -> string?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiKey.init -> void
-Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiKeySecretName.get -> string?
-Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiKeySecretName.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiVersion.get -> string?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiVersion.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.BaseUrl.get -> System.Uri?
@@ -5205,13 +5203,11 @@ static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.Stream.get -> Orkeon.
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Claude(string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
-static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ClaudeWithSecret(string! apiKeySecretName = "ANTHROPIC_API_KEY") -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Create(string! model, string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double? temperature = null, int? maxTokens = null, double? topP = null, double frequencyPenalty = 0, double presencePenalty = 0, int? timeoutSeconds = null, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null, int? streamIdleSeconds = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Ollama(string! model = "llama2") -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile(string? profile = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.WithDefaultModel(string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
-static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.WithDefaultModelSecret(string! apiKeySecretName = "OPENAI_API_KEY") -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? right) -> bool
