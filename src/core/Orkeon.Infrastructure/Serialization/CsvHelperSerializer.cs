@@ -42,7 +42,7 @@ namespace Orkeon.Infrastructure.Serialization
     /// across locales (decimal separators, date formats, etc.).
     /// </remarks>
     /// <seealso href="https://datatracker.ietf.org/doc/html/rfc4180">RFC 4180 — Common Format and MIME Type for CSV Files</seealso>
-    public class CsvHelperSerializer : ICsvSerializer
+    internal class CsvHelperSerializer : ICsvSerializer
     {
         private readonly CsvConfiguration _configuration;
 

@@ -343,7 +343,6 @@ Orkeon.Application.Common.DTOs.TokenUsage.Provider.set -> void
 Orkeon.Application.Common.DTOs.TokenUsage.TokenUsage() -> void
 Orkeon.Application.Common.DTOs.TokenUsage.TotalTokens.get -> int
 Orkeon.Application.Common.DTOs.TokenUsage.TotalTokens.set -> void
-Orkeon.Application.Common.Mapping.AgentMapper
 Orkeon.Application.Configuration.AgentSelectionStrategyKind
 Orkeon.Application.Configuration.AgentSelectionStrategyKind.Embedding = 1 -> Orkeon.Application.Configuration.AgentSelectionStrategyKind
 Orkeon.Application.Configuration.AgentSelectionStrategyKind.FirstFit = 0 -> Orkeon.Application.Configuration.AgentSelectionStrategyKind
@@ -658,7 +657,6 @@ Orkeon.Application.Crew.ExecutionOrchestrator.ToolInvocation.get -> Orkeon.Appli
 Orkeon.Application.Crew.ExecutionOrchestrator.ToolInvocation.set -> void
 Orkeon.Application.Crew.ExecutionOrchestrator.ToolLimits.get -> Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions!>?
 Orkeon.Application.Crew.ExecutionOrchestrator.ToolLimits.set -> void
-Orkeon.Application.Crew.Grammar.JsonSchemaToGbnfConverter
 Orkeon.Application.Crew.HumanInputNotice
 Orkeon.Application.Crew.HumanInputNotice.<Clone>$() -> Orkeon.Application.Crew.HumanInputNotice!
 Orkeon.Application.Crew.HumanInputNotice.Deconstruct(out Orkeon.Application.Crew.HumanInputNoticeKind Kind, out Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest! Request, out bool Suspending) -> void
@@ -4900,7 +4898,6 @@ static Orkeon.Application.Common.CQRS.Unit.operator ==(Orkeon.Application.Common
 static Orkeon.Application.Common.DTOs.LlmChatOptionsValues.AsWritten(float? value) -> double?
 static Orkeon.Application.Common.DTOs.LlmResponseMetadata.operator !=(Orkeon.Application.Common.DTOs.LlmResponseMetadata? left, Orkeon.Application.Common.DTOs.LlmResponseMetadata? right) -> bool
 static Orkeon.Application.Common.DTOs.LlmResponseMetadata.operator ==(Orkeon.Application.Common.DTOs.LlmResponseMetadata? left, Orkeon.Application.Common.DTOs.LlmResponseMetadata? right) -> bool
-static Orkeon.Application.Common.Mapping.AgentMapper.ToDto(Orkeon.Domain.Agent.Agent! agent) -> Orkeon.Application.Agent.DTOs.AgentDto!
 static Orkeon.Application.Configuration.ClosestName.Of(string! written, System.Collections.Generic.IEnumerable<string!>! known) -> string?
 static Orkeon.Application.Configuration.SettingsDeclarationExtensions.DeclareSettings<TOptions>(this Microsoft.Extensions.Options.OptionsBuilder<TOptions!>! builder, string! sectionPath) -> Microsoft.Extensions.Options.OptionsBuilder<TOptions!>!
 static Orkeon.Application.Configuration.SettingsDeclarationExtensions.DeclareSettingsShape(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! sectionPath, System.Type! shape) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
@@ -4955,8 +4952,6 @@ static Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.operator ==(Orkeon
 static Orkeon.Application.Crew.Execution.ToolCallScheduler.IsParallelRead(string! toolName, Orkeon.Domain.Tools.ToolAccess access) -> bool
 static Orkeon.Application.Crew.Execution.ToolCallScheduler.Partition<TCall>(System.Collections.Generic.IReadOnlyList<TCall>! calls, System.Func<TCall, bool>! isParallelRead) -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>!>!
 static Orkeon.Application.Crew.Execution.ToolCallScheduler.RunAsync<TCall, TOutcome>(System.Collections.Generic.IReadOnlyList<TCall>! calls, System.Func<TCall, bool>! isParallelRead, System.Func<TCall, System.Threading.CancellationToken, System.Threading.Tasks.Task<TOutcome>!>! execute, int maxParallel, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<TOutcome>!>!
-static Orkeon.Application.Crew.Grammar.JsonSchemaToGbnfConverter.Convert(System.Text.Json.JsonElement schema) -> string!
-static Orkeon.Application.Crew.Grammar.JsonSchemaToGbnfConverter.Convert(string! jsonSchema) -> string!
 static Orkeon.Application.Crew.HumanInputNotice.operator !=(Orkeon.Application.Crew.HumanInputNotice? left, Orkeon.Application.Crew.HumanInputNotice? right) -> bool
 static Orkeon.Application.Crew.HumanInputNotice.operator ==(Orkeon.Application.Crew.HumanInputNotice? left, Orkeon.Application.Crew.HumanInputNotice? right) -> bool
 static Orkeon.Application.Crew.OutputFileInfo.operator !=(Orkeon.Application.Crew.OutputFileInfo? left, Orkeon.Application.Crew.OutputFileInfo? right) -> bool

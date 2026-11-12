@@ -6,7 +6,7 @@ namespace Orkeon.Infrastructure.LLMs.ToolCalling;
 /// Null-object strategy for providers that do not support native tool calling.
 /// Accessing <see cref="Formatter"/> or <see cref="Parser"/> throws <see cref="NotSupportedException"/>.
 /// </summary>
-public sealed class NullToolCallingStrategy : IToolCallingStrategy
+internal sealed class NullToolCallingStrategy : IToolCallingStrategy
 {
     /// <inheritdoc />
     public IToolSchemaFormatter Formatter =>

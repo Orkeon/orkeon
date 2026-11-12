@@ -1566,7 +1566,6 @@ Orkeon.Domain.FileSystem.FileSystemRegistry
 Orkeon.Domain.FileSystem.FileSystemRegistry.AddMount(Orkeon.Domain.FileSystem.FileSystemMount! mount) -> void
 Orkeon.Domain.FileSystem.FileSystemRegistry.Dispose() -> void
 Orkeon.Domain.FileSystem.FileSystemRegistry.FileSystemRegistry(System.Collections.Generic.IEnumerable<Orkeon.Domain.FileSystem.FileSystemMount!>! mounts) -> void
-Orkeon.Domain.FileSystem.FileSystemRegistry.GetAllMountsInternal() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>!
 Orkeon.Domain.FileSystem.FileSystemRegistry.GetAvailableMounts() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>!
 Orkeon.Domain.FileSystem.FileSystemRegistry.GetMounts() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemMount!>!
 Orkeon.Domain.FileSystem.FileSystemRegistry.ResolveAndCheckRights(string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, bool includeInternal = false) -> string!

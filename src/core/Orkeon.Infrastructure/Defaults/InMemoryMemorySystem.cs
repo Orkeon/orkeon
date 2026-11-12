@@ -4,13 +4,13 @@ using Orkeon.Domain.Memory;
 using System.Collections.Concurrent;
 using Orkeon.Domain.Constants.Memory;
 
-namespace Orkeon.Infrastructure.Stubs;
+namespace Orkeon.Infrastructure.Defaults;
 
 /// <summary>
 /// In-memory stub implementation of <see cref="IMemorySystem"/>.
 /// Logs a warning on first use to indicate no persistent memory system is configured.
 /// </summary>
-public sealed partial class InMemoryMemorySystem : IMemorySystem
+internal sealed partial class InMemoryMemorySystem : IMemorySystem
 {
     private readonly ConcurrentDictionary<string, AgentMemoryStore> _stores = new();
     private readonly ConcurrentDictionary<string, List<MemoryItem>> _memories = new();

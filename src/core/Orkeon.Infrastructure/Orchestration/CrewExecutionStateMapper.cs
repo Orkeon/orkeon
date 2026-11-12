@@ -21,7 +21,7 @@ namespace Orkeon.Infrastructure.Orchestration;
 /// (<see cref="StateDocumentKey"/>, kept in <c>Pending</c> status so it is never counted
 /// as a completed task by session summaries).
 /// </remarks>
-public static class CrewExecutionStateMapper
+internal static class CrewExecutionStateMapper
 {
     /// <summary>Namespace prefix isolating execution-state sessions in a shared store.</summary>
     public const string SessionNamespace = "crew-exec:";

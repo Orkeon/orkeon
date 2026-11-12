@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace Orkeon.Infrastructure.Serialization.Converters;
 
 /// <summary>JSON converter for <see cref="double"/> that accepts both numeric and string representations using invariant culture.</summary>
-public class DoubleInvariantConverter : JsonConverter<double>
+internal class DoubleInvariantConverter : JsonConverter<double>
 {
     /// <inheritdoc />
     public override double Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

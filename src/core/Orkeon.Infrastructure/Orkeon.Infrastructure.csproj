@@ -20,6 +20,11 @@
     <InternalsVisibleTo Include="Orkeon.Infrastructure.Tests" />
     <InternalsVisibleTo Include="Orkeon.Application.Tests" />
     <InternalsVisibleTo Include="Orkeon.Tools.EventHub.Tests" />
+    <!-- The tool-call parsers and strategies, internal plumbing, read by the script runtime and the CLI probe. -->
+    <InternalsVisibleTo Include="Orkeon.Scripting" />
+    <InternalsVisibleTo Include="orkeon" />
+    <InternalsVisibleTo Include="Orkeon.Scripting.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Scripting.Cli.Tests" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="System.Diagnostics.Process" Alias="SysProcess" />

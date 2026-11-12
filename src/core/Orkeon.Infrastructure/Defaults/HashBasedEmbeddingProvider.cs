@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Orkeon.Domain.Constants.Llm;
 
-namespace Orkeon.Infrastructure.Stubs;
+namespace Orkeon.Infrastructure.Defaults;
 
 /// <summary>
 /// Explicit test double for <see cref="IEmbeddingProvider"/> that generates deterministic
@@ -18,7 +18,7 @@ namespace Orkeon.Infrastructure.Stubs;
 /// (<c>services.AddSingleton&lt;IEmbeddingProvider, HashBasedEmbeddingProvider&gt;()</c>)
 /// only in tests or deterministic offline scenarios where semantics do not matter.
 /// </remarks>
-public sealed partial class HashBasedEmbeddingProvider : IEmbeddingProvider
+internal sealed partial class HashBasedEmbeddingProvider : IEmbeddingProvider
 {
     private readonly ILogger<HashBasedEmbeddingProvider> _logger;
     private int _warnedOnce;

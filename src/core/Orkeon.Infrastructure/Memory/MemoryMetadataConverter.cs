@@ -8,7 +8,7 @@ namespace Orkeon.Infrastructure.Memory;
 /// <summary>
 /// Strongly typed memory metadata converter for Infrastructure layer.
 /// </summary>
-public static class MemoryMetadataConverter
+internal static class MemoryMetadataConverter
 {
     /// <summary>
     /// Converts MemoryMetadata to a dictionary for serialization.

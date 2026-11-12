@@ -7,7 +7,7 @@ namespace Orkeon.Infrastructure.Serialization.Converters;
 /// Converts JSON values to raw .NET types when the target type is object.
 /// Without this, JsonSerializer produces JsonElement values inside Dictionary&lt;string, object&gt;.
 /// </summary>
-public class RawObjectConverter : JsonConverter<object>
+internal class RawObjectConverter : JsonConverter<object>
 {
     /// <inheritdoc />
     public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

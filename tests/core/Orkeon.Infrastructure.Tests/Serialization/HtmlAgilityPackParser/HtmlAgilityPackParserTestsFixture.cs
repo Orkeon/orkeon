@@ -2,7 +2,7 @@ using Orkeon.Infrastructure.Serialization;
 
 namespace Orkeon.Infrastructure.Tests.Serialization;
 
-public class HtmlAgilityPackParserTestsFixture
+internal class HtmlAgilityPackParserTestsFixture
 {
     private readonly HtmlAgilityPackParser _parser;
 

@@ -3,13 +3,13 @@ using Orkeon.Application.Interfaces.Infrastructure.Caching;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Orkeon.Infrastructure.Stubs;
+namespace Orkeon.Infrastructure.Defaults;
 
 /// <summary>
 /// No-op implementation of <see cref="ILlmCache"/> that never caches.
 /// Logs a warning on first use to indicate no cache is configured.
 /// </summary>
-public sealed partial class NullLlmCache : ILlmCache
+internal sealed partial class NullLlmCache : ILlmCache
 {
     private readonly ILogger<NullLlmCache> _logger;
     private int _warnedOnce;

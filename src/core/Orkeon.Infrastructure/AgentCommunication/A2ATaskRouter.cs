@@ -6,7 +6,7 @@ using Orkeon.Domain.AgentCommunication;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
-using Orkeon.Infrastructure.Stubs;
+using Orkeon.Infrastructure.Defaults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -12,7 +12,7 @@ namespace Orkeon.Infrastructure.Serialization.Converters;
 /// endpoint for params such as <c>sub_graph.seeds</c>), and null/undefined
 /// coerced to <see cref="ImmutableArray{String}.Empty"/>.
 /// </summary>
-public sealed class ImmutableArrayStringTolerantConverter : JsonConverter<ImmutableArray<string>>
+internal sealed class ImmutableArrayStringTolerantConverter : JsonConverter<ImmutableArray<string>>
 {
     /// <inheritdoc />
     public override ImmutableArray<string> Read(

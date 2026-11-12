@@ -38,8 +38,8 @@ namespace Orkeon.Hosting;
 /// provider whose first embed call throws an actionable
 /// <see cref="InvalidOperationException"/> (it reports that no semantic embedding provider
 /// is configured, and to add AddOrkeonLocalEmbeddings() or configure Orkeon:Embeddings).
-/// Hosts wanting deterministic non-semantic embeddings (tests) must register
-/// <c>Stubs.HashBasedEmbeddingProvider</c> explicitly.
+/// Hosts wanting deterministic non-semantic embeddings (tests) register their own
+/// <see cref="IEmbeddingProvider"/>.
 /// </remarks>
 public static class SemanticSearchToolExtensions
 {

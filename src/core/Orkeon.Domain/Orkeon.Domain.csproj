@@ -24,6 +24,7 @@
     <InternalsVisibleTo Include="Orkeon.Domain.Tests" />
     <InternalsVisibleTo Include="Orkeon.Infrastructure" />
     <InternalsVisibleTo Include="Orkeon.Infrastructure.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Host.Tests" />
   </ItemGroup>
 
   <ItemGroup>

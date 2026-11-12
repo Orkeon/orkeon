@@ -6,14 +6,14 @@ using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
-namespace Orkeon.Infrastructure.Stubs;
+namespace Orkeon.Infrastructure.Defaults;
 
 /// <summary>
 /// Simple implementation of <see cref="IAgentSelectionService"/> that selects
 /// the first available agent. Logs a warning on first use to indicate semantic
 /// selection is not configured.
 /// </summary>
-public sealed partial class SimpleAgentSelectionService : IAgentSelectionService
+internal sealed partial class SimpleAgentSelectionService : IAgentSelectionService
 {
     private readonly ILogger<SimpleAgentSelectionService> _logger;
     private int _warnedOnce;

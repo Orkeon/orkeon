@@ -4,7 +4,7 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Agent;
 using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Infrastructure.Persistence.Agent;
-using Orkeon.Infrastructure.Stubs;
+using Orkeon.Infrastructure.Defaults;
 using Orkeon.Infrastructure.Tests.Doubles;
 using static Orkeon.Tests.Shared.Constants.TestEntityIds;
 

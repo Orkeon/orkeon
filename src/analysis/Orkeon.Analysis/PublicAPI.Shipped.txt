@@ -361,8 +361,6 @@ Orkeon.Analysis.Core.CitationBlockValidator.ValidateAsync(string! fileContent, S
 Orkeon.Analysis.Core.ContextInjection.CodebaseContextProvider
 Orkeon.Analysis.Core.ContextInjection.CodebaseContextProvider.CodebaseContextProvider(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store) -> void
 Orkeon.Analysis.Core.ContextInjection.CodebaseContextProvider.GetContextAsync(Orkeon.Analysis.Abstractions.Interfaces.CodebaseContextOptions! options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
-Orkeon.Analysis.Core.ControlFlowBuilder
-Orkeon.Analysis.Core.DataFlowAnalyzer
 Orkeon.Analysis.Core.DefaultReferenceResolver
 Orkeon.Analysis.Core.DefaultReferenceResolver.DefaultReferenceResolver() -> void
 Orkeon.Analysis.Core.DefaultReferenceResolver.ResolveAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.UnresolvedRef!>! refs, System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Models.RaggableNode!>! symbolsByFqn, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>>!
@@ -736,7 +734,6 @@ const Orkeon.Analysis.Adapters.PageOutlineMapper.RoleTag = "role" -> string!
 const Orkeon.Analysis.Core.Cache.RaggableTreeCache.CacheDirectory = ".orkeon/cache/raggable-tree" -> string!
 const Orkeon.Analysis.Core.Cache.RaggableTreeCache.DatabaseFileName = "index.db" -> string!
 const Orkeon.Analysis.Core.Cache.RaggableTreeCache.MaxEntries = 3 -> int
-const Orkeon.Analysis.Core.ControlFlowBuilder.ExitSentinel = "$exit" -> string!
 const Orkeon.Analysis.Core.InMemoryRaggableStore.MaxChildren = 200 -> int
 const Orkeon.Analysis.Core.InMemoryRaggableStore.MaxDepth = 6 -> int
 const Orkeon.Analysis.Core.InMemoryRaggableStore.MaxLines = 200 -> int
@@ -847,8 +844,6 @@ static Orkeon.Analysis.Core.Cache.CachedBuildResult.operator ==(Orkeon.Analysis.
 static Orkeon.Analysis.Core.Cache.CachingTreeBuilder.DescribeEnvironment(System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter!>! adapters, System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.IFrameworkFingerprinter!>! fingerprinters, Orkeon.Analysis.Abstractions.Interfaces.INodeSummarizer? summarizer, Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider? embedder) -> string!
 static Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.operator !=(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? right) -> bool
 static Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.operator ==(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? right) -> bool
-static Orkeon.Analysis.Core.ControlFlowBuilder.Build(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.StatementNode!>! statements) -> Orkeon.Analysis.Abstractions.Models.ControlFlowGraph!
-static Orkeon.Analysis.Core.DataFlowAnalyzer.Analyze(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.StatementNode!>! statements) -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.DataFlowLink!>!
 static Orkeon.Analysis.Core.DependencyGraphBuilder.GraphGroupOf(string! languageName) -> string!
 static Orkeon.Analysis.Core.DocumentedInResult.operator !=(Orkeon.Analysis.Core.DocumentedInResult? left, Orkeon.Analysis.Core.DocumentedInResult? right) -> bool
 static Orkeon.Analysis.Core.DocumentedInResult.operator ==(Orkeon.Analysis.Core.DocumentedInResult? left, Orkeon.Analysis.Core.DocumentedInResult? right) -> bool

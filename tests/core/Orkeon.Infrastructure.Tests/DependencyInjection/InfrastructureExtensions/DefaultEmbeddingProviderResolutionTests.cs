@@ -204,7 +204,7 @@ public class DefaultEmbeddingProviderResolutionTests
         var port = provider.GetRequiredService<IEmbeddingProvider>();
 
         // Assert — the silent hash fallback is dead (RAG-01/C4)
-        Assert.IsNotType<Orkeon.Infrastructure.Stubs.HashBasedEmbeddingProvider>(port);
+        Assert.IsNotType<Orkeon.Infrastructure.Defaults.HashBasedEmbeddingProvider>(port);
     }
 
     // ── Host overrides & non-regression ───────────────────────────────────

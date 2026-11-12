@@ -5,7 +5,7 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.Task.ValueObjects;
-using Orkeon.Infrastructure.Stubs;
+using Orkeon.Infrastructure.Defaults;
 using Orkeon.Tests.Shared.Doubles;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainAgentRole = Orkeon.Domain.Agent.ValueObjects.AgentRole;
@@ -17,7 +17,7 @@ using DomainExpectedOutput = Orkeon.Domain.Task.ValueObjects.ExpectedOutput;
 namespace Orkeon.Infrastructure.Tests.CovStubs;
 
 /// <summary>
-/// Coverage tests for the Infrastructure.Stubs fallback/null services. The tool registry
+/// Coverage tests for the Infrastructure.Defaults fallback/null services. The tool registry
 /// left the stubs (GAP-11): its tests live in <c>Tools/ToolRegistryTests</c>.
 /// </summary>
 public sealed class CovStubs_NullAgentExecutionServiceTests

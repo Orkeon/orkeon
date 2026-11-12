@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace Orkeon.Infrastructure.Serialization.Converters;
 
 /// <summary>JSON converter for <see cref="int"/> that accepts both numeric and string representations using invariant culture.</summary>
-public class IntTolerantConverter : JsonConverter<int>
+internal class IntTolerantConverter : JsonConverter<int>
 {
     /// <inheritdoc />
     public override int Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

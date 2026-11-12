@@ -8,7 +8,7 @@ namespace Orkeon.Infrastructure.LLMs.ToolCalling;
 /// Extracts tool calls from OpenAI-format JSON responses and formats
 /// results for multi-turn conversation history.
 /// </summary>
-public sealed partial class OpenAIToolCallParser : IToolCallParser
+internal sealed partial class OpenAIToolCallParser : IToolCallParser
 {
     private readonly ILogger<OpenAIToolCallParser> _logger;
 

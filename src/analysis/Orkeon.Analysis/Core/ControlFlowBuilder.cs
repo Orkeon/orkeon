@@ -3,7 +3,7 @@ using Orkeon.Analysis.Abstractions.Models;
 
 namespace Orkeon.Analysis.Core;
 
-public static class ControlFlowBuilder
+internal static class ControlFlowBuilder
 {
     public const string ExitSentinel = "$exit";
 

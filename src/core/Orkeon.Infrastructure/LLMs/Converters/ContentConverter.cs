@@ -22,7 +22,7 @@ namespace Orkeon.Infrastructure.LLMs.Converters;
 /// Unsupported part types or media types raise a <see cref="NotSupportedException"/> with an
 /// explicit message instead of silently degrading to text.
 /// </summary>
-public static class ContentConverter
+internal static class ContentConverter
 {
     private const string DefaultImageMediaType = "image/png";
     private const string DefaultAudioMediaType = "audio/wav";

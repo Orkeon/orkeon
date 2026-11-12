@@ -2,7 +2,7 @@ using Orkeon.Infrastructure.Serialization;
 
 namespace Orkeon.Infrastructure.Tests.Serialization;
 
-public class CsvHelperSerializerTestsFixture
+internal class CsvHelperSerializerTestsFixture
 {
     private readonly CsvHelperSerializer _serializer;
 

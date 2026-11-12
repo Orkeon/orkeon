@@ -2,13 +2,13 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Knowledge;
 using System.Collections.Concurrent;
 
-namespace Orkeon.Infrastructure.Stubs;
+namespace Orkeon.Infrastructure.Defaults;
 
 /// <summary>
 /// In-memory stub implementation of <see cref="IKnowledgeStore"/>.
 /// Logs a warning on first use to indicate no persistent knowledge store is configured.
 /// </summary>
-public sealed partial class InMemoryKnowledgeStore : IKnowledgeStore
+internal sealed partial class InMemoryKnowledgeStore : IKnowledgeStore
 {
     private readonly ConcurrentDictionary<string, object> _store = new();
     private readonly ILogger<InMemoryKnowledgeStore> _logger;

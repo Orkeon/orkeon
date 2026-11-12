@@ -77,7 +77,7 @@ public static class InfrastructureExtensions
         services.AddOrkeonLlmAndMemoryBaseline();
         services.AddOrkeonSerializationAndEmbeddings();
         services.AddOrkeonAgentRuntime();
-        services.AddOrkeonInterfaceStubs();
+        services.AddOrkeonInterfaceDefaults();
         services.AddOrkeonRepositoriesAndStrategies();
         services.AddOrkeonSecurityCore();
         services.AddOrkeonNativeToolCalling();
@@ -355,11 +355,11 @@ public static class InfrastructureExtensions
         }
     }
 
-    private static IServiceCollection AddOrkeonInterfaceStubs(this IServiceCollection services)
+    private static IServiceCollection AddOrkeonInterfaceDefaults(this IServiceCollection services)
     {
         // === AUDIT-P2-07: Register previously missing critical interfaces ===
         // These registrations prevent NullReferenceException when interfaces are resolved.
-        // Stubs log warnings on first use so they're visible in production.
+        // Defaults log warnings on first use so they're visible in production.
 
         // IToolRegistry — required by CrewFactory, McpServer, McpToolProvider.
         // Seeded from every IBaseTool in the container, so a host that registers a tool in DI
@@ -367,10 +367,10 @@ public static class InfrastructureExtensions
         services.TryAddSingleton<Domain.Tools.IToolRegistry, Tools.ToolRegistry>();
 
         // IKnowledgeStore (Domain) — no-op stub; real implementation requires a vector store
-        services.TryAddSingleton<Domain.Knowledge.IKnowledgeStore, Stubs.InMemoryKnowledgeStore>();
+        services.TryAddSingleton<Domain.Knowledge.IKnowledgeStore, Defaults.InMemoryKnowledgeStore>();
 
         // IMemorySystem (Domain) — in-memory agent memory system
-        services.TryAddSingleton<Domain.Memory.IMemorySystem, Stubs.InMemoryMemorySystem>();
+        services.TryAddSingleton<Domain.Memory.IMemorySystem, Defaults.InMemoryMemorySystem>();
 
         // IEmbeddingProvider (Application) — semantic-first default resolution (RAG-01/C4):
         //   1. Analysis-side provider in the container (AddOrkeonLocalEmbeddings → BGE local,
@@ -378,7 +378,7 @@ public static class InfrastructureExtensions
         //   2. Orkeon:Embeddings configuration → remote provider (Ollama / OpenAI-compatible),
         //   3. otherwise fail-fast at FIRST USE (UnconfiguredEmbeddingProvider — actionable
         //      InvalidOperationException, never at container build time).
-        // The hash stub (Stubs.HashBasedEmbeddingProvider) is no longer resolved implicitly
+        // The hash stub (Defaults.HashBasedEmbeddingProvider) is no longer resolved implicitly
         // anywhere — it is an explicit, opt-in test double only.
         // The port is traced (CH-08): a provider registered before this point is decorated in place,
         // the resolver's own is wrapped; a cache registered by AddOrkeonVectorSearch stays outside.
@@ -388,7 +388,7 @@ public static class InfrastructureExtensions
         DefaultEmbeddingProviderResolver.AddEmbeddingSettings(services);
 
         // ILlmCache — no-op cache that always misses
-        services.TryAddSingleton<Application.Interfaces.Infrastructure.Caching.ILlmCache, Stubs.NullLlmCache>();
+        services.TryAddSingleton<Application.Interfaces.Infrastructure.Caching.ILlmCache, Defaults.NullLlmCache>();
 
         // === Agent selection (R3.5) ===
         // Register both real selection strategies so they can be resolved by configuration.
@@ -416,13 +416,13 @@ public static class InfrastructureExtensions
                         sp.GetRequiredService<Application.Services.AgentSelection.SkillMatchingSelectionStrategy>());
 
                 default:
-                    return new Stubs.SimpleAgentSelectionService(
-                        sp.GetRequiredService<ILogger<Stubs.SimpleAgentSelectionService>>());
+                    return new Defaults.SimpleAgentSelectionService(
+                        sp.GetRequiredService<ILogger<Defaults.SimpleAgentSelectionService>>());
             }
         });
 
         // IAgentExecutionService — stub (consumer should override with real implementation)
-        services.TryAddScoped<IAgentExecutionService, Stubs.NullAgentExecutionService>();
+        services.TryAddScoped<IAgentExecutionService, Defaults.NullAgentExecutionService>();
 
         return services;
     }

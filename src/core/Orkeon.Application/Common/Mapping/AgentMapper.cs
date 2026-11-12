@@ -15,7 +15,7 @@ namespace Orkeon.Application.Common.Mapping;
 /// framework's own mapping is a trap for anyone who reaches for it. The handlers call it now.
 /// </para>
 /// </summary>
-public static class AgentMapper
+internal static class AgentMapper
 {
     /// <summary>
     /// Converts an DomainAgent domain entity to AgentDto.

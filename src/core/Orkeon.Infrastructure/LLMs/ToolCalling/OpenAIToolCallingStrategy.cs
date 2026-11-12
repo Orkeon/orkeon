@@ -7,7 +7,7 @@ namespace Orkeon.Infrastructure.LLMs.ToolCalling;
 /// OpenAI-specific tool calling strategy that combines the OpenAI schema formatter
 /// and tool call parser into a single entry point.
 /// </summary>
-public sealed class OpenAIToolCallingStrategy : IToolCallingStrategy
+internal sealed class OpenAIToolCallingStrategy : IToolCallingStrategy
 {
     /// <inheritdoc />
     public IToolSchemaFormatter Formatter { get; }

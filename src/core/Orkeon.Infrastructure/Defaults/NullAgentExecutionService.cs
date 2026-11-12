@@ -3,13 +3,13 @@ using Orkeon.Application.Context;
 using Orkeon.Application.Interfaces.Services;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
-namespace Orkeon.Infrastructure.Stubs;
+namespace Orkeon.Infrastructure.Defaults;
 
 /// <summary>
 /// No-op implementation of <see cref="IAgentExecutionService"/> that returns empty results.
 /// Logs a warning on first use. Consumer should override with a real implementation.
 /// </summary>
-public sealed partial class NullAgentExecutionService : IAgentExecutionService
+internal sealed partial class NullAgentExecutionService : IAgentExecutionService
 {
     private readonly ILogger<NullAgentExecutionService> _logger;
     private int _warnedOnce;

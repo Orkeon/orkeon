@@ -42,7 +42,7 @@ namespace Orkeon.Infrastructure.LLMs.Embeddings;
 ///     <b>Fail-fast</b> — otherwise an <see cref="UnconfiguredEmbeddingProvider"/> is
 ///     returned; it throws an actionable <see cref="InvalidOperationException"/> at the
 ///     first embed call. No silent hash fallback remains
-///     (<c>Stubs.HashBasedEmbeddingProvider</c> is a test double only).
+///     (<c>Defaults.HashBasedEmbeddingProvider</c> is a test double only).
 ///   </description></item>
 /// </list>
 /// </remarks>
