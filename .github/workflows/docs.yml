@@ -33,7 +33,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with: { global-json-file: global.json }
-      - run: dotnet tool install -g docfx
+      # Pinned: the build runs with --warningsAsErrors, so a new docfx that warns on
+      # something new would turn the site red with no change here. 2.81.0 is the
+      # version of the last green run; bump it on purpose.
+      - run: dotnet tool install -g docfx --version 2.81.0
       - run: dotnet restore Orkeon.sln
       # docfx metadata reads the COMPILED Release assemblies (docfx.json lists
       # them): the Roslyn workspace docfx uses for csproj-based metadata does

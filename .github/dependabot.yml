@@ -1,8 +1,11 @@
 version: 2
 updates:
   # NuGet — one weekly PR wave, minor/patch grouped to keep the noise down.
+  # /examples: Orkeon.Examples.sln is a separate solution that Orkeon.sln does not
+  # reference; its versions are the root Directory.Packages.props, but two of them
+  # (Aspire.Hosting.AppHost, Microsoft.Agents.AI) are referenced by examples alone.
   - package-ecosystem: nuget
-    directory: /
+    directories: [ /, /examples ]
     schedule:
       interval: weekly
       day: monday
@@ -27,6 +30,13 @@ updates:
   # The esbuild toolchain lockfile used by the scripting layer.
   - package-ecosystem: npm
     directory: /tools/scripting-esbuild
+    schedule:
+      interval: weekly
+      day: monday
+
+  # The TypeScript type checker the scripting typings gate runs.
+  - package-ecosystem: npm
+    directory: /tools/scripting-typecheck
     schedule:
       interval: weekly
       day: monday

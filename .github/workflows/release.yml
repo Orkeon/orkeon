@@ -1020,9 +1020,19 @@ jobs:
   # Dockerfile builds without moving `latest` to a branch build.
   docker-image:
     runs-on: ubuntu-latest
-    # Gated on the smokes like the release job: a red smoke must not move the
-    # :latest tag on GHCR either.
-    needs: [smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi]
+    # Gated on the smokes and on the release job: a red smoke, or a Release that
+    # could not be published, must not move the :latest tag on GHCR either. On a
+    # dry run `release` is skipped (tag only), and the image is still built.
+    needs: [smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi, release]
+    if: >-
+      always()
+      && needs.smoke-windows.result == 'success'
+      && needs.smoke-windows-service.result == 'success'
+      && needs.smoke-deb.result == 'success'
+      && needs.smoke-macos.result == 'success'
+      && needs.msi.result == 'success'
+      && (needs.release.result == 'success'
+          || (github.event_name == 'workflow_dispatch' && needs.release.result == 'skipped'))
     permissions:
       contents: read
       packages: write
