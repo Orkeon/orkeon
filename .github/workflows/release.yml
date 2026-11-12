@@ -1025,7 +1025,7 @@ jobs:
     # dry run `release` is skipped (tag only), and the image is still built.
     needs: [smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi, release]
     if: >-
-      always()
+      !cancelled()
       && needs.smoke-windows.result == 'success'
       && needs.smoke-windows-service.result == 'success'
       && needs.smoke-deb.result == 'success'

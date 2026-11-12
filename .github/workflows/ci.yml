@@ -171,7 +171,7 @@ jobs:
       # The roll-up this build embedded is what `orkeon typings` ships (#288): tsc reads it, not
       # the sources the earlier step checked.
       - name: Typecheck the built orkeon.d.ts roll-up
-        run: bash scripts/check-scripting-typings.sh --rollup
+        run: CONFIGURATION=Release bash scripts/check-scripting-typings.sh --rollup
       # Unit + fast tests only (see header for what's excluded and why).
       - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"
       # The ONNX tests of Embeddings.Local, alone, so a native-runtime failure names
