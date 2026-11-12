@@ -6,7 +6,7 @@ namespace Orkeon.Application.Common.CQRS;
 /// Represents the result of an operation.
 /// </summary>
 /// <typeparam name="T">The type of the value.</typeparam>
-public record Result<T>
+public sealed record Result<T>
 {
     /// <summary>
     /// Gets the value if the operation was successful.

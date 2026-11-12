@@ -3,7 +3,7 @@ namespace Orkeon.Domain.Memory;
 /// <summary>
 /// Entity in memory.
 /// </summary>
-public record MemoryEntity
+public sealed record MemoryEntity
 {
     /// <summary>Gets the entity name.</summary>
     public string Name { get; init; }
@@ -62,7 +62,7 @@ public record MemoryEntity
     }
 
     /// <inheritdoc />
-    public virtual bool Equals(MemoryEntity? other)
+    public bool Equals(MemoryEntity? other)
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;

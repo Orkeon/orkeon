@@ -20,7 +20,7 @@ public interface IUrlValidator
 /// <param name="IsAllowed">Whether the URL is allowed.</param>
 /// <param name="ValidatedUri">The parsed URI if allowed, or <see langword="null"/> if denied.</param>
 /// <param name="DenialReason">The reason for denial, or <see langword="null"/> if allowed.</param>
-public record UrlValidationResult(bool IsAllowed, Uri? ValidatedUri, string? DenialReason)
+public sealed record UrlValidationResult(bool IsAllowed, Uri? ValidatedUri, string? DenialReason)
 {
     /// <summary>Creates an allowed validation result.</summary>
     /// <param name="uri">The validated URI.</param>

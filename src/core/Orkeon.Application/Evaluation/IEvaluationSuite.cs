@@ -29,7 +29,7 @@ public interface IEvaluationSuite
 /// <summary>
 /// Full evaluation report for a suite run.
 /// </summary>
-public record EvaluationReport(
+public sealed record EvaluationReport(
     string SuiteName,
     DateTime GeneratedAt,
     IReadOnlyList<EvaluationCaseResult> Results,
@@ -38,7 +38,7 @@ public record EvaluationReport(
 /// <summary>
 /// Results for a single evaluation case (one input).
 /// </summary>
-public record EvaluationCaseResult(
+public sealed record EvaluationCaseResult(
     int CaseIndex,
     string? CaseDescription,
     IReadOnlyList<EvaluationScore> Scores,
@@ -47,7 +47,7 @@ public record EvaluationCaseResult(
 /// <summary>
 /// Aggregate summary across all cases.
 /// </summary>
-public record EvaluationSummary(
+public sealed record EvaluationSummary(
     int TotalCases,
     double OverallScore,
     IReadOnlyDictionary<string, double> ScoresByEvaluator,

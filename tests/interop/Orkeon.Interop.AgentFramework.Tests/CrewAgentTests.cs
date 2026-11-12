@@ -1,3 +1,4 @@
+using Orkeon.Application.Common.DTOs;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,7 +32,7 @@ public sealed class CrewAgentTests
     [Fact]
     public async Task RunAsync_maps_the_crew_token_telemetry_to_usage_and_a_failed_crew_to_an_error_finish()
     {
-        var orchestrator = new FakeCrewOrchestrationService { TokensUsed = new TokenUsage(120, 30, 150), Succeeded = false };
+        var orchestrator = new FakeCrewOrchestrationService { TokensUsed = new TokenUsage { PromptTokens = 120, CompletionTokens = 30, TotalTokens = 150 }, Succeeded = false };
         var agent = new CrewAgent(orchestrator, CrewId.Create());
 
         var response = await agent.RunAsync("go", cancellationToken: TestContext.Current.CancellationToken);

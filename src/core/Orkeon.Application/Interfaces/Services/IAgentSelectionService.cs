@@ -3,6 +3,7 @@ using Orkeon.Domain.Task;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Memory;
 
 namespace Orkeon.Application.Interfaces.Services;
 

@@ -5,7 +5,7 @@ namespace Orkeon.Domain.Tools.Protocol;
 /// <param name="Result">The result returned by the tool, or null on failure.</param>
 /// <param name="Error">The error message if the call failed, otherwise null.</param>
 /// <param name="Metadata">Optional metadata associated with the response.</param>
-public record ToolCallResponse(
+public sealed record ToolCallResponse(
     bool Success,
     object? Result,
     string? Error,

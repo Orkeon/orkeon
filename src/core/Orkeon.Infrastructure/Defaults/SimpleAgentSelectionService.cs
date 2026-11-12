@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Memory;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Task;

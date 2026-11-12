@@ -18,7 +18,7 @@ public interface ILlmRateLimiter
 /// <summary>
 /// Result of a rate limit acquisition attempt.
 /// </summary>
-public record RateLimitAcquisition(bool IsAcquired, IDisposable? Lease, string? DenialReason, TimeSpan? RetryAfter)
+public sealed record RateLimitAcquisition(bool IsAcquired, IDisposable? Lease, string? DenialReason, TimeSpan? RetryAfter)
 {
     /// <summary>
     /// Creates a successful acquisition with the given lease.

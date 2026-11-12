@@ -3,7 +3,7 @@ using Orkeon.Domain.Common;
 namespace Orkeon.Domain.Agent.ValueObjects;
 
 /// <summary>Information about an agent's current workload.</summary>
-public record WorkloadInfo
+public sealed record WorkloadInfo
 {
     /// <summary>Utilization percentage above which an agent is considered overloaded.</summary>
     public const double OverloadThreshold = 80;

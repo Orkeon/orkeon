@@ -29,7 +29,7 @@ public interface IOutputValidator
 /// <summary>
 /// Result of a single validation check.
 /// </summary>
-public record OutputValidationResult(
+public sealed record OutputValidationResult(
     bool IsValid,
     string? ErrorMessage = null,
     string? SuggestedFix = null,
@@ -38,7 +38,7 @@ public record OutputValidationResult(
 /// <summary>
 /// Context describing what validation should check.
 /// </summary>
-public record OutputValidationContext(
+public sealed record OutputValidationContext(
     AppOutputFormat ExpectedFormat,
     Type? ExpectedType = null,
     Domain.Task.JsonSchema? Schema = null,

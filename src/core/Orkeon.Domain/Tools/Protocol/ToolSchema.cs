@@ -12,7 +12,7 @@ namespace Orkeon.Domain.Tools.Protocol;
 /// <param name="Parameters">The parameter schemas keyed by parameter name.</param>
 /// <param name="Returns">Optional return type schema.</param>
 /// <param name="Types">Optional type definitions used in parameters or returns.</param>
-public record ToolSchema(
+public sealed record ToolSchema(
     string Name,
     string Description,
     Dictionary<string, ParameterSchema> Parameters,
@@ -87,7 +87,7 @@ public record ToolSchema(
 /// <param name="EnumMap">Optional enum name-to-value mapping for C# enums.</param>
 /// <param name="Example">Optional example value.</param>
 /// <param name="Values">For a dictionary, the schema of its values.</param>
-public record ParameterSchema(
+public sealed record ParameterSchema(
     string? Type,
     string Description,
     bool Required,

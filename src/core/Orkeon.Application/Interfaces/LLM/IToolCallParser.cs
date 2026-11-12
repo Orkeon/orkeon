@@ -33,7 +33,7 @@ public interface IToolCallParser
 /// <param name="Id">Provider-assigned call identifier (generated if absent).</param>
 /// <param name="ToolName">Name of the tool to invoke.</param>
 /// <param name="Arguments">Parsed arguments for the tool.</param>
-public record ParsedToolCall(
+public sealed record ParsedToolCall(
     string Id,
     string ToolName,
     Dictionary<string, object?> Arguments);

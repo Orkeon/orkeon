@@ -5,7 +5,7 @@ namespace Orkeon.Application.Evaluation;
 /// <summary>
 /// Defines success criteria for training tasks and evaluations.
 /// </summary>
-public record SuccessCriterion(
+public sealed record SuccessCriterion(
     string Name,
     string Description,
     Func<object, bool> Evaluator,

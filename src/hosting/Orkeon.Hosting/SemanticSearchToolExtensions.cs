@@ -6,7 +6,7 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Memory;
 using Orkeon.Infrastructure.Tools.Search;
-using IEmbeddingService = Orkeon.Application.Interfaces.Ports.IEmbeddingService;
+using IEmbeddingService = Orkeon.Domain.Memory.IEmbeddingService;
 
 namespace Orkeon.Hosting;
 

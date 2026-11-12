@@ -64,7 +64,7 @@ public interface ICrewRepository : ISpecificationRepository<DomainCrew, CrewId>
 /// <summary>
 /// Represents execution statistics for a crew.
 /// </summary>
-public record CrewExecutionStatistics(
+public sealed record CrewExecutionStatistics(
     int TotalExecutions,
     int SuccessfulExecutions,
     int FailedExecutions,

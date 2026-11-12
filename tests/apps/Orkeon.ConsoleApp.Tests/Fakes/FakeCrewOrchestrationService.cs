@@ -1,3 +1,4 @@
+using Orkeon.Application.Common.DTOs;
 using CrewId = Orkeon.Domain.Common.CrewId;
 using Orkeon.Application.Interfaces.Services;
 
@@ -18,7 +19,7 @@ public sealed class FakeCrewOrchestrationService : ICrewOrchestrationService
                 FinalOutput: $"answer to: {input.InitialContext}",
                 TaskOutputs: Array.Empty<Orkeon.Application.Execution.TaskOutput>(),
                 Duration: TimeSpan.FromSeconds(0.5),
-                TokensUsed: new TokenUsage(10, 20, 30));
+                TokensUsed: new TokenUsage { PromptTokens = 10, CompletionTokens = 20, TotalTokens = 30 });
         return System.Threading.Tasks.Task.FromResult(output);
     }
 

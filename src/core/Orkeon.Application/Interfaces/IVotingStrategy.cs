@@ -5,7 +5,7 @@ namespace Orkeon.Application.Interfaces;
 /// <summary>
 /// Represents a single vote cast by an agent during consensual process execution.
 /// </summary>
-public record Vote
+public sealed record Vote
 {
     /// <summary>
     /// Gets the identifier of the voter (agent).
@@ -56,7 +56,7 @@ public record Vote
 /// <summary>
 /// Represents the result of tallying votes.
 /// </summary>
-public record VoteResult
+public sealed record VoteResult
 {
     /// <summary>
     /// Gets whether consensus was reached.

@@ -34,7 +34,7 @@ public interface IPathValidator
 /// <summary>
 /// Result of a path validation check.
 /// </summary>
-public record PathValidationResult(
+public sealed record PathValidationResult(
     bool IsAllowed,
     string? ResolvedPath,
     string? DenialReason)

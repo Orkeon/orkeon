@@ -3,7 +3,7 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Attributes;
 using Orkeon.Tools.Abstractions.Base;
 using EmbeddingVector = Orkeon.Domain.Memory.EmbeddingVector;
-using IEmbeddingService = Orkeon.Application.Interfaces.Ports.IEmbeddingService;
+using IEmbeddingService = Orkeon.Domain.Memory.IEmbeddingService;
 
 namespace Orkeon.Infrastructure.Tools.Search;
 

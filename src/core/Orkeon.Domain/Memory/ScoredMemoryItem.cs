@@ -11,4 +11,4 @@ namespace Orkeon.Domain.Memory;
 /// (legacy search paths). Capability implementations (<see cref="IScoredVectorSearch"/>,
 /// <see cref="IHybridSearchCapable"/>) populate it whenever possible.
 /// </param>
-public record ScoredMemoryItem(MemoryItem Item, float Score, string? Key = null);
+public sealed record ScoredMemoryItem(MemoryItem Item, float Score, string? Key = null);

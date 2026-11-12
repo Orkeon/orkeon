@@ -5,7 +5,7 @@ namespace Orkeon.Application.Interfaces;
 /// <summary>
 /// Validation result for crew definition loading.
 /// </summary>
-public record CrewDefinitionValidationResult(
+public sealed record CrewDefinitionValidationResult(
     bool IsValid,
     IReadOnlyList<string> Errors,
     IReadOnlyList<string> Warnings);

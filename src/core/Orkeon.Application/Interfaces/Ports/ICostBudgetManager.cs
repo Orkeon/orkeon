@@ -3,7 +3,7 @@ namespace Orkeon.Application.Interfaces.Ports;
 /// <summary>
 /// Records a single LLM usage event for cost tracking.
 /// </summary>
-public record CostUsageEvent
+public sealed record CostUsageEvent
 {
     /// <summary>Crew identifier.</summary>
     public string CrewId { get; init; } = string.Empty;
@@ -86,7 +86,7 @@ public record CostUsageEvent
 /// <summary>
 /// Defines budget limits for a crew or agent.
 /// </summary>
-public record BudgetLimit
+public sealed record BudgetLimit
 {
     /// <summary>
     /// Maximum total cost in USD (null = unlimited): once the calls recorded reach it, the next LLM call
@@ -122,7 +122,7 @@ public enum BudgetAlertType
 /// <summary>
 /// Represents a budget alert raised when usage approaches or exceeds limits.
 /// </summary>
-public record BudgetAlert
+public sealed record BudgetAlert
 {
     /// <summary>Crew identifier.</summary>
     public string CrewId { get; init; } = string.Empty;
@@ -158,7 +158,7 @@ public class BudgetAlertEventArgs : EventArgs
 /// <summary>
 /// Summary of costs for a single agent.
 /// </summary>
-public record AgentCostSummary(
+public sealed record AgentCostSummary(
     string AgentId,
     decimal TotalCost,
     int TotalTokens,
@@ -222,7 +222,7 @@ public sealed record ModelUsage
 /// <summary>
 /// Aggregated cost report for a crew, agent, or time period.
 /// </summary>
-public record CostReport
+public sealed record CostReport
 {
     /// <summary>Total cost in USD.</summary>
     public decimal TotalCost { get; init; }
@@ -261,7 +261,7 @@ public record CostReport
 /// <summary>
 /// Result of a budget check after recording usage.
 /// </summary>
-public record CostBudgetCheckResult
+public sealed record CostBudgetCheckResult
 {
     /// <summary>Whether the usage is within all budget limits.</summary>
     public bool IsWithinBudget { get; init; }

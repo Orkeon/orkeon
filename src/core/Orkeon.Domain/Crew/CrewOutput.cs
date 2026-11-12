@@ -158,7 +158,7 @@ public sealed record CrewOutput
 /// <param name="FailedTasks">The number of tasks that failed.</param>
 /// <param name="TotalExecutionTime">The total time taken to execute all tasks.</param>
 /// <param name="AverageTaskTime">The average time per task.</param>
-public record ExecutionStatistics(
+public sealed record ExecutionStatistics(
     int TotalTasks,
     int SuccessfulTasks,
     int FailedTasks,

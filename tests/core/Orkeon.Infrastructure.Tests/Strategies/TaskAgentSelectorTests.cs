@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Memory;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Agent.ValueObjects;

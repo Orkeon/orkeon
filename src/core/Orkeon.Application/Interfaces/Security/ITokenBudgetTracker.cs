@@ -1,3 +1,5 @@
+using Orkeon.Application.Common.DTOs;
+
 namespace Orkeon.Application.Interfaces.Security;
 
 /// <summary>
@@ -13,31 +15,26 @@ public interface ITokenBudgetTracker
     /// <summary>
     /// Gets a usage report for a crew.
     /// </summary>
-    TokenUsageReport GetReport(string crewId);
+    TokenBudgetReport GetReport(string crewId);
 }
-
-/// <summary>
-/// Aggregated token usage information.
-/// </summary>
-public record TokenUsage(int TotalTokens, decimal EstimatedCost, int CallCount);
 
 /// <summary>
 /// Result of a budget check after recording usage.
 /// </summary>
-public record BudgetCheckResult(bool IsWithinBudget, string? DenialReason, TokenUsage? AgentUsage, TokenUsage? CrewUsage)
+public sealed record BudgetCheckResult(bool IsWithinBudget, string? DenialReason, TokenBudgetUsage? AgentUsage, TokenBudgetUsage? CrewUsage)
 {
     /// <summary>
     /// Creates a result indicating usage is within budget.
     /// </summary>
-    public static BudgetCheckResult WithinBudget(TokenUsage agent, TokenUsage crew) => new(true, null, agent, crew);
+    public static BudgetCheckResult WithinBudget(TokenBudgetUsage agent, TokenBudgetUsage crew) => new(true, null, agent, crew);
 
     /// <summary>
     /// Creates a result indicating the budget has been exceeded.
     /// </summary>
-    public static BudgetCheckResult BudgetExceeded(string reason, TokenUsage usage) => new(false, reason, usage, null);
+    public static BudgetCheckResult BudgetExceeded(string reason, TokenBudgetUsage usage) => new(false, reason, usage, null);
 }
 
 /// <summary>
 /// Token usage report for a crew, including per-agent breakdown.
 /// </summary>
-public record TokenUsageReport(string CrewId, TokenUsage TotalUsage, IReadOnlyDictionary<string, TokenUsage> UsageByAgent);
+public sealed record TokenBudgetReport(string CrewId, TokenBudgetUsage TotalUsage, IReadOnlyDictionary<string, TokenBudgetUsage> UsageByAgent);

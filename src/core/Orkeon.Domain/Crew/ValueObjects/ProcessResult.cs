@@ -1,7 +1,7 @@
 namespace Orkeon.Domain.Crew.ValueObjects;
 
 /// <summary>Result of a process execution.</summary>
-public record ProcessResult
+public sealed record ProcessResult
 {
     /// <summary>Gets a value indicating whether the process succeeded.</summary>
     public bool IsSuccess { get; }
@@ -86,7 +86,7 @@ public record ProcessResult
 /// <param name="TotalExecutionTime">The total execution time.</param>
 /// <param name="StartedAt">The start timestamp.</param>
 /// <param name="CompletedAt">The completion timestamp, or null.</param>
-public record ExecutionTiming(
+public sealed record ExecutionTiming(
     TimeSpan TotalExecutionTime = default,
     DateTime StartedAt = default,
     DateTime? CompletedAt = null)
@@ -98,12 +98,12 @@ public record ExecutionTiming(
 /// <summary>Groups task completion lists for crew results.</summary>
 /// <param name="CompletedTasks">The list of completed task identifiers.</param>
 /// <param name="FailedTasks">The list of failed task identifiers.</param>
-public record TaskCompletionLists(
+public sealed record TaskCompletionLists(
     IReadOnlyList<string>? CompletedTasks = null,
     IReadOnlyList<string>? FailedTasks = null);
 
 /// <summary>Result of a crew execution.</summary>
-public record CrewResult
+public sealed record CrewResult
 {
     /// <summary>Gets a value indicating whether the crew execution succeeded.</summary>
     public bool IsSuccess { get; }

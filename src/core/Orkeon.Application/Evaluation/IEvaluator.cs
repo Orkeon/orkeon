@@ -31,7 +31,7 @@ public interface IEvaluator
 /// <summary>
 /// Input data for an evaluation.
 /// </summary>
-public record EvaluationInput(
+public sealed record EvaluationInput(
     string Output,
     string? ExpectedOutput = null,
     string? TaskDescription = null,
@@ -42,7 +42,7 @@ public record EvaluationInput(
 /// <summary>
 /// Result of a single evaluation.
 /// </summary>
-public record EvaluationScore(
+public sealed record EvaluationScore(
     string EvaluatorName,
     double Score,
     string? Reasoning = null,

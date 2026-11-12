@@ -3,7 +3,7 @@ using Orkeon.Domain.Common;
 namespace Orkeon.Domain.Agent.ValueObjects;
 
 /// <summary>Result of agent selection process.</summary>
-public record AgentSelectionResult
+public sealed record AgentSelectionResult
 {
     /// <summary>Confidence score threshold for high-confidence selections.</summary>
     public const double HighConfidenceThreshold = 0.8;
@@ -99,7 +99,7 @@ public record AgentSelectionResult
     public bool IsLowConfidence => ConfidenceScore < LowConfidenceThreshold;
 
     /// <inheritdoc />
-    public virtual bool Equals(AgentSelectionResult? other)
+    public bool Equals(AgentSelectionResult? other)
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;

@@ -4,7 +4,7 @@ namespace Orkeon.Domain.Tools.Protocol;
 /// <param name="ToolName">The name of the tool to invoke.</param>
 /// <param name="Parameters">The input parameters for the tool.</param>
 /// <param name="Context">Optional contextual information for the call.</param>
-public record ToolCallRequest(
+public sealed record ToolCallRequest(
     string ToolName,
     Dictionary<string, object?> Parameters,
     string? Context = null

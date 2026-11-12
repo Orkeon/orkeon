@@ -1,3 +1,4 @@
+using Orkeon.Application.Common.DTOs;
 using System.Text.Json;
 using Orkeon.Application.Execution;
 using Orkeon.Application.Interfaces.Checkpointing;
@@ -256,8 +257,11 @@ internal static class CrewExecutionStateMapper
             TaskOutputs: taskOutputs,
             Duration: persisted.Duration,
             TokensUsed: persisted.TokensMeasured
-                ? new TokenUsage(persisted.PromptTokens, persisted.CompletionTokens, persisted.TotalTokens)
+                ? new TokenUsage
                 {
+                    PromptTokens = persisted.PromptTokens,
+                    CompletionTokens = persisted.CompletionTokens,
+                    TotalTokens = persisted.TotalTokens,
                     CacheHitTokens = persisted.CacheHitTokens,
                     CacheMissTokens = persisted.CacheMissTokens,
                 }

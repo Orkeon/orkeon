@@ -110,7 +110,7 @@ public class InfrastructureExtensionsTests
         // Assert
         var embeddingService = serviceProvider.GetService<Orkeon.Domain.Memory.IEmbeddingService>();
         Assert.NotNull(embeddingService);
-        Assert.IsType<DomainEmbeddingServiceAdapter>(embeddingService);
+        Assert.IsType<Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingProviderServiceAdapter>(embeddingService);
     }
 
     [Fact]

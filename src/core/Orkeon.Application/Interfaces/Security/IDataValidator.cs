@@ -16,7 +16,7 @@ public enum DataValidationDecision
 /// <summary>
 /// Result of a data validation check including decision, risk score, and findings.
 /// </summary>
-public record DataValidationResult(
+public sealed record DataValidationResult(
     DataValidationDecision Decision,
     string? Reason = null,
     double RiskScore = 0.0,
@@ -54,7 +54,7 @@ public record DataValidationResult(
 /// <summary>
 /// Context for data validation.
 /// </summary>
-public record DataValidationContext(
+public sealed record DataValidationContext(
     string DocumentId,
     string? Source = null,
     string? ContentHash = null,

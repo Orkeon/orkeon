@@ -6,7 +6,7 @@ namespace Orkeon.Application.Crew;
 /// <summary>
 /// Recommendation for crew composition.
 /// </summary>
-public record CompositionRecommendation(
+public sealed record CompositionRecommendation(
     string Title,
     string Rationale,
     IReadOnlyList<DomainAgent> RecommendedAgents,

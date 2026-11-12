@@ -1,3 +1,4 @@
+using Orkeon.Application.Common.DTOs;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -821,11 +822,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             ? metadata.Get<long>(Domain.Crew.ValueObjects.CrewMetadata.CacheMissTokensKey)
             : null;
 
-        return new TokenUsage(
-            PromptTokens: promptTokens,
-            CompletionTokens: completionTokens,
-            TotalTokens: totalTokens)
+        return new TokenUsage
         {
+            PromptTokens = promptTokens,
+            CompletionTokens = completionTokens,
+            TotalTokens = totalTokens,
             CacheHitTokens = cacheHit,
             CacheMissTokens = cacheMiss,
         };

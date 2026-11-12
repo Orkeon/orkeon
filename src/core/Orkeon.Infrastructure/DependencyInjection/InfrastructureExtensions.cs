@@ -274,17 +274,12 @@ public static class InfrastructureExtensions
         // Execution plan parser (extracted from CrewPlanner — AUDIT-P3-04)
         services.TryAddSingleton<IExecutionPlanParser, ExecutionPlanParser>();
 
-        // Application-port embedding service (consumed by EmbeddingBasedSelectionStrategy
-        // and search tools). Since RAG-02/C5 the hash-based SimpleEmbeddingService is gone:
+        // Embedding service (consumed by EmbeddingBasedSelectionStrategy, the agent memory
+        // store and the search tools). Since RAG-02/C5 the hash-based SimpleEmbeddingService is gone:
         // the default adapts the IEmbeddingProvider port, whose resolution is semantic-first
         // (local BGE → remote Orkeon:Embeddings → fail-fast at first use, RAG-01/C4).
         // TryAdd so a service registered by the host earlier wins.
-        services.TryAddSingleton<Application.Interfaces.Ports.IEmbeddingService, EmbeddingProviderServiceAdapter>();
-
-        // Domain-side embedding service: same chain, adapted to the Domain interface.
-        services.TryAddSingleton<Domain.Memory.IEmbeddingService>(sp =>
-            new DomainEmbeddingServiceAdapter(
-                sp.GetRequiredService<Application.Interfaces.Ports.IEmbeddingService>()));
+        services.TryAddSingleton<Domain.Memory.IEmbeddingService, EmbeddingProviderServiceAdapter>();
 
         return services;
     }

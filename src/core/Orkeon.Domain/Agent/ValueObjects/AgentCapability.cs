@@ -1,7 +1,7 @@
 namespace Orkeon.Domain.Agent.ValueObjects;
 
 /// <summary>Represents the capabilities of an agent.</summary>
-public record AgentCapability
+public sealed record AgentCapability
 {
     /// <summary>Gets the name of this capability.</summary>
     public string Name { get; }
@@ -91,7 +91,7 @@ public record AgentCapability
     }
 
     /// <inheritdoc />
-    public virtual bool Equals(AgentCapability? other)
+    public bool Equals(AgentCapability? other)
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;

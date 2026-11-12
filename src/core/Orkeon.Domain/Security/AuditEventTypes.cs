@@ -3,7 +3,7 @@ namespace Orkeon.Domain.Security;
 /// <summary>
 /// Represents an auditable event that occurred during crew execution.
 /// </summary>
-public record AuditEvent
+public sealed record AuditEvent
 {
     /// <summary>Gets the unique event identifier.</summary>
     public required string EventId { get; init; }

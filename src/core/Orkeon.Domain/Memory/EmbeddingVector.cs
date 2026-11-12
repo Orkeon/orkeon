@@ -3,7 +3,7 @@ namespace Orkeon.Domain.Memory;
 /// <summary>
 /// Represents an embedding vector with cosine similarity computation.
 /// </summary>
-public record EmbeddingVector(IReadOnlyList<float> Values)
+public sealed record EmbeddingVector(IReadOnlyList<float> Values)
 {
     /// <summary>
     /// Gets the number of dimensions of the embedding vector.

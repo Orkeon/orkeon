@@ -1,3 +1,4 @@
+using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Interfaces.Checkpointing;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Common;
@@ -56,7 +57,7 @@ public class CrewExecutionStateMapperTests
         // Arrange
         var state = CreateState(out _, out _);
         state.Output = new CrewOutput(
-            "answer", [], TimeSpan.FromSeconds(2), new TokenUsage(10, 20, 30));
+            "answer", [], TimeSpan.FromSeconds(2), new TokenUsage { PromptTokens = 10, CompletionTokens = 20, TotalTokens = 30 });
 
         // Act
         var restored = CrewExecutionStateMapper.FromSessionState(

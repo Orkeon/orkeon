@@ -311,7 +311,7 @@ public interface IAgentWorkloadTracker
 /// <summary>
 /// Agent workload information.
 /// </summary>
-public record AgentWorkloadInfo(
+public sealed record AgentWorkloadInfo(
     string AgentId,
     int ActiveTaskCount,
     int CompletedTaskCount,

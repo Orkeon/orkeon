@@ -5,7 +5,7 @@ namespace Orkeon.Application.Crew;
 /// <summary>
 /// Parameters for simulation of task execution.
 /// </summary>
-public record SimulationParameters(
+public sealed record SimulationParameters(
     int Iterations = 10,
     double SuccessThreshold = 0.8,
     TimeSpan? MaxDuration = null,

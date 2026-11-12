@@ -1,7 +1,7 @@
 namespace Orkeon.Domain.Task.ValueObjects;
 
 /// <summary>Represents requirements for task execution.</summary>
-public record TaskRequirement
+public sealed record TaskRequirement
 {
     /// <summary>Gets the name of this requirement.</summary>
     public string Name { get; }
@@ -71,7 +71,7 @@ public record TaskRequirement
     }
 
     /// <inheritdoc />
-    public virtual bool Equals(TaskRequirement? other)
+    public bool Equals(TaskRequirement? other)
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;

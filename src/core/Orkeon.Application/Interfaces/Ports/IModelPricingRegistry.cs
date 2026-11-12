@@ -5,7 +5,7 @@ namespace Orkeon.Application.Interfaces.Ports;
 /// <summary>
 /// Pricing information for a specific LLM model.
 /// </summary>
-public record ModelPricing
+public sealed record ModelPricing
 {
     /// <summary>
     /// Model name or pattern (e.g., "gpt-4o", "claude-3-opus").

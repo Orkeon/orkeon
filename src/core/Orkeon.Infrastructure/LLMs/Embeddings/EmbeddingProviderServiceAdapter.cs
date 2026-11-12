@@ -1,4 +1,5 @@
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Memory;
 
 namespace Orkeon.Infrastructure.LLMs.Embeddings;
 

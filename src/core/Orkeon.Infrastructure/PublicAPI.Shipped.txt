@@ -783,7 +783,7 @@ Orkeon.Infrastructure.Crew.Strategies.SequentialProcessStrategy.ExecuteSequentia
 Orkeon.Infrastructure.Crew.Strategies.SequentialProcessStrategy.SequentialProcessStrategy(Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies! dependencies, Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider! delegationProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.SequentialProcessStrategy!>! logger, Orkeon.Application.Crew.ICrewExecutionHook? hook = null, Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector? agentSelector = null) -> void
 Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector
 Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector.ForTaskAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>! agents, int fallbackIndex, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Orkeon.Domain.Agent.Agent!>
-Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector.TaskAgentSelector(Microsoft.Extensions.Options.IOptions<Orkeon.Application.Configuration.OrkeonApplicationOptions!>? options = null, Orkeon.Application.Interfaces.Services.IAgentSelectionService? selection = null, Orkeon.Application.Interfaces.Ports.IEmbeddingService? embedder = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector!>? logger = null) -> void
+Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector.TaskAgentSelector(Microsoft.Extensions.Options.IOptions<Orkeon.Application.Configuration.OrkeonApplicationOptions!>? options = null, Orkeon.Application.Interfaces.Services.IAgentSelectionService? selection = null, Orkeon.Domain.Memory.IEmbeddingService? embedder = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector!>? logger = null) -> void
 Orkeon.Infrastructure.Decision.GuardianJudgeFailMode
 Orkeon.Infrastructure.Decision.GuardianJudgeFailMode.Closed = 0 -> Orkeon.Infrastructure.Decision.GuardianJudgeFailMode
 Orkeon.Infrastructure.Decision.GuardianJudgeFailMode.Open = 1 -> Orkeon.Infrastructure.Decision.GuardianJudgeFailMode
@@ -2563,7 +2563,7 @@ Orkeon.Infrastructure.Security.Sinks.StructuredLogAuditSink
 Orkeon.Infrastructure.Security.Sinks.StructuredLogAuditSink.StructuredLogAuditSink(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.Sinks.StructuredLogAuditSink!>! logger) -> void
 Orkeon.Infrastructure.Security.Sinks.StructuredLogAuditSink.WriteAsync(Orkeon.Domain.Security.AuditEvent! auditEvent, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.Security.TokenBudgetTracker
-Orkeon.Infrastructure.Security.TokenBudgetTracker.GetReport(string! crewId) -> Orkeon.Application.Interfaces.Security.TokenUsageReport!
+Orkeon.Infrastructure.Security.TokenBudgetTracker.GetReport(string! crewId) -> Orkeon.Application.Interfaces.Security.TokenBudgetReport!
 Orkeon.Infrastructure.Security.TokenBudgetTracker.RecordUsage(string! crewId, string! agentRole, int promptTokens, int completionTokens, string! model) -> Orkeon.Application.Interfaces.Security.BudgetCheckResult!
 Orkeon.Infrastructure.Security.TokenBudgetTracker.TokenBudgetTracker(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.TokenBudgetOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.TokenBudgetTracker!>! logger) -> void
 Orkeon.Infrastructure.Security.TokenBudgetTracker.TokenBudgetTracker(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.TokenBudgetOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.TokenBudgetTracker!>! logger, Orkeon.Application.Interfaces.Ports.IModelPricingRegistry? pricingRegistry) -> void
@@ -2854,7 +2854,7 @@ Orkeon.Infrastructure.Tools.Search.SearchResultItem.Source.init -> void
 Orkeon.Infrastructure.Tools.Search.SearchResultItem.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Infrastructure.Tools.Search.SearchResultItem.Tags.init -> void
 Orkeon.Infrastructure.Tools.Search.SearchTool
-Orkeon.Infrastructure.Tools.Search.SearchTool.SearchTool(Orkeon.Application.Interfaces.Ports.IEmbeddingService! embeddingService, Orkeon.Application.Interfaces.Services.IVectorMemoryStore! vectorStore, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Tools.Search.SearchTool!>? logger = null) -> void
+Orkeon.Infrastructure.Tools.Search.SearchTool.SearchTool(Orkeon.Domain.Memory.IEmbeddingService! embeddingService, Orkeon.Application.Interfaces.Services.IVectorMemoryStore! vectorStore, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Tools.Search.SearchTool!>? logger = null) -> void
 Orkeon.Infrastructure.Tools.SessionCostRequest
 Orkeon.Infrastructure.Tools.SessionCostRequest.SessionCostRequest() -> void
 Orkeon.Infrastructure.Tools.SessionCostResponse
