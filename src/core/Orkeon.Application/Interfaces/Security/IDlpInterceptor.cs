@@ -58,17 +58,17 @@ public enum PiiType
 /// <summary>
 /// Represents a single PII match found during scanning.
 /// </summary>
-public record PiiMatch(PiiType Type, string MatchedText, int Position, int Length);
+public sealed record PiiMatch(PiiType Type, string MatchedText, int Position, int Length);
 
 /// <summary>
 /// Result of scanning content for PII.
 /// </summary>
-public record DlpScanResult(bool HasPii, IReadOnlyList<PiiMatch> Matches, string? SanitizedContent = null);
+public sealed record DlpScanResult(bool HasPii, IReadOnlyList<PiiMatch> Matches, string? SanitizedContent = null);
 
 /// <summary>
 /// Result of DLP interception on a channel.
 /// </summary>
-public record DlpInterceptionResult(
+public sealed record DlpInterceptionResult(
     DlpAction ActionTaken,
     string? OriginalContent,
     string? ProcessedContent,

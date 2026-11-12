@@ -112,9 +112,9 @@ public partial class AskQuestionTool : ToolBase<AskQuestionRequest, AskQuestionR
                 }
             );
 
-            await _communicationService.SendMessageAsync(message).ConfigureAwait(false);
+            await _communicationService.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
 
-            LogAskedQuestion(targetAgentId, request.CoworkerRole);
+            LogAskedQuestion(Logger, targetAgentId, request.CoworkerRole);
 
             return new AskQuestionResponse
             {
@@ -126,5 +126,5 @@ public partial class AskQuestionTool : ToolBase<AskQuestionRequest, AskQuestionR
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Asked question to {TargetAgent} (role: {Role})")]
-    private partial void LogAskedQuestion(AgentId targetAgent, string role);
+    private static partial void LogAskedQuestion(ILogger logger, AgentId targetAgent, string role);
 }

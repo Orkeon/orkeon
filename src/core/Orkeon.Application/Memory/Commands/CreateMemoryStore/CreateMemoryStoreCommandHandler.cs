@@ -8,7 +8,7 @@ namespace Orkeon.Application.Memory.Commands.CreateMemoryStore;
 /// <summary>
 /// Handler for creating a new memory store for an agent.
 /// </summary>
-public partial class CreateMemoryStoreCommandHandler : ICommandHandler<CreateMemoryStoreCommand, CreateMemoryStoreResult>
+public partial class CreateMemoryStoreCommandHandler : ICommandHandler<CreateMemoryStoreCommand, CreateMemoryStoreResponse>
 {
     private readonly IAgentMemoryStoreRepository _memoryStoreRepository;
     private readonly ILogger<CreateMemoryStoreCommandHandler> _logger;
@@ -29,14 +29,14 @@ public partial class CreateMemoryStoreCommandHandler : ICommandHandler<CreateMem
     /// <summary>
     /// Handle Async.
     /// </summary>
-    public System.Threading.Tasks.Task<CreateMemoryStoreResult> HandleAsync(
+    public System.Threading.Tasks.Task<CreateMemoryStoreResponse> HandleAsync(
         CreateMemoryStoreCommand command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
         return HandleCoreAsync();
 
-        async System.Threading.Tasks.Task<CreateMemoryStoreResult> HandleCoreAsync()
+        async System.Threading.Tasks.Task<CreateMemoryStoreResponse> HandleCoreAsync()
         {
             LogCreatingMemoryStore(command.AgentId);
 
@@ -48,7 +48,7 @@ public partial class CreateMemoryStoreCommandHandler : ICommandHandler<CreateMem
             {
                 LogMemoryStoreAlreadyExists(command.AgentId, existing.Id);
 
-                return new CreateMemoryStoreResult(
+                return new CreateMemoryStoreResponse(
                     MemoryStoreId: existing.Id.ToString(),
                     AgentId: command.AgentId,
                     ShortTermCapacity: existing.ShortTermCapacity,
@@ -65,7 +65,7 @@ public partial class CreateMemoryStoreCommandHandler : ICommandHandler<CreateMem
 
             LogMemoryStoreCreated(command.AgentId, store.Id);
 
-            return new CreateMemoryStoreResult(
+            return new CreateMemoryStoreResponse(
                 MemoryStoreId: store.Id.ToString(),
                 AgentId: command.AgentId,
                 ShortTermCapacity: store.ShortTermCapacity,

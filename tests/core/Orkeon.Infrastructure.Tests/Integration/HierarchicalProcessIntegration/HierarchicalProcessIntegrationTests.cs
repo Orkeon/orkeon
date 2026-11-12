@@ -156,7 +156,7 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
             _reviewFunc = reviewFunc;
         }
 
-        public Task<TaskAssignment> AssignTaskAsync(DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context, ManagerLlm llm)
+        public Task<TaskAssignment> AssignTaskAsync(DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context, ManagerLlm llm, CancellationToken cancellationToken = default)
         {
             TaskAssignment assignment;
             if (_assignFunc != null)
@@ -215,8 +215,8 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
     {
         public string AgentId { get; } = "test-agent";
         public string ScopeId { get; } = Guid.NewGuid().ToString();
-        public Task<T> ExecuteInScopeAsync<T>(Func<Task<T>> operation) => operation();
-        public Task ExecuteInScopeAsync(Func<Task> operation) => operation();
+        public Task<T> ExecuteInScopeAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default) => operation();
+        public Task ExecuteInScopeAsync(Func<Task> operation, CancellationToken cancellationToken = default) => operation();
         public void Dispose() { }
     }
 

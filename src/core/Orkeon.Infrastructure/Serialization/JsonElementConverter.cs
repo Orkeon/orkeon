@@ -8,7 +8,7 @@ namespace Orkeon.Infrastructure.Serialization;
 /// <see cref="JsonElement"/> wrappers) into native types (<c>string</c>, <c>long</c>,
 /// <c>double</c>, <c>bool</c>, etc.) that downstream validators expect.
 /// </summary>
-public static class JsonElementConverter
+internal static class JsonElementConverter
 {
     /// <summary>
     /// Recursively converts a <see cref="JsonElement"/> of <see cref="JsonValueKind.Object"/>

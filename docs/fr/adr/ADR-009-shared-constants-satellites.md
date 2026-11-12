@@ -95,10 +95,10 @@ sur exactement ce raisonnement : ADR-002 (`Infrastructure → Tools.Abstractions
 (`Orkeon.Rag.Abstractions`). Ce qui rendait chacun acceptable, c'est que le projet référencé
 porte des contrats, pas de l'infrastructure. Un satellite de `const string` porte encore moins.
 
-**`Orkeon.Domain` a le droit de référencer un satellite.** Domain n'a aujourd'hui aucune
-dépendance projet, et l'unique `ProjectReference` qu'il porte — le générateur de source — est en
-`OutputItemType="Analyzer"` avec `ReferenceOutputAssembly="false"` : elle disparaît à l'exécution.
-Un satellite, lui, est une vraie référence d'exécution, la première de Domain. Elle est acceptée
+**`Orkeon.Domain` a le droit de référencer un satellite.** Son unique référence projet
+d'exécution est `Orkeon.Constants.Llm` ; l'autre `ProjectReference` qu'il porte — le générateur
+de source — est en `OutputItemType="Analyzer"` avec `ReferenceOutputAssembly="false"` : elle
+disparaît à l'exécution. Un satellite, lui, est une vraie référence d'exécution. Elle est acceptée
 parce qu'un projet qui ne dépend de rien ne peut rien entraîner derrière lui, et parce que
 l'alternative est ce que cet ADR existe pour clore — Domain gardant sa propre copie d'une valeur
 qu'un autre détient aussi.

@@ -1,5 +1,5 @@
 {
-  "_comment": "Settings template — OpenAI. Copy this file WITHOUT the .example suffix (-> appsettings.openai.local.json), then set your key in the environment: ApiKeyEnvVar names the variable that holds it (OPENAI_API_KEY), which every run reads — a terminal, a scheduled team, the REPL — and the key itself never goes in the file (ORKEON_Llm__ApiKey, when set, wins). The factory auto-detects OpenAIProvider from the api.openai.com host.",
+  "_comment": "Settings template — OpenAI. Copy this file WITHOUT the .example suffix (-> appsettings.openai.local.json), then set your key in the environment: ApiKeyEnvVar names the variable that holds it (OPENAI_API_KEY), which every run reads — a terminal, a scheduled team, the REPL — and the key itself never goes in the file (ORKEON_Llm__ApiKey, when set, wins). The factory auto-detects OpenAILlmProvider from the api.openai.com host.",
   "_models": [
     "gpt-4o        — flagship multimodal",
     "gpt-4o-mini   — cost-optimized"

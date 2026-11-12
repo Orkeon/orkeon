@@ -8,7 +8,7 @@ namespace Orkeon.Scripting.Bindings;
 /// <summary>
 /// Registers the global <c>stateMachine(literal)</c> factory on a Jint engine.
 /// </summary>
-public static class StateMachineBinding
+internal static class StateMachineBinding
 {
     /// <summary>Name of the global function exposed to scripts.</summary>
     public const string GlobalName = "stateMachine";

@@ -6,10 +6,10 @@
 
 | Version | Prise en charge |
 |---|---|
-| 1.0.x (release candidates comprises) | ✅ |
-| ≤ 0.9.x (beta) | ❌ |
+| Dernière release stable | ✅ |
+| Releases plus anciennes | ❌ |
 
-Seule la dernière release publiée (actuellement la ligne release-candidate 1.0.0) reçoit des correctifs de sécurité.
+Seule la dernière release stable reçoit des correctifs de sécurité.
 
 ## Signaler une vulnérabilité
 
@@ -45,8 +45,8 @@ Les vulnérabilités dans ces couches (contournement d'allowlist, contournement 
   n'est enregistré que comme type concret, donc aucun agent ne peut l'appeler tant que vous ne
   l'exposez pas vous-même.
 - **`shell_command`, lui, est livré enregistré.** `AddOrkeonCodeTools()` l'enregistre comme
-  `IBaseTool`, et les deux runners livrés (`orkeon run`, `orkeon-repl`) appellent cette méthode
-  sans condition : l'outil est donc au catalogue par défaut. Son allowlist par défaut est en
+  `IBaseTool`, et les runners livrés (`orkeon run`, `orkeon-repl`, `orkeon-host`) appellent cette
+  méthode sans condition : l'outil est donc au catalogue par défaut. Son allowlist par défaut est en
   **lecture seule** (`ls`, `cat`, `pwd`, `grep`… plus les sous-commandes `git` non mutantes) ;
   les interpréteurs et le `git` mutant restent fermés tant que vous ne posez pas
   `Orkeon:Tools:Shell:AllowInterpreters`, qui est **équivalent à une RCE** et fait émettre à
@@ -69,7 +69,7 @@ longue durée n'existe. Chaque release livre aussi `SHA256SUMS` (et `SHA256SUMS.
 les MSI) et — pour les releases coupées depuis l'arrivée de l'étape SBOM en septembre 2026 —
 un SBOM CycloneDX couvert par la même attestation. Deux choses ne portent **aucune**
 attestation : les builds dev de `main` (`<version>.dev.<numéro de run>`, sur GitHub Packages
-uniquement) et l'image conteneur `orkeon-runners` sur GHCR.
+uniquement) et l'image conteneur `ghcr.io/orkeon/orkeon` sur GHCR.
 
 ```bash
 gh attestation verify orkeon-cli-<version>-osx-arm64.tar.gz --repo Orkeon/orkeon

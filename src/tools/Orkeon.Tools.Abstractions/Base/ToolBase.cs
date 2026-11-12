@@ -28,12 +28,10 @@ public abstract partial class ToolBase : IBaseTool
     private static readonly ConcurrentDictionary<Type, ToolContractAttribute?> s_contractCache = new();
 
     /// <summary>Logger instance for tool operations.</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1051", Justification = "Established protected base-class field referenced directly by hundreds of derived tools across the framework; converting to a property would break the inherited contract without behavioral benefit.")]
-    protected readonly ILogger _logger;
+    protected ILogger Logger { get; }
 
     /// <summary>JSON serializer options used for parameter and result serialization.</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1051", Justification = "Established protected base-class field referenced directly by derived tools across multiple projects; converting to a property would break the inherited contract without behavioral benefit.")]
-    protected readonly JsonSerializerOptions _jsonOptions;
+    protected JsonSerializerOptions JsonOptions { get; }
     // ToolParameterValidator and ToolProtocolAdapter methods are now static — no instances needed.
 
     private readonly ToolContractAttribute? _contract;
@@ -133,8 +131,8 @@ public abstract partial class ToolBase : IBaseTool
     /// <param name="logger">Optional logger. Defaults to <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger"/>.</param>
     protected ToolBase(ILogger? logger = null)
     {
-        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
-        _jsonOptions = new JsonSerializerOptions
+        Logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+        JsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
             WriteIndented = false,
@@ -160,10 +158,10 @@ public abstract partial class ToolBase : IBaseTool
         {
             try
             {
-                if (_logger.IsEnabled(LogLevel.Debug))
+                if (Logger.IsEnabled(LogLevel.Debug))
                 {
-                    var serializedRequest = JsonSerializer.Serialize(request, _jsonOptions);
-                    LogToolCalling(Name, serializedRequest);
+                    var serializedRequest = JsonSerializer.Serialize(request, JsonOptions);
+                    LogToolCalling(Logger, Name, serializedRequest);
                 }
 
                 // Validate parameters against schema
@@ -181,13 +179,13 @@ public abstract partial class ToolBase : IBaseTool
                 // Execute the tool with the new protocol
                 var result = await ExecuteCoreAsync(ReadMapParameters(request), cancellationToken).ConfigureAwait(false);
 
-                LogToolCallCompleted(Name, result.Success);
+                LogToolCallCompleted(Logger, Name, result.Success);
 
                 return result;
             }
             catch (OperationCanceledException)
             {
-                LogToolCallCancelled(Name);
+                LogToolCallCancelled(Logger, Name);
                 return new ProtocolToolCallResponse(
                     Success: false,
                     Result: null,
@@ -198,7 +196,7 @@ public abstract partial class ToolBase : IBaseTool
             catch (Exception ex) when (ex is IExpectedToolError)
             {
                 // Its message says what to fix; the stack trace would only bury it in the log.
-                LogToolCallRefused(Name, ex.GetType().Name, ex.Message);
+                LogToolCallRefused(Logger, Name, ex.GetType().Name, ex.Message);
                 return new ProtocolToolCallResponse(
                     Success: false,
                     Result: null,
@@ -208,7 +206,7 @@ public abstract partial class ToolBase : IBaseTool
             }
             catch (Exception ex)
             {
-                LogToolCallError(ex, Name);
+                LogToolCallError(Logger, ex, Name);
                 return new ProtocolToolCallResponse(
                     Success: false,
                     Result: null,
@@ -227,7 +225,7 @@ public abstract partial class ToolBase : IBaseTool
     {
         try
         {
-            LogToolExecutingWithStringInput(Name, input);
+            LogToolExecutingWithStringInput(Logger, Name, input);
 
             var request = ToolProtocolAdapter.ConvertToRequest(Name, input);
             var response = await CallAsync(request, cancellationToken).ConfigureAwait(false);
@@ -236,7 +234,7 @@ public abstract partial class ToolBase : IBaseTool
         }
         catch (Exception ex)
         {
-            LogToolStringInputExecutionError(ex, Name);
+            LogToolStringInputExecutionError(Logger, ex, Name);
             return ToolResult.CreateError($"Tool execution failed: {ex.Message}");
         }
     }
@@ -313,11 +311,11 @@ public abstract partial class ToolBase : IBaseTool
 
         try
         {
-            return JsonSerializer.Deserialize<T>(input, _jsonOptions);
+            return JsonSerializer.Deserialize<T>(input, JsonOptions);
         }
         catch (JsonException ex)
         {
-            LogJsonInputParseFailed(ex.Message);
+            LogJsonInputParseFailed(Logger, ex.Message);
             return null;
         }
     }
@@ -327,7 +325,7 @@ public abstract partial class ToolBase : IBaseTool
     /// </summary>
     protected string CreateJsonResponse<T>(T response) where T : class
     {
-        return JsonSerializer.Serialize(response, _jsonOptions);
+        return JsonSerializer.Serialize(response, JsonOptions);
     }
 
     /// <summary>
@@ -374,28 +372,28 @@ public abstract partial class ToolBase : IBaseTool
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Calling tool {ToolName} with request: {Request}")]
-    private partial void LogToolCalling(string toolName, string request);
+    private static partial void LogToolCalling(ILogger logger, string toolName, string request);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Tool {ToolName} call completed. Success: {Success}")]
-    private partial void LogToolCallCompleted(string toolName, bool success);
+    private static partial void LogToolCallCompleted(ILogger logger, string toolName, bool success);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tool {ToolName} call was cancelled")]
-    private partial void LogToolCallCancelled(string toolName);
+    private static partial void LogToolCallCancelled(ILogger logger, string toolName);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Error calling tool {ToolName}")]
-    private partial void LogToolCallError(Exception ex, string toolName);
+    private static partial void LogToolCallError(ILogger logger, Exception ex, string toolName);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Error calling tool {ToolName}: {ExceptionType}: {Reason}")]
-    private partial void LogToolCallRefused(string toolName, string exceptionType, string reason);
+    private static partial void LogToolCallRefused(ILogger logger, string toolName, string exceptionType, string reason);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Executing tool {ToolName} with string input: {Input}")]
-    private partial void LogToolExecutingWithStringInput(string toolName, string input);
+    private static partial void LogToolExecutingWithStringInput(ILogger logger, string toolName, string input);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Error executing tool {ToolName} with string input")]
-    private partial void LogToolStringInputExecutionError(Exception ex, string toolName);
+    private static partial void LogToolStringInputExecutionError(ILogger logger, Exception ex, string toolName);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse JSON input: {Error}")]
-    private partial void LogJsonInputParseFailed(string error);
+    private static partial void LogJsonInputParseFailed(ILogger logger, string error);
 }
 /// <summary>
 /// IDisposable pattern for ToolBase.

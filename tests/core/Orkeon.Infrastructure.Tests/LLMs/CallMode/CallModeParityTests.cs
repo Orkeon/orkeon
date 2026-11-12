@@ -73,8 +73,8 @@ public sealed class CallModeParityTests
                 var handler = factory.SetupDefaultHandler();
                 Serve(handler, streamed ? OpenAiStream : OpenAiBuffered, streamed ? "text/event-stream" : "application/json");
                 var config = WithTools(LlmConfig.Create("test-model") with { MaxRetries = 0, ApiKey = "sk-test" });
-                var provider = new OpenAIProvider(config, factory,
-                    new OpenAIToolCallingStrategy(NullLogger<OpenAIToolCallParser>.Instance), NullLogger<OpenAIProvider>.Instance);
+                var provider = new OpenAILlmProvider(config, factory,
+                    new OpenAIToolCallingStrategy(NullLogger<OpenAIToolCallParser>.Instance), NullLogger<OpenAILlmProvider>.Instance);
                 return (provider, handler);
             }
             case "anthropic":

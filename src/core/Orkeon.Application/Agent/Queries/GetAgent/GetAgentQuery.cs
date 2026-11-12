@@ -6,4 +6,4 @@ namespace Orkeon.Application.Agent.Queries.GetAgent;
 /// <summary>
 /// Query to get an agent by ID.
 /// </summary>
-public record GetAgentQuery(Guid Id) : IQuery<AgentDto?>;
+public sealed record GetAgentQuery(Guid Id) : IQuery<AgentDto?>;

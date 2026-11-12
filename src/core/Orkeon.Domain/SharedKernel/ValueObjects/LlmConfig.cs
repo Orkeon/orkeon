@@ -49,18 +49,6 @@ public sealed record LlmConfig
     /// </remarks>
     public string? ApiKey { get; init; }
 
-    /// <summary>
-    /// Logical name of a secret, recorded for a host that resolves secrets itself.
-    /// </summary>
-    /// <remarks>
-    /// <b>Reserved, and not resolved by the framework in 1.0.</b> Nothing in Orkeon turns
-    /// this name into a key: a config that carries only <see cref="ApiKeySecretName"/> is
-    /// unconfigured, and every call against it answers that an API key is required. A host
-    /// that keeps its keys in a secret store resolves the name itself and assigns the
-    /// result to <see cref="ApiKey"/>. See <c>docs/reference/limitations.md</c>.
-    /// </remarks>
-    public string? ApiKeySecretName { get; init; }
-
     /// <summary>Gets the base URL for the LLM provider.</summary>
     public Uri? BaseUrl { get; init; }
     /// <summary>
@@ -203,7 +191,7 @@ public sealed record LlmConfig
 
     /// <summary>Initializes a new instance of <see cref="LlmConfig"/> with a model and optional API key.</summary>
     /// <param name="model">The model identifier.</param>
-    /// <param name="apiKey">The API key in clear; <c>ApiKeySecretName</c> (resolution through the secret store) is preferred.</param>
+    /// <param name="apiKey">The API key in clear.</param>
     private LlmConfig(string model, string? apiKey = null)
     {
         Model = model;
@@ -269,7 +257,6 @@ public sealed record LlmConfig
             Model = string.IsNullOrWhiteSpace(Model) ? provider.Model : Model,
             Profile = string.IsNullOrWhiteSpace(Profile) ? provider.Profile : Profile,
             ApiKey = string.IsNullOrEmpty(ApiKey) ? provider.ApiKey : ApiKey,
-            ApiKeySecretName = string.IsNullOrWhiteSpace(ApiKeySecretName) ? provider.ApiKeySecretName : ApiKeySecretName,
             BaseUrl = BaseUrl ?? provider.BaseUrl,
             Temperature = Temperature ?? provider.Temperature,
             MaxTokens = MaxTokens ?? provider.MaxTokens,
@@ -310,7 +297,7 @@ public sealed record LlmConfig
 
     /// <summary>Creates a new <see cref="LlmConfig"/> with the specified model and optional API key.</summary>
     /// <param name="model">The model identifier (must not be null or empty).</param>
-    /// <param name="apiKey">The API key in clear; <c>ApiKeySecretName</c> (resolution through the secret store) is preferred.</param>
+    /// <param name="apiKey">The API key in clear.</param>
     /// <returns>A new <see cref="LlmConfig"/> instance.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="model"/> is null or empty.</exception>
     public static LlmConfig Create(string model, string? apiKey = null)
@@ -420,29 +407,6 @@ public sealed record LlmConfig
         return new LlmConfig(model)
         {
             BaseUrl = new Uri(OllamaBaseUrl)
-        };
-    }
-
-    /// <summary>
-    /// Creates a config on the platform's default OpenAI model carrying a secret name.
-    /// The framework does not resolve it -- see <see cref="ApiKeySecretName"/>.
-    /// </summary>
-    /// <param name="apiKeySecretName">The secret name to record.</param>
-    /// <returns>A <see cref="LlmConfig"/> whose key the host must still supply.</returns>
-    public static LlmConfig WithDefaultModelSecret(string apiKeySecretName = "OPENAI_API_KEY")
-    {
-        return new LlmConfig(LlmDefaults.DefaultModelName) { ApiKeySecretName = apiKeySecretName };
-    }
-
-    /// <summary>Creates a Claude config carrying a secret name the framework does not resolve.</summary>
-    /// <param name="apiKeySecretName">The secret name to record.</param>
-    /// <returns>A Claude <see cref="LlmConfig"/> whose key the host must still supply.</returns>
-    public static LlmConfig ClaudeWithSecret(string apiKeySecretName = "ANTHROPIC_API_KEY")
-    {
-        return new LlmConfig("claude-3-opus-20240229")
-        {
-            BaseUrl = new Uri(AnthropicBaseUrl),
-            ApiKeySecretName = apiKeySecretName
         };
     }
 }

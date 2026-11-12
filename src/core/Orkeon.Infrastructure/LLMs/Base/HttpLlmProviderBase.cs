@@ -524,9 +524,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     /// <remarks>
     /// Mirrors exactly the guard the buffered path applies (a non-empty
     /// <c>LlmConfig.ApiKey</c> when <see cref="RequiresApiKey"/>), so the two paths cannot
-    /// disagree about whether this provider is usable. Deliberately NOT widened to
-    /// <c>LlmConfig.ApiKeySecretName</c>: nothing resolves a secret name into an LLM
-    /// config today, so counting it would restore the very lie this property exists to remove.
+    /// disagree about whether this provider is usable.
     /// It reads the boot <see cref="Config"/>, not a per-call override, because the streaming
     /// capability is asked of the provider before any call is built.
     /// </remarks>

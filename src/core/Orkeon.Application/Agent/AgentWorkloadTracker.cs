@@ -112,7 +112,7 @@ public partial class AgentWorkloadTracker : IAgentWorkloadTracker
             {
                 var workload = GetWorkloadInfo(agentId);
                 // Score formula: active tasks * 10 + (1 - success rate) * 5 + avg execution time in seconds
-                var score = workload.ActiveTaskCount * 10 +
+                var score = workload.ActiveTaskCount * 10.0 +
                            (1 - workload.SuccessRate) * 5 +
                            workload.AverageExecutionTime.TotalSeconds;
 
@@ -311,7 +311,7 @@ public interface IAgentWorkloadTracker
 /// <summary>
 /// Agent workload information.
 /// </summary>
-public record AgentWorkloadInfo(
+public sealed record AgentWorkloadInfo(
     string AgentId,
     int ActiveTaskCount,
     int CompletedTaskCount,

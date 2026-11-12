@@ -16,7 +16,7 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// best-effort: when supplied we render it as a JSON-ish tail on the log message. Going
 /// through Jint, the JS side may pass any <see cref="JsValue"/>; we coerce to string.
 /// </remarks>
-public sealed partial class JsLogShim
+internal sealed partial class JsLogShim
 {
     private readonly ILogger _logger;
 

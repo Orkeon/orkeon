@@ -248,7 +248,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <summary>The sandbox chosen from <see cref="Confinement"/>, built at the first call.</summary>
     private IShellSandbox DefaultSandbox()
     {
-        _defaultSandbox ??= new ShellSandboxSelector(UnconfinedShellSandbox.Shared, new BubblewrapShellSandbox(Bubblewrap), new SeatbeltShellSandbox(Seatbelt), ContainerDetector, Platform, _logger)
+        _defaultSandbox ??= new ShellSandboxSelector(UnconfinedShellSandbox.Shared, new BubblewrapShellSandbox(Bubblewrap), new SeatbeltShellSandbox(Seatbelt), ContainerDetector, Platform, Logger)
             .Select(Confinement.Mode);
         return _defaultSandbox;
     }
@@ -440,7 +440,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         _blockedPatterns = [.. blockedPatterns ?? s_defaultBlockedPatterns];
 
         if (_interpretersAllowed)
-            LogInterpretersEnabled();
+            LogInterpretersEnabled(Logger);
     }
 
     /// <summary>
@@ -818,7 +818,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     {
         if (result.TimedOut)
         {
-            LogCommandTimedOut(request.Command, request.TimeoutSeconds);
+            LogCommandTimedOut(Logger, request.Command, request.TimeoutSeconds);
             var timedOutStdout = RewriteOutboundPaths(result.Stdout, outboundReplacements);
             var timedOutStderr = RewriteOutboundPaths(result.Stderr, outboundReplacements) + "\n[Command timed out]";
             return new ShellCommandResponse
@@ -831,7 +831,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             };
         }
 
-        LogCommandCompleted(request.Command, result.ExitCode);
+        LogCommandCompleted(Logger, request.Command, result.ExitCode);
         var completedStdout = RewriteOutboundPaths(result.Stdout, outboundReplacements);
         var completedStderr = RewriteOutboundPaths(result.Stderr, outboundReplacements);
         return new ShellCommandResponse
@@ -867,7 +867,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (availability.IsAvailable)
             return null;
 
-        LogConfinementUnavailable(availability.Reason ?? "");
+        LogConfinementUnavailable(Logger, availability.Reason ?? "");
         return ConfinementUnavailable(availability.Reason).Stderr;
     }
 
@@ -941,7 +941,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         string physicalRoot, ConfinedAccess rootAccess, CancellationToken cancellationToken)
     {
         var binds = await GitWorktreeBinds.FindAsync(_fileSystem, agentRoot, new GitWorktreeMount(virtualRoot, physicalRoot), rootAccess,
-            virtualPath => Granted(RightsAt(virtualPath)), _logger, cancellationToken).ConfigureAwait(false);
+            virtualPath => Granted(RightsAt(virtualPath)), Logger, cancellationToken).ConfigureAwait(false);
         if (binds.Count == 0)
             return;
 
@@ -1667,14 +1667,14 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         Orkeon.Domain.Tools.ToolResultLimitsOptions.Cut(value, _outputLimit);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Shell command completed: {Command} (exit code: {ExitCode})")]
-    private partial void LogCommandCompleted(string command, int exitCode);
+    private static partial void LogCommandCompleted(ILogger logger, string command, int exitCode);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Shell command timed out: {Command} (timeout: {TimeoutSeconds}s)")]
-    private partial void LogCommandTimedOut(string command, int timeoutSeconds);
+    private static partial void LogCommandTimedOut(ILogger logger, string command, int timeoutSeconds);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Shell command refused: the configured confinement is unavailable ({Reason})")]
-    private partial void LogConfinementUnavailable(string reason);
+    private static partial void LogConfinementUnavailable(ILogger logger, string reason);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "SECURITY: ShellCommandTool interpreter opt-in enabled (node/dotnet/npm/find). This is RCE-equivalent: commands run on the host with NO OS confinement. Do not expose this tool to untrusted (LLM-produced) input in this mode.")]
-    private partial void LogInterpretersEnabled();
+    private static partial void LogInterpretersEnabled(ILogger logger);
 }

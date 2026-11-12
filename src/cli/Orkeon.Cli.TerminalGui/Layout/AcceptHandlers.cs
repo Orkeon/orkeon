@@ -3,7 +3,7 @@ using Terminal.Gui.ViewBase;
 namespace Orkeon.Cli.TerminalGui.Layout;
 
 /// <summary>Accept handlers that keep an Accept to the view it was raised on.</summary>
-public static class AcceptHandlers
+internal static class AcceptHandlers
 {
     /// <summary>
     /// Runs <paramref name="action"/> when <paramref name="view"/> is accepted, and marks the Accept

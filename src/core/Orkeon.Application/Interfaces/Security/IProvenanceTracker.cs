@@ -3,7 +3,7 @@ namespace Orkeon.Application.Interfaces.Security;
 /// <summary>
 /// Record tracking the provenance of a document.
 /// </summary>
-public record ProvenanceRecord(
+public sealed record ProvenanceRecord(
     string DocumentId,
     string ContentHash,
     string Source,

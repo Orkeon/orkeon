@@ -4,7 +4,7 @@
 
 [![Build](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml/badge.svg)](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Orkeon/orkeon)](https://github.com/Orkeon/orkeon/releases)
-[![NuGet](https://img.shields.io/nuget/vpre/Orkeon?label=nuget.org)](https://www.nuget.org/packages/Orkeon)
+[![NuGet](https://img.shields.io/nuget/v/Orkeon?label=nuget.org)](https://www.nuget.org/packages/Orkeon)
 [![Documentation](https://img.shields.io/badge/documentation-orkeon.github.io-blue.svg)](https://orkeon.github.io/orkeon/)
 [![Licence : MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE.md)
 
@@ -39,9 +39,9 @@ flowchart LR
 
 **La frontière est devant le modèle, pas derrière.** Un agent voit des dossiers virtuels (`/workspace`, `/output`), chacun un montage que vous avez déclaré avec les droits que vous avez donnés ; un chemin en dehors est refusé avant qu'un seul octet n'atteigne le disque. L'envoi de mails et le partage d'un drive restent fermés tant qu'un opérateur ne les ouvre pas. Le code s'exécute dans un bac à sable.
 
-**L'autonomie a un budget.** Appels d'outils, profondeur, temps, tokens, agents engendrés : l'exécution s'arrête quand le budget est épuisé, et des disjoncteurs attrapent les boucles. Une longue exécution pose des points de reprise et repart là où elle s'était arrêtée.
+**L'autonomie a un budget.** Appels d'outils, profondeur, temps réel, tokens, agents engendrés : l'exécution s'arrête quand le budget est épuisé, et des disjoncteurs interceptent les boucles. Une longue exécution pose des points de reprise et repart là où elle s'était arrêtée.
 
-**Ça se livre comme du logiciel.** Le même runtime tourne en service `orkeon-host`, en conteneur (`ghcr.io/orkeon/orkeon-runners`), en paquet apt ou en binaire autonome, ou embarqué dans votre propre service .NET — OpenTelemetry sur le tableau de bord .NET Aspire, interopérabilité Microsoft Agent Framework, client et serveur MCP, A2A entre agents. Et pour votre propre C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) : un analyseur Roslyn après lequel un `System.IO` brut ne compile pas.
+**Ça se livre comme du logiciel.** Le même runtime tourne en service `orkeon-host`, en conteneur (`ghcr.io/orkeon/orkeon`), en paquet apt ou en binaire autonome, ou embarqué dans votre propre service .NET — OpenTelemetry sur le tableau de bord .NET Aspire, interopérabilité Microsoft Agent Framework, client et serveur MCP, A2A entre agents. Et pour votre propre C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) : un analyseur Roslyn après lequel un `System.IO` brut ne compile pas.
 
 ## Essayez-le en deux minutes — sans clé d'API
 
@@ -50,7 +50,7 @@ Un modèle local, un agent, un dossier en écriture. Avec [Ollama](https://ollam
 <!-- quickstart:begin -->
 ```bash
 ollama pull qwen2.5:1.5b
-dotnet tool install -g Orkeon.Scripting.Cli --prerelease
+dotnet tool install -g Orkeon.Scripting.Cli
 orkeon quickstart && cd orkeon-quickstart
 orkeon run crew.yaml --mount ./out:/output:rw
 ```
@@ -77,7 +77,7 @@ Refusé avant qu'un octet n'atteigne le disque. La CI exécute les deux blocs à
 | **Orkeon Workshop** | Claude Code, harnaché. Une image de conteneur — Claude Code, le CLI Orkeon, des modèles locaux sur votre GPU — et une méthode : besoin → tests → équipe → exécutions → acceptée, chaque tentative et chaque décision gardées sur disque, une exécution payante qui attend votre accord. Les équipes en sortent prêtes pour le CLI `orkeon` ; le même harnais travaille sur Orkeon lui-même — [Orkeon/orkeon-workshop](https://github.com/Orkeon/orkeon-workshop). |
 | **Orkeon Code** | Un assistant de codage sur le runtime Orkeon. Travaillez en binôme dans le terminal sous le mode de permission de votre choix, ou laissez-le mener une tâche jusqu'au bout ; `/review`, `/commit`, `/security-review`, `/analyze` ; un seul projet monté, un shell en liste blanche. Alpha — [Orkeon/orkeon-code](https://github.com/Orkeon/orkeon-code). |
 | **Le CLI `orkeon`** | `orkeon run` exécute une équipe écrite en YAML ou en TypeScript (`.ork.ts`) ; `orkeon forge "…"` en rédige une à partir d'une phrase, la teste en bac à sable et la promeut ; `orkeon quickstart` écrit l'équipe « deux minutes » ci-dessus ; `init`, `doctor`, `email login` et `drive login` font la plomberie — [référence du CLI](docs/fr/reference/cli.md). |
-| **La bibliothèque** | `dotnet add package Orkeon --prerelease` — le même moteur dans votre produit : builders C#, Clean Architecture, typé de bout en bout — [Amorçage et exécution](docs/fr/getting-started/bootstrap.md). |
+| **La bibliothèque** | `dotnet add package Orkeon` — le même moteur dans votre produit : builders C#, Clean Architecture, typé de bout en bout — [Amorçage et exécution](docs/fr/getting-started/bootstrap.md). |
 
 L'équipe que vous forgez à partir d'une phrase est le YAML que le CLI exécute, et l'équipe que votre propre code .NET charge. Un seul runtime, les mêmes règles, quelle que soit la porte.
 
@@ -92,8 +92,8 @@ L'équipe que vous forgez à partir d'une phrase est le YAML que le CLI exécute
 | **Windows** — CLI | `orkeon-cli-<version>-win-x64.zip` ou le `.msi` depuis les [releases](https://github.com/Orkeon/orkeon/releases), puis `install.cmd`. Autonome. |
 | **Debian / Ubuntu** — CLI | `sudo apt install orkeon` après avoir ajouté la [source apt signée](docs/fr/guides/install-with-apt.md). |
 | **macOS** — CLI | L'archive `osx-arm64` / `osx-x64` depuis les releases, puis `./install.sh`. |
-| **Conteneur** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — les exemples embarqués. |
-| **Dans votre application .NET** | `dotnet add package Orkeon --prerelease` (+ `Orkeon.Tools` pour les outils intégrés). |
+| **Conteneur** | `docker run -it --rm -e ORKEON_ENTRYPOINT=shell ghcr.io/orkeon/orkeon` — les exemples embarqués. |
+| **Dans votre application .NET** | `dotnet add package Orkeon` (+ `Orkeon.Tools` pour les outils intégrés). |
 | **Depuis les sources** | `git clone`, puis `dotnet build Orkeon.sln` — [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources). Pour mettre ce que vous avez compilé sur votre `PATH` : `scripts/install-from-source.ps1` sous Windows, `scripts/install-from-source.sh` sous Linux et macOS — [Installer depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-depuis-les-sources), [avec le REPL](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-le-repl-depuis-les-sources). |
 
 Puis `orkeon init` pour choisir un fournisseur et un modèle ; `orkeon doctor` quand quelque chose cloche. Sommes de contrôle, attestations signées, mises à jour : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md) · [Vérifier ce que vous installez](docs/fr/guides/verify-what-you-install.md).
@@ -106,7 +106,7 @@ Puis `orkeon init` pour choisir un fournisseur et un modèle ; `orkeon doctor` q
 
 Montrez-nous ce que fait votre équipe : les [Discussions](https://github.com/Orkeon/orkeon/discussions) accueillent les questions et les démonstrations. Les bugs et les idées passent par les [formulaires d'issue](https://github.com/Orkeon/orkeon/issues/new/choose), les vulnérabilités par le [signalement privé](SECURITY.fr.md). Les contributions sont bienvenues — [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md) dit comment, le [code de conduite](CODE_OF_CONDUCT.fr.md) dans quel esprit.
 
-La couverture est [mesurée en public](https://github.com/Orkeon/orkeon/actions/workflows/coverage.yml), les limites connues sont dans [limitations](docs/fr/reference/limitations.md), et ce qui se passe si le projet s'arrête est écrit dans [SUPPORT.fr.md](SUPPORT.fr.md#si-le-projet-sarrête) : MIT, un build reproductible, aucune infrastructure privée, forkable par quiconque.
+La couverture est [mesurée en public](https://github.com/Orkeon/orkeon/actions/workflows/coverage.yml), les limites connues sont dans [limitations](docs/fr/reference/limitations.md), la promesse de versionnement dans la [politique de stabilité](docs/fr/reference/stability.md), et ce qui se passe si le projet s'arrête est écrit dans [SUPPORT.fr.md](SUPPORT.fr.md#si-le-projet-sarrête) : MIT, un build reproductible, aucune infrastructure privée, forkable par quiconque.
 
 ## Licence
 

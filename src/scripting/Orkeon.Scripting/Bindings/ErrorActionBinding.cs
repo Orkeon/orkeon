@@ -9,7 +9,7 @@ namespace Orkeon.Scripting.Bindings;
 /// build <see cref="JsErrorAction"/> instances. Script <c>onError</c> handlers return
 /// these to the runtime.
 /// </summary>
-public static class ErrorActionBinding
+internal static class ErrorActionBinding
 {
     /// <summary>Name of the global namespace exposed to scripts.</summary>
     public const string GlobalName = "ErrorAction";
@@ -32,7 +32,7 @@ public static class ErrorActionBinding
 // members of the object handed to engine.SetValue(...). Making them static would
 // remove ErrorAction.fail()/skip()/fallback()/retry() from the script surface.
 #pragma warning disable CA1822
-public sealed class JsErrorActionFactory
+internal sealed class JsErrorActionFactory
 {
     public JsErrorAction fail() => new(JsErrorActionKind.Fail);
     public JsErrorAction skip() => new(JsErrorActionKind.Skip);

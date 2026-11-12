@@ -17,7 +17,7 @@ public static class DockerModelRunnerDefaults
     public const string BaseUrl = LlmProviderEndpoints.DockerModelRunner;
 
     /// <summary>Default model (parity with <c>examples/appsettings/appsettings.json</c>).</summary>
-    public const string DefaultModel = LlmProviderDefaultModels.DockerModelRunner;
+    public static readonly string DefaultModel = LlmProviderDefaultModels.DockerModelRunner;
 
     /// <summary>
     /// The endpoint authenticates nothing, but the OpenAI dialect wants a key: this

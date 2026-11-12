@@ -7,7 +7,7 @@ namespace Orkeon.Infrastructure.LLMs.ToolCalling;
 /// Converts Orkeon <see cref="ToolSchema"/> definitions into the OpenAI
 /// function-calling JSON format (tools array + tool_choice).
 /// </summary>
-public sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
+internal sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
 {
     /// <inheritdoc />
     public Dictionary<string, object> FormatToolsForPayload(

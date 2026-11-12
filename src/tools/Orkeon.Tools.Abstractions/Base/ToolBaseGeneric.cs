@@ -110,7 +110,7 @@ public abstract partial class ToolBase<TRequest, TResponse> : ToolBase
             }
             catch (JsonException ex)
             {
-                LogParameterDeserializationFailed(ex, Name);
+                LogParameterDeserializationFailed(Logger, ex, Name);
                 return new ProtocolToolCallResponse(
                     Success: false,
                     Result: null,
@@ -196,7 +196,7 @@ public abstract partial class ToolBase<TRequest, TResponse> : ToolBase
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Parameter deserialization failed for tool {ToolName}")]
-    private partial void LogParameterDeserializationFailed(Exception ex, string toolName);
+    private static partial void LogParameterDeserializationFailed(ILogger logger, Exception ex, string toolName);
 
     /// <summary>
     /// Private composition helper that exposes ComponentBase pipeline methods.

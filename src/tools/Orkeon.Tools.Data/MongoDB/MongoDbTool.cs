@@ -113,7 +113,7 @@ public partial class MongoDbTool : ToolBase<MongoDbRequest, MongoDbResponse>
 
                 sw.Stop();
 
-                LogOperationCompleted(request.Operation, request.Collection, sw.ElapsedMilliseconds);
+                LogOperationCompleted(Logger, request.Operation, request.Collection, sw.ElapsedMilliseconds);
 
                 return response with
                 {
@@ -315,5 +315,5 @@ public partial class MongoDbTool : ToolBase<MongoDbRequest, MongoDbResponse>
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "MongoDB {Operation} on {Collection} completed in {ElapsedMs}ms")]
-    private partial void LogOperationCompleted(MongoDbOperation operation, string collection, long elapsedMs);
+    private static partial void LogOperationCompleted(ILogger logger, MongoDbOperation operation, string collection, long elapsedMs);
 }

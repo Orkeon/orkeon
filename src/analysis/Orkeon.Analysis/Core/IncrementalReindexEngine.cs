@@ -41,7 +41,7 @@ public sealed class IncrementalReindexEngine
     {
     }
 
-    public IncrementalReindexEngine(
+    internal IncrementalReindexEngine(
         IEnumerable<ILanguageAdapter> adapters,
         IFileSystemDiscoverer discoverer,
         IFileSystemService fileSystem,

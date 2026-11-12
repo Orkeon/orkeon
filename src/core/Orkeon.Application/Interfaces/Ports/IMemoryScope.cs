@@ -22,12 +22,14 @@ public interface IMemoryScope : IDisposable
     /// </summary>
     /// <typeparam name="T">The return type of the operation</typeparam>
     /// <param name="operation">The async operation to execute</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The result of the operation</returns>
-    System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation);
+    System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> operation, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Executes an async operation within the agent's memory scope.
     /// </summary>
     /// <param name="operation">The async operation to execute</param>
-    System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation);
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> operation, CancellationToken cancellationToken = default);
 }

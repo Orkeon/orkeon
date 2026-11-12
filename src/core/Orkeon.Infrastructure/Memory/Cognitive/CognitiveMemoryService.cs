@@ -185,7 +185,7 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
             }
         }
 
-        await memory.AddAsync(item).ConfigureAwait(false);
+        await memory.AddAsync(item, cancellationToken).ConfigureAwait(false);
 
         LogRememberComplete(item.Id);
         return item;
@@ -320,7 +320,7 @@ public sealed partial class CognitiveMemoryService : ICognitiveMemoryService
                     source: "cognitive-merge",
                     tags: analysis?.SuggestedTags.ToArray());
 
-                await memory.AddAsync(merged).ConfigureAwait(false);
+                await memory.AddAsync(merged, cancellationToken).ConfigureAwait(false);
                 return merged;
 
             case ConflictResolution.KeepBoth:

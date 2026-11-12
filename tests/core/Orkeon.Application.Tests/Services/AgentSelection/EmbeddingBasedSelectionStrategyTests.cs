@@ -1,4 +1,5 @@
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Memory;
 using Orkeon.Application.Services.AgentSelection;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
@@ -23,7 +24,7 @@ public class EmbeddingBasedSelectionStrategyTests
             _defaultVector = defaultVector ?? [0f, 0f, 0f];
         }
 
-        public System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text)
+        public System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
         {
             foreach (var kv in _vectors)
             {

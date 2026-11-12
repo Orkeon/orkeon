@@ -7,7 +7,7 @@ namespace Orkeon.Infrastructure.Serialization
     /// <summary>
     /// HtmlAgilityPack implementation of IHtmlParser
     /// </summary>
-    public class HtmlAgilityPackParser : IHtmlParser
+    internal class HtmlAgilityPackParser : IHtmlParser
     {
         /// <inheritdoc />
         public string ExtractText(string html)

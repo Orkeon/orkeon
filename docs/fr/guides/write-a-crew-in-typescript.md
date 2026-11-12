@@ -3,7 +3,7 @@
 # Écrire une crew en TypeScript
 
 Les crews Orkeon sont d'ordinaire montrées en YAML. Elles peuvent aussi s'**écrire en
-TypeScript**, dans un fichier nommé `quelquechose.ork.ts`, et cette surface est plus large que
+TypeScript**, dans un fichier nommé `something.ork.ts`, et cette surface est plus large que
 celle du YAML : les agents peuvent porter du vrai code, les outils s'écrivent sur place, et un
 corps peut piloter sa propre boucle LLM ⇄ outils.
 

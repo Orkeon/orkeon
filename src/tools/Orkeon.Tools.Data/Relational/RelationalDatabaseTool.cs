@@ -122,7 +122,7 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
             rows.Add(row);
         }
 
-        LogSelectQueryCompleted(rows.Count, columns.Count);
+        LogSelectQueryCompleted(Logger, rows.Count, columns.Count);
 
         return new RelationalDatabaseResponse
         {
@@ -148,7 +148,7 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
         AddParameters(command, request.Parameters);
 
         var affected = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        LogNonQueryCompleted(affected);
+        LogNonQueryCompleted(Logger, affected);
 
         return new RelationalDatabaseResponse
         {
@@ -171,7 +171,7 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
         AddParameters(command, request.Parameters);
 
         var scalar = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-        LogScalarQueryCompleted(scalar ?? "NULL");
+        LogScalarQueryCompleted(Logger, scalar ?? "NULL");
 
         return new RelationalDatabaseResponse
         {
@@ -180,7 +180,7 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
         };
     }
 
-    private static void AddParameters(System.Data.Common.DbCommand command, Dictionary<string, object>? parameters)
+    private static void AddParameters(System.Data.Common.DbCommand command, IReadOnlyDictionary<string, object>? parameters)
     {
         if (parameters is null) return;
 
@@ -194,11 +194,11 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "SELECT returned {RowCount} rows with {ColCount} columns")]
-    private partial void LogSelectQueryCompleted(int rowCount, int colCount);
+    private static partial void LogSelectQueryCompleted(ILogger logger, int rowCount, int colCount);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Non-query affected {RowCount} rows")]
-    private partial void LogNonQueryCompleted(int rowCount);
+    private static partial void LogNonQueryCompleted(ILogger logger, int rowCount);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Scalar query returned: {Result}")]
-    private partial void LogScalarQueryCompleted(object result);
+    private static partial void LogScalarQueryCompleted(ILogger logger, object result);
 }

@@ -1,5 +1,3 @@
-using System.Runtime.Serialization;
-
 namespace Orkeon.Scripting.Exceptions;
 
 /// <summary>
@@ -7,7 +5,6 @@ namespace Orkeon.Scripting.Exceptions;
 /// catalogue does not offer (GAP-27) — the procedural twin of the load failure a declarative crew
 /// gets for the same name. It reaches the script as an <c>UnknownToolError</c>.
 /// </summary>
-[Serializable]
 public sealed class UnknownToolException : Exception
 {
     /// <summary>The agent whose <c>.tools([...])</c> names them.</summary>
@@ -49,17 +46,6 @@ public sealed class UnknownToolException : Exception
         ToolNames = [];
         AvailableTools = [];
     }
-
-    /// <summary>Deserialization constructor.</summary>
-#pragma warning disable SYSLIB0051 // Required by S3925 ISerializable pattern
-    private UnknownToolException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        AgentName = string.Empty;
-        ToolNames = [];
-        AvailableTools = [];
-    }
-#pragma warning restore SYSLIB0051
 
     private static string Describe(string agentName, IReadOnlyList<string> toolNames, IReadOnlyList<string> availableTools)
     {

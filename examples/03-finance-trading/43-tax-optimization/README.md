@@ -1,18 +1,18 @@
 # 43. Optimisation Fiscale Multi-Juridictions
 
-> Agents spécialisés par juridiction analysent en parallèle les implications fiscales. Le IConfigurationDiffService permet de comparer visuellement les scénarios entre juridictions. (Features planifiées: IConfigurationVersioning, IConfigurationDiffService)
+> Jurisdiction-specialist agents (US, EU, APAC) analyze the tax implications in parallel. A consolidator compares the scenarios across jurisdictions and a senior advisor gives the final approval with human validation.
 
 ## Quality
 
-:muscle: Robustesse -- Configuration versionnee, diff entre scenarios, parallelisme par juridiction
+:muscle: Robustness -- Scenario comparison, per-jurisdiction parallelism, human validation
 
 ## Architecture
 
 - **Process**: `parallel`
 - **Agents**: 5 -- US Tax Specialist, EU Tax Specialist, APAC Tax Specialist, Strategy Consolidator, Senior Tax Advisor (human)
 - **Tools**: `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: `SQLite` (versioned configurations)
-- **Key features**: IConfigurationVersioning (planned), IConfigurationDiffService (planned), HumanInputContext, batch execution
+- **Memory**: crew memory enabled (`.memory(true)`)
+- **Key features**: HumanInputContext, batch execution
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites
@@ -38,5 +38,5 @@ orkeon run examples/03-finance-trading/43-tax-optimization/main.ork.ts \
 ## What this example demonstrates
 
 - Parallel jurisdiction-specific tax analysis (US, EU, APAC)
-- Scenario comparison with configuration diff for visual strategy review
+- Scenario comparison across jurisdictions by the strategy consolidator
 - Human-in-the-loop senior validation for compliance and reputational risk

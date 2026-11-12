@@ -12,12 +12,11 @@ itself ships as a single package, `Orkeon`; the built-in tool suites wired below
 `AddOrkeonCodeTools`, `AddOrkeonEmailTools`; the package carries other suites too, such as `AddOrkeonDriveTools`) live in a second one, `Orkeon.Tools`:
 
 ```bash
-dotnet add package Orkeon --prerelease
-dotnet add package Orkeon.Tools --prerelease
+dotnet add package Orkeon
+dotnet add package Orkeon.Tools
 ```
 
-`--prerelease` is required while Orkeon publishes only pre-release versions; drop it once
-a final version is out. Both commands write the matching `<PackageReference>` entries into your
+Both commands write the matching `<PackageReference>` entries into your
 `.csproj`, so an equivalent hand-edit works just as well.
 
 `Orkeon` carries the core closure in one package — Domain, Application, Infrastructure,
@@ -33,7 +32,7 @@ package and in the `orkeon` CLI — which is why the host below is wired by hand
 
 ### Starting from a template
 
-`dotnet new install Orkeon.Templates --prerelease` adds three templates, each a project that compiles
+`dotnet new install Orkeon.Templates` adds three templates, each a project that compiles
 against the packages of the same version, written out in its `.csproj`:
 
 | Command | Generates |
@@ -381,7 +380,7 @@ await foreach (var e in orchestrator.KickoffStreamingAsync(crew.Id, input))
 **Non-blocking asynchronous mode (fire-and-forget)**:
 ```csharp
 // Start the execution without awaiting completion
-var executionId = await orchestrator.KickoffAsyncNoWait(crew.Id, input);
+var executionId = await orchestrator.KickoffNoWaitAsync(crew.Id, input);
 
 Console.WriteLine($"Execution started with ID: {executionId}");
 

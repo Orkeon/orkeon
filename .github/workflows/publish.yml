@@ -54,7 +54,8 @@ jobs:
     # carries: contents to read the tree, packages to push to GitHub Packages,
     # id-token for the NuGet Trusted Publishing OIDC exchange — which the
     # provenance signing below reuses rather than asking for a second time.
-    permissions: { contents: read, packages: write, id-token: write, attestations: write }
+    # actions: read lets the NuGet.org gate read the release.yml run of the tag.
+    permissions: { contents: read, packages: write, id-token: write, attestations: write, actions: read }
     runs-on: ubuntu-latest
     env:
       NUGET_USER: ${{ vars.NUGET_USER }}
@@ -205,6 +206,50 @@ jobs:
       - name: Warn when NuGet.org publishing is not configured
         if: github.event_name == 'push' && env.NUGET_USER == ''
         run: echo "::warning::NuGet.org publish SKIPPED — the NUGET_USER repository variable is not set. Owner action -- on nuget.org create a Trusted Publishing policy (repo Orkeon/orkeon, workflow publish.yml), then set NUGET_USER to the policy's package owner (Settings > Secrets and variables > Actions > Variables)."
+      # NuGet.org cannot delete a version and a tag never moves: the lineup goes out only
+      # once release.yml has built, smoked and published the installers of this very tag.
+      # Both workflows start on the same push; on v1.0.0-rc.7 NuGet.org was public six
+      # minutes before release.yml reached its `release` job. This step waits for the
+      # release.yml run of the tag (same commit, push event, head branch = the tag) and
+      # proceeds only when the whole run concluded `success` — installers, smokes, msi,
+      # release, the GHCR image, apt and the post-publication checks. No deadlock:
+      # nothing in release.yml (nor in release-verify.yml it calls) reads NuGet.org or
+      # waits on this workflow. rc.7's run took 28 minutes; the bound is 100. Before the
+      # login on purpose: the Trusted Publishing key lives an hour.
+      - name: Wait for release.yml of this tag to succeed
+        if: github.event_name == 'push' && env.NUGET_USER != ''
+        timeout-minutes: 110
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          deadline=$(( $(date +%s) + 100 * 60 ))
+          while :; do
+            run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml \
+                    --commit "$GITHUB_SHA" --event push --limit 20 \
+                    --json databaseId,headBranch,status,conclusion \
+                    --jq "[.[] | select(.headBranch == \"$GITHUB_REF_NAME\")][0] // empty")
+            if [ -n "$run" ]; then
+              id=$(jq -r .databaseId <<<"$run")
+              status=$(jq -r .status <<<"$run")
+              conclusion=$(jq -r .conclusion <<<"$run")
+              echo "release.yml run $id: $status${conclusion:+ / $conclusion}"
+              if [ "$status" = completed ]; then
+                if [ "$conclusion" = success ]; then
+                  echo "release.yml is green for $GITHUB_REF_NAME: pushing to NuGet.org."
+                  break
+                fi
+                echo "::error::release.yml run $id for $GITHUB_REF_NAME concluded '$conclusion': NuGet.org is NOT pushed (a version there cannot be deleted). Fix and re-run release.yml, then re-run this job once it is green."
+                exit 1
+              fi
+            else
+              echo "No release.yml run for $GITHUB_REF_NAME at $GITHUB_SHA yet."
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::release.yml for $GITHUB_REF_NAME did not complete within 100 minutes: NuGet.org is NOT pushed. Re-run this job once release.yml is green."
+              exit 1
+            fi
+            sleep 60
+          done
       - name: NuGet.org login (Trusted Publishing — OIDC, short-lived key)
         if: github.event_name == 'push' && env.NUGET_USER != ''
         id: nuget-login

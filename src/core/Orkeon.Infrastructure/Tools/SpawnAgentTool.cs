@@ -173,7 +173,7 @@ public partial class SpawnAgentTool : ToolBase<SpawnAgentRequest, SpawnAgentResp
             var spawnedAgent = await _agentFactory.CreateAgentAsync(spawnRequest, cancellationToken)
                 .ConfigureAwait(false);
 
-            LogAgentSpawned(_parentAgentId, spawnedAgent.Id, request.Role);
+            LogAgentSpawned(Logger, _parentAgentId, spawnedAgent.Id, request.Role);
 
             if (!request.WaitForResult || _executionService is null)
             {
@@ -214,7 +214,7 @@ public partial class SpawnAgentTool : ToolBase<SpawnAgentRequest, SpawnAgentResp
                     spawnedAgent, task, context, cancellationToken).ConfigureAwait(false);
 
                 sw.Stop();
-                LogSpawnedAgentCompleted(spawnedAgent.Id, result.Success, sw.Elapsed);
+                LogSpawnedAgentCompleted(Logger, spawnedAgent.Id, result.Success, sw.Elapsed);
 
                 // Account for any tokens consumed by the spawned execution on BOTH
                 // budgets: the child's own copy (so its snapshot reflects reality)
@@ -291,9 +291,9 @@ public partial class SpawnAgentTool : ToolBase<SpawnAgentRequest, SpawnAgentResp
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Agent {ParentId} spawned sub-agent {ChildId} (role: {Role})")]
-    private partial void LogAgentSpawned(AgentId parentId, AgentId childId, string role);
+    private static partial void LogAgentSpawned(ILogger logger, AgentId parentId, AgentId childId, string role);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Spawned agent {AgentId} completed (success: {Success}) in {Duration}")]
-    private partial void LogSpawnedAgentCompleted(AgentId agentId, bool success, TimeSpan duration);
+    private static partial void LogSpawnedAgentCompleted(ILogger logger, AgentId agentId, bool success, TimeSpan duration);
 }

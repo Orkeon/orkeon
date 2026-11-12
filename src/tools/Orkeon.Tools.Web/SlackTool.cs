@@ -14,20 +14,20 @@ namespace Orkeon.Tools.Web;
 /// </summary>
 public sealed class SlackSendMessageRequest
 {
-    /// <summary>Gets or sets the Slack channel name (e.g., "#general") or user ID.</summary>
+    /// <summary>Gets the Slack channel name (e.g., "#general") or user ID.</summary>
     [JsonPropertyName("channel")]
     [FieldSchema(Description = "Slack channel (e.g., '#general', '#dev-team') or user ID (e.g., 'U1234567890')", IsRequired = true, Example = "#general")]
-    public string Channel { get; set; } = string.Empty;
+    public string Channel { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the message text to send.</summary>
+    /// <summary>Gets the message text to send.</summary>
     [JsonPropertyName("message")]
     [FieldSchema(Description = "The message text to send", IsRequired = true, Example = "Hello, team!")]
-    public string Message { get; set; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets optional thread timestamp for threaded replies.</summary>
+    /// <summary>Gets optional thread timestamp for threaded replies.</summary>
     [JsonPropertyName("thread_ts")]
     [FieldSchema(Description = "Optional thread timestamp for threaded replies", IsRequired = false, Example = "1234567890.123456")]
-    public string? ThreadTs { get; set; }
+    public string? ThreadTs { get; init; }
 
     /// <summary>Initializes a new instance of <see cref="SlackSendMessageRequest"/>.</summary>
     public SlackSendMessageRequest() { }
@@ -38,25 +38,25 @@ public sealed class SlackSendMessageRequest
 /// </summary>
 public sealed class SlackSendMessageResponse
 {
-    /// <summary>Gets or sets whether the message was sent successfully.</summary>
+    /// <summary>Gets whether the message was sent successfully.</summary>
     [JsonPropertyName("success")]
     [ReturnSchema(Description = "Whether the message was sent successfully", Example = true)]
-    public bool Success { get; set; }
+    public bool Success { get; init; }
 
-    /// <summary>Gets or sets the timestamp of the sent message.</summary>
+    /// <summary>Gets the timestamp of the sent message.</summary>
     [JsonPropertyName("timestamp")]
     [ReturnSchema(Description = "Timestamp of the sent message", Example = "1234567890.123456")]
-    public string Timestamp { get; set; } = string.Empty;
+    public string Timestamp { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the channel where the message was sent.</summary>
+    /// <summary>Gets the channel where the message was sent.</summary>
     [JsonPropertyName("channel")]
     [ReturnSchema(Description = "The channel where the message was sent", Example = "#general")]
-    public string Channel { get; set; } = string.Empty;
+    public string Channel { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets optional error message if send failed.</summary>
+    /// <summary>Gets optional error message if send failed.</summary>
     [JsonPropertyName("error")]
     [ReturnSchema(Description = "Error message if the send operation failed", Example = "")]
-    public string? Error { get; set; }
+    public string? Error { get; init; }
 }
 
 // ── Tool implementation ──────────────────────────────────────────────────
@@ -137,12 +137,12 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
                 Encoding.UTF8,
                 "application/json");
 
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
-                LogSlackApiError(request.Channel, (int)response.StatusCode, responseBody);
+                LogSlackApiError(Logger, request.Channel, (int)response.StatusCode, responseBody);
                 return new SlackSendMessageResponse
                 {
                     Success = false,
@@ -155,7 +155,7 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
             if (slackResponse == null || !slackResponse.Ok)
             {
                 var errorMsg = slackResponse?.Error ?? "Unknown error";
-                LogSlackApiError(request.Channel, (int)response.StatusCode, errorMsg);
+                LogSlackApiError(Logger, request.Channel, (int)response.StatusCode, errorMsg);
                 return new SlackSendMessageResponse
                 {
                     Success = false,
@@ -163,7 +163,7 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
                 };
             }
 
-            LogMessageSent(request.Channel, slackResponse.Ts ?? "");
+            LogMessageSent(Logger, request.Channel, slackResponse.Ts ?? "");
 
             return new SlackSendMessageResponse
             {
@@ -174,7 +174,7 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
         }
         catch (HttpRequestException ex)
         {
-            LogHttpError(request.Channel, ex.Message);
+            LogHttpError(Logger, request.Channel, ex.Message);
             return new SlackSendMessageResponse
             {
                 Success = false,
@@ -183,7 +183,7 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            LogTimeout(request.Channel);
+            LogTimeout(Logger, request.Channel);
             return new SlackSendMessageResponse
             {
                 Success = false,
@@ -192,7 +192,7 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
         }
         catch (Exception ex)
         {
-            LogUnexpectedError(request.Channel, ex.Message);
+            LogUnexpectedError(Logger, request.Channel, ex.Message);
             return new SlackSendMessageResponse
             {
                 Success = false,
@@ -220,17 +220,17 @@ public partial class SlackTool : HttpToolBase<SlackSendMessageRequest, SlackSend
     // ── Logging ────────────────────────────────────────────────────
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Message sent to Slack channel '{Channel}' with timestamp {Timestamp}")]
-    private partial void LogMessageSent(string channel, string timestamp);
+    private static partial void LogMessageSent(ILogger logger, string channel, string timestamp);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Slack API error for channel '{Channel}': HTTP {StatusCode} - {ErrorBody}")]
-    private partial void LogSlackApiError(string channel, int statusCode, string errorBody);
+    private static partial void LogSlackApiError(ILogger logger, string channel, int statusCode, string errorBody);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "HTTP request failed for Slack channel '{Channel}': {Error}")]
-    private partial void LogHttpError(string channel, string error);
+    private static partial void LogHttpError(ILogger logger, string channel, string error);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Slack request to channel '{Channel}' timed out")]
-    private partial void LogTimeout(string channel);
+    private static partial void LogTimeout(ILogger logger, string channel);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Unexpected error sending message to Slack channel '{Channel}': {Error}")]
-    private partial void LogUnexpectedError(string channel, string error);
+    private static partial void LogUnexpectedError(ILogger logger, string channel, string error);
 }

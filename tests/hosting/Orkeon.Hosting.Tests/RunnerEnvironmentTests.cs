@@ -4,7 +4,7 @@ namespace Orkeon.Hosting.Tests;
 /// Tests for <see cref="RunnerEnvironment"/> and the
 /// <see cref="RunnerOptionsBase.EffectiveAllowExternalMounts"/> contract: the
 /// <c>ORKEON_ALLOW_EXTERNAL_MOUNTS</c> env var acts as a deployment-level default
-/// for the <c>--allow-external-mounts</c> flag (used by the orkeon-runners image,
+/// for the <c>--allow-external-mounts</c> flag (used by the ghcr.io/orkeon/orkeon image,
 /// where the container boundary already sandboxes every reachable path).
 /// Env-var manipulation is process-global, so these tests must not run in
 /// parallel with anything else reading the same variable.

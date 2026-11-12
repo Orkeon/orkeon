@@ -1,9 +1,8 @@
-# 100. Simulateur de Civilisation Emergente
+# 100. Emergent Civilization Simulator
 # Use case: 20+ agents representing factions play civilization turns, led by a game master, with A2A diplomacy
-# TODO: feature planifiee — Composite memory (ShortTerm: current turn + LongTerm: civilization history + Episodic: landmark events)
 
 name: "civilization-simulator"
-goal: "Simulate an emergent civilization with multiple factions each composed of specialized agents, turn-based progression led by the game master, A2A inter-faction diplomacy, and episodic memory creating a unique emergent history"
+goal: "Simulate an emergent civilization with multiple factions each composed of specialized agents, turn-based progression led by the game master, A2A inter-faction diplomacy, and crew memory carrying the history from turn to turn"
 process: "sequential"
 verbose: true
 memory: true

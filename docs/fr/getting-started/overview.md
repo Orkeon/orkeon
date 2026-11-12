@@ -97,7 +97,7 @@ var agent = new AgentBuilder()
 
 ### Task (`Orkeon.Domain.Task.CrewTask`)
 
-Une Task (ou `CrewTask`) représente une unité de travail assignable à un agent. Elle est définie par une **description** (`TaskDescription`) et un **résultat attendu** (`ExpectedOutput`). Les tasks supportent les dépendances inter-tâches (`Dependencies`), l'exécution asynchrone (`AsyncExecution` — une crew séquentielle exécute une telle tâche pendant les tâches qui la suivent, voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)), la validation par schéma JSON (`OutputJson`), et la demande d'intervention humaine (`HumanInput`).
+Une Task (ou `CrewTask`) représente une unité de travail assignable à un agent. Elle est définie par une **description** (`TaskDescription`) et un **résultat attendu** (`ExpectedOutput`). Les tasks prennent en charge les dépendances inter-tâches (`Dependencies`), l'exécution asynchrone (`AsyncExecution` — une crew séquentielle exécute une telle tâche pendant les tâches qui la suivent, voir [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)), la validation par schéma JSON (`OutputJson`), et la demande d'intervention humaine (`HumanInput`).
 
 ```csharp
 var task = new CrewTaskBuilder()
@@ -140,7 +140,7 @@ tâches ni qui les exécute, et un plan illisible laisse la crew sans plan, avec
 
 `.EnableMemory(true)` — `memory: true` — fait que la crew se souvient : le résultat de chaque tâche est
 rangé, et les plus proches sont rappelés dans le prompt des tâches suivantes, run après run. Les souvenirs
-sont plongés par le fournisseur d'embeddings de l'hôte, dont la crew a besoin dès son kickoff
+sont vectorisés par le fournisseur d'embeddings de l'hôte, dont la crew a besoin dès son kickoff
 (`AddOrkeonLocalEmbeddings()` ou la section `Orkeon:Embeddings`) — voir
 [Système de mémoire](../architecture/memory-system.md#la-mémoire-dune-crew--provider-et-portée).
 

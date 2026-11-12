@@ -1,3 +1,4 @@
+using Orkeon.Application.Common.DTOs;
 using CrewId = Orkeon.Domain.Common.CrewId;
 using Orkeon.Application.Interfaces.Services;
 
@@ -18,7 +19,7 @@ public sealed class FakeCrewOrchestrationService : ICrewOrchestrationService
                 FinalOutput: $"answer to: {input.InitialContext}",
                 TaskOutputs: Array.Empty<Orkeon.Application.Execution.TaskOutput>(),
                 Duration: TimeSpan.FromSeconds(0.5),
-                TokensUsed: new TokenUsage(10, 20, 30));
+                TokensUsed: new TokenUsage { PromptTokens = 10, CompletionTokens = 20, TotalTokens = 30 });
         return System.Threading.Tasks.Task.FromResult(output);
     }
 
@@ -26,7 +27,7 @@ public sealed class FakeCrewOrchestrationService : ICrewOrchestrationService
     public System.Threading.Tasks.Task<CrewOutput> KickoffAsync(CrewId crewId, CrewInput input, KickoffOptions options, CancellationToken cancellationToken = default) =>
         KickoffAsync(crewId, input, cancellationToken);
 
-    public System.Threading.Tasks.Task<CrewExecutionId> KickoffAsyncNoWait(CrewId crewId, CrewInput input) => throw new NotImplementedException();
+    public System.Threading.Tasks.Task<CrewExecutionId> KickoffNoWaitAsync(CrewId crewId, CrewInput input, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public System.Threading.Tasks.Task<CrewExecutionStatus> GetExecutionStatusAsync(CrewExecutionId executionId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public IAsyncEnumerable<CrewExecutionEvent> KickoffStreamingAsync(CrewId crewId, CrewInput input, KickoffOptions options, CancellationToken cancellationToken = default) =>
         KickoffStreamingAsync(crewId, input, cancellationToken);

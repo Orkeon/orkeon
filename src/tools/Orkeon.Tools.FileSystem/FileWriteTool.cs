@@ -23,27 +23,27 @@ public sealed class FileWriteRequest
     /// <summary>The file path to write to.</summary>
     [JsonPropertyName("path")]
     [FieldSchema(Description = "The file path to write to", Example = "/workspace/output.txt")]
-    public string Path { get; set; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
 
     /// <summary>The content to write to the file.</summary>
     [JsonPropertyName("content")]
     [FieldSchema(Description = "The content to write to the file", Example = "Hello, World!")]
-    public string Content { get; set; } = string.Empty;
+    public string Content { get; init; } = string.Empty;
 
     /// <summary>The text encoding to use (default: UTF-8).</summary>
     [JsonPropertyName("encoding")]
     [FieldSchema(Description = "The text encoding to use (default: UTF-8)", IsRequired = false, Example = "UTF-8", Default = "UTF-8", Enum = new[] { "UTF-8", "ASCII", "Unicode", "UTF-32" })]
-    public string Encoding { get; set; } = FileDefaults.DefaultEncoding;
+    public string Encoding { get; init; } = FileDefaults.DefaultEncoding;
 
     /// <summary>Whether to append to the file instead of overwriting (default: false).</summary>
     [JsonPropertyName("append")]
     [FieldSchema(Description = "Whether to append to the file instead of overwriting (default: false)", IsRequired = false, Example = false, Default = false)]
-    public bool Append { get; set; }
+    public bool Append { get; init; }
 
     /// <summary>Whether to create a backup before writing (default: false).</summary>
     [JsonPropertyName("create_backup")]
     [FieldSchema(Description = "Whether to create a backup before writing (default: false)", IsRequired = false, Example = false, Default = false)]
-    public bool CreateBackup { get; set; }
+    public bool CreateBackup { get; init; }
 
     /// <summary>Initializes a new instance of <see cref="FileWriteRequest"/>.</summary>
     public FileWriteRequest() { }
@@ -57,22 +57,22 @@ public sealed class FileWriteResponse
     /// <summary>Whether the file was written successfully.</summary>
     [JsonPropertyName("success")]
     [ReturnSchema(Description = "Whether the file was written successfully", Example = true)]
-    public bool Success { get; set; }
+    public bool Success { get; init; }
 
     /// <summary>Absolute path of the written file.</summary>
     [JsonPropertyName("path")]
     [ReturnSchema(Description = "Absolute path of the written file", Example = "/workspace/output.txt")]
-    public string Path { get; set; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
 
     /// <summary>Number of bytes written to the file.</summary>
     [JsonPropertyName("bytes_written")]
     [ReturnSchema(Description = "Number of bytes written to the file", Example = 1024)]
-    public int BytesWritten { get; set; }
+    public int BytesWritten { get; init; }
 
     /// <summary>Path of the backup file, if create_backup was true.</summary>
     [JsonPropertyName("backup_path")]
     [ReturnSchema(Description = "Path of the backup file, if create_backup was true", Example = "/workspace/output.backup_20240115_093000.txt")]
-    public string? BackupPath { get; set; }
+    public string? BackupPath { get; init; }
 
     /// <summary>
     /// Citation-block validation violations, populated when citation validation fails.
@@ -80,7 +80,7 @@ public sealed class FileWriteResponse
     /// </summary>
     [JsonPropertyName("errors")]
     [ReturnSchema(Description = "Citation block validation violations; non-null and non-empty when the write is rejected due to fabricated SHA or code body.")]
-    public ImmutableList<string>? Errors { get; set; }
+    public ImmutableList<string>? Errors { get; init; }
 }
 
 // ── Tool implementation ──────────────────────────────────────────────────
@@ -158,7 +158,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
 
             var resolvedPath = pathValidation.ResolvedPath!;
             var encoding = GetEncoding(request.Encoding);
-            var virtualFilePath = _fileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
+            var virtualFilePath = FileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
             await EnsureDirectoryExistsAsync(virtualFilePath, cancellationToken).ConfigureAwait(false);
 
             var backupVirtualPath = await CreateBackupIfRequestedAsync(request, virtualFilePath, cancellationToken).ConfigureAwait(false);
@@ -188,7 +188,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
                     // fails (the user can grep the runner-output instead of
                     // poking through C# code to find why fileWrite "failed
                     // with empty error").
-                    LogCitationValidationRejected(
+                    LogCitationValidationRejected(Logger, 
                         successResponse.Path,
                         validationResult.Violations.Length,
                         string.Join(" | ", validationResult.Violations));
@@ -212,14 +212,14 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
     {
         if (!request.CreateBackup) return null;
 
-        var fileExists = await _fileSystemService.ExistsAsync(virtualFilePath, ct).ConfigureAwait(false);
+        var fileExists = await FileSystemService.ExistsAsync(virtualFilePath, ct).ConfigureAwait(false);
         if (!fileExists) return null;
 
         var backupVirtualPath = BuildBackupVirtualPath(virtualFilePath);
 
-        await _fileSystemService.CopyAsync(virtualFilePath, backupVirtualPath, overwrite: true, ct).ConfigureAwait(false);
+        await FileSystemService.CopyAsync(virtualFilePath, backupVirtualPath, overwrite: true, ct).ConfigureAwait(false);
 
-        LogCreatedBackup(backupVirtualPath);
+        LogCreatedBackup(Logger, backupVirtualPath);
         return backupVirtualPath;
     }
 
@@ -230,7 +230,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
         {
             if (request.Append)
             {
-                var appendStream = await _fileSystemService.OpenAppendStreamAsync(virtualFilePath, ct).ConfigureAwait(false);
+                var appendStream = await FileSystemService.OpenAppendStreamAsync(virtualFilePath, ct).ConfigureAwait(false);
                 await using var __appendStream = appendStream.ConfigureAwait(false);
                 var appendWriter = new System.IO.StreamWriter(appendStream, encoding, bufferSize: -1, leaveOpen: false);
                 await using var __appendWriter = appendWriter.ConfigureAwait(false);
@@ -238,7 +238,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
             }
             else
             {
-                var writeStream = await _fileSystemService.OpenWriteStreamAsync(virtualFilePath, ct).ConfigureAwait(false);
+                var writeStream = await FileSystemService.OpenWriteStreamAsync(virtualFilePath, ct).ConfigureAwait(false);
                 await using var __writeStream = writeStream.ConfigureAwait(false);
                 var writer = new System.IO.StreamWriter(writeStream, encoding, bufferSize: -1, leaveOpen: false);
                 await using var __writer = writer.ConfigureAwait(false);
@@ -258,10 +258,10 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
 
         try
         {
-            if (await _fileSystemService.ExistsAsync(backupVirtualPath, ct).ConfigureAwait(false))
+            if (await FileSystemService.ExistsAsync(backupVirtualPath, ct).ConfigureAwait(false))
             {
-                await _fileSystemService.CopyAsync(backupVirtualPath, virtualFilePath, overwrite: true, ct).ConfigureAwait(false);
-                await _fileSystemService.DeleteAsync(backupVirtualPath, recursive: false, ct).ConfigureAwait(false);
+                await FileSystemService.CopyAsync(backupVirtualPath, virtualFilePath, overwrite: true, ct).ConfigureAwait(false);
+                await FileSystemService.DeleteAsync(backupVirtualPath, recursive: false, ct).ConfigureAwait(false);
             }
         }
         catch (System.IO.IOException) { /* Best effort restore */ }
@@ -272,9 +272,9 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
         FileWriteRequest request, string resolvedPath, Encoding encoding, string? backupVirtualPath)
     {
         var bytesWritten = encoding.GetByteCount(request.Content);
-        var displayPath = _fileSystemService?.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
+        var displayPath = FileSystemService?.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
 
-        LogWroteFile(displayPath, bytesWritten, request.Append);
+        LogWroteFile(Logger, displayPath, bytesWritten, request.Append);
 
         return new FileWriteResponse
         {
@@ -321,11 +321,11 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Created backup at: {BackupPath}")]
-    private partial void LogCreatedBackup(string backupPath);
+    private static partial void LogCreatedBackup(ILogger logger, string backupPath);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully wrote to file: {Path} ({BytesWritten} bytes, Append: {Append})")]
-    private partial void LogWroteFile(string path, int bytesWritten, bool append);
+    private static partial void LogWroteFile(ILogger logger, string path, int bytesWritten, bool append);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Citation validation rejected write to {Path} ({ViolationCount} violations): {Violations}")]
-    private partial void LogCitationValidationRejected(string path, int violationCount, string violations);
+    private static partial void LogCitationValidationRejected(ILogger logger, string path, int violationCount, string violations);
 }

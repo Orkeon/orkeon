@@ -168,6 +168,11 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Orkeon.Scripting.Tests" />
+    <!-- The Jint engine factory and the esbuild transpiler stay internal (Jint types are off the 1.x
+         surface); the host and the REPL command library build engines through them. Every Orkeon
+         package ships at the one version of src/Directory.Build.props, so these friends never skew. -->
+    <InternalsVisibleTo Include="Orkeon.Hosting" />
+    <InternalsVisibleTo Include="Orkeon.Cli.Commands.Scripting" />
     <!-- BuiltInToolTypingsTests renders tools.generated.d.ts from the tools a run registers. -->
     <InternalsVisibleTo Include="Orkeon.Hosting.Tests" />
     <!-- Orkeon.Scripting.Cli ships as the `orkeon` CLI assembly (see its

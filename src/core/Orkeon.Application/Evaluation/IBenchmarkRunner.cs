@@ -14,7 +14,7 @@ public interface IBenchmarkRunner
 /// <summary>
 /// Configuration for a benchmark run.
 /// </summary>
-public record BenchmarkConfig(
+public sealed record BenchmarkConfig(
     IEvaluationDataset Dataset,
     IEvaluationSuite Suite,
     int RunsPerCase = 3,
@@ -23,7 +23,7 @@ public record BenchmarkConfig(
 /// <summary>
 /// Full benchmark report with statistics.
 /// </summary>
-public record BenchmarkReport(
+public sealed record BenchmarkReport(
     string DatasetName,
     DateTime GeneratedAt,
     int RunsPerCase,
@@ -33,7 +33,7 @@ public record BenchmarkReport(
 /// <summary>
 /// Benchmark results for a single case across multiple runs.
 /// </summary>
-public record BenchmarkCaseResult(
+public sealed record BenchmarkCaseResult(
     int CaseIndex,
     IReadOnlyList<EvaluationCaseResult> RunResults,
     IReadOnlyDictionary<string, double> MeanScores,
@@ -42,7 +42,7 @@ public record BenchmarkCaseResult(
 /// <summary>
 /// Aggregate benchmark statistics.
 /// </summary>
-public record BenchmarkSummary(
+public sealed record BenchmarkSummary(
     double OverallMean,
     double OverallStdDev,
     IReadOnlyDictionary<string, double> MeanByEvaluator,

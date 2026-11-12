@@ -18,30 +18,30 @@ namespace Orkeon.Tools.Web;
 /// </summary>
 public sealed class HttpApiRequest
 {
-    /// <summary>Gets or sets the URL to call.</summary>
+    /// <summary>Gets the URL to call.</summary>
     [JsonPropertyName("url")]
     [FieldSchema(Description = "The URL to call", Example = "https://api.example.com/users", IsRequired = true)]
-    public Uri? Url { get; set; }
+    public Uri? Url { get; init; }
 
-    /// <summary>Gets or sets the HTTP method (default: GET).</summary>
+    /// <summary>Gets the HTTP method (default: GET).</summary>
     [JsonPropertyName("method")]
     [FieldSchema(Description = "HTTP method (default: GET)", IsRequired = false, Example = "GET", Default = "GET", Enum = new[] { "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS" })]
-    public string Method { get; set; } = HttpApiDefaults.DefaultMethod;
+    public string Method { get; init; } = HttpApiDefaults.DefaultMethod;
 
-    /// <summary>Gets or sets optional HTTP headers as key-value pairs.</summary>
+    /// <summary>Gets optional HTTP headers as key-value pairs.</summary>
     [JsonPropertyName("headers")]
     [FieldSchema(Description = "Optional HTTP headers as key-value pairs", IsRequired = false)]
-    public object? Headers { get; set; }
+    public object? Headers { get; init; }
 
-    /// <summary>Gets or sets the optional request body (for POST, PUT, PATCH).</summary>
+    /// <summary>Gets the optional request body (for POST, PUT, PATCH).</summary>
     [JsonPropertyName("body")]
     [FieldSchema(Description = "Optional request body (for POST, PUT, PATCH)", IsRequired = false, Example = "{\"name\": \"Alice\"}")]
-    public string? Body { get; set; }
+    public string? Body { get; init; }
 
-    /// <summary>Gets or sets the Content-Type header for the request body (default: application/json).</summary>
+    /// <summary>Gets the Content-Type header for the request body (default: application/json).</summary>
     [JsonPropertyName("content_type")]
     [FieldSchema(Description = "Content-Type header for request body (default: application/json)", IsRequired = false, Example = "application/json", Default = "application/json")]
-    public string ContentType { get; set; } = "application/json";
+    public string ContentType { get; init; } = "application/json";
 
     /// <summary>Initializes a new instance of <see cref="HttpApiRequest"/>.</summary>
     public HttpApiRequest() { }
@@ -52,30 +52,30 @@ public sealed class HttpApiRequest
 /// </summary>
 public sealed class HttpApiResponse
 {
-    /// <summary>Gets or sets the HTTP status code (e.g., 200, 404, 500).</summary>
+    /// <summary>Gets the HTTP status code (e.g., 200, 404, 500).</summary>
     [JsonPropertyName("status_code")]
     [ReturnSchema(Description = "HTTP status code (e.g., 200, 404, 500)", Example = 200)]
-    public int StatusCode { get; set; }
+    public int StatusCode { get; init; }
 
-    /// <summary>Gets or sets the HTTP status reason phrase (e.g., OK, Not Found).</summary>
+    /// <summary>Gets the HTTP status reason phrase (e.g., OK, Not Found).</summary>
     [JsonPropertyName("status_description")]
     [ReturnSchema(Description = "HTTP status reason phrase (e.g., OK, Not Found)", Example = "OK")]
-    public string StatusDescription { get; set; } = string.Empty;
+    public string StatusDescription { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the response body content as a string.</summary>
+    /// <summary>Gets the response body content as a string.</summary>
     [JsonPropertyName("body")]
     [ReturnSchema(Description = "Response body content as string", Example = "{\"id\": 1, \"name\": \"Alice\"}")]
-    public string Body { get; set; } = string.Empty;
+    public string Body { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the response headers as key-value pairs.</summary>
+    /// <summary>Gets the response headers as key-value pairs.</summary>
     [JsonPropertyName("headers")]
     [ReturnSchema(Description = "Response headers as key-value pairs")]
-    public Dictionary<string, string> Headers { get; init; } = [];
+    public IReadOnlyDictionary<string, string> Headers { get; init; } = System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
 
-    /// <summary>Gets or sets a value indicating whether the response has a 2xx status code.</summary>
+    /// <summary>Gets a value indicating whether the response has a 2xx status code.</summary>
     [JsonPropertyName("is_success")]
     [ReturnSchema(Description = "Whether the response has a 2xx status code", Example = true)]
-    public bool IsSuccess { get; set; }
+    public bool IsSuccess { get; init; }
 
     /// <summary>
     /// Gets the warnings raised while sanitizing the request headers, or <c>null</c> when the
@@ -273,7 +273,7 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
             httpRequest.Content = new StringContent(request.Body, Encoding.UTF8, request.ContentType);
         }
 
-        using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+        using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
         var responseHeaders = new Dictionary<string, string>();
@@ -286,7 +286,7 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
             responseHeaders[header.Key] = string.Join(", ", header.Value);
         }
 
-        LogHttpRequestCompleted(method, request.Url, (int)response.StatusCode);
+        LogHttpRequestCompleted(Logger, method, request.Url, (int)response.StatusCode);
 
         return new HttpApiResponse
         {
@@ -338,5 +338,5 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "HTTP {Method} {Url} -> {StatusCode}")]
-    private partial void LogHttpRequestCompleted(string method, Uri url, int statusCode);
+    private static partial void LogHttpRequestCompleted(ILogger logger, string method, Uri url, int statusCode);
 }

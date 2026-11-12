@@ -11,7 +11,7 @@ namespace Orkeon.Infrastructure.Parsing;
 /// <summary>
 /// Markdig implementation of IMarkdownParser.
 /// </summary>
-public partial class MarkdownParser : IMarkdownParser
+internal partial class MarkdownParser : IMarkdownParser
 {
     private readonly MarkdownPipeline _pipeline;
 

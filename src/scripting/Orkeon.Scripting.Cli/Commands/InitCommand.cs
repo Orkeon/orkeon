@@ -88,7 +88,7 @@ internal static class InitCommand
     private const string DockerModelRunnerBaseUrl = DockerModelRunnerDefaults.BaseUrl;
 
     /// <inheritdoc cref="DockerModelRunnerDefaults.DefaultModel" />
-    private const string DockerModelRunnerDefaultModel = DockerModelRunnerDefaults.DefaultModel;
+    private static readonly string DockerModelRunnerDefaultModel = DockerModelRunnerDefaults.DefaultModel;
 
     /// <inheritdoc cref="DockerModelRunnerDefaults.ApiKeyPlaceholder" />
     private const string DockerModelRunnerApiKeyPlaceholder = DockerModelRunnerDefaults.ApiKeyPlaceholder;

@@ -1,12 +1,9 @@
-using System.Runtime.Serialization;
-
 namespace Orkeon.Scripting.Exceptions;
 
 /// <summary>
 /// Thrown when <c>crew.remove(agent)</c> is called on a crew that does not contain
 /// the agent — including the case where the agent belongs to a different crew.
 /// </summary>
-[Serializable]
 public sealed class AgentNotInThisCrewException : Exception
 {
     /// <summary>Name of the agent.</summary>
@@ -43,14 +40,4 @@ public sealed class AgentNotInThisCrewException : Exception
         AgentName = string.Empty;
         CrewName = string.Empty;
     }
-
-    /// <summary>Deserialization constructor.</summary>
-#pragma warning disable SYSLIB0051 // Required by S3925 ISerializable pattern
-    private AgentNotInThisCrewException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        AgentName = string.Empty;
-        CrewName = string.Empty;
-    }
-#pragma warning restore SYSLIB0051
 }

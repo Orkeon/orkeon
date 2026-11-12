@@ -1,7 +1,7 @@
 {
   "name": "MyOrkeonPlugin",
   "version": "1.0.0",
-  "orkeonVersion": "[1.0.0-rc.1,2.0.0)",
+  "orkeonVersion": "[1.0.0,2.0.0)",
   "entryAssembly": "MyOrkeonPlugin.dll",
   "tools": [ "sample_echo" ]
 }

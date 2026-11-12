@@ -49,7 +49,7 @@ public static class ScriptingCliServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton(sp => new ConsoleToolApprovalChannel(() => sp.GetRequiredService<IConsoleAdapter>()));
-        services.TryAddSingleton<IToolApprovalChannel>(sp => new SerialisingToolApprovalChannel(sp.GetRequiredService<ConsoleToolApprovalChannel>()));
+        services.TryAddSingleton<IToolApprovalChannel>(sp => new SerializingToolApprovalChannel(sp.GetRequiredService<ConsoleToolApprovalChannel>()));
         services.TryAddSingleton<IReplLineInterceptor>(sp => sp.GetRequiredService<ConsoleToolApprovalChannel>());
         services.TryAddSingleton<IToolApprovalWatch>(sp => sp.GetRequiredService<ConsoleToolApprovalChannel>());
         // The session's rules, read by the gate before the mode and set by commands (ctx.services.get("permissions")).

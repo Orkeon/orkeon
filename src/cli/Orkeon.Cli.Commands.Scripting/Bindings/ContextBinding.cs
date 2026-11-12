@@ -9,7 +9,7 @@ namespace Orkeon.Cli.Commands.Scripting.Bindings;
 /// console shim against the per-invocation logger and producing the <see cref="JsValue"/>
 /// pair (args, ctx) that the handler will receive.
 /// </summary>
-public static class ContextBinding
+internal static class ContextBinding
 {
     /// <summary>
     /// Re-binds <c>globalThis.console</c> to forward into <paramref name="ctx"/>.log,

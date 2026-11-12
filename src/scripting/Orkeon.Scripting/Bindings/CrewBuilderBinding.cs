@@ -9,7 +9,7 @@ namespace Orkeon.Scripting.Bindings;
 /// <summary>
 /// Registers the global <c>crewBuilder()</c> function on a Jint engine.
 /// </summary>
-public static class CrewBuilderBinding
+internal static class CrewBuilderBinding
 {
     /// <summary>Name of the global function exposed to scripts.</summary>
     public const string GlobalName = "crewBuilder";

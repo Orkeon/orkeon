@@ -1,3 +1,4 @@
+using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Interfaces.Services;
 using static Orkeon.Tests.Shared.Constants.TestTimingConstants;
 
@@ -118,7 +119,7 @@ public class CrewOrchestrationRecordsTests
     public void ShouldStoreTokenCounts_WhenCreatingTokenUsage()
     {
         // Act
-        var usage = new TokenUsage(100, 50, 150);
+        var usage = new TokenUsage { PromptTokens = 100, CompletionTokens = 50, TotalTokens = 150 };
 
         // Assert
         Assert.Equal(100, usage.PromptTokens);
@@ -130,8 +131,8 @@ public class CrewOrchestrationRecordsTests
     public void ShouldSupportRecordEquality_WhenComparingTokenUsage()
     {
         // Arrange
-        var u1 = new TokenUsage(10, 20, 30);
-        var u2 = new TokenUsage(10, 20, 30);
+        var u1 = new TokenUsage { PromptTokens = 10, CompletionTokens = 20, TotalTokens = 30 };
+        var u2 = new TokenUsage { PromptTokens = 10, CompletionTokens = 20, TotalTokens = 30 };
 
         // Assert
         Assert.Equal(u1, u2);
@@ -146,9 +147,9 @@ public class CrewOrchestrationRecordsTests
         var outputs = new List<CrewOutput>
         {
             new("result1", Array.Empty<Orkeon.Application.Execution.TaskOutput>(),
-                TimeSpan.FromSeconds(10), new TokenUsage(10, 5, 15)),
+                TimeSpan.FromSeconds(10), new TokenUsage { PromptTokens = 10, CompletionTokens = 5, TotalTokens = 15 }),
             new("result2", Array.Empty<Orkeon.Application.Execution.TaskOutput>(),
-                TimeSpan.FromSeconds(20), new TokenUsage(20, 10, 30))
+                TimeSpan.FromSeconds(20), new TokenUsage { PromptTokens = 20, CompletionTokens = 10, TotalTokens = 30 })
         };
 
         // Act
@@ -186,7 +187,7 @@ public class CrewOrchestrationRecordsTests
             "final answer",
             Array.Empty<Orkeon.Application.Execution.TaskOutput>(),
             TimeSpan.FromSeconds(45),
-            new TokenUsage(500, 200, 700));
+            new TokenUsage { PromptTokens = 500, CompletionTokens = 200, TotalTokens = 700 });
 
         // Assert
         Assert.Equal("final answer", output.FinalOutput);
@@ -261,8 +262,11 @@ public class CrewOrchestrationRecordsTests
     [Fact]
     public void CacheHitRatio_IsComputedFromTheMeasuredPartition()
     {
-        var usage = new TokenUsage(PromptTokens: 12_000, CompletionTokens: 840, TotalTokens: 12_840)
+        var usage = new TokenUsage
         {
+            PromptTokens = 12_000,
+            CompletionTokens = 840,
+            TotalTokens = 12_840,
             CacheHitTokens = 7_980,
             CacheMissTokens = 4_020,
         };
@@ -273,11 +277,11 @@ public class CrewOrchestrationRecordsTests
     [Fact]
     public void CacheHitRatio_IsNullWhenUnmeasured_NeverAFabricatedZero()
     {
-        var unmeasured = new TokenUsage(100, 50, 150);
+        var unmeasured = new TokenUsage { PromptTokens = 100, CompletionTokens = 50, TotalTokens = 150 };
         Assert.Null(unmeasured.CacheHitRatio);
 
         // A measured pair summing to zero is equally "nothing to ratio".
-        var empty = new TokenUsage(100, 50, 150) { CacheHitTokens = 0, CacheMissTokens = 0 };
+        var empty = new TokenUsage { PromptTokens = 100, CompletionTokens = 50, TotalTokens = 150, CacheHitTokens = 0, CacheMissTokens = 0 };
         Assert.Null(empty.CacheHitRatio);
     }
 

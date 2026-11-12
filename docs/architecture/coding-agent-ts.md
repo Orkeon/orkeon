@@ -111,7 +111,7 @@ read first (sequentially, in call order, on the engine thread), then the executi
 faults, is cancelled or throws `BudgetExhaustedException`, the others complete and are recorded,
 and the first fault is rethrown after the group. In a host that registers the channel with
 `AddConsoleToolApproval`, the approvals that concurrent reads ask are serialised
-(`SerialisingToolApprovalChannel`); `orkeon-repl` registers its channel directly, so there two
+(`SerializingToolApprovalChannel`); `orkeon-repl` registers its channel directly, so there two
 concurrent asks are not queued one at a time ([Known limitations](../reference/limitations.md)). The
 native loops of a YAML crew and the chat dispatcher fan out the same way; the text-fallback sites
 (the `ChatToolDispatcher` text path and `LegacyTextAgentLoop`) stay sequential.
@@ -179,7 +179,7 @@ fewer turns than asked is left untouched.
 
 ## Tools in commands (`tools.*` in `.cmd.ts`)
 
-`JsEngineFactory.Create()` registers the `tools` namespace, and the CLI factory is
+Every engine `JsEngineFactory` builds has the `tools` namespace, and the CLI factory is
 constructed with the built-in tools and the LLM provider, so `tools.<camelCase>(params)`
 works in a `.cmd.ts` handler exactly as it does in a crew. That is how a command does a small
 piece of work itself instead of paying for a crew — reading a file, formatting a report —

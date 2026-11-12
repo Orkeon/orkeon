@@ -45,7 +45,7 @@ src/
     │   ├── Versioning/           ← the version directive (`/// <reference orkeon-script="1.0" />` or `// @orkeon-script 1.0`)
     │   ├── Telemetry/            ← ScriptingActivitySource
     │   ├── Testing/              ← mock LLM / mock tool doubles (not exposed to scripts)
-    │   ├── Toolchain/            ← EsbuildTranspiler, PassThroughTranspiler
+    │   ├── Toolchain/            ← IScriptTranspiler, PassThroughTranspiler (esbuild behind them, internal)
     │   └── Typings/              ← the *.d.ts declarations
     └── Orkeon.Scripting.Cli/     ← the `orkeon` tool: `run`, `quickstart`, `init`, `doctor`, `settings`, `llm`, `rag`, `eval`, `forge`, `usecases`, `email`, `drive`, `typings`, `mcp`, `runs`
 ```

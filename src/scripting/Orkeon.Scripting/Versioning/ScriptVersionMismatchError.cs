@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.Serialization;
 
 namespace Orkeon.Scripting.Versioning;
 
@@ -11,7 +10,6 @@ namespace Orkeon.Scripting.Versioning;
 // extends Error` declared in Typings/errors.d.ts; renaming would break the observable JS API.
 [SuppressMessage("Major Code Smell", "S3376:Attribute, EventArgs, and Exception type names should end with the type being extended", Justification = "Name mirrors the JS-surface error class exposed to scripts.")]
 [SuppressMessage("Naming", "CA1710:Identifiers should have correct suffix", Justification = "Name mirrors the JS-surface error class `ScriptVersionMismatchError extends Error` exposed to scripts; an `Exception` suffix would break the observable JS API.")]
-[Serializable]
 public sealed class ScriptVersionMismatchError : Exception
 {
     /// <summary>Version declared by the script (or the host).</summary>
@@ -48,14 +46,4 @@ public sealed class ScriptVersionMismatchError : Exception
         DeclaredVersion = string.Empty;
         SupportedVersion = string.Empty;
     }
-
-    /// <summary>Deserialization constructor.</summary>
-#pragma warning disable SYSLIB0051 // Required by S3925 ISerializable pattern
-    private ScriptVersionMismatchError(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        DeclaredVersion = string.Empty;
-        SupportedVersion = string.Empty;
-    }
-#pragma warning restore SYSLIB0051
 }

@@ -26,23 +26,27 @@ public interface IDynamicAgentService
     /// <param name="agentId">The agent to terminate.</param>
     /// <param name="registry">The registry managing the agent.</param>
     /// <param name="reason">Optional termination reason.</param>
+    /// <param name="cancellationToken">Accepted for the uniform async shape; a termination is a cleanup and runs to its end even when it is cancelled.</param>
     /// <returns>True if the agent was terminated, false if not found.</returns>
     Task<bool> TerminateAgentAsync(
         AgentId agentId,
         DynamicAgentRegistry registry,
-        string? reason = null);
+        string? reason = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Validates whether a crew allows dynamic agents.
     /// </summary>
     /// <param name="crewId">The crew to validate.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>True if the crew allows dynamic agent creation.</returns>
-    Task<bool> AllowsDynamicAgentsAsync(CrewId crewId);
+    Task<bool> AllowsDynamicAgentsAsync(CrewId crewId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the maximum concurrent dynamic agents allowed for a crew.
     /// </summary>
     /// <param name="crewId">The crew to query.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The maximum number of concurrent dynamic agents, or null for unlimited.</returns>
-    Task<int?> GetMaxConcurrentDynamicAgentsAsync(CrewId crewId);
+    Task<int?> GetMaxConcurrentDynamicAgentsAsync(CrewId crewId, CancellationToken cancellationToken = default);
 }

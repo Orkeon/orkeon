@@ -36,13 +36,13 @@ public sealed partial class UniversalSemanticMapper
     private readonly bool _extractStatements;
     private readonly ILogger<UniversalSemanticMapper> _logger;
 
-    public UniversalSemanticMapper(ILanguageAdapter adapter, TreeSitterParserPool pool)
+    internal UniversalSemanticMapper(ILanguageAdapter adapter, TreeSitterParserPool pool)
         : this(adapter, pool, extractStatements: true) { }
 
-    public UniversalSemanticMapper(ILanguageAdapter adapter, TreeSitterParserPool pool, bool extractStatements)
+    internal UniversalSemanticMapper(ILanguageAdapter adapter, TreeSitterParserPool pool, bool extractStatements)
         : this(adapter, pool, extractStatements, logger: null) { }
 
-    public UniversalSemanticMapper(
+    internal UniversalSemanticMapper(
         ILanguageAdapter adapter,
         TreeSitterParserPool pool,
         bool extractStatements,

@@ -1,4 +1,5 @@
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Memory;
 
 namespace Orkeon.Infrastructure.LLMs.Embeddings;
 
@@ -26,6 +27,6 @@ public sealed class EmbeddingProviderServiceAdapter : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text)
-        => _provider.GetEmbeddingAsync(text ?? string.Empty, CancellationToken.None);
+    public System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
+        => _provider.GetEmbeddingAsync(text ?? string.Empty, cancellationToken);
 }

@@ -23,7 +23,7 @@ namespace Orkeon.Scripting.Bindings;
 /// <c>citations</c> — the common case when the evidence itself must be quoted —
 /// should call <c>retrieve</c>.</para>
 /// </summary>
-public static partial class RagNamespaceBinding
+internal static partial class RagNamespaceBinding
 {
     /// <summary>Name of the global namespace exposed to scripts.</summary>
     public const string GlobalName = "rag";

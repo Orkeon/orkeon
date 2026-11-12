@@ -12,12 +12,11 @@ câblées plus bas (`AddOrkeonFileSystemTools`, `AddOrkeonDataTools`, `AddOrkeon
 `AddOrkeonCodeTools`, `AddOrkeonEmailTools` ; le paquet porte d'autres suites, comme `AddOrkeonDriveTools`) vivent dans un second, `Orkeon.Tools` :
 
 ```bash
-dotnet add package Orkeon --prerelease
-dotnet add package Orkeon.Tools --prerelease
+dotnet add package Orkeon
+dotnet add package Orkeon.Tools
 ```
 
-`--prerelease` est nécessaire tant qu'Orkeon ne publie que des pré-versions ; il
-disparaît une fois une version finale publiée. Les deux commandes écrivent les entrées
+Les deux commandes écrivent les entrées
 `<PackageReference>` correspondantes dans votre `.csproj` — une édition à la main donne
 exactement le même résultat.
 
@@ -36,7 +35,7 @@ quand vous en avez besoin. La liste complète est la
 
 ### Partir d'un modèle
 
-`dotnet new install Orkeon.Templates --prerelease` ajoute trois modèles, chacun un projet qui compile
+`dotnet new install Orkeon.Templates` ajoute trois modèles, chacun un projet qui compile
 contre les paquets de la même version, écrite en clair dans son `.csproj` :
 
 | Commande | Génère |
@@ -324,7 +323,7 @@ public record TaskOutput(
 
 ## Modes d'exécution alternatifs
 
-Orkeon supporte plusieurs modes d'exécution via `ICrewOrchestrationService` :
+Orkeon prend en charge plusieurs modes d'exécution via `ICrewOrchestrationService` :
 
 **Mode itératif (par lot)** :
 ```csharp
@@ -388,7 +387,7 @@ await foreach (var e in orchestrator.KickoffStreamingAsync(crew.Id, input))
 **Mode asynchrone non-bloquant (fire-and-forget)** :
 ```csharp
 // Démarrer l'exécution sans attendre la complétion
-var executionId = await orchestrator.KickoffAsyncNoWait(crew.Id, input);
+var executionId = await orchestrator.KickoffNoWaitAsync(crew.Id, input);
 
 Console.WriteLine($"Exécution démarrée avec ID : {executionId}");
 

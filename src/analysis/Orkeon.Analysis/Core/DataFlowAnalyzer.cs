@@ -3,7 +3,7 @@ using Orkeon.Analysis.Abstractions.Models;
 
 namespace Orkeon.Analysis.Core;
 
-public static class DataFlowAnalyzer
+internal static class DataFlowAnalyzer
 {
     public static IReadOnlyList<DataFlowLink> Analyze(IReadOnlyList<StatementNode> statements)
     {

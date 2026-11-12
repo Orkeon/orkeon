@@ -39,7 +39,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// <c>max_tokens</c> — every vendor of the fleet passed its 2026-08-30 campaign with it —
     /// but OpenAI itself retired the field on its current models (<c>"Unsupported parameter:
     /// 'max_tokens' ... Use 'max_completion_tokens' instead"</c>, same campaign), so
-    /// <see cref="OpenAIProvider"/> overrides this. A dialect detail of one vendor, not a
+    /// <see cref="OpenAILlmProvider"/> overrides this. A dialect detail of one vendor, not a
     /// capability anyone declares.
     /// </summary>
     protected virtual string MaxTokensFieldName => "max_tokens";

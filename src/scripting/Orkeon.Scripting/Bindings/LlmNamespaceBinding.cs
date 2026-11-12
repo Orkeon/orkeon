@@ -15,7 +15,7 @@ namespace Orkeon.Scripting.Bindings;
 /// There is no per-vendor factory: a script picks among the providers the host configured, by
 /// profile name, and a factory named after a vendor only renamed the host's one (GAP-12).
 /// </summary>
-public static class LlmNamespaceBinding
+internal static class LlmNamespaceBinding
 {
     /// <summary>Name of the global namespace exposed to scripts.</summary>
     public const string GlobalName = "llm";
@@ -73,7 +73,7 @@ public static class LlmNamespaceBinding
 /// </summary>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop mirror of the "llm" namespace declared in Typings/llm.d.ts; that declaration is the contract scripts read.
-public sealed partial class JsLlmNamespace
+internal sealed partial class JsLlmNamespace
 {
     private readonly ILogger _logger;
     private readonly ILlmProvider? _defaultProvider;

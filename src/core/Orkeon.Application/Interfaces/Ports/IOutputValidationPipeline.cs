@@ -22,7 +22,7 @@ public interface IOutputValidationPipeline
 /// <summary>
 /// Combined result from all validators in the pipeline.
 /// </summary>
-public record OutputPipelineResult(
+public sealed record OutputPipelineResult(
     bool IsValid,
     IReadOnlyList<OutputValidationResult> Results,
     string? CombinedErrorMessage = null);

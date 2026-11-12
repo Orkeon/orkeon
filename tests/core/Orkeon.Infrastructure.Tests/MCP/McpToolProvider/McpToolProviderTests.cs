@@ -182,15 +182,15 @@ public sealed class McpToolProviderTests : IAsyncDisposable
     {
         var registry = new Orkeon.Infrastructure.Tools.ToolRegistry([]);
         var builtIn = new StubBaseTool("file_read");
-        Assert.True(await registry.RegisterToolAsync(builtIn));
+        Assert.True(await registry.RegisterToolAsync(builtIn, TestContext.Current.CancellationToken));
         await using var transport = McpDiscoveryTransport.Exposing("file_read", "search_issues");
         using var logs = new RecordingLoggerFactory();
         await using var provider = new McpToolProviderSut(registry, logs);
 
         await provider.ConnectServerAsync("x", transport, ct: TestContext.Current.CancellationToken);
 
-        Assert.Same(builtIn, await registry.GetToolByNameAsync("file_read"));
-        Assert.IsType<McpToolAdapter>(await registry.GetToolByNameAsync("search_issues"));
+        Assert.Same(builtIn, await registry.GetToolByNameAsync("file_read", TestContext.Current.CancellationToken));
+        Assert.IsType<McpToolAdapter>(await registry.GetToolByNameAsync("search_issues", TestContext.Current.CancellationToken));
         Assert.Equal(["file_read"], Assert.Single(provider.GetServerStatuses()).RejectedToolNames);
         Assert.True(logs.Logger.HasEntry(e =>
             e.Level == Microsoft.Extensions.Logging.LogLevel.Error
@@ -198,8 +198,8 @@ public sealed class McpToolProviderTests : IAsyncDisposable
 
         await provider.DisconnectServerAsync("x");
 
-        Assert.Same(builtIn, await registry.GetToolByNameAsync("file_read"));
-        Assert.Null(await registry.GetToolByNameAsync("search_issues"));
+        Assert.Same(builtIn, await registry.GetToolByNameAsync("file_read", TestContext.Current.CancellationToken));
+        Assert.Null(await registry.GetToolByNameAsync("search_issues", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -211,17 +211,17 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         await using var provider = new McpToolProviderSut(registry);
 
         await provider.ConnectServerAsync("one", first, ct: TestContext.Current.CancellationToken);
-        var owner = await registry.GetToolByNameAsync("search");
+        var owner = await registry.GetToolByNameAsync("search", TestContext.Current.CancellationToken);
         await provider.ConnectServerAsync("two", second, ct: TestContext.Current.CancellationToken);
 
         Assert.NotNull(owner);
-        Assert.Same(owner, await registry.GetToolByNameAsync("search"));
-        Assert.NotNull(await registry.GetToolByNameAsync("fetch"));
+        Assert.Same(owner, await registry.GetToolByNameAsync("search", TestContext.Current.CancellationToken));
+        Assert.NotNull(await registry.GetToolByNameAsync("fetch", TestContext.Current.CancellationToken));
 
         await provider.DisconnectServerAsync("two");
 
-        Assert.Same(owner, await registry.GetToolByNameAsync("search"));
-        Assert.Null(await registry.GetToolByNameAsync("fetch"));
+        Assert.Same(owner, await registry.GetToolByNameAsync("search", TestContext.Current.CancellationToken));
+        Assert.Null(await registry.GetToolByNameAsync("fetch", TestContext.Current.CancellationToken));
     }
 
     // #219 review: a server's readOnlyHint is a claim; the registered tool keeps the gate's
@@ -242,7 +242,7 @@ public sealed class McpToolProviderTests : IAsyncDisposable
 
         await provider.ConnectServerAsync("db", transport, trusted, ct: TestContext.Current.CancellationToken);
 
-        var tool = await registry.GetToolByNameAsync("drop_table");
+        var tool = await registry.GetToolByNameAsync("drop_table", TestContext.Current.CancellationToken);
         Assert.NotNull(tool);
         Assert.Equal(expected, tool.Access);
     }

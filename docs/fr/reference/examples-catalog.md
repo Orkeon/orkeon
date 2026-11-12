@@ -88,7 +88,7 @@ cette catégorie. La numérotation est historique et non contiguë.
 orkeon run examples/crew-multifile/          # un dossier de crew
 orkeon run examples/scripting/01-hello-world.ork.ts
 ./examples/run-example.sh 01-enterprise/01-research-assistant   # depuis les sources (config.yaml, main.ork.ts ou un .csproj)
-docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell ghcr.io/orkeon/orkeon
 # puis dans le conteneur : orkeon-example list && orkeon-example run 7
 ```
 

@@ -26,7 +26,7 @@ public class ProviderDefaultsPinningTests
 
     public static TheoryData<string, string> PinnedDefaultModels() => new()
     {
-        { nameof(OpenAIProvider), "gpt-5.6-sol" },
+        { nameof(OpenAILlmProvider), "gpt-5.6-sol" },
         { nameof(AzureOpenAILlmProvider), "gpt-5.6-sol" },
         { nameof(DeepSeekLlmProvider), "deepseek-flash" },
         { nameof(KimiLlmProvider), "kimi-k3.1-pro" },
@@ -49,7 +49,7 @@ public class ProviderDefaultsPinningTests
 
     public static TheoryData<string, string> PinnedDefaultBaseUrls() => new()
     {
-        { nameof(OpenAIProvider), "https://api.openai.com/v1" },
+        { nameof(OpenAILlmProvider), "https://api.openai.com/v1" },
         { nameof(DeepSeekLlmProvider), "https://api.deepseek.com" },
         { nameof(KimiLlmProvider), "https://api.moonshot.ai/v1" },
         { nameof(QwenLlmProvider), "https://dashscope.aliyuncs.com/compatible-mode/v1" },
@@ -203,7 +203,7 @@ public class ProviderDefaultsPinningTests
     /// </remarks>
     private static object CreateProvider(string providerTypeName)
     {
-        var type = typeof(OpenAIProvider).Assembly.GetType(
+        var type = typeof(OpenAILlmProvider).Assembly.GetType(
             $"Orkeon.Infrastructure.LLMs.{providerTypeName}", throwOnError: true)!;
 
         var ctor = Array.Find(

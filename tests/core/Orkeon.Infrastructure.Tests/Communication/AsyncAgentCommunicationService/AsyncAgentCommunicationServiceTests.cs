@@ -28,8 +28,17 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
             new Dictionary<string, object> { ["key"] = "value" });
 
         // Act & Assert - Should not throw
-        var exception = await Record.ExceptionAsync(async () => await _service.SendMessageAsync(message));
+        var exception = await Record.ExceptionAsync(async () => await _service.SendMessageAsync(message, TestContext.Current.CancellationToken));
         Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task ShouldThrowOperationCanceled_WhenSendMessageAsyncWithCancelledToken()
+    {
+        var message = new AgentMessage(AgentId.Create(), AgentId.Create(), MessageType.Task, "never sent", []);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            async () => await _service.SendMessageAsync(message, new CancellationToken(canceled: true)));
     }
 
     [Fact]
@@ -40,7 +49,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _service.SendMessageAsync(message!).AsTask());
+            () => _service.SendMessageAsync(message!, TestContext.Current.CancellationToken).AsTask());
     }
 
     [Fact]
@@ -53,9 +62,9 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         var message2 = new AgentMessage(agent1, agent2, MessageType.Question, "Message 2");
         var message3 = new AgentMessage(agent2, agent1, MessageType.Response, "Message 3"); // Different recipient
 
-        await _service.SendMessageAsync(message1);
-        await _service.SendMessageAsync(message2);
-        await _service.SendMessageAsync(message3);
+        await _service.SendMessageAsync(message1, TestContext.Current.CancellationToken);
+        await _service.SendMessageAsync(message2, TestContext.Current.CancellationToken);
+        await _service.SendMessageAsync(message3, TestContext.Current.CancellationToken);
 
         // Act — the messages are already sent: the loop ends at the second one, and the token is
         // a guard against a hang, never a budget (GAP-41).
@@ -64,7 +73,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
 
         try
         {
-            await foreach (var message in _service.ReceiveMessagesAsync(agent2).WithCancellation(cts.Token))
+            await foreach (var message in _service.ReceiveMessagesAsync(agent2, TestContext.Current.CancellationToken).WithCancellation(cts.Token))
             {
                 receivedMessages.Add(message);
                 if (receivedMessages.Count == 2) // We expect 2 messages for agent2
@@ -94,7 +103,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(async () =>
         {
-            await foreach (var message in _service.ReceiveMessagesAsync(agentId!))
+            await foreach (var message in _service.ReceiveMessagesAsync(agentId!, TestContext.Current.CancellationToken))
             {
                 break; // Should not reach here
             }
@@ -219,7 +228,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
                 agent2,
                 MessageType.Task,
                 $"Message {i}");
-            sendTasks.Add(_service.SendMessageAsync(message).AsTask());
+            sendTasks.Add(_service.SendMessageAsync(message, TestContext.Current.CancellationToken).AsTask());
         }
 
         await System.Threading.Tasks.Task.WhenAll(sendTasks);
@@ -230,7 +239,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
 
         try
         {
-            await foreach (var message in _service.ReceiveMessagesAsync(agent2).WithCancellation(cts.Token))
+            await foreach (var message in _service.ReceiveMessagesAsync(agent2, TestContext.Current.CancellationToken).WithCancellation(cts.Token))
             {
                 receivedMessages.Add(message);
                 if (receivedMessages.Count == messageCount)
@@ -260,8 +269,8 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         var messageToReceiver1 = new AgentMessage(sender, receiver1, MessageType.Task, "For receiver1");
         var messageToReceiver2 = new AgentMessage(sender, receiver2, MessageType.Task, "For receiver2");
 
-        await _service.SendMessageAsync(messageToReceiver1);
-        await _service.SendMessageAsync(messageToReceiver2);
+        await _service.SendMessageAsync(messageToReceiver1, TestContext.Current.CancellationToken);
+        await _service.SendMessageAsync(messageToReceiver2, TestContext.Current.CancellationToken);
 
         // Act — each receiver ends at its message; the token only guards a hang
         var receiver1Messages = new List<AgentMessage>();
@@ -337,7 +346,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         // Act
         try
         {
-            await foreach (var message in _service.ReceiveMessagesAsync(agentId).WithCancellation(cts.Token))
+            await foreach (var message in _service.ReceiveMessagesAsync(agentId, TestContext.Current.CancellationToken).WithCancellation(cts.Token))
             {
                 messageReceived = true;
                 break;
@@ -369,9 +378,9 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         var message = new AgentMessage(from, to, MessageType.Task, "Test", metadata);
 
         // Act
-        await _service.SendMessageAsync(message);
+        await _service.SendMessageAsync(message, TestContext.Current.CancellationToken);
 
-        var receivedMessage = await _service.ReceiveMessagesAsync(to)
+        var receivedMessage = await _service.ReceiveMessagesAsync(to, TestContext.Current.CancellationToken)
             .FirstOrDefaultAsync(Polling.DefaultTimeout);
 
         // Assert
@@ -395,7 +404,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         // Act - Send messages in order
         foreach (var message in messages)
         {
-            await _service.SendMessageAsync(message);
+            await _service.SendMessageAsync(message, TestContext.Current.CancellationToken);
         }
 
         // Receive messages (the loop ends at the last one; the token only guards a hang)
@@ -404,7 +413,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
 
         try
         {
-            await foreach (var message in _service.ReceiveMessagesAsync(to).WithCancellation(cts.Token))
+            await foreach (var message in _service.ReceiveMessagesAsync(to, TestContext.Current.CancellationToken).WithCancellation(cts.Token))
             {
                 receivedMessages.Add(message);
                 if (receivedMessages.Count == messages.Count)
@@ -436,7 +445,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         {
             var message = new AgentMessage(from, to, messageType, $"Message of type {messageType}");
             sentMessages.Add(message);
-            await _service.SendMessageAsync(message);
+            await _service.SendMessageAsync(message, TestContext.Current.CancellationToken);
         }
 
         // Act (the loop ends at the last message; the token only guards a hang)
@@ -445,7 +454,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
 
         try
         {
-            await foreach (var message in _service.ReceiveMessagesAsync(to).WithCancellation(cts.Token))
+            await foreach (var message in _service.ReceiveMessagesAsync(to, TestContext.Current.CancellationToken).WithCancellation(cts.Token))
             {
                 receivedMessages.Add(message);
                 if (receivedMessages.Count == sentMessages.Count)
@@ -473,8 +482,8 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         var message = new AgentMessage(from, to, MessageType.Task, "");
 
         // Act
-        await _service.SendMessageAsync(message);
-        var receivedMessage = await _service.ReceiveMessagesAsync(to)
+        await _service.SendMessageAsync(message, TestContext.Current.CancellationToken);
+        var receivedMessage = await _service.ReceiveMessagesAsync(to, TestContext.Current.CancellationToken)
             .FirstOrDefaultAsync(Polling.DefaultTimeout);
 
         // Assert
@@ -492,8 +501,8 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         var message = new AgentMessage(from, to, MessageType.Task, longContent);
 
         // Act
-        await _service.SendMessageAsync(message);
-        var receivedMessage = await _service.ReceiveMessagesAsync(to)
+        await _service.SendMessageAsync(message, TestContext.Current.CancellationToken);
+        var receivedMessage = await _service.ReceiveMessagesAsync(to, TestContext.Current.CancellationToken)
             .FirstOrDefaultAsync(Polling.DefaultTimeout);
 
         // Assert
@@ -533,7 +542,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         var receiveTask2 = System.Threading.Tasks.Task.Run(() => ReceiveOneAsync(receiver2Messages), TestContext.Current.CancellationToken);
 
         // Act - Send the message: the channel keeps it until a receiver reads it, listening yet or not
-        await _service.SendMessageAsync(message);
+        await _service.SendMessageAsync(message, TestContext.Current.CancellationToken);
 
         await System.Threading.Tasks.Task.WhenAll(receiveTask1, receiveTask2);
 
@@ -595,8 +604,8 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         var message = new AgentMessage(from, to, MessageType.Task, "Test", null);
 
         // Act
-        await _service.SendMessageAsync(message);
-        var receivedMessage = await _service.ReceiveMessagesAsync(to)
+        await _service.SendMessageAsync(message, TestContext.Current.CancellationToken);
+        var receivedMessage = await _service.ReceiveMessagesAsync(to, TestContext.Current.CancellationToken)
             .FirstOrDefaultAsync(Polling.DefaultTimeout);
 
         // Assert
@@ -617,7 +626,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         using var cts1 = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
         try
         {
-            await foreach (var msg in _service.ReceiveMessagesAsync(to).WithCancellation(cts1.Token))
+            await foreach (var msg in _service.ReceiveMessagesAsync(to, TestContext.Current.CancellationToken).WithCancellation(cts1.Token))
             {
                 // Should not receive any message
             }
@@ -625,8 +634,8 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         catch (OperationCanceledException) { }
 
         // Send messages after first cancellation
-        await _service.SendMessageAsync(message1);
-        await _service.SendMessageAsync(message2);
+        await _service.SendMessageAsync(message1, TestContext.Current.CancellationToken);
+        await _service.SendMessageAsync(message2, TestContext.Current.CancellationToken);
 
         // Second receive should work (it ends at the second message; the token only guards a hang)
         var receivedMessages = new List<AgentMessage>();
@@ -634,7 +643,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
 
         try
         {
-            await foreach (var msg in _service.ReceiveMessagesAsync(to).WithCancellation(cts2.Token))
+            await foreach (var msg in _service.ReceiveMessagesAsync(to, TestContext.Current.CancellationToken).WithCancellation(cts2.Token))
             {
                 receivedMessages.Add(msg);
                 if (receivedMessages.Count == 2)
@@ -683,8 +692,8 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         var message = new AgentMessage(agentId, agentId, MessageType.Task, "Self message");
 
         // Act
-        await _service.SendMessageAsync(message);
-        var receivedMessage = await _service.ReceiveMessagesAsync(agentId)
+        await _service.SendMessageAsync(message, TestContext.Current.CancellationToken);
+        var receivedMessage = await _service.ReceiveMessagesAsync(agentId, TestContext.Current.CancellationToken)
             .FirstOrDefaultAsync(Polling.DefaultTimeout);
 
         // Assert
@@ -703,10 +712,10 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
         var receiver = AgentId.Create();
 
         // Act - Interleave messages from two senders
-        await _service.SendMessageAsync(new AgentMessage(sender1, receiver, MessageType.Task, "S1-M1"));
-        await _service.SendMessageAsync(new AgentMessage(sender2, receiver, MessageType.Task, "S2-M1"));
-        await _service.SendMessageAsync(new AgentMessage(sender1, receiver, MessageType.Task, "S1-M2"));
-        await _service.SendMessageAsync(new AgentMessage(sender2, receiver, MessageType.Task, "S2-M2"));
+        await _service.SendMessageAsync(new AgentMessage(sender1, receiver, MessageType.Task, "S1-M1"), TestContext.Current.CancellationToken);
+        await _service.SendMessageAsync(new AgentMessage(sender2, receiver, MessageType.Task, "S2-M1"), TestContext.Current.CancellationToken);
+        await _service.SendMessageAsync(new AgentMessage(sender1, receiver, MessageType.Task, "S1-M2"), TestContext.Current.CancellationToken);
+        await _service.SendMessageAsync(new AgentMessage(sender2, receiver, MessageType.Task, "S2-M2"), TestContext.Current.CancellationToken);
 
         // Receive (the loop ends at the fourth message; the token only guards a hang)
         var receivedMessages = new List<AgentMessage>();
@@ -714,7 +723,7 @@ public sealed class AsyncAgentCommunicationServiceTests : IDisposable
 
         try
         {
-            await foreach (var msg in _service.ReceiveMessagesAsync(receiver).WithCancellation(cts.Token))
+            await foreach (var msg in _service.ReceiveMessagesAsync(receiver, TestContext.Current.CancellationToken).WithCancellation(cts.Token))
             {
                 receivedMessages.Add(msg);
                 if (receivedMessages.Count == 4)

@@ -189,13 +189,13 @@ internal sealed class TrackingCommunicationService : IAgentCommunicationService
 {
     public List<AgentMessage> SentMessages { get; } = [];
 
-    public ValueTask SendMessageAsync(AgentMessage message)
+    public ValueTask SendMessageAsync(AgentMessage message, CancellationToken cancellationToken = default)
     {
         SentMessages.Add(message);
         return ValueTask.CompletedTask;
     }
 
-    public async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId)
+    public async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
         yield break;

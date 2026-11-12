@@ -9,7 +9,7 @@ namespace Orkeon.Cli.Commands.Scripting.Bindings;
 /// declaration to <see cref="CommandDescriptorCollector.AddAsync"/>, the async counterpart
 /// of <see cref="DefineCommandBinding"/>.
 /// </summary>
-public static class DefineAsyncCommandBinding
+internal static class DefineAsyncCommandBinding
 {
     /// <summary>Name of the global function exposed to scripts.</summary>
     public const string GlobalName = "defineAsyncCommand";

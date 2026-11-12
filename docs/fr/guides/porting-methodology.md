@@ -280,14 +280,14 @@ var host = Host.CreateDefaultBuilder(args)
         // ToolRegistry par défaut d'AddOrkeonInfrastructure() les lit — rien de plus à enregistrer.
 
         // LLM — un hôte construit à la main ne lit aucune section Llm de lui-même : construire
-        // le provider ici. Utiliser la classe provider du fournisseur (OpenAIProvider, AnthropicLlmProvider, ...).
+        // le provider ici. Utiliser la classe provider du fournisseur (OpenAILlmProvider, AnthropicLlmProvider, ...).
         var llm = LlmConfig.Create(
             context.Configuration["Llm:Model"] ?? "gpt-5.6-sol",
             context.Configuration["Llm:ApiKey"]);
         services.AddOrkeonLlmProvider(
-            sp => new OpenAIProvider(llm,
+            sp => new OpenAILlmProvider(llm,
                 sp.GetRequiredService<IHttpClientFactory>(),
-                sp.GetRequiredService<ILogger<OpenAIProvider>>()),
+                sp.GetRequiredService<ILogger<OpenAILlmProvider>>()),
             llm);
     })
     .Build();

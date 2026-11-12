@@ -11,7 +11,7 @@ binaire précompilé ou utiliser un conteneur, voir
 [Trois façons d'exécuter Orkeon](./three-ways-to-run-orkeon.md).
 
 > **Chemin le plus rapide (ni build, ni clone)** :
-> `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners`
+> `docker run -it --rm -e ORKEON_ENTRYPOINT=shell ghcr.io/orkeon/orkeon`
 > puis `orkeon-example run 1` — détails dans
 > [Trois façons d'exécuter Orkeon §3](./three-ways-to-run-orkeon.md#3-conteneur).
 
@@ -21,9 +21,9 @@ binaire précompilé ou utiliser un conteneur, voir
 |---|---|
 | **SDK .NET ≥ 10.0.300** | Le dépôt épingle le SDK dans `global.json` avec `rollForward: latestFeature`. Un SDK plus ancien fait échouer le build (voir [Dépannage](#dépannage)). Vérifiez avec `dotnet --version`. |
 | **Git** | Pour cloner le dépôt. |
-| **Un endpoint LLM + une clé** | N'importe lequel des 16 fournisseurs supportés, ou un endpoint local type Docker Model Runner / Ollama. Fourni via un profil `appsettings` (ci-dessous). |
+| **Un endpoint LLM + une clé** | N'importe lequel des 16 fournisseurs pris en charge, ou un endpoint local type Docker Model Runner / Ollama. Fourni via un profil `appsettings` (ci-dessous). |
 
-## 1. Cloner et builder
+## 1. Cloner et compiler
 
 ```bash
 git clone https://github.com/Orkeon/orkeon.git
@@ -35,7 +35,7 @@ dotnet build Orkeon.sln
 
 Chaque crew sous `examples/` est décrit par un `config.yaml`. Parcourez le
 [catalogue des exemples](../reference/examples-catalog.md), ou commencez simplement
-par l'assistant de recherche — un crew séquentiel à 3 agents qui scrape le web,
+par l'assistant de recherche — un crew séquentiel à 3 agents qui explore le web,
 analyse des documents et écrit un rapport de synthèse cité :
 
 ```
@@ -148,7 +148,7 @@ Les options de la CLI `orkeon` que vous utiliserez vraiment :
 | `--verbose <0-2>` | `-v` | Verbosité. `0` (défaut) = silencieux, `1` = activité des agents et des outils, plus une ligne de résumé par échange LLM quand `--llm-log` est actif, `2` = debug complet. Le contenu des échanges n'est que dans les fichiers de `--llm-log`. |
 | `--mount <phys>:<virt>:<droits>` | `-m` | Expose un répertoire hôte au système de fichiers virtuel du crew. `droits` vaut `ro`, `rw` ou `rwnd` (lecture-écriture sans suppression) ; des segments `;<sous-chemin>:<droits>` surchargent les droits sous le montage. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. Un crew qui écrit des résultats a besoin d'un montage `:rw` (`/output` est la convention qui déclenche l'écriture automatique du résumé). |
 | `--mount-id <id>` | | Quand plusieurs entrées `Orkeon:FileSystem:Mounts` des settings déclarent la même racine virtuelle, garde celle dont l'identifiant (le préfixe de 26 caractères avant son `\|`) est donné. Plusieurs identifiants se passent séparés par des espaces derrière un seul flag. |
-| `--allow-external-mounts` | | Autorise des montages (et un chemin `<config>` ou `--llm-log-path`) situés **hors** du répertoire de travail. Sans lui, un `--mount` hors du répertoire de travail est refusé au démarrage (code `1`) ; le dossier du script et toute entrée des settings en vigueur (une entrée choisie par id comprise) n'en demandent pas. La variable d'env `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` l'active pour chaque invocation (l'image conteneur `orkeon-runners` l'embarque). |
+| `--allow-external-mounts` | | Autorise des montages (et un chemin `<config>` ou `--llm-log-path`) situés **hors** du répertoire de travail. Sans lui, un `--mount` hors du répertoire de travail est refusé au démarrage (code `1`) ; le dossier du script et toute entrée des settings en vigueur (une entrée choisie par id comprise) n'en demandent pas. La variable d'env `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` l'active pour chaque invocation (l'image conteneur `ghcr.io/orkeon/orkeon` l'embarque). |
 | `--var CLE=VALEUR` | `-V` | Injecte une variable dans l'entrée du crew. Les descriptions de tâches contenant `{CLE}` sont développées en `VALEUR`. Plusieurs variables se passent séparées par des espaces derrière un seul `-V` (un flag répété est rejeté). **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`, qui prennent `--inputs`. |
 | `--initial-context <texte>` | | Une chaîne de contexte libre passée à l'entrée du crew. **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`. |
 | `--inputs <json>` | | Entrées JSON inline transmises à un script comme variable globale `inputs` (voie `.ork.ts`). |
@@ -156,7 +156,7 @@ Les options de la CLI `orkeon` que vous utiliserez vraiment :
 | `--llm-profile <id>` | | Lance le run sur le profil LLM d'hôte `<id>` (`Llm:Profiles:<id>` dans les réglages ou l'environnement `ORKEON_`) comme défaut du run : la section `Llm` devient ce profil, en entier. Un id que la configuration ne définit pas est refusé avec exit 1 avant toute construction d'hôte — voir [la référence CLI](../reference/cli.md). |
 | `--llm-log` | | Capture chaque échange HTTP LLM (requête + réponse, en-têtes + payload) en `.jsonl` sous `./llm-logs`. Les settings [`LlmLogging`](../reference/configuration.md#llmlogging) règlent ce qui est gardé. |
 | `--llm-log-path <dir>` | | Comme `--llm-log`, mais écrit dans `<dir>` (et implique `--llm-log`). Un `<dir>` hors du répertoire de travail demande `--allow-external-mounts`. |
-| `--validate` | | Dry-run : résout les settings, construit l'hôte et charge la crew (résolution stricte des outils) **sans** sonder le LLM ni rien exécuter. Imprime `VALIDATION OK/FAILED` et sort 0 / non-zéro. |
+| `--validate` | | Exécution à blanc : résout les settings, construit l'hôte et charge la crew (résolution stricte des outils) **sans** sonder le LLM ni rien exécuter. Imprime `VALIDATION OK/FAILED` et sort 0 / non-zéro. |
 | `--list-tools` | | Construit l'hôte et imprime les noms d'outils enregistrés, triés, un par ligne, puis sort — aucune crew requise. |
 | `--events jsonl` | | Émet le protocole d'événements JSONL versionné sur stdout au lieu du texte brut (c'est ainsi qu'un client externe pilote un run) — voir [le bus d'événements de run](../architecture/run-event-bus.md). |
 | `--stream` | | Avec `--events`, émet aussi les événements `llm.delta` token par token (verbeux par nature ; désactivé sauf demande). |
@@ -174,7 +174,7 @@ passe par le [système de fichiers virtuel](../architecture/vfs-compliance.md).
 --mount ./data:/data:ro         # hôte ./data ->  virtuel /data    (lecture seule)
 ```
 
-Le runner monte automatiquement en lecture seule le répertoire du config lui-même,
+Le runner monte automatiquement en lecture seule le répertoire du fichier de config lui-même,
 **sous le nom `/crew`**, si bien que le YAML et ses fichiers voisins sont toujours
 visibles — un `data.csv` à côté de `config.yaml` se lit en `/crew/data.csv`, jamais
 par son chemin sur votre disque
@@ -193,7 +193,7 @@ ordre (premier trouvé gagne) :
 3. En remontant l'arborescence depuis le config, en cherchant à chaque niveau un
    sous-répertoire `appsettings/appsettings.json` — c'est ainsi qu'est trouvée la
    matrice de profils partagée `examples/appsettings/appsettings.json`.
-4. Le config global per-user écrit par `orkeon init`
+4. Le fichier de config global propre à l'utilisateur écrit par `orkeon init`
    (`%APPDATA%\Orkeon\appsettings.json` sous Windows,
    `$XDG_CONFIG_HOME/Orkeon/appsettings.json` — par défaut
    `~/.config/Orkeon/appsettings.json` — sous Linux et macOS).
@@ -210,7 +210,7 @@ correctif :
 | Symptôme / message | Cause | Correctif |
 |---|---|---|
 | `error CS9057: analyzer assembly ... references version 5.3.0 of the compiler` | SDK .NET plus ancien que 10.0.300 | Installez un SDK ≥ 10.0.300 (la version épinglée dans `global.json`). Vérifiez avec `dotnet --version`. |
-| `error CS8795: Partial method ... must have an implementation part` | Le générateur de source n'a pas tourné — généralement le même SDK périmé que ci-dessus | Passez le SDK à ≥ 10.0.300 et rebuiltez. |
+| `error CS8795: Partial method ... must have an implementation part` | Le générateur de source n'a pas tourné — généralement le même SDK périmé que ci-dessus | Passez le SDK à ≥ 10.0.300 et recompilez. |
 | `error NU1008: Projects that use central package version management should not define the version` | Un `Version=` égaré sur un `PackageReference` alors que la gestion centralisée est active | Retirez la version inline ; déclarez-la dans `Directory.Packages.props`. |
 | `dotnet: command not found` (dans un script, alors que `dotnet` marche en interactif) | `dotnet` est un alias/fonction shell invisible des shells non interactifs | Mettez le SDK sur le `PATH` dans `~/.zprofile` / `~/.profile`, p. ex. `export PATH="$HOME/.dotnet:$PATH"`. |
 | `Connection refused (localhost:12434)` | Le profil par défaut vise Docker Model Runner, qui ne tourne pas | Démarrez Docker Model Runner, ou copiez un profil cloud (p. ex. `appsettings.deepseek.local.json`) et passez-le avec `--settings`. |

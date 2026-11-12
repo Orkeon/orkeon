@@ -1966,7 +1966,7 @@ profondeur de récursion de 64 et 30 s par défaut.
 ### `Orkeon:Scripting:Toolchain`
 
 Résolution de la toolchain esbuild : `EsbuildPath` vient en premier dans l'ordre de recherche.
-Lue par `EsbuildTranspiler.Create` — `orkeon run`, le runner partagé, `orkeon doctor`,
+Lue par le transpileur esbuild (`IScriptTranspiler`) d'`orkeon run`, le runner partagé, `orkeon doctor`,
 `orkeon forge`, les commandes `*.cmd.ts`.
 
 <!-- settings:Orkeon:Scripting:Toolchain -->
@@ -2343,7 +2343,7 @@ l'endroit où un script `.ork.ts` cherche esbuild en dernier ; `HOME` est lue qu
 dossier de profil, pour placer les réglages par utilisateur. Les variables écrites sous
 `MCP:Servers:<nom>:Env` sont celles de l'opérateur : Orkeon les remet au serveur qu'il lance et
 n'en lit aucune. L'image de conteneur a ses propres variables, lues par son script d'entrée et
-non par les binaires — `ORKEON_RUNNER` et ses voisines
+non par les binaires — `ORKEON_ENTRYPOINT` et ses voisines
 ([trois façons de lancer Orkeon](../getting-started/three-ways-to-run-orkeon.md#3-conteneur)).
 
 ### Les variables qu'un réglage nomme

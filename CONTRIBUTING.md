@@ -302,6 +302,9 @@ project, exposing plain fields or properties to configure answers and inspect ca
   `file-modes.yml` gate reads the mode from the git index — the only one a macOS/Linux
   clone restores — so a working tree on an NTFS mount that shows every file as executable
   proves nothing.
+* A package change also changes the NuGet lock files: `dotnet restore` rewrites the
+  `packages.lock.json` of the projects it touches (CI restores in locked mode and fails on a
+  stale one) — commit them with the change.
 * A package change — a version in `Directory.Packages.props`, a package added to or
   removed from a project the tools, the installers or the container images ship — changes
   what those binaries redistribute: after the restore, run
@@ -373,6 +376,8 @@ Aspire), and performance.
 
 ## Versioning and API stability
 
+The policy for consumers is in [docs/reference/stability.md](docs/reference/stability.md).
+
 Orkeon follows [Semantic Versioning 2.0](https://semver.org/). The public API is not a
 matter of opinion — it is **recorded in the repository** and enforced at build time:
 
@@ -384,23 +389,26 @@ matter of opinion — it is **recorded in the repository** and enforced at build
   fix does it for you — `dotnet format analyzers --diagnostics RS0016` on the project).
   At release time, `Unshipped` entries move to `Shipped`.
 - **A breaking change is any edit or removal of a line in `PublicAPI.Shipped.txt`.**
-  It requires a major version bump (a minor is acceptable only before 1.0), a
+  It requires a major version bump, a
   `*REMOVED*` entry in the API file, and a CHANGELOG entry that says so plainly.
-- **Deprecation window (from 1.0)**: once 1.0 ships, nothing public is removed without
-  shipping `[Obsolete]` for at least one minor version first, with the replacement named
-  in the message. Before 1.0, compatibility shims are removed directly,
-  with no `[Obsolete]` step: each removal gets a `*REMOVED*` line in the API file and a
-  `**[breaking]**` CHANGELOG entry with a migration note.
+  One exception: a line whose signature carries a type of Jint, TreeSitter.DotNet or
+  Terminal.Gui follows that library's major version and may change in a minor release that
+  moves to a new major of it, with a CHANGELOG migration note
+  ([third-party clause](docs/reference/stability.md#types-of-a-third-party-library)).
+  Keep such types off the public surface: plumbing that needs one is `internal`.
+- **Deprecation window**: nothing public is removed without shipping `[Obsolete]` for
+  at least one minor version first, with the replacement named in the message; the
+  removal itself lands in a major version, with a `*REMOVED*` line in the API file and
+  a `**[breaking]**` CHANGELOG entry with a migration note.
 - **`[Experimental]` surfaces are outside this commitment.** A2A, Autonomous
   orchestration, corrective RAG, the MCP integration, per-model capabilities, host HTTP
   security and the run history ports carry
   `[Experimental("ORKEXP00x")]` diagnostics: referencing them is a compile error you
   suppress explicitly, which is your opt-in to a surface that may change in any
   release. See [docs/reference/experimental-apis.md](docs/reference/experimental-apis.md).
-- **Stability commitment for the 1.x window**: once 1.0 ships, no breaking change to
-  a non-experimental shipped API before 2.0. Until then — while `main` is on
-  pre-release versions — breaking changes may still land between two
-  pre-releases, but are always called out in the CHANGELOG and the migration notes.
+- **Stability commitment for the 1.x line**: no breaking change to a non-experimental
+  shipped API before 2.0, the third-party clause aside. The full policy is in
+  [docs/reference/stability.md](docs/reference/stability.md).
 
 ## Release Process
 
@@ -413,8 +421,8 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    VFS-compliance rules) goes into `AnalyzerReleases.Shipped.md` under a
    `## Release <version>` heading, leaving the `Unshipped` file with its header only.
    The release-tracking analyzer parses that heading as a plain `Major.Minor.Patch`
-   number and rejects a prerelease suffix (RS2007), so the heading for the 1.0.0 line
-   is `## Release 1.0.0` — it is already there, and the pre-release tags add nothing to it.
+   number and rejects a prerelease suffix (RS2007): a release candidate adds nothing there, its rules go
+   under the heading of the final version (`## Release <X.Y.Z>` for the `<X.Y.Z>` line).
 5. Make sure CI is green on the commit you tag. Beyond the `-warnaserror` build and the
    test suites, the gates that must pass are `scripts/check-docs-parity.sh`,
    `scripts/check-doc-claims.py` (it also compares the hand-written copies of the NuGet
@@ -448,13 +456,13 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    the Windows per-user MSI and the `orkeon-host` service MSI, the macOS tarballs, the
    Debian package, the SBOM and the `SHA256SUMS` / `SHA256SUMS.msi` checksum files —
    each smoked on a real runner, then attested, before the Release is published — plus
-   the `orkeon-runners` container image pushed to GHCR) and `docs.yml`
+   the `ghcr.io/orkeon/orkeon` container image pushed to GHCR) and `docs.yml`
    (deploys the documentation site to GitHub Pages, at <https://orkeon.github.io/orkeon/>).
    Once the Release is published, `release-verify.yml` re-runs the install smokes against
    the assets as downloaded from the Release page.
 
 Between two tags, every push to `main` whose CI is green is also packed as
-`<version>.dev.<run number>` and pushed to GitHub Packages only — never NuGet.org — with
+`<X.Y.Z>-<pre>.dev.<run number>` and pushed to GitHub Packages only — never NuGet.org — with
 no attestation or SBOM; older dev builds are pruned.
 
 ## Questions?

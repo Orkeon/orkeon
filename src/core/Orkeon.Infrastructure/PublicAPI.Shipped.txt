@@ -16,11 +16,11 @@ Orkeon.Infrastructure.Agent.DynamicAgentCrewPolicy.DynamicAgentCrewPolicy() -> v
 Orkeon.Infrastructure.Agent.DynamicAgentCrewPolicy.MaxConcurrentDynamicAgents.get -> int?
 Orkeon.Infrastructure.Agent.DynamicAgentCrewPolicy.MaxConcurrentDynamicAgents.set -> void
 Orkeon.Infrastructure.Agent.DynamicAgentService
-Orkeon.Infrastructure.Agent.DynamicAgentService.AllowsDynamicAgentsAsync(Orkeon.Domain.Common.CrewId! crewId) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Agent.DynamicAgentService.AllowsDynamicAgentsAsync(Orkeon.Domain.Common.CrewId! crewId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Infrastructure.Agent.DynamicAgentService.DynamicAgentService(Orkeon.Domain.Agent.IAgentFactory! agentFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Agent.DynamicAgentService!>? logger = null, Orkeon.Infrastructure.Agent.DynamicAgentServiceOptions? options = null) -> void
-Orkeon.Infrastructure.Agent.DynamicAgentService.GetMaxConcurrentDynamicAgentsAsync(Orkeon.Domain.Common.CrewId! crewId) -> System.Threading.Tasks.Task<int?>!
+Orkeon.Infrastructure.Agent.DynamicAgentService.GetMaxConcurrentDynamicAgentsAsync(Orkeon.Domain.Common.CrewId! crewId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int?>!
 Orkeon.Infrastructure.Agent.DynamicAgentService.SpawnAgentAsync(Orkeon.Domain.Agent.AgentSpawnRequest! request, Orkeon.Application.Agent.DynamicAgentRegistry! registry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Agent.Agent!>!
-Orkeon.Infrastructure.Agent.DynamicAgentService.TerminateAgentAsync(Orkeon.Domain.Common.AgentId! agentId, Orkeon.Application.Agent.DynamicAgentRegistry! registry, string? reason = null) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Agent.DynamicAgentService.TerminateAgentAsync(Orkeon.Domain.Common.AgentId! agentId, Orkeon.Application.Agent.DynamicAgentRegistry! registry, string? reason = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Infrastructure.Agent.DynamicAgentServiceOptions
 Orkeon.Infrastructure.Agent.DynamicAgentServiceOptions.AllowDynamicAgentsByDefault.get -> bool
 Orkeon.Infrastructure.Agent.DynamicAgentServiceOptions.AllowDynamicAgentsByDefault.set -> void
@@ -130,8 +130,8 @@ Orkeon.Infrastructure.Communication.AsyncAgentCommunicationService
 Orkeon.Infrastructure.Communication.AsyncAgentCommunicationService.AsyncAgentCommunicationService() -> void
 Orkeon.Infrastructure.Communication.AsyncAgentCommunicationService.Dispose() -> void
 Orkeon.Infrastructure.Communication.AsyncAgentCommunicationService.IsAgentAvailableAsync(Orkeon.Domain.Common.AgentId! agentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Infrastructure.Communication.AsyncAgentCommunicationService.ReceiveMessagesAsync(Orkeon.Domain.Common.AgentId! agentId) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Domain.AgentCommunication.AgentMessage!>!
-Orkeon.Infrastructure.Communication.AsyncAgentCommunicationService.SendMessageAsync(Orkeon.Domain.AgentCommunication.AgentMessage! message) -> System.Threading.Tasks.ValueTask
+Orkeon.Infrastructure.Communication.AsyncAgentCommunicationService.ReceiveMessagesAsync(Orkeon.Domain.Common.AgentId! agentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Domain.AgentCommunication.AgentMessage!>!
+Orkeon.Infrastructure.Communication.AsyncAgentCommunicationService.SendMessageAsync(Orkeon.Domain.AgentCommunication.AgentMessage! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 Orkeon.Infrastructure.Communication.AsyncAgentCommunicationService.SetAgentAvailabilityAsync(Orkeon.Domain.Common.AgentId! agentId, bool isAvailable, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.Compliance.NistComplianceReportGenerator
 Orkeon.Infrastructure.Compliance.NistComplianceReportGenerator.GenerateReportAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Compliance.NistComplianceReport!>!
@@ -707,7 +707,7 @@ Orkeon.Infrastructure.Crew.AutoSummaryWriter.OnCrewFailedAsync(Orkeon.Applicatio
 Orkeon.Infrastructure.Crew.AutoSummaryWriter.OnTaskCompletedAsync(Orkeon.Application.Crew.TaskExecutionSnapshot! snapshot, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.Crew.AutoSummaryWriter.OnTaskStartedAsync(Orkeon.Application.Crew.TaskStartSnapshot! snapshot, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.Crew.LlmBasedManager
-Orkeon.Infrastructure.Crew.LlmBasedManager.AssignTaskAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>! availableAgents, Orkeon.Application.Context.SimpleExecutionContext! context, Orkeon.Application.Interfaces.ManagerLlm! llm) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.TaskAssignment!>!
+Orkeon.Infrastructure.Crew.LlmBasedManager.AssignTaskAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>! availableAgents, Orkeon.Application.Context.SimpleExecutionContext! context, Orkeon.Application.Interfaces.ManagerLlm! llm, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.TaskAssignment!>!
 Orkeon.Infrastructure.Crew.LlmBasedManager.LlmBasedManager(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.LlmBasedManager!>! logger) -> void
 Orkeon.Infrastructure.Crew.LlmBasedManager.ReviewOutputAsync(Orkeon.Application.Execution.TaskOutput! output, Orkeon.Domain.Task.CrewTask! originalTask, Orkeon.Application.Interfaces.ManagerLlm! llm, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Infrastructure.Crew.ManagerLlmResolver
@@ -783,7 +783,7 @@ Orkeon.Infrastructure.Crew.Strategies.SequentialProcessStrategy.ExecuteSequentia
 Orkeon.Infrastructure.Crew.Strategies.SequentialProcessStrategy.SequentialProcessStrategy(Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies! dependencies, Orkeon.Infrastructure.Agent.AgentDelegationToolsProvider! delegationProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.SequentialProcessStrategy!>! logger, Orkeon.Application.Crew.ICrewExecutionHook? hook = null, Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector? agentSelector = null) -> void
 Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector
 Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector.ForTaskAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>! agents, int fallbackIndex, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Orkeon.Domain.Agent.Agent!>
-Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector.TaskAgentSelector(Microsoft.Extensions.Options.IOptions<Orkeon.Application.Configuration.OrkeonApplicationOptions!>? options = null, Orkeon.Application.Interfaces.Services.IAgentSelectionService? selection = null, Orkeon.Application.Interfaces.Ports.IEmbeddingService? embedder = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector!>? logger = null) -> void
+Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector.TaskAgentSelector(Microsoft.Extensions.Options.IOptions<Orkeon.Application.Configuration.OrkeonApplicationOptions!>? options = null, Orkeon.Application.Interfaces.Services.IAgentSelectionService? selection = null, Orkeon.Domain.Memory.IEmbeddingService? embedder = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector!>? logger = null) -> void
 Orkeon.Infrastructure.Decision.GuardianJudgeFailMode
 Orkeon.Infrastructure.Decision.GuardianJudgeFailMode.Closed = 0 -> Orkeon.Infrastructure.Decision.GuardianJudgeFailMode
 Orkeon.Infrastructure.Decision.GuardianJudgeFailMode.Open = 1 -> Orkeon.Infrastructure.Decision.GuardianJudgeFailMode
@@ -1274,7 +1274,6 @@ Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.OpenAICompatiblePro
 Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.OpenAICompatibleProviderBase(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.OpenAICompatibleProviderBase(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.TryDropCatalogueOutputCap(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> bool
-Orkeon.Infrastructure.LLMs.Converters.ContentConverter
 Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions
 Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.DecisionCircuitOptions() -> void
 Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.Enabled.get -> bool
@@ -1382,7 +1381,7 @@ Orkeon.Infrastructure.LLMs.Embeddings.DefaultEmbeddingProviderResolver
 Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingModelGuard
 Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingProviderServiceAdapter
 Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingProviderServiceAdapter.EmbeddingProviderServiceAdapter(Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! provider) -> void
-Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingProviderServiceAdapter.GetEmbeddingAsync(string! text) -> System.Threading.Tasks.Task<float[]!>!
+Orkeon.Infrastructure.LLMs.Embeddings.EmbeddingProviderServiceAdapter.GetEmbeddingAsync(string! text, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<float[]!>!
 Orkeon.Infrastructure.LLMs.Embeddings.GeminiEmbeddingProvider
 Orkeon.Infrastructure.LLMs.Embeddings.GeminiEmbeddingProvider.GeminiEmbeddingProvider(System.Net.Http.HttpClient! httpClient, Microsoft.Extensions.Options.IOptions<Orkeon.Application.Configuration.EmbeddingOptions!>! options) -> void
 Orkeon.Infrastructure.LLMs.Embeddings.MistralEmbeddingProvider
@@ -1542,11 +1541,11 @@ Orkeon.Infrastructure.LLMs.OllamaRequestPayload.ToDictionary() -> System.Collect
 Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager
 Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager.IsContextExceeded(string! content, int maxTokens) -> bool
 Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager.OpenAIContextWindowManager(Orkeon.Domain.SharedKernel.ITokenCounter! tokenCounter, Orkeon.Domain.SharedKernel.ILlmProvider! llm, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager!>! logger, Orkeon.Domain.SharedKernel.ValueObjects.ContextWindowSettings? settings = null) -> void
-Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager.SummarizeIfNeededAsync(string! content, int maxTokens) -> System.Threading.Tasks.Task<string!>!
-Orkeon.Infrastructure.LLMs.OpenAIProvider
-Orkeon.Infrastructure.LLMs.OpenAIProvider.OpenAIProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIProvider!>? logger = null) -> void
-Orkeon.Infrastructure.LLMs.OpenAIProvider.OpenAIProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIProvider!>? logger = null) -> void
-Orkeon.Infrastructure.LLMs.OpenAIProvider.OpenAIProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenAIContextWindowManager.SummarizeIfNeededAsync(string! content, int maxTokens, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Infrastructure.LLMs.OpenAILlmProvider
+Orkeon.Infrastructure.LLMs.OpenAILlmProvider.OpenAILlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAILlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenAILlmProvider.OpenAILlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAILlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenAILlmProvider.OpenAILlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAILlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider
 Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider!>? logger = null) -> void
@@ -1612,42 +1611,6 @@ Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider
 Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.TogetherAiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.TogetherAiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.TogetherAiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider!>? logger = null) -> void
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallParser
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallParser.AnthropicToolCallParser() -> void
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallParser.FormatAssistantToolCallMessage(System.Text.Json.JsonElement responseBody) -> object!
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallParser.FormatToolResult(Orkeon.Application.Interfaces.LLM.ParsedToolCall! toolCall, string! result, bool success) -> object!
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallParser.ParseToolCalls(System.Text.Json.JsonElement responseBody) -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.LLM.ParsedToolCall!>!
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallingStrategy
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallingStrategy.AnthropicToolCallingStrategy() -> void
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallingStrategy.Formatter.get -> Orkeon.Application.Interfaces.LLM.IToolSchemaFormatter!
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallingStrategy.Parser.get -> Orkeon.Application.Interfaces.LLM.IToolCallParser!
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolCallingStrategy.SupportsNativeToolCalling.get -> bool
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolSchemaFormatter
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolSchemaFormatter.AnthropicToolSchemaFormatter() -> void
-Orkeon.Infrastructure.LLMs.ToolCalling.AnthropicToolSchemaFormatter.FormatToolsForPayload(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.Protocol.ToolSchema!>! tools, Orkeon.Domain.Tools.Protocol.ToolCallMode mode = Orkeon.Domain.Tools.Protocol.ToolCallMode.Auto) -> System.Collections.Generic.Dictionary<string!, object!>!
-Orkeon.Infrastructure.LLMs.ToolCalling.NullToolCallingStrategy
-Orkeon.Infrastructure.LLMs.ToolCalling.NullToolCallingStrategy.Formatter.get -> Orkeon.Application.Interfaces.LLM.IToolSchemaFormatter!
-Orkeon.Infrastructure.LLMs.ToolCalling.NullToolCallingStrategy.NullToolCallingStrategy() -> void
-Orkeon.Infrastructure.LLMs.ToolCalling.NullToolCallingStrategy.Parser.get -> Orkeon.Application.Interfaces.LLM.IToolCallParser!
-Orkeon.Infrastructure.LLMs.ToolCalling.NullToolCallingStrategy.SupportsNativeToolCalling.get -> bool
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallParser
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallParser.FormatAssistantToolCallMessage(System.Text.Json.JsonElement responseBody) -> object!
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallParser.FormatToolResult(Orkeon.Application.Interfaces.LLM.ParsedToolCall! toolCall, string! result, bool success) -> object!
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallParser.OpenAIToolCallParser(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallParser!>! logger) -> void
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallParser.ParseToolCalls(System.Text.Json.JsonElement responseBody) -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.LLM.ParsedToolCall!>!
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallingStrategy
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallingStrategy.Formatter.get -> Orkeon.Application.Interfaces.LLM.IToolSchemaFormatter!
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallingStrategy.OpenAIToolCallingStrategy(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallParser!>! logger) -> void
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallingStrategy.Parser.get -> Orkeon.Application.Interfaces.LLM.IToolCallParser!
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolCallingStrategy.SupportsNativeToolCalling.get -> bool
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolSchemaFormatter
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolSchemaFormatter.FormatToolsForPayload(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.Protocol.ToolSchema!>! tools, Orkeon.Domain.Tools.Protocol.ToolCallMode mode = Orkeon.Domain.Tools.Protocol.ToolCallMode.Auto) -> System.Collections.Generic.Dictionary<string!, object!>!
-Orkeon.Infrastructure.LLMs.ToolCalling.OpenAIToolSchemaFormatter.OpenAIToolSchemaFormatter() -> void
-Orkeon.Infrastructure.LLMs.ToolCalling.TextFallbackToolCallParser
-Orkeon.Infrastructure.LLMs.ToolCalling.TextFallbackToolCallParser.FormatAssistantToolCallMessage(System.Text.Json.JsonElement responseBody) -> object!
-Orkeon.Infrastructure.LLMs.ToolCalling.TextFallbackToolCallParser.FormatToolResult(Orkeon.Application.Interfaces.LLM.ParsedToolCall! toolCall, string! result, bool success) -> object!
-Orkeon.Infrastructure.LLMs.ToolCalling.TextFallbackToolCallParser.ParseToolCalls(System.Text.Json.JsonElement responseBody) -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.LLM.ParsedToolCall!>!
-Orkeon.Infrastructure.LLMs.ToolCalling.TextFallbackToolCallParser.TextFallbackToolCallParser(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.ToolCalling.TextFallbackToolCallParser!>! logger) -> void
 Orkeon.Infrastructure.LLMs.ZaiLlmProvider
 Orkeon.Infrastructure.LLMs.ZaiLlmProvider.ZaiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.ZaiLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.ZaiLlmProvider.ZaiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.ZaiLlmProvider!>? logger = null) -> void
@@ -1889,7 +1852,6 @@ Orkeon.Infrastructure.Memory.LanceDb.LanceDbOptions.TableName.get -> string!
 Orkeon.Infrastructure.Memory.LanceDb.LanceDbOptions.TableName.set -> void
 Orkeon.Infrastructure.Memory.LanceDb.LanceDbOptions.VectorWeight.get -> float
 Orkeon.Infrastructure.Memory.LanceDb.LanceDbOptions.VectorWeight.set -> void
-Orkeon.Infrastructure.Memory.MemoryMetadataConverter
 Orkeon.Infrastructure.Memory.MemoryMetadataValue
 Orkeon.Infrastructure.Memory.MemoryMetadataValue.GetValue<T>() -> T
 Orkeon.Infrastructure.Memory.MemoryMetadataValue.RawValue.get -> object!
@@ -2056,7 +2018,6 @@ Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.StartTime.get -> 
 Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.StartTime.init -> void
 Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.Status.get -> string!
 Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.Status.init -> void
-Orkeon.Infrastructure.Orchestration.CrewExecutionStateMapper
 Orkeon.Infrastructure.Orchestration.CrewExecutionStatePersistenceOptions
 Orkeon.Infrastructure.Orchestration.CrewExecutionStatePersistenceOptions.CrewExecutionStatePersistenceOptions() -> void
 Orkeon.Infrastructure.Orchestration.CrewExecutionStatePersistenceOptions.DeleteFromStoreOnArchive.get -> bool
@@ -2115,7 +2076,7 @@ Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.GetExecutionStatusAsync(Orkeon.Application.Interfaces.Services.CrewExecutionId! executionId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewExecutionStatus!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, Orkeon.Application.Interfaces.Services.KickoffOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewOutput!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewOutput!>!
-Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffAsyncNoWait(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewExecutionId!>!
+Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffNoWaitAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewExecutionId!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffForEachAsync(Orkeon.Domain.Common.CrewId! crewId, System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Services.CrewInput!>! inputs, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.BatchOutput!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, Orkeon.Application.Interfaces.Services.KickoffOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>!
 Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.KickoffStreamingAsync(Orkeon.Domain.Common.CrewId! crewId, Orkeon.Application.Interfaces.Services.CrewInput! input, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Application.Interfaces.Services.CrewExecutionEvent!>!
@@ -2213,14 +2174,6 @@ Orkeon.Infrastructure.OutputParsing.Validation.SchemaValidator.ValidateAsync(str
 Orkeon.Infrastructure.Parsing.ExecutionPlanParser
 Orkeon.Infrastructure.Parsing.ExecutionPlanParser.ExecutionPlanParser() -> void
 Orkeon.Infrastructure.Parsing.ExecutionPlanParser.Read(string! reply, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! numberedTasks) -> Orkeon.Domain.Crew.Interfaces.ExecutionPlanReading!
-Orkeon.Infrastructure.Parsing.MarkdownParser
-Orkeon.Infrastructure.Parsing.MarkdownParser.ExtractHeaders(string! markdown) -> System.Collections.Generic.IEnumerable<(int Level, string! Text)>!
-Orkeon.Infrastructure.Parsing.MarkdownParser.ExtractLinks(string! markdown) -> System.Collections.Generic.IEnumerable<string!>!
-Orkeon.Infrastructure.Parsing.MarkdownParser.ExtractMetadata(string! markdown) -> System.Collections.Generic.IDictionary<string!, object!>!
-Orkeon.Infrastructure.Parsing.MarkdownParser.MarkdownParser() -> void
-Orkeon.Infrastructure.Parsing.MarkdownParser.Sanitize(string! markdown) -> string!
-Orkeon.Infrastructure.Parsing.MarkdownParser.ToHtml(string! markdown) -> string!
-Orkeon.Infrastructure.Parsing.MarkdownParser.ToPlainText(string! markdown) -> string!
 Orkeon.Infrastructure.Persistence.Agent.InMemoryAgentRegistrationStore
 Orkeon.Infrastructure.Persistence.Agent.InMemoryAgentRegistrationStore.Contains(Orkeon.Domain.Common.AgentId! id) -> bool
 Orkeon.Infrastructure.Persistence.Agent.InMemoryAgentRegistrationStore.Count.get -> int
@@ -2610,7 +2563,7 @@ Orkeon.Infrastructure.Security.Sinks.StructuredLogAuditSink
 Orkeon.Infrastructure.Security.Sinks.StructuredLogAuditSink.StructuredLogAuditSink(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.Sinks.StructuredLogAuditSink!>! logger) -> void
 Orkeon.Infrastructure.Security.Sinks.StructuredLogAuditSink.WriteAsync(Orkeon.Domain.Security.AuditEvent! auditEvent, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.Security.TokenBudgetTracker
-Orkeon.Infrastructure.Security.TokenBudgetTracker.GetReport(string! crewId) -> Orkeon.Application.Interfaces.Security.TokenUsageReport!
+Orkeon.Infrastructure.Security.TokenBudgetTracker.GetReport(string! crewId) -> Orkeon.Application.Interfaces.Security.TokenBudgetReport!
 Orkeon.Infrastructure.Security.TokenBudgetTracker.RecordUsage(string! crewId, string! agentRole, int promptTokens, int completionTokens, string! model) -> Orkeon.Application.Interfaces.Security.BudgetCheckResult!
 Orkeon.Infrastructure.Security.TokenBudgetTracker.TokenBudgetTracker(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.TokenBudgetOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.TokenBudgetTracker!>! logger) -> void
 Orkeon.Infrastructure.Security.TokenBudgetTracker.TokenBudgetTracker(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.TokenBudgetOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.TokenBudgetTracker!>! logger, Orkeon.Application.Interfaces.Ports.IModelPricingRegistry? pricingRegistry) -> void
@@ -2624,37 +2577,6 @@ Orkeon.Infrastructure.Security.ToolResultSanitizer.ToolResultSanitizer(Orkeon.Ap
 Orkeon.Infrastructure.Security.UrlValidator
 Orkeon.Infrastructure.Security.UrlValidator.UrlValidator(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.UrlSecurityOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.UrlValidator!>! logger) -> void
 Orkeon.Infrastructure.Security.UrlValidator.ValidateUrlAsync(System.Uri! url, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Security.UrlValidationResult!>!
-Orkeon.Infrastructure.Serialization.Converters.BoolTolerantConverter
-Orkeon.Infrastructure.Serialization.Converters.BoolTolerantConverter.BoolTolerantConverter() -> void
-Orkeon.Infrastructure.Serialization.Converters.DecimalInvariantConverter
-Orkeon.Infrastructure.Serialization.Converters.DecimalInvariantConverter.DecimalInvariantConverter() -> void
-Orkeon.Infrastructure.Serialization.Converters.DoubleInvariantConverter
-Orkeon.Infrastructure.Serialization.Converters.DoubleInvariantConverter.DoubleInvariantConverter() -> void
-Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayStringTolerantConverter
-Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayStringTolerantConverter.ImmutableArrayStringTolerantConverter() -> void
-Orkeon.Infrastructure.Serialization.Converters.IntTolerantConverter
-Orkeon.Infrastructure.Serialization.Converters.IntTolerantConverter.IntTolerantConverter() -> void
-Orkeon.Infrastructure.Serialization.Converters.LongTolerantConverter
-Orkeon.Infrastructure.Serialization.Converters.LongTolerantConverter.LongTolerantConverter() -> void
-Orkeon.Infrastructure.Serialization.Converters.RawObjectConverter
-Orkeon.Infrastructure.Serialization.Converters.RawObjectConverter.RawObjectConverter() -> void
-Orkeon.Infrastructure.Serialization.Converters.TolerantEnumConverter<TEnum>
-Orkeon.Infrastructure.Serialization.Converters.TolerantEnumConverter<TEnum>.TolerantEnumConverter() -> void
-Orkeon.Infrastructure.Serialization.Converters.TolerantEnumConverterFactory
-Orkeon.Infrastructure.Serialization.Converters.TolerantEnumConverterFactory.TolerantEnumConverterFactory() -> void
-Orkeon.Infrastructure.Serialization.Converters.UriTolerantConverter
-Orkeon.Infrastructure.Serialization.Converters.UriTolerantConverter.UriTolerantConverter() -> void
-Orkeon.Infrastructure.Serialization.CsvHelperSerializer
-Orkeon.Infrastructure.Serialization.CsvHelperSerializer.CsvHelperSerializer() -> void
-Orkeon.Infrastructure.Serialization.CsvHelperSerializer.Deserialize<T>(string! csv) -> System.Collections.Generic.IEnumerable<T>!
-Orkeon.Infrastructure.Serialization.CsvHelperSerializer.DeserializeAsync<T>(System.IO.Stream! stream) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<T>!>!
-Orkeon.Infrastructure.Serialization.CsvHelperSerializer.DeserializeDynamic(string! csv) -> System.Collections.Generic.IEnumerable<dynamic!>!
-Orkeon.Infrastructure.Serialization.CsvHelperSerializer.Serialize<T>(System.Collections.Generic.IEnumerable<T>! records) -> string!
-Orkeon.Infrastructure.Serialization.CsvHelperSerializer.SerializeAsync<T>(System.Collections.Generic.IEnumerable<T>! records, System.IO.Stream! stream) -> System.Threading.Tasks.Task!
-Orkeon.Infrastructure.Serialization.HtmlAgilityPackParser
-Orkeon.Infrastructure.Serialization.HtmlAgilityPackParser.ExtractElements(string! html, string! selector) -> System.Collections.Generic.IEnumerable<string!>!
-Orkeon.Infrastructure.Serialization.HtmlAgilityPackParser.ExtractText(string! html) -> string!
-Orkeon.Infrastructure.Serialization.HtmlAgilityPackParser.HtmlAgilityPackParser() -> void
 Orkeon.Infrastructure.Serialization.JsonComponentSerializer
 Orkeon.Infrastructure.Serialization.JsonComponentSerializer.Deserialize<T>(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> T!
 Orkeon.Infrastructure.Serialization.JsonComponentSerializer.JsonComponentSerializer() -> void
@@ -2662,7 +2584,6 @@ Orkeon.Infrastructure.Serialization.JsonComponentSerializer.NormalizeKeyToSnakeC
 Orkeon.Infrastructure.Serialization.JsonComponentSerializer.NormalizeParameters(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> System.Collections.Generic.Dictionary<string!, object?>!
 Orkeon.Infrastructure.Serialization.JsonComponentSerializer.NormalizeValue(object? value) -> object?
 Orkeon.Infrastructure.Serialization.JsonComponentSerializer.Serialize<T>(T! value) -> System.Collections.Generic.Dictionary<string!, object?>!
-Orkeon.Infrastructure.Serialization.JsonElementConverter
 Orkeon.Infrastructure.Serialization.YamlDotNetSerializer
 Orkeon.Infrastructure.Serialization.YamlDotNetSerializer.Deserialize(string! yaml) -> object!
 Orkeon.Infrastructure.Serialization.YamlDotNetSerializer.Deserialize<T>(string! yaml) -> T
@@ -2727,42 +2648,6 @@ Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.Equals(Orkeon.Infrastruct
 Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.RootDirectory.get -> string!
 Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.RootDirectory.init -> void
 Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.ScriptAgentMemoryOptions() -> void
-Orkeon.Infrastructure.Stubs.HashBasedEmbeddingProvider
-Orkeon.Infrastructure.Stubs.HashBasedEmbeddingProvider.Dimensions.get -> int
-Orkeon.Infrastructure.Stubs.HashBasedEmbeddingProvider.GetEmbeddingAsync(string! text, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<float[]!>!
-Orkeon.Infrastructure.Stubs.HashBasedEmbeddingProvider.GetEmbeddingsAsync(System.Collections.Generic.IList<string!>! texts, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IList<float[]!>!>!
-Orkeon.Infrastructure.Stubs.HashBasedEmbeddingProvider.HashBasedEmbeddingProvider(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Stubs.HashBasedEmbeddingProvider!>! logger, int dimensions = 384) -> void
-Orkeon.Infrastructure.Stubs.HashBasedEmbeddingProvider.Model.get -> string!
-Orkeon.Infrastructure.Stubs.HashBasedEmbeddingProvider.Name.get -> string!
-Orkeon.Infrastructure.Stubs.InMemoryKnowledgeStore
-Orkeon.Infrastructure.Stubs.InMemoryKnowledgeStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Infrastructure.Stubs.InMemoryKnowledgeStore.ExistsAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Infrastructure.Stubs.InMemoryKnowledgeStore.InMemoryKnowledgeStore(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Stubs.InMemoryKnowledgeStore!>! logger) -> void
-Orkeon.Infrastructure.Stubs.InMemoryKnowledgeStore.RetrieveAsync<T>(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T?>!
-Orkeon.Infrastructure.Stubs.InMemoryKnowledgeStore.SearchAsync<T>(string! query, int maxResults = 10, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<T!>!>!
-Orkeon.Infrastructure.Stubs.InMemoryKnowledgeStore.StoreAsync(string! key, object! knowledge, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Infrastructure.Stubs.InMemoryMemorySystem
-Orkeon.Infrastructure.Stubs.InMemoryMemorySystem.CreateAgentMemoryStoreAsync(Orkeon.Domain.Common.AgentId! agentId) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.AgentMemoryStore!>!
-Orkeon.Infrastructure.Stubs.InMemoryMemorySystem.GetAgentMemoryStoreAsync(Orkeon.Domain.Common.AgentId! agentId) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.AgentMemoryStore?>!
-Orkeon.Infrastructure.Stubs.InMemoryMemorySystem.InMemoryMemorySystem(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Stubs.InMemoryMemorySystem!>! logger) -> void
-Orkeon.Infrastructure.Stubs.InMemoryMemorySystem.RetrieveMemoriesAsync(Orkeon.Domain.Common.AgentId! agentId, string! query, int limit = 10) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Orkeon.Domain.Memory.MemoryItem!>!>!
-Orkeon.Infrastructure.Stubs.InMemoryMemorySystem.StoreMemoryAsync(Orkeon.Domain.Common.AgentId! agentId, Orkeon.Domain.Memory.MemoryItem! memory) -> System.Threading.Tasks.Task!
-Orkeon.Infrastructure.Stubs.NullAgentExecutionService
-Orkeon.Infrastructure.Stubs.NullAgentExecutionService.ExecuteTaskAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult!>!
-Orkeon.Infrastructure.Stubs.NullAgentExecutionService.ExecuteTaskAsync<TOutput>(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult<TOutput!>!>!
-Orkeon.Infrastructure.Stubs.NullAgentExecutionService.NullAgentExecutionService(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Stubs.NullAgentExecutionService!>! logger) -> void
-Orkeon.Infrastructure.Stubs.NullLlmCache
-Orkeon.Infrastructure.Stubs.NullLlmCache.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Orkeon.Infrastructure.Stubs.NullLlmCache.GenerateCacheKey(string! model, string! prompt, object? parameters = null) -> string!
-Orkeon.Infrastructure.Stubs.NullLlmCache.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
-Orkeon.Infrastructure.Stubs.NullLlmCache.GetStatisticsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Infrastructure.Caching.CacheStatistics!>!
-Orkeon.Infrastructure.Stubs.NullLlmCache.NullLlmCache(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Stubs.NullLlmCache!>! logger) -> void
-Orkeon.Infrastructure.Stubs.NullLlmCache.SetAsync(string! key, string! value, System.TimeSpan? expiration = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Orkeon.Infrastructure.Stubs.SimpleAgentSelectionService
-Orkeon.Infrastructure.Stubs.SimpleAgentSelectionService.GetAgentCapabilityAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Application.Interfaces.Ports.IEmbeddingService! embedder, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Agent.ValueObjects.AgentCapability!>!
-Orkeon.Infrastructure.Stubs.SimpleAgentSelectionService.GetTaskRequirementAsync(Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Interfaces.Ports.IEmbeddingService! embedder, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Task.ValueObjects.TaskRequirement!>!
-Orkeon.Infrastructure.Stubs.SimpleAgentSelectionService.SelectBestAgentAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>! agents, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Interfaces.Ports.IEmbeddingService! embedder, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult!>!
-Orkeon.Infrastructure.Stubs.SimpleAgentSelectionService.SimpleAgentSelectionService(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Stubs.SimpleAgentSelectionService!>! logger) -> void
 Orkeon.Infrastructure.Telemetry.HealthChecks.HealthCheckExtensions
 Orkeon.Infrastructure.Telemetry.HealthChecks.LlmProviderHealthCheck
 Orkeon.Infrastructure.Telemetry.HealthChecks.LlmProviderHealthCheck.CheckHealthAsync(Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult>!
@@ -2969,7 +2854,7 @@ Orkeon.Infrastructure.Tools.Search.SearchResultItem.Source.init -> void
 Orkeon.Infrastructure.Tools.Search.SearchResultItem.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Infrastructure.Tools.Search.SearchResultItem.Tags.init -> void
 Orkeon.Infrastructure.Tools.Search.SearchTool
-Orkeon.Infrastructure.Tools.Search.SearchTool.SearchTool(Orkeon.Application.Interfaces.Ports.IEmbeddingService! embeddingService, Orkeon.Application.Interfaces.Services.IVectorMemoryStore! vectorStore, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Tools.Search.SearchTool!>? logger = null) -> void
+Orkeon.Infrastructure.Tools.Search.SearchTool.SearchTool(Orkeon.Domain.Memory.IEmbeddingService! embeddingService, Orkeon.Application.Interfaces.Services.IVectorMemoryStore! vectorStore, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Tools.Search.SearchTool!>? logger = null) -> void
 Orkeon.Infrastructure.Tools.SessionCostRequest
 Orkeon.Infrastructure.Tools.SessionCostRequest.SessionCostRequest() -> void
 Orkeon.Infrastructure.Tools.SessionCostResponse
@@ -3109,15 +2994,15 @@ Orkeon.Infrastructure.Tools.TokenBudgetResponse.UsedTokensByKind.set -> void
 Orkeon.Infrastructure.Tools.TokenBudgetTool
 Orkeon.Infrastructure.Tools.TokenBudgetTool.TokenBudgetTool(Orkeon.Application.Interfaces.Ports.ISessionBufferService! buffer, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Session.CliSessionOptions!>? session = null) -> void
 Orkeon.Infrastructure.Tools.ToolRegistry
-Orkeon.Infrastructure.Tools.ToolRegistry.ClearAsync() -> System.Threading.Tasks.Task!
-Orkeon.Infrastructure.Tools.ToolRegistry.GetAllToolsAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
-Orkeon.Infrastructure.Tools.ToolRegistry.GetToolAsync(string! toolId) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
-Orkeon.Infrastructure.Tools.ToolRegistry.GetToolByNameAsync(string! name) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
-Orkeon.Infrastructure.Tools.ToolRegistry.IsRegisteredAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Infrastructure.Tools.ToolRegistry.RegisterToolAsync(Orkeon.Domain.Tools.IBaseTool! tool) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Infrastructure.Tools.ToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Tools.ToolRegistry.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Tools.ToolRegistry.GetAllToolsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+Orkeon.Infrastructure.Tools.ToolRegistry.GetToolAsync(string! toolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+Orkeon.Infrastructure.Tools.ToolRegistry.GetToolByNameAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+Orkeon.Infrastructure.Tools.ToolRegistry.IsRegisteredAsync(string! toolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Tools.ToolRegistry.RegisterToolAsync(Orkeon.Domain.Tools.IBaseTool! tool, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Tools.ToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Infrastructure.Tools.ToolRegistry.ToolRegistry(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools) -> void
-Orkeon.Infrastructure.Tools.ToolRegistry.UnregisterToolAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Tools.ToolRegistry.UnregisterToolAsync(string! toolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AAgentDiscovery
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AAgentDiscovery.A2AAgentDiscovery(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AAgentDiscovery!>? logger = null) -> void
 [ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AAgentDiscovery.DiscoverAsync(System.Uri! agentUrl, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.AgentCommunication.AgentCard?>!
@@ -3852,7 +3737,7 @@ const Orkeon.Infrastructure.Checkpointing.JsonFileStateStore.DefaultMaxVersions 
 const Orkeon.Infrastructure.Consensus.SuperMajorityVotingStrategy.RoundingTolerancePercent = 0.05 -> float
 const Orkeon.Infrastructure.Constants.Llm.DockerModelRunnerDefaults.ApiKeyPlaceholder = "not-needed" -> string!
 const Orkeon.Infrastructure.Constants.Llm.DockerModelRunnerDefaults.BaseUrl = "http://localhost:12434/engines/llama.cpp/v1" -> string!
-const Orkeon.Infrastructure.Constants.Llm.DockerModelRunnerDefaults.DefaultModel = "ai/granite-4.0-h-tiny" -> string!
+static readonly Orkeon.Infrastructure.Constants.Llm.DockerModelRunnerDefaults.DefaultModel -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.AnthropicApiKeyHeader = "x-api-key" -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.AnthropicApiVersion = "2023-06-01" -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.AnthropicVersionHeader = "anthropic-version" -> string!
@@ -3958,8 +3843,6 @@ const Orkeon.Infrastructure.Memory.MemorySectionOptions.SectionName = "Memory" -
 const Orkeon.Infrastructure.Memory.Pinecone.PineconeOptions.SectionName = "Orkeon:Pinecone" -> string!
 const Orkeon.Infrastructure.Memory.RedisMemoryOptions.SectionName = "Orkeon:Redis" -> string!
 const Orkeon.Infrastructure.Memory.Sqlite.SqliteMemoryOptions.SectionName = "Orkeon:Sqlite" -> string!
-const Orkeon.Infrastructure.Orchestration.CrewExecutionStateMapper.SessionNamespace = "crew-exec:" -> string!
-const Orkeon.Infrastructure.Orchestration.CrewExecutionStateMapper.StateDocumentKey = "__crew_execution_state__" -> string!
 const Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.InitialContextVariable = "initial_context" -> string!
 const Orkeon.Infrastructure.Resilience.RateLimitResetHeaders.Reason = "rate-limit window" -> string!
 const Orkeon.Infrastructure.Security.Encryption.KeyRotationDefaults.DefaultBatchSize = 100 -> int
@@ -4160,12 +4043,12 @@ override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.GenerateStreamingAsync(str
 override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.RequiresApiKey.get -> bool
 override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.StreamsNatively.get -> bool
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.DefaultBaseUrl.get -> System.Uri!
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.DefaultModel.get -> string!
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.MaxTokensFieldName.get -> string!
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.Name.get -> string!
-override Orkeon.Infrastructure.LLMs.OpenAIProvider.ProviderDisplayName.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.DefaultBaseUrl.get -> System.Uri!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.DefaultModel.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.MaxTokensFieldName.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenAILlmProvider.ProviderDisplayName.get -> string!
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ConfigureHttpClient(System.Net.Http.HttpClient! client, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config) -> void
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.CostCurrency.get -> string?
@@ -4314,26 +4197,6 @@ override Orkeon.Infrastructure.Security.Encryption.KeyRotationResult.ToString() 
 override Orkeon.Infrastructure.Security.Encryption.KeyRotationState.Equals(object? obj) -> bool
 override Orkeon.Infrastructure.Security.Encryption.KeyRotationState.GetHashCode() -> int
 override Orkeon.Infrastructure.Security.Encryption.KeyRotationState.ToString() -> string!
-override Orkeon.Infrastructure.Serialization.Converters.BoolTolerantConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> bool
-override Orkeon.Infrastructure.Serialization.Converters.BoolTolerantConverter.Write(System.Text.Json.Utf8JsonWriter! writer, bool value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Orkeon.Infrastructure.Serialization.Converters.DecimalInvariantConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> decimal
-override Orkeon.Infrastructure.Serialization.Converters.DecimalInvariantConverter.Write(System.Text.Json.Utf8JsonWriter! writer, decimal value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Orkeon.Infrastructure.Serialization.Converters.DoubleInvariantConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> double
-override Orkeon.Infrastructure.Serialization.Converters.DoubleInvariantConverter.Write(System.Text.Json.Utf8JsonWriter! writer, double value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayStringTolerantConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Collections.Immutable.ImmutableArray<string!>
-override Orkeon.Infrastructure.Serialization.Converters.ImmutableArrayStringTolerantConverter.Write(System.Text.Json.Utf8JsonWriter! writer, System.Collections.Immutable.ImmutableArray<string!> value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Orkeon.Infrastructure.Serialization.Converters.IntTolerantConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> int
-override Orkeon.Infrastructure.Serialization.Converters.IntTolerantConverter.Write(System.Text.Json.Utf8JsonWriter! writer, int value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Orkeon.Infrastructure.Serialization.Converters.LongTolerantConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> long
-override Orkeon.Infrastructure.Serialization.Converters.LongTolerantConverter.Write(System.Text.Json.Utf8JsonWriter! writer, long value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Orkeon.Infrastructure.Serialization.Converters.RawObjectConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> object?
-override Orkeon.Infrastructure.Serialization.Converters.RawObjectConverter.Write(System.Text.Json.Utf8JsonWriter! writer, object! value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Orkeon.Infrastructure.Serialization.Converters.TolerantEnumConverter<TEnum>.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> TEnum
-override Orkeon.Infrastructure.Serialization.Converters.TolerantEnumConverter<TEnum>.Write(System.Text.Json.Utf8JsonWriter! writer, TEnum value, System.Text.Json.JsonSerializerOptions! options) -> void
-override Orkeon.Infrastructure.Serialization.Converters.TolerantEnumConverterFactory.CanConvert(System.Type! typeToConvert) -> bool
-override Orkeon.Infrastructure.Serialization.Converters.TolerantEnumConverterFactory.CreateConverter(System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Text.Json.Serialization.JsonConverter!
-override Orkeon.Infrastructure.Serialization.Converters.UriTolerantConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Uri?
-override Orkeon.Infrastructure.Serialization.Converters.UriTolerantConverter.Write(System.Text.Json.Utf8JsonWriter! writer, System.Uri? value, System.Text.Json.JsonSerializerOptions! options) -> void
 override Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.Equals(object? obj) -> bool
 override Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.GetHashCode() -> int
 override Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.ToString() -> string!
@@ -4543,15 +4406,6 @@ static Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ExtractReaso
 static Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ExtractReasoningContent(System.Text.Json.JsonElement root, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata, string! fieldName) -> void
 static Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ExtractStandardUsageMetadata(System.Text.Json.JsonElement root, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata) -> void
 static Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ExtractSystemMessage(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config) -> string?
-static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.FromAIContents(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.AIContent!>! contents) -> Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent!
-static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.FromChatMessage(Microsoft.Extensions.AI.ChatMessage! message) -> (string! Role, Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! Content)
-static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.InferImageMediaType(string! fileName) -> string!
-static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.LoadImageAsync(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! virtualPath, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.Content.ImageContentPart!>!
-static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToAIContents(Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content, string! model, Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry? capabilities = null) -> System.Collections.Generic.IList<Microsoft.Extensions.AI.AIContent!>!
-static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToAnthropicContentBlocks(Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content) -> System.Collections.Generic.IReadOnlyList<object!>!
-static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToChatMessage(string! role, Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content, string! model, Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry? capabilities = null) -> Microsoft.Extensions.AI.ChatMessage!
-static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToOllamaMessage(Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content) -> (string! Text, System.Collections.Generic.IReadOnlyList<string!>! Images)
-static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.ToOpenAIContentParts(Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent! content, string! model, Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry? capabilities = null) -> System.Collections.Generic.IReadOnlyList<object!>!
 static Orkeon.Infrastructure.LLMs.Decision.DecisionProfileServiceCollectionExtensions.AddOrkeonDecisionProfiles(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Infrastructure.LLMs.Decision.Stages.GuardDecisionStage.AssessAsync(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! risks, System.Text.Json.Nodes.JsonNode! state, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<(string! Risk, double Probability)>!>!
 static Orkeon.Infrastructure.LLMs.Embeddings.DefaultEmbeddingProviderResolver.Resolve(System.IServiceProvider! serviceProvider) -> Orkeon.Application.Interfaces.Ports.IEmbeddingProvider!
@@ -4586,8 +4440,6 @@ static Orkeon.Infrastructure.Memory.Cognitive.CognitiveAnalysisServices.operator
 static Orkeon.Infrastructure.Memory.Cognitive.CognitiveAnalysisServices.operator ==(Orkeon.Infrastructure.Memory.Cognitive.CognitiveAnalysisServices? left, Orkeon.Infrastructure.Memory.Cognitive.CognitiveAnalysisServices? right) -> bool
 static Orkeon.Infrastructure.Memory.DeserializedMemoryMetadata.Empty.get -> Orkeon.Infrastructure.Memory.DeserializedMemoryMetadata!
 static Orkeon.Infrastructure.Memory.DeserializedMemoryMetadata.FromDictionary(System.Collections.Generic.Dictionary<string!, object!>? dictionary) -> Orkeon.Infrastructure.Memory.DeserializedMemoryMetadata!
-static Orkeon.Infrastructure.Memory.MemoryMetadataConverter.ConvertToDomainFormat(Orkeon.Infrastructure.Memory.DeserializedMemoryMetadata? metadata) -> System.Collections.Generic.Dictionary<string!, string!>!
-static Orkeon.Infrastructure.Memory.MemoryMetadataConverter.ConvertToSerializable(Orkeon.Domain.Memory.ValueObjects.MemoryMetadata? metadata) -> Orkeon.Infrastructure.Memory.SerializableMemoryMetadata!
 static Orkeon.Infrastructure.Memory.MemoryMetadataValue.From(object! value) -> Orkeon.Infrastructure.Memory.MemoryMetadataValue!
 static Orkeon.Infrastructure.Memory.Migration.MigrationOptions.operator !=(Orkeon.Infrastructure.Memory.Migration.MigrationOptions? left, Orkeon.Infrastructure.Memory.Migration.MigrationOptions? right) -> bool
 static Orkeon.Infrastructure.Memory.Migration.MigrationOptions.operator ==(Orkeon.Infrastructure.Memory.Migration.MigrationOptions? left, Orkeon.Infrastructure.Memory.Migration.MigrationOptions? right) -> bool
@@ -4599,11 +4451,6 @@ static Orkeon.Infrastructure.Memory.Sqlite.SqliteMemoryOptions.TableNameProblem(
 static Orkeon.Infrastructure.MultiModal.MultiModalServiceExtensions.AddOrkeonMultiModal(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration? configuration = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.operator !=(Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument? left, Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument? right) -> bool
 static Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.operator ==(Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument? left, Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument? right) -> bool
-static Orkeon.Infrastructure.Orchestration.CrewExecutionStateMapper.CrewScopeFor(Orkeon.Domain.Common.CrewId! crewId) -> string!
-static Orkeon.Infrastructure.Orchestration.CrewExecutionStateMapper.FromSessionState(Orkeon.Application.Interfaces.Checkpointing.SessionState! session) -> Orkeon.Application.Interfaces.Services.CrewExecutionState?
-static Orkeon.Infrastructure.Orchestration.CrewExecutionStateMapper.SessionIdFor(Orkeon.Application.Interfaces.Services.ExecutionId! executionId) -> string!
-static Orkeon.Infrastructure.Orchestration.CrewExecutionStateMapper.ToPhase(Orkeon.Application.Interfaces.Services.ExecutionState status) -> Orkeon.Application.Interfaces.Checkpointing.SessionPhase
-static Orkeon.Infrastructure.Orchestration.CrewExecutionStateMapper.ToSessionState(Orkeon.Application.Interfaces.Services.CrewExecutionState! state) -> Orkeon.Application.Interfaces.Checkpointing.SessionState!
 static Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.operator !=(Orkeon.Infrastructure.Orchestration.PersistedCrewOutput? left, Orkeon.Infrastructure.Orchestration.PersistedCrewOutput? right) -> bool
 static Orkeon.Infrastructure.Orchestration.PersistedCrewOutput.operator ==(Orkeon.Infrastructure.Orchestration.PersistedCrewOutput? left, Orkeon.Infrastructure.Orchestration.PersistedCrewOutput? right) -> bool
 static Orkeon.Infrastructure.Orchestration.PersistedTaskOutput.operator !=(Orkeon.Infrastructure.Orchestration.PersistedTaskOutput? left, Orkeon.Infrastructure.Orchestration.PersistedTaskOutput? right) -> bool
@@ -4644,9 +4491,6 @@ static Orkeon.Infrastructure.Security.LogSanitizer.SanitizeException(System.Exce
 static Orkeon.Infrastructure.Security.LogSanitizer.SanitizeHeaderValue(string? headerName, string! headerValue) -> string!
 static Orkeon.Infrastructure.Security.LogSanitizer.SanitizeString(string! input) -> string!
 static Orkeon.Infrastructure.Security.TokenBudgetTracker.EstimateCost(int promptTokens, int completionTokens, string! model, Orkeon.Application.Interfaces.Ports.IModelPricingRegistry? registry) -> decimal
-static Orkeon.Infrastructure.Serialization.JsonElementConverter.ConvertArray(System.Text.Json.JsonElement element) -> System.Collections.Generic.IReadOnlyList<object?>!
-static Orkeon.Infrastructure.Serialization.JsonElementConverter.ConvertElement(System.Text.Json.JsonElement element) -> object?
-static Orkeon.Infrastructure.Serialization.JsonElementConverter.ToDict(System.Text.Json.JsonElement element) -> System.Collections.Generic.Dictionary<string!, object?>!
 static Orkeon.Infrastructure.Session.CliSessionOptions.ContextWindowProblem(Orkeon.Infrastructure.Session.CliSessionOptions! options) -> string?
 static Orkeon.Infrastructure.Session.ProjectKey.Slug(string! projectKey) -> string!
 static Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.operator !=(Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? left, Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? right) -> bool

@@ -133,7 +133,7 @@ public sealed class AgentGuardrailsTests
         await using var container = Container(provider);
         await using var scope = container.CreateAsyncScope();
         var services = scope.ServiceProvider;
-        await services.GetRequiredService<IToolRegistry>().RegisterToolAsync(new MockTool("file_read"));
+        await services.GetRequiredService<IToolRegistry>().RegisterToolAsync(new MockTool("file_read"), TestContext.Current.CancellationToken);
         var config = await services.GetRequiredService<ICrewDefinitionLoader>().LoadFromStringAsync(GuardedCrew, Ct);
         var crew = await services.GetRequiredService<ICrewFactory>().CreateFromConfigAsync(config, Ct);
 

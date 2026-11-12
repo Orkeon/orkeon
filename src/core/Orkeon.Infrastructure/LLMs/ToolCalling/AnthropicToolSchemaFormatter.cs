@@ -8,7 +8,7 @@ namespace Orkeon.Infrastructure.LLMs.ToolCalling;
 /// tool format (flat objects with <c>input_schema</c> instead of OpenAI's nested
 /// <c>function.parameters</c> wrapper).
 /// </summary>
-public sealed class AnthropicToolSchemaFormatter : IToolSchemaFormatter
+internal sealed class AnthropicToolSchemaFormatter : IToolSchemaFormatter
 {
     /// <inheritdoc />
     public Dictionary<string, object> FormatToolsForPayload(

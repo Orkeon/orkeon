@@ -122,7 +122,7 @@ jobs:
           path: |
             packages
             ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
           restore-keys: nuget-${{ runner.os }}-
 
       # On a tag the version is the tag minus its leading v. On workflow_dispatch
@@ -1013,16 +1013,26 @@ jobs:
       tag: ${{ github.ref_name }}
       scope: apt
 
-  # Builds and pushes the example-runners container image to GHCR. Same v* trigger
+  # Builds and pushes the Orkeon container image to GHCR. Same v* trigger
   # as the installers; runs independently (own job, package-scoped permissions).
   # On workflow_dispatch the image is BUILT (both platforms) but never pushed: no
   # GHCR login, `push: false`, no manifest read-back — a dry run proves the
   # Dockerfile builds without moving `latest` to a branch build.
-  runners-image:
+  docker-image:
     runs-on: ubuntu-latest
-    # Gated on the smokes like the release job: a red smoke must not move the
-    # :latest tag on GHCR either.
-    needs: [smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi]
+    # Gated on the smokes and on the release job: a red smoke, or a Release that
+    # could not be published, must not move the :latest tag on GHCR either. On a
+    # dry run `release` is skipped (tag only), and the image is still built.
+    needs: [smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi, release]
+    if: >-
+      !cancelled()
+      && needs.smoke-windows.result == 'success'
+      && needs.smoke-windows-service.result == 'success'
+      && needs.smoke-deb.result == 'success'
+      && needs.smoke-macos.result == 'success'
+      && needs.msi.result == 'success'
+      && (needs.release.result == 'success'
+          || (github.event_name == 'workflow_dispatch' && needs.release.result == 'skipped'))
     permissions:
       contents: read
       packages: write
@@ -1066,10 +1076,27 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # The documented REPL start, smoked before anything is pushed: the linux/amd64 image is
+      # loaded locally (the builder's cache serves the push below), then `ORKEON_ENTRYPOINT=repl`
+      # with nothing else must reach its prompt and leave on `exit` with code 0. Its wrapper
+      # gives it the /workspace mount it cannot start without.
+      - name: Build the linux/amd64 image for the REPL smoke
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile.runners
+          platforms: linux/amd64
+          provenance: false
+          load: true
+          tags: orkeon-smoke:repl
+      - name: Start the REPL of the image and leave it
+        run: |
+          printf 'exit\n' | timeout 120 docker run -i --rm -e ORKEON_ENTRYPOINT=repl \
+            orkeon-smoke:repl --ui plain
       # provenance: false keeps the image as it was, unattested (publication-matrix.md): with a
       # docker-container builder the action would add attestation manifests, shown as
       # unknown/unknown platforms in the index.
-      - name: Build and push orkeon-runners image (linux/amd64, linux/arm64)
+      - name: Build and push ghcr.io/orkeon/orkeon image (linux/amd64, linux/arm64)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -1078,8 +1105,14 @@ jobs:
           provenance: false
           push: ${{ startsWith(github.ref, 'refs/tags/') }}
           tags: |
-            ghcr.io/orkeon/orkeon-runners:${{ steps.ver.outputs.version }}
-            ghcr.io/orkeon/orkeon-runners:latest
+            ghcr.io/orkeon/orkeon:${{ steps.ver.outputs.version }}
+            ghcr.io/orkeon/orkeon:latest
+          # The source label links the GHCR package to this repository on its first push, so it
+          # takes the repository's access instead of standing alone under the organisation.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=Orkeon: the orkeon CLI, the REPL and the bundled examples
+            org.opencontainers.image.licenses=MIT
       # What the push produced is read back from the registry: a tag that lists one platform only
       # (a platforms: line lost, a builder that pushed the single image) fails the job here, not
       # on the first Apple Silicon machine that pulls it.
@@ -1089,14 +1122,14 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           for tag in "$VERSION" latest; do
-            ref="ghcr.io/orkeon/orkeon-runners:$tag"
-            docker manifest inspect "$ref" > "$RUNNER_TEMP/runners-manifest.json"
+            ref="ghcr.io/orkeon/orkeon:$tag"
+            docker manifest inspect "$ref" > "$RUNNER_TEMP/image-manifest.json"
             for arch in amd64 arm64; do
               if ! jq -e --arg arch "$arch" \
                    '[.manifests[]? | select(.platform.os == "linux" and .platform.architecture == $arch)] | length == 1' \
-                   "$RUNNER_TEMP/runners-manifest.json" >/dev/null; then
+                   "$RUNNER_TEMP/image-manifest.json" >/dev/null; then
                 echo "::error::$ref does not list exactly one linux/$arch manifest"
-                cat "$RUNNER_TEMP/runners-manifest.json"
+                cat "$RUNNER_TEMP/image-manifest.json"
                 exit 1
               fi
             done

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
+using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Common;
@@ -14,8 +15,8 @@ namespace Orkeon.Infrastructure.Security;
 /// </summary>
 public partial class TokenBudgetTracker : ITokenBudgetTracker
 {
-    private readonly ConcurrentDictionary<string, TokenUsage> _agentUsage = new();
-    private readonly ConcurrentDictionary<string, TokenUsage> _crewUsage = new();
+    private readonly ConcurrentDictionary<string, TokenBudgetUsage> _agentUsage = new();
+    private readonly ConcurrentDictionary<string, TokenBudgetUsage> _crewUsage = new();
     private readonly TokenBudgetOptions _options;
     private readonly ILogger<TokenBudgetTracker> _logger;
     private readonly IModelPricingRegistry? _pricingRegistry;
@@ -53,19 +54,23 @@ public partial class TokenBudgetTracker : ITokenBudgetTracker
 
         var agentUsage = _agentUsage.AddOrUpdate(
             agentKey,
-            _ => new TokenUsage(totalTokens, cost, 1),
-            (_, existing) => new TokenUsage(
-                existing.TotalTokens + totalTokens,
-                existing.EstimatedCost + cost,
-                existing.CallCount + 1));
+            _ => new TokenBudgetUsage { TotalTokens = totalTokens, EstimatedCost = cost, CallCount = 1 },
+            (_, existing) => new TokenBudgetUsage
+            {
+                TotalTokens = existing.TotalTokens + totalTokens,
+                EstimatedCost = existing.EstimatedCost + cost,
+                CallCount = existing.CallCount + 1,
+            });
 
         var crewUsage = _crewUsage.AddOrUpdate(
             crewId,
-            _ => new TokenUsage(totalTokens, cost, 1),
-            (_, existing) => new TokenUsage(
-                existing.TotalTokens + totalTokens,
-                existing.EstimatedCost + cost,
-                existing.CallCount + 1));
+            _ => new TokenBudgetUsage { TotalTokens = totalTokens, EstimatedCost = cost, CallCount = 1 },
+            (_, existing) => new TokenBudgetUsage
+            {
+                TotalTokens = existing.TotalTokens + totalTokens,
+                EstimatedCost = existing.EstimatedCost + cost,
+                CallCount = existing.CallCount + 1,
+            });
 
         // Check agent budget
         if (_options.MaxTokensPerAgent > 0 && agentUsage.TotalTokens > _options.MaxTokensPerAgent)
@@ -98,16 +103,16 @@ public partial class TokenBudgetTracker : ITokenBudgetTracker
     }
 
     /// <inheritdoc />
-    public TokenUsageReport GetReport(string crewId)
+    public TokenBudgetReport GetReport(string crewId)
     {
-        var crewUsage = _crewUsage.GetValueOrDefault(crewId, new TokenUsage(0, 0m, 0));
+        var crewUsage = _crewUsage.GetValueOrDefault(crewId, TokenBudgetUsage.None);
 
         var prefix = $"{crewId}:";
         var agentBreakdown = _agentUsage
             .Where(kvp => kvp.Key.StartsWith(prefix, StringComparison.Ordinal))
             .ToDictionary(kvp => kvp.Key[prefix.Length..], kvp => kvp.Value);
 
-        return new TokenUsageReport(crewId, crewUsage, agentBreakdown);
+        return new TokenBudgetReport(crewId, crewUsage, agentBreakdown);
     }
 
     /// <summary>

@@ -93,7 +93,7 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
 
         public Task UpdateStateAsync(ExecutionId executionId, Action<CrewExecutionState> update, CancellationToken ct = default)
         {
-            // Register the execution id lazily so KickoffAsyncNoWait updates land somewhere.
+            // Register the execution id lazily so KickoffNoWaitAsync updates land somewhere.
             if (!_byExec.TryGetValue(executionId.AsString(), out var s))
             {
                 s = new CrewExecutionState(CrewId.Create(), executionId, CrewInput.Empty());
@@ -490,13 +490,13 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
     // ── Fire-and-forget ──────────────────────────────────────────────────────
 
     [Fact]
-    public async Task KickoffAsyncNoWait_ReturnsExecutionId_AndEventuallyCompletes()
+    public async Task KickoffNoWaitAsync_ReturnsExecutionId_AndEventuallyCompletes()
     {
         var h = Build();
         var crew = MakeCrew(ProcessType.Sequential);
         await h.Repo.AddAsync(crew, TestContext.Current.CancellationToken);
 
-        var execId = await h.Orchestrator.KickoffAsyncNoWait(crew.Id, Input());
+        var execId = await h.Orchestrator.KickoffNoWaitAsync(crew.Id, Input(), TestContext.Current.CancellationToken);
         Assert.NotNull(execId);
 
         // The background task runs CompleteExecutionAsync in its finally block.

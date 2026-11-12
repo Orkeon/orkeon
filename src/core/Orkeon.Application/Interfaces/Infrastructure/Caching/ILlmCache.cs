@@ -49,7 +49,7 @@ public interface ILlmCache
 /// <summary>
 /// Cache statistics for monitoring and optimization.
 /// </summary>
-public record CacheStatistics(
+public sealed record CacheStatistics(
     long TotalHits,
     long TotalMisses,
     double HitRate,

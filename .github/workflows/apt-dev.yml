@@ -109,15 +109,10 @@ jobs:
           bash scripts/apt/publish-dev.sh version --props src/Directory.Build.props --run "$CI_RUN" | tee -a "$GITHUB_OUTPUT"
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with: { global-json-file: global.json }
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          # The restore fills packages/ (RestorePackagesPath, Directory.Build.props), not
-          # ~/.nuget/packages, which keeps only the dotnet tools and the MSBuild SDKs NuGet resolves.
-          path: |
-            packages
-            ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
-          restore-keys: nuget-${{ runner.os }}-
+      # No actions/cache here: this job checks out and builds a commit it is told about, and
+      # its packages are signed and published by the next job. A cache shared with the
+      # default branch would let one build plant what a later one restores (CodeQL
+      # actions/cache-poisoning). The restore downloads the locked graph every time.
       # The CLI set for the two linux RIDs only: the orkeon CLI the
       # package carries, cross-published from this x64 runner like release.yml does. The
       # staging trees are kept for package-deb.sh --stage; the archives are by-products.

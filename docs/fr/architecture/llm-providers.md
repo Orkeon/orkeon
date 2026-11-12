@@ -20,7 +20,7 @@ Fournisseurs implémentés :
 
 | Fournisseur | Classe | Namespace |
 |-------------|--------|-----------|
-| OpenAI | `OpenAIProvider` (via `OpenAICompatibleProviderBase`) | `Orkeon.Infrastructure.LLMs` |
+| OpenAI | `OpenAILlmProvider` (via `OpenAICompatibleProviderBase`) | `Orkeon.Infrastructure.LLMs` |
 | Anthropic | `AnthropicLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Azure OpenAI | `AzureOpenAILlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Ollama | `OllamaLlmProvider` | `Orkeon.Infrastructure.LLMs` |
@@ -40,7 +40,7 @@ Fournisseurs implémentés :
 Quatorze d'entre eux étendent `OpenAICompatibleProviderBase` (elle-même un
 `HttpLlmProviderBase`) ; Anthropic et Ollama étendent directement `HttpLlmProviderBase`, car
 leurs API ne suivent pas la forme OpenAI. Docker Model Runner et tout autre serveur compatible
-OpenAI n'ont pas de classe propre : `OpenAIProvider` les pilote via leur URL de base. Endpoints,
+OpenAI n'ont pas de classe propre : `OpenAILlmProvider` les pilote via leur URL de base. Endpoints,
 modèles par défaut et clés de provider sont des constantes partagées dans
 `Orkeon.Constants.Llm` (`LlmProviderEndpoints`, `LlmProviderDefaultModels`, `LlmProviderKeys`,
 `LlmModelOutputLimits`).
@@ -397,7 +397,7 @@ modèle et leurs dimensions ; `azure-openai` prend toujours `Model` comme nom du
 4xx ou 5xx lève une `HttpRequestException` qui nomme le provider, le statut et le début du corps, jamais la
 clé. Les appels d'embeddings ne sont pas rejoués : un 429 ou un 5xx parvient à l'appelant sous cette exception dès la première réponse, et `Llm:MaxRetries` ne vaut que pour le chat. `mistral-embed` (1024) et `gemini-embedding-001` (3072) ont une taille fixe et ces providers n'envoient aucune taille de sortie : une `Dimension` autre que cette taille (le défaut global compte pour non réglé) est refusée à la construction du provider, avec la taille attendue, avant tout appel. La clé est `ApiKey` ou la variable que nomme `ApiKeyEnvVar` ; sans l'une ni l'autre, le premier appel
 échoue avec un message qui nomme les deux. Les identifiants de modèle des providers d'embeddings ne sont
-pas dans la table des capacités : elle porte sur l'entrée de chat et l'effort de raisonnement.
+pas dans la table des capacités de [Ce qu'accepte un modèle, et l'audio en entrée](#ce-quaccepte-un-modèle-et-laudio-en-entrée) : elle porte sur l'entrée de chat et l'effort de raisonnement.
 
 **Changer de modèle d'embedding invalide les vecteurs stockés.** Au démarrage, un garde-fou (lancé par `RunnerHost.Build` pour `orkeon run`, les autres commandes et le démon, par le démarrage du REPL, et par le service hébergé d'un hôte qui démarre ses services) compare le
 provider, le modèle et les dimensions à l'empreinte consignée dans `Orkeon:Embeddings:FingerprintPath`

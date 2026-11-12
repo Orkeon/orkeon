@@ -160,9 +160,9 @@ Ollama refuse une part audio/fichier de la même façon.
 
 ## Interop Microsoft.Extensions.AI
 
-`ContentConverter.ToAIContents`/`FromAIContents` convertissent les parts
-image/audio/fichier vers les types natifs de Microsoft.Extensions.AI `DataContent` (octets)
-et `UriContent` (URI), et inversement.
+Orkeon convertit les parts image/audio/fichier vers les types natifs de
+Microsoft.Extensions.AI `DataContent` (octets) et `UriContent` (URI), et inversement, au sein
+d'`Orkeon.Infrastructure` ; le convertisseur est interne, ce n'est pas une API à appeler.
 
 ## Tests
 

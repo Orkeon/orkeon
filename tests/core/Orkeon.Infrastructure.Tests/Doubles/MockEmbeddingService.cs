@@ -1,4 +1,5 @@
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Memory;
 
 namespace Orkeon.Infrastructure.Tests.Doubles;
 
@@ -20,7 +21,7 @@ public sealed class MockEmbeddingService : IEmbeddingService
     public void SetEmbeddingFunc(Func<string, float[]> func) => _embeddingFunc = func;
     public void SetExceptionToThrow(Exception ex) => _exceptionToThrow = ex;
 
-    public Task<float[]> GetEmbeddingAsync(string text)
+    public Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
         GetEmbeddingCallCount++;
         LastGetEmbeddingText = text;

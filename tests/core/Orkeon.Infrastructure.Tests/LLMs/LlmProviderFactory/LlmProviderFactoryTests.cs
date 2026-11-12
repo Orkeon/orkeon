@@ -19,7 +19,7 @@ public class LlmProviderFactoryTests
         {
             // Register default clients for each provider type
             _clients["OllamaLlmProvider"] = new HttpClient();
-            _clients["OpenAIProvider"] = new HttpClient();
+            _clients["OpenAILlmProvider"] = new HttpClient();
         }
 
         public void RegisterClient(string name, HttpClient client)

@@ -82,11 +82,16 @@ public interface ICrewMemorySystem
 public interface IShortTermMemory
 {
     /// <summary>Add Async(Memory Item).</summary>
-    System.Threading.Tasks.Task AddAsync(MemoryItem item);
+    /// <param name="item">The item to add.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task AddAsync(MemoryItem item, CancellationToken cancellationToken = default);
     /// <summary>Get Recent Async(int).</summary>
-    System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> GetRecentAsync(int count = 10);
+    /// <param name="count">How many recent items to return.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> GetRecentAsync(int count = 10, CancellationToken cancellationToken = default);
     /// <summary>Clear Async().</summary>
-    System.Threading.Tasks.Task ClearAsync();
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task ClearAsync(CancellationToken cancellationToken = default);
     /// <summary>Clear().</summary>
     void Clear();
 }
@@ -97,9 +102,14 @@ public interface IShortTermMemory
 public interface ILongTermMemory
 {
     /// <summary>Add Async(Memory Item).</summary>
-    System.Threading.Tasks.Task AddAsync(MemoryItem item);
+    /// <param name="item">The item to add.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task AddAsync(MemoryItem item, CancellationToken cancellationToken = default);
     /// <summary>Search Async(string, int).</summary>
-    System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10);
+    /// <param name="query">The text to match.</param>
+    /// <param name="maxResults">How many items to return at most.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// The entries of this memory closest to <paramref name="queryEmbedding"/>, best first: at most
@@ -127,7 +137,8 @@ public interface ILongTermMemory
     System.Threading.Tasks.Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>Clear Async().</summary>
-    System.Threading.Tasks.Task ClearAsync();
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task ClearAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -136,13 +147,24 @@ public interface ILongTermMemory
 public interface IEntityMemory
 {
     /// <summary>Adds an entity with the specified name, type, and attributes.</summary>
-    System.Threading.Tasks.Task AddEntityAsync(string entityName, EntityType type, Dictionary<string, string> attributes);
+    /// <param name="entityName">The entity's name.</param>
+    /// <param name="type">The entity's type.</param>
+    /// <param name="attributes">The entity's attributes.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task AddEntityAsync(string entityName, EntityType type, Dictionary<string, string> attributes, CancellationToken cancellationToken = default);
     /// <summary>Gets the entity with the specified name.</summary>
-    System.Threading.Tasks.Task<MemoryEntity?> GetEntityAsync(string entityName);
+    /// <param name="entityName">The entity's name.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<MemoryEntity?> GetEntityAsync(string entityName, CancellationToken cancellationToken = default);
     /// <summary>Gets all entities of the specified type.</summary>
-    System.Threading.Tasks.Task<IReadOnlyList<MemoryEntity>> GetEntitiesByTypeAsync(EntityType type);
+    /// <param name="type">The type to list.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<IReadOnlyList<MemoryEntity>> GetEntitiesByTypeAsync(EntityType type, CancellationToken cancellationToken = default);
     /// <summary>Updates the attributes of the specified entity.</summary>
-    System.Threading.Tasks.Task UpdateEntityAsync(string entityName, Dictionary<string, string> attributes);
+    /// <param name="entityName">The entity's name.</param>
+    /// <param name="attributes">The attributes to set.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task UpdateEntityAsync(string entityName, Dictionary<string, string> attributes, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -151,8 +173,14 @@ public interface IEntityMemory
 public interface IContextualMemory
 {
     /// <summary>Get Context Async(string, int).</summary>
-    System.Threading.Tasks.Task<string> GetContextAsync(string query, int maxTokens = 1000);
+    /// <param name="query">The text the context answers.</param>
+    /// <param name="maxTokens">The token budget of the context.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<string> GetContextAsync(string query, int maxTokens = 1000, CancellationToken cancellationToken = default);
     /// <summary>Get Relevant Memories Async(string, int).</summary>
-    System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> GetRelevantMemoriesAsync(string context, int count = 20);
+    /// <param name="context">The text to match.</param>
+    /// <param name="count">How many items to return at most.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> GetRelevantMemoriesAsync(string context, int count = 20, CancellationToken cancellationToken = default);
 }
 

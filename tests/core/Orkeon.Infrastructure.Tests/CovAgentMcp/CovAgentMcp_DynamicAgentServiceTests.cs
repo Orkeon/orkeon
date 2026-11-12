@@ -91,7 +91,7 @@ public sealed class CovAgentMcp_DynamicAgentServiceTests
             new TypedLogger<DynamicAgentService>(loggerFactory.Logger));
         var registry = new DynamicAgentRegistry(_crewId);
 
-        var result = await service.TerminateAgentAsync(AgentId.Create(), registry, "no-op");
+        var result = await service.TerminateAgentAsync(AgentId.Create(), registry, "no-op", TestContext.Current.CancellationToken);
 
         Assert.False(result);
         Assert.True(loggerFactory.Logger.HasEntry(e =>
@@ -108,11 +108,26 @@ public sealed class CovAgentMcp_DynamicAgentServiceTests
         var registry = new DynamicAgentRegistry(_crewId);
         var agent = await service.SpawnAgentAsync(new AgentSpawnRequest(_role, _goal, _crewId), registry, TestContext.Current.CancellationToken);
 
-        var result = await service.TerminateAgentAsync(agent.Id, registry, "done");
+        var result = await service.TerminateAgentAsync(agent.Id, registry, "done", TestContext.Current.CancellationToken);
 
         Assert.True(result);
         Assert.True(loggerFactory.Logger.HasEntry(e =>
             e.Level == LogLevel.Information && e.Message.Contains("terminated")));
+    }
+
+    [Fact]
+    public async Task TerminateAgentAsync_ShouldStillTerminate_WhenTheTokenIsCancelled()
+    {
+        var service = new DynamicAgentService(new StubFactory());
+        var registry = new DynamicAgentRegistry(_crewId);
+        var agent = await service.SpawnAgentAsync(new AgentSpawnRequest(_role, _goal, _crewId), registry, TestContext.Current.CancellationToken);
+        using var source = new CancellationTokenSource();
+        await source.CancelAsync();
+
+        var result = await service.TerminateAgentAsync(agent.Id, registry, "cancelled run", source.Token);
+
+        Assert.True(result);
+        Assert.False(registry.IsAgentActive(agent.Id));
     }
 
     [Fact]
@@ -122,7 +137,7 @@ public sealed class CovAgentMcp_DynamicAgentServiceTests
         var registry = new DynamicAgentRegistry(_crewId);
         var agent = await service.SpawnAgentAsync(new AgentSpawnRequest(_role, _goal, _crewId), registry, TestContext.Current.CancellationToken);
 
-        var result = await service.TerminateAgentAsync(agent.Id, registry, reason: null);
+        var result = await service.TerminateAgentAsync(agent.Id, registry, reason: null, TestContext.Current.CancellationToken);
 
         Assert.True(result);
         Assert.False(registry.IsAgentActive(agent.Id));
@@ -136,7 +151,7 @@ public sealed class CovAgentMcp_DynamicAgentServiceTests
             new StubFactory(),
             new TypedLogger<DynamicAgentService>(loggerFactory.Logger));
 
-        var result = await service.AllowsDynamicAgentsAsync(_crewId);
+        var result = await service.AllowsDynamicAgentsAsync(_crewId, TestContext.Current.CancellationToken);
 
         Assert.True(result);
         Assert.True(loggerFactory.Logger.HasEntry(e =>
@@ -151,7 +166,7 @@ public sealed class CovAgentMcp_DynamicAgentServiceTests
             new StubFactory(),
             new TypedLogger<DynamicAgentService>(loggerFactory.Logger));
 
-        var result = await service.GetMaxConcurrentDynamicAgentsAsync(_crewId);
+        var result = await service.GetMaxConcurrentDynamicAgentsAsync(_crewId, TestContext.Current.CancellationToken);
 
         Assert.Null(result);
         Assert.True(loggerFactory.Logger.HasEntry(e =>
@@ -165,7 +180,7 @@ public sealed class CovAgentMcp_DynamicAgentServiceTests
         var options = new DynamicAgentServiceOptions { AllowDynamicAgentsByDefault = false };
         var service = new DynamicAgentService(new StubFactory(), logger: null, options: options);
 
-        var result = await service.AllowsDynamicAgentsAsync(_crewId);
+        var result = await service.AllowsDynamicAgentsAsync(_crewId, TestContext.Current.CancellationToken);
 
         Assert.False(result);
     }
@@ -179,8 +194,8 @@ public sealed class CovAgentMcp_DynamicAgentServiceTests
             new DynamicAgentCrewPolicy { AllowDynamicAgents = false };
         var service = new DynamicAgentService(new StubFactory(), logger: null, options: options);
 
-        var deniedCrew = await service.AllowsDynamicAgentsAsync(_crewId);
-        var otherCrew = await service.AllowsDynamicAgentsAsync(CrewId.Create());
+        var deniedCrew = await service.AllowsDynamicAgentsAsync(_crewId, TestContext.Current.CancellationToken);
+        var otherCrew = await service.AllowsDynamicAgentsAsync(CrewId.Create(), TestContext.Current.CancellationToken);
 
         Assert.False(deniedCrew);
         Assert.True(otherCrew);
@@ -192,7 +207,7 @@ public sealed class CovAgentMcp_DynamicAgentServiceTests
         var options = new DynamicAgentServiceOptions { DefaultMaxConcurrentDynamicAgents = 3 };
         var service = new DynamicAgentService(new StubFactory(), logger: null, options: options);
 
-        var result = await service.GetMaxConcurrentDynamicAgentsAsync(_crewId);
+        var result = await service.GetMaxConcurrentDynamicAgentsAsync(_crewId, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result);
     }
@@ -206,8 +221,8 @@ public sealed class CovAgentMcp_DynamicAgentServiceTests
             new DynamicAgentCrewPolicy { MaxConcurrentDynamicAgents = 1 };
         var service = new DynamicAgentService(new StubFactory(), logger: null, options: options);
 
-        var cappedCrew = await service.GetMaxConcurrentDynamicAgentsAsync(_crewId);
-        var otherCrew = await service.GetMaxConcurrentDynamicAgentsAsync(CrewId.Create());
+        var cappedCrew = await service.GetMaxConcurrentDynamicAgentsAsync(_crewId, TestContext.Current.CancellationToken);
+        var otherCrew = await service.GetMaxConcurrentDynamicAgentsAsync(CrewId.Create(), TestContext.Current.CancellationToken);
 
         Assert.Equal(1, cappedCrew);
         Assert.Null(otherCrew);

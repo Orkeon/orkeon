@@ -103,7 +103,7 @@ public partial class GraphSchemaTool : ToolBase<GraphSchemaRequest, GraphSchemaR
                 });
             }
 
-            LogSchemaIntrospected("JanusGraph", vertexInfos.Count, edgeInfos.Count);
+            LogSchemaIntrospected(Logger, "JanusGraph", vertexInfos.Count, edgeInfos.Count);
 
             return new GraphSchemaResponse
             {
@@ -150,7 +150,7 @@ public partial class GraphSchemaTool : ToolBase<GraphSchemaRequest, GraphSchemaR
                     Properties = []
                 }).ToList();
 
-                LogSchemaIntrospected("ArcadeDB", vertexInfos.Count, edgeInfos.Count);
+                LogSchemaIntrospected(Logger, "ArcadeDB", vertexInfos.Count, edgeInfos.Count);
 
                 return new GraphSchemaResponse
                 {
@@ -236,5 +236,5 @@ public partial class GraphSchemaTool : ToolBase<GraphSchemaRequest, GraphSchemaR
         => value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("'", "\\'", StringComparison.Ordinal);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Graph schema introspected for {GraphType}: {VertexCount} vertex labels, {EdgeCount} edge labels")]
-    private partial void LogSchemaIntrospected(string graphType, int vertexCount, int edgeCount);
+    private static partial void LogSchemaIntrospected(ILogger logger, string graphType, int vertexCount, int edgeCount);
 }

@@ -43,7 +43,7 @@ public sealed class NodeReplaceTool : FileToolBase<NodeReplaceRequest, NodeRepla
     private readonly StructuralEditEngine _engine;
     private readonly IIndexInvalidation? _indexInvalidation;
 
-    public NodeReplaceTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
+    internal NodeReplaceTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
         : base(fs)
     {
         _engine = new StructuralEditEngine(fs, pool);
@@ -66,7 +66,7 @@ public sealed class NodeReplaceTool : FileToolBase<NodeReplaceRequest, NodeRepla
             throw new InvalidOperationException(pathValidation.DenialReason ?? "Invalid or unsafe file path");
 
         var operation = new NodeReplaceOperation(NodeSelector.Parse(request.Selector), request.ExpectedHash, request.Text);
-        var virtualPath = _fileSystemService.ToVirtualPath(pathValidation.ResolvedPath!) ?? AbsolutizePath(request.Path);
+        var virtualPath = FileSystemService.ToVirtualPath(pathValidation.ResolvedPath!) ?? AbsolutizePath(request.Path);
         var outcome = await _engine.ApplyAsync(virtualPath, [operation], cancellationToken).ConfigureAwait(false);
         _indexInvalidation?.MarkDirty(virtualPath);
         return new NodeReplaceResponse

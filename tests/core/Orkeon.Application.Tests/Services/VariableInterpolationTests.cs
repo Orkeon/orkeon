@@ -48,8 +48,8 @@ public class VariableInterpolationTests
     {
         public string ScopeId => "test-scope";
         public string AgentId => "test-agent";
-        public async System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> action) => await action();
-        public async System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> action) => await action();
+        public async System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> action, CancellationToken cancellationToken = default) => await action();
+        public async System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> action, CancellationToken cancellationToken = default) => await action();
         public void Dispose() { }
     }
 

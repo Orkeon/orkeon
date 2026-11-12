@@ -83,7 +83,7 @@ The following projects are **not packed under their own id** (`IsPackable=false`
 
 **Migration**: the source code and namespaces are unchanged, so consumer code compiles as-is —
 only the install changes. Uninstall the per-layer packages and
-`dotnet add package Orkeon --prerelease` (add `Orkeon.Tools` if you used a
+`dotnet add package Orkeon` (add `Orkeon.Tools` if you used a
 `Orkeon.Tools.<family>` package other than `Embeddings.Local`).
 
 ## NuGet.org state
@@ -110,15 +110,15 @@ The other dotnet tool, `Orkeon.Scripting.Cli` (command `orkeon`), is in the NuGe
 ### Dev channel: the latest `main`, between two tags
 
 Once `ci.yml` is green on a push to `main`, the `publish-dev` job of `publish.yml` packs the
-same projects as `<props version>.dev.<n>`, `n` being the number of that CI run — so
-`<version>.dev.412` is the commit CI run #412 validated — and pushes them to **GitHub
+same projects as `<X.Y.Z>-<pre>.dev.<n>`, `n` being the number of that CI run — so
+`<X.Y.Z>-<pre>.dev.412` is the commit CI run #412 validated — and pushes them to **GitHub
 Packages only**: never NuGet.org, which can unlist a version but never delete it.
 `scripts/prune-dev-packages.sh` then deletes the older dev builds, so the feed holds **every
 tagged release plus the latest green `main`**, nothing in between. A tagged version is never
 deleted; a version that is neither tagged nor a dev build is reported, not deleted — the
 same script removes those in a one-off, reviewed run (`--include-untagged`, dry run first).
 
-- SemVer puts `<version>.dev.<n>` above `<version>` and below the next pre-release, so
+- SemVer puts `<X.Y.Z>-<pre>.dev.<n>` above `<version>` and below the next pre-release, so
   `--prerelease` resolves the dev build. When the props version has no suffix (a stable
   release), the dev builds move to the next patch — `1.0.1-dev.<n>` after `1.0.0` — because
   `1.0.0-dev.<n>` would sort below the release.
@@ -133,7 +133,7 @@ same script removes those in a one-off, reviewed run (`--include-untagged`, dry 
 
   | Form | Comes from | Example |
   |---|---|---|
-  | `<props version>.dev.<n>` | CI alone — `publish.yml` and `apt-dev.yml`, `n` being the CI run number | `<version>.dev.412` |
+  | `<X.Y.Z>-<pre>.dev.<n>` | CI alone — `publish.yml` and `apt-dev.yml`, `n` being the CI run number | `<X.Y.Z>-<pre>.dev.412` |
   | `<props version>.local.<stamp>` | a build made from a checkout — `scripts/package-installers.sh` or `.ps1` without a version, a manual run of `release.yml` | `<version>.local.202610080430` |
 
   `<stamp>` is the committer date of the commit built, `YYYYMMDDHHMM` in UTC: it orders two
@@ -158,7 +158,7 @@ dotnet nuget add source https://nuget.pkg.github.com/Orkeon/index.json \
   --username <your-github-username> \
   --password <PAT-with-read:packages> --store-password-in-clear-text
 
-dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # installed already: dotnet tool update, same arguments
+dotnet tool install -g Orkeon.Scripting.Cli   # installed already: dotnet tool update, same arguments
 # in a project: <PackageReference Include="Orkeon" Version="*-*" />
 ```
 
@@ -169,7 +169,7 @@ channel on a real runner** (Windows CLI zip, Windows service, Debian package, ma
 tarball), and only then attaches everything to the GitHub Release. The pipeline is
 `installers → {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} →
 release → {verify-published, apt-publish → verify-apt}` (the last two are described in
-[The apt repository](#the-apt-repository)); behind those same five jobs, `runners-image` pushes the `orkeon-runners`
+[The apt repository](#the-apt-repository)); behind those same five jobs, `docker-image` pushes the `ghcr.io/orkeon/orkeon`
 container image to GHCR (one multi-platform tag, `linux/amd64` and `linux/arm64`, checked
 once pushed) in parallel with `release`, so a red smoke moves neither the
 Release nor the `:latest` tag. `workflow_dispatch` runs
@@ -291,10 +291,10 @@ are in place, and an unconfigured LLM is only a warning there.
 
 `version` and both `url` / `sha256` pairs are **generated**, never hand-edited:
 `scripts/update-homebrew-formula.sh --release <tag>` (or `--sums <file>`) rewrites the five
-values from a release's `SHA256SUMS` and is idempotent. Until the first tagged release, the
-two `sha256` values are the literal placeholders `PLACEHOLDER_SHA256_ARM64` /
-`PLACEHOLDER_SHA256_X64`, so an accidental install fails verification instead of fetching
-something unverified.
+values from a release's `SHA256SUMS` and is idempotent. The file in the repository is a template:
+it holds the placeholder version `0.0.0` and the literal digests `PLACEHOLDER_SHA256_ARM64` /
+`PLACEHOLDER_SHA256_X64` until a release's sums are written in, so an accidental install fails
+verification instead of fetching something unverified.
 
 Publishing the `Orkeon/homebrew-tap` repository and pushing the formula to it is a **release
 action, not CI**: `brew tap orkeon/tap && brew install orkeon` does not resolve
@@ -326,7 +326,7 @@ treats it as a warning, a Docker build retries.
 |---|---|---|
 | `stable` | `stable/` | every `v*` tag without a pre-release segment — the same test that sets `prerelease:` on the Release. Final versions only: a release candidate never reaches it |
 | `rc` | `rc/` | every `v*` tag, so every package of `stable` is in `rc` too |
-| `dev` | `dev/` | the `orkeon` package of every green push to `main`, versioned `<props version with ~>.dev.<n>` (`<X.Y.Z>~<pre>.dev.<n>`); its assets sit on the single fixed-tag prerelease `apt-dev`; only the three latest builds are kept. Never published to NuGet.org, never attested as a release |
+| `dev` | `dev/` | the `orkeon` package of every green push to `main`, versioned `<X.Y.Z>~<pre>.dev.<n>`; its assets sit on the single fixed-tag prerelease `apt-dev`; only the three latest builds are kept. Never published to NuGet.org, never attested as a release |
 
 Each channel's `Release` file keeps `Origin: Orkeon` and `Label: Orkeon` for ever (a change
 makes every machine confirm it), sets `Suite:` to the source path without its trailing `/` and
@@ -359,7 +359,7 @@ expiry with the 180-day threshold, and raw's availability.
 (the guard of `publish.yml`'s `publish-dev` job). It publishes the CLI set for `linux-x64` and
 `linux-arm64` only, packs the two `.deb` with `package-deb.sh --arch`, and never calls
 `dotnet pack`, `publish.yml` or a NuGet feed. The version is `publish-dev`'s, with `~` for `-` in
-the Debian field: `<X.Y.Z>~<pre>.dev.<CI run number>`, asset `orkeon_<version>.dev.<n>_<arch>.deb`.
+the Debian field: `<X.Y.Z>~<pre>.dev.<CI run number>`, asset `orkeon_<X.Y.Z>-<pre>.dev.<n>_<arch>.deb`.
 Then, in the `apt-signing` environment, `scripts/apt/publish-dev.sh`:
 
 1. creates the `apt-dev` prerelease if it is missing (never latest; its tag, set on the first
@@ -478,7 +478,7 @@ print the runtime install commands rather than failing at first launch.
   `actions/attest-build-provenance` (SLSA v1, signed through Sigstore's public instance and
   entered in its transparency log):
   `publish.yml` every `*.nupkg` of a tag (dev-channel builds are not attested), `release.yml`
-  every archive, `.deb` and MSI. The `orkeon-runners` image `release.yml` pushes to GHCR is
+  every archive, `.deb` and MSI. The `ghcr.io/orkeon/orkeon` image `release.yml` pushes to GHCR is
   not attested. Both generate a
   **CycloneDX SBOM** of `Orkeon.sln` right after the build (`CycloneDX` dotnet tool, pinned
   version, no third-party action) — `orkeon-<version>.sbom.cdx.json` — and cover it with the
@@ -486,4 +486,14 @@ print the runtime install commands rather than failing at first launch.
   `release.yml`, a run artefact named `sbom` in `publish.yml`. How to verify any of it, and
   why a nuget.org download must shed its repository signature first, is in
   [Verify what you install](../guides/verify-what-you-install.md).
-- Version flows from `src/Directory.Build.props`, the single source of truth: no project overrides it, and the publish workflow's tag guard refuses any `v*` tag that disagrees with it. The dev channel derives its `<version>.dev.<n>` from it, a build made from a checkout its `<version>.local.<stamp>` (see *Dev channel* above).
+- **Locked dependency graphs.** The packages are built from locked dependency graphs: every
+  project of `Orkeon.sln` outside `examples/` commits a `packages.lock.json` next to it
+  (`Directory.Build.targets`), and CI restores in locked mode (`RestoreLockedMode` under the
+  `CI` variable), so a restore that would resolve a transitive package differently fails
+  instead of drifting. Two restores are deliberately unlocked: the `build-test-net11` lane
+  (another SDK, to see what it resolves) and every restore with a runtime identifier — the
+  per-RID `dotnet publish -r` of `package-installers.sh`/`.ps1` and of `Dockerfile.runners`
+  (the committed lock file records the RID-less graph): such a restore writes its own lock file
+  under the project's intermediate folder and never rewrites the committed one. The
+  `dotnet new` template content ships no lock file.
+- Version flows from `src/Directory.Build.props`, the single source of truth: no project overrides it, and the publish workflow's tag guard refuses any `v*` tag that disagrees with it. The dev channel derives its `<X.Y.Z>-<pre>.dev.<n>` from it, a build made from a checkout its `<version>.local.<stamp>` (see *Dev channel* above).

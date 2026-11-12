@@ -417,7 +417,7 @@ public sealed class FileSystemRegistry : IDisposable
     }
 
     /// <summary>Returns all mounts regardless of visibility — for internal/diagnostic use.</summary>
-    public IReadOnlyList<MountInfo> GetAllMountsInternal()
+    internal IReadOnlyList<MountInfo> GetAllMountsInternal()
     {
         _lock.EnterReadLock();
         try

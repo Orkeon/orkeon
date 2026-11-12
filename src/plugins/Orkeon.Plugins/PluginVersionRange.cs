@@ -4,7 +4,7 @@ namespace Orkeon.Plugins;
 
 /// <summary>
 /// A semantic version (<c>major.minor[.patch]</c>, optional pre-release, build metadata ignored).
-/// Orkeon ships release candidates (<c>1.0.0-rc.6</c>), so pre-release ordering is part of the contract.
+/// Orkeon ships pre-release builds (the dev channel's <c>1.0.1-dev.42</c>), so pre-release ordering is part of the contract.
 /// </summary>
 internal sealed class PluginSemVer : IComparable<PluginSemVer>
 {

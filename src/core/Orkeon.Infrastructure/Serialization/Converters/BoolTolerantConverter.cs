@@ -7,7 +7,7 @@ namespace Orkeon.Infrastructure.Serialization.Converters;
 /// Tolerant boolean converter: accepts JSON booleans, strings ("true"/"false"),
 /// and numeric values (0/non-zero). Handles YAML defaults that arrive as strings.
 /// </summary>
-public class BoolTolerantConverter : JsonConverter<bool>
+internal class BoolTolerantConverter : JsonConverter<bool>
 {
     /// <inheritdoc />
     public override bool Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

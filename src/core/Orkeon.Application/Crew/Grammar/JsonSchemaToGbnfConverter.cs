@@ -19,7 +19,7 @@ namespace Orkeon.Application.Crew.Grammar;
 /// additionalProperties) are intentionally ignored — the grammar stays
 /// permissive for those axes while still guaranteeing overall JSON validity.
 /// </remarks>
-public static class JsonSchemaToGbnfConverter
+internal static class JsonSchemaToGbnfConverter
 {
     private const string RootRuleName = "root";
 

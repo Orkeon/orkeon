@@ -31,7 +31,7 @@ public class ProviderCapabilityPayloadTests
     /// <summary>Every provider, by the type name its HTTP client is registered under.</summary>
     public static TheoryData<string> AllProviders() =>
     [
-        nameof(OpenAIProvider), nameof(AzureOpenAILlmProvider),
+        nameof(OpenAILlmProvider), nameof(AzureOpenAILlmProvider),
         nameof(TogetherAiLlmProvider), nameof(MistralLlmProvider), nameof(KimiLlmProvider),
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
         nameof(DeepSeekLlmProvider), nameof(AnthropicLlmProvider), nameof(OllamaLlmProvider),
@@ -74,7 +74,7 @@ public class ProviderCapabilityPayloadTests
     // ── Structured outputs, in each dialect (G-15) ──────────────────────────
 
     [Theory]
-    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(OpenAILlmProvider))]
     [InlineData(nameof(AzureOpenAILlmProvider))]
     [InlineData(nameof(TogetherAiLlmProvider))]
     [InlineData(nameof(MistralLlmProvider))]
@@ -144,7 +144,7 @@ public class ProviderCapabilityPayloadTests
     }
 
     [Theory]
-    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(OpenAILlmProvider))]
     [InlineData(nameof(AzureOpenAILlmProvider))]
     [InlineData(nameof(GrokLlmProvider))]
     [InlineData(nameof(TogetherAiLlmProvider))]
@@ -230,7 +230,7 @@ public class ProviderCapabilityPayloadTests
     // ── Thinking, in each dialect (G-16 / G-19) ─────────────────────────────
 
     [Theory]
-    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(OpenAILlmProvider))]
     [InlineData(nameof(AzureOpenAILlmProvider))]
     [InlineData(nameof(GrokLlmProvider))]
     [InlineData(nameof(MistralLlmProvider))]
@@ -288,7 +288,7 @@ public class ProviderCapabilityPayloadTests
     /// an on/off switch — and say so rather than pretending the switch was honoured.
     /// </summary>
     [Theory]
-    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(OpenAILlmProvider))]
     [InlineData(nameof(GrokLlmProvider))]
     public async Task ShouldReportTheToggle_WhenOnlyAnEffortHintIsAccepted(string providerTypeName)
     {
@@ -336,8 +336,8 @@ public class ProviderCapabilityPayloadTests
     /// is sent as <c>high</c>, and the lowering is reported (LLM-02) rather than done in silence.
     /// </summary>
     [Theory]
-    [InlineData(nameof(OpenAIProvider), "xhigh")]
-    [InlineData(nameof(OpenAIProvider), "max")]
+    [InlineData(nameof(OpenAILlmProvider), "xhigh")]
+    [InlineData(nameof(OpenAILlmProvider), "max")]
     [InlineData(nameof(GrokLlmProvider), "xhigh")]
     public async Task ShouldLowerTheEffortToHighAndReportIt_WhereThreeLevelsAreKnown(string providerTypeName, string effort)
     {
@@ -413,7 +413,7 @@ public class ProviderCapabilityPayloadTests
     /// reported — the exact failure mode the audit found for every option before LLM-02.
     /// </summary>
     [Theory]
-    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(OpenAILlmProvider))]
     [InlineData(nameof(DeepSeekLlmProvider))]
     [InlineData(nameof(AnthropicLlmProvider))]
     [InlineData(nameof(OllamaLlmProvider))]
@@ -439,7 +439,7 @@ public class ProviderCapabilityPayloadTests
     /// names the option and the key to set.
     /// </summary>
     [Theory]
-    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(OpenAILlmProvider))]
     [InlineData(nameof(MistralLlmProvider))]
     [InlineData(nameof(DeepSeekLlmProvider))]
     [InlineData(nameof(AnthropicLlmProvider))]
@@ -462,7 +462,7 @@ public class ProviderCapabilityPayloadTests
     /// <c>BaseUrl</c>: the one real use of the field. <c>Llm:Grammar: true</c> keeps it working.
     /// </summary>
     [Theory]
-    [InlineData(nameof(OpenAIProvider))]
+    [InlineData(nameof(OpenAILlmProvider))]
     [InlineData(nameof(MistralLlmProvider))]
     [InlineData(nameof(OllamaLlmProvider))]
     public async Task ShouldSendTheGrammar_WhenTheConfigurationEnablesIt(string providerTypeName)
@@ -477,7 +477,7 @@ public class ProviderCapabilityPayloadTests
     }
 
     [Theory]
-    [InlineData(nameof(OpenAIProvider), true)]
+    [InlineData(nameof(OpenAILlmProvider), true)]
     [InlineData(nameof(OllamaLlmProvider), true)]
     [InlineData(nameof(AnthropicLlmProvider), false)]
     public void ShouldDeclareTheGrammarCapability_FromTheConfiguration(string providerTypeName, bool expected)
@@ -511,7 +511,7 @@ public class ProviderCapabilityPayloadTests
             string providerTypeName, IHttpClientFactory? factory = null, WarningSink? sink = null,
             Func<LlmConfig, LlmConfig>? construct = null)
         {
-            var type = typeof(OpenAIProvider).Assembly.GetType(
+            var type = typeof(OpenAILlmProvider).Assembly.GetType(
                 $"Orkeon.Infrastructure.LLMs.{providerTypeName}", throwOnError: true)!;
 
             // Prefer the tool-calling overload, but fall back to the resilience-policy one:

@@ -62,7 +62,7 @@ land first (RAG-02 / C1-C2); the references below are added by the subsequent mi
   reopen this ADR.
 - **Break**: the legacy namespaces (`Orkeon.Application.Interfaces.Rag.*`,
   `Orkeon.Application.Rag.*`, `Orkeon.Infrastructure.Knowledge.*`) are removed without shims
-  (assumed break, version `0.9.x-beta`; migration table in `CHANGELOG.md`).
+  (assumed break; migration table in `CHANGELOG.md`).
   **Done in RAG-02/C5 (2026-07-25)** — `rag_search` now lives in `Orkeon.Tools.Rag`
   (`RagSearchTool` + `AddOrkeonRagTools()`), and the subsystem opt-in is
   `AddOrkeonRag(configuration)` in `Orkeon.Rag.DependencyInjection`.

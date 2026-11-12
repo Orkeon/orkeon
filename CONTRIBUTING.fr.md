@@ -53,10 +53,10 @@ Les suggestions d'amélioration sont suivies via les issues GitHub. Lorsque vous
 git clone https://github.com/your-username/orkeon.git
 cd orkeon
 
-# Add upstream remote
+# Ajouter le remote upstream
 git remote add upstream https://github.com/Orkeon/orkeon.git
 
-# Install dependencies (once, and again only when a package reference changes)
+# Installer les dépendances (une fois, puis seulement quand une référence de paquet change)
 dotnet restore Orkeon.sln
 
 # Build (CI builds -c Release -warnaserror: the solution is kept at zero warnings)
@@ -314,6 +314,9 @@ réponses et inspecter les appels. La référence est
   La gate `file-modes.yml` lit le mode dans l'index git — le seul qu'un clone macOS/Linux
   restaure —, si bien qu'un arbre de travail sur un montage NTFS où tout fichier paraît
   exécutable ne prouve rien.
+* Un changement de paquet change aussi les fichiers de verrouillage NuGet : `dotnet restore`
+  réécrit le `packages.lock.json` des projets touchés (la CI restaure en mode verrouillé et
+  échoue sur un fichier périmé) — commitez-les avec le changement.
 * Un changement de paquet — une version de `Directory.Packages.props`, un paquet ajouté à
   un projet que livrent les outils, les installeurs ou les images de conteneur, ou retiré —
   change ce que ces binaires redistribuent : après la restauration, lancez
@@ -389,6 +392,8 @@ Agent Framework, OpenTelemetry, .NET Aspire), et performance.
 
 ## Versionnement et stabilité API
 
+La politique côté utilisateur est dans [docs/fr/reference/stability.md](docs/fr/reference/stability.md).
+
 Orkeon suit le [Semantic Versioning 2.0](https://semver.org/). L'API publique n'est pas
 une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée au build :
 
@@ -400,15 +405,18 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
   fix de l'analyseur le fait pour vous — `dotnet format analyzers --diagnostics RS0016`
   sur le projet). À la release, les entrées `Unshipped` passent dans `Shipped`.
 - **Un breaking change est toute édition ou suppression d'une ligne de
-  `PublicAPI.Shipped.txt`.** Il exige une version majeure (une mineure n'est acceptable
-  qu'avant la 1.0), une entrée `*REMOVED*` dans le fichier d'API, et une entrée
+  `PublicAPI.Shipped.txt`.** Il exige une version majeure, une entrée `*REMOVED*` dans le fichier d'API, et une entrée
   CHANGELOG qui le dit sans détour.
-- **Fenêtre de dépréciation (à partir de la 1.0)** : une fois la 1.0 publiée, rien de
-  public n'est retiré sans avoir livré `[Obsolete]` pendant au moins une version mineure,
-  avec le remplaçant nommé dans le message. Avant la 1.0, les cales de
-  compatibilité sont retirées directement, sans étape `[Obsolete]` : chaque retrait reçoit
-  une ligne `*REMOVED*` dans le fichier d'API et une entrée CHANGELOG `**[breaking]**`
-  avec une note de migration.
+  Une exception : une ligne dont la signature porte un type de Jint, de TreeSitter.DotNet ou
+  de Terminal.Gui suit la version majeure de cette bibliothèque et peut changer dans une
+  mineure qui passe à une nouvelle majeure de celle-ci, avec une note de migration au
+  CHANGELOG ([clause des bibliothèques tierces](docs/fr/reference/stability.md#types-dune-bibliothèque-tierce)).
+  Gardez ces types hors de la surface publique : la plomberie qui en a besoin est `internal`.
+- **Fenêtre de dépréciation** : rien de public n'est retiré sans avoir livré
+  `[Obsolete]` pendant au moins une version mineure, avec le remplaçant nommé dans le
+  message ; le retrait lui-même arrive dans une version majeure, avec une ligne
+  `*REMOVED*` dans le fichier d'API et une entrée CHANGELOG `**[breaking]**` avec une
+  note de migration.
 - **Les surfaces `[Experimental]` sont hors de cet engagement.** A2A, l'orchestration
   Autonomous, le RAG correctif, l'intégration MCP, les capacités par modèle, la sécurité HTTP de
   l'hôte et les ports d'historique des exécutions portent des diagnostics
@@ -416,11 +424,9 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
   supprimer explicitement — c'est votre opt-in à une surface qui peut changer dans
   n'importe quelle version. Voir
   [docs/fr/reference/experimental-apis.md](docs/fr/reference/experimental-apis.md).
-- **Engagement de stabilité pour la fenêtre 1.x** : une fois la 1.0 publiée, aucun
-  breaking change sur une API livrée non expérimentale avant la 2.0. D'ici là — tant que
-  `main` est en pré-version — des breaking changes
-  peuvent encore arriver d'une pré-version à l'autre, mais sont toujours annoncés
-  dans le CHANGELOG et les notes de migration.
+- **Engagement de stabilité pour la ligne 1.x** : aucun breaking change sur une API
+  livrée non expérimentale avant la 2.0, hors clause des bibliothèques tierces. La politique complète est dans
+  [docs/fr/reference/stability.md](docs/fr/reference/stability.md).
 
 ## Processus de release
 
@@ -434,9 +440,8 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    conformité VFS `ORKVFS00x`) passe dans `AnalyzerReleases.Shipped.md` sous un titre
    `## Release <version>`, ne laissant que son en-tête au fichier `Unshipped`.
    L'analyseur de suivi des releases lit ce titre comme un simple numéro
-   `Majeur.Mineur.Correctif` et refuse un suffixe de pré-release (RS2007) : le titre de la
-   ligne 1.0.0 est donc `## Release 1.0.0` — il est déjà là, et les tags de pré-version n'y ajoutent
-   rien.
+   `Majeur.Mineur.Correctif` et refuse un suffixe de pré-release (RS2007) : une version candidate n'y ajoute rien, ses règles
+   vont sous le titre de la version finale (`## Release <X.Y.Z>` pour la ligne `<X.Y.Z>`).
 5. Vérifier que la CI est verte sur le commit que vous taguez. Au-delà du build
    `-warnaserror` et des suites de tests, les gates qui doivent passer sont
    `scripts/check-docs-parity.sh`, `scripts/check-doc-claims.py` (qui compare aussi les
@@ -471,13 +476,13 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    RID, le MSI Windows per-user et le MSI de service `orkeon-host`, les tarballs macOS, le
    paquet Debian, le SBOM et les fichiers de sommes `SHA256SUMS` / `SHA256SUMS.msi` —
    chacun smoke-testé sur un vrai runner, puis attesté, avant publication de la Release —
-   plus l'image conteneur `orkeon-runners` poussée sur GHCR) et `docs.yml`
+   plus l'image conteneur `ghcr.io/orkeon/orkeon` poussée sur GHCR) et `docs.yml`
    (déploie le site de documentation sur GitHub Pages, à l'adresse <https://orkeon.github.io/orkeon/>).
    Une fois la Release publiée, `release-verify.yml` rejoue les smokes d'installation sur
    les assets tels que téléchargés depuis la page de la Release.
 
 Entre deux tags, chaque push sur `main` dont la CI est verte est aussi packé en
-`<version>.dev.<numéro de run>` et poussé sur GitHub Packages uniquement — jamais sur
+`<X.Y.Z>-<pre>.dev.<numéro de run>` et poussé sur GitHub Packages uniquement — jamais sur
 NuGet.org —, sans attestation ni SBOM ; les builds dev plus anciens sont purgés.
 
 ## Des questions ?

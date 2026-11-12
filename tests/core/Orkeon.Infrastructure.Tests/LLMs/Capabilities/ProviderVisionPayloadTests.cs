@@ -31,7 +31,7 @@ public class ProviderVisionPayloadTests
 
     public static TheoryData<string> VisionCapableProviders() =>
     [
-        nameof(OpenAIProvider), nameof(AzureOpenAILlmProvider),
+        nameof(OpenAILlmProvider), nameof(AzureOpenAILlmProvider),
         nameof(TogetherAiLlmProvider), nameof(MistralLlmProvider), nameof(KimiLlmProvider),
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
         nameof(DeepSeekLlmProvider), nameof(GrokLlmProvider), nameof(MiniMaxLlmProvider),
@@ -50,7 +50,7 @@ public class ProviderVisionPayloadTests
         var factory = new TestHttpClientFactory();
         factory.RegisterClient(providerTypeName, new HttpClient(handler));
 
-        var type = typeof(OpenAIProvider).Assembly.GetType(
+        var type = typeof(OpenAILlmProvider).Assembly.GetType(
             $"Orkeon.Infrastructure.LLMs.{providerTypeName}", throwOnError: true)!;
         var config = LlmConfig.Create("test-model", TestApiKey) with
         {

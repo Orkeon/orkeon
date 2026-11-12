@@ -232,7 +232,7 @@ while :; do
     exit 0
   fi
   cat "$push_log" >&2
-  if ! grep -qiE 'non-fast-forward|fetch first|stale info|cannot lock ref' "$push_log"; then
+  if ! grep -qiE 'non-fast-forward|fetch first|stale info|cannot lock ref|incorrect old value' "$push_log"; then
     die "push refused for another reason than a moved branch. Nothing more is tried."
   fi
   if (( attempt >= ATTEMPTS )); then

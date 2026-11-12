@@ -18,8 +18,8 @@ public sealed class ScriptToolCatalogueTests
     public async Task ShouldHoldTheContainerToolsThenTheRegistrysOthers()
     {
         var registry = Registry();
-        await registry.RegisterToolAsync(new StubBaseTool("file_read"));
-        await registry.RegisterToolAsync(new StubBaseTool("echo_text"));
+        await registry.RegisterToolAsync(new StubBaseTool("file_read"), TestContext.Current.CancellationToken);
+        await registry.RegisterToolAsync(new StubBaseTool("echo_text"), TestContext.Current.CancellationToken);
 
         var catalogue = new ScriptToolCatalogue([new StubBaseTool("file_read"), new StubBaseTool("shell_command")], registry);
 
@@ -42,7 +42,7 @@ public sealed class ScriptToolCatalogueTests
         var catalogue = new ScriptToolCatalogue([new StubBaseTool("file_read")], registry);
         Assert.Equal(["file_read"], Names(catalogue));
 
-        await registry.RegisterToolAsync(new StubBaseTool("echo_text"));
+        await registry.RegisterToolAsync(new StubBaseTool("echo_text"), TestContext.Current.CancellationToken);
 
         Assert.Equal(["file_read", "echo_text"], Names(catalogue));
     }

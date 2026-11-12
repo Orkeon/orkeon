@@ -52,7 +52,14 @@ mkdir -p "$WORK/typings" "$WORK/tree"
 # what GenerateRollupDts made of them, and that step once turned `*\/` into `*//`. When a build
 # has produced it, it is typechecked on its own; `--rollup` checks it alone and fails when no
 # build has run (CI runs that after `dotnet build`).
-ROLLUP="$(ls -1 "$ROOT"/src/scripting/Orkeon.Scripting/bin/*/net10.0/dist/orkeon.d.ts 2>/dev/null | head -n 1 || true)"
+# `CONFIGURATION=Release` reads that configuration's roll-up; unset, the most recently built one
+# is read, never the first in alphabetical order (a stale Debug build would hide a Release one).
+if [ -n "${CONFIGURATION:-}" ]; then
+    ROLLUP="$ROOT/src/scripting/Orkeon.Scripting/bin/$CONFIGURATION/net10.0/dist/orkeon.d.ts"
+    [ -f "$ROLLUP" ] || ROLLUP=""
+else
+    ROLLUP="$(ls -1t "$ROOT"/src/scripting/Orkeon.Scripting/bin/*/net10.0/dist/orkeon.d.ts 2>/dev/null | head -n 1 || true)"
+fi
 check_rollup() {
     if [ -z "$ROLLUP" ]; then
         echo "check-scripting-typings: no built orkeon.d.ts roll-up under src/scripting/Orkeon.Scripting/bin/ (run dotnet build first)."

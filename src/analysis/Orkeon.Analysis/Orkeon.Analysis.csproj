@@ -17,6 +17,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Orkeon.Tools.Analysis" />
     <InternalsVisibleTo Include="Orkeon.Analysis.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Analysis.Tests" />
   </ItemGroup>
 
   <ItemGroup>

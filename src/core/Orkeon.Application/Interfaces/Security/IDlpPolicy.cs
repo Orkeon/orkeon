@@ -3,7 +3,7 @@ namespace Orkeon.Application.Interfaces.Security;
 /// <summary>
 /// Defines a DLP policy for a specific channel.
 /// </summary>
-public record DlpPolicy
+public sealed record DlpPolicy
 {
     /// <summary>Gets the channel this policy applies to.</summary>
     public DlpChannel Channel { get; init; }

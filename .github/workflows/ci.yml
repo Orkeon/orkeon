@@ -153,7 +153,7 @@ jobs:
           path: |
             packages
             ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
           restore-keys: nuget-${{ runner.os }}-
       - run: dotnet restore Orkeon.sln
       # Third-party notices gate (GAP-36): THIRD-PARTY-NOTICES.md must list every package the
@@ -171,7 +171,7 @@ jobs:
       # The roll-up this build embedded is what `orkeon typings` ships (#288): tsc reads it, not
       # the sources the earlier step checked.
       - name: Typecheck the built orkeon.d.ts roll-up
-        run: bash scripts/check-scripting-typings.sh --rollup
+        run: CONFIGURATION=Release bash scripts/check-scripting-typings.sh --rollup
       # Unit + fast tests only (see header for what's excluded and why).
       - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"
       # The ONNX tests of Embeddings.Local, alone, so a native-runtime failure names
@@ -206,7 +206,7 @@ jobs:
           path: |
             packages
             ~/.nuget/packages
-          key: nuget-net11-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          key: nuget-net11-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
           restore-keys: nuget-net11-${{ runner.os }}-
       - name: Let the 11.x SDK build a 10.0.300-pinned tree (runner only)
         run: |
@@ -217,7 +217,11 @@ jobs:
           json.dump(g, open("global.json", "w"), indent=2)
           PY
           dotnet --version
-      - run: dotnet restore Orkeon.sln
+      # Unlocked on purpose: the packages.lock.json files are the net10.0 graph restored by the
+      # 10.0 SDK (Directory.Build.targets turns locked mode on under CI); the 11.x SDK may
+      # resolve implicit packages and the net11 preview graph differently, and this lane is
+      # there to see exactly that.
+      - run: dotnet restore Orkeon.sln -p:RestoreLockedMode=false
       - run: dotnet build Orkeon.sln -c Release --no-restore -warnaserror
       - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"
 

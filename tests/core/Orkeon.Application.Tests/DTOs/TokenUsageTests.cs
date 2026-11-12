@@ -21,78 +21,78 @@ public class TokenUsageTests
     }
 
     [Fact]
-    public void ShouldBeSettable_WhenUsingPromptTokens()
+    public void ShouldBeInitializable_WhenUsingPromptTokens()
     {
-        // Arrange
-        var tokenUsage = new TokenUsage();
-
         // Act
-        tokenUsage.PromptTokens = 150;
+        var tokenUsage = new TokenUsage
+        {
+            PromptTokens = 150
+        };
 
         // Assert
         Assert.Equal(150, tokenUsage.PromptTokens);
     }
 
     [Fact]
-    public void ShouldBeSettable_WhenUsingCompletionTokens()
+    public void ShouldBeInitializable_WhenUsingCompletionTokens()
     {
-        // Arrange
-        var tokenUsage = new TokenUsage();
-
         // Act
-        tokenUsage.CompletionTokens = 75;
+        var tokenUsage = new TokenUsage
+        {
+            CompletionTokens = 75
+        };
 
         // Assert
         Assert.Equal(75, tokenUsage.CompletionTokens);
     }
 
     [Fact]
-    public void ShouldBeSettable_WhenUsingTotalTokens()
+    public void ShouldBeInitializable_WhenUsingTotalTokens()
     {
-        // Arrange
-        var tokenUsage = new TokenUsage();
-
         // Act
-        tokenUsage.TotalTokens = 225;
+        var tokenUsage = new TokenUsage
+        {
+            TotalTokens = 225
+        };
 
         // Assert
         Assert.Equal(225, tokenUsage.TotalTokens);
     }
 
     [Fact]
-    public void ShouldBeSettable_WhenUsingEstimatedCost()
+    public void ShouldBeInitializable_WhenUsingEstimatedCost()
     {
-        // Arrange
-        var tokenUsage = new TokenUsage();
-
         // Act
-        tokenUsage.EstimatedCost = 0.0045m;
+        var tokenUsage = new TokenUsage
+        {
+            EstimatedCost = 0.0045m
+        };
 
         // Assert
         Assert.Equal(0.0045m, tokenUsage.EstimatedCost);
     }
 
     [Fact]
-    public void ShouldBeSettable_WhenUsingModel()
+    public void ShouldBeInitializable_WhenUsingModel()
     {
-        // Arrange
-        var tokenUsage = new TokenUsage();
-
         // Act
-        tokenUsage.Model = ModelGpt4;
+        var tokenUsage = new TokenUsage
+        {
+            Model = ModelGpt4
+        };
 
         // Assert
         Assert.Equal(ModelGpt4, tokenUsage.Model);
     }
 
     [Fact]
-    public void ShouldBeSettable_WhenUsingProvider()
+    public void ShouldBeInitializable_WhenUsingProvider()
     {
-        // Arrange
-        var tokenUsage = new TokenUsage();
-
         // Act
-        tokenUsage.Provider = "OpenAI";
+        var tokenUsage = new TokenUsage
+        {
+            Provider = "OpenAI"
+        };
 
         // Assert
         Assert.Equal("OpenAI", tokenUsage.Provider);
@@ -398,16 +398,16 @@ public class TokenUsageTests
     [Fact]
     public void ShouldBeIndependent_WhenAccessingProperties()
     {
-        // Arrange
-        var tokenUsage = new TokenUsage();
-
         // Act
-        tokenUsage.PromptTokens = 100;
-        tokenUsage.CompletionTokens = 50;
-        tokenUsage.TotalTokens = 175; // Intentionally not sum
-        tokenUsage.EstimatedCost = 0.005m;
-        tokenUsage.Model = CustomModelName;
-        tokenUsage.Provider = "custom-provider";
+        var tokenUsage = new TokenUsage
+        {
+            PromptTokens = 100,
+            CompletionTokens = 50,
+            TotalTokens = 175, // Intentionally not sum
+            EstimatedCost = 0.005m,
+            Model = CustomModelName,
+            Provider = "custom-provider"
+        };
 
         // Assert - Each property should maintain its individual value
         Assert.Equal(100, tokenUsage.PromptTokens);

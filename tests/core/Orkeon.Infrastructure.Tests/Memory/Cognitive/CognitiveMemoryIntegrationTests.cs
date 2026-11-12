@@ -99,7 +99,7 @@ public sealed class CognitiveMemoryIntegrationTests : IDisposable
         // Arrange
         _embeddingProvider.SetEmbeddingResult(EmbeddingContradiction);
         var existingItem = MemoryItem.Create("The deadline is Friday", embedding: EmbeddingContradiction, importance: 0.7f);
-        await CrewMemory.AddAsync(existingItem);
+        await CrewMemory.AddAsync(existingItem, TestContext.Current.CancellationToken);
 
         var callCount = 0;
         _llmProvider.SetChatFunc((messages, config) =>
@@ -132,7 +132,7 @@ public sealed class CognitiveMemoryIntegrationTests : IDisposable
         // Arrange - create redundant memories
         _embeddingProvider.SetEmbeddingResult([1.0f, 0.0f, 0.0f]);
         for (var i = 0; i < 5; i++)
-            await CrewMemory.AddAsync(MemoryItem.Create($"Redundant fact version {i}", embedding: [1.0f, 0.0f, 0.0f], importance: 0.5f));
+            await CrewMemory.AddAsync(MemoryItem.Create($"Redundant fact version {i}", embedding: [1.0f, 0.0f, 0.0f], importance: 0.5f), TestContext.Current.CancellationToken);
 
         _llmProvider.SetChatResult("Consolidated: single fact combining all versions");
 
@@ -181,8 +181,8 @@ public sealed class CognitiveMemoryIntegrationTests : IDisposable
     {
         // Arrange — the query is close to one memory, far from the other
         _embeddingProvider.SetEmbeddingResult([1f, 0f]);
-        await CrewMemory.AddAsync(MemoryItem.Create("Very important fact", embedding: [0.3f, 0.954f], importance: 1.0f));
-        await CrewMemory.AddAsync(MemoryItem.Create("Closely related fact", embedding: [0.95f, 0.312f], importance: 0.1f));
+        await CrewMemory.AddAsync(MemoryItem.Create("Very important fact", embedding: [0.3f, 0.954f], importance: 1.0f), TestContext.Current.CancellationToken);
+        await CrewMemory.AddAsync(MemoryItem.Create("Closely related fact", embedding: [0.95f, 0.312f], importance: 0.1f), TestContext.Current.CancellationToken);
 
         // Act - weight importance heavily
         var importanceWeighted = await _service.RecallAsync(_crewId, "test query", new RecallOptions

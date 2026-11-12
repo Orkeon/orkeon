@@ -1,18 +1,18 @@
-# 100. Simulateur de Civilisation Émergente
+# 100. Emergent Civilization Simulator
 
-> Ecosystem of 20+ agents representing factions. The game master manages turns. A2A protocol enables inter-faction diplomacy. Episodic memory creates a unique emergent history.
+> Ecosystem of agents representing factions. The game master manages turns. A2A protocol enables inter-faction diplomacy. Crew memory carries the history from turn to turn.
 
 ## Quality
 
-💪 Robustesse — A2A diplomatic protocol, turn-based progression, civilizational memory, emergent history
+💪 Robustesse — A2A diplomatic protocol, turn-based progression, crew memory, emergent history
 
 ## Architecture
 
 - **Process**: `sequential` (turns led by the game master + A2A inter-factions)
 - **Agents**: 8 — Game Master (runs the turns through its own tasks), Realm Leader + General + Scholar, Forest Chief + Shaman, Merchant Guild Master, Historian-Chronicler (observer)
 - **Tools**: `json_tool`, `file_write`
-- **Memory**: `SQLite` (composite: ShortTerm current turn + LongTerm civilization history + Episodic landmark events, planned)
-- **Key features**: A2A protocol (diplomacy), Composite memory 3-layer (planned), ObserverAgent (chronicler), AgentCard + AgentSkill, CrewHooks
+- **Memory**: `SQLite`
+- **Key features**: A2A protocol (diplomacy), ObserverAgent (chronicler), AgentCard + AgentSkill, CrewHooks
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -39,4 +39,4 @@ orkeon run examples/09-experimental/100-civilization-simulator/config.yaml \
 
 - Turn-based civilization simulation with a game master managing progression
 - A2A protocol enabling emergent diplomacy (alliances, trade, betrayals) between factions
-- Episodic memory creating a unique emergent history that shapes future faction behavior
+- Crew memory carrying the emergent history that shapes future faction behavior

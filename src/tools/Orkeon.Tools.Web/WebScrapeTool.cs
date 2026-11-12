@@ -257,7 +257,7 @@ public partial class WebScrapeTool : HttpToolBase<WebScrapeRequest, WebScrapeRes
     {
         try
         {
-            return await _httpClient.GetStringAsync(uri, ct).ConfigureAwait(false);
+            return await HttpClient.GetStringAsync(uri, ct).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -284,7 +284,7 @@ public partial class WebScrapeTool : HttpToolBase<WebScrapeRequest, WebScrapeRes
             return ExtractWithSelector(doc, selector, title, url);
 
         var text = ExtractFullPageText(doc);
-        LogScrapedUrl(url, text.Length);
+        LogScrapedUrl(Logger, url, text.Length);
         return new WebScrapeResponse
         {
             Content = text,
@@ -347,7 +347,7 @@ public partial class WebScrapeTool : HttpToolBase<WebScrapeRequest, WebScrapeRes
             await _memoryProvider.StoreAsync(key, item, cancellationToken).ConfigureAwait(false);
         }
 
-        LogCachedUrl(url, fetched.ContentLength, chunks.Count);
+        LogCachedUrl(Logger, url, fetched.ContentLength, chunks.Count);
 
         var summary = fetched.Content.Length > SummaryLength
             ? fetched.Content[..SummaryLength] + "…"
@@ -394,7 +394,7 @@ public partial class WebScrapeTool : HttpToolBase<WebScrapeRequest, WebScrapeRes
             ? first.Content[..SummaryLength] + "…"
             : first.Content;
 
-        LogDedupHit(url, total);
+        LogDedupHit(Logger, url, total);
 
         return new WebScrapeResponse
         {
@@ -451,14 +451,14 @@ public partial class WebScrapeTool : HttpToolBase<WebScrapeRequest, WebScrapeRes
     private async Task<WebScrapeResponse> FetchViaWikipediaApiAsync(
         string apiUrl, string articleTitle, Uri originalUrl, CancellationToken ct)
     {
-        var json = await _httpClient.GetStringAsync(new Uri(apiUrl), ct).ConfigureAwait(false);
+        var json = await HttpClient.GetStringAsync(new Uri(apiUrl), ct).ConfigureAwait(false);
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
         var title = root.TryGetProperty("title", out var t) ? t.GetString() ?? articleTitle : articleTitle;
         var extract = root.TryGetProperty("extract", out var e) ? e.GetString() ?? "" : "";
 
-        LogScrapedUrl(originalUrl, extract.Length);
+        LogScrapedUrl(Logger, originalUrl, extract.Length);
 
         return new WebScrapeResponse
         {
@@ -513,11 +513,11 @@ public partial class WebScrapeTool : HttpToolBase<WebScrapeRequest, WebScrapeRes
     private static partial Regex WhitespaceRegex();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully scraped URL: {Url} ({Length} chars)")]
-    private partial void LogScrapedUrl(Uri url, int length);
+    private static partial void LogScrapedUrl(ILogger logger, Uri url, int length);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Cached URL: {Url} ({Length} chars, {Chunks} chunks)")]
-    private partial void LogCachedUrl(Uri url, int length, int chunks);
+    private static partial void LogCachedUrl(ILogger logger, Uri url, int length, int chunks);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "web_scrape dedup hit: {Url} ({Chunks} chunks already cached — skipped fetch)")]
-    private partial void LogDedupHit(Uri url, int chunks);
+    private static partial void LogDedupHit(ILogger logger, Uri url, int chunks);
 }

@@ -145,7 +145,7 @@ public partial class HumanInputTool : ToolBase<HumanInputRequest, HumanInputResp
                 Metadata = metadata,
             };
 
-            LogPromptingHuman(inputType, request.Prompt.Length);
+            LogPromptingHuman(Logger, inputType, request.Prompt.Length);
 
             string raw;
             bool isApproved;
@@ -162,7 +162,7 @@ public partial class HumanInputTool : ToolBase<HumanInputRequest, HumanInputResp
                 {
                     var values = await _provider.GetMultiChoiceAsync(context, cancellationToken).ConfigureAwait(false);
                     raw = string.Join(", ", values);
-                    LogReceivedHumanResponse(inputType, raw.Length, false);
+                    LogReceivedHumanResponse(Logger, inputType, raw.Length, false);
                     return new HumanInputResponse { Response = raw, InputType = inputType, Values = values };
                 }
                 case HumanInputDefaults.ChoiceInputType:
@@ -182,7 +182,7 @@ public partial class HumanInputTool : ToolBase<HumanInputRequest, HumanInputResp
             var wasDefault = string.Equals(raw, request.DefaultValue, StringComparison.Ordinal)
                 && !string.IsNullOrEmpty(request.DefaultValue);
 
-            LogReceivedHumanResponse(inputType, raw.Length, isApproved);
+            LogReceivedHumanResponse(Logger, inputType, raw.Length, isApproved);
 
             return new HumanInputResponse
             {
@@ -215,8 +215,8 @@ public partial class HumanInputTool : ToolBase<HumanInputRequest, HumanInputResp
         => !string.IsNullOrWhiteSpace(response) && ApprovedTokens.Contains(response.Trim());
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Prompting human (input_type={InputType}, prompt_len={PromptLen})")]
-    private partial void LogPromptingHuman(string inputType, int promptLen);
+    private static partial void LogPromptingHuman(ILogger logger, string inputType, int promptLen);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Received human response (input_type={InputType}, response_len={ResponseLen}, is_approved={IsApproved})")]
-    private partial void LogReceivedHumanResponse(string inputType, int responseLen, bool isApproved);
+    private static partial void LogReceivedHumanResponse(ILogger logger, string inputType, int responseLen, bool isApproved);
 }

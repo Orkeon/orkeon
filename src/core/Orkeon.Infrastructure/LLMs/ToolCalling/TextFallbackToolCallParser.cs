@@ -15,7 +15,7 @@ namespace Orkeon.Infrastructure.LLMs.ToolCalling;
 /// </list>
 /// This is the fallback parser used when the LLM provider does not support native tool calling.
 /// </summary>
-public sealed partial class TextFallbackToolCallParser : IToolCallParser
+internal sealed partial class TextFallbackToolCallParser : IToolCallParser
 {
     private readonly ILogger<TextFallbackToolCallParser> _logger;
 

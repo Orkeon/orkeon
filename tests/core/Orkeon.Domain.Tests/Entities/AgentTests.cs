@@ -867,13 +867,13 @@ public class AgentTests
 
     private sealed class StubToolRegistry : IToolRegistry
     {
-        public System.Threading.Tasks.Task<bool> RegisterToolAsync(IBaseTool tool) => System.Threading.Tasks.Task.FromResult(true);
-        public System.Threading.Tasks.Task<bool> UnregisterToolAsync(string toolId) => System.Threading.Tasks.Task.FromResult(true);
-        public System.Threading.Tasks.Task<IBaseTool?> GetToolAsync(string toolId) => System.Threading.Tasks.Task.FromResult<IBaseTool?>(null);
-        public System.Threading.Tasks.Task<IBaseTool?> GetToolByNameAsync(string name) => System.Threading.Tasks.Task.FromResult<IBaseTool?>(null);
-        public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync() => System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(Array.Empty<IBaseTool>());
-        public System.Threading.Tasks.Task<bool> IsRegisteredAsync(string toolId) => System.Threading.Tasks.Task.FromResult(false);
-        public System.Threading.Tasks.Task ClearAsync() => System.Threading.Tasks.Task.CompletedTask;
+        public System.Threading.Tasks.Task<bool> RegisterToolAsync(IBaseTool tool, CancellationToken cancellationToken = default) => System.Threading.Tasks.Task.FromResult(true);
+        public System.Threading.Tasks.Task<bool> UnregisterToolAsync(string toolId, CancellationToken cancellationToken = default) => System.Threading.Tasks.Task.FromResult(true);
+        public System.Threading.Tasks.Task<IBaseTool?> GetToolAsync(string toolId, CancellationToken cancellationToken = default) => System.Threading.Tasks.Task.FromResult<IBaseTool?>(null);
+        public System.Threading.Tasks.Task<IBaseTool?> GetToolByNameAsync(string name, CancellationToken cancellationToken = default) => System.Threading.Tasks.Task.FromResult<IBaseTool?>(null);
+        public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync(CancellationToken cancellationToken = default) => System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(Array.Empty<IBaseTool>());
+        public System.Threading.Tasks.Task<bool> IsRegisteredAsync(string toolId, CancellationToken cancellationToken = default) => System.Threading.Tasks.Task.FromResult(false);
+        public System.Threading.Tasks.Task ClearAsync(CancellationToken cancellationToken = default) => System.Threading.Tasks.Task.CompletedTask;
     }
 
     private sealed class StubCrewTask : ICrewTask

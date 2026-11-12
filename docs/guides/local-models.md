@@ -12,9 +12,9 @@ self-contained:
 |---|---|---|
 | **Docker Model Runner** (DMR) | on the host, port `12434` | Docker Desktop users — the containers' default settings already point at it |
 | **Ollama** | on the host, port `11434` | existing Ollama setups |
-| **Embedded** (`--target local-llm`) | inside the `orkeon-runners` image | zero host-side setup, air-gapped demos |
+| **Embedded** (`--target local-llm`) | inside the `ghcr.io/orkeon/orkeon` image | zero host-side setup, air-gapped demos |
 
-The `orkeon-runners` container image defaults to option 1: its baked settings
+The `ghcr.io/orkeon/orkeon` container image defaults to option 1: its baked settings
 target `host.docker.internal:12434` with the `ai/granite-4.0-h-tiny` model. Ready-made
 alternatives live in `/etc/orkeon/profiles` and are selected with
 `-e ORKEON_LLM_PROFILE=<name>`:
@@ -30,7 +30,7 @@ alternatives live in `/etc/orkeon/profiles` and are selected with
 
 No provider name appears in these files: Orkeon picks the provider from the base URL. A URL
 containing `/engines/` is Docker Model Runner, driven through the OpenAI dialect
-(`OpenAIProvider`); port `11434` goes to the native Ollama provider
+(`OpenAILlmProvider`); port `11434` goes to the native Ollama provider
 (`OllamaLlmProvider`); any other address is an OpenAI-compatible server. Another such server
 (vLLM, LM Studio, llama.cpp...) is written with its `/v1` path and, when it checks no key,
 `"ApiKey": "not-needed"` — an address with no path is read as an OpenAI-compatible server at its root, with a notice asking for its path. See [provider resolution](../architecture/llm-providers.md#provider-resolution).
@@ -51,8 +51,8 @@ docker model pull ai/granite-4.0-h-tiny
 docker model list
 
 # 3. Run the examples — the default settings just work:
-docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
-  ghcr.io/orkeon/orkeon-runners
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD/out:/output" \
+  ghcr.io/orkeon/orkeon
 # then inside the shell:
 orkeon-example run 1
 ```
@@ -80,9 +80,9 @@ orkeon-example run 1
 
 ```bash
 # run any pulled model without touching settings files:
-docker run -it --rm -e ORKEON_RUNNER=shell \
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell \
   -e ORKEON_Llm__Model=gemma4 \
-  ghcr.io/orkeon/orkeon-runners
+  ghcr.io/orkeon/orkeon
 ```
 
 `ORKEON_Llm__*` environment variables override every settings file (they are
@@ -144,9 +144,9 @@ docker model configure show gemma4:128K
 Then run your crews with the model name:
 
 ```bash
-docker run -it --rm -e ORKEON_RUNNER=shell \
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell \
   -e ORKEON_Llm__Model=gemma4 \
-  -v "$PWD/out:/output" ghcr.io/orkeon/orkeon-runners
+  -v "$PWD/out:/output" ghcr.io/orkeon/orkeon
 ```
 
 Note: `configure show` reports the
@@ -204,9 +204,9 @@ Raise it only for cloud providers (the shipped cloud templates use 2–16).
 
 ```bash
 ollama pull llama3.2          # on the host
-docker run -it --rm -e ORKEON_RUNNER=shell \
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell \
   -e ORKEON_LLM_PROFILE=host-ollama \
-  ghcr.io/orkeon/orkeon-runners
+  ghcr.io/orkeon/orkeon
 ```
 
 The `host-ollama` profile targets `http://host.docker.internal:11434` (the
@@ -229,16 +229,16 @@ llama.cpp build is x64): on an arm64 machine add `--platform linux/amd64` to the
 # Granite 4.0 h-tiny (Apache 2.0, ~4.2 GB of weights → ~6 GB image)
 docker build -f Dockerfile.runners --target local-llm \
   --build-arg LOCAL_MODEL_URL=https://huggingface.co/ibm-granite/granite-4.0-h-tiny-GGUF/resolve/main/granite-4.0-h-tiny-Q4_K_M.gguf \
-  -t orkeon-runners:granite .
+  -t orkeon:granite .
 
 # Gemma 4 E4B with a 128K context (Gemma license — keep the image local)
 docker build -f Dockerfile.runners --target local-llm \
   --build-arg LOCAL_MODEL_URL=https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF/resolve/main/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf \
   --build-arg LOCAL_MODEL_NAME=ai/gemma4 \
   --build-arg LOCAL_MODEL_CTX=131072 \
-  -t orkeon-runners:gemma4 .
+  -t orkeon:gemma4 .
 
-docker run -it --rm -m 8g -e ORKEON_RUNNER=shell orkeon-runners:granite
+docker run -it --rm -m 8g -e ORKEON_ENTRYPOINT=shell orkeon:granite
 ```
 
 The server listens on `127.0.0.1:12434` with the `/engines/llama.cpp` prefix; the `local`

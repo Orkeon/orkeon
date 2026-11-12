@@ -88,7 +88,7 @@ public enum AgentExitReason
 /// <summary>
 /// Result of task execution.
 /// </summary>
-public record TaskResult(
+public sealed record TaskResult(
     bool Success,
     string Output,
     object? StructuredOutput,
@@ -188,7 +188,7 @@ public record TaskResult(
 /// Type-safe result of task execution.
 /// </summary>
 /// <typeparam name="TOutput">The output type</typeparam>
-public record TaskResult<TOutput>(
+public sealed record TaskResult<TOutput>(
     bool Success,
     string RawOutput,
     TOutput? StructuredOutput,

@@ -16,7 +16,7 @@ public sealed class CountPatternRequest
     /// <summary>Virtual path of the file to scan.</summary>
     [JsonPropertyName("path")]
     [FieldSchema(Description = "Virtual file path to scan", Example = "/output/report.md", IsRequired = true)]
-    public string Path { get; set; } = string.Empty;
+    public string Path { get; init; } = string.Empty;
 
     /// <summary>Regex patterns to count. Each pattern is evaluated independently, occurrences are counted across the full content.</summary>
     [JsonPropertyName("patterns")]
@@ -26,7 +26,7 @@ public sealed class CountPatternRequest
     /// <summary>When true, apply RegexOptions.Multiline so ^/$ match line boundaries. Default: true.</summary>
     [JsonPropertyName("multiline")]
     [FieldSchema(Description = "Apply RegexOptions.Multiline so ^/$ match line starts/ends", IsRequired = false, Example = true, Default = true)]
-    public bool Multiline { get; set; } = true;
+    public bool Multiline { get; init; } = true;
 
     /// <summary>
     /// When true, <see cref="PatternCount.Count"/> is the cardinality of the set of matched
@@ -37,7 +37,7 @@ public sealed class CountPatternRequest
     /// </summary>
     [JsonPropertyName("distinct_matches")]
     [FieldSchema(Description = "Count unique matched substrings instead of raw matches", IsRequired = false, Example = false, Default = false)]
-    public bool DistinctMatches { get; set; }
+    public bool DistinctMatches { get; init; }
 
     /// <summary>
     /// When true, <see cref="PatternCount.Matches"/> is populated with the matched substrings
@@ -46,7 +46,7 @@ public sealed class CountPatternRequest
     /// </summary>
     [JsonPropertyName("include_matches")]
     [FieldSchema(Description = "Return the matched substrings themselves (capped by max_matches_returned)", IsRequired = false, Example = false, Default = false)]
-    public bool IncludeMatches { get; set; }
+    public bool IncludeMatches { get; init; }
 
     /// <summary>
     /// Cap on the size of <see cref="PatternCount.Matches"/> when <see cref="IncludeMatches"/>
@@ -54,7 +54,7 @@ public sealed class CountPatternRequest
     /// </summary>
     [JsonPropertyName("max_matches_returned")]
     [FieldSchema(Description = "Cap on the returned matches list size (only applies when include_matches=true)", IsRequired = false, Example = 200)]
-    public int? MaxMatchesReturned { get; set; }
+    public int? MaxMatchesReturned { get; init; }
 }
 
 /// <summary>One entry in the CountPatternResponse.</summary>
@@ -63,17 +63,17 @@ public sealed class PatternCount
     /// <summary>The exact regex that was counted.</summary>
     [JsonPropertyName("pattern")]
     [ReturnSchema(Description = "The regex pattern", Example = "^```[a-z]+")]
-    public string Pattern { get; set; } = string.Empty;
+    public string Pattern { get; init; } = string.Empty;
 
     /// <summary>Number of non-overlapping matches observed in the file content.</summary>
     [JsonPropertyName("count")]
     [ReturnSchema(Description = "Number of non-overlapping matches", Example = 9)]
-    public int Count { get; set; }
+    public int Count { get; init; }
 
     /// <summary>When a pattern is invalid regex, this field holds the parser error.</summary>
     [JsonPropertyName("error")]
     [ReturnSchema(Description = "Parser error when the pattern is invalid (null otherwise)")]
-    public string? Error { get; set; }
+    public string? Error { get; init; }
 
     /// <summary>
     /// Matched substrings (populated only when the request set <c>include_matches=true</c>).
@@ -97,12 +97,12 @@ public sealed class CountPatternResponse
     /// <summary>Total number of bytes scanned (useful for sanity checks).</summary>
     [JsonPropertyName("bytes_scanned")]
     [ReturnSchema(Description = "Size of the scanned content in bytes", Example = 28267)]
-    public int BytesScanned { get; set; }
+    public int BytesScanned { get; init; }
 
     /// <summary>True when a leading U+FEFF (UTF-8 BOM as code point) was stripped before regex matching.</summary>
     [JsonPropertyName("bom_stripped")]
     [ReturnSchema(Description = "True if a leading U+FEFF was stripped before matching", Example = false)]
-    public bool BomStripped { get; set; }
+    public bool BomStripped { get; init; }
 }
 
 // ── Tool implementation ──────────────────────────────────────────────────

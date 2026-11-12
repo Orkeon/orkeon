@@ -6,7 +6,7 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Memory;
 using Orkeon.Infrastructure.Tools.Search;
-using IEmbeddingService = Orkeon.Application.Interfaces.Ports.IEmbeddingService;
+using IEmbeddingService = Orkeon.Domain.Memory.IEmbeddingService;
 
 namespace Orkeon.Hosting;
 
@@ -38,8 +38,8 @@ namespace Orkeon.Hosting;
 /// provider whose first embed call throws an actionable
 /// <see cref="InvalidOperationException"/> (it reports that no semantic embedding provider
 /// is configured, and to add AddOrkeonLocalEmbeddings() or configure Orkeon:Embeddings).
-/// Hosts wanting deterministic non-semantic embeddings (tests) must register
-/// <c>Stubs.HashBasedEmbeddingProvider</c> explicitly.
+/// Hosts wanting deterministic non-semantic embeddings (tests) register their own
+/// <see cref="IEmbeddingProvider"/>.
 /// </remarks>
 public static class SemanticSearchToolExtensions
 {
@@ -83,9 +83,9 @@ internal sealed partial class EmbeddingServiceAdapter : IEmbeddingService
         _logger = logger;
     }
 
-    public async System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text)
+    public async System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
-        var vec = await _provider.GetEmbeddingAsync(text ?? string.Empty, CancellationToken.None)
+        var vec = await _provider.GetEmbeddingAsync(text ?? string.Empty, cancellationToken)
             .ConfigureAwait(false);
         if (vec is null || vec.Length == 0)
         {

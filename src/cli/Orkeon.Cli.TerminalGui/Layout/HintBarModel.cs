@@ -26,7 +26,7 @@ public static class HintBarModel
     }
 
     /// <summary>The witness colour: green available, amber reconnecting, red unavailable.</summary>
-    public static Terminal.Gui.Drawing.Scheme WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability availability) => availability switch
+    internal static Terminal.Gui.Drawing.Scheme WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability availability) => availability switch
     {
         Orkeon.Cli.Abstractions.ModelAvailability.Available => SchemeFactory.Ok(),
         Orkeon.Cli.Abstractions.ModelAvailability.Reconnecting => SchemeFactory.Warn(),

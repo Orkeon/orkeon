@@ -857,7 +857,7 @@ internal class DelegateWorkTestAgentCommunicationService : IAgentCommunicationSe
     public IReadOnlyList<AgentMessage> SentMessages => _sentMessages;
     public bool ShouldThrowOnSend { get; set; }
 
-    public ValueTask SendMessageAsync(AgentMessage message)
+    public ValueTask SendMessageAsync(AgentMessage message, CancellationToken cancellationToken = default)
     {
         if (ShouldThrowOnSend)
         {
@@ -868,7 +868,7 @@ internal class DelegateWorkTestAgentCommunicationService : IAgentCommunicationSe
         return ValueTask.CompletedTask;
     }
 
-    public async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId)
+    public async IAsyncEnumerable<AgentMessage> ReceiveMessagesAsync(AgentId agentId, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await Task.Yield();
         foreach (var message in _sentMessages.Where(m => m.To.Equals(agentId)))

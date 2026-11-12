@@ -70,7 +70,7 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
     private readonly IBuildValidator? _buildValidator;
     private readonly IIndexInvalidation? _indexInvalidation;
 
-    public EditBatchTool(
+    internal EditBatchTool(
         IFileSystemService fs, TreeSitterParserPool pool, IBuildValidator? buildValidator = null, IIndexInvalidation? indexInvalidation = null)
         : base(fs)
     {
@@ -101,7 +101,7 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
             _ => throw new ArgumentException("validate must be 'parse' or 'build'.", nameof(request)),
         };
 
-        var transaction = new EditTransaction(_fileSystemService, _pool, _buildValidator);
+        var transaction = new EditTransaction(FileSystemService, _pool, _buildValidator);
         var virtualPaths = new List<string>();
         var physicalPaths = new List<string>();
         foreach (var operation in request.Operations)
@@ -109,7 +109,7 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
             var validation = ResolveVirtualPath(operation.Path, FileAccessRights.Write);
             if (!validation.IsAllowed)
                 throw new InvalidOperationException(validation.DenialReason ?? "Invalid or unsafe file path");
-            var virtualPath = _fileSystemService.ToVirtualPath(validation.ResolvedPath!) ?? AbsolutizePath(operation.Path);
+            var virtualPath = FileSystemService.ToVirtualPath(validation.ResolvedPath!) ?? AbsolutizePath(operation.Path);
             if (!physicalPaths.Contains(validation.ResolvedPath!)) physicalPaths.Add(validation.ResolvedPath!);
             virtualPaths.Add(virtualPath);
             transaction.Add(virtualPath, ToOperation(operation));

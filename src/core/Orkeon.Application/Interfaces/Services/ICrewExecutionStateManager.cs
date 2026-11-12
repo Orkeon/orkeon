@@ -283,14 +283,14 @@ public class CrewExecutionState
 /// <summary>
 /// Timing information for an execution snapshot.
 /// </summary>
-public record ExecutionTiming(
+public sealed record ExecutionTiming(
     DateTime StartTime,
     DateTime? EndTime);
 
 /// <summary>
 /// Status details for an execution snapshot.
 /// </summary>
-public record ExecutionStatusInfo(
+public sealed record ExecutionStatusInfo(
     ExecutionState Status,
     double Progress,
     string? CurrentTask,
@@ -299,7 +299,7 @@ public record ExecutionStatusInfo(
 /// <summary>
 /// Read-only snapshot of execution state.
 /// </summary>
-public record ExecutionSnapshot(
+public sealed record ExecutionSnapshot(
     ExecutionId Id,
     CrewId CrewId,
     ExecutionStatusInfo StatusInfo,

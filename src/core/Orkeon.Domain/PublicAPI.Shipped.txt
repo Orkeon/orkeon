@@ -312,10 +312,11 @@ Orkeon.Domain.Agent.ValueObjects.AgentBackstory
 Orkeon.Domain.Agent.ValueObjects.AgentBackstory.Equals(Orkeon.Domain.Agent.ValueObjects.AgentBackstory? other) -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentBackstory.Value.get -> string!
 Orkeon.Domain.Agent.ValueObjects.AgentCapability
-Orkeon.Domain.Agent.ValueObjects.AgentCapability.AgentCapability(Orkeon.Domain.Agent.ValueObjects.AgentCapability! original) -> void
+Orkeon.Domain.Agent.ValueObjects.AgentCapability.<Clone>$() -> Orkeon.Domain.Agent.ValueObjects.AgentCapability!
 Orkeon.Domain.Agent.ValueObjects.AgentCapability.CanExecute(System.Collections.Generic.IEnumerable<string!>! availableSkills, System.Collections.Generic.IEnumerable<string!>! availableTools) -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentCapability.ConfidenceLevel.get -> double
 Orkeon.Domain.Agent.ValueObjects.AgentCapability.Description.get -> string!
+Orkeon.Domain.Agent.ValueObjects.AgentCapability.Equals(Orkeon.Domain.Agent.ValueObjects.AgentCapability? other) -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentCapability.Name.get -> string!
 Orkeon.Domain.Agent.ValueObjects.AgentCapability.Parameters.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
 Orkeon.Domain.Agent.ValueObjects.AgentCapability.RequiredSkills.get -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -327,18 +328,20 @@ Orkeon.Domain.Agent.ValueObjects.AgentRole
 Orkeon.Domain.Agent.ValueObjects.AgentRole.Equals(Orkeon.Domain.Agent.ValueObjects.AgentRole? other) -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentRole.Value.get -> string!
 Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult
+Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.<Clone>$() -> Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult!
 Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.AgentScores.get -> System.Collections.Generic.IReadOnlyDictionary<Orkeon.Domain.Common.AgentId!, double>!
-Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.AgentSelectionResult(Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult! original) -> void
 Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.ConfidenceScore.get -> double
 Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.ConsideredAgents.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.AgentId!>!
+Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.Equals(Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult? other) -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.IsHighConfidence.get -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.IsLowConfidence.get -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.IsSuccess.get -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.Reason.get -> string?
 Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.SelectedAgentId.get -> Orkeon.Domain.Common.AgentId?
 Orkeon.Domain.Agent.ValueObjects.AgentSkill
-Orkeon.Domain.Agent.ValueObjects.AgentSkill.AgentSkill(Orkeon.Domain.Agent.ValueObjects.AgentSkill! original) -> void
+Orkeon.Domain.Agent.ValueObjects.AgentSkill.<Clone>$() -> Orkeon.Domain.Agent.ValueObjects.AgentSkill!
 Orkeon.Domain.Agent.ValueObjects.AgentSkill.Category.get -> string!
+Orkeon.Domain.Agent.ValueObjects.AgentSkill.Equals(Orkeon.Domain.Agent.ValueObjects.AgentSkill? other) -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentSkill.IsExpert.get -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentSkill.IsNovice.get -> bool
 Orkeon.Domain.Agent.ValueObjects.AgentSkill.IsProficient.get -> bool
@@ -380,17 +383,18 @@ Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy.MergeWithCrewOverride(Orkeon.D
 Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy.Mode.get -> Orkeon.Domain.Agent.ValueObjects.ToolAccessMode
 Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy.ToolList.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo
+Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.<Clone>$() -> Orkeon.Domain.Agent.ValueObjects.WorkloadInfo!
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.ActiveTasks.get -> int
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.AgentId.get -> Orkeon.Domain.Common.AgentId!
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.AverageTaskDuration.get -> System.TimeSpan
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.CurrentTaskIds.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>!
+Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.Equals(Orkeon.Domain.Agent.ValueObjects.WorkloadInfo? other) -> bool
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.IsAvailable.get -> bool
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.IsOverloaded.get -> bool
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.LastTaskCompletedAt.get -> System.DateTime
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.QueuedTasks.get -> int
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.TotalTasks.get -> int
 Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.UtilizationPercentage.get -> double
-Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.WorkloadInfo(Orkeon.Domain.Agent.ValueObjects.WorkloadInfo! original) -> void
 Orkeon.Domain.AgentCommunication.AgentAuthentication
 Orkeon.Domain.AgentCommunication.AgentAuthentication.<Clone>$() -> Orkeon.Domain.AgentCommunication.AgentAuthentication!
 Orkeon.Domain.AgentCommunication.AgentAuthentication.AgentAuthentication() -> void
@@ -420,11 +424,12 @@ Orkeon.Domain.AgentCommunication.AgentCard.Url.init -> void
 Orkeon.Domain.AgentCommunication.AgentCard.Version.get -> string!
 Orkeon.Domain.AgentCommunication.AgentCard.Version.init -> void
 Orkeon.Domain.AgentCommunication.AgentMessage
-Orkeon.Domain.AgentCommunication.AgentMessage.AgentMessage(Orkeon.Domain.AgentCommunication.AgentMessage! original) -> void
+Orkeon.Domain.AgentCommunication.AgentMessage.<Clone>$() -> Orkeon.Domain.AgentCommunication.AgentMessage!
 Orkeon.Domain.AgentCommunication.AgentMessage.AgentMessage(Orkeon.Domain.Common.AgentId! From, Orkeon.Domain.Common.AgentId! To, Orkeon.Domain.AgentCommunication.MessageType Type, string! Content, System.Collections.Generic.Dictionary<string!, object!>? Metadata = null) -> void
 Orkeon.Domain.AgentCommunication.AgentMessage.Content.get -> string!
 Orkeon.Domain.AgentCommunication.AgentMessage.Content.init -> void
 Orkeon.Domain.AgentCommunication.AgentMessage.Deconstruct(out Orkeon.Domain.Common.AgentId! From, out Orkeon.Domain.Common.AgentId! To, out Orkeon.Domain.AgentCommunication.MessageType Type, out string! Content, out System.Collections.Generic.Dictionary<string!, object!>? Metadata) -> void
+Orkeon.Domain.AgentCommunication.AgentMessage.Equals(Orkeon.Domain.AgentCommunication.AgentMessage? other) -> bool
 Orkeon.Domain.AgentCommunication.AgentMessage.From.get -> Orkeon.Domain.Common.AgentId!
 Orkeon.Domain.AgentCommunication.AgentMessage.From.init -> void
 Orkeon.Domain.AgentCommunication.AgentMessage.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>?
@@ -1047,11 +1052,12 @@ Orkeon.Domain.Crew.CrewExecution.ProcessId.get -> Orkeon.Domain.Common.ProcessId
 Orkeon.Domain.Crew.CrewExecution.StartedAt.get -> System.DateTime
 Orkeon.Domain.Crew.CrewExecution.Status.get -> Orkeon.Domain.Crew.ExecutionStatus
 Orkeon.Domain.Crew.CrewExecutionStatistics
+Orkeon.Domain.Crew.CrewExecutionStatistics.<Clone>$() -> Orkeon.Domain.Crew.CrewExecutionStatistics!
 Orkeon.Domain.Crew.CrewExecutionStatistics.AverageExecutionTime.get -> double
 Orkeon.Domain.Crew.CrewExecutionStatistics.AverageExecutionTime.init -> void
-Orkeon.Domain.Crew.CrewExecutionStatistics.CrewExecutionStatistics(Orkeon.Domain.Crew.CrewExecutionStatistics! original) -> void
 Orkeon.Domain.Crew.CrewExecutionStatistics.CrewExecutionStatistics(int TotalExecutions, int SuccessfulExecutions, int FailedExecutions, double AverageExecutionTime, double SuccessRate, System.DateTime? LastExecutionDate) -> void
 Orkeon.Domain.Crew.CrewExecutionStatistics.Deconstruct(out int TotalExecutions, out int SuccessfulExecutions, out int FailedExecutions, out double AverageExecutionTime, out double SuccessRate, out System.DateTime? LastExecutionDate) -> void
+Orkeon.Domain.Crew.CrewExecutionStatistics.Equals(Orkeon.Domain.Crew.CrewExecutionStatistics? other) -> bool
 Orkeon.Domain.Crew.CrewExecutionStatistics.FailedExecutions.get -> int
 Orkeon.Domain.Crew.CrewExecutionStatistics.FailedExecutions.init -> void
 Orkeon.Domain.Crew.CrewExecutionStatistics.LastExecutionDate.get -> System.DateTime?
@@ -1172,10 +1178,11 @@ Orkeon.Domain.Crew.ExecutionPlan.Equals(Orkeon.Domain.Crew.ExecutionPlan? other)
 Orkeon.Domain.Crew.ExecutionPlan.InstructionsFor(Orkeon.Domain.Common.TaskId! taskId) -> string?
 Orkeon.Domain.Crew.ExecutionPlan.Tasks.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Crew.PlannedTask!>!
 Orkeon.Domain.Crew.ExecutionStatistics
+Orkeon.Domain.Crew.ExecutionStatistics.<Clone>$() -> Orkeon.Domain.Crew.ExecutionStatistics!
 Orkeon.Domain.Crew.ExecutionStatistics.AverageTaskTime.get -> System.TimeSpan
 Orkeon.Domain.Crew.ExecutionStatistics.AverageTaskTime.init -> void
 Orkeon.Domain.Crew.ExecutionStatistics.Deconstruct(out int TotalTasks, out int SuccessfulTasks, out int FailedTasks, out System.TimeSpan TotalExecutionTime, out System.TimeSpan AverageTaskTime) -> void
-Orkeon.Domain.Crew.ExecutionStatistics.ExecutionStatistics(Orkeon.Domain.Crew.ExecutionStatistics! original) -> void
+Orkeon.Domain.Crew.ExecutionStatistics.Equals(Orkeon.Domain.Crew.ExecutionStatistics? other) -> bool
 Orkeon.Domain.Crew.ExecutionStatistics.ExecutionStatistics(int TotalTasks, int SuccessfulTasks, int FailedTasks, System.TimeSpan TotalExecutionTime, System.TimeSpan AverageTaskTime) -> void
 Orkeon.Domain.Crew.ExecutionStatistics.FailedTasks.get -> int
 Orkeon.Domain.Crew.ExecutionStatistics.FailedTasks.init -> void
@@ -1261,15 +1268,16 @@ Orkeon.Domain.Crew.PlanningTask.Id.get -> Orkeon.Domain.Common.TaskId!
 Orkeon.Domain.Crew.PlanningTask.Id.init -> void
 Orkeon.Domain.Crew.PlanningTask.PlanningTask(Orkeon.Domain.Common.TaskId! Id, string! Description, string! ExpectedOutput, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>! Dependencies, Orkeon.Domain.Crew.PlanningAgent? Agent) -> void
 Orkeon.Domain.Crew.TaskAssignment
+Orkeon.Domain.Crew.TaskAssignment.<Clone>$() -> Orkeon.Domain.Crew.TaskAssignment!
 Orkeon.Domain.Crew.TaskAssignment.AssignedAgent.get -> Orkeon.Domain.Common.AgentId!
 Orkeon.Domain.Crew.TaskAssignment.AssignedAgent.init -> void
 Orkeon.Domain.Crew.TaskAssignment.AssignedAt.get -> System.DateTime
 Orkeon.Domain.Crew.TaskAssignment.AssignedAt.init -> void
 Orkeon.Domain.Crew.TaskAssignment.Deconstruct(out Orkeon.Domain.Common.TaskId! TaskId, out Orkeon.Domain.Common.AgentId! AssignedAgent, out string! Reason, out System.DateTime AssignedAt) -> void
+Orkeon.Domain.Crew.TaskAssignment.Equals(Orkeon.Domain.Crew.TaskAssignment? other) -> bool
 Orkeon.Domain.Crew.TaskAssignment.Reason.get -> string!
 Orkeon.Domain.Crew.TaskAssignment.Reason.init -> void
 Orkeon.Domain.Crew.TaskAssignment.TaskAssignment(Orkeon.Domain.Common.TaskId! TaskId, Orkeon.Domain.Common.AgentId! AssignedAgent, string! Reason, System.DateTime AssignedAt) -> void
-Orkeon.Domain.Crew.TaskAssignment.TaskAssignment(Orkeon.Domain.Crew.TaskAssignment! original) -> void
 Orkeon.Domain.Crew.TaskAssignment.TaskId.get -> Orkeon.Domain.Common.TaskId!
 Orkeon.Domain.Crew.TaskAssignment.TaskId.init -> void
 Orkeon.Domain.Crew.ValueObjects.CrewBudget
@@ -1359,9 +1367,10 @@ Orkeon.Domain.Crew.ValueObjects.CrewMetadataValue.GetValue<T>() -> T
 Orkeon.Domain.Crew.ValueObjects.CrewMetadataValue.RawValue.get -> object!
 Orkeon.Domain.Crew.ValueObjects.CrewMetadataValue.ValueType.get -> System.Type!
 Orkeon.Domain.Crew.ValueObjects.CrewResult
+Orkeon.Domain.Crew.ValueObjects.CrewResult.<Clone>$() -> Orkeon.Domain.Crew.ValueObjects.CrewResult!
 Orkeon.Domain.Crew.ValueObjects.CrewResult.CompletedAt.get -> System.DateTime?
 Orkeon.Domain.Crew.ValueObjects.CrewResult.CompletedTasks.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Orkeon.Domain.Crew.ValueObjects.CrewResult.CrewResult(Orkeon.Domain.Crew.ValueObjects.CrewResult! original) -> void
+Orkeon.Domain.Crew.ValueObjects.CrewResult.Equals(Orkeon.Domain.Crew.ValueObjects.CrewResult? other) -> bool
 Orkeon.Domain.Crew.ValueObjects.CrewResult.ErrorMessage.get -> string?
 Orkeon.Domain.Crew.ValueObjects.CrewResult.FailedTasks.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.Crew.ValueObjects.CrewResult.IsSuccess.get -> bool
@@ -1382,10 +1391,11 @@ Orkeon.Domain.Crew.ValueObjects.CrewVariables.Set(string! key, int value) -> Ork
 Orkeon.Domain.Crew.ValueObjects.CrewVariables.Set(string! key, string! value) -> Orkeon.Domain.Crew.ValueObjects.CrewVariables!
 Orkeon.Domain.Crew.ValueObjects.CrewVariables.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
 Orkeon.Domain.Crew.ValueObjects.ExecutionTiming
+Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.<Clone>$() -> Orkeon.Domain.Crew.ValueObjects.ExecutionTiming!
 Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.CompletedAt.get -> System.DateTime?
 Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.CompletedAt.init -> void
 Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.Deconstruct(out System.TimeSpan TotalExecutionTime, out System.DateTime StartedAt, out System.DateTime? CompletedAt) -> void
-Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.ExecutionTiming(Orkeon.Domain.Crew.ValueObjects.ExecutionTiming! original) -> void
+Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.Equals(Orkeon.Domain.Crew.ValueObjects.ExecutionTiming? other) -> bool
 Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.ExecutionTiming(System.TimeSpan TotalExecutionTime = default(System.TimeSpan), System.DateTime StartedAt = default(System.DateTime), System.DateTime? CompletedAt = null) -> void
 Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.StartedAt.get -> System.DateTime
 Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.StartedAt.init -> void
@@ -1414,20 +1424,22 @@ Orkeon.Domain.Crew.ValueObjects.ProcessOutputs.GetRequired<T>(string! key) -> T!
 Orkeon.Domain.Crew.ValueObjects.ProcessOutputs.Keys.get -> System.Collections.Generic.IEnumerable<string!>!
 Orkeon.Domain.Crew.ValueObjects.ProcessOutputs.With(string! key, object! value) -> Orkeon.Domain.Crew.ValueObjects.ProcessOutputs!
 Orkeon.Domain.Crew.ValueObjects.ProcessResult
+Orkeon.Domain.Crew.ValueObjects.ProcessResult.<Clone>$() -> Orkeon.Domain.Crew.ValueObjects.ProcessResult!
 Orkeon.Domain.Crew.ValueObjects.ProcessResult.CompletedAt.get -> System.DateTime?
+Orkeon.Domain.Crew.ValueObjects.ProcessResult.Equals(Orkeon.Domain.Crew.ValueObjects.ProcessResult? other) -> bool
 Orkeon.Domain.Crew.ValueObjects.ProcessResult.ErrorMessage.get -> string?
 Orkeon.Domain.Crew.ValueObjects.ProcessResult.ExecutionTime.get -> System.TimeSpan
 Orkeon.Domain.Crew.ValueObjects.ProcessResult.IsSuccess.get -> bool
 Orkeon.Domain.Crew.ValueObjects.ProcessResult.Outputs.get -> Orkeon.Domain.Crew.ValueObjects.ProcessOutputs!
-Orkeon.Domain.Crew.ValueObjects.ProcessResult.ProcessResult(Orkeon.Domain.Crew.ValueObjects.ProcessResult! original) -> void
 Orkeon.Domain.Crew.ValueObjects.ProcessResult.StartedAt.get -> System.DateTime
 Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists
+Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.<Clone>$() -> Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists!
 Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.CompletedTasks.get -> System.Collections.Generic.IReadOnlyList<string!>?
 Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.CompletedTasks.init -> void
 Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.Deconstruct(out System.Collections.Generic.IReadOnlyList<string!>? CompletedTasks, out System.Collections.Generic.IReadOnlyList<string!>? FailedTasks) -> void
+Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.Equals(Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists? other) -> bool
 Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.FailedTasks.get -> System.Collections.Generic.IReadOnlyList<string!>?
 Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.FailedTasks.init -> void
-Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.TaskCompletionLists(Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists! original) -> void
 Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.TaskCompletionLists(System.Collections.Generic.IReadOnlyList<string!>? CompletedTasks = null, System.Collections.Generic.IReadOnlyList<string!>? FailedTasks = null) -> void
 Orkeon.Domain.Crew.ValueObjects.TaskOutputMap
 Orkeon.Domain.Crew.ValueObjects.TaskOutputMap.Count.get -> int
@@ -1470,7 +1482,6 @@ Orkeon.Domain.Exceptions.CrewException.CrewException(string! message, System.Exc
 Orkeon.Domain.Exceptions.CrewException.CrewId.get -> Orkeon.Domain.Common.CrewId!
 Orkeon.Domain.Exceptions.DomainException
 Orkeon.Domain.Exceptions.DomainException.DomainException() -> void
-Orkeon.Domain.Exceptions.DomainException.DomainException(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 Orkeon.Domain.Exceptions.DomainException.DomainException(string! message) -> void
 Orkeon.Domain.Exceptions.DomainException.DomainException(string! message, System.Exception! innerException) -> void
 Orkeon.Domain.Exceptions.LlmRateLimitException
@@ -1567,7 +1578,6 @@ Orkeon.Domain.FileSystem.FileSystemRegistry
 Orkeon.Domain.FileSystem.FileSystemRegistry.AddMount(Orkeon.Domain.FileSystem.FileSystemMount! mount) -> void
 Orkeon.Domain.FileSystem.FileSystemRegistry.Dispose() -> void
 Orkeon.Domain.FileSystem.FileSystemRegistry.FileSystemRegistry(System.Collections.Generic.IEnumerable<Orkeon.Domain.FileSystem.FileSystemMount!>! mounts) -> void
-Orkeon.Domain.FileSystem.FileSystemRegistry.GetAllMountsInternal() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>!
 Orkeon.Domain.FileSystem.FileSystemRegistry.GetAvailableMounts() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>!
 Orkeon.Domain.FileSystem.FileSystemRegistry.GetMounts() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemMount!>!
 Orkeon.Domain.FileSystem.FileSystemRegistry.ResolveAndCheckRights(string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, bool includeInternal = false) -> string!
@@ -1997,11 +2007,12 @@ Orkeon.Domain.Memory.ContradictionCheck.RecommendedAction.init -> void
 Orkeon.Domain.Memory.ContradictionCheck.Resolution.get -> string!
 Orkeon.Domain.Memory.ContradictionCheck.Resolution.init -> void
 Orkeon.Domain.Memory.EmbeddingVector
+Orkeon.Domain.Memory.EmbeddingVector.<Clone>$() -> Orkeon.Domain.Memory.EmbeddingVector!
 Orkeon.Domain.Memory.EmbeddingVector.CosineSimilarity(Orkeon.Domain.Memory.EmbeddingVector! other) -> float
 Orkeon.Domain.Memory.EmbeddingVector.Deconstruct(out System.Collections.Generic.IReadOnlyList<float>! Values) -> void
 Orkeon.Domain.Memory.EmbeddingVector.Dimension.get -> int
-Orkeon.Domain.Memory.EmbeddingVector.EmbeddingVector(Orkeon.Domain.Memory.EmbeddingVector! original) -> void
 Orkeon.Domain.Memory.EmbeddingVector.EmbeddingVector(System.Collections.Generic.IReadOnlyList<float>! Values) -> void
+Orkeon.Domain.Memory.EmbeddingVector.Equals(Orkeon.Domain.Memory.EmbeddingVector? other) -> bool
 Orkeon.Domain.Memory.EmbeddingVector.Values.get -> System.Collections.Generic.IReadOnlyList<float>!
 Orkeon.Domain.Memory.EmbeddingVector.Values.init -> void
 Orkeon.Domain.Memory.EntityType
@@ -2070,10 +2081,10 @@ Orkeon.Domain.Memory.IMemoryProvider.SearchSimilarAsync(float[]! queryEmbedding,
 Orkeon.Domain.Memory.IMemoryProvider.StoreAsync(string! key, Orkeon.Domain.Memory.MemoryItem! item, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Domain.Memory.IMemoryProvider.StoreWithEmbeddingAsync(string! key, Orkeon.Domain.Memory.MemoryItem! item, float[]! embedding, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Domain.Memory.IMemorySystem
-Orkeon.Domain.Memory.IMemorySystem.CreateAgentMemoryStoreAsync(Orkeon.Domain.Common.AgentId! agentId) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.AgentMemoryStore!>!
-Orkeon.Domain.Memory.IMemorySystem.GetAgentMemoryStoreAsync(Orkeon.Domain.Common.AgentId! agentId) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.AgentMemoryStore?>!
-Orkeon.Domain.Memory.IMemorySystem.RetrieveMemoriesAsync(Orkeon.Domain.Common.AgentId! agentId, string! query, int limit = 10) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Orkeon.Domain.Memory.MemoryItem!>!>!
-Orkeon.Domain.Memory.IMemorySystem.StoreMemoryAsync(Orkeon.Domain.Common.AgentId! agentId, Orkeon.Domain.Memory.MemoryItem! memory) -> System.Threading.Tasks.Task!
+Orkeon.Domain.Memory.IMemorySystem.CreateAgentMemoryStoreAsync(Orkeon.Domain.Common.AgentId! agentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.AgentMemoryStore!>!
+Orkeon.Domain.Memory.IMemorySystem.GetAgentMemoryStoreAsync(Orkeon.Domain.Common.AgentId! agentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.AgentMemoryStore?>!
+Orkeon.Domain.Memory.IMemorySystem.RetrieveMemoriesAsync(Orkeon.Domain.Common.AgentId! agentId, string! query, int limit = 10, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<Orkeon.Domain.Memory.MemoryItem!>!>!
+Orkeon.Domain.Memory.IMemorySystem.StoreMemoryAsync(Orkeon.Domain.Common.AgentId! agentId, Orkeon.Domain.Memory.MemoryItem! memory, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Domain.Memory.IScoredVectorSearch
 Orkeon.Domain.Memory.IScoredVectorSearch.SearchSimilarWithScoresAsync(System.ReadOnlyMemory<float> embedding, int topK, float minScore, Orkeon.Domain.Memory.MemoryFilter? filter = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Memory.ScoredMemoryItem!>!>!
 Orkeon.Domain.Memory.MemoryAnalysis
@@ -2118,12 +2129,13 @@ Orkeon.Domain.Memory.MemoryConfig.StoragePath.init -> void
 Orkeon.Domain.Memory.MemoryConfig.Type.get -> Orkeon.Domain.Memory.MemoryStorageType
 Orkeon.Domain.Memory.MemoryConfig.Type.init -> void
 Orkeon.Domain.Memory.MemoryEntity
+Orkeon.Domain.Memory.MemoryEntity.<Clone>$() -> Orkeon.Domain.Memory.MemoryEntity!
 Orkeon.Domain.Memory.MemoryEntity.Attributes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 Orkeon.Domain.Memory.MemoryEntity.Attributes.init -> void
 Orkeon.Domain.Memory.MemoryEntity.Deconstruct(out string! name, out Orkeon.Domain.Memory.EntityType type, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! attributes, out System.DateTime lastUpdated) -> void
+Orkeon.Domain.Memory.MemoryEntity.Equals(Orkeon.Domain.Memory.MemoryEntity? other) -> bool
 Orkeon.Domain.Memory.MemoryEntity.LastUpdated.get -> System.DateTime
 Orkeon.Domain.Memory.MemoryEntity.LastUpdated.init -> void
-Orkeon.Domain.Memory.MemoryEntity.MemoryEntity(Orkeon.Domain.Memory.MemoryEntity! original) -> void
 Orkeon.Domain.Memory.MemoryEntity.Name.get -> string!
 Orkeon.Domain.Memory.MemoryEntity.Name.init -> void
 Orkeon.Domain.Memory.MemoryEntity.Type.get -> Orkeon.Domain.Memory.EntityType
@@ -2210,7 +2222,9 @@ Orkeon.Domain.Memory.ScoredMemory.ScoredMemory() -> void
 Orkeon.Domain.Memory.ScoredMemory.SemanticScore.get -> float
 Orkeon.Domain.Memory.ScoredMemory.SemanticScore.init -> void
 Orkeon.Domain.Memory.ScoredMemoryItem
+Orkeon.Domain.Memory.ScoredMemoryItem.<Clone>$() -> Orkeon.Domain.Memory.ScoredMemoryItem!
 Orkeon.Domain.Memory.ScoredMemoryItem.Deconstruct(out Orkeon.Domain.Memory.MemoryItem! Item, out float Score, out string? Key) -> void
+Orkeon.Domain.Memory.ScoredMemoryItem.Equals(Orkeon.Domain.Memory.ScoredMemoryItem? other) -> bool
 Orkeon.Domain.Memory.ScoredMemoryItem.Item.get -> Orkeon.Domain.Memory.MemoryItem!
 Orkeon.Domain.Memory.ScoredMemoryItem.Item.init -> void
 Orkeon.Domain.Memory.ScoredMemoryItem.Key.get -> string?
@@ -2218,7 +2232,6 @@ Orkeon.Domain.Memory.ScoredMemoryItem.Key.init -> void
 Orkeon.Domain.Memory.ScoredMemoryItem.Score.get -> float
 Orkeon.Domain.Memory.ScoredMemoryItem.Score.init -> void
 Orkeon.Domain.Memory.ScoredMemoryItem.ScoredMemoryItem(Orkeon.Domain.Memory.MemoryItem! Item, float Score, string? Key = null) -> void
-Orkeon.Domain.Memory.ScoredMemoryItem.ScoredMemoryItem(Orkeon.Domain.Memory.ScoredMemoryItem! original) -> void
 Orkeon.Domain.Memory.TelemetryConfig
 Orkeon.Domain.Memory.TelemetryConfig.<Clone>$() -> Orkeon.Domain.Memory.TelemetryConfig!
 Orkeon.Domain.Memory.TelemetryConfig.Enabled.get -> bool
@@ -2305,12 +2318,12 @@ Orkeon.Domain.Security.AuditCategory.MemoryOperation = 7 -> Orkeon.Domain.Securi
 Orkeon.Domain.Security.AuditCategory.SecurityEvent = 4 -> Orkeon.Domain.Security.AuditCategory
 Orkeon.Domain.Security.AuditCategory.ToolExecution = 1 -> Orkeon.Domain.Security.AuditCategory
 Orkeon.Domain.Security.AuditEvent
+Orkeon.Domain.Security.AuditEvent.<Clone>$() -> Orkeon.Domain.Security.AuditEvent!
 Orkeon.Domain.Security.AuditEvent.Action.get -> string!
 Orkeon.Domain.Security.AuditEvent.Action.init -> void
 Orkeon.Domain.Security.AuditEvent.AgentRole.get -> string?
 Orkeon.Domain.Security.AuditEvent.AgentRole.init -> void
 Orkeon.Domain.Security.AuditEvent.AuditEvent() -> void
-Orkeon.Domain.Security.AuditEvent.AuditEvent(Orkeon.Domain.Security.AuditEvent! original) -> void
 Orkeon.Domain.Security.AuditEvent.Category.get -> Orkeon.Domain.Security.AuditCategory
 Orkeon.Domain.Security.AuditEvent.Category.init -> void
 Orkeon.Domain.Security.AuditEvent.CorrelationId.get -> string!
@@ -2321,6 +2334,7 @@ Orkeon.Domain.Security.AuditEvent.Details.get -> System.Collections.Generic.IRea
 Orkeon.Domain.Security.AuditEvent.Details.init -> void
 Orkeon.Domain.Security.AuditEvent.DurationMs.get -> long?
 Orkeon.Domain.Security.AuditEvent.DurationMs.init -> void
+Orkeon.Domain.Security.AuditEvent.Equals(Orkeon.Domain.Security.AuditEvent? other) -> bool
 Orkeon.Domain.Security.AuditEvent.EventId.get -> string!
 Orkeon.Domain.Security.AuditEvent.EventId.init -> void
 Orkeon.Domain.Security.AuditEvent.Message.get -> string?
@@ -2355,12 +2369,13 @@ Orkeon.Domain.Security.PermissionMode.DontAsk = 4 -> Orkeon.Domain.Security.Perm
 Orkeon.Domain.Security.PermissionMode.Plan = 3 -> Orkeon.Domain.Security.PermissionMode
 Orkeon.Domain.Security.PermissionModes
 Orkeon.Domain.Security.SanitizationContext
+Orkeon.Domain.Security.SanitizationContext.<Clone>$() -> Orkeon.Domain.Security.SanitizationContext!
 Orkeon.Domain.Security.SanitizationContext.AgentRole.get -> string!
 Orkeon.Domain.Security.SanitizationContext.AgentRole.init -> void
 Orkeon.Domain.Security.SanitizationContext.Deconstruct(out string! Source, out string! AgentRole, out bool IsTrusted) -> void
+Orkeon.Domain.Security.SanitizationContext.Equals(Orkeon.Domain.Security.SanitizationContext? other) -> bool
 Orkeon.Domain.Security.SanitizationContext.IsTrusted.get -> bool
 Orkeon.Domain.Security.SanitizationContext.IsTrusted.init -> void
-Orkeon.Domain.Security.SanitizationContext.SanitizationContext(Orkeon.Domain.Security.SanitizationContext! original) -> void
 Orkeon.Domain.Security.SanitizationContext.SanitizationContext(string! Source, string! AgentRole, bool IsTrusted) -> void
 Orkeon.Domain.Security.SanitizationContext.Source.get -> string!
 Orkeon.Domain.Security.SanitizationContext.Source.init -> void
@@ -2369,16 +2384,19 @@ Orkeon.Domain.Security.SanitizationPolicy.Block = 2 -> Orkeon.Domain.Security.Sa
 Orkeon.Domain.Security.SanitizationPolicy.None = 0 -> Orkeon.Domain.Security.SanitizationPolicy
 Orkeon.Domain.Security.SanitizationPolicy.Warn = 1 -> Orkeon.Domain.Security.SanitizationPolicy
 Orkeon.Domain.Security.SanitizationResult
+Orkeon.Domain.Security.SanitizationResult.<Clone>$() -> Orkeon.Domain.Security.SanitizationResult!
+Orkeon.Domain.Security.SanitizationResult.Equals(Orkeon.Domain.Security.SanitizationResult? other) -> bool
 Orkeon.Domain.Security.SanitizationResult.IsBlocked.get -> bool
 Orkeon.Domain.Security.SanitizationResult.IsBlocked.init -> void
 Orkeon.Domain.Security.SanitizationResult.SanitizationResult() -> void
-Orkeon.Domain.Security.SanitizationResult.SanitizationResult(Orkeon.Domain.Security.SanitizationResult! original) -> void
 Orkeon.Domain.Security.SanitizationResult.SanitizedText.get -> string!
 Orkeon.Domain.Security.SanitizationResult.SanitizedText.init -> void
 Orkeon.Domain.Security.SanitizationResult.Threats.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Security.ThreatDetection!>!
 Orkeon.Domain.Security.SanitizationResult.Threats.init -> void
 Orkeon.Domain.Security.ThreatDetection
+Orkeon.Domain.Security.ThreatDetection.<Clone>$() -> Orkeon.Domain.Security.ThreatDetection!
 Orkeon.Domain.Security.ThreatDetection.Deconstruct(out Orkeon.Domain.Security.ThreatType Type, out string! Pattern, out string! MatchedText, out int Position, out Orkeon.Domain.Security.ThreatSeverity Severity) -> void
+Orkeon.Domain.Security.ThreatDetection.Equals(Orkeon.Domain.Security.ThreatDetection? other) -> bool
 Orkeon.Domain.Security.ThreatDetection.MatchedText.get -> string!
 Orkeon.Domain.Security.ThreatDetection.MatchedText.init -> void
 Orkeon.Domain.Security.ThreatDetection.Pattern.get -> string!
@@ -2387,7 +2405,6 @@ Orkeon.Domain.Security.ThreatDetection.Position.get -> int
 Orkeon.Domain.Security.ThreatDetection.Position.init -> void
 Orkeon.Domain.Security.ThreatDetection.Severity.get -> Orkeon.Domain.Security.ThreatSeverity
 Orkeon.Domain.Security.ThreatDetection.Severity.init -> void
-Orkeon.Domain.Security.ThreatDetection.ThreatDetection(Orkeon.Domain.Security.ThreatDetection! original) -> void
 Orkeon.Domain.Security.ThreatDetection.ThreatDetection(Orkeon.Domain.Security.ThreatType Type, string! Pattern, string! MatchedText, int Position, Orkeon.Domain.Security.ThreatSeverity Severity) -> void
 Orkeon.Domain.Security.ThreatDetection.Type.get -> Orkeon.Domain.Security.ThreatType
 Orkeon.Domain.Security.ThreatDetection.Type.init -> void
@@ -2416,7 +2433,7 @@ Orkeon.Domain.SharedKernel.Events.IDomainEventHandler<TEvent>
 Orkeon.Domain.SharedKernel.Events.IDomainEventHandler<TEvent>.HandleAsync(TEvent! domainEvent, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Domain.SharedKernel.IContextWindowManager
 Orkeon.Domain.SharedKernel.IContextWindowManager.IsContextExceeded(string! content, int maxTokens) -> bool
-Orkeon.Domain.SharedKernel.IContextWindowManager.SummarizeIfNeededAsync(string! content, int maxTokens) -> System.Threading.Tasks.Task<string!>!
+Orkeon.Domain.SharedKernel.IContextWindowManager.SummarizeIfNeededAsync(string! content, int maxTokens, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 Orkeon.Domain.SharedKernel.ILlmProvider
 Orkeon.Domain.SharedKernel.ILlmProvider.BaseConfig.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig?
 Orkeon.Domain.SharedKernel.ILlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
@@ -2652,8 +2669,6 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiKey.get -> string?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiKey.init -> void
-Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiKeySecretName.get -> string?
-Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiKeySecretName.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiVersion.get -> string?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ApiVersion.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.BaseUrl.get -> System.Uri?
@@ -3450,14 +3465,15 @@ Orkeon.Domain.Task.ValueObjects.TaskPriority.Equals(Orkeon.Domain.Task.ValueObje
 Orkeon.Domain.Task.ValueObjects.TaskPriority.Order.get -> int
 Orkeon.Domain.Task.ValueObjects.TaskPriority.Value.get -> string!
 Orkeon.Domain.Task.ValueObjects.TaskRequirement
+Orkeon.Domain.Task.ValueObjects.TaskRequirement.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.TaskRequirement!
 Orkeon.Domain.Task.ValueObjects.TaskRequirement.Constraints.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
 Orkeon.Domain.Task.ValueObjects.TaskRequirement.Description.get -> string!
+Orkeon.Domain.Task.ValueObjects.TaskRequirement.Equals(Orkeon.Domain.Task.ValueObjects.TaskRequirement? other) -> bool
 Orkeon.Domain.Task.ValueObjects.TaskRequirement.IsMandatory.get -> bool
 Orkeon.Domain.Task.ValueObjects.TaskRequirement.IsSatisfiedBy(System.Collections.Generic.IReadOnlyList<string!>! availableSkills, System.Collections.Generic.IReadOnlyList<string!>! availableTools) -> bool
 Orkeon.Domain.Task.ValueObjects.TaskRequirement.Name.get -> string!
 Orkeon.Domain.Task.ValueObjects.TaskRequirement.RequiredSkills.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.Task.ValueObjects.TaskRequirement.RequiredTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Orkeon.Domain.Task.ValueObjects.TaskRequirement.TaskRequirement(Orkeon.Domain.Task.ValueObjects.TaskRequirement! original) -> void
 Orkeon.Domain.Task.ValueObjects.TaskRequirement.Type.get -> Orkeon.Domain.Task.ValueObjects.RequirementType!
 Orkeon.Domain.Task.ValueObjects.TaskStatus
 Orkeon.Domain.Task.ValueObjects.TaskStatus.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.TaskStatus!
@@ -3521,14 +3537,14 @@ Orkeon.Domain.Tools.IToolCallParser
 Orkeon.Domain.Tools.IToolCallParser.FormatForLlm(Orkeon.Domain.SharedKernel.ValueObjects.ToolCall! toolCall) -> string!
 Orkeon.Domain.Tools.IToolCallParser.ParseFromLlmResponse(string! response) -> Orkeon.Domain.SharedKernel.ValueObjects.ToolCall?
 Orkeon.Domain.Tools.IToolRegistry
-Orkeon.Domain.Tools.IToolRegistry.ClearAsync() -> System.Threading.Tasks.Task!
-Orkeon.Domain.Tools.IToolRegistry.GetAllToolsAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
-Orkeon.Domain.Tools.IToolRegistry.GetToolAsync(string! toolId) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
-Orkeon.Domain.Tools.IToolRegistry.GetToolByNameAsync(string! name) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
-Orkeon.Domain.Tools.IToolRegistry.IsRegisteredAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Domain.Tools.IToolRegistry.RegisterToolAsync(Orkeon.Domain.Tools.IBaseTool! tool) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Domain.Tools.IToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement) -> System.Threading.Tasks.Task<bool>!
-Orkeon.Domain.Tools.IToolRegistry.UnregisterToolAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Domain.Tools.IToolRegistry.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Domain.Tools.IToolRegistry.GetAllToolsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+Orkeon.Domain.Tools.IToolRegistry.GetToolAsync(string! toolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+Orkeon.Domain.Tools.IToolRegistry.GetToolByNameAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+Orkeon.Domain.Tools.IToolRegistry.IsRegisteredAsync(string! toolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Domain.Tools.IToolRegistry.RegisterToolAsync(Orkeon.Domain.Tools.IBaseTool! tool, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Domain.Tools.IToolRegistry.ReplaceToolAsync(Orkeon.Domain.Tools.IBaseTool! current, Orkeon.Domain.Tools.IBaseTool! replacement, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Domain.Tools.IToolRegistry.UnregisterToolAsync(string! toolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 Orkeon.Domain.Tools.IToolWrapper
 Orkeon.Domain.Tools.IToolWrapper.Inner.get -> Orkeon.Domain.Tools.IBaseTool!
 Orkeon.Domain.Tools.ITypedToolParameters
@@ -3538,26 +3554,29 @@ Orkeon.Domain.Tools.LlmExchangeLogExclusion
 Orkeon.Domain.Tools.LlmExchangeLogExclusion.ClientName.get -> string!
 Orkeon.Domain.Tools.LlmExchangeLogExclusion.LlmExchangeLogExclusion(string! clientName) -> void
 Orkeon.Domain.Tools.Parameters.AskQuestionParameters
-Orkeon.Domain.Tools.Parameters.AskQuestionParameters.AskQuestionParameters(Orkeon.Domain.Tools.Parameters.AskQuestionParameters! original) -> void
+Orkeon.Domain.Tools.Parameters.AskQuestionParameters.<Clone>$() -> Orkeon.Domain.Tools.Parameters.AskQuestionParameters!
 Orkeon.Domain.Tools.Parameters.AskQuestionParameters.AskQuestionParameters(string! Question, string! Context, string! CoworkerRole) -> void
 Orkeon.Domain.Tools.Parameters.AskQuestionParameters.Context.get -> string!
 Orkeon.Domain.Tools.Parameters.AskQuestionParameters.Context.init -> void
 Orkeon.Domain.Tools.Parameters.AskQuestionParameters.CoworkerRole.get -> string!
 Orkeon.Domain.Tools.Parameters.AskQuestionParameters.CoworkerRole.init -> void
 Orkeon.Domain.Tools.Parameters.AskQuestionParameters.Deconstruct(out string! Question, out string! Context, out string! CoworkerRole) -> void
+Orkeon.Domain.Tools.Parameters.AskQuestionParameters.Equals(Orkeon.Domain.Tools.Parameters.AskQuestionParameters? other) -> bool
 Orkeon.Domain.Tools.Parameters.AskQuestionParameters.Question.get -> string!
 Orkeon.Domain.Tools.Parameters.AskQuestionParameters.Question.init -> void
 Orkeon.Domain.Tools.Parameters.DelegateWorkParameters
+Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.<Clone>$() -> Orkeon.Domain.Tools.Parameters.DelegateWorkParameters!
 Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.Context.get -> string!
 Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.Context.init -> void
 Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.CoworkerRole.get -> string!
 Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.CoworkerRole.init -> void
 Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.Deconstruct(out string! Task, out string! Context, out string! CoworkerRole) -> void
-Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.DelegateWorkParameters(Orkeon.Domain.Tools.Parameters.DelegateWorkParameters! original) -> void
 Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.DelegateWorkParameters(string! Task, string! Context, string! CoworkerRole) -> void
+Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.Equals(Orkeon.Domain.Tools.Parameters.DelegateWorkParameters? other) -> bool
 Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.Task.get -> string!
 Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.Task.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema
+Orkeon.Domain.Tools.Protocol.ParameterSchema.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ParameterSchema!
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Deconstruct(out string? Type, out string! Description, out bool Required, out object? Default, out System.Collections.Generic.IReadOnlyList<object!>? Enum, out string? Format, out string? ItemsType, out string? ItemsFormat, out System.Collections.Generic.Dictionary<string!, int>? EnumMap, out object? Example, out Orkeon.Domain.Tools.Protocol.ParameterSchema? Values) -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Default.get -> object?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Default.init -> void
@@ -3567,6 +3586,7 @@ Orkeon.Domain.Tools.Protocol.ParameterSchema.Enum.get -> System.Collections.Gene
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Enum.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.EnumMap.get -> System.Collections.Generic.Dictionary<string!, int>?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.EnumMap.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Equals(Orkeon.Domain.Tools.Protocol.ParameterSchema? other) -> bool
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Example.get -> object?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Example.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Format.get -> string?
@@ -3578,7 +3598,6 @@ Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemsFormat.get -> string?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemsFormat.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemsType.get -> string?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemsType.init -> void
-Orkeon.Domain.Tools.Protocol.ParameterSchema.ParameterSchema(Orkeon.Domain.Tools.Protocol.ParameterSchema! original) -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ParameterSchema(string? Type, string! Description, bool Required, object? Default = null, System.Collections.Generic.IReadOnlyList<object!>? Enum = null, string? Format = null, string? ItemsType = null, string? ItemsFormat = null, System.Collections.Generic.Dictionary<string!, int>? EnumMap = null, object? Example = null, Orkeon.Domain.Tools.Protocol.ParameterSchema? Values = null) -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ReadAsMap(object? value) -> object?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Required.get -> bool
@@ -3595,17 +3614,20 @@ Orkeon.Domain.Tools.Protocol.ToolCallMode.Auto = 0 -> Orkeon.Domain.Tools.Protoc
 Orkeon.Domain.Tools.Protocol.ToolCallMode.None = 2 -> Orkeon.Domain.Tools.Protocol.ToolCallMode
 Orkeon.Domain.Tools.Protocol.ToolCallMode.Required = 1 -> Orkeon.Domain.Tools.Protocol.ToolCallMode
 Orkeon.Domain.Tools.Protocol.ToolCallRequest
+Orkeon.Domain.Tools.Protocol.ToolCallRequest.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ToolCallRequest!
 Orkeon.Domain.Tools.Protocol.ToolCallRequest.Context.get -> string?
 Orkeon.Domain.Tools.Protocol.ToolCallRequest.Context.init -> void
 Orkeon.Domain.Tools.Protocol.ToolCallRequest.Deconstruct(out string! ToolName, out System.Collections.Generic.Dictionary<string!, object?>! Parameters, out string? Context) -> void
+Orkeon.Domain.Tools.Protocol.ToolCallRequest.Equals(Orkeon.Domain.Tools.Protocol.ToolCallRequest? other) -> bool
 Orkeon.Domain.Tools.Protocol.ToolCallRequest.Parameters.get -> System.Collections.Generic.Dictionary<string!, object?>!
 Orkeon.Domain.Tools.Protocol.ToolCallRequest.Parameters.init -> void
-Orkeon.Domain.Tools.Protocol.ToolCallRequest.ToolCallRequest(Orkeon.Domain.Tools.Protocol.ToolCallRequest! original) -> void
 Orkeon.Domain.Tools.Protocol.ToolCallRequest.ToolCallRequest(string! ToolName, System.Collections.Generic.Dictionary<string!, object?>! Parameters, string? Context = null) -> void
 Orkeon.Domain.Tools.Protocol.ToolCallRequest.ToolName.get -> string!
 Orkeon.Domain.Tools.Protocol.ToolCallRequest.ToolName.init -> void
 Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>
+~Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>!
 Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.Context.get -> string?
+~Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.Equals(Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>? other) -> bool
 Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.Inner.get -> Orkeon.Domain.Tools.Protocol.ToolCallRequest!
 Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.Parameters.get -> System.Collections.Generic.Dictionary<string!, object?>!
 Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.ToToolCallRequest() -> Orkeon.Domain.Tools.Protocol.ToolCallRequest!
@@ -3614,9 +3636,11 @@ Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.ToolCallRequest(string
 Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.ToolName.get -> string!
 Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.TypedParameters.get -> TParameters!
 Orkeon.Domain.Tools.Protocol.ToolCallResponse
+Orkeon.Domain.Tools.Protocol.ToolCallResponse.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ToolCallResponse!
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.AlreadyBounded.get -> bool
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.AlreadyBounded.init -> void
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.Deconstruct(out bool Success, out object? Result, out string? Error, out System.Collections.Generic.Dictionary<string!, object?>? Metadata) -> void
+Orkeon.Domain.Tools.Protocol.ToolCallResponse.Equals(Orkeon.Domain.Tools.Protocol.ToolCallResponse? other) -> bool
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.Error.get -> string?
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.Error.init -> void
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.Metadata.get -> System.Collections.Generic.Dictionary<string!, object?>?
@@ -3625,12 +3649,13 @@ Orkeon.Domain.Tools.Protocol.ToolCallResponse.Result.get -> object?
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.Result.init -> void
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.Success.get -> bool
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.Success.init -> void
-Orkeon.Domain.Tools.Protocol.ToolCallResponse.ToolCallResponse(Orkeon.Domain.Tools.Protocol.ToolCallResponse! original) -> void
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.ToolCallResponse(bool Success, object? Result, string? Error, System.Collections.Generic.Dictionary<string!, object?>? Metadata = null) -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema
+Orkeon.Domain.Tools.Protocol.ToolSchema.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ToolSchema!
 Orkeon.Domain.Tools.Protocol.ToolSchema.Deconstruct(out string! Name, out string! Description, out System.Collections.Generic.Dictionary<string!, Orkeon.Domain.Tools.Protocol.ParameterSchema!>! Parameters, out System.Collections.Generic.Dictionary<string!, object?>? Returns, out System.Collections.Generic.Dictionary<string!, object?>? Types) -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema.Description.get -> string!
 Orkeon.Domain.Tools.Protocol.ToolSchema.Description.init -> void
+Orkeon.Domain.Tools.Protocol.ToolSchema.Equals(Orkeon.Domain.Tools.Protocol.ToolSchema? other) -> bool
 Orkeon.Domain.Tools.Protocol.ToolSchema.GenerateExample() -> System.Collections.Generic.Dictionary<string!, object!>!
 Orkeon.Domain.Tools.Protocol.ToolSchema.Name.get -> string!
 Orkeon.Domain.Tools.Protocol.ToolSchema.Name.init -> void
@@ -3639,7 +3664,6 @@ Orkeon.Domain.Tools.Protocol.ToolSchema.Parameters.init -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema.Returns.get -> System.Collections.Generic.Dictionary<string!, object?>?
 Orkeon.Domain.Tools.Protocol.ToolSchema.Returns.init -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema.ToDocument() -> System.Collections.Generic.Dictionary<string!, object!>!
-Orkeon.Domain.Tools.Protocol.ToolSchema.ToolSchema(Orkeon.Domain.Tools.Protocol.ToolSchema! original) -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema.ToolSchema(string! Name, string! Description, System.Collections.Generic.Dictionary<string!, Orkeon.Domain.Tools.Protocol.ParameterSchema!>! Parameters, System.Collections.Generic.Dictionary<string!, object?>? Returns = null, System.Collections.Generic.Dictionary<string!, object?>? Types = null) -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema.Types.get -> System.Collections.Generic.Dictionary<string!, object?>?
 Orkeon.Domain.Tools.Protocol.ToolSchema.Types.init -> void
@@ -3649,22 +3673,24 @@ Orkeon.Domain.Tools.Security.IPathValidator.ValidatePath(string! requestedPath, 
 Orkeon.Domain.Tools.Security.IUrlValidator
 Orkeon.Domain.Tools.Security.IUrlValidator.ValidateUrlAsync(System.Uri! url, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Security.UrlValidationResult!>!
 Orkeon.Domain.Tools.Security.PathValidationResult
+Orkeon.Domain.Tools.Security.PathValidationResult.<Clone>$() -> Orkeon.Domain.Tools.Security.PathValidationResult!
 Orkeon.Domain.Tools.Security.PathValidationResult.Deconstruct(out bool IsAllowed, out string? ResolvedPath, out string? DenialReason) -> void
 Orkeon.Domain.Tools.Security.PathValidationResult.DenialReason.get -> string?
 Orkeon.Domain.Tools.Security.PathValidationResult.DenialReason.init -> void
+Orkeon.Domain.Tools.Security.PathValidationResult.Equals(Orkeon.Domain.Tools.Security.PathValidationResult? other) -> bool
 Orkeon.Domain.Tools.Security.PathValidationResult.IsAllowed.get -> bool
 Orkeon.Domain.Tools.Security.PathValidationResult.IsAllowed.init -> void
-Orkeon.Domain.Tools.Security.PathValidationResult.PathValidationResult(Orkeon.Domain.Tools.Security.PathValidationResult! original) -> void
 Orkeon.Domain.Tools.Security.PathValidationResult.PathValidationResult(bool IsAllowed, string? ResolvedPath, string? DenialReason) -> void
 Orkeon.Domain.Tools.Security.PathValidationResult.ResolvedPath.get -> string?
 Orkeon.Domain.Tools.Security.PathValidationResult.ResolvedPath.init -> void
 Orkeon.Domain.Tools.Security.UrlValidationResult
+Orkeon.Domain.Tools.Security.UrlValidationResult.<Clone>$() -> Orkeon.Domain.Tools.Security.UrlValidationResult!
 Orkeon.Domain.Tools.Security.UrlValidationResult.Deconstruct(out bool IsAllowed, out System.Uri? ValidatedUri, out string? DenialReason) -> void
 Orkeon.Domain.Tools.Security.UrlValidationResult.DenialReason.get -> string?
 Orkeon.Domain.Tools.Security.UrlValidationResult.DenialReason.init -> void
+Orkeon.Domain.Tools.Security.UrlValidationResult.Equals(Orkeon.Domain.Tools.Security.UrlValidationResult? other) -> bool
 Orkeon.Domain.Tools.Security.UrlValidationResult.IsAllowed.get -> bool
 Orkeon.Domain.Tools.Security.UrlValidationResult.IsAllowed.init -> void
-Orkeon.Domain.Tools.Security.UrlValidationResult.UrlValidationResult(Orkeon.Domain.Tools.Security.UrlValidationResult! original) -> void
 Orkeon.Domain.Tools.Security.UrlValidationResult.UrlValidationResult(bool IsAllowed, System.Uri? ValidatedUri, string? DenialReason) -> void
 Orkeon.Domain.Tools.Security.UrlValidationResult.ValidatedUri.get -> System.Uri?
 Orkeon.Domain.Tools.Security.UrlValidationResult.ValidatedUri.init -> void
@@ -3704,21 +3730,6 @@ Orkeon.Domain.Tools.ToolCallOptions.Builder.Build() -> Orkeon.Domain.Tools.ToolC
 Orkeon.Domain.Tools.ToolCallOptions.Builder.Builder() -> void
 Orkeon.Domain.Tools.ToolCallOptions.Contains(string! key) -> bool
 Orkeon.Domain.Tools.ToolCallOptions.Get<T>(string! key) -> T?
-Orkeon.Domain.Tools.ToolCallProtocol
-Orkeon.Domain.Tools.ToolCallProtocol.Format.get -> string!
-Orkeon.Domain.Tools.ToolCallProtocol.Options.get -> Orkeon.Domain.Tools.ToolCallOptions!
-Orkeon.Domain.Tools.ToolCallProtocol.SupportedTools.get -> System.Collections.Immutable.ImmutableList<string!>!
-Orkeon.Domain.Tools.ToolCallProtocol.ToolCallProtocol(Orkeon.Domain.Tools.ToolCallProtocol! original) -> void
-Orkeon.Domain.Tools.ToolCallProtocol.ToolCallProtocol(string! version = "1.0", string! format = "json", System.Collections.Generic.IEnumerable<string!>? supportedTools = null, Orkeon.Domain.Tools.ToolCallOptions? options = null) -> void
-Orkeon.Domain.Tools.ToolCallProtocol.Version.get -> string!
-Orkeon.Domain.Tools.ToolCallRequest
-Orkeon.Domain.Tools.ToolCallRequest.Arguments.get -> Orkeon.Domain.SharedKernel.ValueObjects.ToolArguments!
-Orkeon.Domain.Tools.ToolCallRequest.CallerId.get -> string?
-Orkeon.Domain.Tools.ToolCallRequest.Id.get -> string!
-Orkeon.Domain.Tools.ToolCallRequest.RequestedAt.get -> System.DateTime
-Orkeon.Domain.Tools.ToolCallRequest.ToolCallRequest(Orkeon.Domain.Tools.ToolCallRequest! original) -> void
-Orkeon.Domain.Tools.ToolCallRequest.ToolCallRequest(string! toolName, Orkeon.Domain.SharedKernel.ValueObjects.ToolArguments? arguments = null, string? callerId = null) -> void
-Orkeon.Domain.Tools.ToolCallRequest.ToolName.get -> string!
 Orkeon.Domain.Tools.ToolResult
 Orkeon.Domain.Tools.ToolResult.Error.get -> string?
 Orkeon.Domain.Tools.ToolResult.Error.init -> void
@@ -3900,10 +3911,9 @@ const Orkeon.Domain.Constants.Llm.EmbeddingDefaults.LocalDimension = 384 -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultContextWindowTokens = 4096 -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultMaxRetries = 10 -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultMaxTokens = 4000 -> int
-const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultModelName = "gpt-5.6-sol" -> string!
+static readonly Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultModelName -> string!
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultTimeoutSeconds = 30 -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.FallbackMaxOutputTokens = 4096 -> int
-const Orkeon.Domain.Constants.Llm.LlmDefaults.LegacyModelName = "gpt-3.5-turbo" -> string!
 const Orkeon.Domain.Constants.Llm.LlmRoles.Assistant = "assistant" -> string!
 const Orkeon.Domain.Constants.Llm.LlmRoles.System = "system" -> string!
 const Orkeon.Domain.Constants.Llm.LlmRoles.Tool = "tool" -> string!
@@ -4218,7 +4228,6 @@ override Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.ToString() -> strin
 override Orkeon.Domain.EventHub.CrewLink.Equals(object? obj) -> bool
 override Orkeon.Domain.EventHub.CrewLink.GetHashCode() -> int
 override Orkeon.Domain.EventHub.CrewLink.ToString() -> string!
-override Orkeon.Domain.Exceptions.LlmRateLimitException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Domain.FileSystem.FileSystemMount.Equals(object? obj) -> bool
 override Orkeon.Domain.FileSystem.FileSystemMount.GetHashCode() -> int
 override Orkeon.Domain.FileSystem.FileSystemMount.ToString() -> string!
@@ -4633,12 +4642,6 @@ override Orkeon.Domain.Tools.Security.UrlValidationResult.ToString() -> string!
 override Orkeon.Domain.Tools.ToolCallIdentity.Equals(object? obj) -> bool
 override Orkeon.Domain.Tools.ToolCallIdentity.GetHashCode() -> int
 override Orkeon.Domain.Tools.ToolCallIdentity.ToString() -> string!
-override Orkeon.Domain.Tools.ToolCallProtocol.Equals(object? obj) -> bool
-override Orkeon.Domain.Tools.ToolCallProtocol.GetHashCode() -> int
-override Orkeon.Domain.Tools.ToolCallProtocol.ToString() -> string!
-override Orkeon.Domain.Tools.ToolCallRequest.Equals(object? obj) -> bool
-override Orkeon.Domain.Tools.ToolCallRequest.GetHashCode() -> int
-override Orkeon.Domain.Tools.ToolCallRequest.ToString() -> string!
 override sealed Orkeon.Domain.Agent.Events.AgentAssignedToTaskEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
 override sealed Orkeon.Domain.Agent.Events.AgentCapabilitiesUpdatedEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
 override sealed Orkeon.Domain.Agent.Events.AgentCompletedTaskEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
@@ -5206,13 +5209,11 @@ static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.Stream.get -> Orkeon.
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmCallMode? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Claude(string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
-static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ClaudeWithSecret(string! apiKeySecretName = "ANTHROPIC_API_KEY") -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Create(string! model, string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double? temperature = null, int? maxTokens = null, double? topP = null, double frequencyPenalty = 0, double presencePenalty = 0, int? timeoutSeconds = null, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null, int? streamIdleSeconds = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Ollama(string! model = "llama2") -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile(string? profile = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.WithDefaultModel(string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
-static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.WithDefaultModelSecret(string! apiKeySecretName = "OPENAI_API_KEY") -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? right) -> bool
@@ -5449,12 +5450,6 @@ static Orkeon.Domain.Tools.ToolCallOptions.CreateBuilder() -> Orkeon.Domain.Tool
 static Orkeon.Domain.Tools.ToolCallOptions.Default() -> Orkeon.Domain.Tools.ToolCallOptions!
 static Orkeon.Domain.Tools.ToolCallOptions.Empty.get -> Orkeon.Domain.Tools.ToolCallOptions!
 static Orkeon.Domain.Tools.ToolCallOptions.ForParallelExecution(int maxConcurrency = 5) -> Orkeon.Domain.Tools.ToolCallOptions!
-static Orkeon.Domain.Tools.ToolCallProtocol.Default() -> Orkeon.Domain.Tools.ToolCallProtocol!
-static Orkeon.Domain.Tools.ToolCallProtocol.WithTools(params string![]! tools) -> Orkeon.Domain.Tools.ToolCallProtocol!
-static Orkeon.Domain.Tools.ToolCallProtocol.operator !=(Orkeon.Domain.Tools.ToolCallProtocol? left, Orkeon.Domain.Tools.ToolCallProtocol? right) -> bool
-static Orkeon.Domain.Tools.ToolCallProtocol.operator ==(Orkeon.Domain.Tools.ToolCallProtocol? left, Orkeon.Domain.Tools.ToolCallProtocol? right) -> bool
-static Orkeon.Domain.Tools.ToolCallRequest.operator !=(Orkeon.Domain.Tools.ToolCallRequest? left, Orkeon.Domain.Tools.ToolCallRequest? right) -> bool
-static Orkeon.Domain.Tools.ToolCallRequest.operator ==(Orkeon.Domain.Tools.ToolCallRequest? left, Orkeon.Domain.Tools.ToolCallRequest? right) -> bool
 static Orkeon.Domain.Tools.ToolResult.CreateError(string! error) -> Orkeon.Domain.Tools.ToolResult!
 static Orkeon.Domain.Tools.ToolResult.CreateSuccess(string! output, Orkeon.Domain.Tools.ToolUsageMetrics? usage = null) -> Orkeon.Domain.Tools.ToolResult!
 static Orkeon.Domain.Tools.ToolResultLimitsOptions.Cut(string! result, int maxLength) -> string!
@@ -5541,88 +5536,12 @@ static readonly Orkeon.Domain.Task.ValueObjects.TaskStatus.Completed -> Orkeon.D
 static readonly Orkeon.Domain.Task.ValueObjects.TaskStatus.Failed -> Orkeon.Domain.Task.ValueObjects.TaskStatus!
 static readonly Orkeon.Domain.Task.ValueObjects.TaskStatus.InProgress -> Orkeon.Domain.Task.ValueObjects.TaskStatus!
 static readonly Orkeon.Domain.Task.ValueObjects.TaskStatus.Pending -> Orkeon.Domain.Task.ValueObjects.TaskStatus!
-virtual Orkeon.Domain.Agent.ValueObjects.AgentCapability.<Clone>$() -> Orkeon.Domain.Agent.ValueObjects.AgentCapability!
-virtual Orkeon.Domain.Agent.ValueObjects.AgentCapability.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Agent.ValueObjects.AgentCapability.Equals(Orkeon.Domain.Agent.ValueObjects.AgentCapability? other) -> bool
-virtual Orkeon.Domain.Agent.ValueObjects.AgentCapability.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.<Clone>$() -> Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult!
-virtual Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.Equals(Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult? other) -> bool
-virtual Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Agent.ValueObjects.AgentSkill.<Clone>$() -> Orkeon.Domain.Agent.ValueObjects.AgentSkill!
-virtual Orkeon.Domain.Agent.ValueObjects.AgentSkill.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Agent.ValueObjects.AgentSkill.Equals(Orkeon.Domain.Agent.ValueObjects.AgentSkill? other) -> bool
-virtual Orkeon.Domain.Agent.ValueObjects.AgentSkill.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.<Clone>$() -> Orkeon.Domain.Agent.ValueObjects.WorkloadInfo!
-virtual Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.Equals(Orkeon.Domain.Agent.ValueObjects.WorkloadInfo? other) -> bool
-virtual Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.AgentCommunication.AgentMessage.<Clone>$() -> Orkeon.Domain.AgentCommunication.AgentMessage!
-virtual Orkeon.Domain.AgentCommunication.AgentMessage.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.AgentCommunication.AgentMessage.Equals(Orkeon.Domain.AgentCommunication.AgentMessage? other) -> bool
-virtual Orkeon.Domain.AgentCommunication.AgentMessage.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Orkeon.Domain.Common.ComponentBase<TRequest, TResponse>.ValidateTypedRequest(TRequest! request) -> string?
 virtual Orkeon.Domain.Common.TypedId.AsString() -> string!
 virtual Orkeon.Domain.Common.ValueObjectRecord.EqualityContract.get -> System.Type!
 virtual Orkeon.Domain.Common.ValueObjectRecord.Equals(Orkeon.Domain.Common.ValueObjectRecord? other) -> bool
 virtual Orkeon.Domain.Common.ValueObjectRecord.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Orkeon.Domain.Common.ValueObjectRecord.Validate() -> void
-virtual Orkeon.Domain.Crew.CrewExecutionStatistics.<Clone>$() -> Orkeon.Domain.Crew.CrewExecutionStatistics!
-virtual Orkeon.Domain.Crew.CrewExecutionStatistics.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Crew.CrewExecutionStatistics.Equals(Orkeon.Domain.Crew.CrewExecutionStatistics? other) -> bool
-virtual Orkeon.Domain.Crew.CrewExecutionStatistics.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Crew.ExecutionStatistics.<Clone>$() -> Orkeon.Domain.Crew.ExecutionStatistics!
-virtual Orkeon.Domain.Crew.ExecutionStatistics.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Crew.ExecutionStatistics.Equals(Orkeon.Domain.Crew.ExecutionStatistics? other) -> bool
-virtual Orkeon.Domain.Crew.ExecutionStatistics.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Crew.TaskAssignment.<Clone>$() -> Orkeon.Domain.Crew.TaskAssignment!
-virtual Orkeon.Domain.Crew.TaskAssignment.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Crew.TaskAssignment.Equals(Orkeon.Domain.Crew.TaskAssignment? other) -> bool
-virtual Orkeon.Domain.Crew.TaskAssignment.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Crew.ValueObjects.CrewResult.<Clone>$() -> Orkeon.Domain.Crew.ValueObjects.CrewResult!
-virtual Orkeon.Domain.Crew.ValueObjects.CrewResult.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Crew.ValueObjects.CrewResult.Equals(Orkeon.Domain.Crew.ValueObjects.CrewResult? other) -> bool
-virtual Orkeon.Domain.Crew.ValueObjects.CrewResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.<Clone>$() -> Orkeon.Domain.Crew.ValueObjects.ExecutionTiming!
-virtual Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.Equals(Orkeon.Domain.Crew.ValueObjects.ExecutionTiming? other) -> bool
-virtual Orkeon.Domain.Crew.ValueObjects.ExecutionTiming.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Crew.ValueObjects.ProcessResult.<Clone>$() -> Orkeon.Domain.Crew.ValueObjects.ProcessResult!
-virtual Orkeon.Domain.Crew.ValueObjects.ProcessResult.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Crew.ValueObjects.ProcessResult.Equals(Orkeon.Domain.Crew.ValueObjects.ProcessResult? other) -> bool
-virtual Orkeon.Domain.Crew.ValueObjects.ProcessResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.<Clone>$() -> Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists!
-virtual Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.Equals(Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists? other) -> bool
-virtual Orkeon.Domain.Crew.ValueObjects.TaskCompletionLists.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Memory.EmbeddingVector.<Clone>$() -> Orkeon.Domain.Memory.EmbeddingVector!
-virtual Orkeon.Domain.Memory.EmbeddingVector.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Memory.EmbeddingVector.Equals(Orkeon.Domain.Memory.EmbeddingVector? other) -> bool
-virtual Orkeon.Domain.Memory.EmbeddingVector.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Memory.MemoryEntity.<Clone>$() -> Orkeon.Domain.Memory.MemoryEntity!
-virtual Orkeon.Domain.Memory.MemoryEntity.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Memory.MemoryEntity.Equals(Orkeon.Domain.Memory.MemoryEntity? other) -> bool
-virtual Orkeon.Domain.Memory.MemoryEntity.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Memory.ScoredMemoryItem.<Clone>$() -> Orkeon.Domain.Memory.ScoredMemoryItem!
-virtual Orkeon.Domain.Memory.ScoredMemoryItem.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Memory.ScoredMemoryItem.Equals(Orkeon.Domain.Memory.ScoredMemoryItem? other) -> bool
-virtual Orkeon.Domain.Memory.ScoredMemoryItem.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Security.AuditEvent.<Clone>$() -> Orkeon.Domain.Security.AuditEvent!
-virtual Orkeon.Domain.Security.AuditEvent.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Security.AuditEvent.Equals(Orkeon.Domain.Security.AuditEvent? other) -> bool
-virtual Orkeon.Domain.Security.AuditEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Security.SanitizationContext.<Clone>$() -> Orkeon.Domain.Security.SanitizationContext!
-virtual Orkeon.Domain.Security.SanitizationContext.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Security.SanitizationContext.Equals(Orkeon.Domain.Security.SanitizationContext? other) -> bool
-virtual Orkeon.Domain.Security.SanitizationContext.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Security.SanitizationResult.<Clone>$() -> Orkeon.Domain.Security.SanitizationResult!
-virtual Orkeon.Domain.Security.SanitizationResult.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Security.SanitizationResult.Equals(Orkeon.Domain.Security.SanitizationResult? other) -> bool
-virtual Orkeon.Domain.Security.SanitizationResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Security.ThreatDetection.<Clone>$() -> Orkeon.Domain.Security.ThreatDetection!
-virtual Orkeon.Domain.Security.ThreatDetection.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Security.ThreatDetection.Equals(Orkeon.Domain.Security.ThreatDetection? other) -> bool
-virtual Orkeon.Domain.Security.ThreatDetection.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Orkeon.Domain.SharedKernel.Events.DomainEvent.EqualityContract.get -> System.Type!
 virtual Orkeon.Domain.SharedKernel.Events.DomainEvent.Equals(Orkeon.Domain.SharedKernel.Events.DomainEvent? other) -> bool
 virtual Orkeon.Domain.SharedKernel.Events.DomainEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
@@ -5635,58 +5554,9 @@ virtual Orkeon.Domain.Task.CrewTaskBase<TContext>.GetContextSummary() -> string!
 virtual Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.EqualityContract.get -> System.Type!
 virtual Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.Equals(Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec? other) -> bool
 virtual Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Task.ValueObjects.TaskRequirement.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.TaskRequirement!
-virtual Orkeon.Domain.Task.ValueObjects.TaskRequirement.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Task.ValueObjects.TaskRequirement.Equals(Orkeon.Domain.Task.ValueObjects.TaskRequirement? other) -> bool
-virtual Orkeon.Domain.Task.ValueObjects.TaskRequirement.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.Parameters.AskQuestionParameters.<Clone>$() -> Orkeon.Domain.Tools.Parameters.AskQuestionParameters!
-virtual Orkeon.Domain.Tools.Parameters.AskQuestionParameters.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.Parameters.AskQuestionParameters.Equals(Orkeon.Domain.Tools.Parameters.AskQuestionParameters? other) -> bool
-virtual Orkeon.Domain.Tools.Parameters.AskQuestionParameters.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.<Clone>$() -> Orkeon.Domain.Tools.Parameters.DelegateWorkParameters!
-virtual Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.Equals(Orkeon.Domain.Tools.Parameters.DelegateWorkParameters? other) -> bool
-virtual Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.Protocol.ParameterSchema.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ParameterSchema!
-virtual Orkeon.Domain.Tools.Protocol.ParameterSchema.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.Protocol.ParameterSchema.Equals(Orkeon.Domain.Tools.Protocol.ParameterSchema? other) -> bool
-virtual Orkeon.Domain.Tools.Protocol.ParameterSchema.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.Protocol.ToolCallRequest.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ToolCallRequest!
-virtual Orkeon.Domain.Tools.Protocol.ToolCallRequest.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.Protocol.ToolCallRequest.Equals(Orkeon.Domain.Tools.Protocol.ToolCallRequest? other) -> bool
-virtual Orkeon.Domain.Tools.Protocol.ToolCallRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.Protocol.ToolCallResponse.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ToolCallResponse!
-virtual Orkeon.Domain.Tools.Protocol.ToolCallResponse.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.Protocol.ToolCallResponse.Equals(Orkeon.Domain.Tools.Protocol.ToolCallResponse? other) -> bool
-virtual Orkeon.Domain.Tools.Protocol.ToolCallResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.Protocol.ToolSchema.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ToolSchema!
-virtual Orkeon.Domain.Tools.Protocol.ToolSchema.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.Protocol.ToolSchema.Equals(Orkeon.Domain.Tools.Protocol.ToolSchema? other) -> bool
-virtual Orkeon.Domain.Tools.Protocol.ToolSchema.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.Security.PathValidationResult.<Clone>$() -> Orkeon.Domain.Tools.Security.PathValidationResult!
-virtual Orkeon.Domain.Tools.Security.PathValidationResult.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.Security.PathValidationResult.Equals(Orkeon.Domain.Tools.Security.PathValidationResult? other) -> bool
-virtual Orkeon.Domain.Tools.Security.PathValidationResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.Security.UrlValidationResult.<Clone>$() -> Orkeon.Domain.Tools.Security.UrlValidationResult!
-virtual Orkeon.Domain.Tools.Security.UrlValidationResult.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.Security.UrlValidationResult.Equals(Orkeon.Domain.Tools.Security.UrlValidationResult? other) -> bool
-virtual Orkeon.Domain.Tools.Security.UrlValidationResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.ToolCallProtocol.<Clone>$() -> Orkeon.Domain.Tools.ToolCallProtocol!
-virtual Orkeon.Domain.Tools.ToolCallProtocol.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.ToolCallProtocol.Equals(Orkeon.Domain.Tools.ToolCallProtocol? other) -> bool
-virtual Orkeon.Domain.Tools.ToolCallProtocol.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Domain.Tools.ToolCallRequest.<Clone>$() -> Orkeon.Domain.Tools.ToolCallRequest!
-virtual Orkeon.Domain.Tools.ToolCallRequest.EqualityContract.get -> System.Type!
-virtual Orkeon.Domain.Tools.ToolCallRequest.Equals(Orkeon.Domain.Tools.ToolCallRequest? other) -> bool
-virtual Orkeon.Domain.Tools.ToolCallRequest.PrintMembers(System.Text.StringBuilder! builder) -> bool
 ~Orkeon.Domain.Graph.GraphExecutionResult<TState>.<Clone>$() -> Orkeon.Domain.Graph.GraphExecutionResult<TState>!
 ~Orkeon.Domain.Graph.GraphExecutionResult<TState>.Equals(Orkeon.Domain.Graph.GraphExecutionResult<TState>? other) -> bool
-~Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.ToolCallRequest(Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>! original) -> void
 ~static Orkeon.Domain.Graph.GraphExecutionResult<TState>.operator !=(Orkeon.Domain.Graph.GraphExecutionResult<TState>? left, Orkeon.Domain.Graph.GraphExecutionResult<TState>? right) -> bool
 ~static Orkeon.Domain.Graph.GraphExecutionResult<TState>.operator ==(Orkeon.Domain.Graph.GraphExecutionResult<TState>? left, Orkeon.Domain.Graph.GraphExecutionResult<TState>? right) -> bool
 ~static Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.operator !=(Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>? left, Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>? right) -> bool
 ~static Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.operator ==(Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>? left, Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>? right) -> bool
-~virtual Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>!
-~virtual Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>.Equals(Orkeon.Domain.Tools.Protocol.ToolCallRequest<TParameters>? other) -> bool

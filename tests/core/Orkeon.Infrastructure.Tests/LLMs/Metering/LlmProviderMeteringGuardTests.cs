@@ -110,7 +110,7 @@ public sealed partial class LlmProviderMeteringGuardTests
         var providers = DiscoverProviderTypes(sources);
 
         // Sanity: the discovery must see the whole family, or the guard passes vacuously.
-        Assert.Contains("OpenAIProvider", providers);
+        Assert.Contains("OpenAILlmProvider", providers);
         Assert.Contains("AnthropicLlmProvider", providers);
         Assert.Contains("OllamaLlmProvider", providers);
         Assert.Contains("UndefinedLlmProvider", providers);
@@ -164,9 +164,9 @@ public sealed partial class LlmProviderMeteringGuardTests
         // meters a provider on its own. Both are exactly what the guard exists to catch.
         var sources = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            [FactoryFile] = "public sealed class LlmProviderFactory { OpenAIProvider Build() => new OpenAIProvider(c, h, s, l); }",
-            ["src/core/Orkeon.Infrastructure/LLMs/OpenAIProvider.cs"] =
-                "public class OpenAIProvider : OpenAICompatibleProviderBase { }",
+            [FactoryFile] = "public sealed class LlmProviderFactory { OpenAILlmProvider Build() => new OpenAILlmProvider(c, h, s, l); }",
+            ["src/core/Orkeon.Infrastructure/LLMs/OpenAILlmProvider.cs"] =
+                "public class OpenAILlmProvider : OpenAICompatibleProviderBase { }",
             ["src/core/Orkeon.Infrastructure/LLMs/Base/OpenAICompatibleProviderBase.cs"] =
                 "public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase { }",
             ["src/core/Orkeon.Infrastructure/LLMs/Base/HttpLlmProviderBase.cs"] =
@@ -175,8 +175,8 @@ public sealed partial class LlmProviderMeteringGuardTests
                 """
                 public sealed class SummaryService
                 {
-                    // new OpenAIProvider(...) in a comment is not a construction.
-                    private readonly ILlmProvider _llm = new OpenAIProvider(config, http, strategy, logger);
+                    // new OpenAILlmProvider(...) in a comment is not a construction.
+                    private readonly ILlmProvider _llm = new OpenAILlmProvider(config, http, strategy, logger);
                     private ILlmProvider Metered(ILlmProvider p, ILlmUsageSink s) => MeteredLlmProvider.Wrap(p, s);
                     private ILlmProvider Limited(ILlmProvider p, ILlmRateLimiter l) => RateLimitedLlmProvider.Wrap(p, l);
                     private ILlmProvider Entered(ILlmProvider p) => LlmProviderEntrance.Enter(p, null, null);
@@ -190,7 +190,7 @@ public sealed partial class LlmProviderMeteringGuardTests
 
         var construction = Assert.Single(constructions);
         Assert.Contains("SummaryService.cs:4", construction, StringComparison.Ordinal);
-        Assert.Contains("OpenAIProvider", construction, StringComparison.Ordinal);
+        Assert.Contains("OpenAILlmProvider", construction, StringComparison.Ordinal);
         Assert.Equal(3, metering.Count);
         Assert.Contains("SummaryService.cs:5", metering[0], StringComparison.Ordinal);
         Assert.Contains("SummaryService.cs:6", metering[1], StringComparison.Ordinal);

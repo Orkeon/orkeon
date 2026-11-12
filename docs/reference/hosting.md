@@ -22,7 +22,7 @@ opt-in, whose wrapper (`src/packaging/Orkeon.Scripting/Orkeon.Scripting.Package.
 `Orkeon.Hosting.dll` next to `Orkeon.Scripting.dll`; `Orkeon.Constants.Cli` comes as a package dependency.
 
 ```bash
-dotnet add package Orkeon.Scripting --prerelease
+dotnet add package Orkeon.Scripting
 ```
 
 It is not in the `Orkeon` umbrella: the runner host composes every built-in tool family, so the
@@ -258,7 +258,7 @@ code.
 |---|---|
 | `RunOneShotAsync(opts, loggerCategory, configureServices?, externalCt?)` | Runs a single crew kickoff end-to-end. Exit codes: **0** success, **1** config error, **2** crew failure, **75** the run stopped on a question and waits for its answer (`--resume`), **130** canceled. |
 | `RunInteractiveLoopAsync(opts, loggerCategory, stopWords, kickoffPerInputAsync, onSessionStart, …)` | REPL loop; each input drives a kickoff via the caller-supplied delegate; a stop word ends the loop (exit 0). |
-| `RunListToolsAsync(opts, loggerCategory, configureServices?)` | Builds the host with no crew and prints the sorted, de-duplicated runtime tool names to stdout (logs to stderr) — the runtime tool contract consumed by packaging/lint tooling. |
+| `RunListToolsAsync(opts, loggerCategory, configureServices?, externalCt?)` | Builds the host with no crew and prints the sorted, de-duplicated runtime tool names to stdout (logs to stderr) — the runtime tool contract consumed by packaging/lint tooling. |
 | `RunValidateAsync(opts, loggerCategory, configureServices?, externalCt?)` | Dry-run behind `--validate`: builds the host and loads the crew (strict tool resolution) without probing the LLM or running a kickoff. |
 | `LoadCrewAsync(host, factory, configPath, logger, ct, targetIsDirectory?)` | Loads and maps the crew definition from its **virtual** path (YAML file, crew directory, `.ork.ts`/`.ork.js` script) — the building block the flows above share, and what `orkeon-host` calls per run. It does not connect MCP servers. |
 
@@ -346,8 +346,8 @@ shipped executables, found on the `PATH` or named by `command`.
 **Install.** In an Aspire AppHost project (`Aspire.AppHost.Sdk`):
 
 ```bash
-dotnet add package Orkeon.Hosting.Aspire --prerelease
-dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # the `orkeon` executable AddOrkeonCrewRun launches
+dotnet add package Orkeon.Hosting.Aspire
+dotnet tool install -g Orkeon.Scripting.Cli   # the `orkeon` executable AddOrkeonCrewRun launches
 ```
 
 `orkeon-host` comes from the full installer archives or the per-machine service MSI — which

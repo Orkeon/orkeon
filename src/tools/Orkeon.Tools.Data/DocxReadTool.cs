@@ -43,7 +43,7 @@ public record DocxReadResponse
 
     /// <summary>Gets the document metadata (title, author, created date, etc.).</summary>
     [ReturnSchema(Description = "Document metadata")]
-    public Dictionary<string, string> Metadata { get; init; } = [];
+    public IReadOnlyDictionary<string, string> Metadata { get; init; } = System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
 
     /// <summary>Gets the number of paragraphs in the document.</summary>
     [ReturnSchema(Description = "Number of paragraphs", Example = 42)]
@@ -105,7 +105,7 @@ public partial class DocxReadTool : FileToolBase<DocxReadRequest, DocxReadRespon
             if (!vfsResult.IsAllowed)
                 throw new InvalidOperationException(vfsResult.DenialReason ?? "path validation failed");
 
-            var bytes = await _fileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
+            var bytes = await FileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
                 ?? throw new FileNotFoundException($"File not found: {path}");
             var document = WordprocessingDocument.Open(new MemoryStream(bytes), false);
 
@@ -124,7 +124,7 @@ public partial class DocxReadTool : FileToolBase<DocxReadRequest, DocxReadRespon
                     ? ExtractMetadata(document)
                     : [];
 
-                LogReadDocx(path, paragraphs.Count);
+                LogReadDocx(Logger, path, paragraphs.Count);
 
                 return new DocxReadResponse
                 {
@@ -186,5 +186,5 @@ public partial class DocxReadTool : FileToolBase<DocxReadRequest, DocxReadRespon
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully read DOCX: {Path} ({Paragraphs} paragraphs)")]
-    private partial void LogReadDocx(string path, int paragraphs);
+    private static partial void LogReadDocx(ILogger logger, string path, int paragraphs);
 }

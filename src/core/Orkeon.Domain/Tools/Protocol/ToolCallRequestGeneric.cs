@@ -14,7 +14,7 @@ namespace Orkeon.Domain.Tools.Protocol;
 /// JSON deserialization can create instances.
 /// </typeparam>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1000", Justification = "Idiomatic static factory on a generic wrapper type.")]
-public record ToolCallRequest<TParameters> where TParameters : class, new()
+public sealed record ToolCallRequest<TParameters> where TParameters : class, new()
 {
 #pragma warning disable S2743 // Static field intentionally per closed generic type (one cache per T)
     private static readonly JsonSerializerOptions SerializerOptions = new()

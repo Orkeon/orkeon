@@ -125,7 +125,7 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         // LLM-01: "gpt-4" is no longer the platform default but stays priced —
         // existing configurations that pin it must keep producing a real cost.
         Register("gpt-4", 30.00m, 60.00m);
-        Register(LlmDefaults.LegacyModelName, 0.50m, 1.50m);
+        Register("gpt-3.5-turbo", 0.50m, 1.50m);
         Register("o1", 15.00m, 60.00m);
         Register("o1-mini", 3.00m, 12.00m);
         Register("o3-mini", 1.10m, 4.40m);

@@ -19,7 +19,7 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// beyond what the handler explicitly captures via <c>ctx.services</c> (whitelisted
 /// access lands in Phase 4 — see <see cref="ScriptServiceLocator"/>).
 /// </remarks>
-public sealed class CommandRuntimeContext
+internal sealed class CommandRuntimeContext
 {
     private readonly Engine _engine;
     private readonly IConsoleAdapter _console;

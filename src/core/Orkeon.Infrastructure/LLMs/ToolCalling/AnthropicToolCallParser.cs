@@ -12,7 +12,7 @@ namespace Orkeon.Infrastructure.LLMs.ToolCalling;
 /// Unlike OpenAI, the <c>input</c> field is already a JSON object (not a JSON string).
 /// Tool results must be wrapped in a <c>user</c> message with <c>tool_result</c> content blocks.
 /// </remarks>
-public sealed class AnthropicToolCallParser : IToolCallParser
+internal sealed class AnthropicToolCallParser : IToolCallParser
 {
     /// <inheritdoc />
     public IReadOnlyList<ParsedToolCall> ParseToolCalls(JsonElement responseBody)

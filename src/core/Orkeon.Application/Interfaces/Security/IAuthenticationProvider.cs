@@ -5,12 +5,12 @@ namespace Orkeon.Application.Interfaces.Security;
 /// <summary>
 /// Result of an authentication attempt.
 /// </summary>
-public record AuthenticationResult(bool IsAuthenticated, ClaimsPrincipal? Principal, string? Error);
+public sealed record AuthenticationResult(bool IsAuthenticated, ClaimsPrincipal? Principal, string? Error);
 
 /// <summary>
 /// Result of a token validation check.
 /// </summary>
-public record TokenValidationResult(bool IsValid, string? Error, DateTimeOffset? ExpiresAt);
+public sealed record TokenValidationResult(bool IsValid, string? Error, DateTimeOffset? ExpiresAt);
 
 /// <summary>
 /// Provides authentication via token validation and claims extraction.

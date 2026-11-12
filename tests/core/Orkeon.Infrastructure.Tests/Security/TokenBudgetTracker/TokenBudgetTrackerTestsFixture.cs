@@ -64,7 +64,7 @@ public class TokenBudgetTrackerTestsFixture
         return tracker.RecordUsage(crewId, agentRole, promptTokens, completionTokens, model);
     }
 
-    public TokenUsageReport GetReport(string crewId)
+    public TokenBudgetReport GetReport(string crewId)
     {
         var tracker = _sut ?? Build();
         return tracker.GetReport(crewId);

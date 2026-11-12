@@ -6,8 +6,7 @@ service to the host's dependency-injection container — no recompilation of the
 
 ## Install
 
-This project is not distributed as a NuGet package on its own — reference it from source (`ProjectReference` inside this repository); its assembly ships through the release artifacts. See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
-
+`Orkeon.Plugins` is not a NuGet package of its own (`IsPackable=false`): the assembly ships inside the `Orkeon` umbrella package, so a plugin project and a host both reference `Orkeon`. See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md) and [Building a plugin project](https://github.com/Orkeon/orkeon/blob/main/docs/architecture/plugins.md#building-a-plugin-project).
 
 > **Trust boundary — read this first.** Loading a plugin executes arbitrary code with
 > the **full privileges of the host process**. There is **no sandbox** in v1, and an
@@ -54,11 +53,11 @@ public sealed class WeatherPlugin : IOrkeonPlugin
 ```
 
 Plugin project file — reference the contracts without copying them next to your plugin
-(shipping your own `Orkeon.Plugins.dll` breaks type identity):
+(shipping your own copy of the framework assemblies breaks type identity):
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Orkeon.Plugins" ExcludeAssets="runtime" />
+  <PackageReference Include="Orkeon" ExcludeAssets="runtime" />
 </ItemGroup>
 <PropertyGroup>
   <EnableDynamicLoading>true</EnableDynamicLoading> <!-- emits the .deps.json used for resolution -->
@@ -86,8 +85,8 @@ services.AddOrkeonPlugins(fileSystem, configuration);
 After `BuildServiceProvider()`, plugin-contributed services resolve like any other, and
 `IPluginRegistry` lists what was loaded.
 
-## Not in v1 (future scope)
+## Out of scope in v1
 
-Manifest files (`plugin.json`), permission model / sandboxing, hot reload, per-plugin
-configuration stores. The original design covering those lives in
+Permission model / sandboxing, hot reload, per-plugin configuration stores. The manifest
+(`plugin.json`) is shipped and mandatory. The original design covering the rest lives in
 [SPECIFICATION.md](https://github.com/Orkeon/orkeon/blob/main/src/plugins/Orkeon.Plugins/SPECIFICATION.md).

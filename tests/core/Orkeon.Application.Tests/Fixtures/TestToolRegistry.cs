@@ -18,7 +18,7 @@ public class TestToolRegistry : IToolRegistry
     public string? LastRemoveToolName { get; private set; }
     public IBaseTool? LastRegisteredTool { get; private set; }
 
-    public System.Threading.Tasks.Task<bool> RegisterToolAsync(IBaseTool tool)
+    public System.Threading.Tasks.Task<bool> RegisterToolAsync(IBaseTool tool, CancellationToken cancellationToken = default)
     {
         RegisterToolCallCount++;
         LastRegisteredTool = tool;
@@ -26,7 +26,7 @@ public class TestToolRegistry : IToolRegistry
         return System.Threading.Tasks.Task.FromResult(true);
     }
 
-    public System.Threading.Tasks.Task<IBaseTool?> GetToolAsync(string toolId)
+    public System.Threading.Tasks.Task<IBaseTool?> GetToolAsync(string toolId, CancellationToken cancellationToken = default)
     {
         GetToolCallCount++;
         LastGetToolName = toolId;
@@ -34,7 +34,7 @@ public class TestToolRegistry : IToolRegistry
         return System.Threading.Tasks.Task.FromResult(tool);
     }
 
-    public System.Threading.Tasks.Task<IBaseTool?> GetToolByNameAsync(string name)
+    public System.Threading.Tasks.Task<IBaseTool?> GetToolByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         GetToolCallCount++;
         LastGetToolName = name;
@@ -42,25 +42,25 @@ public class TestToolRegistry : IToolRegistry
         return System.Threading.Tasks.Task.FromResult(tool);
     }
 
-    public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync()
+    public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync(CancellationToken cancellationToken = default)
     {
         GetAllToolsCallCount++;
         return System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(_tools.Values.ToList());
     }
 
-    public System.Threading.Tasks.Task<bool> IsRegisteredAsync(string toolId)
+    public System.Threading.Tasks.Task<bool> IsRegisteredAsync(string toolId, CancellationToken cancellationToken = default)
     {
         return System.Threading.Tasks.Task.FromResult(_tools.ContainsKey(toolId));
     }
 
-    public System.Threading.Tasks.Task<bool> UnregisterToolAsync(string toolId)
+    public System.Threading.Tasks.Task<bool> UnregisterToolAsync(string toolId, CancellationToken cancellationToken = default)
     {
         RemoveToolCallCount++;
         LastRemoveToolName = toolId;
         return System.Threading.Tasks.Task.FromResult(_tools.Remove(toolId));
     }
 
-    public System.Threading.Tasks.Task ClearAsync()
+    public System.Threading.Tasks.Task ClearAsync(CancellationToken cancellationToken = default)
     {
         _tools.Clear();
         return System.Threading.Tasks.Task.CompletedTask;

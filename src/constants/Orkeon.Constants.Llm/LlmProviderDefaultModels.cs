@@ -31,7 +31,7 @@ public static class LlmProviderDefaultModels
     /// both 2026 deprecation waves; <c>gpt-6-astra-pro</c> is an aggregator label, not an
     /// OpenAI id.
     /// </summary>
-    public const string OpenAI = "gpt-5.6-sol";
+    public static readonly string OpenAI = "gpt-5.6-sol";
 
     /// <summary>
     /// Anthropic Claude (the 3.5 generation was retired 2025-10-28). Catalogue review
@@ -42,7 +42,7 @@ public static class LlmProviderDefaultModels
     /// more, neither is campaigned, the default stays. <c>claude-opus-5-fast</c> is a
     /// <c>speed</c> flag, not a model id.
     /// </summary>
-    public const string Anthropic = "claude-sonnet-5";
+    public static readonly string Anthropic = "claude-sonnet-5";
 
     /// <summary>
     /// Ollama, the local server's small default. Catalogue review 2026-09-19: still on the
@@ -50,7 +50,7 @@ public static class LlmProviderDefaultModels
     /// class now offers tools + thinking (<c>qwen3.5:4b</c>, <c>gemma4:e4b</c>,
     /// <c>granite4.2:3b</c>). It stays: a new default means a pull on every machine.
     /// </summary>
-    public const string Ollama = "llama3.2";
+    public static readonly string Ollama = "llama3.2";
 
     /// <summary>
     /// Together AI. Campaign of 2026-11-11: <c>meta-llama/Llama-3.3-70B-Instruct-Turbo</c>, the default
@@ -59,7 +59,7 @@ public static class LlmProviderDefaultModels
     /// review, 1 M context, tools + JSON, reads images, 0.15 / 0.50 $/M; 11/0/1 on the last run of that day (10/1/1 on the
     /// first, the red being M10: the endpoint reports no cached tokens there).
     /// </summary>
-    public const string Together = "zai-org/GLM-5.3-Flash";
+    public static readonly string Together = "zai-org/GLM-5.3-Flash";
 
     /// <summary>
     /// DeepSeek — the vendor's rolling id for the Flash tier, V4.1 Flash since 2026-09-10
@@ -70,7 +70,7 @@ public static class LlmProviderDefaultModels
     /// 2026-09-19); <c>deepseek-chat</c> was retired 2026-07-24. The 2026-09-07 campaign
     /// measured V4 Flash under the old name — to be replayed on this one.
     /// </summary>
-    public const string DeepSeek = "deepseek-flash";
+    public static readonly string DeepSeek = "deepseek-flash";
 
     /// <summary>
     /// Kimi (Moonshot AI). Campaign of 2026-11-11: <c>kimi-k3.1-pro</c>, the new top model of the
@@ -81,7 +81,7 @@ public static class LlmProviderDefaultModels
     /// review 2026-09-19): <c>KimiLlmProvider</c> leaves those fields out for it and reports each.
     /// The vendor docs moved to <c>platform.kimi.ai</c>.
     /// </summary>
-    public const string Kimi = "kimi-k3.1-pro";
+    public static readonly string Kimi = "kimi-k3.1-pro";
 
     /// <summary>
     /// Z.AI (Zhipu GLM). Campaign of 2026-11-11: <c>glm-5.3-flashx</c>, 12/12 on its first run of that day
@@ -92,7 +92,7 @@ public static class LlmProviderDefaultModels
     /// thinking: <c>ZaiLlmProvider</c> does not send a <c>thinking: disabled</c> block to it and
     /// reports the option instead.
     /// </summary>
-    public const string Zai = "glm-5.3-flashx";
+    public static readonly string Zai = "glm-5.3-flashx";
 
     /// <summary>
     /// Qwen (Alibaba DashScope). Catalogue review 2026-09-19: <c>qwen3.7-plus</c> is still the
@@ -101,7 +101,7 @@ public static class LlmProviderDefaultModels
     /// is no <c>qwen3.8-plus</c>. The 3.8 generation keeps <c>enable_thinking</c> /
     /// <c>thinking_budget</c> and adds <c>preserve_thinking</c>.
     /// </summary>
-    public const string Qwen = "qwen3.7-plus";
+    public static readonly string Qwen = "qwen3.7-plus";
 
     /// <summary>
     /// Google Gemini, over its OpenAI-compatibility surface. Campaign of 2026-11-11:
@@ -110,7 +110,7 @@ public static class LlmProviderDefaultModels
     /// and Mammouth (9/1/2 there, the same M10 as 3.7) - where <c>gemini-3.7-flash</c>, the default
     /// until then and labelled "previous generation" by the vendor, stayed 11/0/1.
     /// </summary>
-    public const string Gemini = "gemini-3.8-flash";
+    public static readonly string Gemini = "gemini-3.8-flash";
 
     /// <summary>
     /// Mistral AI — the dated snapshot of the medium 3.5 generation. The previous value,
@@ -123,14 +123,14 @@ public static class LlmProviderDefaultModels
     /// date, nothing newer for chat since April — <c>devstral</c> / <c>magistral</c> ids sit
     /// in the vendor's deprecated table.
     /// </summary>
-    public const string Mistral = "mistral-medium-2604";
+    public static readonly string Mistral = "mistral-medium-2604";
 
 
     /// <summary>
     /// Grok (x.AI) — the current chat flagship, verified live 2026-08-30 with a full 12-mode
     /// campaign (streaming, native tools, reasoning trace, vision, implicit cache).
     /// </summary>
-    public const string Grok = "grok-4.6";
+    public static readonly string Grok = "grok-4.6";
 
     /// <summary>
     /// MiniMax — the vendor's flagship, verified live 2026-08-30 with a full campaign
@@ -143,7 +143,7 @@ public static class LlmProviderDefaultModels
     /// out as on M2) where <c>MiniMax-M2</c>, the default until then, stayed 6/4/2 (M2, M5, M9,
     /// M10): M3 is the default since.
     /// </summary>
-    public const string MiniMax = "MiniMax-M3";
+    public static readonly string MiniMax = "MiniMax-M3";
 
     /// <summary>
     /// HuggingFace, through the Inference Providers router. Catalogue review 2026-09-19: still
@@ -152,7 +152,7 @@ public static class LlmProviderDefaultModels
     /// of the 2026-09-07 sweep look like. <c>Qwen/Qwen3.5-9B</c> (tools on three providers,
     /// from 0.10 / 0.15 $/M) is the candidate, once campaigned.
     /// </summary>
-    public const string HuggingFace = "meta-llama/Llama-3.1-8B-Instruct";
+    public static readonly string HuggingFace = "meta-llama/Llama-3.1-8B-Instruct";
 
     /// <summary>
     /// OpenRouter — the fleet's Gemini default under its marketplace identifier
@@ -169,7 +169,7 @@ public static class LlmProviderDefaultModels
     /// price; the aggregator defaults follow the direct one, never the other way round - and
     /// they did on 2026-11-11 (12/12 on <c>google/gemini-3.8-flash</c>, 11/1 on 3.7, M10).
     /// </summary>
-    public const string OpenRouter = "google/gemini-3.8-flash";
+    public static readonly string OpenRouter = "google/gemini-3.8-flash";
 
     /// <summary>
     /// Mammouth AI — the fleet's Gemini default under its bare identifier (Mammouth serves
@@ -182,13 +182,13 @@ public static class LlmProviderDefaultModels
     /// Catalogue review 2026-09-19: <c>gemini-3.8-flash</c> is on the public list too; same
     /// rule, the direct default leads - and it did on 2026-11-11 (9/1/2 on both, M10).
     /// </summary>
-    public const string Mammouth = "gemini-3.8-flash";
+    public static readonly string Mammouth = "gemini-3.8-flash";
 
     /// <summary>
     /// Docker Model Runner. Parity with the committed <c>examples/appsettings/appsettings.json</c>,
     /// which <c>orkeon init</c> writes.
     /// </summary>
-    public const string DockerModelRunner = "ai/granite-4.0-h-tiny";
+    public static readonly string DockerModelRunner = "ai/granite-4.0-h-tiny";
 
     /// <summary>
     /// Docker Model Runner authenticates nothing, but the OpenAI dialect wants a key. This is

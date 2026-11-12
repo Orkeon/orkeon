@@ -1,9 +1,8 @@
 # 70. Documentation Technique Versionnee comme du Code
-# Use case: Versioned technical documentation with diff between versions and automatic extraction from code
-# TODO: feature planifiee — IConfigurationVersioning + IConfigurationDiffService
+# Use case: Technical documentation extracted from code and checked for coherence, written as files that can be versioned with the code
 
 name: "versioned-documentation"
-goal: "Extract, generate, and version technical documentation like code with diff between versions"
+goal: "Extract and generate technical documentation from code, as files that can be versioned like code"
 process: "sequential"
 verbose: true
 memory: true

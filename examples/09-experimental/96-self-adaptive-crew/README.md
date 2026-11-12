@@ -1,18 +1,18 @@
 # 96. Crew Évolutive Auto-Adaptative
 
-> Meta-crew where an Architect agent observes performance and dynamically reconfigures the team. IConfigurationVersioning versions each configuration. IConfigurationRollbackService restores the previous one if performance degrades.
+> Meta-crew where a Performance Observer measures execution metrics and an Architect agent proposes a reconfigured team, with the conditions under which to roll back. The proposal is written out as a document for review; nothing is applied automatically.
 
 ## Quality
 
-💪 Robustesse — Self-optimization with rollback, configuration versioning, continuous benchmarking
+💪 Robustness — Self-optimization proposals, rollback conditions, continuous benchmarking
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 4 — Performance Observer, Architect Reconfigurator, Dynamic Worker Alpha, Dynamic Worker Beta
 - **Tools**: `json_tool`, `file_write`, `web_scrape`
-- **Memory**: `Redis` (metrics) + `SQLite` (versioned configurations)
-- **Key features**: IConfigurationVersioning (planned), IConfigurationRollbackService (planned), IConfigurationDiffService (planned), EvaluationSuite, ObserverAgent, BenchmarkRunner
+- **Memory**: `Redis` (metrics baselines)
+- **Key features**: EvaluationSuite, ObserverAgent, BenchmarkRunner
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -39,5 +39,5 @@ orkeon run examples/09-experimental/96-self-adaptive-crew/config.yaml \
 ## What this example demonstrates
 
 - Self-adaptive crew that optimizes its own configuration based on performance metrics
-- Configuration versioning with automatic rollback when new configurations underperform
+- Configuration proposals documented with rollback conditions when new configurations underperform
 - Continuous benchmarking to ensure measurable, comparable performance across configurations

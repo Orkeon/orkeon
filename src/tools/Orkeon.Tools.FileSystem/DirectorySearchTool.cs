@@ -162,7 +162,7 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
                 })
                 .ToList();
 
-            LogSearchCompleted(request.Query, topResults.Count, outcome.Ingestion.ChunksCreated, filesProcessed);
+            LogSearchCompleted(Logger, request.Query, topResults.Count, outcome.Ingestion.ChunksCreated, filesProcessed);
 
             return new DirectorySearchResponse
             {
@@ -314,5 +314,5 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Directory search for '{Query}' returned {ResultCount} results ({ChunksIndexed} chunks (re)indexed) across {FilesProcessed} files")]
-    private partial void LogSearchCompleted(string query, int resultCount, int chunksIndexed, int filesProcessed);
+    private static partial void LogSearchCompleted(ILogger logger, string query, int resultCount, int chunksIndexed, int filesProcessed);
 }

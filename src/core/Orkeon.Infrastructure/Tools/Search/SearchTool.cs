@@ -3,7 +3,7 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Attributes;
 using Orkeon.Tools.Abstractions.Base;
 using EmbeddingVector = Orkeon.Domain.Memory.EmbeddingVector;
-using IEmbeddingService = Orkeon.Application.Interfaces.Ports.IEmbeddingService;
+using IEmbeddingService = Orkeon.Domain.Memory.IEmbeddingService;
 
 namespace Orkeon.Infrastructure.Tools.Search;
 
@@ -124,7 +124,7 @@ public partial class SearchTool : ToolBase<SearchRequest, SearchResponse>
             var threshold = (float)Math.Clamp(request.Threshold, 0.0, 1.0);
 
             // Generate embedding for the query
-            var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Query).ConfigureAwait(false);
+            var queryEmbedding = await _embeddingService.GetEmbeddingAsync(request.Query, cancellationToken).ConfigureAwait(false);
             var embeddingVector = new EmbeddingVector(queryEmbedding);
 
             // Search the vector store
@@ -144,7 +144,7 @@ public partial class SearchTool : ToolBase<SearchRequest, SearchResponse>
                 Tags = item.Tags?.ToList() ?? []
             }).ToList();
 
-            LogSearchCompleted(request.Query, resultList.Count);
+            LogSearchCompleted(Logger, request.Query, resultList.Count);
 
             return new SearchResponse
             {
@@ -158,5 +158,5 @@ public partial class SearchTool : ToolBase<SearchRequest, SearchResponse>
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Semantic search for '{Query}' returned {Count} results")]
-    private partial void LogSearchCompleted(string query, int count);
+    private static partial void LogSearchCompleted(ILogger logger, string query, int count);
 }

@@ -56,7 +56,7 @@ public class MockManagerAgent : IManagerAgent
         DomainTask task,
         IReadOnlyList<DomainAgent> availableAgents,
         SimpleExecutionContext context,
-        ManagerLlm llm)
+        ManagerLlm llm, CancellationToken cancellationToken = default)
     {
         AssignTaskCallCount++;
         ManagerLlms.Add(llm);

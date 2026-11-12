@@ -42,7 +42,7 @@ namespace Orkeon.Infrastructure.Serialization
     /// across locales (decimal separators, date formats, etc.).
     /// </remarks>
     /// <seealso href="https://datatracker.ietf.org/doc/html/rfc4180">RFC 4180 — Common Format and MIME Type for CSV Files</seealso>
-    public class CsvHelperSerializer : ICsvSerializer
+    internal class CsvHelperSerializer : ICsvSerializer
     {
         private readonly CsvConfiguration _configuration;
 
@@ -90,19 +90,19 @@ namespace Orkeon.Infrastructure.Serialization
 
         /// <inheritdoc />
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="records"/> or <paramref name="stream"/> is null.</exception>
-        public Task SerializeAsync<T>(IEnumerable<T> records, Stream stream)
+        public Task SerializeAsync<T>(IEnumerable<T> records, Stream stream, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(records);
             ArgumentNullException.ThrowIfNull(stream);
 
-            return SerializeAsyncCore(records, stream, _configuration);
+            return SerializeAsyncCore(records, stream, _configuration, cancellationToken);
 
-            static async Task SerializeAsyncCore(IEnumerable<T> records, Stream stream, CsvConfiguration configuration)
+            static async Task SerializeAsyncCore(IEnumerable<T> records, Stream stream, CsvConfiguration configuration, CancellationToken cancellationToken)
             {
                 using var writer = new StreamWriter(stream);
                 using var csvWriter = new CsvWriter(writer, configuration);
 
-                await csvWriter.WriteRecordsAsync(records).ConfigureAwait(false);
+                await csvWriter.WriteRecordsAsync(records, cancellationToken).ConfigureAwait(false);
                 await csvWriter.FlushAsync().ConfigureAwait(false);
             }
         }
@@ -110,19 +110,19 @@ namespace Orkeon.Infrastructure.Serialization
         /// <inheritdoc />
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is null.</exception>
         /// <exception cref="CsvHelper.BadDataException">Thrown when the CSV input violates RFC 4180 quoting rules.</exception>
-        public Task<IEnumerable<T>> DeserializeAsync<T>(Stream stream)
+        public Task<IEnumerable<T>> DeserializeAsync<T>(Stream stream, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(stream);
 
-            return DeserializeAsyncCore(stream, _configuration);
+            return DeserializeAsyncCore(stream, _configuration, cancellationToken);
 
-            static async Task<IEnumerable<T>> DeserializeAsyncCore(Stream stream, CsvConfiguration configuration)
+            static async Task<IEnumerable<T>> DeserializeAsyncCore(Stream stream, CsvConfiguration configuration, CancellationToken cancellationToken)
             {
                 using var reader = new StreamReader(stream);
                 using var csvReader = new CsvReader(reader, configuration);
 
                 var records = new List<T>();
-                await foreach (var record in csvReader.GetRecordsAsync<T>().ConfigureAwait(false))
+                await foreach (var record in csvReader.GetRecordsAsync<T>(cancellationToken).ConfigureAwait(false))
                 {
                     records.Add(record);
                 }

@@ -21,15 +21,15 @@ enregistrant le vôtre **après** l'appel Orkeon.
 
 | Service | Défaut | Ce qu'il fait réellement | Le remplacer par |
 |---|---|---|---|
-| `IKnowledgeStore` | `InMemoryKnowledgeStore` | Store in-memory fonctionnel (store/retrieve/delete réels, rien ne persiste) — mais `SearchAsync` **ignore la requête** et retourne les premières entrées stockées. | Activer le sous-système RAG (`AddOrkeonRag(configuration)`) et utiliser son ingestion/récupération, ou enregistrer votre propre store. |
-| `ILlmCache` | `NullLlmCache` | Un cache qui rate toujours — change le coût, pas la justesse. | `services.AddSingleton<ILlmCache, VotreCache>();` |
-| `IMemorySystem` | `InMemoryMemorySystem` | Vraie implémentation en mémoire — correcte, juste pas persistante. | Configurer un provider persistant (`Memory:Provider`). |
-| `IAgentSelectionService` (FirstFit) | `SimpleAgentSelectionService` | Prend le **premier agent disponible** — le repli sûr explicite. | Passer `OrkeonApplicationOptions.AgentSelectionStrategy` à `Skill` (lexical) ou `Embedding` (sémantique — exige un vrai fournisseur d'embeddings), via `AddOrkeonApplication(o => …)` ou `services.Configure<OrkeonApplicationOptions>(…)`. |
+| `IKnowledgeStore` | un store en mémoire | Store in-memory fonctionnel (store/retrieve/delete réels, rien ne persiste) — mais `SearchAsync` **ignore la requête** et retourne les premières entrées stockées. | Activer le sous-système RAG (`AddOrkeonRag(configuration)`) et utiliser son ingestion/récupération, ou enregistrer votre propre store. |
+| `ILlmCache` | aucun cache | Un cache qui rate toujours — change le coût, pas la justesse. | `services.AddSingleton<ILlmCache, VotreCache>();` |
+| `IMemorySystem` | un système de mémoire en mémoire | Vraie implémentation en mémoire — correcte, juste pas persistante. | Configurer un provider persistant (`Memory:Provider`). |
+| `IAgentSelectionService` (FirstFit) | premier venu | Prend le **premier agent disponible** — le repli sûr explicite. | Passer `OrkeonApplicationOptions.AgentSelectionStrategy` à `Skill` (lexical) ou `Embedding` (sémantique — exige un vrai fournisseur d'embeddings), via `AddOrkeonApplication(o => …)` ou `services.Configure<OrkeonApplicationOptions>(…)`. |
 | `IEmbeddingProvider` | chaîne de résolution | BGE local (quand `AddOrkeonLocalEmbeddings()` est enregistré) → fournisseur distant via `Orkeon:Embeddings` → **fail-fast au premier usage** avec une exception actionnable. Jamais de repli hash silencieux. Une crew `memory: true` s'en sert dès son kickoff : sans lui, cette crew est refusée avant sa première tâche. | Enregistrer `AddOrkeonLocalEmbeddings()` ou configurer `Orkeon:Embeddings`. |
 
 > **`IAgentExecutionService`** n'est volontairement *pas* dans cette liste :
 > `AddOrkeonApplication()` enregistre le vrai `AgentExecutionService`
-> inconditionnellement (`AddScoped`). Le stub `NullAgentExecutionService` ne gagne
+> inconditionnellement (`AddScoped`). Le stub interne qui rend des résultats vides ne gagne
 > que dans un conteneur câblé avec `AddOrkeonInfrastructure()` **seul** (son
 > enregistrement est `TryAddScoped`). Pour substituer le vôtre dans un bootstrap
 > standard, enregistrez-le **après** `AddOrkeonApplication()`.
@@ -65,7 +65,7 @@ Orkeon), mais rien ne les annonce parce que rien ne manque.
 
 Un framework qui glisserait silencieusement un appel LLM, une dépendance réseau ou
 un store persistant derrière un défaut prendrait des décisions qui vous
-appartiennent. La contrepartie : un hôte fraîchement bootstrappé en fait moins
+appartiennent. La contrepartie : un hôte fraîchement amorcé en fait moins
 qu'un hôte configuré — et le dit dans le log, une fois par service, avec le
 correctif dans le message. Si vous voyez l'un de ces warnings en production, ce
 n'est jamais du bruit : une capacité que vous attendez probablement tourne sur son

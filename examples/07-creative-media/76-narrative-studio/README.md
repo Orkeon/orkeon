@@ -1,18 +1,18 @@
-# 76. Studio Narratif Création-Révision
+# 76. Narrative Studio: Creation-Revision
 
-> Une crew séquentielle enchaîne création et révision. La Composite memory maintient la cohérence sur 3 couches : session courante, univers narratif persistant, et chapitres épisodiques.
+> A sequential crew chains creation and revision: a plot writer and a dialogue writer create, an artistic director and a coherence editor revise. Crew memory carries the story from one chapter to the next.
 
 ## Quality
 
-💪 Robustesse — Creation puis revision, memoire composite 3 couches, coherence narrative
+💪 Robustness — Creation then revision, narrative coherence
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 4 — Plot Writer, Dialogue Writer, Artistic Director, Coherence Editor
 - **Tools**: `file_read`, `file_write`, `json_tool`
-- **Memory**: `InMemory` (Composite planned: ShortTerm + LongTerm + Episodic)
-- **Key features**: creation-revision hand-off, Composite memory 3 layers (planned), IKnowledgeSource (project bible)
+- **Memory**: crew memory enabled (`memory: true`)
+- **Key features**: creation-revision hand-off, IKnowledgeSource (project bible)
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -38,5 +38,5 @@ orkeon run examples/07-creative-media/76-narrative-studio/config.yaml \
 ## What this example demonstrates
 
 - Creation-revision workflow for narrative content
-- Three-layer memory maintaining session, universe, and episodic coherence
+- Crew memory maintaining coherence between chapters
 - Continuity verification across all narrative elements

@@ -100,7 +100,7 @@ dotnet_diagnostic.CA5394.severity = error
 
 # ── D1 API-shape ratchet (2026-06-14, wave R11.7) ─────────────────────────
 # The public-API-shape family resorbed to zero across all src projects and frozen
-# as errors (maintainer decision D1 = "fix everything", 0.9.0-beta breaking window).
+# as errors (maintainer decision D1 = "fix everything", taken while the API could still break).
 # - CA1002/CA2227/CA1819: exposed mutable collections are read-only (List<T>/T[] ->
 #   IReadOnlyList<T>; settable collection props -> init/get-only). Deserialization-
 #   aware: IConfiguration-bound options use Collection<T> get-only, YamlDotNet DTOs
@@ -140,7 +140,7 @@ dotnet_diagnostic.CA1031.severity = error
 
 # ── R6.9 Palier B wave 3 — src style / API-shape ratchet (2026-06-14) ──────
 # 219 src occurrences across 27 analyzer rules resorbed to zero (maintainer
-# decision "corrige tout"; 0.9.0-beta breaking window) and frozen as errors.
+# decision "corrige tout"; taken while the API could still break) and frozen as errors.
 # Multi-agent wave + per-bucket adversarial review. Resolution mix: REAL fixes
 # (add standard exception ctors CA1032; add operator-alternate methods CA2225;
 # match base parameter names CA1725; concrete internal types CA1859; make

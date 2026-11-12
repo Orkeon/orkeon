@@ -190,10 +190,12 @@ internal sealed class DecisionProbeRunner
             new ChoiceQuestion
             {
                 Instructions = JsonValue.Create("What is the customer's message about?"),
-                Criteria = ImmutableDictionary<string, JsonNode?>.Empty
-                    .Add("delivery", JsonValue.Create("A delivery problem"))
-                    .Add("billing", JsonValue.Create("A billing question"))
-                    .Add("account", JsonValue.Create("An account or login issue")),
+                Criteria = ImmutableDictionary.CreateRange(
+                [
+                    KeyValuePair.Create<string, JsonNode?>("delivery", JsonValue.Create("A delivery problem")),
+                    KeyValuePair.Create<string, JsonNode?>("billing", JsonValue.Create("A billing question")),
+                    KeyValuePair.Create<string, JsonNode?>("account", JsonValue.Create("An account or login issue")),
+                ]),
             },
             cancellationToken).ConfigureAwait(false);
 
@@ -236,12 +238,10 @@ internal sealed class DecisionProbeRunner
         var request = new DecisionRequest
         {
             State = new JsonObject { ["photo"] = ProbeImageId },
-            Assets = ImmutableDictionary<string, DecisionImage>.Empty.Add(
-                ProbeImageId,
-                new DecisionImage { Format = "png", DataBase64 = DecisionProbeImagePng }),
-            Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add(
-                "number",
-                new BoxQuestion { Instructions = JsonValue.Create("the number painted in `photo`") }),
+            Assets = ImmutableDictionary.CreateRange(
+                [KeyValuePair.Create(ProbeImageId, new DecisionImage { Format = "png", DataBase64 = DecisionProbeImagePng })]),
+            Questions = ImmutableDictionary.CreateRange(
+                [KeyValuePair.Create<string, DecisionQuestion>("number", new BoxQuestion { Instructions = JsonValue.Create("the number painted in `photo`") })]),
         };
 
         var response = await _model.DecideAsync(request, cancellationToken).ConfigureAwait(false);
@@ -264,8 +264,8 @@ internal sealed class DecisionProbeRunner
         var request = new DecisionRequest
         {
             State = JsonValue.Create(OversizedState(needle: null)),
-            Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add(
-                "refund", new NoulQuestion { Instructions = JsonValue.Create("Does the text mention a refund?") }),
+            Questions = ImmutableDictionary.CreateRange(
+                [KeyValuePair.Create<string, DecisionQuestion>("refund", new NoulQuestion { Instructions = JsonValue.Create("Does the text mention a refund?") })]),
         };
 
         try
@@ -330,9 +330,8 @@ internal sealed class DecisionProbeRunner
         {
             State = JsonValue.Create(OversizedState(LongContextNeedle)),
             LongContext = true,
-            Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add(
-                "refund",
-                new NoulQuestion { Instructions = JsonValue.Create("Does the customer ask for their money back?") }),
+            Questions = ImmutableDictionary.CreateRange(
+                [KeyValuePair.Create<string, DecisionQuestion>("refund", new NoulQuestion { Instructions = JsonValue.Create("Does the customer ask for their money back?") })]),
         };
 
         var response = await _model.DecideAsync(request, cancellationToken).ConfigureAwait(false);
@@ -374,7 +373,7 @@ internal sealed class DecisionProbeRunner
     private static DecisionRequest Request(string name, DecisionQuestion question) => new()
     {
         State = JsonValue.Create(ProbeState),
-        Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add(name, question),
+        Questions = ImmutableDictionary.CreateRange([KeyValuePair.Create(name, question)]),
     };
 
     internal static double IntersectionOverUnion(BoxCoordinates a, BoxCoordinates b)

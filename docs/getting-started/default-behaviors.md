@@ -19,15 +19,15 @@ exceptions are called out in their row — a service registered unconditionally
 
 | Service | Default | What it actually does | Replace it with |
 |---|---|---|---|
-| `IKnowledgeStore` | `InMemoryKnowledgeStore` | Working in-memory store (store/retrieve/delete are real, nothing persists) — but `SearchAsync` **ignores the query** and returns the first stored entries. | Enable the RAG subsystem (`AddOrkeonRag(configuration)`) and use its ingestion/retrieval, or register your own store. |
-| `ILlmCache` | `NullLlmCache` | A cache that always misses — changes cost, not correctness. | `services.AddSingleton<ILlmCache, YourCache>();` |
-| `IMemorySystem` | `InMemoryMemorySystem` | Real in-memory implementation — correct, just not persistent. | Configure a persistent provider (`Memory:Provider`). |
-| `IAgentSelectionService` (FirstFit) | `SimpleAgentSelectionService` | Picks the **first available agent** — the explicit safe fallback. | Set `OrkeonApplicationOptions.AgentSelectionStrategy` to `Skill` (lexical) or `Embedding` (semantic — requires a real embedding provider), via `AddOrkeonApplication(o => …)` or `services.Configure<OrkeonApplicationOptions>(…)`. |
+| `IKnowledgeStore` | an in-memory store | Working in-memory store (store/retrieve/delete are real, nothing persists) — but `SearchAsync` **ignores the query** and returns the first stored entries. | Enable the RAG subsystem (`AddOrkeonRag(configuration)`) and use its ingestion/retrieval, or register your own store. |
+| `ILlmCache` | no cache | A cache that always misses — changes cost, not correctness. | `services.AddSingleton<ILlmCache, YourCache>();` |
+| `IMemorySystem` | an in-memory memory system | Real in-memory implementation — correct, just not persistent. | Configure a persistent provider (`Memory:Provider`). |
+| `IAgentSelectionService` (FirstFit) | first fit | Picks the **first available agent** — the explicit safe fallback. | Set `OrkeonApplicationOptions.AgentSelectionStrategy` to `Skill` (lexical) or `Embedding` (semantic — requires a real embedding provider), via `AddOrkeonApplication(o => …)` or `services.Configure<OrkeonApplicationOptions>(…)`. |
 | `IEmbeddingProvider` | resolution chain | Local BGE (when `AddOrkeonLocalEmbeddings()` is registered) → remote provider from `Orkeon:Embeddings` → **fail-fast at first use** with an actionable exception. Never a silent hash fallback. A crew with `memory: true` uses it at kickoff, so without one that crew is refused before its first task. | Register `AddOrkeonLocalEmbeddings()` or configure `Orkeon:Embeddings`. |
 
 > **`IAgentExecutionService`** is *not* on this list on purpose: `AddOrkeonApplication()`
 > registers the real `AgentExecutionService` unconditionally (`AddScoped`). The
-> `NullAgentExecutionService` stub only wins in a container wired with
+> internal stub that returns empty results only wins in a container wired with
 > `AddOrkeonInfrastructure()` **alone** (its registration is `TryAddScoped`). To
 > substitute your own in a standard bootstrap, register it **after**
 > `AddOrkeonApplication()`.

@@ -18,15 +18,15 @@ identifiers, YAML keys, and tool names are always English.
 
 ## Run in Docker (simplest path)
 
-All 104 examples ship inside the `ghcr.io/orkeon/orkeon-runners` image with an
+All 104 examples ship inside the `ghcr.io/orkeon/orkeon` image with an
 `orkeon-example` helper — no .NET, no checkout:
 
 ```bash
 # one-time, on the host: pull the default model (Docker Desktop → Model Runner)
 docker model pull ai/granite-4.0-h-tiny
 
-docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
-  ghcr.io/orkeon/orkeon-runners
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD/out:/output" \
+  ghcr.io/orkeon/orkeon
 # then, inside the shell:
 orkeon-example list            # browse the examples
 orkeon-example run 1           # run #1 — trading examples dispatch automatically
@@ -159,7 +159,7 @@ The full generated catalog (process, agents, tools per example) lives in [INDEX.
 | 03 | [Finance & Trading](03-finance-trading/) | 15 | Finance & trading — algo trading, fraud detection, compliance, ESG (TypeScript crews + the shared `_tools/` module) |
 | 04 | [Health & Wellness](04-health-wellness/) | 10 | Health & wellness — diagnosis, nutrition, clinical trials, telemedicine |
 | 05 | [Education](05-education/) | 10 | Education & training — tutoring, exams, gamification, mentoring |
-| 06 | [Engineering & DevOps](06-engineering-devops/) | 12 | Engineering & DevOps — CI/CD, incident response, chaos engineering, TS-scripted codebase crews |
+| 06 | [Engineering & DevOps](06-engineering-devops/) | 11 | Engineering & DevOps — CI/CD, incident response, chaos engineering, TS-scripted codebase crews |
 | 07 | [Creative & Media](07-creative-media/) | 10 | Creative & media — narrative, podcast, music, worldbuilding |
 | 08 | [IoT & Smart Systems](08-iot-smart-systems/) | 10 | IoT, physical world & smart systems — smart home, fleet, energy |
 | 09 | [Experimental](09-experimental/) | 7 | Avant-garde & experimental — self-adaptive crews, civilization sim, graph orchestration, streaming |

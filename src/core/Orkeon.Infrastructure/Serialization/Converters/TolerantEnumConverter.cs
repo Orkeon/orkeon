@@ -24,7 +24,7 @@ namespace Orkeon.Infrastructure.Serialization.Converters;
 /// Write path uses camelCase to stay compatible with existing tool output
 /// (<c>"l1_Package"</c> is what previous rounds emitted).
 /// </remarks>
-public sealed class TolerantEnumConverterFactory : JsonConverterFactory
+internal sealed class TolerantEnumConverterFactory : JsonConverterFactory
 {
     /// <inheritdoc />
     public override bool CanConvert(Type typeToConvert)
@@ -50,7 +50,7 @@ public sealed class TolerantEnumConverterFactory : JsonConverterFactory
 /// Tolerant string↔enum converter. See <see cref="TolerantEnumConverterFactory"/>
 /// for the behaviour contract.
 /// </summary>
-public sealed class TolerantEnumConverter<TEnum> : JsonConverter<TEnum>
+internal sealed class TolerantEnumConverter<TEnum> : JsonConverter<TEnum>
     where TEnum : struct, Enum
 {
     // Pre-computed map: lowercase + underscores-stripped → exact enum name.

@@ -63,7 +63,7 @@ public sealed class GenerationCallFamiliesMeteringTests
 
         using (LlmUsageScope.Begin(crewId: context.CrewId.ToString()))
         {
-            await manager.AssignTaskAsync(task, [BuildAgent("Writer"), BuildAgent("Reviewer")], context, llm);
+            await manager.AssignTaskAsync(task, [BuildAgent("Writer"), BuildAgent("Reviewer")], context, llm, TestContext.Current.CancellationToken);
             await manager.ReviewOutputAsync(
                 new AppTaskOutput(task.Id.ToString(), null, "draft", DateTime.UtcNow, true, TimeSpan.Zero), task, llm,
                 TestContext.Current.CancellationToken);
@@ -94,7 +94,7 @@ public sealed class GenerationCallFamiliesMeteringTests
         {
             var item = MemoryItem.Create($"Similar content {i}", embedding: [1.0f, 0.0f, 0.0f], importance: 0.5f);
             similar.Add(new ScoredMemoryItem(item, 1f, item.Id.ToString()));
-            await memory.AddAsync(item);
+            await memory.AddAsync(item, TestContext.Current.CancellationToken);
         }
 
         using (LlmUsageScope.Begin(LlmUsageOperations.Agent, agentId: "Archivist", taskId: "task-7"))

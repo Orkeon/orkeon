@@ -204,15 +204,15 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
         request = request with { Path = AbsolutizePath(request.Path) };
         var regex = BuildRegex(request);
 
-        if (!await _fileSystemService.ExistsAsync(request.Path, cancellationToken).ConfigureAwait(false)
-            || await _fileSystemService.GetEntryKindAsync(request.Path, cancellationToken).ConfigureAwait(false) != VirtualEntryKind.Directory)
+        if (!await FileSystemService.ExistsAsync(request.Path, cancellationToken).ConfigureAwait(false)
+            || await FileSystemService.GetEntryKindAsync(request.Path, cancellationToken).ConfigureAwait(false) != VirtualEntryKind.Directory)
             throw new DirectoryNotFoundException($"Directory not found: {request.Path}");
 
         var location = $"{request.Path.TrimEnd('/')}/{request.Glob ?? "**/*"}";
-        var candidates = await SourceGlobExpander.ExpandAsync(_fileSystemService, [location], cancellationToken).ConfigureAwait(false);
+        var candidates = await SourceGlobExpander.ExpandAsync(FileSystemService, [location], cancellationToken).ConfigureAwait(false);
 
         var sizes = new Dictionary<string, long>(StringComparer.Ordinal);
-        await foreach (var entry in _fileSystemService
+        await foreach (var entry in FileSystemService
             .EnumerateFilesAsync(request.Path, new VirtualEnumerationOptions(Recursive: true), cancellationToken).ConfigureAwait(false))
             sizes[entry.VirtualPath] = entry.SizeBytes;
 
@@ -303,7 +303,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
     {
         var size = sizes.TryGetValue(path, out var known)
             ? known
-            : (await _fileSystemService.TryGetEntryAsync(path, cancellationToken).ConfigureAwait(false))?.SizeBytes;
+            : (await FileSystemService.TryGetEntryAsync(path, cancellationToken).ConfigureAwait(false))?.SizeBytes;
         if (size > MaxFileBytes) scan.Oversize = true;
         return size is null or > MaxFileBytes
             ? null
@@ -414,7 +414,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
     {
         try
         {
-            var bytes = await _fileSystemService.TryReadAllBytesAsync(virtualPath, cancellationToken).ConfigureAwait(false);
+            var bytes = await FileSystemService.TryReadAllBytesAsync(virtualPath, cancellationToken).ConfigureAwait(false);
             if (bytes is null) return null;
             var (encoding, bom) = EditFileTool.DetectEncoding(bytes);
             var text = encoding.GetString(bytes, bom.Length, bytes.Length - bom.Length);

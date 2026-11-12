@@ -5,7 +5,7 @@ namespace Orkeon.Application.Interfaces;
 /// <summary>
 /// Request to execute code in a sandbox environment.
 /// </summary>
-public record SandboxExecutionRequest
+public sealed record SandboxExecutionRequest
 {
     /// <summary>Code to execute.</summary>
     public string Code { get; init; } = string.Empty;
@@ -38,7 +38,7 @@ public record SandboxExecutionRequest
 /// <summary>
 /// Result of a sandbox code execution.
 /// </summary>
-public record SandboxExecutionResult
+public sealed record SandboxExecutionResult
 {
     /// <summary>Whether execution completed successfully.</summary>
     public bool Success { get; init; }
@@ -71,7 +71,7 @@ public record SandboxExecutionResult
 /// <summary>
 /// Permissions controlling what the sandbox can access.
 /// </summary>
-public record SandboxPermissions
+public sealed record SandboxPermissions
 {
     /// <summary>Allow reading files.</summary>
     public bool AllowFileRead { get; init; }
@@ -98,7 +98,7 @@ public record SandboxPermissions
 /// <summary>
 /// Describes what a sandbox implementation supports.
 /// </summary>
-public record SandboxCapabilities
+public sealed record SandboxCapabilities
 {
     /// <summary>Whether memory limits can be enforced.</summary>
     public bool SupportsMemoryLimits { get; init; }

@@ -20,7 +20,7 @@ Implemented providers:
 
 | Provider | Class | Namespace |
 |----------|-------|-----------|
-| OpenAI | `OpenAIProvider` (via `OpenAICompatibleProviderBase`) | `Orkeon.Infrastructure.LLMs` |
+| OpenAI | `OpenAILlmProvider` (via `OpenAICompatibleProviderBase`) | `Orkeon.Infrastructure.LLMs` |
 | Anthropic | `AnthropicLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Azure OpenAI | `AzureOpenAILlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Ollama | `OllamaLlmProvider` | `Orkeon.Infrastructure.LLMs` |
@@ -40,7 +40,7 @@ Implemented providers:
 Fourteen of them extend `OpenAICompatibleProviderBase` (itself an `HttpLlmProviderBase`);
 Anthropic and Ollama extend `HttpLlmProviderBase` directly, because their APIs are not
 OpenAI-shaped. Docker Model Runner and any other OpenAI-compatible server have no class of
-their own: they are driven by `OpenAIProvider` through their base URL. Endpoints, default
+their own: they are driven by `OpenAILlmProvider` through their base URL. Endpoints, default
 models and provider keys are shared constants in `Orkeon.Constants.Llm`
 (`LlmProviderEndpoints`, `LlmProviderDefaultModels`, `LlmProviderKeys`,
 `LlmModelOutputLimits`).

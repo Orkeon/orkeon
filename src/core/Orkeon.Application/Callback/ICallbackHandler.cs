@@ -35,7 +35,7 @@ public interface ICallbackHandler
 /// <summary>
 /// Context provided when an agent step starts.
 /// </summary>
-public record StepStartedContext(
+public sealed record StepStartedContext(
     string AgentId,
     string AgentRole,
     string TaskId,
@@ -46,7 +46,7 @@ public record StepStartedContext(
 /// <summary>
 /// Groups the identity fields for a step (agent + task).
 /// </summary>
-public record StepIdentity(
+public sealed record StepIdentity(
     string AgentId,
     string AgentRole,
     string TaskId);
@@ -54,7 +54,7 @@ public record StepIdentity(
 /// <summary>
 /// Context provided when an agent step completes.
 /// </summary>
-public record StepCompletedContext(
+public sealed record StepCompletedContext(
     StepIdentity Step,
     string Action,
     string Thought,
@@ -74,7 +74,7 @@ public record StepCompletedContext(
 /// <summary>
 /// Context provided when a task starts.
 /// </summary>
-public record TaskStartedContext(
+public sealed record TaskStartedContext(
     string TaskId,
     string Description,
     string ExpectedOutput,
@@ -85,7 +85,7 @@ public record TaskStartedContext(
 /// <summary>
 /// Groups the outcome fields for a completed task.
 /// </summary>
-public record TaskExecutionOutcome(
+public sealed record TaskExecutionOutcome(
     bool Success,
     string? Output,
     object? StructuredOutput,
@@ -94,7 +94,7 @@ public record TaskExecutionOutcome(
 /// <summary>
 /// Context provided when a task completes.
 /// </summary>
-public record TaskCompletedContext(
+public sealed record TaskCompletedContext(
     string TaskId,
     string? AgentId,
     TaskExecutionOutcome Outcome,

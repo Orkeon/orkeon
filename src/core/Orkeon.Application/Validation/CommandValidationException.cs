@@ -1,11 +1,8 @@
-using System.Runtime.Serialization;
-
 namespace Orkeon.Application.Validation;
 
 /// <summary>
 /// Exception thrown when command validation fails.
 /// </summary>
-[Serializable]
 public class CommandValidationException : Exception
 {
     /// <summary>
@@ -47,15 +44,4 @@ public class CommandValidationException : Exception
     {
         Errors = Array.Empty<string>();
     }
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="CommandValidationException"/> for deserialization.
-    /// </summary>
-#pragma warning disable CA2229, SYSLIB0051 // Required by S3925 ISerializable pattern
-    protected CommandValidationException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        Errors = Array.Empty<string>();
-    }
-#pragma warning restore CA2229, SYSLIB0051
 }

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Memory;
 using Orkeon.Application.Interfaces.Services;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 

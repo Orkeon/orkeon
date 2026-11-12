@@ -6,7 +6,7 @@ namespace Orkeon.Application.Crew.Commands.CreateCrew;
 /// <summary>
 /// Command to create a new crew.
 /// </summary>
-public record CreateCrewCommand(
+public sealed record CreateCrewCommand(
     string Name,
     string Goal,
     Domain.SharedKernel.ValueObjects.ProcessType ProcessType,

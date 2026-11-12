@@ -3,7 +3,7 @@ namespace Orkeon.Host;
 /// <summary>
 /// How a hosted crew behaves once the service owns it rather than a terminal.
 /// <para>
-/// rc.2 ships exactly one axis. The spec sketched four (interactive, persistent, chat,
+/// The host ships exactly one axis. The spec sketched four (interactive, persistent, chat,
 /// concurrency); the review found the first three bound from configuration and read by
 /// nothing — an operator could flip them and change nothing at all, and the documentation
 /// credited one of them as a defence. Configuration surface that does nothing is worse than

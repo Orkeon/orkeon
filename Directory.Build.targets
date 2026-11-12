@@ -1,4 +1,30 @@
 <Project>
+  <!-- NuGet lock files (owner decision D12): every project of Orkeon.sln and of the examples
+       records its resolved dependency graph in packages.lock.json, committed next to it.
+       Locked mode is on in CI (the CI variable GitHub Actions sets): a restore that would
+       resolve differently from the committed graph fails instead of drifting, so the packages
+       are built from the graph that was reviewed. Locally the restore stays unlocked and
+       rewrites the lock file when a package changes: commit it with the change.
+       A lane that restores a graph the lock file does not describe opts out by passing
+       -p:RestoreLockedMode=false (the .NET 11 SDK lane of ci.yml). The lock file records the
+       RID-less net10.0 graph; a restore with -r or another TargetFramework is a different graph.
+       Conditioned on central package management for the same reason as the compiler toolset
+       of Directory.Build.props: nested checkouts mounted under this one are not locked by this
+       repository. It lives in this .targets file because Directory.Packages.props, which sets
+       that property, is imported after Directory.Build.props: here the condition sees it.
+       A restore with a RuntimeIdentifier (the per-RID publishes of package-installers.sh/.ps1
+       and of the Dockerfiles) resolves a graph the committed file does not hold: it writes its
+       own lock file under the intermediate folder and is not locked, so it never rewrites the
+       committed packages.lock.json that a later locked restore of the same job reads (the SBOM
+       step of release.yml after the installers, NU1004 otherwise). -->
+  <PropertyGroup Condition="'$(ManagePackageVersionsCentrally)' == 'true' and '$(RuntimeIdentifier)' != ''">
+    <NuGetLockFilePath Condition="'$(NuGetLockFilePath)' == ''">$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)', 'packages.$(RuntimeIdentifier).lock.json'))</NuGetLockFilePath>
+    <RestoreLockedMode Condition="'$(RestoreLockedMode)' == ''">false</RestoreLockedMode>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(ManagePackageVersionsCentrally)' == 'true'">
+    <RestorePackagesWithLockFile Condition="'$(RestorePackagesWithLockFile)' == ''">true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true' and '$(RestoreLockedMode)' == ''">true</RestoreLockedMode>
+  </PropertyGroup>
   <!-- Native libraries of the current runtime only (2026-10-22).
 
        A build without a RuntimeIdentifier copies every native asset of every

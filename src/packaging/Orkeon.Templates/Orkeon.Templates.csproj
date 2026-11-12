@@ -12,6 +12,9 @@
        repository there is no Directory.Packages.props to manage them. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- Template content package: no dependency graph to lock, and a lock file beside the
+         templates must never ship to a user (D12). -->
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
     <PackageId>Orkeon.Templates</PackageId>
     <PackageType>Template</PackageType>
     <Description>dotnet new templates for Orkeon: orkeon-host (a generic host that runs a crew), orkeon-plugin (a plugin with its plugin.json) and orkeon-tool (a tool class).</Description>

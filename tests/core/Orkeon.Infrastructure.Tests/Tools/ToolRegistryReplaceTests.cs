@@ -13,10 +13,10 @@ public sealed class ToolRegistryReplaceTests
         var replacement = new MockTool("t");
         var registry = new ToolRegistry([current]);
 
-        var swapped = await registry.ReplaceToolAsync(current, replacement);
+        var swapped = await registry.ReplaceToolAsync(current, replacement, TestContext.Current.CancellationToken);
 
         Assert.True(swapped);
-        Assert.Same(replacement, await registry.GetToolByNameAsync("t"));
+        Assert.Same(replacement, await registry.GetToolByNameAsync("t", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -25,10 +25,10 @@ public sealed class ToolRegistryReplaceTests
         var holder = new MockTool("t");
         var registry = new ToolRegistry([holder]);
 
-        var swapped = await registry.ReplaceToolAsync(new MockTool("t"), new MockTool("t"));
+        var swapped = await registry.ReplaceToolAsync(new MockTool("t"), new MockTool("t"), TestContext.Current.CancellationToken);
 
         Assert.False(swapped);
-        Assert.Same(holder, await registry.GetToolByNameAsync("t"));
+        Assert.Same(holder, await registry.GetToolByNameAsync("t", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -37,6 +37,6 @@ public sealed class ToolRegistryReplaceTests
         var current = new MockTool("t");
         var registry = new ToolRegistry([current]);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => registry.ReplaceToolAsync(current, new MockTool("other")));
+        await Assert.ThrowsAsync<ArgumentException>(() => registry.ReplaceToolAsync(current, new MockTool("other"), TestContext.Current.CancellationToken));
     }
 }

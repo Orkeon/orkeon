@@ -9,7 +9,7 @@ namespace Orkeon.Application.Context;
 /// <summary>
 /// SimpleExecutionContext type.
 /// </summary>
-public record SimpleExecutionContext(
+public sealed record SimpleExecutionContext(
     CrewId CrewId,
     Dictionary<string, string> Variables,
     IMemoryScope Memory,

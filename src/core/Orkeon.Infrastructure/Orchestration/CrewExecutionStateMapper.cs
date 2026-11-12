@@ -1,3 +1,4 @@
+using Orkeon.Application.Common.DTOs;
 using System.Text.Json;
 using Orkeon.Application.Execution;
 using Orkeon.Application.Interfaces.Checkpointing;
@@ -21,7 +22,7 @@ namespace Orkeon.Infrastructure.Orchestration;
 /// (<see cref="StateDocumentKey"/>, kept in <c>Pending</c> status so it is never counted
 /// as a completed task by session summaries).
 /// </remarks>
-public static class CrewExecutionStateMapper
+internal static class CrewExecutionStateMapper
 {
     /// <summary>Namespace prefix isolating execution-state sessions in a shared store.</summary>
     public const string SessionNamespace = "crew-exec:";
@@ -256,8 +257,11 @@ public static class CrewExecutionStateMapper
             TaskOutputs: taskOutputs,
             Duration: persisted.Duration,
             TokensUsed: persisted.TokensMeasured
-                ? new TokenUsage(persisted.PromptTokens, persisted.CompletionTokens, persisted.TotalTokens)
+                ? new TokenUsage
                 {
+                    PromptTokens = persisted.PromptTokens,
+                    CompletionTokens = persisted.CompletionTokens,
+                    TotalTokens = persisted.TotalTokens,
                     CacheHitTokens = persisted.CacheHitTokens,
                     CacheMissTokens = persisted.CacheMissTokens,
                 }

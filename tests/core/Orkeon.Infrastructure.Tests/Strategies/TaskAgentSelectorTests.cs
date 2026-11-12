@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Memory;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Agent.ValueObjects;
@@ -163,7 +164,7 @@ public sealed class TaskAgentSelectorTests
     {
         private static readonly float[] s_vector = [1f, 0f, 0f];
 
-        public System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text) =>
+        public System.Threading.Tasks.Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default) =>
             System.Threading.Tasks.Task.FromResult(s_vector);
     }
 }

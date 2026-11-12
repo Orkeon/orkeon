@@ -184,14 +184,14 @@ Orkeon.Tools.Web.FirefoxToolOptions.StartupTimeoutSeconds.get -> int
 Orkeon.Tools.Web.FirefoxToolOptions.StartupTimeoutSeconds.set -> void
 Orkeon.Tools.Web.GeneratedImage
 Orkeon.Tools.Web.GeneratedImage.Base64.get -> string?
-Orkeon.Tools.Web.GeneratedImage.Base64.set -> void
+Orkeon.Tools.Web.GeneratedImage.Base64.init -> void
 Orkeon.Tools.Web.GeneratedImage.GeneratedImage() -> void
 Orkeon.Tools.Web.GeneratedImage.RevisedPrompt.get -> string?
-Orkeon.Tools.Web.GeneratedImage.RevisedPrompt.set -> void
+Orkeon.Tools.Web.GeneratedImage.RevisedPrompt.init -> void
 Orkeon.Tools.Web.GeneratedImage.SavedPath.get -> string?
-Orkeon.Tools.Web.GeneratedImage.SavedPath.set -> void
+Orkeon.Tools.Web.GeneratedImage.SavedPath.init -> void
 Orkeon.Tools.Web.GeneratedImage.Url.get -> System.Uri?
-Orkeon.Tools.Web.GeneratedImage.Url.set -> void
+Orkeon.Tools.Web.GeneratedImage.Url.init -> void
 Orkeon.Tools.Web.GitHubItem
 Orkeon.Tools.Web.GitHubItem.<Clone>$() -> Orkeon.Tools.Web.GitHubItem!
 Orkeon.Tools.Web.GitHubItem.Body.get -> string!
@@ -254,30 +254,30 @@ Orkeon.Tools.Web.GitHubToolOptions.TokenVariable.get -> string!
 Orkeon.Tools.Web.GitHubToolOptions.TokenVariable.set -> void
 Orkeon.Tools.Web.HttpApiRequest
 Orkeon.Tools.Web.HttpApiRequest.Body.get -> string?
-Orkeon.Tools.Web.HttpApiRequest.Body.set -> void
+Orkeon.Tools.Web.HttpApiRequest.Body.init -> void
 Orkeon.Tools.Web.HttpApiRequest.ContentType.get -> string!
-Orkeon.Tools.Web.HttpApiRequest.ContentType.set -> void
+Orkeon.Tools.Web.HttpApiRequest.ContentType.init -> void
 Orkeon.Tools.Web.HttpApiRequest.Headers.get -> object?
-Orkeon.Tools.Web.HttpApiRequest.Headers.set -> void
+Orkeon.Tools.Web.HttpApiRequest.Headers.init -> void
 Orkeon.Tools.Web.HttpApiRequest.HttpApiRequest() -> void
 Orkeon.Tools.Web.HttpApiRequest.Method.get -> string!
-Orkeon.Tools.Web.HttpApiRequest.Method.set -> void
+Orkeon.Tools.Web.HttpApiRequest.Method.init -> void
 Orkeon.Tools.Web.HttpApiRequest.Url.get -> System.Uri?
-Orkeon.Tools.Web.HttpApiRequest.Url.set -> void
+Orkeon.Tools.Web.HttpApiRequest.Url.init -> void
 Orkeon.Tools.Web.HttpApiResponse
 Orkeon.Tools.Web.HttpApiResponse.Body.get -> string!
-Orkeon.Tools.Web.HttpApiResponse.Body.set -> void
+Orkeon.Tools.Web.HttpApiResponse.Body.init -> void
 Orkeon.Tools.Web.HttpApiResponse.HeaderWarnings.get -> System.Collections.Generic.IReadOnlyList<string!>?
 Orkeon.Tools.Web.HttpApiResponse.HeaderWarnings.init -> void
-Orkeon.Tools.Web.HttpApiResponse.Headers.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Tools.Web.HttpApiResponse.Headers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 Orkeon.Tools.Web.HttpApiResponse.Headers.init -> void
 Orkeon.Tools.Web.HttpApiResponse.HttpApiResponse() -> void
 Orkeon.Tools.Web.HttpApiResponse.IsSuccess.get -> bool
-Orkeon.Tools.Web.HttpApiResponse.IsSuccess.set -> void
+Orkeon.Tools.Web.HttpApiResponse.IsSuccess.init -> void
 Orkeon.Tools.Web.HttpApiResponse.StatusCode.get -> int
-Orkeon.Tools.Web.HttpApiResponse.StatusCode.set -> void
+Orkeon.Tools.Web.HttpApiResponse.StatusCode.init -> void
 Orkeon.Tools.Web.HttpApiResponse.StatusDescription.get -> string!
-Orkeon.Tools.Web.HttpApiResponse.StatusDescription.set -> void
+Orkeon.Tools.Web.HttpApiResponse.StatusDescription.init -> void
 Orkeon.Tools.Web.HttpApiTool
 Orkeon.Tools.Web.HttpApiTool.HttpApiTool(Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.HttpApiTool!>? logger = null) -> void
 Orkeon.Tools.Web.HttpApiTool.HttpApiTool(System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.HttpApiTool!>? logger = null) -> void
@@ -285,27 +285,27 @@ Orkeon.Tools.Web.HttpApiTool.HttpApiTool(System.Net.Http.IHttpClientFactory! htt
 Orkeon.Tools.Web.ImageGenerationRequest
 Orkeon.Tools.Web.ImageGenerationRequest.ImageGenerationRequest() -> void
 Orkeon.Tools.Web.ImageGenerationRequest.Model.get -> string!
-Orkeon.Tools.Web.ImageGenerationRequest.Model.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.Model.init -> void
 Orkeon.Tools.Web.ImageGenerationRequest.NumberOfImages.get -> int
-Orkeon.Tools.Web.ImageGenerationRequest.NumberOfImages.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.NumberOfImages.init -> void
 Orkeon.Tools.Web.ImageGenerationRequest.Prompt.get -> string!
-Orkeon.Tools.Web.ImageGenerationRequest.Prompt.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.Prompt.init -> void
 Orkeon.Tools.Web.ImageGenerationRequest.Quality.get -> string!
-Orkeon.Tools.Web.ImageGenerationRequest.Quality.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.Quality.init -> void
 Orkeon.Tools.Web.ImageGenerationRequest.ResponseFormat.get -> string!
-Orkeon.Tools.Web.ImageGenerationRequest.ResponseFormat.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.ResponseFormat.init -> void
 Orkeon.Tools.Web.ImageGenerationRequest.SaveToPath.get -> string?
-Orkeon.Tools.Web.ImageGenerationRequest.SaveToPath.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.SaveToPath.init -> void
 Orkeon.Tools.Web.ImageGenerationRequest.Size.get -> string!
-Orkeon.Tools.Web.ImageGenerationRequest.Size.set -> void
+Orkeon.Tools.Web.ImageGenerationRequest.Size.init -> void
 Orkeon.Tools.Web.ImageGenerationResponse
 Orkeon.Tools.Web.ImageGenerationResponse.ImageCount.get -> int
-Orkeon.Tools.Web.ImageGenerationResponse.ImageCount.set -> void
+Orkeon.Tools.Web.ImageGenerationResponse.ImageCount.init -> void
 Orkeon.Tools.Web.ImageGenerationResponse.ImageGenerationResponse() -> void
 Orkeon.Tools.Web.ImageGenerationResponse.Images.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.GeneratedImage!>!
 Orkeon.Tools.Web.ImageGenerationResponse.Images.init -> void
 Orkeon.Tools.Web.ImageGenerationResponse.Model.get -> string!
-Orkeon.Tools.Web.ImageGenerationResponse.Model.set -> void
+Orkeon.Tools.Web.ImageGenerationResponse.Model.init -> void
 Orkeon.Tools.Web.ImageGenerationTool
 Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Security.ISecretProvider! secretProvider, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
 Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Security.ISecretProvider! secretProvider, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
@@ -339,7 +339,7 @@ Orkeon.Tools.Web.ScrapeElementTool
 Orkeon.Tools.Web.ScrapeElementTool.ScrapeElementTool(Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ScrapeElementTool!>? logger = null) -> void
 Orkeon.Tools.Web.ScrapeElementTool.ScrapeElementTool(System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ScrapeElementTool!>? logger = null) -> void
 Orkeon.Tools.Web.ScrapedElement
-Orkeon.Tools.Web.ScrapedElement.Attributes.get -> System.Collections.Generic.Dictionary<string!, string!>?
+Orkeon.Tools.Web.ScrapedElement.Attributes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
 Orkeon.Tools.Web.ScrapedElement.Attributes.init -> void
 Orkeon.Tools.Web.ScrapedElement.Html.get -> string?
 Orkeon.Tools.Web.ScrapedElement.Html.init -> void
@@ -363,44 +363,44 @@ Orkeon.Tools.Web.SlackMessage.Username.get -> string!
 Orkeon.Tools.Web.SlackMessage.Username.init -> void
 Orkeon.Tools.Web.SlackReadMessagesRequest
 Orkeon.Tools.Web.SlackReadMessagesRequest.Channel.get -> string!
-Orkeon.Tools.Web.SlackReadMessagesRequest.Channel.set -> void
+Orkeon.Tools.Web.SlackReadMessagesRequest.Channel.init -> void
 Orkeon.Tools.Web.SlackReadMessagesRequest.Limit.get -> int
-Orkeon.Tools.Web.SlackReadMessagesRequest.Limit.set -> void
+Orkeon.Tools.Web.SlackReadMessagesRequest.Limit.init -> void
 Orkeon.Tools.Web.SlackReadMessagesRequest.Oldest.get -> string?
-Orkeon.Tools.Web.SlackReadMessagesRequest.Oldest.set -> void
+Orkeon.Tools.Web.SlackReadMessagesRequest.Oldest.init -> void
 Orkeon.Tools.Web.SlackReadMessagesRequest.SlackReadMessagesRequest() -> void
 Orkeon.Tools.Web.SlackReadMessagesResponse
 Orkeon.Tools.Web.SlackReadMessagesResponse.Channel.get -> string!
-Orkeon.Tools.Web.SlackReadMessagesResponse.Channel.set -> void
+Orkeon.Tools.Web.SlackReadMessagesResponse.Channel.init -> void
 Orkeon.Tools.Web.SlackReadMessagesResponse.Error.get -> string?
-Orkeon.Tools.Web.SlackReadMessagesResponse.Error.set -> void
+Orkeon.Tools.Web.SlackReadMessagesResponse.Error.init -> void
 Orkeon.Tools.Web.SlackReadMessagesResponse.MessageCount.get -> int
-Orkeon.Tools.Web.SlackReadMessagesResponse.MessageCount.set -> void
+Orkeon.Tools.Web.SlackReadMessagesResponse.MessageCount.init -> void
 Orkeon.Tools.Web.SlackReadMessagesResponse.Messages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Web.SlackMessage!>!
 Orkeon.Tools.Web.SlackReadMessagesResponse.Messages.init -> void
 Orkeon.Tools.Web.SlackReadMessagesResponse.SlackReadMessagesResponse() -> void
 Orkeon.Tools.Web.SlackReadMessagesResponse.Success.get -> bool
-Orkeon.Tools.Web.SlackReadMessagesResponse.Success.set -> void
+Orkeon.Tools.Web.SlackReadMessagesResponse.Success.init -> void
 Orkeon.Tools.Web.SlackReadTool
 Orkeon.Tools.Web.SlackReadTool.SlackReadTool(string! botToken, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.SlackReadTool!>? logger = null) -> void
 Orkeon.Tools.Web.SlackSendMessageRequest
 Orkeon.Tools.Web.SlackSendMessageRequest.Channel.get -> string!
-Orkeon.Tools.Web.SlackSendMessageRequest.Channel.set -> void
+Orkeon.Tools.Web.SlackSendMessageRequest.Channel.init -> void
 Orkeon.Tools.Web.SlackSendMessageRequest.Message.get -> string!
-Orkeon.Tools.Web.SlackSendMessageRequest.Message.set -> void
+Orkeon.Tools.Web.SlackSendMessageRequest.Message.init -> void
 Orkeon.Tools.Web.SlackSendMessageRequest.SlackSendMessageRequest() -> void
 Orkeon.Tools.Web.SlackSendMessageRequest.ThreadTs.get -> string?
-Orkeon.Tools.Web.SlackSendMessageRequest.ThreadTs.set -> void
+Orkeon.Tools.Web.SlackSendMessageRequest.ThreadTs.init -> void
 Orkeon.Tools.Web.SlackSendMessageResponse
 Orkeon.Tools.Web.SlackSendMessageResponse.Channel.get -> string!
-Orkeon.Tools.Web.SlackSendMessageResponse.Channel.set -> void
+Orkeon.Tools.Web.SlackSendMessageResponse.Channel.init -> void
 Orkeon.Tools.Web.SlackSendMessageResponse.Error.get -> string?
-Orkeon.Tools.Web.SlackSendMessageResponse.Error.set -> void
+Orkeon.Tools.Web.SlackSendMessageResponse.Error.init -> void
 Orkeon.Tools.Web.SlackSendMessageResponse.SlackSendMessageResponse() -> void
 Orkeon.Tools.Web.SlackSendMessageResponse.Success.get -> bool
-Orkeon.Tools.Web.SlackSendMessageResponse.Success.set -> void
+Orkeon.Tools.Web.SlackSendMessageResponse.Success.init -> void
 Orkeon.Tools.Web.SlackSendMessageResponse.Timestamp.get -> string!
-Orkeon.Tools.Web.SlackSendMessageResponse.Timestamp.set -> void
+Orkeon.Tools.Web.SlackSendMessageResponse.Timestamp.init -> void
 Orkeon.Tools.Web.SlackTool
 Orkeon.Tools.Web.SlackTool.SlackTool(string! botToken, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.SlackTool!>? logger = null) -> void
 Orkeon.Tools.Web.WebScrapeRequest

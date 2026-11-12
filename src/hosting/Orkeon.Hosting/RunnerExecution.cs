@@ -895,7 +895,7 @@ public static partial class RunnerExecution
         }
 
         if (opts.ListTools)
-            return await RunListToolsAsync(opts, loggerCategory, configureServices).ConfigureAwait(false);
+            return await RunListToolsAsync(opts, loggerCategory, configureServices, externalCt).ConfigureAwait(false);
         if (opts.Validate)
             return await RunValidateAsync(opts, loggerCategory, configureServices, externalCt).ConfigureAwait(false);
 
@@ -1708,7 +1708,7 @@ public static partial class RunnerExecution
             var registry = sp.GetRequiredService<Orkeon.Domain.Tools.IToolRegistry>();
             foreach (var tool in scriptTools)
             {
-                if (!await registry.RegisterToolAsync(tool).ConfigureAwait(false))
+                if (!await registry.RegisterToolAsync(tool, ct).ConfigureAwait(false))
                 {
                     throw new InvalidOperationException(
                         $"Script tool '{tool.Name}' collides with an already-registered tool of the same name. "

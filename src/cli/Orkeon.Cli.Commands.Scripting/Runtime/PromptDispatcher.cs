@@ -29,7 +29,7 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// <c>CompleteInput()</c>; the runner cancels the linked CTS on Ctrl+C).
 /// </para>
 /// </remarks>
-public static class PromptDispatcher
+internal static class PromptDispatcher
 {
     /// <summary>
     /// Dispatches based on the JS-side <c>spec.type</c> string. Returns the answer as a

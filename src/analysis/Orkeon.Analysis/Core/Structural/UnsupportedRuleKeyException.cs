@@ -1,12 +1,7 @@
-using System.Runtime.Serialization;
-
 namespace Orkeon.Analysis.Core.Structural;
 
-[Serializable]
 public sealed class UnsupportedRuleKeyException : Exception
 {
-    private const string KeyKey = "Key";
-
     public UnsupportedRuleKeyException()
     {
     }
@@ -23,19 +18,4 @@ public sealed class UnsupportedRuleKeyException : Exception
     }
 
     public string Key { get; } = string.Empty;
-
-    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
-    private UnsupportedRuleKeyException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        Key = info.GetString(KeyKey) ?? string.Empty;
-    }
-
-    /// <inheritdoc />
-    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
-    public override void GetObjectData(SerializationInfo info, StreamingContext context)
-    {
-        base.GetObjectData(info, context);
-        info.AddValue(KeyKey, Key);
-    }
 }

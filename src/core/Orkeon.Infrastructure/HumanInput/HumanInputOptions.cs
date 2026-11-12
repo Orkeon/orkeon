@@ -17,7 +17,6 @@ public sealed class HumanInputOptions
 }
 
 /// <summary>Raised when the headless policy refuses a request.</summary>
-[Serializable]
 public sealed class HumanInputRefusedException : InvalidOperationException
 {
     /// <summary>Initializes a new instance.</summary>
@@ -28,10 +27,4 @@ public sealed class HumanInputRefusedException : InvalidOperationException
 
     /// <summary>Initializes a new instance.</summary>
     public HumanInputRefusedException(string message, Exception innerException) : base(message, innerException) { }
-
-    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
-    private HumanInputRefusedException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
-        : base(info, context)
-    {
-    }
 }

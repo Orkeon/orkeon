@@ -10,7 +10,7 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// them at the cursor position of the REPL <c>_input</c> field, which is the
 /// only editable surface in the split-pane.
 /// </summary>
-public static class MouseClipboardBehavior
+internal static class MouseClipboardBehavior
 {
     /// <summary>
     /// Subscribes to <see cref="Application.MouseEvent"/> and, on a right-click,

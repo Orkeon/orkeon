@@ -65,7 +65,7 @@ public interface IQueryableAuditSink : IAuditSink
 /// <summary>
 /// Query parameters for searching audit events.
 /// </summary>
-public record AuditQuery(
+public sealed record AuditQuery(
     AuditCategory? Category = null,
     string? CorrelationId = null,
     string? AgentRole = null,

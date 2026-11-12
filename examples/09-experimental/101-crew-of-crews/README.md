@@ -1,4 +1,4 @@
-# 101. Crew de Crews — L'Orchestre des Orchestres
+# 101. Crew of Crews — The Orchestra of Orchestras
 
 > The ultimate case: a meta-crew where each "agent" is itself a complete crew. The Conductor routes tasks to sub-crews via semantic embedding selection. Sub-crews communicate via A2A and share Redis memory. This example demonstrates all four framework qualities simultaneously.
 
@@ -12,7 +12,7 @@
 - **Agents**: 5 leads — Conductor (manager), Research Lead (5 agents), Development Lead (4 agents), Test Lead (3 agents), Documentation Lead (3 agents)
 - **Tools**: `web_scrape`, `http_api`, `json_tool`, `file_write`, `file_read`, `shell_command`, `directory_read`, `semantic_search`
 - **Memory**: `Redis` (shared inter-crew) + `SQLite` (per sub-crew)
-- **Key features**: Semantic embedding selection, A2A protocol (inter-crews), ICheckpointManager (per level), Feedback communication, CrewHooks, INistComplianceReporter, AuditEventTypes, IConfigurationVersioning (planned), EvaluationSuite
+- **Key features**: Semantic embedding selection, A2A protocol (inter-crews), ICheckpointManager (per level), Feedback communication, CrewHooks, INistComplianceReporter, AuditEventTypes, EvaluationSuite
 - **Runner**: `standard`
 
 ## Prerequisites

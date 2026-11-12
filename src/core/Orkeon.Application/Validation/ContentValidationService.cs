@@ -21,7 +21,7 @@ public interface IContentValidationService
 /// <summary>
 /// Result of content validation, containing any validation errors.
 /// </summary>
-public record ContentValidationResult(bool IsValid, IReadOnlyList<string> Errors)
+public sealed record ContentValidationResult(bool IsValid, IReadOnlyList<string> Errors)
 {
     /// <summary>
     /// Valid.

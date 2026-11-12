@@ -15,7 +15,7 @@ public sealed class StubAcceptingManagerAgent : IManagerAgent
 {
     /// <inheritdoc />
     public Task<TaskAssignment> AssignTaskAsync(
-        DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context, ManagerLlm llm) =>
+        DomainTask task, IReadOnlyList<DomainAgent> availableAgents, SimpleExecutionContext context, ManagerLlm llm, CancellationToken cancellationToken = default) =>
         Task.FromResult(new TaskAssignment(task.Id, availableAgents[0].Id, "first worker", DateTime.UtcNow));
 
     /// <inheritdoc />

@@ -45,7 +45,7 @@ public record ScrapedElement
     public string? Html { get; init; }
 
     /// <summary>Gets the HTML attributes (only populated when ExtractAttributes is true).</summary>
-    public Dictionary<string, string>? Attributes { get; init; }
+    public IReadOnlyDictionary<string, string>? Attributes { get; init; }
 
     /// <summary>Gets the zero-based position of this element in the result set.</summary>
     public int Index { get; init; }
@@ -152,7 +152,7 @@ public partial class ScrapeElementTool : HttpToolBase<ScrapeElementRequest, Scra
                 throw new InvalidOperationException($"URL blocked: {urlValidation.DenialReason}");
 
             var uri = urlValidation.ValidatedUri!;
-            var html = await _httpClient.GetStringAsync(uri, cancellationToken).ConfigureAwait(false);
+            var html = await HttpClient.GetStringAsync(uri, cancellationToken).ConfigureAwait(false);
 
             var parser = new HtmlParser();
             using var document = await parser.ParseDocumentAsync(html, cancellationToken).ConfigureAwait(false);
@@ -171,7 +171,7 @@ public partial class ScrapeElementTool : HttpToolBase<ScrapeElementRequest, Scra
                 elements.Add(BuildElement(node, i, request.ExtractAttributes, request.IncludeHtml));
             }
 
-            LogScrapedElements(request.Url, request.CssSelector, totalCount, elements.Count);
+            LogScrapedElements(Logger, request.Url, request.CssSelector, totalCount, elements.Count);
 
             return new ScrapeElementResponse
             {
@@ -230,5 +230,5 @@ public partial class ScrapeElementTool : HttpToolBase<ScrapeElementRequest, Scra
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Scraped {Url} with selector '{CssSelector}': {TotalCount} found, {ReturnedCount} returned")]
-    private partial void LogScrapedElements(Uri url, string cssSelector, int totalCount, int returnedCount);
+    private static partial void LogScrapedElements(ILogger logger, Uri url, string cssSelector, int totalCount, int returnedCount);
 }

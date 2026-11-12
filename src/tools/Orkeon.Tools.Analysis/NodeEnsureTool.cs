@@ -48,7 +48,7 @@ public sealed class NodeEnsureTool : FileToolBase<NodeEnsureRequest, NodeEnsureR
     private readonly StructuralEditEngine _engine;
     private readonly IIndexInvalidation? _indexInvalidation;
 
-    public NodeEnsureTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
+    internal NodeEnsureTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
         : base(fs)
     {
         _engine = new StructuralEditEngine(fs, pool);
@@ -73,7 +73,7 @@ public sealed class NodeEnsureTool : FileToolBase<NodeEnsureRequest, NodeEnsureR
             throw new InvalidOperationException(pathValidation.DenialReason ?? "Invalid or unsafe file path");
 
         var operation = IntentOperations.Create(request.Op, request.Selector, request.Name, request.Module, request.Text, request.Index, request.Level);
-        var virtualPath = _fileSystemService.ToVirtualPath(pathValidation.ResolvedPath!) ?? AbsolutizePath(request.Path);
+        var virtualPath = FileSystemService.ToVirtualPath(pathValidation.ResolvedPath!) ?? AbsolutizePath(request.Path);
         var outcome = await _engine.ApplyAsync(virtualPath, [operation], cancellationToken).ConfigureAwait(false);
         if (outcome.Applied) _indexInvalidation?.MarkDirty(virtualPath);
         return new NodeEnsureResponse

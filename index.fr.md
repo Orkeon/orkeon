@@ -34,14 +34,14 @@ voir le démarrage en deux minutes du [README](README.fr.md#essayez-le-en-deux-m
 ## Installation
 
 ```bash
-dotnet add package Orkeon --prerelease        # le framework complet en un seul paquet
-dotnet add package Orkeon.Tools --prerelease  # optionnel : les familles d'outils intégrés
+dotnet add package Orkeon        # le framework complet en un seul paquet
+dotnet add package Orkeon.Tools  # optionnel : les familles d'outils intégrés
 ```
 
 La CLI de scripting est distribuée comme outil .NET :
 
 ```bash
-dotnet tool install -g Orkeon.Scripting.Cli --prerelease
+dotnet tool install -g Orkeon.Scripting.Cli
 orkeon run crew.ork.ts
 ```
 

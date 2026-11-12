@@ -1,7 +1,7 @@
 # Multi-file crew directory
 
 The same crew you would write in a single `config.yaml`, split across one file per
-entity. `orkeon run` accepts the **directory** as its target (Orkeon >= 0.9.2-beta):
+entity. `orkeon run` accepts the **directory** as its target:
 
 ```bash
 # validate only — loads the crew, resolves the tools, never calls the LLM

@@ -1,4 +1,5 @@
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Memory;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Task;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
@@ -47,7 +48,7 @@ public class EmbeddingBasedSelectionStrategy : IAgentSelectionStrategy
         cancellationToken.ThrowIfCancellationRequested();
 
         var taskText = task.Description?.ToString() ?? "";
-        var taskEmbedding = await _embeddingService.GetEmbeddingAsync(taskText).ConfigureAwait(false);
+        var taskEmbedding = await _embeddingService.GetEmbeddingAsync(taskText, cancellationToken).ConfigureAwait(false);
 
         DomainAgent? best = null;
         double bestScore = Threshold;
@@ -64,7 +65,7 @@ public class EmbeddingBasedSelectionStrategy : IAgentSelectionStrategy
                 agent.Goal?.ToString() ?? "",
                 agent.Backstory?.Value ?? "");
 
-            var agentEmbedding = await _embeddingService.GetEmbeddingAsync(agentText).ConfigureAwait(false);
+            var agentEmbedding = await _embeddingService.GetEmbeddingAsync(agentText, cancellationToken).ConfigureAwait(false);
             var score = CosineSimilarity(taskEmbedding, agentEmbedding);
 
             if (score > bestScore)

@@ -125,11 +125,11 @@ public sealed class RunnerHostMcpTests : IDisposable
                 Mounts(),
                 configureLogging: (_, b) => b.AddProvider(logs));
             var registry = host.Services.GetRequiredService<IToolRegistry>();
-            var before = (await registry.GetAllToolsAsync()).Count;
+            var before = (await registry.GetAllToolsAsync(cancellationToken: TestContext.Current.CancellationToken)).Count;
 
             await McpStartup.ConnectConfiguredServersAsync(host, CancellationToken.None);
 
-            var after = (await registry.GetAllToolsAsync()).Count;
+            var after = (await registry.GetAllToolsAsync(cancellationToken: TestContext.Current.CancellationToken)).Count;
             Assert.Equal(before, after);
             var error = Assert.Single(logs.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("'ghost'", StringComparison.Ordinal));
             Assert.Contains("could not be connected", error.Message, StringComparison.Ordinal);

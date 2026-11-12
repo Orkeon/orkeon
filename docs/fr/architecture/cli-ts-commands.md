@@ -468,10 +468,9 @@ intégrées ne sont enregistrées que si au moins un `*.cmd.ts` a été trouvé.
 
 `AddScriptCommands` enregistre le substrat de dispatch comme singleton (son propre
 canal in-memory — le bus de dispatch CLI — plus l'annuaire de noms et le registre
-d'instances), ce qui fait se résoudre la clé optionnelle `commands`. Les agents sont
-connectés avec
-`AgentCommandRegistrar.Register(agent, engine, engineLock, service.Channel, service.Directory, logger?)`,
-qui enregistre le handler de canal et le mapping nom→id. C'est l'hôte qui s'en charge :
+d'instances), ce qui fait se résoudre la clé optionnelle `commands`. Un agent est connecté
+par l'`AgentCommandRegistrar` interne, qui enregistre le handler de canal et le mapping
+nom→id ; aucune API publique ne l'expose dans cette version, et aucun hôte livré ne l'appelle :
 `orkeon-repl` ne charge que des fichiers `*.cmd.ts` et n'active aucun agent, donc tant qu'un
 hôte n'en enregistre pas, `request` et `post` lèvent
 `commands: unknown agent 'echo'. Registered: (none).`

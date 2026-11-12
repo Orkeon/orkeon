@@ -41,7 +41,7 @@ public record ArcadeDbRequest
 
     /// <summary>Gets the optional query parameters.</summary>
     [FieldSchema(Description = "Query parameters as key-value pairs", IsRequired = false)]
-    public Dictionary<string, object>? Parameters { get; init; }
+    public IReadOnlyDictionary<string, object>? Parameters { get; init; }
 
     /// <summary>Gets the query language to use.</summary>
     [FieldSchema(Description = "Query language: Cypher (default) or Sql", IsRequired = false, Example = "Cypher")]

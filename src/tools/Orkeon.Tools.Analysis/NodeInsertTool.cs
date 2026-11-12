@@ -35,7 +35,7 @@ public sealed class NodeInsertTool : FileToolBase<NodeInsertRequest, NodeInsertR
     private readonly StructuralEditEngine _engine;
     private readonly IIndexInvalidation? _indexInvalidation;
 
-    public NodeInsertTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
+    internal NodeInsertTool(IFileSystemService fs, TreeSitterParserPool pool, IIndexInvalidation? indexInvalidation = null)
         : base(fs)
     {
         _engine = new StructuralEditEngine(fs, pool);
@@ -66,7 +66,7 @@ public sealed class NodeInsertTool : FileToolBase<NodeInsertRequest, NodeInsertR
             _ => throw new ArgumentException("position must be 'inside', 'before' or 'after'.", nameof(request)),
         };
         var operation = new NodeInsertOperation(NodeSelector.Parse(request.Selector), position, request.Text);
-        var virtualPath = _fileSystemService.ToVirtualPath(pathValidation.ResolvedPath!) ?? AbsolutizePath(request.Path);
+        var virtualPath = FileSystemService.ToVirtualPath(pathValidation.ResolvedPath!) ?? AbsolutizePath(request.Path);
         var outcome = await _engine.ApplyAsync(virtualPath, [operation], cancellationToken).ConfigureAwait(false);
         _indexInvalidation?.MarkDirty(virtualPath);
         return new NodeInsertResponse

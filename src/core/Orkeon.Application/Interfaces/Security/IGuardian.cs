@@ -48,7 +48,7 @@ public enum GuardThreatSeverity
 /// <summary>
 /// Represents a violation detected by a guardian.
 /// </summary>
-public record GuardViolation(
+public sealed record GuardViolation(
     string GuardName,
     GuardPhase Phase,
     string Description,
@@ -58,7 +58,7 @@ public record GuardViolation(
 /// <summary>
 /// Context passed to a guardian for evaluation.
 /// </summary>
-public record GuardContext
+public sealed record GuardContext
 {
     /// <summary>Gets or sets the phase.</summary>
     public GuardPhase Phase { get; init; }
@@ -88,7 +88,7 @@ public record GuardContext
 /// <summary>
 /// Result of a guardian check.
 /// </summary>
-public record GuardResult
+public sealed record GuardResult
 {
     /// <summary>
     /// Gets or sets a value indicating whether is allowed.

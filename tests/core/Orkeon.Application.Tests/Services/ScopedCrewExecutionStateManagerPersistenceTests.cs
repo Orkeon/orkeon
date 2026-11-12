@@ -1,3 +1,4 @@
+using Orkeon.Application.Common.DTOs;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Services;
@@ -138,7 +139,7 @@ public sealed class ScopedCrewExecutionStateManagerPersistenceTests : IDisposabl
                         ExecutionTime: TimeSpan.FromSeconds(3))
                 ],
                 Duration: TimeSpan.FromSeconds(12),
-                TokensUsed: new TokenUsage(10, 20, 30));
+                TokensUsed: new TokenUsage { PromptTokens = 10, CompletionTokens = 20, TotalTokens = 30 });
             s.Error = "boom";
             s.Status = ExecutionState.Failed;
         }, TestContext.Current.CancellationToken);

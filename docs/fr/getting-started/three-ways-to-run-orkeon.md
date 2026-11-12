@@ -9,9 +9,9 @@ ce que vous acceptez d'installer :
 
 | Voie | Prérequis | Temps avant la première exécution | Idéal pour |
 |---|---|---|---|
-| **1. Depuis les sources** | SDK .NET ≥ 10.0.300, clone git | ~5 min (+ build) | Contributeurs, lecture/modification du code, exécution de n'importe lequel des 104 exemples embarqués |
-| **2. Binaire de release** | Rien pour les paquets CLI (zip/MSI Windows, `.deb` Debian) — ils embarquent le runtime ; **runtime** .NET 10 pour les launchers supplémentaires de l'archive multi-apps | ~2 min | Exécuter des exemples et des vitrines sans clone des sources |
-| **3. Conteneur** | Docker | ~1 min (après le pull de l'image) | CI, exécutions reproductibles, aucun .NET local |
+| **1. Depuis les sources** | SDK .NET ≥ 10.0.300, clone git | ~5 min (+ compilation) | Contributeurs, lecture/modification du code, exécution de n'importe lequel des 104 exemples embarqués |
+| **2. Binaire de release** | Rien pour les paquets CLI (zip/MSI Windows, `.deb` Debian) — ils embarquent le runtime ; **runtime** .NET 10 pour les lanceurs supplémentaires de l'archive multi-apps | ~2 min | Exécuter des exemples et des vitrines sans cloner les sources |
+| **3. Conteneur** | Docker | ~1 min (après le téléchargement de l'image) | CI, exécutions reproductibles, aucun .NET local |
 
 Les trois pilotent le même **CLI `orkeon`** et acceptent les mêmes flags. La
 config de la crew est l'argument positionnel de `orkeon run <config>` ; les flags
@@ -81,7 +81,7 @@ ailleurs.
 
 | Windows | Linux, macOS | |
 |---|---|---|
-| `-AppSet full` | `--app-set full` | tous les launchers — l'hôte de service aussi, et le REPL sous Windows et macOS (le jeu CLI de Linux l'a) — au lieu du seul jeu CLI |
+| `-AppSet full` | `--app-set full` | tous les lanceurs — l'hôte de service aussi, et le REPL sous Windows et macOS (le jeu CLI de Linux l'a) — au lieu du seul jeu CLI |
 | `-InstallDir <dossier>` | `--prefix <dossier>` | où installer ; `--modify-path` est passé lui aussi à `install.sh` |
 | `-WhatIf` | `--dry-run` | s'arrêter après les contrôles, et afficher la version et les commandes qu'il lancerait |
 | `-Uninstall` | `--uninstall` | retirer l'installation. Ne construit rien ; votre configuration reste |
@@ -106,7 +106,7 @@ script dépend de votre système :
 | Linux | `./scripts/install-from-source.sh` | le jeu par défaut le contient |
 | macOS | `./scripts/install-from-source.sh --app-set full` | le jeu par défaut ne contient pas le REPL |
 
-Le jeu complet publie tous les launchers, l'hôte de service compris : sa compilation prend
+Le jeu complet publie tous les lanceurs, l'hôte de service compris : sa compilation prend
 donc plus de temps. Le jeu par défaut reste sans le REPL sous Windows et macOS parce que le
 MSI et la formule Homebrew sont construits à partir de lui. Sous Windows et macOS, le script
 rappelle cette option à la fin de son exécution.
@@ -125,12 +125,12 @@ Chaque [GitHub Release](https://github.com/Orkeon/orkeon/releases) attache un
 
 | Artefact | Contenu | Prérequis runtime | Idéal pour |
 |---|---|---|---|
-| **`orkeon-cli-<version>-win-x64.zip`** | le CLI `orkeon` + `install.cmd` et `install.ps1` | pas de .NET — self-contained. Double-cliquez `install.cmd` : il tourne sur le PowerShell livré avec Windows. Voir [Avant de commencer](#avant-de-commencer) | **Windows : le téléchargement recommandé** |
-| **`orkeon-<version>-win-x64.msi`** | le même CLI, MSI per-user | pas de .NET — self-contained. Non signé : Windows demande avant de le lancer, voir [Avant de commencer](#avant-de-commencer) | Windows, si vous préférez le double-clic et une entrée « Applications installées » |
-| **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | le CLI `orkeon` en `/usr/bin/orkeon` + le REPL en `/usr/bin/orkeon-repl` | aucun — self-contained | **Debian / Ubuntu** — de préférence depuis le [dépôt apt](../guides/install-with-apt.md), qui sert ces mêmes paquets et leurs mises à jour |
-| **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | le seul CLI `orkeon` + `install.sh` (le canal d'onboarding macOS reste CLI seul) | aucun — self-contained | **macOS**, Apple Silicon et Intel respectivement |
-| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les launchers (`orkeon`, `orkeon-repl`, `orkeon-host`…) + `install.sh` / `install.cmd` et `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL et l'hôte de service |
-| **`dotnet tool install --global Orkeon.Scripting.Cli --prerelease`** | le seul CLI `orkeon` — **sans esbuild** : un script `.ork.ts` demande `npm install -g esbuild` (ou `ORKEON_ESBUILD_PATH`) ; les crews YAML non. `orkeon typings` écrit les typings d'éditeur | **SDK** .NET 10 | Obtenir uniquement le CLI sur un poste qui compile déjà du .NET |
+| **`orkeon-cli-<version>-win-x64.zip`** | le CLI `orkeon` + `install.cmd` et `install.ps1` | pas de .NET — autonome. Double-cliquez `install.cmd` : il tourne sur le PowerShell livré avec Windows. Voir [Avant de commencer](#avant-de-commencer) | **Windows : le téléchargement recommandé** |
+| **`orkeon-<version>-win-x64.msi`** | le même CLI, MSI par utilisateur | pas de .NET — autonome. Non signé : Windows demande avant de le lancer, voir [Avant de commencer](#avant-de-commencer) | Windows, si vous préférez le double-clic et une entrée « Applications installées » |
+| **`orkeon_<version>_amd64.deb`** / **`_arm64.deb`** | le CLI `orkeon` en `/usr/bin/orkeon` + le REPL en `/usr/bin/orkeon-repl` | aucun — autonome | **Debian / Ubuntu** — de préférence depuis le [dépôt apt](../guides/install-with-apt.md), qui sert ces mêmes paquets et leurs mises à jour |
+| **`orkeon-cli-<version>-osx-arm64.tar.gz`** / **`-osx-x64.tar.gz`** | le seul CLI `orkeon` + `install.sh` (le canal d'onboarding macOS reste CLI seul) | aucun — autonome | **macOS**, Apple Silicon et Intel respectivement |
+| **`orkeon-<version>-<rid>.tar.gz`** / **`.zip`** | **tous** les lanceurs (`orkeon`, `orkeon-repl`, `orkeon-host`…) + `install.sh` / `install.cmd` et `install.ps1` | mixte — voir le tableau des commandes ci-dessous | Le REPL et l'hôte de service |
+| **`dotnet tool install --global Orkeon.Scripting.Cli`** | le seul CLI `orkeon` — **sans esbuild** : un script `.ork.ts` demande `npm install -g esbuild` (ou `ORKEON_ESBUILD_PATH`) ; les crews YAML non. `orkeon typings` écrit les typings d'éditeur | **SDK** .NET 10 | Obtenir uniquement le CLI sur un poste qui compile déjà du .NET |
 
 `<rid>` vaut `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64` (`.tar.gz`) ou
 `win-x64` (`.zip`). Dans chaque nom de fichier, `<version>` est la version du tag
@@ -143,13 +143,13 @@ L'archive multi-apps est la seule à embarquer plus que le CLI :
 
 | Commande | Ce qu'elle exécute | Runtime |
 |---|---|---|
-| `orkeon` | **Le CLI principal et le point d'entrée par défaut** — `orkeon run <config.yaml>` pour tout crew YAML, ou `orkeon run script.ork.ts` pour le DSL de scripting | self-contained |
-| `orkeon-slim` | Le même CLI, framework-dependent et bien plus petit | requiert .NET 10 |
-| `orkeon-repl` | Console REPL interactive complète (tous les outils intégrés, analyse de code, embeddings locaux) | self-contained |
-| `orkeon-host` | Le daemon d'hébergement — enregistre des crews et les sert en continu (unité systemd, service Windows via le script embarqué ou son MSI per-machine dédié, passerelle de chat, canal Discord ; voir [le service host](../architecture/service-host.md)) | autonome |
+| `orkeon` | **Le CLI principal et le point d'entrée par défaut** — `orkeon run <config.yaml>` pour tout crew YAML, ou `orkeon run script.ork.ts` pour le DSL de scripting | autonome |
+| `orkeon-slim` | Le même CLI, dépendant du framework et bien plus petit | requiert .NET 10 |
+| `orkeon-repl` | Console REPL interactive complète (tous les outils intégrés, analyse de code, embeddings locaux) | autonome |
+| `orkeon-host` | Le daemon d'hébergement — enregistre des crews et les sert en continu (unité systemd, service Windows via le script embarqué ou son MSI par machine dédié, passerelle de chat, canal Discord ; voir [le service host](../architecture/service-host.md)) | autonome |
 
 > **Le prérequis runtime, en une ligne.** Les paquets CLI (zip, MSI, `.deb`), les
-> launcher `orkeon` et le REPL embarquent leur propre runtime et n'exigent aucune
+> lanceur `orkeon` et le REPL embarquent leur propre runtime et n'exigent aucune
 > installation .NET. Tout le reste de l'archive multi-apps (`orkeon-slim`) — et
 > le tool dotnet — requiert le
 > [runtime .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0) (à
@@ -159,7 +159,7 @@ L'archive multi-apps est la seule à embarquer plus que le CLI :
 
 ### Windows
 
-Deux canaux, tous deux per-user (aucun droit administrateur, rien d'écrit hors
+Deux canaux, tous deux par utilisateur (aucun droit administrateur, rien d'écrit hors
 de votre profil). **Installez un seul canal à la fois** — le MSI refuse de
 s'installer par-dessus une install ZIP, donc désinstallez l'autre d'abord si
 vous changez.
@@ -230,7 +230,7 @@ install antérieure y est migré à la mise à jour.)
 Le **dépôt apt est le canal recommandé** sur Debian et Ubuntu, amd64 et arm64 :
 ajoutez une fois la source signée — le bloc à copier est dans
 [Installer avec apt](../guides/install-with-apt.md) — et Orkeon se met à jour avec le reste du
-système. Le paquet est self-contained, il ne tire donc jamais de paquet `dotnet-runtime` ni de
+système. Le paquet est autonome, il ne tire donc jamais de paquet `dotnet-runtime` ni de
 dépôt Microsoft :
 
 ```bash
@@ -239,7 +239,7 @@ sudo apt update && sudo apt upgrade              # chaque version suivante
 ```
 
 Le paquet installe aussi `/usr/bin/orkeon-repl`, la console interactive qui exécute les
-commandes scriptées `*.cmd.ts` ; elle est self-contained, elle aussi.
+commandes scriptées `*.cmd.ts` ; elle est autonome, elle aussi.
 
 Sans le dépôt — une machine qui n'atteint pas le contenu brut de GitHub —, installez
 directement le `.deb` d'une release ; il ne reçoit aucune mise à jour :
@@ -252,7 +252,7 @@ sudo apt remove orkeon
 (Les deux premières releases à installeurs nomment le fichier avec `.` à la place du `~` que porte
 leur ligne `SHA256SUMS` : vérifiez ces deux-là à la main.)
 
-Le `tar.gz` multi-apps + `install.sh` est l'alternative per-user (et la seule
+Le `tar.gz` multi-apps + `install.sh` est l'alternative par utilisateur (et la seule
 option quand vous voulez l'hôte de service, ou le REPL sur un système sans apt) :
 
 ```bash
@@ -263,7 +263,7 @@ cd orkeon-<version>-linux-x64
 ./install.sh --uninstall
 ```
 
-Comme cette archive embarque des launchers framework-dependent, `install.sh`
+Comme cette archive embarque des lanceurs dépendant du framework, `install.sh`
 cherche un runtime `Microsoft.NETCore.App 10.x` (sur le `PATH` ou sous
 `DOTNET_ROOT`) et, s'il n'en trouve aucun, affiche les commandes exactes de
 votre distribution — `sudo apt install dotnet-runtime-10.0` sur Ubuntu 25.10+,
@@ -271,11 +271,11 @@ l'enregistrement du dépôt `packages.microsoft.com` sur Debian et Ubuntu LTS, o
 `dotnet-install.sh --runtime dotnet --channel 10.0` sous `$HOME` quand vous
 n'avez pas sudo. L'avertissement ne bloque jamais l'installation : les fichiers
 sont posés dans tous les cas, et `orkeon` et `orkeon-repl` fonctionnent, étant
-self-contained.
+autonome.
 
 ### macOS
 
-Aucun prérequis dans les deux cas : les archives CLI macOS sont self-contained,
+Aucun prérequis dans les deux cas : les archives CLI macOS sont autonome,
 aucune installation .NET n'entre en jeu.
 
 **Homebrew** sera le canal recommandé. La formule vit dans le dépôt, en
@@ -311,8 +311,8 @@ cd orkeon-cli-<version>-osx-arm64
 > `xattr -dr com.apple.quarantine ~/.local/lib/orkeon`.
 
 Le `tar.gz` multi-apps (REPL, hôte de service) existe aussi pour
-les deux architectures macOS, et requiert le runtime .NET 10 pour les launchers
-framework-dependent qu'il embarque — `install.sh` affiche le
+les deux architectures macOS, et requiert le runtime .NET 10 pour les lanceurs
+dépendant du framework qu'il embarque — `install.sh` affiche le
 [lien de téléchargement](https://dotnet.microsoft.com/download/dotnet/10.0)
 quand il manque.
 
@@ -360,7 +360,7 @@ orkeon run chemin/vers/config.yaml \
 Les settings sont résolus dans cet ordre : `--settings`, puis l'`appsettings.json`
 voisin du fichier de config, puis — en remontant les répertoires parents — un
 sous-répertoire `appsettings/appsettings.json` à chaque niveau (la matrice de
-profils partagée des exemples), puis le fichier global per-user écrit par `orkeon init`, puis les
+profils partagée des exemples), puis le fichier global par utilisateur écrit par `orkeon init`, puis les
 variables d'environnement `ORKEON_*` seules.
 
 **Une crew peut aussi être un dossier**. Pointez
@@ -400,7 +400,7 @@ sans installer : `./libexec/orkeon/orkeon run …`.
 
 ## 3. Conteneur
 
-L'image `ghcr.io/orkeon/orkeon-runners` (construite depuis `Dockerfile.runners`,
+L'image `ghcr.io/orkeon/orkeon` (construite depuis `Dockerfile.runners`,
 publiée sur GHCR) a le **CLI `orkeon` comme point d'entrée par défaut**, embarque le
 **REPL** (`orkeon-repl`) à côté **plus les 104 exemples fournis** — zéro .NET local
 requis. L'hôte de service n'y est pas : il a sa propre image, construite depuis
@@ -408,7 +408,7 @@ requis. L'hôte de service n'y est pas : il a sa propre image, construite depuis
 
 L'image publiée est multi-plateforme : un seul tag, `linux/amd64` et `linux/arm64`, et Docker
 tire celle de votre machine. Sur Apple Silicon, ou tout hôte arm64, elle tourne en
-natif, sans émulation. `docker manifest inspect ghcr.io/orkeon/orkeon-runners:<version>`
+natif, sans émulation. `docker manifest inspect ghcr.io/orkeon/orkeon:<version>`
 liste les deux.
 
 Chaque image garde la licence et les notices de ce qu'elle redistribue sous
@@ -421,7 +421,7 @@ Montez votre répertoire de projet sur `/workspace` et référencez tout depuis 
 **Un seul volume, aucun flag supplémentaire** :
 
 ```bash
-docker run --rm -v "$PWD:/workspace" ghcr.io/orkeon/orkeon-runners \
+docker run --rm -v "$PWD:/workspace" ghcr.io/orkeon/orkeon \
   run /workspace/crews/my-crew/config.yaml \
   --settings /workspace/appsettings.local.json \
   --mount /workspace/data:/data:ro /workspace/output:/output:rw
@@ -443,8 +443,8 @@ Trois commodités de l'image rendent cela immédiat :
    commandes fonctionnent en CI.
 
 Les montages de volumes sont la façon dont le système de fichiers hôte atteint
-le [VFS](../architecture/vfs-compliance.md) de la crew : le `-v` de Docker mappe
-hôte → conteneur, le flag `--mount` mappe conteneur → chemins virtuels de la
+le [VFS](../architecture/vfs-compliance.md) de la crew : le `-v` de Docker associe
+hôte → conteneur, le flag `--mount` associe conteneur → chemins virtuels de la
 crew (`/data`, `/output`, …).
 
 ### Exécuter un exemple embarqué
@@ -456,8 +456,8 @@ qui rend leur exécution immédiate. La session la plus simple possible :
 # une fois, sur l'hôte : récupérer le modèle par défaut (Docker Desktop → Model Runner)
 docker model pull ai/granite-4.0-h-tiny
 
-docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
-  ghcr.io/orkeon/orkeon-runners
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD/out:/output" \
+  ghcr.io/orkeon/orkeon
 # puis, dans le shell :
 orkeon-example list            # parcourir les 104 exemples embarqués
 orkeon-example run 1           # exécuter le n°1 (assistant de recherche)
@@ -476,7 +476,7 @@ vont à `orkeon run`).
 Runner sur votre hôte** (`host.docker.internal:12434`) : le `docker model pull`
 ci-dessus est la seule mise en place, et tous les exemples fonctionnent ensuite
 sans aucun flag. Si vous l'oubliez, `orkeon-example run` échoue vite, *avant* la
-crew, en affichant la commande de pull exacte (et, quand l'endpoint sert
+crew, en affichant la commande `docker model pull` exacte (et, quand l'endpoint sert
 d'autres modèles, la surcharge `-e ORKEON_Llm__Model=<name>` pour en utiliser
 un — `docker model list` sur l'hôte montre ce que vous avez). Pour utiliser
 autre chose, choisissez un profil dans `/etc/orkeon/profiles` avec
@@ -536,18 +536,18 @@ au `docker build` (elle tourne alors sous émulation, lentement) :
 # Granite 4.0 h-tiny (Apache 2.0, ~4,2 Go de poids → image ~6 Go)
 docker build -f Dockerfile.runners --target local-llm \
   --build-arg LOCAL_MODEL_URL=https://huggingface.co/ibm-granite/granite-4.0-h-tiny-GGUF/resolve/main/granite-4.0-h-tiny-Q4_K_M.gguf \
-  -t orkeon-runners:granite .
+  -t orkeon:granite .
 
 # Gemma 4 E4B avec un contexte de 128K (licence Gemma — gardez l'image locale, ne la poussez pas)
 docker build -f Dockerfile.runners --target local-llm \
   --build-arg LOCAL_MODEL_URL=https://huggingface.co/unsloth/gemma-4-E4B-it-qat-GGUF/resolve/main/gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf \
   --build-arg LOCAL_MODEL_NAME=ai/gemma4 \
   --build-arg LOCAL_MODEL_CTX=131072 \
-  -t orkeon-runners:gemma4 .
+  -t orkeon:gemma4 .
 # LOCAL_MODEL_CTX fixe la taille de contexte de llama-server (défaut 8192) ; surchargez
 # par exécution avec -e ORKEON_LOCAL_LLM_CTX=… — à 128K, prévoyez plusieurs Go de RAM.
 
-docker run -it --rm -m 8g -e ORKEON_RUNNER=shell orkeon-runners:granite
+docker run -it --rm -m 8g -e ORKEON_ENTRYPOINT=shell orkeon:granite
 # le modèle se charge au démarrage (30-90 s), puis :
 orkeon-example run 1
 ```
@@ -565,46 +565,53 @@ Le coup unique (sans shell) fonctionne toujours — le point d'entrée **est**
 ```bash
 docker run --rm \
   -v "$PWD/out:/output" \
-  ghcr.io/orkeon/orkeon-runners \
+  ghcr.io/orkeon/orkeon \
   run examples/01-enterprise/01-research-assistant/config.yaml \
   --mount /output:/output:rw
 ```
 
-### Autres runners et shell interactif
+### Autres exécutables et shell interactif
 
 Le point d'entrée **est** `orkeon`, donc tout ce qui suit le nom de l'image est
-un argument du CLI (`run <config> …`). Pour lancer un autre runner, définissez
-la variable d'environnement `ORKEON_RUNNER` — `orkeon` (la valeur par défaut),
+un argument du CLI (`run <config> …`). Pour lancer un autre exécutable, définissez
+la variable d'environnement `ORKEON_ENTRYPOINT` — `orkeon` (la valeur par défaut),
 `repl` ou `shell` ; toute autre valeur est refusée avec une ligne d'usage :
 
 ```bash
-docker run -it --rm -e ORKEON_RUNNER=repl \
+docker run -it --rm -e ORKEON_ENTRYPOINT=repl \
+  -v "$PWD:/workspace" \
   -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
-  ghcr.io/orkeon/orkeon-runners
+  ghcr.io/orkeon/orkeon --settings /app/appsettings.local.json
 ```
 
-Il n'y a pas de runner par famille d'exemples : les crews finance sont des
+Tout ce qui suit le nom de l'image va au REPL, qui ne lit ses réglages que depuis
+`--settings` (un fichier monté n'est pas lu de lui-même), comme hors de Docker. L'image lui
+monte `/workspace` en lecture-écriture, le projet que vous y liez : un `--mount` sur
+`/workspace`, ou un fichier `--settings` qui déclare `Orkeon:FileSystem:Mounts`, remplace ce
+montage par défaut. Sans `--settings`, le REPL tourne sur le provider echo et le signale.
+
+Il n'y a pas d'exécutable par famille d'exemples : les crews finance sont des
 scripts `main.ork.ts` qu'exécute la même CLI `orkeon`, comme tous les autres
 exemples.
 
 ```bash
 docker run --rm \
   -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
-  ghcr.io/orkeon/orkeon-runners \
+  ghcr.io/orkeon/orkeon \
   run examples/03-finance-trading/31-algo-trading/main.ork.ts \
   --settings /app/appsettings.local.json
 ```
 
-`ORKEON_RUNNER=shell` ouvre un **zsh** interactif dans l'image (en démarrant
+`ORKEON_ENTRYPOINT=shell` ouvre un **zsh** interactif dans l'image (en démarrant
 dans `/workspace`) — pratique pour fouiller les exemples embarqués ou déboguer
 des montages. Une bannière d'accueil liste les commandes et chemins disponibles
-(supprimez-la avec `-e ORKEON_NO_BANNER=1`), et chaque runner est sur le PATH
+(supprimez-la avec `-e ORKEON_NO_BANNER=1`), et chaque exécutable est sur le PATH
 sous les mêmes noms que dans les archives de release (`orkeon`,
 `orkeon-repl`, …) :
 
 ```bash
-docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
-  ghcr.io/orkeon/orkeon-runners
+docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD:/workspace" \
+  ghcr.io/orkeon/orkeon
 # orkeon /workspace % orkeon-example run 1
 # orkeon /workspace % orkeon run /workspace/crews/my-crew/config.yaml --validate
 ```
@@ -623,7 +630,7 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
   - Puis `orkeon init` → `orkeon doctor` → `orkeon run`.
 - **Vous voulez le REPL ou l'hôte de service ?** Le REPL est dans le paquet Debian et
   Ubuntu (`/usr/bin/orkeon-repl`) et dans l'archive multi-apps (voie 2) ; l'hôte de
-  service est dans l'archive. Tous deux sont self-contained : aucun runtime .NET à
+  service est dans l'archive. Tous deux sont autonomes : aucun runtime .NET à
   installer.
 - **Vous modifiez Orkeon ou exécutez des exemples arbitraires ?** Depuis les
   sources (voie 1).
@@ -648,13 +655,13 @@ un script.
 
 | Installé avec | Passer à la dernière release |
 |---|---|
-| Le tool dotnet | `dotnet tool update -g Orkeon.Scripting.Cli --prerelease` |
-| Des paquets NuGet, dans un projet | `dotnet add package Orkeon --prerelease` — et `Orkeon.Tools` si le projet le référence — réécrit la version |
-| Zip Windows, tarball macOS ou Linux | Extraire la nouvelle archive et lancer son `install.cmd` / `install.sh` : il supprime l'installation précédente et met la nouvelle à sa place. Sous Windows, laisser finir une crew en cours d'abord : l'installeur refuse tant qu'un programme de l'installation tourne |
+| Le tool dotnet | `dotnet tool update -g Orkeon.Scripting.Cli` |
+| Des paquets NuGet, dans un projet | `dotnet add package Orkeon` — et `Orkeon.Tools` si le projet le référence — réécrit la version |
+| Zip Windows, archive tar.gz macOS ou Linux | Extraire la nouvelle archive et lancer son `install.cmd` / `install.sh` : il supprime l'installation précédente et met la nouvelle à sa place. Sous Windows, laisser finir une crew en cours d'abord : l'installeur refuse tant qu'un programme de l'installation tourne |
 | MSI Windows | Lancer le nouveau MSI : il remplace celui qui est installé, y compris entre deux pré-releases |
 | Le dépôt apt | `sudo apt update && sudo apt upgrade` |
 | Un paquet Debian téléchargé | `sudo apt install ./orkeon_<version>_amd64.deb` (`_arm64.deb` sur ARM) — ou passer au [dépôt apt](../guides/install-with-apt.md), qui se met à jour seul |
-| Conteneur | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` avance à chaque release |
+| Conteneur | `docker pull ghcr.io/orkeon/orkeon` — `:latest` avance à chaque release |
 | Depuis les sources | `git pull` ; le prochain `dotnet run` recompile. Une installation faite [depuis le clone](#installer-depuis-les-sources) : `git pull`, puis relancer `scripts/install-from-source` |
 
 `orkeon --version` affiche ensuite la version qui tourne : `orkeon <version>`. Une installation dont le canal ne peut être déterminé répond `unknown`.
@@ -662,11 +669,11 @@ un script.
 ### Suivre `main` : le canal dev
 
 Entre deux releases, chaque commit validé par la CI sur `main` est publié en
-`<version>.dev.<n>` — `n` étant le numéro de ce run de CI — sur le flux Orkeon de GitHub
+`<X.Y.Z>-<pre>.dev.<n>` — `n` étant le numéro de ce run de CI — sur le flux Orkeon de GitHub
 Packages, où le suivant le remplace. La numérotation et l'élagage des versions sont décrits
 dans la
 [matrice de publication](../reference/publication-matrix.md#canal-dev--le-dernier-main-entre-deux-tags).
-Le canal sert les **canaux NuGet** : le tool `orkeon`, le tool `orkeon-repl` (paquet
+Ce canal couvre les **surfaces NuGet** : le tool `orkeon`, le tool `orkeon-repl` (paquet
 `Orkeon.ConsoleApp`) et les paquets. Sous Debian et Ubuntu, le paquet `orkeon` suit aussi
 `main`, par le canal apt `dev` — voir
 [Installer avec apt](../guides/install-with-apt.md#suivre-main-builds-dev). Les autres
@@ -697,19 +704,19 @@ installeurs et l'image conteneur ne sont construits que sur les tags.
    chaque exécution :
 
    ```bash
-   dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # la première fois
-   dotnet tool update -g Orkeon.Scripting.Cli --prerelease    # toutes les fois suivantes
+   dotnet tool install -g Orkeon.Scripting.Cli   # la première fois
+   dotnet tool update -g Orkeon.Scripting.Cli    # toutes les fois suivantes
    ```
 
-   NuGet garde la liste des versions d'un flux pendant 30 minutes : juste après un merge,
+   NuGet garde la liste des versions d'un flux pendant 30 minutes : juste après une fusion,
    ajoutez `--no-http-cache` pour voir le nouveau build.
-4. **Vérifiez.** `orkeon --version` affiche `orkeon <version>.dev.<n>`. Le run `#<n>` du
+4. **Vérifiez.** `orkeon --version` affiche `orkeon <X.Y.Z>-<pre>.dev.<n>`. Le run `#<n>` du
    [workflow CI](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml) donne le commit, et
    la section `[Unreleased]` du [CHANGELOG](../../../CHANGELOG.md) liste ce qui a changé depuis
    la dernière release. Le site de documentation suit les tags : pour un build dev, lisez la
    documentation sur `main`.
 
-**Déjà installé par un paquet** — le `.deb`, le zip, le MSI, un tarball ? Deux `orkeon` se
+**Déjà installé par un paquet** — le `.deb`, le zip, le MSI, une archive tar.gz ? Deux `orkeon` se
 trouvent alors sur la machine, et c'est le premier du `PATH` qui s'exécute. Sous Linux, le
 `/usr/bin/orkeon` du `.deb` passe en général avant `~/.dotnet/tools` : `orkeon` continue donc
 de lancer la release. `command -v orkeon` (PowerShell : `Get-Command orkeon`) montre lequel
@@ -717,13 +724,13 @@ répond ; désinstallez le paquet, ou appelez `~/.dotnet/tools/orkeon` explicite
 
 **Dans un projet**, faites flotter la version plutôt que de l'épingler :
 `<PackageReference Include="Orkeon" Version="*-*" />` (et de même pour `Orkeon.Tools`), puis
-`dotnet restore --force-evaluate` (avec `--no-http-cache` juste après un merge) pour passer au
+`dotnet restore --force-evaluate` (avec `--no-http-cache` juste après une fusion) pour passer au
 build le plus récent. En gestion centrale des paquets, la version flottante va dans
 `Directory.Packages.props` et exige
 `<CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>` — sans
 ce réglage, la restauration échoue avec NU1011. Un épinglage exact sur un build dev — un
 manifeste de tools, un `packages.lock.json` en mode verrouillé — casse dès que le build
-suivant le remplace ; un simple `Version="<version>.dev.<n>"` se restaure encore, sur le
+suivant le remplace ; un simple `Version="<X.Y.Z>-<pre>.dev.<n>"` se restaure encore, sur le
 build suivant, avec l'avertissement NU1603. Épinglez une release pour tout ce qui doit durer.
 
 **Revenir aux releases :**

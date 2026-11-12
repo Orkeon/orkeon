@@ -13,20 +13,20 @@ namespace Orkeon.Tools.Web;
 /// </summary>
 public sealed class SlackReadMessagesRequest
 {
-    /// <summary>Gets or sets the Slack channel name to read from.</summary>
+    /// <summary>Gets the Slack channel name to read from.</summary>
     [JsonPropertyName("channel")]
     [FieldSchema(Description = "Slack channel to read from (e.g., '#general', '#dev-team')", IsRequired = true, Example = "#general")]
-    public string Channel { get; set; } = string.Empty;
+    public string Channel { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the maximum number of messages to retrieve.</summary>
+    /// <summary>Gets the maximum number of messages to retrieve.</summary>
     [JsonPropertyName("limit")]
     [FieldSchema(Description = "Maximum number of messages to retrieve (default: 10, max: 100)", IsRequired = false, Example = 10)]
-    public int Limit { get; set; } = 10;
+    public int Limit { get; init; } = 10;
 
-    /// <summary>Gets or sets the optional timestamp to get messages after this time.</summary>
+    /// <summary>Gets the optional timestamp to get messages after this time.</summary>
     [JsonPropertyName("oldest")]
     [FieldSchema(Description = "Optional timestamp to get messages after this time (Unix epoch)", IsRequired = false, Example = "1234567890")]
-    public string? Oldest { get; set; }
+    public string? Oldest { get; init; }
 
     /// <summary>Initializes a new instance of <see cref="SlackReadMessagesRequest"/>.</summary>
     public SlackReadMessagesRequest() { }
@@ -63,30 +63,30 @@ public sealed record SlackMessage
 /// </summary>
 public sealed class SlackReadMessagesResponse
 {
-    /// <summary>Gets or sets whether the read operation was successful.</summary>
+    /// <summary>Gets whether the read operation was successful.</summary>
     [JsonPropertyName("success")]
     [ReturnSchema(Description = "Whether the read operation was successful", Example = true)]
-    public bool Success { get; set; }
+    public bool Success { get; init; }
 
-    /// <summary>Gets or sets the channel name.</summary>
+    /// <summary>Gets the channel name.</summary>
     [JsonPropertyName("channel")]
     [ReturnSchema(Description = "The channel name", Example = "#general")]
-    public string Channel { get; set; } = string.Empty;
+    public string Channel { get; init; } = string.Empty;
 
-    /// <summary>Gets or sets the list of retrieved messages.</summary>
+    /// <summary>Gets the list of retrieved messages.</summary>
     [JsonPropertyName("messages")]
     [ReturnSchema(Description = "List of retrieved messages")]
     public IReadOnlyList<SlackMessage> Messages { get; init; } = [];
 
-    /// <summary>Gets or sets the number of messages retrieved.</summary>
+    /// <summary>Gets the number of messages retrieved.</summary>
     [JsonPropertyName("message_count")]
     [ReturnSchema(Description = "Number of messages retrieved", Example = 5)]
-    public int MessageCount { get; set; }
+    public int MessageCount { get; init; }
 
-    /// <summary>Gets or sets optional error message if read failed.</summary>
+    /// <summary>Gets optional error message if read failed.</summary>
     [JsonPropertyName("error")]
     [ReturnSchema(Description = "Error message if the read operation failed", Example = "")]
-    public string? Error { get; set; }
+    public string? Error { get; init; }
 }
 
 // ── Tool implementation ────────────────────────────────────────────────────
@@ -152,7 +152,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
             var channelId = await ResolveChannelIdAsync(request.Channel, cancellationToken).ConfigureAwait(false);
             if (string.IsNullOrEmpty(channelId))
             {
-                LogChannelNotFound(request.Channel);
+                LogChannelNotFound(Logger, request.Channel);
                 return new SlackReadMessagesResponse
                 {
                     Success = false,
@@ -178,12 +178,12 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
             using var httpRequest = new HttpRequestMessage(HttpMethod.Get, fullUrl);
             httpRequest.Headers.Add("Authorization", $"Bearer {_botToken}");
 
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
-                LogSlackApiError(request.Channel, (int)response.StatusCode, responseBody);
+                LogSlackApiError(Logger, request.Channel, (int)response.StatusCode, responseBody);
                 return new SlackReadMessagesResponse
                 {
                     Success = false,
@@ -197,7 +197,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
             if (slackResponse == null || !slackResponse.Ok)
             {
                 var errorMsg = slackResponse?.Error ?? "Unknown error";
-                LogSlackApiError(request.Channel, (int)response.StatusCode, errorMsg);
+                LogSlackApiError(Logger, request.Channel, (int)response.StatusCode, errorMsg);
                 return new SlackReadMessagesResponse
                 {
                     Success = false,
@@ -214,7 +214,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
                 UserId = m.UserId ?? ""
             }).ToList() ?? [];
 
-            LogMessagesRetrieved(request.Channel, messages.Count);
+            LogMessagesRetrieved(Logger, request.Channel, messages.Count);
 
             return new SlackReadMessagesResponse
             {
@@ -226,7 +226,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
         }
         catch (HttpRequestException ex)
         {
-            LogHttpError(request.Channel, ex.Message);
+            LogHttpError(Logger, request.Channel, ex.Message);
             return new SlackReadMessagesResponse
             {
                 Success = false,
@@ -236,7 +236,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            LogTimeout(request.Channel);
+            LogTimeout(Logger, request.Channel);
             return new SlackReadMessagesResponse
             {
                 Success = false,
@@ -246,7 +246,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
         }
         catch (Exception ex)
         {
-            LogUnexpectedError(request.Channel, ex.Message);
+            LogUnexpectedError(Logger, request.Channel, ex.Message);
             return new SlackReadMessagesResponse
             {
                 Success = false,
@@ -279,7 +279,7 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
             using var httpRequest = new HttpRequestMessage(HttpMethod.Get, url);
             httpRequest.Headers.Add("Authorization", $"Bearer {_botToken}");
 
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            using var response = await HttpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             var slackResponse = JsonSerializer.Deserialize<ConversationsListResponse>(responseBody);
@@ -353,20 +353,20 @@ public partial class SlackReadTool : HttpToolBase<SlackReadMessagesRequest, Slac
     // ── Logging ────────────────────────────────────────────────────
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Retrieved {MessageCount} messages from Slack channel '{Channel}'")]
-    private partial void LogMessagesRetrieved(string channel, int messageCount);
+    private static partial void LogMessagesRetrieved(ILogger logger, string channel, int messageCount);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Channel '{Channel}' not found")]
-    private partial void LogChannelNotFound(string channel);
+    private static partial void LogChannelNotFound(ILogger logger, string channel);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Slack API error for channel '{Channel}': HTTP {StatusCode} - {ErrorBody}")]
-    private partial void LogSlackApiError(string channel, int statusCode, string errorBody);
+    private static partial void LogSlackApiError(ILogger logger, string channel, int statusCode, string errorBody);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "HTTP request failed for Slack channel '{Channel}': {Error}")]
-    private partial void LogHttpError(string channel, string error);
+    private static partial void LogHttpError(ILogger logger, string channel, string error);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Slack request to channel '{Channel}' timed out")]
-    private partial void LogTimeout(string channel);
+    private static partial void LogTimeout(ILogger logger, string channel);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Unexpected error reading from Slack channel '{Channel}': {Error}")]
-    private partial void LogUnexpectedError(string channel, string error);
+    private static partial void LogUnexpectedError(ILogger logger, string channel, string error);
 }

@@ -32,7 +32,7 @@ namespace Orkeon.Cli.Commands.Scripting.Bindings;
 ///   </description></item>
 /// </list>
 /// </remarks>
-public static class ConsoleShimBinding
+internal static class ConsoleShimBinding
 {
     /// <summary>JS global name overridden by this binding.</summary>
     public const string GlobalName = "console";
@@ -60,7 +60,7 @@ public static class ConsoleShimBinding
 /// CLR shim exposed to Jint as <c>globalThis.console</c>. Camel-case methods are
 /// intentional — they're surfaced to JS via reflection.
 /// </summary>
-public sealed class ConsoleShim
+internal sealed class ConsoleShim
 {
     private readonly JsLogShim _shim;
 

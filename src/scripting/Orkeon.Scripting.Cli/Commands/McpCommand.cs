@@ -130,10 +130,10 @@ internal static class McpCommand
             if (host is null)
                 return Program.ExitScriptError;
 
-            if (!await ServeOnlyAsync(console.ErrorOutput, host.Services.GetRequiredService<IToolRegistry>(), options.Tools).ConfigureAwait(false))
+            if (!await ServeOnlyAsync(console.ErrorOutput, host.Services.GetRequiredService<IToolRegistry>(), options.Tools, stop.Token).ConfigureAwait(false))
                 return Program.ExitScriptError;
 
-            if (crews is not null && !await CrewNamesAreFreeAsync(console.ErrorOutput, host.Services.GetRequiredService<IToolRegistry>(), crews).ConfigureAwait(false))
+            if (crews is not null && !await CrewNamesAreFreeAsync(console.ErrorOutput, host.Services.GetRequiredService<IToolRegistry>(), crews, stop.Token).ConfigureAwait(false))
                 return Program.ExitScriptError;
 
             if (options.ExposeOutput && !host.Services.GetRequiredService<IFileSystemService>().GetAvailableMounts()
@@ -207,9 +207,9 @@ internal static class McpCommand
     }
 
     /// <summary>A <c>run_crew_*</c> name a tool of the host already holds refuses the start, named: the client could not tell them apart.</summary>
-    private static async Task<bool> CrewNamesAreFreeAsync(TextWriter error, IToolRegistry registry, McpCrewToolHost crews)
+    private static async Task<bool> CrewNamesAreFreeAsync(TextWriter error, IToolRegistry registry, McpCrewToolHost crews, CancellationToken ct)
     {
-        var held = (await registry.GetAllToolsAsync().ConfigureAwait(false)).Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
+        var held = (await registry.GetAllToolsAsync(ct).ConfigureAwait(false)).Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
         var clash = crews.Tools.Select(t => t.Name).FirstOrDefault(held.Contains);
         if (clash is null)
             return true;
@@ -263,7 +263,7 @@ internal static class McpCommand
     /// <c>--tools</c>: every name must be a tool of the host — one that is not refuses the start,
     /// named — and every other tool is left out of what the server lists and runs (<c>McpServerOptions.AllowedTools</c>).
     /// </summary>
-    private static async Task<bool> ServeOnlyAsync(TextWriter error, IToolRegistry registry, IEnumerable<string> names)
+    private static async Task<bool> ServeOnlyAsync(TextWriter error, IToolRegistry registry, IEnumerable<string> names, CancellationToken ct)
     {
         var requested = names.ToList();
         if (requested.Count == 0)
@@ -273,7 +273,7 @@ internal static class McpCommand
             .Select(name => name.Trim())
             .Where(name => name.Length > 0)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var tools = await registry.GetAllToolsAsync().ConfigureAwait(false);
+        var tools = await registry.GetAllToolsAsync(ct).ConfigureAwait(false);
         var unknown = wanted
             .Where(name => !tools.Any(tool => string.Equals(tool.Name, name, StringComparison.OrdinalIgnoreCase)))
             .Order(StringComparer.Ordinal)

@@ -7,8 +7,6 @@
 // final approval with human validation. Built-in tools are referenced by name;
 // the governance tools come as TypeScript instances from the shared _tools
 // module (EX-01).
-//
-// TODO: feature planifiee — IConfigurationVersioning, IConfigurationDiffService
 
 import { pickTools } from "../_tools/index.ts";
 

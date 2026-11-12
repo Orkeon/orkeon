@@ -34,7 +34,7 @@ public sealed class ToolRegistryTests
         var registry = provider.GetRequiredService<IToolRegistry>();
 
         Assert.IsType<ToolRegistry>(registry);
-        Assert.Same(tool, await registry.GetToolByNameAsync("http_api"));
+        Assert.Same(tool, await registry.GetToolByNameAsync("http_api", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public sealed class ToolRegistryTests
     {
         var registry = CreateRegistry("file_read", "web_scrape");
 
-        var tool = await registry.GetToolByNameAsync("file_read");
+        var tool = await registry.GetToolByNameAsync("file_read", TestContext.Current.CancellationToken);
 
         Assert.NotNull(tool);
         Assert.Equal("file_read", tool.Name);
@@ -66,8 +66,8 @@ public sealed class ToolRegistryTests
     {
         var registry = CreateRegistry("file_read");
 
-        Assert.NotNull(await registry.GetToolByNameAsync("FILE_READ"));
-        Assert.True(await registry.IsRegisteredAsync("File_Read"));
+        Assert.NotNull(await registry.GetToolByNameAsync("FILE_READ", TestContext.Current.CancellationToken));
+        Assert.True(await registry.IsRegisteredAsync("File_Read", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -75,9 +75,9 @@ public sealed class ToolRegistryTests
     {
         var registry = CreateRegistry("file_read");
 
-        Assert.Null(await registry.GetToolByNameAsync("nope"));
-        Assert.Null(await registry.GetToolAsync("nope"));
-        Assert.False(await registry.IsRegisteredAsync("nope"));
+        Assert.Null(await registry.GetToolByNameAsync("nope", TestContext.Current.CancellationToken));
+        Assert.Null(await registry.GetToolAsync("nope", TestContext.Current.CancellationToken));
+        Assert.False(await registry.IsRegisteredAsync("nope", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public sealed class ToolRegistryTests
 
     [Fact]
     public async Task RegisterToolAsync_null_tool_throws()
-        => await Assert.ThrowsAsync<ArgumentNullException>(() => CreateRegistry().RegisterToolAsync(null!));
+        => await Assert.ThrowsAsync<ArgumentNullException>(() => CreateRegistry().RegisterToolAsync(null!, TestContext.Current.CancellationToken));
 
     // SEC-1: the delegation tools' names are theirs; an MCP server's or a plugin's tool that only carries one is refused.
     [Theory]
@@ -109,8 +109,8 @@ public sealed class ToolRegistryTests
     {
         var registry = CreateRegistry();
 
-        Assert.False(await registry.RegisterToolAsync(new StubBaseTool(name)));
-        Assert.Null(await registry.GetToolByNameAsync(name));
+        Assert.False(await registry.RegisterToolAsync(new StubBaseTool(name), TestContext.Current.CancellationToken));
+        Assert.Null(await registry.GetToolByNameAsync(name, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public sealed class ToolRegistryTests
     {
         var registry = CreateRegistry();
 
-        Assert.True(await registry.RegisterToolAsync(new StubCoworkerDelegationTool()));
+        Assert.True(await registry.RegisterToolAsync(new StubCoworkerDelegationTool(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -136,11 +136,11 @@ public sealed class ToolRegistryTests
         var first = new StubBaseTool("dup");
         var second = new StubBaseTool("DUP");
 
-        Assert.True(await registry.RegisterToolAsync(first));
-        Assert.False(await registry.RegisterToolAsync(second));
+        Assert.True(await registry.RegisterToolAsync(first, TestContext.Current.CancellationToken));
+        Assert.False(await registry.RegisterToolAsync(second, TestContext.Current.CancellationToken));
 
-        Assert.Same(first, await registry.GetToolAsync("dup"));
-        Assert.Single(await registry.GetAllToolsAsync());
+        Assert.Same(first, await registry.GetToolAsync("dup", TestContext.Current.CancellationToken));
+        Assert.Single(await registry.GetAllToolsAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -149,9 +149,9 @@ public sealed class ToolRegistryTests
         var seeded = new StubBaseTool("file_read");
         var registry = new ToolRegistry([seeded]);
 
-        Assert.False(await registry.RegisterToolAsync(new MockTool("file_read")));
+        Assert.False(await registry.RegisterToolAsync(new MockTool("file_read"), TestContext.Current.CancellationToken));
 
-        Assert.Same(seeded, await registry.GetToolByNameAsync("file_read"));
+        Assert.Same(seeded, await registry.GetToolByNameAsync("file_read", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -160,11 +160,11 @@ public sealed class ToolRegistryTests
         var registry = CreateRegistry();
         var tool = new StubBaseTool("again");
 
-        Assert.True(await registry.RegisterToolAsync(tool));
-        Assert.True(await registry.RegisterToolAsync(tool));
+        Assert.True(await registry.RegisterToolAsync(tool, TestContext.Current.CancellationToken));
+        Assert.True(await registry.RegisterToolAsync(tool, TestContext.Current.CancellationToken));
 
-        Assert.Same(tool, await registry.GetToolAsync("again"));
-        Assert.Single(await registry.GetAllToolsAsync());
+        Assert.Same(tool, await registry.GetToolAsync("again", TestContext.Current.CancellationToken));
+        Assert.Single(await registry.GetAllToolsAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -197,7 +197,7 @@ public sealed class ToolRegistryTests
 
         await Task.WhenAll(writers.Concat(readers));
 
-        Assert.Equal(50 + (4 * 250) - (4 * 84), (await registry.GetAllToolsAsync()).Count);
+        Assert.Equal(50 + (4 * 250) - (4 * 84), (await registry.GetAllToolsAsync(TestContext.Current.CancellationToken)).Count);
     }
 
     [Fact]
@@ -205,9 +205,9 @@ public sealed class ToolRegistryTests
     {
         var registry = CreateRegistry("gone");
 
-        Assert.True(await registry.UnregisterToolAsync("gone"));
-        Assert.False(await registry.IsRegisteredAsync("gone"));
-        Assert.False(await registry.UnregisterToolAsync("gone"));
+        Assert.True(await registry.UnregisterToolAsync("gone", TestContext.Current.CancellationToken));
+        Assert.False(await registry.IsRegisteredAsync("gone", TestContext.Current.CancellationToken));
+        Assert.False(await registry.UnregisterToolAsync("gone", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public sealed class ToolRegistryTests
     {
         var registry = CreateRegistry("a", "b", "c");
 
-        Assert.Equal(3, (await registry.GetAllToolsAsync()).Count);
+        Assert.Equal(3, (await registry.GetAllToolsAsync(TestContext.Current.CancellationToken)).Count);
     }
 
     [Fact]
@@ -223,9 +223,9 @@ public sealed class ToolRegistryTests
     {
         var registry = CreateRegistry("a", "b");
 
-        await registry.ClearAsync();
+        await registry.ClearAsync(TestContext.Current.CancellationToken);
 
-        Assert.Empty(await registry.GetAllToolsAsync());
+        Assert.Empty(await registry.GetAllToolsAsync(TestContext.Current.CancellationToken));
     }
     // SEC-4: a plugin tool dropped under ContinueOnError resolves to null in the container; the registry skips it.
     [Fact]
@@ -233,8 +233,87 @@ public sealed class ToolRegistryTests
     {
         var registry = new ToolRegistry(new IBaseTool[] { null!, new StubBaseTool("http_api") });
 
-        var tools = await registry.GetAllToolsAsync();
+        var tools = await registry.GetAllToolsAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("http_api", Assert.Single(tools).Name);
+    }
+
+    // ── Cancellation: every method takes the caller's token ───────
+
+    private static CancellationToken Cancelled() => new(canceled: true);
+
+    public static TheoryData<string> Methods() =>
+    [
+        nameof(IToolRegistry.RegisterToolAsync),
+        nameof(IToolRegistry.UnregisterToolAsync),
+        nameof(IToolRegistry.GetToolAsync),
+        nameof(IToolRegistry.GetToolByNameAsync),
+        nameof(IToolRegistry.GetAllToolsAsync),
+        nameof(IToolRegistry.IsRegisteredAsync),
+        nameof(IToolRegistry.ClearAsync),
+        nameof(IToolRegistry.ReplaceToolAsync),
+    ];
+
+    [Theory]
+    [MemberData(nameof(Methods))]
+    public async Task ShouldThrowOperationCanceled_WhenTheTokenIsCancelled(string method)
+    {
+        var tool = new MockTool("t");
+        IToolRegistry registry = new ToolRegistry([tool]);
+        var token = Cancelled();
+
+        Task call = method switch
+        {
+            nameof(IToolRegistry.RegisterToolAsync) => registry.RegisterToolAsync(new MockTool("other"), token),
+            nameof(IToolRegistry.UnregisterToolAsync) => registry.UnregisterToolAsync("t", token),
+            nameof(IToolRegistry.GetToolAsync) => registry.GetToolAsync("t", token),
+            nameof(IToolRegistry.GetToolByNameAsync) => registry.GetToolByNameAsync("t", token),
+            nameof(IToolRegistry.GetAllToolsAsync) => registry.GetAllToolsAsync(token),
+            nameof(IToolRegistry.IsRegisteredAsync) => registry.IsRegisteredAsync("t", token),
+            nameof(IToolRegistry.ClearAsync) => registry.ClearAsync(token),
+            _ => registry.ReplaceToolAsync(tool, new MockTool("t"), token),
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => call);
+        // Nothing changed: the tool still holds its name.
+        Assert.Same(tool, await registry.GetToolByNameAsync("t", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task DefaultReplaceToolAsync_ShouldPassTheTokenToEveryCallItMakes()
+    {
+        var current = new MockTool("t");
+        var registry = new FakeToolRegistry();
+        await registry.RegisterToolAsync(current, TestContext.Current.CancellationToken);
+        registry.ReceivedTokens.Clear();
+        using var source = new CancellationTokenSource();
+
+        var swapped = await ((IToolRegistry)registry).ReplaceToolAsync(current, new MockTool("t"), source.Token);
+
+        Assert.True(swapped);
+        Assert.Equal(
+            [nameof(IToolRegistry.GetToolByNameAsync), nameof(IToolRegistry.UnregisterToolAsync), nameof(IToolRegistry.RegisterToolAsync)],
+            registry.ReceivedTokens.Select(r => r.Method));
+        // The token reaches every call up to the unregistration; the registration that completes the swap
+        // runs uncancellable.
+        Assert.All(registry.ReceivedTokens.Take(2), r => Assert.Equal(source.Token, r.Token));
+        Assert.Equal(CancellationToken.None, registry.ReceivedTokens[2].Token);
+    }
+
+    [Fact]
+    public async Task DefaultReplaceToolAsync_ShouldStillRegisterTheReplacement_WhenCancelledBetweenTheTwoSteps()
+    {
+        var current = new MockTool("t");
+        var replacement = new MockTool("t");
+        var registry = new FakeToolRegistry();
+        await registry.RegisterToolAsync(current, TestContext.Current.CancellationToken);
+        using var source = new CancellationTokenSource();
+        registry.AfterUnregister = source.Cancel;
+
+        var swapped = await ((IToolRegistry)registry).ReplaceToolAsync(current, replacement, source.Token);
+
+        Assert.True(source.IsCancellationRequested);
+        Assert.True(swapped);
+        Assert.Same(replacement, await registry.GetToolByNameAsync("t", TestContext.Current.CancellationToken));
     }
 }

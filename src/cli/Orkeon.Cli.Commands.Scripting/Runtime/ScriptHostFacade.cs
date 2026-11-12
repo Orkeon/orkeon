@@ -109,13 +109,18 @@ public sealed partial class ScriptHostFacade
     /// <paramref name="approvals"/> holds meanwhile. The time the operator takes to answer does not count: a crew is
     /// not cut short because someone read its question.
     /// </summary>
+    /// <param name="run">The crew run to wait for.</param>
+    /// <param name="timeout">The budget the run has, the operator's answering time excluded.</param>
+    /// <param name="approvals">The approval channel whose questions are answered meanwhile, or null.</param>
+    /// <param name="time">The clock the budget is measured on; <see cref="TimeProvider.System"/> when null.</param>
     /// <exception cref="TimeoutException">The run outlived the timeout, answers set aside.</exception>
-    internal static T WaitAnsweringApprovals<T>(Task<T> run, TimeSpan timeout, ConsoleToolApprovalChannel? approvals)
+    internal static T WaitAnsweringApprovals<T>(
+        Task<T> run, TimeSpan timeout, ConsoleToolApprovalChannel? approvals, TimeProvider? time = null)
     {
         if (approvals is null)
             return run.WaitAsync(timeout).GetAwaiter().GetResult();
 
-        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var clock = new ElapsedClock(time ?? TimeProvider.System);
         var answering = TimeSpan.Zero;
         var waitHandle = ((IAsyncResult)run).AsyncWaitHandle;
         while (!run.IsCompleted)
@@ -142,6 +147,14 @@ public sealed partial class ScriptHostFacade
         }
 
         return run.GetAwaiter().GetResult();
+    }
+
+    // Time elapsed since the wait began, read on the given clock.
+    private readonly struct ElapsedClock(TimeProvider time)
+    {
+        private readonly long _start = time.GetTimestamp();
+
+        public TimeSpan Elapsed => time.GetElapsedTime(_start);
     }
 
     // How often a waiting runCrew looks for a question: short enough that a question shows at once.

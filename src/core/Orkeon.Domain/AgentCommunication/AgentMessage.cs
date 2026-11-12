@@ -8,7 +8,7 @@ namespace Orkeon.Domain.AgentCommunication;
 /// <param name="Type">The type of the message.</param>
 /// <param name="Content">The message content.</param>
 /// <param name="Metadata">Optional metadata associated with the message.</param>
-public record AgentMessage(
+public sealed record AgentMessage(
     AgentId From,
     AgentId To,
     MessageType Type,

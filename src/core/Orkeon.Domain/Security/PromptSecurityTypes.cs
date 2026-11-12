@@ -3,7 +3,7 @@ namespace Orkeon.Domain.Security;
 /// <summary>
 /// Result of sanitizing a prompt or text input for injection threats.
 /// </summary>
-public record SanitizationResult
+public sealed record SanitizationResult
 {
     /// <summary>Gets the text: the input unchanged, or empty when blocked.</summary>
     public string SanitizedText { get; init; } = string.Empty;
@@ -40,7 +40,7 @@ public record SanitizationResult
 /// <param name="MatchedText">The matched text.</param>
 /// <param name="Position">The position in the text where the match was found.</param>
 /// <param name="Severity">The severity of the detected threat.</param>
-public record ThreatDetection(
+public sealed record ThreatDetection(
     ThreatType Type,
     string Pattern,
     string MatchedText,
@@ -53,7 +53,7 @@ public record ThreatDetection(
 /// <param name="Source">The source of the input.</param>
 /// <param name="AgentRole">The role of the agent providing input.</param>
 /// <param name="IsTrusted">Whether the source is trusted.</param>
-public record SanitizationContext(
+public sealed record SanitizationContext(
     string Source,
     string AgentRole,
     bool IsTrusted);

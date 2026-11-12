@@ -1,7 +1,7 @@
 namespace Orkeon.Domain.Agent.ValueObjects;
 
 /// <summary>Represents a skill or capability that an agent possesses.</summary>
-public record AgentSkill
+public sealed record AgentSkill
 {
     /// <summary>Gets the name of this skill.</summary>
     public string Name { get; }
@@ -65,7 +65,7 @@ public record AgentSkill
     public bool IsNovice => ProficiencyLevel < 0.4;
 
     /// <inheritdoc />
-    public virtual bool Equals(AgentSkill? other)
+    public bool Equals(AgentSkill? other)
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;

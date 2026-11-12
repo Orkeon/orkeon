@@ -1,20 +1,5 @@
 #nullable enable
 Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter
-Orkeon.Scripting.Bindings.AgentBuilderBinding
-Orkeon.Scripting.Bindings.CrewBuilderBinding
-Orkeon.Scripting.Bindings.ErrorActionBinding
-Orkeon.Scripting.Bindings.JsErrorActionFactory
-Orkeon.Scripting.Bindings.JsErrorActionFactory.JsErrorActionFactory() -> void
-Orkeon.Scripting.Bindings.JsErrorActionFactory.fail() -> Orkeon.Scripting.ErrorPolicy.JsErrorAction!
-Orkeon.Scripting.Bindings.JsErrorActionFactory.fallback(Jint.Native.JsValue! value) -> Orkeon.Scripting.ErrorPolicy.JsErrorAction!
-Orkeon.Scripting.Bindings.JsErrorActionFactory.retry(Jint.Native.JsValue? options = null) -> Orkeon.Scripting.ErrorPolicy.JsErrorAction!
-Orkeon.Scripting.Bindings.JsErrorActionFactory.skip() -> Orkeon.Scripting.ErrorPolicy.JsErrorAction!
-Orkeon.Scripting.Bindings.JsLlmNamespace
-Orkeon.Scripting.Bindings.JsLlmNamespace.default_.get -> Orkeon.Scripting.Runtime.JsLlmConfig!
-Orkeon.Scripting.Bindings.JsLlmNamespace.model(Jint.Native.JsValue! name, Jint.Native.JsValue? overrides = null) -> Orkeon.Scripting.Runtime.JsLlmConfig!
-Orkeon.Scripting.Bindings.JsLlmNamespace.profile(Jint.Native.JsValue! name, Jint.Native.JsValue? overrides = null) -> Orkeon.Scripting.Runtime.JsLlmConfig!
-Orkeon.Scripting.Bindings.LlmNamespaceBinding
-Orkeon.Scripting.Bindings.RagNamespaceBinding
 Orkeon.Scripting.Bindings.RagScriptingBackend
 Orkeon.Scripting.Bindings.RagScriptingBackend.<Clone>$() -> Orkeon.Scripting.Bindings.RagScriptingBackend!
 Orkeon.Scripting.Bindings.RagScriptingBackend.Equals(Orkeon.Scripting.Bindings.RagScriptingBackend? other) -> bool
@@ -28,12 +13,6 @@ Orkeon.Scripting.Bindings.RagScriptingBackend.RagPipeline.get -> Orkeon.Rag.Abst
 Orkeon.Scripting.Bindings.RagScriptingBackend.RagPipeline.init -> void
 Orkeon.Scripting.Bindings.RagScriptingBackend.RagScriptingBackend() -> void
 Orkeon.Scripting.Bindings.RagScriptingBackendFactory
-Orkeon.Scripting.Bindings.StateGraphBinding
-Orkeon.Scripting.Bindings.StateMachineBinding
-Orkeon.Scripting.Bindings.TaskBuilderBinding
-Orkeon.Scripting.Bindings.TestNamespaceBinding
-Orkeon.Scripting.Bindings.ToolBuilderBinding
-Orkeon.Scripting.Bindings.ToolsNamespaceBinding
 Orkeon.Scripting.Builders.AgentCommandHandler
 Orkeon.Scripting.Builders.AgentCommandHandler.<Clone>$() -> Orkeon.Scripting.Builders.AgentCommandHandler!
 Orkeon.Scripting.Builders.AgentCommandHandler.AgentCommandHandler(string? Intent, Jint.Native.JsValue! Handler) -> void
@@ -78,56 +57,6 @@ Orkeon.Scripting.Builders.JsAgentBuilder.withResponseFormat(string! type) -> Ork
 Orkeon.Scripting.Builders.JsAgentBuilder.withResponseSchema(string! name, Jint.Native.JsValue! schema, Jint.Native.JsValue? strict = null) -> Orkeon.Scripting.Builders.JsAgentBuilder!
 Orkeon.Scripting.Builders.JsAgentBuilder.withState(Jint.Native.JsValue! factoryOrSeed) -> Orkeon.Scripting.Builders.JsAgentBuilder!
 Orkeon.Scripting.Builders.JsAgentBuilder.workingRoot(string! path) -> Orkeon.Scripting.Builders.JsAgentBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder
-Orkeon.Scripting.Builders.JsCrewBuilder.JsCrewBuilder(Jint.Engine! engine, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? toolInvocation = null) -> void
-Orkeon.Scripting.Builders.JsCrewBuilder.budget(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.build() -> Orkeon.Scripting.Runtime.JsCrew!
-Orkeon.Scripting.Builders.JsCrewBuilder.concurrency(int value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.goal(string! value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.manager(Orkeon.Scripting.Builders.JsAgent! agent) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.maxInstances(int value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.maxRpm(int value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.memory(bool value = true) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.name(string! value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.onCrewComplete(Jint.Native.JsValue! hook) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.onCrewError(Jint.Native.JsValue! hook) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.onCrewStart(Jint.Native.JsValue! hook) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.planning(bool value = true) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.process(string! value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.verbose() -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.verbose(bool value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.withAgent(Jint.Native.JsValue! agent) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.withAgents(Jint.Native.JsValue! agents) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.withTask(Jint.Native.JsValue! task) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.withTasks(Jint.Native.JsValue! tasks) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder
-Orkeon.Scripting.Builders.JsTaskBuilder.JsTaskBuilder() -> void
-Orkeon.Scripting.Builders.JsTaskBuilder.agent(Orkeon.Scripting.Builders.JsAgent! agent) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.asyncExecution(bool value = true) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.build() -> Orkeon.Scripting.Runtime.JsTask!
-Orkeon.Scripting.Builders.JsTaskBuilder.decision(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.deliverable(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.description(string! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.expect(Jint.Native.JsValue! schema) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.expectedOutput(string! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.humanInput(bool value = true) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.name(string! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.retry(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.tools(Jint.Native.JsValue! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.when(string! decisionTask, Jint.Native.JsValue! clauses) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.withContext(Orkeon.Scripting.Runtime.JsTask! task) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.withContexts(Jint.Native.JsValue! tasks) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.withProfile(Jint.Native.JsValue! name) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.withResponseFormat(string! type) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.withResponseSchema(string! name, Jint.Native.JsValue! schema, Jint.Native.JsValue? strict = null) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsToolBuilder
-Orkeon.Scripting.Builders.JsToolBuilder.JsToolBuilder(Jint.Engine! engine) -> void
-Orkeon.Scripting.Builders.JsToolBuilder.access(string! value) -> Orkeon.Scripting.Builders.JsToolBuilder!
-Orkeon.Scripting.Builders.JsToolBuilder.build() -> Orkeon.Scripting.Runtime.JsTool!
-Orkeon.Scripting.Builders.JsToolBuilder.description(string! value) -> Orkeon.Scripting.Builders.JsToolBuilder!
-Orkeon.Scripting.Builders.JsToolBuilder.execute(Jint.Native.JsValue! fn) -> Orkeon.Scripting.Builders.JsToolBuilder!
-Orkeon.Scripting.Builders.JsToolBuilder.name(string! value) -> Orkeon.Scripting.Builders.JsToolBuilder!
-Orkeon.Scripting.Builders.JsToolBuilder.withSchema(Jint.Native.JsValue! schema) -> Orkeon.Scripting.Builders.JsToolBuilder!
 Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions
 Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.<Clone>$() -> Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions!
 Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.Equals(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? other) -> bool
@@ -247,7 +176,6 @@ Orkeon.Scripting.Exceptions.WaiterKickedException.WaiterKickedException() -> voi
 Orkeon.Scripting.Exceptions.WaiterKickedException.WaiterKickedException(string! message, System.Exception! innerException) -> void
 Orkeon.Scripting.Exceptions.WaiterKickedException.WaiterKickedException(string! queueName) -> void
 Orkeon.Scripting.JsEngineFactory
-Orkeon.Scripting.JsEngineFactory.Create() -> Jint.Engine!
 Orkeon.Scripting.JsEngineFactory.EnableTestNamespace.get -> bool
 Orkeon.Scripting.JsEngineFactory.EnableTestNamespace.init -> void
 Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Microsoft.Extensions.Options.IOptions<Orkeon.Scripting.Configuration.ScriptingLimitsOptions!>! limits, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Scripting.ScriptingHostPorts? hostPorts = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null) -> void
@@ -467,24 +395,6 @@ Orkeon.Scripting.Testing.AssertionException
 Orkeon.Scripting.Testing.AssertionException.AssertionException() -> void
 Orkeon.Scripting.Testing.AssertionException.AssertionException(string! message) -> void
 Orkeon.Scripting.Testing.AssertionException.AssertionException(string! message, System.Exception! innerException) -> void
-Orkeon.Scripting.Testing.JsMockLlmExpectationBuilder
-Orkeon.Scripting.Testing.JsMockLlmExpectationBuilder.respond(Jint.Native.JsValue! response) -> void
-Orkeon.Scripting.Testing.JsMockLlmHandle
-Orkeon.Scripting.Testing.JsMockLlmHandle.when(Jint.Native.JsValue! matcher) -> Orkeon.Scripting.Testing.JsMockLlmExpectationBuilder!
-Orkeon.Scripting.Testing.JsMockToolExpectationBuilder
-Orkeon.Scripting.Testing.JsMockToolExpectationBuilder.respond(Jint.Native.JsValue! response) -> void
-Orkeon.Scripting.Testing.JsMockToolHandle
-Orkeon.Scripting.Testing.JsMockToolHandle.respond(Jint.Native.JsValue! response) -> void
-Orkeon.Scripting.Testing.JsMockToolHandle.when(Jint.Native.JsValue! matcher) -> Orkeon.Scripting.Testing.JsMockToolExpectationBuilder!
-Orkeon.Scripting.Testing.JsTestNamespace
-Orkeon.Scripting.Testing.JsTestNamespace.GetMockTool(string! name) -> Orkeon.Scripting.Testing.MockTool?
-Orkeon.Scripting.Testing.JsTestNamespace.JsTestNamespace() -> void
-Orkeon.Scripting.Testing.JsTestNamespace.JsTestNamespace(Orkeon.Scripting.Testing.MockLlmProvider! llm) -> void
-Orkeon.Scripting.Testing.JsTestNamespace.Llm.get -> Orkeon.Scripting.Testing.MockLlmProvider!
-Orkeon.Scripting.Testing.JsTestNamespace.assertLlmCalled.get -> System.Action<Jint.Native.JsValue?>!
-Orkeon.Scripting.Testing.JsTestNamespace.assertToolCalled.get -> System.Action<string!, Jint.Native.JsValue?>!
-Orkeon.Scripting.Testing.JsTestNamespace.mockLlm.get -> Orkeon.Scripting.Testing.JsMockLlmHandle!
-Orkeon.Scripting.Testing.JsTestNamespace.mockTool.get -> System.Func<string!, Orkeon.Scripting.Testing.JsMockToolHandle!>!
 Orkeon.Scripting.Testing.MockLlmExpectationBuilder
 Orkeon.Scripting.Testing.MockLlmExpectationBuilder.Respond(string! content) -> Orkeon.Scripting.Testing.MockLlmProvider!
 Orkeon.Scripting.Testing.MockLlmProvider
@@ -535,12 +445,6 @@ Orkeon.Scripting.Toolchain.EsbuildTranspileException.EsbuildTranspileException(s
 Orkeon.Scripting.Toolchain.EsbuildTranspileException.EsbuildTranspileException(string! message, System.Exception! innerException) -> void
 Orkeon.Scripting.Toolchain.EsbuildTranspileException.EsbuildTranspileException(string! message, int exitCode) -> void
 Orkeon.Scripting.Toolchain.EsbuildTranspileException.ExitCode.get -> int
-Orkeon.Scripting.Toolchain.EsbuildTranspiler
-Orkeon.Scripting.Toolchain.EsbuildTranspiler.BundleFromFileAsync(string! physicalPath, string! source, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
-Orkeon.Scripting.Toolchain.EsbuildTranspiler.Dispose() -> void
-Orkeon.Scripting.Toolchain.EsbuildTranspiler.EsbuildTranspiler(Microsoft.Extensions.Options.IOptions<Orkeon.Scripting.Configuration.ScriptingToolchainOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.Toolchain.EsbuildTranspiler!>? logger = null) -> void
-Orkeon.Scripting.Toolchain.EsbuildTranspiler.EsbuildTranspiler(Orkeon.Scripting.Configuration.ScriptingToolchainOptions? options = null) -> void
-Orkeon.Scripting.Toolchain.EsbuildTranspiler.TranspileAsync(string! tsSource, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
 Orkeon.Scripting.Toolchain.IScriptTranspiler
 Orkeon.Scripting.Toolchain.IScriptTranspiler.BundleFromFileAsync(string! physicalPath, string! source, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
 Orkeon.Scripting.Toolchain.IScriptTranspiler.TranspileAsync(string! tsSource, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
@@ -581,17 +485,6 @@ Orkeon.Scripting.Versioning.ScriptVersionMismatchError.ScriptVersionMismatchErro
 Orkeon.Scripting.Versioning.ScriptVersionMismatchError.ScriptVersionMismatchError(string! message, System.Exception! innerException) -> void
 Orkeon.Scripting.Versioning.ScriptVersionMismatchError.SupportedVersion.get -> string!
 Orkeon.Scripting.Versioning.VersionDirectiveParser
-const Orkeon.Scripting.Bindings.AgentBuilderBinding.GlobalName = "agentBuilder" -> string!
-const Orkeon.Scripting.Bindings.CrewBuilderBinding.GlobalName = "crewBuilder" -> string!
-const Orkeon.Scripting.Bindings.ErrorActionBinding.GlobalName = "ErrorAction" -> string!
-const Orkeon.Scripting.Bindings.LlmNamespaceBinding.GlobalName = "llm" -> string!
-const Orkeon.Scripting.Bindings.RagNamespaceBinding.GlobalName = "rag" -> string!
-const Orkeon.Scripting.Bindings.StateGraphBinding.GlobalName = "stateGraph" -> string!
-const Orkeon.Scripting.Bindings.StateMachineBinding.GlobalName = "stateMachine" -> string!
-const Orkeon.Scripting.Bindings.TaskBuilderBinding.GlobalName = "taskBuilder" -> string!
-const Orkeon.Scripting.Bindings.TestNamespaceBinding.GlobalName = "test" -> string!
-const Orkeon.Scripting.Bindings.ToolBuilderBinding.GlobalName = "toolBuilder" -> string!
-const Orkeon.Scripting.Bindings.ToolsNamespaceBinding.GlobalName = "tools" -> string!
 const Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName = "Orkeon:Scripting:AgentInstances" -> string!
 const Orkeon.Scripting.Configuration.ScriptingLimitsOptions.SectionName = "Orkeon:Scripting:Limits" -> string!
 const Orkeon.Scripting.Configuration.ScriptingToolchainOptions.SectionName = "Orkeon:Scripting:Toolchain" -> string!
@@ -640,22 +533,9 @@ override Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.ToString() -> string!
 static Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter.CollectIgnoredFeatures(Orkeon.Scripting.Runtime.JsCrew! crew) -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter.CollectScriptTools(Orkeon.Scripting.Runtime.JsCrew! crew) -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Runtime.JsTool!>!
 static Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter.ToConfiguration(Orkeon.Scripting.Runtime.JsCrew! crew) -> Orkeon.Domain.Configuration.CrewConfiguration!
-static Orkeon.Scripting.Bindings.AgentBuilderBinding.Register(Jint.Engine! engine) -> void
-static Orkeon.Scripting.Bindings.CrewBuilderBinding.Register(Jint.Engine! engine, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? toolInvocation = null) -> void
-static Orkeon.Scripting.Bindings.ErrorActionBinding.Register(Jint.Engine! engine) -> void
-static Orkeon.Scripting.Bindings.LlmNamespaceBinding.Register(Jint.Engine! engine, Microsoft.Extensions.Logging.ILogger? logger = null, Orkeon.Domain.SharedKernel.ILlmProvider? defaultProvider = null, Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles = null) -> void
-static Orkeon.Scripting.Bindings.RagNamespaceBinding.Register(Jint.Engine! engine, Orkeon.Scripting.Bindings.RagScriptingBackend? backend = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 static Orkeon.Scripting.Bindings.RagScriptingBackend.operator !=(Orkeon.Scripting.Bindings.RagScriptingBackend? left, Orkeon.Scripting.Bindings.RagScriptingBackend? right) -> bool
 static Orkeon.Scripting.Bindings.RagScriptingBackend.operator ==(Orkeon.Scripting.Bindings.RagScriptingBackend? left, Orkeon.Scripting.Bindings.RagScriptingBackend? right) -> bool
 static Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(System.IServiceProvider! services) -> Orkeon.Scripting.Bindings.RagScriptingBackend?
-static Orkeon.Scripting.Bindings.StateGraphBinding.Register(Jint.Engine! engine) -> void
-static Orkeon.Scripting.Bindings.StateGraphBinding.Register(Jint.Engine! engine, Orkeon.Domain.Graph.IGraphNodeObserver? observer) -> void
-static Orkeon.Scripting.Bindings.StateMachineBinding.Register(Jint.Engine! engine) -> void
-static Orkeon.Scripting.Bindings.TaskBuilderBinding.Register(Jint.Engine! engine) -> void
-static Orkeon.Scripting.Bindings.TestNamespaceBinding.Register(Jint.Engine! engine) -> Orkeon.Scripting.Testing.JsTestNamespace!
-static Orkeon.Scripting.Bindings.TestNamespaceBinding.Register(Jint.Engine! engine, Orkeon.Scripting.Testing.TestOverrideLlmProvider? provider) -> Orkeon.Scripting.Testing.JsTestNamespace!
-static Orkeon.Scripting.Bindings.ToolBuilderBinding.Register(Jint.Engine! engine) -> void
-static Orkeon.Scripting.Bindings.ToolsNamespaceBinding.Register(Jint.Engine! engine, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 static Orkeon.Scripting.Builders.AgentCommandHandler.operator !=(Orkeon.Scripting.Builders.AgentCommandHandler? left, Orkeon.Scripting.Builders.AgentCommandHandler? right) -> bool
 static Orkeon.Scripting.Builders.AgentCommandHandler.operator ==(Orkeon.Scripting.Builders.AgentCommandHandler? left, Orkeon.Scripting.Builders.AgentCommandHandler? right) -> bool
 static Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.operator !=(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? left, Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? right) -> bool
@@ -666,13 +546,10 @@ static Orkeon.Scripting.Configuration.ScriptingToolchainOptions.FromConfiguratio
 static Orkeon.Scripting.Configuration.ScriptingToolchainOptions.operator !=(Orkeon.Scripting.Configuration.ScriptingToolchainOptions? left, Orkeon.Scripting.Configuration.ScriptingToolchainOptions? right) -> bool
 static Orkeon.Scripting.Configuration.ScriptingToolchainOptions.operator ==(Orkeon.Scripting.Configuration.ScriptingToolchainOptions? left, Orkeon.Scripting.Configuration.ScriptingToolchainOptions? right) -> bool
 static Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.MapToCode(System.Exception! ex) -> string!
-static Orkeon.Scripting.JsEngineFactory.ApplyInteropPolicy(Jint.Options! options) -> Jint.Options!
-static Orkeon.Scripting.JsEngineFactory.PauseExecutionClock(Jint.Engine! engine) -> System.IDisposable?
 static Orkeon.Scripting.Orchestration.JsGraphConfig.operator !=(Orkeon.Scripting.Orchestration.JsGraphConfig? left, Orkeon.Scripting.Orchestration.JsGraphConfig? right) -> bool
 static Orkeon.Scripting.Orchestration.JsGraphConfig.operator ==(Orkeon.Scripting.Orchestration.JsGraphConfig? left, Orkeon.Scripting.Orchestration.JsGraphConfig? right) -> bool
 static Orkeon.Scripting.ScriptingHostPorts.operator !=(Orkeon.Scripting.ScriptingHostPorts? left, Orkeon.Scripting.ScriptingHostPorts? right) -> bool
 static Orkeon.Scripting.ScriptingHostPorts.operator ==(Orkeon.Scripting.ScriptingHostPorts? left, Orkeon.Scripting.ScriptingHostPorts? right) -> bool
-static Orkeon.Scripting.Toolchain.EsbuildTranspiler.Create(Microsoft.Extensions.Configuration.IConfiguration? configuration, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.Toolchain.EsbuildTranspiler!>? logger = null) -> Orkeon.Scripting.Toolchain.EsbuildTranspiler!
 static Orkeon.Scripting.Toolchain.TscOutputParser.Parse(string! output, System.Func<string!, string!>! redactPath, System.Func<string!, string!>! redactText) -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Toolchain.TypeCheckDiagnostic!>!
 static Orkeon.Scripting.Toolchain.TscTypeChecker.Create(Microsoft.Extensions.Configuration.IConfiguration? configuration, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.Toolchain.TscTypeChecker!>? logger = null) -> Orkeon.Scripting.Toolchain.TscTypeChecker!
 static Orkeon.Scripting.Toolchain.TypeCheckDiagnostic.operator !=(Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? left, Orkeon.Scripting.Toolchain.TypeCheckDiagnostic? right) -> bool

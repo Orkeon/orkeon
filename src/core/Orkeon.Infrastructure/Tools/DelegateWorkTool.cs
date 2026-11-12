@@ -190,9 +190,9 @@ public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWo
                 }
             );
 
-            await _communicationService.SendMessageAsync(message).ConfigureAwait(false);
+            await _communicationService.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
 
-            LogDelegatedTask(targetAgentId, request.CoworkerRole);
+            LogDelegatedTask(Logger, targetAgentId, request.CoworkerRole);
 
             return new DelegateWorkResponse
             {
@@ -247,7 +247,7 @@ public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWo
             CancellationToken = cancellationToken,
         };
 
-        LogSynchronousDelegationStarted(targetAgentId, request.CoworkerRole);
+        LogSynchronousDelegationStarted(Logger, targetAgentId, request.CoworkerRole);
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         var result = await _agentExecutionService
@@ -255,7 +255,7 @@ public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWo
             .ConfigureAwait(false);
 
         sw.Stop();
-        LogSynchronousDelegationCompleted(targetAgentId, result.Success, sw.Elapsed);
+        LogSynchronousDelegationCompleted(Logger, targetAgentId, result.Success, sw.Elapsed);
 
         return new DelegateWorkResponse
         {
@@ -277,13 +277,13 @@ public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWo
         "Synchronous delegation is not available: no crew run supplies the context the coworker's work derives from";
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Delegated task to {TargetAgent} (role: {Role})")]
-    private partial void LogDelegatedTask(AgentId targetAgent, string role);
+    private static partial void LogDelegatedTask(ILogger logger, AgentId targetAgent, string role);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Starting synchronous delegation to agent {TargetAgentId} (role: {CoworkerRole})")]
-    private partial void LogSynchronousDelegationStarted(AgentId targetAgentId, string coworkerRole);
+    private static partial void LogSynchronousDelegationStarted(ILogger logger, AgentId targetAgentId, string coworkerRole);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Synchronous delegation to agent {TargetAgentId} completed (success: {Success}) in {Duration}")]
-    private partial void LogSynchronousDelegationCompleted(AgentId targetAgentId, bool success, TimeSpan duration);
+    private static partial void LogSynchronousDelegationCompleted(ILogger logger, AgentId targetAgentId, bool success, TimeSpan duration);
 }

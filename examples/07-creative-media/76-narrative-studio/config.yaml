@@ -1,9 +1,8 @@
-# 76. Studio Narratif — Creation-Revision + Memoire Composite 3 Couches
-# Use case: Narrative studio with a sequential creation-revision pass and 3-layer composite memory
-# TODO: feature planifiee — Composite memory
+# 76. Narrative Studio — Creation-Revision
+# Use case: Narrative studio with a sequential creation-revision pass and crew memory for narrative coherence
 
 name: "narrative-studio"
-goal: "Create narrative content through a creation-revision pass with 3-layer composite memory maintaining narrative coherence"
+goal: "Create narrative content through a creation-revision pass with crew memory maintaining narrative coherence"
 process: "sequential"
 verbose: true
 memory: true

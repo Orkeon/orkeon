@@ -18,7 +18,7 @@ namespace Orkeon.Cli.Commands.Scripting.Dispatch;
 /// <see cref="IAgentChannel.RequestAsync"/> awaits it directly, so the lock is what keeps Jint
 /// single-threaded even when the call originates from a pool thread (an async <c>post</c>).
 /// </remarks>
-public static partial class AgentCommandRegistrar
+internal static partial class AgentCommandRegistrar
 {
     /// <summary>Registers <paramref name="agent"/>'s handlers and returns a handle that unregisters everything on dispose.</summary>
     public static IDisposable Register(

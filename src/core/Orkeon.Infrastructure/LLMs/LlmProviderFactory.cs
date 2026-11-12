@@ -285,7 +285,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
 
     /// <summary>Creates OpenAI provider instance.</summary>
     private LlmProviderAdapter CreateOpenAIProvider(LlmConfig config)
-        => Adapt<OpenAIProvider>(config, logger => new OpenAIProvider(config, _httpClientFactory, _openAiStrategy, logger));
+        => Adapt<OpenAILlmProvider>(config, logger => new OpenAILlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 
     /// <summary>Creates Anthropic provider instance.</summary>
     private LlmProviderAdapter CreateAnthropicProvider(LlmConfig config)

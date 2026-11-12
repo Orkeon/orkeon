@@ -8,7 +8,7 @@ namespace Orkeon.Host;
 /// The service's lifetime (GATE-01): it starts, it says what it hosts, it stays up, and it
 /// stops without abandoning a run mid-sentence.
 /// <para>
-/// The daemon does not run crews on its own — it waits to be asked. rc.2 hosts no scheduler,
+/// The daemon does not run crews on its own — it waits to be asked. It hosts no scheduler,
 /// deliberately, and the documentation must not imply that a scheduled crew is possible. What
 /// it does own is the lifetime and the graceful stop: a run in flight gets a grace period to
 /// finish before the process leaves.

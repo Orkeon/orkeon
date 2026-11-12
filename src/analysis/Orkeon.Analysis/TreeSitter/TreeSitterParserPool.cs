@@ -10,7 +10,7 @@ using TsParser = TreeSitter.Parser;
 
 namespace Orkeon.Analysis.TreeSitter;
 
-public sealed class TreeSitterParserPool : ITreeSitterParser
+internal sealed class TreeSitterParserPool : ITreeSitterParser
 {
     private readonly ConcurrentDictionary<string, TsLanguage> _languages = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, ConcurrentBag<TsParser>> _pools = new(StringComparer.OrdinalIgnoreCase);

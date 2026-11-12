@@ -18,14 +18,14 @@ public class HttpClientDisposalTests
 {
     private readonly LlmConfig _config;
     private readonly TestHttpClientFactory _httpClientFactory;
-    private readonly TestLogger<OpenAIProvider> _logger;
+    private readonly TestLogger<OpenAILlmProvider> _logger;
     private readonly IAsyncPolicy<HttpResponseMessage> _noOpPolicy;
 
     public HttpClientDisposalTests()
     {
         _config = LlmConfig.Create(ModelGpt4, TestApiKey);
         _httpClientFactory = new TestHttpClientFactory();
-        _logger = new TestLogger<OpenAIProvider>();
+        _logger = new TestLogger<OpenAILlmProvider>();
         _noOpPolicy = Policy.NoOpAsync<HttpResponseMessage>();
     }
 
@@ -44,9 +44,9 @@ public class HttpClientDisposalTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var trackingClient = new DisposalTrackingHttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", trackingClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", trackingClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync("test prompt", cancellationToken: TestContext.Current.CancellationToken);
@@ -71,9 +71,9 @@ public class HttpClientDisposalTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var trackingClient = new DisposalTrackingHttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", trackingClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", trackingClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act - Make multiple sequential calls
         var result1 = await provider.GenerateAsync("first prompt", cancellationToken: TestContext.Current.CancellationToken);
@@ -102,9 +102,9 @@ public class HttpClientDisposalTests
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
         var trackingClient = new DisposalTrackingHttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", trackingClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", trackingClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act - 100 sequential requests (would fail after ~1000 with socket exhaustion)
         for (int i = 0; i < 100; i++)
@@ -125,9 +125,9 @@ public class HttpClientDisposalTests
         // Arrange
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.InternalServerError, "Server Error");
         var trackingClient = new DisposalTrackingHttpClient(handler);
-        _httpClientFactory.RegisterClient("OpenAIProvider", trackingClient);
+        _httpClientFactory.RegisterClient("OpenAILlmProvider", trackingClient);
 
-        using var provider = new OpenAIProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
         // Act
         var result = await provider.GenerateAsync("test prompt", cancellationToken: TestContext.Current.CancellationToken);
@@ -145,7 +145,7 @@ public class HttpClientDisposalTests
         var factory = new TrackingHttpClientFactory();
 
         // Act
-        using var provider = new OpenAIProvider(_config, factory, _noOpPolicy, _logger);
+        using var provider = new OpenAILlmProvider(_config, factory, _noOpPolicy, _logger);
         // GenerateAsync creates the client internally when called
 
         // Assert - The factory was called during CreateHttpClient (via the base constructor or first call)

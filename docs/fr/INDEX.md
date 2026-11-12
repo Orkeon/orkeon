@@ -61,8 +61,8 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Système de plugins](./architecture/plugins.md) | Contrat `IOrkeonPlugin`, découverte VFS, isolation `AssemblyLoadContext`, activation opt-in `AddOrkeonPlugins`, ⚠️ frontière de confiance |
 | [DSL de scripting](./architecture/scripting.md) | DSL à syntaxe TypeScript (`.ork.ts`) : transpilation esbuild, exécution sandboxée Jint, toute la surface Orkeon (agents, crews, tools, FSM, graphes, événements) via builders fluides |
 | [Commandes CLI TypeScript](./architecture/cli-ts-commands.md) | Commandes REPL interactives en `*.cmd.ts` (`defineCommand`) chargées au démarrage sans recompilation .NET, avec dispatch de travail vers les agents |
-| [Client & serveur MCP](./architecture/mcp.md) | Intégration Model Context Protocol bi-ère (`2026-07-28` stateless + révisions legacy), transports, activation, outils MCP et crews, limites honnêtes |
-| [Piloter des crews depuis le REPL](./architecture/coding-agent-ts.md) | Le pont `.cmd.ts` → `crew.ork.ts` : plan de contrôle `*.cmd.ts` vs moteur `crew.ork.ts` via le service `script-host`, `ctx.llm.act` comme boucle d'agent, le garde de permissions et les ports de session — avec une session REPL sans clé, exécutable |
+| [Client & serveur MCP](./architecture/mcp.md) | Intégration Model Context Protocol à deux époques (`2026-07-28` sans état + révisions héritées), transports, activation, outils MCP et crews, limites honnêtes |
+| [Piloter des crews depuis le REPL](./architecture/coding-agent-ts.md) | Le pont `.cmd.ts` → `crew.ork.ts` : plan de contrôle `*.cmd.ts` vs moteur `crew.ork.ts` via le service `script-host`, `ctx.llm.act` comme boucle d'agent, la garde de permissions et les ports de session — avec une session REPL sans clé, exécutable |
 | [Référence YAML](./architecture/yaml-schema.md) | **Source unique** du schéma YAML complet (crew, agents, tasks, graph) |
 | [RaggableTree — graphe sémantique](./architecture/raggable-tree.md) | Pipeline 6 phases, 29 tools, 12 langages, réindexation incrémentale, fraîcheur paresseuse, recherche hybride, injection de contexte, ce que les hôtes câblent réellement |
 | [Pipeline RAG](./architecture/rag-pipeline.md) | Le sous-système `src/rag/` : ingestion, pipeline à 7 étages (transform → retrieve → fuse/MMR → rerank → assemble → generate → groundedness), graphe correctif CRAG, repli web, 5 profils, évaluation mesurée |
@@ -78,7 +78,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 
 | Fichier | Description |
 |---------|-------------|
-| [Guide comparatif ProcessTypes](./orchestration/process-types.md) | Les 6 stratégies côte à côte : matrice, arbre de décision, pros/cons, coûts |
+| [Guide comparatif ProcessTypes](./orchestration/process-types.md) | Les 6 stratégies côte à côte : matrice, arbre de décision, avantages et inconvénients, coûts |
 | [FSM — Machine à états](./orchestration/fsm.md) | Moteur FSM générique du domaine (utilisé par `orkeon forge` ; sa policy de circuit breaker borne Graph et le graphe RAG correctif), 4 mécanismes, presets, guards |
 | [Graph — Graphe d'états](./orchestration/graph.md) | Le mode de process Graph (topologie fixe, circuit breaker à 3 mécanismes) et l'API C# `StateGraph` style LangGraph : edges conditionnels, cycles contrôlés, retry |
 | [Autonomous — Auto-organisation](./orchestration/autonomous.md) | Budget multi-dimensions, tâches assignées par le manager, délégation à un pair en cas d'échec, spawn fourni par l'hôte, canal A2A |
@@ -95,15 +95,15 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | Fichier | Description |
 |---------|-------------|
 | [Écrire une crew en TypeScript](./guides/write-a-crew-in-typescript.md) | Le DSL `.ork.ts` de bout en bout : les deux formes de script et pourquoi choisir la mauvaise abandonne la moitié de ce que vous avez écrit (bruyamment) : tâches, agents, outils, le DAG `withContext`, livrables, `ctx.llm.act`, état, réglage de l'éditeur |
-| [Méthodologie de portage](./guides/porting-methodology.md) | 5 étapes pour migrer une application, YAML-first vs Code-first, estimation effort |
+| [Méthodologie de portage](./guides/porting-methodology.md) | 5 étapes pour migrer une application, YAML d'abord ou code d'abord, estimation de l'effort |
 | [Exemple de portage](./guides/porting-example.md) | Pipeline e-commerce complet : analyse, mapping agents, YAML, bootstrap C# |
-| [Blueprint nouvelle orchestration](./guides/blueprint.md) | Template 8 étapes pour ajouter un nouveau ProcessType au framework |
+| [Blueprint nouvelle orchestration](./guides/blueprint.md) | Gabarit en 8 étapes pour ajouter un nouveau ProcessType au framework |
 | [Contenu multi-modal (vision)](./guides/multimodal.md) | Vision réelle : `MultiModalContent` → `LlmMessage` → blocs Anthropic / parts OpenAI (14 providers compatibles) / images Ollama, chargeur VFS, activation opt-in |
 | [Enregistrer et rejouer les appels LLM](./guides/testing.md) | `--llm-record` et `--llm-replay` : figer les appels d'un run réel dans une cassette JSONL et les rejouer sans réseau, la clé d'un appel, le masquage, un échec de rejeu, ce qu'une cassette ne contient pas |
 | [Format de réponse LLM](./guides/llm-response-format.md) | Sortie contrainte à la frontière provider (`json_object` / `json_schema`), traduction pilotée par les capacités de chaque provider, cascade crew → agent → task → script → appel |
 | [Quality Gate SonarQube](./guides/quality-gate.md) | Analyse SonarQube locale avec la gate « Orkeon Transitional » : seuils transitoires, trajectoire de durcissement, provisionnement automatique par les scripts |
 | [Modèles locaux](./guides/local-models.md) | Tout exécuter sur sa machine : Docker Model Runner (pull/configure/inspect, contextes 128K), Ollama, variante d'image `local-llm` embarquée, changement de modèle, dépannage |
-| [Vérifier ce que vous installez](./guides/verify-what-you-install.md) | Ce que la chaîne de provenance prouve et ne prouve pas (Trusted Publishing OIDC, attestations SLSA, Releases immuables, `SHA256SUMS`, SBOM), les commandes exactes `gh attestation verify` / `dotnet nuget verify`, la requête à l'API sans token, et pourquoi un paquet nuget.org doit être dé-signé avant que son digest corresponde |
+| [Vérifier ce que vous installez](./guides/verify-what-you-install.md) | Ce que la chaîne de provenance prouve et ne prouve pas (Trusted Publishing OIDC, attestations SLSA, Releases immuables, `SHA256SUMS`, SBOM), les commandes exactes `gh attestation verify` / `dotnet nuget verify`, la requête à l'API sans token, et pourquoi un paquet nuget.org doit être dépouillé de sa signature avant que son digest corresponde |
 | [Installer avec apt](./guides/install-with-apt.md) | Debian / Ubuntu (amd64, arm64) : ajouter une fois la source apt signée d'Orkeon, puis `apt install` / `apt upgrade` ; les canaux `stable`, `rc` et `dev`, le retour à une version, la désinstallation, les builds Docker, le dépannage |
 | [Interop MCP](./guides/mcp-interop.md) | Vérifier le client MCP contre le serveur de référence (`server-everything`) : le test nocturne et la procédure du MCP Inspector. |
 | [Whisper par MCP](./guides/whisper-mcp.md) | Transcrire de l'audio depuis `orkeon-repl`, `orkeon run` ou `orkeon-host` : un faster-whisper local derrière un serveur MCP, ses réglages `MCP:Servers` et de montage, le côté agent, et les limites d'Orkeon autour desquelles le serveur est écrit (chemins, résultats texte seul, plafond de 4000 caractères, handshake de 30 s) |
@@ -118,6 +118,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Référence de configuration](./reference/configuration.md) | La carte unique des réglages (`Llm`, `Orkeon:*`, `MCP`…) : sources et précédence, puis chaque clé par catégorie — une ligne par clé, avec son type, son défaut et les hôtes qui la lisent |
 | [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante, dont ce qui est livré mais pas encore câblé |
 | [Matrice de conformité A2A](./reference/a2a-conformance.md) | Position honnête face à la spec A2A v1.0 : opérations, modèle de données, bindings, sécurité — ce qui interopère et ce qui n'interopère pas |
+| [Politique de stabilité et de versionnement](./reference/stability.md) | Ce qu'un correctif, une mineure et une majeure peuvent changer ; la surface API figée (`PublicAPI.Shipped.txt`), le hors-engagement, la dépréciation, les versions prises en charge |
 | [APIs expérimentales](./reference/experimental-apis.md) | Surfaces `[Experimental]` (A2A, Autonomous, RAG correctif, MCP), IDs de diagnostic `ORKEXP001–007`, comment s'inscrire |
 | [Politique de données des exemples](./reference/example-data-policy.md) | Pourquoi les exemples livrent de la config et pas des datasets, comment monter vos entrées (`/data:ro`, `/output:rw`), règles contributeurs pour les fixtures d'exemple fournies |
 | [Sous-systèmes opt-in](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, [rate-limiting d'outils](./reference/configuration.md#toolratelimiting), rotation de clés, benchmarking, multi-modal, hooks de kickoff, sous-système RAG — activation explicite `AddOrkeonXxx()` (hors DI par défaut) ; plus les briques que `AddOrkeonInfrastructure()` enregistre et celles que rien ne consomme |
@@ -146,7 +147,7 @@ Commencer par la vue d'ensemble pour assimiler Agent, Task, Crew, Tool. Puis exp
 overview → bootstrap → inventory → porting-methodology → porting-example → new-tool-pattern
 ```
 
-S'imprégner de l'architecture et du setup DI. Identifier les outils disponibles. Appliquer la méthodologie avec l'exemple concret. Revenir au pattern outil si des outils custom sont nécessaires.
+S'imprégner de l'architecture et du câblage DI. Identifier les outils disponibles. Appliquer la méthodologie avec l'exemple concret. Revenir au pattern outil si des outils sur mesure sont nécessaires.
 
 ### "Je veux étendre le framework"
 

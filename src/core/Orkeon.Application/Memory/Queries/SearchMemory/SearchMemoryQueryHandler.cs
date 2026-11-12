@@ -9,7 +9,7 @@ namespace Orkeon.Application.Memory.Queries.SearchMemory;
 /// <summary>
 /// Handler for searching memory items belonging to an agent.
 /// </summary>
-public partial class SearchMemoryQueryHandler : IQueryHandler<SearchMemoryQuery, SearchMemoryResult>
+public partial class SearchMemoryQueryHandler : IQueryHandler<SearchMemoryQuery, SearchMemoryResponse>
 {
     private readonly IAgentMemoryStoreRepository _memoryStoreRepository;
     private readonly IMemorySearchService _memorySearchService;
@@ -34,14 +34,14 @@ public partial class SearchMemoryQueryHandler : IQueryHandler<SearchMemoryQuery,
     /// <summary>
     /// Handle Async.
     /// </summary>
-    public System.Threading.Tasks.Task<SearchMemoryResult> HandleAsync(
+    public System.Threading.Tasks.Task<SearchMemoryResponse> HandleAsync(
         SearchMemoryQuery query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         return HandleCoreAsync();
 
-        async System.Threading.Tasks.Task<SearchMemoryResult> HandleCoreAsync()
+        async System.Threading.Tasks.Task<SearchMemoryResponse> HandleCoreAsync()
         {
             LogSearchingMemory(query.AgentId, query.SearchTerm);
 
@@ -51,7 +51,7 @@ public partial class SearchMemoryQueryHandler : IQueryHandler<SearchMemoryQuery,
             if (store == null)
             {
                 LogMemoryStoreNotFound(query.AgentId);
-                return new SearchMemoryResult(Items: [], TotalCount: 0);
+                return new SearchMemoryResponse(Items: [], TotalCount: 0);
             }
 
             var results = await _memorySearchService.SearchAsync(
@@ -63,7 +63,7 @@ public partial class SearchMemoryQueryHandler : IQueryHandler<SearchMemoryQuery,
 
             LogSearchCompleted(query.AgentId, results.Count);
 
-            return new SearchMemoryResult(Items: results, TotalCount: results.Count);
+            return new SearchMemoryResponse(Items: results, TotalCount: results.Count);
         }
     }
 

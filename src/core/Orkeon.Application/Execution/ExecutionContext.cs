@@ -197,7 +197,7 @@ public static class ExecutionContext
 /// <summary>
 /// Task output record for execution context.
 /// </summary>
-public record TaskOutput(
+public sealed record TaskOutput(
     string TaskId,
     string? AgentId,
     string Content,

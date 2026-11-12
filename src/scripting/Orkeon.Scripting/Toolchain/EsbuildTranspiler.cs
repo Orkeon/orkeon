@@ -14,7 +14,7 @@ namespace Orkeon.Scripting.Toolchain;
 /// Strips TypeScript syntax from a <c>.ork.ts</c> source by piping it through esbuild
 /// (<c>--loader=ts --format=esm --target=es2022</c>). It emits no source map.
 /// </summary>
-public sealed partial class EsbuildTranspiler : IScriptTranspiler, IDisposable
+internal sealed partial class EsbuildTranspiler : IScriptTranspiler, IDisposable
 {
     private static readonly string[] TranspileArgs = ["--loader=ts", "--format=esm", "--target=es2022"];
 

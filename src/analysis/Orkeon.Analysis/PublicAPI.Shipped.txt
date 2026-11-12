@@ -361,15 +361,12 @@ Orkeon.Analysis.Core.CitationBlockValidator.ValidateAsync(string! fileContent, S
 Orkeon.Analysis.Core.ContextInjection.CodebaseContextProvider
 Orkeon.Analysis.Core.ContextInjection.CodebaseContextProvider.CodebaseContextProvider(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store) -> void
 Orkeon.Analysis.Core.ContextInjection.CodebaseContextProvider.GetContextAsync(Orkeon.Analysis.Abstractions.Interfaces.CodebaseContextOptions! options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
-Orkeon.Analysis.Core.ControlFlowBuilder
-Orkeon.Analysis.Core.DataFlowAnalyzer
 Orkeon.Analysis.Core.DefaultReferenceResolver
 Orkeon.Analysis.Core.DefaultReferenceResolver.DefaultReferenceResolver() -> void
 Orkeon.Analysis.Core.DefaultReferenceResolver.ResolveAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.UnresolvedRef!>! refs, System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Models.RaggableNode!>! symbolsByFqn, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>>!
 Orkeon.Analysis.Core.DependencyGraphBuilder
 Orkeon.Analysis.Core.DependencyGraphBuilder.BuildDependenciesAsync(Orkeon.Analysis.Abstractions.Interfaces.IReferenceResolver! resolver, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>!>!
 Orkeon.Analysis.Core.DependencyGraphBuilder.BuildForFilesAsync(System.Collections.Generic.IEnumerable<string!>! files, System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! unchangedNodes, Orkeon.Analysis.Abstractions.Interfaces.IReferenceResolver! resolver, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>!>!
-Orkeon.Analysis.Core.DependencyGraphBuilder.DependencyGraphBuilder(Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool) -> void
 Orkeon.Analysis.Core.DependencyGraphBuilder.RegisterFile(string! filePath, string! source, System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodes) -> void
 Orkeon.Analysis.Core.DependencyGraphBuilder.RegisterFile(string! filePath, string! source, System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodes, Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter) -> void
 Orkeon.Analysis.Core.DocumentedInResult
@@ -478,7 +475,6 @@ Orkeon.Analysis.Core.InMemoryRaggableStore.TopCentralityAsync(Orkeon.Analysis.Ab
 Orkeon.Analysis.Core.InMemoryRaggableStore.TopComplexityAsync(Orkeon.Analysis.Abstractions.DTOs.Queries.ComplexityQuery! query, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.DTOs.Responses.ComplexityEntry!>!>!
 Orkeon.Analysis.Core.IncrementalReindexEngine
 Orkeon.Analysis.Core.IncrementalReindexEngine.IncrementalReindexEngine(Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
-Orkeon.Analysis.Core.IncrementalReindexEngine.IncrementalReindexEngine(System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter!>! adapters, Orkeon.Analysis.Abstractions.Interfaces.IFileSystemDiscoverer! discoverer, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IReferenceResolver! resolver, Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingTextComposer! composer, Orkeon.Analysis.Core.RaggableEnrichmentServices? enrichment = null) -> void
 Orkeon.Analysis.Core.IncrementalReindexEngine.IncrementalReindexEngine(System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter!>! adapters, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
 Orkeon.Analysis.Core.IncrementalReindexEngine.ReindexAsync(Orkeon.Analysis.Abstractions.Models.RaggableTree! currentTree, string! virtualRoot, System.Collections.Generic.IReadOnlyList<string!>! changedFilePaths, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.IncrementalReindexResult!>!
 Orkeon.Analysis.Core.IncrementalReindexResult
@@ -549,7 +545,6 @@ Orkeon.Analysis.Core.RaggableTreeBuilder
 Orkeon.Analysis.Core.RaggableTreeBuilder.BuildAsync(Orkeon.Analysis.Abstractions.Interfaces.DiscoveryResult! discovery, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.BuildResult!>!
 Orkeon.Analysis.Core.RaggableTreeBuilder.BuildAsync(string! virtualRoot, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.BuildResult!>!
 Orkeon.Analysis.Core.RaggableTreeBuilder.RaggableTreeBuilder(Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
-Orkeon.Analysis.Core.RaggableTreeBuilder.RaggableTreeBuilder(System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter!>! adapters, Orkeon.Analysis.Abstractions.Interfaces.IFileSystemDiscoverer! discoverer, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IReferenceResolver! resolver, Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingTextComposer! composer, Orkeon.Analysis.Core.RaggableEnrichmentServices? enrichment = null) -> void
 Orkeon.Analysis.Core.RaggableTreeBuilder.RaggableTreeBuilder(System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter!>! adapters, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
 Orkeon.Analysis.Core.Serialization.IRaggableTreeSerializer
 Orkeon.Analysis.Core.Serialization.IRaggableTreeSerializer.DeserializeAsync(System.IO.Stream! input, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot?>!
@@ -573,18 +568,6 @@ Orkeon.Analysis.Core.SourceSliceReader
 Orkeon.Analysis.Core.SourceSliceReader.ClearCache() -> void
 Orkeon.Analysis.Core.SourceSliceReader.ReadAsync(Orkeon.Analysis.Abstractions.Models.RaggableNode! node, Orkeon.Analysis.Abstractions.SourceMode mode, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.DTOs.Responses.SourceSlice!>!
 Orkeon.Analysis.Core.SourceSliceReader.SourceSliceReader(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, int maxLines) -> void
-Orkeon.Analysis.Core.StatementExtractionResult
-Orkeon.Analysis.Core.StatementExtractionResult.<Clone>$() -> Orkeon.Analysis.Core.StatementExtractionResult!
-Orkeon.Analysis.Core.StatementExtractionResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.StatementNode!>! Statements, out bool IsPartial) -> void
-Orkeon.Analysis.Core.StatementExtractionResult.Equals(Orkeon.Analysis.Core.StatementExtractionResult? other) -> bool
-Orkeon.Analysis.Core.StatementExtractionResult.IsPartial.get -> bool
-Orkeon.Analysis.Core.StatementExtractionResult.IsPartial.init -> void
-Orkeon.Analysis.Core.StatementExtractionResult.StatementExtractionResult(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.StatementNode!>! Statements, bool IsPartial) -> void
-Orkeon.Analysis.Core.StatementExtractionResult.Statements.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.StatementNode!>!
-Orkeon.Analysis.Core.StatementExtractionResult.Statements.init -> void
-Orkeon.Analysis.Core.StatementExtractor
-Orkeon.Analysis.Core.StatementExtractor.Extract(TreeSitter.Node! declarationNode, string! parentSymbolId, string! source) -> Orkeon.Analysis.Core.StatementExtractionResult!
-Orkeon.Analysis.Core.StatementExtractor.StatementExtractor(Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter) -> void
 Orkeon.Analysis.Core.StoreAnalytics
 Orkeon.Analysis.Core.StoreAnalytics.GetIndexedRoots() -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.IndexedRoot!>!
 Orkeon.Analysis.Core.StoreAnalytics.StoreAnalytics(System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodesById, System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.List<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>!>! edgesBySource, System.Collections.Generic.IReadOnlyDictionary<string!, System.DateTimeOffset>! indexedAtByRoot, Orkeon.Analysis.Core.GraphTraversal! graph, System.Func<string!, Orkeon.Analysis.Abstractions.Models.RaggableNode?>! resolve, System.Func<System.DateTimeOffset>! clock, int maxNodes) -> void
@@ -600,9 +583,6 @@ Orkeon.Analysis.Core.Structural.UnsupportedRuleKeyException.UnsupportedRuleKeyEx
 Orkeon.Analysis.Core.Structural.UnsupportedRuleKeyException.UnsupportedRuleKeyException(string! message, System.Exception! innerException) -> void
 Orkeon.Analysis.Core.UniversalSemanticMapper
 Orkeon.Analysis.Core.UniversalSemanticMapper.ExtractNodes(string! filePath, string! sourceCode) -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>!
-Orkeon.Analysis.Core.UniversalSemanticMapper.UniversalSemanticMapper(Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool) -> void
-Orkeon.Analysis.Core.UniversalSemanticMapper.UniversalSemanticMapper(Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, bool extractStatements) -> void
-Orkeon.Analysis.Core.UniversalSemanticMapper.UniversalSemanticMapper(Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, bool extractStatements, Microsoft.Extensions.Logging.ILogger<Orkeon.Analysis.Core.UniversalSemanticMapper!>? logger) -> void
 Orkeon.Analysis.Core.Watcher.FileSystemWatcherCodebaseWatcher
 Orkeon.Analysis.Core.Watcher.FileSystemWatcherCodebaseWatcher.Changed -> System.EventHandler<Orkeon.Analysis.Abstractions.Interfaces.CodebaseChangeNotification!>?
 Orkeon.Analysis.Core.Watcher.FileSystemWatcherCodebaseWatcher.DisposeAsync() -> System.Threading.Tasks.ValueTask
@@ -688,13 +668,6 @@ Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions.Model.get -> string!
 Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions.Model.init -> void
 Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions.Temperature.get -> double
 Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions.Temperature.init -> void
-Orkeon.Analysis.TreeSitter.TreeSitterNodeExtensions
-Orkeon.Analysis.TreeSitter.TreeSitterParserPool
-Orkeon.Analysis.TreeSitter.TreeSitterParserPool.Dispose() -> void
-Orkeon.Analysis.TreeSitter.TreeSitterParserPool.Parse(string! sourceCode, string! language) -> Orkeon.Analysis.Abstractions.Interfaces.ParsedTree!
-Orkeon.Analysis.TreeSitter.TreeSitterParserPool.Rent(string! language) -> TreeSitter.Parser!
-Orkeon.Analysis.TreeSitter.TreeSitterParserPool.Return(TreeSitter.Parser! parser) -> void
-Orkeon.Analysis.TreeSitter.TreeSitterParserPool.TreeSitterParserPool() -> void
 Orkeon.Analysis.Vectors.EmbeddingPayloadTooLargeException
 Orkeon.Analysis.Vectors.EmbeddingPayloadTooLargeException.EmbeddingPayloadTooLargeException() -> void
 Orkeon.Analysis.Vectors.EmbeddingPayloadTooLargeException.EmbeddingPayloadTooLargeException(string! serverMessage) -> void
@@ -761,7 +734,6 @@ const Orkeon.Analysis.Adapters.PageOutlineMapper.RoleTag = "role" -> string!
 const Orkeon.Analysis.Core.Cache.RaggableTreeCache.CacheDirectory = ".orkeon/cache/raggable-tree" -> string!
 const Orkeon.Analysis.Core.Cache.RaggableTreeCache.DatabaseFileName = "index.db" -> string!
 const Orkeon.Analysis.Core.Cache.RaggableTreeCache.MaxEntries = 3 -> int
-const Orkeon.Analysis.Core.ControlFlowBuilder.ExitSentinel = "$exit" -> string!
 const Orkeon.Analysis.Core.InMemoryRaggableStore.MaxChildren = 200 -> int
 const Orkeon.Analysis.Core.InMemoryRaggableStore.MaxDepth = 6 -> int
 const Orkeon.Analysis.Core.InMemoryRaggableStore.MaxLines = 200 -> int
@@ -817,11 +789,6 @@ override Orkeon.Analysis.Core.DocumentingSection.ToString() -> string!
 override Orkeon.Analysis.Core.DocumentsOfResult.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.DocumentsOfResult.GetHashCode() -> int
 override Orkeon.Analysis.Core.DocumentsOfResult.ToString() -> string!
-override Orkeon.Analysis.Core.Editing.AmbiguousSelectorException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-override Orkeon.Analysis.Core.Editing.ParseBrokenException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-override Orkeon.Analysis.Core.Editing.SelectorNotFoundException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-override Orkeon.Analysis.Core.Editing.StaleHashException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-override Orkeon.Analysis.Core.Editing.UnsupportedExtensionException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Analysis.Core.IncrementalReindexResult.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.IncrementalReindexResult.GetHashCode() -> int
 override Orkeon.Analysis.Core.IncrementalReindexResult.ToString() -> string!
@@ -831,11 +798,6 @@ override Orkeon.Analysis.Core.RaggableEnrichmentServices.ToString() -> string!
 override Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.Equals(object? obj) -> bool
 override Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.GetHashCode() -> int
 override Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.ToString() -> string!
-override Orkeon.Analysis.Core.StatementExtractionResult.Equals(object? obj) -> bool
-override Orkeon.Analysis.Core.StatementExtractionResult.GetHashCode() -> int
-override Orkeon.Analysis.Core.StatementExtractionResult.ToString() -> string!
-override Orkeon.Analysis.Core.Structural.UnboundMetavariableException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
-override Orkeon.Analysis.Core.Structural.UnsupportedRuleKeyException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Analysis.DependencyInjection.EmbeddingOptions.Equals(object? obj) -> bool
 override Orkeon.Analysis.DependencyInjection.EmbeddingOptions.GetHashCode() -> int
 override Orkeon.Analysis.DependencyInjection.EmbeddingOptions.ToString() -> string!
@@ -882,8 +844,6 @@ static Orkeon.Analysis.Core.Cache.CachedBuildResult.operator ==(Orkeon.Analysis.
 static Orkeon.Analysis.Core.Cache.CachingTreeBuilder.DescribeEnvironment(System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter!>! adapters, System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Interfaces.IFrameworkFingerprinter!>! fingerprinters, Orkeon.Analysis.Abstractions.Interfaces.INodeSummarizer? summarizer, Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider? embedder) -> string!
 static Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.operator !=(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? right) -> bool
 static Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry.operator ==(Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? left, Orkeon.Analysis.Core.Cache.RaggableTreeCacheEntry? right) -> bool
-static Orkeon.Analysis.Core.ControlFlowBuilder.Build(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.StatementNode!>! statements) -> Orkeon.Analysis.Abstractions.Models.ControlFlowGraph!
-static Orkeon.Analysis.Core.DataFlowAnalyzer.Analyze(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.StatementNode!>! statements) -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.DataFlowLink!>!
 static Orkeon.Analysis.Core.DependencyGraphBuilder.GraphGroupOf(string! languageName) -> string!
 static Orkeon.Analysis.Core.DocumentedInResult.operator !=(Orkeon.Analysis.Core.DocumentedInResult? left, Orkeon.Analysis.Core.DocumentedInResult? right) -> bool
 static Orkeon.Analysis.Core.DocumentedInResult.operator ==(Orkeon.Analysis.Core.DocumentedInResult? left, Orkeon.Analysis.Core.DocumentedInResult? right) -> bool
@@ -905,8 +865,6 @@ static Orkeon.Analysis.Core.RaggableEnrichmentServices.operator ==(Orkeon.Analys
 static Orkeon.Analysis.Core.RaggableTreeBuilder.DiscoveryRequestOf(string! virtualRoot, Orkeon.Analysis.Abstractions.DTOs.Tools.IndexCodebaseRequest! opts) -> Orkeon.Analysis.Abstractions.Interfaces.DiscoveryRequest!
 static Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.operator !=(Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot? left, Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot? right) -> bool
 static Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot.operator ==(Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot? left, Orkeon.Analysis.Core.Serialization.RaggableTreeSnapshot? right) -> bool
-static Orkeon.Analysis.Core.StatementExtractionResult.operator !=(Orkeon.Analysis.Core.StatementExtractionResult? left, Orkeon.Analysis.Core.StatementExtractionResult? right) -> bool
-static Orkeon.Analysis.Core.StatementExtractionResult.operator ==(Orkeon.Analysis.Core.StatementExtractionResult? left, Orkeon.Analysis.Core.StatementExtractionResult? right) -> bool
 static Orkeon.Analysis.DependencyInjection.EmbeddingOptions.operator !=(Orkeon.Analysis.DependencyInjection.EmbeddingOptions? left, Orkeon.Analysis.DependencyInjection.EmbeddingOptions? right) -> bool
 static Orkeon.Analysis.DependencyInjection.EmbeddingOptions.operator ==(Orkeon.Analysis.DependencyInjection.EmbeddingOptions? left, Orkeon.Analysis.DependencyInjection.EmbeddingOptions? right) -> bool
 static Orkeon.Analysis.DependencyInjection.RaggableTreeOptions.operator !=(Orkeon.Analysis.DependencyInjection.RaggableTreeOptions? left, Orkeon.Analysis.DependencyInjection.RaggableTreeOptions? right) -> bool
@@ -926,12 +884,6 @@ static Orkeon.Analysis.Fingerprinters.NestJsRules.Create() -> Orkeon.Analysis.Fi
 static Orkeon.Analysis.Fingerprinters.NestJsRules.Rules.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.FingerprintRule!>!
 static Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions.operator !=(Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions? left, Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions? right) -> bool
 static Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions.operator ==(Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions? left, Orkeon.Analysis.Summarizers.LlmNodeSummarizerOptions? right) -> bool
-static Orkeon.Analysis.TreeSitter.TreeSitterNodeExtensions.ChildByField(this TreeSitter.Node! node, string! fieldName) -> TreeSitter.Node?
-static Orkeon.Analysis.TreeSitter.TreeSitterNodeExtensions.CleanText(this TreeSitter.Node! node) -> string!
-static Orkeon.Analysis.TreeSitter.TreeSitterNodeExtensions.DescendantsOfType(this TreeSitter.Node! node, string! type) -> System.Collections.Generic.IEnumerable<TreeSitter.Node!>!
-static Orkeon.Analysis.TreeSitter.TreeSitterNodeExtensions.FirstLine(this TreeSitter.Node! node) -> string!
-static Orkeon.Analysis.TreeSitter.TreeSitterNodeExtensions.IsDocComment(this TreeSitter.Node! node) -> bool
-static Orkeon.Analysis.TreeSitter.TreeSitterParserPool.CollectDiagnostics(TreeSitter.Node! root) -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.Models.ParseDiagnostic!>
 static Orkeon.Analysis.Vectors.OllamaEmbeddingOptions.operator !=(Orkeon.Analysis.Vectors.OllamaEmbeddingOptions? left, Orkeon.Analysis.Vectors.OllamaEmbeddingOptions? right) -> bool
 static Orkeon.Analysis.Vectors.OllamaEmbeddingOptions.operator ==(Orkeon.Analysis.Vectors.OllamaEmbeddingOptions? left, Orkeon.Analysis.Vectors.OllamaEmbeddingOptions? right) -> bool
 static Orkeon.Analysis.Vectors.OpenAIEmbeddingOptions.operator !=(Orkeon.Analysis.Vectors.OpenAIEmbeddingOptions? left, Orkeon.Analysis.Vectors.OpenAIEmbeddingOptions? right) -> bool

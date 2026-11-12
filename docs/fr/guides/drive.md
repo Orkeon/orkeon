@@ -234,10 +234,10 @@ const report = await tools.driveUpload({ path: "/output/report.pdf", folder_id: 
 ## Commandes
 
 ```bash
-orkeon drive accounts [--json]     # the accounts, their rights, root folder and readiness (no network)
-orkeon drive login <account>       # the one interactive step: device code (OneDrive) or browser (Google)
-orkeon drive check <account>       # connects, finds the root folder, lists its first items
-orkeon drive logout <account>      # forgets the stored tokens
+orkeon drive accounts [--json]     # les comptes, leurs droits, dossier racine et état de préparation (sans réseau)
+orkeon drive login <account>       # la seule étape interactive : code d'appareil (OneDrive) ou navigateur (Google)
+orkeon drive check <account>       # se connecte, trouve le dossier racine, liste ses premiers éléments
+orkeon drive logout <account>      # oublie les jetons stockés
 ```
 
 Chaque verbe prend `--settings <fichier>` ; sans lui, les réglages sont résolus comme `orkeon run`

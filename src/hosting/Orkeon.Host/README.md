@@ -13,7 +13,7 @@ assembly — and the launcher in the archives — is named `orkeon-host`.
 nothing. It is an installer binary, shipped self-contained in the multi-app release
 archives (with the `deploy/` tree: systemd unit, SCM registration script, Dockerfile.host)
 and as the per-machine Windows service MSI `orkeon-host-<version>-win-x64.msi`, which
-registers the `Orkeon` service under `NT SERVICE\\Orkeon`. See the
+registers the `Orkeon` service under `NT SERVICE\Orkeon`. See the
 [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 ## Documentation

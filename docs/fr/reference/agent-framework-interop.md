@@ -17,8 +17,8 @@ ses outils. La décision et ses limites sont consignées dans
 ## Installer et enregistrer
 
 ```bash
-dotnet add package Orkeon.Interop.AgentFramework --prerelease
-dotnet add package Microsoft.Agents.AI --prerelease   # seulement pour construire vous-même des agents MAF (ChatClientAgent, AsAIAgent)
+dotnet add package Orkeon.Interop.AgentFramework
+dotnet add package Microsoft.Agents.AI   # seulement pour construire vous-même des agents MAF (ChatClientAgent, AsAIAgent)
 ```
 
 Le paquet apporte `Orkeon` et `Microsoft.Agents.AI.Abstractions` avec lui. Le pont a besoin d'un hôte

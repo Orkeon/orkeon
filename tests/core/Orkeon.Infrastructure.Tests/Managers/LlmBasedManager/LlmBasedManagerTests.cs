@@ -54,7 +54,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         var task = CreateTestTask("Write unit tests");
 
         var assign = await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _manager.AssignTaskAsync(task, CreateTestAgents(), CreateTestContext(), null!));
+            () => _manager.AssignTaskAsync(task, CreateTestAgents(), CreateTestContext(), null!, TestContext.Current.CancellationToken));
         var review = await Assert.ThrowsAsync<ArgumentNullException>(
             () => _manager.ReviewOutputAsync(CreateTestOutput("Done"), task, null!, TestContext.Current.CancellationToken));
 
@@ -96,7 +96,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(assignment);
@@ -118,7 +118,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("This is not valid JSON");
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(assignment);
@@ -138,7 +138,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupException(new InvalidOperationException("LLM service unavailable"));
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(assignment);
@@ -163,7 +163,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(assignment);
@@ -285,7 +285,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        await _manager.AssignTaskAsync(task, agents, context, _llm);
+        await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         var prompt = _llmProvider.GetLastPrompt();
@@ -307,7 +307,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        await _manager.AssignTaskAsync(task, agents, context, _llm);
+        await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         var prompt = _llmProvider.GetLastPrompt();
@@ -351,7 +351,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("Invalid response to force fallback");
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         // Manager agent should be selected due to delegation capability
@@ -374,7 +374,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        await _manager.AssignTaskAsync(task, agents, context, _llm);
+        await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(_logger.HasLoggedInformation("assigned to agent"));
@@ -391,7 +391,7 @@ public sealed class LlmBasedManagerTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _manager.AssignTaskAsync(task, agents, context, _llm));
+            () => _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -404,7 +404,7 @@ public sealed class LlmBasedManagerTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _manager.AssignTaskAsync(task!, agents, context, _llm));
+            () => _manager.AssignTaskAsync(task!, agents, context, _llm, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -417,7 +417,7 @@ public sealed class LlmBasedManagerTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _manager.AssignTaskAsync(task, agents!, context, _llm));
+            () => _manager.AssignTaskAsync(task, agents!, context, _llm, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -435,7 +435,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        var result = await _manager.AssignTaskAsync(task, agents, context!, _llm);
+        var result = await _manager.AssignTaskAsync(task, agents, context!, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -480,7 +480,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(assignment);
@@ -502,7 +502,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(assignment);
@@ -545,7 +545,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse(response);
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(agents[0].Id, assignment.AssignedAgent);
@@ -600,7 +600,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("This is not valid JSON to force fallback");
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         // Developer should be selected due to word matching
@@ -629,7 +629,7 @@ public sealed class LlmBasedManagerTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => _manager.AssignTaskAsync(task, agents, context, _llm));
+            () => _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -695,7 +695,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         }));
 
         // Act
-        await _manager.AssignTaskAsync(task, agents, context, _llm);
+        await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         var prompt = _llmProvider.GetLastPrompt();
@@ -742,7 +742,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("Invalid response");
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(agents[0].Id, assignment.AssignedAgent);
@@ -793,7 +793,7 @@ public sealed class LlmBasedManagerTests : IDisposable
         _llmProvider.SetupResponse("This is not valid JSON to force fallback");
 
         // Act
-        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm);
+        var assignment = await _manager.AssignTaskAsync(task, agents, context, _llm, TestContext.Current.CancellationToken);
 
         // Assert
         // Agent with tools should get bonus score
@@ -1005,12 +1005,12 @@ public sealed class TestMemoryScope : IMemoryScope
         GC.SuppressFinalize(this);
     }
 
-    public Task ExecuteInScopeAsync(Func<Task> action)
+    public Task ExecuteInScopeAsync(Func<Task> action, CancellationToken cancellationToken = default)
     {
         return action();
     }
 
-    public Task<T> ExecuteInScopeAsync<T>(Func<Task<T>> action)
+    public Task<T> ExecuteInScopeAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken = default)
     {
         return action();
     }

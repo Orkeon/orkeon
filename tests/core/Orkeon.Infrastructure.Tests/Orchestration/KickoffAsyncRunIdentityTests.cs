@@ -56,17 +56,31 @@ public sealed class KickoffAsyncRunIdentityTests
 
     [Fact]
     [Trait("BR", "FWK-01")]
-    public async Task KickoffAsyncNoWait_TheReturnedIdIsTheSession_NotASecondId()
+    public async Task KickoffNoWaitAsync_TheReturnedIdIsTheSession_NotASecondId()
     {
         var (h, crew, _) = await ArrangeAsync();
 
-        var execId = await h.Orchestrator.KickoffAsyncNoWait(crew.Id, Cov.Input());
+        var execId = await h.Orchestrator.KickoffNoWaitAsync(crew.Id, Cov.Input(), TestContext.Current.CancellationToken);
 
         await Polling.WaitUntilAsync(() => h.State.CompleteExecutionCount > 0);
 
         Assert.Equal(1, h.Checkpoint!.StartCount);
         Assert.Equal(execId.AsString(), h.Checkpoint.LastSessionId!.AsString());
         Assert.Equal(execId.AsString(), h.Checkpoint.ScopeAtStart!.ExecutionId.AsString());
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-01")]
+    public async Task KickoffNoWaitAsync_ACancelledToken_StartsNothing()
+    {
+        var (h, crew, _) = await ArrangeAsync();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => h.Orchestrator.KickoffNoWaitAsync(crew.Id, Cov.Input(), cts.Token));
+
+        Assert.Equal(0, h.Checkpoint!.StartCount);
     }
 
     [Fact]

@@ -6,17 +6,17 @@ namespace Orkeon.Application.Memory.Queries.SearchMemory;
 /// <summary>
 /// Query to search memory items for a given agent.
 /// </summary>
-public record SearchMemoryQuery(
+public sealed record SearchMemoryQuery(
     string AgentId,
     string SearchTerm,
     MemoryType? MemoryType,
     int MaxResults
-) : IQuery<SearchMemoryResult>;
+) : IQuery<SearchMemoryResponse>;
 
 /// <summary>
 /// A single memory item returned by a search.
 /// </summary>
-public record MemoryItemDto(
+public sealed record MemoryItemDto(
     string Id,
     string Content,
     float Importance,
@@ -29,7 +29,7 @@ public record MemoryItemDto(
 /// <summary>
 /// Result returned by the search memory query.
 /// </summary>
-public record SearchMemoryResult(
+public sealed record SearchMemoryResponse(
     IReadOnlyList<MemoryItemDto> Items,
     int TotalCount
 );

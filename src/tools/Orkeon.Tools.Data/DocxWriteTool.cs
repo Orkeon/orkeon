@@ -114,9 +114,9 @@ public partial class DocxWriteTool : FileToolBase<DocxWriteRequest, DocxWriteRes
                 bytes = ms.ToArray();
             }
 
-            var fileSize = await _fileSystemService.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
+            var fileSize = await FileSystemService.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
 
-            LogWriteDocx(path, request.Paragraphs.Count, request.BulletItems.Count);
+            LogWriteDocx(Logger, path, request.Paragraphs.Count, request.BulletItems.Count);
 
             return new DocxWriteResponse
             {
@@ -224,5 +224,5 @@ public partial class DocxWriteTool : FileToolBase<DocxWriteRequest, DocxWriteRes
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully wrote DOCX: {Path} ({Paragraphs} paragraphs, {Bullets} bullet items)")]
-    private partial void LogWriteDocx(string path, int paragraphs, int bullets);
+    private static partial void LogWriteDocx(ILogger logger, string path, int paragraphs, int bullets);
 }

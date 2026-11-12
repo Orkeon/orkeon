@@ -94,10 +94,10 @@ internal sealed partial class DriveSearchTool : ToolBase<DriveSearchRequest, Dri
         {
             var page = await drive.SearchAsync(query, limit - kept.Count, cursor, cancellationToken).ConfigureAwait(false);
             var within = await DriveAccess.WithinRootAsync(drive, page.Items, cancellationToken).ConfigureAwait(false);
-            if (within.Count < page.Items.Count && _logger.IsEnabled(LogLevel.Debug))
+            if (within.Count < page.Items.Count && Logger.IsEnabled(LogLevel.Debug))
             {
                 foreach (var item in page.Items.Except(within))
-                    LogDropped(_logger, account.Name, item.Id, item.ParentId, item.ParentPath, item.DriveId);
+                    LogDropped(Logger, account.Name, item.Id, item.ParentId, item.ParentPath, item.DriveId);
             }
 
             kept.AddRange(within);

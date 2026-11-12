@@ -14,8 +14,7 @@ public abstract partial class FileToolBase : ToolBase
     private readonly IPathValidator? _pathValidator;
 
     /// <summary>Virtual file system service for path resolution and access control. Always injected (required).</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1051", Justification = "Established protected base-class field referenced directly by derived file tools across multiple projects; converting to a property would break the inherited contract without behavioral benefit.")]
-    protected readonly IFileSystemService _fileSystemService;
+    protected IFileSystemService FileSystemService { get; }
 
     /// <inheritdoc />
     public override string Category => "File Operations";
@@ -28,7 +27,7 @@ public abstract partial class FileToolBase : ToolBase
     protected FileToolBase(IFileSystemService fileSystemService, ILogger? logger = null) : base(logger)
     {
         ArgumentNullException.ThrowIfNull(fileSystemService);
-        _fileSystemService = fileSystemService;
+        FileSystemService = fileSystemService;
     }
 
     /// <summary>
@@ -40,7 +39,7 @@ public abstract partial class FileToolBase : ToolBase
     protected FileToolBase(IFileSystemService fileSystemService, IPathValidator pathValidator, ILogger? logger = null) : base(logger)
     {
         ArgumentNullException.ThrowIfNull(fileSystemService);
-        _fileSystemService = fileSystemService;
+        FileSystemService = fileSystemService;
         _pathValidator = pathValidator;
     }
 
@@ -50,7 +49,7 @@ public abstract partial class FileToolBase : ToolBase
     /// unchanged. A tool addresses the file system and echoes the path with this spelling.
     /// </summary>
     /// <param name="path">The path as written in the request.</param>
-    protected string AbsolutizePath(string path) => WorkingDirectoryResolver.Absolutize(path, _fileSystemService);
+    protected string AbsolutizePath(string path) => WorkingDirectoryResolver.Absolutize(path, FileSystemService);
 
     /// <summary>
     /// Resolves a virtual path to a physical path and validates access rights via the virtual file system.
@@ -75,8 +74,8 @@ public abstract partial class FileToolBase : ToolBase
             return PathValidationResult.Denied(WorkingDirectoryResolver.PathRequiredMessage);
 
         var virtualPath = AbsolutizePath(path);
-        var result = _fileSystemService.ResolveAndValidate(virtualPath, requiredRight);
-        if (result.IsAllowed && AgentRootGuard.Check(_fileSystemService, virtualPath) is { } outsideRoot)
+        var result = FileSystemService.ResolveAndValidate(virtualPath, requiredRight);
+        if (result.IsAllowed && AgentRootGuard.Check(FileSystemService, virtualPath) is { } outsideRoot)
             return outsideRoot;
         if (result.IsAllowed && _pathValidator is not null && result.ResolvedPath is not null)
         {
@@ -104,11 +103,11 @@ public abstract partial class FileToolBase : ToolBase
             var lastSlash = virtualFilePath.LastIndexOf('/');
             if (lastSlash <= 0) return;
             var dir = virtualFilePath[..lastSlash];
-            await _fileSystemService.CreateDirectoryAsync(dir, ct).ConfigureAwait(false);
-            LogDirectoryCreated(dir);
+            await FileSystemService.CreateDirectoryAsync(dir, ct).ConfigureAwait(false);
+            LogDirectoryCreated(Logger, dir);
         }
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Created directory: {Directory}")]
-    private partial void LogDirectoryCreated(string directory);
+    private static partial void LogDirectoryCreated(ILogger logger, string directory);
 }

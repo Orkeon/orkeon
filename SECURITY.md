@@ -6,10 +6,10 @@
 
 | Version | Supported |
 |---|---|
-| 1.0.x (incl. release candidates) | ✅ |
-| ≤ 0.9.x (beta) | ❌ |
+| Latest stable release | ✅ |
+| Older releases | ❌ |
 
-Only the latest published release (currently the 1.0.0 release-candidate line) receives security fixes.
+Only the latest stable release receives security fixes.
 
 ## Reporting a Vulnerability
 
@@ -44,8 +44,8 @@ Vulnerabilities in these layers (allowlist bypass, SSRF filter bypass, VFS escap
 - **`code_interpreter` is never exposed as an `IBaseTool`**: `SecureCodeInterpreterTool` is
   registered as a concrete type only, so no agent can call it unless you expose it yourself.
 - **`shell_command` is different — it ships registered.** `AddOrkeonCodeTools()` registers it
-  as an `IBaseTool`, and both shipped runners (`orkeon run`, `orkeon-repl`) call that method
-  unconditionally, so the tool is in the catalogue out of the box. Its default allowlist is
+  as an `IBaseTool`, and the shipped runners (`orkeon run`, `orkeon-repl`, `orkeon-host`) call that
+  method unconditionally, so the tool is in the catalogue out of the box. Its default allowlist is
   **read-only** (`ls`, `cat`, `pwd`, `grep`… plus read-only `git` subcommands); interpreters
   and mutating `git` stay off unless you set `Orkeon:Tools:Shell:AllowInterpreters`, which is
   **RCE-equivalent** and makes the tool emit a security warning. Prefer adding the one command
@@ -66,7 +66,7 @@ NuGet.org publishing goes through Trusted Publishing (OIDC): no long-lived API k
 Every release also ships `SHA256SUMS` (and `SHA256SUMS.msi` for the MSIs) and — for releases
 cut since the SBOM step landed in September 2026 — a CycloneDX SBOM covered by the same
 attestation. Two things carry **no** attestation: the dev builds of `main`
-(`<version>.dev.<run number>`, GitHub Packages only) and the `orkeon-runners` container
+(`<version>.dev.<run number>`, GitHub Packages only) and the `ghcr.io/orkeon/orkeon` container
 image on GHCR.
 
 ```bash

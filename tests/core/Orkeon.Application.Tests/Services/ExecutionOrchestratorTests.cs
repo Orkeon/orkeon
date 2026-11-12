@@ -132,12 +132,12 @@ public class ExecutionOrchestratorTests
             return System.Threading.Tasks.Task.CompletedTask;
         }
 
-        public async System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> action)
+        public async System.Threading.Tasks.Task<T> ExecuteInScopeAsync<T>(Func<System.Threading.Tasks.Task<T>> action, CancellationToken cancellationToken = default)
         {
             return await action();
         }
 
-        public async System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> action)
+        public async System.Threading.Tasks.Task ExecuteInScopeAsync(Func<System.Threading.Tasks.Task> action, CancellationToken cancellationToken = default)
         {
             await action();
         }

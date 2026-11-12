@@ -332,13 +332,13 @@ public sealed class ProviderStreamingTests : IDisposable
         });
     }
 
-    private OpenAIProvider CreateOpenAIProvider(
+    private OpenAILlmProvider CreateOpenAIProvider(
         string responseBody, HttpStatusCode statusCode, string apiKey = "sk-test", bool rawSse = false)
     {
         SetupHttpClient(responseBody, statusCode);
         var config = LlmConfig.Create(ModelGpt4) with { MaxRetries = 0, ApiKey = apiKey };
-        return new OpenAIProvider(config, _httpClientFactory, _noOpPolicy,
-            NullLogger<OpenAIProvider>.Instance);
+        return new OpenAILlmProvider(config, _httpClientFactory, _noOpPolicy,
+            NullLogger<OpenAILlmProvider>.Instance);
     }
 
     private AnthropicLlmProvider CreateAnthropicProvider(

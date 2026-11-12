@@ -160,9 +160,9 @@ audio/file part the same way.
 
 ## Microsoft.Extensions.AI interop
 
-`ContentConverter.ToAIContents`/`FromAIContents` convert the image/audio/file
-parts to the native Microsoft.Extensions.AI types `DataContent` (bytes) and
-`UriContent` (URI), and back.
+Orkeon converts the image/audio/file parts to the native Microsoft.Extensions.AI
+types `DataContent` (bytes) and `UriContent` (URI), and back, inside
+`Orkeon.Infrastructure`; the converter is internal, not an API to call.
 
 ## Tests
 

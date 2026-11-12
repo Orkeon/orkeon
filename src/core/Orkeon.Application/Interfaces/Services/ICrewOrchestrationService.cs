@@ -1,6 +1,7 @@
 using System.Globalization;
 using CrewId = Orkeon.Domain.Common.CrewId;
 using Orkeon.Domain.SharedKernel;
+using Orkeon.Application.Common.DTOs;
 
 namespace Orkeon.Application.Interfaces.Services;
 
@@ -44,11 +45,14 @@ public interface ICrewOrchestrationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Executes crew asynchronously without waiting.
+    /// Starts the crew in the background and returns its execution id once the tracked state
+    /// exists, without waiting for the run. <paramref name="cancellationToken"/> covers the
+    /// start and is handed to the background run, which it cancels.
     /// </summary>
-    System.Threading.Tasks.Task<CrewExecutionId> KickoffAsyncNoWait(
+    System.Threading.Tasks.Task<CrewExecutionId> KickoffNoWaitAsync(
         CrewId crewId,
-        CrewInput input);
+        CrewInput input,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the status of an async execution.
@@ -116,7 +120,7 @@ public sealed class CrewExecutionId : Orkeon.Domain.Common.TypedId
 /// The positional constructor takes <c>object</c> values; crew YAML only ever carries strings,
 /// which <see cref="WithStringVariables"/> takes directly.
 /// </summary>
-public record CrewInput(
+public sealed record CrewInput(
     string? InitialContext,
     IReadOnlyDictionary<string, object> Variables)
 {
@@ -163,7 +167,7 @@ public record CrewInput(
 /// tracking can distinguish an unmetered run from a genuine zero-cost execution
 /// (R10.8 / MAT-004).
 /// </param>
-public record CrewOutput(
+public sealed record CrewOutput(
     string FinalOutput,
     IReadOnlyList<Orkeon.Application.Execution.TaskOutput> TaskOutputs,
     TimeSpan Duration,
@@ -201,37 +205,11 @@ public record CrewOutput(
 /// <summary>
 /// Output from batch execution.
 /// </summary>
-public record BatchOutput(
+public sealed record BatchOutput(
     IReadOnlyList<CrewOutput> Results,
     int SuccessCount,
     int FailureCount,
     TimeSpan TotalDuration);
-
-/// <summary>
-/// Token usage metrics. The cache pair is a partition of <paramref name="PromptTokens"/>
-/// — tokens served from the provider's prompt cache versus computed — never an addition
-/// to the totals; <see langword="null"/> means "not measured" (a provider without cache
-/// telemetry), never a fabricated zero (W-08).
-/// </summary>
-public record TokenUsage(
-    int PromptTokens,
-    int CompletionTokens,
-    int TotalTokens) : ITokenUsage
-{
-    /// <summary>Prompt tokens served from the provider's cache; null when unmeasured.</summary>
-    public long? CacheHitTokens { get; init; }
-
-    /// <summary>Prompt tokens the provider had to compute; null when unmeasured.</summary>
-    public long? CacheMissTokens { get; init; }
-
-    /// <summary>Cache hits over measured prompt tokens, in [0,1]; null when unmeasured.</summary>
-    public double? CacheHitRatio =>
-        CacheHitTokens is { } hit && CacheMissTokens is { } miss && hit + miss > 0
-            ? (double)hit / (hit + miss)
-            : null;
-}
-
-
 
 /// <summary>
 /// One event of a streamed crew run (<see cref="ICrewOrchestrationService.KickoffStreamingAsync(CrewId, CrewInput, CancellationToken)"/>,
@@ -319,7 +297,7 @@ public sealed record CrewExecutionEvent
 /// <summary>
 /// Status of async crew execution.
 /// </summary>
-public record CrewExecutionStatus(
+public sealed record CrewExecutionStatus(
     CrewExecutionId Id,
     ExecutionState State,
     double Progress,

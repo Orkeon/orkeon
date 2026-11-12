@@ -10,7 +10,7 @@ namespace Orkeon.Scripting.Testing;
 /// (<c>test.assertLlmCalled</c>, <c>test.assertToolCalled</c>).
 /// </summary>
 #pragma warning disable IDE1006
-public sealed class JsTestNamespace
+internal sealed class JsTestNamespace
 {
     /// <summary>Provider the runtime binds in place of a real one; records every call it serves.</summary>
     public MockLlmProvider Llm { get; }
@@ -100,7 +100,7 @@ public sealed class JsTestNamespace
 /// <summary>
 /// Script handle exposed as <c>test.mockLlm</c>; opens an expectation on the mock provider.
 /// </summary>
-public sealed class JsMockLlmHandle
+internal sealed class JsMockLlmHandle
 {
     private readonly MockLlmProvider _provider;
     internal JsMockLlmHandle(MockLlmProvider provider) { _provider = provider; }
@@ -115,7 +115,7 @@ public sealed class JsMockLlmHandle
 /// <summary>
 /// Builds mock-LLM expectations in the scripting test namespace.
 /// </summary>
-public sealed class JsMockLlmExpectationBuilder
+internal sealed class JsMockLlmExpectationBuilder
 {
     private readonly MockLlmProvider _provider;
     private readonly JsValue _matcher;
@@ -158,7 +158,7 @@ public sealed class JsMockLlmExpectationBuilder
 /// <summary>
 /// Script handle exposed as <c>test.mockTool(name)</c>; configures one mock tool.
 /// </summary>
-public sealed class JsMockToolHandle
+internal sealed class JsMockToolHandle
 {
     private readonly MockTool _tool;
     internal JsMockToolHandle(MockTool tool) { _tool = tool; }
@@ -180,7 +180,7 @@ public sealed class JsMockToolHandle
 /// <summary>
 /// Builds mock-tool expectations in the scripting test namespace.
 /// </summary>
-public sealed class JsMockToolExpectationBuilder
+internal sealed class JsMockToolExpectationBuilder
 {
     private readonly MockTool _tool;
     private readonly JsValue _matcher;
@@ -211,7 +211,6 @@ public sealed class JsMockToolExpectationBuilder
 /// Raised by the <c>test.assert*</c> helpers when an expectation is not met. Surfaces to the
 /// script as a plain error, and to a .NET host as the failure of the scripted assertion.
 /// </summary>
-[Serializable]
 public sealed class AssertionException : Exception
 {
     /// <summary>Creates an assertion failure carrying <paramref name="message"/>.</summary>
@@ -222,10 +221,5 @@ public sealed class AssertionException : Exception
 
     /// <summary>Creates an assertion failure wrapping <paramref name="innerException"/>.</summary>
     public AssertionException(string message, Exception innerException) : base(message, innerException) { }
-
-#pragma warning disable SYSLIB0051 // Required by S3925 ISerializable pattern
-    private AssertionException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
-        : base(info, context) { }
-#pragma warning restore SYSLIB0051
 }
 #pragma warning restore IDE1006

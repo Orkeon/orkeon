@@ -20,7 +20,7 @@ public enum SecurityRiskLevel
 /// <summary>
 /// A single security violation found during code analysis.
 /// </summary>
-public record SecurityViolation
+public sealed record SecurityViolation
 {
     /// <summary>Name of the rule that was violated.</summary>
     public string Rule { get; init; } = string.Empty;
@@ -86,7 +86,7 @@ public class SecurityAnalysisOptions
 /// <summary>
 /// Full security report produced by analyzing code.
 /// </summary>
-public record CodeSecurityReport
+public sealed record CodeSecurityReport
 {
     /// <summary>Whether the code is safe to execute based on the configured options.</summary>
     public bool IsAllowed { get; init; }

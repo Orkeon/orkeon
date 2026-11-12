@@ -10,7 +10,7 @@ namespace Orkeon.Scripting.Bindings;
 /// Registers the global <c>stateGraph(literal)</c> factory plus <c>START</c> /
 /// <c>END</c> sentinels.
 /// </summary>
-public static class StateGraphBinding
+internal static class StateGraphBinding
 {
     /// <summary>Global function name.</summary>
     public const string GlobalName = "stateGraph";

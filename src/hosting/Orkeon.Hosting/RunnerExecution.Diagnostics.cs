@@ -132,11 +132,16 @@ public static partial class RunnerExecution
     /// routed to stderr so stdout carries ONLY the tool manifest, which the packaging/lint
     /// tooling consumes as the runtime tool contract.
     /// </summary>
+    /// <param name="opts">The runner's options.</param>
+    /// <param name="loggerCategory">The runner's logger category (unused: every log goes to stderr).</param>
+    /// <param name="configureServices">The runner's own service registrations, applied as at runtime.</param>
+    /// <param name="externalCt">Stops the host build (MCP connections included) and the registry read.</param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; the emitted lines are tool names, not localizable UI text.")]
     public static Task<int> RunListToolsAsync(
         RunnerOptionsBase opts,
         string loggerCategory,
-        Action<HostBuilderContext, IServiceCollection>? configureServices = null)
+        Action<HostBuilderContext, IServiceCollection>? configureServices = null,
+        CancellationToken externalCt = default)
     {
         ArgumentNullException.ThrowIfNull(opts);
         _ = loggerCategory;
@@ -173,12 +178,12 @@ public static partial class RunnerExecution
                     configureServices?.Invoke(ctx, services);
                 },
                 console.ErrorOutput,
-                CancellationToken.None).ConfigureAwait(false);
+                externalCt).ConfigureAwait(false);
             if (host is null)
                 return 1;
 
             var registry = host.Services.GetRequiredService<IToolRegistry>();
-            var tools = await registry.GetAllToolsAsync().ConfigureAwait(false);
+            var tools = await registry.GetAllToolsAsync(externalCt).ConfigureAwait(false);
             var names = tools
                 .Select(t => t.Name)
                 .Distinct(StringComparer.Ordinal)

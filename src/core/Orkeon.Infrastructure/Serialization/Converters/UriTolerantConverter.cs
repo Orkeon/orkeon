@@ -18,7 +18,7 @@ namespace Orkeon.Infrastructure.Serialization.Converters;
 /// </list>
 /// </para>
 /// </summary>
-public class UriTolerantConverter : JsonConverter<Uri?>
+internal class UriTolerantConverter : JsonConverter<Uri?>
 {
     /// <inheritdoc />
     public override Uri? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

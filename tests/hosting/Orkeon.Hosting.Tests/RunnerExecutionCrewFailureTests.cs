@@ -166,7 +166,7 @@ public sealed class RunnerExecutionCrewFailureTests : IDisposable
         public System.Threading.Tasks.Task<CrewOutput> KickoffAsync(CrewId crewId, CrewInput input, KickoffOptions options, CancellationToken cancellationToken = default) =>
             KickoffAsync(crewId, input, cancellationToken);
 
-        public Task<CrewExecutionId> KickoffAsyncNoWait(CrewId crewId, CrewInput input) =>
+        public Task<CrewExecutionId> KickoffNoWaitAsync(CrewId crewId, CrewInput input, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<CrewExecutionStatus> GetExecutionStatusAsync(CrewExecutionId executionId, CancellationToken cancellationToken = default) =>

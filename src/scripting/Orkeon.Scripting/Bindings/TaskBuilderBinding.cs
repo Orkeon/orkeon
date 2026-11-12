@@ -6,7 +6,7 @@ namespace Orkeon.Scripting.Bindings;
 /// <summary>
 /// Registers the global <c>taskBuilder()</c> function on a Jint engine.
 /// </summary>
-public static class TaskBuilderBinding
+internal static class TaskBuilderBinding
 {
     /// <summary>Name of the global function exposed to scripts.</summary>
     public const string GlobalName = "taskBuilder";

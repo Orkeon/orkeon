@@ -1,3 +1,4 @@
+using Orkeon.Application.Common.DTOs;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -821,11 +822,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             ? metadata.Get<long>(Domain.Crew.ValueObjects.CrewMetadata.CacheMissTokensKey)
             : null;
 
-        return new TokenUsage(
-            PromptTokens: promptTokens,
-            CompletionTokens: completionTokens,
-            TotalTokens: totalTokens)
+        return new TokenUsage
         {
+            PromptTokens = promptTokens,
+            CompletionTokens = completionTokens,
+            TotalTokens = totalTokens,
             CacheHitTokens = cacheHit,
             CacheMissTokens = cacheMiss,
         };
@@ -882,13 +883,17 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     }
 
     /// <summary>
-    /// Kickoff Async No Wait.
+    /// Starts the crew in the background and returns its execution id once the tracked state
+    /// exists. <paramref name="cancellationToken"/> covers the start and is handed to the
+    /// background run, which it cancels (the run then ends Failed, its output saying why).
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Background execution fault barrier: any failure in the detached run is logged and recorded on the tracked execution state (Failed) so it cannot fault the background task or crash the host.")]
-    public async Task<CrewExecutionId> KickoffAsyncNoWait(
+    public async Task<CrewExecutionId> KickoffNoWaitAsync(
         CrewId crewId,
-        CrewInput input)
+        CrewInput input,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         LogOrchestratingAsyncExecution(crewId);
 
         var executionId = ExecutionId.New();
@@ -897,9 +902,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         // input) so that the status updates below target the tracked state and durable
         // persistence/resume (R3.8) has a coherent identifier. Previously the manager
         // generated its own id, orphaning the state and breaking every update.
-        _ = await _stateManager.CreateStateAsync(crewId, executionId, input).ConfigureAwait(false);
+        _ = await _stateManager.CreateStateAsync(crewId, executionId, input, cancellationToken).ConfigureAwait(false);
 
-        // Start background execution - delegate to regular kickoff
+        // Start background execution - delegate to regular kickoff. The task itself is never
+        // cancelled: the token goes to the run, so a cancelled run still records its end state.
         _ = System.Threading.Tasks.Task.Run(async () =>
         {
             try
@@ -910,7 +916,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 }).ConfigureAwait(false);
 
                 var output = await KickoffAsync(
-                    crewId, input, new KickoffOptions { ExecutionId = executionId }).ConfigureAwait(false);
+                    crewId, input, new KickoffOptions { ExecutionId = executionId }, cancellationToken).ConfigureAwait(false);
 
                 await _stateManager.UpdateStateAsync(executionId, s =>
                 {
@@ -937,7 +943,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             {
                 await _stateManager.CompleteExecutionAsync(executionId).ConfigureAwait(false);
             }
-        });
+        }, CancellationToken.None);
 
         return CrewExecutionId.From(executionId.Value);
     }

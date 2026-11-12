@@ -127,7 +127,7 @@ public partial class XlsxWriteTool : FileToolBase<XlsxWriteRequest, XlsxWriteRes
             // Build the workbook in memory, then commit the bytes through the
             // virtual file system so the physical mount location is resolved by the VFS.
             var existingBytes = request.AppendToExisting
-                ? await _fileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
+                ? await FileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
                 : null;
 
             byte[] bytes;
@@ -147,9 +147,9 @@ public partial class XlsxWriteTool : FileToolBase<XlsxWriteRequest, XlsxWriteRes
                 bytes = outputStream.ToArray();
             }
 
-            var fileSize = await _fileSystemService.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
+            var fileSize = await FileSystemService.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
 
-            LogWriteXlsx(path, totalSheetCount);
+            LogWriteXlsx(Logger, path, totalSheetCount);
 
             return new XlsxWriteResponse
             {
@@ -194,5 +194,5 @@ public partial class XlsxWriteTool : FileToolBase<XlsxWriteRequest, XlsxWriteRes
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Successfully wrote XLSX: {Path} ({SheetCount} sheets)")]
-    private partial void LogWriteXlsx(string path, int sheetCount);
+    private static partial void LogWriteXlsx(ILogger logger, string path, int sheetCount);
 }

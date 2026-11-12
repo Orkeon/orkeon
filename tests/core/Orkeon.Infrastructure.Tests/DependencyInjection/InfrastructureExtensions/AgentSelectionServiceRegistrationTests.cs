@@ -3,7 +3,7 @@ using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Services.AgentSelection;
 using Orkeon.Infrastructure.DependencyInjection;
-using Orkeon.Infrastructure.Stubs;
+using Orkeon.Infrastructure.Defaults;
 
 namespace Orkeon.Infrastructure.Tests.DependencyInjection;
 

@@ -153,7 +153,7 @@ public abstract partial class FileSearchToolBase<TRequest> : ToolBase<TRequest, 
                 })
                 .ToList();
 
-            LogSearchCompleted(ToolCategory, request.Query, topResults.Count, outcome.Ingestion.ChunksCreated);
+            LogSearchCompleted(Logger, ToolCategory, request.Query, topResults.Count, outcome.Ingestion.ChunksCreated);
 
             return new FileSearchResponse
             {
@@ -241,5 +241,5 @@ public abstract partial class FileSearchToolBase<TRequest> : ToolBase<TRequest, 
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "{Category} search for '{Query}' returned {Count} results ({ChunksIndexed} chunks (re)indexed this run)")]
-    private partial void LogSearchCompleted(string category, string query, int count, int chunksIndexed);
+    private static partial void LogSearchCompleted(ILogger logger, string category, string query, int count, int chunksIndexed);
 }

@@ -14,13 +14,13 @@ public sealed class MockMemoryScope : IMemoryScope
     public string AgentId { get; set; } = "mock-agent-id";
     public string ScopeId { get; set; } = Guid.NewGuid().ToString();
 
-    public async Task<T> ExecuteInScopeAsync<T>(Func<Task<T>> operation)
+    public async Task<T> ExecuteInScopeAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default)
     {
         ExecuteInScopeAsyncCallCount++;
         return await operation();
     }
 
-    public async Task ExecuteInScopeAsync(Func<Task> operation)
+    public async Task ExecuteInScopeAsync(Func<Task> operation, CancellationToken cancellationToken = default)
     {
         ExecuteInScopeAsyncCallCount++;
         await operation();

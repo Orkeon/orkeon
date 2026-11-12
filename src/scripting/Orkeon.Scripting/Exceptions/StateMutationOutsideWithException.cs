@@ -1,5 +1,3 @@
-using System.Runtime.Serialization;
-
 namespace Orkeon.Scripting.Exceptions;
 
 /// <summary>
@@ -7,7 +5,6 @@ namespace Orkeon.Scripting.Exceptions;
 /// through <c>ctx.state.with(fn)</c>. SCR-08 enforces this via a JS proxy that traps
 /// <c>set</c> on the state object.
 /// </summary>
-[Serializable]
 public sealed class StateMutationOutsideWithException : Exception
 {
     /// <summary>Property the script tried to set.</summary>
@@ -31,13 +28,4 @@ public sealed class StateMutationOutsideWithException : Exception
     {
         PropertyName = string.Empty;
     }
-
-    /// <summary>Deserialization constructor.</summary>
-#pragma warning disable SYSLIB0051 // Required by S3925 ISerializable pattern
-    private StateMutationOutsideWithException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        PropertyName = string.Empty;
-    }
-#pragma warning restore SYSLIB0051
 }

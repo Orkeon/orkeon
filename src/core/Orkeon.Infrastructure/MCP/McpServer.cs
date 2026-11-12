@@ -166,7 +166,7 @@ public partial class McpServer
                     "initialize" => HandleInitialize(request),
                     // ping was removed from the modern lineage; it stays served for legacy sessions.
                     "ping" when !isModern => CreateSuccessResponse(request.Id, new { }),
-                    "tools/list" => await HandleToolsList(request, isModern).ConfigureAwait(false),
+                    "tools/list" => await HandleToolsList(request, isModern, ct).ConfigureAwait(false),
                     "tools/call" => await HandleToolsCall(request, isModern, notify, ct).ConfigureAwait(false),
                     "prompts/list" when HasPrompts => HandlePromptsList(request),
                     "prompts/get" when HasPrompts => await HandlePromptsGet(request, ct).ConfigureAwait(false),
@@ -576,9 +576,9 @@ public partial class McpServer
         return CreateSuccessResponse(request.Id, result);
     }
 
-    private async Task<JsonRpcResponse> HandleToolsList(JsonRpcRequest request, bool isModern)
+    private async Task<JsonRpcResponse> HandleToolsList(JsonRpcRequest request, bool isModern, CancellationToken ct)
     {
-        var tools = await _toolRegistry.GetAllToolsAsync().ConfigureAwait(false);
+        var tools = await _toolRegistry.GetAllToolsAsync(ct).ConfigureAwait(false);
 
         // Deterministic order (2026-07-28 SHOULD): stable client caches, better prompt caching.
         var mcpTools = tools
@@ -630,7 +630,7 @@ public partial class McpServer
         }
 
         var tool = IsAllowed(callParams.Name)
-            ? await _toolRegistry.GetToolByNameAsync(callParams.Name).ConfigureAwait(false)
+            ? await _toolRegistry.GetToolByNameAsync(callParams.Name, ct).ConfigureAwait(false)
             : null;
         if (tool == null)
         {

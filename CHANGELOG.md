@@ -7,13 +7,180 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-12
+
+The first final release. Since `1.0.0-rc.7`: the container image and its switch take their
+final names, the dependency graphs are locked, and the account statuses of the e-mail and
+drive tools gain their problems as a list. From this version on, every public member listed in
+the `PublicAPI.Shipped.txt` files of the published packages is the 1.x stability commitment: a
+removal or a signature change waits for 2.0. The APIs marked `[Experimental]` (ORKEXP001–007)
+stay outside it, and a member whose signature carries a type of Jint, TreeSitter.DotNet or
+Terminal.Gui follows that library's major version. The rules are on the
+[stability page](docs/reference/stability.md). Before that surface froze, the last cut made it
+consistent: every public async interface method takes a `CancellationToken`, a few names were
+fixed, the tool base classes expose their services as properties, and the plumbing types —
+third-party wrappers among them — became internal. No alias is kept: the product was never
+deployed.
+
+### Changed — the container image is `ghcr.io/orkeon/orkeon` **[breaking]**
+
+The image published by the Release workflow drops its `-runners` suffix, and the variable that
+picks the executable the container starts is renamed after what it does. There is no alias: the
+old variable is no longer read, so a container given only `ORKEON_RUNNER=repl` or `=shell` starts
+the default `orkeon` CLI instead. The Release
+job that builds it is now `docker-image`. `Dockerfile.runners` keeps its name, since the root
+`Dockerfile` builds the REPL image.
+
+| Before | After |
+|---|---|
+| `ghcr.io/orkeon/orkeon-runners:<version>` / `:latest` | `ghcr.io/orkeon/orkeon:<version>` / `:latest` |
+| `-e ORKEON_RUNNER=orkeon\|repl\|shell` | `-e ORKEON_ENTRYPOINT=orkeon\|repl\|shell` |
+| local tags `orkeon-runners:granite` / `:gemma4` | `orkeon:granite` / `:gemma4` |
+
+### Changed — every public async interface method takes a `CancellationToken` **[breaking]**
+
+Each one ends with `CancellationToken cancellationToken = default`, so a caller compiles
+unchanged; an implementer adds the parameter. Concerned: `IToolRegistry` (`ReplaceToolAsync`
+included), `IMemorySystem`, `IContextWindowManager`, `IDynamicAgentService`,
+`IManagerAgent.AssignTaskAsync`, `ICsvSerializer`, `IEmbeddingService`, `IMemoryScope`,
+`IAgentCommunicationService`, `IShortTermMemory`, `ILongTermMemory`, `IEntityMemory` and
+`IContextualMemory`. `RunnerExecution.RunListToolsAsync` takes `externalCt`, like the other
+`Run*Async` entry points.
+
+### Changed — renames, removals and internal plumbing **[breaking]**
+
+| Before | After |
+|---|---|
+| `ICrewOrchestrationService.KickoffAsyncNoWait(...)` | `KickoffNoWaitAsync(..., cancellationToken)` |
+| `OpenAIProvider` | `OpenAILlmProvider` |
+| `SerialisingToolApprovalChannel` | `SerializingToolApprovalChannel` |
+| `LlmDefaults.LegacyModelName` | removed |
+| `const` `LlmProviderDefaultModels.*`, `LlmDefaults.DefaultModelName`, `DockerModelRunnerDefaults.DefaultModel` | `static readonly` (a default model changes without recompiling the callers; no longer usable in an attribute or a `switch` case) |
+| `LlmConfig.ApiKeySecretName`, `LlmConfig.WithDefaultModelSecret(...)`, `LlmConfig.ClaudeWithSecret(...)` | removed: assign `ApiKey` (read the secret through `ISecretProvider` first) |
+| the binary-serialization constructors `(SerializationInfo, StreamingContext)` and `GetObjectData` of the exceptions | removed |
+| `Orkeon.Infrastructure.Stubs.*`: `InMemoryKnowledgeStore`, `InMemoryMemorySystem`, `NullLlmCache`, `NullAgentExecutionService`, `SimpleAgentSelectionService`, `HashBasedEmbeddingProvider` and their kin | internal: the defaults stay registered by `AddOrkeon*`, resolve them through their interfaces |
+| `TokenUsage` (`Orkeon.Application.Interfaces.Services`), the positional record of `CrewOutput.TokensUsed` | removed: `CrewOutput.TokensUsed` is the one `TokenUsage` of `Orkeon.Application.Common.DTOs`, which gains `CacheHitTokens`, `CacheMissTokens` and `CacheHitRatio`; build it with an initializer (`new TokenUsage { PromptTokens = …, CompletionTokens = …, TotalTokens = … }`) |
+| `TokenUsage` (`Orkeon.Application.Interfaces.Security`), the running total of `ITokenBudgetTracker` | `TokenBudgetUsage` (`Orkeon.Application.Common.DTOs`), `required` init properties, `TokenBudgetUsage.None` |
+| `TokenUsageReport` | `TokenBudgetReport` |
+| `IEmbeddingService` (`Orkeon.Application.Interfaces.Ports`), the twin of the Domain port, and `DomainEmbeddingServiceAdapter` | removed: implement and resolve `Orkeon.Domain.Memory.IEmbeddingService` |
+| `ToolCallProtocol` and `ToolCallRequest` (`Orkeon.Domain.Tools`), used by nothing | removed: a tool call is `Orkeon.Domain.Tools.Protocol.ToolCallRequest` |
+| `TokenUsage` (`Orkeon.Application.Common.DTOs`), a settable class | `sealed record` with `init` properties |
+| `AddMemoryResult`, `CreateMemoryStoreResult`, `SearchMemoryResult` | `AddMemoryResponse`, `CreateMemoryStoreResponse`, `SearchMemoryResponse` |
+| the DTO, command and query records of `Orkeon.Application`, and every public record of `Orkeon.Application` and `Orkeon.Domain` nothing derives from (`CrewInput`, `CrewOutput`, `BudgetCheckResult`, `ValidationResult`, `GuardResult`, `ToolCallRequest`, `AgentSkill`, `MemoryEntity` and their kin) | `sealed`: their `Equals(T)` is no longer virtual, `EqualityContract` and the copy constructor are private |
+
+Plumbing that was public by accident is internal: the tool-call parsers, formatters and
+strategies (`AnthropicToolCallParser`, `AnthropicToolSchemaFormatter`,
+`AnthropicToolCallingStrategy`, `OpenAIToolCallParser`, `OpenAIToolSchemaFormatter`,
+`OpenAIToolCallingStrategy`, `NullToolCallingStrategy`, `TextFallbackToolCallParser`),
+`ContentConverter`, the serialization converters (`BoolTolerantConverter`,
+`DecimalInvariantConverter`, `DoubleInvariantConverter`, `IntTolerantConverter`,
+`LongTolerantConverter`, `UriTolerantConverter`, `ImmutableArrayStringTolerantConverter`,
+`RawObjectConverter`, `TolerantEnumConverter<TEnum>`, `TolerantEnumConverterFactory`,
+`JsonElementConverter`, `MemoryMetadataConverter`), `CsvHelperSerializer` (reach it through
+`ICsvSerializer`), `CrewExecutionStateMapper`, `JsonSchemaToGbnfConverter`,
+`HtmlAgilityPackParser`, `MarkdownParser`, `AgentMapper`, `ControlFlowBuilder`,
+`DataFlowAnalyzer` and their kin.
+
+### Changed — the tool base classes expose their services as properties **[breaking]**
+
+| Before | After |
+|---|---|
+| `ToolBase._logger`, `ToolBase._jsonOptions` | protected properties `Logger`, `JsonOptions` |
+| `HttpToolBase._httpClient` | protected property `HttpClient` |
+| `FileToolBase._fileSystemService` | protected property `FileSystemService` |
+| a tool's `[LoggerMessage]` instance methods | `static partial` methods taking the `ILogger` first (`LogFetched(Logger, city)`) |
+| the mutable request and response DTOs of `Orkeon.Tools.FileSystem`, `.Web` and `.Data` | `init` properties, `IReadOnlyDictionary<,>` for the maps |
+
+The JSON a tool reads and writes keeps its shape. `docs/tools/new-tool-pattern.md` shows the
+new members.
+
+### Changed — Tree-sitter, Terminal.Gui, ML tokenizer and Jint plumbing is internal **[breaking]**
+
+`TreeSitterParserPool`, `ParsedTree`, `ITreeSitterParser`, `StatementExtractor`,
+`StatementExtractionResult`, `TreeSitterNodeExtensions`, `SchemeFactory`,
+`CrossEncoderBatchEncoder`, `JsEngineFactory.Create`, `EsbuildTranspiler` are internal, and
+so are:
+
+- the Jint plumbing of `Orkeon.Scripting`: the `*Binding` classes (`AgentBuilderBinding`,
+  `CrewBuilderBinding`, `TaskBuilderBinding`, `ToolBuilderBinding`, `ErrorActionBinding`,
+  `LlmNamespaceBinding`, `RagNamespaceBinding`, `ToolsNamespaceBinding`, `TestNamespaceBinding`,
+  `StateGraphBinding`, `StateMachineBinding`), the script-side builders and namespaces
+  (`JsCrewBuilder`, `JsTaskBuilder`, `JsToolBuilder`, `JsLlmNamespace`, `JsErrorActionFactory`,
+  `JsTestNamespace`) and the test mocks (`JsMockLlmHandle`, `JsMockLlmExpectationBuilder`,
+  `JsMockToolHandle`, `JsMockToolExpectationBuilder`). A script reaches them through the
+  `.ork.ts` API its typings declare;
+- the Jint plumbing of the scripted REPL commands (`Orkeon.Cli.Commands.Scripting`):
+  `ArgsSchemaParser`, `ConsoleShim`, `ConsoleShimBinding`, `ContextBinding`,
+  `DefineCommandBinding`, `DefineAsyncCommandBinding`, `AgentCommandRegistrar`,
+  `CommandRuntimeContext`, `CompletionDrainQueue`, `JsLogShim`, `PendingCompletion`,
+  `PromptDispatcher`, `ScriptCommandBinding`;
+- the Terminal.Gui shims of the REPL: `AcceptHandlers`, `MouseClipboardBehavior`,
+  `KeyCapturedEventArgs`, with `ReplPaneView.Input` and `ReplPaneView.KeyCaptured`;
+- the constructors of the Tree-sitter tools of `Orkeon.Tools.Analysis` (`EditBatchTool`,
+  `NodeEnsureTool`, `NodeInsertTool`, `NodeOutlineTool`, `NodeReadTool`, `NodeReplaceTool`,
+  `StructuralRewriteTool`, `StructuralSearchTool`), which took a `TreeSitterParserPool`.
+
+No third-party type leaks through them. Register the analysis tools with
+`AddRaggableTreeTools()`, and transpile through `IScriptTranspiler`. What still carries a type of
+Jint, TreeSitter.DotNet or Terminal.Gui follows the third-party clause of the
+[stability page](docs/reference/stability.md#types-of-a-third-party-library).
+
 ### Added
 
 - **The e-mail and drive account statuses keep their problems as a list and show the effective connection values** (#339). `EmailAccountStatus` and `DriveAccountStatus` gain `ConfigurationProblems` (the registry's problems in order, the section's first; empty when the account resolves) and `CredentialProblem` (the diagnosis of a resolved account), which `Problem` used to merge into one joined string a sentence holding `; ` could not be split back from. `EmailAccountStatus` also carries what a blank field resolves to — `IncomingHost`/`Port`/`Security`, `OutgoingHost`/`Port`/`Security`, `Username`, `SaveSentCopy`, `TokenEndpoint` —, `DriveAccountStatus` its `TokenEndpoint`. `orkeon email accounts --json` and `orkeon drive accounts --json` write them in snake case, and the text listing of `orkeon email accounts` shows the connection on one line. A client such as Orkeon Studio checks a configuration through `ListAsync` instead of the internal binder. Additive: `Problem` keeps its text.
+- **A stability page** — `docs/reference/stability.md` (and its French mirror) states what a
+  patch, a minor and a major version may change, which surface is frozen, what stays outside
+  the commitment and how a member is deprecated. `experimental-apis.md`, `CONTRIBUTING.md` and the
+  READMEs link to it.
+
+### Changed
+
+- **NuGet lock files** — every project of `Orkeon.sln` outside `examples/` restores with a
+  committed `packages.lock.json`, and CI restores in locked mode (`CI=true`), so a package is
+  built from the dependency graph that was reviewed. The net11 lane restores unlocked. A restore
+  with a runtime identifier (the per-RID installer publishes, the `dotnet publish -r` steps inside
+  `Dockerfile.runners`) resolves another graph: it writes its own lock file under the project's
+  intermediate folder and is not locked, so it never rewrites the committed one. The examples,
+  which ship nothing, and the `dotnet new` templates carry no lock file. A package change
+  regenerates the lock files with `dotnet restore` (`CONTRIBUTING.md`).
+- **The install commands drop `--prerelease`** — the READMEs, the docs and the package READMEs
+  install the final release; the dev channel keeps it. `SECURITY.md` supports the latest 1.x
+  minor; the apt `stable` channel carries the final releases; `opt-in-subsystems.md` marks
+  experimental APIs instead of a "Beta" status.
+- **The `orkeon-plugin` template asks for `[1.0.0,2.0.0)`** in `plugin.json`.
+- **NuGet.org waits for the release** — on a `v*` tag, `publish.yml` pushes to NuGet.org only once
+  the `release.yml` run of the same tag has succeeded, so a package never precedes installers
+  that failed their smokes. `docs.yml` pins docfx (2.81.0).
+- **The dev apt build restores without a shared cache** — `apt-dev.yml`, whose packages are signed
+  and published, no longer reads or writes an `actions/cache` (CodeQL `actions/cache-poisoning`).
+- **The container image follows the GitHub Release** — `release.yml` pushes
+  `ghcr.io/orkeon/orkeon` after the Release, smokes the start of its REPL
+  (`ORKEON_ENTRYPOINT=repl`) before the push, and labels it with the OCI `source`, `description`
+  and `licenses` annotations.
+- **Dependabot** watches `tools/scripting-typecheck` and the NuGet packages of `examples/`.
+- **Documentation aligned with the code** — the API index, the security policy, the opt-in
+  subsystems (labelled Preview), the package READMEs and ten examples, which described features
+  that do not exist, now say what the code does; the stability page states the third-party
+  clause.
 
 ### Fixed
 
+- **`Orkeon.Compliance.Vfs` loads in a stock SDK again** — the analyzer compiles against
+  Roslyn 4.8.0 once more; the release candidates built it against 5.9.0, so an SDK with an
+  older compiler skipped it with CS9057 and the VFS rule went unchecked outside the
+  repository. A test reads the Roslyn references of the compiled analyzer and fails above 4.8.0.
+- **`ORKEON_ENTRYPOINT=repl` starts** — the REPL of the image exited at once, with no file
+  system mount. Its wrapper now mounts `/workspace` read-write by default; a `--mount` on
+  `/workspace`, or a `--settings` file declaring `Orkeon:FileSystem:Mounts`, replaces that
+  mount. The REPL reads its settings only from `--settings`: the documented commands pass the
+  mounted settings file with it.
 - **A refused configuration stops the Windows service instead of crashing it** (#336). After a refusal (exit 78), `orkeon-host` used to leave without telling the SCM it had stopped. The SCM took that for a crash, and the MSI's recovery started the host again after 10 s, twice, on a configuration the operator had to fix first. The host now stops through its lifetime, which reports `SERVICE_STOPPED` with exit code 78 before the process leaves, so crash-only recovery stays out of it. The Windows service smokes also check the System log for an SCM crash record (events 7031 and 7034), which a status poll could miss.
+- **Seven CodeQL `cs/unsynchronized-static-access` alerts** — the decision probe and its test
+  double build their dictionaries with `ImmutableDictionary.CreateRange` instead of
+  `ImmutableDictionary<K,V>.Empty.Add`; same contents, same comparer.
+- **The apt publication retries a push refused by git 2.53** — `publish-apt-channel.sh` took the
+  newer wording of a moved branch (`incorrect old value provided`) for a refusal of another kind
+  and gave up instead of applying the channel again on the new tip.
 
 ## [1.0.0-rc.7] - 2026-11-11
 
@@ -11702,7 +11869,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.7...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.7...v1.0.0
 [1.0.0-rc.7]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.6...v1.0.0-rc.7
 [1.0.0-rc.6]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.5...v1.0.0-rc.6
 [1.0.0-rc.5]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.4...v1.0.0-rc.5
