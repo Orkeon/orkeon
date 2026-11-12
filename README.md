@@ -25,7 +25,7 @@ AI agents can now act: read files, call APIs, write code, send messages. That is
 Orkeon rests on two convictions:
 
 1. **Trust is built in the runtime, not in the prompt.** An instruction in a prompt is a request: the model may ignore it. A rule in the runtime is a limit: it applies whatever the model decides.
-2. **What you tune is what you deploy.** A team of agents should never be rewritten to go from the trial to the application.
+2. **What you tune is what you deploy.** A team of agents should never be rewritten to go from trial to application.
 
 Two words come back throughout: a **team** (a *crew* in the code) is a set of agents, each with a role, working together on a mission; the **runtime** is the engine that executes the team and enforces the rules. There is only one, however you use Orkeon.
 
@@ -55,9 +55,9 @@ flowchart LR
 
 **What an agent may touch is declared.** An agent never sees the real disk: it sees virtual folders (`/workspace`, `/output`), each a mount you declared with the rights you gave, read-only or read-write; a path outside them is refused before any byte lands on disk. Orkeon's tools go through this virtual file system, and the same logic covers the other resources: endpoints, mailboxes, code running in a sandbox.
 
-**What is sensitive stays closed until a person opens it.** Sending mail and sharing a drive stay closed until an operator opens the allow-list. When an action needs approval, the runtime asks, not the model; and a team generated from a sentence is adopted only after your verdict. Opening an access is a human decision, never an agent's deduction.
+**What is sensitive stays closed until a person opens it.** Sending mail and sharing a drive stay closed until an operator opens the allow-list. When a host turns the permission gate on, an action that needs approval is put to a person by the runtime, not left to the model; and a team generated from a sentence is, by default, adopted only after your verdict. Opening access is a human decision, never an agent's deduction.
 
-**Autonomy has a budget.** Tool calls, depth, wall time, tokens, spawned agents: the run stops when the budget is spent, and circuit breakers catch the loops. An agent can fail; it cannot spend more than it was given.
+**Autonomy has a budget.** An autonomous team runs under a budget on tool calls, depth, wall time, tokens and spawned agents: the run stops when the budget is spent, and circuit breakers catch the loops. Every other mode honours the host's cap on tokens and cost. An agent can fail; it cannot spend more than it was given.
 
 **The rule can bind the code itself.** [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) is a standalone Roslyn analyzer: add it to any C# project, with or without Orkeon, and raw `System.IO` no longer compiles.
 
@@ -75,11 +75,11 @@ The same runtime executes all three. None is a provisional step: choose by the c
 
 **The team you tuned is the team you integrate.** The runtime that ran the first trial is the one that runs in the final application: no redevelopment, no dead end — when complexity grows you change notation, not foundation — and the boundary follows the team, since mounts, budgets and circuit breakers are carried by the runtime. What changes from one environment to the next is configuration: the model, the mounted folders, the secrets. The team's definition does not. Orkeon Code is the demonstration: the project's own coding assistant is built on the Orkeon runtime, works in a terminal, runs unattended in a CI pipeline, and its teams can be called from another application.
 
-**An agent is software, not a script.** A team deploys, keeps its state and is observed like any service. *Deployment*: the `orkeon` CLI, a container (`ghcr.io/orkeon/orkeon`), native packages for Windows, Linux and macOS, the `orkeon-host` service daemon, or a library embedded in your own .NET application. *State*: persistent memory and checkpoints, to resume an interrupted run, replay it or compare it with another. *Observability*: traces, metrics and logs exported through OpenTelemetry — the .NET Aspire dashboard reads them — and a stream of events per run.
+**An agent is software, not a script.** A team deploys, keeps its state and is observed like any service. *Deployment*: the `orkeon` CLI, a container (`ghcr.io/orkeon/orkeon`), native packages for Windows (MSI) and Debian or Ubuntu (apt), a self-contained archive for macOS, the `orkeon-host` service daemon, or a library embedded in your own .NET application. *State*: persistent memory and checkpoints, to resume an interrupted run where it stopped; the model's answers of a run can be recorded and replayed, and two evaluation reports compared. *Observability*: traces, metrics and logs exported through OpenTelemetry — the .NET Aspire dashboard reads them — and a stream of events per run.
 
 ### An open project
 
-**Standards, not lock-in.** MCP as client and as server; A2A for discovery and communication between agents; Microsoft Agent Framework both ways — an Orkeon team runs as a MAF agent, and a MAF agent can be the brain or a tool of an Orkeon agent. Orkeon does not replace these bricks: it plugs into them. The choice of model stays yours: cloud vendors, aggregators or local models.
+**Standards, not lock-in.** MCP as client and as server (the server over stdio); A2A for discovery and communication between agents; Microsoft Agent Framework both ways — an Orkeon team runs as a MAF agent, and a MAF agent can be the brain or a tool of an Orkeon agent. Orkeon does not replace these bricks: it plugs into them. The choice of model stays yours: cloud vendors, aggregators or local models.
 
 **Open and verifiable.** MIT. A security boundary is not taken on trust: this one can be read, tested and challenged, and its [known limits](docs/reference/limitations.md) are documented with the project.
 
@@ -114,9 +114,9 @@ Refused before any byte lands. CI runs both blocks on every change, against a pi
 
 | | |
 |---|---|
-| **Orkeon Studio** | A desktop application for Windows 10 and 11: build a team with no code and no terminal, in four steps — *Describe → Compose → Try → Adopt* — [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio). |
+| **Orkeon Studio** | A desktop application for Windows 10 and 11 only: build a team with no code and no terminal, in four steps — *Describe → Compose → Try → Adopt*. It drives the `orkeon` CLI, installed beside it — [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio). |
 | **Orkeon Workshop** | Claude Code, harnessed. A container image — Claude Code, the Orkeon CLI, local models on your GPU — and a method: need → tests → team → runs → accepted, every attempt and decision kept on disk, a paid run waiting for your approval. Teams come out ready for the `orkeon` CLI; the same harness works on Orkeon itself — [Orkeon/orkeon-workshop](https://github.com/Orkeon/orkeon-workshop). |
-| **Orkeon Code** | A coding assistant on the Orkeon runtime. Pair with it in the terminal under the permission mode you choose, or let it run a task to the end; `/review`, `/commit`, `/security-review`, `/analyze`; one mounted project, an allow-listed shell. Alpha — [Orkeon/orkeon-code](https://github.com/Orkeon/orkeon-code). |
+| **Orkeon Code** | A coding assistant on the Orkeon runtime. Pair with it in the terminal under the permission mode you choose, or let it run a task to the end; `/review`, `/commit`, `/security-review`, `/analyze`; one mounted project, an allow-listed shell — [Orkeon/orkeon-code](https://github.com/Orkeon/orkeon-code). |
 | **`orkeon` CLI** | `orkeon run` executes a team written in YAML or TypeScript (`.ork.ts`); `orkeon forge "…"` drafts, sandbox-tests and promotes one from a sentence; `orkeon quickstart` writes the two-minute crew above; `init`, `doctor`, `email login` and `drive login` do the plumbing — [CLI reference](docs/reference/cli.md). |
 | **The library** | `dotnet add package Orkeon` — the same engine inside your product: C# builders, Clean Architecture, typed end to end — [Bootstrap and execution](docs/getting-started/bootstrap.md). |
 
@@ -129,7 +129,7 @@ The team you forge from a sentence is the YAML the CLI runs, and the crew your o
 **Orkeon does not guarantee what happens inside that perimeter.** Three limits, said plainly:
 
 - **An agent can be wrong.** The boundary bounds the consequences of a mistake; it does not make the result right. Human review stays necessary wherever the stakes call for it.
-- **A right that was granted can be misused.** In a folder opened for writing, an agent can write what it should not. The precision of the declarations makes the quality of the boundary.
+- **A right that was granted can be misused.** In a folder opened for writing, an agent can write what it should not. The boundary is only as good as the precision of its declarations.
 - **What an agent reads is sent to the model.** With a cloud provider that data leaves the company; with a local model it stays. Orkeon allows both and leaves the choice to those who answer for it.
 
 ## What Orkeon is not
@@ -141,13 +141,13 @@ The team you forge from a sentence is the YAML the CLI runs, and the crew your o
 
 ## Who it is for
 
-- **.NET teams** who want to industrialise agents without leaving their ecosystem.
+- **.NET teams** who want to put agents into production without leaving their ecosystem.
 - **Architects and security officers** who must be able to say precisely what an agent is allowed to do.
 - **Business teams** who want to automate a task without writing code, knowing exactly what their agents have access to.
 
 ## What's in the box
 
-124 built-in tools (mail over IMAP, SMTP and Microsoft Graph; Google Drive and OneDrive; web, HTTP, databases, Office and PDF, secure code execution, semantic code analysis) · 16 LLM providers (14 vendors, 2 aggregators), local models included (Ollama, Docker Model Runner, embedded llama.cpp) · 6 memory providers · 6 orchestration strategies, from a plain sequence to a graph or an autonomous team under budget · checkpoint and resume · plugins in isolated load contexts · 104 runnable examples. Every number here is recomputed by CI on each change — a README that disagrees fails the build.
+124 built-in tools (mail over IMAP, SMTP and Microsoft Graph; Google Drive and OneDrive; web, HTTP, databases, Office and PDF, secure code execution, semantic code analysis) · 16 LLM providers (14 vendors, 2 aggregators), local models included (Ollama, Docker Model Runner, embedded llama.cpp) · 6 memory providers · 6 orchestration strategies, from a plain sequence to a graph or an autonomous team under budget · a staged RAG pipeline · checkpoint and resume · plugins in isolated load contexts · 104 runnable examples. Every number here is recomputed by CI on each change — a README that disagrees fails the build.
 
 ## Install
 

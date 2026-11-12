@@ -19,7 +19,7 @@ code, an execution budget for autonomy, sensitive capabilities that stay closed 
 person opens them — and a standalone Roslyn analyzer (`Orkeon.Compliance.Vfs`) that makes raw
 `System.IO` a compile error in your own code. **What you tune is what you deploy**: the
 runtime that ran the first trial is the one inside the final application, so a team is never
-rewritten to go from the trial to the product. Around it, a complete .NET framework for crews
+rewritten to go from trial to product. Around it, a complete .NET framework for crews
 of agents: six orchestration strategies, 16 LLM providers, memory, RAG, code analysis. It
 runs on a local model with no API key — see the two-minute start in the
 [README](README.md#try-it-in-two-minutes--no-api-key).

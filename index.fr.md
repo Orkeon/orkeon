@@ -49,7 +49,7 @@ dotnet add package Orkeon        # le framework complet en un seul paquet
 dotnet add package Orkeon.Tools  # optionnel : les familles d'outils intégrés
 ```
 
-La CLI de scripting est distribuée comme outil .NET :
+Le CLI de scripting est distribué comme outil .NET :
 
 ```bash
 dotnet tool install -g Orkeon.Scripting.Cli
