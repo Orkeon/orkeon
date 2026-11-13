@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (sent, lowered to another level, omitted) or the vendor's refusal, with the provider's warnings, the
   reasoning trace and tokens and the finish reason. The campaign kit runs them by default, renders a
   Reasoning section in each report and a "Reasoning per model" table in the campaign results page.
+- `orkeon llm probe` gains M18, the raw reasoning matrix, and its `--raw-reasoning <file>` option: each
+  `{label, body}` item of the JSON file replaces the reasoning fields of the request just before it
+  leaves, bypassing Orkeon's capability judgement, and the step is reported `accepted` or `refused` by
+  the vendor.
 
 ## [1.0.0] - 2026-11-12
 

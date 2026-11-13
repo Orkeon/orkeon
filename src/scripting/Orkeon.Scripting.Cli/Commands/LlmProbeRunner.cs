@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Application.Interfaces.Ports;
@@ -69,6 +70,9 @@ internal enum LlmProbeMode
 
     /// <summary>M17 — a thinking token budget, and whether it reaches the wire.</summary>
     M17,
+
+    /// <summary>M18 - raw reasoning fragments sent to the vendor as they are, bypassing Orkeon's capability judgement.</summary>
+    M18,
 
     /// <summary>D1 — a decision model answers a noul with a probability leaning the right way.</summary>
     D1,
@@ -143,6 +147,12 @@ internal enum LlmReasoningOutcome
 
     /// <summary>The vendor answered with an error.</summary>
     Rejected,
+
+    /// <summary>A raw fragment was sent (M18) and the vendor answered without an error.</summary>
+    Accepted,
+
+    /// <summary>A raw fragment was sent (M18) and the vendor answered with an error.</summary>
+    Refused,
 }
 
 /// <summary>One step of a reasoning mode: what was asked, what really went out, what came back.</summary>
@@ -272,7 +282,7 @@ internal sealed partial class LlmProbeRunner
         LlmProbeMode.M1, LlmProbeMode.M2, LlmProbeMode.M3, LlmProbeMode.M4,
         LlmProbeMode.M5, LlmProbeMode.M6, LlmProbeMode.M7, LlmProbeMode.M8,
         LlmProbeMode.M9, LlmProbeMode.M10, LlmProbeMode.M12, LlmProbeMode.M13,
-        LlmProbeMode.M15, LlmProbeMode.M16, LlmProbeMode.M17,
+        LlmProbeMode.M15, LlmProbeMode.M16, LlmProbeMode.M17, LlmProbeMode.M18,
     ];
 
     /// <summary>The effort values M16 sweeps; null means <see cref="LlmThinkingConfig.Levels"/>.</summary>
@@ -280,6 +290,9 @@ internal sealed partial class LlmProbeRunner
 
     /// <summary>The wire and warning capture read by the reasoning modes; null classifies a step from its response alone.</summary>
     public IReasoningWireProbe? WireProbe { get; init; }
+
+    /// <summary>The labelled reasoning bodies M18 sends to the vendor; empty means M18 is not applicable.</summary>
+    public IReadOnlyList<(string Label, JsonObject Body)> RawReasoning { get; init; } = [];
 
     /// <summary>Runs the requested modes in order and returns one result per mode.</summary>
     /// <param name="config">The effective configuration (model, key, base URL).</param>
@@ -308,10 +321,11 @@ internal sealed partial class LlmProbeRunner
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            if (mode is LlmProbeMode.M15 or LlmProbeMode.M16 or LlmProbeMode.M17)
+            if (mode is LlmProbeMode.M15 or LlmProbeMode.M16 or LlmProbeMode.M17 or LlmProbeMode.M18)
             {
-                var (rOutcome, rDetail, steps) = await ProbeReasoningAsync(mode, config, cancellationToken)
-                    .ConfigureAwait(false);
+                var (rOutcome, rDetail, steps) = mode == LlmProbeMode.M18
+                    ? await ProbeRawReasoningAsync(config, cancellationToken).ConfigureAwait(false)
+                    : await ProbeReasoningAsync(mode, config, cancellationToken).ConfigureAwait(false);
                 return new LlmProbeResult(mode, rOutcome, rDetail, stopwatch.ElapsedMilliseconds, steps);
             }
 

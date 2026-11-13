@@ -1126,6 +1126,84 @@ public sealed class LlmProbeRunnerTests
         Assert.Contains("budget ➖ omitted", result.Detail, StringComparison.Ordinal);
     }
 
+    // ── M18: raw reasoning fragments ────────────────────────────────────────
+
+    private static IReadOnlyList<(string Label, System.Text.Json.Nodes.JsonObject Body)> Fragments(params string[] labels) =>
+        [.. labels.Select(l => (l, new System.Text.Json.Nodes.JsonObject { ["reasoning_effort"] = l }))];
+
+    [Fact]
+    public async Task ShouldBeNotApplicable_WhenRunningM18WithoutFragments()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+
+        var result = await RunAsync(new LlmProbeRunner(provider), LlmProbeMode.M18);
+
+        Assert.Equal(LlmProbeOutcome.NotApplicable, result.Outcome);
+        Assert.Contains("no raw reasoning fragments", result.Detail, StringComparison.Ordinal);
+        Assert.Empty(provider.Configs);
+    }
+
+    [Fact]
+    public async Task ShouldAcceptEveryFragment_AndPassM18_EvenWhenTheProviderDeclaresNoThinking()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.None);
+        var wire = new FakeReasoningWireProbe();
+        wire.Wires.Enqueue("""{"reasoning_effort":"xhigh"}""");
+        wire.Wires.Enqueue("""{"reasoning_effort":"max"}""");
+        var runner = new LlmProbeRunner(provider) { WireProbe = wire, RawReasoning = Fragments("xhigh", "max") };
+
+        var result = await RunAsync(runner, LlmProbeMode.M18);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        Assert.Equal("2 accepted · 0 refused", result.Detail);
+        Assert.All(result.Reasoning!, s => Assert.Equal(LlmReasoningOutcome.Accepted, s.Outcome));
+        Assert.Equal(["xhigh", "max"], result.Reasoning!.Select(s => s.Step).ToArray());
+        Assert.Equal("""{"reasoning_effort":"xhigh"}""", result.Reasoning![0].Wire);
+        Assert.Null(result.Reasoning[0].SentValue);
+        Assert.All(provider.Configs, c =>
+        {
+            Assert.Null(c!.Thinking);
+            Assert.Equal(2048, c.MaxTokens);
+        });
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAFragment_WhenTheResponseCarriesAnError_AndStillPassM18()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly)
+            .Script(new LlmResponse { Content = "0.05" }, ErrorResponse("400 unsupported value: 'max'"));
+        var runner = new LlmProbeRunner(provider) { RawReasoning = Fragments("high", "max") };
+
+        var result = await RunAsync(runner, LlmProbeMode.M18);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        Assert.Equal(LlmReasoningOutcome.Refused, result.Reasoning![1].Outcome);
+        Assert.Contains("400 unsupported value", result.Reasoning[1].Error, StringComparison.Ordinal);
+        Assert.Equal("1 accepted · 1 refused (max)", result.Detail);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAFragment_WhenTheCallThrows_FailM18WhenAllAreRefused_AndClearTheOverride()
+    {
+        var provider = new ScriptedProvider
+        {
+            Throw = new HttpRequestException("bad request", null, System.Net.HttpStatusCode.BadRequest),
+            Capabilities = new LlmProviderCapabilities { Thinking = ThinkingSupport.None },
+        };
+        var wire = new FakeReasoningWireProbe();
+        var runner = new LlmProbeRunner(provider) { WireProbe = wire, RawReasoning = Fragments("a", "b") };
+
+        var result = await RunAsync(runner, LlmProbeMode.M18);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Equal("0 accepted · 2 refused (a, b)", result.Detail);
+        Assert.StartsWith("400 ", result.Reasoning![0].Error, StringComparison.Ordinal);
+        Assert.Null(wire.CurrentOverride);
+        Assert.Equal(4, wire.Overrides.Count);
+        Assert.Equal([false, true, false, true], wire.Overrides.Select(o => o is null).ToArray());
+        Assert.Equal(2, wire.Resets);
+    }
+
     [Fact]
     public async Task ShouldSendTheBudget_WhenTheWireCarriesIt()
     {

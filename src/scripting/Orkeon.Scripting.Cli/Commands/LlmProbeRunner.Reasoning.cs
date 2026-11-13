@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Orkeon.Application.Common.DTOs;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -82,25 +83,7 @@ internal sealed partial class LlmProbeRunner
         WireProbe?.Reset();
         var stepConfig = config with { Thinking = spec.Thinking, MaxTokens = ReasoningMaxTokens };
 
-        LlmResponse? response = null;
-        string? error = null;
-        try
-        {
-            response = await _provider.GenerateAsync(ReasoningPrompt, stepConfig, cancellationToken)
-                .ConfigureAwait(false);
-            error = ErrorOfStep(response);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-#pragma warning disable CA1031 // A thrown vendor refusal is the finding of the step, not a crash of the campaign.
-        catch (Exception ex)
-#pragma warning restore CA1031
-        {
-            var status = ex is HttpRequestException { StatusCode: { } code } ? $"{(int)code} " : "";
-            error = $"{status}{ex.Message}";
-        }
+        var (response, error) = await SendReasoningAsync(stepConfig, cancellationToken).ConfigureAwait(false);
 
         var wire = WireProbe?.LastFields;
         var warnings = WireProbe?.Warnings ?? [];
@@ -120,6 +103,86 @@ internal sealed partial class LlmProbeRunner
             response?.CompletionTokens,
             metadata is not null && metadata.TryGetValue("finish_reason", out var finish) ? finish?.ToString() : null,
             warnings,
+            error is null ? null : Truncate(error, ErrorExcerpt));
+    }
+
+    private async Task<(LlmResponse? Response, string? Error)> SendReasoningAsync(
+        LlmConfig stepConfig, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _provider.GenerateAsync(ReasoningPrompt, stepConfig, cancellationToken)
+                .ConfigureAwait(false);
+            return (response, ErrorOfStep(response));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+#pragma warning disable CA1031 // A thrown vendor refusal is the finding of the step, not a crash of the campaign.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            var status = ex is HttpRequestException { StatusCode: { } code } ? $"{(int)code} " : "";
+            return (null, $"{status}{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// M18 - the raw reasoning matrix. The provider builds the request (auth, URL, headers,
+    /// dialect) but the wire recorder rewrites its reasoning fields to each fragment just before
+    /// the request leaves, so what is measured is the vendor, not Orkeon's capability judgement.
+    /// </summary>
+    private async Task<(LlmProbeOutcome, string, IReadOnlyList<LlmReasoningStep>?)> ProbeRawReasoningAsync(
+        LlmConfig config, CancellationToken cancellationToken)
+    {
+        if (RawReasoning.Count == 0)
+            return (LlmProbeOutcome.NotApplicable, "no raw reasoning fragments", null);
+
+        var steps = new List<LlmReasoningStep>();
+        foreach (var (label, body) in RawReasoning)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            steps.Add(await RunRawReasoningStepAsync(label, body, config, cancellationToken).ConfigureAwait(false));
+        }
+
+        var accepted = steps.Count(s => s.Outcome == LlmReasoningOutcome.Accepted);
+        var refused = steps.Where(s => s.Outcome == LlmReasoningOutcome.Refused).Select(s => s.Step).ToList();
+        var detail = $"{accepted} accepted · {refused.Count} refused"
+            + (refused.Count == 0 ? "" : $" ({Truncate(string.Join(", ", refused), 120)})");
+        return (accepted > 0 ? LlmProbeOutcome.Passed : LlmProbeOutcome.Failed, detail, steps);
+    }
+
+    private async Task<LlmReasoningStep> RunRawReasoningStepAsync(
+        string label, JsonObject body, LlmConfig config, CancellationToken cancellationToken)
+    {
+        WireProbe?.Reset();
+        // Orkeon's own reasoning intent is dropped: the fragment is the only reasoning on the wire.
+        var stepConfig = config with { Thinking = null, MaxTokens = ReasoningMaxTokens };
+
+        LlmResponse? response;
+        string? error;
+        WireProbe?.Override(body);
+        try
+        {
+            (response, error) = await SendReasoningAsync(stepConfig, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            WireProbe?.Override(null);
+        }
+
+        var metadata = response?.Metadata;
+        return new LlmReasoningStep(
+            label,
+            error is null ? LlmReasoningOutcome.Accepted : LlmReasoningOutcome.Refused,
+            null,
+            WireProbe?.LastFields,
+            metadata?.ContainsKey("reasoning_content") ?? false,
+            ReadCount(metadata, LlmUsageMetadataKeys.ReasoningTokens),
+            response?.CompletionTokens,
+            metadata is not null && metadata.TryGetValue("finish_reason", out var finish) ? finish?.ToString() : null,
+            WireProbe?.Warnings ?? [],
             error is null ? null : Truncate(error, ErrorExcerpt));
     }
 
@@ -226,6 +289,7 @@ internal sealed partial class LlmProbeRunner
         {
             LlmReasoningOutcome.Rejected => $"{name} ❌ {step.Error}",
             LlmReasoningOutcome.Omitted => $"{name} ➖ omitted",
+            LlmReasoningOutcome.Refused => $"{name} ❌ {step.Error}",
             _ => $"{name} ✅",
         };
 

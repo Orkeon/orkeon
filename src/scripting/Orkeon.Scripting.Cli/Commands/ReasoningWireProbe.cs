@@ -1,4 +1,6 @@
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 
 namespace Orkeon.Scripting.Cli.Commands;
@@ -17,6 +19,13 @@ internal interface IReasoningWireProbe
 
     /// <summary>The Warning-or-worse messages the provider loggers produced since <see cref="Reset"/>.</summary>
     IReadOnlyList<string> Warnings { get; }
+
+    /// <summary>
+    /// Sets the reasoning fields that replace Orkeon's own in every following request body, or
+    /// clears the override when null. <see cref="Reset"/> leaves it alone.
+    /// </summary>
+    /// <param name="fragment">The fields to merge into the body, or null for no override.</param>
+    void Override(JsonObject? fragment);
 }
 
 /// <summary>
@@ -29,8 +38,14 @@ internal sealed class ReasoningWireRecorder : DelegatingHandler
     private static readonly string[] s_topLevelFields =
         ["thinking", "reasoning_effort", "reasoning", "think", "enable_thinking", "thinking_budget"];
 
+    private static readonly JsonSerializerOptions s_writeOptions = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     private readonly object _gate = new();
     private string? _last;
+    private JsonObject? _override;
 
     /// <summary>Initializes a recorder in front of a plain <see cref="HttpClientHandler"/>.</summary>
 #pragma warning disable CA2000 // The DelegatingHandler owns and disposes its inner handler.
@@ -51,6 +66,14 @@ internal sealed class ReasoningWireRecorder : DelegatingHandler
     public string? LastFields
     {
         get { lock (_gate) return _last; }
+    }
+
+    /// <summary>Sets the reasoning fields rewritten into every following body; null clears it.</summary>
+    /// <param name="fragment">The fields to merge, or null.</param>
+    public void Override(JsonObject? fragment)
+    {
+        lock (_gate)
+            _override = fragment?.DeepClone() as JsonObject;
     }
 
     /// <summary>Forgets the captured fields.</summary>
@@ -100,6 +123,18 @@ internal sealed class ReasoningWireRecorder : DelegatingHandler
                     found = true;
                 }
 
+                if (doc.RootElement.TryGetProperty("chat_template_kwargs", out var kwargs)
+                    && kwargs.ValueKind == JsonValueKind.Object
+                    && kwargs.TryGetProperty("enable_thinking", out var enable))
+                {
+                    writer.WritePropertyName("chat_template_kwargs");
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("enable_thinking");
+                    enable.WriteTo(writer);
+                    writer.WriteEndObject();
+                    found = true;
+                }
+
                 writer.WriteEndObject();
             }
 
@@ -108,6 +143,59 @@ internal sealed class ReasoningWireRecorder : DelegatingHandler
         catch (JsonException)
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Strips every reasoning field Orkeon may write from a JSON object body, then deep-merges
+    /// <paramref name="fragment"/>; null when the body is not a JSON object.
+    /// </summary>
+    /// <param name="body">The request body text.</param>
+    /// <param name="fragment">The fields to merge.</param>
+    /// <returns>The rewritten body, or null to leave the request untouched.</returns>
+    internal static string? Rewrite(string body, JsonObject fragment)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return null;
+
+        JsonObject? root;
+        try
+        {
+            root = JsonNode.Parse(body) as JsonObject;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        if (root is null)
+            return null;
+
+        foreach (var name in s_topLevelFields)
+            root.Remove(name);
+        RemoveNested(root, "output_config", "effort");
+        RemoveNested(root, "chat_template_kwargs", "enable_thinking");
+        Merge(root, fragment);
+        return root.ToJsonString(s_writeOptions);
+    }
+
+    private static void RemoveNested(JsonObject root, string container, string key)
+    {
+        if (root[container] is not JsonObject inner)
+            return;
+        inner.Remove(key);
+        if (inner.Count == 0)
+            root.Remove(container);
+    }
+
+    private static void Merge(JsonObject target, JsonObject source)
+    {
+        foreach (var (key, value) in source)
+        {
+            if (value is JsonObject sourceChild && target[key] is JsonObject targetChild)
+                Merge(targetChild, sourceChild);
+            else
+                target[key] = value?.DeepClone();
         }
     }
 
@@ -120,6 +208,17 @@ internal sealed class ReasoningWireRecorder : DelegatingHandler
             // Buffering keeps the content readable twice: here, then by the inner handler.
             await content.LoadIntoBufferAsync(cancellationToken).ConfigureAwait(false);
             var body = await content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            JsonObject? fragment;
+            lock (_gate)
+                fragment = _override;
+            if (fragment is not null && Rewrite(body, fragment) is { } rewritten)
+            {
+                var original = content;
+                request.Content = new StringContent(rewritten, Encoding.UTF8, "application/json");
+                original.Dispose();
+                body = rewritten;
+            }
+
             var fields = Extract(body);
             lock (_gate)
                 _last = fields;
@@ -188,6 +287,9 @@ internal sealed class CapturingLoggerFactory : ILoggerFactory
 /// <summary>The wire recorder and the warning capture of one probe run, read as one.</summary>
 internal sealed class ReasoningWireProbe : IReasoningWireProbe
 {
+    private ReasoningWireRecorder? _recorder;
+    private JsonObject? _override;
+
     /// <summary>Initializes the probe; hand <see cref="LoggerFactory"/> and the HTTP factory's recorder to the provider.</summary>
     public ReasoningWireProbe()
     {
@@ -195,7 +297,15 @@ internal sealed class ReasoningWireProbe : IReasoningWireProbe
     }
 
     /// <summary>The recorder installed in front of the HTTP handler; set by <see cref="CliHttpClientFactory"/>.</summary>
-    public ReasoningWireRecorder? Recorder { get; internal set; }
+    public ReasoningWireRecorder? Recorder
+    {
+        get => _recorder;
+        internal set
+        {
+            _recorder = value;
+            value?.Override(_override);
+        }
+    }
 
     /// <summary>The factory the provider's loggers come from.</summary>
     public CapturingLoggerFactory LoggerFactory { get; }
@@ -205,6 +315,13 @@ internal sealed class ReasoningWireProbe : IReasoningWireProbe
 
     /// <inheritdoc />
     public IReadOnlyList<string> Warnings => LoggerFactory.Messages;
+
+    /// <inheritdoc />
+    public void Override(JsonObject? fragment)
+    {
+        _override = fragment;
+        Recorder?.Override(fragment);
+    }
 
     /// <inheritdoc />
     public void Reset()

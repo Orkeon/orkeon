@@ -131,7 +131,7 @@ internal static class LlmProbeReport
                     var note = step.Error ?? string.Join("; ", step.Warnings);
                     sb.Append("| ").Append(result.Mode)
                       .Append(" | ").Append(Cell(step.Step))
-                      .Append(" | ").Append(ReasoningOutcomeName(step.Outcome))
+                      .Append(" | ").Append(ReasoningOutcomeCell(step.Outcome))
                       .Append(" | ").Append(Cell(step.Wire ?? "-"))
                       .Append(" | ").Append(step.Trace ? "yes" : "no")
                       .Append(" | ").Append(step.ReasoningTokens?.ToString(CultureInfo.InvariantCulture) ?? "-")
@@ -146,11 +146,20 @@ internal static class LlmProbeReport
 
     private static string Cell(string value) => value.Replace('|', '/').Replace('\n', ' ');
 
+    private static string ReasoningOutcomeCell(LlmReasoningOutcome outcome) => outcome switch
+    {
+        LlmReasoningOutcome.Accepted => "✅ accepted",
+        LlmReasoningOutcome.Refused => "❌ refused",
+        _ => ReasoningOutcomeName(outcome),
+    };
+
     private static string ReasoningOutcomeName(LlmReasoningOutcome outcome) => outcome switch
     {
         LlmReasoningOutcome.Sent => "sent",
         LlmReasoningOutcome.Lowered => "lowered",
         LlmReasoningOutcome.Omitted => "omitted",
+        LlmReasoningOutcome.Accepted => "accepted",
+        LlmReasoningOutcome.Refused => "refused",
         _ => "rejected",
     };
 

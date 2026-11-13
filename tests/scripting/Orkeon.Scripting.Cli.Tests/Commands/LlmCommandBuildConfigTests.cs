@@ -100,4 +100,45 @@ public sealed class LlmCommandBuildConfigTests
         var options = Assert.IsType<CommandLine.Parsed<LlmProbeCommandOptions>>(parsed).Value;
         Assert.Equal("none,high", options.SweepEfforts);
     }
+
+    [Fact]
+    public void ShouldParseTheRawReasoningOption_FromTheCommandLine()
+    {
+        var parsed = CommandLine.Parser.Default.ParseArguments<LlmProbeCommandOptions>(
+            ["--provider", "openai", "--raw-reasoning", "/tmp/fragments.json"]);
+
+        var options = Assert.IsType<CommandLine.Parsed<LlmProbeCommandOptions>>(parsed).Value;
+        Assert.Equal("/tmp/fragments.json", options.RawReasoning);
+    }
+
+    [Fact]
+    public void ShouldParseTheRawReasoningFile_IntoLabelledBodies()
+    {
+        var ok = LlmCommand.TryParseRawReasoning(
+            """[{"label":"effort:xhigh","body":{"reasoning_effort":"xhigh"}},{"label":"off","body":{}}]""",
+            out var fragments, out var error);
+
+        Assert.True(ok);
+        Assert.Null(error);
+        Assert.Equal(["effort:xhigh", "off"], fragments.Select(f => f.Label).ToArray());
+        Assert.Equal("xhigh", (string?)fragments[0].Body["reasoning_effort"]);
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("""{"label":"x","body":{}}""")]
+    [InlineData("""[{"body":{}}]""")]
+    [InlineData("""[{"label":" ","body":{}}]""")]
+    [InlineData("""[{"label":3,"body":{}}]""")]
+    [InlineData("""[{"label":"x"}]""")]
+    [InlineData("""[{"label":"x","body":"effort"}]""")]
+    [InlineData("""["x"]""")]
+    public void ShouldRefuseAnInvalidRawReasoningFile(string json)
+    {
+        var ok = LlmCommand.TryParseRawReasoning(json, out var fragments, out var error);
+
+        Assert.False(ok);
+        Assert.Empty(fragments);
+        Assert.False(string.IsNullOrWhiteSpace(error));
+    }
 }

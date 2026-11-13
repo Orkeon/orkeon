@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json.Nodes;
 using Orkeon.Scripting.Cli.Commands;
 
 namespace Orkeon.Scripting.Cli.Tests.Commands;
@@ -114,5 +115,157 @@ public sealed class ReasoningWireRecorderTests
         using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("sk-secret", recorder.LastFields, StringComparison.Ordinal);
+    }
+
+    private static async Task<(string? Fields, string? Received)> SendOverriddenAsync(
+        string body, string fragment, string mediaType = "application/json")
+    {
+        using var inner = new StubBodyHandler();
+        using var recorder = new ReasoningWireRecorder(inner);
+        recorder.Override(JsonNode.Parse(fragment)!.AsObject());
+        using var client = new HttpClient(recorder, disposeHandler: false);
+        using var content = new StringContent(body, Encoding.UTF8, mediaType);
+        using var response = await client.PostAsync(new Uri("http://localhost/v1/chat"), content, TestContext.Current.CancellationToken);
+        return (recorder.LastFields, inner.ReceivedBody);
+    }
+
+    [Fact]
+    public async Task ShouldReplaceReasoningEffort_WhenOverridingAnOpenAiBody()
+    {
+        var (fields, received) = await SendOverriddenAsync(
+            """{"model":"m","reasoning_effort":"low","max_tokens":9}""", """{"reasoning_effort":"xhigh"}""");
+
+        Assert.Equal("""{"reasoning_effort":"xhigh"}""", fields);
+        var sent = JsonNode.Parse(received!)!.AsObject();
+        Assert.Equal("xhigh", (string?)sent["reasoning_effort"]);
+        Assert.Equal("m", (string?)sent["model"]);
+        Assert.Equal(9, (int?)sent["max_tokens"]);
+    }
+
+    [Fact]
+    public async Task ShouldStripThinkingAndEffort_KeepingTheOutputFormat_ForAnAnthropicBody()
+    {
+        var (fields, received) = await SendOverriddenAsync(
+            """{"model":"m","thinking":{"type":"adaptive"},"output_config":{"effort":"high","format":{"type":"json"}}}""",
+            """{"thinking":{"type":"enabled","budget_tokens":2048}}""");
+
+        var sent = JsonNode.Parse(received!)!.AsObject();
+        Assert.Equal("enabled", (string?)sent["thinking"]!["type"]);
+        Assert.Equal(2048, (int?)sent["thinking"]!["budget_tokens"]);
+        Assert.Null(sent["output_config"]!["effort"]);
+        Assert.Equal("json", (string?)sent["output_config"]!["format"]!["type"]);
+        Assert.Equal("""{"thinking":{"type":"enabled","budget_tokens":2048}}""", fields);
+    }
+
+    [Fact]
+    public async Task ShouldDropAnEmptiedOutputConfig()
+    {
+        var (_, received) = await SendOverriddenAsync(
+            """{"model":"m","output_config":{"effort":"high"}}""", """{"think":true}""");
+
+        var sent = JsonNode.Parse(received!)!.AsObject();
+        Assert.False(sent.ContainsKey("output_config"));
+        Assert.True((bool?)sent["think"]);
+    }
+
+    [Fact]
+    public async Task ShouldReplaceTheReasoningObject_ForAnOpenRouterBody()
+    {
+        var (fields, received) = await SendOverriddenAsync(
+            """{"model":"m","reasoning":{"effort":"high","exclude":false}}""",
+            """{"reasoning":{"max_tokens":512}}""");
+
+        var sent = JsonNode.Parse(received!)!.AsObject();
+        Assert.Equal(512, (int?)sent["reasoning"]!["max_tokens"]);
+        Assert.Null(sent["reasoning"]!["effort"]);
+        Assert.Null(sent["reasoning"]!["exclude"]);
+        Assert.Equal("""{"reasoning":{"max_tokens":512}}""", fields);
+    }
+
+    [Fact]
+    public async Task ShouldStripEnableThinkingAndBudget_ForAQwenBody()
+    {
+        var (_, received) = await SendOverriddenAsync(
+            """{"model":"qwen","enable_thinking":true,"thinking_budget":1024}""", """{"enable_thinking":false}""");
+
+        var sent = JsonNode.Parse(received!)!.AsObject();
+        Assert.False((bool?)sent["enable_thinking"]);
+        Assert.False(sent.ContainsKey("thinking_budget"));
+    }
+
+    [Fact]
+    public async Task ShouldStripTheTemplateEnableThinking_KeepingOtherKwargs_ForAHuggingFaceBody()
+    {
+        var (fields, received) = await SendOverriddenAsync(
+            """{"model":"m","chat_template_kwargs":{"enable_thinking":true,"other":1}}""",
+            """{"reasoning_effort":"low"}""");
+
+        var sent = JsonNode.Parse(received!)!.AsObject();
+        Assert.Null(sent["chat_template_kwargs"]!["enable_thinking"]);
+        Assert.Equal(1, (int?)sent["chat_template_kwargs"]!["other"]);
+        Assert.Equal("""{"reasoning_effort":"low"}""", fields);
+    }
+
+    [Fact]
+    public async Task ShouldRecordTheTemplateEnableThinking_WhenTheFragmentSetsIt()
+    {
+        var (fields, received) = await SendOverriddenAsync(
+            """{"model":"m","chat_template_kwargs":{"enable_thinking":true,"other":1}}""",
+            """{"chat_template_kwargs":{"enable_thinking":false}}""");
+
+        Assert.Equal("""{"chat_template_kwargs":{"enable_thinking":false}}""", fields);
+        var sent = JsonNode.Parse(received!)!.AsObject();
+        Assert.Equal(1, (int?)sent["chat_template_kwargs"]!["other"]);
+    }
+
+    [Fact]
+    public async Task ShouldMergeNestedObjects_AndReplaceOtherValues()
+    {
+        var (_, received) = await SendOverriddenAsync(
+            """{"model":"m","extra":{"a":1,"b":{"c":2}},"list":[1]}""",
+            """{"extra":{"b":{"d":3}},"list":[2,3]}""");
+
+        var sent = JsonNode.Parse(received!)!.AsObject();
+        Assert.Equal(1, (int?)sent["extra"]!["a"]);
+        Assert.Equal(2, (int?)sent["extra"]!["b"]!["c"]);
+        Assert.Equal(3, (int?)sent["extra"]!["b"]!["d"]);
+        Assert.Equal(2, sent["list"]!.AsArray().Count);
+    }
+
+    [Theory]
+    [InlineData("not json at all")]
+    [InlineData("[1,2]")]
+    [InlineData("")]
+    public async Task ShouldLeaveANonObjectBodyUntouched_UnderAnOverride(string body)
+    {
+        var (_, received) = await SendOverriddenAsync(body, """{"reasoning_effort":"low"}""");
+
+        Assert.Equal(body, received);
+    }
+
+    [Fact]
+    public async Task ShouldKeepTheBodyByteIdentical_WhenNoOverrideIsSet()
+    {
+        const string body = """{"model":"m", "reasoning_effort": "high"}""";
+
+        var (_, inner) = await SendAsync(body);
+
+        Assert.Equal(body, inner.ReceivedBody);
+    }
+
+    [Fact]
+    public async Task ShouldStopRewriting_WhenTheOverrideIsCleared()
+    {
+        using var inner = new StubBodyHandler();
+        using var recorder = new ReasoningWireRecorder(inner);
+        recorder.Override(new JsonObject { ["think"] = true });
+        recorder.Override(null);
+        using var client = new HttpClient(recorder, disposeHandler: false);
+        const string body = """{"reasoning_effort":"low"}""";
+        using var content = new StringContent(body, Encoding.UTF8, "application/json");
+
+        using var response = await client.PostAsync(new Uri("http://localhost/a"), content, TestContext.Current.CancellationToken);
+
+        Assert.Equal(body, inner.ReceivedBody);
     }
 }

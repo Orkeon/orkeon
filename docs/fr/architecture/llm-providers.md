@@ -472,9 +472,14 @@ llmproviders-test/run-campaign.sh --provider ollama --model llama3.2   # premier
 llmproviders-test/run-campaign.sh --all --config providers.local.json --dry-run
 ```
 
-Il pilote `orkeon llm probe` sur les modes M1–M10, M12, M13 et M15–M17 du
+Il pilote `orkeon llm probe` sur les modes M1–M10, M12, M13 et M15–M18 du
 protocole de test des fournisseurs (matrice interne des mainteneurs) et
-archive un rapport Markdown par campagne.
+archive un rapport Markdown par campagne. M15–M17 envoient la configuration de raisonnement
+d'Orkeon à travers le fournisseur et consignent, par étape, les champs de raisonnement réellement
+partis sur le fil. M18 fait l'inverse : avec `--raw-reasoning`, un gestionnaire réécrit les champs de
+raisonnement de la requête juste avant son envoi (le fournisseur construit toujours
+authentification, URL, en-têtes et dialecte) ; il contourne donc le jugement de capacités d'Orkeon
+et mesure ce que le fournisseur de modèle accepte ou refuse lui-même.
 `orkeon llm models -p <fournisseur> --filter 'gpt-5.6-*'` liste ce qu'un fournisseur sert
 réellement : aucune campagne ne dépend d'une liste de modèles maintenue à la main.
 

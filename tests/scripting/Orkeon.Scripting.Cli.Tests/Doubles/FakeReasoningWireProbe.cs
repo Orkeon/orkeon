@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Orkeon.Scripting.Cli.Commands;
 
 namespace Orkeon.Scripting.Cli.Tests.Doubles;
@@ -17,6 +18,12 @@ internal sealed class FakeReasoningWireProbe : IReasoningWireProbe
     /// <summary>How many times the runner reset the probe.</summary>
     public int Resets { get; private set; }
 
+    /// <summary>Every call to <see cref="Override"/>, in order; null marks a clearing call.</summary>
+    public List<JsonObject?> Overrides { get; } = [];
+
+    /// <summary>The override currently set.</summary>
+    public JsonObject? CurrentOverride { get; private set; }
+
     /// <inheritdoc />
     public string? LastFields { get; private set; }
 
@@ -29,5 +36,12 @@ internal sealed class FakeReasoningWireProbe : IReasoningWireProbe
         Resets++;
         LastFields = Wires.Count > 0 ? Wires.Dequeue() : null;
         Warnings = WarningLists.Count > 0 ? WarningLists.Dequeue() : [];
+    }
+
+    /// <inheritdoc />
+    public void Override(JsonObject? fragment)
+    {
+        Overrides.Add(fragment);
+        CurrentOverride = fragment;
     }
 }
