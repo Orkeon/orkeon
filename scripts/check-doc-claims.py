@@ -203,10 +203,13 @@ def gt_test_methods() -> tuple[int, int]:
 
 
 def git_tags() -> list[str]:
-    """`v*` tags, newest first; empty when the clone carries none (a shallow checkout)."""
+    """`v*` tags, newest first; empty when the clone carries none (a shallow checkout).
+    `versionsort.suffix=-` makes a pre-release older than its final version: without it git
+    orders `v1.0.0-rc.7` after `v1.0.0`."""
     import subprocess
     try:
-        out = subprocess.run(["git", "tag", "--list", "v*", "--sort=-v:refname"],
+        out = subprocess.run(["git", "-c", "versionsort.suffix=-",
+                              "tag", "--list", "v*", "--sort=-v:refname"],
                              cwd=ROOT, capture_output=True, text=True, check=True).stdout
     except (OSError, subprocess.CalledProcessError):
         return []
