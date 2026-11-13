@@ -260,10 +260,11 @@ public sealed partial class JsLlmFacade
             return new { content = $"<undefined-llm:chat:{msgs.Length} msgs>", tokensUsed = 0 };
         using var usage = BeginUsageScope("chat");
         var resp = await provider.ChatAsync(msgs, config, _ct).ConfigureAwait(false);
-        ThrowIfBlocked(resp);
+        // A failed call answers with the provider's sentence in the marker complete, stream and act give,
+        // never an empty content (#354).
         return new
         {
-            content = resp.Content,
+            content = RenderAnswer(resp),
             tokensUsed = resp.TokensUsed,
             model = resp.Model ?? string.Empty,
         };
@@ -567,7 +568,10 @@ public sealed partial class JsLlmFacade
             ? await provider.GenerateAsync(Append(prompt.AsString(), instruction), cfg, _ct).ConfigureAwait(false)
             : await provider.ChatAsync(ExtractMessages(prompt, system, instruction), cfg, _ct).ConfigureAwait(false);
         ThrowIfBlocked(resp);
+        ThrowIfProviderFailed("extract", resp);
         var content = StripJsonFences(resp.Content);
+        if (string.IsNullOrWhiteSpace(content))
+            throw new InvalidOperationException(DescribeUnparsableReply(resp, cfg, null));
         try
         {
             using var doc = JsonDocument.Parse(content);
@@ -575,10 +579,64 @@ public sealed partial class JsLlmFacade
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException(
-                $"ctx.llm.extract: provider returned non-JSON content. Raw: {Truncate(resp.Content, 200)}", ex);
+            throw new InvalidOperationException(DescribeUnparsableReply(resp, cfg, ex), ex);
         }
     };
+
+    /// <summary>
+    /// A provider that failed (an HTTP error, a timeout, a refused request) never reaches a script as an
+    /// empty answer: its own sentence, with the status and the vendor's message, is raised (#354).
+    /// </summary>
+    private static void ThrowIfProviderFailed(string verb, LlmResponse response)
+    {
+        if (response.Error is { } error)
+            throw new InvalidOperationException($"ctx.llm.{verb}: the provider failed: {error}");
+    }
+
+    /// <summary>
+    /// Says why an <c>extract</c> reply is not JSON (#353): the finish reason and token counts the provider
+    /// gave, an empty reply named as such (with the output budget when it ended on <c>length</c>), and for a
+    /// reply that does not parse, where the JSON error is and how the reply begins and ends.
+    /// </summary>
+    private static string DescribeUnparsableReply(LlmResponse response, LlmConfig config, JsonException? error)
+    {
+        var finish = response.Metadata.TryGetValue(LlmResponseMetadataKeys.FinishReason, out var f) ? f?.ToString() : null;
+        var cutByLength = string.Equals(finish, "length", StringComparison.OrdinalIgnoreCase);
+        var text = new System.Text.StringBuilder("ctx.llm.extract: ");
+        if (error is null)
+        {
+            text.Append("the provider returned an empty reply");
+            if (cutByLength)
+                text.Append(System.Globalization.CultureInfo.InvariantCulture,
+                    $": the output budget ({(config.MaxTokens is { } max ? $"MaxTokens = {max}" : "Llm:MaxTokens")}) ran out, reasoning included; raise Llm:MaxTokens or lower Llm:Thinking:Effort");
+        }
+        else
+        {
+            text.Append("the provider returned non-JSON content");
+            if (cutByLength)
+                text.Append(" (cut short: the output budget ran out)");
+            text.Append(System.Globalization.CultureInfo.InvariantCulture,
+                $"; JSON error at line {(error.LineNumber ?? 0) + 1}, byte {(error.BytePositionInLine ?? 0) + 1}: {error.Message}");
+        }
+
+        var facts = new List<string>();
+        if (finish is not null) facts.Add($"finish_reason: {finish}");
+        if (response.PromptTokens is { } prompt) facts.Add($"prompt_tokens: {prompt}");
+        if (response.CompletionTokens is { } completion) facts.Add($"completion_tokens: {completion}");
+        if (response.Metadata.TryGetValue(Orkeon.Application.Common.DTOs.LlmUsageMetadataKeys.ReasoningTokens, out var reasoning) && reasoning is not null)
+            facts.Add($"reasoning_tokens: {reasoning}");
+        if (facts.Count > 0)
+            text.Append(" [").Append(string.Join(", ", facts)).Append(']');
+
+        if (error is not null)
+        {
+            var raw = response.Content;
+            text.Append(System.Globalization.CultureInfo.InvariantCulture, $". Reply ({raw.Length} chars) starts: {Truncate(raw, 200)}");
+            if (raw.Length > 200)
+                text.Append(" ... ends: ").Append(Tail(raw, 200));
+        }
+        return text.ToString();
+    }
 
     /// <summary>
     /// The strict "JSON only, no prose, no fences" instruction, with the requested JSON shape when
@@ -2226,6 +2284,10 @@ public sealed partial class JsLlmFacade
 
     private static string Truncate(string s, int n)
         => s.Length <= n ? s : s[..n] + "...";
+
+    /// <summary>The last <paramref name="n"/> characters of <paramref name="s"/>, marked when cut.</summary>
+    private static string Tail(string s, int n)
+        => s.Length <= n ? s : "..." + s[^n..];
 
     private static object? JsonElementToObject(JsonElement el) => el.ValueKind switch
     {

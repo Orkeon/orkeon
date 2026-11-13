@@ -71,6 +71,18 @@ public class ZaiLlmProvider : OpenAICompatibleProviderBase
     }
 
     /// <summary>
+    /// The GLM-5.3 family takes <c>low</c>, <c>high</c> and <c>max</c> only: <c>medium</c> is refused with
+    /// HTTP 400 code 1210 ("please use low, high, or max", #354). A <c>medium</c> asked for is lowered to
+    /// <c>low</c> and the lowering reported, as for any level a provider's field does not know (LLM-02).
+    /// </summary>
+    /// <param name="model">The model the call is sent to.</param>
+    /// <returns>The levels the field takes for that model.</returns>
+    protected override IReadOnlyList<string> EffortLevelsFor(string model)
+        => IsAlwaysThinkingModel(model) ? AlwaysThinkingEffortLevels : base.EffortLevelsFor(model);
+
+    private static readonly string[] AlwaysThinkingEffortLevels = ["low", "high", "max"];
+
+    /// <summary>
     /// Whether <paramref name="model"/> belongs to the GLM-5.3 family: <c>glm-5.3</c> itself, or an id
     /// that continues it at a boundary (<c>glm-5.3-flashx</c>), case-insensitive.
     /// </summary>

@@ -119,6 +119,47 @@ public class ZaiThinkingPayloadTests
         Assert.False(_logger.HasLoggedWarning("thinking.enabled"));
     }
 
+    [Theory]
+    [InlineData("glm-5.3")]
+    [InlineData("glm-5.3-flashx")]
+    public async Task GenerateAsync_ShouldLowerMediumToLowAndWarn_WhenModelIsGlm53(string model)
+    {
+        using var handler = CreateOkHandler();
+        _httpClientFactory.RegisterClient("ZaiLlmProvider", new HttpClient(handler));
+
+        var config = LlmConfig.Create(model, TestApiKey) with
+        {
+            Thinking = new LlmThinkingConfig { Enabled = true, Effort = "medium" }
+        };
+        using var provider = new ZaiLlmProvider(config, _httpClientFactory, _noOpPolicy, _logger);
+
+        await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        var body = await ReadRequestBodyAsync(handler.CapturedRequests.Single());
+        Assert.Equal("low", body.GetProperty("reasoning_effort").GetString());
+        Assert.True(_logger.HasLoggedWarning("Effort 'medium' was declared"));
+        Assert.True(_logger.HasLoggedWarning("low, high, max"));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ShouldSendMediumUnchanged_WhenModelIsNotGlm53()
+    {
+        using var handler = CreateOkHandler();
+        _httpClientFactory.RegisterClient("ZaiLlmProvider", new HttpClient(handler));
+
+        var config = LlmConfig.Create("glm-5.2", TestApiKey) with
+        {
+            Thinking = new LlmThinkingConfig { Enabled = true, Effort = "medium" }
+        };
+        using var provider = new ZaiLlmProvider(config, _httpClientFactory, _noOpPolicy, _logger);
+
+        await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        var body = await ReadRequestBodyAsync(handler.CapturedRequests.Single());
+        Assert.Equal("medium", body.GetProperty("reasoning_effort").GetString());
+        Assert.False(_logger.HasLoggedWarning("was declared"));
+    }
+
     [Fact]
     public async Task GenerateAsync_ShouldSendNoThinkingAndNoWarning_WhenDefaultModelHasDefaultConfiguration()
     {

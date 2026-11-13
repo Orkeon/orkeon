@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `grep` takes a file as `path` and searches it alone, as `rg <file>` does; a `glob` given beside a file is refused with a message naming the fix, and a missing path says `Path not found` instead of `Directory not found` (#351).
+- Z.AI's GLM-5.3 family takes the efforts `low`, `high` and `max` only: a `medium` asked for is lowered to `low` with the provider's warning instead of failing every call with HTTP 400 code 1210; a provider narrows its levels per model through `OpenAICompatibleProviderBase.EffortLevelsFor` (#354).
+- A provider failure (an HTTP error, a timeout) no longer reaches a script as an empty answer: `ctx.llm.extract` raises it with its status and the vendor's message, and `ctx.llm.chat` answers with the `<undefined-llm:…>` marker `complete` and `act` already gave (#354).
+- `ctx.llm.extract` says why a reply is not JSON: an empty reply is named as such, with the output budget when it ended on `finish_reason: length`; an unparsable one gives the line and byte of the JSON error and the reply's beginning and end; both carry the finish reason and the prompt, completion and reasoning tokens. OpenAI-compatible providers now record `finish_reason` (`LlmResponseMetadataKeys.FinishReason`) on buffered and streamed answers alike (#353).
 
 ## [1.0.0] - 2026-11-12
 

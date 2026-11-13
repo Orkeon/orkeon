@@ -170,4 +170,90 @@ public sealed class JsLlmFacadeExtractTests
         var only = Assert.Single(messages);
         Assert.Equal("hi", only.Content);
     }
+
+    private const string Http400 = "Z.AI API error: BadRequest - {\"error\":{\"code\":\"1210\",\"message\":\"please use low, high, or max\"}}";
+
+    private static (Engine, JsLlmFacade) FacadeAnswering(LlmResponse response, int? maxTokens = null)
+    {
+        var engine = new Engine(opt => { JsEngineFactory.ApplyInteropPolicy(opt); opt.Constraints.PromiseTimeout = HangGuards.EnginePromise; });
+        var provider = new StubLlmProvider
+        {
+            BaseConfig = maxTokens is { } max ? LlmConfig.Create("glm-5.3", "key") with { MaxTokens = max } : null,
+        };
+        provider.RespondWith(response);
+        provider.RespondToChatWith(response);
+        return (engine, new JsLlmFacade(engine, provider, CancellationToken.None));
+    }
+
+    private static Dictionary<string, object> Meta(params (string Key, object Value)[] entries)
+        => entries.ToDictionary(e => e.Key, e => e.Value);
+
+    [Fact]
+    public async Task Extract_raises_the_providers_error_instead_of_an_empty_reply()
+    {
+        var (_, facade) = FacadeAnswering(new LlmResponse { Content = "", Metadata = Meta(("error", Http400)) });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => facade.ExtractAsync("Parse this", JsValue.Undefined, null));
+
+        Assert.StartsWith("ctx.llm.extract: the provider failed: Z.AI API error: BadRequest", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("1210", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Chat_answers_with_the_providers_error_never_an_empty_content()
+    {
+        var (engine, facade) = FacadeAnswering(new LlmResponse { Content = "", Metadata = Meta(("error", Http400)) });
+
+        var result = await facade.ChatAsync(Eval(engine, "[{ role: 'user', content: 'hi' }]"), null);
+
+        var content = (string)result.GetType().GetProperty("content")!.GetValue(result)!;
+        Assert.Equal($"<undefined-llm:{Http400}>", content);
+    }
+
+    [Fact]
+    public async Task Extract_names_an_empty_reply_cut_by_the_output_budget_with_its_token_counts()
+    {
+        var (_, facade) = FacadeAnswering(new LlmResponse
+        {
+            Content = "",
+            PromptTokens = 11000,
+            CompletionTokens = 24576,
+            Metadata = Meta(("finish_reason", "length"), ("reasoning_tokens", 24576)),
+        }, maxTokens: 24576);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => facade.ExtractAsync("Parse this", JsValue.Undefined, null));
+
+        Assert.Contains("the provider returned an empty reply", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("the output budget (MaxTokens = 24576) ran out, reasoning included", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("finish_reason: length", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("prompt_tokens: 11000", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("completion_tokens: 24576", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("reasoning_tokens: 24576", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Extract_names_an_empty_reply_even_without_a_finish_reason()
+    {
+        var (_, facade) = FacadeAnswering(new LlmResponse { Content = "" });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => facade.ExtractAsync("Parse this", JsValue.Undefined, null));
+
+        Assert.Equal("ctx.llm.extract: the provider returned an empty reply", ex.Message);
+    }
+
+    [Fact]
+    public async Task Extract_gives_the_json_error_position_and_the_end_of_a_cut_reply()
+    {
+        var reply = "{\"items\": [" + string.Join(",", Enumerable.Range(0, 60).Select(i => $"\"item-{i}\"")) + ", \"last-one";
+        var (_, facade) = FacadeAnswering(new LlmResponse { Content = reply, Metadata = Meta(("finish_reason", "length")) });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => facade.ExtractAsync("Parse this", JsValue.Undefined, null));
+
+        Assert.Contains("non-JSON content (cut short: the output budget ran out)", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("JSON error at line 1, byte ", ex.Message, StringComparison.Ordinal);
+        Assert.Contains($"Reply ({reply.Length} chars) starts: {{\"items\"", ex.Message, StringComparison.Ordinal);
+        Assert.EndsWith("ends: ..." + reply[^200..], ex.Message, StringComparison.Ordinal);
+        Assert.IsType<System.Text.Json.JsonException>(ex.InnerException, exactMatch: false);
+    }
 }

@@ -132,7 +132,8 @@ Every provider declares a `LlmProviderCapabilities` value object (Domain, expose
 to `LlmProviderCapabilities.Unknown`): `ResponseFormat`
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `EffortLevels`
 (the effort levels the field knows, `low`, `medium`, `high` by default, the five with `xhigh` and `max` for
-Anthropic and OpenRouter, `max` without `xhigh` for DeepSeek and Z.ai: a level asked that is not declared is sent as the
+Anthropic and OpenRouter, `max` without `xhigh` for DeepSeek and Z.ai, and `low`, `high`, `max` for Z.ai's GLM-5.3 family, which refuses
+`medium` (a provider narrows its levels per model through `OpenAICompatibleProviderBase.EffortLevelsFor`): a level asked that is not declared is sent as the
 highest declared level below it, with a warning in the provider's log; a value outside the five, such as OpenAI's
 `none`, is no level and is sent unchanged for the vendor to judge), `Vision`, `ExplicitPromptCaching`,
 `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`, `RunsOwnTools` (declared by the Microsoft Agent Framework

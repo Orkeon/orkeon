@@ -1,1 +1,3 @@
 #nullable enable
+override Orkeon.Infrastructure.LLMs.ZaiLlmProvider.EffortLevelsFor(string! model) -> System.Collections.Generic.IReadOnlyList<string!>!
+virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.EffortLevelsFor(string! model) -> System.Collections.Generic.IReadOnlyList<string!>!
