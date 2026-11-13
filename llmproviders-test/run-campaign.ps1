@@ -109,7 +109,7 @@ $ServedPath = Join-Path $KitDir 'lib/served-models.json'
 
 $DefaultMaxModels = 5
 # M11 (long context) and M14 (end-to-end crew) are manual on purpose — see the kit README.
-$AllModes = 'M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M12,M13'
+$AllModes = 'M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M12,M13,M15,M16,M17'
 
 # Diagnostics go to stderr, exactly where the bash mirror puts them, so `--dry-run > plan.txt`
 # yields the plan and nothing else on both platforms. Write-Host would not do: under
@@ -460,6 +460,10 @@ function Get-ProbeArguments {
     # (mistral-medium-2604: only high or none, 2026-08-30).
     $m7Effort = Get-CatalogModelParam -ProviderKey $ProviderKey -ModelId $ModelId -Field 'm7Effort'
     if ($m7Effort) { $arguments += @('--m7-effort', $m7Effort) }
+
+    # M16's own sweep, where a model takes vendor values beyond low..max (gpt-5.6-sol: none).
+    $sweepEfforts = Get-CatalogModelParam -ProviderKey $ProviderKey -ModelId $ModelId -Field 'sweepEfforts'
+    if ($sweepEfforts) { $arguments += @('--sweep-efforts', $sweepEfforts) }
     return ,$arguments
 }
 

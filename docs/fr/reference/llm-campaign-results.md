@@ -10,7 +10,7 @@ dernier résultat de chaque mode. Une ligne réunit les rapports du dernier jour
 modèle : seuls les rapports d'un même modèle sont réunis ; un compagnon vision est une ligne à part.
 Les jours plus anciens sont dans le [journal des campagnes](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#campaigns-run).
 
-Les modes M1 à M13 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans
+Les modes M1 à M17 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans
 le [README du kit](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#the-protocol-modes). ✅ réussi, ❌ en échec, ➖ sans
 objet (le fournisseur ou le modèle ne déclare pas la capacité). Les modèles par défaut et les
 raisons de leur choix : [comparatif des fournisseurs LLM](llm-providers-comparison.md).
@@ -93,3 +93,13 @@ Dernière campagne : 2026-11-11 · 74 modèles · 321 rapports archivés.
 |  | `glm-5.2` | 2026-11-11 | 11/1/0 | M9 | [rapport](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-11-074706-glm-5.2.md) |
 |  | `glm-5.3` | 2026-11-11 | 10/2/0 | M2, M9 | [rapport](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-11-074746-glm-5.3.md) |
 |  | `glm-5.3-flash` | 2026-11-11 | 12/0/0 | — | [rapport](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-11-074818-glm-5.3-flash.md) |
+
+## Raisonnement par modèle
+
+Les modes M15 (bascule du raisonnement), M16 (balayage des efforts) et M17 (budget) sont décrits dans le
+[README du kit](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#the-protocol-modes). ✅ la valeur est partie telle quelle,
+`→low` Orkeon l'a abaissée à la valeur la plus proche que le modèle accepte, ➖ rien n'a été envoyé,
+❌ le fournisseur a refusé ce qu'Orkeon a envoyé, vide l'étape n'a pas été exécutée. `Autres` liste les
+valeurs propres au fournisseur ; `Trace` est ✅ lorsqu'une trace de raisonnement est revenue.
+
+Aucun rapport archivé ne porte encore d'étapes de raisonnement (modes M15 à M17) : le tableau apparaîtra à la prochaine campagne qui les exécute.

@@ -48,7 +48,7 @@ THINKING_EFFORT=""
 
 DEFAULT_MAX_MODELS=5
 # M11 (long context) and M14 (end-to-end crew) are manual on purpose — see the kit README.
-ALL_MODES="M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M12,M13"
+ALL_MODES="M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M12,M13,M15,M16,M17"
 
 log()  { printf '%s\n' "$*" >&2; }
 warn() { printf '⚠  %s\n' "$*" >&2; }
@@ -422,6 +422,11 @@ probe_args() {
   local m7_effort
   m7_effort=$(catalog_model_param "$provider" "$model" "m7Effort")
   [[ -n "$m7_effort" ]] && args+=(--m7-effort "$m7_effort")
+
+  # M16's own sweep, where a model takes vendor values beyond low..max (gpt-5.6-sol: none).
+  local sweep_efforts
+  sweep_efforts=$(catalog_model_param "$provider" "$model" "sweepEfforts")
+  [[ -n "$sweep_efforts" ]] && args+=(--sweep-efforts "$sweep_efforts")
   PROBE_ARGS=("${args[@]}")
 }
 

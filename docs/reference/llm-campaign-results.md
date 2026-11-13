@@ -10,7 +10,7 @@ each mode. A row merges the reports of the model's latest campaign day: only rep
 same model are merged, and a vision companion is a row of its own. Older days are in the
 [campaign journal](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#campaigns-run).
 
-Modes M1 to M13 are the chat modes, D1 to D8 the decision-model modes; they are defined in the
+Modes M1 to M17 are the chat modes, D1 to D8 the decision-model modes; they are defined in the
 [kit README](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#the-protocol-modes). ✅ passed, ❌ failed, ➖ not
 applicable (the provider or the model does not declare the capability). The default models and
 why they were chosen: [LLM provider comparison](llm-providers-comparison.md).
@@ -93,3 +93,13 @@ Latest campaign: 2026-11-11 · 74 models · 321 archived reports.
 |  | `glm-5.2` | 2026-11-11 | 11/1/0 | M9 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-11-074706-glm-5.2.md) |
 |  | `glm-5.3` | 2026-11-11 | 10/2/0 | M2, M9 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-11-074746-glm-5.3.md) |
 |  | `glm-5.3-flash` | 2026-11-11 | 12/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-11-074818-glm-5.3-flash.md) |
+
+## Reasoning per model
+
+Modes M15 (thinking toggle), M16 (effort sweep) and M17 (budget) are described in the
+[kit README](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#the-protocol-modes). ✅ the value was sent as asked,
+`→low` Orkeon lowered it to the nearest value the model takes, ➖ nothing was sent, ❌ the vendor
+refused what Orkeon sent, empty the step was not run. `Other` lists vendor-specific values;
+`Trace` is ✅ when a reasoning trace came back.
+
+No archived report carries reasoning steps yet (modes M15 to M17): the table appears with the next campaign that runs them.

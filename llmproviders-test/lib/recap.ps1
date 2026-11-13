@@ -78,6 +78,14 @@ foreach ($report in $reports) {
         Status   = if ($campaign.failed -gt 0) { '❌' } else { '✅' }
         Modes    = ($campaign.modes | ForEach-Object { $_.mode }) -join ' '
         Results  = @($campaign.modes | ForEach-Object { [pscustomobject]@{ Mode = [string]$_.mode; Outcome = [string]$_.outcome } })
+        # The reasoning steps (M15 to M17): absent from older reports.
+        Steps    = @($campaign.modes | Where-Object { $_.PSObject.Properties['reasoning'] } | ForEach-Object { $_.reasoning } | ForEach-Object {
+            [pscustomobject]@{
+                Step    = [string]$_.step
+                Outcome = [string]$_.outcome
+                Sent    = [string]$_.sentValue
+                Trace   = ($_.PSObject.Properties['trace'] -and [bool]$_.trace)
+            } })
         Relative = $relative
     })
 }
@@ -173,7 +181,83 @@ function Add-ModelTable($Target, [string]$Lang, [string]$Prefix) {
     }
 }
 
+# The reasoning steps of each model's latest campaign day: the reports of that day are merged,
+# the latest result of each step winning (same rule as the model table, and as lib/recap.sh).
+# Columns: on off low medium high xhigh max budget; any other step is a vendor value, listed in
+# Other as "step cell"; Trace is a check mark when any step of the day carried a reasoning trace.
+$ReasoningColumns = @('on', 'off', 'low', 'medium', 'high', 'xhigh', 'max', 'budget')
+
+function Get-ReasoningRows {
+    $catalog = Get-Content -Raw -LiteralPath $CatalogPath | ConvertFrom-Json
+    $labels = @{}
+    foreach ($entry in $catalog.providers.PSObject.Properties) {
+        if ($null -ne $entry.Value.aliasOf) { continue }
+        $labels[$entry.Name] = [string]$entry.Value.label
+    }
+
+    $groups = @{}
+    foreach ($c in ($campaigns | Where-Object { $_.Steps.Count -gt 0 })) {
+        $key = "$($c.Provider)`t$($c.Model)"
+        if (-not $groups.ContainsKey($key)) { $groups[$key] = [System.Collections.Generic.List[object]]::new() }
+        $groups[$key].Add($c)
+    }
+
+    $rows = [System.Collections.Generic.List[object]]::new()
+    foreach ($group in $groups.Values) {
+        $day = ($group | ForEach-Object { $_.Stamp.Substring(0, 10) } | Sort-Object | Select-Object -Last 1)
+        $sameDay = @($group | Where-Object { $_.Stamp.Substring(0, 10) -eq $day } | Sort-Object Stamp)
+        $res = [ordered]@{}
+        $trace = $false
+        foreach ($c in $sameDay) {
+            foreach ($st in $c.Steps) {
+                $res[$st.Step] = switch ($st.Outcome) {
+                    'sent'    { '✅' }
+                    'lowered' { "→$($st.Sent)" }
+                    'omitted' { '➖' }
+                    default   { '❌' }
+                }
+                if ($st.Trace) { $trace = $true }
+            }
+        }
+        $cells = foreach ($k in $ReasoningColumns) { if ($res.Contains($k)) { $res[$k] } else { '' } }
+        $other = foreach ($k in $res.Keys) { if ($ReasoningColumns -cnotcontains $k) { "$k $($res[$k])" } }
+        $provider = $group[0].Provider
+        $rows.Add([pscustomobject]@{
+            Provider = $provider
+            Label    = if ($labels.ContainsKey($provider) -and $labels[$provider]) { $labels[$provider] } else { $provider }
+            Model    = $group[0].Model
+            Day      = $day
+            Rest     = '| ' + (@($cells) -join ' | ') + ' | ' + (@($other) -join ', ') + ' | ' + $(if ($trace) { '✅' } else { '' }) + ' |'
+        })
+    }
+    $rows.Sort([Comparison[object]] {
+        param($a, $b)
+        $c = [string]::CompareOrdinal($a.Provider, $b.Provider); if ($c -ne 0) { return $c }
+        return [string]::CompareOrdinal($a.Model, $b.Model)
+    })
+    return , $rows
+}
+
+# Renders the reasoning table into $Target, or one sentence when no report carries reasoning steps.
+function Add-ReasoningTable($Target, [string]$Lang) {
+    if ($reasoningRows.Count -eq 0) {
+        if ($Lang -eq 'fr') { $Target.Add("Aucun rapport archivé ne porte encore d'étapes de raisonnement (modes M15 à M17) : le tableau apparaîtra à la prochaine campagne qui les exécute.") }
+        else { $Target.Add('No archived report carries reasoning steps yet (modes M15 to M17): the table appears with the next campaign that runs them.') }
+        return
+    }
+    if ($Lang -eq 'fr') { $Target.Add('| Fournisseur | Modèle | Date | on | off | low | medium | high | xhigh | max | budget | Autres | Trace |') }
+    else { $Target.Add('| Provider | Model | Date | on | off | low | medium | high | xhigh | max | budget | Other | Trace |') }
+    $Target.Add('|---|---|---|---|---|---|---|---|---|---|---|---|---|')
+    $previous = ''
+    foreach ($row in $reasoningRows) {
+        $cell = if ($row.Provider -ceq $previous) { '' } else { $row.Label }
+        $previous = $row.Provider
+        $Target.Add("| $cell | ``$($row.Model)`` | $($row.Day) $($row.Rest)")
+    }
+}
+
 $modelRows = if ($campaigns.Count -gt 0) { Get-ModelRows } else { [System.Collections.Generic.List[object]]::new() }
+$reasoningRows = if ($campaigns.Count -gt 0) { Get-ReasoningRows } else { [System.Collections.Generic.List[object]]::new() }
 $latestDay = ($modelRows | ForEach-Object { $_.Day } | Sort-Object | Select-Object -Last 1)
 
 $lines = [System.Collections.Generic.List[string]]::new()
@@ -232,6 +316,16 @@ else {
     $lines.Add('published in the documentation, `docs/reference/llm-campaign-results.md`.')
     $lines.Add('')
     Add-ModelTable $lines 'en' ''
+    $lines.Add('')
+    $lines.Add('## Reasoning per model')
+    $lines.Add('')
+    $lines.Add('One row per model that ran the reasoning modes (M15 thinking toggle, M16 effort sweep, M17 budget),')
+    $lines.Add("from the model's latest campaign day. A cell is ✅ when the value was sent as asked, ``→low`` when")
+    $lines.Add('Orkeon lowered it to the nearest value the model takes, ➖ when it was left out, ❌ when the vendor')
+    $lines.Add('refused what Orkeon sent, and empty when the step was not run. `Other` lists vendor values outside')
+    $lines.Add('the usual set (`none ✅`); `Trace` is ✅ when a reasoning trace came back.')
+    $lines.Add('')
+    Add-ReasoningTable $lines 'en'
 }
 
 $lines.Add('')
@@ -272,7 +366,7 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
         $page.Add('modèle : seuls les rapports d''un même modèle sont réunis ; un compagnon vision est une ligne à part.')
         $page.Add("Les jours plus anciens sont dans le [journal des campagnes]($ReportUrl/README.md#campaigns-run).")
         $page.Add('')
-        $page.Add('Les modes M1 à M13 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans')
+        $page.Add('Les modes M1 à M17 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans')
         $page.Add("le [README du kit]($ReportUrl/README.md#the-protocol-modes). ✅ réussi, ❌ en échec, ➖ sans")
         $page.Add('objet (le fournisseur ou le modèle ne déclare pas la capacité). Les modèles par défaut et les')
         $page.Add('raisons de leur choix : [comparatif des fournisseurs LLM](llm-providers-comparison.md).')
@@ -292,7 +386,7 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
         $page.Add('same model are merged, and a vision companion is a row of its own. Older days are in the')
         $page.Add("[campaign journal]($ReportUrl/README.md#campaigns-run).")
         $page.Add('')
-        $page.Add('Modes M1 to M13 are the chat modes, D1 to D8 the decision-model modes; they are defined in the')
+        $page.Add('Modes M1 to M17 are the chat modes, D1 to D8 the decision-model modes; they are defined in the')
         $page.Add("[kit README]($ReportUrl/README.md#the-protocol-modes). ✅ passed, ❌ failed, ➖ not")
         $page.Add('applicable (the provider or the model does not declare the capability). The default models and')
         $page.Add('why they were chosen: [LLM provider comparison](llm-providers-comparison.md).')
@@ -301,6 +395,27 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
     }
     $page.Add('')
     Add-ModelTable $page $Lang "$ReportUrl/"
+    $page.Add('')
+    if ($Lang -eq 'fr') {
+        $page.Add('## Raisonnement par modèle')
+        $page.Add('')
+        $page.Add('Les modes M15 (bascule du raisonnement), M16 (balayage des efforts) et M17 (budget) sont décrits dans le')
+        $page.Add("[README du kit]($ReportUrl/README.md#the-protocol-modes). ✅ la valeur est partie telle quelle,")
+        $page.Add("``→low`` Orkeon l'a abaissée à la valeur la plus proche que le modèle accepte, ➖ rien n'a été envoyé,")
+        $page.Add("❌ le fournisseur a refusé ce qu'Orkeon a envoyé, vide l'étape n'a pas été exécutée. ``Autres`` liste les")
+        $page.Add("valeurs propres au fournisseur ; ``Trace`` est ✅ lorsqu'une trace de raisonnement est revenue.")
+    }
+    else {
+        $page.Add('## Reasoning per model')
+        $page.Add('')
+        $page.Add('Modes M15 (thinking toggle), M16 (effort sweep) and M17 (budget) are described in the')
+        $page.Add("[kit README]($ReportUrl/README.md#the-protocol-modes). ✅ the value was sent as asked,")
+        $page.Add('`→low` Orkeon lowered it to the nearest value the model takes, ➖ nothing was sent, ❌ the vendor')
+        $page.Add('refused what Orkeon sent, empty the step was not run. `Other` lists vendor-specific values;')
+        $page.Add('`Trace` is ✅ when a reasoning trace came back.')
+    }
+    $page.Add('')
+    Add-ReasoningTable $page $Lang
 
     $stagingPage = "$Target.$PID"
     [System.IO.File]::WriteAllText(

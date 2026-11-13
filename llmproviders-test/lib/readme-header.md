@@ -277,9 +277,34 @@ would read as complete coverage.
 
 ## The protocol modes
 
-The harness covers **M1 to M10, M12 and M13** for a chat provider, **D1 to D8** for a decision
+The harness covers **M1 to M10, M12, M13 and M15 to M17** for a chat provider, **D1 to D8** for a decision
 provider (below). A `➖` in a report flags a mode the provider
 cannot satisfy — nothing was exercised, there is nothing to fix.
+
+### M15 to M17 — reasoning
+
+M7 is the single smoke test of a reasoning effort. Three modes go further, one step each, and every
+step is its own row in the report's `Reasoning` section:
+
+- **M15, thinking toggle**: two steps, `on` (thinking enabled) and `off` (thinking disabled).
+- **M16, effort sweep**: one step per effort, by default `low, medium, high, xhigh, max`. The catalog
+  can replace the list for a model that takes vendor values (`requiredParams.<model>.sweepEfforts`,
+  for instance `none,low,…`); `run-campaign` passes it as `--sweep-efforts`, and the report header
+  prints it.
+- **M17, thinking budget**: one step, `budget` (1024 tokens).
+
+A step ends in one of four outcomes: `✅ sent` (the value went out as asked), `✅ lowered→<value>`
+(Orkeon sent the nearest value the model takes), `➖ omitted` (nothing was sent: the model or the
+dialect has no such control) or `❌ rejected` (the vendor refused what Orkeon sent). A mode is failed
+when one of its steps is rejected, passed when a step was sent or lowered, not applicable otherwise.
+The `Reasoning` section also shows the vendor's `wire` value, whether a reasoning trace came back,
+the reasoning tokens and the finish reason. Reports of earlier campaigns have no such section.
+
+The `Reasoning per model` table below (also published in the documentation) reads one model per row:
+a `✅` cell was sent as asked, `→low` was lowered to `low`, `➖` was left out, `❌` was refused by the
+vendor (a vendor refusal of a value Orkeon sent, not a harness failure to run), and an empty cell
+means the step was not run. `Other` lists vendor steps (`none ✅`); `Trace` is `✅` when any step
+returned a reasoning trace.
 
 ### Decision providers — D1 to D8
 

@@ -39,6 +39,7 @@ temperature=$(jq -r 'if has("temperature") then (.temperature | tostring) else "
 # used, otherwise an M7 verdict reads as obtained at the default.
 thinking_effort=$(jq -r '.thinking_effort // ""' "$CAMPAIGN")
 m7_effort=$(jq -r '.m7_thinking_effort // ""' "$CAMPAIGN")
+sweep_efforts=$(jq -r '.sweepEfforts // ""' "$CAMPAIGN")
 passed=$(jq -r '.passed' "$CAMPAIGN")
 failed=$(jq -r '.failed' "$CAMPAIGN")
 skipped=$(jq -r '.notApplicable' "$CAMPAIGN")
@@ -73,6 +74,7 @@ mkdir -p "$(dirname "$OUTPUT")"
   echo "| **Temperature** | ${temperature} |"
   [[ -n "$thinking_effort" ]] && echo "| **Reasoning effort (base)** | ${thinking_effort} |"
   [[ -n "$m7_effort" ]] && echo "| **Reasoning effort (M7)** | ${m7_effort} |"
+  [[ -n "$sweep_efforts" ]] && echo "| **Sweep efforts (M16)** | ${sweep_efforts} |"
   echo "| **Proof quality** | archived output |"
   echo
   echo "## Results"
@@ -95,6 +97,34 @@ mkdir -p "$(dirname "$OUTPUT")"
   echo
   echo "> ➖ = mode not applicable to this provider or this model. Nothing was exercised, so there is"
   echo "> nothing to fix — it is an absence of capability, not a defect."
+
+  # The reasoning steps of M15 to M17, one row each: only when a mode carries them, so a report
+  # of an older campaign (or one without those modes) reads exactly as before.
+  if jq -e 'any(.modes[]; (.reasoning // []) | length > 0)' "$CAMPAIGN" >/dev/null; then
+    echo
+    echo "## Reasoning"
+    echo
+    echo "| Mode | Step | Outcome | Sent | Trace | Reasoning tokens | Finish | Note |"
+    echo "|---|---|---|---|---|---|---|---|"
+    jq -r '
+      def cell: tostring | gsub("\n"; " ") | gsub("\\|"; "\\|");
+      .modes[] | .mode as $m | (.reasoning // [])[]
+      | [ $m, .step,
+          (if .outcome == "sent" then "✅ sent"
+           elif .outcome == "lowered" then "✅ lowered→\(.sentValue // "?")"
+           elif .outcome == "omitted" then "➖ omitted"
+           else "❌ rejected" end),
+          (.sentValue // "—"),
+          (if .trace then "✅" else "—" end),
+          (.reasoningTokens // "—"),
+          (.finishReason // "—"),
+          ([(.error // empty), ((.warnings // [])[])] | join("; ")) ]
+      | map(cell) | "| " + join(" | ") + " |"
+    ' "$CAMPAIGN"
+    echo
+    echo "> ✅ sent = the value went out as asked; ✅ lowered = Orkeon sent a nearby supported value; ➖ omitted ="
+    echo "> nothing was sent (the model does not take it); ❌ rejected = the vendor refused what Orkeon sent."
+  fi
 
   # The provider's notes are not copied: a copy is frozen the day it is written, and a note
   # about a campaign is stale at the next one — five Z.AI reports of 2026-11-11 had to be

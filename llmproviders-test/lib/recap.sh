@@ -35,6 +35,7 @@ extract_json() {
 
 rows=""
 mode_rows=""
+reasoning_rows=""
 count=0
 declare -A latest_line=()
 
@@ -53,6 +54,11 @@ while IFS= read -r report; do
   # One line per mode result, for the per-model table.
   mode_rows+=$(printf '%s' "$json" | jq -r --arg rel "$rel" \
     '. as $c | .modes[] | [$c.provider, $c.model, $c.timestampUtc, .mode, .outcome, $rel] | @tsv')$'\n'
+
+  # One line per reasoning step (M15 to M17), for the reasoning table: absent from older reports.
+  reasoning_rows+=$(printf '%s' "$json" | jq -r '. as $c | (.modes[]? | select((.reasoning // []) | length > 0) | .reasoning[])
+    | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, (.sentValue // "-"), ((.trace // false) | tostring)] | @tsv')
+  [[ -z "$reasoning_rows" || "$reasoning_rows" == *$'\n' ]] || reasoning_rows+=$'\n'
 
   # Prefixed with an explicit sort key. Two campaigns launched in parallel routinely land on
   # the same second, and a plain reverse sort over the rendered line would then break the tie
@@ -121,9 +127,63 @@ render_model_table() {
   done <<< "$model_table"
 }
 
+# The reasoning steps of each model's latest campaign day, as TSV: provider, label, model, day,
+# then the rest of the Markdown row (so no field is ever empty). Same merge rule as the model
+# table: the reports of the latest day are merged, the latest result of each step winning.
+# Columns: on off low medium high xhigh max budget; any other step is a vendor value, listed in
+# Other as "step cell"; Trace is ✅ when any step of the day carried a reasoning trace.
+reasoning_table_tsv() {
+  local providers
+  providers=$(jq -c '.providers | with_entries(select(.value.aliasOf == null)) | map_values(.label // "")' "$CATALOG")
+  printf '%s' "$reasoning_rows" | jq -R -s -r --argjson cat "$providers" '
+    def cell(o; v): if o == "sent" then "✅" elif o == "lowered" then "→\(v)" elif o == "omitted" then "➖" else "❌" end;
+    split("\n") | map(select(length > 0) | split("\t")
+      | {p: .[0], m: .[1], s: .[2], step: .[3], o: .[4], v: .[5], t: (.[6] == "true")})
+    | group_by([.p, .m])
+    | map((map(.s[0:10]) | max) as $d
+        | map(select(.s[0:10] == $d)) | sort_by(.s)
+        | (reduce .[] as $x ({}; .[$x.step] = cell($x.o; $x.v))) as $res
+        | {p: .[0].p, m: .[0].m, d: $d, l: (($cat[.[0].p] // "") | if . == "" then .[0].p else . end),
+           res: $res, trace: (any(.[]; .t))})
+    | sort_by(.p, .m)
+    | .[] | . as $r
+    | [$r.p, ($r.l // $r.p), $r.m, $r.d,
+       ("| " + ([ ("on","off","low","medium","high","xhigh","max","budget") as $k | ($r.res[$k] // "") ] | join(" | "))
+        + " | " + ([$r.res | to_entries[] | select(.key as $k | ["on","off","low","medium","high","xhigh","max","budget"] | index($k) | not)
+                   | "\(.key) \(.value)"] | join(", "))
+        + " | " + (if $r.trace then "✅" else "" end) + " |")] | @tsv'
+}
+
+# Renders the reasoning table, or one sentence when no report carries reasoning steps yet.
+render_reasoning_table() {
+  local lang="$1" previous="" p label model d rest cell
+  if [[ -z "$reasoning_table" ]]; then
+    if [[ "$lang" == fr ]]; then
+      echo "Aucun rapport archivé ne porte encore d'étapes de raisonnement (modes M15 à M17) : le tableau apparaîtra à la prochaine campagne qui les exécute."
+    else
+      echo "No archived report carries reasoning steps yet (modes M15 to M17): the table appears with the next campaign that runs them."
+    fi
+    return 0
+  fi
+  if [[ "$lang" == fr ]]; then
+    echo "| Fournisseur | Modèle | Date | on | off | low | medium | high | xhigh | max | budget | Autres | Trace |"
+  else
+    echo "| Provider | Model | Date | on | off | low | medium | high | xhigh | max | budget | Other | Trace |"
+  fi
+  echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+  while IFS=$'\t' read -r p label model d rest; do
+    cell=""
+    [[ "$p" == "$previous" ]] || cell="$label"
+    previous="$p"
+    echo "| ${cell} | \`${model}\` | ${d} ${rest}"
+  done <<< "$reasoning_table"
+}
+
 model_table=""
 [[ "$count" -eq 0 ]] || model_table=$(model_table_tsv)
 latest_day=$(printf '%s' "$model_table" | cut -f5 | sort | tail -n 1)
+reasoning_table=""
+[[ -z "$reasoning_rows" ]] || reasoning_table=$(reasoning_table_tsv)
 model_count=$(printf '%s' "$model_table" | grep -c . || true)
 
 {
@@ -166,6 +226,16 @@ model_count=$(printf '%s' "$model_table" | grep -c . || true)
     echo "published in the documentation, \`docs/reference/llm-campaign-results.md\`."
     echo
     render_model_table en ""
+    echo
+    echo "## Reasoning per model"
+    echo
+    echo "One row per model that ran the reasoning modes (M15 thinking toggle, M16 effort sweep, M17 budget),"
+    echo "from the model's latest campaign day. A cell is ✅ when the value was sent as asked, \`→low\` when"
+    echo "Orkeon lowered it to the nearest value the model takes, ➖ when it was left out, ❌ when the vendor"
+    echo "refused what Orkeon sent, and empty when the step was not run. \`Other\` lists vendor values outside"
+    echo "the usual set (\`none ✅\`); \`Trace\` is ✅ when a reasoning trace came back."
+    echo
+    render_reasoning_table en
   fi
 
   echo
@@ -203,7 +273,7 @@ write_docs_page() {
       echo "modèle : seuls les rapports d'un même modèle sont réunis ; un compagnon vision est une ligne à part."
       echo "Les jours plus anciens sont dans le [journal des campagnes](${REPORT_URL}/README.md#campaigns-run)."
       echo
-      echo "Les modes M1 à M13 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans"
+      echo "Les modes M1 à M17 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans"
       echo "le [README du kit](${REPORT_URL}/README.md#the-protocol-modes). ✅ réussi, ❌ en échec, ➖ sans"
       echo "objet (le fournisseur ou le modèle ne déclare pas la capacité). Les modèles par défaut et les"
       echo "raisons de leur choix : [comparatif des fournisseurs LLM](llm-providers-comparison.md)."
@@ -222,7 +292,7 @@ write_docs_page() {
       echo "same model are merged, and a vision companion is a row of its own. Older days are in the"
       echo "[campaign journal](${REPORT_URL}/README.md#campaigns-run)."
       echo
-      echo "Modes M1 to M13 are the chat modes, D1 to D8 the decision-model modes; they are defined in the"
+      echo "Modes M1 to M17 are the chat modes, D1 to D8 the decision-model modes; they are defined in the"
       echo "[kit README](${REPORT_URL}/README.md#the-protocol-modes). ✅ passed, ❌ failed, ➖ not"
       echo "applicable (the provider or the model does not declare the capability). The default models and"
       echo "why they were chosen: [LLM provider comparison](llm-providers-comparison.md)."
@@ -231,6 +301,26 @@ write_docs_page() {
     fi
     echo
     render_model_table "$lang" "${REPORT_URL}/"
+    echo
+    if [[ "$lang" == fr ]]; then
+      echo "## Raisonnement par modèle"
+      echo
+      echo "Les modes M15 (bascule du raisonnement), M16 (balayage des efforts) et M17 (budget) sont décrits dans le"
+      echo "[README du kit](${REPORT_URL}/README.md#the-protocol-modes). ✅ la valeur est partie telle quelle,"
+      echo "\`→low\` Orkeon l'a abaissée à la valeur la plus proche que le modèle accepte, ➖ rien n'a été envoyé,"
+      echo "❌ le fournisseur a refusé ce qu'Orkeon a envoyé, vide l'étape n'a pas été exécutée. \`Autres\` liste les"
+      echo "valeurs propres au fournisseur ; \`Trace\` est ✅ lorsqu'une trace de raisonnement est revenue."
+    else
+      echo "## Reasoning per model"
+      echo
+      echo "Modes M15 (thinking toggle), M16 (effort sweep) and M17 (budget) are described in the"
+      echo "[kit README](${REPORT_URL}/README.md#the-protocol-modes). ✅ the value was sent as asked,"
+      echo "\`→low\` Orkeon lowered it to the nearest value the model takes, ➖ nothing was sent, ❌ the vendor"
+      echo "refused what Orkeon sent, empty the step was not run. \`Other\` lists vendor-specific values;"
+      echo "\`Trace\` is ✅ when a reasoning trace came back."
+    fi
+    echo
+    render_reasoning_table "$lang"
   } > "$target.$$"
   mv -f "$target.$$" "$target"
   echo "$target"

@@ -84,6 +84,9 @@ if ($c.PSObject.Properties['thinking_effort'] -and $c.thinking_effort) {
 if ($c.PSObject.Properties['m7_thinking_effort'] -and $c.m7_thinking_effort) {
     & $add "| **Reasoning effort (M7)** | $($c.m7_thinking_effort) |"
 }
+if ($c.PSObject.Properties['sweepEfforts'] -and $c.sweepEfforts) {
+    & $add "| **Sweep efforts (M16)** | $($c.sweepEfforts) |"
+}
 & $add '| **Proof quality** | archived output |'
 & $add ''
 & $add '## Results'
@@ -102,6 +105,41 @@ foreach ($mode in $c.modes) {
 & $add ''
 & $add '> ➖ = mode not applicable to this provider or this model. Nothing was exercised, so there is'
 & $add '> nothing to fix — it is an absence of capability, not a defect.'
+
+# The reasoning steps of M15 to M17, one row each: only when a mode carries them.
+$hasReasoning = @($c.modes | Where-Object { $_.PSObject.Properties['reasoning'] -and @($_.reasoning).Count -gt 0 }).Count -gt 0
+if ($hasReasoning) {
+    $esc = { param($v) ([string]$v) -replace "`r?`n", ' ' -replace '\|', '\|' }
+    & $add ''
+    & $add '## Reasoning'
+    & $add ''
+    & $add '| Mode | Step | Outcome | Sent | Trace | Reasoning tokens | Finish | Note |'
+    & $add '|---|---|---|---|---|---|---|---|'
+    foreach ($mode in $c.modes) {
+        if (-not $mode.PSObject.Properties['reasoning']) { continue }
+        foreach ($s in @($mode.reasoning)) {
+            $outcome = switch ($s.outcome) {
+                'sent'    { '✅ sent' }
+                'lowered' { "✅ lowered→$(if ($s.sentValue) { $s.sentValue } else { '?' })" }
+                'omitted' { '➖ omitted' }
+                default   { '❌ rejected' }
+            }
+            $sent = if ($s.sentValue) { $s.sentValue } else { '—' }
+            $trace = if ($s.trace) { '✅' } else { '—' }
+            $tokens = if ($null -ne $s.reasoningTokens) { $s.reasoningTokens } else { '—' }
+            $finish = if ($s.finishReason) { $s.finishReason } else { '—' }
+            $noteParts = @()
+            if ($s.error) { $noteParts += [string]$s.error }
+            if ($s.warnings) { $noteParts += @($s.warnings | ForEach-Object { [string]$_ }) }
+            $note = $noteParts -join '; '
+            $cells = @($mode.mode, $s.step, $outcome, $sent, $trace, $tokens, $finish, $note) | ForEach-Object { & $esc $_ }
+            & $add ('| ' + ($cells -join ' | ') + ' |')
+        }
+    }
+    & $add ''
+    & $add '> ✅ sent = the value went out as asked; ✅ lowered = Orkeon sent a nearby supported value; ➖ omitted ='
+    & $add '> nothing was sent (the model does not take it); ❌ rejected = the vendor refused what Orkeon sent.'
+}
 
 # The provider's notes are not copied: a copy is frozen the day it is written, and a note
 # about a campaign is stale at the next one. The report points at the one place the notes
