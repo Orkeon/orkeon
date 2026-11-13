@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `grep` takes a file as `path` and searches it alone, as `rg <file>` does; a `glob` given beside a file is refused with a message naming the fix, and a missing path says `Path not found` instead of `Directory not found` (#351).
+
 ## [1.0.0] - 2026-11-12
 
 The first final release. Since `1.0.0-rc.7`: the container image and its switch take their
