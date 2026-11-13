@@ -287,7 +287,8 @@ M7 is the single smoke test of a reasoning effort. Three modes go further, one s
 step is its own row in the report's `Reasoning` section:
 
 - **M15, thinking toggle**: two steps, `on` (thinking enabled) and `off` (thinking disabled).
-- **M16, effort sweep**: one step per effort, by default `low, medium, high, xhigh, max`. The catalog
+- **M16, effort sweep**: one step per effort, by default `low, medium, high, xhigh, max`, then
+  every value of an M18 `effort:*` fragment (`none`, `minimal`), so the table check can judge it. The catalog
   can replace the list for a model that takes vendor values (`requiredParams.<model>.sweepEfforts`,
   for instance `none,low,…`); `run-campaign` passes it as `--sweep-efforts`, and the report header
   prints it.
@@ -296,7 +297,8 @@ step is its own row in the report's `Reasoning` section:
 A step ends in one of four outcomes: `✅ sent` (the value went out as asked), `✅ lowered→<value>`
 (Orkeon sent the nearest value the model takes), `➖ omitted` (nothing was sent: the model or the
 dialect has no such control) or `❌ rejected` (the vendor refused what Orkeon sent). A mode is failed
-when one of its steps is rejected, passed when a step was sent or lowered, not applicable otherwise.
+when one of its steps is rejected or when the table check finds a contradiction (below), passed when a
+step was sent or lowered, not applicable otherwise.
 The `Reasoning` section also shows the vendor's `wire` value, whether a reasoning trace came back,
 the reasoning tokens and the finish reason. The last three are read twice: from what the provider
 surfaced, and from the vendor's answer on the wire before the provider parsed it (`vendorTrace`,
@@ -332,14 +334,21 @@ wrote and deep-merges the fragment into the request body, so the vendor sees exa
 Once every mode of the run is done, each M15 to M17 step is checked against the M18 steps of the same
 run (`tableCheck` and `tableNote` in the JSON, the `Table` column of the `Reasoning` section):
 
-- `❌ missing restriction`: Orkeon sent the value and the vendor refused it (400 or 422; a 429, a 5xx or
-  a timeout judges nothing and reads `➖`). The model capability table should have lowered or dropped it.
+- `❌ missing restriction`: Orkeon sent reasoning fields and the vendor refused them with a 400 or a
+  422 (read on the status: `<Provider> API error: BadRequest - …` or a leading `400`). A 429, a 5xx, a
+  timeout, an error with no reasoning field on the wire, or a refusal of fields M18 had accepted as they
+  are (the refusal is about something else) judges nothing and reads `➖`. The model capability table
+  should have lowered or dropped the value.
 - `❌ too narrow`: Orkeon lowered or left out the value, and the M18 fragment for it (`effort:<value>`,
-  `toggle:on`, `toggle:off` or an `off:*` label, `budget:*`) was accepted. For the off switch the
-  fragment must also have stopped the reasoning (no trace, no reasoning tokens): a vendor that accepts
-  `disabled` and keeps reasoning does not take it.
-- `✅`: the step agrees with the vendor; "on" left out without a warning agrees too (a model that
-  always reasons needs no switch). `➖`: no fragment for the value, nothing to judge.
+  `toggle:on`, `toggle:off` or an `off:*` label, `budget:*`) was accepted. A value that switches
+  reasoning off (the off switch, the effort `none`) must also have stopped it: no trace and at most 5
+  reasoning tokens when the run shows reasoning at all, else (Claude without `display` reports neither)
+  at most half the completion tokens of the fragment that spent most. A vendor that accepts `disabled`
+  and keeps reasoning does not take it (`✅`); one whose answer cannot tell reads `➖`.
+- `➖` also when the vendor accepts `effort:none` and keeps reasoning: it swallows the effort field, so
+  an accepted effort proves nothing (Together's `zai-org/GLM-5.3-Flash`, `MiniMax-M2`).
+- `✅`: the step agrees with the vendor; "on" left out with no warning about `thinking` agrees too (a
+  model that always reasons needs no switch). `➖`: no fragment for the value, nothing to judge.
 
 A contradiction fails the mode, and the `Table` column of `Reasoning per model` names the steps.
 

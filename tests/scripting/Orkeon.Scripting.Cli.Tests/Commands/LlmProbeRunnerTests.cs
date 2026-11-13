@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Application.Interfaces.Ports;
@@ -1038,6 +1039,41 @@ public sealed class LlmProbeRunnerTests
 
         Assert.Equal(["none", "minimal", "high"], provider.Configs.Select(c => c!.Thinking!.Effort).ToArray());
         Assert.Equal(["none", "minimal", "high"], result.Reasoning!.Select(s => s.Step).ToArray());
+    }
+
+    [Fact]
+    public async Task ShouldSweepTheVendorValuesOfM18_AfterTheLevels_WhenNoSweepIsGiven()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+        var runner = new LlmProbeRunner(provider)
+        {
+            RawReasoning =
+            [
+                ("effort:none", new JsonObject { ["reasoning_effort"] = "none" }),
+                ("effort:high", new JsonObject { ["reasoning_effort"] = "high" }),
+                ("toggle:off", new JsonObject()),
+                ("effort:minimal", new JsonObject { ["reasoning_effort"] = "minimal" }),
+            ],
+        };
+
+        var result = await RunAsync(runner, LlmProbeMode.M16);
+
+        Assert.Equal(["low", "medium", "high", "xhigh", "max", "none", "minimal"], result.Reasoning!.Select(s => s.Step).ToArray());
+    }
+
+    [Fact]
+    public async Task ShouldReadTheChatTemplateSwitch_AsTheToggle()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.Toggle);
+        var wire = new FakeReasoningWireProbe();
+        wire.Wires.Enqueue("""{"chat_template_kwargs":{"enable_thinking":true}}""");
+        wire.Wires.Enqueue("""{"chat_template_kwargs":{"enable_thinking":false}}""");
+        var runner = new LlmProbeRunner(provider) { WireProbe = wire };
+
+        var result = await RunAsync(runner, LlmProbeMode.M15);
+
+        Assert.All(result.Reasoning!, s => Assert.Equal(LlmReasoningOutcome.Sent, s.Outcome));
+        Assert.Equal(["true", "false"], result.Reasoning!.Select(s => s.SentValue).ToArray());
     }
 
     [Fact]

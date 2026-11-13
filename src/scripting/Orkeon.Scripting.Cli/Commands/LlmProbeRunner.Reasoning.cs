@@ -68,7 +68,7 @@ internal sealed partial class LlmProbeRunner
                     new("off", StepKind.Toggle, new LlmThinkingConfig { Enabled = false }, "false"),
                 ];
             case LlmProbeMode.M16:
-                var levels = SweepEfforts is { Count: > 0 } ? SweepEfforts : LlmThinkingConfig.Levels;
+                var levels = SweepEfforts is { Count: > 0 } ? SweepEfforts : DefaultSweep();
                 return [.. levels.Select(l => new ReasoningStepSpec(l, StepKind.Effort, new LlmThinkingConfig { Effort = l }, l))];
             default:
                 return
@@ -78,6 +78,25 @@ internal sealed partial class LlmProbeRunner
                         ReasoningBudgetTokens.ToString(CultureInfo.InvariantCulture)),
                 ];
         }
+    }
+
+    /// <summary>
+    /// The five levels, then every vendor value M18's <c>effort:*</c> fragments name (<c>none</c>, <c>minimal</c>): a value
+    /// M18 measures is also sent through Orkeon, so the table check can judge it (#356, item 10).
+    /// </summary>
+    private List<string> DefaultSweep()
+    {
+        var sweep = new List<string>(LlmThinkingConfig.Levels);
+        foreach (var (label, _) in RawReasoning)
+        {
+            if (!label.StartsWith("effort:", StringComparison.OrdinalIgnoreCase))
+                continue;
+            var value = label["effort:".Length..].Trim();
+            if (value.Length > 0 && !sweep.Contains(value, StringComparer.OrdinalIgnoreCase))
+                sweep.Add(value);
+        }
+
+        return sweep;
     }
 
     private async Task<LlmReasoningStep> RunReasoningStepAsync(
@@ -235,7 +254,7 @@ internal sealed partial class LlmProbeRunner
         {
             StepKind.Effort => FirstOf(root, [["reasoning_effort"], ["output_config", "effort"], ["reasoning", "effort"]], stringOnly: false)
                 ?? StringThink(root),
-            StepKind.Toggle => FirstOf(root, [["thinking", "type"], ["enable_thinking"], ["reasoning", "enabled"]], stringOnly: false)
+            StepKind.Toggle => FirstOf(root, [["thinking", "type"], ["enable_thinking"], ["chat_template_kwargs", "enable_thinking"], ["reasoning", "enabled"]], stringOnly: false)
                 ?? BoolThink(root),
             _ => FirstOf(root, [["thinking_budget"], ["reasoning", "max_tokens"], ["thinking", "budget_tokens"]], stringOnly: false),
         };

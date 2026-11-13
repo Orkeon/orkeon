@@ -12,8 +12,8 @@ public sealed class ReasoningTableCheckTests
     private static LlmReasoningStep Step(
         string name, LlmReasoningOutcome outcome, string? wire = null, string? error = null,
         bool trace = false, long? reasoningTokens = null, IReadOnlyList<string>? warnings = null,
-        VendorAnswer? vendor = null) =>
-        new(name, outcome, null, wire, trace, reasoningTokens, null, null, warnings ?? [], error, vendor);
+        VendorAnswer? vendor = null, long? completionTokens = null) =>
+        new(name, outcome, null, wire, trace, reasoningTokens, completionTokens, null, warnings ?? [], error, vendor);
 
     private static LlmProbeResult Mode(LlmProbeMode mode, params LlmReasoningStep[] steps) =>
         new(mode, LlmProbeOutcome.Passed, "detail", 1, steps);
@@ -82,7 +82,8 @@ public sealed class ReasoningTableCheckTests
             Mode(LlmProbeMode.M15,
                 Step("off", LlmReasoningOutcome.Omitted, warnings: ["always reasons"])),
             Mode(LlmProbeMode.M18,
-                Step("toggle:off", LlmReasoningOutcome.Accepted, reasoningTokens: 0, vendor: new VendorAnswer(false, 0, "stop"))),
+                Step("toggle:on", LlmReasoningOutcome.Accepted, trace: true, reasoningTokens: 400),
+                Step("toggle:off", LlmReasoningOutcome.Accepted, reasoningTokens: 1, vendor: new VendorAnswer(false, 1, "stop"))),
         ]);
 
         Assert.Equal(LlmTableCheck.TooNarrow, Checked(results, LlmProbeMode.M15, "off").Check);
@@ -123,11 +124,94 @@ public sealed class ReasoningTableCheckTests
         [
             Mode(LlmProbeMode.M17, Step("budget", LlmReasoningOutcome.Omitted, warnings: ["no budget"])),
             Mode(LlmProbeMode.M16, Step("NONE", LlmReasoningOutcome.Omitted, warnings: ["dropped"])),
-            Mode(LlmProbeMode.M18, Step("effort:none", LlmReasoningOutcome.Accepted)),
+            Mode(LlmProbeMode.M18,
+                Step("effort:none", LlmReasoningOutcome.Accepted),
+                Step("effort:high", LlmReasoningOutcome.Accepted, trace: true)),
         ]);
 
         Assert.Equal(LlmTableCheck.Unchecked, Checked(results, LlmProbeMode.M17, "budget").Check);
         Assert.Equal(LlmTableCheck.TooNarrow, Checked(results, LlmProbeMode.M16, "NONE").Check);
+    }
+
+    [Fact]
+    public void ShouldLeaveAnEffortUnchecked_WhenTheVendorKeepsReasoningAtNone()
+    {
+        var results = ReasoningTableCheck.Apply(
+        [
+            Mode(LlmProbeMode.M16,
+                Step("medium", LlmReasoningOutcome.Lowered, "{\"reasoning_effort\":\"low\"}"),
+                Step("none", LlmReasoningOutcome.Omitted, warnings: ["dropped"])),
+            Mode(LlmProbeMode.M18,
+                Step("effort:none", LlmReasoningOutcome.Accepted, trace: true, reasoningTokens: 300),
+                Step("effort:medium", LlmReasoningOutcome.Accepted, trace: true, reasoningTokens: 310)),
+        ]);
+
+        Assert.Equal(LlmTableCheck.Unchecked, Checked(results, LlmProbeMode.M16, "medium").Check);
+        Assert.Equal(LlmTableCheck.Agrees, Checked(results, LlmProbeMode.M16, "none").Check);
+        Assert.Equal(LlmProbeOutcome.Passed, results[0].Outcome);
+    }
+
+    [Fact]
+    public void ShouldJudgeTheOffSwitch_OnTheCompletionTokens_WhenTheVendorReportsNoReasoning()
+    {
+        var results = ReasoningTableCheck.Apply(
+        [
+            Mode(LlmProbeMode.M15, Step("off", LlmReasoningOutcome.Omitted, warnings: ["Option 'thinking.enabled' ..."])),
+            Mode(LlmProbeMode.M18,
+                Step("effort:high", LlmReasoningOutcome.Accepted, completionTokens: 900),
+                Step("off:disabled@high", LlmReasoningOutcome.Accepted, completionTokens: 12)),
+        ]);
+        var unknown = ReasoningTableCheck.Apply(
+        [
+            Mode(LlmProbeMode.M15, Step("off", LlmReasoningOutcome.Omitted, warnings: ["Option 'thinking.enabled' ..."])),
+            Mode(LlmProbeMode.M18, Step("off:disabled@high", LlmReasoningOutcome.Accepted)),
+        ]);
+
+        Assert.Equal(LlmTableCheck.TooNarrow, Checked(results, LlmProbeMode.M15, "off").Check);
+        Assert.Equal(LlmTableCheck.Unchecked, Checked(unknown, LlmProbeMode.M15, "off").Check);
+    }
+
+    [Theory]
+    [InlineData("Mammouth API error: InternalServerError - litellm.BadRequestError: upstream")]
+    [InlineData("Gemini API error: TooManyRequests - quota")]
+    [InlineData("The operation was canceled (BadRequest)")]
+    public void ShouldLeaveARejectedStepUnchecked_WhenTheStatusIsNotARefusal(string error)
+    {
+        var results = ReasoningTableCheck.Apply(
+        [
+            Mode(LlmProbeMode.M16, Step("high", LlmReasoningOutcome.Rejected, "{\"reasoning_effort\":\"high\"}", error)),
+        ]);
+
+        Assert.Equal(LlmTableCheck.Unchecked, Checked(results, LlmProbeMode.M16, "high").Check);
+    }
+
+    [Fact]
+    public void ShouldLeaveARefusalUnchecked_WhenM18HadTheSameFieldsAccepted()
+    {
+        var results = ReasoningTableCheck.Apply(
+        [
+            Mode(LlmProbeMode.M16, Step("high", LlmReasoningOutcome.Rejected, "{\"reasoning_effort\":\"high\"}",
+                "Grok API error: BadRequest - max_tokens too large")),
+            Mode(LlmProbeMode.M18, Step("effort:high", LlmReasoningOutcome.Accepted, "{ \"reasoning_effort\": \"high\" }")),
+        ]);
+
+        Assert.Equal(LlmTableCheck.Unchecked, Checked(results, LlmProbeMode.M16, "high").Check);
+    }
+
+    [Fact]
+    public void ShouldJudgeAnOmittedOn_OnlyWhenAThinkingWarningSaysItWasDropped()
+    {
+        var raw = Mode(LlmProbeMode.M18,
+            Step("toggle:on", LlmReasoningOutcome.Accepted, trace: true),
+            Step("effort:none", LlmReasoningOutcome.Refused, error: "400 bad"));
+
+        var temperature = ReasoningTableCheck.Apply(
+            [Mode(LlmProbeMode.M15, Step("on", LlmReasoningOutcome.Omitted, warnings: ["Option 'temperature' was declared but Kimi does not support it"])), raw]);
+        var dropped = ReasoningTableCheck.Apply(
+            [Mode(LlmProbeMode.M15, Step("on", LlmReasoningOutcome.Omitted, warnings: ["Option 'thinking' was declared but X does not support it"])), raw]);
+
+        Assert.Equal(LlmTableCheck.Agrees, Checked(temperature, LlmProbeMode.M15, "on").Check);
+        Assert.Equal(LlmTableCheck.TooNarrow, Checked(dropped, LlmProbeMode.M15, "on").Check);
     }
 
     [Fact]

@@ -526,10 +526,11 @@ et mesure ce que le fournisseur de modèle accepte ou refuse lui-même.
 Chaque étape lit aussi la réponse du fournisseur sur le fil avant que le provider ne l'analyse (trace,
 jetons de raisonnement, raison de fin) : un écart entre ce que le fournisseur a renvoyé et ce que le
 provider a restitué apparaît dans le rapport. Une fois tous les modes passés, chaque étape de M15–M17 est
-confrontée à M18 : une valeur envoyée par Orkeon et refusée par le fournisseur signifie qu'il manque une
-restriction à la table des capacités des modèles, une valeur qu'Orkeon a abaissée ou omise et que le
-fournisseur accepte (le coupe-raisonnement seulement s'il a bien arrêté le raisonnement) signifie que la
-table est trop étroite ; dans les deux cas le mode échoue.
+confrontée à M18 : une valeur envoyée par Orkeon et refusée par le fournisseur (400, 422) signifie qu'il
+manque une restriction à la table des capacités des modèles, une valeur qu'Orkeon a abaissée ou omise et
+que le fournisseur accepte signifie que la table est trop étroite ; dans les deux cas le mode échoue. Une
+valeur qui coupe le raisonnement ne compte comme acceptée que si elle l'a bien arrêté, et un fournisseur
+qui raisonne encore à `effort:none` ne prouve rien en acceptant un effort.
 `orkeon llm models -p <fournisseur> --filter 'gpt-5.6-*'` liste ce qu'un fournisseur sert
 réellement : aucune campagne ne dépend d'une liste de modèles maintenue à la main.
 

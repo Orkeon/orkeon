@@ -65,7 +65,7 @@ internal sealed class LlmProbeCommandOptions : CliOptions
 
     /// <summary>Effort values M16 sweeps, comma-separated; vendor values such as none or minimal are allowed.</summary>
     [Option("sweep-efforts", Required = false,
-        HelpText = "Comma-separated effort values M16 sweeps (default low,medium,high,xhigh,max). May hold vendor values such as none or minimal.")]
+        HelpText = "Comma-separated effort values M16 sweeps (default low,medium,high,xhigh,max, then every value of an effort:* fragment of --raw-reasoning). May hold vendor values such as none or minimal.")]
     public string? SweepEfforts { get; set; }
 
     /// <summary>JSON file of raw reasoning fragments M18 sends to the vendor unchanged.</summary>
