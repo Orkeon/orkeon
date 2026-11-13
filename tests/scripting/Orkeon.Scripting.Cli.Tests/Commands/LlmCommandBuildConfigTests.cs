@@ -73,4 +73,31 @@ public sealed class LlmCommandBuildConfigTests
 
         Assert.Equal(string.Empty, config.Model);
     }
+
+    [Theory]
+    [InlineData("none, minimal ,high,,", new[] { "none", "minimal", "high" })]
+    [InlineData("low", new[] { "low" })]
+    public void ShouldSplitTheSweepEfforts_IntoTrimmedNonEmptyEntries(string raw, string[] expected)
+    {
+        Assert.Equal(expected, LlmCommand.ParseSweepEfforts(raw));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" , ")]
+    public void ShouldLeaveTheSweepUnset_WhenTheOptionIsBlank(string? raw)
+    {
+        Assert.Null(LlmCommand.ParseSweepEfforts(raw));
+    }
+
+    [Fact]
+    public void ShouldParseTheSweepEffortsOption_FromTheCommandLine()
+    {
+        var parsed = CommandLine.Parser.Default.ParseArguments<LlmProbeCommandOptions>(
+            ["--provider", "openai", "--sweep-efforts", "none,high"]);
+
+        var options = Assert.IsType<CommandLine.Parsed<LlmProbeCommandOptions>>(parsed).Value;
+        Assert.Equal("none,high", options.SweepEfforts);
+    }
 }

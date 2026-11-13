@@ -61,6 +61,15 @@ internal enum LlmProbeMode
     /// <summary>M13 — a cancelled call stops promptly without throwing to the caller.</summary>
     M13,
 
+    /// <summary>M15 — the thinking toggle: on, then off, and what each puts on the wire.</summary>
+    M15,
+
+    /// <summary>M16 — the effort sweep: one step per level, and what each puts on the wire.</summary>
+    M16,
+
+    /// <summary>M17 — a thinking token budget, and whether it reaches the wire.</summary>
+    M17,
+
     /// <summary>D1 — a decision model answers a noul with a probability leaning the right way.</summary>
     D1,
 
@@ -112,7 +121,52 @@ internal enum LlmProbeOutcome
 /// <param name="Outcome">Whether the provider satisfied the mode, failed it, or could not be asked.</param>
 /// <param name="Detail">What was observed — recorded whatever the outcome.</param>
 /// <param name="ElapsedMs">Wall-clock duration, useful when comparing providers.</param>
-internal sealed record LlmProbeResult(LlmProbeMode Mode, LlmProbeOutcome Outcome, string Detail, long ElapsedMs);
+/// <param name="Reasoning">The per-step findings of a reasoning mode (M15-M17); null for every other mode.</param>
+internal sealed record LlmProbeResult(
+    LlmProbeMode Mode,
+    LlmProbeOutcome Outcome,
+    string Detail,
+    long ElapsedMs,
+    IReadOnlyList<LlmReasoningStep>? Reasoning = null);
+
+/// <summary>How a reasoning step reached the wire.</summary>
+internal enum LlmReasoningOutcome
+{
+    /// <summary>The reasoning field carries the asked value.</summary>
+    Sent,
+
+    /// <summary>An effort field was sent, with another value than asked.</summary>
+    Lowered,
+
+    /// <summary>No relevant reasoning field was in the request.</summary>
+    Omitted,
+
+    /// <summary>The vendor answered with an error.</summary>
+    Rejected,
+}
+
+/// <summary>One step of a reasoning mode: what was asked, what really went out, what came back.</summary>
+/// <param name="Step">The step name (on, off, an effort value, budget).</param>
+/// <param name="Outcome">How the step reached the wire.</param>
+/// <param name="SentValue">The value found in the wire field, when one was.</param>
+/// <param name="Wire">The reasoning fields of the last request, as compact JSON.</param>
+/// <param name="Trace">Whether the response carried a reasoning trace.</param>
+/// <param name="ReasoningTokens">Reasoning tokens the vendor reported.</param>
+/// <param name="CompletionTokens">Completion tokens the vendor reported.</param>
+/// <param name="FinishReason">The finish reason the response carried, when it carried one.</param>
+/// <param name="Warnings">Warnings the provider logged for the step.</param>
+/// <param name="Error">Status and vendor message of a rejected step.</param>
+internal sealed record LlmReasoningStep(
+    string Step,
+    LlmReasoningOutcome Outcome,
+    string? SentValue,
+    string? Wire,
+    bool Trace,
+    long? ReasoningTokens,
+    long? CompletionTokens,
+    string? FinishReason,
+    IReadOnlyList<string> Warnings,
+    string? Error);
 
 /// <summary>
 /// Runs the protocol modes against a live provider.
@@ -129,7 +183,7 @@ internal sealed record LlmProbeResult(LlmProbeMode Mode, LlmProbeOutcome Outcome
 /// returns contains credentials.
 /// </para>
 /// </remarks>
-internal sealed class LlmProbeRunner
+internal sealed partial class LlmProbeRunner
 {
     private const string JsonPrompt = "Reply with a json object containing a single key \"ok\" set to true.";
 
@@ -218,7 +272,14 @@ internal sealed class LlmProbeRunner
         LlmProbeMode.M1, LlmProbeMode.M2, LlmProbeMode.M3, LlmProbeMode.M4,
         LlmProbeMode.M5, LlmProbeMode.M6, LlmProbeMode.M7, LlmProbeMode.M8,
         LlmProbeMode.M9, LlmProbeMode.M10, LlmProbeMode.M12, LlmProbeMode.M13,
+        LlmProbeMode.M15, LlmProbeMode.M16, LlmProbeMode.M17,
     ];
+
+    /// <summary>The effort values M16 sweeps; null means <see cref="LlmThinkingConfig.Levels"/>.</summary>
+    public IReadOnlyList<string>? SweepEfforts { get; init; }
+
+    /// <summary>The wire and warning capture read by the reasoning modes; null classifies a step from its response alone.</summary>
+    public IReasoningWireProbe? WireProbe { get; init; }
 
     /// <summary>Runs the requested modes in order and returns one result per mode.</summary>
     /// <param name="config">The effective configuration (model, key, base URL).</param>
@@ -247,6 +308,13 @@ internal sealed class LlmProbeRunner
         var stopwatch = Stopwatch.StartNew();
         try
         {
+            if (mode is LlmProbeMode.M15 or LlmProbeMode.M16 or LlmProbeMode.M17)
+            {
+                var (rOutcome, rDetail, steps) = await ProbeReasoningAsync(mode, config, cancellationToken)
+                    .ConfigureAwait(false);
+                return new LlmProbeResult(mode, rOutcome, rDetail, stopwatch.ElapsedMilliseconds, steps);
+            }
+
             var (outcome, detail) = await DispatchAsync(mode, config, cancellationToken).ConfigureAwait(false);
             return new LlmProbeResult(mode, outcome, detail, stopwatch.ElapsedMilliseconds);
         }

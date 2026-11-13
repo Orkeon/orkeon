@@ -472,7 +472,7 @@ llmproviders-test/run-campaign.sh --provider ollama --model llama3.2   # premier
 llmproviders-test/run-campaign.sh --all --config providers.local.json --dry-run
 ```
 
-Il pilote `orkeon llm probe` sur les modes M1–M10, M12 et M13 du
+Il pilote `orkeon llm probe` sur les modes M1–M10, M12, M13 et M15–M17 du
 protocole de test des fournisseurs (matrice interne des mainteneurs) et
 archive un rapport Markdown par campagne.
 `orkeon llm models -p <fournisseur> --filter 'gpt-5.6-*'` liste ce qu'un fournisseur sert

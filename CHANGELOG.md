@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `orkeon llm probe` tests the reasoning controls per model: M15 sends the thinking toggle on then off,
+  M16 sweeps the effort levels (`low` to `max`, or the list of the new `--sweep-efforts`, which takes
+  vendor values such as `none`), M17 sends a thinking budget. Each step reports what went on the wire
+  (sent, lowered to another level, omitted) or the vendor's refusal, with the provider's warnings, the
+  reasoning trace and tokens and the finish reason. The campaign kit runs them by default, renders a
+  Reasoning section in each report and a "Reasoning per model" table in the campaign results page.
+
 ## [1.0.0] - 2026-11-12
 
 The first final release. Since `1.0.0-rc.7`: the container image and its switch take their

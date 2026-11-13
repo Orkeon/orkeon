@@ -61,6 +61,11 @@ internal sealed class LlmProbeCommandOptions : CliOptions
         HelpText = "Reasoning effort M7 probes with (default low). For models whose supported set excludes low.")]
     public string? M7Effort { get; set; }
 
+    /// <summary>Effort values M16 sweeps, comma-separated; vendor values such as none or minimal are allowed.</summary>
+    [Option("sweep-efforts", Required = false,
+        HelpText = "Comma-separated effort values M16 sweeps (default low,medium,high,xhigh,max). May hold vendor values such as none or minimal.")]
+    public string? SweepEfforts { get; set; }
+
     /// <summary>Environment variable holding the API key. Never the key itself.</summary>
     [Option('k', "api-key-env", Required = false, Default = EnvironmentVariableNames.LlmCommandApiKey,
         HelpText = "Name of the environment variable holding the API key. The key itself is never accepted on the command line.")]
@@ -235,8 +240,10 @@ internal static class LlmCommand
         using var interrupt = CancelOnInterrupt(console, cts);
         var config = BuildConfig(options, apiKey);
 
-        using var httpClientFactory = new CliHttpClientFactory();
-        var factory = LlmProviderFactory.WithoutMounts(httpClientFactory, NullLoggerFactory.Instance);
+        // The probe alone records what the provider sends and warns, so M15-M17 can report it.
+        var wireProbe = new ReasoningWireProbe();
+        using var httpClientFactory = new CliHttpClientFactory(wireProbe);
+        var factory = LlmProviderFactory.WithoutMounts(httpClientFactory, wireProbe.LoggerFactory);
         var adapter = factory.Create(options.Provider, config);
         if (adapter is not LlmProviderAdapter typed)
         {
@@ -248,6 +255,8 @@ internal static class LlmCommand
         var runner = new LlmProbeRunner(typed.UnderlyingProvider, ResolveToolCallParser(options.Provider))
         {
             M7ThinkingEffort = string.IsNullOrWhiteSpace(options.M7Effort) ? "low" : options.M7Effort!,
+            SweepEfforts = ParseSweepEfforts(options.SweepEfforts),
+            WireProbe = wireProbe,
         };
 
         IReadOnlyList<LlmProbeResult> results;
@@ -382,6 +391,16 @@ internal static class LlmCommand
         return settings;
     }
 
+    /// <summary>Splits <c>--sweep-efforts</c>: trimmed, non-empty entries; null when the option is absent or empty.</summary>
+    internal static IReadOnlyList<string>? ParseSweepEfforts(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        var entries = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return entries.Length == 0 ? null : entries;
+    }
+
     private static LlmProbeContext BuildContext(LlmProbeCommandOptions options, LlmConfig config) =>
         new(
             Provider: options.Provider,
@@ -395,7 +414,8 @@ internal static class LlmCommand
             ThinkingEffort: config.Thinking?.Effort,
             M7ThinkingEffort: string.IsNullOrWhiteSpace(options.M7Effort) || options.M7Effort == "low"
                 ? null
-                : options.M7Effort);
+                : options.M7Effort,
+            SweepEfforts: ParseSweepEfforts(options.SweepEfforts) is { } sweep ? string.Join(",", sweep) : null);
 
     /// <summary>
     /// The host, never the full URL: a base URL can carry a resource name, a workspace or a

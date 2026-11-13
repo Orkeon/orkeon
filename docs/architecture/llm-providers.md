@@ -455,7 +455,7 @@ llmproviders-test/run-campaign.sh --provider ollama --model llama3.2   # zero-co
 llmproviders-test/run-campaign.sh --all --config providers.local.json --dry-run
 ```
 
-It drives `orkeon llm probe` over modes M1–M10, M12 and M13 of the provider
+It drives `orkeon llm probe` over modes M1–M10, M12, M13 and M15–M17 of the provider
 test protocol (maintainers' internal matrix) and archives
 one Markdown report per campaign. `orkeon llm models -p <provider> --filter 'gpt-5.6-*'`
 lists what a provider currently serves, so a campaign never depends on a hand-maintained

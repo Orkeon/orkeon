@@ -33,6 +33,7 @@ namespace Orkeon.Scripting.Cli.Commands;
 /// per-model registry promises the header prints the values actually used — this is that
 /// promise for M7.
 /// </param>
+/// <param name="SweepEfforts">The effort list M16 swept, comma-separated, recorded only when set.</param>
 internal sealed record LlmProbeContext(
     string Provider,
     string Model,
@@ -42,7 +43,8 @@ internal sealed record LlmProbeContext(
     DateTimeOffset TimestampUtc,
     double? Temperature,
     string? ThinkingEffort = null,
-    string? M7ThinkingEffort = null);
+    string? M7ThinkingEffort = null,
+    string? SweepEfforts = null);
 
 /// <summary>
 /// Renders a campaign into the two shapes a run needs: one for a human reading the terminal,
@@ -100,6 +102,8 @@ internal static class LlmProbeReport
             sb.Append("- **Reasoning effort (base)**: ").AppendLine(context.ThinkingEffort);
         if (!string.IsNullOrWhiteSpace(context.M7ThinkingEffort))
             sb.Append("- **Reasoning effort (M7)**: ").AppendLine(context.M7ThinkingEffort);
+        if (!string.IsNullOrWhiteSpace(context.SweepEfforts))
+            sb.Append("- **Reasoning efforts (M16 sweep)**: ").AppendLine(context.SweepEfforts);
         sb.AppendLine("- **Evidence quality**: archived output");
         sb.AppendLine();
         sb.AppendLine("| Mode | Result | Detail | Duration |");
@@ -113,8 +117,42 @@ internal static class LlmProbeReport
               .Append(" | ").Append(result.ElapsedMs.ToString(CultureInfo.InvariantCulture)).AppendLine(" ms |");
         }
 
+        if (results.Any(r => r.Reasoning is { Count: > 0 }))
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Reasoning");
+            sb.AppendLine();
+            sb.AppendLine("| Mode | Step | Outcome | Sent | Trace | Reasoning tokens | Finish | Note |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|");
+            foreach (var result in results.Where(r => r.Reasoning is { Count: > 0 }))
+            {
+                foreach (var step in result.Reasoning!)
+                {
+                    var note = step.Error ?? string.Join("; ", step.Warnings);
+                    sb.Append("| ").Append(result.Mode)
+                      .Append(" | ").Append(Cell(step.Step))
+                      .Append(" | ").Append(ReasoningOutcomeName(step.Outcome))
+                      .Append(" | ").Append(Cell(step.Wire ?? "-"))
+                      .Append(" | ").Append(step.Trace ? "yes" : "no")
+                      .Append(" | ").Append(step.ReasoningTokens?.ToString(CultureInfo.InvariantCulture) ?? "-")
+                      .Append(" | ").Append(Cell(step.FinishReason ?? "-"))
+                      .Append(" | ").Append(Cell(note)).AppendLine(" |");
+                }
+            }
+        }
+
         return sb.ToString();
     }
+
+    private static string Cell(string value) => value.Replace('|', '/').Replace('\n', ' ');
+
+    private static string ReasoningOutcomeName(LlmReasoningOutcome outcome) => outcome switch
+    {
+        LlmReasoningOutcome.Sent => "sent",
+        LlmReasoningOutcome.Lowered => "lowered",
+        LlmReasoningOutcome.Omitted => "omitted",
+        _ => "rejected",
+    };
 
     /// <summary>
     /// Renders the campaign as JSON for the scripts that assemble the archived report and the
@@ -139,6 +177,7 @@ internal static class LlmProbeReport
             temperature = context.Temperature,
             thinking_effort = context.ThinkingEffort,
             m7_thinking_effort = context.M7ThinkingEffort,
+            sweepEfforts = context.SweepEfforts,
             passed = results.Count(r => r.Outcome == LlmProbeOutcome.Passed),
             failed = results.Count(r => r.Outcome == LlmProbeOutcome.Failed),
             notApplicable = results.Count(r => r.Outcome == LlmProbeOutcome.NotApplicable),
@@ -149,6 +188,19 @@ internal static class LlmProbeReport
                 symbol = Symbol(r.Outcome),
                 detail = r.Detail,
                 elapsedMs = r.ElapsedMs,
+                reasoning = r.Reasoning?.Select(step => new
+                {
+                    step = step.Step,
+                    outcome = ReasoningOutcomeName(step.Outcome),
+                    sentValue = step.SentValue,
+                    wire = step.Wire,
+                    trace = step.Trace,
+                    reasoningTokens = step.ReasoningTokens,
+                    completionTokens = step.CompletionTokens,
+                    finishReason = step.FinishReason,
+                    warnings = step.Warnings,
+                    error = step.Error,
+                }),
             }),
         };
 
