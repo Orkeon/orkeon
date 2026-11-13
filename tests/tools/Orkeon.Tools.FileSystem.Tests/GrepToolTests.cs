@@ -159,13 +159,47 @@ public sealed class GrepToolTests : IDisposable
 
     [Fact]
     [Trait("BR", "RT-09b")]
-    public async Task ShouldRefuseGrep_WhenRootNotMountedOrNotDirectory()
+    public async Task ShouldRefuseGrep_WhenRootNotMountedOrMissing()
     {
         Put("/workspace/proj/a.txt", "needle\n");
         Assert.Single(Ok(await GrepAsync("needle", "/workspace/proj")).Hits);
 
         foreach (var path in new[] { "/elsewhere/proj", "/workspace/missing" })
             AssertRefused(await GrepAsync("needle", path), path);
+    }
+
+    [Fact]
+    public async Task ShouldSearchFileAlone_WhenGlobIsEmpty()
+    {
+        Put("/workspace/proj/a.ts", "needle\n");
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj/a.ts", glob: ""));
+
+        Assert.Single(res.Hits);
+        Assert.Equal(1, res.Scanned);
+    }
+
+    [Fact]
+    public async Task ShouldSkipFileAlone_WhenFileExceedsSizeLimit()
+    {
+        _fs.AddFile("/workspace/proj/big.txt", [.. "needle\n"u8, .. new byte[1_048_577]]);
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj/big.txt"));
+
+        Assert.Empty(res.Hits);
+        Assert.Equal(1, res.Skipped);
+        Assert.False(res.ScanComplete);
+    }
+
+    [Fact]
+    public async Task ShouldSkipFileAlone_WhenFileIsBinary()
+    {
+        _fs.AddFile("/workspace/proj/nul.bin", [.. "needle"u8, 0x00, .. "needle"u8]);
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj/nul.bin"));
+
+        Assert.Empty(res.Hits);
+        Assert.Equal(1, res.Skipped);
     }
 
     [Fact]

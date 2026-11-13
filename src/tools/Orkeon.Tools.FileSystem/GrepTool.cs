@@ -193,7 +193,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             return "Path cannot be empty";
 
         var validation = ResolveVirtualPath(request.Path, FileAccessRights.Read);
-        return validation.IsAllowed ? null : validation.DenialReason ?? "Invalid or unsafe directory path";
+        return validation.IsAllowed ? null : validation.DenialReason ?? "Invalid or unsafe path";
     }
 
     /// <inheritdoc />
@@ -223,7 +223,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
         {
             // One file searched alone, as rg <file> does (#351); a glob filters a folder's files and has
             // nothing to filter here, so it is refused rather than silently dropped.
-            if (request.Glob is not null)
+            if (!string.IsNullOrWhiteSpace(request.Glob))
                 throw new ArgumentException(
                     $"path names a file ({request.Path}): glob applies to a folder only; drop glob, or pass the folder as path and the file name as glob");
             candidates = [request.Path];
