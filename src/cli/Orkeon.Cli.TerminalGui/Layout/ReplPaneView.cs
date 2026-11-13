@@ -702,7 +702,11 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         ArgumentNullException.ThrowIfNull(integration);
         Unbind();
         _integration = integration;
-        _approvalsChanged = (_, _) => _dispatcher.Invoke(SyncApprovals);
+        _approvalsChanged = (_, _) => _dispatcher.Invoke(() =>
+        {
+            SyncApprovals();
+            SyncPromptLabel();
+        });
         integration.ApprovalsChanged += _approvalsChanged;
         _questionChanged = (_, _) => _dispatcher.Invoke(SyncPromptLabel);
         integration.QuestionChanged += _questionChanged;

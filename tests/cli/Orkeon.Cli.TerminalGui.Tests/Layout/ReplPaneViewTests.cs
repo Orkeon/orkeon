@@ -1103,6 +1103,23 @@ public class ReplPaneViewTests
     }
 
     [Fact]
+    public void Prompt_label_is_read_again_when_the_approvals_change()
+    {
+        using var pane = CreatePane();
+        string? waiting = "answer [t8]> ";
+        var integration = new TuiIntegration { AnswerPrompt = () => waiting };
+        pane.BindIntegration(integration);
+        integration.NotifyQuestionChanged();
+        Assert.Equal("answer [t8]> ", pane.CurrentPromptPrefix);
+
+        // A tool approval now takes the main field's line first: the host's label turns null.
+        waiting = null;
+        integration.NotifyApprovalsChanged();
+
+        Assert.Equal("❯ ", pane.CurrentPromptPrefix);
+    }
+
+    [Fact]
     public void Enter_in_the_list_opens_the_task_view_and_sends_nothing()
     {
         var (top, _) = CreateTopWithTasks();

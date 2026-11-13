@@ -586,7 +586,9 @@ shown, and `main` shows the main one (see "The bottom area"). The selection foll
 takes the focus back, with `main` as recipient, when the list empties. Sending to a task needs the
 host's `TuiIntegration.SendToTask` (`(ticket, text) → bool`); while no host provides it, `Enter`
 with a task recipient prints that sending to a task is not supported, and the text stays in the
-field, neither sent nor recorded. These keys stand down while a modal dialog has focus.
+field, neither sent nor recorded. The REPL host (`orkeon-repl`) wires it to the answer of the
+`human_input` question the task asked; a task that waits for none keeps the text in the field
+(`@<task> waits for no answer: nothing was sent, the text stays in the field.`). These keys stand down while a modal dialog has focus.
 
 **The bottom area.** Under the transcript come the spinner line (glyph and verb in the accent, the
 parenthesis dim), a dim `─` rule across the width, ending with `── <task> ─` in the accent while the

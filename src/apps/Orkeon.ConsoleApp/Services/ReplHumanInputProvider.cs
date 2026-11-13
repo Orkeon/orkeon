@@ -174,11 +174,27 @@ internal sealed class ReplHumanInputProvider : IHumanInputProvider, IReplLineInt
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
-        await _one.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var origin = _origin();
+        if (_one.CurrentCount == 0)
+            Say(origin, origin is { } queued
+                ? $"[{queued.Ticket}] {queued.Name} has a question: asked once the one waiting is answered."
+                : "A question waits its turn: asked once the one waiting is answered.");
+
+        try
+        {
+            await _one.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (origin is { } announced && cancellationToken.IsCancellationRequested)
+        {
+            // Announced while queued, withdrawn before its turn: the announcement gets its end.
+            Say(origin, $"[{announced.Ticket}] question withdrawn");
+            throw;
+        }
+
         try
         {
             var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var pending = new Pending(_origin(), a =>
+            var pending = new Pending(origin, a =>
             {
                 if (a.Length == 0)
                 {
@@ -192,10 +208,11 @@ internal sealed class ReplHumanInputProvider : IHumanInputProvider, IReplLineInt
                 return problem;
             });
 
-            Write(pending.Origin, context, options);
+            // Registered before the question is written: an answer typed right after it shows is never lost.
             lock (_gate)
                 _pending = pending;
             PendingChanged?.Invoke(this, EventArgs.Empty);
+            Write(pending.Origin, context, options);
 
             await using var registration = cancellationToken.Register(() =>
             {
@@ -208,8 +225,12 @@ internal sealed class ReplHumanInputProvider : IHumanInputProvider, IReplLineInt
                 }
 
                 completion.TrySetCanceled(cancellationToken);
-                if (withdrawn)
-                    PendingChanged?.Invoke(this, EventArgs.Empty);
+                if (!withdrawn)
+                    return;
+
+                if (origin is { } task)
+                    Say(origin, $"[{task.Ticket}] question withdrawn");
+                PendingChanged?.Invoke(this, EventArgs.Empty);
             });
             return await completion.Task.ConfigureAwait(false);
         }

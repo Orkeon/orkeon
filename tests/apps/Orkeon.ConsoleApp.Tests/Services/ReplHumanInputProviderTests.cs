@@ -195,4 +195,83 @@ public sealed class ReplHumanInputProviderTests
         await answer;
         Assert.DoesNotContain(_adapter.Lines, l => l.Contains("answer taken", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public async Task ShouldAnnounceQueuedQuestion_WhenAnotherWaitsAndAskIsAnsweredInTurn()
+    {
+        var console = new FakeThreadedConsole { SeparatesThreads = true };
+        (string Ticket, string Name)? origin = ("t8", "dev-spec");
+        var provider = new ReplHumanInputProvider(() => console, () => origin);
+        var first = provider.GetChoiceAsync(Choice(), Ct);
+        origin = ("t9", "dev-test");
+        var registered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        provider.PendingChanged += (_, _) =>
+        {
+            if (provider.PromptOverride == "answer [t9]> ")
+                registered.TrySetResult();
+        };
+
+        var second = provider.GetInputAsync(new HumanInputContext { Prompt = "Name?", InputType = "text" }, Ct);
+
+        Assert.False(second.IsCompleted);
+        Assert.Contains(
+            ("t9", "[t9] dev-test has a question: asked once the one waiting is answered."),
+            console.Attentions);
+        Assert.DoesNotContain(console.Attentions, a => a.Text.Contains("dev-test asks", StringComparison.Ordinal));
+
+        Assert.True(provider.TryAnswer("t8", "1"));
+        Assert.Equal("sqlite", await first);
+        await registered.Task;
+        Assert.Contains(("t9", "[t9] dev-test asks: Name?"), console.Attentions);
+        Assert.True(provider.TryAnswer("t9", "Ada"));
+        Assert.Equal("Ada", await second);
+    }
+
+    [Fact]
+    public async Task ShouldSayQuestionWithdrawn_WhenTaskQuestionIsCancelled()
+    {
+        var console = new FakeThreadedConsole { SeparatesThreads = true };
+        var provider = AskedByTask(console);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var withdrawn = provider.GetChoiceAsync(Choice(), cts.Token);
+
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => withdrawn);
+        Assert.Equal(("t8", "[t8] question withdrawn"), console.Attentions[^1]);
+    }
+
+    [Fact]
+    public async Task ShouldSayQuestionWithdrawn_WhenQueuedQuestionIsCancelledBeforeItsTurn()
+    {
+        var console = new FakeThreadedConsole { SeparatesThreads = true };
+        (string Ticket, string Name)? origin = ("t8", "dev-spec");
+        var provider = new ReplHumanInputProvider(() => console, () => origin);
+        var first = provider.GetChoiceAsync(Choice(), Ct);
+        origin = ("t9", "dev-test");
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var queued = provider.GetChoiceAsync(Choice(), cts.Token);
+
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => queued);
+        Assert.Equal(("t9", "[t9] question withdrawn"), console.Attentions[^1]);
+        Assert.Equal("answer [t8]> ", provider.PromptOverride);
+        Assert.True(provider.TryAnswer("t8", "1"));
+        Assert.Equal("sqlite", await first);
+    }
+
+    [Fact]
+    public async Task ShouldHavePromptOverride_WhenConsoleReceivesFirstLineOfQuestion()
+    {
+        var console = new FakePromptProbeConsole();
+        var provider = AskedByTask(console);
+        console.Probe = () => provider.PromptOverride;
+
+        var answer = provider.GetChoiceAsync(Choice(), Ct);
+
+        Assert.Equal("answer [t8]> ", console.AtFirstWrite);
+        Assert.True(provider.TryConsume("1"));
+        Assert.Equal("sqlite", await answer);
+    }
 }

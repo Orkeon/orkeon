@@ -604,7 +604,9 @@ montre celui de main (voir « La zone du bas »). La sélection suit sa tâche q
 retrie, et le champ reprend le focus, avec `main` pour destinataire, quand la liste se vide. Envoyer
 à une tâche demande le `TuiIntegration.SendToTask` de l'hôte (`(ticket, texte) → bool`) ; tant
 qu'aucun hôte ne le fournit, `Entrée` avec une tâche pour destinataire imprime que l'envoi à une
-tâche n'est pas pris en charge, et le texte reste dans le champ, ni envoyé ni enregistré. Ces
+tâche n'est pas pris en charge, et le texte reste dans le champ, ni envoyé ni enregistré. L'hôte du REPL
+(`orkeon-repl`) le branche sur la réponse à la question `human_input` que la tâche a posée ; une tâche qui
+n'en attend aucune garde le texte dans le champ (`@<task> waits for no answer: nothing was sent, the text stays in the field.`). Ces
 touches s'effacent tant qu'une boîte de dialogue modale a le focus.
 
 **La zone du bas.** Sous le transcript viennent la ligne du spinner (glyphe et verbe dans l'accent,
