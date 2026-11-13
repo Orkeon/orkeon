@@ -125,8 +125,10 @@ public sealed class OpenRouterLlmProviderTests : IDisposable
     [Fact]
     public async Task ShouldWriteTheReasoningObject_AndNeitherThinkingNorTopLevelEffort()
     {
+        // A model the table leaves at the provider's Budget support: gemini-3.7-flash would always reason.
         var config = _config with
         {
+            Model = "anthropic/claude-sonnet-5",
             Thinking = new LlmThinkingConfig { Enabled = true, Effort = "low", BudgetTokens = 2048 },
         };
         using var provider = CreateProvider(HttpStatusCode.OK, OkResponse("ok", 3), config);

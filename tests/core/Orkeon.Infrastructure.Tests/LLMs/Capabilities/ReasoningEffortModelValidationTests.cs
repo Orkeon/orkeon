@@ -71,12 +71,46 @@ public class ReasoningEffortModelValidationTests
     }
 
     [Fact]
-    public async Task An_effort_outside_the_list_of_a_model_that_has_one_is_omitted()
+    public async Task An_effort_outside_the_list_of_a_model_that_has_one_is_moved_into_it_and_reported()
     {
+        // Nothing lies below `low` in gpt-5-pro's [high]: the lowest level it takes is sent (#356).
         var sent = await SendAsync(Config("gpt-5-pro", "low"), registry: null);
 
-        Assert.False(sent.Body.TryGetProperty("reasoning_effort", out _));
+        Assert.Equal("high", sent.Body.GetProperty("reasoning_effort").GetString());
+        Assert.Contains("'high' was sent in its place", Assert.Single(sent.Warnings), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_effort_is_lowered_within_the_models_list_and_reported()
+    {
+        // gpt-6-astra takes `low` to `xhigh` (campaign M18): `max` becomes `xhigh`.
+        var sent = await SendAsync(Config("gpt-6-astra", "max"), registry: null);
+
+        Assert.Equal("xhigh", sent.Body.GetProperty("reasoning_effort").GetString());
         Assert.Single(sent.Warnings);
+    }
+
+    [Fact]
+    public async Task An_effort_is_omitted_for_a_model_with_no_reasoning_pass()
+    {
+        var sent = await SendAsync(Config("gpt-4o", "high"), registry: null);
+
+        Assert.False(sent.Body.TryGetProperty("reasoning_effort", out _));
+        Assert.Contains("takes no reasoning effort", Assert.Single(sent.Warnings), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Every_option_is_omitted_for_a_model_the_host_declares_without_thinking()
+    {
+        var registry = new ModelCapabilityRegistry(new Dictionary<string, ModelCapabilityOverride>
+        {
+            ["acme-plain"] = new() { Thinking = ThinkingSupport.None },
+        });
+
+        var sent = await SendAsync(Config("acme-plain-2", "high"), registry);
+
+        Assert.False(sent.Body.TryGetProperty("reasoning_effort", out _));
+        Assert.Contains("has no reasoning pass", Assert.Single(sent.Warnings), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -112,7 +146,8 @@ public class ReasoningEffortModelValidationTests
         var excluded = await SendAsync(Config("acme-reasoner-9", "high"), registry);
         var taken = await SendAsync(Config("acme-reasoner-9", "low"), registry);
 
-        Assert.False(excluded.Body.TryGetProperty("reasoning_effort", out _));
+        Assert.Equal("low", excluded.Body.GetProperty("reasoning_effort").GetString());
+        Assert.Single(excluded.Warnings);
         Assert.Equal("low", taken.Body.GetProperty("reasoning_effort").GetString());
         Assert.Empty(taken.Warnings);
     }

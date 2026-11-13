@@ -24,7 +24,8 @@ public sealed class RunnerHostModelCapabilitiesTests : IDisposable
         var path = Path.Combine(_root, "appsettings.json");
         File.WriteAllText(path, """
             { "RaggableTree": { "Enabled": false },
-              "Llm": { "ModelCapabilities": { "acme-none": { "ReasoningEfforts": [] }, "acme-free": { "AudioInput": true } } } }
+              "Llm": { "ModelCapabilities": { "acme-none": { "ReasoningEfforts": [] }, "acme-free": { "AudioInput": true },
+                                              "acme-always": { "Thinking": "EffortOnly" } } } }
             """);
         var original = Console.Error;
         using var muted = new StringWriter();
@@ -36,6 +37,9 @@ public sealed class RunnerHostModelCapabilitiesTests : IDisposable
 
             Assert.Empty(registry.TryGet("acme-none-1")!.ReasoningEfforts!);
             Assert.Null(registry.TryGet("acme-free-1")!.ReasoningEfforts);
+            // The Thinking key of the settings file (#356); left out, the provider's value rules.
+            Assert.Equal(Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport.EffortOnly, registry.TryGet("acme-always-1")!.Thinking);
+            Assert.Null(registry.TryGet("acme-free-1")!.Thinking);
         }
         finally
         {

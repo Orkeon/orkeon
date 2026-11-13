@@ -49,9 +49,11 @@ public class MiniMaxLlmProviderTests
         // Measured (2026-08-30): vision through the VL family (per model, D-03 - the text
         // flagship answers "I'm unable to view the image"); response_format None BY
         // MEASUREMENT (accepted but non-binding: schema ignored, json_object fenced);
-        // thinking None (always on, inline, no knob - the dialect splits the trace out).
+        // thinking Toggle since campaign M18 (2026-11-13, #356): on by default, inline, and the
+        // off switch and the effort accepted - the dialect splits the trace out.
         Assert.Equal(ResponseFormatSupport.None, provider.Capabilities.ResponseFormat);
-        Assert.Equal(ThinkingSupport.None, provider.Capabilities.Thinking);
+        Assert.Equal(ThinkingSupport.Toggle, provider.Capabilities.Thinking);
+        Assert.Equal(LlmThinkingConfig.Levels, provider.Capabilities.EffortLevels);
         Assert.True(provider.Capabilities.Vision);
         Assert.False(provider.Capabilities.ExplicitPromptCaching);
         // True since the first campaign: the trace arrives inline (<think> in content), is

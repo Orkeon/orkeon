@@ -257,14 +257,58 @@ public sealed class LlmProfileFallbackValidationTests
         await using var container = Host(s =>
         {
             s.AddSingleton<ILoggerFactory>(loggers);
-            Profile(s, "a", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("o3-mini", "k") }, "b");
-            Profile(s, "b", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("gpt-4o", "k") });
+            Profile(s, "a", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("o3-mini", "k"), Capabilities = EffortOnly }, "b");
+            Profile(s, "b", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("gpt-5-pro", "k"), Capabilities = EffortOnly });
         });
 
         container.GetRequiredService<ILlmProfileRegistry>().Resolve("a");
 
         var warning = Assert.Single(loggers.Logger.Entries, e => e.Level == LogLevel.Warning);
-        Assert.Contains("reasoning effort", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("reasoning effort (low, medium)", warning.Message, StringComparison.Ordinal);
+    }
+
+    private static readonly LlmProviderCapabilities EffortOnly = new() { Thinking = ThinkingSupport.EffortOnly };
+    private static readonly LlmProviderCapabilities Toggle = new() { Thinking = ThinkingSupport.Toggle };
+
+    [Fact]
+    public async Task A_fallback_whose_model_cannot_reason_is_warned_about_though_its_provider_can()
+    {
+        // The provider declares a switch, the model has no reasoning pass: the effective value is what a call gets (#356).
+        using var loggers = new RecordingLoggerFactory();
+        var table = new Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry(
+            new Dictionary<string, Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride>
+            {
+                ["acme-plain"] = new() { Thinking = ThinkingSupport.None },
+            });
+        await using var container = Host(s =>
+        {
+            s.AddSingleton<ILoggerFactory>(loggers);
+            s.AddSingleton<Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry>(table);
+            Profile(s, "a", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("acme-thinker", "k"), Capabilities = Toggle }, "b");
+            Profile(s, "b", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("acme-plain-1", "k"), Capabilities = Toggle });
+        });
+
+        container.GetRequiredService<ILlmProfileRegistry>().Resolve("a");
+
+        var warning = Assert.Single(loggers.Logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains("does not support thinking,", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_fallback_whose_model_always_reasons_is_warned_about_the_switch()
+    {
+        using var loggers = new RecordingLoggerFactory();
+        await using var container = Host(s =>
+        {
+            s.AddSingleton<ILoggerFactory>(loggers);
+            Profile(s, "a", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("kimi-k3", "k"), Capabilities = Toggle }, "b");
+            Profile(s, "b", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("kimi-k2.7-code", "k"), Capabilities = Toggle });
+        });
+
+        container.GetRequiredService<ILlmProfileRegistry>().Resolve("a");
+
+        var warning = Assert.Single(loggers.Logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains("thinking (Toggle -> EffortOnly)", warning.Message, StringComparison.Ordinal);
     }
 
     [Fact]

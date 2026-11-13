@@ -7,6 +7,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 
 namespace Orkeon.Infrastructure.LLMs;
 
@@ -32,14 +33,28 @@ public partial class HuggingFaceLlmProvider : OpenAICompatibleProviderBase
     /// <summary>
     /// Inference Providers proxies many back-ends behind one OpenAI-compatible surface, so
     /// the declaration is the intersection that holds across partners: JSON mode and, on the
-    /// VLM models most partners serve, image input. Reasoning control is model- and
-    /// partner-specific and is therefore not declared.
+    /// VLM models most partners serve, image input. The router takes <c>reasoning_effort</c>
+    /// (every level) and the chat template's <c>enable_thinking</c> switch, which stops the trace
+    /// on <c>Qwen/Qwen3.5-9B</c> (campaign M18, 2026-11-13); the table narrows per model.
     /// </summary>
     protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
+        Thinking = ThinkingSupport.Toggle,
+        EffortLevels = LlmThinkingConfig.Levels,
         Vision = true,
     };
+
+    /// <summary>The switch goes through the chat template, <c>chat_template_kwargs: {enable_thinking}</c>; the effort is <c>reasoning_effort</c>.</summary>
+    private protected override void WriteReasoningFields(Dictionary<string, object> payload, ReasoningVerdict verdict)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        ArgumentNullException.ThrowIfNull(verdict);
+        if (verdict.Toggle is { } enabled)
+            payload["chat_template_kwargs"] = new Dictionary<string, object?> { ["enable_thinking"] = enabled };
+        if (verdict.Effort is { } effort)
+            payload["reasoning_effort"] = effort;
+    }
 
     /// <summary>Initializes a new instance of <see cref="HuggingFaceLlmProvider"/>.</summary>
     public HuggingFaceLlmProvider(

@@ -7,10 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — thinking and effort are judged against the model, on every provider **[breaking]** (#356)
+
+One per-model table, `IModelCapabilityRegistry` (`ORKEXP005`), now says what each model takes for
+thinking, and every provider reads it before writing `LlmConfig.Thinking`, Anthropic and Ollama
+included. A `ModelCapabilities` entry gains `Thinking` (`None`, `EffortOnly`, `Toggle`, `Budget`),
+set from the configuration with `Llm:ModelCapabilities:<name>:Thinking`; the support that applies is
+the lower of the provider's and the model's.
+
+- An effort a listed model does not take is **lowered** to the highest level below it that both the
+  provider's field and the model take, with a warning; it used to be omitted. A vendor value outside
+  the five levels (`none`, `minimal`) is sent when the model's list holds it or the model is unknown.
+- On a model that always reasons (`EffortOnly`: GLM-5.3, `kimi-k2.7-code`, `MiniMax-M3.1-Flash`…),
+  "on" sends no switch and "off" is dropped with a warning. Kimi K3 now receives the `thinking`
+  switch it honours (it used to be stripped).
+- Anthropic: "on" sends `thinking: {type: adaptive, display: summarized}`; "off" sends the model's
+  own value (`between_tools` on Sonnet 5.5 up to effort `high`, `disabled` up to `xhigh` on Sonnet 5
+  and up to `high` elsewhere) and is left out with a warning above that effort. A buffered answer now
+  carries its thinking blocks in the `reasoning_content` metadata, as the stream did.
+- Declared levels widen to what the provider campaign measured: up to `xhigh` on OpenAI and Grok; the
+  five on DeepSeek, Kimi, Qwen, Together AI, Hugging Face, MiniMax and Mammouth AI. Together AI, Hugging
+  Face and MiniMax now declare a thinking switch (`reasoning: {enabled}`,
+  `chat_template_kwargs.enable_thinking`, `thinking: disabled`), Mammouth AI an effort.
+- The reasoning tokens (`completion_tokens_details.reasoning_tokens`) are read for every
+  OpenAI-compatible dialect, buffered and streamed, and the stream reads the trace from
+  `reasoning_content` or `reasoning`, the declared field first. The chat-client adapter maps the
+  provider's finish reason onto `ChatResponse.FinishReason`.
+- Fallback chains are warned about when the fallback's *model* has a lower effective thinking support
+  or fewer efforts than the primary's, not only its provider.
+- `OpenAICompatibleProviderBase.EffortLevelsFor` is gone: a dialect writes its thinking fields in the
+  internal `WriteReasoningFields`, so `OpenRouterLlmProvider`, `QwenLlmProvider` and `ZaiLlmProvider`
+  no longer override `ApplyProviderSpecificOptions` (the base method still runs).
+
 ### Fixed
 
 - `grep` takes a file as `path` and searches it alone, as `rg <file>` does; a `glob` given beside a file is refused with a message naming the fix, and a missing path says `Path not found` instead of `Directory not found`; an empty `glob` beside a file counts as absent (#351).
-- Z.AI's GLM-5.3 family takes the efforts `low`, `high` and `max` only: a `medium` asked for is lowered to `low` with the provider's warning instead of failing every call with HTTP 400 code 1210; a provider narrows its levels per model through `OpenAICompatibleProviderBase.EffortLevelsFor` (#354).
+- Z.AI's GLM-5.3 family takes the efforts `low`, `high` and `max` only: a `medium` asked for is lowered to `low` with the provider's warning instead of failing every call with HTTP 400 code 1210; the per-model capability table says it (#354, #356).
 - A provider failure (an HTTP error, a timeout) no longer reaches a script as an empty answer: `ctx.llm.extract` and `ctx.llm.decide` raise it with its status and the vendor's message, and `ctx.llm.chat` answers with the `<undefined-llm:…>` marker `complete` and `act` already gave (#354).
 - `ctx.llm.extract` says why a reply is not JSON: an empty reply is named as such, with the output budget the model ran with (`MaxTokens`, else its resolved limit) when it ended on `length` or `max_tokens`; an unparsable one gives the line and byte of the JSON error and the reply's beginning and end; both carry the finish reason and the prompt, completion and reasoning tokens. Every provider now records the vendor's stop reason, raw, under `finish_reason` (`LlmResponseMetadataKeys.FinishReason`) on buffered and streamed answers alike: `finish_reason` of the OpenAI dialect, `stop_reason` of Anthropic, `done_reason` of Ollama; Azure's text-only stream aside (#353).
 - In `orkeon-repl`, a `human_input` question a background task asks no longer hides in that task's screen: it is tagged `[t8] <task> asks: …` and shows on the displayed screen too, the prompt reads `answer [t8]> ` (the TUI follows the question through `TuiIntegration.AnswerPrompt` and `QuestionChanged`), the answer is taken from the main field or from the task's thread (`TuiIntegration.SendToTask` is now wired), and `[t8] answer taken: …` closes it; several questions are asked one at a time, the next announced, a withdrawn one says so, and a waiting tool approval keeps the main field first (#352).

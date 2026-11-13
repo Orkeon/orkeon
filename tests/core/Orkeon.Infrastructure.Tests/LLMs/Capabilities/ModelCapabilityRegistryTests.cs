@@ -1,3 +1,4 @@
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs.Capabilities;
 
 namespace Orkeon.Infrastructure.Tests.LLMs.Capabilities;
@@ -17,6 +18,47 @@ public class ModelCapabilityRegistryTests
     public void The_match_ignores_case()
     {
         Assert.True(ModelCapabilityRegistry.Default.TryGet("GPT-4O-Audio-Preview")!.AudioInput);
+    }
+
+    [Theory]
+    [InlineData("google/gemini-3.7-flash")]
+    [InlineData("moonshotai/kimi-k2.7-code")]
+    [InlineData("zai-org/GLM-5.3-Flash")]
+    public void A_vendor_prefixed_id_is_looked_up_by_the_part_after_its_last_slash(string model)
+    {
+        Assert.Equal(ThinkingSupport.EffortOnly, ModelCapabilityRegistry.Default.TryGet(model)!.Thinking);
+    }
+
+    [Theory]
+    [InlineData("glm-5.30")]
+    [InlineData("gpt-60")]
+    [InlineData("kimi-k2.7-coder")]
+    public void A_prefix_matches_at_a_boundary_only(string model)
+    {
+        var entry = ModelCapabilityRegistry.Default.TryGet(model);
+
+        Assert.NotEqual(ThinkingSupport.EffortOnly, entry?.Thinking);
+    }
+
+    [Fact]
+    public void A_later_tier_is_not_caught_by_an_earlier_one()
+    {
+        // `gpt-5` would refuse `none`; `gpt-5.6` takes it.
+        Assert.Contains("none", ModelCapabilityRegistry.Default.TryGet("gpt-5.6-sol")!.ReasoningEfforts!);
+        Assert.Equal(["low", "high", "max"], ModelCapabilityRegistry.Default.TryGet("glm-5.3-flashx")!.ReasoningEfforts);
+    }
+
+    [Fact]
+    public void An_override_of_thinking_keeps_the_built_in_efforts()
+    {
+        var registry = new ModelCapabilityRegistry(new Dictionary<string, ModelCapabilityOverride>
+        {
+            ["glm-5.3"] = new() { Thinking = ThinkingSupport.Toggle },
+        });
+
+        var entry = registry.TryGet("glm-5.3")!;
+        Assert.Equal(ThinkingSupport.Toggle, entry.Thinking);
+        Assert.Equal(["low", "high", "max"], entry.ReasoningEfforts);
     }
 
     [Fact]

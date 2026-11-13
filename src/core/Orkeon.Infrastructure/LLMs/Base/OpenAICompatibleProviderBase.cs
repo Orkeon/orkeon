@@ -92,12 +92,6 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     protected virtual bool SupportsVisionContent => Capabilities.Vision;
 
     /// <summary>
-    /// The per-model table this provider reads for audio input and reasoning effort (FWK-21): the built-in
-    /// one until <see cref="LlmProviderFactory"/> hands it the host's, overrides included.
-    /// </summary>
-    internal IModelCapabilityRegistry ModelCapabilities { get; set; } = ModelCapabilityRegistry.Default;
-
-    /// <summary>
     /// Judges a chat request the way a live call does, without sending it: builds the body, so an audio
     /// part for a model that takes none throws the <see cref="NotSupportedException"/> the live call
     /// throws, and an effort the model does not take is reported. A replay runs it before it answers.
@@ -107,8 +101,6 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (messages is { Length: > 0 })
             _ = BuildChatRequestBody(messages, EffectiveConfig(config));
     }
-
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _uncheckedEffortModels = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Wire name of the reasoning trace, in a buffered <c>choices[].message</c> and in a
@@ -480,6 +472,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         public int? CacheMissTokens { get; set; }
         /// <summary>Vendor-reported cost of the call, from <c>usage.cost</c> (OpenRouter bills in it).</summary>
         public double? Cost { get; set; }
+        /// <summary>The reasoning spend the usage chunk reported, when it did (#356).</summary>
+        public int? ReasoningTokens { get; set; }
         /// <summary>
         /// The <c>usage</c> object of the last chunk that carried one, cloned as the vendor wrote it:
         /// the exchange log writes it verbatim, so the cache, reasoning and cost counts survive (#197).
@@ -581,6 +575,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             ?? state.CacheHitTokens;
         state.CacheMissTokens = TryReadInt(usage, "prompt_cache_miss_tokens") ?? state.CacheMissTokens;
         state.Cost = TryReadDouble(usage, "cost") ?? state.Cost;
+        state.ReasoningTokens = TryReadNestedInt(usage, "completion_tokens_details", "reasoning_tokens") ?? state.ReasoningTokens;
         state.RawUsage = state.RawUsage is { ValueKind: JsonValueKind.Object } previous && usage.ValueKind == JsonValueKind.Object
             ? MergeUsage(previous, usage)
             : usage.Clone();
@@ -628,7 +623,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             events.Add(LlmStreamEvent.Content(answer));
         }
 
-        if (delta.TryGetProperty(reasoningFieldName, out var reasoning) && reasoning.ValueKind == JsonValueKind.String)
+        if (TryReadReasoningField(delta, reasoningFieldName, out var reasoning))
         {
             var token = reasoning.GetString();
             if (!string.IsNullOrEmpty(token))
@@ -944,6 +939,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             metadata.Add("reasoning_content", dialectReasoning);
         if (state.Cost is { } cost)
             AddVendorCost(metadata, cost);
+        if (state.ReasoningTokens is { } reasoningTokens)
+            metadata.Add(LlmUsageMetadataKeys.ReasoningTokens, reasoningTokens);
         // The same finish reason the buffered parse records, so both call modes say why the answer ended.
         if (state.FinishReason is { Length: > 0 } finishReason)
             metadata.Add(LlmResponseMetadataKeys.FinishReason, finishReason);
@@ -1442,7 +1439,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// <remarks>
     /// The dialect is written <em>once</em>, here (LLM-02) — before, each provider that wanted
     /// one of these options copied the same block. Providers whose API speaks a different
-    /// dialect (Anthropic, Ollama, Qwen's DashScope thinking fields) override this method;
+    /// dialect override this method, and a reasoning dialect overrides <see cref="WriteReasoningFields"/>;
     /// everyone else declares capabilities and gets the translation for free. An option the
     /// caller declared but the provider cannot honour is reported rather than dropped in
     /// silence.
@@ -1535,102 +1532,34 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     private partial void LogCatalogueOutputCapRefused(string provider, object maxTokens, object model);
 
     /// <summary>
-    /// Translates <see cref="LlmThinkingConfig"/> into the OpenAI dialect, bounded by the
-    /// declared <see cref="LlmProviderCapabilities.Thinking"/> level.
+    /// Judges <see cref="LlmThinkingConfig"/> against the provider and the model (<see cref="HttpLlmProviderBase.JudgeReasoning"/>,
+    /// #356), then lets the dialect write what may be sent (<see cref="WriteReasoningFields"/>).
     /// </summary>
     private void ApplyThinkingOptions(Dictionary<string, object> payload, LlmThinkingConfig? thinking, string model)
     {
         if (thinking is null)
             return;
 
-        var support = Capabilities.Thinking;
-        if (support == ThinkingSupport.None)
-        {
-            LogUnsupportedOption("thinking", ProviderDisplayName,
-                "this provider offers no thinking control - no reasoning pass, or one that is always on; remove the option or pick a provider that does");
-            return;
-        }
-
-        ApplyThinkingToggle(payload, thinking, support);
-        ApplyThinkingEffort(payload, thinking, model);
-
-        // No OpenAI-dialect field carries a reasoning budget; only DashScope does, and Qwen
-        // overrides this method to emit it.
-        if (thinking.BudgetTokens.HasValue && support < ThinkingSupport.Budget)
-        {
-            LogUnsupportedOption("thinking.budgetTokens", ProviderDisplayName,
-                "this API takes no reasoning token budget; use the effort hint instead");
-        }
-    }
-
-    private void ApplyThinkingToggle(Dictionary<string, object> payload, LlmThinkingConfig thinking, ThinkingSupport support)
-    {
-        // An explicit on/off switch needs more than an effort hint.
-        if (!thinking.Enabled.HasValue)
-            return;
-
-        if (support >= ThinkingSupport.Toggle)
-        {
-            payload["thinking"] = new Dictionary<string, object?>
-            {
-                ["type"] = thinking.Enabled.Value ? "enabled" : "disabled",
-            };
-        }
-        else
-        {
-            LogUnsupportedOption("thinking.enabled", ProviderDisplayName,
-                "this API always decides on its own whether to reason; only the effort hint is honoured");
-        }
-    }
-
-    private void ApplyThinkingEffort(Dictionary<string, object> payload, LlmThinkingConfig thinking, string model)
-    {
-        if (string.IsNullOrWhiteSpace(thinking.Effort))
-            return;
-
-        // A level the declared field does not know is lowered to the nearest it knows, said aloud (LLM-02).
-        var levels = EffortLevelsFor(model);
-        var sent = LlmThinkingConfig.EffortFor(thinking.Effort, levels);
-        if (sent != thinking.Effort)
-            LogEffortLowered(thinking.Effort, ProviderDisplayName, string.Join(", ", levels), sent);
-        if (ModelTakesEffort(model, sent))
-            payload["reasoning_effort"] = sent;
+        WriteReasoningFields(payload, JudgeReasoning(thinking, model, ProviderDisplayName));
     }
 
     /// <summary>
-    /// The effort levels the vendor's <c>reasoning_effort</c> field takes for <paramref name="model"/>: the
-    /// provider's declared <see cref="LlmProviderCapabilities.EffortLevels"/> unless the vendor narrows them
-    /// for a model family (Z.AI's GLM-5.3 refuses <c>medium</c>, #354). A level outside the list is lowered
-    /// to the nearest one inside it, with a warning.
+    /// Writes the judged reasoning controls in this dialect's fields. The OpenAI-compatible family takes
+    /// <c>thinking: {type: enabled|disabled}</c> (the DeepSeek, GLM, Kimi and MiniMax switch) and
+    /// <c>reasoning_effort</c>; a provider whose API names them otherwise (DashScope, OpenRouter, Together, Hugging
+    /// Face) overrides this method and never judges the caller's options again. The OpenAI family has no budget field:
+    /// the providers that declare <see cref="ThinkingSupport.Budget"/> write it in their override.
     /// </summary>
-    /// <param name="model">The model the call is sent to.</param>
-    /// <returns>The levels the field takes for that model.</returns>
-    protected virtual IReadOnlyList<string> EffortLevelsFor(string model) => Capabilities.EffortLevels;
-
-    /// <summary>
-    /// Judges an effort against the model, not only the provider (FWK-21). A model the table lists without
-    /// that effort never gets it: the option is omitted and reported. A model the table does not know gets it
-    /// as asked, with a warning that nothing was checked.
-    /// </summary>
-    private bool ModelTakesEffort(string model, string effort)
+    /// <param name="payload">The payload about to be serialized.</param>
+    /// <param name="verdict">What may be sent.</param>
+    private protected virtual void WriteReasoningFields(Dictionary<string, object> payload, ReasoningVerdict verdict)
     {
-        var entry = ModelCapabilities.TryGet(model);
-        if (entry is null)
-        {
-            // Once per provider instance and model: the same notice on every call would drown the log.
-            if (_uncheckedEffortModels.TryAdd(model, 0))
-                LogEffortUnchecked(model, ProviderDisplayName, effort);
-            return true;
-        }
-
-        if (entry.ReasoningEfforts is not { } efforts || efforts.Contains(effort, StringComparer.Ordinal))
-            return true;
-
-        LogUnsupportedOption("thinking.effort", ProviderDisplayName,
-            efforts.Count == 0
-                ? $"the model '{model}' takes no reasoning effort; remove the option or pick a reasoning model"
-                : $"the model '{model}' takes the efforts {string.Join(", ", efforts)} only; ask for one of them");
-        return false;
+        ArgumentNullException.ThrowIfNull(payload);
+        ArgumentNullException.ThrowIfNull(verdict);
+        if (verdict.Toggle is { } enabled)
+            payload["thinking"] = new Dictionary<string, object?> { ["type"] = enabled ? "enabled" : "disabled" };
+        if (verdict.Effort is { } effort)
+            payload["reasoning_effort"] = effort;
     }
 
     /// <summary>
@@ -1894,6 +1823,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             .AddProvider(Name);
 
         ExtractResponseMetadata(doc, metadata);
+        ExtractReasoningTokens(doc.RootElement, metadata);
         // Why the answer ended: "length" on an empty or cut reply says the output budget ran out (#353).
         if (choice.TryGetProperty("finish_reason", out var finishReason)
             && finishReason.ValueKind == JsonValueKind.String
@@ -2086,12 +2016,43 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (!firstChoice.TryGetProperty("message", out var message))
             return;
 
-        if (message.TryGetProperty(fieldName, out var reasoning)
-            && reasoning.ValueKind == JsonValueKind.String
+        if (TryReadReasoningField(message, fieldName, out var reasoning)
             && reasoning.GetString() is { Length: > 0 } reasoningText)
         {
             metadata.Add("reasoning_content", reasoningText);
         }
+    }
+
+    /// <summary>
+    /// The trace field of a message or a delta: the dialect's own name first, then the two names the family
+    /// uses (<c>reasoning_content</c>, <c>reasoning</c>), so a proxy that normalises to the other name (Together,
+    /// Hugging Face, the LiteLLM gateways) is read too (#356). Only a string counts.
+    /// </summary>
+    private static bool TryReadReasoningField(JsonElement element, string fieldName, out JsonElement reasoning)
+    {
+        foreach (var name in (ReadOnlySpan<string>)[fieldName, "reasoning_content", "reasoning"])
+        {
+            if (element.TryGetProperty(name, out reasoning)
+                && reasoning.ValueKind == JsonValueKind.String
+                && reasoning.GetString() is { Length: > 0 })
+                return true;
+        }
+
+        reasoning = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Reads <c>usage.completion_tokens_details.reasoning_tokens</c>, the reasoning spend the chat completions
+    /// dialect reports (OpenAI, DeepSeek, Grok, Kimi, Mistral, Qwen, Z.AI, OpenRouter...), into
+    /// <see cref="LlmUsageMetadataKeys.ReasoningTokens"/> (#356). It counts within <c>completion_tokens</c>.
+    /// </summary>
+    private static void ExtractReasoningTokens(JsonElement root, LlmResponseMetadata.Builder metadata)
+    {
+        if (root.TryGetProperty("usage", out var usage)
+            && usage.ValueKind == JsonValueKind.Object
+            && TryReadNestedInt(usage, "completion_tokens_details", "reasoning_tokens") is { } reasoningTokens)
+            metadata.Add(LlmUsageMetadataKeys.ReasoningTokens, reasoningTokens);
     }
 
     /// <summary>
@@ -2259,19 +2220,6 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     [LoggerMessage(EventId = 110, Level = LogLevel.Warning,
         Message = "Option '{Option}' was declared but {ProviderName} does not support it — it was not sent. {Remedy}.")]
     private protected partial void LogUnsupportedOption(string option, string providerName, string remedy);
-
-    /// <summary>
-    /// The same rule for an effort the declared field does not know: the nearest known level is sent,
-    /// and the caller is told, instead of the request failing or the level vanishing.
-    /// </summary>
-    [LoggerMessage(EventId = 112, Level = LogLevel.Warning,
-        Message = "Effort '{Effort}' was declared but {ProviderName} knows {Known} only — '{Sent}' was sent in its place. Ask for a level it knows, or pick a provider that knows this one.")]
-    private partial void LogEffortLowered(string effort, string providerName, string known, string sent);
-
-    /// <summary>The model is in no table, so its effort could not be checked: it is sent as asked.</summary>
-    [LoggerMessage(EventId = 113, Level = LogLevel.Warning,
-        Message = "The model '{Model}' of {ProviderName} is in no capability table, so its reasoning effort '{Effort}' was sent unchecked. Declare it with Llm:ModelCapabilities:<id>:ReasoningEfforts to silence this.")]
-    private partial void LogEffortUnchecked(string model, string providerName, string effort);
 
     [LoggerMessage(EventId = 100, Level = LogLevel.Warning,
         Message = "{ProviderName} was asked for a JSON response format but no system/user message contains the word 'json'. This API may then emit an unbounded whitespace stream until max_tokens. Add 'json' to the prompt to be safe.")]

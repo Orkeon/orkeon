@@ -11,19 +11,19 @@
 |---|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
 | **OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Azure OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Anthropic** | HttpLlmProviderBase | ✓ native | ✓ | ✓ | ✓ (native, separate) | ✓ | ✗ | ✓ schema | ✓ toggle | ✓ | ✗ | ✓ explicit | ✗ | ✓ | ✓ |
+| **Anthropic** | HttpLlmProviderBase | ✓ native | ✓ | ✓ | ✓ (native, separate) | ✓ | ✗ | ✓ schema | ✓ toggle (adaptive, off per model) | ✓ | ✗ | ✓ explicit | ✗ | ✓ | ✓ |
 | **DeepSeek** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✓ toggle | ✓ | ✓ | ✓ metrics | ✗ | ✓ | ✓ |
 | **Z.AI (GLM)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Together AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Together AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ toggle (`reasoning` object) | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Mistral AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Qwen** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✓ budget | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Kimi / Moonshot** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Google Gemini** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Grok (x.AI)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **MiniMax** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (accepted but non-binding — measured) | ✗ (always-on inline, split out) | ✓ | ✓ | ◐ auto | ✗ | ✓ | ✓ |
-| **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **MiniMax** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (accepted but non-binding — measured) | ✓ toggle (off only; M3.1-Flash always reasons) | ✓ | ✓ | ◐ auto | ✗ | ✓ | ✓ |
+| **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ object | ✓ toggle (`chat_template_kwargs`) | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **OpenRouter** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✓ schema (per endpoint) | ✓ budget (`reasoning` object) | ✓ (per model) | ✗ | ◐ auto (+ `cache_write_tokens`) | ✗ (`usage.cost` exposed) | ✓ | ✓ |
-| **Mammouth AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (accepted but non-binding — measured) | ✗ (`reasoning_effort` accepted, not declared yet) | ✓ (per model) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **Mammouth AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ◐ `Llm:Grammar` | ✗ (accepted but non-binding — measured) | ✓ effort (`reasoning_effort`) | ✓ (per model) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✓ (`options`) | ◐ `Llm:Grammar` | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ◐ (`total_duration`, `eval_duration` on `/api/generate`) | ✓ | ✓ |
 
 ## How to read the capability columns

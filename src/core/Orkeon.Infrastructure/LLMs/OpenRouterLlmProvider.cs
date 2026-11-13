@@ -6,6 +6,7 @@ using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 
 namespace Orkeon.Infrastructure.LLMs;
 
@@ -29,7 +30,7 @@ namespace Orkeon.Infrastructure.LLMs;
 /// What OpenRouter reads and writes differently from the OpenAI dialect lives here and
 /// nowhere else: the reasoning trace comes back as <c>reasoning</c> — never
 /// <c>reasoning_content</c> (<see cref="ReasoningFieldName"/>); the thinking controls travel
-/// in a <c>reasoning</c> request object (<see cref="ApplyProviderSpecificOptions"/>); the real
+/// in a <c>reasoning</c> request object (<see cref="WriteReasoningFields"/>); the real
 /// charge arrives in <c>usage.cost</c> (read by the base) with its breakdown
 /// (<see cref="ExtractResponseMetadata"/>); and two attribution headers name Orkeon in the
 /// public app ranking (<see cref="ConfigureHttpClient"/>). Keep-alive comment lines
@@ -105,46 +106,33 @@ public class OpenRouterLlmProvider : OpenAICompatibleProviderBase
     }
 
     /// <summary>
-    /// Writes the thinking controls as OpenRouter's <c>reasoning</c> object —
-    /// <c>{ enabled, effort, max_tokens }</c> — after letting the base write everything that
-    /// <em>is</em> OpenAI-shaped (<c>response_format</c>). The base's <c>thinking</c> block
-    /// (the DeepSeek / GLM dialect) is removed because OpenRouter does not read it, and its
-    /// first-level <c>reasoning_effort</c> is removed once the object carries the same effort,
-    /// so one intention is not sent twice — the Qwen pattern.
+    /// Writes the judged thinking controls as OpenRouter's <c>reasoning</c> object —
+    /// <c>{ enabled, effort, max_tokens }</c> — and nothing else: OpenRouter reads neither the
+    /// DeepSeek / GLM <c>thinking</c> block nor a first-level <c>reasoning_effort</c>.
     /// </summary>
-    protected override void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
+    private protected override void WriteReasoningFields(Dictionary<string, object> payload, ReasoningVerdict verdict)
     {
         ArgumentNullException.ThrowIfNull(payload);
-        ArgumentNullException.ThrowIfNull(effectiveConfig);
-
-        base.ApplyProviderSpecificOptions(payload, effectiveConfig);
-
-        payload.Remove("thinking");
-
-        if (effectiveConfig.Thinking is not { } thinking)
-            return;
+        ArgumentNullException.ThrowIfNull(verdict);
 
         var reasoning = new Dictionary<string, object?>();
-        if (thinking.Enabled is { } enabled)
+        if (verdict.Toggle is { } enabled)
             reasoning["enabled"] = enabled;
-        if (!string.IsNullOrWhiteSpace(thinking.Effort))
-            reasoning["effort"] = thinking.Effort;
-        if (thinking.BudgetTokens is { } budget)
+        if (verdict.Effort is { } effort)
+            reasoning["effort"] = effort;
+        if (verdict.BudgetTokens is { } budget)
             reasoning["max_tokens"] = budget;
 
-        if (reasoning.Count == 0)
-            return;
-
-        payload.Remove("reasoning_effort");
-        payload["reasoning"] = reasoning;
+        if (reasoning.Count > 0)
+            payload["reasoning"] = reasoning;
     }
 
     /// <summary>
     /// Adds the OpenRouter usage breakdown on top of the base reasoning trace and the
     /// generic <c>cost</c> (D-08): <c>cost_details.upstream_inference_cost</c> and
     /// <c>is_byok</c> (bring-your-own-key billing), <c>prompt_tokens_details.cache_write_tokens</c>
-    /// (the read side lands in the typed cache fields generically) and
-    /// <c>completion_tokens_details.reasoning_tokens</c> — the Z.AI pattern. The response's
+    /// (the read side lands in the typed cache fields generically); the base reads
+    /// <c>completion_tokens_details.reasoning_tokens</c> for every provider. The response's
     /// <c>model</c> is exposed as <c>served_model</c>: behind <c>openrouter/auto</c> it is
     /// the only record of who answered.
     /// </summary>
@@ -177,9 +165,6 @@ public class OpenRouterLlmProvider : OpenAICompatibleProviderBase
 
         if (TryReadNested(usage, "prompt_tokens_details", "cache_write_tokens", JsonValueKind.Number, out var cacheWrite))
             metadata.Add("cache_write_tokens", cacheWrite.GetInt32());
-
-        if (TryReadNested(usage, "completion_tokens_details", "reasoning_tokens", JsonValueKind.Number, out var reasoningTokens))
-            metadata.Add("reasoning_tokens", reasoningTokens.GetInt32());
     }
 
     private static bool TryReadNested(

@@ -186,7 +186,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 101 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -198,7 +198,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 528 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 529 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -298,6 +298,7 @@ avec ses propres clés.
 | `ModelCapabilities:<nom>:AudioInput` | booléen | — | Si le modèle accepte des parties audio en entrée. Omis, la valeur intégrée du modèle (faux si la table ne le connaît pas). |
 | `ModelCapabilities:<nom>:AudioOutput` | booléen | — | Si le modèle répond en audio. Simple enregistrement : rien n'envoie ni ne lit l'audio en sortie. Omis, la valeur intégrée du modèle (faux si la table ne le connaît pas). |
 | `ModelCapabilities:<nom>:ReasoningEfforts` | liste de chaînes | `[]` | Les efforts de raisonnement que le modèle accepte : une liste, ou une seule valeur séparée par des virgules ; écrit vide, aucun. Omis, la liste intégrée du modèle (aucune restriction pour un modèle que la table ne connaît pas) et les niveaux du fournisseur font foi. |
+| `ModelCapabilities:<nom>:Thinking` | chaîne | — | Le support de réflexion du modèle : `None`, `EffortOnly` (raisonne toujours, ne peut pas être désactivé), `Toggle` ou `Budget`. La valeur effective est la plus basse de celle-ci et de celle du fournisseur. Omis, la valeur intégrée du modèle (celle du fournisseur pour un modèle que la table ne connaît pas). |
 | `ModelCapabilities:<nom>:Vision` | booléen | — | Si le modèle accepte des parties image en entrée. Omis, la valeur intégrée du modèle (faux si la table ne le connaît pas). |
 | `Profiles:<nom>:ApiKey` | chaîne, secret | — | La clé d'API, en clair. Préférez `ApiKeyEnvVar` : une clé écrite ici est dans le fichier de réglages. |
 | `Profiles:<nom>:ApiKeyEnvVar` | chaîne | — | Le nom de la variable d'environnement qui contient la clé d'API, lue quand `ApiKey` n'en résout aucune : l'environnement du processus, puis la portée utilisateur de Windows. |

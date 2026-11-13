@@ -134,9 +134,9 @@ Chaque provider déclare un value object `LlmProviderCapabilities` (Domain, expo
 `ILlmProvider` ; un provider surcharge `HttpLlmProviderBase.DeclaredCapabilities`, qui vaut
 `LlmProviderCapabilities.Unknown` par défaut) : `ResponseFormat`
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `EffortLevels`
-(les niveaux d'effort que le champ connaît, `low`, `medium`, `high` par défaut, les cinq avec `xhigh` et `max`
-pour Anthropic et OpenRouter, `max` sans `xhigh` pour DeepSeek et Z.ai, et `low`, `high`, `max` pour la famille GLM-5.3 de Z.ai, qui refuse
-`medium` (un provider restreint ses niveaux par modèle via `OpenAICompatibleProviderBase.EffortLevelsFor`) : un niveau demandé qui n'est pas déclaré est
+(les niveaux d'effort que le champ connaît : `low`, `medium`, `high` par défaut, jusqu'à `xhigh` pour OpenAI et
+Grok, `max` sans `xhigh` pour Z.ai, et les cinq pour Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI,
+Hugging Face, MiniMax et Mammouth AI ; la table par modèle, plus bas, les restreint modèle par modèle) : un niveau demandé qui n'est pas déclaré est
 envoyé comme le plus haut niveau déclaré en dessous, avec un avertissement dans le journal du provider ; une valeur
 hors des cinq, comme le `none` d'OpenAI, n'est pas un niveau et part telle quelle, le vendeur en juge), `Vision`,
 `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`, `RunsOwnTools` (déclarée par le
@@ -216,7 +216,8 @@ pas par des copies du constructeur de payload :
 
 | Point d'extension | Par défaut | Surchargé par |
 |---|---|---|
-| `ApplyProviderSpecificOptions` | écrit `thinking` / `reasoning_effort` et `response_format` d'après les capacités déclarées | Qwen (`enable_thinking`, `thinking_budget`), OpenRouter (l'objet de requête `reasoning`), Together AI (ajoute `context_length_exceeded_behavior: truncate`) |
+| `ApplyProviderSpecificOptions` | juge les options de réflexion et écrit `response_format` d'après les capacités déclarées | Together AI (ajoute `context_length_exceeded_behavior: truncate`) |
+| `WriteReasoningFields` | écrit les contrôles de réflexion jugés (interrupteur, effort, budget) ; par défaut `thinking: {type}` et `reasoning_effort` | Qwen (`enable_thinking`, `thinking_budget`), OpenRouter (l'objet de requête `reasoning`), Together AI (`reasoning: {enabled}`), Hugging Face (`chat_template_kwargs.enable_thinking`), MiniMax (`thinking: disabled` seulement) |
 | `MaxTokensFieldName` | `max_tokens` | OpenAI (`max_completion_tokens`) |
 | `AlwaysEmitTopP` | `top_p` écrit seulement s'il est fixé | Mistral (`top_p: 1` quand rien n'en fixe) |
 | `SplitReasoningFromContent` / `EnrichAssistantMessage` | rien n'est extrait ; `reasoning_content` rejoué quand `ReplaysReasoningContent` est déclaré | MiniMax (bloc `<think>` en ligne extrait, réinséré au rejeu) |
@@ -332,16 +333,21 @@ exactement la valeur du premier profil ne se distingue pas du profil : la valeur
 éditeur. `gpt-4o` ne prend aucun effort de raisonnement, `o3-mini` en prend trois, et les deux passent par le
 même fournisseur. Le côté par modèle est une table, `IModelCapabilityRegistry` (`ORKEXP005`,
 [expérimental](../reference/experimental-apis.md)), bâtie comme `ModelPricingRegistry` : un **préfixe** d'identifiant
-de modèle donne des `ModelCapabilities` (`AudioInput`, `AudioOutput`, `Vision`, `ReasoningEfforts`) ; le plus long
-préfixe du modèle demandé l'emporte, sans tenir compte de la casse. La table intégrée est dans le code et couvre les
-familles OpenAI (chat, audio, raisonnement), Gemini et Claude ; un modèle qu'elle ignore s'ajoute, ou une entrée
-intégrée se remplace, depuis la configuration :
+de modèle donne des `ModelCapabilities` (`AudioInput`, `AudioOutput`, `Vision`, `Thinking`, `ReasoningEfforts`) ; le plus long
+préfixe du modèle demandé l'emporte, sans tenir compte de la casse. Un préfixe ne correspond qu'à une frontière : la
+fin de l'identifiant ou un séparateur (`-`, `.`, `:`, `@`, `/`) juste après lui, donc `glm-5.3` couvre
+`glm-5.3-flash` et jamais `glm-5.30`. L'identifiant `vendeur/modèle` d'un agrégateur (OpenRouter, Together AI,
+Hugging Face) est cherché entier d'abord, puis par la partie qui suit son dernier `/`. La table intégrée est dans le
+code et couvre les familles OpenAI (chat, audio, raisonnement), Gemini, Claude, Grok, Mistral, et les modèles
+GLM-5.3, Kimi, MiniMax et Qwen que la campagne des fournisseurs a mesurés ; un modèle qu'elle ignore s'ajoute, ou une
+entrée intégrée se remplace, depuis la configuration :
 
 ```yaml
 Llm:
   ModelCapabilities:
     acme-voice:                 # un préfixe : acme-voice-2 correspond
       AudioInput: true
+      Thinking: EffortOnly          # None, EffortOnly (raisonne toujours), Toggle ou Budget
       ReasoningEfforts: [low, high]   # omis : aucune restriction ; écrit vide : le modèle n'en prend aucun
 ```
 
@@ -364,17 +370,30 @@ tous les autres tags).
   d'audio) ; un fournisseur qui ne déclare pas la vision garde son avertissement structuré « message attachments
   (audio) » et n'envoie que le texte. Azure OpenAI se nomme par déploiement : déclarez le déploiement par une
   surcharge. La **sortie** audio est hors périmètre : la table l'enregistre, rien ne l'envoie ni ne la lit.
-- **Effort de raisonnement, jugé contre le modèle** (identifiants d'événement `110`, `113`). Sur la famille
-  compatible OpenAI, un effort que la table ne donne pas au modèle est **omis** de la requête, avec un avertissement
-  structuré qui nomme le modèle et les efforts qu'il prend ; un modèle que la table ignore reçoit l'effort tel que
-  demandé, avec un avertissement : rien n'a été vérifié, **une fois par instance de fournisseur et par modèle** (`Llm:ModelCapabilities:<id>:ReasoningEfforts` le fait taire) ;
-  un modèle dont l'entrée omet `ReasoningEfforts` n'est pas restreint. Les niveaux déclarés du fournisseur
-  s'appliquent d'abord (`xhigh` est abaissé là où le champ ne le connaît pas), puis la table.
+- **Réflexion et effort, jugés contre le modèle** (identifiants d'événement `110`, `113`). Chaque fournisseur,
+  Anthropic et Ollama compris, juge `LlmConfig.Thinking` de la même façon avant de l'écrire. Le support de réflexion
+  qui s'applique est le plus bas de celui du fournisseur et de celui du modèle : sur un modèle qui raisonne toujours
+  (`EffortOnly`), « activé » n'envoie aucun interrupteur et « désactivé » est abandonné avec un avertissement
+  structuré ; sur un modèle `Thinking: None`, rien n'est envoyé, avec un avertissement. Un effort est **abaissé** au
+  plus haut niveau en dessous que prennent à la fois le champ du fournisseur et le modèle, avec un avertissement qui
+  nomme le modèle et ses efforts ; un modèle dont la liste est écrite vide ne reçoit aucun effort. Une valeur du
+  vendeur hors des cinq niveaux (`none`, `minimal`) part quand la liste du modèle la contient ou que le modèle est
+  inconnu. Un modèle que la table ignore reçoit les options telles que demandées, avec un avertissement : rien n'a été
+  vérifié, **une fois par instance de fournisseur et par modèle** (`Llm:ModelCapabilities:<id>` le fait taire) ; un
+  modèle dont l'entrée omet `ReasoningEfforts` n'est pas restreint.
+- **L'interrupteur d'Anthropic dépend du modèle.** « Activé » envoie `thinking: {type: adaptive, display: summarized}` :
+  la trace revient sous forme de résumé. « Désactivé » envoie la valeur propre au modèle : `between_tools` sur
+  Sonnet 5.5, qui l'accepte jusqu'à l'effort `high`, `disabled` jusqu'à `xhigh` sur Sonnet 5, et `disabled` jusqu'à
+  `high` sur tout autre modèle Claude ; au-delà de cet effort, l'interrupteur est omis avec un avertissement, car l'API refuse la paire. Une
+  réponse non diffusée porte les blocs de réflexion dans la métadonnée `reasoning_content`, comme le flux.
+- **Ce qui revient.** Les jetons de raisonnement (`completion_tokens_details.reasoning_tokens`) sont lus pour chaque
+  dialecte compatible OpenAI, en réponse complète comme en flux, et l'adaptateur du client de conversation reporte la
+  raison de fin du fournisseur sur `ChatResponse.FinishReason` (`stop`, `length`, `tool_calls`, `content_filter`, ou
+  la valeur propre du vendeur).
 - **Les chaînes de bascule** (`WarnAboutLesserFallbacks`) lisent la même table : une bascule dont le modèle ne prend
-  pas d'audio, ou moins d'efforts, que celui du principal est signalée une fois, à côté de la vision, du format de
-  réponse, de la réflexion et de la grammaire.
-- Les dialectes Anthropic et Ollama ne lisent pas encore la table : leur effort n'est jugé que par les niveaux
-  déclarés du fournisseur.
+  pas d'audio, a un support de réflexion effectif plus bas (un modèle qui ne raisonne pas, ou qu'on ne peut pas
+  désactiver) ou moins d'efforts que celui du principal est signalée une fois, à côté de la vision, du format de
+  réponse et de la grammaire.
 
 ## Providers d'embeddings
 

@@ -474,4 +474,42 @@ public class AnthropicLlmProviderTests
         Assert.Empty(result.Content);
         Assert.Contains("error", result.Metadata.Keys);
     }
+
+    [Fact]
+    public async Task ShouldReturnTheThinkingTraceAndTheStopReason_WhenTheAnswerIsBuffered()
+    {
+        // The non-streaming path kept the first text block only and lost the trace (#356).
+        var responseContent = """
+            {"content":[{"type":"thinking","thinking":"weigh ","signature":"s1"},{"type":"thinking","thinking":"twice","signature":"s2"},
+              {"type":"redacted_thinking","data":"x"},{"type":"text","text":"answer"}],
+             "stop_reason":"max_tokens","usage":{"input_tokens":3,"output_tokens":5}}
+            """;
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
+        _httpClientFactory.RegisterClient("AnthropicLlmProvider", new HttpClient(handler));
+        using var provider = new AnthropicLlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+
+        var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("answer", result.Content);
+        Assert.Equal("weigh twice", result.Metadata["reasoning_content"]);
+        Assert.Equal("max_tokens", result.Metadata[LlmResponseMetadataKeys.FinishReason]);
+    }
+
+    [Fact]
+    public async Task ShouldCarryNoTrace_WhenTheThinkingBlocksAreEmpty()
+    {
+        // `display: omitted` sends the blocks with a signature and no text.
+        var responseContent = """
+            {"content":[{"type":"thinking","thinking":"","signature":"s"},{"type":"text","text":"answer"}],
+             "usage":{"input_tokens":3,"output_tokens":5}}
+            """;
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
+        _httpClientFactory.RegisterClient("AnthropicLlmProvider", new HttpClient(handler));
+        using var provider = new AnthropicLlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+
+        var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("answer", result.Content);
+        Assert.False(result.Metadata.ContainsKey("reasoning_content"));
+    }
 }

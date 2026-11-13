@@ -69,11 +69,12 @@ public sealed class MiniMaxCapabilityWarningTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldWarnWithoutWriting_WhenAThinkingOptionIsDeclared()
+    public async Task ShouldOmitTheOffSwitchAndWarn_WhenTheModelAlwaysReasons()
     {
-        var config = LlmConfig.Create("MiniMax-M2", TestApiKey) with
+        // MiniMax-M3.1-Flash refuses the off switch (campaign M18, #356): the effort travels, the switch is reported.
+        var config = LlmConfig.Create("MiniMax-M3.1-Flash", TestApiKey) with
         {
-            Thinking = new LlmThinkingConfig { Effort = "high" },
+            Thinking = new LlmThinkingConfig { Enabled = false, Effort = "high" },
         };
         using var provider = CreateProvider(config);
 
@@ -81,13 +82,11 @@ public sealed class MiniMaxCapabilityWarningTests : IDisposable
             [LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken);
 
         var payload = await SentPayloadAsync();
-        Assert.False(payload.TryGetProperty("reasoning_effort", out _));
-
+        Assert.Equal("high", payload.GetProperty("reasoning_effort").GetString());
+        Assert.False(payload.TryGetProperty("thinking", out _));
         var warning = Assert.Single(
-            _logger.LoggedMessages, m => m.Contains("thinking", StringComparison.Ordinal));
-        // Same honesty requirement: MiniMax DOES reason — always, inline, with no knob.
-        // "This API exposes no reasoning pass" would be the opposite of the measurement.
-        Assert.Contains("no thinking control", warning, StringComparison.Ordinal);
+            _logger.LoggedMessages, m => m.Contains("thinking.enabled", StringComparison.Ordinal));
+        Assert.Contains("always reasons", warning, StringComparison.Ordinal);
     }
 
     public void Dispose() => _handler.Dispose();

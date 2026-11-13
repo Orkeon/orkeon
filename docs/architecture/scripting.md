@@ -141,8 +141,8 @@ Five options of `ctx.llm.act(prompt, options)` shape the loop itself (the full l
   (`LlmConfig.Thinking`, enabled with that effort). The same `effort` is accepted by the other `ctx.llm`
   calls, by `LlmConfig.with({...})` (`llm.default_.with({ effort })`) and by `agentBuilder().effort(level)`; any other value is refused with
   `effort must be low|medium|high|xhigh|max`. Anthropic takes the five levels; a provider whose field knows
-  fewer (its declared `EffortLevels`: three for OpenAI's `reasoning_effort` and Ollama's `think`; `low`, `medium`, `high` and `max` for DeepSeek and Z.ai; all five for Anthropic and OpenRouter) sends the
-  highest level it knows below the one asked, and logs a warning saying so, never a silent change.
+  fewer (its declared `EffortLevels`: three for Ollama's `think` and Gemini; up to `xhigh` for OpenAI and Grok; `low`, `medium`, `high` and `max` for Z.ai; all five for Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI, Hugging Face, MiniMax and Mammouth AI), or a model that takes fewer (the per-model table of `docs/architecture/llm-providers.md`), sends the
+  highest level both take below the one asked, and logs a warning saying so, never a silent change.
   The prompt cache is requested the same way on an agent, `agentBuilder().cache({ systemPrompt: true, tools: true,
   ttl: "1h" })` or `llm.default_.with({ cache: { systemPrompt: true } })`, mapped onto the YAML `cache:` block
   (`LlmCacheConfig`); a `ttl` other than `5m`/`1h`, a `ttl` on nothing cached or an unknown key throws. Like

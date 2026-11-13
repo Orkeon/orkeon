@@ -1,3 +1,5 @@
+using Orkeon.Application.Common.DTOs;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -91,12 +93,12 @@ public sealed class OpenAICompatibleProviderBaseStreamDialectTests : IDisposable
     }
 
     [Fact]
-    public async Task ChatStreaming_ignores_a_field_the_dialect_does_not_declare()
+    public async Task ChatStreaming_prefers_the_declared_field_when_a_delta_carries_both()
     {
-        // DeepSeek reads `reasoning_content`; a `reasoning` delta is not its trace.
+        // DeepSeek reads `reasoning_content`; a vendor that mirrors the trace under `reasoning` is not read twice.
+        // A delta that carries only the other name is still read (#356): Together and Hugging Face partners differ.
         var sse = BuildSseStream(
-            """{"choices":[{"delta":{"reasoning":"not mine"}}]}""",
-            """{"choices":[{"delta":{"reasoning_content":"mine"}}]}""",
+            """{"choices":[{"delta":{"reasoning":"mine","reasoning_content":"mine"}}]}""",
             """{"choices":[{"delta":{"content":"answer"}}]}""");
         using var provider = CreateDeepSeekProvider(sse);
 
@@ -106,6 +108,35 @@ public sealed class OpenAICompatibleProviderBaseStreamDialectTests : IDisposable
         Assert.Equal("mine", reasoning.Delta);
         var completed = Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed).FinalResponse!;
         Assert.Equal("mine", completed.Metadata["reasoning_content"]);
+    }
+
+    [Fact]
+    public async Task Buffered_reads_the_reasoning_tokens_for_every_dialect()
+    {
+        // usage.completion_tokens_details.reasoning_tokens was read by OpenRouter and Z.AI only (#356).
+        var body = """
+            {"id":"c-1","model":"deepseek-chat","choices":[{"message":{"role":"assistant","content":"answer"}}],
+             "usage":{"total_tokens":12,"prompt_tokens":8,"completion_tokens":4,"completion_tokens_details":{"reasoning_tokens":3}}}
+            """;
+        using var provider = CreateDeepSeekProvider(body);
+
+        var response = await provider.ChatAsync(OneUserMessage, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, Convert.ToInt32(response.Metadata[LlmUsageMetadataKeys.ReasoningTokens], CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public async Task ChatStreaming_reads_the_reasoning_tokens_of_the_usage_chunk()
+    {
+        var sse = BuildSseStream(
+            """{"choices":[{"delta":{"content":"answer"}}]}""",
+            """{"choices":[],"usage":{"total_tokens":12,"prompt_tokens":8,"completion_tokens":4,"completion_tokens_details":{"reasoning_tokens":2}}}""");
+        using var provider = CreateDeepSeekProvider(sse);
+
+        var events = await Collect(provider.ChatStreamingAsync(OneUserMessage, cancellationToken: TestContext.Current.CancellationToken));
+
+        var completed = Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed).FinalResponse!;
+        Assert.Equal(2, Convert.ToInt32(completed.Metadata[LlmUsageMetadataKeys.ReasoningTokens], CultureInfo.InvariantCulture));
     }
 
     [Fact]

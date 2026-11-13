@@ -131,9 +131,9 @@ Every provider declares a `LlmProviderCapabilities` value object (Domain, expose
 `ILlmProvider`; a provider overrides `HttpLlmProviderBase.DeclaredCapabilities`, which defaults
 to `LlmProviderCapabilities.Unknown`): `ResponseFormat`
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `EffortLevels`
-(the effort levels the field knows, `low`, `medium`, `high` by default, the five with `xhigh` and `max` for
-Anthropic and OpenRouter, `max` without `xhigh` for DeepSeek and Z.ai, and `low`, `high`, `max` for Z.ai's GLM-5.3 family, which refuses
-`medium` (a provider narrows its levels per model through `OpenAICompatibleProviderBase.EffortLevelsFor`): a level asked that is not declared is sent as the
+(the effort levels the field knows: `low`, `medium`, `high` by default, up to `xhigh` for OpenAI and Grok, `max`
+without `xhigh` for Z.ai, and the five for Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI, Hugging Face,
+MiniMax and Mammouth AI; the per-model table below narrows them model by model): a level asked that is not declared is sent as the
 highest declared level below it, with a warning in the provider's log; a value outside the five, such as OpenAI's
 `none`, is no level and is sent unchanged for the vendor to judge), `Vision`, `ExplicitPromptCaching`,
 `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`, `RunsOwnTools` (declared by the Microsoft Agent Framework
@@ -209,7 +209,8 @@ members, not through copies of the payload builder:
 
 | Seam | Default | Overridden by |
 |---|---|---|
-| `ApplyProviderSpecificOptions` | writes `thinking` / `reasoning_effort` and `response_format` from the declared capabilities | Qwen (`enable_thinking`, `thinking_budget`), OpenRouter (the `reasoning` request object), Together AI (adds `context_length_exceeded_behavior: truncate`) |
+| `ApplyProviderSpecificOptions` | judges the thinking options and writes `response_format` from the declared capabilities | Together AI (adds `context_length_exceeded_behavior: truncate`) |
+| `WriteReasoningFields` | writes the judged thinking controls (switch, effort, budget); the default writes `thinking: {type}` and `reasoning_effort` | Qwen (`enable_thinking`, `thinking_budget`), OpenRouter (the `reasoning` request object), Together AI (`reasoning: {enabled}`), Hugging Face (`chat_template_kwargs.enable_thinking`), MiniMax (`thinking: disabled` only) |
 | `MaxTokensFieldName` | `max_tokens` | OpenAI (`max_completion_tokens`) |
 | `AlwaysEmitTopP` | `top_p` written only when set | Mistral (`top_p: 1` when nothing sets one) |
 | `SplitReasoningFromContent` / `EnrichAssistantMessage` | nothing split; `reasoning_content` replayed when `ReplaysReasoningContent` is declared | MiniMax (inline `<think>` block split out, re-inlined on replay) |
@@ -322,15 +323,20 @@ that sets a field to exactly the first profile's value cannot be told from the p
 `gpt-4o` takes no reasoning effort, `o3-mini` takes three, and both ride the same provider. The per-model side
 is a table, `IModelCapabilityRegistry` (`ORKEXP005`, [experimental](../reference/experimental-apis.md)),
 built like `ModelPricingRegistry`: a model id **prefix** maps to `ModelCapabilities` (`AudioInput`,
-`AudioOutput`, `Vision`, `ReasoningEfforts`), the longest prefix of the model asked wins, case-insensitive. The
-built-in table is in code and covers the OpenAI chat, audio and reasoning families, Gemini and Claude; a model
-it does not know is added, or a built-in entry replaced, from the configuration:
+`AudioOutput`, `Vision`, `Thinking`, `ReasoningEfforts`), the longest prefix of the model asked wins, case-insensitive.
+A prefix matches at a boundary only: the end of the id or a separator (`-`, `.`, `:`, `@`, `/`) right after it, so
+`glm-5.3` covers `glm-5.3-flash` and never `glm-5.30`. An aggregator's `vendor/model` id (OpenRouter, Together AI,
+Hugging Face) is looked up whole first, then by the part after its last `/`. The built-in table is in code and
+covers the OpenAI chat, audio and reasoning families, Gemini, Claude, Grok, Mistral, and the GLM-5.3, Kimi, MiniMax
+and Qwen models the provider campaign measured; a model it does not know is added, or a built-in entry replaced,
+from the configuration:
 
 ```yaml
 Llm:
   ModelCapabilities:
     acme-voice:                 # a prefix: acme-voice-2 matches
       AudioInput: true
+      Thinking: EffortOnly          # None, EffortOnly (always reasons), Toggle or Budget
       ReasoningEfforts: [low, high]   # left out: no restriction; written empty: the model takes none
 ```
 
@@ -352,16 +358,27 @@ key: .NET configuration has no escape for the path separator `:`. Key its prefix
   vision keeps its structured warning "message attachments (audio)" and sends the text only. Azure OpenAI is
   named by deployment: declare the deployment with an override. Audio **output** is out of scope: the table
   records it, nothing sends or reads it.
-- **Reasoning effort, judged against the model** (event id `110`, `113`). On the OpenAI-compatible family an
-  effort the table lists the model without is **omitted** from the request with a structured warning naming the
-  model and the efforts it takes; a model the table does not know gets the effort as asked, with a warning that
-  nothing was checked, **once per provider instance and model** (`Llm:ModelCapabilities:<id>:ReasoningEfforts` silences it); a model whose entry leaves
-  `ReasoningEfforts` out is not restricted. The provider's own declared levels apply first (`xhigh` is lowered
-  where the field does not know it), then the table.
-- **Fallback chains** (`WarnAboutLesserFallbacks`) read the same table: a fallback whose model takes no audio,
-  or fewer efforts, than the primary's is warned about once, next to vision, response format, thinking and grammar.
-- The Anthropic and Ollama dialects do not read the table yet: their effort is judged by the provider's declared
-  levels only.
+- **Thinking and effort, judged against the model** (event id `110`, `113`). Every provider, Anthropic and Ollama
+  included, judges `LlmConfig.Thinking` the same way before writing it. The thinking support that applies is the
+  lower of the provider's and the model's: on a model that always reasons (`EffortOnly`) "on" sends no switch and
+  "off" is dropped with a structured warning; on a model with `Thinking: None` nothing is sent, with a warning. An
+  effort is **lowered** to the highest level below it that both the provider's field and the model take, with a
+  warning naming the model and its efforts; a model whose list is written empty gets no effort. A vendor value
+  outside the five levels (`none`, `minimal`) is sent when the model's list holds it or the model is unknown. A
+  model the table does not know gets the options as asked, with a warning that nothing was checked, **once per
+  provider instance and model** (`Llm:ModelCapabilities:<id>` silences it); a model whose entry leaves
+  `ReasoningEfforts` out is not restricted.
+- **Anthropic's switch is per model.** "On" sends `thinking: {type: adaptive, display: summarized}`, so the trace
+  comes back as a summary. "Off" sends the model's own value: `between_tools` on Sonnet 5.5, which takes it up to
+  effort `high`, `disabled` up to `xhigh` on Sonnet 5, and `disabled` up to `high` on every other Claude model; above that effort the
+  switch is left out with a warning, since the API refuses the pair. A buffered answer carries the thinking blocks
+  in the `reasoning_content` metadata, as the stream does.
+- **What comes back.** The reasoning tokens (`completion_tokens_details.reasoning_tokens`) are read for every
+  OpenAI-compatible dialect, buffered and streamed, and the chat-client adapter maps the provider's finish reason
+  onto `ChatResponse.FinishReason` (`stop`, `length`, `tool_calls`, `content_filter`, or the vendor's own value).
+- **Fallback chains** (`WarnAboutLesserFallbacks`) read the same table: a fallback whose model takes no audio, has
+  a lower effective thinking support (a model that cannot reason, or one that cannot be switched off) or fewer
+  efforts than the primary's is warned about once, next to vision, response format and grammar.
 
 ## Embedding providers
 

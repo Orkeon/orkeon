@@ -175,7 +175,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 101 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -187,7 +187,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 528 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 529 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -280,6 +280,7 @@ the same way with its own keys.
 | `ModelCapabilities:<name>:AudioInput` | boolean | — | Whether the model takes audio parts as input. Left out, the built-in value of the model (false when the table does not know it). |
 | `ModelCapabilities:<name>:AudioOutput` | boolean | — | Whether the model answers in audio. Recorded only: nothing sends or reads audio output. Left out, the built-in value of the model (false when the table does not know it). |
 | `ModelCapabilities:<name>:ReasoningEfforts` | list of string | `[]` | The reasoning efforts the model takes: a list, or one comma-separated value; written empty, none. Left out, the built-in list of the model (no restriction for a model the table does not know) and the provider's own levels rule. |
+| `ModelCapabilities:<name>:Thinking` | string | — | The model's thinking support: `None`, `EffortOnly` (always reasons, cannot be switched off), `Toggle` or `Budget`. The effective value is the lower of this and the provider's. Left out, the built-in value of the model (the provider's own for a model the table does not know). |
 | `ModelCapabilities:<name>:Vision` | boolean | — | Whether the model takes image parts as input. Left out, the built-in value of the model (false when the table does not know it). |
 | `Profiles:<name>:ApiKey` | string, secret | — | The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file. |
 | `Profiles:<name>:ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |

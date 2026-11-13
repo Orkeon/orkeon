@@ -296,7 +296,8 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         var chatResponse = new ChatResponse(message)
         {
             ModelId = response.Model,
-            Usage = BuildUsageDetails(response)
+            Usage = BuildUsageDetails(response),
+            FinishReason = MapFinishReason(response),
         };
         AttachVendorCost(chatResponse, response);
         return chatResponse;
@@ -311,10 +312,34 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         var chatResponse = new ChatResponse(message)
         {
             ModelId = response.Model,
-            Usage = BuildUsageDetails(response)
+            Usage = BuildUsageDetails(response),
+            FinishReason = MapFinishReason(response),
         };
         AttachVendorCost(chatResponse, response);
         return chatResponse;
+    }
+
+    /// <summary>
+    /// Why the answer ended, from <see cref="LlmResponseMetadataKeys.FinishReason"/> (#356), so a call cut by the
+    /// output budget does not look complete. The vendors' own words map onto the four known reasons
+    /// (<c>stop</c>/<c>end_turn</c>/<c>STOP</c>, <c>length</c>/<c>max_tokens</c>, <c>tool_calls</c>/<c>tool_use</c>,
+    /// <c>content_filter</c>); any other is kept as the vendor wrote it. Null when the provider named none.
+    /// </summary>
+    internal static ChatFinishReason? MapFinishReason(LlmResponse response)
+    {
+        if (response.Metadata is null
+            || !response.Metadata.TryGetValue(LlmResponseMetadataKeys.FinishReason, out var raw)
+            || raw?.ToString() is not { Length: > 0 } reason)
+            return null;
+
+        return reason.ToUpperInvariant() switch
+        {
+            "STOP" or "END_TURN" or "STOP_SEQUENCE" => ChatFinishReason.Stop,
+            "LENGTH" or "MAX_TOKENS" => ChatFinishReason.Length,
+            "TOOL_CALLS" or "TOOL_USE" or "FUNCTION_CALL" => ChatFinishReason.ToolCalls,
+            "CONTENT_FILTER" or "SAFETY" or "REFUSAL" => ChatFinishReason.ContentFilter,
+            _ => new ChatFinishReason(reason),
+        };
     }
 
     /// <summary>

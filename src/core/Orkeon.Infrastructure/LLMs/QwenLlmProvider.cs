@@ -5,6 +5,7 @@ using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 
 namespace Orkeon.Infrastructure.LLMs;
 
@@ -29,39 +30,33 @@ public class QwenLlmProvider : OpenAICompatibleProviderBase
     /// <summary>
     /// Qwen is a mixed case: OpenAI-compatible for transport and for <c>response_format</c>,
     /// but its thinking controls are DashScope's own — hence the
-    /// <see cref="ApplyProviderSpecificOptions"/> override below. It is the only provider that
+    /// <see cref="WriteReasoningFields"/> override below. It is the only provider that
     /// accepts an explicit reasoning token budget. Vision lives on the VL / omni models.
     /// </summary>
     protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Thinking = ThinkingSupport.Budget,
+        // Every level; Qwen 3.7 Plus refuses `max`, which its table entry says (campaign M18, 2026-11-13).
+        EffortLevels = LlmThinkingConfig.Levels,
         Vision = true,
     };
 
     /// <summary>
     /// Writes the DashScope thinking controls — <c>enable_thinking</c> and
-    /// <c>thinking_budget</c> — instead of the OpenAI <c>thinking</c> block, then defers to
-    /// the base for everything that <em>is</em> OpenAI-shaped (<c>response_format</c>,
-    /// <c>reasoning_effort</c>).
+    /// <c>thinking_budget</c> — instead of the OpenAI <c>thinking</c> block, beside the
+    /// OpenAI-shaped <c>reasoning_effort</c>.
     /// </summary>
-    protected override void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
+    private protected override void WriteReasoningFields(Dictionary<string, object> payload, ReasoningVerdict verdict)
     {
         ArgumentNullException.ThrowIfNull(payload);
-        ArgumentNullException.ThrowIfNull(effectiveConfig);
+        ArgumentNullException.ThrowIfNull(verdict);
 
-        base.ApplyProviderSpecificOptions(payload, effectiveConfig);
-
-        // The base wrote the OpenAI-dialect block; DashScope does not read it.
-        payload.Remove("thinking");
-
-        if (effectiveConfig.Thinking is not { } thinking)
-            return;
-
-        if (thinking.Enabled.HasValue)
-            payload["enable_thinking"] = thinking.Enabled.Value;
-
-        if (thinking.BudgetTokens is { } budget)
+        if (verdict.Toggle is { } enabled)
+            payload["enable_thinking"] = enabled;
+        if (verdict.Effort is { } effort)
+            payload["reasoning_effort"] = effort;
+        if (verdict.BudgetTokens is { } budget)
             payload["thinking_budget"] = budget;
     }
 

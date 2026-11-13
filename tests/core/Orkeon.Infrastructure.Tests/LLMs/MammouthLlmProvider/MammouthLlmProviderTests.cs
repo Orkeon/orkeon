@@ -58,10 +58,11 @@ public sealed class MammouthLlmProviderTests : IDisposable
     {
         using var provider = new MammouthLlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
 
-        // Documented 2026-09-18 (D-04): response_format and thinking undocumented, so None
-        // until measured; vision declared from the vendor's own `text, image` model list.
+        // Documented 2026-09-18 (D-04): response_format undocumented, so None until measured;
+        // the effort hint measured on 2026-11-13 (#356); vision from the vendor's `text, image` list.
         Assert.Equal(ResponseFormatSupport.None, provider.Capabilities.ResponseFormat);
-        Assert.Equal(ThinkingSupport.None, provider.Capabilities.Thinking);
+        Assert.Equal(ThinkingSupport.EffortOnly, provider.Capabilities.Thinking);
+        Assert.Equal(LlmThinkingConfig.Levels, provider.Capabilities.EffortLevels);
         Assert.True(provider.Capabilities.Vision);
         Assert.False(provider.Capabilities.ReplaysReasoningContent);
         Assert.False(provider.Capabilities.ExplicitPromptCaching);
@@ -116,17 +117,18 @@ public sealed class MammouthLlmProviderTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldWarnWithoutWriting_WhenAThinkingOptionIsDeclared()
+    public async Task ShouldSendTheEffortAndReportTheSwitch_WhenThinkingOptionsAreDeclared()
     {
-        var config = _config with { Thinking = new LlmThinkingConfig { Effort = "high" } };
+        // The gateway takes the effort (campaign M18, #356); no switch was measured, so none is sent.
+        var config = _config with { Thinking = new LlmThinkingConfig { Enabled = false, Effort = "high" } };
         using var provider = CreateProvider(HttpStatusCode.OK, OkResponse("ok", 3), config);
 
         await provider.ChatAsync(OneUserMessage, config, TestContext.Current.CancellationToken);
 
         var payload = await SentPayloadAsync();
-        Assert.False(payload.TryGetProperty("reasoning_effort", out _));
+        Assert.Equal("high", payload.GetProperty("reasoning_effort").GetString());
         Assert.False(payload.TryGetProperty("thinking", out _));
-        Assert.Single(_logger.LoggedMessages, m => m.Contains("thinking", StringComparison.Ordinal));
+        Assert.Single(_logger.LoggedMessages, m => m.Contains("thinking.enabled", StringComparison.Ordinal));
     }
 
     [Fact]

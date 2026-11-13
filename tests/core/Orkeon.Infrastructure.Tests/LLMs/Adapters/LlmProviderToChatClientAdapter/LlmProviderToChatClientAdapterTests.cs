@@ -36,6 +36,43 @@ public class LlmProviderToChatClientAdapterTests
         Assert.Equal(50, result.Usage?.TotalTokenCount);
     }
 
+    /// <summary>The vendor's finish reason reaches <see cref="ChatResponse.FinishReason"/>, so a cut answer does not look complete (#356).</summary>
+    [Theory]
+    [InlineData("stop", "stop")]
+    [InlineData("end_turn", "stop")]
+    [InlineData("STOP", "stop")]
+    [InlineData("length", "length")]
+    [InlineData("max_tokens", "length")]
+    [InlineData("MAX_TOKENS", "length")]
+    [InlineData("tool_calls", "tool_calls")]
+    [InlineData("tool_use", "tool_calls")]
+    [InlineData("content_filter", "content_filter")]
+    [InlineData("pause_turn", "pause_turn")]
+    public async Task ShouldMapTheVendorsFinishReason_WhenGetResponseAsync(string vendor, string expected)
+    {
+        _llmProvider.SetChatResult(new LlmResponse
+        {
+            Content = "ok",
+            Metadata = new Dictionary<string, object> { [LlmResponseMetadataKeys.FinishReason] = vendor },
+        });
+
+        using var adapter = CreateAdapter();
+        var result = await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(new ChatFinishReason(expected), result.FinishReason);
+    }
+
+    [Fact]
+    public async Task ShouldLeaveTheFinishReasonNull_WhenTheProviderNamedNone()
+    {
+        _llmProvider.SetChatResult(new LlmResponse { Content = "ok" });
+
+        using var adapter = CreateAdapter();
+        var result = await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Null(result.FinishReason);
+    }
+
     [Theory]
     [Trait("BR", "CH-254")]
     [InlineData(false)]

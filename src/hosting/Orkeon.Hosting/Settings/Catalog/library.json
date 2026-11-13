@@ -644,6 +644,12 @@
       "description": "The reasoning efforts the model takes: a list, or one comma-separated value; written empty, none. Left out, the built-in list of the model (no restriction for a model the table does not know) and the provider's own levels rule."
     },
     {
+      "path": "Llm:ModelCapabilities:<name>:Thinking",
+      "section": "Llm",
+      "type": "string",
+      "description": "The model's thinking support: `None`, `EffortOnly` (always reasons, cannot be switched off), `Toggle` or `Budget`. The effective value is the lower of this and the provider's. Left out, the built-in value of the model (the provider's own for a model the table does not know)."
+    },
+    {
       "path": "Llm:ModelCapabilities:<name>:Vision",
       "section": "Llm",
       "type": "boolean",

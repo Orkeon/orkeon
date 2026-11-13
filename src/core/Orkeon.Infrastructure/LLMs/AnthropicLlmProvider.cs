@@ -9,6 +9,7 @@ using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs.Converters;
 
 namespace Orkeon.Infrastructure.LLMs;
@@ -569,7 +570,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                 payload[kvp.Key] = kvp.Value;
         }
 
-        ApplyThinking(payload, config.Thinking);
+        ApplyThinking(payload, config.Thinking, ResolveModel(config));
         ApplyResponseFormat(payload, config.ResponseFormat);
         // The Messages API has no grammar field, whatever Llm:Grammar says (CanCarryGrammar).
         if (!string.IsNullOrWhiteSpace(config.GrammarGbnf))
@@ -667,39 +668,90 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     }
 
     /// <summary>
-    /// Translates <see cref="LlmThinkingConfig"/> into the Messages API dialect: a
-    /// <c>thinking</c> block plus the effort level carried by <c>output_config</c>.
+    /// How each Claude model turns thinking off, and the highest effort it accepts the off value with, matched like
+    /// the table (the longest id at a boundary). Measured by campaign M18 (2026-11-13) and Anthropic's documentation:
+    /// <c>claude-sonnet-5-5</c> takes <c>between_tools</c> at <c>high</c> only, <c>claude-sonnet-5</c> takes
+    /// <c>disabled</c> up to <c>xhigh</c>, the others <c>disabled</c> up to <c>high</c>. The models that refuse every
+    /// off value are <see cref="ThinkingSupport.EffortOnly"/> entries of the table instead. A payload detail of one
+    /// vendor, not a capability: it stays out of <see cref="Capabilities.ModelCapabilities"/>.
+    /// </summary>
+    private static readonly (string Id, string Value, string HighestEffort)[] s_offSwitches =
+    [
+        ("claude-sonnet-5-5", "between_tools", "high"),
+        ("claude-sonnet-5", "disabled", "xhigh"),
+    ];
+
+    private static (string Value, string HighestEffort) OffSwitchFor(string model)
+    {
+        (string Value, string HighestEffort) best = ("disabled", "high");
+        var bestLength = 0;
+        foreach (var (id, value, highest) in s_offSwitches)
+        {
+            if (id.Length > bestLength && ModelCapabilityRegistry.MatchesAtBoundary(model, id))
+            {
+                best = (value, highest);
+                bestLength = id.Length;
+            }
+        }
+
+        return best;
+    }
+
+    private static int LevelRank(string effort)
+    {
+        for (var i = 0; i < LlmThinkingConfig.Levels.Count; i++)
+        {
+            if (string.Equals(LlmThinkingConfig.Levels[i], effort, StringComparison.Ordinal))
+                return i;
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Translates <see cref="LlmThinkingConfig"/>, judged against the provider and the model (#356), into the
+    /// Messages API dialect: a <c>thinking</c> block plus the effort level carried by <c>output_config</c>.
     /// </summary>
     /// <remarks>
-    /// The <c>budget_tokens</c> shape found in many older sources is <em>rejected with an
-    /// HTTP 400</em> by the current Claude generation, which decides its own budget from
-    /// <c>type: "adaptive"</c> and the effort level. <see cref="LlmThinkingConfig.BudgetTokens"/>
-    /// is therefore deliberately not mapped here, and is reported instead.
+    /// <list type="bullet">
+    /// <item>On: <c>adaptive</c> with <c>display: "summarized"</c>, without which every Claude 5 model returns its
+    /// thinking blocks empty (M18). Sent on a model that always reasons too: <c>adaptive</c> is the value it takes.</item>
+    /// <item>Off: the model's own value (<see cref="OffSwitchFor"/>), never with <c>display</c>, which
+    /// <c>between_tools</c> refuses. Above the highest effort the model takes it with, it is omitted with a warning
+    /// and the effort is sent alone.</item>
+    /// <item>The <c>budget_tokens</c> shape found in many older sources is <em>rejected with an HTTP 400</em> by the
+    /// current Claude generation, which decides its own budget from the effort level: a budget is reported, never
+    /// sent.</item>
+    /// </list>
     /// </remarks>
-    private void ApplyThinking(Dictionary<string, object> payload, LlmThinkingConfig? thinking)
+    private void ApplyThinking(Dictionary<string, object> payload, LlmThinkingConfig? thinking, string model)
     {
         if (thinking is null)
             return;
 
-        if (thinking.Enabled.HasValue)
+        var verdict = JudgeReasoning(thinking, model, "Anthropic",
+            "the current Claude generation rejects budget_tokens with a 400 - set the effort level instead");
+
+        if (verdict.AskedOn)
         {
-            // "adaptive" lets the model decide per request; "disabled" turns it off outright.
-            // Note that some models reject "disabled" at the highest effort levels with a 400 —
-            // that is the vendor's rule to report, not ours to second-guess.
-            payload["thinking"] = new Dictionary<string, object?>
+            payload["thinking"] = new Dictionary<string, object?> { ["type"] = "adaptive", ["display"] = "summarized" };
+        }
+        else if (verdict.Toggle is false)
+        {
+            var (value, highest) = OffSwitchFor(model);
+            if (verdict.Effort is { } effort && LevelRank(effort) > LevelRank(highest))
             {
-                ["type"] = thinking.Enabled.Value ? "adaptive" : "disabled",
-            };
+                LogUnsupportedOption("thinking.enabled",
+                    $"the model '{model}' cannot switch thinking off at effort '{effort}'; ask for '{highest}' or below, or leave thinking on");
+            }
+            else
+            {
+                payload["thinking"] = new Dictionary<string, object?> { ["type"] = value };
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(thinking.Effort))
-            MergeOutputConfig(payload, "effort", thinking.Effort);
-
-        if (thinking.BudgetTokens.HasValue)
-        {
-            LogUnsupportedOption("thinking.budgetTokens",
-                "the current Claude generation rejects budget_tokens with a 400 — set the effort level instead");
-        }
+        if (verdict.Effort is { } sent)
+            MergeOutputConfig(payload, "effort", sent);
     }
 
     /// <summary>
@@ -1296,18 +1348,28 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     {
         using var doc = JsonDocument.Parse(responseJson);
 
-        // Extract text content from content array
+        // The first text block is the answer; the thinking blocks are the trace (#356), as on the streaming path.
         var contentArray = doc.RootElement.GetProperty("content");
-        var textContent = "";
+        string? textContent = null;
+        var reasoning = new StringBuilder();
 
         foreach (var item in contentArray.EnumerateArray())
         {
-            if (item.TryGetProperty("type", out var typeElement) &&
-                typeElement.GetString() == "text" &&
-                item.TryGetProperty("text", out var textElement))
+            if (!item.TryGetProperty("type", out var typeElement))
+                continue;
+
+            if (textContent is null
+                && typeElement.GetString() == "text"
+                && item.TryGetProperty("text", out var textElement))
             {
                 textContent = textElement.GetString() ?? "";
-                break;
+            }
+            else if (typeElement.GetString() == "thinking"
+                && item.TryGetProperty("thinking", out var thinkingElement)
+                && thinkingElement.ValueKind == JsonValueKind.String
+                && thinkingElement.GetString() is { Length: > 0 } thought)
+            {
+                reasoning.Append(thought);
             }
         }
 
@@ -1328,10 +1390,12 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             metadata.Add("cache_creation_input_tokens", created);
         if (usage.CacheReadTokens is { } read)
             metadata.Add("cache_read_input_tokens", read);
+        if (reasoning.Length > 0)
+            metadata.Add("reasoning_content", reasoning.ToString());
 
         return new LlmResponse
         {
-            Content = textContent,
+            Content = textContent ?? "",
             TokensUsed = usage.TotalTokens,
             PromptTokens = usage.PromptTokens,
             CompletionTokens = usage.OutputTokens,
