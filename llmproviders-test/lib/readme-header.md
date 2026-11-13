@@ -298,13 +298,18 @@ A step ends in one of four outcomes: `✅ sent` (the value went out as asked), `
 dialect has no such control) or `❌ rejected` (the vendor refused what Orkeon sent). A mode is failed
 when one of its steps is rejected, passed when a step was sent or lowered, not applicable otherwise.
 The `Reasoning` section also shows the vendor's `wire` value, whether a reasoning trace came back,
-the reasoning tokens and the finish reason. Reports of earlier campaigns have no such section.
+the reasoning tokens and the finish reason. The last three are read twice: from what the provider
+surfaced, and from the vendor's answer on the wire before the provider parsed it (`vendorTrace`,
+`vendorReasoningTokens`, `vendorFinishReason` in the JSON). `Trace` reads `wire only` when the vendor
+sent a trace that the provider dropped; tokens and finish show the provider's value, else the
+vendor's. Reports of earlier campaigns have no such section, and reports before the vendor read have
+no vendor fields.
 
 The `Reasoning per model` table below (also published in the documentation) reads one model per row:
 a `✅` cell was sent as asked, `→low` was lowered to `low`, `➖` was left out, `❌` was refused by the
 vendor (a vendor refusal of a value Orkeon sent, not a harness failure to run), and an empty cell
-means the step was not run. `Other` lists vendor steps (`none ✅`); `Trace` is `✅` when any step
-returned a reasoning trace.
+means the step was not run. `Other` lists vendor steps (`none ✅`); `Trace` is `✅` when the provider
+surfaced a reasoning trace on any step, `wire only` when only the vendor's answer carried one.
 
 ### M18 — raw reasoning matrix
 
@@ -325,7 +330,8 @@ wrote and deep-merges the fragment into the request body, so the vendor sees exa
   and the token counts of the steps to see which values had an effect.
 
 The `Vendor reasoning matrix` table below (also published in the documentation) reads one model per row,
-from its latest report that ran M18, and lists the accepted, refused and traced labels.
+from its latest report that ran M18, and lists the accepted, refused and traced labels (a trace the
+vendor sent counts, whether or not the provider surfaced it).
 
 ### Decision providers — D1 to D8
 

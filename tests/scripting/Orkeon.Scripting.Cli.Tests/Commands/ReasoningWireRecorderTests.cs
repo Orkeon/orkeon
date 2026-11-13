@@ -268,4 +268,77 @@ public sealed class ReasoningWireRecorderTests
 
         Assert.Equal(body, inner.ReceivedBody);
     }
+
+    /// <summary>Inner handler that answers every request with a fixed status and JSON body.</summary>
+    private sealed class StubAnswerHandler(HttpStatusCode status, string answer) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(status)
+            {
+                Content = new StringContent(answer, Encoding.UTF8, "application/json"),
+            });
+    }
+
+    [Theory]
+    [InlineData("""{"choices":[{"message":{"content":"0.05","reasoning_content":"The ball is x."},"finish_reason":"stop"}],"usage":{"completion_tokens_details":{"reasoning_tokens":42}}}""", true, 42L, "stop")]
+    [InlineData("""{"choices":[{"message":{"content":"0.05","reasoning":"x"},"finish_reason":"length"}]}""", true, null, "length")]
+    [InlineData("""{"choices":[{"message":{"content":"<think>x</think>0.05"},"finish_reason":"stop"}]}""", true, null, "stop")]
+    [InlineData("""{"choices":[{"message":{"content":"0.05","reasoning_content":""},"finish_reason":"stop"}]}""", false, null, "stop")]
+    [InlineData("""{"content":[{"type":"thinking","thinking":"Let x be","signature":"s"},{"type":"text","text":"0.05"}],"stop_reason":"end_turn"}""", true, null, "end_turn")]
+    [InlineData("""{"content":[{"type":"thinking","thinking":"","signature":"s"},{"type":"text","text":"0.05"}],"stop_reason":"end_turn"}""", false, null, "end_turn")]
+    [InlineData("""{"content":[{"type":"redacted_thinking","data":"x"},{"type":"text","text":"0.05"}],"stop_reason":"max_tokens"}""", true, null, "max_tokens")]
+    [InlineData("""{"status":"completed","output":[{"type":"reasoning","summary":[{"type":"summary_text","text":"x"}]}],"usage":{"output_tokens_details":{"reasoning_tokens":7}}}""", true, 7L, "completed")]
+    [InlineData("""{"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},"output":[{"type":"reasoning","summary":[]}]}""", false, null, "max_output_tokens")]
+    [InlineData("""{"candidates":[{"content":{"parts":[{"text":"x","thought":true},{"text":"0.05"}]},"finishReason":"STOP"}],"usageMetadata":{"thoughtsTokenCount":12}}""", true, 12L, "STOP")]
+    [InlineData("""{"message":{"role":"assistant","content":"0.05","thinking":"x"},"done_reason":"stop"}""", true, null, "stop")]
+    [InlineData("""{"choices":[{"message":{"content":[{"type":"thinking","thinking":[{"type":"text","text":"x"}]},{"type":"text","text":"208"}]},"finish_reason":"stop"}]}""", true, null, "stop")]
+    [InlineData("""{"choices":[{"message":{"content":[{"type":"text","text":"208"}]},"finish_reason":"stop"}]}""", false, null, "stop")]
+    public void ShouldReadTheReasoningFactsOfTheAnswer_ForEachDialect(string answer, bool trace, long? tokens, string finish)
+    {
+        var read = ReasoningWireRecorder.ReadAnswer(answer);
+
+        Assert.NotNull(read);
+        Assert.Equal(trace, read.Trace);
+        Assert.Equal(tokens, read.ReasoningTokens);
+        Assert.Equal(finish, read.FinishReason);
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("[1]")]
+    public void ShouldReadNoAnswer_WhenTheBodyIsNotAJsonObject(string answer)
+    {
+        Assert.Null(ReasoningWireRecorder.ReadAnswer(answer));
+    }
+
+    [Fact]
+    public async Task ShouldCaptureTheVendorAnswer_AndLeaveTheBodyReadableForTheProvider()
+    {
+        const string answer = """{"content":[{"type":"thinking","thinking":"x"},{"type":"text","text":"0.05"}],"stop_reason":"end_turn"}""";
+        using var inner = new StubAnswerHandler(HttpStatusCode.OK, answer);
+        using var recorder = new ReasoningWireRecorder(inner);
+        using var client = new HttpClient(recorder, disposeHandler: false);
+        using var content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        using var response = await client.PostAsync(new Uri("http://localhost/v1/messages"), content, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new VendorAnswer(true, null, "end_turn"), recorder.LastAnswer);
+        Assert.Equal(answer, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ShouldCaptureNoAnswer_WhenTheVendorRefuses_AndForgetItOnReset()
+    {
+        using var inner = new StubAnswerHandler(HttpStatusCode.BadRequest, """{"stop_reason":"end_turn"}""");
+        using var recorder = new ReasoningWireRecorder(inner);
+        using var client = new HttpClient(recorder, disposeHandler: false);
+        using var content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        using var response = await client.PostAsync(new Uri("http://localhost/v1/messages"), content, TestContext.Current.CancellationToken);
+
+        Assert.Null(recorder.LastAnswer);
+        recorder.Reset();
+        Assert.Null(recorder.LastAnswer);
+    }
 }

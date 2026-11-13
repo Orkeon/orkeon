@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `{label, body}` item of the JSON file replaces the reasoning fields of the request just before it
   leaves, bypassing Orkeon's capability judgement, and the step is reported `accepted` or `refused` by
   the vendor.
+- Each reasoning step of `orkeon llm probe` also reports what the vendor's answer itself carried, read
+  on the wire before the provider parses it: `vendorTrace`, `vendorReasoningTokens` and
+  `vendorFinishReason`, in every dialect (chat completions, Anthropic messages, the Responses API,
+  Gemini, Ollama). A trace the vendor sent but the provider did not surface reads `wire only`. The
+  reasoning prompt is now a counting problem, so that a model with adaptive thinking reasons at all.
 
 ## [1.0.0] - 2026-11-12
 

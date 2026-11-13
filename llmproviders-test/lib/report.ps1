@@ -127,9 +127,10 @@ if ($hasReasoning) {
                 default   { '❌ rejected' }
             }
             $sent = if ($s.sentValue) { $s.sentValue } elseif ($s.PSObject.Properties['wire'] -and $s.wire) { $s.wire } else { '—' }
-            $trace = if ($s.trace) { '✅' } else { '—' }
-            $tokens = if ($null -ne $s.reasoningTokens) { $s.reasoningTokens } else { '—' }
-            $finish = if ($s.finishReason) { $s.finishReason } else { '—' }
+            $vendorTrace = $s.PSObject.Properties['vendorTrace'] -and [bool]$s.vendorTrace
+            $trace = if ($s.trace) { '✅' } elseif ($vendorTrace) { 'wire only' } else { '—' }
+            $tokens = if ($null -ne $s.reasoningTokens) { $s.reasoningTokens } elseif ($s.PSObject.Properties['vendorReasoningTokens'] -and $null -ne $s.vendorReasoningTokens) { $s.vendorReasoningTokens } else { '—' }
+            $finish = if ($s.finishReason) { $s.finishReason } elseif ($s.PSObject.Properties['vendorFinishReason'] -and $s.vendorFinishReason) { $s.vendorFinishReason } else { '—' }
             $noteParts = @()
             if ($s.error) {
                 $errorText = [string]$s.error

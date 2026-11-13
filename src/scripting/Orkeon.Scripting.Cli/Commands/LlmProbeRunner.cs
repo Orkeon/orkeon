@@ -166,6 +166,7 @@ internal enum LlmReasoningOutcome
 /// <param name="FinishReason">The finish reason the response carried, when it carried one.</param>
 /// <param name="Warnings">Warnings the provider logged for the step.</param>
 /// <param name="Error">Status and vendor message of a rejected step.</param>
+/// <param name="Vendor">What the vendor's answer itself carried on the wire, read before Orkeon parsed it.</param>
 internal sealed record LlmReasoningStep(
     string Step,
     LlmReasoningOutcome Outcome,
@@ -176,7 +177,8 @@ internal sealed record LlmReasoningStep(
     long? CompletionTokens,
     string? FinishReason,
     IReadOnlyList<string> Warnings,
-    string? Error);
+    string? Error,
+    VendorAnswer? Vendor = null);
 
 /// <summary>
 /// Runs the protocol modes against a live provider.

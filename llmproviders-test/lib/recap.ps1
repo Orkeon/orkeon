@@ -85,13 +85,14 @@ foreach ($report in $reports) {
                 Outcome = [string]$_.outcome
                 Sent    = [string]$_.sentValue
                 Trace   = ($_.PSObject.Properties['trace'] -and [bool]$_.trace)
+                Wire    = ($_.PSObject.Properties['vendorTrace'] -and [bool]$_.vendorTrace)
             } })
         # The raw vendor matrix (M18): its steps are vendor fragments with their own labels.
         Raw      = @($campaign.modes | Where-Object { $_.mode -eq 'M18' -and $_.PSObject.Properties['reasoning'] } | ForEach-Object { $_.reasoning } | ForEach-Object {
             [pscustomobject]@{
                 Step    = [string]$_.step
                 Outcome = [string]$_.outcome
-                Trace   = ($_.PSObject.Properties['trace'] -and [bool]$_.trace)
+                Trace   = ($_.PSObject.Properties['trace'] -and [bool]$_.trace) -or ($_.PSObject.Properties['vendorTrace'] -and [bool]$_.vendorTrace)
             } })
         Relative = $relative
     })
@@ -215,6 +216,7 @@ function Get-ReasoningRows {
         $sameDay = @($group | Where-Object { $_.Stamp.Substring(0, 10) -eq $day } | Sort-Object Stamp)
         $res = [ordered]@{}
         $trace = $false
+        $wire = $false
         foreach ($c in $sameDay) {
             foreach ($st in $c.Steps) {
                 $res[$st.Step] = switch ($st.Outcome) {
@@ -224,6 +226,7 @@ function Get-ReasoningRows {
                     default   { '❌' }
                 }
                 if ($st.Trace) { $trace = $true }
+                if ($st.Wire) { $wire = $true }
             }
         }
         $cells = foreach ($k in $ReasoningColumns) { if ($res.Contains($k)) { $res[$k] } else { '' } }
@@ -234,7 +237,7 @@ function Get-ReasoningRows {
             Label    = if ($labels.ContainsKey($provider) -and $labels[$provider]) { $labels[$provider] } else { $provider }
             Model    = $group[0].Model
             Day      = $day
-            Rest     = '| ' + (@($cells) -join ' | ') + ' | ' + (@($other) -join ', ') + ' | ' + $(if ($trace) { '✅' } else { '' }) + ' |'
+            Rest     = '| ' + (@($cells) -join ' | ') + ' | ' + (@($other) -join ', ') + ' | ' + $(if ($trace) { '✅' } elseif ($wire) { 'wire only' } else { '' }) + ' |'
         })
     }
     $rows.Sort([Comparison[object]] {
@@ -391,7 +394,7 @@ else {
     $lines.Add("from the model's latest campaign day. A cell is ✅ when the value was sent as asked, ``→low`` when")
     $lines.Add('Orkeon lowered it to the nearest value the model takes, ➖ when it was left out, ❌ when the vendor')
     $lines.Add('refused what Orkeon sent, and empty when the step was not run. `Other` lists vendor values outside')
-    $lines.Add('the usual set (`none ✅`); `Trace` is ✅ when a reasoning trace came back.')
+    $lines.Add('the usual set (`none ✅`); `Trace` is ✅ when the provider surfaced a reasoning trace, `wire only` when the vendor sent one the provider dropped.')
     $lines.Add('')
     Add-ReasoningTable $lines 'en'
     $lines.Add('')
@@ -401,7 +404,7 @@ else {
     $lines.Add("bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself")
     $lines.Add("accepts, from the model's latest report that ran M18. `"Accepted`" means HTTP 2xx, not that the value")
     $lines.Add('had an effect: compare the traces and the completion tokens in the reports. `Trace` lists the')
-    $lines.Add('fragments after which a reasoning trace came back.')
+    $lines.Add('fragments after which the vendor answer carried a reasoning trace, read on the wire.')
     $lines.Add('')
     Add-MatrixTable $lines 'en'
 }
@@ -481,7 +484,7 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
         $page.Add("[README du kit]($ReportUrl/README.md#the-protocol-modes). ✅ la valeur est partie telle quelle,")
         $page.Add("``→low`` Orkeon l'a abaissée à la valeur la plus proche que le modèle accepte, ➖ rien n'a été envoyé,")
         $page.Add("❌ le fournisseur a refusé ce qu'Orkeon a envoyé, vide l'étape n'a pas été exécutée. ``Autres`` liste les")
-        $page.Add("valeurs propres au fournisseur ; ``Trace`` est ✅ lorsqu'une trace de raisonnement est revenue.")
+        $page.Add("valeurs propres au fournisseur ; ``Trace`` est ✅ lorsque le provider Orkeon a restitué une trace de raisonnement, ``wire only`` lorsque le fournisseur l'a envoyée et que le provider l'a perdue.")
     }
     else {
         $page.Add('## Reasoning per model')
@@ -490,7 +493,7 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
         $page.Add("[kit README]($ReportUrl/README.md#the-protocol-modes). ✅ the value was sent as asked,")
         $page.Add('`→low` Orkeon lowered it to the nearest value the model takes, ➖ nothing was sent, ❌ the vendor')
         $page.Add('refused what Orkeon sent, empty the step was not run. `Other` lists vendor-specific values;')
-        $page.Add('`Trace` is ✅ when a reasoning trace came back.')
+        $page.Add('`Trace` is ✅ when the provider surfaced a reasoning trace, `wire only` when the vendor sent one the provider dropped.')
     }
     $page.Add('')
     Add-ReasoningTable $page $Lang
@@ -503,7 +506,7 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
         $page.Add("fournisseur lui-même accepte, d'après le dernier rapport du modèle qui a exécuté M18. « Acceptés »")
         $page.Add("signifie HTTP 2xx, pas que la valeur ait eu un effet : comparer les traces et les jetons de")
         $page.Add("complétion dans les rapports. ``Trace`` liste les fragments après lesquels une trace de")
-        $page.Add('raisonnement est revenue.')
+        $page.Add('raisonnement est revenue dans la réponse du fournisseur, lue sur le fil.')
     }
     else {
         $page.Add('## Vendor reasoning matrix')
@@ -512,7 +515,7 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
         $page.Add("bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself")
         $page.Add("accepts, from the model's latest report that ran M18. `"Accepted`" means HTTP 2xx, not that the value")
         $page.Add('had an effect: compare the traces and the completion tokens in the reports. `Trace` lists the')
-        $page.Add('fragments after which a reasoning trace came back.')
+        $page.Add('fragments after which the vendor answer carried a reasoning trace, read on the wire.')
     }
     $page.Add('')
     Add-MatrixTable $page $Lang

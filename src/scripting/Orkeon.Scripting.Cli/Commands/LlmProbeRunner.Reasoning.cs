@@ -10,9 +10,12 @@ namespace Orkeon.Scripting.Cli.Commands;
 /// <summary>M15-M17: the reasoning controls of <see cref="LlmThinkingConfig"/> and what really went on the wire.</summary>
 internal sealed partial class LlmProbeRunner
 {
+    // A puzzle a model knows by heart is answered without thinking under adaptive reasoning
+    // (Claude spent 5 completion tokens on the bat-and-ball one, no trace at any effort): this
+    // one needs a few counting steps, so a trace can come back. The answer is 208.
     private const string ReasoningPrompt =
-        "A bat and a ball cost 1.10 in total; the bat costs 1.00 more than the ball. "
-        + "How much is the ball? Answer with the number only.";
+        "How many positive integers below 1000 are divisible by 7 or by 11, but not by both? "
+        + "Answer with the number only.";
 
     private const int ReasoningMaxTokens = 2048;
     private const int ReasoningBudgetTokens = 1024;
@@ -103,7 +106,8 @@ internal sealed partial class LlmProbeRunner
             response?.CompletionTokens,
             metadata is not null && metadata.TryGetValue("finish_reason", out var finish) ? finish?.ToString() : null,
             warnings,
-            error is null ? null : Truncate(error, ErrorExcerpt));
+            error is null ? null : Truncate(error, ErrorExcerpt),
+            WireProbe?.LastAnswer);
     }
 
     private async Task<(LlmResponse? Response, string? Error)> SendReasoningAsync(
@@ -183,7 +187,8 @@ internal sealed partial class LlmProbeRunner
             response?.CompletionTokens,
             metadata is not null && metadata.TryGetValue("finish_reason", out var finish) ? finish?.ToString() : null,
             WireProbe?.Warnings ?? [],
-            error is null ? null : Truncate(error, ErrorExcerpt));
+            error is null ? null : Truncate(error, ErrorExcerpt),
+            WireProbe?.LastAnswer);
     }
 
     private static string? ErrorOfStep(LlmResponse response)

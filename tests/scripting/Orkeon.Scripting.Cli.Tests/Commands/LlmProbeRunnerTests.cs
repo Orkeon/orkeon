@@ -1168,6 +1168,20 @@ public sealed class LlmProbeRunnerTests
     }
 
     [Fact]
+    public async Task ShouldKeepWhatTheVendorAnswered_OnEachRawStep()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+        var wire = new FakeReasoningWireProbe();
+        wire.Answers.Enqueue(new VendorAnswer(true, 11, "end_turn"));
+        var runner = new LlmProbeRunner(provider) { WireProbe = wire, RawReasoning = Fragments("high", "max") };
+
+        var result = await RunAsync(runner, LlmProbeMode.M18);
+
+        Assert.Equal(new VendorAnswer(true, 11, "end_turn"), result.Reasoning![0].Vendor);
+        Assert.Null(result.Reasoning[1].Vendor);
+    }
+
+    [Fact]
     public async Task ShouldRefuseAFragment_WhenTheResponseCarriesAnError_AndStillPassM18()
     {
         var provider = ThinkingProvider(ThinkingSupport.EffortOnly)

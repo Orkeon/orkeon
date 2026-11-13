@@ -133,9 +133,9 @@ internal static class LlmProbeReport
                       .Append(" | ").Append(Cell(step.Step))
                       .Append(" | ").Append(ReasoningOutcomeCell(step.Outcome))
                       .Append(" | ").Append(Cell(step.Wire ?? "-"))
-                      .Append(" | ").Append(step.Trace ? "yes" : "no")
-                      .Append(" | ").Append(step.ReasoningTokens?.ToString(CultureInfo.InvariantCulture) ?? "-")
-                      .Append(" | ").Append(Cell(step.FinishReason ?? "-"))
+                      .Append(" | ").Append(TraceCell(step))
+                      .Append(" | ").Append((step.ReasoningTokens ?? step.Vendor?.ReasoningTokens)?.ToString(CultureInfo.InvariantCulture) ?? "-")
+                      .Append(" | ").Append(Cell(step.FinishReason ?? step.Vendor?.FinishReason ?? "-"))
                       .Append(" | ").Append(Cell(note)).AppendLine(" |");
                 }
             }
@@ -207,6 +207,9 @@ internal static class LlmProbeReport
                     reasoningTokens = step.ReasoningTokens,
                     completionTokens = step.CompletionTokens,
                     finishReason = step.FinishReason,
+                    vendorTrace = step.Vendor?.Trace,
+                    vendorReasoningTokens = step.Vendor?.ReasoningTokens,
+                    vendorFinishReason = step.Vendor?.FinishReason,
                     warnings = step.Warnings,
                     error = step.Error,
                 }),
@@ -215,6 +218,10 @@ internal static class LlmProbeReport
 
         return JsonSerializer.Serialize(payload, JsonOptions);
     }
+
+    // "wire only": the vendor sent a trace that the provider did not surface.
+    private static string TraceCell(LlmReasoningStep step) =>
+        step.Trace ? "yes" : step.Vendor?.Trace == true ? "wire only" : "no";
 
     private static string Symbol(LlmProbeOutcome outcome) => outcome switch
     {

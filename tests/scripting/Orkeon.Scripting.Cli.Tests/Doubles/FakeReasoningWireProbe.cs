@@ -15,6 +15,9 @@ internal sealed class FakeReasoningWireProbe : IReasoningWireProbe
     /// <summary>The warning lists handed out, one per step; steps beyond them have none.</summary>
     public Queue<string[]> WarningLists { get; } = new();
 
+    /// <summary>The vendor answers handed out, one per step; steps beyond them have none.</summary>
+    public Queue<VendorAnswer?> Answers { get; } = new();
+
     /// <summary>How many times the runner reset the probe.</summary>
     public int Resets { get; private set; }
 
@@ -31,11 +34,15 @@ internal sealed class FakeReasoningWireProbe : IReasoningWireProbe
     public IReadOnlyList<string> Warnings { get; private set; } = [];
 
     /// <inheritdoc />
+    public VendorAnswer? LastAnswer { get; private set; }
+
+    /// <inheritdoc />
     public void Reset()
     {
         Resets++;
         LastFields = Wires.Count > 0 ? Wires.Dequeue() : null;
         Warnings = WarningLists.Count > 0 ? WarningLists.Dequeue() : [];
+        LastAnswer = Answers.Count > 0 ? Answers.Dequeue() : null;
     }
 
     /// <inheritdoc />

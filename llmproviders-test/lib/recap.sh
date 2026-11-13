@@ -58,13 +58,13 @@ while IFS= read -r report; do
 
   # One line per reasoning step (M15 to M17), for the reasoning table: absent from older reports.
   reasoning_rows+=$(printf '%s' "$json" | jq -r '. as $c | (.modes[]? | select(.mode != "M18" and ((.reasoning // []) | length > 0)) | .reasoning[])
-    | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, (.sentValue // "-"), ((.trace // false) | tostring)] | @tsv')
+    | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, (.sentValue // "-"), (if (.trace // false) then "orkeon" elif (.vendorTrace // false) then "wire" else "none" end)] | @tsv')
   [[ -z "$reasoning_rows" || "$reasoning_rows" == *$'\n' ]] || reasoning_rows+=$'\n'
 
   # One line per M18 step (the raw vendor matrix), for its own table: M18 steps are vendor
   # fragments with their own labels, never columns of the reasoning grid above.
   matrix_rows+=$(printf '%s' "$json" | jq -r '. as $c | (.modes[]? | select(.mode == "M18" and ((.reasoning // []) | length > 0)) | .reasoning[])
-    | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, ((.trace // false) | tostring)] | @tsv')
+    | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, (if (.trace // false) then "orkeon" elif (.vendorTrace // false) then "wire" else "none" end)] | @tsv')
   [[ -z "$matrix_rows" || "$matrix_rows" == *$'\n' ]] || matrix_rows+=$'\n'
 
   # Prefixed with an explicit sort key. Two campaigns launched in parallel routinely land on
@@ -138,27 +138,28 @@ render_model_table() {
 # then the rest of the Markdown row (so no field is ever empty). Same merge rule as the model
 # table: the reports of the latest day are merged, the latest result of each step winning.
 # Columns: on off low medium high xhigh max budget; any other step is a vendor value, listed in
-# Other as "step cell"; Trace is ✅ when any step of the day carried a reasoning trace.
+# Other as "step cell"; Trace is ✅ when the provider surfaced a reasoning trace on any step of
+# the day, "wire only" when the vendor sent one that the provider did not surface.
 reasoning_table_tsv() {
   local providers
   providers=$(jq -c '.providers | with_entries(select(.value.aliasOf == null)) | map_values(.label // "")' "$CATALOG")
   printf '%s' "$reasoning_rows" | jq -R -s -r --argjson cat "$providers" '
     def cell(o; v): if o == "sent" then "✅" elif o == "lowered" then "→\(v)" elif o == "omitted" then "➖" else "❌" end;
     split("\n") | map(select(length > 0) | split("\t")
-      | {p: .[0], m: .[1], s: .[2], step: .[3], o: .[4], v: .[5], t: (.[6] == "true")})
+      | {p: .[0], m: .[1], s: .[2], step: .[3], o: .[4], v: .[5], t: .[6]})
     | group_by([.p, .m])
     | map((map(.s[0:10]) | max) as $d
         | map(select(.s[0:10] == $d)) | sort_by(.s)
         | (reduce .[] as $x ({}; .[$x.step] = cell($x.o; $x.v))) as $res
         | {p: .[0].p, m: .[0].m, d: $d, l: (($cat[.[0].p] // "") | if . == "" then .[0].p else . end),
-           res: $res, trace: (any(.[]; .t))})
+           res: $res, trace: (if any(.[]; .t == "orkeon" or .t == "true") then "✅" elif any(.[]; .t == "wire") then "wire only" else "" end)})
     | sort_by(.p, .m)
     | .[] | . as $r
     | [$r.p, ($r.l // $r.p), $r.m, $r.d,
        ("| " + ([ ("on","off","low","medium","high","xhigh","max","budget") as $k | ($r.res[$k] // "") ] | join(" | "))
         + " | " + ([$r.res | to_entries[] | select(.key as $k | ["on","off","low","medium","high","xhigh","max","budget"] | index($k) | not)
                    | "\(.key) \(.value)"] | join(", "))
-        + " | " + (if $r.trace then "✅" else "" end) + " |")] | @tsv'
+        + " | " + $r.trace + " |")] | @tsv'
 }
 
 # The vendor reasoning matrix (M18), as TSV: provider, label, model, day, then the rest of the
@@ -171,7 +172,7 @@ matrix_table_tsv() {
   printf '%s' "$matrix_rows" | jq -R -s -r --argjson cat "$providers" '
     def codes(f): [.[] | select(f) | "`" + .step + "`"] | join(", ");
     split("\n") | map(select(length > 0) | split("\t")
-      | {p: .[0], m: .[1], s: .[2], step: .[3], o: .[4], t: (.[5] == "true")})
+      | {p: .[0], m: .[1], s: .[2], step: .[3], o: .[4], t: (.[5] == "orkeon" or .[5] == "wire" or .[5] == "true")})
     | group_by([.p, .m])
     | map((map(.s) | max) as $latest | map(select(.s == $latest))
         | {p: .[0].p, m: .[0].m, d: $latest[0:10], l: (($cat[.[0].p] // "") | if . == "" then .[0].p else . end),
@@ -286,7 +287,7 @@ model_count=$(printf '%s' "$model_table" | grep -c . || true)
     echo "from the model's latest campaign day. A cell is ✅ when the value was sent as asked, \`→low\` when"
     echo "Orkeon lowered it to the nearest value the model takes, ➖ when it was left out, ❌ when the vendor"
     echo "refused what Orkeon sent, and empty when the step was not run. \`Other\` lists vendor values outside"
-    echo "the usual set (\`none ✅\`); \`Trace\` is ✅ when a reasoning trace came back."
+    echo "the usual set (\`none ✅\`); \`Trace\` is ✅ when the provider surfaced a reasoning trace, \`wire only\` when the vendor sent one the provider dropped."
     echo
     render_reasoning_table en
     echo
@@ -296,7 +297,7 @@ model_count=$(printf '%s' "$model_table" | grep -c . || true)
     echo "bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself"
     echo "accepts, from the model's latest report that ran M18. \"Accepted\" means HTTP 2xx, not that the value"
     echo "had an effect: compare the traces and the completion tokens in the reports. \`Trace\` lists the"
-    echo "fragments after which a reasoning trace came back."
+    echo "fragments after which the vendor answer carried a reasoning trace, read on the wire."
     echo
     render_matrix_table en
   fi
@@ -372,7 +373,7 @@ write_docs_page() {
       echo "[README du kit](${REPORT_URL}/README.md#the-protocol-modes). ✅ la valeur est partie telle quelle,"
       echo "\`→low\` Orkeon l'a abaissée à la valeur la plus proche que le modèle accepte, ➖ rien n'a été envoyé,"
       echo "❌ le fournisseur a refusé ce qu'Orkeon a envoyé, vide l'étape n'a pas été exécutée. \`Autres\` liste les"
-      echo "valeurs propres au fournisseur ; \`Trace\` est ✅ lorsqu'une trace de raisonnement est revenue."
+      echo "valeurs propres au fournisseur ; \`Trace\` est ✅ lorsque le provider Orkeon a restitué une trace de raisonnement, \`wire only\` lorsque le fournisseur l'a envoyée et que le provider l'a perdue."
     else
       echo "## Reasoning per model"
       echo
@@ -380,7 +381,7 @@ write_docs_page() {
       echo "[kit README](${REPORT_URL}/README.md#the-protocol-modes). ✅ the value was sent as asked,"
       echo "\`→low\` Orkeon lowered it to the nearest value the model takes, ➖ nothing was sent, ❌ the vendor"
       echo "refused what Orkeon sent, empty the step was not run. \`Other\` lists vendor-specific values;"
-      echo "\`Trace\` is ✅ when a reasoning trace came back."
+      echo "\`Trace\` is ✅ when the provider surfaced a reasoning trace, \`wire only\` when the vendor sent one the provider dropped."
     fi
     echo
     render_reasoning_table "$lang"
@@ -393,7 +394,7 @@ write_docs_page() {
       echo "fournisseur lui-même accepte, d'après le dernier rapport du modèle qui a exécuté M18. « Acceptés »"
       echo "signifie HTTP 2xx, pas que la valeur ait eu un effet : comparer les traces et les jetons de"
       echo "complétion dans les rapports. \`Trace\` liste les fragments après lesquels une trace de"
-      echo "raisonnement est revenue."
+      echo "raisonnement est revenue dans la réponse du fournisseur, lue sur le fil."
     else
       echo "## Vendor reasoning matrix"
       echo
@@ -401,7 +402,7 @@ write_docs_page() {
       echo "bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself"
       echo "accepts, from the model's latest report that ran M18. \"Accepted\" means HTTP 2xx, not that the value"
       echo "had an effect: compare the traces and the completion tokens in the reports. \`Trace\` lists the"
-      echo "fragments after which a reasoning trace came back."
+      echo "fragments after which the vendor answer carried a reasoning trace, read on the wire."
     fi
     echo
     render_matrix_table "$lang"

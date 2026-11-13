@@ -480,6 +480,9 @@ partis sur le fil. M18 fait l'inverse : avec `--raw-reasoning`, un gestionnaire 
 raisonnement de la requête juste avant son envoi (le fournisseur construit toujours
 authentification, URL, en-têtes et dialecte) ; il contourne donc le jugement de capacités d'Orkeon
 et mesure ce que le fournisseur de modèle accepte ou refuse lui-même.
+Chaque étape lit aussi la réponse du fournisseur sur le fil avant que le provider ne l'analyse (trace,
+jetons de raisonnement, raison de fin) : un écart entre ce que le fournisseur a renvoyé et ce que le
+provider a restitué apparaît dans le rapport.
 `orkeon llm models -p <fournisseur> --filter 'gpt-5.6-*'` liste ce qu'un fournisseur sert
 réellement : aucune campagne ne dépend d'une liste de modèles maintenue à la main.
 

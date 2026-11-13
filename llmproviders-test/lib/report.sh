@@ -117,9 +117,9 @@ mkdir -p "$(dirname "$OUTPUT")"
            elif .outcome == "refused" then "❌ refused"
            else "❌ rejected" end),
           (.sentValue // .wire // "—"),
-          (if .trace then "✅" else "—" end),
-          (.reasoningTokens // "—"),
-          (.finishReason // "—"),
+          (if .trace then "✅" elif .vendorTrace then "wire only" else "—" end),
+          (.reasoningTokens // .vendorReasoningTokens // "—"),
+          (.finishReason // .vendorFinishReason // "—"),
           ([((.error // empty) | if $m == "M18" then .[0:160] else . end), ((.warnings // [])[])] | join("; ")) ]
       | map(cell) | "| " + join(" | ") + " |"
     ' "$CAMPAIGN"
