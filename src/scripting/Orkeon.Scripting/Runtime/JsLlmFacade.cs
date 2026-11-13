@@ -571,7 +571,7 @@ public sealed partial class JsLlmFacade
         ThrowIfProviderFailed("extract", resp);
         var content = StripJsonFences(resp.Content);
         if (string.IsNullOrWhiteSpace(content))
-            throw new InvalidOperationException(DescribeUnparsableReply(resp, cfg, null));
+            throw new InvalidOperationException(DescribeUnparsableReply(resp, cfg, provider, null));
         try
         {
             using var doc = JsonDocument.Parse(content);
@@ -579,7 +579,7 @@ public sealed partial class JsLlmFacade
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException(DescribeUnparsableReply(resp, cfg, ex), ex);
+            throw new InvalidOperationException(DescribeUnparsableReply(resp, cfg, provider, ex), ex);
         }
     };
 
@@ -598,17 +598,17 @@ public sealed partial class JsLlmFacade
     /// gave, an empty reply named as such (with the output budget when it ended on <c>length</c>), and for a
     /// reply that does not parse, where the JSON error is and how the reply begins and ends.
     /// </summary>
-    private static string DescribeUnparsableReply(LlmResponse response, LlmConfig config, JsonException? error)
+    private static string DescribeUnparsableReply(LlmResponse response, LlmConfig config, ILlmProvider provider, JsonException? error)
     {
         var finish = response.Metadata.TryGetValue(LlmResponseMetadataKeys.FinishReason, out var f) ? f?.ToString() : null;
-        var cutByLength = string.Equals(finish, "length", StringComparison.OrdinalIgnoreCase);
+        var cutByLength = IsBudgetStop(finish);
         var text = new System.Text.StringBuilder("ctx.llm.extract: ");
         if (error is null)
         {
             text.Append("the provider returned an empty reply");
             if (cutByLength)
                 text.Append(System.Globalization.CultureInfo.InvariantCulture,
-                    $": the output budget ({(config.MaxTokens is { } max ? $"MaxTokens = {max}" : "Llm:MaxTokens")}) ran out, reasoning included; raise Llm:MaxTokens or lower Llm:Thinking:Effort");
+                    $": the output budget ({(config.ResolveMaxTokens(provider.Name, provider.BaseConfig?.Model) is { } max ? $"MaxTokens = {max}" : "Llm:MaxTokens")}) ran out, reasoning included; raise Llm:MaxTokens or lower Llm:Thinking:Effort");
         }
         else
         {
@@ -747,6 +747,7 @@ public sealed partial class JsLlmFacade
             ? new LlmResponse { Content = allowed[0] }
             : await provider.GenerateAsync(decidePrompt, config, _ct).ConfigureAwait(false);
         ThrowIfBlocked(resp);
+        ThrowIfProviderFailed("decide", resp);
         var picked = allowed.FirstOrDefault(c =>
             resp.Content.Trim().StartsWith(c, StringComparison.OrdinalIgnoreCase));
         if (picked is null)
@@ -2283,11 +2284,26 @@ public sealed partial class JsLlmFacade
     }
 
     private static string Truncate(string s, int n)
-        => s.Length <= n ? s : s[..n] + "...";
+    {
+        if (s.Length <= n) return s;
+        // Never cut between the two halves of a surrogate pair.
+        var cut = n > 0 && char.IsHighSurrogate(s[n - 1]) ? n - 1 : n;
+        return s[..cut] + "...";
+    }
 
     /// <summary>The last <paramref name="n"/> characters of <paramref name="s"/>, marked when cut.</summary>
     private static string Tail(string s, int n)
-        => s.Length <= n ? s : "..." + s[^n..];
+    {
+        if (s.Length <= n) return s;
+        var start = s.Length - n;
+        if (char.IsLowSurrogate(s[start])) start++;
+        return "..." + s[start..];
+    }
+
+    /// <summary>True for a finish reason that says the output budget ran out: <c>length</c>, <c>max_tokens</c>, <c>MAX_TOKENS</c>.</summary>
+    private static bool IsBudgetStop(string? finish)
+        => string.Equals(finish, "length", StringComparison.OrdinalIgnoreCase)
+           || string.Equals(finish, "max_tokens", StringComparison.OrdinalIgnoreCase);
 
     private static object? JsonElementToObject(JsonElement el) => el.ValueKind switch
     {

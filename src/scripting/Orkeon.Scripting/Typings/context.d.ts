@@ -341,6 +341,7 @@ declare global {
 
     /** What `chat(...)` resolves to. A tool call is `act(...)`'s business: `chat` offers no tools. */
     interface ChatResponse {
+        /** The answer; a provider failure gives the `<undefined-llm:<the provider's error>>` marker, never an empty string, as `complete` does. */
         readonly content: string;
         readonly tokensUsed: number;
         readonly model: string;

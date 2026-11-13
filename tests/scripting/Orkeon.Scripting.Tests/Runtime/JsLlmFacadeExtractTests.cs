@@ -173,12 +173,12 @@ public sealed class JsLlmFacadeExtractTests
 
     private const string Http400 = "Z.AI API error: BadRequest - {\"error\":{\"code\":\"1210\",\"message\":\"please use low, high, or max\"}}";
 
-    private static (Engine, JsLlmFacade) FacadeAnswering(LlmResponse response, int? maxTokens = null)
+    private static (Engine, JsLlmFacade) FacadeAnswering(LlmResponse response, int? maxTokens = null, string? model = null)
     {
         var engine = new Engine(opt => { JsEngineFactory.ApplyInteropPolicy(opt); opt.Constraints.PromiseTimeout = HangGuards.EnginePromise; });
         var provider = new StubLlmProvider
         {
-            BaseConfig = maxTokens is { } max ? LlmConfig.Create("glm-5.3", "key") with { MaxTokens = max } : null,
+            BaseConfig = maxTokens is { } max ? LlmConfig.Create("glm-5.3", "key") with { MaxTokens = max } : model is null ? null : LlmConfig.Create(model, "key"),
         };
         provider.RespondWith(response);
         provider.RespondToChatWith(response);
@@ -255,5 +255,58 @@ public sealed class JsLlmFacadeExtractTests
         Assert.Contains($"Reply ({reply.Length} chars) starts: {{\"items\"", ex.Message, StringComparison.Ordinal);
         Assert.EndsWith("ends: ..." + reply[^200..], ex.Message, StringComparison.Ordinal);
         Assert.IsType<System.Text.Json.JsonException>(ex.InnerException, exactMatch: false);
+    }
+
+    [Fact]
+    public async Task Decide_raises_the_providers_error_instead_of_reporting_an_empty_answer()
+    {
+        var (engine, facade) = FacadeAnswering(new LlmResponse { Content = "", Metadata = Meta(("error", Http400)) });
+        var choices = Eval(engine, "['yes', 'no']");
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => facade.DecideAsync("?", choices, null));
+
+        Assert.StartsWith("ctx.llm.decide: the provider failed: Z.AI API error: BadRequest", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Extract_names_the_resolved_cap_of_a_catalogued_model_without_an_explicit_max_tokens()
+    {
+        var (_, facade) = FacadeAnswering(new LlmResponse { Content = "", Metadata = Meta(("finish_reason", "length")) }, model: "glm-5.3");
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => facade.ExtractAsync("Parse this", JsValue.Undefined, null));
+
+        Assert.Contains("the output budget (MaxTokens = 131072) ran out", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("max_tokens")]
+    [InlineData("MAX_TOKENS")]
+    public async Task Extract_treats_max_tokens_stops_as_a_spent_output_budget(string finish)
+    {
+        var (_, facade) = FacadeAnswering(new LlmResponse { Content = "", Metadata = Meta(("finish_reason", finish)) }, maxTokens: 500);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => facade.ExtractAsync("Parse this", JsValue.Undefined, null));
+
+        Assert.Contains("the output budget (MaxTokens = 500) ran out", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Extract_never_splits_a_surrogate_pair_when_it_quotes_the_reply()
+    {
+        // 301 emoji = 602 chars: an odd cut index (200) lands between the halves of a pair, so does the tail.
+        foreach (var count in new[] { 301, 302 })
+        {
+            var reply = string.Concat(Enumerable.Repeat("\U0001F600", count));
+            var (_, facade) = FacadeAnswering(new LlmResponse { Content = reply });
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => facade.ExtractAsync("Parse this", JsValue.Undefined, null));
+
+            var msg = ex.Message;
+            for (var i = 0; i < msg.Length; i++)
+            {
+                if (char.IsHighSurrogate(msg[i])) Assert.True(i + 1 < msg.Length && char.IsLowSurrogate(msg[i + 1]), $"lone high surrogate at {i}");
+                if (char.IsLowSurrogate(msg[i])) Assert.True(i > 0 && char.IsHighSurrogate(msg[i - 1]), $"lone low surrogate at {i}");
+            }
+        }
     }
 }
