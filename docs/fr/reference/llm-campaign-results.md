@@ -101,44 +101,47 @@ Les modes M15 (bascule du raisonnement), M16 (balayage des efforts) et M17 (budg
 `→low` Orkeon l'a abaissée à la valeur la plus proche que le modèle accepte, ➖ rien n'a été envoyé,
 ❌ le fournisseur a refusé ce qu'Orkeon a envoyé, vide l'étape n'a pas été exécutée. `Autres` liste les
 valeurs propres au fournisseur ; `Trace` est ✅ lorsque le provider Orkeon a restitué une trace de raisonnement, `wire only` lorsque le fournisseur l'a envoyée et que le provider l'a perdue.
+`Table` confronte la table des capacités des modèles à la réponse du fournisseur à la même valeur (M18) :
+✅ toutes les étapes vérifiées concordent, sinon les étapes où la table manque une restriction (le fournisseur
+a refusé ce qu'Orkeon a envoyé) ou est trop étroite (Orkeon a abaissé ou omis une valeur que le fournisseur accepte).
 
-| Fournisseur | Modèle | Date | on | off | low | medium | high | xhigh | max | budget | Autres | Trace |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Anthropic | `claude-fable-5-1` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |
-|  | `claude-fable-5-2` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |
-|  | `claude-haiku-5-5` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |
-|  | `claude-opus-5-5` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |
-|  | `claude-sonnet-5` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |
-|  | `claude-sonnet-5-5` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |
-| DeepSeek | `deepseek-flash` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | ✅ | ➖ |  | ✅ |
-| Google Gemini | `gemini-3.7-flash` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |
-|  | `gemini-3.8-flash` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |
-|  | `gemini-4-argon` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |
-|  | `gemini-4-carbon` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |
-| Grok (x.AI) | `grok-4.6` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |
-|  | `grok-4.7` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |
-| Kimi (Moonshot AI) | `kimi-k2.6` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |
-|  | `kimi-k2.7-code` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |
-|  | `kimi-k3` | 2026-11-13 | ➖ | ➖ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |
-|  | `kimi-k3.1-pro` | 2026-11-13 | ➖ | ➖ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |
-| Mistral AI | `mistral-large-4` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |
-|  | `mistral-medium-2604` | 2026-11-13 |  |  | ❌ | ❌ | ✅ | →high | →high | ➖ |  | ✅ |
-|  | `mistral-small-2603` | 2026-11-13 |  |  | ❌ | ❌ | ✅ | →high | →high | ➖ |  | ✅ |
-| OpenAI | `gpt-5.6-sol` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |
-|  | `gpt-6-astra` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |
-|  | `gpt-6-luna` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |
-|  | `gpt-6-sol` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |
-|  | `gpt-6.1-sol` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |
-|  | `gpt-6.1-terra` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |
-| OpenRouter | `google/gemini-3.7-flash` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |  | ✅ |
-|  | `google/gemini-3.8-flash` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |  | ✅ |
-| Qwen (Alibaba DashScope) | `qwen3.7-plus` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ✅ |  | ✅ |
-|  | `qwen3.8-flash` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ✅ |  | ✅ |
-|  | `qwen3.8-max` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ✅ |  | ✅ |
-| Z.AI (Zhipu GLM) | `glm-5.2` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | ✅ | ➖ |  | ✅ |
-|  | `glm-5.3` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
-|  | `glm-5.3-flash` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
-|  | `glm-5.3-flashx` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
+| Fournisseur | Modèle | Date | on | off | low | medium | high | xhigh | max | budget | Autres | Trace | Table |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Anthropic | `claude-fable-5-1` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
+|  | `claude-fable-5-2` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
+|  | `claude-haiku-5-5` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
+|  | `claude-opus-5-5` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
+|  | `claude-sonnet-5` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
+|  | `claude-sonnet-5-5` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
+| DeepSeek | `deepseek-flash` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | ✅ | ➖ |  | ✅ |  |
+| Google Gemini | `gemini-3.7-flash` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
+|  | `gemini-3.8-flash` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
+|  | `gemini-4-argon` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
+|  | `gemini-4-carbon` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
+| Grok (x.AI) | `grok-4.6` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
+|  | `grok-4.7` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
+| Kimi (Moonshot AI) | `kimi-k2.6` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
+|  | `kimi-k2.7-code` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
+|  | `kimi-k3` | 2026-11-13 | ➖ | ➖ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
+|  | `kimi-k3.1-pro` | 2026-11-13 | ➖ | ➖ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
+| Mistral AI | `mistral-large-4` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
+|  | `mistral-medium-2604` | 2026-11-13 |  |  | ❌ | ❌ | ✅ | →high | →high | ➖ |  | ✅ |  |
+|  | `mistral-small-2603` | 2026-11-13 |  |  | ❌ | ❌ | ✅ | →high | →high | ➖ |  | ✅ |  |
+| OpenAI | `gpt-5.6-sol` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |  |
+|  | `gpt-6-astra` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
+|  | `gpt-6-luna` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |  |
+|  | `gpt-6-sol` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |  |
+|  | `gpt-6.1-sol` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
+|  | `gpt-6.1-terra` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |  |
+| OpenRouter | `google/gemini-3.7-flash` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |  | ✅ |  |
+|  | `google/gemini-3.8-flash` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |  | ✅ |  |
+| Qwen (Alibaba DashScope) | `qwen3.7-plus` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ✅ |  | ✅ |  |
+|  | `qwen3.8-flash` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ✅ |  | ✅ |  |
+|  | `qwen3.8-max` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ✅ |  | ✅ |  |
+| Z.AI (Zhipu GLM) | `glm-5.2` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | ✅ | ➖ |  | ✅ |  |
+|  | `glm-5.3` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |  |
+|  | `glm-5.3-flash` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |  |
+|  | `glm-5.3-flashx` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |  |
 
 ## Matrice brute du fournisseur
 

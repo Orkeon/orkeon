@@ -329,6 +329,20 @@ wrote and deep-merges the fragment into the request body, so the vendor sees exa
 - `accepted` is HTTP 2xx and nothing more: a vendor may swallow a field it ignores. Compare the trace
   and the token counts of the steps to see which values had an effect.
 
+Once every mode of the run is done, each M15 to M17 step is checked against the M18 steps of the same
+run (`tableCheck` and `tableNote` in the JSON, the `Table` column of the `Reasoning` section):
+
+- `❌ missing restriction`: Orkeon sent the value and the vendor refused it (400 or 422; a 429, a 5xx or
+  a timeout judges nothing and reads `➖`). The model capability table should have lowered or dropped it.
+- `❌ too narrow`: Orkeon lowered or left out the value, and the M18 fragment for it (`effort:<value>`,
+  `toggle:on`, `toggle:off` or an `off:*` label, `budget:*`) was accepted. For the off switch the
+  fragment must also have stopped the reasoning (no trace, no reasoning tokens): a vendor that accepts
+  `disabled` and keeps reasoning does not take it.
+- `✅`: the step agrees with the vendor; "on" left out without a warning agrees too (a model that
+  always reasons needs no switch). `➖`: no fragment for the value, nothing to judge.
+
+A contradiction fails the mode, and the `Table` column of `Reasoning per model` names the steps.
+
 The `Vendor reasoning matrix` table below (also published in the documentation) reads one model per row,
 from its latest report that ran M18, and lists the accepted, refused and traced labels (a trace the
 vendor sent counts, whether or not the provider surfaced it).

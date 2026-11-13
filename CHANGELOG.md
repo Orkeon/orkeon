@@ -93,6 +93,12 @@ Migration:
   `vendorFinishReason`, in every dialect (chat completions, Anthropic messages, the Responses API,
   Gemini, Ollama). A trace the vendor sent but the provider did not surface reads `wire only`. The
   reasoning prompt is now a counting problem, so that a model with adaptive thinking reasons at all.
+- `orkeon llm probe` checks the model capability table (#356): once every mode ran, each M15–M17 step
+  is confronted with the M18 fragments of the same run. A value Orkeon sent and the vendor refused
+  reads `missing restriction`, a value Orkeon lowered or left out that the vendor takes reads `too
+  narrow` (the off switch only when it stopped the reasoning); either fails the mode. The steps carry
+  `tableCheck` and `tableNote` in the JSON, a `Table` column in the report, and the campaign's
+  "Reasoning per model" table gains a `Table` column naming the contradictions.
 
 ## [1.0.0] - 2026-11-12
 

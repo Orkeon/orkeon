@@ -167,6 +167,8 @@ internal enum LlmReasoningOutcome
 /// <param name="Warnings">Warnings the provider logged for the step.</param>
 /// <param name="Error">Status and vendor message of a rejected step.</param>
 /// <param name="Vendor">What the vendor's answer itself carried on the wire, read before Orkeon parsed it.</param>
+/// <param name="Check">What the step says of the model capability table (M15-M17), null for M18.</param>
+/// <param name="CheckNote">Why: the vendor's refusal, or the M18 fragments the vendor accepted or refused.</param>
 internal sealed record LlmReasoningStep(
     string Step,
     LlmReasoningOutcome Outcome,
@@ -178,7 +180,9 @@ internal sealed record LlmReasoningStep(
     string? FinishReason,
     IReadOnlyList<string> Warnings,
     string? Error,
-    VendorAnswer? Vendor = null);
+    VendorAnswer? Vendor = null,
+    LlmTableCheck? Check = null,
+    string? CheckNote = null);
 
 /// <summary>
 /// Runs the protocol modes against a live provider.
@@ -314,7 +318,8 @@ internal sealed partial class LlmProbeRunner
             results.Add(await RunOneAsync(mode, config, cancellationToken).ConfigureAwait(false));
         }
 
-        return results;
+        // The reasoning steps are judged once every mode ran: M18 is the vendor's own answer to the same values.
+        return ReasoningTableCheck.Apply(results);
     }
 
     private async Task<LlmProbeResult> RunOneAsync(

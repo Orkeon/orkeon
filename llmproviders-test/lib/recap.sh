@@ -58,7 +58,7 @@ while IFS= read -r report; do
 
   # One line per reasoning step (M15 to M17), for the reasoning table: absent from older reports.
   reasoning_rows+=$(printf '%s' "$json" | jq -r '. as $c | (.modes[]? | select(.mode != "M18" and ((.reasoning // []) | length > 0)) | .reasoning[])
-    | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, (.sentValue // "-"), (if (.trace // false) then "orkeon" elif (.vendorTrace // false) then "wire" else "none" end)] | @tsv')
+    | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, (.sentValue // "-"), (if (.trace // false) then "orkeon" elif (.vendorTrace // false) then "wire" else "none" end), (.tableCheck // "-")] | @tsv')
   [[ -z "$reasoning_rows" || "$reasoning_rows" == *$'\n' ]] || reasoning_rows+=$'\n'
 
   # One line per M18 step (the raw vendor matrix), for its own table: M18 steps are vendor
@@ -139,27 +139,31 @@ render_model_table() {
 # table: the reports of the latest day are merged, the latest result of each step winning.
 # Columns: on off low medium high xhigh max budget; any other step is a vendor value, listed in
 # Other as "step cell"; Trace is ✅ when the provider surfaced a reasoning trace on any step of
-# the day, "wire only" when the vendor sent one that the provider did not surface.
+# the day, "wire only" when the vendor sent one that the provider did not surface; Table is ✅ when every
+# step the run checked against M18 agrees with the capability table, else the steps that contradict it.
 reasoning_table_tsv() {
   local providers
   providers=$(jq -c '.providers | with_entries(select(.value.aliasOf == null)) | map_values(.label // "")' "$CATALOG")
   printf '%s' "$reasoning_rows" | jq -R -s -r --argjson cat "$providers" '
     def cell(o; v): if o == "sent" then "✅" elif o == "lowered" then "→\(v)" elif o == "omitted" then "➖" else "❌" end;
     split("\n") | map(select(length > 0) | split("\t")
-      | {p: .[0], m: .[1], s: .[2], step: .[3], o: .[4], v: .[5], t: .[6]})
+      | {p: .[0], m: .[1], s: .[2], step: .[3], o: .[4], v: .[5], t: .[6], c: (.[7] // "-")})
     | group_by([.p, .m])
     | map((map(.s[0:10]) | max) as $d
         | map(select(.s[0:10] == $d)) | sort_by(.s)
         | (reduce .[] as $x ({}; .[$x.step] = cell($x.o; $x.v))) as $res
+        | (reduce .[] as $x ({}; .[$x.step] = $x.c)) as $chk
+        | ([$chk | to_entries[] | select(.value == "missing restriction" or .value == "too narrow") | "\(.key): \(.value)"]) as $bad
         | {p: .[0].p, m: .[0].m, d: $d, l: (($cat[.[0].p] // "") | if . == "" then .[0].p else . end),
-           res: $res, trace: (if any(.[]; .t == "orkeon" or .t == "true") then "✅" elif any(.[]; .t == "wire") then "wire only" else "" end)})
+           res: $res, table: (if ($bad | length) > 0 then "❌ " + ($bad | join(", ")) elif any($chk[]; . == "agrees") then "✅" else "" end),
+           trace: (if any(.[]; .t == "orkeon" or .t == "true") then "✅" elif any(.[]; .t == "wire") then "wire only" else "" end)})
     | sort_by(.p, .m)
     | .[] | . as $r
     | [$r.p, ($r.l // $r.p), $r.m, $r.d,
        ("| " + ([ ("on","off","low","medium","high","xhigh","max","budget") as $k | ($r.res[$k] // "") ] | join(" | "))
         + " | " + ([$r.res | to_entries[] | select(.key as $k | ["on","off","low","medium","high","xhigh","max","budget"] | index($k) | not)
                    | "\(.key) \(.value)"] | join(", "))
-        + " | " + $r.trace + " |")] | @tsv'
+        + " | " + $r.trace + " | " + $r.table + " |")] | @tsv'
 }
 
 # The vendor reasoning matrix (M18), as TSV: provider, label, model, day, then the rest of the
@@ -218,11 +222,11 @@ render_reasoning_table() {
     return 0
   fi
   if [[ "$lang" == fr ]]; then
-    echo "| Fournisseur | Modèle | Date | on | off | low | medium | high | xhigh | max | budget | Autres | Trace |"
+    echo "| Fournisseur | Modèle | Date | on | off | low | medium | high | xhigh | max | budget | Autres | Trace | Table |"
   else
-    echo "| Provider | Model | Date | on | off | low | medium | high | xhigh | max | budget | Other | Trace |"
+    echo "| Provider | Model | Date | on | off | low | medium | high | xhigh | max | budget | Other | Trace | Table |"
   fi
-  echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+  echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
   while IFS=$'\t' read -r p label model d rest; do
     cell=""
     [[ "$p" == "$previous" ]] || cell="$label"
@@ -288,6 +292,9 @@ model_count=$(printf '%s' "$model_table" | grep -c . || true)
     echo "Orkeon lowered it to the nearest value the model takes, ➖ when it was left out, ❌ when the vendor"
     echo "refused what Orkeon sent, and empty when the step was not run. \`Other\` lists vendor values outside"
     echo "the usual set (\`none ✅\`); \`Trace\` is ✅ when the provider surfaced a reasoning trace, \`wire only\` when the vendor sent one the provider dropped."
+    echo "\`Table\` checks the model capability table against the vendor's own answer to the same value (M18):"
+    echo "✅ every checked step agrees, otherwise the steps where the table is missing a restriction (the vendor"
+    echo "refused what Orkeon sent) or too narrow (Orkeon lowered or left out a value the vendor takes)."
     echo
     render_reasoning_table en
     echo
@@ -374,6 +381,9 @@ write_docs_page() {
       echo "\`→low\` Orkeon l'a abaissée à la valeur la plus proche que le modèle accepte, ➖ rien n'a été envoyé,"
       echo "❌ le fournisseur a refusé ce qu'Orkeon a envoyé, vide l'étape n'a pas été exécutée. \`Autres\` liste les"
       echo "valeurs propres au fournisseur ; \`Trace\` est ✅ lorsque le provider Orkeon a restitué une trace de raisonnement, \`wire only\` lorsque le fournisseur l'a envoyée et que le provider l'a perdue."
+      echo "\`Table\` confronte la table des capacités des modèles à la réponse du fournisseur à la même valeur (M18) :"
+      echo "✅ toutes les étapes vérifiées concordent, sinon les étapes où la table manque une restriction (le fournisseur"
+      echo "a refusé ce qu'Orkeon a envoyé) ou est trop étroite (Orkeon a abaissé ou omis une valeur que le fournisseur accepte)."
     else
       echo "## Reasoning per model"
       echo
@@ -382,6 +392,9 @@ write_docs_page() {
       echo "\`→low\` Orkeon lowered it to the nearest value the model takes, ➖ nothing was sent, ❌ the vendor"
       echo "refused what Orkeon sent, empty the step was not run. \`Other\` lists vendor-specific values;"
       echo "\`Trace\` is ✅ when the provider surfaced a reasoning trace, \`wire only\` when the vendor sent one the provider dropped."
+      echo "\`Table\` checks the model capability table against the vendor's own answer to the same value (M18):"
+      echo "✅ every checked step agrees, otherwise the steps where the table is missing a restriction (the vendor"
+      echo "refused what Orkeon sent) or too narrow (Orkeon lowered or left out a value the vendor takes)."
     fi
     echo
     render_reasoning_table "$lang"

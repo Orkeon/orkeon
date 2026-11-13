@@ -504,7 +504,10 @@ just before it leaves (the provider still builds auth, URL, headers and dialect)
 bypasses Orkeon's capability judgement and measures what the vendor itself accepts or refuses.
 Each step also reads the vendor's answer on the wire before the provider parses it (trace,
 reasoning tokens, finish reason), so a gap between what the vendor returned and what the provider
-surfaced shows in the report. `orkeon llm models -p <provider> --filter 'gpt-5.6-*'`
+surfaced shows in the report. Once every mode ran, each M15–M17 step is checked against M18: a value
+Orkeon sent that the vendor refused means the model capability table misses a restriction, a value
+Orkeon lowered or left out that the vendor takes (the off switch only when it stopped the reasoning)
+means the table is too narrow; either fails the mode. `orkeon llm models -p <provider> --filter 'gpt-5.6-*'`
 lists what a provider currently serves, so a campaign never depends on a hand-maintained
 model list.
 

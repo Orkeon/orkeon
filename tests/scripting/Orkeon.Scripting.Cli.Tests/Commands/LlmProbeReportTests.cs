@@ -190,7 +190,7 @@ public sealed class LlmProbeReportTests
         var with = LlmProbeReport.ToMarkdown(Context(), ReasoningResults());
         var without = LlmProbeReport.ToMarkdown(Context(), Results());
 
-        Assert.Contains("| Mode | Step | Outcome | Sent | Trace | Reasoning tokens | Finish | Note |", with, StringComparison.Ordinal);
+        Assert.Contains("| Mode | Step | Outcome | Sent | Trace | Reasoning tokens | Finish | Table | Note |", with, StringComparison.Ordinal);
         Assert.Contains("| M16 | low | sent |", with, StringComparison.Ordinal);
         Assert.Contains("| M16 | max | rejected |", with, StringComparison.Ordinal);
         Assert.DoesNotContain("## Reasoning", without, StringComparison.Ordinal);

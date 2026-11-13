@@ -86,6 +86,7 @@ foreach ($report in $reports) {
                 Sent    = [string]$_.sentValue
                 Trace   = ($_.PSObject.Properties['trace'] -and [bool]$_.trace)
                 Wire    = ($_.PSObject.Properties['vendorTrace'] -and [bool]$_.vendorTrace)
+                Check   = if ($_.PSObject.Properties['tableCheck']) { [string]$_.tableCheck } else { '-' }
             } })
         # The raw vendor matrix (M18): its steps are vendor fragments with their own labels.
         Raw      = @($campaign.modes | Where-Object { $_.mode -eq 'M18' -and $_.PSObject.Properties['reasoning'] } | ForEach-Object { $_.reasoning } | ForEach-Object {
@@ -192,7 +193,9 @@ function Add-ModelTable($Target, [string]$Lang, [string]$Prefix) {
 # The reasoning steps of each model's latest campaign day: the reports of that day are merged,
 # the latest result of each step winning (same rule as the model table, and as lib/recap.sh).
 # Columns: on off low medium high xhigh max budget; any other step is a vendor value, listed in
-# Other as "step cell"; Trace is a check mark when any step of the day carried a reasoning trace.
+# Other as "step cell"; Trace is a check mark when any step of the day carried a reasoning trace;
+# Table is a check mark when every step checked against M18 agrees with the capability table, else
+# the steps that contradict it.
 $ReasoningColumns = @('on', 'off', 'low', 'medium', 'high', 'xhigh', 'max', 'budget')
 
 function Get-ReasoningRows {
@@ -215,6 +218,7 @@ function Get-ReasoningRows {
         $day = ($group | ForEach-Object { $_.Stamp.Substring(0, 10) } | Sort-Object | Select-Object -Last 1)
         $sameDay = @($group | Where-Object { $_.Stamp.Substring(0, 10) -eq $day } | Sort-Object Stamp)
         $res = [ordered]@{}
+        $chk = [ordered]@{}
         $trace = $false
         $wire = $false
         foreach ($c in $sameDay) {
@@ -225,19 +229,22 @@ function Get-ReasoningRows {
                     'omitted' { '➖' }
                     default   { '❌' }
                 }
+                $chk[$st.Step] = $st.Check
                 if ($st.Trace) { $trace = $true }
                 if ($st.Wire) { $wire = $true }
             }
         }
         $cells = foreach ($k in $ReasoningColumns) { if ($res.Contains($k)) { $res[$k] } else { '' } }
         $other = foreach ($k in $res.Keys) { if ($ReasoningColumns -cnotcontains $k) { "$k $($res[$k])" } }
+        $bad = @(foreach ($k in $chk.Keys) { if ($chk[$k] -in @('missing restriction', 'too narrow')) { "${k}: $($chk[$k])" } })
+        $table = if ($bad.Count -gt 0) { '❌ ' + ($bad -join ', ') } elseif (@($chk.Values) -contains 'agrees') { '✅' } else { '' }
         $provider = $group[0].Provider
         $rows.Add([pscustomobject]@{
             Provider = $provider
             Label    = if ($labels.ContainsKey($provider) -and $labels[$provider]) { $labels[$provider] } else { $provider }
             Model    = $group[0].Model
             Day      = $day
-            Rest     = '| ' + (@($cells) -join ' | ') + ' | ' + (@($other) -join ', ') + ' | ' + $(if ($trace) { '✅' } elseif ($wire) { 'wire only' } else { '' }) + ' |'
+            Rest     = '| ' + (@($cells) -join ' | ') + ' | ' + (@($other) -join ', ') + ' | ' + $(if ($trace) { '✅' } elseif ($wire) { 'wire only' } else { '' }) + ' | ' + $table + ' |'
         })
     }
     $rows.Sort([Comparison[object]] {
@@ -255,9 +262,9 @@ function Add-ReasoningTable($Target, [string]$Lang) {
         else { $Target.Add('No archived report carries reasoning steps yet (modes M15 to M17): the table appears with the next campaign that runs them.') }
         return
     }
-    if ($Lang -eq 'fr') { $Target.Add('| Fournisseur | Modèle | Date | on | off | low | medium | high | xhigh | max | budget | Autres | Trace |') }
-    else { $Target.Add('| Provider | Model | Date | on | off | low | medium | high | xhigh | max | budget | Other | Trace |') }
-    $Target.Add('|---|---|---|---|---|---|---|---|---|---|---|---|---|')
+    if ($Lang -eq 'fr') { $Target.Add('| Fournisseur | Modèle | Date | on | off | low | medium | high | xhigh | max | budget | Autres | Trace | Table |') }
+    else { $Target.Add('| Provider | Model | Date | on | off | low | medium | high | xhigh | max | budget | Other | Trace | Table |') }
+    $Target.Add('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
     $previous = ''
     foreach ($row in $reasoningRows) {
         $cell = if ($row.Provider -ceq $previous) { '' } else { $row.Label }
@@ -395,6 +402,9 @@ else {
     $lines.Add('Orkeon lowered it to the nearest value the model takes, ➖ when it was left out, ❌ when the vendor')
     $lines.Add('refused what Orkeon sent, and empty when the step was not run. `Other` lists vendor values outside')
     $lines.Add('the usual set (`none ✅`); `Trace` is ✅ when the provider surfaced a reasoning trace, `wire only` when the vendor sent one the provider dropped.')
+    $lines.Add('`Table` checks the model capability table against the vendor''s own answer to the same value (M18):')
+    $lines.Add('✅ every checked step agrees, otherwise the steps where the table is missing a restriction (the vendor')
+    $lines.Add('refused what Orkeon sent) or too narrow (Orkeon lowered or left out a value the vendor takes).')
     $lines.Add('')
     Add-ReasoningTable $lines 'en'
     $lines.Add('')
@@ -485,6 +495,9 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
         $page.Add("``→low`` Orkeon l'a abaissée à la valeur la plus proche que le modèle accepte, ➖ rien n'a été envoyé,")
         $page.Add("❌ le fournisseur a refusé ce qu'Orkeon a envoyé, vide l'étape n'a pas été exécutée. ``Autres`` liste les")
         $page.Add("valeurs propres au fournisseur ; ``Trace`` est ✅ lorsque le provider Orkeon a restitué une trace de raisonnement, ``wire only`` lorsque le fournisseur l'a envoyée et que le provider l'a perdue.")
+        $page.Add("``Table`` confronte la table des capacités des modèles à la réponse du fournisseur à la même valeur (M18) :")
+        $page.Add("✅ toutes les étapes vérifiées concordent, sinon les étapes où la table manque une restriction (le fournisseur")
+        $page.Add("a refusé ce qu'Orkeon a envoyé) ou est trop étroite (Orkeon a abaissé ou omis une valeur que le fournisseur accepte).")
     }
     else {
         $page.Add('## Reasoning per model')
@@ -494,6 +507,9 @@ function Write-DocsPage([string]$Lang, [string]$Target) {
         $page.Add('`→low` Orkeon lowered it to the nearest value the model takes, ➖ nothing was sent, ❌ the vendor')
         $page.Add('refused what Orkeon sent, empty the step was not run. `Other` lists vendor-specific values;')
         $page.Add('`Trace` is ✅ when the provider surfaced a reasoning trace, `wire only` when the vendor sent one the provider dropped.')
+        $page.Add('`Table` checks the model capability table against the vendor''s own answer to the same value (M18):')
+        $page.Add('✅ every checked step agrees, otherwise the steps where the table is missing a restriction (the vendor')
+        $page.Add('refused what Orkeon sent) or too narrow (Orkeon lowered or left out a value the vendor takes).')
     }
     $page.Add('')
     Add-ReasoningTable $page $Lang

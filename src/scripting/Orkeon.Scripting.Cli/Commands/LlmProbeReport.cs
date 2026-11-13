@@ -122,8 +122,8 @@ internal static class LlmProbeReport
             sb.AppendLine();
             sb.AppendLine("## Reasoning");
             sb.AppendLine();
-            sb.AppendLine("| Mode | Step | Outcome | Sent | Trace | Reasoning tokens | Finish | Note |");
-            sb.AppendLine("|---|---|---|---|---|---|---|---|");
+            sb.AppendLine("| Mode | Step | Outcome | Sent | Trace | Reasoning tokens | Finish | Table | Note |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|");
             foreach (var result in results.Where(r => r.Reasoning is { Count: > 0 }))
             {
                 foreach (var step in result.Reasoning!)
@@ -136,6 +136,7 @@ internal static class LlmProbeReport
                       .Append(" | ").Append(TraceCell(step))
                       .Append(" | ").Append((step.ReasoningTokens ?? step.Vendor?.ReasoningTokens)?.ToString(CultureInfo.InvariantCulture) ?? "-")
                       .Append(" | ").Append(Cell(step.FinishReason ?? step.Vendor?.FinishReason ?? "-"))
+                      .Append(" | ").Append(TableCell(step))
                       .Append(" | ").Append(Cell(note)).AppendLine(" |");
                 }
             }
@@ -145,6 +146,15 @@ internal static class LlmProbeReport
     }
 
     private static string Cell(string value) => value.Replace('|', '/').Replace('\n', ' ');
+
+    // M18 steps carry no check: they are the vendor's side of the comparison.
+    private static string TableCell(LlmReasoningStep step) => step.Check switch
+    {
+        null => "-",
+        LlmTableCheck.Agrees => "✅",
+        LlmTableCheck.Unchecked => "➖",
+        _ => Cell($"❌ {ReasoningTableCheck.CheckName(step.Check)}: {step.CheckNote}"),
+    };
 
     private static string ReasoningOutcomeCell(LlmReasoningOutcome outcome) => outcome switch
     {
@@ -212,6 +222,8 @@ internal static class LlmProbeReport
                     vendorFinishReason = step.Vendor?.FinishReason,
                     warnings = step.Warnings,
                     error = step.Error,
+                    tableCheck = step.Check is null ? null : ReasoningTableCheck.CheckName(step.Check),
+                    tableNote = step.CheckNote,
                 }),
             }),
         };
