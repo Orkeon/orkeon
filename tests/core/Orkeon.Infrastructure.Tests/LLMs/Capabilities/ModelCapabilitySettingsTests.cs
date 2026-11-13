@@ -1,3 +1,4 @@
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Infrastructure.DependencyInjection;
@@ -65,6 +66,33 @@ public sealed class ModelCapabilitySettingsTests
             ("Llm:ModelCapabilities:a:AudioInput", "maybe"))));
 
         Assert.Contains("Llm:ModelCapabilities:a:AudioInput", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("EffortOnly", ThinkingSupport.EffortOnly)]
+    [InlineData("none", ThinkingSupport.None)]
+    [InlineData("Toggle", ThinkingSupport.Toggle)]
+    public void The_thinking_key_names_a_support(string value, ThinkingSupport expected)
+    {
+        var registry = Resolved(Settings(("Llm:ModelCapabilities:acme-thinker:Thinking", value)));
+
+        Assert.Equal(expected, registry.TryGet("acme-thinker-2")!.Thinking);
+    }
+
+    [Theory]
+    [InlineData("always")]
+    [InlineData("2")]
+    [InlineData("EffortOnly,Toggle")]
+    [InlineData("None, Budget")]
+    public void A_thinking_value_that_names_no_support_refuses_the_host_naming_the_key(string value)
+    {
+        var services = new ServiceCollection();
+
+        var ex = Assert.Throws<InvalidOperationException>(() => services.AddOrkeonLlmProfiles(Settings(
+            ("Llm:ModelCapabilities:a:Thinking", value))));
+
+        Assert.Contains("Llm:ModelCapabilities:a:Thinking", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("EffortOnly", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

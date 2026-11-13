@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 
 namespace Orkeon.Infrastructure.LLMs.Capabilities;
 
@@ -23,6 +24,14 @@ public sealed record ModelCapabilities
     /// does not restrict them (the provider's own declared levels then rule).
     /// </summary>
     public IReadOnlyList<string>? ReasoningEfforts { get; init; }
+
+    /// <summary>
+    /// How far the model's reasoning pass can be steered, or null when the table does not restrict it (the
+    /// provider's declared <see cref="LlmProviderCapabilities.Thinking"/> then rules). The effective value is
+    /// the lower of the two: a model that always reasons is <see cref="ThinkingSupport.EffortOnly"/> behind a
+    /// provider that offers a toggle, and a model with no reasoning pass is <see cref="ThinkingSupport.None"/>.
+    /// </summary>
+    public ThinkingSupport? Thinking { get; init; }
 }
 
 /// <summary>
@@ -43,6 +52,9 @@ public sealed record ModelCapabilityOverride
 
     /// <summary>The efforts the model takes (empty: none), or null to keep the built-in value.</summary>
     public IReadOnlyList<string>? ReasoningEfforts { get; init; }
+
+    /// <summary>How far the model's reasoning can be steered, or null to keep the built-in value.</summary>
+    public ThinkingSupport? Thinking { get; init; }
 }
 
 /// <summary>Answers what a model id can do: the table the providers and the profile registry read (FWK-21).</summary>
@@ -50,9 +62,20 @@ public sealed record ModelCapabilityOverride
 public interface IModelCapabilityRegistry
 {
     /// <summary>
-    /// The capabilities of the entry whose id is the longest prefix of <paramref name="model"/>, case-insensitive;
-    /// null when the table knows no such model.
+    /// The capabilities of the entry whose id is the longest prefix of <paramref name="model"/> ending at a
+    /// boundary (the end of the id, <c>-</c>, <c>.</c>, <c>:</c>, <c>@</c> or <c>/</c>), case-insensitive; an
+    /// aggregator's <c>vendor/model</c> id is looked up whole, then by the part after its last <c>/</c>. Null when
+    /// the table knows no such model.
     /// </summary>
     /// <param name="model">The model id as the provider sends it.</param>
     ModelCapabilities? TryGet(string? model);
+
+    /// <summary>
+    /// The capabilities of <paramref name="model"/> as <paramref name="provider"/> serves it: an entry keyed
+    /// <c>&lt;provider&gt;/&lt;model&gt;</c> first (a gateway that maps a model's values its own way, such as
+    /// <c>mammouth/gemini-3.7</c>), then <see cref="TryGet(string?)"/>.
+    /// </summary>
+    /// <param name="model">The model id as the provider sends it.</param>
+    /// <param name="provider">The provider's name (<c>ILlmProvider.Name</c>), or null for any provider.</param>
+    ModelCapabilities? TryGet(string? model, string? provider) => TryGet(model);
 }

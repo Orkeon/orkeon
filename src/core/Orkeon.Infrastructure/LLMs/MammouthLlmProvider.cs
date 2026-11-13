@@ -53,15 +53,18 @@ public class MammouthLlmProvider : OpenAICompatibleProviderBase
 
     /// <summary>
     /// Declared from the vendor documentation on 2026-09-18 (D-04): <c>response_format</c>
-    /// and thinking controls are undocumented, so they stay None until measured — the
-    /// warning is the promise. Vision is declared because the vendor's OpenClaw page lists
+    /// is undocumented, so it stays None until measured — the warning is the promise. The
+    /// effort hint was measured on 2026-11-13 (#356). Vision is declared because the vendor's OpenClaw page lists
     /// <c>text, image</c> input for several models; per provider here, per model in reality
     /// (D-03 of the test matrix).
     /// </summary>
     protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.None,
-        Thinking = ThinkingSupport.None,
+        // The gateway takes `reasoning_effort` up to `max` and maps it (campaign M18, 2026-11-13); no switch was
+        // measured, so none is declared.
+        Thinking = ThinkingSupport.EffortOnly,
+        EffortLevels = LlmThinkingConfig.Levels,
         Vision = true,
     };
 

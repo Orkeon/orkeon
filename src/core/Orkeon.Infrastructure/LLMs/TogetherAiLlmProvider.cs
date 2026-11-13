@@ -6,6 +6,7 @@ using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 
 namespace Orkeon.Infrastructure.LLMs;
 
@@ -29,13 +30,28 @@ public partial class TogetherAiLlmProvider : OpenAICompatibleProviderBase
 
     /// <summary>
     /// Together AI is fully OpenAI-compatible: JSON mode with a schema, and vision on its VLM
-    /// models. It exposes no cross-model reasoning switch.
+    /// models. Its reasoning models take <c>reasoning_effort</c> (every level) and the
+    /// <c>reasoning: {enabled}</c> switch, which stops the trace on <c>Qwen/Qwen3.5-9B</c>
+    /// (campaign M18, 2026-11-13); the table narrows per model (GLM-5.3 always reasons).
     /// </summary>
     protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
+        Thinking = ThinkingSupport.Toggle,
+        EffortLevels = LlmThinkingConfig.Levels,
         Vision = true,
     };
+
+    /// <summary>Together's switch is the <c>reasoning: {enabled}</c> object; the effort is the first-level <c>reasoning_effort</c>.</summary>
+    private protected override void WriteReasoningFields(Dictionary<string, object> payload, ReasoningVerdict verdict)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        ArgumentNullException.ThrowIfNull(verdict);
+        if (verdict.Toggle is { } enabled)
+            payload["reasoning"] = new Dictionary<string, object?> { ["enabled"] = enabled };
+        if (verdict.Effort is { } effort)
+            payload["reasoning_effort"] = effort;
+    }
 
     /// <summary>
     /// Together documents no per-model output cap: the context window is the bound, and by

@@ -45,6 +45,8 @@ public class GrokLlmProvider : OpenAICompatibleProviderBase
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.EffortOnly,
+        // Grok 4.6 and 4.7 take `xhigh` (campaign M18, 2026-11-13); the table narrows per model.
+        EffortLevels = ["low", "medium", "high", "xhigh"],
         Vision = true,
     };
 

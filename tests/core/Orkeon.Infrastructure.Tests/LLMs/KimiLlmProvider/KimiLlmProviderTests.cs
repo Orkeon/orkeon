@@ -444,10 +444,11 @@ public sealed class KimiFixedSamplingTests
         var body = await SentBodyAsync(handler);
         Assert.False(body.TryGetProperty("temperature", out _));
         Assert.False(body.TryGetProperty("top_p", out _));
-        Assert.False(body.TryGetProperty("thinking", out _));
         Assert.True(logger.HasLoggedWarning("Option 'temperature'"));
         Assert.True(logger.HasLoggedWarning("Option 'top_p'"));
-        Assert.True(logger.HasLoggedWarning("Option 'thinking.enabled'"));
+        // The K3 family takes the off switch, and it stops the trace (campaign M18, #356): it is sent.
+        Assert.Equal("disabled", body.GetProperty("thinking").GetProperty("type").GetString());
+        Assert.False(logger.HasLoggedWarning("Option 'thinking.enabled'"));
     }
 
     [Fact]
@@ -465,7 +466,7 @@ public sealed class KimiFixedSamplingTests
         var body = await SentBodyAsync(handler);
         Assert.False(body.TryGetProperty("temperature", out _));
         Assert.False(body.TryGetProperty("top_p", out _));
-        Assert.False(body.TryGetProperty("thinking", out _));
+        Assert.Equal("disabled", body.GetProperty("thinking").GetProperty("type").GetString());
         Assert.True(logger.HasLoggedWarning("Option 'temperature'"));
     }
 
@@ -487,7 +488,7 @@ public sealed class KimiFixedSamplingTests
     [Fact]
     public async Task ShouldKeepTheSteeredFields_WhenModelIsOutsideTheK3Family()
     {
-        var (provider, handler, logger) = Build(Steered("kimi-k2.7-code"), Success());
+        var (provider, handler, logger) = Build(Steered("kimi-k2.6"), Success());
         using var owned = provider;
 
         await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
@@ -497,6 +498,22 @@ public sealed class KimiFixedSamplingTests
         Assert.Equal(0.9, body.GetProperty("top_p").GetDouble());
         Assert.Equal("disabled", body.GetProperty("thinking").GetProperty("type").GetString());
         Assert.False(logger.HasLoggedWarning("was declared"));
+    }
+
+    [Fact]
+    public async Task ShouldOmitTheOffSwitchAndWarn_WhenTheModelAlwaysReasons()
+    {
+        // kimi-k2.7-code answers "only type=enabled is allowed" to the off switch (campaign M18, #356).
+        var (provider, handler, logger) = Build(Steered("kimi-k2.7-code"), Success());
+        using var owned = provider;
+
+        await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        var body = await SentBodyAsync(handler);
+        Assert.False(body.TryGetProperty("thinking", out _));
+        Assert.Equal(0.2, body.GetProperty("temperature").GetDouble());
+        Assert.True(logger.HasLoggedWarning("Option 'thinking.enabled'"));
+        Assert.True(logger.HasLoggedWarning("always reasons"));
     }
 
     [Theory]

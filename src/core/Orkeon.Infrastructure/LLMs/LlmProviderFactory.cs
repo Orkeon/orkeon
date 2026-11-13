@@ -228,8 +228,8 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     {
         var logger = _loggerFactory.CreateLogger<TProvider>();
         var built = build(logger);
-        if (built is OpenAICompatibleProviderBase compatible)
-            compatible.ModelCapabilities = _capabilities;
+        if (built is HttpLlmProviderBase http)
+            http.ModelCapabilities = _capabilities;
         var provider = new CallModeLlmProvider(Cassette(built, config), config.CallMode, logger, _callObserver, _tokenCounter);
         // A replayed call is answered from the cassette and sends nothing: it is metered as recorded
         // (the usage the vendor reported) but takes no lease of the host's limiter (FWK review LLM-7).

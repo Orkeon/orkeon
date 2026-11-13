@@ -1,3 +1,7 @@
 #nullable enable
-override Orkeon.Infrastructure.LLMs.ZaiLlmProvider.EffortLevelsFor(string! model) -> System.Collections.Generic.IReadOnlyList<string!>!
-virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.EffortLevelsFor(string! model) -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.Thinking.get -> Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.Thinking.init -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Thinking.get -> Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Thinking.init -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry.TryGet(string? model, string? provider) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry.TryGet(string? model, string? provider) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?

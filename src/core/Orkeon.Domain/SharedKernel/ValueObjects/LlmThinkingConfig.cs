@@ -26,7 +26,10 @@ public sealed record LlmThinkingConfig
     /// <summary>The effort levels a caller may ask for, lowest first.</summary>
     public static readonly IReadOnlyList<string> Levels = s_levels;
 
-    /// <summary>The three levels most effort fields know (OpenAI's <c>reasoning_effort</c>, Ollama's <c>think</c>).</summary>
+    /// <summary>
+    /// The three levels a provider declares by default (<see cref="LlmProviderCapabilities.EffortLevels"/>):
+    /// Ollama's <c>think</c>, and Gemini, Azure OpenAI and Mistral's <c>reasoning_effort</c> keep them.
+    /// </summary>
     public static readonly IReadOnlyList<string> ThreeLevels = ["low", "medium", "high"];
 
     /// <summary>

@@ -6,6 +6,7 @@ using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 
 namespace Orkeon.Infrastructure.LLMs;
 
@@ -47,18 +48,35 @@ public partial class MiniMaxLlmProvider : OpenAICompatibleProviderBase
     /// answers an image with "I'm unable to view the image". <c>response_format</c> stays
     /// None BY MEASUREMENT: the field is accepted but non-binding (schema ignored,
     /// json_object fenced in markdown), which is precisely the silent drop the warning
-    /// exists to surface. Thinking stays None: the trace is always on, inline, with no
-    /// knob — <see cref="SplitReasoningFromContent"/> extracts it and
-    /// <see cref="EnrichAssistantMessage"/> puts it back in history as the vendor
-    /// documents.
+    /// exists to surface. The trace is on by default, inline — <see cref="SplitReasoningFromContent"/>
+    /// extracts it and <see cref="EnrichAssistantMessage"/> puts it back in history as the vendor
+    /// documents. <c>reasoning_effort</c> (every level) and <c>thinking.type: disabled</c> are
+    /// accepted, and the switch stops the trace on <c>MiniMax-M3</c> (campaign M18, 2026-11-13);
+    /// <c>MiniMax-M3.1-Flash</c> always reasons (a table entry).
     /// </summary>
     protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.None,
-        Thinking = ThinkingSupport.None,
+        Thinking = ThinkingSupport.Toggle,
+        EffortLevels = LlmThinkingConfig.Levels,
         Vision = true,
         ReplaysReasoningContent = true,
     };
+
+    /// <summary>
+    /// Only the off switch is written: thinking is on by default, and <c>MiniMax-M3</c> refuses an
+    /// explicit <c>thinking.type: enabled</c> with a 400 (campaign M18, 2026-11-13), so asking for it
+    /// on sends nothing and is honoured all the same.
+    /// </summary>
+    private protected override void WriteReasoningFields(Dictionary<string, object> payload, ReasoningVerdict verdict)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        ArgumentNullException.ThrowIfNull(verdict);
+        if (verdict.Toggle is false)
+            payload["thinking"] = new Dictionary<string, object?> { ["type"] = "disabled" };
+        if (verdict.Effort is { } effort)
+            payload["reasoning_effort"] = effort;
+    }
 
     /// <summary>
     /// MiniMax ships its reasoning INLINE: every reply opens with a

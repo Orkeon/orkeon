@@ -29,7 +29,8 @@ internal class LlmSectionShape : LlmProfileShape
 
     /// <summary>
     /// What a model accepts, by model id (a prefix), overriding the built-in table (FWK-21): audio input,
-    /// image input, the reasoning efforts it takes.
+    /// image input, the reasoning efforts it takes. A key <c>&lt;provider&gt;/&lt;model&gt;</c> (<c>mammouth/gemini-3.7</c>)
+    /// applies to that provider only and wins over the model's own key.
     /// </summary>
     public Dictionary<string, LlmModelCapabilityShape>? ModelCapabilities { get; set; }
 
@@ -67,6 +68,13 @@ internal sealed class LlmModelCapabilityShape
     /// Left out, the built-in list of the model (no restriction for a model the table does not know) and the provider's own levels rule.
     /// </summary>
     public List<string>? ReasoningEfforts { get; set; }
+
+    /// <summary>
+    /// The model's thinking support: <c>None</c>, <c>EffortOnly</c> (always reasons, cannot be switched off), <c>Toggle</c>
+    /// or <c>Budget</c>. The effective value is the lower of this and the provider's. Left out, the built-in value of the
+    /// model (the provider's own for a model the table does not know).
+    /// </summary>
+    public string? Thinking { get; set; }
 }
 
 /// <summary>A named profile: the keys of the <c>Llm</c> shape, and the two a default profile has no use for.</summary>
