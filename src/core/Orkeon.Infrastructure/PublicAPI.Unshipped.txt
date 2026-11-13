@@ -3,6 +3,5 @@
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.Thinking.init -> void
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Thinking.get -> Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport?
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Thinking.init -> void
-*REMOVED*override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
-*REMOVED*override Orkeon.Infrastructure.LLMs.QwenLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
-*REMOVED*override Orkeon.Infrastructure.LLMs.ZaiLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry.TryGet(string? model, string? provider) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry.TryGet(string? model, string? provider) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?

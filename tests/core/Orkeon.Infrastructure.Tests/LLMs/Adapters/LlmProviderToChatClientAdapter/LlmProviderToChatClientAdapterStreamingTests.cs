@@ -94,6 +94,26 @@ public class LlmProviderToChatClientAdapterStreamingTests
         return provider;
     }
 
+    [Theory]
+    [InlineData(" MODEL_CONTEXT_WINDOW_EXCEEDED ", "length")]
+    [InlineData("RECITATION", "content_filter")]
+    [InlineData("stop", "stop")]
+    public async Task A_streamed_turn_folds_to_the_mapped_finish_reason(string vendor, string expected)
+    {
+        var answer = new LlmResponse
+        {
+            Content = "Hello world",
+            Metadata = new Dictionary<string, object> { [LlmResponseMetadataKeys.FinishReason] = vendor },
+        };
+        using var adapter = new LlmProviderToChatClientAdapter(Provider(answer, "Hello", " world"));
+
+        var (buffered, streamed) = await BothAsync(adapter);
+
+        Assert.Equal(new ChatFinishReason(expected), streamed.FinishReason);
+        Assert.Equal(buffered.FinishReason, streamed.FinishReason);
+        Assert.Equal("Hello world", streamed.Text);
+    }
+
     private static async Task<(ChatResponse Buffered, ChatResponse Streamed)> BothAsync(LlmProviderToChatClientAdapter adapter)
     {
         var buffered = await adapter.GetResponseAsync(OneUserMessage, cancellationToken: TestContext.Current.CancellationToken);

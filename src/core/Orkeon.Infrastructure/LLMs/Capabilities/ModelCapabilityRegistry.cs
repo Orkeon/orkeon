@@ -57,6 +57,18 @@ public sealed class ModelCapabilityRegistry : IModelCapabilityRegistry
     /// <inheritdoc />
     public ModelCapabilities? TryGet(string? model) => Lookup(_entries, model);
 
+    /// <inheritdoc />
+    public ModelCapabilities? TryGet(string? model, string? provider)
+    {
+        if (!string.IsNullOrWhiteSpace(provider) && !string.IsNullOrWhiteSpace(model)
+            && Longest(_entries, $"{provider.Trim()}/{model}") is { } served)
+        {
+            return served;
+        }
+
+        return Lookup(_entries, model);
+    }
+
     /// <summary>
     /// The entry for <paramref name="model"/>: the id whole first, then, for an aggregator's
     /// <c>vendor/model</c> id (OpenRouter, Together, Hugging Face), the part after its last <c>/</c>.
@@ -111,16 +123,16 @@ public sealed class ModelCapabilityRegistry : IModelCapabilityRegistry
     /// </summary>
     private static Dictionary<string, ModelCapabilities> BuiltIn() => new(StringComparer.OrdinalIgnoreCase)
     {
-        // OpenAI chat models: no reasoning pass, so no effort.
-        ["gpt-3.5"] = new() { ReasoningEfforts = s_none },
-        ["gpt-4"] = new() { ReasoningEfforts = s_none },
-        ["gpt-4-turbo"] = new() { Vision = true, ReasoningEfforts = s_none },
-        ["gpt-4o"] = new() { Vision = true, ReasoningEfforts = s_none },
-        ["gpt-4.1"] = new() { Vision = true, ReasoningEfforts = s_none },
+        // OpenAI chat models: no reasoning pass, so no thinking and no effort.
+        ["gpt-3.5"] = new() { Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
+        ["gpt-4"] = new() { Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
+        ["gpt-4-turbo"] = new() { Vision = true, Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
+        ["gpt-4o"] = new() { Vision = true, Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
+        ["gpt-4.1"] = new() { Vision = true, Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
         // OpenAI audio models take audio parts and answer in audio.
-        ["gpt-4o-audio"] = new() { AudioInput = true, AudioOutput = true, ReasoningEfforts = s_none },
-        ["gpt-4o-mini-audio"] = new() { AudioInput = true, AudioOutput = true, ReasoningEfforts = s_none },
-        ["gpt-audio"] = new() { AudioInput = true, AudioOutput = true, ReasoningEfforts = s_none },
+        ["gpt-4o-audio"] = new() { AudioInput = true, AudioOutput = true, Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
+        ["gpt-4o-mini-audio"] = new() { AudioInput = true, AudioOutput = true, Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
+        ["gpt-audio"] = new() { AudioInput = true, AudioOutput = true, Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
         // OpenAI reasoning models.
         ["o1"] = new() { Vision = true, ReasoningEfforts = s_lowToHigh },
         ["o1-mini"] = new() { ReasoningEfforts = s_none },
@@ -129,7 +141,7 @@ public sealed class ModelCapabilityRegistry : IModelCapabilityRegistry
         ["o3-mini"] = new() { ReasoningEfforts = s_lowToHigh },
         ["o4-mini"] = new() { Vision = true, ReasoningEfforts = s_lowToHigh },
         ["gpt-5"] = new() { Vision = true, ReasoningEfforts = s_minimalToHigh },
-        ["gpt-5-chat"] = new() { Vision = true, ReasoningEfforts = s_none },
+        ["gpt-5-chat"] = new() { Vision = true, Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
         ["gpt-5-pro"] = new() { Vision = true, ReasoningEfforts = s_highOnly },
         // The 5.6 and 6.x tiers take `none` (function tools on chat/completions need it) up to `xhigh`, and refuse
         // `minimal` and `max`; `gpt-6-astra` and `gpt-6.1-sol` refuse `none` too (campaign M18, 2026-11-13).
@@ -140,8 +152,8 @@ public sealed class ModelCapabilityRegistry : IModelCapabilityRegistry
         ["gpt-6.1-sol"] = new() { Vision = true, ReasoningEfforts = s_lowToXhigh },
         // Gemini, through its OpenAI-compatible layer: audio and images in; the 2.0 and 1.5 lines do not reason.
         ["gemini-"] = new() { AudioInput = true, Vision = true },
-        ["gemini-1.5"] = new() { AudioInput = true, Vision = true, ReasoningEfforts = s_none },
-        ["gemini-2.0"] = new() { AudioInput = true, Vision = true, ReasoningEfforts = s_none },
+        ["gemini-1.5"] = new() { AudioInput = true, Vision = true, Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
+        ["gemini-2.0"] = new() { AudioInput = true, Vision = true, Thinking = ThinkingSupport.None, ReasoningEfforts = s_none },
         ["gemini-2.5"] = new() { AudioInput = true, Vision = true, ReasoningEfforts = s_lowToHigh },
         // The 3.7, 3.8 and 4 lines take `none` to `high` and refuse `minimal`, `xhigh` and `max`; the 3.7 and 3.8
         // flash models refuse to stop reasoning ("Reasoning is mandatory", through OpenRouter) (M18, 2026-11-13).
@@ -172,5 +184,15 @@ public sealed class ModelCapabilityRegistry : IModelCapabilityRegistry
         ["glm-5.3"] = new() { Vision = true, Thinking = ThinkingSupport.EffortOnly, ReasoningEfforts = s_lowHighMax },
         // MiniMax M3.1 Flash refuses both the off switch and `none` (M18, 2026-11-13).
         ["MiniMax-M3.1-Flash"] = new() { Thinking = ThinkingSupport.EffortOnly, ReasoningEfforts = s_minimalToMax },
+
+        // A gateway that maps a model's values its own way: `<provider>/<model>`, read before the vendor's entry.
+        // Mammouth and OpenRouter take `minimal` to `max` on Gemini 3.7 and 3.8 and refuse `none`, where Google
+        // takes `none` to `high` (M18, 2026-11-13); OpenRouter also takes a budget there, but refuses the off switch.
+        ["mammouth/gemini-3.7"] = new() { AudioInput = true, Vision = true, Thinking = ThinkingSupport.EffortOnly, ReasoningEfforts = s_minimalToMax },
+        ["mammouth/gemini-3.8"] = new() { AudioInput = true, Vision = true, Thinking = ThinkingSupport.EffortOnly, ReasoningEfforts = s_minimalToMax },
+        ["openrouter/google/gemini-3.7"] = new() { AudioInput = true, Vision = true, Thinking = ThinkingSupport.EffortOnly, ReasoningEfforts = s_minimalToMax },
+        ["openrouter/google/gemini-3.8"] = new() { AudioInput = true, Vision = true, Thinking = ThinkingSupport.EffortOnly, ReasoningEfforts = s_minimalToMax },
+        // Together serves GLM-5.3 with every value and both switches, where Z.AI refuses most (M18, 2026-11-13).
+        ["together/zai-org/glm-5.3"] = new() { Vision = true },
     };
 }

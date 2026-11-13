@@ -21,6 +21,18 @@ the lower of the provider's and the model's.
 - On a model that always reasons (`EffortOnly`: GLM-5.3, `kimi-k2.7-code`, `MiniMax-M3.1-Flash`…),
   "on" sends no switch and "off" is dropped with a warning. Kimi K3 now receives the `thinking`
   switch it honours (it used to be stripped).
+- The models that do not reason are entered with `Thinking: None` (`gpt-3.5`, `gpt-4`, `gpt-4-turbo`,
+  `gpt-4o`, `gpt-4.1`, the OpenAI audio models, `gpt-5-chat`, `gemini-1.5`, `gemini-2.0`): thinking
+  asked on them is dropped with a warning instead of being sent.
+- An entry can name the provider that serves the model, `<provider>/<model>`, looked up first (the
+  whole id) by `IModelCapabilityRegistry.TryGet(model, provider)`, then the model's own entry: built in
+  for `mammouth/gemini-3.7` and `-3.8`, `openrouter/google/gemini-3.7` and `-3.8` (always reasoning,
+  `minimal` to `max`, where Google's own API takes `none` to `high`) and `together/zai-org/glm-5.3`
+  (unrestricted, where Z.AI's own API refuses the off switch and most efforts); configured as
+  `Llm:ModelCapabilities:<provider>/<model>:...`. A `Thinking` value holding a comma is refused.
+- A token budget is judged against the provider's declared support alone, so OpenRouter keeps
+  sending one to Gemini 3.7, which always reasons; efforts compare case-insensitively. On Ollama,
+  "off" with an effort sends `think: false` and warns that the effort is not sent.
 - Anthropic: "on" sends `thinking: {type: adaptive, display: summarized}`; "off" sends the model's
   own value (`between_tools` on Sonnet 5.5 up to effort `high`, `disabled` up to `xhigh` on Sonnet 5
   and up to `high` elsewhere) and is left out with a warning above that effort. A buffered answer now
@@ -32,12 +44,30 @@ the lower of the provider's and the model's.
 - The reasoning tokens (`completion_tokens_details.reasoning_tokens`) are read for every
   OpenAI-compatible dialect, buffered and streamed, and the stream reads the trace from
   `reasoning_content` or `reasoning`, the declared field first. The chat-client adapter maps the
-  provider's finish reason onto `ChatResponse.FinishReason`.
+  provider's finish reason onto `ChatResponse.FinishReason`: Gemini's `MODEL_CONTEXT_WINDOW_EXCEEDED`
+  reads as `Length`, its `RECITATION` and `PROHIBITED_CONTENT` as `ContentFilter`.
 - Fallback chains are warned about when the fallback's *model* has a lower effective thinking support
-  or fewer efforts than the primary's, not only its provider.
+  or fewer efforts than the primary's, not only its provider; a vendor value (`none`, `minimal`) is
+  not reported missing on a fallback model the table does not list.
 - `OpenAICompatibleProviderBase.EffortLevelsFor` is gone: a dialect writes its thinking fields in the
-  internal `WriteReasoningFields`, so `OpenRouterLlmProvider`, `QwenLlmProvider` and `ZaiLlmProvider`
-  no longer override `ApplyProviderSpecificOptions` (the base method still runs).
+  internal `WriteReasoningFields`. `OpenRouterLlmProvider`, `QwenLlmProvider` and `ZaiLlmProvider` keep
+  their `ApplyProviderSpecificOptions` override for the public surface; it now only runs the base
+  method.
+
+Migration:
+
+- An effort a listed model refuses is now sent lowered (`medium` reaches GLM-5.3 as `low`) where it
+  used to be omitted: read the warning, and ask for a level the model takes to send exactly that.
+- Thinking asked on a model that does not reason (`gpt-4o`, `gemini-2.0`…) and "off" asked on a
+  model that always reasons are now dropped with a warning: remove the option, or pick a model
+  that honours it.
+- A built-in entry that does not fit your endpoint (a model a vendor changed, a gateway serving it
+  differently) is replaced field by field with `Llm:ModelCapabilities:<model>:Thinking` and
+  `:ReasoningEfforts`, or for one provider alone with `Llm:ModelCapabilities:<provider>/<model>:...`
+  (`openrouter/google/gemini-3.7`); a model the table does not know is added the same way, which
+  also silences its "nothing was checked" warning.
+- A host that implements `IModelCapabilityRegistry` itself gets `TryGet(model, provider)` as a
+  default method reading `TryGet(model)`; implement it to serve provider-scoped entries.
 
 ### Fixed
 

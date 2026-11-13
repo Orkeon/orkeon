@@ -177,6 +177,16 @@ public class OpenRouterLlmProvider : OpenAICompatibleProviderBase
             && value.ValueKind == kind;
     }
 
+    /// <summary>
+    /// Kept for the 1.x public surface: the thinking fields are written by <see cref="WriteReasoningFields"/>
+    /// from the judged verdict, so this override only runs the base options.
+    /// </summary>
+    protected override void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        base.ApplyProviderSpecificOptions(payload, effectiveConfig);
+    }
+
     /// <summary>Initializes a new instance of <see cref="OpenRouterLlmProvider"/>.</summary>
     public OpenRouterLlmProvider(
         LlmConfig config,

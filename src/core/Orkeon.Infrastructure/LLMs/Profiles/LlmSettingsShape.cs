@@ -29,7 +29,8 @@ internal class LlmSectionShape : LlmProfileShape
 
     /// <summary>
     /// What a model accepts, by model id (a prefix), overriding the built-in table (FWK-21): audio input,
-    /// image input, the reasoning efforts it takes.
+    /// image input, the reasoning efforts it takes. A key <c>&lt;provider&gt;/&lt;model&gt;</c> (<c>mammouth/gemini-3.7</c>)
+    /// applies to that provider only and wins over the model's own key.
     /// </summary>
     public Dictionary<string, LlmModelCapabilityShape>? ModelCapabilities { get; set; }
 

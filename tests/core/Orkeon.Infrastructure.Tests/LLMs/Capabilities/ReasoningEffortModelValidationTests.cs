@@ -53,12 +53,14 @@ public class ReasoningEffortModelValidationTests
     [Fact]
     public async Task An_effort_the_model_excludes_is_omitted_and_warned_about()
     {
-        var sent = await SendAsync(Config("gpt-4o", "high"), registry: null);
+        // o1-mini reasons but takes no effort field: the effort alone is refused.
+        var sent = await SendAsync(Config("o1-mini", "high"), registry: null);
 
         Assert.False(sent.Body.TryGetProperty("reasoning_effort", out _));
         var warning = Assert.Single(sent.Warnings);
-        Assert.Contains("gpt-4o", warning, StringComparison.Ordinal);
+        Assert.Contains("o1-mini", warning, StringComparison.Ordinal);
         Assert.Contains("thinking.effort", warning, StringComparison.Ordinal);
+        Assert.Contains("takes no reasoning effort", warning, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -96,7 +98,56 @@ public class ReasoningEffortModelValidationTests
         var sent = await SendAsync(Config("gpt-4o", "high"), registry: null);
 
         Assert.False(sent.Body.TryGetProperty("reasoning_effort", out _));
-        Assert.Contains("takes no reasoning effort", Assert.Single(sent.Warnings), StringComparison.Ordinal);
+        var warning = Assert.Single(sent.Warnings);
+        Assert.Contains("Option 'thinking'", warning, StringComparison.Ordinal);
+        Assert.Contains("the model 'gpt-4o' has no reasoning pass", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Thinking_switched_on_for_a_model_with_no_reasoning_pass_is_omitted_and_warned_about()
+    {
+        var config = Config("gpt-4o") with { Thinking = new LlmThinkingConfig { Enabled = true } };
+
+        var sent = await SendAsync(config, registry: null);
+
+        Assert.False(sent.Body.TryGetProperty("thinking", out _));
+        Assert.False(sent.Body.TryGetProperty("reasoning_effort", out _));
+        var warning = Assert.Single(sent.Warnings);
+        Assert.Contains("Option 'thinking'", warning, StringComparison.Ordinal);
+        Assert.Contains("the model 'gpt-4o' has no reasoning pass", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_vendor_value_the_model_refuses_is_omitted_and_names_what_it_takes()
+    {
+        // `none` is no level, so it is never lowered: gpt-6-astra takes low to xhigh only (campaign M18).
+        var sent = await SendAsync(Config("gpt-6-astra", "none"), registry: null);
+
+        Assert.False(sent.Body.TryGetProperty("reasoning_effort", out _));
+        var warning = Assert.Single(sent.Warnings);
+        Assert.Contains("thinking.effort", warning, StringComparison.Ordinal);
+        Assert.Contains("takes the efforts low, medium, high, xhigh only", warning, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("high")]
+    [InlineData("HIGH")]
+    [InlineData("High")]
+    public async Task An_effort_the_model_takes_is_accepted_whatever_its_case(string effort)
+    {
+        var sent = await SendAsync(Config("o3-mini", effort), registry: null);
+
+        Assert.Equal("high", sent.Body.GetProperty("reasoning_effort").GetString());
+        Assert.Empty(sent.Warnings);
+    }
+
+    [Fact]
+    public async Task A_level_asked_in_capitals_is_lowered_like_its_lowercase_spelling()
+    {
+        var sent = await SendAsync(Config("gpt-6-astra", "MAX"), registry: null);
+
+        Assert.Equal("xhigh", sent.Body.GetProperty("reasoning_effort").GetString());
+        Assert.Single(sent.Warnings);
     }
 
     [Fact]

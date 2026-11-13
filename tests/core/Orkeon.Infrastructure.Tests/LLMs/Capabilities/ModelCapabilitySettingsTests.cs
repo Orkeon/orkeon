@@ -82,6 +82,8 @@ public sealed class ModelCapabilitySettingsTests
     [Theory]
     [InlineData("always")]
     [InlineData("2")]
+    [InlineData("EffortOnly,Toggle")]
+    [InlineData("None, Budget")]
     public void A_thinking_value_that_names_no_support_refuses_the_host_naming_the_key(string value)
     {
         var services = new ServiceCollection();

@@ -31,13 +31,103 @@ public class ModelCapabilityRegistryTests
 
     [Theory]
     [InlineData("glm-5.30")]
-    [InlineData("gpt-60")]
+    [InlineData("gemini-3.70")]
     [InlineData("kimi-k2.7-coder")]
     public void A_prefix_matches_at_a_boundary_only(string model)
     {
+        // Each id extends an EffortOnly entry (glm-5.3, gemini-3.7, kimi-k2.7-code) past a non-separator.
         var entry = ModelCapabilityRegistry.Default.TryGet(model);
 
         Assert.NotEqual(ThinkingSupport.EffortOnly, entry?.Thinking);
+    }
+
+    [Theory]
+    [InlineData("glm-5.3", true)]
+    [InlineData("glm-5.3-flash", true)]
+    [InlineData("glm-5.3.1", true)]
+    [InlineData("glm-5.3:cloud", true)]
+    [InlineData("glm-5.3@2026-11-01", true)]
+    [InlineData("glm-5.3/fp8", true)]
+    [InlineData("GLM-5.3-Flash", true)]
+    [InlineData("glm-5.30", false)]
+    [InlineData("glm-5.3x", false)]
+    [InlineData("glm-5", false)]
+    public void Each_separator_ends_a_prefix_and_any_other_character_does_not(string model, bool expected)
+    {
+        Assert.Equal(expected, ModelCapabilityRegistry.MatchesAtBoundary(model, "glm-5.3"));
+    }
+
+    [Fact]
+    public void A_key_that_ends_with_a_separator_covers_any_continuation()
+    {
+        Assert.True(ModelCapabilityRegistry.MatchesAtBoundary("gemini-x", "gemini-"));
+        Assert.False(ModelCapabilityRegistry.MatchesAtBoundary("geminix", "gemini-"));
+    }
+
+    [Theory]
+    [InlineData("gemini-3.7", "mammouth")]
+    [InlineData("gemini-3.7-pro", "mammouth")]
+    [InlineData("gemini-3.8-flash", "Mammouth")]
+    [InlineData("gemini-3.7", " mammouth ")]
+    [InlineData("google/gemini-3.7-pro", "openrouter")]
+    public void A_gateway_entry_wins_over_the_vendors_for_its_provider(string model, string provider)
+    {
+        var entry = ModelCapabilityRegistry.Default.TryGet(model, provider)!;
+
+        Assert.Equal(["minimal", "low", "medium", "high", "xhigh", "max"], entry.ReasoningEfforts);
+        Assert.Equal(ThinkingSupport.EffortOnly, entry.Thinking);
+    }
+
+    [Theory]
+    [InlineData("gemini-3.7", null)]
+    [InlineData("gemini-3.7", "")]
+    [InlineData("gemini-3.7", " ")]
+    [InlineData("gemini-3.7", "gemini")]
+    [InlineData("gemini-3.7", "openrouter")]
+    [InlineData("google/gemini-3.7", "together")]
+    public void A_provider_without_its_own_entry_gets_the_vendors(string model, string? provider)
+    {
+        // `openrouter/gemini-3.7` is no prefix of `openrouter/google/gemini-3.7`: the vendor's row applies.
+        var entry = ModelCapabilityRegistry.Default.TryGet(model, provider)!;
+
+        Assert.Equal(["none", "low", "medium", "high"], entry.ReasoningEfforts);
+        Assert.Same(ModelCapabilityRegistry.Default.TryGet(model), entry);
+    }
+
+    [Fact]
+    public void Together_serves_glm_5_3_without_the_vendors_restrictions()
+    {
+        var served = ModelCapabilityRegistry.Default.TryGet("zai-org/GLM-5.3-Flash", "together")!;
+        var vendor = ModelCapabilityRegistry.Default.TryGet("zai-org/GLM-5.3-Flash", "zai")!;
+
+        Assert.Null(served.Thinking);
+        Assert.Null(served.ReasoningEfforts);
+        Assert.Equal(ThinkingSupport.EffortOnly, vendor.Thinking);
+        Assert.Equal(["low", "high", "max"], vendor.ReasoningEfforts);
+    }
+
+    [Fact]
+    public void A_scoped_lookup_of_no_model_is_null()
+    {
+        Assert.Null(ModelCapabilityRegistry.Default.TryGet(null, "mammouth"));
+        Assert.Null(ModelCapabilityRegistry.Default.TryGet(" ", "mammouth"));
+        Assert.Null(ModelCapabilityRegistry.Default.TryGet("acme-llm-9", "mammouth"));
+    }
+
+    [Fact]
+    public void A_registry_that_does_not_scope_by_provider_answers_the_plain_lookup()
+    {
+        IModelCapabilityRegistry registry = new UnscopedRegistry();
+
+        Assert.Same(UnscopedRegistry.Entry, registry.TryGet("gemini-3.7", "mammouth"));
+    }
+
+    /// <summary>A host's registry written against the one-argument contract only.</summary>
+    private sealed class UnscopedRegistry : IModelCapabilityRegistry
+    {
+        public static readonly ModelCapabilities Entry = new() { ReasoningEfforts = ["low"] };
+
+        public ModelCapabilities? TryGet(string? model) => Entry;
     }
 
     [Fact]
@@ -76,6 +166,23 @@ public class ModelCapabilityRegistryTests
 
         Assert.Contains("high", registry.TryGet("o3-mini")!.ReasoningEfforts!);
         Assert.Empty(registry.TryGet("gpt-4o")!.ReasoningEfforts!);
+    }
+
+    [Theory]
+    [InlineData("gpt-3.5-turbo")]
+    [InlineData("gpt-4-0613")]
+    [InlineData("gpt-4-turbo-2024-04-09")]
+    [InlineData("gpt-4o-2024-08-06")]
+    [InlineData("gpt-4.1-mini")]
+    [InlineData("gpt-4o-audio-preview")]
+    [InlineData("gpt-4o-mini-audio-preview")]
+    [InlineData("gpt-audio")]
+    [InlineData("gpt-5-chat-latest")]
+    [InlineData("gemini-1.5-pro")]
+    [InlineData("gemini-2.0-flash")]
+    public void A_model_with_no_reasoning_pass_has_no_thinking(string model)
+    {
+        Assert.Equal(ThinkingSupport.None, ModelCapabilityRegistry.Default.TryGet(model)!.Thinking);
     }
 
     [Fact]

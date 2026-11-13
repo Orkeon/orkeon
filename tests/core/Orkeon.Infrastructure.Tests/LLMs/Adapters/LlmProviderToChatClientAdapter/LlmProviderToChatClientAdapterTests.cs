@@ -48,6 +48,13 @@ public class LlmProviderToChatClientAdapterTests
     [InlineData("tool_use", "tool_calls")]
     [InlineData("content_filter", "content_filter")]
     [InlineData("pause_turn", "pause_turn")]
+    [InlineData(" stop ", "stop")]
+    [InlineData("stop\n", "stop")]
+    [InlineData("MODEL_CONTEXT_WINDOW_EXCEEDED", "length")]
+    [InlineData("model_context_window_exceeded", "length")]
+    [InlineData("RECITATION", "content_filter")]
+    [InlineData("PROHIBITED_CONTENT", "content_filter")]
+    [InlineData("SAFETY", "content_filter")]
     public async Task ShouldMapTheVendorsFinishReason_WhenGetResponseAsync(string vendor, string expected)
     {
         _llmProvider.SetChatResult(new LlmResponse
@@ -66,6 +73,24 @@ public class LlmProviderToChatClientAdapterTests
     public async Task ShouldLeaveTheFinishReasonNull_WhenTheProviderNamedNone()
     {
         _llmProvider.SetChatResult(new LlmResponse { Content = "ok" });
+
+        using var adapter = CreateAdapter();
+        var result = await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Null(result.FinishReason);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t\n")]
+    public async Task ShouldLeaveTheFinishReasonNull_WhenTheProviderNamedOnlyWhitespace(string vendor)
+    {
+        _llmProvider.SetChatResult(new LlmResponse
+        {
+            Content = "ok",
+            Metadata = new Dictionary<string, object> { [LlmResponseMetadataKeys.FinishReason] = vendor },
+        });
 
         using var adapter = CreateAdapter();
         var result = await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);

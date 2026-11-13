@@ -29,8 +29,8 @@ public abstract partial class HttpLlmProviderBase
         LlmThinkingConfig? thinking, string model, string providerName, string? budgetRemedy = null)
     {
         var verdict = budgetRemedy is null
-            ? ReasoningJudgement.Judge(thinking, Capabilities, ModelCapabilities.TryGet(model), model)
-            : ReasoningJudgement.Judge(thinking, Capabilities, ModelCapabilities.TryGet(model), model, budgetRemedy);
+            ? ReasoningJudgement.Judge(thinking, Capabilities, ModelCapabilities.TryGet(model, Name), model)
+            : ReasoningJudgement.Judge(thinking, Capabilities, ModelCapabilities.TryGet(model, Name), model, budgetRemedy);
 
         foreach (var notice in verdict.Notices)
         {

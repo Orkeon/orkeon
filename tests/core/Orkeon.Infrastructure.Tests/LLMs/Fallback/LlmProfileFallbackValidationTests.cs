@@ -267,6 +267,42 @@ public sealed class LlmProfileFallbackValidationTests
         Assert.Contains("reasoning effort (low, medium)", warning.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("gpt-5")]
+    [InlineData("gpt-5.6-sol")]
+    public async Task A_fallback_whose_model_is_unlisted_is_not_warned_about_a_vendor_value(string primaryModel)
+    {
+        // gpt-5 takes `minimal`, gpt-5.6 takes `none`: an unlisted fallback model gets them unchecked, as a call does.
+        using var loggers = new RecordingLoggerFactory();
+        await using var container = Host(s =>
+        {
+            s.AddSingleton<ILoggerFactory>(loggers);
+            Profile(s, "a", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create(primaryModel, "k"), Capabilities = EffortOnly }, "b");
+            Profile(s, "b", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("acme-reasoner-9", "k"), Capabilities = EffortOnly });
+        });
+
+        container.GetRequiredService<ILlmProfileRegistry>().Resolve("a");
+
+        Assert.DoesNotContain(loggers.Logger.Entries, e => e.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    public async Task A_fallback_whose_listed_model_refuses_a_vendor_value_is_warned_about_it()
+    {
+        using var loggers = new RecordingLoggerFactory();
+        await using var container = Host(s =>
+        {
+            s.AddSingleton<ILoggerFactory>(loggers);
+            Profile(s, "a", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("gpt-5", "k"), Capabilities = EffortOnly }, "b");
+            Profile(s, "b", new FakeScriptedLlmProvider { BaseConfig = LlmConfig.Create("gpt-5-pro", "k"), Capabilities = EffortOnly });
+        });
+
+        container.GetRequiredService<ILlmProfileRegistry>().Resolve("a");
+
+        var warning = Assert.Single(loggers.Logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains("reasoning effort (minimal, low, medium)", warning.Message, StringComparison.Ordinal);
+    }
+
     private static readonly LlmProviderCapabilities EffortOnly = new() { Thinking = ThinkingSupport.EffortOnly };
     private static readonly LlmProviderCapabilities Toggle = new() { Thinking = ThinkingSupport.Toggle };
 

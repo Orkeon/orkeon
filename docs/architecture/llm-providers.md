@@ -327,9 +327,21 @@ built like `ModelPricingRegistry`: a model id **prefix** maps to `ModelCapabilit
 A prefix matches at a boundary only: the end of the id or a separator (`-`, `.`, `:`, `@`, `/`) right after it, so
 `glm-5.3` covers `glm-5.3-flash` and never `glm-5.30`. An aggregator's `vendor/model` id (OpenRouter, Together AI,
 Hugging Face) is looked up whole first, then by the part after its last `/`. The built-in table is in code and
-covers the OpenAI chat, audio and reasoning families, Gemini, Claude, Grok, Mistral, and the GLM-5.3, Kimi, MiniMax
-and Qwen models the provider campaign measured; a model it does not know is added, or a built-in entry replaced,
-from the configuration:
+covers the OpenAI chat, audio and reasoning families, Gemini, Claude, Grok, Mistral, and of the other vendors the
+models the provider campaign measured a restriction on: `glm-5.3`, `kimi-k2.7-code`, `MiniMax-M3.1-Flash` and
+`qwen3.7-plus`. A model with no entry of its own (`kimi-k3`, `kimi-k3.1-pro`, the `qwen3.8` models, `deepseek-flash`)
+takes the levels its provider declares. The models that do not reason are entered with `Thinking: None`: `gpt-3.5`,
+`gpt-4`, `gpt-4-turbo`, `gpt-4o`, `gpt-4.1`, the audio models (`gpt-4o-audio`, `gpt-4o-mini-audio`, `gpt-audio`),
+`gpt-5-chat`, `gemini-1.5` and `gemini-2.0`.
+
+An entry can also name the provider that serves the model, `<provider>/<model>` (the provider's
+`ILlmProvider.Name`), for a gateway that maps a model's values its own way: the call looks up
+`<provider>/<model>` first, the whole id, then the model's own entry as above. The built-in ones come from
+campaign M18 (2026-11-13): `mammouth/gemini-3.7`, `mammouth/gemini-3.8`, `openrouter/google/gemini-3.7` and
+`openrouter/google/gemini-3.8` always reason and take `minimal` to `max` (Google's own API takes `none` to `high`),
+and `together/zai-org/glm-5.3` is unrestricted, both switches included (Z.AI's own API refuses the off switch and
+most efforts). A model it does not know is added, or a built-in entry replaced, from the configuration, under
+either form of key (`Llm:ModelCapabilities:<model>:...` or `Llm:ModelCapabilities:<provider>/<model>:...`):
 
 ```yaml
 Llm:
@@ -338,12 +350,15 @@ Llm:
       AudioInput: true
       Thinking: EffortOnly          # None, EffortOnly (always reasons), Toggle or Budget
       ReasoningEfforts: [low, high]   # left out: no restriction; written empty: the model takes none
+    together/zai-org/glm-5.3:   # this model as Together AI serves it, read before glm-5.3
+      Thinking: Toggle
 ```
 
 An entry merges with the built-in value of the same id **field by field**: a field left out keeps the built-in
 value, so an entry that sets `AudioInput` alone keeps the model's built-in effort restriction (for a model the table
 does not know, a switch left out is false and the efforts stay unrestricted). A `ReasoningEfforts` written empty
-says the model takes none. A registry the host registers itself (`IModelCapabilityRegistry`, before
+says the model takes none. `Thinking` takes one name: a comma-separated value (`EffortOnly,Toggle`) refuses the
+load. A registry the host registers itself (`IModelCapabilityRegistry`, before
 `AddOrkeonLlmProfiles`) wins over the configured one. A model id containing `:` (Ollama's `llama3:8b`) cannot be a
 key: .NET configuration has no escape for the path separator `:`. Key its prefix instead (`llama3` matches
 `llama3:8b` and every other tag).
@@ -364,8 +379,11 @@ key: .NET configuration has no escape for the path separator `:`. Key its prefix
   "off" is dropped with a structured warning; on a model with `Thinking: None` nothing is sent, with a warning. An
   effort is **lowered** to the highest level below it that both the provider's field and the model take, with a
   warning naming the model and its efforts; a model whose list is written empty gets no effort. A vendor value
-  outside the five levels (`none`, `minimal`) is sent when the model's list holds it or the model is unknown. A
-  model the table does not know gets the options as asked, with a warning that nothing was checked, **once per
+  outside the five levels (`none`, `minimal`) is sent when the model's list holds it or the model is unknown; efforts
+  compare case-insensitively. A token budget is judged against the provider's declared support alone: a provider
+  that declares `Budget` sends it even to a model that always reasons, since the gateway converts it (OpenRouter on
+  Gemini 3.7, campaign M18). Ollama's `think` holds one value, so "off" with an effort sends `think: false` and warns
+  that the effort is not sent. A model the table does not know gets the options as asked, with a warning that nothing was checked, **once per
   provider instance and model** (`Llm:ModelCapabilities:<id>` silences it); a model whose entry leaves
   `ReasoningEfforts` out is not restricted.
 - **Anthropic's switch is per model.** "On" sends `thinking: {type: adaptive, display: summarized}`, so the trace
@@ -375,10 +393,14 @@ key: .NET configuration has no escape for the path separator `:`. Key its prefix
   in the `reasoning_content` metadata, as the stream does.
 - **What comes back.** The reasoning tokens (`completion_tokens_details.reasoning_tokens`) are read for every
   OpenAI-compatible dialect, buffered and streamed, and the chat-client adapter maps the provider's finish reason
-  onto `ChatResponse.FinishReason` (`stop`, `length`, `tool_calls`, `content_filter`, or the vendor's own value).
+  onto `ChatResponse.FinishReason` (`stop`, `length`, `tool_calls`, `content_filter`, or the vendor's own value):
+  Gemini's `MODEL_CONTEXT_WINDOW_EXCEEDED` reads as `length`, its `RECITATION` and `PROHIBITED_CONTENT` as
+  `content_filter`.
 - **Fallback chains** (`WarnAboutLesserFallbacks`) read the same table: a fallback whose model takes no audio, has
   a lower effective thinking support (a model that cannot reason, or one that cannot be switched off) or fewer
-  efforts than the primary's is warned about once, next to vision, response format and grammar.
+  efforts than the primary's is warned about once, next to vision, response format and grammar. Each link is read
+  with its provider's name, so a `<provider>/<model>` entry applies; a vendor value (`none`, `minimal`) is not
+  reported missing on a fallback model the table does not list, since a call would send it unchecked.
 
 ## Embedding providers
 

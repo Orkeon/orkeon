@@ -111,6 +111,62 @@ public sealed class OpenAICompatibleProviderBaseStreamDialectTests : IDisposable
     }
 
     [Fact]
+    public async Task ChatStreaming_takes_the_declared_reasoning_content_when_the_two_fields_differ()
+    {
+        var sse = BuildSseStream(
+            """{"choices":[{"delta":{"reasoning":"theirs","reasoning_content":"mine"}}]}""",
+            """{"choices":[{"delta":{"content":"answer"}}]}""");
+        using var provider = CreateDeepSeekProvider(sse);
+
+        var events = await Collect(provider.ChatStreamingAsync(OneUserMessage, cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal("mine", Assert.Single(events, e => e.Kind == LlmStreamEventKind.ReasoningDelta).Delta);
+        Assert.Equal("mine", Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed).FinalResponse!.Metadata["reasoning_content"]);
+    }
+
+    [Fact]
+    public async Task ChatStreaming_takes_the_declared_reasoning_when_the_two_fields_differ()
+    {
+        var sse = BuildSseStream(
+            """{"choices":[{"delta":{"reasoning":"mine","reasoning_content":"theirs"}}]}""",
+            """{"choices":[{"delta":{"content":"answer"}}]}""");
+        using var provider = CreateRenamedProvider(sse);
+
+        var events = await Collect(provider.ChatStreamingAsync(OneUserMessage, cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal("mine", Assert.Single(events, e => e.Kind == LlmStreamEventKind.ReasoningDelta).Delta);
+        Assert.Equal("mine", Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed).FinalResponse!.Metadata["reasoning_content"]);
+    }
+
+    [Fact]
+    public async Task ChatStreaming_falls_back_to_reasoning_when_the_declared_reasoning_content_is_absent()
+    {
+        var sse = BuildSseStream(
+            """{"choices":[{"delta":{"reasoning":"other"}}]}""",
+            """{"choices":[{"delta":{"content":"answer"}}]}""");
+        using var provider = CreateDeepSeekProvider(sse);
+
+        var events = await Collect(provider.ChatStreamingAsync(OneUserMessage, cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal("other", Assert.Single(events, e => e.Kind == LlmStreamEventKind.ReasoningDelta).Delta);
+        Assert.Equal("other", Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed).FinalResponse!.Metadata["reasoning_content"]);
+    }
+
+    [Fact]
+    public async Task ChatStreaming_falls_back_to_reasoning_content_when_the_declared_reasoning_is_absent()
+    {
+        var sse = BuildSseStream(
+            """{"choices":[{"delta":{"reasoning_content":"other"}}]}""",
+            """{"choices":[{"delta":{"content":"answer"}}]}""");
+        using var provider = CreateRenamedProvider(sse);
+
+        var events = await Collect(provider.ChatStreamingAsync(OneUserMessage, cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal("other", Assert.Single(events, e => e.Kind == LlmStreamEventKind.ReasoningDelta).Delta);
+        Assert.Equal("other", Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed).FinalResponse!.Metadata["reasoning_content"]);
+    }
+
+    [Fact]
     public async Task Buffered_reads_the_reasoning_tokens_for_every_dialect()
     {
         // usage.completion_tokens_details.reasoning_tokens was read by OpenRouter and Z.AI only (#356).

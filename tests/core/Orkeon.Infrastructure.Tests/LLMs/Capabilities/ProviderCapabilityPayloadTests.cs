@@ -547,6 +547,113 @@ public class ProviderCapabilityPayloadTests
         Assert.Contains(probe.Warnings, w => w.Contains("budgetTokens", StringComparison.OrdinalIgnoreCase));
     }
 
+    // ── A gateway's own entry, read before the vendor's (#356) ──────────────
+
+    /// <summary>Mammouth takes minimal to max on Gemini 3.7, where Google stops at high: xhigh travels untouched.</summary>
+    [Fact]
+    public async Task ShouldSendTheGatewaysOwnLevel_OnMammouthGemini()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(MammouthLlmProvider), config => config with
+        {
+            Model = "gemini-3.7",
+            Thinking = new LlmThinkingConfig { Effort = "xhigh" },
+        });
+
+        Assert.Equal("xhigh", probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.Empty(probe.Warnings);
+    }
+
+    /// <summary>Mammouth refuses Google's <c>none</c> on Gemini 3.7: dropped, and the values it takes are named.</summary>
+    [Fact]
+    public async Task ShouldDropTheVendorsNone_OnMammouthGemini()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(MammouthLlmProvider), config => config with
+        {
+            Model = "gemini-3.7",
+            Thinking = new LlmThinkingConfig { Effort = "none" },
+        });
+
+        Assert.False(probe.Body.TryGetProperty("reasoning_effort", out _));
+        var warning = Assert.Single(probe.Warnings);
+        Assert.Contains("thinking.effort", warning, StringComparison.Ordinal);
+        Assert.Contains("minimal, low, medium, high, xhigh, max only", warning, StringComparison.Ordinal);
+    }
+
+    /// <summary>OpenRouter converts a budget on Gemini 3.7, which cannot switch thinking off: the budget is kept.</summary>
+    [Fact]
+    public async Task ShouldKeepTheBudget_OnOpenRouterGemini()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(OpenRouterLlmProvider), config => config with
+        {
+            Model = "google/gemini-3.7",
+            Thinking = new LlmThinkingConfig { Effort = "max", BudgetTokens = 2048 },
+        });
+
+        var reasoning = probe.Body.GetProperty("reasoning");
+        Assert.Equal(2048, reasoning.GetProperty("max_tokens").GetInt32());
+        // The vendor's row would lower `max` to `high`; OpenRouter's own row takes it.
+        Assert.Equal("max", reasoning.GetProperty("effort").GetString());
+        Assert.False(reasoning.TryGetProperty("enabled", out _));
+        Assert.Empty(probe.Warnings);
+    }
+
+    /// <summary>The same model behind a provider that takes no budget: the budget is still refused, said aloud.</summary>
+    [Fact]
+    public async Task ShouldReportTheBudget_OnMammouthGemini()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(MammouthLlmProvider), config => config with
+        {
+            Model = "gemini-3.7",
+            Thinking = new LlmThinkingConfig { Effort = "high", BudgetTokens = 2048 },
+        });
+
+        Assert.Equal("high", probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.False(probe.Body.TryGetProperty("reasoning", out _));
+        Assert.False(probe.Body.TryGetProperty("thinking_budget", out _));
+        Assert.Contains(probe.Warnings, w => w.Contains("thinking.budgetTokens", StringComparison.Ordinal));
+    }
+
+    /// <summary>Together serves GLM-5.3 with every level and the off switch, which Z.AI refuses.</summary>
+    [Fact]
+    public async Task ShouldKeepTheEffortAndTheOffSwitch_OnTogetherGlm()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(TogetherAiLlmProvider), config => config with
+        {
+            Model = "zai-org/GLM-5.3-Flash",
+            Thinking = new LlmThinkingConfig { Enabled = false, Effort = "medium" },
+        });
+
+        Assert.Equal("medium", probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.False(probe.Body.GetProperty("reasoning").GetProperty("enabled").GetBoolean());
+        Assert.Empty(probe.Warnings);
+    }
+
+    /// <summary>Qwen writes the effort as <c>reasoning_effort</c>; Qwen 3.7 Plus refuses <c>max</c>, lowered to <c>xhigh</c>.</summary>
+    [Theory]
+    [InlineData("high", "high")]
+    [InlineData("max", "xhigh")]
+    public async Task ShouldSendTheEffortTheModelTakes_OnQwen(string effort, string sent)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(QwenLlmProvider), config => config with
+        {
+            Model = "qwen3.7-plus",
+            Thinking = new LlmThinkingConfig { Effort = effort },
+        });
+
+        Assert.Equal(sent, probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.False(probe.Body.TryGetProperty("thinking", out _));
+        if (sent == effort)
+        {
+            Assert.Empty(probe.Warnings);
+        }
+        else
+        {
+            var warning = Assert.Single(probe.Warnings);
+            Assert.Contains($"Effort '{effort}'", warning, StringComparison.Ordinal);
+            Assert.Contains($"'{sent}' was sent in its place", warning, StringComparison.Ordinal);
+        }
+    }
+
     // ── GBNF grammar: only where the configuration says the endpoint takes it (GAP-14) ──
 
     private const string SampleGrammar = "root ::= \"ok\"";

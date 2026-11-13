@@ -329,15 +329,15 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
     {
         if (response.Metadata is null
             || !response.Metadata.TryGetValue(LlmResponseMetadataKeys.FinishReason, out var raw)
-            || raw?.ToString() is not { Length: > 0 } reason)
+            || raw?.ToString()?.Trim() is not { Length: > 0 } reason)
             return null;
 
         return reason.ToUpperInvariant() switch
         {
             "STOP" or "END_TURN" or "STOP_SEQUENCE" => ChatFinishReason.Stop,
-            "LENGTH" or "MAX_TOKENS" => ChatFinishReason.Length,
+            "LENGTH" or "MAX_TOKENS" or "MODEL_CONTEXT_WINDOW_EXCEEDED" => ChatFinishReason.Length,
             "TOOL_CALLS" or "TOOL_USE" or "FUNCTION_CALL" => ChatFinishReason.ToolCalls,
-            "CONTENT_FILTER" or "SAFETY" or "REFUSAL" => ChatFinishReason.ContentFilter,
+            "CONTENT_FILTER" or "SAFETY" or "REFUSAL" or "RECITATION" or "PROHIBITED_CONTENT" => ChatFinishReason.ContentFilter,
             _ => new ChatFinishReason(reason),
         };
     }

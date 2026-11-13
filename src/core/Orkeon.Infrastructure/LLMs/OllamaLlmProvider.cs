@@ -465,6 +465,14 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
 
         var verdict = JudgeReasoning(thinking, model, "Ollama",
             "Ollama's think field takes a boolean or an effort level, not a token budget");
+        // `think` holds one value: an effort turns thinking on, so "off" wins over an effort asked beside it.
+        if (verdict.Toggle is false)
+        {
+            if (verdict.Effort is not null)
+                LogUnsupportedOption("thinking.effort", "Thinking is switched off, and an effort level would switch it back on; the effort is not sent");
+            return false;
+        }
+
         if (verdict.Effort is { } effort)
             return effort;
         return verdict.Toggle;

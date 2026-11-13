@@ -239,8 +239,9 @@ public static class LlmSettings
         if (Clean(section["Thinking"]) is not { } value)
             return null;
 
-        if (!Enum.TryParse<ThinkingSupport>(value, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed)
-            || int.TryParse(value, out _))
+        // One name only: Enum.TryParse reads "EffortOnly,Toggle" as a flags combination.
+        if (value.Contains(',', StringComparison.Ordinal) || int.TryParse(value, out _)
+            || !Enum.TryParse<ThinkingSupport>(value, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
             throw new InvalidOperationException(
                 $"{section.Path}:Thinking: '{value}' is not a thinking support; the values are None, EffortOnly, Toggle and Budget.");
         return parsed;

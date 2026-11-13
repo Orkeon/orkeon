@@ -40,9 +40,11 @@ declare global {
         maxTokens?: number;
         responseFormat?: ResponseFormatType;
         /**
-         * Turns thinking on at this level; anything else throws. Anthropic takes the five levels; a provider whose field
-         * knows fewer (three for OpenAI's `reasoning_effort` and Ollama's `think`; four, without `xhigh`, for DeepSeek and Z.ai; all five for OpenRouter) sends the highest it knows
-         * below the one asked, and warns.
+         * Turns thinking on at this level; anything else throws. A provider whose field knows fewer levels (three, the
+         * default, for Ollama's `think`, Gemini, Azure OpenAI and Mistral; `low` to `xhigh` for OpenAI and Grok; `low`,
+         * `medium`, `high` and `max` for Z.ai; all five for Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI,
+         * Hugging Face, MiniMax and Mammouth AI) sends the highest it knows below the one asked, and warns. The model's
+         * entry in the capability table narrows the levels further (GLM-5.3 takes `low`, `high` and `max` only).
          */
         effort?: "low" | "medium" | "high" | "xhigh" | "max";
         /**

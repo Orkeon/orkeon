@@ -338,9 +338,22 @@ préfixe du modèle demandé l'emporte, sans tenir compte de la casse. Un préfi
 fin de l'identifiant ou un séparateur (`-`, `.`, `:`, `@`, `/`) juste après lui, donc `glm-5.3` couvre
 `glm-5.3-flash` et jamais `glm-5.30`. L'identifiant `vendeur/modèle` d'un agrégateur (OpenRouter, Together AI,
 Hugging Face) est cherché entier d'abord, puis par la partie qui suit son dernier `/`. La table intégrée est dans le
-code et couvre les familles OpenAI (chat, audio, raisonnement), Gemini, Claude, Grok, Mistral, et les modèles
-GLM-5.3, Kimi, MiniMax et Qwen que la campagne des fournisseurs a mesurés ; un modèle qu'elle ignore s'ajoute, ou une
-entrée intégrée se remplace, depuis la configuration :
+code et couvre les familles OpenAI (chat, audio, raisonnement), Gemini, Claude, Grok, Mistral, et, chez les autres
+éditeurs, les modèles sur lesquels la campagne des fournisseurs a mesuré une restriction : `glm-5.3`,
+`kimi-k2.7-code`, `MiniMax-M3.1-Flash` et `qwen3.7-plus`. Un modèle sans entrée propre (`kimi-k3`, `kimi-k3.1-pro`,
+les modèles `qwen3.8`, `deepseek-flash`) prend les niveaux que déclare son fournisseur. Les modèles qui ne
+raisonnent pas sont inscrits avec `Thinking: None` : `gpt-3.5`, `gpt-4`, `gpt-4-turbo`, `gpt-4o`, `gpt-4.1`, les
+modèles audio (`gpt-4o-audio`, `gpt-4o-mini-audio`, `gpt-audio`), `gpt-5-chat`, `gemini-1.5` et `gemini-2.0`.
+
+Une entrée peut aussi nommer le fournisseur qui sert le modèle, `<fournisseur>/<modèle>` (le `ILlmProvider.Name`
+du fournisseur), pour une passerelle qui traduit à sa façon les valeurs d'un modèle : l'appel cherche d'abord
+`<fournisseur>/<modèle>`, l'identifiant entier, puis l'entrée propre du modèle comme ci-dessus. Les entrées
+intégrées viennent de la campagne M18 (2026-11-13) : `mammouth/gemini-3.7`, `mammouth/gemini-3.8`,
+`openrouter/google/gemini-3.7` et `openrouter/google/gemini-3.8` raisonnent toujours et prennent `minimal` à `max`
+(l'API de Google elle-même prend `none` à `high`), et `together/zai-org/glm-5.3` est sans restriction, les deux
+interrupteurs compris (l'API de Z.AI elle-même refuse l'arrêt et la plupart des efforts). Un modèle que la table
+ignore s'ajoute, ou une entrée intégrée se remplace, depuis la configuration, sous l'une ou l'autre forme de clé
+(`Llm:ModelCapabilities:<modèle>:...` ou `Llm:ModelCapabilities:<fournisseur>/<modèle>:...`) :
 
 ```yaml
 Llm:
@@ -349,12 +362,15 @@ Llm:
       AudioInput: true
       Thinking: EffortOnly          # None, EffortOnly (raisonne toujours), Toggle ou Budget
       ReasoningEfforts: [low, high]   # omis : aucune restriction ; écrit vide : le modèle n'en prend aucun
+    together/zai-org/glm-5.3:   # ce modèle tel que Together AI le sert, lu avant glm-5.3
+      Thinking: Toggle
 ```
 
 Une entrée se fusionne avec la valeur intégrée du même identifiant **champ par champ** : un champ omis garde la
 valeur intégrée, donc une entrée qui ne fixe que `AudioInput` garde la restriction d'effort intégrée du modèle (pour
 un modèle que la table ignore, un interrupteur omis est faux et les efforts restent sans restriction). Un
-`ReasoningEfforts` écrit vide dit que le modèle n'en prend aucun. Un registre que l'hôte enregistre lui-même
+`ReasoningEfforts` écrit vide dit que le modèle n'en prend aucun. `Thinking` prend un seul nom : une valeur
+séparée par des virgules (`EffortOnly,Toggle`) refuse le chargement. Un registre que l'hôte enregistre lui-même
 (`IModelCapabilityRegistry`, avant `AddOrkeonLlmProfiles`) l'emporte sur celui de la configuration. Un identifiant de
 modèle contenant `:` (le `llama3:8b` d'Ollama) ne peut pas être une clé : la configuration .NET n'a pas
 d'échappement pour le séparateur de chemin `:`. Écrivez plutôt son préfixe (`llama3` correspond à `llama3:8b` et à
@@ -378,7 +394,11 @@ tous les autres tags).
   plus haut niveau en dessous que prennent à la fois le champ du fournisseur et le modèle, avec un avertissement qui
   nomme le modèle et ses efforts ; un modèle dont la liste est écrite vide ne reçoit aucun effort. Une valeur du
   vendeur hors des cinq niveaux (`none`, `minimal`) part quand la liste du modèle la contient ou que le modèle est
-  inconnu. Un modèle que la table ignore reçoit les options telles que demandées, avec un avertissement : rien n'a été
+  inconnu ; les efforts se comparent sans tenir compte de la casse. Un budget de jetons est jugé contre le seul
+  support déclaré du fournisseur : un fournisseur qui déclare `Budget` l'envoie même à un modèle qui raisonne
+  toujours, puisque la passerelle le convertit (OpenRouter sur Gemini 3.7, campagne M18). Le `think` d'Ollama ne
+  porte qu'une valeur : « désactivé » avec un effort envoie `think: false` et avertit que l'effort n'est pas
+  envoyé. Un modèle que la table ignore reçoit les options telles que demandées, avec un avertissement : rien n'a été
   vérifié, **une fois par instance de fournisseur et par modèle** (`Llm:ModelCapabilities:<id>` le fait taire) ; un
   modèle dont l'entrée omet `ReasoningEfforts` n'est pas restreint.
 - **L'interrupteur d'Anthropic dépend du modèle.** « Activé » envoie `thinking: {type: adaptive, display: summarized}` :
@@ -389,11 +409,14 @@ tous les autres tags).
 - **Ce qui revient.** Les jetons de raisonnement (`completion_tokens_details.reasoning_tokens`) sont lus pour chaque
   dialecte compatible OpenAI, en réponse complète comme en flux, et l'adaptateur du client de conversation reporte la
   raison de fin du fournisseur sur `ChatResponse.FinishReason` (`stop`, `length`, `tool_calls`, `content_filter`, ou
-  la valeur propre du vendeur).
+  la valeur propre du vendeur) : le `MODEL_CONTEXT_WINDOW_EXCEEDED` de Gemini se lit `length`, ses `RECITATION` et
+  `PROHIBITED_CONTENT` se lisent `content_filter`.
 - **Les chaînes de bascule** (`WarnAboutLesserFallbacks`) lisent la même table : une bascule dont le modèle ne prend
   pas d'audio, a un support de réflexion effectif plus bas (un modèle qui ne raisonne pas, ou qu'on ne peut pas
   désactiver) ou moins d'efforts que celui du principal est signalée une fois, à côté de la vision, du format de
-  réponse et de la grammaire.
+  réponse et de la grammaire. Chaque maillon est lu avec le nom de son fournisseur, si bien qu'une entrée
+  `<fournisseur>/<modèle>` s'applique ; une valeur du vendeur (`none`, `minimal`) n'est pas signalée manquante sur un
+  modèle de bascule que la table ne liste pas, puisqu'un appel l'enverrait sans vérification.
 
 ## Providers d'embeddings
 

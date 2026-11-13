@@ -44,6 +44,16 @@ public class ZaiLlmProvider : OpenAICompatibleProviderBase
         Vision = true,
     };
 
+    /// <summary>
+    /// Kept for the 1.x public surface: the thinking fields are written by <c>WriteReasoningFields</c>
+    /// from the judged verdict, so this override only runs the base options.
+    /// </summary>
+    protected override void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        base.ApplyProviderSpecificOptions(payload, effectiveConfig);
+    }
+
     /// <summary>Initializes a new instance of <see cref="ZaiLlmProvider"/>.</summary>
     public ZaiLlmProvider(
         LlmConfig config,

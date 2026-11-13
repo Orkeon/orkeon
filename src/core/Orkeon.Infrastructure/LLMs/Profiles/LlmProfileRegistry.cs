@@ -269,7 +269,7 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
     {
         var primary = links[0].Provider.Capabilities;
         var table = _services.GetService<IModelCapabilityRegistry>() ?? ModelCapabilityRegistry.Default;
-        var primaryModel = table.TryGet(ModelOf(links[0]));
+        var primaryModel = table.TryGet(ModelOf(links[0]), links[0].Provider.Name);
         foreach (var link in links.Skip(1))
         {
             var lacks = new List<string>();
@@ -280,7 +280,7 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
                 lacks.Add($"response format ({primary.ResponseFormat} -> {capabilities.ResponseFormat})");
             if (primary.GbnfGrammar && !capabilities.GbnfGrammar)
                 lacks.Add("GBNF grammar");
-            AddModelLacks(lacks, primary, primaryModel, capabilities, table.TryGet(ModelOf(link)));
+            AddModelLacks(lacks, primary, primaryModel, capabilities, table.TryGet(ModelOf(link), link.Provider.Name));
 
             if (lacks.Count > 0)
                 LogLesserFallback(Logger(), link.Name, profile, string.Join(", ", lacks));
@@ -317,7 +317,9 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
             return;
 
         var missing = EffectiveEfforts(primaryProvider, primary, primaryThinking)
-            .Except(EffectiveEfforts(fallbackProvider, fallback, fallbackThinking), StringComparer.Ordinal)
+            .Except(EffectiveEfforts(fallbackProvider, fallback, fallbackThinking), StringComparer.OrdinalIgnoreCase)
+            // A fallback model the table does not list gets a vendor value (`minimal`) unchecked, as a call does.
+            .Where(effort => fallback?.ReasoningEfforts is not null || LlmThinkingConfig.Levels.Contains(effort))
             .ToList();
         if (missing.Count > 0)
             lacks.Add($"reasoning effort ({string.Join(", ", missing)})");
@@ -337,7 +339,8 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
             return [];
         if (model?.ReasoningEfforts is not { } listed)
             return provider.EffortLevels;
-        return listed.Where(effort => !LlmThinkingConfig.Levels.Contains(effort) || provider.EffortLevels.Contains(effort));
+        return listed.Where(effort => !LlmThinkingConfig.Levels.Contains(effort, StringComparer.OrdinalIgnoreCase)
+            || provider.EffortLevels.Contains(effort, StringComparer.OrdinalIgnoreCase));
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Fallback profile '{Fallback}' of '{Profile}' does not support {Missing}, which '{Profile}' does: an option that needs it is dropped when a call lands on it.")]

@@ -63,7 +63,9 @@ internal sealed record ReasoningNotice(
 /// model's <see cref="ModelCapabilities.ReasoningEfforts"/>; with none left, the effort is dropped. A vendor value
 /// outside <see cref="LlmThinkingConfig.Levels"/> (<c>none</c>, <c>minimal</c>) is sent when the model's list has it
 /// or the model is unknown, and dropped otherwise.</item>
-/// <item>A budget needs <see cref="ThinkingSupport.Budget"/>.</item>
+/// <item>A budget needs a provider declaring <see cref="ThinkingSupport.Budget"/>; a model that cannot switch thinking off
+/// (<see cref="ThinkingSupport.EffortOnly"/>) keeps it, since the gateway that carries it converts it (OpenRouter on
+/// Gemini 3.7, campaign M18).</item>
 /// </list>
 /// </summary>
 internal static class ReasoningJudgement
@@ -102,7 +104,7 @@ internal static class ReasoningJudgement
         int? budget = null;
         if (thinking.BudgetTokens.HasValue)
         {
-            if (support >= ThinkingSupport.Budget)
+            if (provider.Thinking >= ThinkingSupport.Budget)
                 budget = thinking.BudgetTokens;
             else
                 notices.Add(new(ReasoningNoticeKind.Unsupported, "thinking.budgetTokens", budgetRemedy));
@@ -142,7 +144,9 @@ internal static class ReasoningJudgement
         if (string.IsNullOrWhiteSpace(thinking.Effort))
             return null;
 
-        var asked = thinking.Effort;
+        // Names compare ignoring case, and the wire gets the canonical spelling (`HIGH` is sent `high`).
+        var asked = LlmThinkingConfig.Levels.FirstOrDefault(level => string.Equals(level, thinking.Effort.Trim(), StringComparison.OrdinalIgnoreCase))
+            ?? thinking.Effort.Trim();
         var modelEfforts = entry?.ReasoningEfforts;
 
         if (modelEfforts is { Count: 0 })
@@ -155,11 +159,12 @@ internal static class ReasoningJudgement
         // A vendor's own value (`none`, `minimal`) is no level: the model's list judges it, else the vendor does.
         if (!LlmThinkingConfig.Levels.Contains(asked))
         {
-            if (modelEfforts is null || modelEfforts.Contains(asked, StringComparer.Ordinal))
+            var listed = modelEfforts?.FirstOrDefault(value => string.Equals(value, asked, StringComparison.OrdinalIgnoreCase));
+            if (modelEfforts is null || listed is not null)
             {
                 if (entry is null)
                     notices.Add(new(ReasoningNoticeKind.EffortUnchecked, "thinking.effort", Asked: asked, Sent: asked));
-                return asked;
+                return listed ?? asked;
             }
 
             notices.Add(new(ReasoningNoticeKind.Unsupported, "thinking.effort",
@@ -169,7 +174,7 @@ internal static class ReasoningJudgement
 
         var known = modelEfforts is null
             ? provider.EffortLevels
-            : provider.EffortLevels.Where(level => modelEfforts.Contains(level, StringComparer.Ordinal)).ToList();
+            : provider.EffortLevels.Where(level => modelEfforts.Contains(level, StringComparer.OrdinalIgnoreCase)).ToList();
         if (known.Count == 0)
         {
             notices.Add(new(ReasoningNoticeKind.Unsupported, "thinking.effort",

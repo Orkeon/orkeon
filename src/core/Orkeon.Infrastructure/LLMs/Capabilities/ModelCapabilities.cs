@@ -63,10 +63,19 @@ public interface IModelCapabilityRegistry
 {
     /// <summary>
     /// The capabilities of the entry whose id is the longest prefix of <paramref name="model"/> ending at a
-    /// boundary (the end of the id, <c>-</c>, <c>.</c>, <c>:</c> or <c>@</c>), case-insensitive; an aggregator's
-    /// <c>vendor/model</c> id is looked up whole, then by the part after its last <c>/</c>. Null when the table
-    /// knows no such model.
+    /// boundary (the end of the id, <c>-</c>, <c>.</c>, <c>:</c>, <c>@</c> or <c>/</c>), case-insensitive; an
+    /// aggregator's <c>vendor/model</c> id is looked up whole, then by the part after its last <c>/</c>. Null when
+    /// the table knows no such model.
     /// </summary>
     /// <param name="model">The model id as the provider sends it.</param>
     ModelCapabilities? TryGet(string? model);
+
+    /// <summary>
+    /// The capabilities of <paramref name="model"/> as <paramref name="provider"/> serves it: an entry keyed
+    /// <c>&lt;provider&gt;/&lt;model&gt;</c> first (a gateway that maps a model's values its own way, such as
+    /// <c>mammouth/gemini-3.7</c>), then <see cref="TryGet(string?)"/>.
+    /// </summary>
+    /// <param name="model">The model id as the provider sends it.</param>
+    /// <param name="provider">The provider's name (<c>ILlmProvider.Name</c>), or null for any provider.</param>
+    ModelCapabilities? TryGet(string? model, string? provider) => TryGet(model);
 }
