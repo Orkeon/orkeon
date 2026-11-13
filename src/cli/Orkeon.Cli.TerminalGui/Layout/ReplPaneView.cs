@@ -127,6 +127,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     private long? _approvalSettledId;
     private int _panelRows;
     private EventHandler? _approvalsChanged;
+    private EventHandler? _questionChanged;
 
     // Caps 3/4 — completion source for "/cmd" and "@path" tokens. Null ⇒ Tab is inert.
     private IReplInputAssist? _assist;
@@ -644,7 +645,27 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     public void SetPromptPrefix(string prefix)
     {
         ArgumentNullException.ThrowIfNull(prefix);
-        _dispatcher.Invoke(() => _promptLabel.Text = $"{_glyphs.Prompt} ");
+        _dispatcher.Invoke(SyncPromptLabel);
+    }
+
+    // The glyph, or the prompt of the human_input question that waits (answer [t8]> ): a task asks while the read
+    // loop already waits for a line, so the label follows the question, not the runner's next prompt (#352).
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing reader keeps the glyph.")]
+    private void SyncPromptLabel()
+    {
+        string? answer;
+        try
+        {
+            answer = _integration?.AnswerPrompt?.Invoke();
+        }
+        catch
+        {
+            answer = null;
+        }
+        var text = string.IsNullOrEmpty(answer) ? $"{_glyphs.Prompt} " : answer;
+        if (_promptLabel.Text == text) return;
+        _promptLabel.Text = text;
+        SetNeedsLayout();
     }
 
     /// <summary>
@@ -679,10 +700,23 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     internal void BindIntegration(TuiIntegration integration)
     {
         ArgumentNullException.ThrowIfNull(integration);
-        if (_integration is not null && _approvalsChanged is not null) _integration.ApprovalsChanged -= _approvalsChanged;
+        Unbind();
         _integration = integration;
-        _approvalsChanged = (_, _) => _dispatcher.Invoke(SyncApprovals);
+        _approvalsChanged = (_, _) => _dispatcher.Invoke(() =>
+        {
+            SyncApprovals();
+            SyncPromptLabel();
+        });
         integration.ApprovalsChanged += _approvalsChanged;
+        _questionChanged = (_, _) => _dispatcher.Invoke(SyncPromptLabel);
+        integration.QuestionChanged += _questionChanged;
+    }
+
+    private void Unbind()
+    {
+        if (_integration is null) return;
+        if (_approvalsChanged is not null) _integration.ApprovalsChanged -= _approvalsChanged;
+        if (_questionChanged is not null) _integration.QuestionChanged -= _questionChanged;
     }
 
     /// <summary>The placeholder the field shows for the current recipient.</summary>
@@ -1288,7 +1322,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
         }
         if (!delivered)
         {
-            AppendOutputLine($"Could not deliver to @{_navigation.RecipientName}: the text stays in the field.");
+            AppendThreadLine(_screens.DisplayedThread, $"@{_navigation.RecipientName} waits for no answer: nothing was sent, the text stays in the field.");
             return;
         }
         _navigation.RecordSubmitted(text);
@@ -1767,6 +1801,9 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
     /// <summary>Test-only: asks the pane to read the tool approvals again, as their change does.</summary>
     internal void RaiseApprovalsChanged() => SyncApprovals();
 
+    /// <summary>Test-only: asks the pane to read the waiting question's prompt again, as its change does.</summary>
+    internal void RaiseQuestionChanged() => SyncPromptLabel();
+
     /// <summary>Test-only: simulate a key press on the input field.</summary>
     internal void RaiseKeyDown(Key key) => OnInputKeyDown(this, key);
 
@@ -1779,7 +1816,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator, IToolActivityObserv
             // IsDisposed guard makes these explicit calls idempotent no-ops, so disposing
             // here keeps the owned fields released even if a future refactor stops Add()-ing them.
             _pendingReadCancellation.Dispose();
-            if (_integration is not null && _approvalsChanged is not null) _integration.ApprovalsChanged -= _approvalsChanged;
+            Unbind();
             EndOpenAnswers();
             foreach (var panel in _promptPanels) panel.Settle(null);
             _promptPanels.Clear();

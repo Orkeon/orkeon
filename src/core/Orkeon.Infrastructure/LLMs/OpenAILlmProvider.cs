@@ -46,6 +46,8 @@ public class OpenAILlmProvider : OpenAICompatibleProviderBase
     {
         ResponseFormat = ResponseFormatSupport.JsonSchema,
         Thinking = ThinkingSupport.EffortOnly,
+        // The 5.6 and 6.x tiers take `xhigh` (campaign M18, 2026-11-13); the table narrows per model.
+        EffortLevels = ["low", "medium", "high", "xhigh"],
         Vision = true,
     };
 

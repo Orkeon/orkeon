@@ -44,7 +44,8 @@ public class DeepSeekLlmProvider : OpenAICompatibleProviderBase
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Thinking = ThinkingSupport.Toggle,
-        EffortLevels = ["low", "medium", "high", "max"],
+        // Every level, `xhigh` included (campaign M18, 2026-11-13).
+        EffortLevels = LlmThinkingConfig.Levels,
         Vision = true,
         RequiresJsonKeywordInPrompt = true,
         ReplaysReasoningContent = true,

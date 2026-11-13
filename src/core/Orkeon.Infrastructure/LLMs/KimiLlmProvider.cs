@@ -30,15 +30,16 @@ public partial class KimiLlmProvider : OpenAICompatibleProviderBase
     protected override string ProviderDisplayName => "Kimi";
 
     /// <summary>
-    /// Moonshot's API is OpenAI-compatible. Thinking is switchable on K2.6 (and always on for
-    /// the K3 family, whose guard is <see cref="ApplyProviderSpecificOptions"/>), and the K2.6/K3
-    /// generation accepts image input. JSON mode guarantees well-formed
+    /// Moonshot's API is OpenAI-compatible. Thinking is switchable on K2.6 and the K3 family, and
+    /// always on for <c>kimi-k2.7-code</c> (a table entry), and the K2.6/K3 generation accepts image input. JSON mode guarantees well-formed
     /// output without validating a schema.
     /// </summary>
     protected override LlmProviderCapabilities DeclaredCapabilities { get; } = new()
     {
         ResponseFormat = ResponseFormatSupport.JsonObject,
         Thinking = ThinkingSupport.Toggle,
+        // Every level, `xhigh` and `max` included (campaign M18, 2026-11-13); the table narrows per model.
+        EffortLevels = LlmThinkingConfig.Levels,
         Vision = true,
     };
 
@@ -96,11 +97,11 @@ public partial class KimiLlmProvider : OpenAICompatibleProviderBase
 
     /// <summary>
     /// The K3 family (<c>kimi-k3</c>, <c>kimi-k3.1-pro</c>, <c>kimi-k3.1-pro-highspeed</c>) fixes its
-    /// own sampling and its reasoning: <c>temperature</c> (only 1 is allowed, measured on all three on
-    /// 2026-11-11), <c>top_p</c>, and it refuses a <c>thinking</c> field (catalogue review
-    /// 2026-09-19). Those fields are removed before the request leaves, on the buffered and the
+    /// own sampling: <c>temperature</c> (only 1 is allowed, measured on all three on 2026-11-11) and
+    /// <c>top_p</c>. Those fields are removed before the request leaves, on the buffered and the
     /// streaming paths alike, and each removal is reported as a structured warning, never dropped
-    /// in silence. The reactive retry of <see cref="TryAdaptRejectedPayload"/> stays for the
+    /// in silence. Its reasoning is not fixed: <c>thinking.type: disabled</c> is accepted and stops
+    /// the trace (campaign M18, 2026-11-13), so the switch is sent as on any other Kimi model. The reactive retry of <see cref="TryAdaptRejectedPayload"/> stays for the
     /// models outside this family, which the API alone can describe.
     /// </summary>
     protected override void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
@@ -114,13 +115,11 @@ public partial class KimiLlmProvider : OpenAICompatibleProviderBase
         if (!IsFixedSamplingModel(model))
             return;
 
-        var remedy = $"the model '{model}' fixes its own sampling and always reasons; remove the setting, or pick a kimi-k2 model to steer it";
+        var remedy = $"the model '{model}' fixes its own sampling; remove the setting, or pick a kimi-k2 model to steer it";
         if (payload.Remove("temperature"))
             LogUnsupportedOption("temperature", ProviderDisplayName, remedy);
         if (payload.Remove("top_p"))
             LogUnsupportedOption("top_p", ProviderDisplayName, remedy);
-        if (payload.Remove("thinking"))
-            LogUnsupportedOption("thinking.enabled", ProviderDisplayName, remedy);
     }
 
     /// <summary>

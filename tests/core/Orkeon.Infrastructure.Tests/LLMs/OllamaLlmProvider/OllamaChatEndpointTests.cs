@@ -65,6 +65,19 @@ public class OllamaChatEndpointTests
     }
 
     [Fact]
+    public async Task ShouldRecordTheDoneReason_OnABufferedChatAnswer()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":""},"done":true,"done_reason":"length"}""");
+        using var provider = CreateProvider(WithTools(BaseConfig()), handler);
+
+        var response = await provider.ChatAsync(
+            [LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("length", response.Metadata[LlmResponseMetadataKeys.FinishReason]);
+    }
+
+    [Fact]
     public async Task ShouldSwitchToChat_WhenToolsAreDeclared()
     {
         using var handler = TestHttpMessageHandler.CreateWithResponse(
@@ -327,6 +340,51 @@ public class OllamaChatEndpointTests
             [LlmMessage.User(content)], cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(_logger.LoggedMessages, m => m.Contains("URL", StringComparison.Ordinal));
+    }
+
+    // ── Thinking on the chat endpoint (#356) ────────────────────────────────
+
+    /// <summary>
+    /// <c>think</c> holds one value and an effort level switches thinking on: "off" wins over an
+    /// effort asked beside it, and the dropped effort is reported.
+    /// </summary>
+    [Fact]
+    public async Task ShouldSendThinkFalseAndReportTheEffort_WhenThinkingIsOffWithAnEffort()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"ok"},"done":true}""");
+        using var provider = CreateProvider(WithTools(BaseConfig()), handler);
+
+        await provider.ChatAsync(
+            [LlmMessage.User("weather?")],
+            WithTools(BaseConfig()) with { Thinking = new LlmThinkingConfig { Enabled = false, Effort = "high" } },
+            TestContext.Current.CancellationToken);
+
+        var request = handler.CapturedRequests.Single();
+        Assert.EndsWith("/api/chat", request.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        var think = (await ReadRequestAsync(request)).GetProperty("think");
+        Assert.Equal(JsonValueKind.False, think.ValueKind);
+        Assert.Contains(_logger.LoggedMessages, m =>
+            m.Contains("thinking.effort", StringComparison.Ordinal)
+            && m.Contains("Thinking is switched off", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ShouldSendTheEffortAsThink_WhenOnlyAnEffortIsAsked()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"ok"},"done":true}""");
+        using var provider = CreateProvider(WithTools(BaseConfig()), handler);
+
+        await provider.ChatAsync(
+            [LlmMessage.User("weather?")],
+            WithTools(BaseConfig()) with { Thinking = new LlmThinkingConfig { Effort = "medium" } },
+            TestContext.Current.CancellationToken);
+
+        var request = handler.CapturedRequests.Single();
+        Assert.EndsWith("/api/chat", request.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        Assert.Equal("medium", (await ReadRequestAsync(request)).GetProperty("think").GetString());
+        Assert.DoesNotContain(_logger.LoggedMessages, m => m.Contains("Thinking is switched off", StringComparison.Ordinal));
     }
 
     // ── GBNF grammar: one rule on both endpoints (GAP-14) ───────────────────

@@ -210,6 +210,16 @@ const again = await ctx.llm.extract<Invoice>({ messages: [
 ] }, schema, { system: "You extract invoices." });
 ```
 
+When the reply is not JSON, `extract` throws an error that says why: the provider's own failure
+(`ctx.llm.extract: the provider failed: …`, with the HTTP status and the vendor's message), an empty
+reply (and, when it ended on `finish_reason: length` or `max_tokens`, that the output budget ran out,
+reasoning included, naming the cap the model actually ran with: `MaxTokens`, else the model's
+resolved limit), or a reply that does not parse (the line and byte of the JSON error, then how the reply
+begins and ends). Each message carries the finish reason and the prompt, completion and reasoning
+token counts the provider gave. `decide` raises the provider's failure the same way
+(`ctx.llm.decide: the provider failed: …`) instead of reporting an empty answer. `chat`, like `complete`, answers a failed call with the
+`<undefined-llm:…>` marker holding the provider's sentence, never with an empty content.
+
 `act` is the LLM ⇄ tool-call loop: it offers the model the built-ins the agent selected with
 `.tools([...])` and its `withAutonomousTool` instances — whose `execute` runs in the script,
 on the engine's own thread — until the model stops asking or `maxIterations` (default 10,

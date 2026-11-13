@@ -297,7 +297,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             payload["grammar"] = config.GrammarGbnf!;
 
         ApplyChatResponseFormat(payload, config.ResponseFormat);
-        ApplyChatThinking(payload, config.Thinking);
+        if (ThinkValue(config.Thinking, ResolveModel(config)) is { } think)
+            payload["think"] = think;
         ApplyChatTools(payload, config);
 
         return payload;
@@ -452,30 +453,29 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             : "json";
     }
 
-    /// <summary>A level Ollama's <c>think</c> does not know is lowered to the nearest it knows, said aloud (LLM-02).</summary>
-    private string ThinkLevel(string effort)
-    {
-        var sent = LlmThinkingConfig.EffortFor(effort, DeclaredCapabilities.EffortLevels);
-        if (sent != effort)
-            LogEffortLowered(effort, string.Join(", ", DeclaredCapabilities.EffortLevels), sent);
-        return sent;
-    }
-
-    private void ApplyChatThinking(Dictionary<string, object> payload, LlmThinkingConfig? thinking)
+    /// <summary>
+    /// The value of Ollama's <c>think</c> field, judged against the provider and the model (#356): the effort level
+    /// when one is left (it is the more specific instruction), else the switch, else nothing. A level the model or
+    /// <c>think</c> does not take is lowered, and a budget is reported, by <see cref="HttpLlmProviderBase.JudgeReasoning"/>.
+    /// </summary>
+    private object? ThinkValue(LlmThinkingConfig? thinking, string model)
     {
         if (thinking is null)
-            return;
+            return null;
 
-        if (!string.IsNullOrWhiteSpace(thinking.Effort))
-            payload["think"] = ThinkLevel(thinking.Effort);
-        else if (thinking.Enabled.HasValue)
-            payload["think"] = thinking.Enabled.Value;
-
-        if (thinking.BudgetTokens.HasValue)
+        var verdict = JudgeReasoning(thinking, model, "Ollama",
+            "Ollama's think field takes a boolean or an effort level, not a token budget");
+        // `think` holds one value: an effort turns thinking on, so "off" wins over an effort asked beside it.
+        if (verdict.Toggle is false)
         {
-            LogUnsupportedOption("thinking.budgetTokens",
-                "Ollama's think field takes a boolean or an effort level, not a token budget");
+            if (verdict.Effort is not null)
+                LogUnsupportedOption("thinking.effort", "Thinking is switched off, and an effort level would switch it back on; the effort is not sent");
+            return false;
         }
+
+        if (verdict.Effort is { } effort)
+            return effort;
+        return verdict.Toggle;
     }
 
     private void ApplyChatTools(Dictionary<string, object> payload, LlmConfig config)
@@ -531,6 +531,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             {
                 metadata.Add("reasoning_content", thinkingText);
             }
+
+            if (ReadStringProperty(root, "done_reason") is { Length: > 0 } doneReason)
+                metadata.Add(LlmResponseMetadataKeys.FinishReason, doneReason);
 
             return new LlmResponse
             {
@@ -712,6 +715,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         /// <summary>Raw <c>tool_calls</c> of the frame that carried them, kept for the final response.</summary>
         public string? ToolCallsJson { get; set; }
 
+        /// <summary>The <c>done_reason</c> of the final frame; null when it named none.</summary>
+        public string? DoneReason { get; set; }
+
         /// <summary>How many tool calls were handed to the caller as deltas; the next one's index.</summary>
         public int ToolCallDeltas { get; set; }
 
@@ -786,6 +792,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             && done.GetBoolean())
         {
             state.Finished = true;
+            state.DoneReason = ReadStringProperty(root, "done_reason") is { Length: > 0 } reason ? reason : null;
             state.PromptTokens = ReadInt(root, "prompt_eval_count") ?? state.PromptTokens;
             state.CompletionTokens = ReadInt(root, "eval_count") ?? state.CompletionTokens;
         }
@@ -841,6 +848,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         var metadata = LlmResponseMetadata.CreateBuilder().AddProvider(Name);
         if (state.Thinking.Length > 0)
             metadata.Add("reasoning_content", state.Thinking.ToString());
+        if (state.DoneReason is { Length: > 0 } doneReason)
+            metadata.Add(LlmResponseMetadataKeys.FinishReason, doneReason);
 
         // An elapsed bound or a stream cut before any answer: `error` + `error_type` over the
         // partial content, and no synthesized body — nothing of a failed stream is an instruction (LLM-12).
@@ -1015,7 +1024,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             builder.AddGrammar(config.GrammarGbnf!);
 
         ApplyResponseFormat(builder, config.ResponseFormat);
-        ApplyThinking(builder, config.Thinking);
+        if (ThinkValue(config.Thinking, ResolveModel(config)) is { } think)
+            builder.AddThink(think);
 
         return builder.Build().ToDictionary();
     }
@@ -1048,28 +1058,6 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     }
 
     /// <summary>
-    /// Translates <see cref="LlmThinkingConfig"/> into Ollama's <c>think</c> field, which
-    /// takes either a boolean or one of <c>"low"</c>/<c>"medium"</c>/<c>"high"</c>. The effort
-    /// level wins when both are set, since it is the more specific instruction.
-    /// </summary>
-    private void ApplyThinking(OllamaRequestPayload.Builder builder, LlmThinkingConfig? thinking)
-    {
-        if (thinking is null)
-            return;
-
-        if (!string.IsNullOrWhiteSpace(thinking.Effort))
-            builder.AddThink(ThinkLevel(thinking.Effort));
-        else if (thinking.Enabled.HasValue)
-            builder.AddThink(thinking.Enabled.Value);
-
-        if (thinking.BudgetTokens.HasValue)
-        {
-            LogUnsupportedOption("thinking.budgetTokens",
-                "Ollama's think field takes a boolean or an effort level, not a token budget");
-        }
-    }
-
-    /// <summary>
     /// Parses successful response from Ollama.
     /// Pure data transformation.
     /// </summary>
@@ -1092,6 +1080,14 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             // it fed AgentExecutionBudget's token dimension and the crew accounting, so
             // every buffered Ollama completion ran as if it were free (found by the M1
             // probe archiving tokens=0 on a real exchange, 2026-08-30).
+            var generateMetadata = LlmResponseMetadata.CreateBuilder()
+                .AddProvider(Name)
+                .AddDone(ollamaResponse.Done)
+                .AddTotalDuration(ollamaResponse.TotalDuration)
+                .AddEvalDuration(ollamaResponse.EvalDuration);
+            if (ollamaResponse.DoneReason is { Length: > 0 } generateDoneReason)
+                generateMetadata.Add(LlmResponseMetadataKeys.FinishReason, generateDoneReason);
+
             return new LlmResponse
             {
                 Content = ollamaResponse.Response ?? string.Empty,
@@ -1099,13 +1095,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 PromptTokens = ollamaResponse.PromptEvalCount,
                 CompletionTokens = ollamaResponse.EvalCount,
                 Model = ResolveModel(config),
-                Metadata = LlmResponseMetadata.CreateBuilder()
-                    .AddProvider(Name)
-                    .AddDone(ollamaResponse.Done)
-                    .AddTotalDuration(ollamaResponse.TotalDuration)
-                    .AddEvalDuration(ollamaResponse.EvalDuration)
-                    .Build()
-                    .ToDictionary()
+                Metadata = generateMetadata.Build().ToDictionary()
             };
         }
         catch (JsonException ex)
@@ -1235,6 +1225,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         [JsonPropertyName("done")]
         public bool Done { get; set; }
 
+        [JsonPropertyName("done_reason")]
+        public string? DoneReason { get; set; }
+
         [JsonPropertyName("total_duration")]
         public long TotalDuration { get; set; }
 
@@ -1269,8 +1262,4 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     [LoggerMessage(EventId = 110, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
         Message = "Option '{Option}' was declared but Ollama does not support it — it was not sent. {Remedy}.")]
     private partial void LogUnsupportedOption(string option, string remedy);
-
-    [LoggerMessage(EventId = 112, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
-        Message = "Effort '{Effort}' was declared but Ollama's think field knows {Known} only — '{Sent}' was sent in its place. Ask for a level it knows, or pick a provider that knows this one.")]
-    private partial void LogEffortLowered(string effort, string known, string sent);
 }

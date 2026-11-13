@@ -20,14 +20,14 @@ public sealed record GrepRequest
     [FieldSchema(Description = "Regular expression searched in each line (per-match timeout; the scan stops and timed_out is set on a timeout)", Example = "TODO")]
     public string Pattern { get; init; } = "";
 
-    /// <summary>Root directory (virtual path).</summary>
+    /// <summary>Root directory, or the one file searched alone (virtual path).</summary>
     [JsonPropertyName("path")]
-    [FieldSchema(Description = "Root directory searched (virtual path, a mounted directory inside the agent root)", Example = "/workspace/src")]
+    [FieldSchema(Description = "Directory searched, or one file searched alone (then no glob); a virtual path inside the agent root", Example = "/workspace/src")]
     public string Path { get; init; } = "";
 
     /// <summary>Optional file filter relative to <see cref="Path"/>.</summary>
     [JsonPropertyName("glob")]
-    [FieldSchema(Description = "Optional file filter relative to path (never absolute); all files when absent", IsRequired = false, Example = "**/*.cs")]
+    [FieldSchema(Description = "Optional file filter relative to a folder path (never absolute, never with a file path); all files when absent", IsRequired = false, Example = "**/*.cs")]
     public string? Glob { get; init; }
 
     /// <summary>Case-insensitive matching.</summary>
@@ -159,7 +159,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
     public override string Name => "grep";
 
     /// <inheritdoc />
-    public override string Description => "Which files contain this text? Searches the lines of the text files under path with a regex, glob filtering the files relative to path, and returns path:line:text hits with total_matches and files_matched; output_mode \"count\" returns the counts alone, so a \"how many\" question takes one call. At most max_results hits (200) over max_files files (2000) within a 20 s budget; binary and over-1-MiB files are skipped; truncated and scan_complete say when the scan was cut. To find files by name, glob; to search code by structure, structural_search; to search by meaning, codebase_search.";
+    public override string Description => "Which files contain this text? Searches the lines of the text files under path with a regex, glob filtering the files relative to path (a file as path is searched alone, without glob), and returns path:line:text hits with total_matches and files_matched; output_mode \"count\" returns the counts alone, so a \"how many\" question takes one call. At most max_results hits (200) over max_files files (2000) within a 20 s budget; binary and over-1-MiB files are skipped; truncated and scan_complete say when the scan was cut. To find files by name, glob; to search code by structure, structural_search; to search by meaning, codebase_search.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -193,7 +193,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             return "Path cannot be empty";
 
         var validation = ResolveVirtualPath(request.Path, FileAccessRights.Read);
-        return validation.IsAllowed ? null : validation.DenialReason ?? "Invalid or unsafe directory path";
+        return validation.IsAllowed ? null : validation.DenialReason ?? "Invalid or unsafe path";
     }
 
     /// <inheritdoc />
@@ -204,21 +204,38 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
         request = request with { Path = AbsolutizePath(request.Path) };
         var regex = BuildRegex(request);
 
-        if (!await FileSystemService.ExistsAsync(request.Path, cancellationToken).ConfigureAwait(false)
-            || await FileSystemService.GetEntryKindAsync(request.Path, cancellationToken).ConfigureAwait(false) != VirtualEntryKind.Directory)
-            throw new DirectoryNotFoundException($"Directory not found: {request.Path}");
-
-        var location = $"{request.Path.TrimEnd('/')}/{request.Glob ?? "**/*"}";
-        var candidates = await SourceGlobExpander.ExpandAsync(FileSystemService, [location], cancellationToken).ConfigureAwait(false);
+        if (!await FileSystemService.ExistsAsync(request.Path, cancellationToken).ConfigureAwait(false))
+            throw new FileNotFoundException($"Path not found: {request.Path}");
 
         var sizes = new Dictionary<string, long>(StringComparer.Ordinal);
-        await foreach (var entry in FileSystemService
-            .EnumerateFilesAsync(request.Path, new VirtualEnumerationOptions(Recursive: true), cancellationToken).ConfigureAwait(false))
-            sizes[entry.VirtualPath] = entry.SizeBytes;
+        IEnumerable<string> candidates;
+        var kind = await FileSystemService.GetEntryKindAsync(request.Path, cancellationToken).ConfigureAwait(false);
+        if (kind == VirtualEntryKind.Directory)
+        {
+            var location = $"{request.Path.TrimEnd('/')}/{request.Glob ?? "**/*"}";
+            var expanded = await SourceGlobExpander.ExpandAsync(FileSystemService, [location], cancellationToken).ConfigureAwait(false);
+            candidates = expanded.Select(candidate => candidate.Location);
+            await foreach (var entry in FileSystemService
+                .EnumerateFilesAsync(request.Path, new VirtualEnumerationOptions(Recursive: true), cancellationToken).ConfigureAwait(false))
+                sizes[entry.VirtualPath] = entry.SizeBytes;
+        }
+        else if (kind == VirtualEntryKind.File)
+        {
+            // One file searched alone, as rg <file> does (#351); a glob filters a folder's files and has
+            // nothing to filter here, so it is refused rather than silently dropped.
+            if (!string.IsNullOrWhiteSpace(request.Glob))
+                throw new ArgumentException(
+                    $"path names a file ({request.Path}): glob applies to a folder only; drop glob, or pass the folder as path and the file name as glob");
+            candidates = [request.Path];
+        }
+        else
+        {
+            throw new ArgumentException($"path is neither a folder nor a file: {request.Path}");
+        }
 
         var scan = new GrepScan();
         var collectHits = request.OutputMode == GrepOutputModes.Hits;
-        await ScanCandidatesAsync(request, candidates.Select(candidate => candidate.Location), sizes, regex, collectHits, scan, cancellationToken).ConfigureAwait(false);
+        await ScanCandidatesAsync(request, candidates, sizes, regex, collectHits, scan, cancellationToken).ConfigureAwait(false);
 
         var counts = collectHits ? [] : TopCounts(scan, request.MaxResults);
         return new GrepResponse

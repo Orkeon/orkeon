@@ -200,10 +200,11 @@ public static class LlmSettings
     /// <summary>
     /// The host's per-model overrides (<c>Llm:ModelCapabilities:&lt;id&gt;</c>, FWK-21), by model id (a
     /// prefix). A switch left out keeps the built-in value (false for a model the table does not know); <c>ReasoningEfforts</c> left out does not restrict the model, and
-    /// written empty says the model takes none.
+    /// written empty says the model takes none; <c>Thinking</c> (<c>None</c>, <c>EffortOnly</c>, <c>Toggle</c>,
+    /// <c>Budget</c>) narrows the provider's thinking support for the model.
     /// </summary>
     /// <param name="configuration">The host configuration.</param>
-    /// <exception cref="InvalidOperationException">A switch is neither true nor false.</exception>
+    /// <exception cref="InvalidOperationException">A switch is neither true nor false, or <c>Thinking</c> names no support.</exception>
     internal static IReadOnlyDictionary<string, ModelCapabilityOverride> ReadModelCapabilities(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
@@ -224,10 +225,26 @@ public static class LlmSettings
                 AudioOutput = ReadBool(section, "AudioOutput"),
                 Vision = ReadBool(section, "Vision"),
                 ReasoningEfforts = listed,
+                Thinking = ReadThinkingSupport(section),
             };
         }
 
         return result;
+    }
+
+    /// <summary>The <c>Thinking</c> key of a model entry, by <see cref="ThinkingSupport"/> name (#356); null when left out.</summary>
+    /// <exception cref="InvalidOperationException">The value names no <see cref="ThinkingSupport"/>.</exception>
+    private static ThinkingSupport? ReadThinkingSupport(IConfigurationSection section)
+    {
+        if (Clean(section["Thinking"]) is not { } value)
+            return null;
+
+        // One name only: Enum.TryParse reads "EffortOnly,Toggle" as a flags combination.
+        if (value.Contains(',', StringComparison.Ordinal) || int.TryParse(value, out _)
+            || !Enum.TryParse<ThinkingSupport>(value, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
+            throw new InvalidOperationException(
+                $"{section.Path}:Thinking: '{value}' is not a thinking support; the values are None, EffortOnly, Toggle and Budget.");
+        return parsed;
     }
 
     private const string ReplayKey = "Replay";

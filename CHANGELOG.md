@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — thinking and effort are judged against the model, on every provider **[breaking]** (#356)
+
+One per-model table, `IModelCapabilityRegistry` (`ORKEXP005`), now says what each model takes for
+thinking, and every provider reads it before writing `LlmConfig.Thinking`, Anthropic and Ollama
+included. A `ModelCapabilities` entry gains `Thinking` (`None`, `EffortOnly`, `Toggle`, `Budget`),
+set from the configuration with `Llm:ModelCapabilities:<name>:Thinking`; the support that applies is
+the lower of the provider's and the model's.
+
+- An effort a listed model does not take is **lowered** to the highest level below it that both the
+  provider's field and the model take, with a warning; it used to be omitted. A vendor value outside
+  the five levels (`none`, `minimal`) is sent when the model's list holds it or the model is unknown.
+- On a model that always reasons (`EffortOnly`: GLM-5.3, `kimi-k2.7-code`, `MiniMax-M3.1-Flash`…),
+  "on" sends no switch and "off" is dropped with a warning. Kimi K3 now receives the `thinking`
+  switch it honours (it used to be stripped).
+- The models that do not reason are entered with `Thinking: None` (`gpt-3.5`, `gpt-4`, `gpt-4-turbo`,
+  `gpt-4o`, `gpt-4.1`, the OpenAI audio models, `gpt-5-chat`, `gemini-1.5`, `gemini-2.0`): thinking
+  asked on them is dropped with a warning instead of being sent.
+- An entry can name the provider that serves the model, `<provider>/<model>`, looked up first (the
+  whole id) by `IModelCapabilityRegistry.TryGet(model, provider)`, then the model's own entry: built in
+  for `mammouth/gemini-3.7` and `-3.8`, `openrouter/google/gemini-3.7` and `-3.8` (always reasoning,
+  `minimal` to `max`, where Google's own API takes `none` to `high`) and `together/zai-org/glm-5.3`
+  (unrestricted, where Z.AI's own API refuses the off switch and most efforts); configured as
+  `Llm:ModelCapabilities:<provider>/<model>:...`. A `Thinking` value holding a comma is refused.
+- A token budget is judged against the provider's declared support alone, so OpenRouter keeps
+  sending one to Gemini 3.7, which always reasons; efforts compare case-insensitively. On Ollama,
+  "off" with an effort sends `think: false` and warns that the effort is not sent.
+- Anthropic: "on" sends `thinking: {type: adaptive, display: summarized}`; "off" sends the model's
+  own value (`between_tools` on Sonnet 5.5 up to effort `high`, `disabled` up to `xhigh` on Sonnet 5
+  and up to `high` elsewhere) and is left out with a warning above that effort. A buffered answer now
+  carries its thinking blocks in the `reasoning_content` metadata, as the stream did.
+- Declared levels widen to what the provider campaign measured: up to `xhigh` on OpenAI and Grok; the
+  five on DeepSeek, Kimi, Qwen, Together AI, Hugging Face, MiniMax and Mammouth AI. Together AI, Hugging
+  Face and MiniMax now declare a thinking switch (`reasoning: {enabled}`,
+  `chat_template_kwargs.enable_thinking`, `thinking: disabled`), Mammouth AI an effort.
+- The reasoning tokens (`completion_tokens_details.reasoning_tokens`) are read for every
+  OpenAI-compatible dialect, buffered and streamed, and the stream reads the trace from
+  `reasoning_content` or `reasoning`, the declared field first. The chat-client adapter maps the
+  provider's finish reason onto `ChatResponse.FinishReason`: Gemini's `MODEL_CONTEXT_WINDOW_EXCEEDED`
+  reads as `Length`, its `RECITATION` and `PROHIBITED_CONTENT` as `ContentFilter`.
+- Fallback chains are warned about when the fallback's *model* has a lower effective thinking support
+  or fewer efforts than the primary's, not only its provider; a vendor value (`none`, `minimal`) is
+  not reported missing on a fallback model the table does not list.
+- `OpenAICompatibleProviderBase.EffortLevelsFor` is gone: a dialect writes its thinking fields in the
+  internal `WriteReasoningFields`. `OpenRouterLlmProvider`, `QwenLlmProvider` and `ZaiLlmProvider` keep
+  their `ApplyProviderSpecificOptions` override for the public surface; it now only runs the base
+  method.
+
+Migration:
+
+- An effort a listed model refuses is now sent lowered (`medium` reaches GLM-5.3 as `low`) where it
+  used to be omitted: read the warning, and ask for a level the model takes to send exactly that.
+- Thinking asked on a model that does not reason (`gpt-4o`, `gemini-2.0`…) and "off" asked on a
+  model that always reasons are now dropped with a warning: remove the option, or pick a model
+  that honours it.
+- A built-in entry that does not fit your endpoint (a model a vendor changed, a gateway serving it
+  differently) is replaced field by field with `Llm:ModelCapabilities:<model>:Thinking` and
+  `:ReasoningEfforts`, or for one provider alone with `Llm:ModelCapabilities:<provider>/<model>:...`
+  (`openrouter/google/gemini-3.7`); a model the table does not know is added the same way, which
+  also silences its "nothing was checked" warning.
+- A host that implements `IModelCapabilityRegistry` itself gets `TryGet(model, provider)` as a
+  default method reading `TryGet(model)`; implement it to serve provider-scoped entries.
+
+### Fixed
+
+- `grep` takes a file as `path` and searches it alone, as `rg <file>` does; a `glob` given beside a file is refused with a message naming the fix, and a missing path says `Path not found` instead of `Directory not found`; an empty `glob` beside a file counts as absent (#351).
+- Z.AI's GLM-5.3 family takes the efforts `low`, `high` and `max` only: a `medium` asked for is lowered to `low` with the provider's warning instead of failing every call with HTTP 400 code 1210; the per-model capability table says it (#354, #356).
+- A provider failure (an HTTP error, a timeout) no longer reaches a script as an empty answer: `ctx.llm.extract` and `ctx.llm.decide` raise it with its status and the vendor's message, and `ctx.llm.chat` answers with the `<undefined-llm:…>` marker `complete` and `act` already gave (#354).
+- `ctx.llm.extract` says why a reply is not JSON: an empty reply is named as such, with the output budget the model ran with (`MaxTokens`, else its resolved limit) when it ended on `length` or `max_tokens`; an unparsable one gives the line and byte of the JSON error and the reply's beginning and end; both carry the finish reason and the prompt, completion and reasoning tokens. Every provider now records the vendor's stop reason, raw, under `finish_reason` (`LlmResponseMetadataKeys.FinishReason`) on buffered and streamed answers alike: `finish_reason` of the OpenAI dialect, `stop_reason` of Anthropic, `done_reason` of Ollama; Azure's text-only stream aside (#353).
+- In `orkeon-repl`, a `human_input` question a background task asks no longer hides in that task's screen: it is tagged `[t8] <task> asks: …` and shows on the displayed screen too, the prompt reads `answer [t8]> ` (the TUI follows the question through `TuiIntegration.AnswerPrompt` and `QuestionChanged`), the answer is taken from the main field or from the task's thread (`TuiIntegration.SendToTask` is now wired), and `[t8] answer taken: …` closes it; several questions are asked one at a time, the next announced, a withdrawn one says so, and a waiting tool approval keeps the main field first (#352).
+
 ### Added
 - `orkeon llm probe` tests the reasoning controls per model: M15 sends the thinking toggle on then off,
   M16 sweeps the effort levels (`low` to `max`, or the list of the new `--sweep-efforts`, which takes

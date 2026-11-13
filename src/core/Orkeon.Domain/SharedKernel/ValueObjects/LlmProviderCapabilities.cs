@@ -83,7 +83,8 @@ public sealed record LlmProviderCapabilities
 
     /// <summary>
     /// The effort levels the API's field knows, among <see cref="LlmThinkingConfig.Levels"/>. Default
-    /// <see cref="LlmThinkingConfig.ThreeLevels"/>; Anthropic knows the five. A level asked that is not here
+    /// <see cref="LlmThinkingConfig.ThreeLevels"/>; each provider declares what its field takes, and the model's
+    /// entry in the capability table narrows it further. A level asked that is not here
     /// is sent as the highest known level below it (<see cref="LlmThinkingConfig.EffortFor"/>), and the
     /// provider says so in its log.
     /// </summary>

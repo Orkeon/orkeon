@@ -269,7 +269,7 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
     {
         var primary = links[0].Provider.Capabilities;
         var table = _services.GetService<IModelCapabilityRegistry>() ?? ModelCapabilityRegistry.Default;
-        var primaryModel = table.TryGet(ModelOf(links[0]));
+        var primaryModel = table.TryGet(ModelOf(links[0]), links[0].Provider.Name);
         foreach (var link in links.Skip(1))
         {
             var lacks = new List<string>();
@@ -278,11 +278,9 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
                 lacks.Add("vision");
             if (capabilities.ResponseFormat < primary.ResponseFormat)
                 lacks.Add($"response format ({primary.ResponseFormat} -> {capabilities.ResponseFormat})");
-            if (primary.Thinking != ThinkingSupport.None && capabilities.Thinking == ThinkingSupport.None)
-                lacks.Add("thinking");
             if (primary.GbnfGrammar && !capabilities.GbnfGrammar)
                 lacks.Add("GBNF grammar");
-            AddModelLacks(lacks, primaryModel, table.TryGet(ModelOf(link)));
+            AddModelLacks(lacks, primary, primaryModel, capabilities, table.TryGet(ModelOf(link), link.Provider.Name));
 
             if (lacks.Count > 0)
                 LogLesserFallback(Logger(), link.Name, profile, string.Join(", ", lacks));
@@ -294,23 +292,55 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
         link.BaseConfig?.Model is { Length: > 0 } own ? own : link.Provider.BaseConfig?.Model;
 
     /// <summary>
-    /// The per-model side of the comparison (FWK-21): what the table says the primary's model takes and the
-    /// fallback's does not. A fallback model the table does not know takes no audio (nothing sends it any).
+    /// The per-model side of the comparison (FWK-21, #356): audio input from the table, and reasoning from the
+    /// effective values each call is judged against - the provider's declaration narrowed by the model's entry.
+    /// A fallback model the table does not know takes no audio (nothing sends it any).
     /// </summary>
-    private static void AddModelLacks(List<string> lacks, ModelCapabilities? primary, ModelCapabilities? fallback)
+    private static void AddModelLacks(
+        List<string> lacks,
+        LlmProviderCapabilities primaryProvider, ModelCapabilities? primary,
+        LlmProviderCapabilities fallbackProvider, ModelCapabilities? fallback)
     {
-        if (primary is null)
-            return;
-
-        if (primary.AudioInput && fallback is not { AudioInput: true })
+        if (primary is { AudioInput: true } && fallback is not { AudioInput: true })
             lacks.Add("audio input");
 
-        if (primary.ReasoningEfforts is { Count: > 0 } offered && fallback?.ReasoningEfforts is { } taken)
+        var primaryThinking = EffectiveThinking(primaryProvider, primary);
+        var fallbackThinking = EffectiveThinking(fallbackProvider, fallback);
+        if (fallbackThinking < primaryThinking)
         {
-            var missing = offered.Except(taken, StringComparer.Ordinal).ToList();
-            if (missing.Count > 0)
-                lacks.Add($"reasoning effort ({string.Join(", ", missing)})");
+            lacks.Add(fallbackThinking == ThinkingSupport.None
+                ? "thinking"
+                : $"thinking ({primaryThinking} -> {fallbackThinking})");
         }
+
+        if (fallbackThinking == ThinkingSupport.None)
+            return;
+
+        var missing = EffectiveEfforts(primaryProvider, primary, primaryThinking)
+            .Except(EffectiveEfforts(fallbackProvider, fallback, fallbackThinking), StringComparer.OrdinalIgnoreCase)
+            // A fallback model the table does not list gets a vendor value (`minimal`) unchecked, as a call does.
+            .Where(effort => fallback?.ReasoningEfforts is not null || LlmThinkingConfig.Levels.Contains(effort))
+            .ToList();
+        if (missing.Count > 0)
+            lacks.Add($"reasoning effort ({string.Join(", ", missing)})");
+    }
+
+    /// <summary>The lower of the provider's thinking support and the model's, as <c>ReasoningJudgement</c> takes it.</summary>
+    private static ThinkingSupport EffectiveThinking(LlmProviderCapabilities provider, ModelCapabilities? model)
+        => model?.Thinking is { } narrowed && narrowed < provider.Thinking ? narrowed : provider.Thinking;
+
+    /// <summary>
+    /// The efforts a call can send: the model's list narrowed to the levels the provider carries (a vendor value
+    /// outside <see cref="LlmThinkingConfig.Levels"/> kept), or the provider's levels for a model the table does not know.
+    /// </summary>
+    private static IEnumerable<string> EffectiveEfforts(LlmProviderCapabilities provider, ModelCapabilities? model, ThinkingSupport thinking)
+    {
+        if (thinking == ThinkingSupport.None)
+            return [];
+        if (model?.ReasoningEfforts is not { } listed)
+            return provider.EffortLevels;
+        return listed.Where(effort => !LlmThinkingConfig.Levels.Contains(effort, StringComparer.OrdinalIgnoreCase)
+            || provider.EffortLevels.Contains(effort, StringComparer.OrdinalIgnoreCase));
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Fallback profile '{Fallback}' of '{Profile}' does not support {Missing}, which '{Profile}' does: an option that needs it is dropped when a call lands on it.")]

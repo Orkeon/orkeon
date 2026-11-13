@@ -268,19 +268,45 @@ public class ProviderCapabilityPayloadTests
         Assert.False(body.TryGetProperty("reasoning_effort", out _));
     }
 
+    /// <summary>The four providers campaign M18 measured taking the effort hint, which declared nothing before (#356).</summary>
     [Theory]
     [InlineData(nameof(MiniMaxLlmProvider))]
     [InlineData(nameof(MammouthLlmProvider))]
-    public async Task ShouldReportAThinkingOption_WhereNothingIsDeclared(string providerTypeName)
+    [InlineData(nameof(TogetherAiLlmProvider))]
+    [InlineData(nameof(HuggingFaceLlmProvider))]
+    public async Task ShouldSendTheEffort_WhereTheCampaignMeasuredIt(string providerTypeName)
     {
         var probe = await ProviderProbe.CapturePayloadWithLogAsync(providerTypeName, config => config with
         {
-            Thinking = new LlmThinkingConfig { Effort = "high" },
+            Thinking = new LlmThinkingConfig { Effort = "max" },
         });
 
-        Assert.False(probe.Body.TryGetProperty("reasoning_effort", out _));
-        Assert.False(probe.Body.TryGetProperty("thinking", out _));
-        Assert.Contains(probe.Warnings, w => w.Contains("thinking", StringComparison.Ordinal));
+        Assert.Equal("max", probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.DoesNotContain(probe.Warnings, w => w.Contains("was declared", StringComparison.Ordinal));
+    }
+
+    /// <summary>Each of them carries the switch in its own field; MiniMax only the off value, which M3 alone accepts.</summary>
+    [Theory]
+    [InlineData(nameof(TogetherAiLlmProvider), false, """{"reasoning":{"enabled":false}}""")]
+    [InlineData(nameof(TogetherAiLlmProvider), true, """{"reasoning":{"enabled":true}}""")]
+    [InlineData(nameof(HuggingFaceLlmProvider), false, """{"chat_template_kwargs":{"enable_thinking":false}}""")]
+    [InlineData(nameof(MiniMaxLlmProvider), false, """{"thinking":{"type":"disabled"}}""")]
+    [InlineData(nameof(MiniMaxLlmProvider), true, "{}")]
+    public async Task ShouldWriteTheSwitchInTheDialectsOwnField(string providerTypeName, bool enabled, string expected)
+    {
+        var body = await ProviderProbe.CapturePayloadAsync(providerTypeName, config => config with
+        {
+            Thinking = new LlmThinkingConfig { Enabled = enabled },
+        });
+
+        using var wanted = JsonDocument.Parse(expected);
+        foreach (var field in new[] { "reasoning", "chat_template_kwargs", "thinking" })
+        {
+            if (wanted.RootElement.TryGetProperty(field, out var value))
+                Assert.Equal(value.GetRawText(), body.GetProperty(field).GetRawText());
+            else
+                Assert.False(body.TryGetProperty(field, out _), field);
+        }
     }
 
     /// <summary>
@@ -310,7 +336,99 @@ public class ProviderCapabilityPayloadTests
         });
 
         Assert.Equal("adaptive", body.GetProperty("thinking").GetProperty("type").GetString());
+        // Without it every Claude 5 model returns its thinking blocks empty (campaign M18, #356).
+        Assert.Equal("summarized", body.GetProperty("thinking").GetProperty("display").GetString());
         Assert.Equal("high", body.GetProperty("output_config").GetProperty("effort").GetString());
+    }
+
+    /// <summary>The Anthropic off switch per (model, effort), measured by campaign M18 (#356).</summary>
+    [Theory]
+    [InlineData("claude-sonnet-5-5", "high", "between_tools")]
+    [InlineData("claude-sonnet-5-5-20261001", null, "between_tools")]
+    [InlineData("claude-sonnet-5", "xhigh", "disabled")]
+    [InlineData("claude-haiku-5-5", "high", "disabled")]
+    public async Task ShouldSendTheModelsOwnOffValue_OnAnthropic(string model, string? effort, string off)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(AnthropicLlmProvider), config => config with
+        {
+            Model = model,
+            Thinking = new LlmThinkingConfig { Enabled = false, Effort = effort },
+        });
+
+        var thinking = probe.Body.GetProperty("thinking");
+        Assert.Equal(off, thinking.GetProperty("type").GetString());
+        // between_tools refuses any other field, display included.
+        Assert.False(thinking.TryGetProperty("display", out _));
+        Assert.DoesNotContain(probe.Warnings, w => w.Contains("thinking.enabled", StringComparison.Ordinal));
+    }
+
+    /// <summary>Above the highest effort a model takes its off value with, the switch is omitted and the effort sent alone.</summary>
+    [Theory]
+    [InlineData("claude-sonnet-5-5", "xhigh")]
+    [InlineData("claude-haiku-5-5", "xhigh")]
+    [InlineData("claude-haiku-5-5", "max")]
+    public async Task ShouldOmitTheOffSwitchAboveTheEffortTheModelTakesItWith_OnAnthropic(string model, string effort)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(AnthropicLlmProvider), config => config with
+        {
+            Model = model,
+            Thinking = new LlmThinkingConfig { Enabled = false, Effort = effort },
+        });
+
+        Assert.False(probe.Body.TryGetProperty("thinking", out _));
+        Assert.Equal(effort, probe.Body.GetProperty("output_config").GetProperty("effort").GetString());
+        Assert.Contains(probe.Warnings, w => w.Contains("cannot switch thinking off at effort", StringComparison.Ordinal));
+    }
+
+    /// <summary>Opus 5.5 and the Fable models refuse every off value: omitted with a warning, while on is sent as adaptive.</summary>
+    [Theory]
+    [InlineData("claude-opus-5-5")]
+    [InlineData("claude-fable-5-2")]
+    public async Task ShouldOmitTheOffSwitchAndKeepAdaptive_OnAnAlwaysThinkingClaude(string model)
+    {
+        var off = await ProviderProbe.CapturePayloadWithLogAsync(nameof(AnthropicLlmProvider), config => config with
+        {
+            Model = model,
+            Thinking = new LlmThinkingConfig { Enabled = false },
+        });
+        var on = await ProviderProbe.CapturePayloadWithLogAsync(nameof(AnthropicLlmProvider), config => config with
+        {
+            Model = model,
+            Thinking = new LlmThinkingConfig { Enabled = true },
+        });
+
+        Assert.False(off.Body.TryGetProperty("thinking", out _));
+        Assert.Contains(off.Warnings, w => w.Contains("always reasons", StringComparison.Ordinal));
+        Assert.Equal("adaptive", on.Body.GetProperty("thinking").GetProperty("type").GetString());
+        Assert.Empty(on.Warnings);
+    }
+
+    /// <summary>The 4.x generation knows no level above high: the effort is lowered there, said aloud.</summary>
+    [Fact]
+    public async Task ShouldLowerTheEffortOnAClaude4Model_OnAnthropic()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(AnthropicLlmProvider), config => config with
+        {
+            Model = "claude-opus-4-1",
+            Thinking = new LlmThinkingConfig { Effort = "max" },
+        });
+
+        Assert.Equal("high", probe.Body.GetProperty("output_config").GetProperty("effort").GetString());
+        Assert.Contains(probe.Warnings, w => w.Contains("Effort 'max'", StringComparison.Ordinal));
+    }
+
+    /// <summary>Ollama reads the same table: a model the host declares always-thinking keeps its effort, not its off switch.</summary>
+    [Fact]
+    public async Task ShouldJudgeThinkAgainstTheModel_OnOllama()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(OllamaLlmProvider), config => config with
+        {
+            Model = "glm-5.3:cloud",
+            Thinking = new LlmThinkingConfig { Enabled = false },
+        });
+
+        Assert.False(probe.Body.TryGetProperty("think", out _));
+        Assert.Contains(probe.Warnings, w => w.Contains("always reasons", StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -328,32 +446,33 @@ public class ProviderCapabilityPayloadTests
         });
 
         Assert.Equal(effort, probe.Body.GetProperty("output_config").GetProperty("effort").GetString());
-        Assert.DoesNotContain(probe.Warnings, w => w.Contains("Effort", StringComparison.Ordinal));
+        Assert.DoesNotContain(probe.Warnings, w => w.Contains($"Effort '{effort}'", StringComparison.Ordinal));
     }
 
     /// <summary>
-    /// The OpenAI dialect's <c>reasoning_effort</c> knows three levels: a level above <c>high</c>
-    /// is sent as <c>high</c>, and the lowering is reported (LLM-02) rather than done in silence.
+    /// OpenAI's and Grok's <c>reasoning_effort</c> know four levels, <c>xhigh</c> included (campaign M18, #356):
+    /// <c>xhigh</c> travels, <c>max</c> is sent as <c>xhigh</c>, and the lowering is reported (LLM-02).
     /// </summary>
     [Theory]
-    [InlineData(nameof(OpenAILlmProvider), "xhigh")]
-    [InlineData(nameof(OpenAILlmProvider), "max")]
-    [InlineData(nameof(GrokLlmProvider), "xhigh")]
-    public async Task ShouldLowerTheEffortToHighAndReportIt_WhereThreeLevelsAreKnown(string providerTypeName, string effort)
+    [InlineData(nameof(OpenAILlmProvider), "xhigh", "xhigh")]
+    [InlineData(nameof(OpenAILlmProvider), "max", "xhigh")]
+    [InlineData(nameof(GrokLlmProvider), "xhigh", "xhigh")]
+    [InlineData(nameof(GrokLlmProvider), "max", "xhigh")]
+    public async Task ShouldLowerTheEffortToXhighAndReportIt_WhereFourLevelsAreKnown(string providerTypeName, string effort, string sent)
     {
         var probe = await ProviderProbe.CapturePayloadWithLogAsync(providerTypeName, config => config with
         {
             Thinking = new LlmThinkingConfig { Effort = effort },
         });
 
-        Assert.Equal("high", probe.Body.GetProperty("reasoning_effort").GetString());
-        Assert.Contains(probe.Warnings, w => w.Contains($"Effort '{effort}'", StringComparison.Ordinal));
+        Assert.Equal(sent, probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.Equal(sent != effort, probe.Warnings.Any(w => w.Contains($"Effort '{effort}'", StringComparison.Ordinal)));
     }
 
-    /// <summary>DeepSeek's field knows <c>max</c> but no <c>xhigh</c>: the one travels, the other is lowered to <c>high</c>.</summary>
+    /// <summary>DeepSeek's field knows every level since campaign M18 (#356): both travel untouched.</summary>
     [Theory]
     [InlineData("max", "max")]
-    [InlineData("xhigh", "high")]
+    [InlineData("xhigh", "xhigh")]
     public async Task ShouldSendTheNearestKnownLevel_OnDeepSeek(string effort, string sent)
     {
         var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(DeepSeekLlmProvider), config => config with
@@ -426,6 +545,113 @@ public class ProviderCapabilityPayloadTests
 
         Assert.False(probe.Body.TryGetProperty("thinking_budget", out _));
         Assert.Contains(probe.Warnings, w => w.Contains("budgetTokens", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // ── A gateway's own entry, read before the vendor's (#356) ──────────────
+
+    /// <summary>Mammouth takes minimal to max on Gemini 3.7, where Google stops at high: xhigh travels untouched.</summary>
+    [Fact]
+    public async Task ShouldSendTheGatewaysOwnLevel_OnMammouthGemini()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(MammouthLlmProvider), config => config with
+        {
+            Model = "gemini-3.7",
+            Thinking = new LlmThinkingConfig { Effort = "xhigh" },
+        });
+
+        Assert.Equal("xhigh", probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.Empty(probe.Warnings);
+    }
+
+    /// <summary>Mammouth refuses Google's <c>none</c> on Gemini 3.7: dropped, and the values it takes are named.</summary>
+    [Fact]
+    public async Task ShouldDropTheVendorsNone_OnMammouthGemini()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(MammouthLlmProvider), config => config with
+        {
+            Model = "gemini-3.7",
+            Thinking = new LlmThinkingConfig { Effort = "none" },
+        });
+
+        Assert.False(probe.Body.TryGetProperty("reasoning_effort", out _));
+        var warning = Assert.Single(probe.Warnings);
+        Assert.Contains("thinking.effort", warning, StringComparison.Ordinal);
+        Assert.Contains("minimal, low, medium, high, xhigh, max only", warning, StringComparison.Ordinal);
+    }
+
+    /// <summary>OpenRouter converts a budget on Gemini 3.7, which cannot switch thinking off: the budget is kept.</summary>
+    [Fact]
+    public async Task ShouldKeepTheBudget_OnOpenRouterGemini()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(OpenRouterLlmProvider), config => config with
+        {
+            Model = "google/gemini-3.7",
+            Thinking = new LlmThinkingConfig { Effort = "max", BudgetTokens = 2048 },
+        });
+
+        var reasoning = probe.Body.GetProperty("reasoning");
+        Assert.Equal(2048, reasoning.GetProperty("max_tokens").GetInt32());
+        // The vendor's row would lower `max` to `high`; OpenRouter's own row takes it.
+        Assert.Equal("max", reasoning.GetProperty("effort").GetString());
+        Assert.False(reasoning.TryGetProperty("enabled", out _));
+        Assert.Empty(probe.Warnings);
+    }
+
+    /// <summary>The same model behind a provider that takes no budget: the budget is still refused, said aloud.</summary>
+    [Fact]
+    public async Task ShouldReportTheBudget_OnMammouthGemini()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(MammouthLlmProvider), config => config with
+        {
+            Model = "gemini-3.7",
+            Thinking = new LlmThinkingConfig { Effort = "high", BudgetTokens = 2048 },
+        });
+
+        Assert.Equal("high", probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.False(probe.Body.TryGetProperty("reasoning", out _));
+        Assert.False(probe.Body.TryGetProperty("thinking_budget", out _));
+        Assert.Contains(probe.Warnings, w => w.Contains("thinking.budgetTokens", StringComparison.Ordinal));
+    }
+
+    /// <summary>Together serves GLM-5.3 with every level and the off switch, which Z.AI refuses.</summary>
+    [Fact]
+    public async Task ShouldKeepTheEffortAndTheOffSwitch_OnTogetherGlm()
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(TogetherAiLlmProvider), config => config with
+        {
+            Model = "zai-org/GLM-5.3-Flash",
+            Thinking = new LlmThinkingConfig { Enabled = false, Effort = "medium" },
+        });
+
+        Assert.Equal("medium", probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.False(probe.Body.GetProperty("reasoning").GetProperty("enabled").GetBoolean());
+        Assert.Empty(probe.Warnings);
+    }
+
+    /// <summary>Qwen writes the effort as <c>reasoning_effort</c>; Qwen 3.7 Plus refuses <c>max</c>, lowered to <c>xhigh</c>.</summary>
+    [Theory]
+    [InlineData("high", "high")]
+    [InlineData("max", "xhigh")]
+    public async Task ShouldSendTheEffortTheModelTakes_OnQwen(string effort, string sent)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(QwenLlmProvider), config => config with
+        {
+            Model = "qwen3.7-plus",
+            Thinking = new LlmThinkingConfig { Effort = effort },
+        });
+
+        Assert.Equal(sent, probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.False(probe.Body.TryGetProperty("thinking", out _));
+        if (sent == effort)
+        {
+            Assert.Empty(probe.Warnings);
+        }
+        else
+        {
+            var warning = Assert.Single(probe.Warnings);
+            Assert.Contains($"Effort '{effort}'", warning, StringComparison.Ordinal);
+            Assert.Contains($"'{sent}' was sent in its place", warning, StringComparison.Ordinal);
+        }
     }
 
     // ── GBNF grammar: only where the configuration says the endpoint takes it (GAP-14) ──

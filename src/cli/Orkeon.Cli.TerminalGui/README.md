@@ -207,7 +207,9 @@ interrupt is `Esc Esc` on the prompt, and it targets the prompt's turn only:
   visible (see "Bottom area"). Sending to a task goes through
   `TuiIntegration.SendToTask` (`(ticket, text) → bool`); while the host leaves it
   null, `Enter` prints that sending to a task is not supported yet and keeps the
-  text in the field.
+  text in the field. The REPL host (`orkeon-repl`) wires it to the answer of the
+  `human_input` question the task asked; a task that waits for none keeps the text in
+  the field (`@<task> waits for no answer: nothing was sent, the text stays in the field.`).
 - **Ctrl+Q** without a running command or turn → quit immediately.
 - **Ctrl+Q** with a running command or prompt turn → modal dialog "Do you want
   to terminate the application?" via `MessageBox.Query`. Yes → host exits.

@@ -144,6 +144,44 @@ public class AnthropicThinkingReplayTests
     }
 
     [Fact]
+    public async Task ShouldKeepStreamedStopReason_WhenRawBodyIsRebuilt()
+    {
+        // Arrange - a tool call cut by the output budget: the stream says max_tokens, not tool_use
+        const string sse = """
+            data: {"type":"message_start","message":{"usage":{"input_tokens":5,"output_tokens":1}}}
+
+            data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"dir_read","input":{}}}
+
+            data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"/workspace\"}"}}
+
+            data: {"type":"content_block_stop","index":0}
+
+            data: {"type":"message_delta","delta":{"stop_reason":"max_tokens"},"usage":{"output_tokens":7}}
+
+            data: {"type":"message_stop"}
+
+
+            """;
+        using var handler = Respond(sse, "text/event-stream");
+        using var provider = NewProvider(handler, HttpConfig());
+        LlmResponse? final = null;
+
+        // Act
+        await foreach (var ev in provider.ChatStreamingAsync([LlmMessage.User("List /workspace")], HttpConfig(),
+                           TestContext.Current.CancellationToken))
+        {
+            if (ev.Kind == LlmStreamEventKind.Completed)
+                final = ev.FinalResponse;
+        }
+
+        // Assert
+        Assert.NotNull(final);
+        Assert.NotNull(final.RawResponseBody);
+        using var body = JsonDocument.Parse(final.RawResponseBody);
+        Assert.Equal("max_tokens", body.RootElement.GetProperty("stop_reason").GetString());
+    }
+
+    [Fact]
     [Trait("BR", "R-08")]
     public async Task ShouldReplayRedactedThinkingUnchanged_WhenTurnHadRedactedBlock()
     {

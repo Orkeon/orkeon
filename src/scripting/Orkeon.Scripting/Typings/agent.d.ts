@@ -33,9 +33,12 @@ declare global {
         /** The turns the agent may take on a task. Default 20 — YAML parity `maxIter:`. Must be 1 or more. */
         maxIterations(value: number): this;
         /**
-         * Turns the provider's thinking on at this effort. Anthropic takes the five levels; a provider whose field
-         * knows fewer (three for OpenAI's `reasoning_effort` and Ollama's `think`; four, without `xhigh`, for DeepSeek and Z.ai; all five for OpenRouter) sends the highest it knows
-         * below the one asked, and warns. Applies to the agent's `ctx.llm` calls too, unless a call sets its own.
+         * Turns the provider's thinking on at this effort. A provider whose field knows fewer levels (three, the
+         * default, for Ollama's `think`, Gemini, Azure OpenAI and Mistral; `low` to `xhigh` for OpenAI and Grok; `low`,
+         * `medium`, `high` and `max` for Z.ai; all five for Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI,
+         * Hugging Face, MiniMax and Mammouth AI) sends the highest it knows below the one asked, and warns. The model's
+         * entry in the capability table narrows the levels further (GLM-5.3 takes `low`, `high` and `max` only).
+         * Applies to the agent's `ctx.llm` calls too, unless a call sets its own.
          */
         effort(level: "low" | "medium" | "high" | "xhigh" | "max"): this;
         /**

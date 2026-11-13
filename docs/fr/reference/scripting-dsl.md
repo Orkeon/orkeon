@@ -221,6 +221,18 @@ const again = await ctx.llm.extract<Invoice>({ messages: [
 ] }, schema, { system: "You extract invoices." });
 ```
 
+Quand la réponse n'est pas du JSON, `extract` lève une erreur qui dit pourquoi : l'échec du fournisseur
+lui-même (`ctx.llm.extract: the provider failed: …`, avec le statut HTTP et le message du vendeur), une
+réponse vide (et, quand elle s'est arrêtée sur `finish_reason: length` ou `max_tokens`, que le budget de
+sortie est épuisé, raisonnement compris, en nommant le plafond avec lequel le modèle a réellement tourné :
+`MaxTokens`, sinon la limite résolue du modèle) ou une réponse qui ne se lit pas (la ligne et l'octet de l'erreur JSON,
+puis le début et la fin de la réponse). Chaque message porte la raison d'arrêt et les comptes de jetons
+de prompt, de complétion et de raisonnement que le fournisseur a donnés. `decide` lève l'échec du
+fournisseur de la même façon (`ctx.llm.decide: the provider failed: …`) au lieu de signaler une réponse
+vide. `chat`, comme `complete`,
+répond à un appel en échec par le marqueur `<undefined-llm:…>` qui porte la phrase du fournisseur,
+jamais par un contenu vide.
+
 `act` est la boucle LLM ⇄ appels d'outils : elle propose au modèle les outils intégrés que
 l'agent a choisis avec `.tools([...])` et ses instances `withAutonomousTool` — dont le
 `execute` s'exécute dans le script, sur le fil du moteur — jusqu'à ce que le modèle cesse de

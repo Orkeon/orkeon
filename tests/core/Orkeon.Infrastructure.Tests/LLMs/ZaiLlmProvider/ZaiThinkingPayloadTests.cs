@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.Tests.TestDoubles;
 using Polly;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
@@ -100,7 +101,7 @@ public class ZaiThinkingPayloadTests
     }
 
     [Fact]
-    public async Task GenerateAsync_ShouldKeepEnabledThinkingAndEffort_WhenModelAlwaysReasons()
+    public async Task GenerateAsync_ShouldSendTheEffortAlone_WhenModelAlwaysReasonsAndThinkingIsAskedOn()
     {
         using var handler = CreateOkHandler();
         _httpClientFactory.RegisterClient("ZaiLlmProvider", new HttpClient(handler));
@@ -114,9 +115,51 @@ public class ZaiThinkingPayloadTests
         await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
 
         var body = await ReadRequestBodyAsync(handler.CapturedRequests.Single());
-        Assert.Equal("enabled", body.GetProperty("thinking").GetProperty("type").GetString());
+        // Asking an always-thinking model for thinking on is honoured as is: no switch to send, nothing to warn about.
+        Assert.False(body.TryGetProperty("thinking", out _));
         Assert.Equal("low", body.GetProperty("reasoning_effort").GetString());
         Assert.False(_logger.HasLoggedWarning("thinking.enabled"));
+    }
+
+    [Theory]
+    [InlineData("glm-5.3")]
+    [InlineData("glm-5.3-flashx")]
+    public async Task GenerateAsync_ShouldLowerMediumToLowAndWarn_WhenModelIsGlm53(string model)
+    {
+        using var handler = CreateOkHandler();
+        _httpClientFactory.RegisterClient("ZaiLlmProvider", new HttpClient(handler));
+
+        var config = LlmConfig.Create(model, TestApiKey) with
+        {
+            Thinking = new LlmThinkingConfig { Enabled = true, Effort = "medium" }
+        };
+        using var provider = new ZaiLlmProvider(config, _httpClientFactory, _noOpPolicy, _logger);
+
+        await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        var body = await ReadRequestBodyAsync(handler.CapturedRequests.Single());
+        Assert.Equal("low", body.GetProperty("reasoning_effort").GetString());
+        Assert.True(_logger.HasLoggedWarning("Effort 'medium' was declared"));
+        Assert.True(_logger.HasLoggedWarning("low, high, max"));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ShouldSendMediumUnchanged_WhenModelIsNotGlm53()
+    {
+        using var handler = CreateOkHandler();
+        _httpClientFactory.RegisterClient("ZaiLlmProvider", new HttpClient(handler));
+
+        var config = LlmConfig.Create("glm-5.2", TestApiKey) with
+        {
+            Thinking = new LlmThinkingConfig { Enabled = true, Effort = "medium" }
+        };
+        using var provider = new ZaiLlmProvider(config, _httpClientFactory, _noOpPolicy, _logger);
+
+        await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        var body = await ReadRequestBodyAsync(handler.CapturedRequests.Single());
+        Assert.Equal("medium", body.GetProperty("reasoning_effort").GetString());
+        Assert.False(_logger.HasLoggedWarning("was declared"));
     }
 
     [Fact]
@@ -143,8 +186,8 @@ public class ZaiThinkingPayloadTests
     [InlineData("glm-5.2", false)]
     [InlineData("glm-5.30", false)]
     [InlineData(null, false)]
-    public void IsAlwaysThinkingModel_ShouldMatchTheGlm53FamilyAtABoundary(string? model, bool expected) =>
-        Assert.Equal(expected, ZaiLlmProvider.IsAlwaysThinkingModel(model));
+    public void ModelCapabilityTable_ShouldMarkTheGlm53FamilyAlwaysThinkingAtABoundary(string? model, bool expected) =>
+        Assert.Equal(expected, ModelCapabilityRegistry.Default.TryGet(model)?.Thinking == ThinkingSupport.EffortOnly);
 
     [Fact]
     public async Task GenerateAsync_ShouldOmitThinkingFields_WhenThinkingIsNull()

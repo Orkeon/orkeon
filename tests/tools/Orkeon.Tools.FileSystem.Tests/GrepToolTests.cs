@@ -159,13 +159,85 @@ public sealed class GrepToolTests : IDisposable
 
     [Fact]
     [Trait("BR", "RT-09b")]
-    public async Task ShouldRefuseGrep_WhenRootNotMountedOrNotDirectory()
+    public async Task ShouldRefuseGrep_WhenRootNotMountedOrMissing()
     {
         Put("/workspace/proj/a.txt", "needle\n");
         Assert.Single(Ok(await GrepAsync("needle", "/workspace/proj")).Hits);
 
-        foreach (var path in new[] { "/elsewhere/proj", "/workspace/missing", "/workspace/proj/a.txt" })
+        foreach (var path in new[] { "/elsewhere/proj", "/workspace/missing" })
             AssertRefused(await GrepAsync("needle", path), path);
+    }
+
+    [Fact]
+    public async Task ShouldSearchFileAlone_WhenGlobIsEmpty()
+    {
+        Put("/workspace/proj/a.ts", "needle\n");
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj/a.ts", glob: ""));
+
+        Assert.Single(res.Hits);
+        Assert.Equal(1, res.Scanned);
+    }
+
+    [Fact]
+    public async Task ShouldSkipFileAlone_WhenFileExceedsSizeLimit()
+    {
+        _fs.AddFile("/workspace/proj/big.txt", [.. "needle\n"u8, .. new byte[1_048_577]]);
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj/big.txt"));
+
+        Assert.Empty(res.Hits);
+        Assert.Equal(1, res.Skipped);
+        Assert.False(res.ScanComplete);
+    }
+
+    [Fact]
+    public async Task ShouldSkipFileAlone_WhenFileIsBinary()
+    {
+        _fs.AddFile("/workspace/proj/nul.bin", [.. "needle"u8, 0x00, .. "needle"u8]);
+
+        var res = Ok(await GrepAsync("needle", "/workspace/proj/nul.bin"));
+
+        Assert.Empty(res.Hits);
+        Assert.Equal(1, res.Skipped);
+    }
+
+    [Fact]
+    public async Task ShouldSearchFileAlone_WhenPathIsAFile()
+    {
+        Put("/workspace/proj/a.ts", "routeDecided\nother\nrouteDecided again\n");
+        Put("/workspace/proj/b.ts", "routeDecided\n");
+
+        var hits = Ok(await GrepAsync("routeDecided", "/workspace/proj/a.ts"));
+        var counts = Ok(await GrepAsync("routeDecided", "/workspace/proj/a.ts", mode: "count"));
+
+        Assert.Equal([1, 3], hits.Hits.Select(h => h.Line));
+        Assert.All(hits.Hits, h => Assert.Equal("/workspace/proj/a.ts", h.Path));
+        Assert.Equal(1, hits.Scanned);
+        Assert.True(hits.ScanComplete);
+        Assert.Equal(new FileCount("/workspace/proj/a.ts", 2), Assert.Single(counts.Counts));
+        Assert.Equal(2, counts.TotalMatches);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseGlob_WhenPathIsAFile()
+    {
+        Put("/workspace/proj/a.ts", "needle\n");
+
+        var res = await GrepAsync("needle", "/workspace/proj/a.ts", glob: "**/*.ts");
+
+        AssertRefused(res, "a glob has nothing to filter under a file");
+        Assert.Contains("path names a file", res.Error, StringComparison.Ordinal);
+        Assert.Contains("pass the folder as path and the file name as glob", res.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldSayPathNotFound_WhenPathIsMissing()
+    {
+        var res = await GrepAsync("needle", "/workspace/missing.ts");
+
+        AssertRefused(res, "nothing at that path");
+        Assert.Contains("Path not found: /workspace/missing.ts", res.Error, StringComparison.Ordinal);
     }
 
     [Fact]
