@@ -10,7 +10,7 @@ each mode. A row merges the reports of the model's latest campaign day: only rep
 same model are merged, and a vision companion is a row of its own. Older days are in the
 [campaign journal](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#campaigns-run).
 
-Modes M1 to M17 are the chat modes, D1 to D8 the decision-model modes; they are defined in the
+Modes M1 to M18 are the chat modes, D1 to D8 the decision-model modes; they are defined in the
 [kit README](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#the-protocol-modes). ✅ passed, ❌ failed, ➖ not
 applicable (the provider or the model does not declare the capability). The default models and
 why they were chosen: [LLM provider comparison](llm-providers-comparison.md).
@@ -139,3 +139,13 @@ refused what Orkeon sent, empty the step was not run. `Other` lists vendor-speci
 |  | `glm-5.3` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
 |  | `glm-5.3-flash` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
 |  | `glm-5.3-flashx` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
+
+## Vendor reasoning matrix
+
+M18 sends each fragment of the catalog's `rawReasoning` list to the vendor exactly as written,
+bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself
+accepts, from the model's latest report that ran M18. "Accepted" means HTTP 2xx, not that the value
+had an effect: compare the traces and the completion tokens in the reports. `Trace` lists the
+fragments after which a reasoning trace came back.
+
+No archived report carries the raw matrix yet (mode M18): the table appears with the next campaign that runs it.

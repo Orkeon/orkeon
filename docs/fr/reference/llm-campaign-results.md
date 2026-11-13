@@ -10,7 +10,7 @@ dernier résultat de chaque mode. Une ligne réunit les rapports du dernier jour
 modèle : seuls les rapports d'un même modèle sont réunis ; un compagnon vision est une ligne à part.
 Les jours plus anciens sont dans le [journal des campagnes](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#campaigns-run).
 
-Les modes M1 à M17 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans
+Les modes M1 à M18 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans
 le [README du kit](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#the-protocol-modes). ✅ réussi, ❌ en échec, ➖ sans
 objet (le fournisseur ou le modèle ne déclare pas la capacité). Les modèles par défaut et les
 raisons de leur choix : [comparatif des fournisseurs LLM](llm-providers-comparison.md).
@@ -139,3 +139,14 @@ valeurs propres au fournisseur ; `Trace` est ✅ lorsqu'une trace de raisonnemen
 |  | `glm-5.3` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
 |  | `glm-5.3-flash` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
 |  | `glm-5.3-flashx` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
+
+## Matrice brute du fournisseur
+
+M18 envoie chaque fragment de la liste `rawReasoning` du catalogue au fournisseur tel quel, sans
+passer par le jugement d'Orkeon sur ce qu'un modèle accepte : le tableau montre ce que le
+fournisseur lui-même accepte, d'après le dernier rapport du modèle qui a exécuté M18. « Acceptés »
+signifie HTTP 2xx, pas que la valeur ait eu un effet : comparer les traces et les jetons de
+complétion dans les rapports. `Trace` liste les fragments après lesquels une trace de
+raisonnement est revenue.
+
+Aucun rapport archivé ne porte encore la matrice brute (mode M18) : le tableau apparaîtra à la prochaine campagne qui l'exécute.

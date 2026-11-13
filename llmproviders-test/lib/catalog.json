@@ -37,6 +37,7 @@
     "M15": "Thinking toggle (on / off)",
     "M16": "Effort sweep",
     "M17": "Thinking budget",
+    "M18": "Raw reasoning matrix",
     "D1": "Decision: noul",
     "D2": "Decision: choice",
     "D3": "Decision: score",
@@ -70,6 +71,15 @@
     },
     "openai": {
       "label": "OpenAI",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}}
+      ],
       "matrix": "§6.1",
       "apiKeyEnv": "OPENAI_API_KEY",
       "defaultModel": "gpt-5.6-sol",
@@ -103,6 +113,19 @@
     },
     "anthropic": {
       "label": "Anthropic",
+      "rawReasoning": [
+        {"label": "effort:low", "body": {"output_config": {"effort": "low"}}},
+        {"label": "effort:medium", "body": {"output_config": {"effort": "medium"}}},
+        {"label": "effort:high", "body": {"output_config": {"effort": "high"}}},
+        {"label": "effort:xhigh", "body": {"output_config": {"effort": "xhigh"}}},
+        {"label": "effort:max", "body": {"output_config": {"effort": "max"}}},
+        {"label": "trace:summarized", "body": {"thinking": {"type": "adaptive", "display": "summarized"}, "output_config": {"effort": "high"}}},
+        {"label": "off:disabled@high", "body": {"thinking": {"type": "disabled"}, "output_config": {"effort": "high"}}},
+        {"label": "off:disabled@xhigh", "body": {"thinking": {"type": "disabled"}, "output_config": {"effort": "xhigh"}}},
+        {"label": "off:between_tools@high", "body": {"thinking": {"type": "between_tools"}, "output_config": {"effort": "high"}}},
+        {"label": "off:between_tools@xhigh", "body": {"thinking": {"type": "between_tools"}, "output_config": {"effort": "xhigh"}}},
+        {"label": "budget:1024", "body": {"thinking": {"type": "enabled", "budget_tokens": 1024}}}
+      ],
       "matrix": "§6.2",
       "apiKeyEnv": "ANTHROPIC_API_KEY",
       "defaultModel": "claude-sonnet-5",
@@ -161,6 +184,17 @@
     },
     "together": {
       "label": "Together AI",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"reasoning": {"enabled": true}}},
+        {"label": "toggle:off", "body": {"reasoning": {"enabled": false}}}
+      ],
       "matrix": "§6.6",
       "apiKeyEnv": "TOGETHER_API_KEY",
       "defaultModel": "zai-org/GLM-5.3-Flash",
@@ -178,6 +212,17 @@
     "togetherai": { "label": "Together AI", "matrix": "§6.6", "aliasOf": "together" },
     "deepseek": {
       "label": "DeepSeek",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"thinking": {"type": "enabled"}}},
+        {"label": "toggle:off", "body": {"thinking": {"type": "disabled"}}}
+      ],
       "matrix": "§6.7",
       "apiKeyEnv": "DEEPSEEK_API_KEY",
       "defaultModel": "deepseek-flash",
@@ -191,6 +236,17 @@
     },
     "kimi": {
       "label": "Kimi (Moonshot AI)",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"thinking": {"type": "enabled"}}},
+        {"label": "toggle:off", "body": {"thinking": {"type": "disabled"}}}
+      ],
       "matrix": "§6.8",
       "apiKeyEnv": "MOONSHOT_API_KEY",
       "defaultModel": "kimi-k3.1-pro",
@@ -220,6 +276,18 @@
     "moonshot": { "label": "Kimi (Moonshot AI)", "matrix": "§6.8", "aliasOf": "kimi" },
     "qwen": {
       "label": "Qwen (Alibaba DashScope)",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"enable_thinking": true}},
+        {"label": "toggle:off", "body": {"enable_thinking": false}},
+        {"label": "budget:1024", "body": {"enable_thinking": true, "thinking_budget": 1024}}
+      ],
       "matrix": "§6.9",
       "apiKeyEnv": "DASHSCOPE_API_KEY",
       "defaultModel": "qwen3.7-plus",
@@ -237,6 +305,15 @@
     },
     "mistral": {
       "label": "Mistral AI",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}}
+      ],
       "matrix": "§6.10",
       "apiKeyEnv": "MISTRAL_API_KEY",
       "defaultModel": "mistral-medium-2604",
@@ -263,6 +340,17 @@
     },
     "huggingface": {
       "label": "HuggingFace",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"chat_template_kwargs": {"enable_thinking": true}}},
+        {"label": "toggle:off", "body": {"chat_template_kwargs": {"enable_thinking": false}}}
+      ],
       "matrix": "§6.11",
       "apiKeyEnv": "HF_TOKEN",
       "defaultModel": "meta-llama/Llama-3.1-8B-Instruct",
@@ -281,6 +369,17 @@
     "hf": { "label": "HuggingFace", "matrix": "§6.11", "aliasOf": "huggingface" },
     "zai": {
       "label": "Z.AI (Zhipu GLM)",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"thinking": {"type": "enabled"}}},
+        {"label": "toggle:off", "body": {"thinking": {"type": "disabled"}}}
+      ],
       "matrix": "§6.12",
       "apiKeyEnv": "ZAI_API_KEY",
       "defaultModel": "glm-5.3-flashx",
@@ -301,6 +400,15 @@
     "zhipu": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" },
     "grok": {
       "label": "Grok (x.AI)",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}}
+      ],
       "matrix": "§6.15",
       "apiKeyEnv": "XAI_API_KEY",
       "defaultModel": "grok-4.6",
@@ -321,6 +429,17 @@
     },
     "minimax": {
       "label": "MiniMax",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"thinking": {"type": "enabled"}}},
+        {"label": "toggle:off", "body": {"thinking": {"type": "disabled"}}}
+      ],
       "matrix": "§6.16",
       "apiKeyEnv": "MINIMAX_API_KEY",
       "defaultModel": "MiniMax-M3",
@@ -340,6 +459,15 @@
     },
     "gemini": {
       "label": "Google Gemini",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}}
+      ],
       "matrix": "§6.13",
       "apiKeyEnv": "GEMINI_API_KEY",
       "defaultModel": "gemini-3.8-flash",
@@ -362,6 +490,17 @@
     "google": { "label": "Google Gemini", "matrix": "§6.13", "aliasOf": "gemini" },
     "openrouter": {
       "label": "OpenRouter",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning": {"effort": "none"}}},
+        {"label": "effort:minimal", "body": {"reasoning": {"effort": "minimal"}}},
+        {"label": "effort:low", "body": {"reasoning": {"effort": "low"}}},
+        {"label": "effort:medium", "body": {"reasoning": {"effort": "medium"}}},
+        {"label": "effort:high", "body": {"reasoning": {"effort": "high"}}},
+        {"label": "effort:xhigh", "body": {"reasoning": {"effort": "xhigh"}}},
+        {"label": "effort:max", "body": {"reasoning": {"effort": "max"}}},
+        {"label": "toggle:off", "body": {"reasoning": {"enabled": false}}},
+        {"label": "budget:1024", "body": {"reasoning": {"max_tokens": 1024}}}
+      ],
       "matrix": "§6.17",
       "apiKeyEnv": "OPENROUTER_API_KEY",
       "defaultModel": "google/gemini-3.8-flash",
@@ -383,6 +522,15 @@
     },
     "mammouth": {
       "label": "Mammouth AI",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}}
+      ],
       "matrix": "§6.18",
       "apiKeyEnv": "MAMMOUTH_API_KEY",
       "defaultModel": "gemini-3.8-flash",

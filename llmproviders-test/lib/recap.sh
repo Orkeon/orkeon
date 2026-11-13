@@ -36,6 +36,7 @@ extract_json() {
 rows=""
 mode_rows=""
 reasoning_rows=""
+matrix_rows=""
 count=0
 declare -A latest_line=()
 
@@ -56,9 +57,15 @@ while IFS= read -r report; do
     '. as $c | .modes[] | [$c.provider, $c.model, $c.timestampUtc, .mode, .outcome, $rel] | @tsv')$'\n'
 
   # One line per reasoning step (M15 to M17), for the reasoning table: absent from older reports.
-  reasoning_rows+=$(printf '%s' "$json" | jq -r '. as $c | (.modes[]? | select((.reasoning // []) | length > 0) | .reasoning[])
+  reasoning_rows+=$(printf '%s' "$json" | jq -r '. as $c | (.modes[]? | select(.mode != "M18" and ((.reasoning // []) | length > 0)) | .reasoning[])
     | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, (.sentValue // "-"), ((.trace // false) | tostring)] | @tsv')
   [[ -z "$reasoning_rows" || "$reasoning_rows" == *$'\n' ]] || reasoning_rows+=$'\n'
+
+  # One line per M18 step (the raw vendor matrix), for its own table: M18 steps are vendor
+  # fragments with their own labels, never columns of the reasoning grid above.
+  matrix_rows+=$(printf '%s' "$json" | jq -r '. as $c | (.modes[]? | select(.mode == "M18" and ((.reasoning // []) | length > 0)) | .reasoning[])
+    | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, ((.trace // false) | tostring)] | @tsv')
+  [[ -z "$matrix_rows" || "$matrix_rows" == *$'\n' ]] || matrix_rows+=$'\n'
 
   # Prefixed with an explicit sort key. Two campaigns launched in parallel routinely land on
   # the same second, and a plain reverse sort over the rendered line would then break the tie
@@ -154,6 +161,50 @@ reasoning_table_tsv() {
         + " | " + (if $r.trace then "✅" else "" end) + " |")] | @tsv'
 }
 
+# The vendor reasoning matrix (M18), as TSV: provider, label, model, day, then the rest of the
+# Markdown row. One row per model, from the latest report that ran M18 (not merged across days:
+# the matrix is one run of one fragment list). Accepted and Refused list the step labels, Trace
+# the labels whose step returned a reasoning trace; a label is code-formatted.
+matrix_table_tsv() {
+  local providers
+  providers=$(jq -c '.providers | with_entries(select(.value.aliasOf == null)) | map_values(.label // "")' "$CATALOG")
+  printf '%s' "$matrix_rows" | jq -R -s -r --argjson cat "$providers" '
+    def codes(f): [.[] | select(f) | "`" + .step + "`"] | join(", ");
+    split("\n") | map(select(length > 0) | split("\t")
+      | {p: .[0], m: .[1], s: .[2], step: .[3], o: .[4], t: (.[5] == "true")})
+    | group_by([.p, .m])
+    | map((map(.s) | max) as $latest | map(select(.s == $latest))
+        | {p: .[0].p, m: .[0].m, d: $latest[0:10], l: (($cat[.[0].p] // "") | if . == "" then .[0].p else . end),
+           acc: codes(.o == "accepted"), ref: codes(.o == "refused"), tr: codes(.t)})
+    | sort_by(.p, .m)
+    | .[] | [.p, .l, .m, .d, "| \(.acc) | \(.ref) | \(.tr) |"] | @tsv'
+}
+
+# Renders the vendor reasoning matrix, or one sentence when no report ran M18 yet.
+render_matrix_table() {
+  local lang="$1" previous="" p label model d rest cell
+  if [[ -z "$matrix_table" ]]; then
+    if [[ "$lang" == fr ]]; then
+      echo "Aucun rapport archivé ne porte encore la matrice brute (mode M18) : le tableau apparaîtra à la prochaine campagne qui l'exécute."
+    else
+      echo "No archived report carries the raw matrix yet (mode M18): the table appears with the next campaign that runs it."
+    fi
+    return 0
+  fi
+  if [[ "$lang" == fr ]]; then
+    echo "| Fournisseur | Modèle | Date | Acceptés | Refusés | Trace |"
+  else
+    echo "| Provider | Model | Date | Accepted | Refused | Trace |"
+  fi
+  echo "|---|---|---|---|---|---|"
+  while IFS=$'\t' read -r p label model d rest; do
+    cell=""
+    [[ "$p" == "$previous" ]] || cell="$label"
+    previous="$p"
+    echo "| ${cell} | \`${model}\` | ${d} ${rest}"
+  done <<< "$matrix_table"
+}
+
 # Renders the reasoning table, or one sentence when no report carries reasoning steps yet.
 render_reasoning_table() {
   local lang="$1" previous="" p label model d rest cell
@@ -184,6 +235,8 @@ model_table=""
 latest_day=$(printf '%s' "$model_table" | cut -f5 | sort | tail -n 1)
 reasoning_table=""
 [[ -z "$reasoning_rows" ]] || reasoning_table=$(reasoning_table_tsv)
+matrix_table=""
+[[ -z "$matrix_rows" ]] || matrix_table=$(matrix_table_tsv)
 model_count=$(printf '%s' "$model_table" | grep -c . || true)
 
 {
@@ -236,6 +289,16 @@ model_count=$(printf '%s' "$model_table" | grep -c . || true)
     echo "the usual set (\`none ✅\`); \`Trace\` is ✅ when a reasoning trace came back."
     echo
     render_reasoning_table en
+    echo
+    echo "## Vendor reasoning matrix"
+    echo
+    echo "M18 sends each fragment of the catalog's \`rawReasoning\` list to the vendor exactly as written,"
+    echo "bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself"
+    echo "accepts, from the model's latest report that ran M18. \"Accepted\" means HTTP 2xx, not that the value"
+    echo "had an effect: compare the traces and the completion tokens in the reports. \`Trace\` lists the"
+    echo "fragments after which a reasoning trace came back."
+    echo
+    render_matrix_table en
   fi
 
   echo
@@ -273,7 +336,7 @@ write_docs_page() {
       echo "modèle : seuls les rapports d'un même modèle sont réunis ; un compagnon vision est une ligne à part."
       echo "Les jours plus anciens sont dans le [journal des campagnes](${REPORT_URL}/README.md#campaigns-run)."
       echo
-      echo "Les modes M1 à M17 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans"
+      echo "Les modes M1 à M18 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans"
       echo "le [README du kit](${REPORT_URL}/README.md#the-protocol-modes). ✅ réussi, ❌ en échec, ➖ sans"
       echo "objet (le fournisseur ou le modèle ne déclare pas la capacité). Les modèles par défaut et les"
       echo "raisons de leur choix : [comparatif des fournisseurs LLM](llm-providers-comparison.md)."
@@ -292,7 +355,7 @@ write_docs_page() {
       echo "same model are merged, and a vision companion is a row of its own. Older days are in the"
       echo "[campaign journal](${REPORT_URL}/README.md#campaigns-run)."
       echo
-      echo "Modes M1 to M17 are the chat modes, D1 to D8 the decision-model modes; they are defined in the"
+      echo "Modes M1 to M18 are the chat modes, D1 to D8 the decision-model modes; they are defined in the"
       echo "[kit README](${REPORT_URL}/README.md#the-protocol-modes). ✅ passed, ❌ failed, ➖ not"
       echo "applicable (the provider or the model does not declare the capability). The default models and"
       echo "why they were chosen: [LLM provider comparison](llm-providers-comparison.md)."
@@ -321,6 +384,27 @@ write_docs_page() {
     fi
     echo
     render_reasoning_table "$lang"
+    echo
+    if [[ "$lang" == fr ]]; then
+      echo "## Matrice brute du fournisseur"
+      echo
+      echo "M18 envoie chaque fragment de la liste \`rawReasoning\` du catalogue au fournisseur tel quel, sans"
+      echo "passer par le jugement d'Orkeon sur ce qu'un modèle accepte : le tableau montre ce que le"
+      echo "fournisseur lui-même accepte, d'après le dernier rapport du modèle qui a exécuté M18. « Acceptés »"
+      echo "signifie HTTP 2xx, pas que la valeur ait eu un effet : comparer les traces et les jetons de"
+      echo "complétion dans les rapports. \`Trace\` liste les fragments après lesquels une trace de"
+      echo "raisonnement est revenue."
+    else
+      echo "## Vendor reasoning matrix"
+      echo
+      echo "M18 sends each fragment of the catalog's \`rawReasoning\` list to the vendor exactly as written,"
+      echo "bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself"
+      echo "accepts, from the model's latest report that ran M18. \"Accepted\" means HTTP 2xx, not that the value"
+      echo "had an effect: compare the traces and the completion tokens in the reports. \`Trace\` lists the"
+      echo "fragments after which a reasoning trace came back."
+    fi
+    echo
+    render_matrix_table "$lang"
   } > "$target.$$"
   mv -f "$target.$$" "$target"
   echo "$target"

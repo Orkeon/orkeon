@@ -109,7 +109,7 @@ $ServedPath = Join-Path $KitDir 'lib/served-models.json'
 
 $DefaultMaxModels = 5
 # M11 (long context) and M14 (end-to-end crew) are manual on purpose — see the kit README.
-$AllModes = 'M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M12,M13,M15,M16,M17'
+$AllModes = 'M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M12,M13,M15,M16,M17,M18'
 
 # Diagnostics go to stderr, exactly where the bash mirror puts them, so `--dry-run > plan.txt`
 # yields the plan and nothing else on both platforms. Write-Host would not do: under
@@ -388,6 +388,10 @@ function Invoke-Campaign {
         # stdout, where the bash mirror also puts it. Diagnostics stay on the host stream.
         Write-Output ('  would run  {0,-12} {1,-42} modes={2}  →  {3}/{4}' -f
             $ProviderKey, $ModelId, $ModeList, $ProviderKey, "$stamp-$slug.md")
+        if (",$ModeList," -like '*,M18,*') {
+            $dryRaw = Get-RawReasoningFile -ProviderKey $ProviderKey -ModelId $ModelId
+            if ($dryRaw) { Write-Output "             --raw-reasoning $dryRaw" }
+        }
         return
     }
 
@@ -423,6 +427,53 @@ function Invoke-Campaign {
     Write-Log ("  → {0} ✅  {1} ❌  {2} ➖   {3}/{4}" -f
         $campaign.passed, $campaign.failed, $campaign.notApplicable, $ProviderKey, "$stamp-$slug.md")
     if ($campaign.failed -gt 0) { $script:Failures++ }
+}
+
+# M18's fragments for one model, written to a file the probe reads (`--raw-reasoning`): the
+# provider's list, then the model's own `requiredParams.<model>.rawReasoning` appended, a label
+# already present being replaced by the model's item. Returns the path, or '' when the resolved
+# list is empty (the probe then reports the mode as not applicable).
+function Get-RawReasoningFile {
+    param([string]$ProviderKey, [string]$ModelId)
+
+    $path = Join-Path $KitDir 'lib/catalog.json'
+    if (-not (Test-Path -LiteralPath $path)) { return '' }
+    if (-not $script:Catalog) {
+        $script:Catalog = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+    }
+
+    $entry = $script:Catalog.providers.PSObject.Properties[$ProviderKey]
+    if (-not $entry) { return '' }
+    $canonical = $ProviderKey
+    if ($entry.Value.aliasOf) {
+        $canonical = "$($entry.Value.aliasOf)"
+        $entry = $script:Catalog.providers.PSObject.Properties[$canonical]
+        if (-not $entry) { return '' }
+    }
+
+    $items = [System.Collections.Generic.List[object]]::new()
+    $base = $entry.Value.PSObject.Properties['rawReasoning']
+    if ($base) { foreach ($x in @($base.Value)) { $items.Add($x) } }
+    $params = $entry.Value.PSObject.Properties['requiredParams']
+    if ($params) {
+        $model = $params.Value.PSObject.Properties[$ModelId]
+        $extra = if ($model) { $model.Value.PSObject.Properties['rawReasoning'] } else { $null }
+        if ($extra) {
+            foreach ($x in @($extra.Value)) {
+                $index = -1
+                for ($i = 0; $i -lt $items.Count; $i++) { if ($items[$i].label -eq $x.label) { $index = $i; break } }
+                if ($index -ge 0) { $items[$index] = $x } else { $items.Add($x) }
+            }
+        }
+    }
+    if ($items.Count -eq 0) { return '' }
+
+    $slug = ($ModelId.ToCharArray() | ForEach-Object {
+        if ($_ -match '[A-Za-z0-9._-]') { $_ } else { '_' } }) -join ''
+    $file = Join-Path $TmpDir "$canonical-$slug-raw-reasoning.json"
+    $json = ConvertTo-Json -InputObject $items.ToArray() -Depth 20
+    [System.IO.File]::WriteAllText($file, $json, [System.Text.UTF8Encoding]::new($false))
+    return $file
 }
 
 # The arguments of one `orkeon llm probe` call: shared by the campaign run and the preflight,
@@ -470,6 +521,12 @@ function Get-ProbeArguments {
     # M16's own sweep, where a model takes vendor values beyond low..max (gpt-5.6-sol: none).
     $sweepEfforts = Get-CatalogModelParam -ProviderKey $ProviderKey -ModelId $ModelId -Field 'sweepEfforts'
     if ($sweepEfforts) { $arguments += @('--sweep-efforts', $sweepEfforts) }
+
+    # M18's vendor-fragment matrix, resolved from the catalog into a temp file (removed at exit).
+    if (",$ModeList," -like '*,M18,*') {
+        $rawReasoning = Get-RawReasoningFile -ProviderKey $ProviderKey -ModelId $ModelId
+        if ($rawReasoning) { $arguments += @('--raw-reasoning', $rawReasoning) }
+    }
     return ,$arguments
 }
 

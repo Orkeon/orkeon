@@ -122,14 +122,20 @@ if ($hasReasoning) {
                 'sent'    { '✅ sent' }
                 'lowered' { "✅ lowered→$(if ($s.sentValue) { $s.sentValue } else { '?' })" }
                 'omitted' { '➖ omitted' }
+                'accepted' { '✅ accepted' }
+                'refused'  { '❌ refused' }
                 default   { '❌ rejected' }
             }
-            $sent = if ($s.sentValue) { $s.sentValue } else { '—' }
+            $sent = if ($s.sentValue) { $s.sentValue } elseif ($s.PSObject.Properties['wire'] -and $s.wire) { $s.wire } else { '—' }
             $trace = if ($s.trace) { '✅' } else { '—' }
             $tokens = if ($null -ne $s.reasoningTokens) { $s.reasoningTokens } else { '—' }
             $finish = if ($s.finishReason) { $s.finishReason } else { '—' }
             $noteParts = @()
-            if ($s.error) { $noteParts += [string]$s.error }
+            if ($s.error) {
+                $errorText = [string]$s.error
+                if ($mode.mode -eq 'M18' -and $errorText.Length -gt 160) { $errorText = $errorText.Substring(0, 160) }
+                $noteParts += $errorText
+            }
             if ($s.warnings) { $noteParts += @($s.warnings | ForEach-Object { [string]$_ }) }
             $note = $noteParts -join '; '
             $cells = @($mode.mode, $s.step, $outcome, $sent, $trace, $tokens, $finish, $note) | ForEach-Object { & $esc $_ }
@@ -139,6 +145,8 @@ if ($hasReasoning) {
     & $add ''
     & $add '> ✅ sent = the value went out as asked; ✅ lowered = Orkeon sent a nearby supported value; ➖ omitted ='
     & $add '> nothing was sent (the model does not take it); ❌ rejected = the vendor refused what Orkeon sent.'
+    & $add '> M18 steps: ✅ accepted = the vendor answered 2xx to the raw fragment shown in Sent (not proof that it had'
+    & $add '> an effect: compare Trace and tokens); ❌ refused = it did not, the start of its answer is in Note.'
 }
 
 # The provider's notes are not copied: a copy is frozen the day it is written, and a note

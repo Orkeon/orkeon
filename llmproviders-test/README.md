@@ -277,7 +277,7 @@ would read as complete coverage.
 
 ## The protocol modes
 
-The harness covers **M1 to M10, M12, M13 and M15 to M17** for a chat provider, **D1 to D8** for a decision
+The harness covers **M1 to M10, M12, M13 and M15 to M18** for a chat provider, **D1 to D8** for a decision
 provider (below). A `➖` in a report flags a mode the provider
 cannot satisfy — nothing was exercised, there is nothing to fix.
 
@@ -305,6 +305,27 @@ a `✅` cell was sent as asked, `→low` was lowered to `low`, `➖` was left ou
 vendor (a vendor refusal of a value Orkeon sent, not a harness failure to run), and an empty cell
 means the step was not run. `Other` lists vendor steps (`none ✅`); `Trace` is `✅` when any step
 returned a reasoning trace.
+
+### M18 — raw reasoning matrix
+
+M15 to M17 judge what Orkeon sends. M18 asks the vendor instead: for each fragment of a list, the probe
+makes one short call through the normal provider, but an HTTP handler strips every reasoning field Orkeon
+wrote and deep-merges the fragment into the request body, so the vendor sees exactly that fragment.
+
+- The list is the catalog's `providers.<key>.rawReasoning`, an array of `{ "label": "effort:xhigh",
+  "body": { "reasoning_effort": "xhigh" } }` in the provider's own dialect. A model's
+  `requiredParams.<model>.rawReasoning` is appended to it (a label already present is replaced by the
+  model's item). `run-campaign` resolves the list into a temporary file and passes it as
+  `--raw-reasoning`; a provider with no list (Azure, Ollama, the decision providers) reports `➖`.
+- Each fragment is a step of the `Reasoning` section, with its `wire` value: `✅ accepted` (the vendor
+  answered 2xx) or `❌ refused` (the start of its answer is in the note), the reasoning tokens, the
+  completion tokens and whether a trace came back. The mode is passed when at least one fragment was
+  accepted, failed when all were refused, not applicable without a list.
+- `accepted` is HTTP 2xx and nothing more: a vendor may swallow a field it ignores. Compare the trace
+  and the token counts of the steps to see which values had an effect.
+
+The `Vendor reasoning matrix` table below (also published in the documentation) reads one model per row,
+from its latest report that ran M18, and lists the accepted, refused and traced labels.
 
 ### Decision providers — D1 to D8
 
@@ -938,6 +959,16 @@ the usual set (`none ✅`); `Trace` is ✅ when a reasoning trace came back.
 |  | `glm-5.3` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
 |  | `glm-5.3-flash` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
 |  | `glm-5.3-flashx` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |
+
+## Vendor reasoning matrix
+
+M18 sends each fragment of the catalog's `rawReasoning` list to the vendor exactly as written,
+bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself
+accepts, from the model's latest report that ran M18. "Accepted" means HTTP 2xx, not that the value
+had an effect: compare the traces and the completion tokens in the reports. `Trace` lists the
+fragments after which a reasoning trace came back.
+
+No archived report carries the raw matrix yet (mode M18): the table appears with the next campaign that runs it.
 
 ---
 

@@ -113,17 +113,21 @@ mkdir -p "$(dirname "$OUTPUT")"
           (if .outcome == "sent" then "✅ sent"
            elif .outcome == "lowered" then "✅ lowered→\(.sentValue // "?")"
            elif .outcome == "omitted" then "➖ omitted"
+           elif .outcome == "accepted" then "✅ accepted"
+           elif .outcome == "refused" then "❌ refused"
            else "❌ rejected" end),
-          (.sentValue // "—"),
+          (.sentValue // .wire // "—"),
           (if .trace then "✅" else "—" end),
           (.reasoningTokens // "—"),
           (.finishReason // "—"),
-          ([(.error // empty), ((.warnings // [])[])] | join("; ")) ]
+          ([((.error // empty) | if $m == "M18" then .[0:160] else . end), ((.warnings // [])[])] | join("; ")) ]
       | map(cell) | "| " + join(" | ") + " |"
     ' "$CAMPAIGN"
     echo
     echo "> ✅ sent = the value went out as asked; ✅ lowered = Orkeon sent a nearby supported value; ➖ omitted ="
     echo "> nothing was sent (the model does not take it); ❌ rejected = the vendor refused what Orkeon sent."
+    echo "> M18 steps: ✅ accepted = the vendor answered 2xx to the raw fragment shown in Sent (not proof that it had"
+    echo "> an effect: compare Trace and tokens); ❌ refused = it did not, the start of its answer is in Note."
   fi
 
   # The provider's notes are not copied: a copy is frozen the day it is written, and a note
