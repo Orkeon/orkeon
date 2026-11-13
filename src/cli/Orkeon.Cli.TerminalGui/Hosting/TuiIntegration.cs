@@ -130,9 +130,10 @@ public sealed class TuiIntegration
 
     /// <summary>
     /// Delivers a prompt line to a task of the agents pane: <c>(ticket, text)</c>, true when the
-    /// task took it. Selecting a task in the list makes it the prompt's recipient; null (the
-    /// case while no task is addressable) ⇒ Enter prints that sending to a task is not
-    /// supported yet and keeps the text in the field.
+    /// task took it — the answer to the question that task asked (#352); false when it waits for
+    /// none, and the text stays in the field. Selecting a task in the list makes it the prompt's
+    /// recipient; null ⇒ Enter prints that sending to a task is not supported and keeps the text
+    /// in the field.
     /// </summary>
     public Func<string, string, bool>? SendToTask { get; set; }
 
@@ -164,4 +165,18 @@ public sealed class TuiIntegration
 
     /// <summary>Says that <see cref="PendingApprovals"/> changed: the prompt opens or closes its panel.</summary>
     public void NotifyApprovalsChanged() => ApprovalsChanged?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>
+    /// The prompt a waiting <c>human_input</c> question asks for (<c>answer [t8]&gt; </c> when a background task
+    /// asked it), shown in place of the prompt glyph; null while no question waits. The read loop is already
+    /// waiting for a line when a task asks, so the prompt follows <see cref="QuestionChanged"/> rather than the
+    /// runner's next prompt (#352).
+    /// </summary>
+    public Func<string?>? AnswerPrompt { get; set; }
+
+    /// <summary>Raised when a <c>human_input</c> question starts waiting, and when it is answered or withdrawn.</summary>
+    public event EventHandler? QuestionChanged;
+
+    /// <summary>Says that <see cref="AnswerPrompt"/> changed: the prompt label follows it.</summary>
+    public void NotifyQuestionChanged() => QuestionChanged?.Invoke(this, EventArgs.Empty);
 }

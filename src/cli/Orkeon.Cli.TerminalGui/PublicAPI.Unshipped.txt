@@ -1,1 +1,5 @@
 #nullable enable
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.AnswerPrompt.get -> System.Func<string?>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.AnswerPrompt.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.NotifyQuestionChanged() -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.QuestionChanged -> System.EventHandler?

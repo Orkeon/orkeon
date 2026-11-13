@@ -1064,6 +1064,45 @@ public class ReplPaneViewTests
     }
 
     [Fact]
+    public void Enter_to_a_task_that_waits_for_no_answer_reports_and_keeps_the_text()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.BindIntegration(new TuiIntegration { SendToTask = (_, _) => false });
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.End);
+        top.Agents.NewKeyDownEvent(Key.Esc);
+        top.Repl.CurrentInput = "2";
+
+        top.Repl.RaiseKeyDown(new Key(KeyCode.Enter));
+
+        Assert.Contains("waits for no answer: nothing was sent, the text stays in the field.", top.Repl.CurrentHistory, StringComparison.Ordinal);
+        Assert.Equal("2", top.Repl.CurrentInput);
+        Assert.Empty(top.Repl.Navigation.History);
+    }
+
+    [Fact]
+    public void Prompt_label_names_the_task_whose_question_waits_and_returns_to_the_glyph()
+    {
+        using var pane = CreatePane();
+        string? waiting = null;
+        var integration = new TuiIntegration { AnswerPrompt = () => waiting };
+        pane.BindIntegration(integration);
+
+        waiting = "answer [t8]> ";
+        integration.NotifyQuestionChanged();
+        Assert.Equal("answer [t8]> ", pane.CurrentPromptPrefix);
+
+        // The runner's own prompt does not hide the question that still waits.
+        pane.SetPromptPrefix("scripted> ");
+        Assert.Equal("answer [t8]> ", pane.CurrentPromptPrefix);
+
+        waiting = null;
+        integration.NotifyQuestionChanged();
+        Assert.Equal("❯ ", pane.CurrentPromptPrefix);
+    }
+
+    [Fact]
     public void Enter_in_the_list_opens_the_task_view_and_sends_nothing()
     {
         var (top, _) = CreateTopWithTasks();

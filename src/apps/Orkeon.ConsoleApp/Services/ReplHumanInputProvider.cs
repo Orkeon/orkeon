@@ -1,30 +1,62 @@
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Abstractions.Runners;
+using Orkeon.Cli.Commands.Scripting.Progress;
 using Orkeon.Domain.HumanInput;
 
 namespace Orkeon.ConsoleApp.Services;
 
-/// <summary>Asks the operator through the REPL read loop, never beside it (RT-08).</summary>
+/// <summary>
+/// Asks the operator through the REPL read loop, never beside it (RT-08). A question a background task asks names
+/// that task on the screen the operator looks at and in the prompt, and takes its answer from the main field or from
+/// the task's own thread (#352).
+/// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "Process-lifetime singleton; the semaphore holds no handle until waited on asynchronously.")]
 internal sealed class ReplHumanInputProvider : IHumanInputProvider, IReplLineInterceptor
 {
     private const string AnswerPrompt = "answer> ";
 
-    private readonly Lazy<Orkeon.Cli.Abstractions.Console.IConsoleAdapter> _console;
+    private readonly Lazy<IConsoleAdapter> _console;
+    private readonly Func<(string Ticket, string Name)?> _origin;
     private readonly SemaphoreSlim _one = new(1, 1);
     private readonly object _gate = new();
     private Pending? _pending;
 
-    public ReplHumanInputProvider(Func<Orkeon.Cli.Abstractions.Console.IConsoleAdapter> console) => _console = new(console);
+    /// <param name="console">The REPL's console, resolved at the first question.</param>
+    /// <param name="origin">
+    /// The background task of the asking flow, ticket and name; null on the main thread. Defaults to the flow's
+    /// console thread (<see cref="ConsoleThread.Current"/>) named by the dispatch's ambient instance
+    /// (<see cref="ProgressAmbient.CurrentInstance"/>).
+    /// </param>
+    public ReplHumanInputProvider(Func<IConsoleAdapter> console, Func<(string Ticket, string Name)?>? origin = null)
+    {
+        _console = new(console);
+        _origin = origin ?? AmbientTask;
+    }
+
+    /// <summary>Raised when a question starts waiting, and when it is answered or withdrawn.</summary>
+    public event EventHandler? PendingChanged;
 
     public string? PromptOverride
     {
         get
         {
             lock (_gate)
-                return _pending is null ? null : AnswerPrompt;
+                return _pending is null ? null : PromptFor(_pending.Origin);
         }
     }
+
+    // The thread the flow writes to names the task (null on main); the ambient instance gives its name.
+    private static (string Ticket, string Name)? AmbientTask()
+    {
+        if (ConsoleThread.Current is not { } ticket)
+            return null;
+        var name = ProgressAmbient.CurrentInstance is { } instance && instance.Ticket == ticket ? instance.Name : ticket;
+        return (ticket, name);
+    }
+
+    private static string PromptFor((string Ticket, string Name)? origin)
+        => origin is { } task ? $"answer [{task.Ticket}]> " : AnswerPrompt;
 
     public bool TryConsume(string line)
     {
@@ -32,20 +64,45 @@ internal sealed class ReplHumanInputProvider : IHumanInputProvider, IReplLineInt
         var answer = line.Trim();
         if (answer.StartsWith('/'))
             return false;
+        return Answer(null, answer);
+    }
 
+    /// <summary>
+    /// Answers the question the task <paramref name="ticket"/> asked, typed in that task's thread. False when that
+    /// task waits for no answer: nothing was taken.
+    /// </summary>
+    public bool TryAnswer(string ticket, string line)
+    {
+        ArgumentNullException.ThrowIfNull(ticket);
+        ArgumentNullException.ThrowIfNull(line);
+        return Answer(ticket, line.Trim());
+    }
+
+    // ticket null: the main field, which answers whatever question waits.
+    private bool Answer(string? ticket, string answer)
+    {
         string? problem;
+        Pending pending;
         lock (_gate)
         {
-            if (_pending is not { } pending)
+            if (_pending is null || (ticket is not null && _pending.Origin?.Ticket != ticket))
                 return false;
 
+            pending = _pending;
             problem = pending.Accept(answer);
             if (problem is null)
                 _pending = null;
         }
 
         if (problem is not null)
-            _console.Value.WriteLine(problem);
+        {
+            Say(pending.Origin, problem);
+            return true;
+        }
+
+        if (pending.Origin is { } task)
+            Say(task, $"[{task.Ticket}] answer taken: {(answer.Length == 0 ? "(default)" : answer)}");
+        PendingChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }
 
@@ -121,7 +178,7 @@ internal sealed class ReplHumanInputProvider : IHumanInputProvider, IReplLineInt
         try
         {
             var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var pending = new Pending(a =>
+            var pending = new Pending(_origin(), a =>
             {
                 if (a.Length == 0)
                 {
@@ -135,19 +192,24 @@ internal sealed class ReplHumanInputProvider : IHumanInputProvider, IReplLineInt
                 return problem;
             });
 
-            Write(context, options);
+            Write(pending.Origin, context, options);
             lock (_gate)
                 _pending = pending;
+            PendingChanged?.Invoke(this, EventArgs.Empty);
 
             await using var registration = cancellationToken.Register(() =>
             {
+                bool withdrawn;
                 lock (_gate)
                 {
-                    if (ReferenceEquals(_pending, pending))
+                    withdrawn = ReferenceEquals(_pending, pending);
+                    if (withdrawn)
                         _pending = null;
                 }
 
                 completion.TrySetCanceled(cancellationToken);
+                if (withdrawn)
+                    PendingChanged?.Invoke(this, EventArgs.Empty);
             });
             return await completion.Task.ConfigureAwait(false);
         }
@@ -157,22 +219,34 @@ internal sealed class ReplHumanInputProvider : IHumanInputProvider, IReplLineInt
         }
     }
 
-    private void Write(HumanInputContext context, bool options)
+    private void Write((string Ticket, string Name)? origin, HumanInputContext context, bool options)
     {
-        var console = _console.Value;
-        console.WriteLine(context.Prompt);
+        Say(origin, origin is { } task ? $"[{task.Ticket}] {task.Name} asks: {context.Prompt}" : context.Prompt);
         if (!options)
             return;
 
         for (var i = 0; i < context.Options.Count; i++)
         {
             var marker = i == context.Recommended ? " (recommended)" : string.Empty;
-            console.WriteLine($"  {i + 1}. {context.Options[i]}{marker}");
+            Say(origin, $"  {i + 1}. {context.Options[i]}{marker}");
         }
     }
 
-    private sealed class Pending(Func<string, string?> accept)
+    // A task's line goes to its thread as an attention line, which the screen the operator looks at shows too; a
+    // console that does not separate threads gets a plain line, the task tag inline.
+    private void Say((string Ticket, string Name)? origin, string text)
     {
+        var console = _console.Value;
+        if (origin is { } task && console is IThreadedConsole { SeparatesThreads: true } threaded)
+            threaded.WriteAttention(task.Ticket, text);
+        else
+            console.WriteLine(text);
+    }
+
+    private sealed class Pending((string Ticket, string Name)? origin, Func<string, string?> accept)
+    {
+        public (string Ticket, string Name)? Origin { get; } = origin;
+
         public string? Accept(string answer) => accept(answer);
     }
 }
