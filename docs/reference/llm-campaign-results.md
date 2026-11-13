@@ -15,83 +15,83 @@ Modes M1 to M18 are the chat modes, D1 to D8 the decision-model modes; they are 
 applicable (the provider or the model does not declare the capability). The default models and
 why they were chosen: [LLM provider comparison](llm-providers-comparison.md).
 
-Latest campaign: 2026-11-13 · 74 models · 365 archived reports.
+Latest campaign: 2026-11-13 · 74 models · 453 archived reports.
 
 | Provider | Model | Date | ✅/❌/➖ | Failed modes | Report |
 |---|---|---|---|---|---|
-| Anthropic | `claude-sonnet-5` *(default)* | 2026-11-13 | 3/0/1 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-182419-claude-sonnet-5.md) |
-|  | `claude-fable-5-1` | 2026-11-13 | 2/1/1 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-182430-claude-fable-5-1.md) |
-|  | `claude-fable-5-2` | 2026-11-13 | 2/1/1 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-182512-claude-fable-5-2.md) |
-|  | `claude-haiku-5-5` | 2026-11-13 | 3/0/1 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-182452-claude-haiku-5-5.md) |
-|  | `claude-opus-5-5` | 2026-11-13 | 2/1/1 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-182459-claude-opus-5-5.md) |
-|  | `claude-sonnet-5-5` | 2026-11-13 | 2/1/1 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-182442-claude-sonnet-5-5.md) |
+| Anthropic | `claude-sonnet-5` *(default)* | 2026-11-13 | 4/0/1 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-191424-claude-sonnet-5.md) |
+|  | `claude-fable-5-1` | 2026-11-13 | 3/1/1 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-191508-claude-fable-5-1.md) |
+|  | `claude-fable-5-2` | 2026-11-13 | 3/1/1 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-191650-claude-fable-5-2.md) |
+|  | `claude-haiku-5-5` | 2026-11-13 | 4/0/1 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-191600-claude-haiku-5-5.md) |
+|  | `claude-opus-5-5` | 2026-11-13 | 3/1/1 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-191622-claude-opus-5-5.md) |
+|  | `claude-sonnet-5-5` | 2026-11-13 | 3/1/1 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-11-13-191531-claude-sonnet-5-5.md) |
 |  | `claude-opus-5` | 2026-10-07 | 12/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/anthropic/2026-10-07-181520-claude-opus-5.md) |
-| DeepSeek | `deepseek-flash` *(default)* | 2026-11-13 | 3/0/1 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/deepseek/2026-11-13-182419-deepseek-flash.md) |
+| DeepSeek | `deepseek-flash` *(default)* | 2026-11-13 | 4/0/1 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/deepseek/2026-11-13-191423-deepseek-flash.md) |
 |  | `deepseek-v4-pro` | 2026-10-07 | 11/1/0 | M9 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/deepseek/2026-10-07-181412-deepseek-v4-pro.md) |
 |  | `deepseek-v4-flash` | 2026-09-07 | 10/2/0 | M2, M9 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/deepseek/2026-09-07-061452-deepseek-v4-flash.md) |
 |  | `deepseek-v4-flash-vision-exp` | 2026-09-07 | 0/1/0 | M9 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/deepseek/2026-09-07-061540-deepseek-v4-flash-vision-exp.md) |
-| Google Gemini | `gemini-3.8-flash` *(default)* | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/gemini/2026-11-13-182421-gemini-3.8-flash.md) |
-|  | `gemini-3.7-flash` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/gemini/2026-11-13-182440-gemini-3.7-flash.md) |
-|  | `gemini-4-argon` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/gemini/2026-11-13-182501-gemini-4-argon.md) |
-|  | `gemini-4-carbon` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/gemini/2026-11-13-182611-gemini-4-carbon.md) |
+| Google Gemini | `gemini-3.8-flash` *(default)* | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/gemini/2026-11-13-191426-gemini-3.8-flash.md) |
+|  | `gemini-3.7-flash` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/gemini/2026-11-13-191518-gemini-3.7-flash.md) |
+|  | `gemini-4-argon` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/gemini/2026-11-13-191609-gemini-4-argon.md) |
+|  | `gemini-4-carbon` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/gemini/2026-11-13-191803-gemini-4-carbon.md) |
 |  | `gemini-3.1-pro-preview` | 2026-10-07 | 10/1/1 | M5 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/gemini/2026-10-07-181413-gemini-3.1-pro-preview.md) |
 |  | `gemini-3.5-flash-lite` | 2026-10-07 | 12/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/gemini/2026-10-07-181522-gemini-3.5-flash-lite.md) |
-| Grok (x.AI) | `grok-4.6` *(default)* | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/grok/2026-11-13-182420-grok-4.6.md) |
-|  | `grok-4.7` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/grok/2026-11-13-182444-grok-4.7.md) |
-| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` *(default)* | 2026-11-13 | 0/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/huggingface/2026-11-13-182419-meta-llama_Llama-3.1-8B-Instruct.md) |
-|  | `Qwen/Qwen3.5-9B` | 2026-11-13 | 0/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/huggingface/2026-11-13-182419-Qwen_Qwen3.5-9B.md) |
+| Grok (x.AI) | `grok-4.6` *(default)* | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/grok/2026-11-13-191425-grok-4.6.md) |
+|  | `grok-4.7` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/grok/2026-11-13-191538-grok-4.7.md) |
+| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` *(default)* | 2026-11-13 | 1/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/huggingface/2026-11-13-191423-meta-llama_Llama-3.1-8B-Instruct.md) |
+|  | `Qwen/Qwen3.5-9B` | 2026-11-13 | 1/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/huggingface/2026-11-13-191427-Qwen_Qwen3.5-9B.md) |
 |  | `Qwen/Qwen3-VL-30B-A3B-Instruct` | 2026-11-11 | 1/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/huggingface/2026-11-11-074404-Qwen_Qwen3-VL-30B-A3B-Instruct.md) |
-| Kimi (Moonshot AI) | `kimi-k3.1-pro` *(default)* | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/kimi/2026-11-13-182423-kimi-k3.1-pro.md) |
-|  | `kimi-k2.6` | 2026-11-13 | 3/0/1 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/kimi/2026-11-13-182451-kimi-k2.6.md) |
-|  | `kimi-k2.7-code` | 2026-11-13 | 2/1/1 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/kimi/2026-11-13-182650-kimi-k2.7-code.md) |
-|  | `kimi-k3` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/kimi/2026-11-13-182619-kimi-k3.md) |
+| Kimi (Moonshot AI) | `kimi-k3.1-pro` *(default)* | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/kimi/2026-11-13-191426-kimi-k3.1-pro.md) |
+|  | `kimi-k2.6` | 2026-11-13 | 4/0/1 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/kimi/2026-11-13-191528-kimi-k2.6.md) |
+|  | `kimi-k2.7-code` | 2026-11-13 | 3/1/1 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/kimi/2026-11-13-191920-kimi-k2.7-code.md) |
+|  | `kimi-k3` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/kimi/2026-11-13-191822-kimi-k3.md) |
 |  | `kimi-k2.7-code-highspeed` | 2026-11-11 | 12/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/kimi/2026-11-11-064847-kimi-k2.7-code-highspeed.md) |
 |  | `kimi-k3.1-pro-highspeed` | 2026-11-11 | 12/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/kimi/2026-11-11-064847-kimi-k3.1-pro-highspeed.md) |
-| Mammouth AI | `gemini-3.8-flash` *(default)* | 2026-11-13 | 0/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mammouth/2026-11-13-182422-gemini-3.8-flash.md) |
-|  | `gemini-3.7-flash` | 2026-11-13 | 0/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mammouth/2026-11-13-182423-gemini-3.7-flash.md) |
+| Mammouth AI | `gemini-3.8-flash` *(default)* | 2026-11-13 | 1/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mammouth/2026-11-13-191432-gemini-3.8-flash.md) |
+|  | `gemini-3.7-flash` | 2026-11-13 | 1/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mammouth/2026-11-13-191504-gemini-3.7-flash.md) |
 |  | `kimi-k3.1-pro` | 2026-11-11 | 10/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mammouth/2026-11-11-062558-kimi-k3.1-pro.md) |
 |  | `deepseek-v4.1-flash` | 2026-10-07 | 1/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mammouth/2026-10-07-181416-deepseek-v4.1-flash.md) |
 |  | `mammouth-recommended` | 2026-10-07 | 1/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mammouth/2026-10-07-181412-mammouth-recommended.md) |
-| MiniMax | `MiniMax-M3` *(default)* | 2026-11-13 | 0/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/minimax/2026-11-13-182419-MiniMax-M3.md) |
-|  | `MiniMax-M2` | 2026-11-13 | 0/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/minimax/2026-11-13-182419-MiniMax-M2.md) |
-|  | `MiniMax-M3.1-Flash` | 2026-11-13 | 0/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/minimax/2026-11-13-182419-MiniMax-M3.1-Flash.md) |
+| MiniMax | `MiniMax-M3` *(default)* | 2026-11-13 | 1/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/minimax/2026-11-13-191423-MiniMax-M3.md) |
+|  | `MiniMax-M2` | 2026-11-13 | 1/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/minimax/2026-11-13-191433-MiniMax-M2.md) |
+|  | `MiniMax-M3.1-Flash` | 2026-11-13 | 1/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/minimax/2026-11-13-191617-MiniMax-M3.1-Flash.md) |
 |  | `MiniMax-M2.7` | 2026-10-07 | 8/2/2 | M2, M9 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/minimax/2026-10-07-181412-MiniMax-M2.7.md) |
-| Mistral AI | `mistral-medium-2604` *(default)* | 2026-11-13 | 1/1/2 | M16 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mistral/2026-11-13-182418-mistral-medium-2604.md) |
-|  | `mistral-large-4` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mistral/2026-11-13-182455-mistral-large-4.md) |
-|  | `mistral-small-2603` | 2026-11-13 | 1/1/2 | M16 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mistral/2026-11-13-182827-mistral-small-2603.md) |
+| Mistral AI | `mistral-medium-2604` *(default)* | 2026-11-13 | 2/1/2 | M16 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mistral/2026-11-13-191423-mistral-medium-2604.md) |
+|  | `mistral-large-4` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mistral/2026-11-13-191507-mistral-large-4.md) |
+|  | `mistral-small-2603` | 2026-11-13 | 2/1/2 | M16 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mistral/2026-11-13-191557-mistral-small-2603.md) |
 |  | `deepseek-v4-1-flash-1017` | 2026-11-11 | 11/1/0 | M2 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mistral/2026-11-11-062525-deepseek-v4-1-flash-1017.md) |
 |  | `zai-glm-5-3-flash` | 2026-11-11 | 11/1/0 | M2 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/mistral/2026-11-11-062534-zai-glm-5-3-flash.md) |
 | Ollama | `llama3.2` *(default)* | 2026-09-07 | 8/3/1 | M2, M7, M9 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/ollama/2026-09-07-054010-llama3.2.md) |
 |  | `llava` | 2026-09-07 | 1/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/ollama/2026-09-07-054032-llava.md) |
-| OpenAI | `gpt-5.6-sol` *(default)* | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-182420-gpt-5.6-sol.md) |
-|  | `gpt-6-astra` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-182431-gpt-6-astra.md) |
-|  | `gpt-6-luna` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-182454-gpt-6-luna.md) |
-|  | `gpt-6-sol` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-182445-gpt-6-sol.md) |
-|  | `gpt-6.1-sol` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-182504-gpt-6.1-sol.md) |
-|  | `gpt-6.1-terra` | 2026-11-13 | 2/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-182516-gpt-6.1-terra.md) |
+| OpenAI | `gpt-5.6-sol` *(default)* | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-191424-gpt-5.6-sol.md) |
+|  | `gpt-6-astra` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-191439-gpt-6-astra.md) |
+|  | `gpt-6-luna` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-191525-gpt-6-luna.md) |
+|  | `gpt-6-sol` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-191505-gpt-6-sol.md) |
+|  | `gpt-6.1-sol` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-191544-gpt-6.1-sol.md) |
+|  | `gpt-6.1-terra` | 2026-11-13 | 3/0/2 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-11-13-191606-gpt-6.1-terra.md) |
 |  | `gpt-5.6-luna` | 2026-10-07 | 11/1/0 | M6 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-10-07-181518-gpt-5.6-luna.md) |
 |  | `gpt-5.6-terra` | 2026-10-07 | 11/1/0 | M9 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openai/2026-10-07-181502-gpt-5.6-terra.md) |
-| OpenRouter | `google/gemini-3.8-flash` *(default)* | 2026-11-13 | 3/1/0 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openrouter/2026-11-13-182421-google_gemini-3.8-flash.md) |
-|  | `google/gemini-3.7-flash` | 2026-11-13 | 3/1/0 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openrouter/2026-11-13-182443-google_gemini-3.7-flash.md) |
+| OpenRouter | `google/gemini-3.8-flash` *(default)* | 2026-11-13 | 4/1/0 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openrouter/2026-11-13-191426-google_gemini-3.8-flash.md) |
+|  | `google/gemini-3.7-flash` | 2026-11-13 | 4/1/0 | M15 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openrouter/2026-11-13-191535-google_gemini-3.7-flash.md) |
 |  | `moonshotai/kimi-k3.1-pro` | 2026-11-11 | 12/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openrouter/2026-11-11-062525-moonshotai_kimi-k3.1-pro.md) |
 |  | `deepseek/deepseek-v4.1-flash` | 2026-10-07 | 4/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openrouter/2026-10-07-181417-deepseek_deepseek-v4.1-flash.md) |
 |  | `openrouter/auto` | 2026-10-07 | 1/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/openrouter/2026-10-07-181412-openrouter_auto.md) |
-| Qwen (Alibaba DashScope) | `qwen3.7-plus` *(default)* | 2026-11-13 | 4/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/qwen/2026-11-13-182424-qwen3.7-plus.md) |
-|  | `qwen3.8-flash` | 2026-11-13 | 4/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/qwen/2026-11-13-182506-qwen3.8-flash.md) |
-|  | `qwen3.8-max` | 2026-11-13 | 4/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/qwen/2026-11-13-182527-qwen3.8-max.md) |
+| Qwen (Alibaba DashScope) | `qwen3.7-plus` *(default)* | 2026-11-13 | 5/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/qwen/2026-11-13-191430-qwen3.7-plus.md) |
+|  | `qwen3.8-flash` | 2026-11-13 | 5/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/qwen/2026-11-13-191623-qwen3.8-flash.md) |
+|  | `qwen3.8-max` | 2026-11-13 | 5/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/qwen/2026-11-13-191724-qwen3.8-max.md) |
 |  | `deepseek-v4.1-flash-1017` | 2026-11-11 | 12/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/qwen/2026-11-11-062650-deepseek-v4.1-flash-1017.md) |
 |  | `qwen3.7-flash` | 2026-10-07 | 11/1/0 | M2 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/qwen/2026-10-07-181525-qwen3.7-flash.md) |
 |  | `qwen3.7-max` | 2026-10-07 | 11/1/0 | M9 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/qwen/2026-10-07-181412-qwen3.7-max.md) |
-| Together AI | `zai-org/GLM-5.3-Flash` *(default)* | 2026-11-13 | 0/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/together/2026-11-13-182419-zai-org_GLM-5.3-Flash.md) |
-|  | `Qwen/Qwen3.5-9B` | 2026-11-13 | 0/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/together/2026-11-13-182420-Qwen_Qwen3.5-9B.md) |
+| Together AI | `zai-org/GLM-5.3-Flash` *(default)* | 2026-11-13 | 1/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/together/2026-11-13-191423-zai-org_GLM-5.3-Flash.md) |
+|  | `Qwen/Qwen3.5-9B` | 2026-11-13 | 1/0/4 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/together/2026-11-13-191431-Qwen_Qwen3.5-9B.md) |
 |  | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | 2026-11-11 | 2/9/1 | M1, M2, M3, M4, M5, M6, M8, M9, M10 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/together/2026-11-11-061047-meta-llama_Llama-3.3-70B-Instruct-Turbo.md) |
 |  | `Qwen/Qwen3-VL-8B-Instruct` | 2026-08-30 | 0/1/0 | M9 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/together/2026-08-30-124627-Qwen_Qwen3-VL-8B-Instruct.md) |
 | TypeSafe (Jev) | `jev-latest` *(default)* | 2026-11-11 | 8/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/typesafe/2026-11-11-074345-jev-latest.md) |
 |  | `jev-preview` | 2026-11-11 | 8/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/typesafe/2026-11-11-074346-jev-preview.md) |
-| Z.AI (Zhipu GLM) | `glm-5.3-flashx` *(default)* | 2026-11-13 | 2/1/1 | M16 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-13-182419-glm-5.3-flashx.md) |
-|  | `glm-5.2` | 2026-11-13 | 3/0/1 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-13-182431-glm-5.2.md) |
-|  | `glm-5.3` | 2026-11-13 | 2/1/1 | M16 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-13-182514-glm-5.3.md) |
-|  | `glm-5.3-flash` | 2026-11-13 | 2/1/1 | M16 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-13-182532-glm-5.3-flash.md) |
+| Z.AI (Zhipu GLM) | `glm-5.3-flashx` *(default)* | 2026-11-13 | 3/1/1 | M16 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-13-191424-glm-5.3-flashx.md) |
+|  | `glm-5.2` | 2026-11-13 | 4/0/1 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-13-191445-glm-5.2.md) |
+|  | `glm-5.3` | 2026-11-13 | 3/1/1 | M16 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-13-191722-glm-5.3.md) |
+|  | `glm-5.3-flash` | 2026-11-13 | 3/1/1 | M16 | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-13-191752-glm-5.3-flash.md) |
 |  | `glm-4.6v-flash` | 2026-11-11 | 1/0/0 | — | [report](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/zai/2026-11-11-074429-glm-4.6v-flash.md) |
 
 ## Reasoning per model
@@ -100,7 +100,7 @@ Modes M15 (thinking toggle), M16 (effort sweep) and M17 (budget) are described i
 [kit README](https://github.com/Orkeon/orkeon/blob/main/llmproviders-test/README.md#the-protocol-modes). ✅ the value was sent as asked,
 `→low` Orkeon lowered it to the nearest value the model takes, ➖ nothing was sent, ❌ the vendor
 refused what Orkeon sent, empty the step was not run. `Other` lists vendor-specific values;
-`Trace` is ✅ when a reasoning trace came back.
+`Trace` is ✅ when the provider surfaced a reasoning trace, `wire only` when the vendor sent one the provider dropped.
 
 | Provider | Model | Date | on | off | low | medium | high | xhigh | max | budget | Other | Trace |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -146,6 +146,51 @@ M18 sends each fragment of the catalog's `rawReasoning` list to the vendor exact
 bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself
 accepts, from the model's latest report that ran M18. "Accepted" means HTTP 2xx, not that the value
 had an effect: compare the traces and the completion tokens in the reports. `Trace` lists the
-fragments after which a reasoning trace came back.
+fragments after which the vendor answer carried a reasoning trace, read on the wire.
 
-No archived report carries the raw matrix yet (mode M18): the table appears with the next campaign that runs it.
+| Provider | Model | Date | Accepted | Refused | Trace |
+|---|---|---|---|---|---|
+| Anthropic | `claude-fable-5-1` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` |  |
+|  | `claude-fable-5-2` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
+|  | `claude-haiku-5-5` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized`, `off:disabled@high` | `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
+|  | `claude-opus-5-5` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
+|  | `claude-sonnet-5` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized`, `off:disabled@high`, `off:disabled@xhigh` | `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
+|  | `claude-sonnet-5-5` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized`, `off:between_tools@high` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@xhigh`, `budget:1024` |  |
+| DeepSeek | `deepseek-flash` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+| Google Gemini | `gemini-3.7-flash` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
+|  | `gemini-3.8-flash` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
+|  | `gemini-4-argon` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
+|  | `gemini-4-carbon` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
+| Grok (x.AI) | `grok-4.6` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:max` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` |
+|  | `grok-4.7` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:max` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` |
+| HuggingFace | `Qwen/Qwen3.5-9B` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `meta-llama/Llama-3.1-8B-Instruct` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  |  |
+| Kimi (Moonshot AI) | `kimi-k2.6` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `kimi-k2.7-code` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `kimi-k3` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `kimi-k3.1-pro` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+| Mammouth AI | `gemini-3.7-flash` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` | `effort:none` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` |
+|  | `gemini-3.8-flash` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` | `effort:none` | `effort:minimal`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` |
+| MiniMax | `MiniMax-M2` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |
+|  | `MiniMax-M3` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:off` | `toggle:on` | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` |
+|  | `MiniMax-M3.1-Flash` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+| Mistral AI | `mistral-large-4` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high` | `effort:none`, `effort:minimal`, `effort:xhigh`, `effort:max` | `effort:low`, `effort:medium`, `effort:high` |
+|  | `mistral-medium-2604` | 2026-11-13 | `effort:none`, `effort:high` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:xhigh`, `effort:max` | `effort:high` |
+|  | `mistral-small-2603` | 2026-11-13 | `effort:none`, `effort:high` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:xhigh`, `effort:max` | `effort:high` |
+| OpenAI | `gpt-5.6-sol` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
+|  | `gpt-6-astra` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:minimal`, `effort:max` |  |
+|  | `gpt-6-luna` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
+|  | `gpt-6-sol` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
+|  | `gpt-6.1-sol` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:minimal`, `effort:max` |  |
+|  | `gpt-6.1-terra` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
+| OpenRouter | `google/gemini-3.7-flash` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` |
+|  | `google/gemini-3.8-flash` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` |
+| Qwen (Alibaba DashScope) | `qwen3.7-plus` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `toggle:on`, `toggle:off`, `budget:1024` | `effort:max` | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `toggle:on`, `budget:1024` |
+|  | `qwen3.8-flash` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off`, `budget:1024` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `budget:1024` |
+|  | `qwen3.8-max` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off`, `budget:1024` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `budget:1024` |
+| Together AI | `Qwen/Qwen3.5-9B` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `zai-org/GLM-5.3-Flash` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |
+| Z.AI (Zhipu GLM) | `glm-5.2` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `glm-5.3` | 2026-11-13 | `effort:low`, `effort:high`, `effort:max`, `toggle:on` | `effort:none`, `effort:minimal`, `effort:medium`, `effort:xhigh`, `toggle:off` | `effort:low`, `effort:high`, `effort:max`, `toggle:on` |
+|  | `glm-5.3-flash` | 2026-11-13 | `effort:low`, `effort:high`, `effort:max`, `toggle:on` | `effort:none`, `effort:minimal`, `effort:medium`, `effort:xhigh`, `toggle:off` | `effort:low`, `effort:high`, `effort:max`, `toggle:on` |
+|  | `glm-5.3-flashx` | 2026-11-13 | `effort:low`, `effort:high`, `effort:max`, `toggle:on` | `effort:none`, `effort:minimal`, `effort:medium`, `effort:xhigh`, `toggle:off` | `effort:low`, `effort:high`, `effort:max`, `toggle:on` |
