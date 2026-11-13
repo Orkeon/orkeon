@@ -947,6 +947,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         /// <summary>Whether the <c>message_stop</c> event — the end of a complete answer — was read.</summary>
         public bool Finished { get; set; }
 
+        /// <summary>The <c>stop_reason</c> the <c>message_delta</c> event carried; null before one.</summary>
+        public string? StopReason { get; set; }
+
         /// <summary>
         /// The <c>error</c> event the vendor sent after the HTTP 200
         /// (<c>{"type":"error","error":{"type","message"}}</c>), when the stream failed mid-way:
@@ -1017,6 +1020,12 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                     break;
 
                 case "message_delta":
+                    if (root.TryGetProperty("delta", out var deltaBody)
+                        && deltaBody.ValueKind == JsonValueKind.Object
+                        && deltaBody.TryGetProperty("stop_reason", out var stopReason)
+                        && stopReason.ValueKind == JsonValueKind.String
+                        && stopReason.GetString() is { Length: > 0 } stop)
+                        state.StopReason = stop;
                     var delta = ReadUsage(root);
                     state.Usage = state.Usage with
                     {
@@ -1149,6 +1158,8 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         if (state.Reasoning.Length > 0)
             metadata.Add("reasoning_content", state.Reasoning.ToString());
+        if (state.StopReason is { Length: > 0 } stopReason)
+            metadata.Add(LlmResponseMetadataKeys.FinishReason, stopReason);
         if (state.Usage.CacheCreationTokens is { } created)
             metadata.Add("cache_creation_input_tokens", created);
         if (state.Usage.CacheReadTokens is { } read)
@@ -1256,7 +1267,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             ["type"] = "message",
             ["role"] = "assistant",
             ["content"] = blocks,
-            ["stop_reason"] = state.ToolUses.Count > 0 ? "tool_use" : "end_turn",
+            ["stop_reason"] = state.StopReason is { Length: > 0 } streamedStop ? streamedStop : state.ToolUses.Count > 0 ? "tool_use" : "end_turn",
         });
     }
 
@@ -1306,6 +1317,12 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             .AddProvider(Name)
             .Add("input_tokens", usage.InputTokens)
             .Add("output_tokens", usage.OutputTokens);
+
+        // Why the answer ended: "max_tokens" says the output budget ran out (#353).
+        if (doc.RootElement.TryGetProperty("stop_reason", out var stopReason)
+            && stopReason.ValueKind == JsonValueKind.String
+            && stopReason.GetString() is { Length: > 0 } stop)
+            metadata.Add(LlmResponseMetadataKeys.FinishReason, stop);
 
         if (usage.CacheCreationTokens is { } created)
             metadata.Add("cache_creation_input_tokens", created);

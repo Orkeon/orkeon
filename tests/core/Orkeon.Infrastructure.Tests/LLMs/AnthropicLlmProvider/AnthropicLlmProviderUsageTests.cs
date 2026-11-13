@@ -91,4 +91,44 @@ public sealed class AnthropicLlmProviderUsageTests
         Assert.Equal(10000, response.CacheWriteTokens);
         Assert.Equal(4000, response.CacheWrite1hTokens);
     }
+
+    [Fact]
+    public async Task ShouldRecordTheStopReason_WhenAnthropicAnswersBuffered()
+    {
+        const string body =
+            """{"content":[{"type":"text","text":""}],"stop_reason":"max_tokens","usage":{"input_tokens":10,"output_tokens":5}}""";
+        using var factory = new MockHttpClientFactory();
+        using var provider = NewProvider(factory, body, "application/json");
+
+        var response = await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("max_tokens", response.Metadata[Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys.FinishReason]);
+    }
+
+    [Fact]
+    public async Task ShouldRecordTheStopReason_WhenAnthropicAnswersStreamed()
+    {
+        const string sse =
+            "event: message_start\n" +
+            "data: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n" +
+            "event: content_block_delta\n" +
+            "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"ok\"}}\n\n" +
+            "event: message_delta\n" +
+            "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"max_tokens\"},\"usage\":{\"output_tokens\":5}}\n\n" +
+            "event: message_stop\n" +
+            "data: {\"type\":\"message_stop\"}\n\n";
+        using var factory = new MockHttpClientFactory();
+        using var provider = NewProvider(factory, sse, "text/event-stream");
+
+        Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse? final = null;
+        await foreach (var ev in provider.ChatStreamingAsync(
+            [Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage.User("hello")],
+            cancellationToken: TestContext.Current.CancellationToken))
+        {
+            if (ev.FinalResponse is not null)
+                final = ev.FinalResponse;
+        }
+
+        var response = Assert.IsType<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse>(final);
+        Assert.Equal("max_tokens", response.Metadata[Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys.FinishReason]);    }
 }

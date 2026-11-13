@@ -173,6 +173,21 @@ public class OllamaLlmProviderTests
     #endregion
 
     [Fact]
+    public async Task ShouldRecordTheDoneReason_WhenGenerateAnswersBuffered()
+    {
+        using var handler = new TestHttpMessageHandler();
+        handler.SetupResponse(HttpStatusCode.OK, """{"response":"","done":true,"done_reason":"length"}""");
+        var httpClientFactory = new TestHttpClientFactory();
+        httpClientFactory.RegisterClient("OllamaLlmProvider", new HttpClient(handler));
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0, BaseUrl = new Uri(EndpointOllamaDefault) };
+        using var provider = new OllamaLlmProvider(config, httpClientFactory, new TestLogger());
+
+        var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("length", result.Metadata[LlmResponseMetadataKeys.FinishReason]);
+    }
+
+    [Fact]
     public async Task ShouldReturnContent_WhenGenerateAsyncWithValidResponse()
     {
         // Arrange
