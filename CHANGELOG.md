@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `grep` takes a file as `path` and searches it alone, as `rg <file>` does; a `glob` given beside a file is refused with a message naming the fix, and a missing path says `Path not found` instead of `Directory not found`; an empty `glob` beside a file counts as absent (#351).
+- Z.AI's GLM-5.3 family takes the efforts `low`, `high` and `max` only: a `medium` asked for is lowered to `low` with the provider's warning instead of failing every call with HTTP 400 code 1210; a provider narrows its levels per model through `OpenAICompatibleProviderBase.EffortLevelsFor` (#354).
+- A provider failure (an HTTP error, a timeout) no longer reaches a script as an empty answer: `ctx.llm.extract` and `ctx.llm.decide` raise it with its status and the vendor's message, and `ctx.llm.chat` answers with the `<undefined-llm:…>` marker `complete` and `act` already gave (#354).
+- `ctx.llm.extract` says why a reply is not JSON: an empty reply is named as such, with the output budget the model ran with (`MaxTokens`, else its resolved limit) when it ended on `length` or `max_tokens`; an unparsable one gives the line and byte of the JSON error and the reply's beginning and end; both carry the finish reason and the prompt, completion and reasoning tokens. Every provider now records the vendor's stop reason, raw, under `finish_reason` (`LlmResponseMetadataKeys.FinishReason`) on buffered and streamed answers alike: `finish_reason` of the OpenAI dialect, `stop_reason` of Anthropic, `done_reason` of Ollama; Azure's text-only stream aside (#353).
+- In `orkeon-repl`, a `human_input` question a background task asks no longer hides in that task's screen: it is tagged `[t8] <task> asks: …` and shows on the displayed screen too, the prompt reads `answer [t8]> ` (the TUI follows the question through `TuiIntegration.AnswerPrompt` and `QuestionChanged`), the answer is taken from the main field or from the task's thread (`TuiIntegration.SendToTask` is now wired), and `[t8] answer taken: …` closes it; several questions are asked one at a time, the next announced, a withdrawn one says so, and a waiting tool approval keeps the main field first (#352).
+
 ## [1.0.0] - 2026-11-12
 
 The first final release. Since `1.0.0-rc.7`: the container image and its switch take their

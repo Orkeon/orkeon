@@ -177,6 +177,19 @@ public class OllamaChatStreamingTests
         Assert.Equal(15, final.TokensUsed);
     }
 
+    [Fact]
+    public async Task ShouldRecordTheDoneReason_FromTheTerminalFrame()
+    {
+        using var handler = Ndjson(
+            """{"response":"hi","done":false}""",
+            """{"response":"","done":true,"done_reason":"length"}""");
+        using var provider = CreateProvider(BaseConfig(), handler);
+
+        var final = Final(await CollectAsync(provider, LlmMessage.User("hello")));
+
+        Assert.Equal("length", final.Metadata[LlmResponseMetadataKeys.FinishReason]);
+    }
+
     /// <summary>
     /// A streamed tool call has to reach the terminal response in the OpenAI shape, or the single
     /// tool-call parser the framework owns cannot read it and the call is lost.

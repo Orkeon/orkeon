@@ -102,4 +102,29 @@ public class ZaiLlmProviderTests
 
         Assert.Equal(22, result.Metadata["reasoning_tokens"]);
     }
+
+    [Fact]
+    public async Task ShouldRecordFinishReason_WhenReasoningSpentTheOutputBudget()
+    {
+        var responseContent = JsonSerializer.Serialize(new
+        {
+            choices = new[] { new { message = new { content = "" }, finish_reason = "length" } },
+            usage = new
+            {
+                total_tokens = 24676,
+                prompt_tokens = 100,
+                completion_tokens = 24576,
+                completion_tokens_details = new { reasoning_tokens = 24576 }
+            }
+        });
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, responseContent);
+        _httpClientFactory.RegisterClient("ZaiLlmProvider", new HttpClient(handler));
+
+        using var provider = new ZaiLlmProvider(_config, _httpClientFactory, _noOpPolicy, _logger);
+        var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("", result.Content);
+        Assert.Null(result.Error);
+        Assert.Equal("length", result.Metadata[LlmResponseMetadataKeys.FinishReason]);
+    }
 }

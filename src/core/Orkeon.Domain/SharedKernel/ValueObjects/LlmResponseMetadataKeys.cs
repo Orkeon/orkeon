@@ -29,4 +29,11 @@ public static class LlmResponseMetadataKeys
     /// at all — it carries <see cref="Error"/> instead (LLM-12).
     /// </summary>
     public const string StreamTruncated = "stream_truncated";
+
+    /// <summary>
+    /// The vendor's own reason for ending the answer (<c>stop</c>, <c>length</c>, <c>tool_calls</c>,
+    /// <c>content_filter</c>), as the response named it; absent when it named none. <c>length</c> on an
+    /// empty or cut answer says the output budget ran out, reasoning included (#353).
+    /// </summary>
+    public const string FinishReason = "finish_reason";
 }

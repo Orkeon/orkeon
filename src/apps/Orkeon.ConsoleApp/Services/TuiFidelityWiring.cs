@@ -147,6 +147,16 @@ internal static class TuiFidelityWiring
         approvals.PendingChanged += (_, _) => integration.NotifyApprovalsChanged();
     }
 
+    // A background task's human_input question (#352): the prompt names it, and the task's thread answers it.
+    private static void WireQuestions(TuiIntegration integration, ReplHumanInputProvider? questions, IToolApprovalWatch? approvals)
+    {
+        if (questions is null) return;
+        // A tool approval is offered the main field's line first: while one waits, the label does not name a question.
+        integration.AnswerPrompt = () => approvals?.Pending.Count > 0 ? null : questions.PromptOverride;
+        integration.SendToTask = questions.TryAnswer;
+        questions.PendingChanged += (_, _) => integration.NotifyQuestionChanged();
+    }
+
     private static void WirePermissionMode(TuiIntegration integration, ISessionBufferService? buffer)
     {
         if (buffer is null) return;
@@ -190,6 +200,7 @@ internal static class TuiFidelityWiring
         integration.ToolActivity = services.GetService<Orkeon.Cli.Abstractions.Console.ToolActivityFeed>();
         var approvals = services.GetService<IToolApprovalWatch>();
         WireApprovals(integration, approvals);
+        WireQuestions(integration, services.GetService<ReplHumanInputProvider>(), approvals);
         WirePermissionMode(integration, buffer);
 
         integration.ModelWitness = BuildModelWitnessReader(

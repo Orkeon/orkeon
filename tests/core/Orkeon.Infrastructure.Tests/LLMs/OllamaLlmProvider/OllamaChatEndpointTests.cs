@@ -65,6 +65,19 @@ public class OllamaChatEndpointTests
     }
 
     [Fact]
+    public async Task ShouldRecordTheDoneReason_OnABufferedChatAnswer()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":""},"done":true,"done_reason":"length"}""");
+        using var provider = CreateProvider(WithTools(BaseConfig()), handler);
+
+        var response = await provider.ChatAsync(
+            [LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("length", response.Metadata[LlmResponseMetadataKeys.FinishReason]);
+    }
+
+    [Fact]
     public async Task ShouldSwitchToChat_WhenToolsAreDeclared()
     {
         using var handler = TestHttpMessageHandler.CreateWithResponse(

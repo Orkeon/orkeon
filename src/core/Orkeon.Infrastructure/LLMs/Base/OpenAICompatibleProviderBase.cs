@@ -466,6 +466,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         public StringBuilder Reasoning { get; } = new();
         /// <summary>Whether a choice carried <c>finish_reason</c>: the dialect's own finish marker (LLM-12).</summary>
         public bool Finished { get; set; }
+        /// <summary>The value of the last <c>finish_reason</c> a choice carried; null before one.</summary>
+        public string? FinishReason { get; set; }
         /// <summary>The live split of the dialect's leading reasoning block (<see cref="LeadingReasoningTag"/>); null without one.</summary>
         public LeadingReasoningSplitter? Splitter { get; init; }
         /// <summary>Tool-call fragments accumulated by stream index.</summary>
@@ -552,7 +554,10 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             foreach (var choice in choices.EnumerateArray())
             {
                 if (HasFinishReason(choice))
+                {
                     state.Finished = true;
+                    state.FinishReason = choice.GetProperty("finish_reason").GetString();
+                }
 
                 if (choice.TryGetProperty("delta", out var delta) && delta.ValueKind == JsonValueKind.Object)
                     AccumulateDelta(delta, state, events, reasoningFieldName);
@@ -939,6 +944,9 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             metadata.Add("reasoning_content", dialectReasoning);
         if (state.Cost is { } cost)
             AddVendorCost(metadata, cost);
+        // The same finish reason the buffered parse records, so both call modes say why the answer ended.
+        if (state.FinishReason is { Length: > 0 } finishReason)
+            metadata.Add(LlmResponseMetadataKeys.FinishReason, finishReason);
 
         // The chat stream's form of a mid-stream error: the response CreateApiErrorResponse
         // builds for a 4xx — `error` + `error_type` — over the partial content, so a caller
@@ -1581,12 +1589,23 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             return;
 
         // A level the declared field does not know is lowered to the nearest it knows, said aloud (LLM-02).
-        var sent = LlmThinkingConfig.EffortFor(thinking.Effort, Capabilities.EffortLevels);
+        var levels = EffortLevelsFor(model);
+        var sent = LlmThinkingConfig.EffortFor(thinking.Effort, levels);
         if (sent != thinking.Effort)
-            LogEffortLowered(thinking.Effort, ProviderDisplayName, string.Join(", ", Capabilities.EffortLevels), sent);
+            LogEffortLowered(thinking.Effort, ProviderDisplayName, string.Join(", ", levels), sent);
         if (ModelTakesEffort(model, sent))
             payload["reasoning_effort"] = sent;
     }
+
+    /// <summary>
+    /// The effort levels the vendor's <c>reasoning_effort</c> field takes for <paramref name="model"/>: the
+    /// provider's declared <see cref="LlmProviderCapabilities.EffortLevels"/> unless the vendor narrows them
+    /// for a model family (Z.AI's GLM-5.3 refuses <c>medium</c>, #354). A level outside the list is lowered
+    /// to the nearest one inside it, with a warning.
+    /// </summary>
+    /// <param name="model">The model the call is sent to.</param>
+    /// <returns>The levels the field takes for that model.</returns>
+    protected virtual IReadOnlyList<string> EffortLevelsFor(string model) => Capabilities.EffortLevels;
 
     /// <summary>
     /// Judges an effort against the model, not only the provider (FWK-21). A model the table lists without
@@ -1843,11 +1862,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         using var doc = JsonDocument.Parse(responseJson);
 
         // Content may be null when the response contains tool_calls instead
-        var contentElement = doc.RootElement
+        var choice = doc.RootElement
             .GetProperty("choices")
             .EnumerateArray()
-            .FirstOrDefault()
-            .GetProperty("message");
+            .FirstOrDefault();
+        var contentElement = choice.GetProperty("message");
 
         var (extractedContent, reasoningFromChunks) = ExtractMessageContent(contentElement);
         var (messageContent, reasoningFromDialect) = SplitReasoningFromContent(extractedContent);
@@ -1875,6 +1894,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             .AddProvider(Name);
 
         ExtractResponseMetadata(doc, metadata);
+        // Why the answer ended: "length" on an empty or cut reply says the output budget ran out (#353).
+        if (choice.TryGetProperty("finish_reason", out var finishReason)
+            && finishReason.ValueKind == JsonValueKind.String
+            && finishReason.GetString() is { Length: > 0 } finish)
+            metadata.Add(LlmResponseMetadataKeys.FinishReason, finish);
         var extractedReasoning = string.IsNullOrEmpty(reasoningFromChunks) ? reasoningFromDialect : reasoningFromChunks;
         if (!string.IsNullOrEmpty(extractedReasoning))
             metadata.Add("reasoning_content", extractedReasoning);

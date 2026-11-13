@@ -532,6 +532,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 metadata.Add("reasoning_content", thinkingText);
             }
 
+            if (ReadStringProperty(root, "done_reason") is { Length: > 0 } doneReason)
+                metadata.Add(LlmResponseMetadataKeys.FinishReason, doneReason);
+
             return new LlmResponse
             {
                 Content = content,
@@ -712,6 +715,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         /// <summary>Raw <c>tool_calls</c> of the frame that carried them, kept for the final response.</summary>
         public string? ToolCallsJson { get; set; }
 
+        /// <summary>The <c>done_reason</c> of the final frame; null when it named none.</summary>
+        public string? DoneReason { get; set; }
+
         /// <summary>How many tool calls were handed to the caller as deltas; the next one's index.</summary>
         public int ToolCallDeltas { get; set; }
 
@@ -786,6 +792,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             && done.GetBoolean())
         {
             state.Finished = true;
+            state.DoneReason = ReadStringProperty(root, "done_reason") is { Length: > 0 } reason ? reason : null;
             state.PromptTokens = ReadInt(root, "prompt_eval_count") ?? state.PromptTokens;
             state.CompletionTokens = ReadInt(root, "eval_count") ?? state.CompletionTokens;
         }
@@ -841,6 +848,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         var metadata = LlmResponseMetadata.CreateBuilder().AddProvider(Name);
         if (state.Thinking.Length > 0)
             metadata.Add("reasoning_content", state.Thinking.ToString());
+        if (state.DoneReason is { Length: > 0 } doneReason)
+            metadata.Add(LlmResponseMetadataKeys.FinishReason, doneReason);
 
         // An elapsed bound or a stream cut before any answer: `error` + `error_type` over the
         // partial content, and no synthesized body — nothing of a failed stream is an instruction (LLM-12).
@@ -1092,6 +1101,14 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             // it fed AgentExecutionBudget's token dimension and the crew accounting, so
             // every buffered Ollama completion ran as if it were free (found by the M1
             // probe archiving tokens=0 on a real exchange, 2026-08-30).
+            var generateMetadata = LlmResponseMetadata.CreateBuilder()
+                .AddProvider(Name)
+                .AddDone(ollamaResponse.Done)
+                .AddTotalDuration(ollamaResponse.TotalDuration)
+                .AddEvalDuration(ollamaResponse.EvalDuration);
+            if (ollamaResponse.DoneReason is { Length: > 0 } generateDoneReason)
+                generateMetadata.Add(LlmResponseMetadataKeys.FinishReason, generateDoneReason);
+
             return new LlmResponse
             {
                 Content = ollamaResponse.Response ?? string.Empty,
@@ -1099,13 +1116,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 PromptTokens = ollamaResponse.PromptEvalCount,
                 CompletionTokens = ollamaResponse.EvalCount,
                 Model = ResolveModel(config),
-                Metadata = LlmResponseMetadata.CreateBuilder()
-                    .AddProvider(Name)
-                    .AddDone(ollamaResponse.Done)
-                    .AddTotalDuration(ollamaResponse.TotalDuration)
-                    .AddEvalDuration(ollamaResponse.EvalDuration)
-                    .Build()
-                    .ToDictionary()
+                Metadata = generateMetadata.Build().ToDictionary()
             };
         }
         catch (JsonException ex)
@@ -1234,6 +1245,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
 
         [JsonPropertyName("done")]
         public bool Done { get; set; }
+
+        [JsonPropertyName("done_reason")]
+        public string? DoneReason { get; set; }
 
         [JsonPropertyName("total_duration")]
         public long TotalDuration { get; set; }
