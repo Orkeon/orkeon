@@ -264,7 +264,13 @@ function Resolve-Orkeon {
     if (Get-Command orkeon -ErrorAction SilentlyContinue) { $script:Orkeon = @('orkeon'); return }
 
     $dll = Join-Path $RepoRoot "src/scripting/Orkeon.Scripting.Cli/bin/$Configuration/net10.0/orkeon.dll"
-    if (-not (Test-Path -LiteralPath $dll)) {
+    # Always build: an existing dll may come from another branch, and the report would name HEAD's
+    # commit for code that did not run. The build is incremental, so an up-to-date dll costs seconds.
+    if (Test-Path -LiteralPath $dll) {
+        Write-Log "Bringing the orkeon CLI up to date ($Configuration) …"
+        dotnet build $CliProject -c $Configuration --no-restore -v q --nologo | Out-Null
+    }
+    else {
         Write-Log "Building the orkeon CLI once ($Configuration) …"
         dotnet build $CliProject -c $Configuration -v q --nologo | Out-Null
     }

@@ -240,7 +240,12 @@ resolve_orkeon() {
   if command -v orkeon >/dev/null 2>&1; then ORKEON=(orkeon); return 0; fi
 
   local dll="$REPO_ROOT/src/scripting/Orkeon.Scripting.Cli/bin/$CONFIGURATION/net10.0/orkeon.dll"
-  if [[ ! -f "$dll" ]]; then
+  # Always build: an existing dll may come from another branch, and the report would name HEAD's
+  # commit for code that did not run. The build is incremental, so an up-to-date dll costs seconds.
+  if [[ -f "$dll" ]]; then
+    log "Bringing the orkeon CLI up to date ($CONFIGURATION) …"
+    dotnet build "$CLI_PROJECT" -c "$CONFIGURATION" --no-restore -v q --nologo >&2
+  else
     log "Building the orkeon CLI once ($CONFIGURATION) …"
     dotnet build "$CLI_PROJECT" -c "$CONFIGURATION" -v q --nologo >&2
   fi
