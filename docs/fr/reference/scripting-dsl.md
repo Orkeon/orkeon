@@ -46,12 +46,6 @@ appelle `RunFromFileAsync` — n'a pas d'orchestrateur : il exécute la crew exp
 
 ## Ce que lit chaque forme
 
-Une méthode de builder ou de fabrique qui refuse son argument — `agentBuilder().effort("turbo")`, un
-`build()` auquel manque un champ, un littéral `stateGraph(...)` à la topologie fautive — lève une `Error`
-que le script rattrape (`try … catch`) : le message nomme la faute, `clrType` l'exception .NET derrière
-(`"InvalidScriptException"`). Un script qui construit à partir de données peut se rabattre sur une
-valeur par défaut.
-
 Mesuré sur `JsCrewConfigurationAdapter.cs`, `JsCrew.cs` et `JsExecutionContext.cs`, pas
 déduit.
 
@@ -339,7 +333,13 @@ Un échec côté hôte parvient au script comme une instance de la classe que d�
 `try { await q.pop({ timeout: 100 }) } catch (e) { if (e instanceof ReceiveTimeoutError) … }`
 — avec les champs de cette classe (`agentName`, `timeoutMs`…), plus `clrType` (le nom du type
 .NET) et `clr` (l'exception). Un échec sans classe déclarée est un simple `Error` qui porte ces
-deux mêmes propriétés. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
+deux mêmes propriétés. Une méthode de builder ou de fabrique qui refuse son argument —
+`agentBuilder().effort("turbo")`, un `build()` auquel manque un champ, un littéral `stateGraph(...)` à
+la topologie fautive — lève une telle `Error` (`try … catch`) : le message nomme la faute, `clrType`
+l'exception .NET derrière (`"InvalidScriptException"`, `"ArgumentException"` pour une valeur au-delà
+d'une limite du domaine), si bien qu'un script qui construit à partir de données peut se rabattre sur
+une valeur par défaut. Les limites propres du moteur (temps, mémoire, récursion) ne sont pas des refus :
+elles arrêtent le script quoi qu'il rattrape. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
 agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `timeout`,
 `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked` ou `unknown`.
 
@@ -368,6 +368,10 @@ test.assertToolCalled("lookup");
 ```
 
 Depuis .NET, `MockLlmProvider` et `MockTool` (`Orkeon.Scripting.Testing`) prennent les mêmes attentes par `When(string | Regex).Respond(...)` ; `TestOverrideLlmProvider` est le fournisseur qui les place devant un fournisseur configuré.
+
+Une assertion en échec est aussi une `Error` (`clrType` `"AssertionException"`), comme un mock refusé
+(`test.mockTool("")`, un `{ prompt: /regex/ }` que .NET ne sait pas lire) : un `try … catch` qui
+rattrape tout l'avale, donc relancez ce que le `catch` ne traite pas.
 
 ## `stateMachine` et `stateGraph`
 

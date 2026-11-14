@@ -1,3 +1,5 @@
+using Orkeon.Scripting.Tests.Internal;
+using Orkeon.Tests.Shared.Doubles;
 using System.Text.Json;
 using Jint;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -177,5 +179,18 @@ public sealed class JsLlmReasoningTests : IDisposable
         Assert.Contains("names the LLM profile 'ghost', which this host does not offer. Known profiles: default.", shown, StringComparison.Ordinal);
         // Refused before any request: the awaited calls would otherwise reach the provider.
         Assert.Empty(_handler.Bodies);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("llm.default_.capabilities")]
+    [InlineData("llm.default_.reasoning")]
+    public void ShouldReachTheScriptsCatch_WhenTheProviderFailsToDescribeTheModel(string read)
+    {
+        var provider = new StubLlmProvider { DescribeFailure = new InvalidOperationException("table unreadable") };
+
+        var caught = ScriptRefusal.Caught(new JsEngineFactory(llmProvider: provider).Create(), read);
+
+        Assert.Equal("true|InvalidOperationException|table unreadable", caught);
     }
 }

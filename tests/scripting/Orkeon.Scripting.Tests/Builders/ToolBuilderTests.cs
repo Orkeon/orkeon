@@ -1,3 +1,5 @@
+using Orkeon.Scripting.Configuration;
+using Jint.Runtime;
 using Jint;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Exceptions;
@@ -195,5 +197,19 @@ public sealed class ToolBuilderTests
 
         Assert.StartsWith("true|InvalidScriptException|", caught, StringComparison.Ordinal);
         Assert.Contains(expected, caught, StringComparison.Ordinal);
+    }
+
+    /// <summary>The engine's limits are not refusals: a tool body over the recursion limit stops the script.</summary>
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldStopTheScript_WhenAToolsExecuteExceedsTheRecursionLimit()
+    {
+        var engine = new JsEngineFactory(new ScriptingLimitsOptions { RecursionLimit = 10 }).Create();
+
+        Assert.Throws<RecursionDepthOverflowException>(() => ScriptRefusal.Caught(engine, """
+            const t = toolBuilder().name("deep").description("d")
+                .execute(function rec(n) { return rec((n ?? 0) + 1); }).build();
+            t.execute(0)
+            """));
     }
 }

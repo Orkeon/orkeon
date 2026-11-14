@@ -28,7 +28,8 @@ declare global {
     interface FsmTransition<TState extends string = string, TPayload = unknown> {
         /**
          * Where this event leads. Validated when the literal is built: a target that is not
-         * a key of `states` throws `InvalidScriptException` before the machine ever runs.
+         * a key of `states` throws an `Error` the script catches (`clrType`
+         * `"InvalidScriptException"`) before the machine ever runs.
          */
         target: TState;
         /**

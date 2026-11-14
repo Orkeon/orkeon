@@ -10,7 +10,8 @@ declare global {
 
     /**
      * A method that refuses its argument, and `build()` missing a field, throws an `Error` the
-     * script catches (`try … catch`), its `clrType` `"InvalidScriptException"`.
+     * script catches (`try … catch`), its `clrType` `"InvalidScriptException"` — `"ArgumentException"`
+     * for a role or goal over the domain's length limit.
      */
     interface AgentBuilder<TIn = unknown, TOut = unknown, TState = unknown> {
         name(value: string): this;

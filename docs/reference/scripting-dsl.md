@@ -42,11 +42,6 @@ orchestrator: it runs the exported crew **procedurally**, bodies and all, tasks 
 
 ## What each shape reads
 
-A builder or factory method that refuses its argument — `agentBuilder().effort("turbo")`, a `build()`
-missing a field, a `stateGraph(...)` literal with a bad topology — throws an `Error` the script catches
-(`try … catch`): the message names the fault, `clrType` the .NET exception behind it
-(`"InvalidScriptException"`). A script that builds from data can fall back to a default.
-
 Measured against `JsCrewConfigurationAdapter.cs`, `JsCrew.cs` and `JsExecutionContext.cs`, not
 inferred.
 
@@ -314,7 +309,12 @@ A host failure reaches the script as an instance of the class `errors.d.ts` decl
 `try { await q.pop({ timeout: 100 }) } catch (e) { if (e instanceof ReceiveTimeoutError) … }`
 — with that class's fields (`agentName`, `timeoutMs`…), plus `clrType` (the .NET type name) and
 `clr` (the exception). A failure with no declared class is a plain `Error` with the same two
-properties. An `onError` handler receives `{ code, message, exception, attempt, agent: { id,
+properties. A builder or factory method that refuses its argument — `agentBuilder().effort("turbo")`, a
+`build()` missing a field, a `stateGraph(...)` literal with a bad topology — throws such an `Error`
+(`try … catch`): the message names the fault, `clrType` the .NET exception behind it
+(`"InvalidScriptException"`, `"ArgumentException"` for a value over a domain limit), so a script that
+builds from data can fall back to a default. The engine's own limits (time, memory, recursion) are not
+refusals: they stop the script whatever it catches. An `onError` handler receives `{ code, message, exception, attempt, agent: { id,
 name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
 `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked`, `unknown`.
 
@@ -343,6 +343,10 @@ test.assertToolCalled("lookup");
 ```
 
 From .NET, `MockLlmProvider` and `MockTool` (`Orkeon.Scripting.Testing`) take the same expectations through `When(string | Regex).Respond(...)`; `TestOverrideLlmProvider` is the provider that puts them in front of a configured one.
+
+A failed assertion is an `Error` too (`clrType` `"AssertionException"`), as is a refused mock
+(`test.mockTool("")`, a `{ prompt: /regex/ }` .NET cannot read): a catch-all `try … catch` around it
+swallows the failure, so rethrow what the `catch` does not handle.
 
 ## `stateMachine` and `stateGraph`
 

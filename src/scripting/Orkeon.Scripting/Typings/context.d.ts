@@ -110,7 +110,7 @@ declare global {
          * host does not offer throws an `Error` the script catches, listing the known profiles.
          */
         capabilities(opts?: LlmCallOptions): LlmCapabilities | null;
-        /** Cancels the in-flight and future llm calls of this context; a running `act()` resolves with `{ interrupted: true }`. */
+        /** Cancels the in-flight and future llm calls of this context; a running `act()` resolves with `{ interrupted: true }`. Called after the agent's attempt ended (from a topic handler that outlives it), it does nothing. */
         interrupt(): void;
         /** Whether `interrupt()` was requested (or the host cancelled the run). */
         readonly isInterrupted: boolean;

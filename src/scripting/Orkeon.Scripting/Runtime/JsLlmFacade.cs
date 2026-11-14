@@ -118,8 +118,22 @@ public sealed partial class JsLlmFacade
     private IDisposable BeginUsageScope(string method) =>
         Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(method, crewId: _crewName, agentId: _agentName);
 
-    /// <summary>Cancels the in-flight and future llm calls of this context (script-facing).</summary>
-    public void interrupt() => _cts.Cancel();
+    /// <summary>
+    /// Cancels the in-flight and future llm calls of this context (script-facing). Once the attempt
+    /// has ended (its source disposed) there is nothing left to cancel: a late call, from a topic
+    /// handler that outlives the agent, does nothing.
+    /// </summary>
+    public void interrupt()
+    {
+        try
+        {
+            _cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // The attempt is over: no call of this context can still run.
+        }
+    }
 
     /// <summary>Whether <see cref="interrupt"/> was requested (or the host token cancelled).</summary>
     public bool isInterrupted => _cts.IsCancellationRequested;

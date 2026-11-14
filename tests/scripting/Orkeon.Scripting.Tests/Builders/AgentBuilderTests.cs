@@ -164,4 +164,13 @@ public sealed class AgentBuilderTests
 
         Assert.Equal("medium|true", chosen);
     }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldThrowTheRawException_WhenACSharpCallerBuildsWithoutAnEngine()
+    {
+        var ex = Assert.Throws<InvalidScriptException>(() => new JsAgentBuilder().effort("bogus"));
+
+        Assert.Contains("'bogus'", ex.Message, StringComparison.Ordinal);
+    }
 }

@@ -149,15 +149,24 @@ Migration:
   `Error` too. Uncaught, a bridged error reaches the host as its CLR exception: `orkeon run` reports
   `InvalidScriptException` as the root cause after the `JavaScriptException` wrapper, where it stopped at
   the wrapper.
-- A script catches the refusals of the builders and factories too: every method of `agentBuilder()`,
+- A script catches the refusals of the builders and factories too (#364): every method of `agentBuilder()`,
   `taskBuilder()`, `crewBuilder()` and `toolBuilder()`, `stateGraph(...)`, `stateMachine(...)`,
   `ErrorAction.*` and the `test` namespace (a failed `test.assertLlmCalled`, a refused mock) threw its CLR
   exception the same raw way, so `agentBuilder().effort(level)` on a level read from data could not fall
   back inside a `try`. Each goes through `JsHostError.Guard` now: an `Error` with the same message, its
-  `clrType` naming the exception (`InvalidScriptException`, `DuplicateAgentNameException`,
-  `AssertionException`). The synchronous members of a built crew (`has`, `findByName`, `findById`,
-  `findByRole`, `instances`, `stop`), `tool.execute` and an `LlmConfig`'s `capabilities` and `reasoning`
-  follow the same rule. A C# caller of `new JsAgentBuilder()` still gets the raw exception.
+  `clrType` naming the exception (`InvalidScriptException`, `ArgumentException`, `OverflowException`,
+  `DuplicateAgentNameException`, `AssertionException`, `RegexParseException`). The synchronous members of a
+  built crew (`has`, `findByName`, `findById`, `findByRole`, `instances`, `stop`), `tool.execute`,
+  `ctx.events.queue` and `topic`, and an `LlmConfig`'s `capabilities` and `reasoning` follow the same rule;
+  `ctx.memory.*.store` and `delete` reject rather than throw; `ctx.llm.interrupt()` called after the agent's
+  attempt ended does nothing, where it threw `ObjectDisposedException`. The engine's own limits (time,
+  memory, recursion, statement count) still stop the script: `Guard` lets them through. A C# caller of
+  `new JsAgentBuilder()` still gets the raw exception.
+- **[breaking]** A C# host that evaluates a script and catches the refusal's CLR type
+  (`InvalidScriptException`, `DuplicateAgentNameException`, `AssertionException`…) around
+  `Engine.Evaluate` now gets a `Jint.Runtime.JavaScriptException`: the CLR exception is on the `clr`
+  property of its `Error` (`ex.Error.Get("clr").ToObject()`). `orkeon run` and the error policy's codes
+  unwrap it already (#364).
 - Z.AI's `reasoning_effort` takes `xhigh` (#356): the campaign of 2026-11-14 found GLM-5.2 accepting it and
   reasoning at it, between `high` and `max`, where Orkeon lowered it to `high`. The provider now declares the five
   levels; the GLM-5.3 family keeps its table restriction (`low`, `high`, `max`). The campaign re-run of M15–M18 on

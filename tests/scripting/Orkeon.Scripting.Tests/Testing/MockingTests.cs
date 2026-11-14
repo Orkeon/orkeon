@@ -98,8 +98,8 @@ public sealed class MockingTests
     [Trait("BR", "CH-364")]
     [InlineData("test.assertLlmCalled()", "AssertionException", "expected at least one call")]
     [InlineData("test.assertToolCalled('ghost')", "AssertionException", "no mock tool registered as 'ghost'")]
-    [InlineData("test.mockTool('')", "ArgumentException", "")]
-    [InlineData("test.mockLlm.when({ prompt: /\\u{41}/u }).respond('x')", "RegexParseException", "")]
+    [InlineData("test.mockTool('')", "ArgumentException", "empty")]
+    [InlineData("test.mockLlm.when({ prompt: /\\u{41}/u }).respond('x')", "RegexParseException", "Invalid pattern")]
     public void ShouldReachTheScriptsCatch_WhenATestHelperRefuses(string call, string clrType, string expected)
     {
         var (engine, _) = NewEngineWithTest();

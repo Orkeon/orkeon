@@ -116,4 +116,15 @@ public sealed class JsHostErrorTests
         Assert.Null(JsHostError.Unwrap(JsValue.Undefined));
         Assert.Null(JsHostError.Unwrap(null));
     }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldLetTheEnginesStopsThrough_WhenTheGuardedBodyRaisesOne()
+    {
+        var engine = NewEngine();
+        Exception[] stops = [new TimeoutException(), new MemoryLimitExceededException("over")];
+
+        foreach (var stop in stops)
+            Assert.Same(stop, Assert.ThrowsAny<Exception>(() => JsHostError.Guard(engine, () => throw stop)));
+    }
 }
