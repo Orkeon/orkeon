@@ -310,10 +310,11 @@ A host failure reaches the script as an instance of the class `errors.d.ts` decl
 — with that class's fields (`agentName`, `timeoutMs`…), plus `clrType` (the .NET type name) and
 `clr` (the exception). A failure with no declared class is a plain `Error` with the same two
 properties. A builder or factory method that refuses its argument — `agentBuilder().effort("turbo")`, a
-`build()` missing a field, a `stateGraph(...)` literal with a bad topology — throws such an `Error`
-(`try … catch`): the message names the fault, `clrType` the .NET exception behind it
-(`"InvalidScriptException"`, `"ArgumentException"` for a value over a domain limit), so a script that
-builds from data can fall back to a default. The engine's own limits (time, memory, recursion) are not
+`build()` missing a field, a `stateGraph(...)` literal with a bad topology, `llm.profile("ghost")` —
+throws an `InvalidScriptError` (`clrType` `"InvalidScriptException"`) the script catches, and an
+awaited `ctx.llm.*` call refused the same way rejects with one: the message names the fault, so a
+script that builds from data tests `e instanceof InvalidScriptError` and falls back to a default. A
+value over a domain limit stays a plain `Error`, its `clrType` `"ArgumentException"`. The engine's own limits (time, memory, recursion) are not
 refusals: they stop the script whatever it catches. An `onError` handler receives `{ code, message, exception, attempt, agent: { id,
 name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
 `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked`, `unknown`.
@@ -392,7 +393,7 @@ An edge is a node name, `END`, or a function of the state returning one (a condi
 (`{ fromNode, toNode, state }`) for `for await`.
 
 `stateGraph(...)` checks the graph's shape when it is built, with the validator the Domain engine
-and the crew's graph share (ADR-018), and reports **every** fault in one `Error` the script catches (`clrType` `"InvalidScriptException"`): an edge from or to
+and the crew's graph share (ADR-018), and reports **every** fault in one `InvalidScriptError` the script catches: an edge from or to
 an undeclared node, a node with no outgoing edge, a node nothing reaches (an orphan), no path from `START` to `END`, a node
 that cannot reach `END`. A function edge cannot be read before it runs, so it is assumed to be able to lead anywhere,
 `END` included. Each time the loop enters a node, a `graph.node.entered` event goes to the host

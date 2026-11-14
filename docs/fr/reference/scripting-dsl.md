@@ -335,10 +335,11 @@ Un échec côté hôte parvient au script comme une instance de la classe que d�
 .NET) et `clr` (l'exception). Un échec sans classe déclarée est un simple `Error` qui porte ces
 deux mêmes propriétés. Une méthode de builder ou de fabrique qui refuse son argument —
 `agentBuilder().effort("turbo")`, un `build()` auquel manque un champ, un littéral `stateGraph(...)` à
-la topologie fautive — lève une telle `Error` (`try … catch`) : le message nomme la faute, `clrType`
-l'exception .NET derrière (`"InvalidScriptException"`, `"ArgumentException"` pour une valeur au-delà
-d'une limite du domaine), si bien qu'un script qui construit à partir de données peut se rabattre sur
-une valeur par défaut. Les limites propres du moteur (temps, mémoire, récursion) ne sont pas des refus :
+la topologie fautive, `llm.profile("ghost")` — lève une `InvalidScriptError` (`clrType`
+`"InvalidScriptException"`) que le script rattrape, et un appel `ctx.llm.*` attendu refusé de la même
+façon est rejeté avec elle : le message nomme la faute, si bien qu'un script qui construit à partir de
+données teste `e instanceof InvalidScriptError` et se rabat sur une valeur par défaut. Une valeur
+au-delà d'une limite du domaine reste un simple `Error`, de `clrType` `"ArgumentException"`. Les limites propres du moteur (temps, mémoire, récursion) ne sont pas des refus :
 elles arrêtent le script quoi qu'il rattrape. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
 agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `timeout`,
 `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked` ou `unknown`.
@@ -419,7 +420,7 @@ temps annule le run. `runStream(state)` produit chaque saut (`{ fromNode, toNode
 pour un `for await`.
 
 `stateGraph(...)` vérifie la forme du graphe à sa construction, avec le validateur que partagent le moteur du
-Domain et le graphe d'une crew (ADR-018), et signale **toutes** les fautes dans une seule `Error` que le script rattrape (`clrType` `"InvalidScriptException"`) : une arête depuis ou
+Domain et le graphe d'une crew (ADR-018), et signale **toutes** les fautes dans une seule `InvalidScriptError` que le script rattrape : une arête depuis ou
 vers un nœud non déclaré, un nœud sans arête sortante, un nœud que rien n'atteint (un orphelin), aucun chemin de `START` à `END`,
 un nœud qui ne peut pas atteindre `END`. Une arête fonction ne se lit pas avant de s'exécuter : on suppose qu'elle peut mener
 n'importe où, `END` compris. Chaque fois que la boucle entre dans un nœud, un événement `graph.node.entered` part vers l'hôte

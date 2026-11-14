@@ -132,6 +132,21 @@ declare global {
     }
 
     /**
+     * Thrown when the host refuses what the script asked of it (`clrType`
+     * `"InvalidScriptException"`): a builder method refusing its argument, a `build()` missing a
+     * field, a `stateMachine`/`stateGraph` literal it rejects, `llm.profile` naming a profile the
+     * host lacks, an `llm` option out of its domain — synchronous, or the rejection of an awaited
+     * `ctx.llm.*` call. A script that tries an optional setting tells it from other failures:
+     * `if (!(e instanceof InvalidScriptError)) throw e;`. A value over a domain limit
+     * (`"ArgumentException"`) and an out-of-range `ErrorAction.retry` delay
+     * (`"OverflowException"`) stay a plain `Error`.
+     */
+    class InvalidScriptError extends Error implements HostError {
+        readonly clrType?: string;
+        readonly clr?: unknown;
+    }
+
+    /**
      * The code an `onError` handler reads on `err.code` — exactly the codes the runtime's
      * mapper produces (`ErrorCodeMapper`).
      */

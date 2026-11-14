@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   host's profiles in the order and the spelling it declared them, those its allow-list refuses left out.
   Names only, never an endpoint or a key: a script checks a name before it asks for the profile, without
   case as `llm.profile` compares.
+- `InvalidScriptError` (#366): a script's own mistake the host refuses (`clrType` `"InvalidScriptException"`: a
+  builder method or `build()`, a `stateMachine`/`stateGraph` literal, `llm.profile`, an `llm` option, the rejection of
+  an awaited `ctx.llm.*` call) is an instance of this global class, an `Error` subclass, so a script tests
+  `e instanceof InvalidScriptError` instead of comparing `clrType`. A value over a domain limit
+  (`ArgumentException`) stays a plain `Error`; a C# caller still gets the `InvalidScriptException`.
 - An agent declares the only virtual paths its tools may touch (#349): `filesystem:` in YAML, a list of
   paths or `{path, access}` items (`ro`, `rw`, `rwnd`), `AgentBuilder.FileSystem(...)` in C#,
   `.filesystem([...])` in `.ork.ts`. An entry selects and narrows the mount that holds it, never widens it;

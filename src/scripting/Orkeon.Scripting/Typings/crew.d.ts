@@ -107,8 +107,8 @@ declare global {
 
     /**
      * A method that refuses its argument, and `build()` refusing the crew (two agents of one name:
-     * `clrType` `"DuplicateAgentNameException"`), throws an `Error` the script catches
-     * (`try … catch`), its `clrType` `"InvalidScriptException"` otherwise.
+     * a `DuplicateAgentNameError`), throws an error the script catches (`try … catch`), an
+     * `InvalidScriptError` otherwise.
      */
     interface CrewBuilder {
         name(value: string): this;

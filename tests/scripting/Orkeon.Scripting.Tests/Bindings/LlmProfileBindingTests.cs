@@ -106,6 +106,7 @@ public sealed class LlmProfileBindingTests
 
     [Theory]
     [Trait("BR", "CH-364")]
+    [Trait("BR", "CH-366")]
     [InlineData("llm.profile('ghost')", "names the LLM profile 'ghost', which this host does not offer. Known profiles: default, claude, local.")]
     [InlineData("llm.profile('claude', { maxTokens: 0 })", "maxTokens")]
     [InlineData("llm.model('')", "A model name must be a non-empty string.")]
@@ -115,11 +116,11 @@ public sealed class LlmProfileBindingTests
     {
         var caught = Engine(Profiles()).Evaluate($$"""
             let caught = "not caught";
-            try { {{call}}; } catch (e) { caught = [e instanceof Error, e.clrType, e.message].join("|"); }
+            try { {{call}}; } catch (e) { caught = [e instanceof Error, e instanceof InvalidScriptError, e.name, e.clrType, e.message].join("|"); }
             caught;
             """).AsString();
 
-        Assert.StartsWith("true|InvalidScriptException|", caught, StringComparison.Ordinal);
+        Assert.StartsWith("true|true|InvalidScriptError|InvalidScriptException|", caught, StringComparison.Ordinal);
         Assert.Contains(expected, caught, StringComparison.Ordinal);
     }
 

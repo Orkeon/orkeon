@@ -160,6 +160,7 @@ public sealed class JsLlmReasoningTests : IDisposable
 
     [Theory]
     [Trait("BR", "CH-364")]
+    [Trait("BR", "CH-366")]
     [InlineData("ctx.llm.reasoning({ llm: { profile: \"ghost\" } })")]
     [InlineData("ctx.llm.capabilities({ llm: { profile: \"ghost\" } })")]
     [InlineData("ctx.llm.stream(\"hi\", { llm: { profile: \"ghost\" } })")]
@@ -171,11 +172,11 @@ public sealed class JsLlmReasoningTests : IDisposable
     {
         var shown = await RunBodyAsync("", $$"""
             let caught = "not caught";
-            try { {{call}}; } catch (e) { caught = [e instanceof Error, e.clrType, e.message].join("|"); }
+            try { {{call}}; } catch (e) { caught = [e instanceof Error, e instanceof InvalidScriptError, e.clrType, e.message].join("|"); }
             globalThis.out = caught;
             """);
 
-        Assert.StartsWith("true|InvalidScriptException|", shown, StringComparison.Ordinal);
+        Assert.StartsWith("true|true|InvalidScriptException|", shown, StringComparison.Ordinal);
         Assert.Contains("names the LLM profile 'ghost', which this host does not offer. Known profiles: default.", shown, StringComparison.Ordinal);
         // Refused before any request: the awaited calls would otherwise reach the provider.
         Assert.Empty(_handler.Bodies);
