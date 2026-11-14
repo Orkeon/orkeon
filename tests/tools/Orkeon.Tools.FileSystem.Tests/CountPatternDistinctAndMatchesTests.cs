@@ -117,6 +117,36 @@ public sealed class CountPatternDistinctAndMatchesTests : IDisposable
         Assert.Equal(ExpectedSortedUniqueMatches, entry.Matches!);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task IncludeMatches_True_RefusesMaxMatchesReturnedBelowOne(int maxMatches)
+    {
+        var path = WriteText("refuse.md", "TBD_a\nTBD_b");
+        var parameters = new Dictionary<string, object?>
+        {
+            ["path"] = path,
+            ["patterns"] = new[] { "TBD_[a-z]" },
+            ["include_matches"] = true,
+            ["max_matches_returned"] = maxMatches,
+        };
+
+        var response = await _tool.CallAsync(new ToolCallRequest("count_pattern", parameters), TestContext.Current.CancellationToken);
+
+        Assert.False(response.Success);
+        Assert.Contains($"max_matches_returned must be at least 1 (got {maxMatches}); omit it for the default of 200", response.Error ?? "", StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task IncludeMatches_False_IgnoresMaxMatchesReturnedZero_AndStillCounts()
+    {
+        var path = WriteText("countonly.md", "TBD_a\nTBD_b");
+
+        var response = await RunAsync(path, "TBD_[a-z]", includeMatches: false, maxMatches: 0);
+
+        Assert.Equal(2, response.Counts[0].Count);
+    }
+
     [Fact]
     public async Task IncludeMatches_True_HonorsMaxMatchesReturned()
     {

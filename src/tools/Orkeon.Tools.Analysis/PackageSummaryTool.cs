@@ -30,6 +30,15 @@ public sealed class PackageSummaryTool : ToolBase<PackageSummaryRequest, Package
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(PackageSummaryRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.MaxExports < 1)
+            return $"max_exports must be at least 1 (got {request.MaxExports}); omit it for the default of 50";
+        return null;
+    }
+
     protected override Task<PackageSummaryResponse> ExecuteTypedAsync(PackageSummaryRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

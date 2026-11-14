@@ -2,3 +2,5 @@
 override Orkeon.Tools.Data.JsonTool.UsesFileSystem.get -> bool
 override Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>.UsesFileSystem.get -> bool
 override Orkeon.Tools.Data.Search.PdfSearchTool.UsesFileSystem.get -> bool
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.Truncated.get -> bool?
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.Truncated.init -> void

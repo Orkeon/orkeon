@@ -20,7 +20,7 @@ public record JanusGraphRequest
     public IReadOnlyDictionary<string, object>? Bindings { get; init; }
 
     /// <summary>Gets the maximum number of results to return.</summary>
-    [FieldSchema(Description = "Maximum number of results to return", IsRequired = false, Example = "1000")]
+    [FieldSchema(Description = "Maximum number of results to return, at least 1 (default 1000)", IsRequired = false, Example = "1000")]
     public int MaxResults { get; init; } = 1000;
 
     /// <summary>Gets the timeout in milliseconds for the traversal execution.</summary>

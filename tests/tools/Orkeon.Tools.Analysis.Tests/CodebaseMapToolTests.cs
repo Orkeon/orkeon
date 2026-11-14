@@ -142,4 +142,28 @@ public class CodebaseMapToolTests
         Assert.Equal(["/zz/x.ts", "/zz/y.ts"], whole.Entries.Select(e => e.Fqn));
         Assert.False(whole.Truncated);
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ShouldRefuseMaxEntriesBelowOne_WhenValidated(int value)
+    {
+        using var tool = new CodebaseMapTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new CodebaseMapRequest { Level = NodeLevel.L2_Module } with { MaxEntries = value });
+
+        Assert.Equal($"max_entries must be at least 1 (got {value}); omit it for the default of 200", error);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptMaxEntriesFromOne_WhenValidated(int value)
+    {
+        using var tool = new CodebaseMapTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new CodebaseMapRequest { Level = NodeLevel.L2_Module } with { MaxEntries = value });
+
+        Assert.Null(error);
+    }
 }

@@ -10,7 +10,7 @@ public sealed record SymbolSourceRequest
     [FieldSchema(Description = "Span cited: SignatureOnly, SignatureAndDoc, SignatureAndBody (default), FullSpan, StatementSpan (with statement_id).", IsRequired = false, Default = "SignatureAndBody")]
     public SourceMode Mode { get; init; } = SourceMode.SignatureAndBody;
 
-    [FieldSchema(Description = "Most lines returned (default 40); truncated says when the span is longer.", IsRequired = false, Default = 40)]
+    [FieldSchema(Description = "Most lines returned, at least 1 (default 40); truncated says when the span is longer.", IsRequired = false, Default = 40)]
     public int MaxLines { get; init; } = 40;
 
     [FieldSchema(Description = "Id of one statement (from statement_query) to cite under StatementSpan.", IsRequired = false)]

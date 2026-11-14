@@ -71,7 +71,7 @@ public class RagEvalTool : ToolBase<RagEvalRequest, RagEvalResponse>
                 Required: false),
             ["k"] = new ParameterSchema(
                 "integer",
-                "Metric cutoff for recall@k / precision@k (default: 5)",
+                "Metric cutoff for recall@k / precision@k, at least 1 (default: 5)",
                 Required: false,
                 Default: DefaultMetricCutoff),
             ["use_llm_judge"] = new ParameterSchema(
@@ -182,7 +182,14 @@ public class RagEvalTool : ToolBase<RagEvalRequest, RagEvalResponse>
     protected override string? ValidateTypedRequest(RagEvalRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return string.IsNullOrWhiteSpace(request.Dataset) ? DatasetRequired : null;
+        if (string.IsNullOrWhiteSpace(request.Dataset))
+        {
+            return DatasetRequired;
+        }
+
+        return request.K < 1
+            ? $"k must be at least 1 (got {request.K}); omit it for the default of {DefaultMetricCutoff}"
+            : null;
     }
 
     /// <summary>

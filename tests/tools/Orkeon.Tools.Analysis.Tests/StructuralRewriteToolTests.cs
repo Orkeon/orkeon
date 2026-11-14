@@ -328,4 +328,18 @@ public sealed class StructuralRewriteToolTests : IDisposable
         Assert.NotNull(error);
         Assert.Contains("outside the agent working root", error, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [Trait("BR", "RT-06")]
+    public async Task ShouldRefuseMaxFilesBelowOne_WhenValidated(int value)
+    {
+        var fs = await SeedAsync(("A.cs", SrcA));
+        using var tool = new StructuralRewriteTool(fs, _pool, _index);
+
+        var error = tool.ValidateTypedForTest(Request() with { MaxFiles = value });
+
+        Assert.Equal($"max_files must be at least 1 (got {value}); omit it for the default of 500", error);
+    }
 }

@@ -129,6 +129,54 @@ public sealed class StructuralSearchToolTests : IDisposable
         Assert.Equal(3, three.FilesScanned);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [Trait("BR", "RT-31")]
+    public void ShouldRefuseMaxFilesBelowOne_WhenValidated(int value)
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace");
+        using var pool = new TreeSitterParserPool();
+        using var tool = new StructuralSearchTool(fs, pool);
+
+        var error = tool.ValidateTypedForTest(Request(value));
+
+        Assert.Equal($"max_files must be at least 1 (got {value}); omit it for the default of 500", error);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [Trait("BR", "RT-31")]
+    public void ShouldRefuseMaxResultsBelowOne_WhenValidated(int value)
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace");
+        using var pool = new TreeSitterParserPool();
+        using var tool = new StructuralSearchTool(fs, pool);
+
+        var error = tool.ValidateTypedForTest(Request(500) with { MaxResults = value });
+
+        Assert.Equal($"max_results must be at least 1 (got {value}); omit it for the default of 100", error);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-31")]
+    public async Task ShouldNotSetTruncated_WhenMatchesExactlyFillMaxResults()
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace");
+        await fs.WriteAllTextAsync("/workspace/src/A.cs", "class A { void Run() { Log.Write(\"x\"); Log.Write(\"y\"); } }", CancellationToken.None);
+        using var pool = new TreeSitterParserPool();
+        using var tool = new StructuralSearchTool(fs, pool);
+
+        var exact = await tool.ExecuteTypedForTest(Request(500) with { MaxResults = 2 }, CancellationToken.None);
+        var cut = await tool.ExecuteTypedForTest(Request(500) with { MaxResults = 1 }, CancellationToken.None);
+
+        Assert.Equal(2, exact.Matches.Count);
+        Assert.False(exact.Truncated);
+        Assert.Single(cut.Matches);
+        Assert.True(cut.Truncated);
+    }
+
     private static StructuralSearchRequest Request(int maxFiles) => new()
     {
         Pattern = "Log.Write($A)",

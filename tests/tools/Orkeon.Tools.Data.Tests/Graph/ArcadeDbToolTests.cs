@@ -182,6 +182,38 @@ public sealed class ArcadeDbToolTests : IDisposable
     }
 
     [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public async Task ShouldRefuseMaxResultsBelowOne(int maxResults)
+    {
+        var result = await _tool.CallAsync(ArcadeRequest(maxResults), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("max_results must be at least 1", result.Error);
+        Assert.Contains("1000", result.Error);
+    }
+
+    [Fact]
+    public async Task ShouldAcceptMaxResultsOfOne()
+    {
+        _state.RecordsForQuery = _ => Array.Empty<IReadOnlyDictionary<string, object?>>();
+
+        var result = await _tool.CallAsync(ArcadeRequest(1), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+    }
+
+    private static ToolCallRequest ArcadeRequest(int maxResults) => new(
+        ToolName: "arcadedb_query",
+        Parameters: new Dictionary<string, object?>
+        {
+            ["bolt_uri"] = "bolt://localhost:2480",
+            ["database"] = "mydb",
+            [ParamQuery] = "MATCH (n) RETURN n",
+            ["max_results"] = maxResults
+        });
+
+    [Theory]
     [InlineData("MATCH (n) RETURN n LIMIT 10")]
     [InlineData("MATCH (n:Person) WHERE n.name = 'Alice' RETURN n")]
     [InlineData("CREATE (n:Person {name: 'Bob'}) RETURN n")]

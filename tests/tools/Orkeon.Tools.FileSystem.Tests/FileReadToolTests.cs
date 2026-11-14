@@ -232,6 +232,23 @@ public sealed class FileReadToolTests : IDisposable
 
     // -- MaxLength / truncation tests ────────────────────────────────────
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task ShouldRefuse_WhenMaxLengthIsBelowOne(int maxLength)
+    {
+        var filePath = CreateFile("maxlen.txt", "ABCDEF");
+
+        var result = await CallToolAsync(new Dictionary<string, object?>
+        {
+            [ParamPath] = filePath,
+            ["max_length"] = maxLength
+        });
+
+        Assert.False(result.Success);
+        Assert.Contains($"max_length must be at least 1 (got {maxLength}); omit it for no limit", result.Error ?? "", StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task ShouldTruncateContent_WhenMaxLengthExceeded()
     {

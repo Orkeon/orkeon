@@ -14,7 +14,7 @@ public sealed record StatementQueryRequest
     [FieldSchema(Description = "Words describing the statements wanted; ranks the hits by similarity.", IsRequired = false)]
     public string? SemanticQuery { get; init; }
 
-    [FieldSchema(Description = "Most hits returned (default 50); truncated says when more exist.", IsRequired = false, Default = 50)]
+    [FieldSchema(Description = "Most hits returned, at least 1 (default 50); truncated says when more exist.", IsRequired = false, Default = 50)]
     public int TopK { get; init; } = 50;
 }
 

@@ -6,6 +6,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Analysis.Internal;
 
 namespace Orkeon.Tools.Analysis;
 
@@ -24,6 +25,15 @@ public sealed class StatementQueryTool : ToolBase<StatementQueryRequest, Stateme
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(StatementQueryRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.TopK < 1)
+            return $"top_k must be at least 1 (got {request.TopK}); omit it for the default of 50";
+        return null;
+    }
+
     protected override Task<StatementQueryResponse> ExecuteTypedAsync(StatementQueryRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -36,14 +46,14 @@ public sealed class StatementQueryTool : ToolBase<StatementQueryRequest, Stateme
                 : request.ParentFqns.ToList();
 
             var kinds = request.Kinds.IsDefaultOrEmpty ? null : new HashSet<StatementKind>(request.Kinds);
-            var topK = Math.Max(1, request.TopK);
+            var topK = request.TopK;
 
             // One hit past the page: truncated says that more statements match, never that the page is full (#283).
-            var hits = await CollectHitsAsync(parents, kinds, topK + 1, cancellationToken).ConfigureAwait(false);
+            var hits = await CollectHitsAsync(parents, kinds, PageProbe.OnePast(topK), cancellationToken).ConfigureAwait(false);
 
             if (!string.IsNullOrEmpty(request.SemanticQuery))
             {
-                hits = await RankBySemanticScoreAsync(hits, request.SemanticQuery, topK + 1, cancellationToken).ConfigureAwait(false);
+                hits = await RankBySemanticScoreAsync(hits, request.SemanticQuery, PageProbe.OnePast(topK), cancellationToken).ConfigureAwait(false);
             }
 
             return new StatementQueryResponse

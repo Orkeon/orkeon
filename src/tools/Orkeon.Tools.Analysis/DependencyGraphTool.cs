@@ -31,6 +31,20 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(DependencyGraphRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.MaxNodes < 1)
+            return $"max_nodes must be at least 1 (got {request.MaxNodes}); omit it for the default of 200";
+        // 0 is a count-only mode (no cycle listed, cycles_truncated true, cycle_count kept); only a negative is meaningless.
+        if (request.MaxCycles < 0)
+            return $"max_cycles must be at least 0 (got {request.MaxCycles}); 0 returns cycle_count alone, omit it for the default of 20";
+        if (request.MaxCycleMembers < 1)
+            return $"max_cycle_members must be at least 1 (got {request.MaxCycleMembers}); omit it for the default of 50";
+        return null;
+    }
+
     protected override Task<DependencyGraphResponse> ExecuteTypedAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -79,7 +93,7 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
     private async Task<(IReadOnlyList<RaggableNode> Nodes, bool Truncated)> ResolveNodesAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
     {
         var maxNodes = Math.Max(1, request.MaxNodes);
-        var probe = maxNodes + 1;
+        var probe = PageProbe.OnePast(maxNodes);
         // The root goes into the query: the page and truncated then describe the root's subset, not the whole scope.
         var root = string.IsNullOrEmpty(request.RootFqn) ? null : request.RootFqn;
         IReadOnlyList<RaggableNode> nodes;

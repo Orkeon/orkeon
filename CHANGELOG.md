@@ -150,6 +150,28 @@ Migration:
 
 ### Fixed
 
+- `relational_database_query` (and `mysql_query`, `mariadb_query`, `postgres_query`, `sqlserver_query`) refuses a
+  SELECT whose `max_rows` is below 1 or above 100000, and any query whose `timeout_seconds` is below 1 (#372), in a
+  message that names the field and its default. A small model that filled every field sent `max_rows: 0`, got no row and a success, and
+  the crew reported made-up figures; a `timeout_seconds: 0` waited without bound. An Execute or a Scalar query, which
+  never reads `max_rows`, still takes any value. A SELECT response carries `truncated`, true when the result set held
+  rows `max_rows` left out (absent on Execute and Scalar). `csv_reader` refuses a `max_rows` below 1 the same way, its
+  `truncated` is no longer true when the file holds exactly `max_rows` rows, and a cancelled read is a cancellation
+  instead of a partial success.
+- The other tools that read a result limit refuse a value that would return nothing as a success (#372), in a
+  message that names the field and its default: `janusgraph_query` and `arcadedb_query` `max_results`, `rag_search`
+  `top_k`, `rag_eval` `k`, `structural_search` `max_results` and `max_files`, `structural_rewrite` `max_files`,
+  `file_read` `max_length` (where a negative value threw), and `count_pattern` `max_matches_returned` when
+  `include_matches` is true (a negative value was silently read as 0), `package_summary` `max_exports`,
+  `dependency_graph` `max_cycle_members` and `max_nodes` (`max_cycles` keeps 0 as its count-only mode, now stated in
+  its schema, and refuses a negative value), `flow_trace` `max_depth`, `impact_analysis` `max_depth` and `max_nodes`, `sub_graph`
+  `depth` and `max_nodes`, `flow_trace` `max_paths`, `codebase_search` and `statement_query` `top_k`,
+  `complexity_report` `top_n`, `symbol_detail` `max_children` (also refused above 200), `symbol_source` `max_lines`
+  and `codebase_map` `max_entries` (where 0 was silently read as 1). On a Find, `mongodb_query` refuses a `limit` below 1
+  (MongoDB reads 0 as "no limit": the whole collection came back) and a negative `skip`. A limit of `int.MaxValue` on
+  `codebase_search`, `statement_query`, `flow_trace`, `codebase_map` or `dependency_graph` no longer overflows the
+  one-past probe that sets `truncated`, which asked the store for nothing.
+
 - A consumer of `Orkeon.Tools.Embeddings.Local` or `Orkeon.Scripting` gets the BGE-micro-v2 model (#368). The
   `SmartComponents.LocalEmbeddings` package (~40 KB) carries no weights: its `build/` target downloads `model.onnx`
   and `vocab.txt` from huggingface.co on the consumer's first build and copies them to `LocalEmbeddingsModel/default/`.

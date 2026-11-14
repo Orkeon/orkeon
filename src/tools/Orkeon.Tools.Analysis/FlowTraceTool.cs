@@ -8,6 +8,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Analysis.Internal;
 
 namespace Orkeon.Tools.Analysis;
 
@@ -31,6 +32,17 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(FlowTraceRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.MaxDepth < 1)
+            return $"max_depth must be at least 1 (got {request.MaxDepth}); omit it for the default of 4";
+        if (request.MaxPaths < 1)
+            return $"max_paths must be at least 1 (got {request.MaxPaths}); omit it for the default of 20";
+        return null;
+    }
+
     protected override Task<FlowTraceResponse> ExecuteTypedAsync(FlowTraceRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -45,7 +57,7 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
             var parsed = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
             ImmutableArray<EdgeKind> edgeKinds = parsed.IsDefaultOrEmpty ? [EdgeKind.Calls] : parsed;
             if (string.IsNullOrEmpty(request.From)) return new FlowTraceResponse { Paths = [] };
-            var maxPaths = Math.Max(1, request.MaxPaths);
+            var maxPaths = request.MaxPaths;
 
             if (!request.IncludeAllPaths && !string.IsNullOrEmpty(request.To))
             {
@@ -71,7 +83,7 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
                     Direction = request.Direction,
                     MaxDepth = request.MaxDepth,
                     // One path past the page: truncated says that more paths exist, never that the page is full (#283).
-                    MaxPaths = maxPaths + 1,
+                    MaxPaths = PageProbe.OnePast(maxPaths),
                 },
                 cancellationToken).ConfigureAwait(false);
             return new FlowTraceResponse

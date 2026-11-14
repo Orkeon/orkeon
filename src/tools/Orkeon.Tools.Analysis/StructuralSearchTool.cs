@@ -26,9 +26,9 @@ public sealed record StructuralSearchRequest
     [JsonPropertyName("paths")] public ImmutableList<string> Paths { get; init; } = ImmutableList<string>.Empty;
     [FieldSchema(Description = "Glob kept among the candidate files (**/*.cs).", IsRequired = false)]
     [JsonPropertyName("glob")] public string? Glob { get; init; }
-    [FieldSchema(Description = "Most matches returned (default 100); truncated says when more exist.", IsRequired = false, Default = 100)]
+    [FieldSchema(Description = "Most matches returned, at least 1 (default 100); truncated says when more exist.", IsRequired = false, Default = 100)]
     [JsonPropertyName("max_results")] public int MaxResults { get; init; } = 100;
-    [FieldSchema(Description = "Most files scanned (default 500); truncated says when more were candidates.", IsRequired = false, Default = 500)]
+    [FieldSchema(Description = "Most files scanned, at least 1 (default 500); truncated says when more were candidates.", IsRequired = false, Default = 500)]
     [JsonPropertyName("max_files")] public int MaxFiles { get; init; } = 500;
 }
 
@@ -75,6 +75,12 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
     protected override string? ValidateTypedRequest(StructuralSearchRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        // A small model fills every optional field and sends 0, which would scan nothing and report truncation.
+        if (request.MaxResults < 1)
+            return $"max_results must be at least 1 (got {request.MaxResults}); omit it for the default of 100";
+        if (request.MaxFiles < 1)
+            return $"max_files must be at least 1 (got {request.MaxFiles}); omit it for the default of 500";
         return PathsOutsideRoot(_fs, request.Paths);
     }
 

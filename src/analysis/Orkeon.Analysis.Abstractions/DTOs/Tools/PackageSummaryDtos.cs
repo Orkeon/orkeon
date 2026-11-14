@@ -14,7 +14,7 @@ public sealed record PackageSummaryRequest
     [FieldSchema(Description = "Return the packages this one depends on.", IsRequired = false, Default = true)]
     public bool IncludeDependencies { get; init; } = true;
 
-    [FieldSchema(Description = "Most exports returned (default 50); truncated says when more exist.", IsRequired = false, Default = 50)]
+    [FieldSchema(Description = "Most exports returned, at least 1 (default 50); truncated says when more exist.", IsRequired = false, Default = 50)]
     public int MaxExports { get; init; } = 50;
 }
 

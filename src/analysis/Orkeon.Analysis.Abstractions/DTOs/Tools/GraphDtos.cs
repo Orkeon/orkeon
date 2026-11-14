@@ -63,14 +63,14 @@ public sealed record DependencyGraphRequest
     [FieldSchema(Description = "Keep only the nodes at or under this node (a package or folder by path, a namespace by its files and name, a type by FQN); a node id, an FQN or a path.", IsRequired = false)]
     public string? RootFqn { get; init; }
 
-    [FieldSchema(Description = "Most nodes returned (default 200); truncated says when more exist.", IsRequired = false, Default = 200)]
+    [FieldSchema(Description = "Most nodes returned, at least 1 (default 200); truncated says when more exist.", IsRequired = false, Default = 200)]
     public int MaxNodes { get; init; } = 200;
 
-    [FieldSchema(Description = "Most cycles returned, the largest first. cycle_count keeps the full count.", IsRequired = false)]
+    [FieldSchema(Description = "Most cycles returned, at least 0 (default 20), the largest first; 0 lists none. cycle_count keeps the full count.", IsRequired = false, Default = 20)]
     [JsonPropertyName("max_cycles")]
     public int MaxCycles { get; init; } = 20;
 
-    [FieldSchema(Description = "Most members returned per cycle. member_count keeps the full size.", IsRequired = false)]
+    [FieldSchema(Description = "Most members returned per cycle, at least 1 (default 50). member_count keeps the full size.", IsRequired = false, Default = 50)]
     [JsonPropertyName("max_cycle_members")]
     public int MaxCycleMembers { get; init; } = 50;
 
@@ -117,13 +117,13 @@ public sealed record SubGraphRequest
     [FieldSchema(Description = "Keep only expanded nodes of these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node.", ItemsType = "string", IsRequired = false)]
     [JsonPropertyName("node_kinds")]
     public ImmutableArray<string> NodeKinds { get; init; } = [];
-    [FieldSchema(Description = "How many hops from the seeds (default 2).", IsRequired = false, Default = 2)]
+    [FieldSchema(Description = "How many hops from the seeds, at least 1 (default 2).", IsRequired = false, Default = 2)]
     public int Depth { get; init; } = 2;
 
     [FieldSchema(Description = "Forward follows the edges from the seeds (what X calls, what X extends); Backward follows them into the seeds (who calls X, who extends X); Both.", IsRequired = false, Default = "Forward")]
     public Direction Direction { get; init; } = Direction.Forward;
 
-    [FieldSchema(Description = "Most nodes returned (default 100); truncated says when the expansion stopped before its depth.", IsRequired = false, Default = 100)]
+    [FieldSchema(Description = "Most nodes returned, at least 1 (default 100); truncated says when the expansion stopped before its depth.", IsRequired = false, Default = 100)]
     public int MaxNodes { get; init; } = 100;
 
     [FieldSchema(Description = "Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart), for a human reader; false by default: the data alone answers an agent.", IsRequired = false, Default = false)]

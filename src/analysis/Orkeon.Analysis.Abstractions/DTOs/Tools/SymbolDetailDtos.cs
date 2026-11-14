@@ -22,7 +22,7 @@ public sealed record SymbolDetailRequest
     [FieldSchema(Description = "Return the body metrics (lines, cyclomatic complexity).", IsRequired = false, Default = false)]
     public bool IncludeBodyMetrics { get; init; }
 
-    [FieldSchema(Description = "Most members returned under Members (default 50); truncated says when more exist.", IsRequired = false, Default = 50)]
+    [FieldSchema(Description = "Most members returned under Members, 1 to 200 (default 50); truncated says when more exist.", IsRequired = false, Default = 50)]
     public int MaxChildren { get; init; } = 50;
 }
 

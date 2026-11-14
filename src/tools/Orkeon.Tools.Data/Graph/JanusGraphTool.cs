@@ -46,6 +46,10 @@ public partial class JanusGraphTool : ToolBase<JanusGraphRequest, JanusGraphResp
         if (DestructiveRegex().IsMatch(request.Traversal))
             return "Destructive operations (drop, remove) are not allowed";
 
+        // A small model fills every optional field and sends 0, which would cut every result.
+        if (request.MaxResults < 1)
+            return $"max_results must be at least 1 (got {request.MaxResults}); omit it for the default of 1000";
+
         return null;
     }
 

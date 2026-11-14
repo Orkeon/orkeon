@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Orkeon.Tools.Abstractions.Data;
 using Orkeon.Domain.Attributes;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Data.Constants.Database;
 using Microsoft.Extensions.Logging;
 
 namespace Orkeon.Tools.Data.Relational;
@@ -46,6 +47,18 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
 
         if (!_providerFactory.IsSupported(request.ProviderName))
             return $"Unsupported provider '{request.ProviderName}'. Supported: {string.Join(", ", _providerFactory.SupportedProviders)}";
+
+        // A small model fills every optional field and sends 0: refused, so a SELECT never
+        // reads as an empty result (max_rows) and no query waits without bound (timeout_seconds).
+        // Execute and Scalar never read max_rows, so its value is left alone there.
+        if (request.QueryType == RelationalQueryType.Select && request.MaxRows < 1)
+            return $"max_rows must be at least 1 (got {request.MaxRows}); omit it for the default of {DatabaseDefaults.DefaultMaxRows}";
+
+        if (request.QueryType == RelationalQueryType.Select && request.MaxRows > DatabaseDefaults.MaxAllowedRows)
+            return $"max_rows must be at most {DatabaseDefaults.MaxAllowedRows} (got {request.MaxRows}); omit it for the default of {DatabaseDefaults.DefaultMaxRows}";
+
+        if (request.TimeoutSeconds < 1)
+            return $"timeout_seconds must be at least 1 (got {request.TimeoutSeconds}); omit it for the default of {DatabaseDefaults.DefaultTimeoutSeconds}";
 
         var queryOptions = new DatabaseQueryOptions
         {
@@ -122,6 +135,10 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
             rows.Add(row);
         }
 
+        // The limit was reached: one more read tells whether the result set held rows left out.
+        var truncated = rows.Count == request.MaxRows
+            && await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+
         LogSelectQueryCompleted(Logger, rows.Count, columns.Count);
 
         return new RelationalDatabaseResponse
@@ -130,6 +147,7 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
             Rows = rows,
             RowCount = rows.Count,
             ColumnCount = columns.Count,
+            Truncated = truncated,
             QueryType = RelationalQueryType.Select,
         };
     }

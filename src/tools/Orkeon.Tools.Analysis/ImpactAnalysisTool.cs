@@ -27,6 +27,17 @@ public sealed class ImpactAnalysisTool : ToolBase<ImpactAnalysisRequest, ImpactA
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(ImpactAnalysisRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.MaxDepth < 1)
+            return $"max_depth must be at least 1 (got {request.MaxDepth}); omit it for the default of 3";
+        if (request.MaxNodes < 1)
+            return $"max_nodes must be at least 1 (got {request.MaxNodes}); omit it for the default of 500";
+        return null;
+    }
+
     protected override Task<ImpactAnalysisResponse> ExecuteTypedAsync(ImpactAnalysisRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

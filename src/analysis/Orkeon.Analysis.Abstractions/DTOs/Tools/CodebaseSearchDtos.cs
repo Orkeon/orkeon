@@ -13,7 +13,7 @@ public sealed record CodebaseSearchRequest
     [FieldSchema(Description = "Levels searched: L1_Package, L2_Module, L3_Symbol, L4_Statement; empty searches every level.", ItemsType = "string", IsRequired = false)]
     public ImmutableArray<NodeLevel> Levels { get; init; } = [];
 
-    [FieldSchema(Description = "Most hits returned (default 10); truncated says when more match.", IsRequired = false, Default = 10)]
+    [FieldSchema(Description = "Most hits returned, at least 1 (default 10); truncated says when more match.", IsRequired = false, Default = 10)]
     public int TopK { get; init; } = 10;
 
     [FieldSchema(Description = "Keep only these node kinds: Class, Interface, Method, Function, Property, Enum, Record, Module, Package... Empty keeps every kind.", ItemsType = "string", IsRequired = false)]
