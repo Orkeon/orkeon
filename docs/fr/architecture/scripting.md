@@ -145,7 +145,7 @@ Cinq options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la
   `ctx.llm`, par `LlmConfig.with({...})` (`llm.default_.with({ effort })`) et par `agentBuilder().effort(level)` ; toute autre valeur est refusée
   avec `effort must be low|medium|high|xhigh|max`. Anthropic prend les cinq niveaux ; un fournisseur dont le
   champ en connaît moins (ses `EffortLevels` déclarés : les trois par défaut pour `think`
-  d'Ollama, Gemini, Azure OpenAI et Mistral ; jusqu'à `xhigh` pour OpenAI et Grok ; `low`, `medium`, `high` et `max` pour Z.ai ; les cinq pour Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI, Hugging Face, MiniMax et Mammouth AI), ou un modèle qui en prend moins (la table par modèle de `docs/fr/architecture/llm-providers.md`), envoie le plus haut niveau que les deux prennent en dessous de celui demandé, et le dit dans un
+  d'Ollama, Gemini, Azure OpenAI et Mistral ; jusqu'à `xhigh` pour OpenAI et Grok ; les cinq pour Z.ai, Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI, Hugging Face, MiniMax et Mammouth AI), ou un modèle qui en prend moins (la table par modèle de `docs/fr/architecture/llm-providers.md`), envoie le plus haut niveau que les deux prennent en dessous de celui demandé, et le dit dans un
   avertissement, jamais un changement silencieux.
   Le cache de prompt se demande de la même façon sur un agent, `agentBuilder().cache({ systemPrompt: true, tools: true,
   ttl: "1h" })` ou `llm.default_.with({ cache: { systemPrompt: true } })`, reporté sur le bloc YAML `cache:`

@@ -473,6 +473,51 @@ table row. Filling the matrix (LLM-08/C4) is mechanical.
 
 | Timestamp (UTC) | Provider | Model | ✅/❌/➖ | Commit | Report |
 |---|---|---|---|---|---|
+| 2026-11-14T07:51:51Z | `zai` | `glm-5.2` | ✅ 3/0/1 | `3108dac9d-dirty` | [report](zai/2026-11-14-074853-glm-5.2.md) |
+| 2026-11-14T07:45:32Z | `together` | `Qwen/Qwen3.5-9B` | ✅ 3/0/1 | `3108dac9d` | [report](together/2026-11-14-073459-Qwen_Qwen3.5-9B.md) |
+| 2026-11-14T07:45:24Z | `gemini` | `gemini-4-carbon` | ✅ 2/0/2 | `3108dac9d` | [report](gemini/2026-11-14-074229-gemini-4-carbon.md) |
+| 2026-11-14T07:42:29Z | `gemini` | `gemini-4-argon` | ✅ 2/0/2 | `3108dac9d` | [report](gemini/2026-11-14-073633-gemini-4-argon.md) |
+| 2026-11-14T07:42:25Z | `minimax` | `MiniMax-M3.1-Flash` | ✅ 2/0/2 | `3108dac9d` | [report](minimax/2026-11-14-074153-MiniMax-M3.1-Flash.md) |
+| 2026-11-14T07:41:53Z | `minimax` | `MiniMax-M2` | ✅ 3/0/1 | `3108dac9d` | [report](minimax/2026-11-14-073528-MiniMax-M2.md) |
+| 2026-11-14T07:41:33Z | `kimi` | `kimi-k2.7-code` | ✅ 2/0/2 | `3108dac9d` | [report](kimi/2026-11-14-074045-kimi-k2.7-code.md) |
+| 2026-11-14T07:40:45Z | `kimi` | `kimi-k3` | ✅ 3/0/1 | `3108dac9d` | [report](kimi/2026-11-14-073930-kimi-k3.md) |
+| 2026-11-14T07:40:14Z | `huggingface` | `Qwen/Qwen3.5-9B` | ✅ 3/0/1 | `3108dac9d` | [report](huggingface/2026-11-14-073440-Qwen_Qwen3.5-9B.md) |
+| 2026-11-14T07:39:30Z | `kimi` | `kimi-k2.6` | ✅ 3/0/1 | `3108dac9d` | [report](kimi/2026-11-14-073534-kimi-k2.6.md) |
+| 2026-11-14T07:39:13Z | `zai` | `glm-5.3-flash` | ✅ 2/0/2 | `3108dac9d` | [report](zai/2026-11-14-073824-glm-5.3-flash.md) |
+| 2026-11-14T07:39:01Z | `qwen` | `qwen3.8-max` | ✅ 4/0/0 | `3108dac9d` | [report](qwen/2026-11-14-073727-qwen3.8-max.md) |
+| 2026-11-14T07:38:24Z | `zai` | `glm-5.3` | ✅ 2/0/2 | `3108dac9d` | [report](zai/2026-11-14-073747-glm-5.3.md) |
+| 2026-11-14T07:37:47Z | `zai` | `glm-5.2` | ❌ 2/1/1 | `3108dac9d` | [report](zai/2026-11-14-073502-glm-5.2.md) |
+| 2026-11-14T07:37:26Z | `qwen` | `qwen3.8-flash` | ✅ 4/0/0 | `3108dac9d` | [report](qwen/2026-11-14-073623-qwen3.8-flash.md) |
+| 2026-11-14T07:37:22Z | `anthropic` | `claude-fable-5-2` | ✅ 3/0/1 | `3108dac9d` | [report](anthropic/2026-11-14-073658-claude-fable-5-2.md) |
+| 2026-11-14T07:37:17Z | `mistral` | `mistral-small-2603` | ✅ 2/0/2 | `3108dac9d` | [report](mistral/2026-11-14-073616-mistral-small-2603.md) |
+| 2026-11-14T07:37:14Z | `grok` | `grok-4.7` | ✅ 2/0/2 | `3108dac9d` | [report](grok/2026-11-14-073533-grok-4.7.md) |
+| 2026-11-14T07:36:58Z | `anthropic` | `claude-opus-5-5` | ✅ 3/0/1 | `3108dac9d` | [report](anthropic/2026-11-14-073634-claude-opus-5-5.md) |
+| 2026-11-14T07:36:54Z | `openrouter` | `google/gemini-3.7-flash` | ✅ 3/0/1 | `3108dac9d` | [report](openrouter/2026-11-14-073556-google_gemini-3.7-flash.md) |
+| 2026-11-14T07:36:34Z | `anthropic` | `claude-haiku-5-5` | ✅ 3/0/1 | `3108dac9d` | [report](anthropic/2026-11-14-073610-claude-haiku-5-5.md) |
+| 2026-11-14T07:36:33Z | `gemini` | `gemini-3.7-flash` | ✅ 2/0/2 | `3108dac9d` | [report](gemini/2026-11-14-073531-gemini-3.7-flash.md) |
+| 2026-11-14T07:36:29Z | `mammouth` | `gemini-3.7-flash` | ✅ 2/0/2 | `3108dac9d` | [report](mammouth/2026-11-14-073538-gemini-3.7-flash.md) |
+| 2026-11-14T07:36:23Z | `qwen` | `qwen3.7-plus` | ✅ 4/0/0 | `3108dac9d` | [report](qwen/2026-11-14-073438-qwen3.7-plus.md) |
+| 2026-11-14T07:36:16Z | `mistral` | `mistral-large-4` | ✅ 2/0/2 | `3108dac9d` | [report](mistral/2026-11-14-073535-mistral-large-4.md) |
+| 2026-11-14T07:36:13Z | `openai` | `gpt-6.1-terra` | ✅ 2/0/2 | `3108dac9d` | [report](openai/2026-11-14-073557-gpt-6.1-terra.md) |
+| 2026-11-14T07:36:10Z | `anthropic` | `claude-sonnet-5-5` | ✅ 3/0/1 | `3108dac9d` | [report](anthropic/2026-11-14-073541-claude-sonnet-5-5.md) |
+| 2026-11-14T07:35:57Z | `openai` | `gpt-6.1-sol` | ✅ 2/0/2 | `3108dac9d` | [report](openai/2026-11-14-073538-gpt-6.1-sol.md) |
+| 2026-11-14T07:35:56Z | `openrouter` | `google/gemini-3.8-flash` | ✅ 3/0/1 | `3108dac9d` | [report](openrouter/2026-11-14-073434-google_gemini-3.8-flash.md) |
+| 2026-11-14T07:35:41Z | `anthropic` | `claude-fable-5-1` | ✅ 3/0/1 | `3108dac9d` | [report](anthropic/2026-11-14-073520-claude-fable-5-1.md) |
+| 2026-11-14T07:35:38Z | `openai` | `gpt-6-luna` | ✅ 2/0/2 | `3108dac9d` | [report](openai/2026-11-14-073521-gpt-6-luna.md) |
+| 2026-11-14T07:35:37Z | `mammouth` | `gemini-3.8-flash` | ✅ 2/0/2 | `3108dac9d` | [report](mammouth/2026-11-14-073434-gemini-3.8-flash.md) |
+| 2026-11-14T07:35:35Z | `mistral` | `mistral-medium-2604` | ✅ 2/0/2 | `3108dac9d` | [report](mistral/2026-11-14-073431-mistral-medium-2604.md) |
+| 2026-11-14T07:35:34Z | `kimi` | `kimi-k3.1-pro` | ✅ 3/0/1 | `3108dac9d` | [report](kimi/2026-11-14-073433-kimi-k3.1-pro.md) |
+| 2026-11-14T07:35:33Z | `grok` | `grok-4.6` | ✅ 2/0/2 | `3108dac9d` | [report](grok/2026-11-14-073433-grok-4.6.md) |
+| 2026-11-14T07:35:31Z | `gemini` | `gemini-3.8-flash` | ✅ 2/0/2 | `3108dac9d` | [report](gemini/2026-11-14-073435-gemini-3.8-flash.md) |
+| 2026-11-14T07:35:28Z | `minimax` | `MiniMax-M3` | ✅ 3/0/1 | `3108dac9d` | [report](minimax/2026-11-14-073437-MiniMax-M3.md) |
+| 2026-11-14T07:35:21Z | `openai` | `gpt-6-sol` | ✅ 2/0/2 | `3108dac9d` | [report](openai/2026-11-14-073509-gpt-6-sol.md) |
+| 2026-11-14T07:35:20Z | `anthropic` | `claude-sonnet-5` | ✅ 3/0/1 | `3108dac9d` | [report](anthropic/2026-11-14-073432-claude-sonnet-5.md) |
+| 2026-11-14T07:35:09Z | `openai` | `gpt-6-astra` | ✅ 2/0/2 | `3108dac9d` | [report](openai/2026-11-14-073446-gpt-6-astra.md) |
+| 2026-11-14T07:35:02Z | `zai` | `glm-5.3-flashx` | ✅ 2/0/2 | `3108dac9d` | [report](zai/2026-11-14-073432-glm-5.3-flashx.md) |
+| 2026-11-14T07:34:59Z | `together` | `zai-org/GLM-5.3-Flash` | ✅ 3/0/1 | `3108dac9d` | [report](together/2026-11-14-073434-zai-org_GLM-5.3-Flash.md) |
+| 2026-11-14T07:34:55Z | `deepseek` | `deepseek-flash` | ✅ 3/0/1 | `3108dac9d` | [report](deepseek/2026-11-14-073432-deepseek-flash.md) |
+| 2026-11-14T07:34:46Z | `openai` | `gpt-5.6-sol` | ✅ 2/0/2 | `3108dac9d` | [report](openai/2026-11-14-073432-gpt-5.6-sol.md) |
+| 2026-11-14T07:34:40Z | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | ✅ 3/0/1 | `3108dac9d` | [report](huggingface/2026-11-14-073431-meta-llama_Llama-3.1-8B-Instruct.md) |
 | 2026-11-13T19:23:58Z | `gemini` | `gemini-4-carbon` | ✅ 3/0/2 | `5ae5f227b-dirty` | [report](gemini/2026-11-13-191803-gemini-4-carbon.md) |
 | 2026-11-13T19:21:27Z | `huggingface` | `Qwen/Qwen3.5-9B` | ✅ 1/0/4 | `5ae5f227b-dirty` | [report](huggingface/2026-11-13-191427-Qwen_Qwen3.5-9B.md) |
 | 2026-11-13T19:20:19Z | `kimi` | `kimi-k2.7-code` | ❌ 3/1/1 | `5ae5f227b-dirty` | [report](kimi/2026-11-13-191920-kimi-k2.7-code.md) |
@@ -931,22 +976,22 @@ table row. Filling the matrix (LLM-08/C4) is mechanical.
 
 | Provider | Model | Date | Status | Modes exercised |
 |---|---|---|---|---|
-| `anthropic` | `claude-fable-5-2` | 2026-11-13 | ❌ | M7 M15 M16 M17 M18 |
-| `deepseek` | `deepseek-flash` | 2026-11-13 | ✅ | M7 M15 M16 M17 M18 |
-| `gemini` | `gemini-4-carbon` | 2026-11-13 | ✅ | M7 M15 M16 M17 M18 |
-| `grok` | `grok-4.7` | 2026-11-13 | ✅ | M7 M15 M16 M17 M18 |
-| `huggingface` | `Qwen/Qwen3.5-9B` | 2026-11-13 | ✅ | M7 M15 M16 M17 M18 |
-| `kimi` | `kimi-k2.7-code` | 2026-11-13 | ❌ | M7 M15 M16 M17 M18 |
-| `mammouth` | `gemini-3.7-flash` | 2026-11-13 | ✅ | M7 M15 M16 M17 M18 |
-| `minimax` | `MiniMax-M3.1-Flash` | 2026-11-13 | ✅ | M7 M15 M16 M17 M18 |
-| `mistral` | `mistral-small-2603` | 2026-11-13 | ❌ | M7 M15 M16 M17 M18 |
+| `anthropic` | `claude-fable-5-2` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `deepseek` | `deepseek-flash` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `gemini` | `gemini-4-carbon` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `grok` | `grok-4.7` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `huggingface` | `Qwen/Qwen3.5-9B` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `kimi` | `kimi-k2.7-code` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `mammouth` | `gemini-3.7-flash` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `minimax` | `MiniMax-M3.1-Flash` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `mistral` | `mistral-small-2603` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
 | `ollama` | `llava` | 2026-09-07 | ✅ | M9 |
-| `openai` | `gpt-6.1-terra` | 2026-11-13 | ✅ | M7 M15 M16 M17 M18 |
-| `openrouter` | `google/gemini-3.7-flash` | 2026-11-13 | ❌ | M7 M15 M16 M17 M18 |
-| `qwen` | `qwen3.8-max` | 2026-11-13 | ✅ | M7 M15 M16 M17 M18 |
-| `together` | `Qwen/Qwen3.5-9B` | 2026-11-13 | ✅ | M7 M15 M16 M17 M18 |
+| `openai` | `gpt-6.1-terra` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `openrouter` | `google/gemini-3.7-flash` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `qwen` | `qwen3.8-max` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
+| `together` | `Qwen/Qwen3.5-9B` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
 | `typesafe` | `jev-preview` | 2026-11-11 | ✅ | D8 |
-| `zai` | `glm-5.3-flash` | 2026-11-13 | ❌ | M7 M15 M16 M17 M18 |
+| `zai` | `glm-5.2` | 2026-11-14 | ✅ | M15 M16 M17 M18 |
 
 ## Latest result per model
 
@@ -956,79 +1001,79 @@ published in the documentation, `docs/reference/llm-campaign-results.md`.
 
 | Provider | Model | Date | ✅/❌/➖ | Failed modes | Report |
 |---|---|---|---|---|---|
-| Anthropic | `claude-sonnet-5` *(default)* | 2026-11-13 | 4/0/1 | — | [report](anthropic/2026-11-13-191424-claude-sonnet-5.md) |
-|  | `claude-fable-5-1` | 2026-11-13 | 3/1/1 | M15 | [report](anthropic/2026-11-13-191508-claude-fable-5-1.md) |
-|  | `claude-fable-5-2` | 2026-11-13 | 3/1/1 | M15 | [report](anthropic/2026-11-13-191650-claude-fable-5-2.md) |
-|  | `claude-haiku-5-5` | 2026-11-13 | 4/0/1 | — | [report](anthropic/2026-11-13-191600-claude-haiku-5-5.md) |
-|  | `claude-opus-5-5` | 2026-11-13 | 3/1/1 | M15 | [report](anthropic/2026-11-13-191622-claude-opus-5-5.md) |
-|  | `claude-sonnet-5-5` | 2026-11-13 | 3/1/1 | M15 | [report](anthropic/2026-11-13-191531-claude-sonnet-5-5.md) |
+| Anthropic | `claude-sonnet-5` *(default)* | 2026-11-14 | 3/0/1 | — | [report](anthropic/2026-11-14-073432-claude-sonnet-5.md) |
+|  | `claude-fable-5-1` | 2026-11-14 | 3/0/1 | — | [report](anthropic/2026-11-14-073520-claude-fable-5-1.md) |
+|  | `claude-fable-5-2` | 2026-11-14 | 3/0/1 | — | [report](anthropic/2026-11-14-073658-claude-fable-5-2.md) |
+|  | `claude-haiku-5-5` | 2026-11-14 | 3/0/1 | — | [report](anthropic/2026-11-14-073610-claude-haiku-5-5.md) |
+|  | `claude-opus-5-5` | 2026-11-14 | 3/0/1 | — | [report](anthropic/2026-11-14-073634-claude-opus-5-5.md) |
+|  | `claude-sonnet-5-5` | 2026-11-14 | 3/0/1 | — | [report](anthropic/2026-11-14-073541-claude-sonnet-5-5.md) |
 |  | `claude-opus-5` | 2026-10-07 | 12/0/0 | — | [report](anthropic/2026-10-07-181520-claude-opus-5.md) |
-| DeepSeek | `deepseek-flash` *(default)* | 2026-11-13 | 4/0/1 | — | [report](deepseek/2026-11-13-191423-deepseek-flash.md) |
+| DeepSeek | `deepseek-flash` *(default)* | 2026-11-14 | 3/0/1 | — | [report](deepseek/2026-11-14-073432-deepseek-flash.md) |
 |  | `deepseek-v4-pro` | 2026-10-07 | 11/1/0 | M9 | [report](deepseek/2026-10-07-181412-deepseek-v4-pro.md) |
 |  | `deepseek-v4-flash` | 2026-09-07 | 10/2/0 | M2, M9 | [report](deepseek/2026-09-07-061452-deepseek-v4-flash.md) |
 |  | `deepseek-v4-flash-vision-exp` | 2026-09-07 | 0/1/0 | M9 | [report](deepseek/2026-09-07-061540-deepseek-v4-flash-vision-exp.md) |
-| Google Gemini | `gemini-3.8-flash` *(default)* | 2026-11-13 | 3/0/2 | — | [report](gemini/2026-11-13-191426-gemini-3.8-flash.md) |
-|  | `gemini-3.7-flash` | 2026-11-13 | 3/0/2 | — | [report](gemini/2026-11-13-191518-gemini-3.7-flash.md) |
-|  | `gemini-4-argon` | 2026-11-13 | 3/0/2 | — | [report](gemini/2026-11-13-191609-gemini-4-argon.md) |
-|  | `gemini-4-carbon` | 2026-11-13 | 3/0/2 | — | [report](gemini/2026-11-13-191803-gemini-4-carbon.md) |
+| Google Gemini | `gemini-3.8-flash` *(default)* | 2026-11-14 | 2/0/2 | — | [report](gemini/2026-11-14-073435-gemini-3.8-flash.md) |
+|  | `gemini-3.7-flash` | 2026-11-14 | 2/0/2 | — | [report](gemini/2026-11-14-073531-gemini-3.7-flash.md) |
+|  | `gemini-4-argon` | 2026-11-14 | 2/0/2 | — | [report](gemini/2026-11-14-073633-gemini-4-argon.md) |
+|  | `gemini-4-carbon` | 2026-11-14 | 2/0/2 | — | [report](gemini/2026-11-14-074229-gemini-4-carbon.md) |
 |  | `gemini-3.1-pro-preview` | 2026-10-07 | 10/1/1 | M5 | [report](gemini/2026-10-07-181413-gemini-3.1-pro-preview.md) |
 |  | `gemini-3.5-flash-lite` | 2026-10-07 | 12/0/0 | — | [report](gemini/2026-10-07-181522-gemini-3.5-flash-lite.md) |
-| Grok (x.AI) | `grok-4.6` *(default)* | 2026-11-13 | 3/0/2 | — | [report](grok/2026-11-13-191425-grok-4.6.md) |
-|  | `grok-4.7` | 2026-11-13 | 3/0/2 | — | [report](grok/2026-11-13-191538-grok-4.7.md) |
-| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` *(default)* | 2026-11-13 | 1/0/4 | — | [report](huggingface/2026-11-13-191423-meta-llama_Llama-3.1-8B-Instruct.md) |
-|  | `Qwen/Qwen3.5-9B` | 2026-11-13 | 1/0/4 | — | [report](huggingface/2026-11-13-191427-Qwen_Qwen3.5-9B.md) |
+| Grok (x.AI) | `grok-4.6` *(default)* | 2026-11-14 | 2/0/2 | — | [report](grok/2026-11-14-073433-grok-4.6.md) |
+|  | `grok-4.7` | 2026-11-14 | 2/0/2 | — | [report](grok/2026-11-14-073533-grok-4.7.md) |
+| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` *(default)* | 2026-11-14 | 3/0/1 | — | [report](huggingface/2026-11-14-073431-meta-llama_Llama-3.1-8B-Instruct.md) |
+|  | `Qwen/Qwen3.5-9B` | 2026-11-14 | 3/0/1 | — | [report](huggingface/2026-11-14-073440-Qwen_Qwen3.5-9B.md) |
 |  | `Qwen/Qwen3-VL-30B-A3B-Instruct` | 2026-11-11 | 1/0/0 | — | [report](huggingface/2026-11-11-074404-Qwen_Qwen3-VL-30B-A3B-Instruct.md) |
-| Kimi (Moonshot AI) | `kimi-k3.1-pro` *(default)* | 2026-11-13 | 3/0/2 | — | [report](kimi/2026-11-13-191426-kimi-k3.1-pro.md) |
-|  | `kimi-k2.6` | 2026-11-13 | 4/0/1 | — | [report](kimi/2026-11-13-191528-kimi-k2.6.md) |
-|  | `kimi-k2.7-code` | 2026-11-13 | 3/1/1 | M15 | [report](kimi/2026-11-13-191920-kimi-k2.7-code.md) |
-|  | `kimi-k3` | 2026-11-13 | 3/0/2 | — | [report](kimi/2026-11-13-191822-kimi-k3.md) |
+| Kimi (Moonshot AI) | `kimi-k3.1-pro` *(default)* | 2026-11-14 | 3/0/1 | — | [report](kimi/2026-11-14-073433-kimi-k3.1-pro.md) |
+|  | `kimi-k2.6` | 2026-11-14 | 3/0/1 | — | [report](kimi/2026-11-14-073534-kimi-k2.6.md) |
+|  | `kimi-k2.7-code` | 2026-11-14 | 2/0/2 | — | [report](kimi/2026-11-14-074045-kimi-k2.7-code.md) |
+|  | `kimi-k3` | 2026-11-14 | 3/0/1 | — | [report](kimi/2026-11-14-073930-kimi-k3.md) |
 |  | `kimi-k2.7-code-highspeed` | 2026-11-11 | 12/0/0 | — | [report](kimi/2026-11-11-064847-kimi-k2.7-code-highspeed.md) |
 |  | `kimi-k3.1-pro-highspeed` | 2026-11-11 | 12/0/0 | — | [report](kimi/2026-11-11-064847-kimi-k3.1-pro-highspeed.md) |
-| Mammouth AI | `gemini-3.8-flash` *(default)* | 2026-11-13 | 1/0/4 | — | [report](mammouth/2026-11-13-191432-gemini-3.8-flash.md) |
-|  | `gemini-3.7-flash` | 2026-11-13 | 1/0/4 | — | [report](mammouth/2026-11-13-191504-gemini-3.7-flash.md) |
+| Mammouth AI | `gemini-3.8-flash` *(default)* | 2026-11-14 | 2/0/2 | — | [report](mammouth/2026-11-14-073434-gemini-3.8-flash.md) |
+|  | `gemini-3.7-flash` | 2026-11-14 | 2/0/2 | — | [report](mammouth/2026-11-14-073538-gemini-3.7-flash.md) |
 |  | `kimi-k3.1-pro` | 2026-11-11 | 10/0/2 | — | [report](mammouth/2026-11-11-062558-kimi-k3.1-pro.md) |
 |  | `deepseek-v4.1-flash` | 2026-10-07 | 1/0/2 | — | [report](mammouth/2026-10-07-181416-deepseek-v4.1-flash.md) |
 |  | `mammouth-recommended` | 2026-10-07 | 1/0/0 | — | [report](mammouth/2026-10-07-181412-mammouth-recommended.md) |
-| MiniMax | `MiniMax-M3` *(default)* | 2026-11-13 | 1/0/4 | — | [report](minimax/2026-11-13-191423-MiniMax-M3.md) |
-|  | `MiniMax-M2` | 2026-11-13 | 1/0/4 | — | [report](minimax/2026-11-13-191433-MiniMax-M2.md) |
-|  | `MiniMax-M3.1-Flash` | 2026-11-13 | 1/0/4 | — | [report](minimax/2026-11-13-191617-MiniMax-M3.1-Flash.md) |
+| MiniMax | `MiniMax-M3` *(default)* | 2026-11-14 | 3/0/1 | — | [report](minimax/2026-11-14-073437-MiniMax-M3.md) |
+|  | `MiniMax-M2` | 2026-11-14 | 3/0/1 | — | [report](minimax/2026-11-14-073528-MiniMax-M2.md) |
+|  | `MiniMax-M3.1-Flash` | 2026-11-14 | 2/0/2 | — | [report](minimax/2026-11-14-074153-MiniMax-M3.1-Flash.md) |
 |  | `MiniMax-M2.7` | 2026-10-07 | 8/2/2 | M2, M9 | [report](minimax/2026-10-07-181412-MiniMax-M2.7.md) |
-| Mistral AI | `mistral-medium-2604` *(default)* | 2026-11-13 | 2/1/2 | M16 | [report](mistral/2026-11-13-191423-mistral-medium-2604.md) |
-|  | `mistral-large-4` | 2026-11-13 | 3/0/2 | — | [report](mistral/2026-11-13-191507-mistral-large-4.md) |
-|  | `mistral-small-2603` | 2026-11-13 | 2/1/2 | M16 | [report](mistral/2026-11-13-191557-mistral-small-2603.md) |
+| Mistral AI | `mistral-medium-2604` *(default)* | 2026-11-14 | 2/0/2 | — | [report](mistral/2026-11-14-073431-mistral-medium-2604.md) |
+|  | `mistral-large-4` | 2026-11-14 | 2/0/2 | — | [report](mistral/2026-11-14-073535-mistral-large-4.md) |
+|  | `mistral-small-2603` | 2026-11-14 | 2/0/2 | — | [report](mistral/2026-11-14-073616-mistral-small-2603.md) |
 |  | `deepseek-v4-1-flash-1017` | 2026-11-11 | 11/1/0 | M2 | [report](mistral/2026-11-11-062525-deepseek-v4-1-flash-1017.md) |
 |  | `zai-glm-5-3-flash` | 2026-11-11 | 11/1/0 | M2 | [report](mistral/2026-11-11-062534-zai-glm-5-3-flash.md) |
 | Ollama | `llama3.2` *(default)* | 2026-09-07 | 8/3/1 | M2, M7, M9 | [report](ollama/2026-09-07-054010-llama3.2.md) |
 |  | `llava` | 2026-09-07 | 1/0/0 | — | [report](ollama/2026-09-07-054032-llava.md) |
-| OpenAI | `gpt-5.6-sol` *(default)* | 2026-11-13 | 3/0/2 | — | [report](openai/2026-11-13-191424-gpt-5.6-sol.md) |
-|  | `gpt-6-astra` | 2026-11-13 | 3/0/2 | — | [report](openai/2026-11-13-191439-gpt-6-astra.md) |
-|  | `gpt-6-luna` | 2026-11-13 | 3/0/2 | — | [report](openai/2026-11-13-191525-gpt-6-luna.md) |
-|  | `gpt-6-sol` | 2026-11-13 | 3/0/2 | — | [report](openai/2026-11-13-191505-gpt-6-sol.md) |
-|  | `gpt-6.1-sol` | 2026-11-13 | 3/0/2 | — | [report](openai/2026-11-13-191544-gpt-6.1-sol.md) |
-|  | `gpt-6.1-terra` | 2026-11-13 | 3/0/2 | — | [report](openai/2026-11-13-191606-gpt-6.1-terra.md) |
+| OpenAI | `gpt-5.6-sol` *(default)* | 2026-11-14 | 2/0/2 | — | [report](openai/2026-11-14-073432-gpt-5.6-sol.md) |
+|  | `gpt-6-astra` | 2026-11-14 | 2/0/2 | — | [report](openai/2026-11-14-073446-gpt-6-astra.md) |
+|  | `gpt-6-luna` | 2026-11-14 | 2/0/2 | — | [report](openai/2026-11-14-073521-gpt-6-luna.md) |
+|  | `gpt-6-sol` | 2026-11-14 | 2/0/2 | — | [report](openai/2026-11-14-073509-gpt-6-sol.md) |
+|  | `gpt-6.1-sol` | 2026-11-14 | 2/0/2 | — | [report](openai/2026-11-14-073538-gpt-6.1-sol.md) |
+|  | `gpt-6.1-terra` | 2026-11-14 | 2/0/2 | — | [report](openai/2026-11-14-073557-gpt-6.1-terra.md) |
 |  | `gpt-5.6-luna` | 2026-10-07 | 11/1/0 | M6 | [report](openai/2026-10-07-181518-gpt-5.6-luna.md) |
 |  | `gpt-5.6-terra` | 2026-10-07 | 11/1/0 | M9 | [report](openai/2026-10-07-181502-gpt-5.6-terra.md) |
-| OpenRouter | `google/gemini-3.8-flash` *(default)* | 2026-11-13 | 4/1/0 | M15 | [report](openrouter/2026-11-13-191426-google_gemini-3.8-flash.md) |
-|  | `google/gemini-3.7-flash` | 2026-11-13 | 4/1/0 | M15 | [report](openrouter/2026-11-13-191535-google_gemini-3.7-flash.md) |
+| OpenRouter | `google/gemini-3.8-flash` *(default)* | 2026-11-14 | 3/0/1 | — | [report](openrouter/2026-11-14-073434-google_gemini-3.8-flash.md) |
+|  | `google/gemini-3.7-flash` | 2026-11-14 | 3/0/1 | — | [report](openrouter/2026-11-14-073556-google_gemini-3.7-flash.md) |
 |  | `moonshotai/kimi-k3.1-pro` | 2026-11-11 | 12/0/0 | — | [report](openrouter/2026-11-11-062525-moonshotai_kimi-k3.1-pro.md) |
 |  | `deepseek/deepseek-v4.1-flash` | 2026-10-07 | 4/0/0 | — | [report](openrouter/2026-10-07-181417-deepseek_deepseek-v4.1-flash.md) |
 |  | `openrouter/auto` | 2026-10-07 | 1/0/0 | — | [report](openrouter/2026-10-07-181412-openrouter_auto.md) |
-| Qwen (Alibaba DashScope) | `qwen3.7-plus` *(default)* | 2026-11-13 | 5/0/0 | — | [report](qwen/2026-11-13-191430-qwen3.7-plus.md) |
-|  | `qwen3.8-flash` | 2026-11-13 | 5/0/0 | — | [report](qwen/2026-11-13-191623-qwen3.8-flash.md) |
-|  | `qwen3.8-max` | 2026-11-13 | 5/0/0 | — | [report](qwen/2026-11-13-191724-qwen3.8-max.md) |
+| Qwen (Alibaba DashScope) | `qwen3.7-plus` *(default)* | 2026-11-14 | 4/0/0 | — | [report](qwen/2026-11-14-073438-qwen3.7-plus.md) |
+|  | `qwen3.8-flash` | 2026-11-14 | 4/0/0 | — | [report](qwen/2026-11-14-073623-qwen3.8-flash.md) |
+|  | `qwen3.8-max` | 2026-11-14 | 4/0/0 | — | [report](qwen/2026-11-14-073727-qwen3.8-max.md) |
 |  | `deepseek-v4.1-flash-1017` | 2026-11-11 | 12/0/0 | — | [report](qwen/2026-11-11-062650-deepseek-v4.1-flash-1017.md) |
 |  | `qwen3.7-flash` | 2026-10-07 | 11/1/0 | M2 | [report](qwen/2026-10-07-181525-qwen3.7-flash.md) |
 |  | `qwen3.7-max` | 2026-10-07 | 11/1/0 | M9 | [report](qwen/2026-10-07-181412-qwen3.7-max.md) |
-| Together AI | `zai-org/GLM-5.3-Flash` *(default)* | 2026-11-13 | 1/0/4 | — | [report](together/2026-11-13-191423-zai-org_GLM-5.3-Flash.md) |
-|  | `Qwen/Qwen3.5-9B` | 2026-11-13 | 1/0/4 | — | [report](together/2026-11-13-191431-Qwen_Qwen3.5-9B.md) |
+| Together AI | `zai-org/GLM-5.3-Flash` *(default)* | 2026-11-14 | 3/0/1 | — | [report](together/2026-11-14-073434-zai-org_GLM-5.3-Flash.md) |
+|  | `Qwen/Qwen3.5-9B` | 2026-11-14 | 3/0/1 | — | [report](together/2026-11-14-073459-Qwen_Qwen3.5-9B.md) |
 |  | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | 2026-11-11 | 2/9/1 | M1, M2, M3, M4, M5, M6, M8, M9, M10 | [report](together/2026-11-11-061047-meta-llama_Llama-3.3-70B-Instruct-Turbo.md) |
 |  | `Qwen/Qwen3-VL-8B-Instruct` | 2026-08-30 | 0/1/0 | M9 | [report](together/2026-08-30-124627-Qwen_Qwen3-VL-8B-Instruct.md) |
 | TypeSafe (Jev) | `jev-latest` *(default)* | 2026-11-11 | 8/0/0 | — | [report](typesafe/2026-11-11-074345-jev-latest.md) |
 |  | `jev-preview` | 2026-11-11 | 8/0/0 | — | [report](typesafe/2026-11-11-074346-jev-preview.md) |
-| Z.AI (Zhipu GLM) | `glm-5.3-flashx` *(default)* | 2026-11-13 | 3/1/1 | M16 | [report](zai/2026-11-13-191424-glm-5.3-flashx.md) |
-|  | `glm-5.2` | 2026-11-13 | 4/0/1 | — | [report](zai/2026-11-13-191445-glm-5.2.md) |
-|  | `glm-5.3` | 2026-11-13 | 3/1/1 | M16 | [report](zai/2026-11-13-191722-glm-5.3.md) |
-|  | `glm-5.3-flash` | 2026-11-13 | 3/1/1 | M16 | [report](zai/2026-11-13-191752-glm-5.3-flash.md) |
+| Z.AI (Zhipu GLM) | `glm-5.3-flashx` *(default)* | 2026-11-14 | 2/0/2 | — | [report](zai/2026-11-14-073432-glm-5.3-flashx.md) |
+|  | `glm-5.2` | 2026-11-14 | 3/0/1 | — | [report](zai/2026-11-14-074853-glm-5.2.md) |
+|  | `glm-5.3` | 2026-11-14 | 2/0/2 | — | [report](zai/2026-11-14-073747-glm-5.3.md) |
+|  | `glm-5.3-flash` | 2026-11-14 | 2/0/2 | — | [report](zai/2026-11-14-073824-glm-5.3-flash.md) |
 |  | `glm-4.6v-flash` | 2026-11-11 | 1/0/0 | — | [report](zai/2026-11-11-074429-glm-4.6v-flash.md) |
 
 ## Reasoning per model
@@ -1044,41 +1089,50 @@ refused what Orkeon sent) or too narrow (Orkeon lowered or left out a value the 
 
 | Provider | Model | Date | on | off | low | medium | high | xhigh | max | budget | Other | Trace | Table |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Anthropic | `claude-fable-5-1` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
-|  | `claude-fable-5-2` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
-|  | `claude-haiku-5-5` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
-|  | `claude-opus-5-5` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
-|  | `claude-sonnet-5` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
-|  | `claude-sonnet-5-5` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  |  |
-| DeepSeek | `deepseek-flash` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | ✅ | ➖ |  | ✅ |  |
-| Google Gemini | `gemini-3.7-flash` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
-|  | `gemini-3.8-flash` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
-|  | `gemini-4-argon` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
-|  | `gemini-4-carbon` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
-| Grok (x.AI) | `grok-4.6` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
-|  | `grok-4.7` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
-| Kimi (Moonshot AI) | `kimi-k2.6` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
-|  | `kimi-k2.7-code` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
-|  | `kimi-k3` | 2026-11-13 | ➖ | ➖ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
-|  | `kimi-k3.1-pro` | 2026-11-13 | ➖ | ➖ | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
-| Mistral AI | `mistral-large-4` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  | ✅ |  |
-|  | `mistral-medium-2604` | 2026-11-13 |  |  | ❌ | ❌ | ✅ | →high | →high | ➖ |  | ✅ |  |
-|  | `mistral-small-2603` | 2026-11-13 |  |  | ❌ | ❌ | ✅ | →high | →high | ➖ |  | ✅ |  |
-| OpenAI | `gpt-5.6-sol` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |  |
-|  | `gpt-6-astra` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
-|  | `gpt-6-luna` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |  |
-|  | `gpt-6-sol` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |  |
-|  | `gpt-6.1-sol` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ |  |  |  |
-|  | `gpt-6.1-terra` | 2026-11-13 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅ |  |  |
-| OpenRouter | `google/gemini-3.7-flash` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |  | ✅ |  |
-|  | `google/gemini-3.8-flash` | 2026-11-13 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |  | ✅ |  |
-| Qwen (Alibaba DashScope) | `qwen3.7-plus` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ✅ |  | ✅ |  |
-|  | `qwen3.8-flash` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ✅ |  | ✅ |  |
-|  | `qwen3.8-max` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | →high | ✅ |  | ✅ |  |
-| Z.AI (Zhipu GLM) | `glm-5.2` | 2026-11-13 | ✅ | ✅ | ✅ | ✅ | ✅ | →high | ✅ | ➖ |  | ✅ |  |
-|  | `glm-5.3` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |  |
-|  | `glm-5.3-flash` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |  |
-|  | `glm-5.3-flashx` | 2026-11-13 | ✅ | ➖ | ✅ | ❌ | ✅ | →high | ✅ | ➖ |  | ✅ |  |
+| Anthropic | `claude-fable-5-1` | 2026-11-14 | ✅ | ➖ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  | ✅ |
+|  | `claude-fable-5-2` | 2026-11-14 | ✅ | ➖ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  | ✅ | ✅ |
+|  | `claude-haiku-5-5` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  | ✅ | ✅ |
+|  | `claude-opus-5-5` | 2026-11-14 | ✅ | ➖ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  | ✅ | ✅ |
+|  | `claude-sonnet-5` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  | ✅ | ✅ |
+|  | `claude-sonnet-5-5` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ |  |  | ✅ |
+| DeepSeek | `deepseek-flash` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ | ✅ | ✅ |
+| Google Gemini | `gemini-3.7-flash` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅, minimal ➖ |  | ✅ |
+|  | `gemini-3.8-flash` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅, minimal ➖ |  | ✅ |
+|  | `gemini-4-argon` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅, minimal ➖ |  | ✅ |
+|  | `gemini-4-carbon` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ✅, minimal ➖ |  | ✅ |
+| Grok (x.AI) | `grok-4.6` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | ✅ | →xhigh | ➖ | none ➖, minimal ✅ | ✅ | ✅ |
+|  | `grok-4.7` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | ✅ | →xhigh | ➖ | none ➖, minimal ✅ | ✅ | ✅ |
+| HuggingFace | `Qwen/Qwen3.5-9B` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ | ✅ | ✅ |
+|  | `meta-llama/Llama-3.1-8B-Instruct` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ |  | ✅ |
+| Kimi (Moonshot AI) | `kimi-k2.6` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ | ✅ | ✅ |
+|  | `kimi-k2.7-code` | 2026-11-14 | ➖ | ➖ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ➖, minimal ✅ | ✅ | ✅ |
+|  | `kimi-k3` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ | ✅ | ✅ |
+|  | `kimi-k3.1-pro` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ | ✅ | ✅ |
+| Mammouth AI | `gemini-3.7-flash` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ➖, minimal ✅ | ✅ | ✅ |
+|  | `gemini-3.8-flash` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ➖, minimal ✅ | ✅ | ✅ |
+| MiniMax | `MiniMax-M2` | 2026-11-14 | ➖ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ | ✅ | ✅ |
+|  | `MiniMax-M3` | 2026-11-14 | ➖ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ | ✅ | ✅ |
+|  | `MiniMax-M3.1-Flash` | 2026-11-14 | ➖ | ➖ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ➖, minimal ✅ | ✅ | ✅ |
+| Mistral AI | `mistral-large-4` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | →high | →high | ➖ | none ➖, minimal ➖ | ✅ | ✅ |
+|  | `mistral-medium-2604` | 2026-11-14 |  |  | →high | →high | ✅ | →high | →high | ➖ | none ✅, minimal ➖ | ✅ | ✅ |
+|  | `mistral-small-2603` | 2026-11-14 |  |  | →high | →high | ✅ | →high | →high | ➖ | none ✅, minimal ➖ | ✅ | ✅ |
+| OpenAI | `gpt-5.6-sol` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | ✅ | →xhigh | ➖ | none ✅ |  | ✅ |
+|  | `gpt-6-astra` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | ✅ | →xhigh | ➖ | none ➖, minimal ➖ |  | ✅ |
+|  | `gpt-6-luna` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | ✅ | →xhigh | ➖ | none ✅ |  | ✅ |
+|  | `gpt-6-sol` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | ✅ | →xhigh | ➖ | none ✅ |  | ✅ |
+|  | `gpt-6.1-sol` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | ✅ | →xhigh | ➖ | none ➖, minimal ➖ |  | ✅ |
+|  | `gpt-6.1-terra` | 2026-11-14 |  |  | ✅ | ✅ | ✅ | ✅ | →xhigh | ➖ | none ✅ |  | ✅ |
+| OpenRouter | `google/gemini-3.7-flash` | 2026-11-14 | ➖ | ➖ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | none ➖, minimal ✅ | ✅ | ✅ |
+|  | `google/gemini-3.8-flash` | 2026-11-14 | ➖ | ➖ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | none ➖, minimal ✅ | ✅ | ✅ |
+| Qwen (Alibaba DashScope) | `qwen3.7-plus` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | →xhigh | ✅ | none ✅, minimal ✅ | ✅ | ✅ |
+|  | `qwen3.8-flash` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | none ✅, minimal ✅ | ✅ | ✅ |
+|  | `qwen3.8-max` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | none ✅, minimal ✅ | ✅ | ✅ |
+| Together AI | `Qwen/Qwen3.5-9B` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ | wire only | ✅ |
+|  | `zai-org/GLM-5.3-Flash` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ | wire only | ✅ |
+| Z.AI (Zhipu GLM) | `glm-5.2` | 2026-11-14 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ➖ | none ✅, minimal ✅ | ✅ | ✅ |
+|  | `glm-5.3` | 2026-11-14 | ➖ | ➖ | ✅ | →low | ✅ | →high | ✅ | ➖ | none ➖, minimal ➖ | ✅ | ✅ |
+|  | `glm-5.3-flash` | 2026-11-14 | ➖ | ➖ | ✅ | →low | ✅ | →high | ✅ | ➖ | none ➖, minimal ➖ | ✅ | ✅ |
+|  | `glm-5.3-flashx` | 2026-11-14 | ➖ | ➖ | ✅ | →low | ✅ | →high | ✅ | ➖ | none ➖, minimal ➖ | ✅ | ✅ |
 
 ## Vendor reasoning matrix
 
@@ -1090,52 +1144,52 @@ fragments after which the vendor answer carried a reasoning trace, read on the w
 
 | Provider | Model | Date | Accepted | Refused | Trace |
 |---|---|---|---|---|---|
-| Anthropic | `claude-fable-5-1` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` |  |
-|  | `claude-fable-5-2` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
-|  | `claude-haiku-5-5` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized`, `off:disabled@high` | `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
-|  | `claude-opus-5-5` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
-|  | `claude-sonnet-5` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized`, `off:disabled@high`, `off:disabled@xhigh` | `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
-|  | `claude-sonnet-5-5` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized`, `off:between_tools@high` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@xhigh`, `budget:1024` |  |
-| DeepSeek | `deepseek-flash` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
-| Google Gemini | `gemini-3.7-flash` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
-|  | `gemini-3.8-flash` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
-|  | `gemini-4-argon` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
-|  | `gemini-4-carbon` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
-| Grok (x.AI) | `grok-4.6` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:max` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` |
-|  | `grok-4.7` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:max` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` |
-| HuggingFace | `Qwen/Qwen3.5-9B` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
-|  | `meta-llama/Llama-3.1-8B-Instruct` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  |  |
-| Kimi (Moonshot AI) | `kimi-k2.6` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
-|  | `kimi-k2.7-code` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
-|  | `kimi-k3` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
-|  | `kimi-k3.1-pro` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
-| Mammouth AI | `gemini-3.7-flash` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` | `effort:none` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` |
-|  | `gemini-3.8-flash` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` | `effort:none` | `effort:minimal`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` |
-| MiniMax | `MiniMax-M2` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |
-|  | `MiniMax-M3` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:off` | `toggle:on` | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` |
-|  | `MiniMax-M3.1-Flash` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
-| Mistral AI | `mistral-large-4` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high` | `effort:none`, `effort:minimal`, `effort:xhigh`, `effort:max` | `effort:low`, `effort:medium`, `effort:high` |
-|  | `mistral-medium-2604` | 2026-11-13 | `effort:none`, `effort:high` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:xhigh`, `effort:max` | `effort:high` |
-|  | `mistral-small-2603` | 2026-11-13 | `effort:none`, `effort:high` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:xhigh`, `effort:max` | `effort:high` |
-| OpenAI | `gpt-5.6-sol` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
-|  | `gpt-6-astra` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:minimal`, `effort:max` |  |
-|  | `gpt-6-luna` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
-|  | `gpt-6-sol` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
-|  | `gpt-6.1-sol` | 2026-11-13 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:minimal`, `effort:max` |  |
-|  | `gpt-6.1-terra` | 2026-11-13 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
-| OpenRouter | `google/gemini-3.7-flash` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` |
-|  | `google/gemini-3.8-flash` | 2026-11-13 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` |
-| Qwen (Alibaba DashScope) | `qwen3.7-plus` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `toggle:on`, `toggle:off`, `budget:1024` | `effort:max` | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `toggle:on`, `budget:1024` |
-|  | `qwen3.8-flash` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off`, `budget:1024` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `budget:1024` |
-|  | `qwen3.8-max` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off`, `budget:1024` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `budget:1024` |
-| Together AI | `Qwen/Qwen3.5-9B` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
-|  | `zai-org/GLM-5.3-Flash` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |
-| Z.AI (Zhipu GLM) | `glm-5.2` | 2026-11-13 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
-|  | `glm-5.3` | 2026-11-13 | `effort:low`, `effort:high`, `effort:max`, `toggle:on` | `effort:none`, `effort:minimal`, `effort:medium`, `effort:xhigh`, `toggle:off` | `effort:low`, `effort:high`, `effort:max`, `toggle:on` |
-|  | `glm-5.3-flash` | 2026-11-13 | `effort:low`, `effort:high`, `effort:max`, `toggle:on` | `effort:none`, `effort:minimal`, `effort:medium`, `effort:xhigh`, `toggle:off` | `effort:low`, `effort:high`, `effort:max`, `toggle:on` |
-|  | `glm-5.3-flashx` | 2026-11-13 | `effort:low`, `effort:high`, `effort:max`, `toggle:on` | `effort:none`, `effort:minimal`, `effort:medium`, `effort:xhigh`, `toggle:off` | `effort:low`, `effort:high`, `effort:max`, `toggle:on` |
+| Anthropic | `claude-fable-5-1` | 2026-11-14 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` |  |
+|  | `claude-fable-5-2` | 2026-11-14 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
+|  | `claude-haiku-5-5` | 2026-11-14 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized`, `off:disabled@high` | `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
+|  | `claude-opus-5-5` | 2026-11-14 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
+|  | `claude-sonnet-5` | 2026-11-14 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized`, `off:disabled@high`, `off:disabled@xhigh` | `off:between_tools@high`, `off:between_tools@xhigh`, `budget:1024` | `trace:summarized` |
+|  | `claude-sonnet-5-5` | 2026-11-14 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `trace:summarized`, `off:between_tools@high` | `off:disabled@high`, `off:disabled@xhigh`, `off:between_tools@xhigh`, `budget:1024` |  |
+| DeepSeek | `deepseek-flash` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+| Google Gemini | `gemini-3.7-flash` | 2026-11-14 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
+|  | `gemini-3.8-flash` | 2026-11-14 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
+|  | `gemini-4-argon` | 2026-11-14 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
+|  | `gemini-4-carbon` | 2026-11-14 | `effort:none`, `effort:low`, `effort:medium`, `effort:high` | `effort:minimal`, `effort:xhigh`, `effort:max` |  |
+| Grok (x.AI) | `grok-4.6` | 2026-11-14 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:max` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` |
+|  | `grok-4.7` | 2026-11-14 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:max` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` |
+| HuggingFace | `Qwen/Qwen3.5-9B` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `meta-llama/Llama-3.1-8B-Instruct` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  |  |
+| Kimi (Moonshot AI) | `kimi-k2.6` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `kimi-k2.7-code` | 2026-11-14 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `kimi-k3` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `kimi-k3.1-pro` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+| Mammouth AI | `gemini-3.7-flash` | 2026-11-14 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` | `effort:none` | `effort:minimal`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` |
+|  | `gemini-3.8-flash` | 2026-11-14 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` | `effort:none` | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` |
+| MiniMax | `MiniMax-M2` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |
+|  | `MiniMax-M3` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:off` | `toggle:on` | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max` |
+|  | `MiniMax-M3.1-Flash` | 2026-11-14 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+| Mistral AI | `mistral-large-4` | 2026-11-14 | `effort:low`, `effort:medium`, `effort:high` | `effort:none`, `effort:minimal`, `effort:xhigh`, `effort:max` | `effort:low`, `effort:medium`, `effort:high` |
+|  | `mistral-medium-2604` | 2026-11-14 | `effort:none`, `effort:high` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:xhigh`, `effort:max` | `effort:high` |
+|  | `mistral-small-2603` | 2026-11-14 | `effort:none`, `effort:high` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:xhigh`, `effort:max` | `effort:high` |
+| OpenAI | `gpt-5.6-sol` | 2026-11-14 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
+|  | `gpt-6-astra` | 2026-11-14 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:minimal`, `effort:max` |  |
+|  | `gpt-6-luna` | 2026-11-14 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
+|  | `gpt-6-sol` | 2026-11-14 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
+|  | `gpt-6.1-sol` | 2026-11-14 | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:none`, `effort:minimal`, `effort:max` |  |
+|  | `gpt-6.1-terra` | 2026-11-14 | `effort:none`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh` | `effort:minimal`, `effort:max` |  |
+| OpenRouter | `google/gemini-3.7-flash` | 2026-11-14 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` |
+|  | `google/gemini-3.8-flash` | 2026-11-14 | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` | `effort:none`, `toggle:off` | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `budget:1024` |
+| Qwen (Alibaba DashScope) | `qwen3.7-plus` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `toggle:on`, `toggle:off`, `budget:1024` | `effort:max` | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `toggle:on`, `budget:1024` |
+|  | `qwen3.8-flash` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off`, `budget:1024` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `budget:1024` |
+|  | `qwen3.8-max` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off`, `budget:1024` |  | `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `budget:1024` |
+| Together AI | `Qwen/Qwen3.5-9B` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `zai-org/GLM-5.3-Flash` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |
+| Z.AI (Zhipu GLM) | `glm-5.2` | 2026-11-14 | `effort:none`, `effort:minimal`, `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on`, `toggle:off` |  | `effort:low`, `effort:medium`, `effort:high`, `effort:xhigh`, `effort:max`, `toggle:on` |
+|  | `glm-5.3` | 2026-11-14 | `effort:low`, `effort:high`, `effort:max`, `toggle:on` | `effort:none`, `effort:minimal`, `effort:medium`, `effort:xhigh`, `toggle:off` | `effort:low`, `effort:high`, `effort:max`, `toggle:on` |
+|  | `glm-5.3-flash` | 2026-11-14 | `effort:low`, `effort:high`, `effort:max`, `toggle:on` | `effort:none`, `effort:minimal`, `effort:medium`, `effort:xhigh`, `toggle:off` | `effort:low`, `effort:high`, `effort:max`, `toggle:on` |
+|  | `glm-5.3-flashx` | 2026-11-14 | `effort:low`, `effort:high`, `effort:max`, `toggle:on` | `effort:none`, `effort:minimal`, `effort:medium`, `effort:xhigh`, `toggle:off` | `effort:low`, `effort:high`, `effort:max`, `toggle:on` |
 
 ---
 
 _Index regenerated by `lib/recap.sh` or `lib/recap.ps1` from the reports present on disk._
-_453 archived campaign(s)._
+_498 archived campaign(s)._

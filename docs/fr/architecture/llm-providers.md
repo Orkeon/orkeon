@@ -135,7 +135,7 @@ Chaque provider déclare un value object `LlmProviderCapabilities` (Domain, expo
 `LlmProviderCapabilities.Unknown` par défaut) : `ResponseFormat`
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `EffortLevels`
 (les niveaux d'effort que le champ connaît : `low`, `medium`, `high` par défaut, jusqu'à `xhigh` pour OpenAI et
-Grok, `max` sans `xhigh` pour Z.ai, et les cinq pour Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI,
+Grok, et les cinq pour Z.ai, Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI,
 Hugging Face, MiniMax et Mammouth AI ; la table par modèle, plus bas, les restreint modèle par modèle) : un niveau demandé qui n'est pas déclaré est
 envoyé comme le plus haut niveau déclaré en dessous, avec un avertissement dans le journal du provider ; une valeur
 hors des cinq, comme le `none` d'OpenAI, n'est pas un niveau et part telle quelle, le vendeur en juge), `Vision`,

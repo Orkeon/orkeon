@@ -469,6 +469,26 @@ public class ProviderCapabilityPayloadTests
         Assert.Equal(sent != effort, probe.Warnings.Any(w => w.Contains($"Effort '{effort}'", StringComparison.Ordinal)));
     }
 
+    /// <summary>
+    /// Z.AI's field knows the five levels (campaign of 2026-11-14, #356): GLM-5.2 takes and reasons at
+    /// <c>xhigh</c>, so it travels; GLM-5.3 keeps its own <c>low</c>, <c>high</c>, <c>max</c> and lowers it.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-356")]
+    [InlineData("glm-5.2", "xhigh")]
+    [InlineData("glm-5.3", "high")]
+    public async Task ShouldSendXhighWhereTheModelTakesIt_OnZai(string model, string sent)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(nameof(ZaiLlmProvider), config => config with
+        {
+            Model = model,
+            Thinking = new LlmThinkingConfig { Effort = "xhigh" },
+        });
+
+        Assert.Equal(sent, probe.Body.GetProperty("reasoning_effort").GetString());
+        Assert.Equal(sent != "xhigh", probe.Warnings.Any(w => w.Contains("Effort 'xhigh'", StringComparison.Ordinal)));
+    }
+
     /// <summary>DeepSeek's field knows every level since campaign M18 (#356): both travel untouched.</summary>
     [Theory]
     [InlineData("max", "max")]
