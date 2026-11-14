@@ -35,6 +35,8 @@ extract_json() {
 
 rows=""
 mode_rows=""
+reasoning_rows=""
+matrix_rows=""
 count=0
 declare -A latest_line=()
 
@@ -53,6 +55,17 @@ while IFS= read -r report; do
   # One line per mode result, for the per-model table.
   mode_rows+=$(printf '%s' "$json" | jq -r --arg rel "$rel" \
     '. as $c | .modes[] | [$c.provider, $c.model, $c.timestampUtc, .mode, .outcome, $rel] | @tsv')$'\n'
+
+  # One line per reasoning step (M15 to M17), for the reasoning table: absent from older reports.
+  reasoning_rows+=$(printf '%s' "$json" | jq -r '. as $c | (.modes[]? | select(.mode != "M18" and ((.reasoning // []) | length > 0)) | .reasoning[])
+    | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, (.sentValue // "-"), (if (.trace // false) then "orkeon" elif (.vendorTrace // false) then "wire" else "none" end), (.tableCheck // "-")] | @tsv')
+  [[ -z "$reasoning_rows" || "$reasoning_rows" == *$'\n' ]] || reasoning_rows+=$'\n'
+
+  # One line per M18 step (the raw vendor matrix), for its own table: M18 steps are vendor
+  # fragments with their own labels, never columns of the reasoning grid above.
+  matrix_rows+=$(printf '%s' "$json" | jq -r '. as $c | (.modes[]? | select(.mode == "M18" and ((.reasoning // []) | length > 0)) | .reasoning[])
+    | [$c.provider, $c.model, $c.timestampUtc, .step, .outcome, (if (.trace // false) then "orkeon" elif (.vendorTrace // false) then "wire" else "none" end)] | @tsv')
+  [[ -z "$matrix_rows" || "$matrix_rows" == *$'\n' ]] || matrix_rows+=$'\n'
 
   # Prefixed with an explicit sort key. Two campaigns launched in parallel routinely land on
   # the same second, and a plain reverse sort over the rendered line would then break the tie
@@ -121,9 +134,114 @@ render_model_table() {
   done <<< "$model_table"
 }
 
+# The reasoning steps of each model's latest campaign day, as TSV: provider, label, model, day,
+# then the rest of the Markdown row (so no field is ever empty). Same merge rule as the model
+# table: the reports of the latest day are merged, the latest result of each step winning.
+# Columns: on off low medium high xhigh max budget; any other step is a vendor value, listed in
+# Other as "step cell"; Trace is ✅ when the provider surfaced a reasoning trace on any step of
+# the day, "wire only" when the vendor sent one that the provider did not surface; Table is ✅ when every
+# step the run checked against M18 agrees with the capability table, else the steps that contradict it.
+reasoning_table_tsv() {
+  local providers
+  providers=$(jq -c '.providers | with_entries(select(.value.aliasOf == null)) | map_values(.label // "")' "$CATALOG")
+  printf '%s' "$reasoning_rows" | jq -R -s -r --argjson cat "$providers" '
+    def cell(o; v): if o == "sent" then "✅" elif o == "lowered" then "→\(v)" elif o == "omitted" then "➖" else "❌" end;
+    split("\n") | map(select(length > 0) | split("\t")
+      | {p: .[0], m: .[1], s: .[2], step: .[3], o: .[4], v: .[5], t: .[6], c: (.[7] // "-")})
+    | group_by([.p, .m])
+    | map((map(.s[0:10]) | max) as $d
+        | map(select(.s[0:10] == $d)) | sort_by(.s)
+        | (reduce .[] as $x ({}; .[$x.step] = cell($x.o; $x.v))) as $res
+        | (reduce .[] as $x ({}; .[$x.step] = $x.c)) as $chk
+        | ([$chk | to_entries[] | select(.value == "missing restriction" or .value == "too narrow") | "\(.key): \(.value)"]) as $bad
+        | {p: .[0].p, m: .[0].m, d: $d, l: (($cat[.[0].p] // "") | if . == "" then .[0].p else . end),
+           res: $res, table: (if ($bad | length) > 0 then "❌ " + ($bad | join(", ")) elif any($chk[]; . == "agrees") then "✅" else "" end),
+           trace: (if any(.[]; .t == "orkeon" or .t == "true") then "✅" elif any(.[]; .t == "wire") then "wire only" else "" end)})
+    | sort_by(.p, .m)
+    | .[] | . as $r
+    | [$r.p, ($r.l // $r.p), $r.m, $r.d,
+       ("| " + ([ ("on","off","low","medium","high","xhigh","max","budget") as $k | ($r.res[$k] // "") ] | join(" | "))
+        + " | " + ([$r.res | to_entries[] | select(.key as $k | ["on","off","low","medium","high","xhigh","max","budget"] | index($k) | not)
+                   | "\(.key) \(.value)"] | join(", "))
+        + " | " + $r.trace + " | " + $r.table + " |")] | @tsv'
+}
+
+# The vendor reasoning matrix (M18), as TSV: provider, label, model, day, then the rest of the
+# Markdown row. One row per model, from the latest report that ran M18 (not merged across days:
+# the matrix is one run of one fragment list). Accepted and Refused list the step labels, Trace
+# the labels whose step returned a reasoning trace; a label is code-formatted.
+matrix_table_tsv() {
+  local providers
+  providers=$(jq -c '.providers | with_entries(select(.value.aliasOf == null)) | map_values(.label // "")' "$CATALOG")
+  printf '%s' "$matrix_rows" | jq -R -s -r --argjson cat "$providers" '
+    def codes(f): [.[] | select(f) | "`" + .step + "`"] | join(", ");
+    split("\n") | map(select(length > 0) | split("\t")
+      | {p: .[0], m: .[1], s: .[2], step: .[3], o: .[4], t: (.[5] == "orkeon" or .[5] == "wire" or .[5] == "true")})
+    | group_by([.p, .m])
+    | map((map(.s) | max) as $latest | map(select(.s == $latest))
+        | {p: .[0].p, m: .[0].m, d: $latest[0:10], l: (($cat[.[0].p] // "") | if . == "" then .[0].p else . end),
+           acc: codes(.o == "accepted"), ref: codes(.o == "refused"), tr: codes(.t)})
+    | sort_by(.p, .m)
+    | .[] | [.p, .l, .m, .d, "| \(.acc) | \(.ref) | \(.tr) |"] | @tsv'
+}
+
+# Renders the vendor reasoning matrix, or one sentence when no report ran M18 yet.
+render_matrix_table() {
+  local lang="$1" previous="" p label model d rest cell
+  if [[ -z "$matrix_table" ]]; then
+    if [[ "$lang" == fr ]]; then
+      echo "Aucun rapport archivé ne porte encore la matrice brute (mode M18) : le tableau apparaîtra à la prochaine campagne qui l'exécute."
+    else
+      echo "No archived report carries the raw matrix yet (mode M18): the table appears with the next campaign that runs it."
+    fi
+    return 0
+  fi
+  if [[ "$lang" == fr ]]; then
+    echo "| Fournisseur | Modèle | Date | Acceptés | Refusés | Trace |"
+  else
+    echo "| Provider | Model | Date | Accepted | Refused | Trace |"
+  fi
+  echo "|---|---|---|---|---|---|"
+  while IFS=$'\t' read -r p label model d rest; do
+    cell=""
+    [[ "$p" == "$previous" ]] || cell="$label"
+    previous="$p"
+    echo "| ${cell} | \`${model}\` | ${d} ${rest}"
+  done <<< "$matrix_table"
+}
+
+# Renders the reasoning table, or one sentence when no report carries reasoning steps yet.
+render_reasoning_table() {
+  local lang="$1" previous="" p label model d rest cell
+  if [[ -z "$reasoning_table" ]]; then
+    if [[ "$lang" == fr ]]; then
+      echo "Aucun rapport archivé ne porte encore d'étapes de raisonnement (modes M15 à M17) : le tableau apparaîtra à la prochaine campagne qui les exécute."
+    else
+      echo "No archived report carries reasoning steps yet (modes M15 to M17): the table appears with the next campaign that runs them."
+    fi
+    return 0
+  fi
+  if [[ "$lang" == fr ]]; then
+    echo "| Fournisseur | Modèle | Date | on | off | low | medium | high | xhigh | max | budget | Autres | Trace | Table |"
+  else
+    echo "| Provider | Model | Date | on | off | low | medium | high | xhigh | max | budget | Other | Trace | Table |"
+  fi
+  echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+  while IFS=$'\t' read -r p label model d rest; do
+    cell=""
+    [[ "$p" == "$previous" ]] || cell="$label"
+    previous="$p"
+    echo "| ${cell} | \`${model}\` | ${d} ${rest}"
+  done <<< "$reasoning_table"
+}
+
 model_table=""
 [[ "$count" -eq 0 ]] || model_table=$(model_table_tsv)
 latest_day=$(printf '%s' "$model_table" | cut -f5 | sort | tail -n 1)
+reasoning_table=""
+[[ -z "$reasoning_rows" ]] || reasoning_table=$(reasoning_table_tsv)
+matrix_table=""
+[[ -z "$matrix_rows" ]] || matrix_table=$(matrix_table_tsv)
 model_count=$(printf '%s' "$model_table" | grep -c . || true)
 
 {
@@ -166,6 +284,29 @@ model_count=$(printf '%s' "$model_table" | grep -c . || true)
     echo "published in the documentation, \`docs/reference/llm-campaign-results.md\`."
     echo
     render_model_table en ""
+    echo
+    echo "## Reasoning per model"
+    echo
+    echo "One row per model that ran the reasoning modes (M15 thinking toggle, M16 effort sweep, M17 budget),"
+    echo "from the model's latest campaign day. A cell is ✅ when the value was sent as asked, \`→low\` when"
+    echo "Orkeon lowered it to the nearest value the model takes, ➖ when it was left out, ❌ when the vendor"
+    echo "refused what Orkeon sent, and empty when the step was not run. \`Other\` lists vendor values outside"
+    echo "the usual set (\`none ✅\`); \`Trace\` is ✅ when the provider surfaced a reasoning trace, \`wire only\` when the vendor sent one the provider dropped."
+    echo "\`Table\` checks the model capability table against the vendor's own answer to the same value (M18):"
+    echo "✅ every checked step agrees, otherwise the steps where the table is missing a restriction (the vendor"
+    echo "refused what Orkeon sent) or too narrow (Orkeon lowered or left out a value the vendor takes)."
+    echo
+    render_reasoning_table en
+    echo
+    echo "## Vendor reasoning matrix"
+    echo
+    echo "M18 sends each fragment of the catalog's \`rawReasoning\` list to the vendor exactly as written,"
+    echo "bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself"
+    echo "accepts, from the model's latest report that ran M18. \"Accepted\" means HTTP 2xx, not that the value"
+    echo "had an effect: compare the traces and the completion tokens in the reports. \`Trace\` lists the"
+    echo "fragments after which the vendor answer carried a reasoning trace, read on the wire."
+    echo
+    render_matrix_table en
   fi
 
   echo
@@ -203,7 +344,7 @@ write_docs_page() {
       echo "modèle : seuls les rapports d'un même modèle sont réunis ; un compagnon vision est une ligne à part."
       echo "Les jours plus anciens sont dans le [journal des campagnes](${REPORT_URL}/README.md#campaigns-run)."
       echo
-      echo "Les modes M1 à M13 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans"
+      echo "Les modes M1 à M18 sont ceux du chat, D1 à D8 ceux des modèles de décision ; ils sont définis dans"
       echo "le [README du kit](${REPORT_URL}/README.md#the-protocol-modes). ✅ réussi, ❌ en échec, ➖ sans"
       echo "objet (le fournisseur ou le modèle ne déclare pas la capacité). Les modèles par défaut et les"
       echo "raisons de leur choix : [comparatif des fournisseurs LLM](llm-providers-comparison.md)."
@@ -222,7 +363,7 @@ write_docs_page() {
       echo "same model are merged, and a vision companion is a row of its own. Older days are in the"
       echo "[campaign journal](${REPORT_URL}/README.md#campaigns-run)."
       echo
-      echo "Modes M1 to M13 are the chat modes, D1 to D8 the decision-model modes; they are defined in the"
+      echo "Modes M1 to M18 are the chat modes, D1 to D8 the decision-model modes; they are defined in the"
       echo "[kit README](${REPORT_URL}/README.md#the-protocol-modes). ✅ passed, ❌ failed, ➖ not"
       echo "applicable (the provider or the model does not declare the capability). The default models and"
       echo "why they were chosen: [LLM provider comparison](llm-providers-comparison.md)."
@@ -231,6 +372,53 @@ write_docs_page() {
     fi
     echo
     render_model_table "$lang" "${REPORT_URL}/"
+    echo
+    if [[ "$lang" == fr ]]; then
+      echo "## Raisonnement par modèle"
+      echo
+      echo "Les modes M15 (bascule du raisonnement), M16 (balayage des efforts) et M17 (budget) sont décrits dans le"
+      echo "[README du kit](${REPORT_URL}/README.md#the-protocol-modes). ✅ la valeur est partie telle quelle,"
+      echo "\`→low\` Orkeon l'a abaissée à la valeur la plus proche que le modèle accepte, ➖ rien n'a été envoyé,"
+      echo "❌ le fournisseur a refusé ce qu'Orkeon a envoyé, vide l'étape n'a pas été exécutée. \`Autres\` liste les"
+      echo "valeurs propres au fournisseur ; \`Trace\` est ✅ lorsque le provider Orkeon a restitué une trace de raisonnement, \`wire only\` lorsque le fournisseur l'a envoyée et que le provider l'a perdue."
+      echo "\`Table\` confronte la table des capacités des modèles à la réponse du fournisseur à la même valeur (M18) :"
+      echo "✅ toutes les étapes vérifiées concordent, sinon les étapes où la table manque une restriction (le fournisseur"
+      echo "a refusé ce qu'Orkeon a envoyé) ou est trop étroite (Orkeon a abaissé ou omis une valeur que le fournisseur accepte)."
+    else
+      echo "## Reasoning per model"
+      echo
+      echo "Modes M15 (thinking toggle), M16 (effort sweep) and M17 (budget) are described in the"
+      echo "[kit README](${REPORT_URL}/README.md#the-protocol-modes). ✅ the value was sent as asked,"
+      echo "\`→low\` Orkeon lowered it to the nearest value the model takes, ➖ nothing was sent, ❌ the vendor"
+      echo "refused what Orkeon sent, empty the step was not run. \`Other\` lists vendor-specific values;"
+      echo "\`Trace\` is ✅ when the provider surfaced a reasoning trace, \`wire only\` when the vendor sent one the provider dropped."
+      echo "\`Table\` checks the model capability table against the vendor's own answer to the same value (M18):"
+      echo "✅ every checked step agrees, otherwise the steps where the table is missing a restriction (the vendor"
+      echo "refused what Orkeon sent) or too narrow (Orkeon lowered or left out a value the vendor takes)."
+    fi
+    echo
+    render_reasoning_table "$lang"
+    echo
+    if [[ "$lang" == fr ]]; then
+      echo "## Matrice brute du fournisseur"
+      echo
+      echo "M18 envoie chaque fragment de la liste \`rawReasoning\` du catalogue au fournisseur tel quel, sans"
+      echo "passer par le jugement d'Orkeon sur ce qu'un modèle accepte : le tableau montre ce que le"
+      echo "fournisseur lui-même accepte, d'après le dernier rapport du modèle qui a exécuté M18. « Acceptés »"
+      echo "signifie HTTP 2xx, pas que la valeur ait eu un effet : comparer les traces et les jetons de"
+      echo "complétion dans les rapports. \`Trace\` liste les fragments après lesquels une trace de"
+      echo "raisonnement est revenue dans la réponse du fournisseur, lue sur le fil."
+    else
+      echo "## Vendor reasoning matrix"
+      echo
+      echo "M18 sends each fragment of the catalog's \`rawReasoning\` list to the vendor exactly as written,"
+      echo "bypassing Orkeon's own judgement of what a model supports: the table shows what the vendor itself"
+      echo "accepts, from the model's latest report that ran M18. \"Accepted\" means HTTP 2xx, not that the value"
+      echo "had an effect: compare the traces and the completion tokens in the reports. \`Trace\` lists the"
+      echo "fragments after which the vendor answer carried a reasoning trace, read on the wire."
+    fi
+    echo
+    render_matrix_table "$lang"
   } > "$target.$$"
   mv -f "$target.$$" "$target"
   echo "$target"

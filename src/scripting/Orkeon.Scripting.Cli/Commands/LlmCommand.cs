@@ -1,5 +1,7 @@
 using Orkeon.Hosting;
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using CommandLine;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.LLM;
@@ -60,6 +62,16 @@ internal sealed class LlmProbeCommandOptions : CliOptions
     [Option("m7-effort", Required = false,
         HelpText = "Reasoning effort M7 probes with (default low). For models whose supported set excludes low.")]
     public string? M7Effort { get; set; }
+
+    /// <summary>Effort values M16 sweeps, comma-separated; vendor values such as none or minimal are allowed.</summary>
+    [Option("sweep-efforts", Required = false,
+        HelpText = "Comma-separated effort values M16 sweeps (default low,medium,high,xhigh,max, then every value of an effort:* fragment of --raw-reasoning). May hold vendor values such as none or minimal.")]
+    public string? SweepEfforts { get; set; }
+
+    /// <summary>JSON file of raw reasoning fragments M18 sends to the vendor unchanged.</summary>
+    [Option("raw-reasoning", Required = false,
+        HelpText = "JSON file holding [{\"label\":\"effort:xhigh\",\"body\":{\"reasoning_effort\":\"xhigh\"}}, ...]: the reasoning fields M18 sends to the vendor in place of Orkeon's own.")]
+    public string? RawReasoning { get; set; }
 
     /// <summary>Environment variable holding the API key. Never the key itself.</summary>
     [Option('k', "api-key-env", Required = false, Default = EnvironmentVariableNames.LlmCommandApiKey,
@@ -231,12 +243,39 @@ internal static class LlmCommand
             return Program.ExitScriptError;
         }
 
+        IReadOnlyList<(string Label, JsonObject Body)> rawReasoning = [];
+        if (!string.IsNullOrWhiteSpace(options.RawReasoning))
+        {
+            string text;
+            try
+            {
+                // EXCEPTION-BOOTSTRAP. The probe runs outside a host, so no IFileSystemService exists  -
+                // the file is a path the operator passed explicitly.
+                text = await File.ReadAllTextAsync(options.RawReasoning!).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                await console.ErrorOutput.WriteLineAsync(
+                    $"orkeon llm probe: cannot read --raw-reasoning file: {ex.Message}").ConfigureAwait(false);
+                return Program.ExitScriptError;
+            }
+
+            if (!TryParseRawReasoning(text, out rawReasoning, out var rawError))
+            {
+                await console.ErrorOutput.WriteLineAsync(
+                    $"orkeon llm probe: invalid --raw-reasoning file: {rawError}").ConfigureAwait(false);
+                return Program.ExitScriptError;
+            }
+        }
+
         using var cts = new CancellationTokenSource();
         using var interrupt = CancelOnInterrupt(console, cts);
         var config = BuildConfig(options, apiKey);
 
-        using var httpClientFactory = new CliHttpClientFactory();
-        var factory = LlmProviderFactory.WithoutMounts(httpClientFactory, NullLoggerFactory.Instance);
+        // The probe alone records what the provider sends and warns, so M15-M17 can report it.
+        var wireProbe = new ReasoningWireProbe();
+        using var httpClientFactory = new CliHttpClientFactory(wireProbe);
+        var factory = LlmProviderFactory.WithoutMounts(httpClientFactory, wireProbe.LoggerFactory);
         var adapter = factory.Create(options.Provider, config);
         if (adapter is not LlmProviderAdapter typed)
         {
@@ -248,6 +287,9 @@ internal static class LlmCommand
         var runner = new LlmProbeRunner(typed.UnderlyingProvider, ResolveToolCallParser(options.Provider))
         {
             M7ThinkingEffort = string.IsNullOrWhiteSpace(options.M7Effort) ? "low" : options.M7Effort!,
+            SweepEfforts = ParseSweepEfforts(options.SweepEfforts),
+            WireProbe = wireProbe,
+            RawReasoning = rawReasoning,
         };
 
         IReadOnlyList<LlmProbeResult> results;
@@ -382,6 +424,69 @@ internal static class LlmCommand
         return settings;
     }
 
+    /// <summary>Splits <c>--sweep-efforts</c>: trimmed, non-empty entries; null when the option is absent or empty.</summary>
+    internal static IReadOnlyList<string>? ParseSweepEfforts(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        var entries = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return entries.Length == 0 ? null : entries;
+    }
+
+    /// <summary>Parses the <c>--raw-reasoning</c> file: an array of objects with a non-empty string <c>label</c> and an object <c>body</c>.</summary>
+    /// <param name="json">The file content.</param>
+    /// <param name="fragments">The labelled bodies, empty on error.</param>
+    /// <param name="error">What is wrong, when the content is invalid.</param>
+    /// <returns>True when the content is valid.</returns>
+    internal static bool TryParseRawReasoning(
+        string json, out IReadOnlyList<(string Label, JsonObject Body)> fragments, out string? error)
+    {
+        fragments = [];
+        error = null;
+
+        JsonNode? root;
+        try
+        {
+            root = JsonNode.Parse(json);
+        }
+        catch (JsonException ex)
+        {
+            error = $"not valid JSON ({ex.Message})";
+            return false;
+        }
+
+        if (root is not JsonArray array)
+        {
+            error = "expected a JSON array of {\"label\", \"body\"} items";
+            return false;
+        }
+
+        var parsed = new List<(string, JsonObject)>();
+        for (var i = 0; i < array.Count; i++)
+        {
+            if (array[i] is not JsonObject item
+                || item["label"] is not JsonValue labelNode
+                || !labelNode.TryGetValue<string>(out var label)
+                || string.IsNullOrWhiteSpace(label))
+            {
+                error = $"item {i} needs a non-empty string \"label\"";
+                return false;
+            }
+
+            if (item["body"] is not JsonObject body)
+            {
+                error = $"item {i} (\"{label}\") needs an object \"body\"";
+                return false;
+            }
+
+            parsed.Add((label, (JsonObject)body.DeepClone()));
+        }
+
+        fragments = parsed;
+        return true;
+    }
+
     private static LlmProbeContext BuildContext(LlmProbeCommandOptions options, LlmConfig config) =>
         new(
             Provider: options.Provider,
@@ -395,7 +500,8 @@ internal static class LlmCommand
             ThinkingEffort: config.Thinking?.Effort,
             M7ThinkingEffort: string.IsNullOrWhiteSpace(options.M7Effort) || options.M7Effort == "low"
                 ? null
-                : options.M7Effort);
+                : options.M7Effort,
+            SweepEfforts: ParseSweepEfforts(options.SweepEfforts) is { } sweep ? string.Join(",", sweep) : null);
 
     /// <summary>
     /// The host, never the full URL: a base URL can carry a resource name, a workspace or a

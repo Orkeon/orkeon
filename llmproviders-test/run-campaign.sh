@@ -48,7 +48,7 @@ THINKING_EFFORT=""
 
 DEFAULT_MAX_MODELS=5
 # M11 (long context) and M14 (end-to-end crew) are manual on purpose — see the kit README.
-ALL_MODES="M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M12,M13"
+ALL_MODES="M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M12,M13,M15,M16,M17,M18"
 
 log()  { printf '%s\n' "$*" >&2; }
 warn() { printf '⚠  %s\n' "$*" >&2; }
@@ -227,6 +227,24 @@ catalog_model_param() {
   jq -r --arg p "$canonical" --arg m "$model" --arg f "$field"     '.providers[$p].requiredParams[$m][$f] // empty' "$CATALOG"
 }
 
+# M18's fragments for one model, written to a file the probe reads (`--raw-reasoning`): the
+# provider's list, then the model's own `requiredParams.<model>.rawReasoning` appended, a label
+# already present being replaced by the model's item. Prints the path, or nothing when the
+# resolved list is empty (the probe then reports the mode as not applicable).
+raw_reasoning_file() {
+  local provider="$1" model="$2" canonical file
+  [[ -f "$CATALOG" ]] || return 0
+  canonical=$(jq -r --arg p "$provider" '.providers[$p].aliasOf // $p' "$CATALOG")
+  file="$TMP_DIR/$canonical-$(printf '%s' "$model" | tr -c 'A-Za-z0-9._-' '_')-raw-reasoning.json"
+  jq --arg p "$canonical" --arg m "$model" '
+    (.providers[$p].rawReasoning // []) as $base
+    | reduce (.providers[$p].requiredParams[$m].rawReasoning // [])[] as $x ($base;
+        (map(.label) | index($x.label)) as $i
+        | if $i == null then . + [$x] else .[$i] = $x end)' "$CATALOG" > "$file"
+  [[ "$(jq 'length' "$file")" -gt 0 ]] && printf '%s' "$file"
+  return 0
+}
+
 # ── The orkeon CLI ───────────────────────────────────────────────────────────
 
 # Resolved on first use, not up front: a dry run that only expands literal model names never
@@ -240,7 +258,12 @@ resolve_orkeon() {
   if command -v orkeon >/dev/null 2>&1; then ORKEON=(orkeon); return 0; fi
 
   local dll="$REPO_ROOT/src/scripting/Orkeon.Scripting.Cli/bin/$CONFIGURATION/net10.0/orkeon.dll"
-  if [[ ! -f "$dll" ]]; then
+  # Always build: an existing dll may come from another branch, and the report would name HEAD's
+  # commit for code that did not run. The build is incremental, so an up-to-date dll costs seconds.
+  if [[ -f "$dll" ]]; then
+    log "Bringing the orkeon CLI up to date ($CONFIGURATION) …"
+    dotnet build "$CLI_PROJECT" -c "$CONFIGURATION" --no-restore -v q --nologo >&2
+  else
     log "Building the orkeon CLI once ($CONFIGURATION) …"
     dotnet build "$CLI_PROJECT" -c "$CONFIGURATION" -v q --nologo >&2
   fi
@@ -341,6 +364,11 @@ run_one() {
   if [[ "$DRY_RUN" -eq 1 ]]; then
     printf '  would run  %-12s %-42s modes=%s  →  %s\n' \
       "$provider" "$model" "$modes" "${target#"$OUT"/}"
+    if [[ ",$modes," == *",M18,"* ]]; then
+      local dry_raw
+      dry_raw=$(raw_reasoning_file "$provider" "$model")
+      [[ -z "$dry_raw" ]] || printf '             --raw-reasoning %s\n' "$dry_raw"
+    fi
     return 0
   fi
 
@@ -422,6 +450,18 @@ probe_args() {
   local m7_effort
   m7_effort=$(catalog_model_param "$provider" "$model" "m7Effort")
   [[ -n "$m7_effort" ]] && args+=(--m7-effort "$m7_effort")
+
+  # M16's own sweep, where a model takes vendor values beyond low..max (gpt-5.6-sol: none).
+  local sweep_efforts
+  sweep_efforts=$(catalog_model_param "$provider" "$model" "sweepEfforts")
+  [[ -n "$sweep_efforts" ]] && args+=(--sweep-efforts "$sweep_efforts")
+
+  # M18's vendor-fragment matrix, resolved from the catalog into a temp file (removed at exit).
+  if [[ ",$modes," == *",M18,"* ]]; then
+    local raw_reasoning
+    raw_reasoning=$(raw_reasoning_file "$provider" "$model")
+    [[ -z "$raw_reasoning" ]] || args+=(--raw-reasoning "$raw_reasoning")
+  fi
   PROBE_ARGS=("${args[@]}")
 }
 

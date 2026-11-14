@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Application.Interfaces.Ports;
@@ -10,6 +11,7 @@ using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.ToolCalling;
 using Orkeon.Scripting.Cli.Commands;
+using Orkeon.Scripting.Cli.Tests.Doubles;
 
 namespace Orkeon.Scripting.Cli.Tests.Commands;
 
@@ -982,6 +984,325 @@ public sealed class LlmProbeRunnerTests
     };
 
     /// <summary>A provider whose behaviour the test dictates, so the harness's judgement is what is measured.</summary>
+    // ── M15-M17: the reasoning controls and what reached the wire ───────────
+
+    private static ScriptedProvider ThinkingProvider(ThinkingSupport support) => new()
+    {
+        Content = "0.05",
+        Capabilities = new LlmProviderCapabilities { Thinking = support },
+    };
+
+    [Fact]
+    public async Task ShouldSendEnabledTrueThenFalse_WhenRunningM15()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.Toggle);
+        var runner = new LlmProbeRunner(provider);
+
+        var result = await RunAsync(runner, LlmProbeMode.M15);
+
+        Assert.Equal([true, false], provider.Configs.Select(c => c!.Thinking!.Enabled).ToArray());
+        Assert.Equal(["on", "off"], result.Reasoning!.Select(s => s.Step).ToArray());
+        Assert.All(provider.Configs, c => Assert.Equal(2048, c!.MaxTokens));
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+    }
+
+    [Fact]
+    public async Task ShouldBeNotApplicable_WhenRunningM15UnderEffortOnly()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+
+        var result = await RunAsync(new LlmProbeRunner(provider), LlmProbeMode.M15);
+
+        Assert.Equal(LlmProbeOutcome.NotApplicable, result.Outcome);
+        Assert.Empty(provider.Configs);
+        Assert.Null(result.Reasoning);
+    }
+
+    [Fact]
+    public async Task ShouldSendEachDefaultLevel_WhenRunningM16()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+
+        var result = await RunAsync(new LlmProbeRunner(provider), LlmProbeMode.M16);
+
+        Assert.Equal(["low", "medium", "high", "xhigh", "max"], provider.Configs.Select(c => c!.Thinking!.Effort).ToArray());
+        Assert.Equal(5, result.Reasoning!.Count);
+    }
+
+    [Fact]
+    public async Task ShouldSweepTheGivenValues_WhenRunningM16WithSweepEfforts()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+        var runner = new LlmProbeRunner(provider) { SweepEfforts = ["none", "minimal", "high"] };
+
+        var result = await RunAsync(runner, LlmProbeMode.M16);
+
+        Assert.Equal(["none", "minimal", "high"], provider.Configs.Select(c => c!.Thinking!.Effort).ToArray());
+        Assert.Equal(["none", "minimal", "high"], result.Reasoning!.Select(s => s.Step).ToArray());
+    }
+
+    [Fact]
+    public async Task ShouldSweepTheVendorValuesOfM18_AfterTheLevels_WhenNoSweepIsGiven()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+        var runner = new LlmProbeRunner(provider)
+        {
+            RawReasoning =
+            [
+                ("effort:none", new JsonObject { ["reasoning_effort"] = "none" }),
+                ("effort:high", new JsonObject { ["reasoning_effort"] = "high" }),
+                ("toggle:off", new JsonObject()),
+                ("effort:minimal", new JsonObject { ["reasoning_effort"] = "minimal" }),
+            ],
+        };
+
+        var result = await RunAsync(runner, LlmProbeMode.M16);
+
+        Assert.Equal(["low", "medium", "high", "xhigh", "max", "none", "minimal"], result.Reasoning!.Select(s => s.Step).ToArray());
+    }
+
+    [Fact]
+    public async Task ShouldReadTheChatTemplateSwitch_AsTheToggle()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.Toggle);
+        var wire = new FakeReasoningWireProbe();
+        wire.Wires.Enqueue("""{"chat_template_kwargs":{"enable_thinking":true}}""");
+        wire.Wires.Enqueue("""{"chat_template_kwargs":{"enable_thinking":false}}""");
+        var runner = new LlmProbeRunner(provider) { WireProbe = wire };
+
+        var result = await RunAsync(runner, LlmProbeMode.M15);
+
+        Assert.All(result.Reasoning!, s => Assert.Equal(LlmReasoningOutcome.Sent, s.Outcome));
+        Assert.Equal(["true", "false"], result.Reasoning!.Select(s => s.SentValue).ToArray());
+    }
+
+    [Fact]
+    public async Task ShouldClassifySentLoweredAndOmitted_FromTheWire()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+        var wire = new FakeReasoningWireProbe();
+        wire.Wires.Enqueue("""{"reasoning_effort":"low"}""");
+        wire.Wires.Enqueue("""{"reasoning_effort":"low"}""");
+        wire.Wires.Enqueue(null);
+        wire.WarningLists.Enqueue([]);
+        wire.WarningLists.Enqueue(["Effort 'medium' lowered"]);
+        var runner = new LlmProbeRunner(provider) { SweepEfforts = ["low", "medium", "high"], WireProbe = wire };
+
+        var result = await RunAsync(runner, LlmProbeMode.M16);
+
+        var steps = result.Reasoning!;
+        Assert.Equal(LlmReasoningOutcome.Sent, steps[0].Outcome);
+        Assert.Equal("low", steps[0].SentValue);
+        Assert.Equal(LlmReasoningOutcome.Lowered, steps[1].Outcome);
+        Assert.Equal("low", steps[1].SentValue);
+        Assert.Equal(["Effort 'medium' lowered"], steps[1].Warnings);
+        Assert.Equal(LlmReasoningOutcome.Omitted, steps[2].Outcome);
+        Assert.Equal(3, wire.Resets);
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        Assert.Contains("medium→low ✅", result.Detail, StringComparison.Ordinal);
+        Assert.Contains("high ➖ omitted", result.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRejectAStep_WhenTheResponseCarriesAnError_AndFailTheMode()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly)
+            .Script(new LlmResponse { Content = "0.05" }, ErrorResponse("400 unsupported value: 'max'"));
+        var runner = new LlmProbeRunner(provider) { SweepEfforts = ["low", "max"] };
+
+        var result = await RunAsync(runner, LlmProbeMode.M16);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Equal(LlmReasoningOutcome.Rejected, result.Reasoning![1].Outcome);
+        Assert.Contains("400 unsupported value", result.Reasoning[1].Error, StringComparison.Ordinal);
+        Assert.Contains("max ❌ 400", result.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldKeepAnAcceptedStep_WhenTheFinishIsLengthWithEmptyContent()
+    {
+        var truncated = new LlmResponse
+        {
+            Content = "",
+            CompletionTokens = 2048,
+            Metadata = new Dictionary<string, object>
+            {
+                ["finish_reason"] = "length",
+                ["reasoning_tokens"] = 2000,
+                ["reasoning_content"] = "thinking...",
+            },
+        };
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly).Script(truncated);
+        var runner = new LlmProbeRunner(provider) { SweepEfforts = ["high"] };
+
+        var result = await RunAsync(runner, LlmProbeMode.M16);
+
+        var step = Assert.Single(result.Reasoning!);
+        Assert.Equal(LlmReasoningOutcome.Sent, step.Outcome);
+        Assert.Equal("length", step.FinishReason);
+        Assert.Equal(2000, step.ReasoningTokens);
+        Assert.Equal(2048, step.CompletionTokens);
+        Assert.True(step.Trace);
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+    }
+
+    [Fact]
+    public async Task ShouldReportBudgetOmitted_UnderToggle_AndBeNotApplicable()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.Toggle);
+        var wire = new FakeReasoningWireProbe();
+        wire.Wires.Enqueue("""{"thinking":{"type":"enabled"}}""");
+        var runner = new LlmProbeRunner(provider) { WireProbe = wire };
+
+        var result = await RunAsync(runner, LlmProbeMode.M17);
+
+        Assert.Equal(1024, provider.Configs.Single()!.Thinking!.BudgetTokens);
+        Assert.Equal(LlmReasoningOutcome.Omitted, Assert.Single(result.Reasoning!).Outcome);
+        Assert.Equal(LlmProbeOutcome.NotApplicable, result.Outcome);
+        Assert.Contains("budget ➖ omitted", result.Detail, StringComparison.Ordinal);
+    }
+
+    // ── M18: raw reasoning fragments ────────────────────────────────────────
+
+    private static IReadOnlyList<(string Label, System.Text.Json.Nodes.JsonObject Body)> Fragments(params string[] labels) =>
+        [.. labels.Select(l => (l, new System.Text.Json.Nodes.JsonObject { ["reasoning_effort"] = l }))];
+
+    [Fact]
+    public async Task ShouldBeNotApplicable_WhenRunningM18WithoutFragments()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+
+        var result = await RunAsync(new LlmProbeRunner(provider), LlmProbeMode.M18);
+
+        Assert.Equal(LlmProbeOutcome.NotApplicable, result.Outcome);
+        Assert.Contains("no raw reasoning fragments", result.Detail, StringComparison.Ordinal);
+        Assert.Empty(provider.Configs);
+    }
+
+    [Fact]
+    public async Task ShouldAcceptEveryFragment_AndPassM18_EvenWhenTheProviderDeclaresNoThinking()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.None);
+        var wire = new FakeReasoningWireProbe();
+        wire.Wires.Enqueue("""{"reasoning_effort":"xhigh"}""");
+        wire.Wires.Enqueue("""{"reasoning_effort":"max"}""");
+        var runner = new LlmProbeRunner(provider) { WireProbe = wire, RawReasoning = Fragments("xhigh", "max") };
+
+        var result = await RunAsync(runner, LlmProbeMode.M18);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        Assert.Equal("2 accepted · 0 refused", result.Detail);
+        Assert.All(result.Reasoning!, s => Assert.Equal(LlmReasoningOutcome.Accepted, s.Outcome));
+        Assert.Equal(["xhigh", "max"], result.Reasoning!.Select(s => s.Step).ToArray());
+        Assert.Equal("""{"reasoning_effort":"xhigh"}""", result.Reasoning![0].Wire);
+        Assert.Null(result.Reasoning[0].SentValue);
+        Assert.All(provider.Configs, c =>
+        {
+            Assert.Null(c!.Thinking);
+            Assert.Equal(2048, c.MaxTokens);
+        });
+    }
+
+    [Fact]
+    public async Task ShouldKeepWhatTheVendorAnswered_OnEachRawStep()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+        var wire = new FakeReasoningWireProbe();
+        wire.Answers.Enqueue(new VendorAnswer(true, 11, "end_turn"));
+        var runner = new LlmProbeRunner(provider) { WireProbe = wire, RawReasoning = Fragments("high", "max") };
+
+        var result = await RunAsync(runner, LlmProbeMode.M18);
+
+        Assert.Equal(new VendorAnswer(true, 11, "end_turn"), result.Reasoning![0].Vendor);
+        Assert.Null(result.Reasoning[1].Vendor);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAFragment_WhenTheResponseCarriesAnError_AndStillPassM18()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly)
+            .Script(new LlmResponse { Content = "0.05" }, ErrorResponse("400 unsupported value: 'max'"));
+        var runner = new LlmProbeRunner(provider) { RawReasoning = Fragments("high", "max") };
+
+        var result = await RunAsync(runner, LlmProbeMode.M18);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        Assert.Equal(LlmReasoningOutcome.Refused, result.Reasoning![1].Outcome);
+        Assert.Contains("400 unsupported value", result.Reasoning[1].Error, StringComparison.Ordinal);
+        Assert.Equal("1 accepted · 1 refused (max)", result.Detail);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAFragment_WhenTheCallThrows_FailM18WhenAllAreRefused_AndClearTheOverride()
+    {
+        var provider = new ScriptedProvider
+        {
+            Throw = new HttpRequestException("bad request", null, System.Net.HttpStatusCode.BadRequest),
+            Capabilities = new LlmProviderCapabilities { Thinking = ThinkingSupport.None },
+        };
+        var wire = new FakeReasoningWireProbe();
+        var runner = new LlmProbeRunner(provider) { WireProbe = wire, RawReasoning = Fragments("a", "b") };
+
+        var result = await RunAsync(runner, LlmProbeMode.M18);
+
+        Assert.Equal(LlmProbeOutcome.Failed, result.Outcome);
+        Assert.Equal("0 accepted · 2 refused (a, b)", result.Detail);
+        Assert.StartsWith("400 ", result.Reasoning![0].Error, StringComparison.Ordinal);
+        Assert.Null(wire.CurrentOverride);
+        Assert.Equal(4, wire.Overrides.Count);
+        Assert.Equal([false, true, false, true], wire.Overrides.Select(o => o is null).ToArray());
+        Assert.Equal(2, wire.Resets);
+    }
+
+    [Fact]
+    public async Task ShouldSendTheBudget_WhenTheWireCarriesIt()
+    {
+        var wire = new FakeReasoningWireProbe();
+        wire.Wires.Enqueue("""{"thinking":{"type":"enabled","budget_tokens":1024}}""");
+        var runner = new LlmProbeRunner(ThinkingProvider(ThinkingSupport.Budget)) { WireProbe = wire };
+
+        var result = await RunAsync(runner, LlmProbeMode.M17);
+
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+        Assert.Equal("1024", result.Reasoning![0].SentValue);
+    }
+
+    [Fact]
+    public async Task ShouldClassifyAToggleStepAsSent_WhenAnyToggleFieldIsPresent()
+    {
+        var wire = new FakeReasoningWireProbe();
+        wire.Wires.Enqueue("""{"think":true}""");
+        wire.Wires.Enqueue("""{"think":false}""");
+        var runner = new LlmProbeRunner(ThinkingProvider(ThinkingSupport.Toggle)) { WireProbe = wire };
+
+        var result = await RunAsync(runner, LlmProbeMode.M15);
+
+        Assert.Equal(["true", "false"], result.Reasoning!.Select(s => s.SentValue).ToArray());
+        Assert.All(result.Reasoning!, s => Assert.Equal(LlmReasoningOutcome.Sent, s.Outcome));
+    }
+
+    [Fact]
+    public async Task ShouldBeNotApplicable_WhenTheProviderDeclaresNoThinking()
+    {
+        foreach (var mode in new[] { LlmProbeMode.M15, LlmProbeMode.M16, LlmProbeMode.M17 })
+        {
+            var provider = ThinkingProvider(ThinkingSupport.None);
+
+            var result = await RunAsync(new LlmProbeRunner(provider), mode);
+
+            Assert.Equal(LlmProbeOutcome.NotApplicable, result.Outcome);
+            Assert.Empty(provider.Configs);
+        }
+    }
+
+    [Fact]
+    public void ShouldIncludeTheReasoningModes_InTheSupportedSet()
+    {
+        Assert.Contains(LlmProbeMode.M15, LlmProbeRunner.SupportedModes);
+        Assert.Contains(LlmProbeMode.M16, LlmProbeRunner.SupportedModes);
+        Assert.Contains(LlmProbeMode.M17, LlmProbeRunner.SupportedModes);
+    }
+
     /// <summary>
     /// A scripted response the runner reads as an API error. <see cref="ScriptedProvider.Error"/>
     /// fails every call; this fails one, which is what the per-shape cases need.

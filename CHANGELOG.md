@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `orkeon llm probe` tests the reasoning controls per model: M15 sends the thinking toggle on then off,
+  M16 sweeps the effort levels (`low` to `max` then the values of M18's `effort:*` fragments, or the list of the new `--sweep-efforts`, which takes
+  vendor values such as `none`), M17 sends a thinking budget. Each step reports what went on the wire
+  (sent, lowered to another level, omitted) or the vendor's refusal, with the provider's warnings, the
+  reasoning trace and tokens and the finish reason. The campaign kit runs them by default, renders a
+  Reasoning section in each report and a "Reasoning per model" table in the campaign results page.
+- `orkeon llm probe` gains M18, the raw reasoning matrix, and its `--raw-reasoning <file>` option: each
+  `{label, body}` item of the JSON file replaces the reasoning fields of the request just before it
+  leaves, bypassing Orkeon's capability judgement, and the step is reported `accepted` or `refused` by
+  the vendor.
+- Each reasoning step of `orkeon llm probe` also reports what the vendor's answer itself carried, read
+  on the wire before the provider parses it: `vendorTrace`, `vendorReasoningTokens` and
+  `vendorFinishReason`, in every dialect (chat completions, Anthropic messages, the Responses API,
+  Gemini, Ollama). A trace the vendor sent but the provider did not surface reads `wire only`. The
+  reasoning prompt is now a counting problem, so that a model with adaptive thinking reasons at all.
+- `orkeon llm probe` checks the model capability table (#356): once every mode ran, each M15–M17 step
+  is confronted with the M18 fragments of the same run. A value Orkeon sent and the vendor refused
+  (400, 422) reads `missing restriction`, a value Orkeon lowered or left out that the vendor takes
+  reads `too narrow` (the off switch and `none` only when they stopped the reasoning; nothing when the
+  vendor keeps reasoning at `effort:none`); either fails the mode. M15 now reads the Hugging Face
+  switch (`chat_template_kwargs.enable_thinking`). The steps carry
+  `tableCheck` and `tableNote` in the JSON, a `Table` column in the report, and the campaign's
+  "Reasoning per model" table gains a `Table` column naming the contradictions.
+
 ### Changed — thinking and effort are judged against the model, on every provider **[breaking]** (#356)
 
 One per-model table, `IModelCapabilityRegistry` (`ORKEXP005`), now says what each model takes for

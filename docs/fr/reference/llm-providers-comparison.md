@@ -559,10 +559,22 @@ réel ; rien n'est inféré.
 | Anthropic | `claude-opus-5`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` | `temperature` | `1`, ou omettre le champ | `` `temperature` is deprecated for this model.`` | 2026-10-07 |
 | Anthropic | `claude-fable-5-2` | `temperature` | `1`, ou omettre le champ | refusée comme le reste de la famille 5 — la phrase n'a pas été consignée pour ce modèle | 2026-11-11 |
 | OpenAI | `gpt-6.1-terra` | `temperature` et `reasoning_effort` | comme `gpt-5.6-sol` : `1`, et `"none"` avec des outils — contrairement à `gpt-6.1-sol`, ce modèle a un `none` | les deux phrases de `gpt-5.6-sol`, au nom du modèle près ; 12/12 avec ces deux épinglages | 2026-11-11 |
-| Mistral | `mistral-large-4` | `reasoning_effort` | `high` ou `none` seulement | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-10-07 |
-| Mistral | `mistral-small-2603` | `reasoning_effort` | `high` ou `none` seulement | `reasoning_effort='low' is not supported for this model. Must be one of (<ReasoningEffort.none: 'none'>, <ReasoningEffort.high: 'high'>)` | 2026-10-07 |
-| Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` ou `none` seulement | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-08-30 |
+| Mistral | `mistral-large-4` | `reasoning_effort` | **levée** : `low`, `medium` et `high` tous acceptés le 2026-11-13 (le 2026-10-07 : `high` ou `none` seulement) | — | 2026-11-13 |
+| Mistral | `mistral-small-2603` | `reasoning_effort` | `high` ou `none` seulement — confirmé le 2026-11-13 | `reasoning_effort='low' is not supported for this model. Must be one of (<ReasoningEffort.none: 'none'>, <ReasoningEffort.high: 'high'>)` | 2026-11-13 |
+| Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` ou `none` seulement — confirmé le 2026-11-13 | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-11-13 |
 | Mistral | `mistral-medium-2604` | `top_p` | `1` explicite quand `temperature` vaut 0 et que le raisonnement est actif (l'omission n'y vaut PAS 1) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |
+| Anthropic | `claude-fable-5-1`, `claude-fable-5-2`, `claude-opus-5-5` | `thinking.type` | jamais `disabled` : le thinking reste `adaptive`, l'effort le règle | `"thinking.type.disabled" is not supported for this model. Use "thinking.type.adaptive" and "ou…` (coupé dans le rapport) | 2026-11-13 |
+| Anthropic | `claude-sonnet-5-5` | `thinking.type` | le thinking se coupe avec `between_tools`, pas `disabled` | `To turn thinking off on this model, send "thinking": {"type": "between_tools"} instead of {"…` (coupé dans le rapport) | 2026-11-13 |
+| Kimi | `kimi-k2.7-code` | `thinking.type` | `enabled` seulement : le thinking ne se coupe pas | `invalid thinking: only type=enabled is allowed for this model` | 2026-11-13 |
+| OpenRouter | `google/gemini-3.7-flash`, `google/gemini-3.8-flash` | `reasoning.enabled` | jamais `false` | `Reasoning is mandatory for this endpoint and cannot be disabled.` | 2026-11-13 |
+| Z.AI | `glm-5.3`, `glm-5.3-flash`, `glm-5.3-flashx` | `reasoning_effort` | `low`, `high` ou `max` — pas de `medium` | `This model always engages in thinking and cannot be disabled; please use low, high, or max` | 2026-11-13 |
+
+Les lignes datées du 2026-11-13 viennent des modes de raisonnement de la campagne (M15 bascule
+du thinking, M16 balayage des efforts, M17 budget), qui ont envoyé chaque niveau à chaque modèle
+par défaut et candidat ; la grille complète, valeurs acceptées comprises, est dans
+[Raisonnement par modèle](llm-campaign-results.md#raisonnement-par-modèle). Orkeon juge encore ces
+valeurs par fournisseur, pas par modèle : chaque valeur refusée ci-dessus part chez le vendeur
+telle que demandée.
 
 Chez OpenAI, les tiers GPT-5.6 et GPT-6 ne prennent des function tools sur
 `/v1/chat/completions` qu'avec `reasoning_effort: none` (`gpt-6-astra` et `gpt-6.1-sol` n'ont

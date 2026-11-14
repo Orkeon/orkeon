@@ -149,4 +149,116 @@ public sealed class LlmProbeReportTests
         Assert.False(string.IsNullOrWhiteSpace(version));
         Assert.DoesNotContain("+", version, StringComparison.Ordinal);
     }
+
+    private static IReadOnlyList<LlmProbeResult> ReasoningResults() =>
+    [
+        new(LlmProbeMode.M16, LlmProbeOutcome.Failed, "low ✅ · max ❌ 400 bad", 10,
+        [
+            new LlmReasoningStep("low", LlmReasoningOutcome.Sent, "low", "{\"reasoning_effort\":\"low\"}", true, 123, 45, "stop", [], null),
+            new LlmReasoningStep("max", LlmReasoningOutcome.Rejected, null, null, false, null, null, null, ["w1"], "400 bad | value"),
+        ]),
+        new(LlmProbeMode.M1, LlmProbeOutcome.Passed, "ok", 5),
+    ];
+
+    [Fact]
+    public void ShouldWriteTheReasoningSteps_UnderEachMode_InTheJsonReport()
+    {
+        using var document = JsonDocument.Parse(LlmProbeReport.ToJson(Context(), ReasoningResults()));
+        var modes = document.RootElement.GetProperty("modes");
+
+        var step = modes[0].GetProperty("reasoning")[0];
+        Assert.Equal("low", step.GetProperty("step").GetString());
+        Assert.Equal("sent", step.GetProperty("outcome").GetString());
+        Assert.Equal("low", step.GetProperty("sentValue").GetString());
+        Assert.Equal("{\"reasoning_effort\":\"low\"}", step.GetProperty("wire").GetString());
+        Assert.True(step.GetProperty("trace").GetBoolean());
+        Assert.Equal(123, step.GetProperty("reasoningTokens").GetInt64());
+        Assert.Equal(45, step.GetProperty("completionTokens").GetInt64());
+        Assert.Equal("stop", step.GetProperty("finishReason").GetString());
+        Assert.Equal(0, step.GetProperty("warnings").GetArrayLength());
+
+        var rejected = modes[0].GetProperty("reasoning")[1];
+        Assert.Equal("rejected", rejected.GetProperty("outcome").GetString());
+        Assert.Equal("400 bad | value", rejected.GetProperty("error").GetString());
+
+        Assert.False(modes[1].TryGetProperty("reasoning", out _));
+    }
+
+    [Fact]
+    public void ShouldRenderAReasoningTable_OnlyWhenSomeModeHasSteps()
+    {
+        var with = LlmProbeReport.ToMarkdown(Context(), ReasoningResults());
+        var without = LlmProbeReport.ToMarkdown(Context(), Results());
+
+        Assert.Contains("| Mode | Step | Outcome | Sent | Trace | Reasoning tokens | Finish | Table | Note |", with, StringComparison.Ordinal);
+        Assert.Contains("| M16 | low | sent |", with, StringComparison.Ordinal);
+        Assert.Contains("| M16 | max | rejected |", with, StringComparison.Ordinal);
+        Assert.DoesNotContain("## Reasoning", without, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldRecordTheSweepList_WhenSet()
+    {
+        var context = Context() with { SweepEfforts = "none,high" };
+
+        using var document = JsonDocument.Parse(LlmProbeReport.ToJson(context, Results()));
+
+        Assert.Equal("none,high", document.RootElement.GetProperty("sweepEfforts").GetString());
+        Assert.Contains("none,high", LlmProbeReport.ToMarkdown(context, Results()), StringComparison.Ordinal);
+    }
+
+    private static IReadOnlyList<LlmProbeResult> RawReasoningResults() =>
+    [
+        new(LlmProbeMode.M18, LlmProbeOutcome.Passed, "1 accepted · 1 refused (max)", 10,
+        [
+            new LlmReasoningStep("effort:xhigh", LlmReasoningOutcome.Accepted, null, "{\"reasoning_effort\":\"xhigh\"}", false, 12, 40, "stop", [], null),
+            new LlmReasoningStep("effort:max", LlmReasoningOutcome.Refused, null, "{\"reasoning_effort\":\"max\"}", false, null, null, null, [], "400 bad"),
+            new LlmReasoningStep("trace:summarized", LlmReasoningOutcome.Accepted, null, "{\"thinking\":{\"type\":\"adaptive\"}}", false, null, 30, null, [], null,
+                new VendorAnswer(true, 9, "end_turn")),
+        ]),
+    ];
+
+    [Fact]
+    public void ShouldWriteTheRawReasoningSteps_InTheJsonReport()
+    {
+        using var document = JsonDocument.Parse(LlmProbeReport.ToJson(Context(), RawReasoningResults()));
+
+        var steps = document.RootElement.GetProperty("modes")[0].GetProperty("reasoning");
+        Assert.Equal("effort:xhigh", steps[0].GetProperty("step").GetString());
+        Assert.Equal("accepted", steps[0].GetProperty("outcome").GetString());
+        Assert.False(steps[0].TryGetProperty("sentValue", out _));
+        Assert.Equal("{\"reasoning_effort\":\"xhigh\"}", steps[0].GetProperty("wire").GetString());
+        Assert.Equal("refused", steps[1].GetProperty("outcome").GetString());
+        Assert.Equal("400 bad", steps[1].GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public void ShouldRenderTheRawReasoningSteps_InTheMarkdownTable()
+    {
+        var markdown = LlmProbeReport.ToMarkdown(Context(), RawReasoningResults());
+
+        Assert.Contains("| M18 | effort:xhigh | ✅ accepted |", markdown, StringComparison.Ordinal);
+        Assert.Contains("| M18 | effort:max | ❌ refused |", markdown, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldWriteWhatTheVendorSent_BesideWhatTheProviderSurfaced()
+    {
+        using var document = JsonDocument.Parse(LlmProbeReport.ToJson(Context(), RawReasoningResults()));
+
+        var steps = document.RootElement.GetProperty("modes")[0].GetProperty("reasoning");
+        Assert.False(steps[0].TryGetProperty("vendorTrace", out _));
+        Assert.False(steps[2].GetProperty("trace").GetBoolean());
+        Assert.True(steps[2].GetProperty("vendorTrace").GetBoolean());
+        Assert.Equal(9, steps[2].GetProperty("vendorReasoningTokens").GetInt64());
+        Assert.Equal("end_turn", steps[2].GetProperty("vendorFinishReason").GetString());
+    }
+
+    [Fact]
+    public void ShouldMarkATraceTheProviderDropped_AsWireOnly()
+    {
+        var markdown = LlmProbeReport.ToMarkdown(Context(), RawReasoningResults());
+
+        Assert.Contains("| wire only | 9 | end_turn |", markdown, StringComparison.Ordinal);
+    }
 }

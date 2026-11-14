@@ -495,9 +495,20 @@ llmproviders-test/run-campaign.sh --provider ollama --model llama3.2   # zero-co
 llmproviders-test/run-campaign.sh --all --config providers.local.json --dry-run
 ```
 
-It drives `orkeon llm probe` over modes M1–M10, M12 and M13 of the provider
+It drives `orkeon llm probe` over modes M1–M10, M12, M13 and M15–M18 of the provider
 test protocol (maintainers' internal matrix) and archives
-one Markdown report per campaign. `orkeon llm models -p <provider> --filter 'gpt-5.6-*'`
+one Markdown report per campaign. M15–M17 send Orkeon's thinking configuration through the
+provider and record, per step, the reasoning fields that really went on the wire. M18 goes
+the other way: with `--raw-reasoning`, a handler rewrites the reasoning fields of the request
+just before it leaves (the provider still builds auth, URL, headers and dialect), so it
+bypasses Orkeon's capability judgement and measures what the vendor itself accepts or refuses.
+Each step also reads the vendor's answer on the wire before the provider parses it (trace,
+reasoning tokens, finish reason), so a gap between what the vendor returned and what the provider
+surfaced shows in the report. Once every mode ran, each M15–M17 step is checked against M18: a value
+Orkeon sent that the vendor refused (400, 422) means the model capability table misses a restriction,
+a value Orkeon lowered or left out that the vendor takes means the table is too narrow; either fails
+the mode. A value that switches reasoning off counts as taken only when it stopped the reasoning, and
+a vendor that keeps reasoning at `effort:none` proves nothing by accepting an effort. `orkeon llm models -p <provider> --filter 'gpt-5.6-*'`
 lists what a provider currently serves, so a campaign never depends on a hand-maintained
 model list.
 

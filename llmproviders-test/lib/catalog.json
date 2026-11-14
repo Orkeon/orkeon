@@ -34,6 +34,10 @@
     "M12": "Errors & resilience",
     "M13": "Cancellation",
     "M14": "End-to-end crew (manual)",
+    "M15": "Thinking toggle (on / off)",
+    "M16": "Effort sweep",
+    "M17": "Thinking budget",
+    "M18": "Raw reasoning matrix",
     "D1": "Decision: noul",
     "D2": "Decision: choice",
     "D3": "Decision: score",
@@ -67,6 +71,15 @@
     },
     "openai": {
       "label": "OpenAI",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}}
+      ],
       "matrix": "§6.1",
       "apiKeyEnv": "OPENAI_API_KEY",
       "defaultModel": "gpt-5.6-sol",
@@ -78,14 +91,14 @@
         { "id": "gpt-6.1-terra", "why": "Listed after 2026-10-07. Takes `reasoning_effort: none`, unlike gpt-6.1-sol, so Sol's two pins carry over (requiredParams): 12/12 on its first run, 2026-11-11." }
       ],
       "requiredParams": {
-        "gpt-5.6-sol": { "temperature": 1, "thinkingEffort": "none" },
-        "gpt-5.6-terra": { "temperature": 1, "thinkingEffort": "none" },
-        "gpt-5.6-luna": { "temperature": 1, "thinkingEffort": "none" },
+        "gpt-5.6-sol": { "temperature": 1, "thinkingEffort": "none", "sweepEfforts": "none,low,medium,high,xhigh,max" },
+        "gpt-5.6-terra": { "temperature": 1, "thinkingEffort": "none", "sweepEfforts": "none,low,medium,high,xhigh,max" },
+        "gpt-5.6-luna": { "temperature": 1, "thinkingEffort": "none", "sweepEfforts": "none,low,medium,high,xhigh,max" },
         "gpt-6-astra": { "temperature": 1 },
-        "gpt-6-sol": { "temperature": 1, "thinkingEffort": "none" },
-        "gpt-6-luna": { "temperature": 1, "thinkingEffort": "none" },
+        "gpt-6-sol": { "temperature": 1, "thinkingEffort": "none", "sweepEfforts": "none,low,medium,high,xhigh,max" },
+        "gpt-6-luna": { "temperature": 1, "thinkingEffort": "none", "sweepEfforts": "none,low,medium,high,xhigh,max" },
         "gpt-6.1-sol": { "temperature": 1 },
-        "gpt-6.1-terra": { "temperature": 1, "thinkingEffort": "none" }
+        "gpt-6.1-terra": { "temperature": 1, "thinkingEffort": "none", "sweepEfforts": "none,low,medium,high,xhigh,max" }
       },
       "notes": [
         "Generic target of the `LlmProviderFactory` fallback: a green campaign here indirectly validates Docker Model Runner, vLLM and LM Studio. Proven live on 2026-08-30: 12/12 campaign against `api.x.ai` (`grok-4.6`, OpenAI dialect, base-url alone) — report under `custom-endpoints/`.",
@@ -100,6 +113,19 @@
     },
     "anthropic": {
       "label": "Anthropic",
+      "rawReasoning": [
+        {"label": "effort:low", "body": {"output_config": {"effort": "low"}}},
+        {"label": "effort:medium", "body": {"output_config": {"effort": "medium"}}},
+        {"label": "effort:high", "body": {"output_config": {"effort": "high"}}},
+        {"label": "effort:xhigh", "body": {"output_config": {"effort": "xhigh"}}},
+        {"label": "effort:max", "body": {"output_config": {"effort": "max"}}},
+        {"label": "trace:summarized", "body": {"thinking": {"type": "adaptive", "display": "summarized"}, "output_config": {"effort": "high"}}},
+        {"label": "off:disabled@high", "body": {"thinking": {"type": "disabled"}, "output_config": {"effort": "high"}}},
+        {"label": "off:disabled@xhigh", "body": {"thinking": {"type": "disabled"}, "output_config": {"effort": "xhigh"}}},
+        {"label": "off:between_tools@high", "body": {"thinking": {"type": "between_tools"}, "output_config": {"effort": "high"}}},
+        {"label": "off:between_tools@xhigh", "body": {"thinking": {"type": "between_tools"}, "output_config": {"effort": "xhigh"}}},
+        {"label": "budget:1024", "body": {"thinking": {"type": "enabled", "budget_tokens": 1024}}}
+      ],
       "matrix": "§6.2",
       "apiKeyEnv": "ANTHROPIC_API_KEY",
       "defaultModel": "claude-sonnet-5",
@@ -158,6 +184,17 @@
     },
     "together": {
       "label": "Together AI",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"reasoning": {"enabled": true}}},
+        {"label": "toggle:off", "body": {"reasoning": {"enabled": false}}}
+      ],
       "matrix": "§6.6",
       "apiKeyEnv": "TOGETHER_API_KEY",
       "defaultModel": "zai-org/GLM-5.3-Flash",
@@ -175,6 +212,17 @@
     "togetherai": { "label": "Together AI", "matrix": "§6.6", "aliasOf": "together" },
     "deepseek": {
       "label": "DeepSeek",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"thinking": {"type": "enabled"}}},
+        {"label": "toggle:off", "body": {"thinking": {"type": "disabled"}}}
+      ],
       "matrix": "§6.7",
       "apiKeyEnv": "DEEPSEEK_API_KEY",
       "defaultModel": "deepseek-flash",
@@ -188,12 +236,23 @@
     },
     "kimi": {
       "label": "Kimi (Moonshot AI)",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"thinking": {"type": "enabled"}}},
+        {"label": "toggle:off", "body": {"thinking": {"type": "disabled"}}}
+      ],
       "matrix": "§6.8",
       "apiKeyEnv": "MOONSHOT_API_KEY",
       "defaultModel": "kimi-k3.1-pro",
       "candidateModels": [
         { "id": "kimi-k2.6", "why": "The default until 2026-11-11 (0.95 / 4.00 $/M): 10/1/1 that day \u2014 M8 `json_object` fenced in markdown, M10 no cache breakdown. Temperature pinned to 1 (requiredParams)." },
-        { "id": "kimi-k3", "why": "Flagship (1M, 3 / 15 $/M). Temperature pinned to 1 (requiredParams); top_p, n and both penalties fixed; no `thinking` field accepted \u2014 the M7 toggle is expected red until the dialect learns it." },
+        { "id": "kimi-k3", "why": "Flagship (1M, 3 / 15 $/M). Temperature pinned to 1 (requiredParams); top_p, n and both penalties fixed; no `thinking` field accepted \u2014 the M15 toggle is expected red until the dialect learns it." },
         { "id": "kimi-k2.7-code", "why": "The coding model, listed on 2026-10-07 (262 144 context, image + video + reasoning). Temperature pinned to 1 (requiredParams); 12/12 on its pinned run, cache read \u2014 the only Kimi model with every mode green that day." }
       ],
       "requiredParams": {
@@ -217,6 +276,18 @@
     "moonshot": { "label": "Kimi (Moonshot AI)", "matrix": "§6.8", "aliasOf": "kimi" },
     "qwen": {
       "label": "Qwen (Alibaba DashScope)",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"enable_thinking": true}},
+        {"label": "toggle:off", "body": {"enable_thinking": false}},
+        {"label": "budget:1024", "body": {"enable_thinking": true, "thinking_budget": 1024}}
+      ],
       "matrix": "§6.9",
       "apiKeyEnv": "DASHSCOPE_API_KEY",
       "defaultModel": "qwen3.7-plus",
@@ -226,7 +297,7 @@
       ],
       "notes": [
         "Distinct international endpoint: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (G-12 closed).",
-        "The only provider where the thinking budget is wired (`thinking_budget`): M7 is richer here than elsewhere. Validated live on 2026-08-30 (12/12, reasoning trace returned).",
+        "The only provider where the thinking budget is wired (`thinking_budget`): M7, M15 and M17 are richer here than elsewhere. Validated live on 2026-08-30 (12/12, reasoning trace returned).",
         "The DashScope implicit cache only engages above a high threshold: 0 cached tokens with the historical probe prefix (~2050 tokens, 3 measurements) but `cached_tokens: 4352` at 5809 prefix tokens (2026-08-30). The M10 probe sends ~8200 tokens since that date; the clean run archives 6528 cached, ratio 0.81.",
         "2026-10-07: an international key (`sk-ws-…`) is refused by the compiled endpoint (`dashscope.aliyuncs.com`, 401 `Incorrect API key provided`) and by the US one; it is served by `dashscope-intl.aliyuncs.com` only — declare `baseUrl` in the campaign JSON, as the header of every report shows. 172 ids listed (ids only). `qwen3.7-plus`, `qwen3.8-flash` and `qwen3.8-max` are all 12/12 (the M2 red of `qwen3.8-flash` on 2026-09-21 did not come back); `qwen3.7-max` 11/1 (M9: text-only, `Unexpected item type in content`) and `qwen3.7-flash` 11/1 (M2 on the messages array) campaigned for the first time.",
         "2026-11-11: the international listing fell from 172 to 101 ids (the qwen3 open-weight line, the qwen-vl / omni / tts families left it); `deepseek-v4.1-flash-1017` is served there, 12/12 on its first run."
@@ -234,6 +305,15 @@
     },
     "mistral": {
       "label": "Mistral AI",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}}
+      ],
       "matrix": "§6.10",
       "apiKeyEnv": "MISTRAL_API_KEY",
       "defaultModel": "mistral-medium-2604",
@@ -254,11 +334,23 @@
         "Identifiers mix aliases and dated snapshots: confirm the id on the official model card before freezing it. The compiled default was exactly that trap: `mistral-medium-3-5-26-04` (a concatenation of the `-3-5` alias and the `26-04` vintage) was never served — `Invalid model`, measured 2026-08-30, corrected to `mistral-medium-2604`.",
         "2026-10-07: the account is no longer rate-limited — the default is 11/1, its 2026-08-30 line, M10 still `0 cached` (the 2/10 of 2026-09-07 and 2026-09-21 measured the account). The catalogue (55 ids) publishes each model's context, capabilities, aliases and `default_model_temperature`: 1 for `mistral-medium-2604` and `mistral-large-4`, 0.3 for `mistral-small-2603`, `mistral-large-2512`, the ministral family and `codestral-2508`; `mistral-medium-2604` is now listed as an alias of `mistral-medium-latest`, with `mistral-medium-3-5` and `magistral-medium-latest`. `mistral-large-4` and `mistral-small-2603` restrict `reasoning_effort` to `high` / `none` like the default (`m7Effort`, requiredParams).",
         "`mistral-large-4` reasons by default and streams `delta.content` as an ARRAY of typed chunks (123 array deltas for 4 strings on a count to five, 2026-10-07): the text stream threw `InvalidOperationException: The requested operation requires an element of type 'String', but the target element has type 'Array'` (M3 red, archived 18:14) and the chat stream dropped the trace and the first words of the answer. Both streams read the two shapes since that day; replayed on the fix at 19:37, M3 is green (50 chunks) and the run is 11/1 — that report was produced on the working tree carrying the fix, before it was committed, so the commit its header names is the one the fix sits on top of. Its cache is read where the default's is not (7660 tokens, ratio 0.92, at 18:14 — then 0 on the replay, M10 red).",
-        "2026-11-11: `/v1/models` now lists models of other vendors served by Mistral \u2014 `deepseek-v4-1-flash-1017` and `zai-glm-5-3-flash`, both 11/1 on their first run: the system message is lost on the messages-array shape of M2 while the flattened shape honours it."
+        "2026-11-11: `/v1/models` now lists models of other vendors served by Mistral \u2014 `deepseek-v4-1-flash-1017` and `zai-glm-5-3-flash`, both 11/1 on their first run: the system message is lost on the messages-array shape of M2 while the flattened shape honours it.",
+        "2026-11-13 (M16 effort sweep): `mistral-large-4` now accepts `low` and `medium` (sent as asked, answered), its `high`/`none` restriction of 2026-10-07 is lifted; `mistral-medium-2604` and `mistral-small-2603` still refuse both with a 400. `m7Effort: high` stays on the three, valid on each."
       ]
     },
     "huggingface": {
       "label": "HuggingFace",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"chat_template_kwargs": {"enable_thinking": true}}},
+        {"label": "toggle:off", "body": {"chat_template_kwargs": {"enable_thinking": false}}}
+      ],
       "matrix": "§6.11",
       "apiKeyEnv": "HF_TOKEN",
       "defaultModel": "meta-llama/Llama-3.1-8B-Instruct",
@@ -277,12 +369,23 @@
     "hf": { "label": "HuggingFace", "matrix": "§6.11", "aliasOf": "huggingface" },
     "zai": {
       "label": "Z.AI (Zhipu GLM)",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"thinking": {"type": "enabled"}}},
+        {"label": "toggle:off", "body": {"thinking": {"type": "disabled"}}}
+      ],
       "matrix": "§6.12",
       "apiKeyEnv": "ZAI_API_KEY",
       "defaultModel": "glm-5.3-flashx",
       "candidateModels": [
         { "id": "glm-5.2", "why": "The default until 2026-11-11 (1.40 / 4.40 $/M): 10/2 that day \u2014 M9 code 1210 (text only), M10 0 cached. The one GLM-5 model that can switch thinking off." },
-        { "id": "glm-5.3", "why": "2026-08-18, same price as 5.2. Thinking cannot be disabled: an M7 toggle-off red is model-level, not a transport fact." },
+        { "id": "glm-5.3", "why": "2026-08-18, same price as 5.2. Thinking cannot be disabled: an M15 `off` red is model-level, not a transport fact." },
         { "id": "glm-5.3-flash", "why": "0.15 / 0.50 $/M with image + video input \u2014 would also retire the `glm-4.6v-flash` vision companion." }
       ],
       "visionModel": "glm-4.6v-flash",
@@ -297,6 +400,15 @@
     "zhipu": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" },
     "grok": {
       "label": "Grok (x.AI)",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}}
+      ],
       "matrix": "§6.15",
       "apiKeyEnv": "XAI_API_KEY",
       "defaultModel": "grok-4.6",
@@ -317,6 +429,17 @@
     },
     "minimax": {
       "label": "MiniMax",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}},
+        {"label": "toggle:on", "body": {"thinking": {"type": "enabled"}}},
+        {"label": "toggle:off", "body": {"thinking": {"type": "disabled"}}}
+      ],
       "matrix": "§6.16",
       "apiKeyEnv": "MINIMAX_API_KEY",
       "defaultModel": "MiniMax-M3",
@@ -336,6 +459,15 @@
     },
     "gemini": {
       "label": "Google Gemini",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}}
+      ],
       "matrix": "§6.13",
       "apiKeyEnv": "GEMINI_API_KEY",
       "defaultModel": "gemini-3.8-flash",
@@ -349,7 +481,7 @@
         "**OpenAI-compatibility** endpoint (`generativelanguage.googleapis.com/v1beta/openai`) — neither the native Gemini API nor Vertex AI. The host carried by the report header is what confirms it.",
         "**M8 is no longer ➖**: measured on 2026-08-30, the compatibility surface accepts `response_format` `json_object` **and** `json_schema`, schema validated server-side (`additionalProperties` included). The provider declares `JsonSchema` since that date — the warning it used to emit refused something that works.",
         "M3/M4 stream in large blocks (~13 characters per event): a reply that is too short fits in a single chunk and reads like a buffered fallback. The probe asks for a hundred numbers since 2026-08-30 to discriminate (thirty were enough here, but claude-sonnet-5 coalesced thirty into a single delta).",
-        "M7 is **effort only** (`reasoning_effort` translated to `thinking_level`): neither toggle nor token budget, unlike Qwen.",
+        "M7 and M16 are **effort only** (`reasoning_effort` translated to `thinking_level`): neither toggle (M15) nor token budget (M17), unlike Qwen.",
         "The default model sees: M9 is exercised on it, with no companion vision campaign.",
         "2026-10-07: the native listing (`GET /v1beta/models`, 62 ids) publishes each model's options — 1 048 576 context and 65 536 output on every Flash and Pro text model, default `temperature` 1, `topP` 0.95, `topK` 64, `maxTemperature` 2. The default and `gemini-3.8-flash` are 11/0/1, mode for mode as on 2026-09-21. `gemini-3.5-flash-lite` 12/12 — the only Gemini model of the day whose cache breakdown comes back (4077 cached tokens, ratio 0.51); `gemini-3.1-pro-preview` 10/1/1, the red being one M5 with no tool call that three replays did not reproduce.",
         "2026-11-11: `gemini-omni-1.2-flash` is listed by `/v1beta/models` but answers `This model only supports Interactions API` on the OpenAI-compatible surface \u2014 out of this provider's reach, not campaigned."
@@ -358,6 +490,17 @@
     "google": { "label": "Google Gemini", "matrix": "§6.13", "aliasOf": "gemini" },
     "openrouter": {
       "label": "OpenRouter",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning": {"effort": "none"}}},
+        {"label": "effort:minimal", "body": {"reasoning": {"effort": "minimal"}}},
+        {"label": "effort:low", "body": {"reasoning": {"effort": "low"}}},
+        {"label": "effort:medium", "body": {"reasoning": {"effort": "medium"}}},
+        {"label": "effort:high", "body": {"reasoning": {"effort": "high"}}},
+        {"label": "effort:xhigh", "body": {"reasoning": {"effort": "xhigh"}}},
+        {"label": "effort:max", "body": {"reasoning": {"effort": "max"}}},
+        {"label": "toggle:off", "body": {"reasoning": {"enabled": false}}},
+        {"label": "budget:1024", "body": {"reasoning": {"max_tokens": 1024}}}
+      ],
       "matrix": "§6.17",
       "apiKeyEnv": "OPENROUTER_API_KEY",
       "defaultModel": "google/gemini-3.8-flash",
@@ -379,6 +522,15 @@
     },
     "mammouth": {
       "label": "Mammouth AI",
+      "rawReasoning": [
+        {"label": "effort:none", "body": {"reasoning_effort": "none"}},
+        {"label": "effort:minimal", "body": {"reasoning_effort": "minimal"}},
+        {"label": "effort:low", "body": {"reasoning_effort": "low"}},
+        {"label": "effort:medium", "body": {"reasoning_effort": "medium"}},
+        {"label": "effort:high", "body": {"reasoning_effort": "high"}},
+        {"label": "effort:xhigh", "body": {"reasoning_effort": "xhigh"}},
+        {"label": "effort:max", "body": {"reasoning_effort": "max"}}
+      ],
       "matrix": "§6.18",
       "apiKeyEnv": "MAMMOUTH_API_KEY",
       "defaultModel": "gemini-3.8-flash",

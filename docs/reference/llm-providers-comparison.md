@@ -532,10 +532,21 @@ breaking the sibling model. Every row below was measured live; nothing is inferr
 | Anthropic | `claude-opus-5`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` | `temperature` | `1`, or omit the field | `` `temperature` is deprecated for this model.`` | 2026-10-07 |
 | Anthropic | `claude-fable-5-2` | `temperature` | `1`, or omit the field | refused like the rest of the 5 family — the sentence was not recorded for this model | 2026-11-11 |
 | OpenAI | `gpt-6.1-terra` | `temperature` and `reasoning_effort` | as `gpt-5.6-sol`: `1`, and `"none"` with function tools — unlike `gpt-6.1-sol`, this model has a `none` | the two sentences of `gpt-5.6-sol`, the model name aside; 12/12 with those two pins | 2026-11-11 |
-| Mistral | `mistral-large-4` | `reasoning_effort` | `high` or `none` only | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-10-07 |
-| Mistral | `mistral-small-2603` | `reasoning_effort` | `high` or `none` only | `reasoning_effort='low' is not supported for this model. Must be one of (<ReasoningEffort.none: 'none'>, <ReasoningEffort.high: 'high'>)` | 2026-10-07 |
-| Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` or `none` only | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-08-30 |
+| Mistral | `mistral-large-4` | `reasoning_effort` | **lifted**: `low`, `medium` and `high` all accepted on 2026-11-13 (on 2026-10-07: `high` or `none` only) | — | 2026-11-13 |
+| Mistral | `mistral-small-2603` | `reasoning_effort` | `high` or `none` only — confirmed on 2026-11-13 | `reasoning_effort='low' is not supported for this model. Must be one of (<ReasoningEffort.none: 'none'>, <ReasoningEffort.high: 'high'>)` | 2026-11-13 |
+| Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` or `none` only — confirmed on 2026-11-13 | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-11-13 |
 | Mistral | `mistral-medium-2604` | `top_p` | explicit `1` when `temperature` is 0 and reasoning is on (omission is NOT 1 there) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |
+| Anthropic | `claude-fable-5-1`, `claude-fable-5-2`, `claude-opus-5-5` | `thinking.type` | never `disabled`: thinking stays `adaptive`, the effort steers it | `"thinking.type.disabled" is not supported for this model. Use "thinking.type.adaptive" and "ou…` (cut in the report) | 2026-11-13 |
+| Anthropic | `claude-sonnet-5-5` | `thinking.type` | thinking is turned off with `between_tools`, not `disabled` | `To turn thinking off on this model, send "thinking": {"type": "between_tools"} instead of {"…` (cut in the report) | 2026-11-13 |
+| Kimi | `kimi-k2.7-code` | `thinking.type` | `enabled` only: thinking cannot be turned off | `invalid thinking: only type=enabled is allowed for this model` | 2026-11-13 |
+| OpenRouter | `google/gemini-3.7-flash`, `google/gemini-3.8-flash` | `reasoning.enabled` | never `false` | `Reasoning is mandatory for this endpoint and cannot be disabled.` | 2026-11-13 |
+| Z.AI | `glm-5.3`, `glm-5.3-flash`, `glm-5.3-flashx` | `reasoning_effort` | `low`, `high` or `max` — no `medium` | `This model always engages in thinking and cannot be disabled; please use low, high, or max` | 2026-11-13 |
+
+The rows dated 2026-11-13 come from the reasoning modes of the campaign (M15 thinking toggle,
+M16 effort sweep, M17 budget), which sent every level to every default and candidate model; the
+full grid, accepted values included, is
+[Reasoning per model](llm-campaign-results.md#reasoning-per-model). Orkeon still judges these
+values per provider, not per model: each refused value above reaches the vendor as asked.
 
 On OpenAI, the GPT-5.6 and GPT-6 tiers take function tools on `/v1/chat/completions` only with
 `reasoning_effort: none` (`gpt-6-astra` and `gpt-6.1-sol` have no `none`: tools need

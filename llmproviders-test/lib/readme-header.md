@@ -277,9 +277,84 @@ would read as complete coverage.
 
 ## The protocol modes
 
-The harness covers **M1 to M10, M12 and M13** for a chat provider, **D1 to D8** for a decision
+The harness covers **M1 to M10, M12, M13 and M15 to M18** for a chat provider, **D1 to D8** for a decision
 provider (below). A `➖` in a report flags a mode the provider
 cannot satisfy — nothing was exercised, there is nothing to fix.
+
+### M15 to M17 — reasoning
+
+M7 is the single smoke test of a reasoning effort. Three modes go further, one step each, and every
+step is its own row in the report's `Reasoning` section:
+
+- **M15, thinking toggle**: two steps, `on` (thinking enabled) and `off` (thinking disabled).
+- **M16, effort sweep**: one step per effort, by default `low, medium, high, xhigh, max`, then
+  every value of an M18 `effort:*` fragment (`none`, `minimal`), so the table check can judge it. The catalog
+  can replace the list for a model that takes vendor values (`requiredParams.<model>.sweepEfforts`,
+  for instance `none,low,…`); `run-campaign` passes it as `--sweep-efforts`, and the report header
+  prints it.
+- **M17, thinking budget**: one step, `budget` (1024 tokens).
+
+A step ends in one of four outcomes: `✅ sent` (the value went out as asked), `✅ lowered→<value>`
+(Orkeon sent the nearest value the model takes), `➖ omitted` (nothing was sent: the model or the
+dialect has no such control) or `❌ rejected` (the vendor refused what Orkeon sent). A mode is failed
+when one of its steps is rejected or when the table check finds a contradiction (below), passed when a
+step was sent or lowered, not applicable otherwise.
+The `Reasoning` section also shows the vendor's `wire` value, whether a reasoning trace came back,
+the reasoning tokens and the finish reason. The last three are read twice: from what the provider
+surfaced, and from the vendor's answer on the wire before the provider parsed it (`vendorTrace`,
+`vendorReasoningTokens`, `vendorFinishReason` in the JSON). `Trace` reads `wire only` when the vendor
+sent a trace that the provider dropped; tokens and finish show the provider's value, else the
+vendor's. Reports of earlier campaigns have no such section, and reports before the vendor read have
+no vendor fields.
+
+The `Reasoning per model` table below (also published in the documentation) reads one model per row:
+a `✅` cell was sent as asked, `→low` was lowered to `low`, `➖` was left out, `❌` was refused by the
+vendor (a vendor refusal of a value Orkeon sent, not a harness failure to run), and an empty cell
+means the step was not run. `Other` lists vendor steps (`none ✅`); `Trace` is `✅` when the provider
+surfaced a reasoning trace on any step, `wire only` when only the vendor's answer carried one.
+
+### M18 — raw reasoning matrix
+
+M15 to M17 judge what Orkeon sends. M18 asks the vendor instead: for each fragment of a list, the probe
+makes one short call through the normal provider, but an HTTP handler strips every reasoning field Orkeon
+wrote and deep-merges the fragment into the request body, so the vendor sees exactly that fragment.
+
+- The list is the catalog's `providers.<key>.rawReasoning`, an array of `{ "label": "effort:xhigh",
+  "body": { "reasoning_effort": "xhigh" } }` in the provider's own dialect. A model's
+  `requiredParams.<model>.rawReasoning` is appended to it (a label already present is replaced by the
+  model's item). `run-campaign` resolves the list into a temporary file and passes it as
+  `--raw-reasoning`; a provider with no list (Azure, Ollama, the decision providers) reports `➖`.
+- Each fragment is a step of the `Reasoning` section, with its `wire` value: `✅ accepted` (the vendor
+  answered 2xx) or `❌ refused` (the start of its answer is in the note), the reasoning tokens, the
+  completion tokens and whether a trace came back. The mode is passed when at least one fragment was
+  accepted, failed when all were refused, not applicable without a list.
+- `accepted` is HTTP 2xx and nothing more: a vendor may swallow a field it ignores. Compare the trace
+  and the token counts of the steps to see which values had an effect.
+
+Once every mode of the run is done, each M15 to M17 step is checked against the M18 steps of the same
+run (`tableCheck` and `tableNote` in the JSON, the `Table` column of the `Reasoning` section):
+
+- `❌ missing restriction`: Orkeon sent reasoning fields and the vendor refused them with a 400 or a
+  422 (read on the status: `<Provider> API error: BadRequest - …` or a leading `400`). A 429, a 5xx, a
+  timeout, an error with no reasoning field on the wire, or a refusal of fields M18 had accepted as they
+  are (the refusal is about something else) judges nothing and reads `➖`. The model capability table
+  should have lowered or dropped the value.
+- `❌ too narrow`: Orkeon lowered or left out the value, and the M18 fragment for it (`effort:<value>`,
+  `toggle:on`, `toggle:off` or an `off:*` label, `budget:*`) was accepted. A value that switches
+  reasoning off (the off switch, the effort `none`) must also have stopped it: no trace and at most 5
+  reasoning tokens when the run shows reasoning at all, else (Claude without `display` reports neither)
+  at most half the completion tokens of the fragment that spent most. A vendor that accepts `disabled`
+  and keeps reasoning does not take it (`✅`); one whose answer cannot tell reads `➖`.
+- `➖` also when the vendor accepts `effort:none` and keeps reasoning: it swallows the effort field, so
+  an accepted effort proves nothing (Together's `zai-org/GLM-5.3-Flash`, `MiniMax-M2`).
+- `✅`: the step agrees with the vendor; "on" left out with no warning about `thinking` agrees too (a
+  model that always reasons needs no switch). `➖`: no fragment for the value, nothing to judge.
+
+A contradiction fails the mode, and the `Table` column of `Reasoning per model` names the steps.
+
+The `Vendor reasoning matrix` table below (also published in the documentation) reads one model per row,
+from its latest report that ran M18, and lists the accepted, refused and traced labels (a trace the
+vendor sent counts, whether or not the provider surfaced it).
 
 ### Decision providers — D1 to D8
 
