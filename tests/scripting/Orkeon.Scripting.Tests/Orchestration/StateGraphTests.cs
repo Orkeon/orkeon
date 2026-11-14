@@ -6,6 +6,7 @@ using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Orchestration;
 using Orkeon.Scripting.Runtime;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Orchestration;
 
@@ -135,7 +136,7 @@ public sealed class StateGraphTests
     [Fact]
     public void StateGraph_missing_START_edge_throws_InvalidScriptException()
     {
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => NewEngine().Evaluate("""
                 stateGraph({
                     name: "x",
@@ -154,7 +155,7 @@ public sealed class StateGraphTests
         // After SCR-17 §4, string-edge targets are validated when the graph is built,
         // not only when run() reaches them. Conditional (function) edges are still
         // validated at run-time.
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => NewEngine().Evaluate("""
                 stateGraph({
                     name: "x",
@@ -235,7 +236,7 @@ public sealed class StateGraphTests
     {
         // Pure cycle with no END terminator. The BFS reachability check at build time
         // must reject the graph regardless of maxTransitions.
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => NewEngine().Evaluate("""
                 stateGraph({
                     name: "deadloop",
@@ -411,5 +412,17 @@ public sealed class StateGraphTests
         // the preset was actually applied — they are the differentiating fields vs the
         // default preset.
         Assert.Matches("maxRetryCycles|maxStateVisits", ex.Message);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("""stateGraph(42)""", "stateGraph() expects a literal")]
+    [InlineData("""stateGraph({ name: "g", nodes: {}, edges: {} })""", "must declare an edge from START")]
+    public void ShouldReachTheScriptsCatch_WhenTheGraphLiteralIsRefused(string call, string expected)
+    {
+        var caught = ScriptRefusal.Caught(NewEngine(), call);
+
+        Assert.StartsWith("true|InvalidScriptException|", caught, StringComparison.Ordinal);
+        Assert.Contains(expected, caught, StringComparison.Ordinal);
     }
 }

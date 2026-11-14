@@ -15,6 +15,6 @@ internal static class TaskBuilderBinding
     public static void Register(Engine engine)
     {
         ArgumentNullException.ThrowIfNull(engine);
-        engine.SetValue(GlobalName, new Func<JsTaskBuilder>(() => new JsTaskBuilder()));
+        engine.SetValue(GlobalName, new Func<JsTaskBuilder>(() => new JsTaskBuilder(engine)));
     }
 }

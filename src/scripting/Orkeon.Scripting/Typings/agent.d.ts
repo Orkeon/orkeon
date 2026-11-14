@@ -8,6 +8,11 @@ declare global {
         readonly role: string;
     }
 
+    /**
+     * A method that refuses its argument, and `build()` missing a field, throws an `Error` the
+     * script catches (`try … catch`), its `clrType` `"InvalidScriptException"` — `"ArgumentException"`
+     * for a role or goal over the domain's length limit.
+     */
     interface AgentBuilder<TIn = unknown, TOut = unknown, TState = unknown> {
         name(value: string): this;
         role(value: string): this;
@@ -184,7 +189,8 @@ declare global {
         fallback(value: unknown): ErrorAction;
         /**
          * Run the body again. `delay` is milliseconds or a duration string ("250ms", "2s");
-         * `max` caps the attempts, and reaching it rethrows the original error.
+         * `max` caps the attempts, and reaching it rethrows the original error. A `delay` that is
+         * not a finite number throws an `Error` the script catches.
          */
         retry(options?: { delay?: number | string; max?: number }): ErrorAction;
     };

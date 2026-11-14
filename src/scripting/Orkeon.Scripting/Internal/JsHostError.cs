@@ -34,6 +34,10 @@ namespace Orkeon.Scripting.Internal;
 /// so that a failure path added later is bridged by construction and a reader never has to
 /// decide which helper was left raw on purpose. Only the awaited <see cref="Task"/>s stay raw —
 /// except the ones a script is told to catch by type (<see cref="BridgeAsync"/>).</para>
+/// <para>The engine's own stops are not refusals and never become a catchable Error: a time, memory,
+/// recursion or statement limit and a cancellation constraint, raised by script code a guarded
+/// member runs (a tool's <c>execute</c>, a getter of an options object), leave the guard as they
+/// leave any other script code (<see cref="IsEngineStop"/>).</para>
 /// <para>The Error is an instance of the class <c>errors.d.ts</c> declares for the exception —
 /// <c>ReceiveTimeoutError</c> for a <see cref="ReceiveTimeoutException"/> — with that class's
 /// fields set (GAP-12). The classes are planted as globals by <see cref="PlantErrorClasses"/>, so
@@ -182,7 +186,9 @@ internal static class JsHostError
     /// wrapped <see cref="AggregateException"/>, never an <c>Error</c>, so <c>err instanceof
     /// ReceiveTimeoutError</c> could not hold. The conversion runs in the function's own <c>catch</c>,
     /// a promise reaction on the thread draining the engine — never on the pool thread that faulted
-    /// the task. A rejection with no declared class (a cancellation) passes through unchanged.
+    /// the task. A script's own mistake (<see cref="InvalidScriptException"/>: a profile the host lacks,
+    /// an option it refuses) rejects as a plain <c>Error</c>, as its synchronous refusal throws (#364).
+    /// Any other rejection with no declared class (a cancellation) passes through unchanged.
     /// </summary>
     public static JsValue BridgeAsync(Engine engine, Delegate raw)
     {
@@ -194,15 +200,18 @@ internal static class JsHostError
 
     /// <summary>
     /// A rejection value as the declared error class when it carries an exception that has one —
-    /// a wrapped CLR exception from a faulted task becomes the bridged Error — else unchanged.
-    /// Call on the engine thread.
+    /// a wrapped CLR exception from a faulted task becomes the bridged Error — or as a plain
+    /// <c>Error</c> when it carries a script's mistake (<see cref="InvalidScriptException"/>), else
+    /// unchanged. Call on the engine thread.
     /// </summary>
     internal static JsValue ToDeclaredError(Engine engine, JsValue rejected)
     {
         if (rejected is JsError || Unwrap(rejected) is not { } clr)
             return rejected;
         var innermost = JsExceptionUnwrap.UnwrapToInnermost(clr);
-        return Describe(innermost) is null ? rejected : Wrap(engine, innermost).Error;
+        return Describe(innermost) is null && innermost is not InvalidScriptException
+            ? rejected
+            : Wrap(engine, innermost).Error;
     }
 
     /// <summary>
@@ -220,7 +229,18 @@ internal static class JsHostError
     }
 
     /// <summary>
-    /// Runs <paramref name="body"/> and bridges anything it throws, so a CLR helper handed to a
+    /// Whether <paramref name="ex"/> is one of the engine's constraints stopping the script rather
+    /// than a refusal: Jint's time constraint throws a bare <see cref="TimeoutException"/>, the others
+    /// their own types.
+    /// </summary>
+    internal static bool IsEngineStop(Exception ex) => ex is TimeoutException
+        or MemoryLimitExceededException
+        or RecursionDepthOverflowException
+        or StatementsCountOverflowException
+        or ExecutionCanceledException;
+
+    /// <summary>
+    /// Runs <paramref name="body"/> and bridges anything it throws but an engine stop, so a CLR helper handed to a
     /// trampoline never unwinds through the script.
     /// </summary>
     public static T Guard<T>(Engine engine, Func<T> body)
@@ -230,7 +250,7 @@ internal static class JsHostError
         {
             return body();
         }
-        catch (Exception ex) when (ex is not JavaScriptException)
+        catch (Exception ex) when (ex is not JavaScriptException && !IsEngineStop(ex))
         {
             throw Wrap(engine, ex);
         }
@@ -244,7 +264,7 @@ internal static class JsHostError
         {
             body();
         }
-        catch (Exception ex) when (ex is not JavaScriptException)
+        catch (Exception ex) when (ex is not JavaScriptException && !IsEngineStop(ex))
         {
             throw Wrap(engine, ex);
         }

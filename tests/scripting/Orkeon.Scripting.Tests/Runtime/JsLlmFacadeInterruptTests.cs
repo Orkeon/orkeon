@@ -122,6 +122,19 @@ public sealed class JsLlmFacadeInterruptTests
 
     // ── fakes ────────────────────────────────────────────────────────────────
 
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldDoNothing_WhenInterruptIsCalledAfterTheAttemptEnded()
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var facade = new JsLlmFacade(engine, new CountingProvider(_ => new LlmResponse { Content = "x" }), CancellationToken.None);
+        facade.DisposeInterruptSource();
+
+        facade.interrupt();
+
+        Assert.False(facade.isInterrupted);
+    }
+
     private sealed class CountingProvider : ILlmProvider
     {
         private readonly Func<LlmMessage[], LlmResponse> _respond;

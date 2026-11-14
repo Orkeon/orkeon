@@ -105,6 +105,11 @@ declare global {
         readonly at: number;
     }
 
+    /**
+     * A method that refuses its argument, and `build()` refusing the crew (two agents of one name:
+     * `clrType` `"DuplicateAgentNameException"`), throws an `Error` the script catches
+     * (`try … catch`), its `clrType` `"InvalidScriptException"` otherwise.
+     */
     interface CrewBuilder {
         name(value: string): this;
         /** The crew goal; when omitted, one is synthesized from the name. */

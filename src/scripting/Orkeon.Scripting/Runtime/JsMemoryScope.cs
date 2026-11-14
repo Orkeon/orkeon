@@ -31,11 +31,17 @@ public sealed class JsMemoryScope
         _ct = ct;
     }
 
-    public Func<string, object?, Task> store => (key, value) =>
+    // Async lambdas: a refused key or a value that does not serialise rejects the promise the script
+    // awaits, where a synchronous throw would cross its catch (SCR-25, #364).
+    public Func<string, object?, Task> store => async (key, value) =>
     {
-        if (_durable is not null) return _durable.StoreAsync(_agentKey, key, JsonSerializer.Serialize(value), _ct);
+        if (_durable is not null)
+        {
+            await _durable.StoreAsync(_agentKey, key, JsonSerializer.Serialize(value), _ct).ConfigureAwait(false);
+            return;
+        }
+
         _store[key] = value;
-        return Task.CompletedTask;
     };
 
     public Func<string, Task<object?>> get => async key =>
@@ -45,10 +51,10 @@ public sealed class JsMemoryScope
         return json is null ? null : FromJson(json);
     };
 
-    public Func<string, Task<bool>> delete => key
+    public Func<string, Task<bool>> delete => async key
         => _durable is not null
-            ? _durable.DeleteAsync(_agentKey, key, _ct)
-            : Task.FromResult(_store.TryRemove(key, out _));
+            ? await _durable.DeleteAsync(_agentKey, key, _ct).ConfigureAwait(false)
+            : _store.TryRemove(key, out _);
 
     public Func<string, int, Task<IReadOnlyList<JsMemoryHit>>> search { get; }
 

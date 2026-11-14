@@ -118,8 +118,22 @@ public sealed partial class JsLlmFacade
     private IDisposable BeginUsageScope(string method) =>
         Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(method, crewId: _crewName, agentId: _agentName);
 
-    /// <summary>Cancels the in-flight and future llm calls of this context (script-facing).</summary>
-    public void interrupt() => _cts.Cancel();
+    /// <summary>
+    /// Cancels the in-flight and future llm calls of this context (script-facing). Once the attempt
+    /// has ended (its source disposed) there is nothing left to cancel: a late call, from a topic
+    /// handler that outlives the agent, does nothing.
+    /// </summary>
+    public void interrupt()
+    {
+        try
+        {
+            _cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // The attempt is over: no call of this context can still run.
+        }
+    }
 
     /// <summary>Whether <see cref="interrupt"/> was requested (or the host token cancelled).</summary>
     public bool isInterrupted => _cts.IsCancellationRequested;
@@ -189,23 +203,25 @@ public sealed partial class JsLlmFacade
     /// <c>reasoning(opts)</c> (#360): what the call these options name sends for the effort, judged on the
     /// provider and configuration <see cref="CallFrom"/> resolves for it (the agent's provider, model and
     /// effort, the call's own options over them) - the report <c>complete</c> and <c>extract</c>, which
-    /// return the bare answer, cannot carry. Null when no effort is asked or no provider answers.
+    /// return the bare answer, cannot carry. Null when no effort is asked or no provider answers. A
+    /// profile the host lacks is a refusal the script catches (#364).
     /// </summary>
-    public Func<JsValue?, JsLlmReasoning?> reasoning => options =>
+    public Func<JsValue?, JsLlmReasoning?> reasoning => options => JsHostError.Guard(_engine, () =>
     {
         var (provider, config) = CallFrom(options);
         return JsLlmReasoning.From(provider?.ReportEffort(config));
-    };
+    });
 
     /// <summary>
     /// <c>capabilities(opts)</c> (#359): what the model of the call these options name takes for
-    /// reasoning, on the provider <see cref="CallFrom"/> resolves for it. Null when no provider answers.
+    /// reasoning, on the provider <see cref="CallFrom"/> resolves for it. Null when no provider answers. A
+    /// profile the host lacks is a refusal the script catches (#364).
     /// </summary>
-    public Func<JsValue?, JsLlmCapabilities?> capabilities => options =>
+    public Func<JsValue?, JsLlmCapabilities?> capabilities => options => JsHostError.Guard(_engine, () =>
     {
         var (provider, config) = CallFrom(options);
         return JsLlmCapabilities.From(provider?.DescribeReasoning(config?.Model));
-    };
+    });
 
     /// <summary><c>extract</c> as the script calls it: <see cref="ExtractAsync"/> behind the async bridge.</summary>
     public JsValue extract => _extractJs ??= JsHostError.BridgeAsync(_engine, ExtractAsync);
@@ -304,14 +320,15 @@ public sealed partial class JsLlmFacade
     /// real SSE path (<see cref="Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider"/>);
     /// otherwise falls back to a single full-text chunk.
     /// </summary>
-    public Func<string, JsValue?, JsValue> stream => (prompt, options) =>
+    public Func<string, JsValue?, JsValue> stream => (prompt, options) => JsHostError.Guard(_engine, () =>
     {
         // The profile and the options are read when stream() is called, not at the first next():
-        // an unknown profile throws here, and a bag the script changes afterwards changes nothing.
+        // an unknown profile throws here, a refusal the script catches (#364), and a bag the script
+        // changes afterwards changes nothing.
         var call = CallFrom(options);
         var observations = new StreamObservations { reasoning = JsLlmReasoning.From(call.Provider?.ReportEffort(call.Config)) };
         return AsAsyncIterable(StreamCore(prompt, call, observations), observations);
-    };
+    });
 
     /// <summary>
     /// CLR-facing sibling of <c>stream</c>: the raw chunk sequence, without the JS

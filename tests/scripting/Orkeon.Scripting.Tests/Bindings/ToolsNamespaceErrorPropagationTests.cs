@@ -3,6 +3,7 @@ using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Bindings;
 
@@ -150,6 +151,32 @@ public sealed class ToolsNamespaceErrorPropagationTests
         var unwrapped = JsExceptionUnwrap.UnwrapToInnermost(wrapper);
 
         Assert.Equal("real cause", unwrapped.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldReachTheBridgedException_WhenAJavaScriptThrowCarriesIt()
+    {
+        var engine = new JsEngineFactory().Create();
+        var refusal = new Orkeon.Scripting.Exceptions.InvalidScriptException("llm.profile(\"ghost\") names the LLM profile 'ghost'");
+
+        var unwrapped = JsExceptionUnwrap.UnwrapToInnermost(JsHostError.Wrap(engine, refusal));
+
+        Assert.Same(refusal, unwrapped);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldReachTheBridgedException_WhenARejectedPromiseCarriesIt()
+    {
+        var engine = new JsEngineFactory().Create();
+        var refusal = new Orkeon.Scripting.Exceptions.InvalidScriptException("refused");
+        engine.SetValue("boom", new Action(() => throw JsHostError.Wrap(engine, refusal)));
+
+        var rejected = Assert.Throws<Jint.Runtime.PromiseRejectedException>(
+            () => engine.Evaluate("(async () => { boom(); })()").UnwrapIfPromise(HangGuards.EnginePromise));
+
+        Assert.Same(refusal, JsExceptionUnwrap.UnwrapToInnermost(rejected));
     }
 
     [Fact]

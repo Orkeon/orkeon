@@ -128,7 +128,7 @@ tâche : `when(...)` et le `state` d'une décision désignent une tâche par ell
 décision l'exige. Accepté mais sans effet : `expect` (consigné dans le contexte de la tâche en l'absence de
 `deliverable`, jamais validé).
 
-`decision(spec)` fait de la tâche une tâche de décision : `spec` est un littéral d'objet `{ questions, minConfidence, state, longContext, fallback }`, la forme du bloc YAML `decision:`. Elle n'a pas besoin d'`agent`, et une tâche qui a les deux est refusée au chargement. `when(decisionTask, clauses)` n'exécute la tâche que si la tâche de décision nommée a répondu comme demandé : `clauses` est un objet de clauses (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) ou la chaîne `"otherwise"` ; `when()` ne lève une `InvalidScriptException` que pour un nom de tâche vide ou pour des `clauses` qui ne sont ni un objet ni une chaîne. Une chaîne autre que `"otherwise"`, une question ou une option inconnue, ou une clause mal formée passe le builder et est refusée au chargement. Deux tâches de décision de même `name` dans un script sont refusées au chargement (`Task '<name>' declares a decision twice.`). `state` liste les tâches dont la sortie est l'état de la décision (par défaut : chaque dépendance qui a tourné) ; circuit désactivé, ou par `--no-decision`, la tâche répond par son `fallback` (voir [Modèles de décision](../architecture/decision-models.md#le-circuit-de-décision-et-le-repli)). Les tâches de décision et les conditions ne s'exécutent que dans les processus Sequential, Parallel et Graph. Un second `.when()` sur une tâche lève une `InvalidScriptException` qui nomme la tâche. Un `state` qui n'est pas un tableau, un `fallback` qui n'est pas un objet, et une valeur de `choice`, une entrée de `score` ou une valeur de `fallback` qui n'est pas une chaîne sont refusés au chargement, en nommant la tâche et la clé. Deux tâches de même `name` sont refusées au chargement. Une tâche sans `.name()` est identifiée par sa description complète ; la troncature n'est que l'affichage. Voir [Modèles de décision](../architecture/decision-models.md).
+`decision(spec)` fait de la tâche une tâche de décision : `spec` est un littéral d'objet `{ questions, minConfidence, state, longContext, fallback }`, la forme du bloc YAML `decision:`. Elle n'a pas besoin d'`agent`, et une tâche qui a les deux est refusée au chargement. `when(decisionTask, clauses)` n'exécute la tâche que si la tâche de décision nommée a répondu comme demandé : `clauses` est un objet de clauses (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) ou la chaîne `"otherwise"` ; `when()` ne lève (une `Error` que le script rattrape) que pour un nom de tâche vide ou pour des `clauses` qui ne sont ni un objet ni une chaîne. Une chaîne autre que `"otherwise"`, une question ou une option inconnue, ou une clause mal formée passe le builder et est refusée au chargement. Deux tâches de décision de même `name` dans un script sont refusées au chargement (`Task '<name>' declares a decision twice.`). `state` liste les tâches dont la sortie est l'état de la décision (par défaut : chaque dépendance qui a tourné) ; circuit désactivé, ou par `--no-decision`, la tâche répond par son `fallback` (voir [Modèles de décision](../architecture/decision-models.md#le-circuit-de-décision-et-le-repli)). Les tâches de décision et les conditions ne s'exécutent que dans les processus Sequential, Parallel et Graph. Un second `.when()` sur une tâche lève une `Error` qui nomme la tâche. Un `state` qui n'est pas un tableau, un `fallback` qui n'est pas un objet, et une valeur de `choice`, une entrée de `score` ou une valeur de `fallback` qui n'est pas une chaîne sont refusés au chargement, en nommant la tâche et la clé. Deux tâches de même `name` sont refusées au chargement. Une tâche sans `.name()` est identifiée par sa description complète ; la troncature n'est que l'affichage. Voir [Modèles de décision](../architecture/decision-models.md).
 
 `asyncExecution()` suit la règle du YAML : sous `.process("sequential")` la tâche tourne pendant
 les tâches qui la suivent, et une tâche qui la cite dans `withContext` l'attend ; sous
@@ -136,7 +136,7 @@ les tâches qui la suivent, et une tâche qui la cite dans `withContext` l'atten
 refusée quand le run l'adapte, en nommant la tâche (voir
 [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
 
-`retry({ attempts, backoffMs?, backoff? })` est le bloc YAML `retry:` (voir [Retry d'une tâche](../architecture/yaml-schema.md#retry-dune-tâche)) : une tentative en échec rejoue la tâche entière, appels d'outils compris, jusqu'à `attempts` exécutions au total (au moins 1, obligatoire) ; `backoffMs` (défaut 0) et `backoff` (`"fixed"`, le défaut, ou `"exponential"`) règlent l'attente. Un `attempts` absent ou invalide, un `backoffMs` négatif, un `backoff` inconnu, ou un `retry` sur une tâche de décision lève une `InvalidScriptException` à l'appel (ou à `build()` pour la tâche de décision). C'est le seul retry d'une crew `.process("graph")`.
+`retry({ attempts, backoffMs?, backoff? })` est le bloc YAML `retry:` (voir [Retry d'une tâche](../architecture/yaml-schema.md#retry-dune-tâche)) : une tentative en échec rejoue la tâche entière, appels d'outils compris, jusqu'à `attempts` exécutions au total (au moins 1, obligatoire) ; `backoffMs` (défaut 0) et `backoff` (`"fixed"`, le défaut, ou `"exponential"`) règlent l'attente. Un `attempts` absent ou invalide, un `backoffMs` négatif, un `backoff` inconnu, ou un `retry` sur une tâche de décision lève une `Error` que le script rattrape à l'appel (ou à `build()` pour la tâche de décision). C'est le seul retry d'une crew `.process("graph")`.
 
 L'`agent` d'une tâche et les tâches de son `withContext(s)` sont ceux de la crew (`withAgent(s)`,
 `withTask(s)`) : un agent ou une tâche que la crew ne tient pas est refusé quand le run adapte la
@@ -196,7 +196,8 @@ profil), ou vers le profil que nomme `{ llm: { profile } }` ; sans fournisseur,
 un écho `<undefined-llm:…>` répond, ce qui permet aux exemples de tourner sans clé. Un appel
 prend ces options, toutes pour cet appel seulement : `llm: { profile }` le fait tourner sur le profil
 de l'hôte de ce nom (`Llm:Profiles:<nom>`) selon la règle de `llm.profile(name)` — un nom que l'hôte
-n'offre pas lève une erreur listant les profils connus, `"default"` est le fournisseur propre de
+n'offre pas lève une `Error` que le script rattrape (un appel attendu la rejette), listant les
+profils connus (aussi dans `llm.profiles`), `"default"` est le fournisseur propre de
 l'hôte, et un profil de décision applique ses étapes à l'appel — et les autres corrigent la
 configuration du fournisseur de l'appel : `responseFormat` (`"json_object"`, `"json_schema"`, `"text"`),
 `llm: { model }` (un modèle par appel, dans le fournisseur du profil quand `profile` est donné :
@@ -332,7 +333,13 @@ Un échec côté hôte parvient au script comme une instance de la classe que d�
 `try { await q.pop({ timeout: 100 }) } catch (e) { if (e instanceof ReceiveTimeoutError) … }`
 — avec les champs de cette classe (`agentName`, `timeoutMs`…), plus `clrType` (le nom du type
 .NET) et `clr` (l'exception). Un échec sans classe déclarée est un simple `Error` qui porte ces
-deux mêmes propriétés. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
+deux mêmes propriétés. Une méthode de builder ou de fabrique qui refuse son argument —
+`agentBuilder().effort("turbo")`, un `build()` auquel manque un champ, un littéral `stateGraph(...)` à
+la topologie fautive — lève une telle `Error` (`try … catch`) : le message nomme la faute, `clrType`
+l'exception .NET derrière (`"InvalidScriptException"`, `"ArgumentException"` pour une valeur au-delà
+d'une limite du domaine), si bien qu'un script qui construit à partir de données peut se rabattre sur
+une valeur par défaut. Les limites propres du moteur (temps, mémoire, récursion) ne sont pas des refus :
+elles arrêtent le script quoi qu'il rattrape. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
 agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `timeout`,
 `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked` ou `unknown`.
 
@@ -340,7 +347,7 @@ agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `ti
 
 | Globale | Ce qu'elle contient |
 |---|---|
-| `llm` | Les réglages de modèle que prend `agentBuilder().llm(...)` (forme déclarative). `llm.default_` — une valeur, pas une fonction — est le fournisseur de l'hôte sur son modèle configuré (un `model` vide quand l'hôte n'en configure aucun : l'agent tourne alors sur le modèle par défaut de ce fournisseur, jamais sur celui d'OpenAI), ou l'écho `<undefined-llm>` quand l'hôte n'en a pas ; `llm.model(name, overrides?)` est le même fournisseur sur un autre modèle ; `llm.profile(name, overrides?)` est l'un des profils nommés de l'hôte (`Llm:Profiles:<nom>`) sur son propre modèle — un agent configuré avec lui fait ses tours et ses appels `ctx.llm` sur ce fournisseur, et un nom que l'hôte n'offre pas lève une erreur qui liste les profils connus (`"default"` est `llm.default_`). `with({ model, temperature, maxTokens, responseFormat, effort, cache })` rend une copie, garde le profil et refuse toute autre clé. Il n'y a pas de fabrique par vendeur : un script choisit parmi les fournisseurs que l'hôte a configurés, par nom de profil. |
+| `llm` | Les réglages de modèle que prend `agentBuilder().llm(...)` (forme déclarative). `llm.default_` — une valeur, pas une fonction — est le fournisseur de l'hôte sur son modèle configuré (un `model` vide quand l'hôte n'en configure aucun : l'agent tourne alors sur le modèle par défaut de ce fournisseur, jamais sur celui d'OpenAI), ou l'écho `<undefined-llm>` quand l'hôte n'en a pas ; `llm.model(name, overrides?)` est le même fournisseur sur un autre modèle ; `llm.profile(name, overrides?)` est l'un des profils nommés de l'hôte (`Llm:Profiles:<nom>`) sur son propre modèle — un agent configuré avec lui fait ses tours et ses appels `ctx.llm` sur ce fournisseur, et un nom que l'hôte n'offre pas lève une `Error` que le script rattrape (`try … catch`), qui liste les profils connus (`"default"` est `llm.default_`) ; `llm.profiles` est cette liste, un tableau gelé de noms — `"default"` d'abord, puis les profils de l'hôte dans l'orthographe qu'il a déclarée, jamais une adresse ni une clé — pour qu'un script vérifie un nom avant de le demander, sans tenir compte de la casse comme `llm.profile`. `with({ model, temperature, maxTokens, responseFormat, effort, cache })` rend une copie, garde le profil et refuse toute autre clé. Il n'y a pas de fabrique par vendeur : un script choisit parmi les fournisseurs que l'hôte a configurés, par nom de profil. |
 | `tools` | Les outils intégrés de l'hôte, appelés depuis un `body` : `tools.fileRead({ path })`, le nom snake_case passé en camelCase. `tools.generated.d.ts` déclare l'entrée et le résultat de chaque outil intégré qu'un run enregistre, écrits depuis ses records de requête et de réponse (les clés snake_case de l'outil : `tools.fileRead({ path, max_length })`), si bien qu'un paramètre mal orthographié échoue au contrôle de types ; `tools.d.ts` déclare à la main les familles e-mail et drive. Un outil de plugin ou MCP s'atteint de la même façon, sans type. |
 | `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex?, prune? })`, `rag.query(question, { collection, profile?, topN? })` (une réponse ancrée avec citations) et `rag.retrieve(...)` (les mêmes passages, sans génération). Demande un hôte qui a enregistré le sous-système RAG (`AddOrkeonRag`) ; liée dans `orkeon run`, le REPL et l'hôte daemon. |
 | `test` | Seulement sous `orkeon run --test` : les mocks et assertions du script ([plus bas](#lespace-de-noms-test-orkeon-run---test)). |
@@ -361,6 +368,10 @@ test.assertToolCalled("lookup");
 ```
 
 Depuis .NET, `MockLlmProvider` et `MockTool` (`Orkeon.Scripting.Testing`) prennent les mêmes attentes par `When(string | Regex).Respond(...)` ; `TestOverrideLlmProvider` est le fournisseur qui les place devant un fournisseur configuré.
+
+Une assertion en échec est aussi une `Error` (`clrType` `"AssertionException"`), comme un mock refusé
+(`test.mockTool("")`, un `{ prompt: /regex/ }` que .NET ne sait pas lire) : un `try … catch` qui
+rattrape tout l'avale, donc relancez ce que le `catch` ne traite pas.
 
 ## `stateMachine` et `stateGraph`
 
@@ -408,7 +419,7 @@ temps annule le run. `runStream(state)` produit chaque saut (`{ fromNode, toNode
 pour un `for await`.
 
 `stateGraph(...)` vérifie la forme du graphe à sa construction, avec le validateur que partagent le moteur du
-Domain et le graphe d'une crew (ADR-018), et signale **toutes** les fautes dans une seule `InvalidScriptException` : une arête depuis ou
+Domain et le graphe d'une crew (ADR-018), et signale **toutes** les fautes dans une seule `Error` que le script rattrape (`clrType` `"InvalidScriptException"`) : une arête depuis ou
 vers un nœud non déclaré, un nœud sans arête sortante, un nœud que rien n'atteint (un orphelin), aucun chemin de `START` à `END`,
 un nœud qui ne peut pas atteindre `END`. Une arête fonction ne se lit pas avant de s'exécuter : on suppose qu'elle peut mener
 n'importe où, `END` compris. Chaque fois que la boucle entre dans un nœud, un événement `graph.node.entered` part vers l'hôte

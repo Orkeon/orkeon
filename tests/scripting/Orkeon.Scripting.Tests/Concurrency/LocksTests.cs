@@ -4,6 +4,7 @@ using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
 using static Orkeon.Scripting.Tests.Testing.ScriptGlobals;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Concurrency;
 
@@ -19,7 +20,7 @@ public sealed class LocksTests
     [Fact]
     public void agentBuilder_concurrency_above_1_throws_InvalidScriptException()
     {
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => NewEngine().Evaluate("""
                 agentBuilder().name("A").role("R").goal("G").concurrency(2).build();
                 """),

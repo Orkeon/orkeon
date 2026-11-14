@@ -18,6 +18,6 @@ internal static class AgentBuilderBinding
     public static void Register(Engine engine)
     {
         ArgumentNullException.ThrowIfNull(engine);
-        engine.SetValue(GlobalName, new Func<JsAgentBuilder>(() => new JsAgentBuilder()));
+        engine.SetValue(GlobalName, new Func<JsAgentBuilder>(() => new JsAgentBuilder(engine)));
     }
 }

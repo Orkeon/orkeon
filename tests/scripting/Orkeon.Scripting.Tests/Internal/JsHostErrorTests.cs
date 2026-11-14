@@ -87,6 +87,24 @@ public sealed class JsHostErrorTests
     }
 
     [Fact]
+    [Trait("BR", "CH-364")]
+    public async Task ShouldRejectWithAnError_WhenABridgedTaskFaultsWithAScriptMistake()
+    {
+        var engine = NewEngine();
+        Func<Task<object?>> raw = () => Task.FromException<object?>(new Orkeon.Scripting.Exceptions.InvalidScriptException("refused"));
+        engine.SetValue("call", JsHostError.BridgeAsync(engine, raw));
+
+        var shown = await RunAsync(engine, """
+            (async () => {
+              try { await call(); return 'not caught'; }
+              catch (e) { return [e instanceof Error, e.message, e.clrType].join('|'); }
+            })()
+            """);
+
+        Assert.Equal("true|refused|InvalidScriptException", shown.AsString());
+    }
+
+    [Fact]
     public async Task A_plain_script_error_unwraps_to_nothing()
     {
         var engine = NewEngine();
@@ -97,5 +115,16 @@ public sealed class JsHostErrorTests
         Assert.Null(JsHostError.Unwrap(rejected.RejectedValue));
         Assert.Null(JsHostError.Unwrap(JsValue.Undefined));
         Assert.Null(JsHostError.Unwrap(null));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldLetTheEnginesStopsThrough_WhenTheGuardedBodyRaisesOne()
+    {
+        var engine = NewEngine();
+        Exception[] stops = [new TimeoutException(), new MemoryLimitExceededException("over")];
+
+        foreach (var stop in stops)
+            Assert.Same(stop, Assert.ThrowsAny<Exception>(() => JsHostError.Guard(engine, () => throw stop)));
     }
 }

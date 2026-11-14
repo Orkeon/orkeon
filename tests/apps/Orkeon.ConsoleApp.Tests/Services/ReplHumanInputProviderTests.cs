@@ -204,11 +204,13 @@ public sealed class ReplHumanInputProviderTests
         var provider = new ReplHumanInputProvider(() => console, () => origin);
         var first = provider.GetChoiceAsync(Choice(), Ct);
         origin = ("t9", "dev-test");
-        var registered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        provider.PendingChanged += (_, _) =>
+        // The provider registers the question before it writes it: the test waits for the line, not the registration,
+        // or it reads the attentions while the asking thread still writes there.
+        var asked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        console.AttentionWritten += line =>
         {
-            if (provider.PromptOverride == "answer [t9]> ")
-                registered.TrySetResult();
+            if (line == ("t9", "[t9] dev-test asks: Name?"))
+                asked.TrySetResult();
         };
 
         var second = provider.GetInputAsync(new HumanInputContext { Prompt = "Name?", InputType = "text" }, Ct);
@@ -221,8 +223,8 @@ public sealed class ReplHumanInputProviderTests
 
         Assert.True(provider.TryAnswer("t8", "1"));
         Assert.Equal("sqlite", await first);
-        await registered.Task;
-        Assert.Contains(("t9", "[t9] dev-test asks: Name?"), console.Attentions);
+        await asked.Task;
+        Assert.Equal("answer [t9]> ", provider.PromptOverride);
         Assert.True(provider.TryAnswer("t9", "Ada"));
         Assert.Equal("Ada", await second);
     }

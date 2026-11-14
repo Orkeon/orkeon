@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Jint;
 using Jint.Native;
+using Orkeon.Scripting.Internal;
 // IsObject/IsString live in Jint root namespace's extension methods.
 
 namespace Orkeon.Scripting.Runtime;
@@ -40,13 +41,16 @@ public sealed class JsEventBroker
     /// </summary>
     internal CancellationToken CurrentCt { get; set; } = CancellationToken.None;
 
+    // Script-facing: a refused name is an Error the script catches (SCR-25, #364).
     public JsEventQueue queue(string name)
-        => _queues.GetOrAdd(name, n => new JsEventQueue(_engine, n));
+        => JsHostError.Guard(_engine, () => _queues.GetOrAdd(name, n => new JsEventQueue(_engine, n)));
 
     public JsEventTopic topic(string name)
-        => _topics.GetOrAdd(name, n => new JsEventTopic(_engine, n, parallel: false) { Broker = this });
+        => JsHostError.Guard(_engine, () => _topics.GetOrAdd(name, n => new JsEventTopic(_engine, n, parallel: false) { Broker = this }));
 
-    public JsEventTopic topic(string name, JsValue opts)
+    public JsEventTopic topic(string name, JsValue opts) => JsHostError.Guard(_engine, () => Topic(name, opts));
+
+    private JsEventTopic Topic(string name, JsValue opts)
     {
         var parallel = false;
         if (opts is not null && opts.IsObject())

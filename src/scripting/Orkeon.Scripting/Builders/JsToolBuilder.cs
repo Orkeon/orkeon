@@ -3,6 +3,7 @@ using Jint.Native;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Runtime;
 
 namespace Orkeon.Scripting.Builders;
@@ -40,10 +41,14 @@ internal sealed class JsToolBuilder
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
     }
 
-    public JsToolBuilder name(string value) { _name = value; return this; }
-    public JsToolBuilder description(string value) { _description = value; return this; }
-    public JsToolBuilder withSchema(JsValue schema) { _schema = schema; return this; }
-    public JsToolBuilder execute(JsValue fn) { _execute = fn; return this; }
+    // Every member a script calls goes through Guard (SCR-25, #364): a CLR throw from a wrapped
+    // object would cross the script's try ... catch and end the command.
+    private TResult Guarded<TResult>(Func<TResult> body) => JsHostError.Guard(_engine, body);
+
+    public JsToolBuilder name(string value) => Guarded(() => { _name = value; return this; });
+    public JsToolBuilder description(string value) => Guarded(() => { _description = value; return this; });
+    public JsToolBuilder withSchema(JsValue schema) => Guarded(() => { _schema = schema; return this; });
+    public JsToolBuilder execute(JsValue fn) => Guarded(() => { _execute = fn; return this; });
 
     /// <summary>
     /// Declared access class for permission gates: "read", "edit" or "execute".
@@ -51,9 +56,9 @@ internal sealed class JsToolBuilder
     /// fail-closed — declare it and an autonomous read-only tool stops being
     /// classified as a write.
     /// </summary>
-    public JsToolBuilder access(string value) { _access = value; return this; }
+    public JsToolBuilder access(string value) => Guarded(() => { _access = value; return this; });
 
-    public JsTool build()
+    public JsTool build() => Guarded(() =>
     {
         if (string.IsNullOrWhiteSpace(_name))
             throw new InvalidScriptException("toolBuilder() requires .name(...).");
@@ -68,7 +73,7 @@ internal sealed class JsToolBuilder
             : new ToolSchema(_name!, _description!, new Dictionary<string, ParameterSchema>());
 
         return new JsTool(_name!, _description!, schema, hasSchema, _engine, _execute, ParseAccess(_access));
-    }
+    });
 
     private static ToolAccess ParseAccess(string? value) => value?.ToUpperInvariant() switch
     {

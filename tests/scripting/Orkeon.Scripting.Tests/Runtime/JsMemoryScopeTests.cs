@@ -117,4 +117,17 @@ public sealed class JsMemoryScopeTests
 
         Assert.Equal("payload", hit.value);
     }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public async Task ShouldRejectRatherThanThrow_WhenStoreOrDeleteGetsNoKey()
+    {
+        var scope = new JsMemoryScope();
+
+        var stored = scope.store(null!, 1);
+        var deleted = scope.delete(null!);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() => stored);
+        await Assert.ThrowsAsync<ArgumentNullException>(() => deleted);
+    }
 }

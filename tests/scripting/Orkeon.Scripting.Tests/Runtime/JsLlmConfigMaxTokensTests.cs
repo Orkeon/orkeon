@@ -1,7 +1,9 @@
+using Jint.Runtime;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Bindings;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Tests.Shared.Timing;
 
@@ -65,11 +67,12 @@ public sealed class JsLlmConfigMaxTokensTests
     public void ShouldThrowNamingMaxTokens_WhenModelGetsZeroInOverrides()
     {
         using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
-        var ns = new JsLlmNamespace(NullLogger.Instance);
+        var ns = new JsLlmNamespace(engine, NullLogger.Instance);
         var name = engine.Evaluate("'gpt-4o-mini'");
         var overrides = engine.Evaluate("({ maxTokens: 0 })");
 
-        var ex = Assert.Throws<InvalidScriptException>(() => ns.model(name, overrides));
+        var thrown = Assert.Throws<JavaScriptException>(() => ns.model(name, overrides));
+        var ex = Assert.IsType<InvalidScriptException>(JsHostError.Unwrap(thrown.Error));
 
         Assert.Contains("maxTokens", ex.Message);
     }

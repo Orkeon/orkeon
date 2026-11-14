@@ -41,7 +41,10 @@ declare global {
          */
         readonly reasoning: LlmReasoning | null;
 
-        /** Returns a copy with the given fields overridden. Any other key is refused. */
+        /**
+         * Returns a copy with the given fields overridden. Any other key, or a value out of its domain,
+         * throws an `Error` the script catches (its `clrType` is `"InvalidScriptException"`).
+         */
         with(overrides: LlmConfigOverrides): LlmConfig;
     }
 
@@ -139,16 +142,30 @@ declare global {
          */
         const default_: LlmConfig;
 
-        /** `llm.default_` on another model: `llm.default_.with({ model: name, ...overrides })`. */
+        /**
+         * `llm.default_` on another model: `llm.default_.with({ model: name, ...overrides })`. An empty
+         * name or an override `with` refuses throws an `Error` the script catches.
+         */
         function model(name: string, overrides?: Omit<LlmConfigOverrides, "model">): LlmConfig;
 
         /**
          * One of the host's named profiles (`Llm:Profiles:<name>`), on its own model unless
          * `overrides.model` names another. An agent configured with it runs on that profile's
          * provider — its turns and its `ctx.llm` calls. `"default"` is `llm.default_`. A name the
-         * host does not offer throws, listing the known profiles.
+         * host does not offer throws an `Error` the script catches (`try … catch`), listing the
+         * known profiles, its `clrType` `"InvalidScriptException"`; `llm.profiles` tells beforehand
+         * whether a name is one of them.
          */
         function profile(name: string, overrides?: LlmConfigOverrides): LlmConfig;
+
+        /**
+         * The names `llm.profile(name)` takes (#364): `"default"` first, then the host's profiles
+         * (`Llm:Profiles:<name>`) in the order and the spelling it declared them, those its
+         * allow-list refuses left out. Names only: no endpoint, no key. A frozen array, the same at
+         * every read; `["default"]` on a host that declares no profile. `llm.profile` compares a name
+         * without case (and trims it): compare the same way before asking for one.
+         */
+        const profiles: readonly string[];
     }
 }
 

@@ -120,7 +120,7 @@ known ones). `name` is the task's key: `when(...)` and a decision's `state` refe
 decision task requires it. Accepted but not acted on: `expect` (recorded in the
 task context when there is no `deliverable`, never validated).
 
-`decision(spec)` makes the task a decision task: `spec` is an object literal `{ questions, minConfidence, state, longContext, fallback }`, the shape of the YAML `decision:` block. It needs no `agent`, and a task that has both is refused at load. `when(decisionTask, clauses)` runs the task only when the decision task named answered as asked: `clauses` is a clause object (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) or the string `"otherwise"`; `when()` throws an `InvalidScriptException` only for an empty task name or for `clauses` that is neither an object nor a string. A string other than `"otherwise"`, an unknown question or option, or a malformed clause passes the builder and is refused at load. Two decision tasks with the same `name` in one script are refused at load (`Task '<name>' declares a decision twice.`). `state` lists the tasks whose output is the decision's state (default: each dependency that ran); with the circuit off, or by `--no-decision`, the task answers from `fallback` (see [Decision models](../architecture/decision-models.md#the-decision-circuit-and-the-fallback)). Decision tasks and conditions run in the Sequential, Parallel and Graph processes only. A second `.when()` on one task throws an `InvalidScriptException` naming the task. A `state` that is not an array, a `fallback` that is not an object, and a `choice` value, `score` entry or `fallback` value that is not a string are refused at load, naming the task and the key. Two tasks with the same `name` are refused at load. A task without `.name()` is keyed by its full description; truncation is display only. See [Decision models](../architecture/decision-models.md).
+`decision(spec)` makes the task a decision task: `spec` is an object literal `{ questions, minConfidence, state, longContext, fallback }`, the shape of the YAML `decision:` block. It needs no `agent`, and a task that has both is refused at load. `when(decisionTask, clauses)` runs the task only when the decision task named answered as asked: `clauses` is a clause object (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) or the string `"otherwise"`; `when()` throws (an `Error` the script catches) only for an empty task name or for `clauses` that is neither an object nor a string. A string other than `"otherwise"`, an unknown question or option, or a malformed clause passes the builder and is refused at load. Two decision tasks with the same `name` in one script are refused at load (`Task '<name>' declares a decision twice.`). `state` lists the tasks whose output is the decision's state (default: each dependency that ran); with the circuit off, or by `--no-decision`, the task answers from `fallback` (see [Decision models](../architecture/decision-models.md#the-decision-circuit-and-the-fallback)). Decision tasks and conditions run in the Sequential, Parallel and Graph processes only. A second `.when()` on one task throws an `Error` naming the task. A `state` that is not an array, a `fallback` that is not an object, and a `choice` value, `score` entry or `fallback` value that is not a string are refused at load, naming the task and the key. Two tasks with the same `name` are refused at load. A task without `.name()` is keyed by its full description; truncation is display only. See [Decision models](../architecture/decision-models.md).
 
 `asyncExecution()` follows the YAML rule: under `.process("sequential")` the task runs alongside
 the tasks after it, and a task that lists it in `withContext` waits for it; under
@@ -128,7 +128,7 @@ the tasks after it, and a task that lists it in `withContext` waits for it; unde
 when the run adapts it, naming the task (see
 [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
 
-`retry({ attempts, backoffMs?, backoff? })` is the YAML `retry:` block (see [Task retry](../architecture/yaml-schema.md#task-retry)): a failed attempt runs the whole task again, tool calls included, up to `attempts` runs in all (at least 1, required); `backoffMs` (default 0) and `backoff` (`"fixed"`, the default, or `"exponential"`) set the wait. A missing or invalid `attempts`, a negative `backoffMs`, an unknown `backoff`, or a `retry` on a decision task throws an `InvalidScriptException` at the call (or at `build()` for the decision task). It is the only retry of a `.process("graph")` crew.
+`retry({ attempts, backoffMs?, backoff? })` is the YAML `retry:` block (see [Task retry](../architecture/yaml-schema.md#task-retry)): a failed attempt runs the whole task again, tool calls included, up to `attempts` runs in all (at least 1, required); `backoffMs` (default 0) and `backoff` (`"fixed"`, the default, or `"exponential"`) set the wait. A missing or invalid `attempts`, a negative `backoffMs`, an unknown `backoff`, or a `retry` on a decision task throws an `Error` the script catches at the call (or at `build()` for the decision task). It is the only retry of a `.process("graph")` crew.
 
 A task's `agent` and the tasks of its `withContext(s)` are the crew's own (`withAgent(s)`,
 `withTask(s)`): one the crew does not hold is refused when the run adapts the crew, naming the
@@ -185,8 +185,9 @@ and `reasoningChunks` are read after the loop, `reasoning` at once), `extract(pr
 `isInterrupted`. Every call goes to the agent's provider (the host's, or its profile's), or to the
 profile `{ llm: { profile } }` names; without one, a `<undefined-llm:…>` echo answers, which is what lets the examples run keyless. A call takes these
 options, all for that call only: `llm: { profile }` runs it on the host profile of that name
-(`Llm:Profiles:<name>`) by the rule of `llm.profile(name)` — a name the host does not offer throws,
-listing the known ones, `"default"` is the host's own provider, and a decision profile applies its
+(`Llm:Profiles:<name>`) by the rule of `llm.profile(name)` — a name the host does not offer throws
+an `Error` the script catches (an awaited call rejects with it), listing the known ones (also in
+`llm.profiles`), `"default"` is the host's own provider, and a decision profile applies its
 stages to the call — and the others patch the configuration of the call's provider:
 `responseFormat` (`"json_object"`, `"json_schema"`, `"text"`), `llm: { model }` (a per-call
 model, within the profile's provider when `profile` is set: `{ profile, model }` is
@@ -308,7 +309,12 @@ A host failure reaches the script as an instance of the class `errors.d.ts` decl
 `try { await q.pop({ timeout: 100 }) } catch (e) { if (e instanceof ReceiveTimeoutError) … }`
 — with that class's fields (`agentName`, `timeoutMs`…), plus `clrType` (the .NET type name) and
 `clr` (the exception). A failure with no declared class is a plain `Error` with the same two
-properties. An `onError` handler receives `{ code, message, exception, attempt, agent: { id,
+properties. A builder or factory method that refuses its argument — `agentBuilder().effort("turbo")`, a
+`build()` missing a field, a `stateGraph(...)` literal with a bad topology — throws such an `Error`
+(`try … catch`): the message names the fault, `clrType` the .NET exception behind it
+(`"InvalidScriptException"`, `"ArgumentException"` for a value over a domain limit), so a script that
+builds from data can fall back to a default. The engine's own limits (time, memory, recursion) are not
+refusals: they stop the script whatever it catches. An `onError` handler receives `{ code, message, exception, attempt, agent: { id,
 name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
 `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked`, `unknown`.
 
@@ -316,7 +322,7 @@ name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
 
 | Global | What it holds |
 |---|---|
-| `llm` | The model settings `agentBuilder().llm(...)` takes (declarative shape). `llm.default_` — a value, not a function — is the host's provider on its configured model (an empty `model` when the host configures none: the agent then runs on that provider's own default, never on OpenAI's), or the `<undefined-llm>` echo when the host has none; `llm.model(name, overrides?)` is the same provider on another model; `llm.profile(name, overrides?)` is one of the host's named profiles (`Llm:Profiles:<name>`) on its own model — an agent configured with it runs its turns and its `ctx.llm` calls on that provider, and a name the host does not offer throws, listing the known ones (`"default"` is `llm.default_`). `with({ model, temperature, maxTokens, responseFormat, effort, cache })` returns a copy, keeps the profile, and refuses any other key. There is no per-vendor factory: a script picks among the providers the host configured, by profile name. |
+| `llm` | The model settings `agentBuilder().llm(...)` takes (declarative shape). `llm.default_` — a value, not a function — is the host's provider on its configured model (an empty `model` when the host configures none: the agent then runs on that provider's own default, never on OpenAI's), or the `<undefined-llm>` echo when the host has none; `llm.model(name, overrides?)` is the same provider on another model; `llm.profile(name, overrides?)` is one of the host's named profiles (`Llm:Profiles:<name>`) on its own model — an agent configured with it runs its turns and its `ctx.llm` calls on that provider, and a name the host does not offer throws an `Error` the script catches (`try … catch`), listing the known ones (`"default"` is `llm.default_`); `llm.profiles` is that list, a frozen array of names — `"default"` first, then the host's profiles in the spelling it declared, never an endpoint or a key — so a script checks a name before it asks for it, without case as `llm.profile` compares. `with({ model, temperature, maxTokens, responseFormat, effort, cache })` returns a copy, keeps the profile, and refuses any other key. There is no per-vendor factory: a script picks among the providers the host configured, by profile name. |
 | `tools` | The host's built-in tools, called from a body: `tools.fileRead({ path })`, the snake_case name camelCased. `tools.generated.d.ts` declares the input and the result of every built-in tool a run registers, written from its request and response records (the tool's own snake_case keys: `tools.fileRead({ path, max_length })`), so a misspelled parameter fails the type check; `tools.d.ts` declares the e-mail and drive families by hand. A plugin or MCP tool is reachable the same way, untyped. |
 | `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex?, prune? })`, `rag.query(question, { collection, profile?, topN? })` (a grounded answer with citations) and `rag.retrieve(...)` (the same passages, no generation). Needs a host that registered the RAG subsystem (`AddOrkeonRag`); bound in `orkeon run`, the REPL and the daemon host alike. |
 | `test` | Only under `orkeon run --test`: the mocks and assertions of the script ([below](#the-test-namespace-orkeon-run---test)). |
@@ -337,6 +343,10 @@ test.assertToolCalled("lookup");
 ```
 
 From .NET, `MockLlmProvider` and `MockTool` (`Orkeon.Scripting.Testing`) take the same expectations through `When(string | Regex).Respond(...)`; `TestOverrideLlmProvider` is the provider that puts them in front of a configured one.
+
+A failed assertion is an `Error` too (`clrType` `"AssertionException"`), as is a refused mock
+(`test.mockTool("")`, a `{ prompt: /regex/ }` .NET cannot read): a catch-all `try … catch` around it
+swallows the failure, so rethrow what the `catch` does not handle.
 
 ## `stateMachine` and `stateGraph`
 
@@ -382,7 +392,7 @@ An edge is a node name, `END`, or a function of the state returning one (a condi
 (`{ fromNode, toNode, state }`) for `for await`.
 
 `stateGraph(...)` checks the graph's shape when it is built, with the validator the Domain engine
-and the crew's graph share (ADR-018), and reports **every** fault in one `InvalidScriptException`: an edge from or to
+and the crew's graph share (ADR-018), and reports **every** fault in one `Error` the script catches (`clrType` `"InvalidScriptException"`): an edge from or to
 an undeclared node, a node with no outgoing edge, a node nothing reaches (an orphan), no path from `START` to `END`, a node
 that cannot reach `END`. A function edge cannot be read before it runs, so it is assumed to be able to lead anywhere,
 `END` included. Each time the loop enters a node, a `graph.node.entered` event goes to the host

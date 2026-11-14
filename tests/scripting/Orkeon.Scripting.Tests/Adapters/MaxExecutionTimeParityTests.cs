@@ -3,6 +3,7 @@ using Orkeon.Scripting.Adapters;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Adapters;
 
@@ -45,7 +46,7 @@ public sealed class MaxExecutionTimeParityTests
     [Trait("BR", "CH-02")]
     public void ShouldRefuseBuild_WhenScriptLimitIsNotPositive(string seconds)
     {
-        var error = ThrowsContaining<InvalidScriptException>(() => Crew($".maxExecutionTime({seconds})"), ".maxExecutionTime");
+        var error = ScriptRefusal.Bridged<InvalidScriptException>(() => Crew($".maxExecutionTime({seconds})"), ".maxExecutionTime");
 
         Assert.Contains("analyst", error.Message, StringComparison.Ordinal);
     }

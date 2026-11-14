@@ -35,6 +35,18 @@ public sealed class StubLlmProvider : ILlmProvider
     /// <summary>What the stub declares it can do; <see cref="LlmProviderCapabilities.Unknown"/> by default.</summary>
     public LlmProviderCapabilities Capabilities { get; init; } = LlmProviderCapabilities.Unknown;
 
+    /// <summary>
+    /// When set, <see cref="DescribeReasoning"/> and <see cref="ReportEffort"/> throw it; null by default,
+    /// both then answer null as the interface's defaults do.
+    /// </summary>
+    public Exception? DescribeFailure { get; init; }
+
+    /// <inheritdoc />
+    public LlmReasoningCapabilities? DescribeReasoning(string? model) => DescribeFailure is null ? null : throw DescribeFailure;
+
+    /// <inheritdoc />
+    public LlmEffortReport? ReportEffort(LlmConfig? config) => DescribeFailure is null ? null : throw DescribeFailure;
+
     /// <summary>Configures the response returned by <see cref="GenerateAsync"/>.</summary>
     public StubLlmProvider RespondTo(Func<string, LlmResponse> responder)
     {

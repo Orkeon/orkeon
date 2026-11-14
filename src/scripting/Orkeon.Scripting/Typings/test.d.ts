@@ -23,7 +23,8 @@ declare global {
         /**
          * Starts an expectation for prompts that contain the string (case ignored), or match the regular
          * expression, of `{ prompt: ... }`. The first expectation that fits a prompt answers it. Complete
-         * it with `.respond(...)`.
+         * it with `.respond(...)`. A regular expression .NET cannot read (`/\u{41}/u`) throws at
+         * `.respond(...)` an `Error` the script catches, its `clrType` `"RegexParseException"`.
          */
         when(matcher: string | { readonly prompt: string | RegExp }): MockLlmExpectation;
     }
@@ -64,13 +65,22 @@ declare global {
         /** Opens expectations on the model: `test.mockLlm.when("weather").respond("sunny")`. */
         const mockLlm: MockLlmHandle;
 
-        /** The mocked tool named `name`, created on first use. */
+        /**
+         * The mocked tool named `name`, created on first use. An empty name throws an `Error` the
+         * script catches, its `clrType` `"ArgumentException"`.
+         */
         function mockTool(name: string): MockToolHandle;
 
-        /** Throws when the model was not called as `options` says. */
+        /**
+         * Throws when the model was not called as `options` says: an `Error` the script catches,
+         * its `clrType` `"AssertionException"`.
+         */
         function assertLlmCalled(options?: AssertLlmCalledOptions): void;
 
-        /** Throws when the mocked tool `name` was not called as `options` says, or is unknown. */
+        /**
+         * Throws when the mocked tool `name` was not called as `options` says, or is unknown: an
+         * `Error` the script catches, its `clrType` `"AssertionException"`.
+         */
         function assertToolCalled(name: string, options?: AssertToolCalledOptions): void;
     }
 }

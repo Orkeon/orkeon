@@ -4,6 +4,7 @@ using Orkeon.Scripting.Adapters;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Adapters;
 
@@ -58,7 +59,7 @@ public sealed class MaxRpmParityTests
     [InlineData("", ".maxRpm(-5)")]
     public void A_maxRpm_of_zero_or_less_is_refused_at_build(string agentCall, string crewCall)
     {
-        var error = ThrowsContaining<InvalidScriptException>(() => Crew(agentCall, crewCall), ".maxRpm");
+        var error = ScriptRefusal.Bridged<InvalidScriptException>(() => Crew(agentCall, crewCall), ".maxRpm");
 
         Assert.Contains(agentCall.Length > 0 ? "analyst" : "paced", error.Message, StringComparison.Ordinal);
     }

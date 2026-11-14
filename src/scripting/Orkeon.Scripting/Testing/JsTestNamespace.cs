@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Jint;
 using Jint.Native;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Testing;
 
@@ -36,17 +37,32 @@ internal sealed class JsTestNamespace
     /// </summary>
     /// <param name="llm">The mock the expectations and assertions work on.</param>
     public JsTestNamespace(MockLlmProvider llm)
+        : this(llm ?? throw new ArgumentNullException(nameof(llm)), null)
     {
-        ArgumentNullException.ThrowIfNull(llm);
-        Llm = llm;
-        mockLlm = new JsMockLlmHandle(Llm);
-        mockTool = name =>
+    }
+
+    /// <summary>
+    /// Creates an empty namespace over <paramref name="llm"/> for <paramref name="engine"/>'s scripts:
+    /// a failed assertion or a refused mock is an <c>Error</c> the script catches
+    /// (<see cref="JsHostError.Guard{T}"/>, #364). Without an engine, a CLR caller gets the raw
+    /// exception.
+    /// </summary>
+    /// <param name="llm">The mock the expectations and assertions work on, or null for a fresh one.</param>
+    /// <param name="engine">The engine whose scripts call the namespace, or null.</param>
+    internal JsTestNamespace(MockLlmProvider? llm, Engine? engine)
+    {
+        Llm = llm ?? new MockLlmProvider();
+        _engine = engine;
+        mockLlm = new JsMockLlmHandle(Llm, engine);
+        mockTool = name => JsTestGuard.Run(engine, () =>
         {
             if (!_tools.TryGetValue(name, out var tool))
                 _tools[name] = tool = new MockTool(name);
-            return new JsMockToolHandle(tool);
-        };
+            return new JsMockToolHandle(tool, engine);
+        });
     }
+
+    private readonly Engine? _engine;
 
     /// <summary>Returns the mock tool registered for <paramref name="name"/>.</summary>
     public MockTool? GetMockTool(string name) => _tools.TryGetValue(name, out var t) ? t : null;
@@ -56,7 +72,7 @@ internal sealed class JsTestNamespace
     /// keeps only calls whose prompt contains that text; with neither, at least one call is required.
     /// Throws <see cref="AssertionException"/> when the expectation fails.
     /// </summary>
-    public Action<JsValue?> assertLlmCalled => options =>
+    public Action<JsValue?> assertLlmCalled => options => JsTestGuard.Run(_engine, () =>
     {
         var (times, with) = ParseAssertOptions(options);
         var matchingCalls = Llm.GenerateCalls.Concat(Llm.ChatCalls.SelectMany(m => m.Select(x => x.Content)))
@@ -66,14 +82,14 @@ internal sealed class JsTestNamespace
                 $"assertLlmCalled: expected {times.Value} calls but observed {matchingCalls}.");
         if (!times.HasValue && matchingCalls == 0)
             throw new AssertionException("assertLlmCalled: expected at least one call but none were observed.");
-    };
+    });
 
     /// <summary>
     /// Asserts the mock tool registered under the given name was called, with the same
     /// <c>{ times }</c> semantics as <see cref="assertLlmCalled"/>. Throws
     /// <see cref="AssertionException"/> when the tool is unknown or the count does not match.
     /// </summary>
-    public Action<string, JsValue?> assertToolCalled => (name, options) =>
+    public Action<string, JsValue?> assertToolCalled => (name, options) => JsTestGuard.Run(_engine, () =>
     {
         if (!_tools.TryGetValue(name, out var tool))
             throw new AssertionException($"assertToolCalled: no mock tool registered as '{name}'.");
@@ -84,7 +100,7 @@ internal sealed class JsTestNamespace
         if (!times.HasValue && tool.Calls.Count == 0)
             throw new AssertionException(
                 $"assertToolCalled('{name}'): expected at least one call but none were observed.");
-    };
+    });
 
     private static (int? Times, string? With) ParseAssertOptions(JsValue? options)
     {
@@ -103,13 +119,15 @@ internal sealed class JsTestNamespace
 internal sealed class JsMockLlmHandle
 {
     private readonly MockLlmProvider _provider;
-    internal JsMockLlmHandle(MockLlmProvider provider) { _provider = provider; }
+    private readonly Engine? _engine;
+    internal JsMockLlmHandle(MockLlmProvider provider, Engine? engine) { _provider = provider; _engine = engine; }
 
     /// <summary>
     /// Starts an expectation for prompts matching <paramref name="matcher"/>: a string to
     /// look for, or <c>{ prompt: string | RegExp }</c>. Complete it with <c>.respond(...)</c>.
     /// </summary>
-    public JsMockLlmExpectationBuilder when(JsValue matcher) => new(_provider, matcher);
+    public JsMockLlmExpectationBuilder when(JsValue matcher)
+        => JsTestGuard.Run(_engine, () => new JsMockLlmExpectationBuilder(_provider, matcher, _engine));
 }
 
 /// <summary>
@@ -119,13 +137,16 @@ internal sealed class JsMockLlmExpectationBuilder
 {
     private readonly MockLlmProvider _provider;
     private readonly JsValue _matcher;
-    internal JsMockLlmExpectationBuilder(MockLlmProvider p, JsValue m) { _provider = p; _matcher = m; }
+    private readonly Engine? _engine;
+    internal JsMockLlmExpectationBuilder(MockLlmProvider p, JsValue m, Engine? engine) { _provider = p; _matcher = m; _engine = engine; }
 
     /// <summary>
     /// Registers the answer served for the matched prompts: a string, an object carrying a
     /// <c>content</c> string, or any value (stringified as a last resort).
     /// </summary>
-    public void respond(JsValue response)
+    public void respond(JsValue response) => JsTestGuard.Run(_engine, () => Respond(response));
+
+    private void Respond(JsValue response)
     {
         ArgumentNullException.ThrowIfNull(response);
         string content;
@@ -161,20 +182,22 @@ internal sealed class JsMockLlmExpectationBuilder
 internal sealed class JsMockToolHandle
 {
     private readonly MockTool _tool;
-    internal JsMockToolHandle(MockTool tool) { _tool = tool; }
+    private readonly Engine? _engine;
+    internal JsMockToolHandle(MockTool tool, Engine? engine) { _tool = tool; _engine = engine; }
 
     /// <summary>
     /// Starts an expectation for calls whose parameters match <paramref name="matcher"/>
     /// (an object compared key by key). Complete it with <c>.respond(...)</c>.
     /// </summary>
-    public JsMockToolExpectationBuilder when(JsValue matcher) => new(_tool, matcher);
+    public JsMockToolExpectationBuilder when(JsValue matcher)
+        => JsTestGuard.Run(_engine, () => new JsMockToolExpectationBuilder(_tool, matcher, _engine));
 
     /// <summary>Configures the default tool response.</summary>
-    public void respond(JsValue response)
+    public void respond(JsValue response) => JsTestGuard.Run(_engine, () =>
     {
         ArgumentNullException.ThrowIfNull(response);
         _tool.Response = response.ToObject();
-    }
+    });
 }
 
 /// <summary>
@@ -184,10 +207,13 @@ internal sealed class JsMockToolExpectationBuilder
 {
     private readonly MockTool _tool;
     private readonly JsValue _matcher;
-    internal JsMockToolExpectationBuilder(MockTool t, JsValue m) { _tool = t; _matcher = m; }
+    private readonly Engine? _engine;
+    internal JsMockToolExpectationBuilder(MockTool t, JsValue m, Engine? engine) { _tool = t; _matcher = m; _engine = engine; }
 
     /// <summary>Registers the value the tool returns for the matched calls.</summary>
-    public void respond(JsValue response)
+    public void respond(JsValue response) => JsTestGuard.Run(_engine, () => Respond(response));
+
+    private void Respond(JsValue response)
     {
         ArgumentNullException.ThrowIfNull(response);
         Func<Orkeon.Domain.Tools.Protocol.ToolCallRequest, bool> matcher;
@@ -223,3 +249,20 @@ public sealed class AssertionException : Exception
     public AssertionException(string message, Exception innerException) : base(message, innerException) { }
 }
 #pragma warning restore IDE1006
+
+/// <summary>
+/// The test namespace's members through <see cref="JsHostError.Guard{T}"/> (SCR-25, #364) when they
+/// serve an engine's scripts; raw for a CLR caller that built them without one.
+/// </summary>
+internal static class JsTestGuard
+{
+    public static T Run<T>(Engine? engine, Func<T> body) => engine is null ? body() : JsHostError.Guard(engine, body);
+
+    public static void Run(Engine? engine, Action body)
+    {
+        if (engine is null)
+            body();
+        else
+            JsHostError.Guard(engine, body);
+    }
+}

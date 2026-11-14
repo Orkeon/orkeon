@@ -19,6 +19,11 @@ declare global {
         backoff?: "fixed" | "exponential";
     }
 
+    /**
+     * A method that refuses its argument, and `build()` missing a field, throws an `Error` the
+     * script catches (`try … catch`), its `clrType` `"InvalidScriptException"` — `"ArgumentException"`
+     * for a value the domain refuses (a description or expected output over its length limit).
+     */
     interface TaskBuilder<TIn = unknown, TOut = unknown> {
         name(value: string): this;
         description(value: string): this;
@@ -96,7 +101,7 @@ declare global {
         /**
          * Runs this task only when the named decision task's answers match `clauses`, or
          * (`"otherwise"`) when no other task gated on that decision matches. A task takes one
-         * `.when()`: a second call throws an `InvalidScriptException` naming the task.
+         * `.when()`: a second call throws an `Error` naming the task.
          */
         when(decisionTask: string, clauses: WhenClauses | "otherwise"): this;
         build(): Task<TIn, TOut>;

@@ -1,3 +1,5 @@
+using Orkeon.Scripting.Tests.Internal;
+using Orkeon.Tests.Shared.Doubles;
 using System.Text.Json;
 using Jint;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -154,5 +156,41 @@ public sealed class JsLlmReasoningTests : IDisposable
             """);
 
         Assert.Equal("true|true|true", shown);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("ctx.llm.reasoning({ llm: { profile: \"ghost\" } })")]
+    [InlineData("ctx.llm.capabilities({ llm: { profile: \"ghost\" } })")]
+    [InlineData("ctx.llm.stream(\"hi\", { llm: { profile: \"ghost\" } })")]
+    [InlineData("await ctx.llm.complete(\"hi\", { llm: { profile: \"ghost\" } })")]
+    [InlineData("await ctx.llm.chat([{ role: \"user\", content: \"hi\" }], { llm: { profile: \"ghost\" } })")]
+    [InlineData("await ctx.llm.extract(\"hi\", { type: \"object\" }, { llm: { profile: \"ghost\" } })")]
+    [InlineData("await ctx.llm.decide(\"hi\", [\"a\", \"b\"], { llm: { profile: \"ghost\" } })")]
+    public async Task ShouldReachTheBodysCatch_WhenTheCallNamesAProfileTheHostLacks(string call)
+    {
+        var shown = await RunBodyAsync("", $$"""
+            let caught = "not caught";
+            try { {{call}}; } catch (e) { caught = [e instanceof Error, e.clrType, e.message].join("|"); }
+            globalThis.out = caught;
+            """);
+
+        Assert.StartsWith("true|InvalidScriptException|", shown, StringComparison.Ordinal);
+        Assert.Contains("names the LLM profile 'ghost', which this host does not offer. Known profiles: default.", shown, StringComparison.Ordinal);
+        // Refused before any request: the awaited calls would otherwise reach the provider.
+        Assert.Empty(_handler.Bodies);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("llm.default_.capabilities")]
+    [InlineData("llm.default_.reasoning")]
+    public void ShouldReachTheScriptsCatch_WhenTheProviderFailsToDescribeTheModel(string read)
+    {
+        var provider = new StubLlmProvider { DescribeFailure = new InvalidOperationException("table unreadable") };
+
+        var caught = ScriptRefusal.Caught(new JsEngineFactory(llmProvider: provider).Create(), read);
+
+        Assert.Equal("true|InvalidOperationException|table unreadable", caught);
     }
 }

@@ -1,4 +1,5 @@
 using Jint;
+using Jint.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel;
@@ -6,6 +7,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Scripting.Adapters;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Runtime;
 
 namespace Orkeon.Scripting.Tests.Bindings;
@@ -14,7 +16,8 @@ namespace Orkeon.Scripting.Tests.Bindings;
 /// GAP-17, the <c>.ork.ts</c> half: <c>llm.profile(name, overrides?)</c> picks one of the host's
 /// named profiles. The configuration carries the profile to the crew (declarative shape), and an
 /// agent configured with it asks the profile's provider through <c>ctx.llm</c> (procedural shape).
-/// A name the host does not offer throws at the call, listing the known ones.
+/// A name the host does not offer throws at the call, listing the known ones, an <c>Error</c> the script
+/// catches; <c>llm.profiles</c> lists them beforehand (#364).
 /// </summary>
 public sealed class LlmProfileBindingTests
 {
@@ -42,6 +45,95 @@ public sealed class LlmProfileBindingTests
 
     private static Engine Engine(ILlmProfileRegistry? profiles) =>
         new JsEngineFactory(llmProvider: s_host, hostPorts: new ScriptingHostPorts { LlmProfiles = profiles }).Create();
+
+    /// <summary>The CLR refusal an uncaught script throw carries.</summary>
+    private static InvalidScriptException Refusal(Action evaluate)
+    {
+        var thrown = Assert.Throws<JavaScriptException>(evaluate);
+        return Assert.IsType<InvalidScriptException>(JsHostError.Unwrap(thrown.Error));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData(false, "", "default")]
+    [InlineData(true, "", "default,claude,local")]
+    [InlineData(true, "local", "default,local")]
+    public void ShouldListTheNamesTheHostOffers_WhenTheScriptReadsLlmProfiles(bool declared, string allowed, string expected)
+    {
+        var profiles = declared ? Profiles(allowed.Length == 0 ? [] : [allowed]) : null;
+
+        var names = Engine(profiles).Evaluate("Array.isArray(llm.profiles) ? llm.profiles.join(',') : 'not an array'").AsString();
+
+        Assert.Equal(expected, names);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldKeepTheNames_WhenTheScriptTriesToChangeLlmProfiles()
+    {
+        var shown = Engine(Profiles()).Evaluate("""
+            "use strict";
+            let refused = false;
+            try { llm.profiles.push("ghost"); } catch (e) { refused = e instanceof TypeError; }
+            [refused, Object.isFrozen(llm.profiles), llm.profiles.join(',')].join('|');
+            """).AsString();
+
+        Assert.Equal("true|true|default,claude,local", shown);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldStayFrozen_WhenTheScriptReplacedObjectFreezeBeforeTheFirstRead()
+    {
+        var shown = Engine(Profiles()).Evaluate("""
+            Object.freeze = a => a;
+            [Object.isFrozen(llm.profiles), llm.profiles === llm.profiles].join('|');
+            """).AsString();
+
+        Assert.Equal("true|true", shown);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldGiveTheHostsSpelling_WhenTheScriptNamesAProfileInAnotherCase()
+    {
+        var shown = Engine(Profiles()).Evaluate("""
+            [llm.profiles.includes("CLAUDE"), llm.profile("CLAUDE").provider, llm.profile(" claude ").provider].join('|');
+            """).AsString();
+
+        Assert.Equal("false|anthropic|anthropic", shown);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("llm.profile('ghost')", "names the LLM profile 'ghost', which this host does not offer. Known profiles: default, claude, local.")]
+    [InlineData("llm.profile('claude', { maxTokens: 0 })", "maxTokens")]
+    [InlineData("llm.model('')", "A model name must be a non-empty string.")]
+    [InlineData("llm.default_.with({ model: '' })", "A model name must be a non-empty string.")]
+    [InlineData("llm.profile('claude').with({ temperatur: 1 })", "does not apply 'temperatur'")]
+    public void ShouldReachTheScriptsCatch_WhenTheLlmNamespaceRefuses(string call, string expected)
+    {
+        var caught = Engine(Profiles()).Evaluate($$"""
+            let caught = "not caught";
+            try { {{call}}; } catch (e) { caught = [e instanceof Error, e.clrType, e.message].join("|"); }
+            caught;
+            """).AsString();
+
+        Assert.StartsWith("true|InvalidScriptException|", caught, StringComparison.Ordinal);
+        Assert.Contains(expected, caught, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldAskTheProfile_WhenTheScriptChecksItsNameInLlmProfilesFirst()
+    {
+        var shown = Engine(null).Evaluate("""
+            const pick = name => llm.profiles.includes(name) ? llm.profile(name).provider : null;
+            [pick("small"), pick("default")].join('|');
+            """).AsString();
+
+        Assert.Equal("|openai", shown);
+    }
 
     [Fact]
     public void llm_profile_is_the_profiles_provider_on_its_own_model()
@@ -105,7 +197,7 @@ public sealed class LlmProfileBindingTests
     [Fact]
     public void An_unknown_profile_throws_and_lists_the_known_ones()
     {
-        var error = Assert.Throws<InvalidScriptException>(() => Engine(Profiles()).Evaluate("llm.profile('gpt')"));
+        var error = Refusal(() => Engine(Profiles()).Evaluate("llm.profile('gpt')"));
 
         Assert.Contains("'gpt'", error.Message, StringComparison.Ordinal);
         Assert.Contains("default, claude, local", error.Message, StringComparison.Ordinal);
@@ -114,7 +206,7 @@ public sealed class LlmProfileBindingTests
     [Fact]
     public void A_host_without_profiles_offers_the_default_alone()
     {
-        var error = Assert.Throws<InvalidScriptException>(() => Engine(null).Evaluate("llm.profile('claude')"));
+        var error = Refusal(() => Engine(null).Evaluate("llm.profile('claude')"));
 
         Assert.Contains("Known profiles: default.", error.Message, StringComparison.Ordinal);
     }
@@ -122,7 +214,7 @@ public sealed class LlmProfileBindingTests
     [Fact]
     public void A_profile_the_host_allow_list_leaves_out_is_unknown_to_the_script()
     {
-        var error = Assert.Throws<InvalidScriptException>(() => Engine(Profiles("local")).Evaluate("llm.profile('claude')"));
+        var error = Refusal(() => Engine(Profiles("local")).Evaluate("llm.profile('claude')"));
 
         Assert.Contains("default, local", error.Message, StringComparison.Ordinal);
     }
