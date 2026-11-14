@@ -27,7 +27,15 @@ internal sealed class FakeThreadedConsole : IConsoleAdapter, IThreadedConsole, I
 
     public void WriteLine(string? thread, string text) => Lines.Add((thread, text));
 
-    public void WriteAttention(string? thread, string text) => Attentions.Add((thread, text));
+    /// <summary>Raised after an attention line is recorded, on the writer's thread: a test waits on it rather than
+    /// reading <see cref="Attentions"/> while another thread still writes there.</summary>
+    public event Action<(string? Thread, string Text)>? AttentionWritten;
+
+    public void WriteAttention(string? thread, string text)
+    {
+        Attentions.Add((thread, text));
+        AttentionWritten?.Invoke((thread, text));
+    }
 
     public string? ReadLine() => null;
 
