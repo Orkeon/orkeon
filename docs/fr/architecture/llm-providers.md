@@ -417,6 +417,20 @@ tous les autres tags).
   réponse et de la grammaire. Chaque maillon est lu avec le nom de son fournisseur, si bien qu'une entrée
   `<fournisseur>/<modèle>` s'applique ; une valeur du vendeur (`none`, `minimal`) n'est pas signalée manquante sur un
   modèle de bascule que la table ne liste pas, puisqu'un appel l'enverrait sans vérification.
+- **Interroger le fournisseur** (#359, #360, `ORKEXP005`). `ILlmProvider.DescribeReasoning(model)` répond ce qu'un
+  modèle prend avec ce fournisseur : `LlmReasoningCapabilities` (le modèle, si la table le connaît, le
+  `ThinkingSupport` effectif, et les niveaux parmi `low` à `max`, dans l'ordre, les `EffortLevels` du fournisseur
+  restreints par les `ReasoningEfforts` du modèle : vide quand le modèle ne prend aucun effort ou ne raisonne pas).
+  Un modèle nul ou vide lit celui du fournisseur. `ILlmProvider.ReportEffort(config)` applique le même jugement que
+  l'appel à la configuration fusionnée avec celle de l'hôte (`Llm:Thinking:Effort` compte donc) et répond
+  `LlmEffortReport` : l'effort demandé, l'effort envoyé (nul quand aucun ne part, le « off » d'Ollama compris) et
+  `LlmEffortNotice` `Lowered`, `Dropped` ou `Unchecked` (un modèle que la table ne connaît pas), nul quand l'effort
+  est parti tel que demandé. Il est nul quand aucun effort n'est demandé. Les deux valent nul par défaut sur
+  l'interface ; `HttpLlmProviderBase` y répond, et chaque décorateur les transmet à son fournisseur interne. Une
+  chaîne de bascule répond pour son premier profil et un fournisseur de décision pour sa cible : un appel qui
+  bascule, ou qu'un verdict route vers un autre profil, est jugé par le fournisseur qui le sert. Le DSL de script
+  les lit comme `LlmConfig.capabilities`, `ctx.llm.capabilities(opts)`, `ctx.llm.reasoning(opts)` et le champ
+  `reasoning` de `LlmConfig`, `ActResult`, `ChatResponse` et `LlmStream` ([référence du DSL](../reference/scripting-dsl.md)).
 
 ## Providers d'embeddings
 

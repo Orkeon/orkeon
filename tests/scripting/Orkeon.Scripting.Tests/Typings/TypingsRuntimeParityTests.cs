@@ -41,6 +41,8 @@ public sealed partial class TypingsRuntimeParityTests
         ["MemoryScope"] = typeof(JsMemoryScope),
         ["LlmFacade"] = typeof(JsLlmFacade),
         ["LlmConfig"] = typeof(JsLlmConfig),
+        ["LlmCapabilities"] = typeof(JsLlmCapabilities),
+        ["LlmReasoning"] = typeof(JsLlmReasoning),
         ["namespace llm"] = typeof(JsLlmNamespace),
         ["ErrorContext"] = typeof(JsErrorContext),
         ["EventQueue"] = typeof(JsEventQueue),
@@ -110,14 +112,16 @@ public sealed partial class TypingsRuntimeParityTests
     /// and <c>artifacts: ReadonlyMap</c> over a CLR dictionary Jint does not project as a Map —
     /// so <c>result.artifacts.get("x")</c> compiled and threw.
     /// </summary>
-    public static TheoryData<string> DataSurfaces() => new("CrewResult", "TaskResult");
+    public static TheoryData<string> DataSurfaces() => new("CrewResult", "TaskResult", "LlmCapabilities", "LlmReasoning");
 
     [Theory]
     [MemberData(nameof(DataSurfaces))]
     public void Declared_property_types_are_what_the_runtime_serves(string declared)
     {
-        var declaredTypes = PropertyTypes(StripComments(LoadTypings()), declared);
+        var typings = StripComments(LoadTypings());
+        var declaredTypes = PropertyTypes(typings, declared);
         var type = s_pairs[declared];
+        var nullability = new NullabilityInfoContext();
 
         var disagreements = new List<string>();
         foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -128,12 +132,29 @@ public sealed partial class TypingsRuntimeParityTests
             var written = declaredTypes.GetValueOrDefault(property.Name);
             if (served is null)
                 disagreements.Add($"{property.Name}: no TypeScript type describes what Jint projects for {property.PropertyType.Name}");
-            else if (!string.Equals(served, written, StringComparison.Ordinal))
+            else if (!string.Equals(served, written, StringComparison.Ordinal)
+                     && !NarrowsAString(typings, served, written,
+                         nullability.Create(property).ReadState == NullabilityState.Nullable))
                 disagreements.Add($"{property.Name}: declared `{written}`, the runtime serves `{served}`");
         }
 
         Assert.True(disagreements.Count == 0,
             $"`{declared}` and {type.Name} disagree on types.\n  " + string.Join("\n  ", disagreements));
+    }
+
+    [Fact]
+    public void A_string_literal_union_narrows_a_string_only_with_the_null_the_runtime_leaves()
+    {
+        const string typings = """type Level = "low" | "high";""";
+
+        Assert.True(NarrowsAString(typings, "string", "Level", nullable: false));
+        Assert.True(NarrowsAString(typings, "string", "\"on\" | \"off\" | null", nullable: true));
+        Assert.True(NarrowsAString(typings, "readonly string[]", "readonly Level[]", nullable: false));
+        Assert.False(NarrowsAString(typings, "string", "Level | null", nullable: false));
+        Assert.False(NarrowsAString(typings, "string", "Level", nullable: true));
+        Assert.False(NarrowsAString(typings, "string", "number", nullable: false));
+        Assert.False(NarrowsAString(typings, "string", "Missing", nullable: false));
+        Assert.False(NarrowsAString(typings, "readonly string[]", "Level[]", nullable: false));
     }
 
     [Fact]
@@ -339,6 +360,8 @@ public sealed partial class TypingsRuntimeParityTests
     /// </summary>
     private static string? TypeScriptOf(Type type)
     {
+        if (type.IsArray)
+            return TypeScriptOf(type.GetElementType()!) is { } element ? $"readonly {element}[]" : null;
         if (type == typeof(string))
             return "string";
         if (type == typeof(bool))
@@ -351,6 +374,45 @@ public sealed partial class TypingsRuntimeParityTests
             return TypeScriptOf(type.GetGenericArguments()[0]) is { } item ? $"readonly {item}[]" : null;
         return s_pairs.FirstOrDefault(p => p.Value == type).Key;
     }
+
+    /// <summary>
+    /// Whether <paramref name="written"/> narrows the CLR string <paramref name="served"/> names (or an array of
+    /// them) to the values the runtime writes: a union of string literals, or of aliases of such unions
+    /// (<c>EffortLevel</c>). <c>| null</c> is part of the narrowing exactly when the CLR property is nullable, so a
+    /// declaration cannot promise a value that is always present while the runtime leaves it null, nor the reverse.
+    /// </summary>
+    private static bool NarrowsAString(string typings, string served, string? written, bool nullable)
+    {
+        if (written is null)
+            return false;
+        if (served == "readonly string[]")
+        {
+            var array = ReadonlyArray().Match(written);
+            return array.Success && NarrowsAString(typings, "string", array.Groups["item"].Value, nullable: false);
+        }
+        if (served != "string")
+            return false;
+
+        var parts = written.Split('|', StringSplitOptions.TrimEntries);
+        if (parts.Contains("null") != nullable)
+            return false;
+        return parts.Where(p => p != "null").All(p => IsStringLiteralUnion(typings, p));
+    }
+
+    private static bool IsStringLiteralUnion(string typings, string part)
+    {
+        if (StringLiteral().IsMatch(part))
+            return true;
+        var alias = Regex.Match(typings, $@"\btype\s+{Regex.Escape(part)}\s*=\s*(?<union>[^;]+);");
+        return alias.Success
+            && alias.Groups["union"].Value.Split('|', StringSplitOptions.TrimEntries).All(StringLiteral().IsMatch);
+    }
+
+    [GeneratedRegex("""^"[^"]*"$""")]
+    private static partial Regex StringLiteral();
+
+    [GeneratedRegex(@"^readonly\s+(?<item>[A-Za-z_][A-Za-z0-9_]*)\[\]$")]
+    private static partial Regex ReadonlyArray();
 
     private static string TypingsDirectory()
     {

@@ -207,19 +207,12 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         var client = CreateHttpClient(effectiveConfig);
         var endpoint = BuildEndpoint(effectiveConfig);
 
-        var requestPayload = new Dictionary<string, object>
-        {
-            ["messages"] = new[] { new { role = "user", content = prompt } },
-            ["stream"] = true,
-        };
-        // The dialect's sampling, as the two buffered builders write it (GAP-36): what the
-        // configuration sets — whatever its value —, nothing it leaves unset. This stream wrote
-        // the temperature always, 0.7 when nothing set one, and dropped top_p and stop.
-        WriteSamplingOptions(requestPayload, effectiveConfig);
-        // The cap is resolved like everywhere else (LLM-10): pinned, else the deployment's
-        // documented maximum, else the fallback; left out when the vendor documents no cap.
-        if (effectiveConfig.ResolveMaxTokens(Name, ResolveModel(effectiveConfig)) is { } cap)
-            requestPayload["max_tokens"] = cap;
+        // The buffered builder's payload, streamed (#360): the system message, sampling, output cap,
+        // response format and reasoning effort go out as on every other path, so what
+        // ReportEffort says was sent is what this stream sends. A hand-built payload here dropped
+        // the effort and the response format in silence.
+        var requestPayload = BuildRequestPayload(prompt, effectiveConfig);
+        requestPayload["stream"] = true;
 
         var json = JsonSerializer.Serialize(requestPayload, JsonOptions);
 

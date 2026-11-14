@@ -5,3 +5,11 @@
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Thinking.init -> void
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry.TryGet(string? model, string? provider) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry.TryGet(string? model, string? provider) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities!
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
+Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities?
+Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities?
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
+Orkeon.Infrastructure.LLMs.RateLimitedLlmProvider.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities?
+Orkeon.Infrastructure.LLMs.RateLimitedLlmProvider.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?

@@ -108,6 +108,12 @@ public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmPro
     /// <inheritdoc />
     public LlmProviderCapabilities Capabilities => _target.Capabilities;
 
+    /// <inheritdoc/>
+    public LlmReasoningCapabilities? DescribeReasoning(string? model) => _target.DescribeReasoning(model);
+
+    /// <inheritdoc/>
+    public LlmEffortReport? ReportEffort(LlmConfig? config) => _target.ReportEffort(config);
+
     /// <inheritdoc />
     public bool SupportsStreaming => (_target as IStreamingLlmProvider)?.SupportsStreaming ?? false;
 

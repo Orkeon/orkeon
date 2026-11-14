@@ -179,6 +179,28 @@ public sealed partial class JsLlmFacade
     /// <summary><c>chat</c> as the script calls it: <see cref="ChatAsync"/> behind the async bridge.</summary>
     public JsValue chat => _chatJs ??= JsHostError.BridgeAsync(_engine, ChatAsync);
 
+    /// <summary>
+    /// <c>reasoning(opts)</c> (#360): what the call these options name sends for the effort, judged on the
+    /// provider and configuration <see cref="CallFrom"/> resolves for it (the agent's provider, model and
+    /// effort, the call's own options over them) - the report <c>complete</c> and <c>extract</c>, which
+    /// return the bare answer, cannot carry. Null when no effort is asked or no provider answers.
+    /// </summary>
+    public Func<JsValue?, JsLlmReasoning?> reasoning => options =>
+    {
+        var (provider, config) = CallFrom(options);
+        return JsLlmReasoning.From(provider?.ReportEffort(config));
+    };
+
+    /// <summary>
+    /// <c>capabilities(opts)</c> (#359): what the model of the call these options name takes for
+    /// reasoning, on the provider <see cref="CallFrom"/> resolves for it. Null when no provider answers.
+    /// </summary>
+    public Func<JsValue?, JsLlmCapabilities?> capabilities => options =>
+    {
+        var (provider, config) = CallFrom(options);
+        return JsLlmCapabilities.From(provider?.DescribeReasoning(config?.Model));
+    };
+
     /// <summary><c>extract</c> as the script calls it: <see cref="ExtractAsync"/> behind the async bridge.</summary>
     public JsValue extract => _extractJs ??= JsHostError.BridgeAsync(_engine, ExtractAsync);
 
@@ -257,7 +279,7 @@ public sealed partial class JsLlmFacade
         var msgs = ToMessages(messages);
         var (provider, config) = CallFrom(options);
         if (provider is null)
-            return new { content = $"<undefined-llm:chat:{msgs.Length} msgs>", tokensUsed = 0 };
+            return new { content = $"<undefined-llm:chat:{msgs.Length} msgs>", tokensUsed = 0, model = string.Empty, reasoning = (JsLlmReasoning?)null };
         using var usage = BeginUsageScope("chat");
         var resp = await provider.ChatAsync(msgs, config, _ct).ConfigureAwait(false);
         // A failed call answers with the provider's sentence in the marker complete, stream and act give,
@@ -267,6 +289,7 @@ public sealed partial class JsLlmFacade
             content = RenderAnswer(resp),
             tokensUsed = resp.TokensUsed,
             model = resp.Model ?? string.Empty,
+            reasoning = JsLlmReasoning.From(provider.ReportEffort(config)),
         };
     };
 
@@ -280,7 +303,7 @@ public sealed partial class JsLlmFacade
         // The profile and the options are read when stream() is called, not at the first next():
         // an unknown profile throws here, and a bag the script changes afterwards changes nothing.
         var call = CallFrom(options);
-        var observations = new StreamObservations();
+        var observations = new StreamObservations { reasoning = JsLlmReasoning.From(call.Provider?.ReportEffort(call.Config)) };
         return AsAsyncIterable(StreamCore(prompt, call, observations), observations);
     };
 
@@ -314,7 +337,7 @@ public sealed partial class JsLlmFacade
     {
         var (next, ret) = AsyncIteratorCallbacks(source, _ct);
 
-        // `usage` / `reasoningChunks` are getters onto the CLR observations object,
+        // `usage` / `reasoningChunks` / `reasoning` are getters onto the CLR observations object,
         // so the script reads them when IT is executing (after the loop) instead of
         // the stream calling into the engine from another thread.
         // `next` goes through the async bridge: a stream a decision stage blocked rejects with a
@@ -339,7 +362,8 @@ public sealed partial class JsLlmFacade
         (next, ret, obs) => ({
             [Symbol.asyncIterator]() { return { next: next, return: ret }; },
             get usage() { return obs.usage; },
-            get reasoningChunks() { return obs.reasoningChunks; }
+            get reasoningChunks() { return obs.reasoningChunks; },
+            get reasoning() { return obs.reasoning; }
         })
         """;
 
@@ -897,6 +921,9 @@ public sealed partial class JsLlmFacade
         /// </summary>
         internal int PreviousPromptTokens;
 
+        /// <summary>The effort the turns ask for and the one the provider sends (#360); null when none is asked.</summary>
+        internal JsLlmReasoning? Reasoning { get; }
+
         public ActSession(JsLlmFacade facade, string prompt, JsValue? options, bool streamDeltas, bool streamToolCallDeltas)
         {
             // What the agent's .tools([...]) names is what the loop offers (GAP-27): a name the
@@ -918,6 +945,8 @@ public sealed partial class JsLlmFacade
                 LogUngatedPermissionMode(facade._logger, PermissionMode, facade._agentName);
             (Provider, var config) = facade.CallFrom(options);
             Config = config ?? Provider?.BaseConfig ?? LlmConfig.OnProfile();
+            // Every turn goes out on this configuration: the effort it sends is judged once (#360).
+            Reasoning = JsLlmReasoning.From(Provider?.ReportEffort(Config));
             // A script tool instance is offered through a proxy bound to this session: its calls
             // cross over to the JS tool pump instead of running on the loop's thread.
             var offered = TryResolveToolSubset(options, out var subset)
@@ -1305,7 +1334,7 @@ public sealed partial class JsLlmFacade
         {
             enteredRunScope = (_agentRunScope ?? ownedRunScope!).Enter();
             if (session.Provider is null)
-                return new { output = $"<undefined-llm:act:{session.Prompt}>", iterations = 0 };
+                return new { output = $"<undefined-llm:act:{session.Prompt}>", iterations = 0, reasoning = (JsLlmReasoning?)null };
 
             for (var i = 0; i < session.MaxIterations; i++)
             {
@@ -1326,6 +1355,7 @@ public sealed partial class JsLlmFacade
                 output = "(interrupted)",
                 iterations = completedIterations,
                 interrupted = true,
+                reasoning = session.Reasoning,
             };
         }
         finally
@@ -1339,6 +1369,7 @@ public sealed partial class JsLlmFacade
             output = "(max tool-call iterations reached without a final answer)",
             iterations = session.MaxIterations,
             exhausted = true,
+            reasoning = session.Reasoning,
         };
     }
 
@@ -1411,7 +1442,7 @@ public sealed partial class JsLlmFacade
         if (!session.WaitsForChildren || _background is not { HasPendingWork: true })
         {
             KeepTranscript(messages, interrupted: false);
-            return new { output = answer, iterations = i + 1 };
+            return new { output = answer, iterations = i + 1, reasoning = session.Reasoning };
         }
 
         // The model answered while children are out: wait for their next completion
@@ -1536,7 +1567,7 @@ public sealed partial class JsLlmFacade
 
         messages.Add(new LlmMessage { Role = "assistant", Content = answer });
         KeepTranscript(messages, interrupted: false);
-        return new { output = answer, iterations = iteration + 1, budgetExhausted = true };
+        return new { output = answer, iterations = iteration + 1, budgetExhausted = true, reasoning = session.Reasoning };
     }
 
     [Microsoft.Extensions.Logging.LoggerMessage(

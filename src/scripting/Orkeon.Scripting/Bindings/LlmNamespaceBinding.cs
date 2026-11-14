@@ -124,7 +124,7 @@ internal sealed partial class JsLlmNamespace
             throw new Orkeon.Scripting.Exceptions.InvalidScriptException("llm.model(name) takes the model name as a string.");
         var onModel = new JsLlmConfig(default_.provider,
             default_.Domain with { Model = JsLlmConfig.RequireModel(name.AsString()) },
-            default_.temperature, default_.maxTokens);
+            default_.temperature, default_.maxTokens, hostProvider: default_.Target);
         return overrides is null ? onModel : onModel.with(overrides);
     }
 
@@ -219,7 +219,8 @@ internal sealed partial class JsLlmNamespace
             // on that provider's own default, never on OpenAI's (GAP-18).
             var hostModel = _defaultProvider.BaseConfig?.Model;
             return new JsLlmConfig(_defaultProvider.Name,
-                string.IsNullOrWhiteSpace(hostModel) ? LlmConfig.OnProfile() : LlmConfig.Create(hostModel));
+                string.IsNullOrWhiteSpace(hostModel) ? LlmConfig.OnProfile() : LlmConfig.Create(hostModel),
+                hostProvider: _defaultProvider);
         }
 
         LogNoDefaultProvider();

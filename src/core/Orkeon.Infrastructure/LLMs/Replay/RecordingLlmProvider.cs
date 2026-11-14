@@ -21,6 +21,12 @@ internal sealed class RecordingLlmProvider(ILlmProvider inner, LlmCassette casse
 
     public LlmProviderCapabilities Capabilities => inner.Capabilities;
 
+    /// <inheritdoc/>
+    public LlmReasoningCapabilities? DescribeReasoning(string? model) => inner.DescribeReasoning(model);
+
+    /// <inheritdoc/>
+    public LlmEffortReport? ReportEffort(LlmConfig? config) => inner.ReportEffort(config);
+
     public bool SupportsStreaming => (inner as IStreamingLlmProvider)?.SupportsStreaming ?? false;
 
     public bool StreamsNatively => (inner as IStreamingLlmProvider)?.StreamsNatively ?? false;

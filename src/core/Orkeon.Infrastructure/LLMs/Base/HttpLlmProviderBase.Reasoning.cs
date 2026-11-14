@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs.Capabilities;
 
@@ -52,6 +53,33 @@ public abstract partial class HttpLlmProviderBase
 
         return verdict;
     }
+
+    /// <inheritdoc cref="ILlmProvider.DescribeReasoning"/>
+    public LlmReasoningCapabilities DescribeReasoning(string? model)
+    {
+        var resolved = string.IsNullOrWhiteSpace(model) ? ResolveModel(null) : model.Trim();
+        return ReasoningJudgement.Describe(Capabilities, ModelCapabilities.TryGet(resolved, Name), resolved);
+    }
+
+    /// <inheritdoc cref="ILlmProvider.ReportEffort"/>
+    public LlmEffortReport? ReportEffort(LlmConfig? config)
+    {
+        var effective = EffectiveConfig(config);
+        if (string.IsNullOrWhiteSpace(effective.Thinking?.Effort))
+            return null;
+
+        var model = ResolveModel(effective);
+        var verdict = ReasoningJudgement.Judge(effective.Thinking, Capabilities, ModelCapabilities.TryGet(model, Name), model);
+        return ReasoningJudgement.Report(effective.Thinking, verdict, EffortSentFor(verdict), model);
+    }
+
+    /// <summary>
+    /// The effort this dialect writes for <paramref name="verdict"/>: <see cref="ReasoningVerdict.Effort"/>, unless
+    /// the dialect cannot carry it beside the rest of the verdict (Ollama's one <c>think</c> field, where "off" wins).
+    /// <see cref="ReportEffort"/> reads it, so the report names what goes on the wire.
+    /// </summary>
+    /// <param name="verdict">The judged reasoning controls.</param>
+    private protected virtual string? EffortSentFor(ReasoningVerdict verdict) => verdict.Effort;
 
     /// <summary>An option the caller declared that the provider or the model cannot honour is reported, not dropped (LLM-02).</summary>
     [LoggerMessage(EventId = 110, Level = LogLevel.Warning,

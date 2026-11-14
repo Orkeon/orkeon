@@ -187,7 +187,7 @@ casse CLR ; `aborted`, `addEventListener` et `throwIfAborted` valent tous `undef
 Transmettez-le (`crew.run({ signal: ctx.signal })`) plutôt que de l'interroger.
 
 `ctx.llm` — `complete(prompt)`, `chat(messages)`, `stream(prompt)` (itérable async ;
-`usage` et `reasoningChunks` se lisent après la boucle), `extract(prompt, schema)`,
+`usage` et `reasoningChunks` se lisent après la boucle, `reasoning` aussitôt), `extract(prompt, schema)`,
 `decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, et `interrupt()` /
 `isInterrupted`. Chaque appel part vers le fournisseur de l'agent (celui de l'hôte, ou celui de son
 profil), ou vers le profil que nomme `{ llm: { profile } }` ; sans fournisseur,
@@ -205,6 +205,24 @@ toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max`)
 `onToolResult`, `onContextPressure`, `waitFor`). Il n'y a ni fournisseur nommé, ni température, ni plafond de
 jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte. `embed` est un stub local :
 il n'appelle aucun fournisseur et ne lit aucune de ces options.
+
+Ce que prend le modèle et ce que devient l'effort se lisent, sans se deviner (#359, #360). Un `LlmConfig`
+(`llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})`) porte `capabilities` : `{ model, known,
+thinking, efforts }`, `thinking` valant `"none"`, `"effortOnly"`, `"toggle"` ou `"budget"`, et `efforts` les niveaux
+parmi `low` à `max`, dans l'ordre, que le fournisseur et le modèle prennent tous deux (vide quand le modèle ne prend
+aucun effort ou ne raisonne pas ; `known: false` quand la table des capacités n'a pas d'entrée, les niveaux du
+fournisseur s'appliquent alors sans vérification). Il porte aussi `reasoning`, comme les résultats de `act` et de
+`chat` et l'objet que rend `stream()` : `{ model, asked, sent, notice }`, l'effort demandé (par l'`effort` de
+l'appel, `agentBuilder().effort`, `.with({ effort })` ou le `Llm:Thinking:Effort` de l'hôte), l'effort envoyé
+(`null` quand aucun ne part) et `notice`, `"lowered"`, `"dropped"`, `"unchecked"` (un modèle que la table ne connaît
+pas) ou `null` quand il est parti tel que demandé ; `reasoning` vaut `null` quand aucun effort n'est demandé.
+Dans un agent, les appels de `ctx.llm` partent sur le fournisseur, le modèle et l'effort de l'agent, qu'aucun
+`LlmConfig` détenu par le script ne porte : `ctx.llm.reasoning(opts)` et `ctx.llm.capabilities(opts)` répondent pour
+l'appel que ces options désignent, jugé comme cet appel l'est (l'`effort` et le `llm: { profile, model }` des options
+compris), sans passer d'appel ; c'est le rapport que `complete` et `extract` ne peuvent pas porter, puisqu'ils rendent
+le texte ou l'objet seul. Les deux valent `null` sans fournisseur. Ils sont jugés avant l'appel : un profil de bascule
+répond pour son premier maillon et un profil de décision pour sa cible, si bien qu'un appel qui bascule, ou qu'une
+décision route vers un autre profil, peut être jugé autrement.
 
 `chat` prend un tableau de messages nu ou `{ messages: [...] }`. `extract(prompt, schema, opts)`
 prend les mêmes formes en premier argument, les tours de l'appelant envoyés dans l'ordre, en plus

@@ -27,6 +27,9 @@ public sealed class StreamObservations
 
     /// <summary>Reasoning deltas seen. 0 on a model that emits none.</summary>
     public int reasoningChunks { get; internal set; }
+
+    /// <summary>The effort the call asks for and the one the provider sends (#360); null when none is asked. Set when <c>stream()</c> is called.</summary>
+    public JsLlmReasoning? reasoning { get; internal init; }
 }
 
 /// <summary>Terminal token counts of a streamed call. Null fields = the provider said nothing.</summary>

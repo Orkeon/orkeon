@@ -11,6 +11,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.SharedKernel.ValueObjects.Content;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
+using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs.Converters;
 using Orkeon.Infrastructure.Security;
 using Orkeon.Constants.Configuration;
@@ -465,7 +466,6 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
 
         var verdict = JudgeReasoning(thinking, model, "Ollama",
             "Ollama's think field takes a boolean or an effort level, not a token budget");
-        // `think` holds one value: an effort turns thinking on, so "off" wins over an effort asked beside it.
         if (verdict.Toggle is false)
         {
             if (verdict.Effort is not null)
@@ -473,10 +473,17 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             return false;
         }
 
-        if (verdict.Effort is { } effort)
+        if (EffortSentFor(verdict) is { } effort)
             return effort;
         return verdict.Toggle;
     }
+
+    /// <summary>
+    /// <c>think</c> holds one value: an effort turns thinking on, so "off" wins over an effort asked beside it, and
+    /// <see cref="HttpLlmProviderBase.ReportEffort"/> reports that effort dropped.
+    /// </summary>
+    private protected override string? EffortSentFor(ReasoningVerdict verdict)
+        => verdict.Toggle is false ? null : base.EffortSentFor(verdict);
 
     private void ApplyChatTools(Dictionary<string, object> payload, LlmConfig config)
     {
@@ -892,17 +899,13 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         // Do NOT use 'using' — factory-managed clients must not be disposed.
         var client = CreateHttpClient(effectiveConfig);
 
-        // Build payload with stream=true
-        var options = BuildOptions(effectiveConfig);
+        // The buffered builder's payload, streamed (#360): the system message, grammar, format and
+        // `think` go out as on every other path, so what ReportEffort says was sent is what this
+        // stream sends. A hand-built payload here dropped them in silence.
+        var payload = CreateRequestPayload(prompt, effectiveConfig);
+        payload["stream"] = true;
 
-        var payload = OllamaRequestPayload.CreateBuilder()
-            .AddModel(ResolveModel(effectiveConfig))
-            .AddPrompt(prompt)
-            .AddStream(true)
-            .AddOptions(options)
-            .Build();
-
-        var json = SerializeToJson(payload.ToDictionary());
+        var json = SerializeToJson(payload);
 
         // The call runs under Llm:TimeoutSeconds whole, and Llm:StreamIdleSeconds between two
         // lines (LLM-12); an elapsed bound or a stream cut before any text fails the sequence.
