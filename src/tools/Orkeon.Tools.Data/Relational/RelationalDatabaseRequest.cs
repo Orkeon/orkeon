@@ -44,10 +44,10 @@ public record RelationalDatabaseRequest
     public IReadOnlyDictionary<string, object>? Parameters { get; init; }
 
     /// <summary>Gets the maximum number of rows to return for SELECT queries.</summary>
-    [FieldSchema(Description = "Maximum number of rows to return for SELECT queries", IsRequired = false, Example = "1000")]
+    [FieldSchema(Description = "Maximum number of rows to return for SELECT queries, at least 1 (default 1000); truncated tells whether rows were left out", IsRequired = false, Example = "1000")]
     public int MaxRows { get; init; } = DatabaseDefaults.DefaultMaxRows;
 
     /// <summary>Gets the query timeout in seconds.</summary>
-    [FieldSchema(Description = "Query timeout in seconds", IsRequired = false, Example = "30")]
+    [FieldSchema(Description = "Query timeout in seconds, at least 1 (default 30)", IsRequired = false, Example = "30")]
     public int TimeoutSeconds { get; init; } = DatabaseDefaults.DefaultTimeoutSeconds;
 }

@@ -30,7 +30,7 @@ public record CsvReaderRequest
     public string Delimiter { get; init; } = CsvDefaults.DefaultDelimiter;
 
     /// <summary>Gets the maximum number of rows to read.</summary>
-    [FieldSchema(Description = "Maximum number of rows to read (default: no limit)", Example = 100)]
+    [FieldSchema(Description = "Maximum number of rows to read, at least 1 (default: no limit); truncated tells whether rows were left out", Example = 100)]
     public int? MaxRows { get; init; }
 }
 
@@ -86,6 +86,10 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
         if (string.IsNullOrWhiteSpace(request.Path))
             return "Path cannot be empty";
 
+        // A small model fills every optional field and sends 0, which would read no row at all.
+        if (request.MaxRows is < 1)
+            return $"max_rows must be at least 1 (got {request.MaxRows}); omit it to read every row";
+
         var fsCheck = ResolveVirtualPath(request.Path, FileAccessRights.Read);
         if (!fsCheck.IsAllowed)
         {
@@ -120,7 +124,7 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
                 BadDataFound = null
             };
 
-            var (rows, headers, rowCount) = await ReadCsvDataVfsAsync(
+            var (rows, headers, truncated) = await ReadCsvDataVfsAsync(
                 FileSystemService, path, config, request.HasHeader, request.MaxRows, cancellationToken).ConfigureAwait(false);
 
             LogReadCsv(Logger, path, rows.Count, headers.Count);
@@ -131,12 +135,12 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
                 Rows = rows,
                 RowCount = rows.Count,
                 ColumnCount = headers.Count,
-                Truncated = request.MaxRows.HasValue && rowCount >= request.MaxRows.Value
+                Truncated = truncated
             };
         }
     }
 
-    private static async Task<(List<Dictionary<string, object>> rows, List<string> headers, int rowCount)> ReadCsvDataVfsAsync(
+    private static async Task<(List<Dictionary<string, object>> rows, List<string> headers, bool truncated)> ReadCsvDataVfsAsync(
         IFileSystemService fs, string vPath, CsvConfiguration config, bool hasHeader, int? maxRows, CancellationToken cancellationToken)
     {
         var rows = new List<Dictionary<string, object>>();
@@ -150,7 +154,7 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
         return await ReadCsvCoreAsync(csv, hasHeader, maxRows, headers, rows, cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<(List<Dictionary<string, object>> rows, List<string> headers, int rowCount)> ReadCsvCoreAsync(
+    private static async Task<(List<Dictionary<string, object>> rows, List<string> headers, bool truncated)> ReadCsvCoreAsync(
         CsvReader csv, bool hasHeader, int? maxRows, List<string> headers, List<Dictionary<string, object>> rows, CancellationToken cancellationToken)
     {
 
@@ -162,13 +166,18 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
         }
 
         var rowCount = 0;
+        var truncated = false;
         while (await csv.ReadAsync().ConfigureAwait(false))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
 
+            // A row read past the limit: the file held rows left out.
             if (maxRows.HasValue && rowCount >= maxRows.Value)
+            {
+                truncated = true;
                 break;
+            }
 
             var row = hasHeader && csv.HeaderRecord != null
                 ? ReadHeaderRow(csv)
@@ -178,7 +187,7 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
             rowCount++;
         }
 
-        return (rows, headers, rowCount);
+        return (rows, headers, truncated);
     }
 
     private static Dictionary<string, object> ReadHeaderRow(CsvReader csv)

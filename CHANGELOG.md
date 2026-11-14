@@ -150,6 +150,13 @@ Migration:
 
 ### Fixed
 
+- `relational_database_query` (and `mysql_query`, `mariadb_query`, `postgres_query`, `sqlserver_query`) refuses a
+  `max_rows` or a `timeout_seconds` below 1 (#372), in a message that names the field and its default. A small model
+  that filled every field sent `max_rows: 0`, got no row and a success, and the crew reported made-up figures; a
+  `timeout_seconds: 0` waited without bound. A SELECT response carries `truncated`, true when the result set held
+  rows `max_rows` left out. `csv_reader` refuses a `max_rows` below 1 the same way, and its `truncated` is no longer
+  true when the file holds exactly `max_rows` rows.
+
 - A consumer of `Orkeon.Tools.Embeddings.Local` or `Orkeon.Scripting` gets the BGE-micro-v2 model (#368). The
   `SmartComponents.LocalEmbeddings` package (~40 KB) carries no weights: its `build/` target downloads `model.onnx`
   and `vocab.txt` from huggingface.co on the consumer's first build and copies them to `LocalEmbeddingsModel/default/`.

@@ -162,6 +162,82 @@ public sealed class RelationalDatabaseToolTests : IDisposable
         Assert.Equal(2, Convert.ToInt32(dict["row_count"]));
     }
 
+    [Fact]
+    public async Task Select_ReportsTruncated_WhenRowsAreLeftOut()
+    {
+        var dict = await SelectUsersAsync(maxRows: 2);
+
+        Assert.Equal(2, Convert.ToInt32(dict["row_count"]));
+        Assert.True((bool)dict["truncated"]!);
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(1000)]
+    public async Task Select_DoesNotReportTruncated_WhenEveryRowFits(int maxRows)
+    {
+        var dict = await SelectUsersAsync(maxRows);
+
+        Assert.Equal(3, Convert.ToInt32(dict["row_count"]));
+        Assert.False((bool)dict["truncated"]!);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public async Task Validation_RejectsMaxRowsBelowOne(int maxRows)
+    {
+        var request = new ToolCallRequest("relational_database_query", new Dictionary<string, object?>
+        {
+            [ParamConnectionString] = _connectionString,
+            ["provider_name"] = "Microsoft.Data.Sqlite",
+            [ParamQuery] = "SELECT * FROM users",
+            ["max_rows"] = maxRows,
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("max_rows must be at least 1", result.Error);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Validation_RejectsTimeoutBelowOne(int timeoutSeconds)
+    {
+        var request = new ToolCallRequest("relational_database_query", new Dictionary<string, object?>
+        {
+            [ParamConnectionString] = _connectionString,
+            ["provider_name"] = "Microsoft.Data.Sqlite",
+            [ParamQuery] = "SELECT * FROM users",
+            ["timeout_seconds"] = timeoutSeconds,
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("timeout_seconds must be at least 1", result.Error);
+    }
+
+    private async Task<Dictionary<string, object?>> SelectUsersAsync(int maxRows)
+    {
+        var request = new ToolCallRequest("relational_database_query", new Dictionary<string, object?>
+        {
+            [ParamConnectionString] = _connectionString,
+            ["provider_name"] = "Microsoft.Data.Sqlite",
+            [ParamQuery] = "SELECT * FROM users ORDER BY id",
+            ["max_rows"] = maxRows,
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = result.Result as Dictionary<string, object?>;
+        Assert.NotNull(dict);
+        return dict;
+    }
+
     // ── Execute (non-query) tests ─────────────────────────────────────────
 
     [Fact]

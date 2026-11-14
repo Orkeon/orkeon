@@ -89,6 +89,51 @@ public sealed class CsvReaderToolTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldNotReportTruncated_WhenFileHoldsExactlyMaxRows()
+    {
+        var csvPath = CreateCsvFile("id,value\n1,a\n2,b");
+
+        var request = new ToolCallRequest(
+            ToolName: "csv_reader",
+            Parameters: new Dictionary<string, object?>
+            {
+                [ParamPath] = csvPath,
+                ["max_rows"] = 2
+            }
+        );
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = result.Result as Dictionary<string, object?>;
+        Assert.NotNull(dict);
+        Assert.Equal(2, (int)dict["row_count"]!);
+        Assert.False((bool)dict["truncated"]!);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task ShouldRefuse_WhenMaxRowsIsBelowOne(int maxRows)
+    {
+        var csvPath = CreateCsvFile("id,value\n1,a");
+
+        var request = new ToolCallRequest(
+            ToolName: "csv_reader",
+            Parameters: new Dictionary<string, object?>
+            {
+                [ParamPath] = csvPath,
+                ["max_rows"] = maxRows
+            }
+        );
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("max_rows must be at least 1", result.Error);
+    }
+
+    [Fact]
     public async Task ShouldReturnError_WhenFileDoesNotExist()
     {
         var request = new ToolCallRequest(

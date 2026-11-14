@@ -193,7 +193,7 @@ declare global {
             delimiter?: string;
             /** Whether the CSV file has a header row (default: true) */
             has_header?: boolean;
-            /** Maximum number of rows to read (default: no limit) */
+            /** Maximum number of rows to read, at least 1 (default: no limit); truncated tells whether rows were left out */
             max_rows?: number | null;
             /** The file path of the CSV file to read */
             path: string;
@@ -837,7 +837,7 @@ declare global {
         mariadbQuery(input: {
             /** Database connection string */
             connection_string: string;
-            /** Maximum number of rows to return for SELECT queries */
+            /** Maximum number of rows to return for SELECT queries, at least 1 (default 1000); truncated tells whether rows were left out */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
             parameters?: Record<string, unknown> | null;
@@ -847,7 +847,7 @@ declare global {
             query: string;
             /** Type of query: Select (returns rows), Execute (returns affected rows count), or Scalar (returns single value) */
             query_type?: "Select" | "Execute" | "Scalar";
-            /** Query timeout in seconds */
+            /** Query timeout in seconds, at least 1 (default 30) */
             timeout_seconds?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly affected_rows?: number;
@@ -859,6 +859,7 @@ declare global {
             readonly row_count?: number;
             readonly rows?: readonly Record<string, unknown>[];
             readonly scalar_result?: unknown;
+            readonly truncated: boolean;
         }>;
 
         /** `mdx_search` - Perform semantic search within Markdown (.md, .mdx) files using RAG embeddings. Strips frontmatter and JSX before searching. */
@@ -957,7 +958,7 @@ declare global {
         mysqlQuery(input: {
             /** Database connection string */
             connection_string: string;
-            /** Maximum number of rows to return for SELECT queries */
+            /** Maximum number of rows to return for SELECT queries, at least 1 (default 1000); truncated tells whether rows were left out */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
             parameters?: Record<string, unknown> | null;
@@ -967,7 +968,7 @@ declare global {
             query: string;
             /** Type of query: Select (returns rows), Execute (returns affected rows count), or Scalar (returns single value) */
             query_type?: "Select" | "Execute" | "Scalar";
-            /** Query timeout in seconds */
+            /** Query timeout in seconds, at least 1 (default 30) */
             timeout_seconds?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly affected_rows?: number;
@@ -979,6 +980,7 @@ declare global {
             readonly row_count?: number;
             readonly rows?: readonly Record<string, unknown>[];
             readonly scalar_result?: unknown;
+            readonly truncated: boolean;
         }>;
 
         /** `node_ensure` - Applies one idempotent intent operation on one file: ensure_using / ensure_import (name, plus module for TypeScript or JavaScript) adds the using or import line in its place only when absent; ensure_field / ensure_member (selector of the type, text) adds a field, property or method next to its peers only when no member of that name exists. On Markdown: ensure_section (name = heading path, optional level) creates the missing headings; insert_under_heading (selector, text) appends at the end of a section; replace_mermaid (selector, index 0-based, text) replaces the body of the n-th mermaid fence of a section. Calling it again changes nothing and writes nothing: applied is false and range is the existing line or member. The insert is refused when it introduces a parse error that was not there before, the file is then untouched. */
@@ -1137,7 +1139,7 @@ declare global {
         postgresQuery(input: {
             /** Database connection string */
             connection_string: string;
-            /** Maximum number of rows to return for SELECT queries */
+            /** Maximum number of rows to return for SELECT queries, at least 1 (default 1000); truncated tells whether rows were left out */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
             parameters?: Record<string, unknown> | null;
@@ -1147,7 +1149,7 @@ declare global {
             query: string;
             /** Type of query: Select (returns rows), Execute (returns affected rows count), or Scalar (returns single value) */
             query_type?: "Select" | "Execute" | "Scalar";
-            /** Query timeout in seconds */
+            /** Query timeout in seconds, at least 1 (default 30) */
             timeout_seconds?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly affected_rows?: number;
@@ -1159,6 +1161,7 @@ declare global {
             readonly row_count?: number;
             readonly rows?: readonly Record<string, unknown>[];
             readonly scalar_result?: unknown;
+            readonly truncated: boolean;
         }>;
 
         /** `progress_report` - Report the progress of a long-running scripted operation (label, step/total or percent, message). */
@@ -1264,7 +1267,7 @@ declare global {
         relationalDatabaseQuery(input: {
             /** Database connection string */
             connection_string: string;
-            /** Maximum number of rows to return for SELECT queries */
+            /** Maximum number of rows to return for SELECT queries, at least 1 (default 1000); truncated tells whether rows were left out */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
             parameters?: Record<string, unknown> | null;
@@ -1274,7 +1277,7 @@ declare global {
             query: string;
             /** Type of query: Select (returns rows), Execute (returns affected rows count), or Scalar (returns single value) */
             query_type?: "Select" | "Execute" | "Scalar";
-            /** Query timeout in seconds */
+            /** Query timeout in seconds, at least 1 (default 30) */
             timeout_seconds?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly affected_rows?: number;
@@ -1286,6 +1289,7 @@ declare global {
             readonly row_count?: number;
             readonly rows?: readonly Record<string, unknown>[];
             readonly scalar_result?: unknown;
+            readonly truncated: boolean;
         }>;
 
         /** `reply_to` - Reply to a pending request identified by correlation_id. */
@@ -1425,7 +1429,7 @@ declare global {
         sqlserverQuery(input: {
             /** Database connection string */
             connection_string: string;
-            /** Maximum number of rows to return for SELECT queries */
+            /** Maximum number of rows to return for SELECT queries, at least 1 (default 1000); truncated tells whether rows were left out */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
             parameters?: Record<string, unknown> | null;
@@ -1435,7 +1439,7 @@ declare global {
             query: string;
             /** Type of query: Select (returns rows), Execute (returns affected rows count), or Scalar (returns single value) */
             query_type?: "Select" | "Execute" | "Scalar";
-            /** Query timeout in seconds */
+            /** Query timeout in seconds, at least 1 (default 30) */
             timeout_seconds?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly affected_rows?: number;
@@ -1447,6 +1451,7 @@ declare global {
             readonly row_count?: number;
             readonly rows?: readonly Record<string, unknown>[];
             readonly scalar_result?: unknown;
+            readonly truncated: boolean;
         }>;
 
         /** `statement_query` - Query L4 statements by kind, parent FQN, or semantic similarity. */
