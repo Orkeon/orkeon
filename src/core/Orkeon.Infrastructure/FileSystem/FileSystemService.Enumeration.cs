@@ -61,7 +61,9 @@ public sealed partial class FileSystemService
             var virtualPath = ToVirtualPath(physicalEntry);
             if (virtualPath is null)
                 continue;
-            if (scope is not null && !scope.Allows(virtualPath, FileAccessRights.Read))
+            // Under a scope each entry gets the full check a read would: the scope's entries and the
+            // mount's own sub-path overrides (a folder the mount withholds is not listed either).
+            if (scope is not null && !ResolveAndValidate(virtualPath, FileAccessRights.Read).IsAllowed)
                 continue;
 
             yield return BuildEntry(physicalEntry, virtualPath);

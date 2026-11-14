@@ -29,7 +29,8 @@ public sealed class FileSearchToolsAgentScopeTests : IDisposable
         Write("project/open.txt", "needle in the open");
         Write("project/secret/key.txt", "needle in the key");
         Write("other/secret.txt", "needle outside");
-        _registry = new FileSystemRegistry([new FileSystemMount(_tempDir, "/workspace", FileAccessRights.ReadWrite)]);
+        _registry = new FileSystemRegistry([new FileSystemMount(_tempDir, "/workspace", FileAccessRights.ReadWrite,
+            [new SubPathOverride("project/secret", FileAccessRights.None)])]);
         var validator = new PathValidator(new PathSecurityOptions { DefaultWorkspaceRoot = _tempDir }, NullLogger<PathValidator>.Instance);
         _service = new FileSystemService(_registry, validator, NullLogger<FileSystemService>.Instance);
     }
@@ -48,11 +49,12 @@ public sealed class FileSearchToolsAgentScopeTests : IDisposable
         File.WriteAllText(path, content);
     }
 
-    /// <summary>The project is readable, its <c>secret</c> folder grants nothing, the rest of the mount is outside.</summary>
+    /// <summary>
+    /// The project is readable, its <c>secret</c> folder grants nothing (a mount override: a scope entry
+    /// cannot grant nothing), the rest of the mount is outside.
+    /// </summary>
     private AgentFileSystemScope Scope()
-        => AgentFileSystemScope.Resolve("reader",
-            [new FileSystemScopeEntry("/workspace/project"), new FileSystemScopeEntry("/workspace/project/secret", FileAccessRights.None)],
-            _service.GetAvailableMounts());
+        => AgentFileSystemScope.Resolve("reader", [new FileSystemScopeEntry("/workspace/project")], _service.GetAvailableMounts());
 
     public static TheoryData<string, string> Searches() => new()
     {
@@ -68,10 +70,6 @@ public sealed class FileSearchToolsAgentScopeTests : IDisposable
         { "glob", "/workspace/project" },
         { "directory_read", "/workspace/project" },
     };
-
-    private const string ListingLeak =
-        "FileSystemService.EnumerateFilesAsync (src/core) checks the scope at the listing's root only: "
-        + "the files under a scope sub-entry that grants nothing are still listed (#349 follow-up, core owned).";
 
     private IBaseTool NewTool(string name) => name switch
     {
@@ -93,7 +91,7 @@ public sealed class FileSearchToolsAgentScopeTests : IDisposable
     public Task ShouldNeverReturnAFileOutsideTheScope_WhenAScopedAgentSearches(string tool, string path)
         => AssertNoFileOutsideTheScopeAsync(tool, path);
 
-    [Theory(Skip = ListingLeak)]
+    [Theory]
     [MemberData(nameof(ListingsOverAWithheldSubEntry))]
     [Trait("BR", "#349")]
     public Task ShouldNotListAWithheldSubEntry_WhenAScopedAgentListsInsideItsScope(string tool, string path)
