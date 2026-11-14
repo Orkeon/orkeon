@@ -11,6 +11,7 @@ using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
 using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs.Converters;
+using Orkeon.Infrastructure.LLMs.ToolCalling;
 
 namespace Orkeon.Infrastructure.LLMs;
 
@@ -65,6 +66,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         ILogger<AnthropicLlmProvider>? logger = null)
         : base(config, httpClientFactory, logger)
     {
+        _toolCallingStrategy = AnthropicToolCallingStrategy.Default;
     }
 
     /// <summary>
@@ -77,6 +79,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         ILogger<AnthropicLlmProvider>? logger = null)
         : base(config, httpClientFactory, resiliencePolicy, logger)
     {
+        _toolCallingStrategy = AnthropicToolCallingStrategy.Default;
     }
 
     /// <summary>

@@ -77,6 +77,29 @@ public class OllamaChatEndpointTests
         Assert.Equal("length", response.Metadata[LlmResponseMetadataKeys.FinishReason]);
     }
 
+    /// <summary>
+    /// The provider <c>bootstrap.md</c> builds — the two-argument constructor, no strategy — sends
+    /// the tools on <c>/api/chat</c> as the factory's does, so a model can call one (#367).
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-367")]
+    public async Task ShouldSendTheTools_WhenBuiltWithoutAStrategy()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"hi"},"done":true}""");
+        _httpClientFactory.RegisterClient("OllamaLlmProvider", new HttpClient(handler));
+        using var provider = new OllamaLlmProvider(WithTools(BaseConfig()), _httpClientFactory);
+
+        await provider.ChatAsync(
+            [LlmMessage.User("weather?")], cancellationToken: TestContext.Current.CancellationToken);
+
+        var request = handler.CapturedRequests.Single();
+        Assert.EndsWith("/api/chat", request.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        var payload = await ReadRequestAsync(request);
+        Assert.Equal("get_weather",
+            payload.GetProperty("tools")[0].GetProperty("function").GetProperty("name").GetString());
+    }
+
     [Fact]
     public async Task ShouldSwitchToChat_WhenToolsAreDeclared()
     {

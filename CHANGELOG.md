@@ -144,6 +144,12 @@ Migration:
 
 ### Fixed
 
+- A provider constructed by hand sends an agent's tools (#367): the constructors without an
+  `IToolCallingStrategy` — `new OllamaLlmProvider(llm, httpClientFactory)` as `bootstrap.md` shows,
+  `new OpenAILlmProvider(...)` and every OpenAI-compatible provider, `new AnthropicLlmProvider(...)` — left the
+  strategy null and sent no `tools`, so the model wrote the call as text and the task completed without it. They
+  now take the vendor's native strategy, as `LlmProviderFactory` does; the overload that takes a strategy still
+  accepts `null` to keep the text protocol.
 - `crew.run()`'s `output` is what the last body that returned something returned (#369) **[breaking]**: an
   object stays an object, the same value as that run's `tasks[i].output`, where it was the object's CLR type
   name (`"System.Dynamic.ExpandoObject"`). `CrewResult.output` is `unknown` in `crew.d.ts` and

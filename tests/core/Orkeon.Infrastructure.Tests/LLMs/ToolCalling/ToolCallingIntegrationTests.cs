@@ -298,38 +298,63 @@ public class ToolCallingIntegrationTests
 
     #endregion
 
-    #region Test 4: FallbackToText_WhenNoToolCallingStrategy
+    #region Test 4: native tools by default, text fallback on an explicit null strategy
 
+    /// <summary>A conversation that replays one tool call, the path that carries the tools.</summary>
+    private static LlmMessage[] ToolTurn() =>
+    [
+        LlmMessage.User("List files in /src"),
+        new LlmMessage
+        {
+            Role = "assistant",
+            Content = null!,
+            RawToolCalls = """[{"id":"call_prev","type":"function","function":{"name":"directory_read","arguments":"{\"path\":\"/src\"}"}}]""",
+        },
+        new LlmMessage { Role = "tool", Content = "file1.cs\nfile2.cs", ToolCallId = "call_prev" },
+    ];
+
+    /// <summary>
+    /// A provider built by hand without a strategy (the bootstrap's two-argument constructor) sends
+    /// the tools natively, as one <c>LlmProviderFactory</c> builds does (#367).
+    /// </summary>
     [Fact]
-    public async Task FallbackToText_WhenNoToolCallingStrategy()
+    [Trait("BR", "CH-367")]
+    public async Task ShouldSendTheToolsNatively_WhenBuiltWithoutAStrategy()
     {
-        // Arrange
         using var handler = new MockHttpMessageHandler();
         handler.EnqueueResponse(TextResponse);
-
         var factory = CreateMockFactory(handler);
-        // No tool calling strategy — use the constructor without strategy
         var config = CreateConfig(tools: new List<ToolSchema> { SampleToolSchema });
 
         using var provider = new OpenAILlmProvider(config, factory, logger: null);
+        var response = await provider.ChatAsync(ToolTurn(), config, TestContext.Current.CancellationToken);
 
-        // Act
-        var response = await provider.GenerateAsync("Hello", config, TestContext.Current.CancellationToken);
+        Assert.NotNull(handler.CapturedRequestBody);
+        using var doc = JsonDocument.Parse(handler.CapturedRequestBody);
+        var tools = doc.RootElement.GetProperty("tools");
+        Assert.Equal(SampleToolSchema.Name, tools[0].GetProperty("function").GetProperty("name").GetString());
+        Assert.NotNull(response.RawResponseBody);
+        Assert.Equal("Hello!", response.Content);
+    }
 
-        // Assert: payload should NOT contain "tools"
+    /// <summary>An explicit <see langword="null"/> strategy sends no <c>tools</c>: the text protocol stays in charge.</summary>
+    [Fact]
+    public async Task FallbackToText_WhenTheStrategyIsExplicitlyNull()
+    {
+        using var handler = new MockHttpMessageHandler();
+        handler.EnqueueResponse(TextResponse);
+        var factory = CreateMockFactory(handler);
+        var config = CreateConfig(tools: new List<ToolSchema> { SampleToolSchema });
+
+        using var provider = new OpenAILlmProvider(config, factory, (Orkeon.Application.Interfaces.LLM.IToolCallingStrategy?)null, logger: null);
+        var response = await provider.ChatAsync(ToolTurn(), config, TestContext.Current.CancellationToken);
+
         Assert.NotNull(handler.CapturedRequestBody);
         using var doc = JsonDocument.Parse(handler.CapturedRequestBody);
         var root = doc.RootElement;
-
-        Assert.False(root.TryGetProperty("tools", out _),
-            "Payload should NOT contain 'tools' when no strategy is set");
-        Assert.False(root.TryGetProperty("tool_choice", out _),
-            "Payload should NOT contain 'tool_choice' when no strategy is set");
-
-        // RawResponseBody should be null without a strategy
+        Assert.False(root.TryGetProperty("tools", out _), "Payload should NOT contain 'tools' when the strategy is null");
+        Assert.False(root.TryGetProperty("tool_choice", out _), "Payload should NOT contain 'tool_choice' when the strategy is null");
         Assert.Null(response.RawResponseBody);
-
-        // Content should still be parsed normally
         Assert.Equal("Hello!", response.Content);
     }
 

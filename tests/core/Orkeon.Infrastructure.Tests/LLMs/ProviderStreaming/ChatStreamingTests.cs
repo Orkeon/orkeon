@@ -38,7 +38,8 @@ public sealed class ChatStreamingTests : IDisposable
         Assert.Equal(HelloWorldDeltas, deltas);
         var completed = Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed);
         Assert.Equal("Hello world", completed.FinalResponse!.Content);
-        Assert.Null(completed.FinalResponse.RawResponseBody); // no tool calls streamed
+        // Native protocol by default (#367): the buffered body is rebuilt, its content the assembled text (GAP-32).
+        Assert.Contains("Hello world", completed.FinalResponse.RawResponseBody, StringComparison.Ordinal);
     }
 
     [Fact]

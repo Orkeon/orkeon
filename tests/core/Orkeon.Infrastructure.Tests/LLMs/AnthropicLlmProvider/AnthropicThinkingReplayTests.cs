@@ -308,4 +308,29 @@ public class AnthropicThinkingReplayTests
         Assert.Contains("grep", ex.Message);
         Assert.Contains("'arguments'", ex.Message);
     }
+
+    /// <summary>
+    /// An Anthropic provider built by hand without a strategy sends the agent's tools natively,
+    /// as the one <c>LlmProviderFactory</c> builds does (#367).
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-367")]
+    public async Task ShouldSendTheTools_WhenBuiltWithoutAStrategy()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, """
+            {"id":"msg_1","type":"message","role":"assistant","model":"claude-haiku-5-5",
+             "content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn",
+             "usage":{"input_tokens":1,"output_tokens":1}}
+            """);
+        var factory = new TestHttpClientFactory();
+        factory.RegisterClient("AnthropicLlmProvider", new HttpClient(handler));
+        var config = HttpConfig() with { Tools = [new ToolSchema("get_weather", "Get the weather", [])] };
+        using var provider = new AnthropicLlmProvider(config, factory);
+
+        await provider.ChatAsync([LlmMessage.User("weather?")], config, TestContext.Current.CancellationToken);
+
+        var raw = await handler.CapturedRequests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(raw);
+        Assert.Equal("get_weather", doc.RootElement.GetProperty("tools")[0].GetProperty("name").GetString());
+    }
 }
