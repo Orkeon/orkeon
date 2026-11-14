@@ -131,8 +131,8 @@ Every provider declares a `LlmProviderCapabilities` value object (Domain, expose
 `ILlmProvider`; a provider overrides `HttpLlmProviderBase.DeclaredCapabilities`, which defaults
 to `LlmProviderCapabilities.Unknown`): `ResponseFormat`
 (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `EffortLevels`
-(the effort levels the field knows: `low`, `medium`, `high` by default, up to `xhigh` for OpenAI and Grok, `max`
-without `xhigh` for Z.ai, and the five for Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI, Hugging Face,
+(the effort levels the field knows: `low`, `medium`, `high` by default, up to `xhigh` for OpenAI and Grok,
+and the five for Z.ai, Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI, Hugging Face,
 MiniMax and Mammouth AI; the per-model table below narrows them model by model): a level asked that is not declared is sent as the
 highest declared level below it, with a warning in the provider's log; a value outside the five, such as OpenAI's
 `none`, is no level and is sent unchanged for the vendor to judge), `Vision`, `ExplicitPromptCaching`,

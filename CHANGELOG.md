@@ -96,6 +96,10 @@ Migration:
 
 ### Fixed
 
+- Z.AI's `reasoning_effort` takes `xhigh` (#356): the campaign of 2026-11-14 found GLM-5.2 accepting it and
+  reasoning at it, between `high` and `max`, where Orkeon lowered it to `high`. The provider now declares the five
+  levels; the GLM-5.3 family keeps its table restriction (`low`, `high`, `max`). The campaign re-run of M15–M18 on
+  14 providers finds the capability table in agreement with every vendor's own answer.
 - `grep` takes a file as `path` and searches it alone, as `rg <file>` does; a `glob` given beside a file is refused with a message naming the fix, and a missing path says `Path not found` instead of `Directory not found`; an empty `glob` beside a file counts as absent (#351).
 - Z.AI's GLM-5.3 family takes the efforts `low`, `high` and `max` only: a `medium` asked for is lowered to `low` with the provider's warning instead of failing every call with HTTP 400 code 1210; the per-model capability table says it (#354, #356).
 - A provider failure (an HTTP error, a timeout) no longer reaches a script as an empty answer: `ctx.llm.extract` and `ctx.llm.decide` raise it with its status and the vendor's message, and `ctx.llm.chat` answers with the `<undefined-llm:…>` marker `complete` and `act` already gave (#354).
