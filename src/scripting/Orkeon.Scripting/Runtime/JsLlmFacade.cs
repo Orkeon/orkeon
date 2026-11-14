@@ -179,6 +179,28 @@ public sealed partial class JsLlmFacade
     /// <summary><c>chat</c> as the script calls it: <see cref="ChatAsync"/> behind the async bridge.</summary>
     public JsValue chat => _chatJs ??= JsHostError.BridgeAsync(_engine, ChatAsync);
 
+    /// <summary>
+    /// <c>reasoning(opts)</c> (#360): what the call these options name sends for the effort, judged on the
+    /// provider and configuration <see cref="CallFrom"/> resolves for it (the agent's provider, model and
+    /// effort, the call's own options over them) - the report <c>complete</c> and <c>extract</c>, which
+    /// return the bare answer, cannot carry. Null when no effort is asked or no provider answers.
+    /// </summary>
+    public Func<JsValue?, JsLlmReasoning?> reasoning => options =>
+    {
+        var (provider, config) = CallFrom(options);
+        return JsLlmReasoning.From(provider?.ReportEffort(config));
+    };
+
+    /// <summary>
+    /// <c>capabilities(opts)</c> (#359): what the model of the call these options name takes for
+    /// reasoning, on the provider <see cref="CallFrom"/> resolves for it. Null when no provider answers.
+    /// </summary>
+    public Func<JsValue?, JsLlmCapabilities?> capabilities => options =>
+    {
+        var (provider, config) = CallFrom(options);
+        return JsLlmCapabilities.From(provider?.DescribeReasoning(config?.Model));
+    };
+
     /// <summary><c>extract</c> as the script calls it: <see cref="ExtractAsync"/> behind the async bridge.</summary>
     public JsValue extract => _extractJs ??= JsHostError.BridgeAsync(_engine, ExtractAsync);
 

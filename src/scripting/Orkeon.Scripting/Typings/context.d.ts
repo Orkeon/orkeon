@@ -90,6 +90,19 @@ declare global {
          * call, when `.tools([...])` names a tool the host does not offer.
          */
         act(prompt: string, opts?: ActOptions): Promise<ActResult>;
+        /**
+         * What the call these options name sends for the effort (#360), judged as that call is: on the
+         * agent's provider, model and effort, the options' own `effort` and `llm: { profile, model }`
+         * over them. The report `complete` and `extract` cannot carry, since they return the answer
+         * alone; `act`, `chat` and `stream` carry it as `reasoning`. `null` when no effort is asked or
+         * no provider answers. Places no call.
+         */
+        reasoning(opts?: LlmCallOptions): LlmReasoning | null;
+        /**
+         * What the model of the call these options name takes for reasoning (#359), on the provider
+         * that call goes to. `null` when no provider answers. Places no call.
+         */
+        capabilities(opts?: LlmCallOptions): LlmCapabilities | null;
         /** Cancels the in-flight and future llm calls of this context; a running `act()` resolves with `{ interrupted: true }`. */
         interrupt(): void;
         /** Whether `interrupt()` was requested (or the host cancelled the run). */

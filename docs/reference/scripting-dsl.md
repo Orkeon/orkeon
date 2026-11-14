@@ -178,7 +178,7 @@ state is a JS `Proxy` whose `set` trap exists to make that loud rather than lost
 `undefined`. Pass it along (`crew.run({ signal: ctx.signal })`) rather than polling it.
 
 `ctx.llm` — `complete(prompt)`, `chat(messages)`, `stream(prompt)` (async-iterable; `usage`
-and `reasoningChunks` are read after the loop), `extract(prompt, schema)`,
+and `reasoningChunks` are read after the loop, `reasoning` at once), `extract(prompt, schema)`,
 `decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, and `interrupt()` /
 `isInterrupted`. Every call goes to the agent's provider (the host's, or its profile's), or to the
 profile `{ llm: { profile } }` names; without one, a `<undefined-llm:…>` echo answers, which is what lets the examples run keyless. A call takes these
@@ -205,9 +205,13 @@ It also carries `reasoning`, and so do the results of `act` and `chat` and the o
 asked, sent, notice }`, the effort asked (by the call's `effort`, `agentBuilder().effort`, `.with({ effort })` or the
 host's `Llm:Thinking:Effort`), the effort sent (`null` when none goes out) and `notice`, `"lowered"`, `"dropped"`,
 `"unchecked"` (a model the table does not know) or `null` when it went as asked; `reasoning` is `null` when no effort
-is asked. `complete` and `extract` return the text or the object alone: read `reasoning` on the configuration of the
-call (`llm.default_.with({ effort: "medium" }).reasoning`). Both are `null` without a provider, and a fallback
-profile answers for its first link.
+is asked. Inside an agent, `ctx.llm` calls run on the agent's provider, model and effort, which no `LlmConfig` the
+script holds carries: `ctx.llm.reasoning(opts)` and `ctx.llm.capabilities(opts)` answer for the call those options
+name, judged as that call is (the options' `effort` and `llm: { profile, model }` included), and place no call; that
+is the report `complete` and `extract` cannot carry, since they return the text or the object alone. Both are `null`
+without a provider. They are judged before the call: a fallback profile answers for its first link and a decision
+profile for its target, so a call that fails over, or that a decision routes to another profile, may be judged
+otherwise.
 
 `chat` takes a bare message array or `{ messages: [...] }`. `extract(prompt, schema, opts)` takes
 the same forms as its first argument, the caller's turns sent in order, plus a prompt string; its

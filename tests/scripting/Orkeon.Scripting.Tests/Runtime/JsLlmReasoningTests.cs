@@ -108,6 +108,41 @@ public sealed class JsLlmReasoningTests : IDisposable
         Assert.Equal(ActThenChat, sent.Take(2));
     }
 
+    /// <summary>
+    /// <c>complete</c> and <c>extract</c> answer a string or a value, which carries no report: inside an agent,
+    /// <c>ctx.llm.reasoning(opts)</c> judges the call those options make, on the agent's provider, model and effort.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-360")]
+    public async Task ShouldJudgeTheCallTheOptionsMake_WhenTheScriptAsksTheAgentsLlm()
+    {
+        var shown = await RunBodyAsync(".effort(\"medium\")", $$"""
+            const before = ctx.llm.reasoning();
+            await ctx.llm.complete("hi");
+            const perCall = ctx.llm.reasoning({ effort: "max" });
+            const unknown = ctx.llm.reasoning({ llm: { model: "house-model-7" }, effort: "high" });
+            globalThis.out = [{{Show("before")}}, {{Show("perCall")}}, {{Show("unknown")}}].join(' / ');
+            """);
+
+        Assert.Equal("medium|low|lowered|glm-5.3 / max|max||glm-5.3 / high|high|unchecked|house-model-7", shown);
+        // The report read before the call names what the call sent.
+        var sent = JsonDocument.Parse(Assert.Single(_handler.Bodies)).RootElement.GetProperty("reasoning_effort").GetString();
+        Assert.Equal("low", sent);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-359")]
+    public async Task ShouldListTheLevelsOfTheCallsModel_WhenTheScriptAsksTheAgentsLlm()
+    {
+        var shown = await RunBodyAsync("", """
+            const own = ctx.llm.capabilities();
+            const other = ctx.llm.capabilities({ llm: { model: "house-model-7" } });
+            globalThis.out = [own.model, own.known, own.efforts.join(','), other.model, other.known].join('|');
+            """);
+
+        Assert.Equal("glm-5.3|true|low,high,max|house-model-7|false", shown);
+    }
+
     [Fact]
     [Trait("BR", "CH-360")]
     public async Task ShouldCarryNoReasoning_WhenNoEffortIsAsked()

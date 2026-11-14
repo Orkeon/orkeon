@@ -39,8 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `chat` and on the object `stream()` returns gives `{ model, asked, sent, notice }`, `sent` null when no effort
   went out and `notice` `lowered`, `dropped` or `unchecked`, whichever set the effort (the call, the agent, the
   configuration or `Llm:Thinking:Effort`). The C# side is `ILlmProvider.ReportEffort(config)` (`LlmEffortReport`,
-  `LlmEffortNotice`, `ORKEXP005`), judged as the call is and forwarded by every decorator. The typings name the
-  levels `EffortLevel`.
+  `LlmEffortNotice`, `ORKEXP005`), judged as the call is and forwarded by every decorator. Inside an agent,
+  `ctx.llm.reasoning(opts)` and `ctx.llm.capabilities(opts)` answer for the call those options name, on the agent's
+  provider, model and effort: the report `complete` and `extract` cannot carry. The typings name the levels
+  `EffortLevel`. Azure OpenAI's and Ollama's `GenerateStreamingAsync` now send the reasoning effort, the response
+  format and the system message as their buffered calls do, where they dropped them in silence.
 
 ### Changed — thinking and effort are judged against the model, on every provider **[breaking]** (#356)
 

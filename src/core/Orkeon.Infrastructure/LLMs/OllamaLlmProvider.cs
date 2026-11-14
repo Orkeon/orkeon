@@ -899,17 +899,13 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         // Do NOT use 'using' — factory-managed clients must not be disposed.
         var client = CreateHttpClient(effectiveConfig);
 
-        // Build payload with stream=true
-        var options = BuildOptions(effectiveConfig);
+        // The buffered builder's payload, streamed (#360): the system message, grammar, format and
+        // `think` go out as on every other path, so what ReportEffort says was sent is what this
+        // stream sends. A hand-built payload here dropped them in silence.
+        var payload = CreateRequestPayload(prompt, effectiveConfig);
+        payload["stream"] = true;
 
-        var payload = OllamaRequestPayload.CreateBuilder()
-            .AddModel(ResolveModel(effectiveConfig))
-            .AddPrompt(prompt)
-            .AddStream(true)
-            .AddOptions(options)
-            .Build();
-
-        var json = SerializeToJson(payload.ToDictionary());
+        var json = SerializeToJson(payload);
 
         // The call runs under Llm:TimeoutSeconds whole, and Llm:StreamIdleSeconds between two
         // lines (LLM-12); an elapsed bound or a stream cut before any text fails the sequence.

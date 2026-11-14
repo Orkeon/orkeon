@@ -427,9 +427,10 @@ tous les autres tags).
   `LlmEffortNotice` `Lowered`, `Dropped` ou `Unchecked` (un modèle que la table ne connaît pas), nul quand l'effort
   est parti tel que demandé. Il est nul quand aucun effort n'est demandé. Les deux valent nul par défaut sur
   l'interface ; `HttpLlmProviderBase` y répond, et chaque décorateur les transmet à son fournisseur interne. Une
-  chaîne de bascule répond pour son premier profil : un appel qui bascule est jugé par le maillon qui le sert. Le
-  DSL de script les lit comme `LlmConfig.capabilities` et le champ `reasoning` de `LlmConfig`, `ActResult`,
-  `ChatResponse` et `LlmStream` ([référence du DSL](../reference/scripting-dsl.md)).
+  chaîne de bascule répond pour son premier profil et un fournisseur de décision pour sa cible : un appel qui
+  bascule, ou qu'un verdict route vers un autre profil, est jugé par le fournisseur qui le sert. Le DSL de script
+  les lit comme `LlmConfig.capabilities`, `ctx.llm.capabilities(opts)`, `ctx.llm.reasoning(opts)` et le champ
+  `reasoning` de `LlmConfig`, `ActResult`, `ChatResponse` et `LlmStream` ([référence du DSL](../reference/scripting-dsl.md)).
 
 ## Providers d'embeddings
 

@@ -35,8 +35,9 @@ declare global {
         readonly capabilities: LlmCapabilities | null;
         /**
          * The effort a call on this configuration asks for and the one the provider sends — the host's
-         * `Llm:Thinking:Effort` included. `null` when no effort is asked or the provider cannot tell. The answer
-         * `extract` and `complete` cannot carry: read it on the configuration they are given.
+         * `Llm:Thinking:Effort` included. `null` when no effort is asked or the provider cannot tell. Inside an
+         * agent, `ctx.llm` calls run on the agent's provider, model and effort, which no configuration carries:
+         * read `ctx.llm.reasoning(opts)` there, the report `extract` and `complete` cannot carry.
          */
         readonly reasoning: LlmReasoning | null;
 
@@ -65,10 +66,15 @@ declare global {
          * The levels a call sees sent as asked, in order: the provider's, narrowed by the model's entry. Empty when the
          * model takes no effort or has no reasoning pass. Another level is lowered, or dropped (`LlmReasoning`).
          */
-        readonly efforts: EffortLevel[];
+        readonly efforts: readonly EffortLevel[];
     }
 
-    /** What the runtime does with the effort a call asks for: `reasoning` on `LlmConfig`, `ActResult`, `ChatResponse` and `LlmStream`. */
+    /**
+     * What the runtime does with the effort a call asks for: `reasoning` on `LlmConfig`, `ActResult`, `ChatResponse`
+     * and `LlmStream`, and `ctx.llm.reasoning(opts)`. Judged before the call: a fallback profile answers for its
+     * first link and a decision profile for its target, so a call that fails over, or that a decision routes to
+     * another profile, may be judged otherwise.
+     */
     interface LlmReasoning {
         /** The model the call goes to. */
         readonly model: string;

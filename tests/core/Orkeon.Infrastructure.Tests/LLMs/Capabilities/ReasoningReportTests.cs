@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs;
@@ -166,6 +167,42 @@ public class ReasoningReportTests
         Assert.NotNull(report);
         Assert.Null(report.Sent);
         Assert.Equal(LlmEffortNotice.Dropped, report.Notice);
+    }
+
+    /// <summary>
+    /// Azure's and Ollama's token streams built a payload of their own, which carried no effort: the report named an
+    /// effort the stream never sent, and no response format nor system message. They now stream the buffered builder's payload.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-360")]
+    [InlineData("azure", nameof(AzureOpenAILlmProvider), "o3-mini", "reasoning_effort", "response_format")]
+    [InlineData("ollama", nameof(OllamaLlmProvider), "house-model-7", "think", "format")]
+    public async Task ShouldStreamTheEffortTheReportNames_WhenTheProviderStreamsItsOwnWay(
+        string key, string clientName, string model, string field, string formatField)
+    {
+        var body = key == "ollama"
+            ? "{\"response\":\"ok\",\"done\":false}\n{\"response\":\"\",\"done\":true}\n"
+            : "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n";
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, body);
+        var http = new TestHttpClientFactory();
+        http.RegisterClient(clientName, new HttpClient(handler));
+        var config = Config(model, "high") with { SystemMessage = "You answer briefly.", ResponseFormat = LlmResponseFormat.JsonObject() };
+        var provider = Create(key, config, http);
+
+        var report = provider.ReportEffort(config);
+        await foreach (var _ in ((IStreamingLlmProvider)provider).GenerateStreamingAsync("hi", config, TestContext.Current.CancellationToken))
+        {
+            // Drained: the request is what is asserted.
+        }
+
+        Assert.NotNull(report);
+        Assert.Equal("high", report.Sent);
+        var raw = await Assert.Single(handler.CapturedRequests).Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var sent = JsonDocument.Parse(raw);
+        Assert.Equal(report.Sent, sent.RootElement.GetProperty(field).GetString());
+        Assert.True(sent.RootElement.GetProperty("stream").GetBoolean());
+        Assert.Contains("You answer briefly.", raw, StringComparison.Ordinal);
+        Assert.True(sent.RootElement.TryGetProperty(formatField, out _), $"the stream sent no `{formatField}`");
     }
 
     [Fact]

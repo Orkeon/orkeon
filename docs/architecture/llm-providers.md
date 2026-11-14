@@ -410,9 +410,10 @@ key: .NET configuration has no escape for the path separator `:`. Key its prefix
   asked, the effort sent (null when none goes out, Ollama's "off" included) and `LlmEffortNotice` `Lowered`,
   `Dropped` or `Unchecked` (a model the table does not know), null when the effort went as asked. It is null when no
   effort is asked. Both default to null on the interface; `HttpLlmProviderBase` answers them, and every decorator
-  forwards them to its inner provider. A fallback chain answers for its first profile: a call that fails over
-  is judged by the link that serves it. The scripting DSL reads them as `LlmConfig.capabilities` and the
-  `reasoning` field of `LlmConfig`, `ActResult`, `ChatResponse` and `LlmStream`
+  forwards them to its inner provider. A fallback chain answers for its first profile and a decision provider for
+  its target: a call that fails over, or that a verdict routes to another profile, is judged by the provider that
+  serves it. The scripting DSL reads them as `LlmConfig.capabilities`, `ctx.llm.capabilities(opts)`,
+  `ctx.llm.reasoning(opts)` and the `reasoning` field of `LlmConfig`, `ActResult`, `ChatResponse` and `LlmStream`
   ([DSL reference](../reference/scripting-dsl.md)).
 
 ## Embedding providers

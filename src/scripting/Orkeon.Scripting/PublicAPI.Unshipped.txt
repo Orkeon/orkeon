@@ -14,3 +14,5 @@ Orkeon.Scripting.Runtime.JsLlmReasoning.sent.get -> string?
 Orkeon.Scripting.Runtime.StreamObservations.reasoning.get -> Orkeon.Scripting.Runtime.JsLlmReasoning?
 Orkeon.Scripting.Testing.TestOverrideLlmProvider.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities?
 Orkeon.Scripting.Testing.TestOverrideLlmProvider.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
+Orkeon.Scripting.Runtime.JsLlmFacade.capabilities.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmCapabilities?>!
+Orkeon.Scripting.Runtime.JsLlmFacade.reasoning.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmReasoning?>!
