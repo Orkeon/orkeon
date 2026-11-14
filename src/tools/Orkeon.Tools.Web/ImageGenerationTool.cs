@@ -185,6 +185,10 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
     }
 
     /// <inheritdoc />
+    /// <remarks><c>save_to_path</c> is a virtual path the image is written to (#348).</remarks>
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     protected override string? ValidateTypedRequest(ImageGenerationRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

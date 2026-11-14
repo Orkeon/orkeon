@@ -53,12 +53,48 @@ internal static class JsEngineAttempts
         if (!Registries.TryGetValue(engine, out var registry)) return null;
         List<BrokerAttribution> open;
         lock (registry.Sync) open = [.. registry.Entries];
-        var roots = open.Select(entry => entry.RunScope?.Root).Distinct(StringComparer.Ordinal).ToList();
-        if (roots.All(root => root is null)) return null;
-        if (roots.Count == 1) return open[^1].RunScope;
+        // #349: a file-system scope holds the call as a root does, compared by what it grants.
+        var areas = open.Select(entry => (entry.RunScope?.Root, Scope: GrantKey(entry.RunScope?.FileSystem))).Distinct().ToList();
+        if (areas.All(area => area.Root is null && area.Scope is null)) return null;
+        if (areas.Count == 1) return open[^1].RunScope;
         throw new InvalidOperationException(
-            $"tools.{jsName} was called from code while agents with different working roots run: the call cannot be held to one of them. " +
+            $"tools.{jsName} was called from code while agents with different working roots run (or different file-system scopes): the call cannot be held to one of them. " +
             $"Call it as ctx.tools.{jsName}(...) from the agent's body.");
+    }
+
+    /// <summary>
+    /// #349: the file-system scope a run or a call started from code (<c>crew.run</c>, <c>crew.runAgent</c>
+    /// of any crew, <c>rag.ingest</c>) is held to: that of the open attempts, read as
+    /// <see cref="ScopeForCode"/> reads them. <c>null</c> when no open attempt has one; the innermost
+    /// attempt's when every open attempt has the same; otherwise the work cannot be held to one of them
+    /// and is refused rather than started under a neighbour's scope or none.
+    /// </summary>
+    /// <param name="engine">The engine whose open attempts are read.</param>
+    /// <param name="surface">The call, as the refusal names it.</param>
+    /// <param name="hint">What to do instead, as the refusal says it.</param>
+    internal static Orkeon.Domain.FileSystem.AgentFileSystemScope? FileSystemForCode(Engine engine, string surface, string hint)
+    {
+        if (!Registries.TryGetValue(engine, out var registry)) return null;
+        List<BrokerAttribution> open;
+        lock (registry.Sync) open = [.. registry.Entries];
+        var scopes = open.Select(entry => GrantKey(entry.RunScope?.FileSystem)).Distinct(StringComparer.Ordinal).ToList();
+        if (scopes.All(scope => scope is null)) return null;
+        if (scopes.Count == 1) return open[^1].RunScope?.FileSystem;
+        throw new InvalidOperationException(
+            $"{surface} was called from code while agents with different file-system scopes run: it cannot be held to one of them. {hint}");
+    }
+
+    /// <summary>
+    /// #349: what a file-system scope grants, as a comparison key: its entries and those of every scope
+    /// that bounds it, since two scopes that print alike grant different rights under different parents.
+    /// </summary>
+    private static string? GrantKey(Orkeon.Domain.FileSystem.AgentFileSystemScope? scope)
+    {
+        if (scope is null) return null;
+        var chain = new List<string>();
+        for (var s = scope; s is not null; s = s.Parent)
+            chain.Add(s.Describe());
+        return string.Join(" | ", chain);
     }
 
     /// <summary>

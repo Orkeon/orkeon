@@ -22,6 +22,8 @@ public sealed class AgentBuilder
     private int? _maxRpm;
     private bool _verbose;
     private string? _workingRoot;
+    private IReadOnlyList<FileSystem.FileSystemScopeEntry> _fileSystemScope = [];
+    private bool _announceMounts = true;
     private Security.PermissionMode? _permissionMode;
     private TimeSpan? _maxExecutionTime;
     private string? _systemTemplate;
@@ -229,6 +231,37 @@ public sealed class AgentBuilder
     }
 
     /// <summary>
+    /// Declares the agent's file-system scope (#349): the only virtual paths its tools may touch. Each entry
+    /// selects a path and may narrow the mount's rights there, never extend them; the entries are checked
+    /// against the mounts when the run starts. Replaces any scope declared before.
+    /// </summary>
+    /// <param name="entries">The entries; at least one.</param>
+    public AgentBuilder FileSystem(params FileSystem.FileSystemScopeEntry[] entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        if (entries.Length == 0)
+            throw new ArgumentException("A file-system scope declares at least one entry.", nameof(entries));
+        foreach (var entry in entries)
+        {
+            ArgumentNullException.ThrowIfNull(entry, nameof(entries));
+            ArgumentException.ThrowIfNullOrWhiteSpace(entry.Path, nameof(entries));
+        }
+        _fileSystemScope = [.. entries];
+        return this;
+    }
+
+    /// <summary>
+    /// Whether the agent's system prompt names the virtual paths it may touch (#348); on by default. Turn it
+    /// off for a prompt that must stay byte-stable or already describes the layout.
+    /// </summary>
+    /// <param name="announce"><see langword="false"/> leaves the file-system section out of the prompt.</param>
+    public AgentBuilder AnnounceMounts(bool announce)
+    {
+        _announceMounts = announce;
+        return this;
+    }
+
+    /// <summary>
     /// Attaches a knowledge (RAG) collection to the agent with default retrieval options.
     /// Cumulative: call once per collection to attach several collections.
     /// </summary>
@@ -407,6 +440,8 @@ public sealed class AgentBuilder
             KnowledgeAttachments = _knowledgeAttachments
         });
         agent.WorkingRoot = _workingRoot;
+        agent.FileSystemScope = _fileSystemScope;
+        agent.AnnounceMounts = _announceMounts;
         agent.PermissionMode = _permissionMode;
         return agent;
     }

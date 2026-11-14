@@ -86,6 +86,18 @@ public sealed class Agent : AggregateRoot<AgentId>
     public string? WorkingRoot { get; internal set; }
 
     /// <summary>
+    /// The file-system scope the agent declares (<c>filesystem:</c>, #349): the only virtual paths its tools
+    /// may touch, each narrowing the mount's rights. Empty when it declares none and the mounts alone decide.
+    /// </summary>
+    public IReadOnlyList<FileSystem.FileSystemScopeEntry> FileSystemScope { get; internal set; } = [];
+
+    /// <summary>
+    /// Whether the agent's system prompt names the virtual paths it may touch (<c>announceMounts:</c>, #348);
+    /// <see langword="true"/> unless the agent or its crew turns it off.
+    /// </summary>
+    public bool AnnounceMounts { get; internal set; } = true;
+
+    /// <summary>
     /// Gets the system template for prompts.
     /// </summary>
     public string? SystemTemplate { get; private set; }

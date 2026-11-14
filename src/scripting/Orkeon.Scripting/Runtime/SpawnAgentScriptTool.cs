@@ -90,7 +90,8 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
         var stop = CancellationTokenSource.CreateLinkedTokenSource(signal);
         var inheritedRoot = _environment.WorkingRoot;
         var floor = spawnerMode ?? _environment.PermissionFloor;
-        var instanceId = instances.Register(agent, childBudget, stop, inheritedRoot, floor);
+        var inheritedFileSystem = _environment.FileSystem;
+        var instanceId = instances.Register(agent, childBudget, stop, inheritedRoot, floor, inheritedFileSystem);
         ReportSpawn(agent);
         var options = new Jint.Native.JsObject(engine);
         options.Set("signal", JsValue.FromObject(engine, stop.Token));
@@ -98,9 +99,10 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
         options.Set("instance", JsValue.FromObject(engine, new AgentInstanceRun(instances, instanceId, [])));
         if (inheritPermit && _environment.Permit is { } permit)
             options.Set("permit", JsValue.FromObject(engine, permit));
-        // RT-06: a child without a working root of its own runs under its parent's.
-        if (inheritedRoot is { } root)
-            options.Set("root", JsValue.FromObject(engine, new InheritedWorkingRoot(root)));
+        // RT-06: a child without a working root of its own runs under its parent's; #349: its
+        // file-system scope can only narrow its parent's. Always handed, even empty: the child runs
+        // under what its parent had, never under a neighbour's read off the open attempts.
+        options.Set("root", JsValue.FromObject(engine, new InheritedWorkingRoot(inheritedRoot, inheritedFileSystem)));
         if (floor is not null)
             options.Set("permissionFloor", floor);
         JsValue promise;

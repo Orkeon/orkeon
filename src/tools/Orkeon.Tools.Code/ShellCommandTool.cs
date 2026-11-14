@@ -187,6 +187,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Execute;
 
+    /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
     /// <summary>
     /// How the process is confined: <see cref="ShellConfinementMode.Auto"/> (default) picks the backend
     /// of the platform, none inside a container; <see cref="ShellConfinementMode.None"/> runs it on the
@@ -598,16 +601,29 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return "start_job needs a running agent run";
         if (registry.IsFull)
             return $"{ShellJobRegistry.MaxLiveJobs} jobs are already running: wait for one to exit";
-        return JobDirectory() is null ? "start_job needs a writable mount for the job log, and none is available" : null;
+        return JobDirectory() is null ? NoJobDirectory() : null;
     }
 
-    /// <summary>The virtual directory of the job logs: <c>/output/jobs</c> when /output is writable, else under the first writable mount.</summary>
+    /// <summary>Why no job log can be written: no writable mount, or, under a file-system scope (#349), no place it lets the agent write.</summary>
+    private static string NoJobDirectory() => AgentRunScope.Current?.FileSystem is { } scope
+        ? $"start_job needs a place the agent's file-system scope lets it write for the job log, and it grants none. Its scope: {scope.Describe()}."
+        : "start_job needs a writable mount for the job log, and none is available";
+
+    /// <summary>
+    /// The virtual directory of the job logs: <c>/output/jobs</c> when /output is writable, else <c>jobs</c>
+    /// under the first writable mount. Under a file-system scope (#349) the places are the scope's entries,
+    /// and a directory the scope does not let the agent write is never chosen.
+    /// </summary>
     private string? JobDirectory()
     {
-        var mount = _fileSystem.ResolveAndValidate("/output", FileAccessRights.Write).IsAllowed
-            ? "/output"
-            : _fileSystem.GetAvailableMounts().FirstOrDefault(m => m.DefaultRights.HasFlag(FileAccessRights.Write))?.VirtualPath;
-        return mount is null ? null : mount.TrimEnd('/') + "/jobs";
+        var scope = AgentRunScope.Current?.FileSystem;
+        var mounts = _fileSystem.GetAvailableMounts();
+        var places = scope is null ? mounts : scope.Narrow(mounts);
+        return places.Where(m => m.DefaultRights.HasFlag(FileAccessRights.Write)).Select(m => m.VirtualPath)
+            .Prepend("/output")
+            .Select(place => place.TrimEnd('/') + "/jobs")
+            .FirstOrDefault(directory => (scope?.Allows(directory, FileAccessRights.Write) ?? true)
+                && _fileSystem.ResolveAndValidate(directory, FileAccessRights.Write).IsAllowed);
     }
 
     /// <inheritdoc />
@@ -690,7 +706,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         IShellSandbox sandbox, ShellSessionView view, ShellInvocation invocation, CancellationToken cancellationToken)
     {
         var registry = ShellJobRegistry.Current() ?? throw new InvalidOperationException("start_job needs a running agent run");
-        var directory = JobDirectory() ?? throw new InvalidOperationException("start_job needs a writable mount for the job log, and none is available");
+        var directory = JobDirectory() ?? throw new InvalidOperationException(NoJobDirectory());
         var id = Guid.NewGuid().ToString("N")[..12];
         var outputPath = $"{directory}/{id}.log";
 
@@ -916,6 +932,24 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // A declared agent root narrows the mount that holds it to the root, at its physical path,
         // never the whole mount (RT-06); the other mounts stay bound as they are.
         var heldRoot = agentRoot is not null && MatchesMountPrefix(agentRoot, virtualRoot) ? agentRoot : null;
+
+        // A file-system scope (#349) binds its entries alone, each with the rights in force there: a
+        // mount no entry selects is not bound at all, so the process cannot reach what the tools refuse.
+        if (AgentRunScope.EnforcedFileSystem is { } scope)
+        {
+            foreach (var area in ScopedAreas(scope, virtualRoot, heldRoot))
+            {
+                if (paths.Exists(p => string.Equals(p.Destination, area, StringComparison.Ordinal)))
+                    continue;
+                var areaAccess = AddAgentRootPath(paths, area);
+                AddOverridePaths(paths, mount.Overrides, root.ResolvedPath, virtualRoot, area, RightsAt);
+                if (areaAccess is { } held && heldRoot is not null && string.Equals(area, heldRoot, StringComparison.Ordinal))
+                    await AddGitWorktreePathsAsync(paths, mount.Overrides, heldRoot, virtualRoot, root.ResolvedPath, held, cancellationToken)
+                        .ConfigureAwait(false);
+            }
+            return;
+        }
+
         if (heldRoot is null)
         {
             if (Granted(mount.DefaultRights) is { } access)
@@ -971,9 +1005,33 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         return rootAccess;
     }
 
+    /// <summary>
+    /// The areas of the mount at <paramref name="virtualRoot"/> a file-system scope binds: its entries on
+    /// that mount, parents first so a narrower entry is bound over a wider one; clipped to the agent root
+    /// the mount holds, when it holds one (an entry inside the root, or the root inside an entry).
+    /// </summary>
+    private static IEnumerable<string> ScopedAreas(AgentFileSystemScope scope, string virtualRoot, string? heldRoot)
+    {
+        var areas = scope.Entries.Select(e => e.Path).Where(p => MatchesMountPrefix(p, virtualRoot));
+        if (heldRoot is not null)
+            areas = areas.Select(p => MatchesMountPrefix(p, heldRoot) ? p : MatchesMountPrefix(heldRoot, p) ? heldRoot : null)
+                .OfType<string>();
+        return areas.Distinct(StringComparer.Ordinal).OrderBy(p => p.Length);
+    }
+
     /// <summary>Adds the sub-path overrides of a mount that lie under <paramref name="area"/>, at their virtual path.</summary>
+    /// <param name="paths">The paths the sandbox binds, appended to.</param>
+    /// <param name="overrides">The mount's sub-path overrides.</param>
+    /// <param name="physicalRoot">The mount's physical root.</param>
+    /// <param name="virtualRoot">The mount's virtual root.</param>
+    /// <param name="area">The virtual area bound: the mount root, the agent root or a scope entry.</param>
+    /// <param name="rightsAt">
+    /// The rights to bind an override with, by virtual path; <see langword="null"/> takes the override's own.
+    /// A file-system scope passes the rights the file system resolves there, the scope's narrowing included.
+    /// </param>
     private static void AddOverridePaths(
-        List<ConfinedPath> paths, IReadOnlyList<SubPathOverride> overrides, string physicalRoot, string virtualRoot, string area)
+        List<ConfinedPath> paths, IReadOnlyList<SubPathOverride> overrides, string physicalRoot, string virtualRoot, string area,
+        Func<string, FileAccessRights>? rightsAt = null)
     {
         foreach (var subPath in overrides)
         {
@@ -986,7 +1044,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 continue;
 
             var source = Path.Combine(physicalRoot, relative);
-            var granted = Granted(subPath.Rights) ?? BubblewrapProbe.HiddenKindOf(source);
+            var granted = Granted(rightsAt is null ? subPath.Rights : rightsAt(virtualPath)) ?? BubblewrapProbe.HiddenKindOf(source);
             if (granted is { } subAccess)
                 paths.Add(new ConfinedPath(source, virtualPath, subAccess));
         }

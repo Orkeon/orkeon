@@ -3,6 +3,7 @@ using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Responses;
 using Orkeon.Analysis.Abstractions.Models;
+using Orkeon.Domain.Execution;
 
 namespace Orkeon.Analysis.Core;
 
@@ -18,9 +19,8 @@ public sealed partial class InMemoryRaggableStore
         ArgumentException.ThrowIfNullOrEmpty(fqn);
         return Task.FromResult(ReadLocked<RaggableNode?>(() =>
         {
-            if (_nodesByFqn.TryGetValue(fqn, out var node)) return node;
-            if (_nodesById.TryGetValue(fqn, out var byId)) return byId;
-            return null;
+            var node = Resolve(fqn);
+            return Hidden(node) ? null : node;
         }));
     }
 
@@ -42,7 +42,7 @@ public sealed partial class InMemoryRaggableStore
             if (tail.SequenceEqual(localName)) matches.Add(node);
         }
 
-        return Task.FromResult<IReadOnlyList<RaggableNode>>(matches);
+        return Task.FromResult(Visible(matches));
     }
 
     public Task<IReadOnlyList<RaggableNode>> GetManyAsync(IEnumerable<string> fqns, CancellationToken ct)
@@ -57,7 +57,7 @@ public sealed partial class InMemoryRaggableStore
                 if (_nodesByFqn.TryGetValue(fqn, out var n)) result.Add(n);
                 else if (_nodesById.TryGetValue(fqn, out var byId)) result.Add(byId);
             }
-            return result;
+            return Visible(result);
         }));
     }
 
@@ -74,6 +74,7 @@ public sealed partial class InMemoryRaggableStore
     private (List<RaggableNode> Nodes, bool Clamped) QueryLocked(NodeQuery query)
     {
         IEnumerable<RaggableNode> q = _nodesById.Values;
+        if (AgentRunScope.EnforcedFileSystem is not null) q = q.Where(n => !Hidden(n));
 
         if (query.Level is { } level) q = q.Where(n => n.Level == level);
         if (query.Kinds is { Length: > 0 } kinds) q = q.Where(n => kinds.Contains(n.EffectiveKind));
@@ -182,12 +183,12 @@ public sealed partial class InMemoryRaggableStore
         return Task.FromResult(ReadLocked<IReadOnlyList<RaggableNode>>(() =>
         {
             var parent = Resolve(parentId);
-            if (parent is null) return [];
-            return parent.ChildrenIds
+            if (parent is null || Hidden(parent)) return [];
+            return Visible(parent.ChildrenIds
                 .Select(id => _nodesById.TryGetValue(id, out var c) ? c : null)
                 .Where(c => c is not null)
                 .Select(c => c!)
-                .ToList();
+                .ToList());
         }));
     }
 
@@ -196,8 +197,9 @@ public sealed partial class InMemoryRaggableStore
         ArgumentException.ThrowIfNullOrEmpty(parentSymbolId);
         return Task.FromResult(ReadLocked<IReadOnlyList<StatementNode>>(() =>
         {
-            if (_statementsByParent.TryGetValue(parentSymbolId, out var stmts)) return stmts;
             var node = Resolve(parentSymbolId);
+            if (Hidden(node)) return [];
+            if (_statementsByParent.TryGetValue(parentSymbolId, out var stmts)) return stmts;
             if (node is not null && node.Statements.Count > 0) return Flatten(node.Statements);
             return [];
         }));
@@ -212,14 +214,16 @@ public sealed partial class InMemoryRaggableStore
             {
                 if (node.Level != NodeLevel.L2_Module) continue;
                 if (!string.Equals(node.VirtualFilePath, filePath, StringComparison.Ordinal)) continue;
-                return node;
+                return Hidden(node) ? null : node;
             }
             return null;
         }));
     }
 
     public Task<int> GetNodeCountAsync(CancellationToken ct)
-        => Task.FromResult(ReadLocked(() => _nodesById.Count));
+        => Task.FromResult(ReadLocked(() => AgentRunScope.EnforcedFileSystem is null
+            ? _nodesById.Count
+            : _nodesById.Values.Count(n => !Hidden(n))));
 
     public Task<IReadOnlyList<RaggableEdge>> GetEdgesAsync(string fqn, EdgeKind kinds, Direction dir, CancellationToken ct)
     {
@@ -227,7 +231,7 @@ public sealed partial class InMemoryRaggableStore
         return Task.FromResult(ReadLocked<IReadOnlyList<RaggableEdge>>(() =>
         {
             var node = Resolve(fqn);
-            if (node is null) return [];
+            if (node is null || Hidden(node)) return [];
 
             var edges = new List<RaggableEdge>();
             if (dir is Direction.Forward or Direction.Both
@@ -240,7 +244,7 @@ public sealed partial class InMemoryRaggableStore
             {
                 edges.AddRange(inList.Where(e => kinds == EdgeKind.None || kinds.HasFlag(e.Kind)));
             }
-            return edges;
+            return Visible(edges);
         }));
     }
 
@@ -290,6 +294,7 @@ public sealed partial class InMemoryRaggableStore
     {
         var from = Resolve(edge.FromId);
         var to = Resolve(edge.ToId);
+        if (Hidden(from) || Hidden(to)) return null;
         var fromFqn = from is { Fqn.Length: > 0 } ? from.Fqn : edge.FromId;
         var toFqn = to is { Fqn.Length: > 0 } ? to.Fqn : edge.ToId;
         if (scope is not null && !scope.Contains(from, fromFqn) && !scope.Contains(to, toFqn)) return null;
@@ -338,16 +343,16 @@ public sealed partial class InMemoryRaggableStore
     }
 
     public Task<SubGraph> ExpandAsync(ExpandQuery query, CancellationToken ct)
-        => Task.FromResult(ReadLocked(() => _graph.Expand(query, ct)));
+        => Task.FromResult(ReadLocked(() => Visible(_graph.Expand(query, ct))));
 
     public Task<IReadOnlyList<CallPath>> FindAllPathsAsync(PathQuery query, CancellationToken ct)
-        => Task.FromResult(ReadLocked(() => _graph.FindAllPaths(query, ct)));
+        => Task.FromResult(ReadLocked(() => Visible(_graph.FindAllPaths(query, ct))));
 
     public Task<CallPath?> ShortestPathAsync(ShortestPathQuery query, CancellationToken ct)
-        => Task.FromResult(ReadLocked(() => _graph.ShortestPath(query, ct)));
+        => Task.FromResult(ReadLocked<CallPath?>(() => _graph.ShortestPath(query, ct) is { } path && !AnyHidden(path.Fqns) ? path : null));
 
     public Task<IReadOnlyList<Cycle>> FindCyclesAsync(CycleQuery query, CancellationToken ct)
-        => Task.FromResult(ReadLocked(() => _graph.FindCycles(query, ct)));
+        => Task.FromResult(ReadLocked(() => Visible(_graph.FindCycles(query, ct))));
 
     public Task<SemanticSearchResult> SemanticSearchAsync(SemanticQuery query, CancellationToken ct)
     {
@@ -405,6 +410,8 @@ public sealed partial class InMemoryRaggableStore
         var lexicalRanking = query.Mode == SearchMode.Vector
             ? (IReadOnlyList<(string Id, double Score)>)[]
             : FilterAllowed(_bm25.Search(query.Text, MaxTopK), allowed);
+        if (AgentRunScope.EnforcedFileSystem is not null)
+            lexicalRanking = [.. lexicalRanking.Where(x => !HiddenKey(x.Id))];
 
         // Single-source modes (or one half empty) skip the fusion — the raw score keeps
         // its native scale and the origin says which one.
@@ -442,6 +449,7 @@ public sealed partial class InMemoryRaggableStore
         {
             if (node.Embedding is null) continue;
             if (allowed is not null && !allowed.Contains(node.Id)) continue;
+            if (Hidden(node)) continue;
             var score = Cosine(queryVec.Span, node.Embedding.Value.Span);
             if (score < minScore) continue;
             scored.Add((node.Id, score));
@@ -473,15 +481,15 @@ public sealed partial class InMemoryRaggableStore
     {
         ArgumentException.ThrowIfNullOrEmpty(fqn);
         var node = Resolve(fqn);
-        if (node is null) return null;
+        if (node is null || Hidden(node)) return null;
         return await _sourceReader.ReadAsync(node, mode, ct).ConfigureAwait(false);
     }
 
     public Task<IReadOnlyList<ComplexityEntry>> TopComplexityAsync(ComplexityQuery query, CancellationToken ct)
-        => Task.FromResult(_analytics.TopComplexity(query));
+        => Task.FromResult(Visible(_analytics.TopComplexity(query)));
 
     public Task<IReadOnlyList<CentralityEntry>> TopCentralityAsync(CentralityQuery query, CancellationToken ct)
-        => Task.FromResult(_analytics.TopCentrality(query));
+        => Task.FromResult(Visible(_analytics.TopCentrality(query)));
 
     public IReadOnlyList<IndexedRoot> GetIndexedRoots()
         => _analytics.GetIndexedRoots();

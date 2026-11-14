@@ -218,6 +218,25 @@ public sealed class WebToolAccessTests
         Assert.Equal(ToolAccess.Execute, tool.AccessFor(Args("action", null)));
     }
 
+    [Fact]
+    [Trait("BR", "#348")]
+    public void FirefoxShouldDeclareItUsesTheFileSystem_WhenItsScreenshotTakesAVirtualPath()
+    {
+        using var firefox = new FirefoxTool(new FirefoxToolOptions(), new FakeFileSystemService());
+
+        Assert.True(((IBaseTool)firefox).UsesFileSystem);
+    }
+
+    [Fact]
+    [Trait("BR", "#348")]
+    public void ImageGenerationShouldDeclareItUsesTheFileSystem_WhenItSavesToAVirtualPath()
+    {
+        using var http = new HttpClient();
+        using var image = new ImageGenerationTool(new FakeFileSystemService(), MockSecretProvider.WithOpenAiKey(), http);
+
+        Assert.True(((IBaseTool)image).UsesFileSystem);
+    }
+
     private static Dictionary<string, object?> Args(string name, string? value) => new() { [name] = value };
 
     private static Dictionary<string, object?> JsonArgs(string name, string value) =>

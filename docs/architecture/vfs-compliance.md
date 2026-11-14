@@ -201,6 +201,84 @@ own runs under its parent's, and so does each later `crew.send` to that instance
 
 Absent, nothing changes: the mounts alone confine the agent.
 
+## Agent file-system scope
+
+An agent may also declare a `filesystem:` list (YAML; `AgentBuilder.FileSystem(...)` in C#;
+`.filesystem([...])` on a script agent of `.ork.ts`): the only virtual paths its tools may touch. An entry
+is a path, or `{path, access}` with `access` one of `ro`, `rw`, `rwnd`:
+
+```yaml
+agents:
+  writer:
+    filesystem:
+      - /workspace/docs                 # the mount's own rights there
+      - path: /output/report
+        access: rwnd                    # narrowed to read-write, no delete
+```
+
+- The rights come from the mount: an entry selects and narrows (an intersection), never extends. An entry
+  under no mount, or an `access` the mount does not grant there (its sub-path overrides included), refuses
+  the run at start with an error naming the agent and the entry; so do a relative path, a `..`, an
+  entry declared twice and an entry whose access grants no right. An empty list is refused at load.
+- A declared scope is exhaustive: during the agent's tool calls, the file system refuses every path outside
+  it on every mount, in its usual denial shape (`Access denied for '<virtual path>'`), naming the agent and
+  its scope and no other mount. The check sits in `FileSystemService.ResolveAndValidate`, before the
+  mounts', so every tool that goes through the VFS is held: the file tools, `list_mounts` (which lists the
+  scope's entries with the rights in force there), `glob`/`grep`, the search, PDF and RAG tools, the e-mail
+  and drive attachments. A path the scope grants but a mount refuses is denied in the same shape, naming
+  the scope, never the run's other mounts. `shell_command` binds the scope's entries alone in its sandbox,
+  each with the rights in force there.
+- A checked path is read as the host reads it, and when that reading is ambiguous the scope grants only
+  what every reading grants. Off Windows a backslash is part of a name (`/output/notes\x.md` is the file
+  `notes\x.md` of `/output`), save right after a mount root, where the registry takes it as a separator.
+  The most specific entry is also sought without case and without trailing dots or spaces in a segment,
+  so a case-insensitive host (`/output/REPORT`, or `/output/report.` on Windows) never gets more than that
+  entry grants. The scope may so refuse a path a case-sensitive host would allow, never the reverse.
+- A listing under a scope (`directory_read`, `glob`, `grep`, any enumeration of the VFS) gives only the
+  entries a read would allow, each checked against the scope and the mount's sub-path overrides. A
+  recursive delete is refused before anything is removed when an entry below the directory withholds
+  `Delete` (`/output` rw, `/output/report` ro).
+- The semantic-graph tools read an index another run may have filled: during a scoped call they leave
+  out every node whose file the scope does not let the agent read, and whatever names one (an edge, a
+  call path, a cycle, a search hit, a complexity or centrality entry, a symbol's source, cached or not). A
+  monorepo or package node (a directory) stays visible on the way to an entry of the scope; a node without
+  a virtual path (an external symbol, a node of a Firefox page outline) is kept. `rag_ingest` judges every
+  source that is not a web address, whatever its spelling (relative, backslashed, Windows-rooted).
+  `start_job` writes its job log under `jobs/` of a place the scope lets the agent write (`/output/jobs`
+  first), else is refused with the scope named.
+- Only the agent's tool calls are held. The framework's own I/O during the run (memory, knowledge,
+  output files, manifests) is not the agent's and keeps the mounts' rights.
+- A child started from a scoped agent's tool call (`spawn_agent`, a delegated task, `ctx.spawnBackground`,
+  a later `crew.send` to that instance) runs under its parent's scope; its own `filesystem:` can only
+  narrow it, and an entry outside the parent's scope or above its rights refuses the child's run. A child
+  that declares none holds its parent's rights under its own agent name, which its denials and its prompt
+  name.
+- In `.ork.ts`, `ctx.delegate` hands the caller's scope down as `delegate_work_to_coworker` does (the delegated
+  agent's working root stays its own). A run the script starts itself while agents run (`crew.run`,
+  `crew.runAgent`, `crew.runStream`, a sub-crew's) takes the open attempts' scope, and is refused when
+  their scopes differ; `tools.*` from code is held the same way. Scopes are compared by what they grant,
+  the parent chain included. An agent's `onAgentStart`/`onAgentStop` hooks run their tools under the
+  agent's working root and scope, a crew hook under the first agent's; a lifecycle hook whose agent scope
+  the mounts refuse is not run, and a warning says why. `rag.ingest` called from a scoped body expands its
+  globs under the scope and refuses a source outside it.
+- With a `working_root`, the root must lie inside the scope (else the run is refused): the scope says
+  what the agent may touch, the root where it works by default and where relative paths resolve. Set both
+  to give a scoped agent a default directory.
+
+Absent, nothing changes: the mounts (and the `working_root`, if any) alone confine the agent.
+
+### The file system in the prompt
+
+An agent with a file-system tool (`IBaseTool.UsesFileSystem`: the file, search, RAG, attachment tools,
+`email_parser`, `image_generation`, `firefox`, `index_codebase`, `incremental_reindex`, `list_mounts`,
+`shell_command`) gets a `## File system` section in its system prompt: its scope's entries, else the
+run's agent-facing mounts (internal ones never), each with its rights and sub-path overrides, sorted by
+virtual path so the prompt is the same from run to run; then its working root, or the directory relative
+paths resolve against (said to lie outside the scope when it does, so that the agent writes every path
+in full). `announce_mounts: false` turns it off, for one agent or, at crew level, for
+every agent that does not set its own (`AgentBuilder.AnnounceMounts(false)`, `.announceMounts(false)`). A
+script agent's `ctx.llm.act` prompt is the script's own and carries no such section.
+
 ## Internal roots and privileged access
 
 A runner mounts a few roots for itself as **internal** mounts (`Orkeon:FileSystem:InternalMounts`,

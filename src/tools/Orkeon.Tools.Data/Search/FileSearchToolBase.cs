@@ -66,6 +66,9 @@ public abstract partial class FileSearchToolBase<TRequest> : ToolBase<TRequest, 
     }
 
     /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     protected override string? ValidateTypedRequest(TRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

@@ -32,6 +32,9 @@ internal sealed class DriveDownloadTool : ToolBase<DriveDownloadRequest, DriveDo
     public override ToolAccess Access => ToolAccess.Edit;
 
     /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     protected override string? ValidateTypedRequest(DriveDownloadRequest request)
     {
         if (string.IsNullOrWhiteSpace(request?.Id))

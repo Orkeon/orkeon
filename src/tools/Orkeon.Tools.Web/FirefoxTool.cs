@@ -357,6 +357,10 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     /// </summary>
     public override ToolAccess Access => ToolAccess.Execute;
 
+    /// <inheritdoc />
+    /// <remarks>The screenshot's <c>save_to_path</c> is a virtual path (#348).</remarks>
+    public override bool UsesFileSystem => true;
+
     /// <summary>
     /// <see cref="ToolAccess.Read"/> for <c>navigate</c>, <c>back</c>, <c>snapshot</c>, <c>read</c>,
     /// <c>find</c>, <c>search</c>, <c>tabs</c>, <c>new_tab</c> and <c>switch_tab</c>; <see cref="ToolAccess.Edit"/>

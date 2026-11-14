@@ -148,6 +148,9 @@ internal sealed class CrewRunScope : IDisposable
     /// <summary>The working root of the agent that started this run (a spawned child): an agent without its own runs under it (RT-06).</summary>
     internal string? InheritedRoot { get; set; }
 
+    /// <summary>The file-system scope of the agent that started this run (a spawned child): the child's own can only narrow it (#349).</summary>
+    internal Orkeon.Domain.FileSystem.AgentFileSystemScope? InheritedFileSystem { get; set; }
+
     /// <summary>SEC-7: the mode of the act that spawned this run; its acts are held to the stricter of theirs and this one.</summary>
     internal string? PermissionFloor { get; set; }
 
@@ -297,7 +300,8 @@ internal sealed class CrewRunScope : IDisposable
         // RT-06: a working root under no mount never starts the attempt — thrown before the body's
         // try, so onError is not consulted and nothing retries it.
         var root = _crew.ResolveWorkingRoot(agent, InheritedRoot);
-        var ctx = new JsAgentContext(_crew.CreateEnvironment(agent, Budget, Token, Permit, Instance, root, PermissionFloor), initialState);
+        var fileSystem = _crew.ResolveFileSystem(agent, InheritedFileSystem, root);
+        var ctx = new JsAgentContext(_crew.CreateEnvironment(agent, Budget, Token, Permit, Instance, root, PermissionFloor, fileSystem), initialState);
         try
         {
             var attribution = _crew.BeginBrokerScope(agent, this);
@@ -526,10 +530,10 @@ internal sealed class BrokerAttribution(string agentId, CrewRunScope scope)
 }
 
 /// <summary>
-/// The working root a parent hands its spawned child through the run options (RT-06): a CLR object, so a
-/// script's own <c>crew.run({ root })</c> cannot pass one.
+/// The working root (RT-06) and file-system scope (#349) a parent hands its spawned child through the run
+/// options: a CLR object, so a script's own <c>crew.run({ root })</c> cannot pass one.
 /// </summary>
-internal sealed record InheritedWorkingRoot(string Root);
+internal sealed record InheritedWorkingRoot(string? Root, Orkeon.Domain.FileSystem.AgentFileSystemScope? FileSystem = null);
 
 /// <summary>
 /// The budget of the context a <c>ctx.delegate</c> is called from, which <c>charge: "crew"</c> charges

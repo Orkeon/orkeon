@@ -85,6 +85,10 @@ public sealed class JsAgentBuilder
     internal bool VerboseFlag { get; private set; }
     /// <summary>The <c>.workingRoot(path)</c> received — YAML parity <c>working_root:</c> (RT-06); null leaves the run unrooted.</summary>
     internal string? WorkingRootValue { get; private set; }
+    /// <summary>The <c>.filesystem([...])</c> received — YAML parity <c>filesystem:</c> (#349); empty leaves the agent the run's mounts.</summary>
+    internal IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemScopeEntry> FileSystemValue { get; private set; } = [];
+    /// <summary>The <c>.announceMounts(value)</c> received — YAML parity <c>announce_mounts:</c> (#348).</summary>
+    internal bool AnnounceMountsValue { get; private set; } = true;
     internal int ConcurrencyValue { get; private set; } = 1;
     internal JsValue? StateFactory { get; private set; }
     internal JsValue? BodyFunction { get; private set; }
@@ -274,6 +278,62 @@ public sealed class JsAgentBuilder
         WorkingRootValue = path;
         return this;
     }
+
+    /// <summary>
+    /// YAML parity <c>filesystem:</c> (#349): the only virtual paths the agent's tools may touch, each a
+    /// path string or <c>{ path, access }</c> with <c>access</c> one of <c>ro</c>, <c>rw</c>, <c>rwnd</c>. An
+    /// entry narrows the mount that holds it, never widens it; a path under no mount, or an access the
+    /// mount does not grant, refuses the agent's run when it starts. Left out, the run's mounts apply.
+    /// </summary>
+    public JsAgentBuilder filesystem(JsValue entries)
+    {
+        if (entries is not JsArray array || array.Length == 0)
+            throw new InvalidScriptException(".filesystem([...]) requires a non-empty array of paths or { path, access } objects.");
+        var parsed = new List<Orkeon.Domain.FileSystem.FileSystemScopeEntry>();
+        foreach (var item in array)
+            parsed.Add(FileSystemEntry(item));
+        FileSystemValue = parsed;
+        return this;
+    }
+
+    private static Orkeon.Domain.FileSystem.FileSystemScopeEntry FileSystemEntry(JsValue item)
+    {
+        if (item.IsString())
+            return string.IsNullOrWhiteSpace(item.AsString())
+                ? throw new InvalidScriptException(".filesystem([...]): a path must not be empty.")
+                : new(item.AsString());
+        if (!item.IsObject() || item.IsArray())
+            throw new InvalidScriptException($".filesystem([...]): an entry is a path or {{ path, access }}; got {item}.");
+        var entry = item.AsObject();
+        foreach (var key in entry.GetOwnPropertyKeys())
+        {
+            var name = key.ToString();
+            if (name is not ("path" or "access"))
+                throw new InvalidScriptException($".filesystem([...]): unknown key '{name}'. Valid keys: path, access.");
+        }
+        var path = entry.Get("path");
+        if (!path.IsString() || string.IsNullOrWhiteSpace(path.AsString()))
+            throw new InvalidScriptException(".filesystem([...]): an entry needs a non-empty path.");
+        var access = entry.Get("access");
+        if (access.IsUndefined() || access.IsNull())
+            return new(path.AsString());
+        if (!access.IsString())
+            throw new InvalidScriptException($".filesystem([...]): access of '{path.AsString()}' must be ro, rw or rwnd.");
+        try
+        {
+            return new(path.AsString(), Orkeon.Domain.FileSystem.FileSystemScopeEntry.ParseAccess(access.AsString()));
+        }
+        catch (FormatException ex)
+        {
+            throw new InvalidScriptException($".filesystem([...]): '{path.AsString()}': {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// YAML parity <c>announce_mounts:</c> (#348): whether the declarative turns of this agent list its
+    /// virtual paths in the system prompt. On by default.
+    /// </summary>
+    public JsAgentBuilder announceMounts(bool value) { AnnounceMountsValue = value; return this; }
     public JsAgentBuilder withState(JsValue factoryOrSeed) { StateFactory = factoryOrSeed; return this; }
     public JsAgentBuilder concurrency(int value) { ConcurrencyValue = value; return this; }
     public JsAgentBuilder body(JsValue fn) { BodyFunction = fn; return this; }

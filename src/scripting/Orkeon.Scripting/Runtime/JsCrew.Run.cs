@@ -308,8 +308,7 @@ public sealed partial class JsCrew
         recordResult = (scope, step, output) => JsHostError.Guard(_engine, () => scope.Record(step, output)),
         finishRun = scope => JsHostError.Guard(_engine, scope.Finish),
         crewHookOf = (scope, which) => JsHostError.Guard(_engine, () => CrewHookOf(scope, which)),
-        hookContext = scope => JsHostError.Guard(_engine,
-            () => new JsExecutionContext(CreateEnvironment(_agents[0], scope.Budget, scope.Token))),
+        hookContext = scope => JsHostError.Guard(_engine, () => CrewHookContext(scope)),
         displayMessage = err => JsHostError.Guard(_engine, () => DisplayMessage(err)),
         logHookFailure = (scope, hookName, err) => JsHostError.Guard(_engine,
             () => LogCrewHookFailed(_logger, name, hookName, DisplayMessage(err))),
@@ -321,13 +320,33 @@ public sealed partial class JsCrew
         finishInstance = (id, succeeded) => JsHostError.Guard(_engine, () => Instances.Finish(id, succeeded)),
     };
 
+    /// <summary>
+    /// The context of a crew hook: anchored on the first agent, whose tools its <c>ctx.llm.act</c> offers,
+    /// so held to that agent's working root and file-system scope (#349) as the agent's own run would be.
+    /// </summary>
+    private JsExecutionContext CrewHookContext(CrewRunScope scope)
+    {
+        var anchor = _agents[0];
+        var root = ResolveWorkingRoot(anchor, scope.InheritedRoot);
+        var fileSystem = ResolveFileSystem(anchor, scope.InheritedFileSystem, root);
+        return new JsExecutionContext(CreateEnvironment(anchor, scope.Budget, scope.Token, workingRoot: root, fileSystem: fileSystem));
+    }
+
     /// <summary>The scope of a script-opened run: <paramref name="options"/> may carry what a spawned or sent child inherits.</summary>
     private CrewRunScope OpenRunScope(string kind, JsValue options)
     {
         var (signal, timeout) = CrewRunOptions.From(options);
+        var bag = options is not null && options.IsObject() ? options : null;
+        // What a spawned, sent or delegated child inherits comes with its options. A run the script starts
+        // itself (crew.run, crew.runAgent, a sub-crew's, from an agent's body) stays inside the
+        // file-system scope of the open attempts (#349), read before the scope is built.
+        var inherited = bag?.Get("root").ToObject() as InheritedWorkingRoot;
+        var inheritedFileSystem = inherited is not null
+            ? inherited.FileSystem
+            : JsEngineAttempts.FileSystemForCode(_engine, kind switch { "agent" => "crew.runAgent", "stream" => "crew.runStream", _ => "crew.run" },
+                "Call ctx.delegate(agent, input) from the agent's body, which hands its own scope down.");
         var scope = new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false,
             CancellationToken.None, JsEngineAttempts.Innermost(_engine)?.Scope);
-        var bag = options is not null && options.IsObject() ? options : null;
         // A child spawned by the spawn_agent tool runs under the budget its parent derived for it.
         var budget = bag?.Get("budget") ?? JsValue.Undefined;
         if (budget.ToObject() is Orkeon.Domain.Autonomous.AgentExecutionBudget childBudget)
@@ -336,7 +355,8 @@ public sealed partial class JsCrew
             scope.Budget = ScriptRunBudget(_engine, bag, budget);
         scope.Permit = bag?.Get("permit").ToObject() as GatePermit;
         scope.Instance = bag?.Get("instance").ToObject() as AgentInstanceRun;
-        scope.InheritedRoot = (bag?.Get("root").ToObject() as InheritedWorkingRoot)?.Root;
+        scope.InheritedRoot = inherited?.Root;
+        scope.InheritedFileSystem = inheritedFileSystem;
         var floor = bag?.Get("permissionFloor") ?? JsValue.Undefined;
         scope.PermissionFloor = floor.IsString() ? floor.AsString() : null;
         return scope;
@@ -377,8 +397,8 @@ public sealed partial class JsCrew
         options.Set("budget", JsValue.FromObject(_engine, begun.Budget));
         options.Set("instance", JsValue.FromObject(_engine, begun.Run));
         options.Set("bare", true);
-        if (begun.InheritedRoot is { } root)
-            options.Set("root", JsValue.FromObject(_engine, new InheritedWorkingRoot(root)));
+        // Always handed, even empty: what the instance inherited is all it runs under (#349).
+        options.Set("root", JsValue.FromObject(_engine, new InheritedWorkingRoot(begun.InheritedRoot, begun.InheritedFileSystem)));
         if (begun.PermissionFloor is { } floor)
             options.Set("permissionFloor", floor);
         return options;

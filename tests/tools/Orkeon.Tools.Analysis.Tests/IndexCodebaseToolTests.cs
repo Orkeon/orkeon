@@ -24,6 +24,14 @@ public class IndexCodebaseToolTests
     }
 
     [Fact]
+    [Trait("BR", "#348")]
+    public void Declares_it_uses_the_file_system_for_its_virtual_root_path()
+    {
+        using var tool = new IndexCodebaseTool(TestGraph.Store([], []), ThrowingFactory);
+        Assert.True(tool.UsesFileSystem);
+    }
+
+    [Fact]
     public async Task Returns_validation_error_when_root_path_is_empty()
     {
         using var tool = new IndexCodebaseTool(TestGraph.Store([], []), ThrowingFactory);

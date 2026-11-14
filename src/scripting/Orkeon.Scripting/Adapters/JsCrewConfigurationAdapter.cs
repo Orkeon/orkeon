@@ -156,6 +156,9 @@ public static class JsCrewConfigurationAdapter
             LlmConfig = llmConfig,
             // RT-06: checked against the mounts when the agent's task starts (AgentExecutionService).
             WorkingRoot = builder.WorkingRootValue,
+            // #349: resolved against the mounts when the agent's task starts, as the root is.
+            FileSystem = builder.FileSystemValue,
+            AnnounceMounts = builder.AnnounceMountsValue,
         };
     }
 

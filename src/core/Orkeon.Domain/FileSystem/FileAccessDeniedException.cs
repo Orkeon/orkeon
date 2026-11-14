@@ -12,6 +12,12 @@ public class FileAccessDeniedException : Exception
     /// <summary>Alternative mount paths that may satisfy the request.</summary>
     public IReadOnlyList<string>? AlternativeMounts { get; }
 
+    /// <summary>
+    /// Whether the message lists the run's mounts (no mount holds the path, or the mount withholds the
+    /// right). Under an agent's file-system scope such a message is replaced by one naming the scope (#349).
+    /// </summary>
+    internal bool NamesMounts { get; init; }
+
     /// <summary>Initializes a new instance with path, right, and optional alternative mounts.</summary>
     public FileAccessDeniedException(
         string message,

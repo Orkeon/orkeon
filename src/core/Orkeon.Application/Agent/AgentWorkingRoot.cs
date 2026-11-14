@@ -35,5 +35,32 @@ namespace Orkeon.Application.Agent
                 throw new InvalidOperationException($"The agent working root '{root}' is not under any mount of the file system.");
             return normalized;
         }
+
+        /// <summary>
+        /// #349: the file-system scope an agent run starts with. Its declared entries are checked against
+        /// the mounts and bounded by <paramref name="parent"/>; without entries, the run inherits the rights of
+        /// <paramref name="parent"/> under its own agent name, so its denials and its prompt name it
+        /// (<see langword="null"/> when there is no parent, and the mounts alone decide). A working root must
+        /// lie inside the scope: the agent could not work there.
+        /// </summary>
+        /// <param name="agentName">The agent, named by the refusals.</param>
+        /// <param name="declared">The entries the agent declares; empty when it declares none.</param>
+        /// <param name="mounts">The agent-facing mounts of the run.</param>
+        /// <param name="parent">The scope of the run that started this one, or <see langword="null"/>.</param>
+        /// <param name="root">The run's working root, normalised by <see cref="NormalizeMounted"/>, or <see langword="null"/>.</param>
+        /// <exception cref="InvalidOperationException">An entry is refused, or the root lies outside the scope.</exception>
+        public static AgentFileSystemScope? ResolveScope(
+            string agentName, IReadOnlyList<FileSystemScopeEntry> declared, IReadOnlyList<MountInfo> mounts,
+            AgentFileSystemScope? parent, string? root)
+        {
+            ArgumentNullException.ThrowIfNull(declared);
+            var scope = declared.Count > 0
+                ? AgentFileSystemScope.Resolve(agentName, declared, mounts, parent)
+                : parent is null ? null : AgentFileSystemScope.InheritedBy(agentName, parent);
+            if (scope is not null && root is not null && scope.RightsAt(root) == FileAccessRights.None)
+                throw new InvalidOperationException(
+                    $"The agent working root '{root}' of agent '{agentName}' lies outside its file-system scope: {scope.Describe()}.");
+            return scope;
+        }
     }
 }

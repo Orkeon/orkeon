@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- An agent declares the only virtual paths its tools may touch (#349): `filesystem:` in YAML, a list of
+  paths or `{path, access}` items (`ro`, `rw`, `rwnd`), `AgentBuilder.FileSystem(...)` in C#,
+  `.filesystem([...])` in `.ork.ts`. An entry selects and narrows the mount that holds it, never widens it;
+  an entry under no mount or above the mount's rights refuses the run at start, naming the agent and the
+  entry; so does an entry that grants no right, and in YAML a `filesystem:` that is not a list (no value,
+  `~` or `null` is no declaration). During the agent's tool calls the file system refuses every other path
+  on every mount (`FileSystemService`, so the file, search, RAG and attachment tools alike), in a denial
+  that names the scope and no other mount; a path is read as the host reads it (a backslash off Windows,
+  case and trailing dots or spaces), never granting more than the most specific entry; a listing gives
+  only what a read would allow, and a recursive delete is refused when an entry below withholds `Delete`.
+  `list_mounts` lists the scope, `shell_command` binds the scope's entries alone, `start_job` logs only
+  where the scope writes, `rag_ingest` judges every source that is not a web address, and the
+  semantic-graph tools leave out the nodes, edges, hits and source of files outside the scope. A spawned
+  or delegated child runs under its parent's scope, which its own can only narrow (one that declares none
+  holds the parent's rights under its own name); a `working_root` must lie inside the scope. In `.ork.ts`,
+  `ctx.delegate` hands the caller's scope down, a run started from code while agents run takes the open
+  attempts' scope (refused when they differ), an agent's hooks run under its scope and a crew's under its
+  first agent's, and `rag.ingest` from a scoped body stays inside it. The C# side is
+  `FileSystemScopeEntry`, `AgentFileSystemScope` and `AgentRunScope.FileSystem`.
+- The system prompt of an agent with a file-system tool gains a `## File system` section (#348): its scope,
+  else the run's agent-facing mounts, with their rights, sorted by path, and its working root (or the
+  directory relative paths resolve against, said to lie outside the scope when it does). `email_parser`,
+  `image_generation`, `firefox`, `index_codebase` and `incremental_reindex` count as file-system tools.
+  `announce_mounts: false` turns it off for an agent or, at crew level, for every agent that does not set
+  its own (`AgentBuilder.AnnounceMounts`, `.announceMounts(false)`). A tool says it touches the file
+  system with `IBaseTool.UsesFileSystem` (`ToolBase.UsesFileSystem`, false by default).
 - `orkeon llm probe` tests the reasoning controls per model: M15 sends the thinking toggle on then off,
   M16 sweeps the effort levels (`low` to `max` then the values of M18's `effort:*` fragments, or the list of the new `--sweep-efforts`, which takes
   vendor values such as `none`), M17 sends a thinking budget. Each step reports what went on the wire

@@ -351,6 +351,73 @@ public class InMemoryRaggableStoreTests
         Assert.Empty(incoming);
     }
 
+    [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldLeaveOutEveryNodeOfAFileOutsideTheScope_WhenAScopedToolCallReadsTheStore()
+    {
+        // Arrange: /src/a is in the scope, /src/b is not; the visible symbol calls the hidden one.
+        var monorepo = Located("/src", "/src", NodeLevel.L0_Monorepo);
+        var package = Located("/src::b", "/src/b", NodeLevel.L1_Package);
+        var visible = Located("/src/a/x.ts::run", "/src/a/x.ts");
+        var hidden = Located("/src/b/y.ts::run", "/src/b/y.ts");
+        var store = new InMemoryRaggableStore(
+            [monorepo, package, visible, hidden],
+            [new RaggableEdge("e1", visible.Id, hidden.Id, EdgeKind.Calls)],
+            new FakeFileSystemService().AddMount("/src").AddFile("/src/b/y.ts", "secret"));
+        var ct = TestContext.Current.CancellationToken;
+        var scope = Orkeon.Domain.FileSystem.AgentFileSystemScope.Resolve(
+            "reader",
+            [new Orkeon.Domain.FileSystem.FileSystemScopeEntry("/src/a", null)],
+            [new Orkeon.Domain.FileSystem.MountInfo("/src", Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite, [])]);
+        await using var run = Orkeon.Domain.Execution.AgentRunScope.Begin("id", "reader", null, scope);
+        using var call = Orkeon.Domain.Execution.AgentRunScope.EnterToolCall();
+
+        // Act + Assert
+        Assert.Null(await store.GetAsync(hidden.Fqn, ct));
+        Assert.Null(await store.GetSourceAsync(hidden.Fqn, SourceMode.FullSpan, ct));
+        Assert.Equal([visible.Fqn], (await store.GetManyAsync([visible.Fqn, hidden.Fqn], ct)).Select(n => n.Fqn));
+        Assert.Equal([visible.Fqn], (await store.FindByLocalNameAsync("run", ct)).Select(n => n.Fqn));
+        Assert.Equal(
+            [monorepo.Fqn, visible.Fqn],
+            (await store.QueryAsync(new NodeQuery { Take = 50 }, ct)).Select(n => n.Fqn).Order(StringComparer.Ordinal));
+        Assert.Equal(2, await store.GetNodeCountAsync(ct));
+        Assert.Empty(await store.GetEdgesAsync(visible.Fqn, EdgeKind.None, Direction.Both, ct));
+        Assert.Empty((await store.ListEdgesAsync(new EdgeListQuery(), ct)).Edges);
+        var expanded = await store.ExpandAsync(new ExpandQuery { Seeds = [visible.Fqn], EdgeKinds = [EdgeKind.Calls] }, ct);
+        Assert.Equal([visible.Fqn], expanded.Nodes.Select(n => n.Fqn));
+        Assert.Empty(expanded.Edges);
+    }
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldAnswerEveryNode_WhenNoToolCallScopeIsInForce()
+    {
+        var hidden = Located("/src/b/y.ts::run", "/src/b/y.ts");
+        var store = new InMemoryRaggableStore([hidden], [], new FakeFileSystemService());
+        var scope = Orkeon.Domain.FileSystem.AgentFileSystemScope.Resolve(
+            "reader",
+            [new Orkeon.Domain.FileSystem.FileSystemScopeEntry("/src/a", null)],
+            [new Orkeon.Domain.FileSystem.MountInfo("/src", Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite, [])]);
+        // The run carries a scope, but the framework's own reads around a tool call are not bound by it.
+        await using var run = Orkeon.Domain.Execution.AgentRunScope.Begin("id", "reader", null, scope);
+
+        Assert.NotNull(await store.GetAsync(hidden.Fqn, TestContext.Current.CancellationToken));
+    }
+
+    private static RaggableNode Located(string fqn, string path, NodeLevel level = NodeLevel.L3_Symbol) => new()
+    {
+        Id = fqn + "#id",
+        Kind = level == NodeLevel.L3_Symbol ? UniversalNodeKind.Function : UniversalNodeKind.Package,
+        Name = fqn,
+        VirtualFilePath = path,
+        Range = new NodeRange(0, 0, 1, 1, 0),
+        Level = level,
+        Language = "typescript",
+        SourceSnippet = "snapshot of " + fqn,
+        Sha256 = string.Empty,
+        Fqn = fqn,
+    };
+
     private static RaggableNode Synthetic(string fqn, NodeLevel level = NodeLevel.L3_Symbol)
     {
         return new RaggableNode

@@ -288,6 +288,9 @@ public partial class CrewFactory : ICrewFactory
             builder.PermissionMode(permissionMode);
         if (!string.IsNullOrWhiteSpace(agentConfig.WorkingRoot))
             builder.WorkingRoot(agentConfig.WorkingRoot);
+        if (agentConfig.FileSystem.Count > 0)
+            builder.FileSystem([.. agentConfig.FileSystem]);
+        builder.AnnounceMounts(agentConfig.AnnounceMounts);
         if (resolvedTools.Count > 0)
             builder.WithTools(resolvedTools);
         // The agent's llm block — profile, model, sampling, thinking, response format, cache.

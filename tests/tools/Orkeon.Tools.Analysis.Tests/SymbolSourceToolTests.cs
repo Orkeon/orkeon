@@ -47,6 +47,27 @@ public class SymbolSourceToolTests
     }
 
     [Fact]
+    [Trait("BR", "#349")]
+    public async Task Refuses_the_source_of_a_symbol_whose_file_is_outside_the_agent_scope()
+    {
+        var open = TestGraph.Symbol("/src::open", "/src/a/open.ts", source: "function open() {}");
+        var secret = TestGraph.Symbol("/src::secret", "/src/b/secret.ts", source: "const key = 'secret';");
+        using var tool = new SymbolSourceTool(TestGraph.Store([open, secret], []));
+        await using var run = TestGraph.ScopedRun("/src/a");
+
+        var refused = await tool.CallAsync(
+            new Orkeon.Domain.Tools.Protocol.ToolCallRequest("symbol_source", new Dictionary<string, object?> { ["fqn"] = "/src::secret" }),
+            TestContext.Current.CancellationToken);
+        var served = await tool.CallAsync(
+            new Orkeon.Domain.Tools.Protocol.ToolCallRequest("symbol_source", new Dictionary<string, object?> { ["fqn"] = "/src::open" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(refused.Success);
+        Assert.DoesNotContain("secret", System.Text.Json.JsonSerializer.Serialize(refused.Result), StringComparison.Ordinal);
+        Assert.True(served.Success, served.Error);
+    }
+
+    [Fact]
     public async Task Signature_only_mode_returns_signature_source()
     {
         var sym = TestGraph.Symbol(

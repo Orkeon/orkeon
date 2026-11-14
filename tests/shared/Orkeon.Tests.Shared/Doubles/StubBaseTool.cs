@@ -25,6 +25,9 @@ public sealed class StubBaseTool : IBaseTool
     /// <inheritdoc />
     public ToolSchema Schema { get; init; }
 
+    /// <inheritdoc />
+    public bool UsesFileSystem { get; init; }
+
     /// <summary>Captured requests from <see cref="CallAsync"/>.</summary>
     public List<ToolCallRequest> Calls { get; } = new();
 

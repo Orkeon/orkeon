@@ -124,6 +124,27 @@ public class ListMountsToolTests
             mount.GetRawText());
     }
 
+    [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldListScopeEntriesOnly_WhenAgentDeclaresFileSystemScope()
+    {
+        var mounts = new List<MountInfo>
+        {
+            new("/workspace", FileAccessRights.ReadWrite, []),
+            new("/output", FileAccessRights.ReadWrite, []),
+        };
+        var scope = AgentFileSystemScope.Resolve(
+            "writer", [new FileSystemScopeEntry("/workspace/docs", FileAccessRights.ReadOnly)], mounts);
+        using var tool = new ListMountsTool(new StubFileSystemService(mounts));
+        await using var run = Orkeon.Domain.Execution.AgentRunScope.Begin("id", "writer", null, scope);
+
+        var response = await tool.CallAsync(new ProtocolToolCallRequest("list_mounts", []), TestContext.Current.CancellationToken);
+
+        var listed = Assert.Single(ResultJson(response).GetProperty("mounts").EnumerateArray());
+        Assert.Equal("/workspace/docs", listed.GetProperty("virtual_path").GetString());
+        Assert.Equal("ro", listed.GetProperty("access").GetString());
+    }
+
     private static System.Text.Json.JsonElement ResultJson(Orkeon.Domain.Tools.Protocol.ToolCallResponse response)
     {
         Assert.True(response.Success);

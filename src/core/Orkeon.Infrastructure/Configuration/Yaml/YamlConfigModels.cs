@@ -26,6 +26,14 @@ public class AgentYamlConfig
     public string? Backstory { get; set; }
     /// <summary>Gets or sets the virtual working root of the agent (<c>working_root:</c>, RT-06).</summary>
     public string? WorkingRoot { get; set; }
+    /// <summary>
+    /// Gets or sets the file-system scope of the agent (<c>filesystem:</c>, #349): each item a virtual path, or a
+    /// map with <c>path</c> and an optional <c>access</c> (<c>ro</c>, <c>rw</c>, <c>rwnd</c>). Read as a raw value so a
+    /// lone path or a lone map is refused naming the agent (<see cref="YamlCrewMapper"/>), not by the deserializer.
+    /// </summary>
+    public object? Filesystem { get; set; }
+    /// <summary>Gets or sets whether the agent's prompt names the virtual paths it may touch (<c>announceMounts:</c>, #348); unset, the crew's.</summary>
+    public bool? AnnounceMounts { get; set; }
     /// <summary>Gets or sets the permission mode of the agent's tool calls (<c>permissionMode:</c>): default, acceptEdits, bypassPermissions, plan or dontAsk.</summary>
     public string? PermissionMode { get; set; }
     /// <summary>Gets or sets the list of tool names.</summary>
@@ -429,6 +437,11 @@ public class CrewYamlConfig
     /// root (<c>/output</c>) or a root pinned to one settings entry by its id (<c>01J…|/output</c>).
     /// </summary>
     public Collection<string>? Mounts { get; set; }
+    /// <summary>
+    /// Gets or sets whether the agents' prompts name the virtual paths they may touch (<c>announceMounts:</c>,
+    /// #348); an agent's own setting wins. Unset, on.
+    /// </summary>
+    public bool? AnnounceMounts { get; set; }
     /// <summary>Gets or sets the agent configurations keyed by agent identifier.</summary>
     public Dictionary<string, AgentYamlConfig>? Agents { get; set; }
     /// <summary>Gets or sets the task configurations keyed by task identifier.</summary>
@@ -497,6 +510,11 @@ public class CrewSettingsYamlConfig
     /// root (<c>/output</c>) or a root pinned to one settings entry by its id (<c>01J…|/output</c>).
     /// </summary>
     public Collection<string>? Mounts { get; set; }
+    /// <summary>
+    /// Gets or sets whether the agents' prompts name the virtual paths they may touch (<c>announceMounts:</c>,
+    /// #348); an agent's own setting wins. Unset, on.
+    /// </summary>
+    public bool? AnnounceMounts { get; set; }
 }
 
 #pragma warning restore CA2227 // Collection properties should be read only

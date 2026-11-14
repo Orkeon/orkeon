@@ -108,7 +108,7 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         {
             memory.agent = new JsMemoryScope();
         }
-        _runScope = AgentRunScope.Create(_self.id, _self.name, environment.WorkingRoot);
+        _runScope = AgentRunScope.Create(_self.id, _self.name, environment.WorkingRoot, environment.FileSystem);
         _builtInTools = environment.BuiltInTools ?? [];
         llm.AttachRunScope(_runScope);
         state = BuildStateProxy(_stateRaw);

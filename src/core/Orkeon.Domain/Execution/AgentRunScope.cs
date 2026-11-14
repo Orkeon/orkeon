@@ -21,6 +21,9 @@ public sealed class AgentRunScope : IAsyncDisposable
 {
     private static readonly AsyncLocal<AgentRunScope?> s_current = new();
 
+    // The run whose tool call the calling flow is in, set by EnterToolCall.
+    private static readonly AsyncLocal<AgentRunScope?> s_toolCall = new();
+
     private readonly object _sync = new();
     private readonly List<IAsyncDisposable> _resources = [];
     private readonly Dictionary<object, IAsyncDisposable> _byKey = [];
@@ -31,9 +34,10 @@ public sealed class AgentRunScope : IAsyncDisposable
     private bool _began;
     private AgentRunScope? _previous;
 
-    private AgentRunScope(string? agentId, string? agentRole, AgentRunScope? parent, string? root = null)
+    private AgentRunScope(string? agentId, string? agentRole, AgentRunScope? parent, string? root = null, FileSystem.AgentFileSystemScope? fileSystem = null)
     {
         Root = root;
+        FileSystem = fileSystem;
         RunId = Guid.NewGuid().ToString("N");
         AgentId = agentId;
         AgentRole = agentRole;
@@ -57,6 +61,21 @@ public sealed class AgentRunScope : IAsyncDisposable
 
     /// <summary>The virtual working root the run's file tools stay inside, or <c>null</c> when unrestricted.</summary>
     public string? Root { get; }
+
+    /// <summary>
+    /// The file-system scope the run's tool calls stay inside (#349), or <c>null</c> when the mounts alone
+    /// decide. The file system enforces it while a tool call of this run is in progress
+    /// (<see cref="EnterToolCall"/>), never on the framework's own I/O around it.
+    /// </summary>
+    public FileSystem.AgentFileSystemScope? FileSystem { get; }
+
+    /// <summary>
+    /// The file-system scope in force for the calling flow: the current run's, while one of its tool calls
+    /// is in progress; <c>null</c> otherwise, including in a run nested under a tool call of another (its
+    /// own tool calls enter it again).
+    /// </summary>
+    public static FileSystem.AgentFileSystemScope? EnforcedFileSystem
+        => s_current.Value is { FileSystem: { } scope } run && ReferenceEquals(s_toolCall.Value, run) ? scope : null;
 
     /// <summary>Whether <see cref="EndAsync"/> has been called.</summary>
     public bool IsEnded
@@ -108,9 +127,25 @@ public sealed class AgentRunScope : IAsyncDisposable
     /// <param name="agentRole">The agent's role or name, for diagnostics.</param>
     /// <param name="root">The virtual working root, or <c>null</c>.</param>
     public static AgentRunScope Begin(string? agentId, string? agentRole, string? root)
+        => Begin(agentId, agentRole, root, fileSystem: null);
+
+    /// <summary>Creates a scope with a virtual working root and a file-system scope without making it current (see <see cref="Create(string?, string?)"/>).</summary>
+    /// <param name="agentId">The agent's identifier, for diagnostics.</param>
+    /// <param name="agentRole">The agent's role or name, for diagnostics.</param>
+    /// <param name="root">The virtual working root, or <c>null</c>.</param>
+    /// <param name="fileSystem">The file-system scope of the run (#349), or <c>null</c>.</param>
+    public static AgentRunScope Create(string? agentId, string? agentRole, string? root, FileSystem.AgentFileSystemScope? fileSystem)
+        => new(agentId, agentRole, s_current.Value, root, fileSystem);
+
+    /// <summary>Creates a scope with a virtual working root and a file-system scope and makes it current.</summary>
+    /// <param name="agentId">The agent's identifier, for diagnostics.</param>
+    /// <param name="agentRole">The agent's role or name, for diagnostics.</param>
+    /// <param name="root">The virtual working root, or <c>null</c>.</param>
+    /// <param name="fileSystem">The file-system scope of the run (#349), or <c>null</c>.</param>
+    public static AgentRunScope Begin(string? agentId, string? agentRole, string? root, FileSystem.AgentFileSystemScope? fileSystem)
     {
         var previous = s_current.Value;
-        var scope = new AgentRunScope(agentId, agentRole, previous, root)
+        var scope = new AgentRunScope(agentId, agentRole, previous, root, fileSystem)
         {
             _began = true,
             _previous = previous,
@@ -128,6 +163,18 @@ public sealed class AgentRunScope : IAsyncDisposable
         var previous = s_current.Value;
         s_current.Value = this;
         return new Restore(previous);
+    }
+
+    /// <summary>
+    /// Marks the calling flow as a tool call of the current run until the returned handle is disposed:
+    /// the file system enforces the run's <see cref="FileSystem"/> scope meanwhile
+    /// (<see cref="EnforcedFileSystem"/>). Outside any run, a no-op handle.
+    /// </summary>
+    public static IDisposable EnterToolCall()
+    {
+        var previous = s_toolCall.Value;
+        s_toolCall.Value = s_current.Value;
+        return new RestoreToolCall(previous);
     }
 
     /// <summary>Registers a resource the end of the run releases.</summary>
@@ -246,5 +293,10 @@ public sealed class AgentRunScope : IAsyncDisposable
     private sealed class Restore(AgentRunScope? previous) : IDisposable
     {
         public void Dispose() => s_current.Value = previous;
+    }
+
+    private sealed class RestoreToolCall(AgentRunScope? previous) : IDisposable
+    {
+        public void Dispose() => s_toolCall.Value = previous;
     }
 }

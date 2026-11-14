@@ -87,6 +87,9 @@ public class RagIngestTool : IBaseTool
     }
 
     /// <inheritdoc />
+    public bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     public Task<ToolCallResponse> CallAsync(
         ToolCallRequest request, CancellationToken cancellationToken = default)
     {
@@ -110,9 +113,20 @@ public class RagIngestTool : IBaseTool
 
             var prune = FlagParameter(request, "prune");
 
-            var sources = await ResolveSourcesAsync(locations, cancellationToken).ConfigureAwait(false);
+            // The glob is expanded as the agent's own tool call (#349): its file-system scope bounds
+            // what it matches. The pipeline then reads the sources and writes its manifest as the
+            // framework, so each source is judged against the scope here, before it runs.
+            IReadOnlyList<SourceDescriptor> sources;
+            using (Orkeon.Domain.Execution.AgentRunScope.EnterToolCall())
+                sources = await ResolveSourcesAsync(locations, cancellationToken).ConfigureAwait(false);
             if (sources.Count == 0)
                 return new ToolCallResponse(false, null, $"no source matched: {string.Join(", ", locations)}");
+            // Every source but a web address is a file: a Windows-rooted, relative or backslashed spelling
+            // resolves through the mounts too, and is judged like any virtual path (the scope's entries are
+            // all '/'-rooted, so a spelling no entry covers is refused).
+            if (Orkeon.Domain.Execution.AgentRunScope.Current?.FileSystem is { } scope
+                && sources.FirstOrDefault(s => !SourceGlobExpander.IsWebAddress(s.Location) && !scope.Allows(s.Location, FileAccessRights.Read)) is { } outside)
+                return new ToolCallResponse(false, null, scope.DescribeDenial(outside.Location, FileAccessRights.Read));
 
             var report = await _ingestionPipeline.IngestAsync(
                 new IngestionRequest

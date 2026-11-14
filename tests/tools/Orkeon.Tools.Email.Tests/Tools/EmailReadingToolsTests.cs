@@ -11,6 +11,15 @@ namespace Orkeon.Tools.Email.Tests.Tools;
 public sealed class EmailReadingToolsTests
 {
     [Fact]
+    [Trait("BR", "#348")]
+    public void Should_declare_the_parser_uses_the_file_system_When_it_reads_an_eml_by_virtual_path()
+    {
+        using var fixture = new ToolFixture();
+
+        Assert.True(((Orkeon.Domain.Tools.IBaseTool)fixture.Tools["email_parser"]).UsesFileSystem);
+    }
+
+    [Fact]
     public async Task Should_list_the_accounts_their_rights_and_readiness_without_any_secret()
     {
         using var fixture = new ToolFixture();

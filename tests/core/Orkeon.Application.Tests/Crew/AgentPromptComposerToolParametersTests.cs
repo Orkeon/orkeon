@@ -18,7 +18,8 @@ public class AgentPromptComposerToolParametersTests
         var task = new CrewTaskBuilder().Description("Do work").ExpectedOutput("Result").Build();
 
         var prompt = AgentPromptComposer.BuildSystemPrompt(
-            agent, task, TaskToolbelt.Compose(agent, task), supportsNativeToolCalling: true);
+            agent, task, TaskToolbelt.Compose(agent, task), supportsNativeToolCalling: true,
+            new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
         Assert.Contains("  Required: target_mailbox", prompt, StringComparison.Ordinal);
         Assert.Contains("  Optional: payload, metadata", prompt, StringComparison.Ordinal);

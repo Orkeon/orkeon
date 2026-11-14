@@ -70,6 +70,9 @@ public abstract partial class ToolBase : IBaseTool
     /// </summary>
     public virtual ToolAccess Access => ToolAccess.Unspecified;
 
+    /// <summary>Whether the tool reads or writes virtual paths of the file system (#348); <see langword="false"/> unless a tool says so.</summary>
+    public virtual bool UsesFileSystem => false;
+
     /// <summary>
     /// Access classification of one call, decided from its arguments; defaults to <see cref="Access"/>.
     /// Override it in a tool whose class depends on the operation asked, returning the most
@@ -176,8 +179,11 @@ public abstract partial class ToolBase : IBaseTool
                     );
                 }
 
-                // Execute the tool with the new protocol
-                var result = await ExecuteCoreAsync(ReadMapParameters(request), cancellationToken).ConfigureAwait(false);
+                // Execute the tool with the new protocol. The file system enforces the run's
+                // file-system scope for as long as the call runs (#349), and only then.
+                ProtocolToolCallResponse result;
+                using (Orkeon.Domain.Execution.AgentRunScope.EnterToolCall())
+                    result = await ExecuteCoreAsync(ReadMapParameters(request), cancellationToken).ConfigureAwait(false);
 
                 LogToolCallCompleted(Logger, Name, result.Success);
 

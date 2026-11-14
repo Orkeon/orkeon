@@ -113,7 +113,7 @@ public sealed partial class JsCrew
     /// run's own (<see cref="CrewRunScope.Budget"/>): lifecycle hooks fired by add/remove and
     /// <c>runAgent</c> contexts without a <c>budget</c> or <c>charge</c> option (#189) are unbudgeted and pass <c>null</c>.
     /// </summary>
-    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null, AgentInstanceRun? instance = null, string? workingRoot = null, string? permissionFloor = null) => new()
+    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null, AgentInstanceRun? instance = null, string? workingRoot = null, string? permissionFloor = null, Orkeon.Domain.FileSystem.AgentFileSystemScope? fileSystem = null) => new()
     {
         Engine = _engine,
         Self = agent,
@@ -137,6 +137,7 @@ public sealed partial class JsCrew
         RunEvents = _runEvents,
         ToolLimits = _toolLimits ?? new(),
         WorkingRoot = workingRoot,
+        FileSystem = fileSystem,
         PermissionFloor = permissionFloor,
     };
 
@@ -149,6 +150,17 @@ public sealed partial class JsCrew
     internal string? ResolveWorkingRoot(JsAgent agent, string? inherited)
         => Orkeon.Application.Agent.AgentWorkingRoot.NormalizeMounted(agent.Builder.WorkingRootValue ?? inherited,
             _mounts is null ? [] : _mounts());
+
+    /// <summary>
+    /// #349: the file-system scope an agent's run is held to — its own <c>.filesystem([...])</c>, narrowing
+    /// the one its parent run handed down, else that one — resolved against the mounts. Throws the
+    /// runtime's refusal for an entry under no mount, above the mount's rights or outside the parent's
+    /// scope, or a working root outside the scope; <c>null</c> when neither declares one.
+    /// </summary>
+    internal Orkeon.Domain.FileSystem.AgentFileSystemScope? ResolveFileSystem(
+        JsAgent agent, Orkeon.Domain.FileSystem.AgentFileSystemScope? inherited, string? root)
+        => Orkeon.Application.Agent.AgentWorkingRoot.ResolveScope(agent.name, agent.Builder.FileSystemValue,
+            _mounts is null ? [] : _mounts(), inherited, root);
 
     private JsEventBroker? _eventBroker;
     internal JsEventBroker EventBroker
@@ -237,7 +249,21 @@ public sealed partial class JsCrew
     private void InvokeAgentLifecycleHook(JsAgent agent, JsValue? hook, string hookName)
     {
         if (hook is null || hook.IsUndefined() || hook.IsNull()) return;
-        var ctx = new JsExecutionContext(CreateEnvironment(agent, budget: null, CancellationToken.None));
+        // #349: the hook's tools are held to the agent's working root and file-system scope. One the mounts
+        // refuse refuses the agent's run when it starts; the hook, which could not be held to it, is not run.
+        string? root;
+        Orkeon.Domain.FileSystem.AgentFileSystemScope? fileSystem;
+        try
+        {
+            root = ResolveWorkingRoot(agent, inherited: null);
+            fileSystem = ResolveFileSystem(agent, inherited: null, root);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogLifecycleHookSkipped(_logger, hookName, agent.name, name, ex.Message);
+            return;
+        }
+        var ctx = new JsExecutionContext(CreateEnvironment(agent, budget: null, CancellationToken.None, workingRoot: root, fileSystem: fileSystem));
         var raw = _engine.Invoke(hook, [ctx]);
         if (!raw.IsPromise()) return;
         Action<JsValue> onRejected = reason => JsHostError.Guard(_engine,
@@ -247,6 +273,9 @@ public sealed partial class JsCrew
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Lifecycle hook {Hook} of agent '{Agent}' in crew '{Crew}' rejected: {Reason}")]
     private static partial void LogLifecycleHookRejected(ILogger logger, string hook, string agent, string crew, string reason);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Warning, Message = "Lifecycle hook {Hook} of agent '{Agent}' in crew '{Crew}' not run: {Reason}")]
+    private static partial void LogLifecycleHookSkipped(ILogger logger, string hook, string agent, string crew, string reason);
 
     internal JsValue? _onCrewStart;
     internal JsValue? _onCrewComplete;

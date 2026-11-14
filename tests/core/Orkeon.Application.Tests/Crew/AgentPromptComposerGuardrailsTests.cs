@@ -129,7 +129,8 @@ public class AgentPromptComposerGuardrailsTests
     }
 
     private static string Prompt(DomainAgent agent, CrewTask task)
-        => AgentPromptComposer.BuildSystemPrompt(agent, task, TaskToolbelt.Compose(agent, task), supportsNativeToolCalling: true);
+        => AgentPromptComposer.BuildSystemPrompt(agent, task, TaskToolbelt.Compose(agent, task), supportsNativeToolCalling: true,
+            new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
 
     /// <summary>Minimal IBaseTool stub — only Name matters for tool-rule gating.</summary>
     private sealed class StubTool : IBaseTool

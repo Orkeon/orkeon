@@ -68,6 +68,9 @@ public class ListMountsTool : ToolBase<ListMountsRequest, ListMountsResponse>
     public override ToolAccess Access => ToolAccess.Read;
 
     /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     public override string Category => "File Operations";
 
     /// <summary>
@@ -84,7 +87,12 @@ public class ListMountsTool : ToolBase<ListMountsRequest, ListMountsResponse>
     protected override Task<ListMountsResponse> ExecuteTypedAsync(
         ListMountsRequest request, CancellationToken cancellationToken)
     {
-        var mountDtos = _fileSystemService.GetAvailableMounts().Select(m => new MountInfoDto
+        // Under a file-system scope (#349), the agent sees its scope: one entry per path it may touch,
+        // with the rights in force there, never the run's other mounts.
+        var mounts = _fileSystemService.GetAvailableMounts();
+        if (Orkeon.Domain.Execution.AgentRunScope.EnforcedFileSystem is { } scope)
+            mounts = scope.Narrow(mounts);
+        var mountDtos = mounts.Select(m => new MountInfoDto
         {
             Path = m.VirtualPath,
             Rights = FormatRights(m.DefaultRights),
@@ -103,8 +111,5 @@ public class ListMountsTool : ToolBase<ListMountsRequest, ListMountsResponse>
     /// truth with <see cref="FileSystemMount.FormatRights"/>); any other combination — a mount
     /// registered in code with bare <c>Write</c>, say — is spelled by the enum, never hidden.
     /// </summary>
-    private static string FormatRights(FileAccessRights rights) =>
-        rights is FileAccessRights.ReadOnly or FileAccessRights.ReadWrite or FileAccessRights.ReadWriteNoDelete
-            ? FileSystemMount.FormatRights(rights)
-            : rights.ToString();
+    private static string FormatRights(FileAccessRights rights) => AgentFileSystemScope.FormatRights(rights);
 }

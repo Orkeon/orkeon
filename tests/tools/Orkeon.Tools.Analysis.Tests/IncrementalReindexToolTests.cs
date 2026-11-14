@@ -25,6 +25,15 @@ public class IncrementalReindexToolTests
     }
 
     [Fact]
+    [Trait("BR", "#348")]
+    public void Declares_it_uses_the_file_system_for_its_virtual_paths()
+    {
+        using var freshness = ThrowingFreshness();
+        using var tool = new IncrementalReindexTool(freshness);
+        Assert.True(tool.UsesFileSystem);
+    }
+
+    [Fact]
     public async Task Returns_unchanged_when_no_changed_files_and_no_git_diff()
     {
         using var freshness = ThrowingFreshness();

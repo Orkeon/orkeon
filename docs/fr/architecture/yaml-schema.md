@@ -52,6 +52,8 @@ mounts:                   # Les racines virtuelles que la crew utilise (optionne
   - /output               # une racine qu'une entrée des settings (ou un --mount) doit fournir ; refusée en une ligne si rien ne le fait
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # une racine épinglée à UNE entrée des settings par son identifiant, quand plusieurs la déclarent
 
+announce_mounts: bool     # default: true — chaque agent qui a un outil de fichiers liste ses chemins virtuels dans son prompt système (alias announceMounts) ; la clé propre d'un agent l'emporte
+
 rag:                      # Configuration RAG au niveau crew (optionnel)
   provider: string        # Supprimée : le chargement la refuse et renvoie à Orkeon:Rag:Provider — le magasin est celui de l'hôte
   collections:
@@ -76,6 +78,11 @@ agents:
     maxExecutionTime: int # default: aucun — les secondes qu'une tâche peut prendre chez cet agent (alias max_execution_time) ; 0 ou moins, ou plus de 4294967 (environ 49,7 jours), fait échouer le chargement, tout comme une limite sur le manager hiérarchique
     permissionMode: string # default: aucun (Orkeon:Security:PermissionGate:DefaultMode) — default, acceptEdits, bypassPermissions, plan ou dontAsk (C# AgentBuilder.PermissionMode) : le mode que la permission gate lit pour les appels d'outil de cet agent, une fois Orkeon:Security:PermissionGate:Enabled à true ; toute autre valeur fait échouer le chargement
     working_root: string  # default: aucun — un chemin virtuel (alias workingRoot, C# AgentBuilder.WorkingRoot) sous un mount qui confine les outils fichier et shell_command de cet agent ; refusé au démarrage du run, en nommant la racine, si aucun mount ne la contient
+    filesystem:           # default: aucun — les seuls chemins virtuels que les outils de cet agent peuvent toucher (C# AgentBuilder.FileSystem) ; chaque entrée réduit son mount, ne l'élargit jamais. Une liste : un chemin ou une map seuls font échouer le chargement en nommant l'agent ; sans valeur, ~ ou null, rien n'est déclaré
+      - string            # un chemin : les droits du mount à cet endroit
+      - path: string      # ou un chemin avec
+        access: string    # "ro" | "rw" | "rwnd" — refusé au démarrage du run, en nommant l'agent et l'entrée, au-delà des droits du mount ou hors de tout mount ; une liste vide, une clé ou un accès inconnus font échouer le chargement
+    announce_mounts: bool # default: l'announce_mounts de la crew — liste les chemins virtuels et la racine de travail de cet agent dans son prompt système (alias announceMounts, C# AgentBuilder.AnnounceMounts)
     verbose: bool         # default: false — logs détaillés pour cet agent (appels d'outils, résultats, réponses du modèle, en Information, catégorie Orkeon.Verbose)
     llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) : le fournisseur de cet agent ; "default" = la section Llm
@@ -548,6 +555,7 @@ Tous les modèles YAML vivent dans `Orkeon.Infrastructure.Configuration` (`src/c
 - `GuardrailsYamlConfig` (les `guardrails:` d'agent et de tâche)
 - `LinkYamlConfig` (l'ACL `links:` de crew)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (le bloc `mounts:` de crew — items `/racine` ou `<ulid>|/racine`) → `CrewConfiguration.Mounts` (`MountReference`)
+- `AgentYamlConfig.Filesystem` (items chemin ou `{path, access}`) → `AgentConfiguration.FileSystem` (`FileSystemScopeEntry`) ; `AgentYamlConfig.AnnounceMounts`, sinon l'`announce_mounts` de la crew → `AgentConfiguration.AnnounceMounts`
 - `GraphYamlConfig` (start, nœuds, arêtes, circuitBreakerPreset et ses limites) avec `GraphNodeYamlConfig`, `GraphEdgeYamlConfig`
 - `RagYamlConfig` (collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (entrées forme courte/longue) → `KnowledgeAttachment`

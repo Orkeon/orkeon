@@ -256,6 +256,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 Rag = crewSettings?.Rag,
                 Links = crewSettings?.Links,
                 Mounts = crewSettings?.Mounts,
+                AnnounceMounts = crewSettings?.AnnounceMounts,
             },
             agents,
             tasks);
@@ -325,6 +326,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 Rag = crewYaml?.Rag,
                 Links = crewYaml?.Links,
                 Mounts = crewYaml?.Mounts,
+                AnnounceMounts = crewYaml?.AnnounceMounts,
             },
             crewYaml?.Agents,
             crewYaml?.Tasks);

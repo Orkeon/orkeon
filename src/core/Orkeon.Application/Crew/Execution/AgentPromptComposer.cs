@@ -33,13 +33,20 @@ internal static class AgentPromptComposer
     /// <param name="task">The task being run.</param>
     /// <param name="toolbelt">The task's toolbelt, from <see cref="TaskToolbelt.Compose"/>.</param>
     /// <param name="supportsNativeToolCalling">Whether the provider calls tools natively.</param>
+    /// <param name="fileSystem">The run's file system, whose paths the file-system section names (#348).</param>
     internal static string BuildSystemPrompt(
-        DomainAgent agent, CrewTask task, IReadOnlyList<Domain.Tools.IBaseTool> toolbelt, bool supportsNativeToolCalling)
+        DomainAgent agent, CrewTask task, IReadOnlyList<Domain.Tools.IBaseTool> toolbelt, bool supportsNativeToolCalling,
+        Domain.FileSystem.IFileSystemService fileSystem)
     {
         var prompt = new StringBuilder();
 
         AppendRoleSection(prompt, agent);
         AppendToolsSection(prompt, toolbelt, supportsNativeToolCalling);
+        if (agent.AnnounceMounts && toolbelt.Any(t => t.UsesFileSystem))
+        {
+            var run = Domain.Execution.AgentRunScope.Current;
+            AppendFileSystemSection(prompt, fileSystem.GetAvailableMounts(), run?.FileSystem, run?.Root ?? fileSystem.WorkingDirectory, run?.Root is not null);
+        }
         // Agent-level guardrails first, then the task's own — both apply, agent rules before task
         // rules. Shared with the streaming path so both render identically.
         GuardrailsPromptRenderer.AppendAgentAndTaskGuardrails(prompt, agent, task, toolbelt);
@@ -47,6 +54,64 @@ internal static class AgentPromptComposer
 
         return prompt.ToString();
     }
+
+    /// <summary>
+    /// #348: the virtual paths the agent may touch, so it never guesses one (<c>/</c>, <c>/tmp</c>) the file
+    /// system refuses: its file-system scope when it declares one (#349), else the run's agent-facing
+    /// mounts (internal ones are never listed, ADR-008). Sorted by virtual path, so the same mounts give the
+    /// same prompt and the prompt cache holds across runs. Nothing when no path is visible.
+    /// </summary>
+    /// <param name="prompt">The system prompt being built.</param>
+    /// <param name="mounts">The agent-facing mounts of the run.</param>
+    /// <param name="scope">The agent's file-system scope, or <see langword="null"/>.</param>
+    /// <param name="workingDirectory">Where relative paths resolve, or <see langword="null"/>.</param>
+    /// <param name="isRoot">Whether <paramref name="workingDirectory"/> is the agent's working root.</param>
+    internal static void AppendFileSystemSection(
+        StringBuilder prompt, IReadOnlyList<Domain.FileSystem.MountInfo> mounts, Domain.FileSystem.AgentFileSystemScope? scope,
+        string? workingDirectory, bool isRoot)
+    {
+        var visible = (scope is null ? mounts : scope.Narrow(mounts))
+            .OrderBy(m => m.VirtualPath, StringComparer.Ordinal)
+            .ToList();
+        if (visible.Count == 0)
+            return;
+
+        prompt.AppendLine();
+        prompt.AppendLine("## File system");
+        prompt.AppendLine();
+        prompt.AppendLine("Only these virtual paths exist; any other path is refused:");
+        foreach (var mount in visible)
+        {
+            prompt.AppendLine(FormattableString.Invariant($"- {mount.VirtualPath} ({DescribeRights(mount.DefaultRights)})"));
+            foreach (var subPath in mount.Overrides.OrderBy(o => o.RelativePath, StringComparer.Ordinal))
+                prompt.AppendLine(FormattableString.Invariant(
+                    $"  - {mount.VirtualPath.TrimEnd('/')}/{subPath.RelativePath.Trim('/')} ({DescribeRights(subPath.Rights)})"));
+        }
+
+        // A scoped run whose working directory lies outside its scope is told so: a relative path would
+        // resolve where it is refused (a working root always lies inside, AgentWorkingRoot.ResolveScope).
+        if (!string.IsNullOrWhiteSpace(workingDirectory))
+            prompt.AppendLine(isRoot
+                ? FormattableString.Invariant($"Your working root is {workingDirectory}: relative paths resolve there.")
+                : scope is not null && scope.RightsAt(workingDirectory) == Domain.FileSystem.FileAccessRights.None
+                    ? FormattableString.Invariant(
+                        $"Relative paths resolve against {workingDirectory}, outside your file-system scope: write every path in full, under one of the paths above.")
+                    : FormattableString.Invariant($"Relative paths resolve against {workingDirectory}."));
+        if (visible.Any(m => m.DefaultRights.HasFlag(Domain.FileSystem.FileAccessRights.Write)
+                             || m.Overrides.Any(o => o.Rights.HasFlag(Domain.FileSystem.FileAccessRights.Write))))
+            prompt.AppendLine("Write intermediate notes under a read-write path.");
+    }
+
+    private static string DescribeRights(Domain.FileSystem.FileAccessRights rights) => rights switch
+    {
+        Domain.FileSystem.FileAccessRights.ReadOnly => "read-only",
+        Domain.FileSystem.FileAccessRights.ReadWrite => "read-write",
+        Domain.FileSystem.FileAccessRights.ReadWriteNoDelete => "read-write, no delete",
+        Domain.FileSystem.FileAccessRights.None => "no access",
+#pragma warning disable CA1308 // the enum's words, lowered for the prompt, not a normalisation for a comparison
+        _ => rights.ToString().ToLowerInvariant(),
+#pragma warning restore CA1308
+    };
 
     private static void AppendRoleSection(StringBuilder prompt, DomainAgent agent)
     {

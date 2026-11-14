@@ -131,8 +131,13 @@ namespace Orkeon.Application.Agent
             // released when this method leaves, on success, failure and cancellation alike. A
             // coworker delegated from inside this run reaches here again and gets its own scope,
             // nested in this one.
-            var root = AgentWorkingRoot.NormalizeMounted(agent.WorkingRoot, _fileSystem is null ? [] : _fileSystem.GetAvailableMounts());
-            var runScope = AgentRunScope.Begin(agent.Id.ToString(), agent.Role.Value, root);
+            var mounts = _fileSystem is null ? [] : _fileSystem.GetAvailableMounts();
+            var root = AgentWorkingRoot.NormalizeMounted(agent.WorkingRoot, mounts);
+            // #349: a run started from a tool call of a scoped run (spawn_agent, a delegation) stays inside
+            // that scope, so a scope is never escaped by handing the work to another agent.
+            var fileSystemScope = AgentWorkingRoot.ResolveScope(
+                agent.Role.Value, agent.FileSystemScope, mounts, AgentRunScope.EnforcedFileSystem, root);
+            var runScope = AgentRunScope.Begin(agent.Id.ToString(), agent.Role.Value, root, fileSystemScope);
             await using var runScopeEnd = runScope.ConfigureAwait(false);
 
             var startTime = DateTime.UtcNow;

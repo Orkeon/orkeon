@@ -45,6 +45,9 @@ internal sealed partial class EmailSendTool : ToolBase<EmailComposeRequest, Emai
     public override ToolAccess Access => ToolAccess.Execute;
 
     /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     protected override async Task<EmailSendResponse> ExecuteTypedAsync(EmailComposeRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

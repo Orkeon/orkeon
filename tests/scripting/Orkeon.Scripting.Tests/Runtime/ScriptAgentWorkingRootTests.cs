@@ -1,14 +1,9 @@
-using System.Collections.Concurrent;
 using Jint;
-using Orkeon.Domain.Execution;
 using Orkeon.Domain.FileSystem;
-using Orkeon.Domain.SharedKernel;
-using Orkeon.Domain.SharedKernel.ValueObjects;
-using Orkeon.Domain.Tools;
-using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Adapters;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Scripting.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tests.Shared.Timing;
 
@@ -21,51 +16,7 @@ public sealed class ScriptAgentWorkingRootTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    /// <summary>Records the root of the run scope each call runs in (<c>null</c> outside any scope or unrooted).</summary>
-    private sealed class ProbeTool : IBaseTool
-    {
-        public ConcurrentQueue<string?> Roots { get; } = new();
-
-        public string Name => "file_write";
-        public ToolAccess Access => ToolAccess.Read;
-        public string Description => "probe";
-        public ToolSchema Schema => new(Name, Description, new Dictionary<string, ParameterSchema>());
-
-        public Task<ToolCallResponse> CallAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest request, CancellationToken cancellationToken = default)
-        {
-            Roots.Enqueue(AgentRunScope.Current?.Root);
-            return Task.FromResult(new ToolCallResponse(true, new Dictionary<string, object?> { ["ok"] = true }, null));
-        }
-
-        public Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
-            => Task.FromResult(ToolResult.CreateSuccess("ok"));
-
-        public bool ValidateInput(string input) => true;
-    }
-
-    /// <summary>The first turn of each act asks for one <c>file_write</c> call; the turn after it answers.</summary>
-    private sealed class FakeWriteOnceLlmProvider : ILlmProvider
-    {
-        public string Name => "fake-write-once";
-        public LlmConfig? BaseConfig => LlmConfig.Create("fake-model");
-
-        public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
-            => Task.FromResult(new LlmResponse { Content = prompt });
-
-        public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
-        {
-            if (messages.Any(m => m.Role == "tool") || config?.Tools is null)
-                return Task.FromResult(new LlmResponse { Content = "final" });
-            return Task.FromResult(new LlmResponse
-            {
-                Content = "",
-                RawResponseBody = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" +
-                    "{\"id\":\"c1\",\"type\":\"function\",\"function\":{\"name\":\"file_write\",\"arguments\":\"{}\"}}]}}]}",
-            });
-        }
-    }
-
-    private static Jint.Engine NewEngine(ProbeTool probe)
+    private static Jint.Engine NewEngine(FakeRunScopeProbeTool probe)
     {
         var fileSystem = new FakeRightsFileSystemService().AddMount("/workspace", FileAccessRights.ReadWrite);
         return new JsEngineFactory(
@@ -84,9 +35,9 @@ public sealed class ScriptAgentWorkingRootTests
         crewBuilder().name("c").withAgent(a).build();
         """;
 
-    private static async Task<ProbeTool> RunAsync(string rootCall, string body)
+    private static async Task<FakeRunScopeProbeTool> RunAsync(string rootCall, string body)
     {
-        var probe = new ProbeTool();
+        var probe = new FakeRunScopeProbeTool();
         var crew = await BuildCrewAsync(NewEngine(probe), CrewOf(rootCall, body));
         await crew.RunAsync(null, Ct).WaitAsync(Safety, Ct);
         return probe;
@@ -147,7 +98,7 @@ public sealed class ScriptAgentWorkingRootTests
     [InlineData("/workspace/../nowhere")]
     public async Task ShouldRefuseRunAtStart_WhenRootIsNotUnderAMount(string root)
     {
-        var probe = new ProbeTool();
+        var probe = new FakeRunScopeProbeTool();
         var crew = await BuildCrewAsync(NewEngine(probe), CrewOf($$""".workingRoot("{{root}}")""",
             "globalThis.bodyRan = true; " + Act));
 
@@ -161,7 +112,7 @@ public sealed class ScriptAgentWorkingRootTests
     [Trait("BR", "RT-06")]
     public async Task ShouldRefuseEveryRoot_WhenHostWiredNoFileSystem()
     {
-        var engine = new JsEngineFactory(builtInTools: [new ProbeTool()], llmProvider: new FakeWriteOnceLlmProvider()).Create();
+        var engine = new JsEngineFactory(builtInTools: [new FakeRunScopeProbeTool()], llmProvider: new FakeWriteOnceLlmProvider()).Create();
         var crew = await BuildCrewAsync(engine, CrewOf(""".workingRoot("/workspace")""", Act));
 
         var ex = await Assert.ThrowsAnyAsync<Exception>(() => crew.RunAsync(null, Ct).WaitAsync(Safety, Ct));
@@ -173,7 +124,7 @@ public sealed class ScriptAgentWorkingRootTests
     [Trait("BR", "RT-06")]
     public async Task ShouldRunChildUnderParentRoot_WhenSpawnedChildDeclaresNone()
     {
-        var probe = new ProbeTool();
+        var probe = new FakeRunScopeProbeTool();
         var crew = await BuildCrewAsync(NewEngine(probe), """
             const kid = agentBuilder().name("kid").role("R").goal("G")
                 .body(async (input, ctx) => { await ctx.tools.fileWrite({}); return "kid"; }).build();
@@ -199,7 +150,7 @@ public sealed class ScriptAgentWorkingRootTests
     [Trait("BR", "RT-06")]
     public async Task ShouldSendUnderParentRoot_WhenInstanceWasSpawnedWithoutOwnRoot()
     {
-        var probe = new ProbeTool();
+        var probe = new FakeRunScopeProbeTool();
         var crew = await BuildCrewAsync(NewEngine(probe), """
             const kid = agentBuilder().name("kid").role("R").goal("G").tools(["file_write"])
                 .body(async () => "kid").build();
@@ -223,7 +174,7 @@ public sealed class ScriptAgentWorkingRootTests
     [Trait("BR", "RT-06")]
     public async Task ShouldIgnoreRootOption_WhenScriptPassesOneToRun()
     {
-        var probe = new ProbeTool();
+        var probe = new FakeRunScopeProbeTool();
         var engine = NewEngine(probe);
         await engine.EvaluateAsync("""
             const a = agentBuilder().name("a").role("R").goal("G")
@@ -257,7 +208,7 @@ public sealed class ScriptAgentWorkingRootTests
     [Trait("BR", "RT-06")]
     public async Task ShouldHoldEachAgentToItsRoot_WhenConcurrentBodiesCallCtxTools()
     {
-        var probe = new ProbeTool();
+        var probe = new FakeRunScopeProbeTool();
         var engine = NewEngine(probe);
         await engine.EvaluateAsync(TwoRootedAgents.Replace("CALL", "ctx.tools.fileWrite({})", StringComparison.Ordinal), null, Ct);
 
@@ -271,7 +222,7 @@ public sealed class ScriptAgentWorkingRootTests
     [Trait("BR", "RT-06")]
     public async Task ShouldRefuseGlobalToolCall_WhenConcurrentAgentsHaveDifferentRoots()
     {
-        var probe = new ProbeTool();
+        var probe = new FakeRunScopeProbeTool();
         var engine = NewEngine(probe);
         await engine.EvaluateAsync(TwoRootedAgents.Replace("CALL", "tools.fileWrite({})", StringComparison.Ordinal), null, Ct);
 
@@ -286,7 +237,7 @@ public sealed class ScriptAgentWorkingRootTests
     [Trait("BR", "RT-06")]
     public async Task ShouldMapWorkingRoot_WhenCrewRunsOnDeclarativeShape()
     {
-        var crew = await BuildCrewAsync(NewEngine(new ProbeTool()), """
+        var crew = await BuildCrewAsync(NewEngine(new FakeRunScopeProbeTool()), """
             const a = agentBuilder().name("a").role("R").goal("G").workingRoot("/workspace/wt/a").build();
             const b = agentBuilder().name("b").role("R").goal("G").build();
             crewBuilder().name("c").withAgent(a).withAgent(b).build();
