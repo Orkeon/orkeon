@@ -159,6 +159,10 @@ Migration:
   object stays an object, the same value as that run's `tasks[i].output`, where it was the object's CLR type
   name (`"System.Dynamic.ExpandoObject"`). `CrewResult.output` is `unknown` in `crew.d.ts` and
   `JsCrewResult.output` an `object?` in C#; `""` still means no agent returned anything.
+- Eight scripting examples print their run (#370): `01`–`07` and `14` ended with a bare `await crew.run()`, so
+  `orkeon run` printed `{"result": null}`; they now end with `globalThis.result = await crew.run()`. The first
+  snippet of `write-a-crew-in-typescript.md` does the same, and the `result` row of `scripting-dsl.md` no longer
+  says a `CrewResult` cannot be serialised.
 - A script catches the refusals of the `llm` namespace (#364): `llm.profile(name)` on a profile the host does
   not offer, `llm.model(name)` and `LlmConfig.with(...)` on a value they refuse, and `ctx.llm.reasoning`,
   `ctx.llm.capabilities` and `ctx.llm.stream` on a `llm: { profile }` the host lacks threw a CLR exception

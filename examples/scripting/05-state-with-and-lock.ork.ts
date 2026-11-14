@@ -14,4 +14,4 @@ const counter = agentBuilder()
     .build();
 
 const crew = crewBuilder().withAgent(counter).build();
-await crew.run();
+globalThis.result = await crew.run();

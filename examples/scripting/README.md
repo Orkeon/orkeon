@@ -30,7 +30,9 @@ and refuses the echo rather than misfile your mail (see below).
 
 Every file above is the **procedural** shape — it runs its crew(s) with `await crew.run()`
 (`08-rag` has no crew and only exercises `rag.*`; `12` runs two in sequence) and never assigns
-`globalThis.crew`; each agent's `.body()` runs and tasks are ignored.
+`globalThis.crew`; each agent's `.body()` runs and tasks are ignored. What a file assigns to
+`globalThis.result` is what `orkeon run` prints: most end with
+`globalThis.result = await crew.run()`.
 [`crew-review-desk/`](crew-review-desk/README.md) is
 the other one: a three-agent crew with tasks, a dependency chain and a deliverable, handed
 off with `globalThis.crew = crew`. Mixing the two endings is the mistake this catalogue is

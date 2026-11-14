@@ -159,7 +159,7 @@ Three names the runner exchanges with the script, declared in `globals.d.ts`.
 |---|---|---|
 | `crew` | script → runner | The declarative handoff. Assigning it *is* what selects the declarative engine. |
 | `inputs` | runner → script | What `--inputs` / `--inputs-file` parsed — or the `input` of the REPL's `script-host.runCrew(name, input)`. Procedural shape only. |
-| `result` | script → runner | What a procedural run reports when the script's completion value is `undefined` — which is always the case once the file has a top-level `await`, because it then runs wrapped in an async function. Assign it as `globalThis.result = …`: a top-level `const result` is local to that wrapper. Serialised to JSON, so assign a plain projection — a `CrewResult` holds host objects and does not survive the trip. |
+| `result` | script → runner | What a procedural run reports when the script's completion value is `undefined` — which is always the case once the file has a top-level `await`, because it then runs wrapped in an async function. Assign it as `globalThis.result = …`: a top-level `const result` is local to that wrapper. Serialised to JSON: a `CrewResult` goes whole — its `output` and one `{ name, output, durationMs }` per agent under `tasks` — and a plain projection prints only what it names. Left unassigned, the run prints `{"result": null}`. |
 
 ## `ctx` — the agent context
 

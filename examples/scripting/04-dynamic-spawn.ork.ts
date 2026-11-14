@@ -12,4 +12,4 @@ const orchestrator = agentBuilder()
     .build();
 
 const crew = crewBuilder().withAgent(orchestrator).build();
-await crew.run();
+globalThis.result = await crew.run();

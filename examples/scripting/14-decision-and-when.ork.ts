@@ -66,4 +66,4 @@ const crew = crewBuilder()
     .withTask(other)
     .build();
 
-await crew.run();
+globalThis.result = await crew.run();

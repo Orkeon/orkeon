@@ -167,7 +167,7 @@ Trois noms que le runner échange avec le script, déclarés dans `globals.d.ts`
 |---|---|---|
 | `crew` | script → runner | Le handoff déclaratif. L'affecter *est* ce qui sélectionne le moteur déclaratif. |
 | `inputs` | runner → script | Ce que `--inputs` / `--inputs-file` a analysé — ou l'`input` de `script-host.runCrew(name, input)` dans le REPL. Forme procédurale uniquement. |
-| `result` | script → runner | Ce qu'un run procédural rapporte quand la valeur de complétion du script est `undefined` — ce qui est toujours le cas dès que le fichier a un `await` de premier niveau, puisqu'il s'exécute alors enveloppé dans une fonction async. Affectez-la sous la forme `globalThis.result = …` : un `const result` de premier niveau reste local à cette enveloppe. Sérialisé en JSON : affectez une projection simple — un `CrewResult` porte des objets hôtes et ne survit pas au voyage. |
+| `result` | script → runner | Ce qu'un run procédural rapporte quand la valeur de complétion du script est `undefined` — ce qui est toujours le cas dès que le fichier a un `await` de premier niveau, puisqu'il s'exécute alors enveloppé dans une fonction async. Affectez-la sous la forme `globalThis.result = …` : un `const result` de premier niveau reste local à cette enveloppe. Sérialisé en JSON : un `CrewResult` passe entier — son `output` et un `{ name, output, durationMs }` par agent sous `tasks` — et une projection simple n'affiche que ce qu'elle nomme. Non affectée, le run affiche `{"result": null}`. |
 
 ## `ctx` — le contexte d'agent
 
