@@ -72,8 +72,9 @@ from those three (`libexec/<launcher>/LocalEmbeddingsModel/`), because `Orkeon.H
 and the REPL reference `Orkeon.Tools.Embeddings.Local` and SmartComponents' content
 files follow into the publish output. The `Orkeon.Tools.Embeddings.Local` **library** package deliberately
 ships *without* them — not as a licensing stance, but because a consumer already gets
-them transitively from the `SmartComponents.LocalEmbeddings` dependency, so a second
-copy would double the download (see the `OrkeonStripUpstreamContentFromPackage` target
+them from the `SmartComponents.LocalEmbeddings` dependency, whose `build/` target the
+package lets flow (`PrivateAssets="none"`) and which copies them to the consumer's
+`LocalEmbeddingsModel/default/`, so a second copy would double the download (see the `OrkeonStripUpstreamContentFromPackage` target
 in `src/packaging/Orkeon.Tools.Embeddings.Local/`). (2) The **ms-marco-MiniLM-L-6-v2**
 weights of section 7 (~22 MB, Apache-2.0) are embedded resources of the
 `Orkeon.Rag.Onnx.Model` assembly, so they travel with every artefact that contains it:

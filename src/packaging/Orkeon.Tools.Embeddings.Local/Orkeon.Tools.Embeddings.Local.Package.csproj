@@ -31,9 +31,15 @@
     <ProjectReference Include="..\Orkeon\Orkeon.csproj" />
   </ItemGroup>
 
-  <!-- Externals of the wrapped assembly that `Orkeon` does not already carry. -->
+  <!-- Externals of the wrapped assembly that `Orkeon` does not already carry.
+       PrivateAssets="none": SmartComponents delivers the BGE-micro-v2 model through
+       build/SmartComponents.LocalEmbeddings.targets, which copies model.onnx and vocab.txt to
+       the consumer's LocalEmbeddingsModel/default/. NuGet's default (PrivateAssets
+       "contentfiles;analyzers;build") wrote exclude="Build,Analyzers" into the nuspec, the
+       target never ran in a consumer and AddOrkeonLocalEmbeddings() threw at startup (#368).
+       scripts/check-package-closure.py refuses that default here. -->
   <ItemGroup>
-    <PackageReference Include="SmartComponents.LocalEmbeddings" />
+    <PackageReference Include="SmartComponents.LocalEmbeddings" PrivateAssets="none" />
   </ItemGroup>
 
   <Target Name="OrkeonEmbedWrappedAssembly" DependsOnTargets="BuildOnlySettings;ResolveReferences">
@@ -65,8 +71,9 @@
        the model are MIT, and THIRD-PARTY-NOTICES.md sections 1-2 carry the notices.
 
        What stays true for THIS package: anyone restoring Orkeon.Tools.Embeddings.Local
-       already receives the weights transitively from the SmartComponents dependency, so a
-       second copy here would double a 17 MB download for nothing. Strip them. -->
+       receives the weights from the SmartComponents dependency, whose build/ target this
+       package lets flow (PrivateAssets="none" above, #368), so a second copy here would double
+       a 17 MB download for nothing. Strip them. -->
   <Target Name="OrkeonStripUpstreamContentFromPackage" BeforeTargets="GenerateNuspec">
     <ItemGroup>
       <_PackageFiles Remove="@(_PackageFiles)"

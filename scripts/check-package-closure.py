@@ -64,6 +64,42 @@ PACKAGING = {
     "Orkeon.Cli.TerminalGui": REPO / "src/packaging/Orkeon.Cli.TerminalGui/Orkeon.Cli.TerminalGui.Package.csproj",
 }
 NON_FLOWING = {"Microsoft.CodeAnalysis.PublicApiAnalyzers"}  # PrivateAssets=all analyzers
+# Externals that deliver what a consumer needs through their `build/` assets: NuGet's default
+# for a PackageReference (PrivateAssets="contentfiles;analyzers;build") writes
+# exclude="Build,Analyzers" into the nuspec and the consumer never runs that target, so a
+# packaging project references them with PrivateAssets="none" (#368).
+BUILD_ASSET_EXTERNALS = {
+    # build/SmartComponents.LocalEmbeddings.targets copies the BGE-micro-v2 model and vocabulary
+    # to LocalEmbeddingsModel/default/; without it AddOrkeonLocalEmbeddings() throws at startup.
+    "SmartComponents.LocalEmbeddings",
+}
+
+
+def build_asset_reference_errors(pkg_id: str, packaging_csproj: Path) -> list[str]:
+    """A BUILD_ASSET_EXTERNALS PackageReference of a packaging project that hides `build`."""
+    text = packaging_csproj.read_text()
+    errors = []
+    for include, attrs in re.findall(r'<PackageReference\s+Include="([^"]+)"([^>]*)>', text):
+        if include not in BUILD_ASSET_EXTERNALS:
+            continue
+        private = re.search(r'PrivateAssets="([^"]*)"', attrs)
+        if not private or private.group(1).strip().lower() != "none":
+            errors.append(
+                f"{pkg_id}: PackageReference {include} must carry PrivateAssets=\"none\": its build/ "
+                f"target delivers what a consumer needs, and the default hides it (#368)"
+            )
+    return errors
+
+
+def nuspec_build_exclusions(root: ET.Element) -> list[str]:
+    """The BUILD_ASSET_EXTERNALS dependencies whose nuspec entry excludes `Build`."""
+    return sorted(
+        el.attrib["id"]
+        for el in root.iter()
+        if strip_ns(el.tag) == "dependency"
+        and el.attrib.get("id") in BUILD_ASSET_EXTERNALS
+        and "build" in {x.strip().lower() for x in el.attrib.get("exclude", "").split(",")}
+    )
 
 # The canonical NuGet.org lineup (PUB-25 — docs/reference/publication-matrix.md is
 # the source of truth this mirrors). Order matters for the push: `Orkeon` first,
@@ -375,6 +411,10 @@ def source_errors(lineup: list[str]) -> list[str]:
                 f"referencing it"
             )
 
+    # 6. Externals whose build/ assets a consumer needs flow them (#368).
+    for pkg_id, csproj in PACKAGING.items():
+        errors.extend(build_asset_reference_errors(pkg_id, csproj))
+
     return errors
 
 
@@ -441,6 +481,12 @@ def main() -> int:
         union = external_union(embedded)
         if pkg_id != "Orkeon":
             union -= provided_by_dependencies(csproj)[0]  # carried by its lineup dependencies
+        excluded = nuspec_build_exclusions(root)
+        if excluded:
+            errors.append(
+                f"{pkg_id}: the nuspec excludes Build from {excluded}, whose build/ target "
+                f"delivers what a consumer needs (#368)"
+            )
         undeclared = {u for u in union if u not in deps}
         if undeclared:
             errors.append(

@@ -144,6 +144,11 @@ Migration:
 
 ### Fixed
 
+- The `Orkeon.Tools.Embeddings.Local` package lets its consumer receive the BGE-micro-v2 model (#368): it referenced
+  `SmartComponents.LocalEmbeddings` with NuGet's default private assets, so its nuspec excluded `Build`, the upstream
+  target that copies `model.onnx` and `vocab.txt` to `LocalEmbeddingsModel/default/` never ran in a consumer, and
+  `AddOrkeonLocalEmbeddings()` threw at startup. The reference now carries `PrivateAssets="none"`, and
+  `scripts/check-package-closure.py` refuses a packaging project, or a packed nuspec, that hides that target again.
 - A provider constructed by hand sends an agent's tools (#367): the constructors without an
   `IToolCallingStrategy` — `new OllamaLlmProvider(llm, httpClientFactory)` as `bootstrap.md` shows,
   `new OpenAILlmProvider(...)` and every OpenAI-compatible provider, `new AnthropicLlmProvider(...)` — left the
