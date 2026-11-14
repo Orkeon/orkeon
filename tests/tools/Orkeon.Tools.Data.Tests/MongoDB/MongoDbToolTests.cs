@@ -302,6 +302,55 @@ public sealed class MongoDbToolTests : IDisposable
         Assert.Equal(1L, Convert.ToInt64(dict["document_count"]));
     }
 
+    [Theory]
+    [InlineData("limit", -1, "limit must be at least 0")]
+    [InlineData("skip", -2, "skip must be at least 0")]
+    public async Task ShouldRefuseNegativeLimitOrSkip_OnFind(string field, int value, string expected)
+    {
+        var request = MakeFindRequest(field, value);
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains(expected, result.Error);
+    }
+
+    [Fact]
+    public async Task ShouldAcceptLimitZero_AsNoLimit()
+    {
+        _state.FindResult = new List<BsonDocument>();
+
+        var result = await _tool.CallAsync(MakeFindRequest("limit", 0), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+    }
+
+    [Fact]
+    public async Task ShouldIgnoreNegativeLimit_OnCount()
+    {
+        var request = MakeRequest(new Dictionary<string, object?>
+        {
+            [ParamConnectionString] = TestMongoDbConnectionString,
+            ["database"] = "testdb",
+            ["collection"] = "users",
+            ["operation"] = "Count",
+            ["limit"] = -1
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain("limit must be", result.Error ?? "");
+    }
+
+    private static ToolCallRequest MakeFindRequest(string field, int value) => MakeRequest(new Dictionary<string, object?>
+    {
+        [ParamConnectionString] = TestMongoDbConnectionString,
+        ["database"] = "testdb",
+        ["collection"] = "users",
+        ["operation"] = "Find",
+        [field] = value
+    });
+
     // ── R2.4: aggregation stage allowlist ─────────────────────────────────
 
     [Theory]

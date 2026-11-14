@@ -54,6 +54,9 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
         if (request.QueryType == RelationalQueryType.Select && request.MaxRows < 1)
             return $"max_rows must be at least 1 (got {request.MaxRows}); omit it for the default of {DatabaseDefaults.DefaultMaxRows}";
 
+        if (request.QueryType == RelationalQueryType.Select && request.MaxRows > DatabaseDefaults.MaxAllowedRows)
+            return $"max_rows must be at most {DatabaseDefaults.MaxAllowedRows} (got {request.MaxRows})";
+
         if (request.TimeoutSeconds < 1)
             return $"timeout_seconds must be at least 1 (got {request.TimeoutSeconds}); omit it for the default of {DatabaseDefaults.DefaultTimeoutSeconds}";
 

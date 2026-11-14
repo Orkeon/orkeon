@@ -31,6 +31,15 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(FlowTraceRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.MaxDepth < 1)
+            return $"max_depth must be at least 1 (got {request.MaxDepth}); omit it for the default of 4";
+        return null;
+    }
+
     protected override Task<FlowTraceResponse> ExecuteTypedAsync(FlowTraceRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

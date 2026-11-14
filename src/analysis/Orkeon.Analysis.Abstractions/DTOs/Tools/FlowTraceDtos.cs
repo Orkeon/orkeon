@@ -16,7 +16,7 @@ public sealed record FlowTraceRequest
     [FieldSchema(Description = "Forward follows calls out of from; Backward follows them into from; Both.", IsRequired = false, Default = "Forward")]
     public Direction Direction { get; init; } = Direction.Forward;
 
-    [FieldSchema(Description = "Most hops per path (default 4).", IsRequired = false, Default = 4)]
+    [FieldSchema(Description = "Most hops per path, at least 1 (default 4).", IsRequired = false, Default = 4)]
     public int MaxDepth { get; init; } = 4;
 
     [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, extends, implements, tests, documents, project_depends, case-insensitively; inherits is extends and implements together. Empty follows calls.", ItemsType = "string", IsRequired = false)]

@@ -30,7 +30,7 @@ public sealed record StructuralRewriteRequest
     [JsonPropertyName("glob")] public string? Glob { get; init; }
     [FieldSchema(Description = "true (default) returns the diffs without writing; false writes the files.", IsRequired = false, Default = true)]
     [JsonPropertyName("dry_run")] public bool DryRun { get; init; } = true;
-    [FieldSchema(Description = "Most files scanned (default 500); truncated says when more were candidates.", IsRequired = false, Default = 500)]
+    [FieldSchema(Description = "Most files scanned, at least 1 (default 500); truncated says when more were candidates.", IsRequired = false, Default = 500)]
     [JsonPropertyName("max_files")] public int MaxFiles { get; init; } = 500;
 }
 
@@ -72,6 +72,10 @@ public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteReques
     protected override string? ValidateTypedRequest(StructuralRewriteRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        // A small model fills every optional field and sends 0, which would rewrite nothing and report truncation.
+        if (request.MaxFiles < 1)
+            return $"max_files must be at least 1 (got {request.MaxFiles}); omit it for the default of 500";
         return StructuralSearchTool.PathsOutsideRoot(FileSystemService, request.Paths);
     }
 

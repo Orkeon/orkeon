@@ -202,6 +202,50 @@ public sealed class RelationalDatabaseToolTests : IDisposable
     }
 
     [Theory]
+    [InlineData(100_001)]
+    [InlineData(int.MaxValue)]
+    public async Task Validation_RejectsMaxRowsAboveCeiling(int maxRows)
+    {
+        var request = new ToolCallRequest("relational_database_query", new Dictionary<string, object?>
+        {
+            [ParamConnectionString] = _connectionString,
+            ["provider_name"] = "Microsoft.Data.Sqlite",
+            [ParamQuery] = "SELECT * FROM users",
+            ["max_rows"] = maxRows,
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("max_rows must be at most 100000", result.Error);
+    }
+
+    [Fact]
+    public async Task Validation_AcceptsMaxRowsAtCeiling()
+    {
+        var dict = await SelectUsersAsync(100_000);
+
+        Assert.False((bool)dict["truncated"]!);
+    }
+
+    [Fact]
+    public async Task NonSelect_IgnoresMaxRowsAboveCeiling()
+    {
+        var request = new ToolCallRequest("relational_database_query", new Dictionary<string, object?>
+        {
+            [ParamConnectionString] = _connectionString,
+            ["provider_name"] = "Microsoft.Data.Sqlite",
+            [ParamQuery] = "SELECT COUNT(*) FROM users",
+            ["query_type"] = "Scalar",
+            ["max_rows"] = 100_001,
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     public async Task Validation_RejectsTimeoutBelowOne(int timeoutSeconds)

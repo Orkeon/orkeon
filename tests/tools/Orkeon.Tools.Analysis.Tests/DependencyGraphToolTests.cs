@@ -423,4 +423,40 @@ public class DependencyGraphToolTests
         Assert.Equal(3, whole.Nodes.Length);
         Assert.False(whole.Truncated);
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ShouldRefuseMaxCyclesBelowOne_WhenValidated(int value)
+    {
+        using var tool = new DependencyGraphTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new DependencyGraphRequest { Scope = NodeLevel.L2_Module } with { MaxCycles = value });
+
+        Assert.Equal($"max_cycles must be at least 1 (got {value}); omit it for the default of 20", error);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ShouldRefuseMaxCycleMembersBelowOne_WhenValidated(int value)
+    {
+        using var tool = new DependencyGraphTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new DependencyGraphRequest { Scope = NodeLevel.L2_Module } with { MaxCycleMembers = value });
+
+        Assert.Equal($"max_cycle_members must be at least 1 (got {value}); omit it for the default of 50", error);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ShouldRefuseMaxNodesBelowOne_WhenValidated(int value)
+    {
+        using var tool = new DependencyGraphTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new DependencyGraphRequest { Scope = NodeLevel.L2_Module } with { MaxNodes = value });
+
+        Assert.Equal($"max_nodes must be at least 1 (got {value}); omit it for the default of 200", error);
+    }
 }

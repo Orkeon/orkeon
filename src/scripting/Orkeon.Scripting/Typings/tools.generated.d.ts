@@ -45,7 +45,7 @@ declare global {
             bolt_uri: string;
             /** Target database name in ArcadeDB */
             database: string;
-            /** Maximum number of result records to return */
+            /** Maximum number of result records to return, at least 1 (default 1000) */
             max_results?: number;
             /** Query parameters as key-value pairs */
             parameters?: Record<string, unknown> | null;
@@ -173,7 +173,7 @@ declare global {
             distinct_matches?: boolean;
             /** Return the matched substrings themselves (capped by max_matches_returned) */
             include_matches?: boolean;
-            /** Cap on the returned matches list size (only applies when include_matches=true) */
+            /** Cap on the returned matches list size, at least 1 (default: 200; only read when include_matches=true, where it must be at least 1). To count without listing matches, leave include_matches false */
             max_matches_returned?: number | null;
             /** Apply RegexOptions.Multiline so ^/$ match line starts/ends */
             multiline?: boolean;
@@ -233,11 +233,11 @@ declare global {
             include_external?: boolean;
             /** Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart), for a human reader; false by default: the data alone answers an agent. */
             include_mermaid?: boolean;
-            /** Most members returned per cycle. member_count keeps the full size. */
+            /** Most members returned per cycle, at least 1 (default 50). member_count keeps the full size. */
             max_cycle_members?: number;
-            /** Most cycles returned, the largest first. cycle_count keeps the full count. */
+            /** Most cycles returned, at least 1 (default 20), the largest first. cycle_count keeps the full count. */
             max_cycles?: number;
-            /** Most nodes returned (default 200); truncated says when more exist. */
+            /** Most nodes returned, at least 1 (default 200); truncated says when more exist. */
             max_nodes?: number;
             /** Restrict nodes to these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node of the scope. */
             node_kinds?: readonly string[];
@@ -407,7 +407,7 @@ declare global {
             encoding?: "UTF-8" | "ASCII" | "Unicode" | "UTF-32";
             /** Maximum number of lines to return (default: up to the end of the file); max_length caps the result further */
             limit?: number | null;
-            /** Maximum number of characters to read (default: no limit). Applied after offset/limit: when it cuts a line range, only whole lines are kept and has_more is true, except that when the first line alone exceeds max_length it is cut by characters. */
+            /** Maximum number of characters to read, at least 1 (default: no limit; omit it for no limit). Applied after offset/limit: when it cuts a line range, only whole lines are kept and has_more is true, except that when the first line alone exceeds max_length it is cut by characters. */
             max_length?: number | null;
             /** First line to return (1-based, default 1 when limit is given). With offset/limit the file is streamed and not read beyond the range; max_length then caps the range */
             offset?: number | null;
@@ -504,7 +504,7 @@ declare global {
             from: string;
             /** With to: every path up to max_paths instead of the shortest one. */
             include_all_paths?: boolean;
-            /** Most hops per path (default 4). */
+            /** Most hops per path, at least 1 (default 4). */
             max_depth?: number;
             /** Most paths returned (default 20); truncated says when more exist. */
             max_paths?: number;
@@ -685,9 +685,9 @@ declare global {
         impactAnalysis(input: {
             /** Backward (default) lists what depends on target; Forward what target depends on; Both. */
             direction?: "Forward" | "Backward" | "Both";
-            /** Most hops followed for the transitive impact (default 3). */
+            /** Most hops followed for the transitive impact, at least 1 (default 3). */
             max_depth?: number;
-            /** Most symbols visited (default 500); truncated says when the walk stopped early. */
+            /** Most symbols visited, at least 1 (default 500); truncated says when the walk stopped early. */
             max_nodes?: number;
             /** FQN of the symbol about to change. */
             target: string;
@@ -781,7 +781,7 @@ declare global {
             bindings?: Record<string, unknown> | null;
             /** Gremlin WebSocket endpoint URI */
             gremlin_endpoint: string;
-            /** Maximum number of results to return */
+            /** Maximum number of results to return, at least 1 (default 1000) */
             max_results?: number;
             /** Timeout in milliseconds for traversal execution */
             timeout_ms?: number;
@@ -837,7 +837,7 @@ declare global {
         mariadbQuery(input: {
             /** Database connection string */
             connection_string: string;
-            /** Maximum number of rows to return for SELECT queries, at least 1 on a SELECT (default 1000); truncated tells whether rows were left out */
+            /** Maximum number of rows to return for SELECT queries, at least 1 and at most 100000 on a SELECT (default 1000); truncated tells whether rows were left out */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
             parameters?: Record<string, unknown> | null;
@@ -914,7 +914,7 @@ declare global {
             document?: string | null;
             /** JSON filter document for Find/Update/Delete/Count/Distinct operations */
             filter?: string | null;
-            /** Maximum number of documents to return (default 100) */
+            /** Maximum number of documents to return for Find (default 100); 0 means no limit, a negative value is refused */
             limit?: number;
             /** Operation to perform: Find, Aggregate, InsertOne, UpdateOne, DeleteOne, Count, Distinct */
             operation: "Find" | "Aggregate" | "InsertOne" | "UpdateOne" | "DeleteOne" | "Count" | "Distinct";
@@ -922,7 +922,7 @@ declare global {
             pipeline?: string | null;
             /** JSON projection document for Find operations */
             projection?: string | null;
-            /** Number of documents to skip */
+            /** Number of documents to skip for Find, at least 0 (default 0) */
             skip?: number;
             /** JSON sort document for Find operations */
             sort?: string | null;
@@ -958,7 +958,7 @@ declare global {
         mysqlQuery(input: {
             /** Database connection string */
             connection_string: string;
-            /** Maximum number of rows to return for SELECT queries, at least 1 on a SELECT (default 1000); truncated tells whether rows were left out */
+            /** Maximum number of rows to return for SELECT queries, at least 1 and at most 100000 on a SELECT (default 1000); truncated tells whether rows were left out */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
             parameters?: Record<string, unknown> | null;
@@ -1071,7 +1071,7 @@ declare global {
             include_dependencies?: boolean;
             /** Return the public exports of the package. */
             include_public_exports?: boolean;
-            /** Most exports returned (default 50); truncated says when more exist. */
+            /** Most exports returned, at least 1 (default 50); truncated says when more exist. */
             max_exports?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly dependencies: readonly string[];
@@ -1139,7 +1139,7 @@ declare global {
         postgresQuery(input: {
             /** Database connection string */
             connection_string: string;
-            /** Maximum number of rows to return for SELECT queries, at least 1 on a SELECT (default 1000); truncated tells whether rows were left out */
+            /** Maximum number of rows to return for SELECT queries, at least 1 and at most 100000 on a SELECT (default 1000); truncated tells whether rows were left out */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
             parameters?: Record<string, unknown> | null;
@@ -1209,7 +1209,7 @@ declare global {
             compare?: string | null;
             /** Virtual path of the golden dataset YAML (e.g. '/workspace/examples/rag/eval/golden.yaml') */
             dataset: string;
-            /** Metric cutoff for recall@k / precision@k (default: 5) */
+            /** Metric cutoff for recall@k / precision@k, at least 1 (default: 5) */
             k?: number;
             /** Profile to evaluate (default: 'default') */
             profile?: string | null;
@@ -1243,7 +1243,7 @@ declare global {
             collection?: string | null;
             /** The question to search for in knowledge bases */
             question: string;
-            /** Number of relevant chunks to retrieve (default: 3) */
+            /** Number of relevant chunks to retrieve, at least 1 (default: 3) */
             top_k?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly answer: string;
@@ -1267,7 +1267,7 @@ declare global {
         relationalDatabaseQuery(input: {
             /** Database connection string */
             connection_string: string;
-            /** Maximum number of rows to return for SELECT queries, at least 1 on a SELECT (default 1000); truncated tells whether rows were left out */
+            /** Maximum number of rows to return for SELECT queries, at least 1 and at most 100000 on a SELECT (default 1000); truncated tells whether rows were left out */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
             parameters?: Record<string, unknown> | null;
@@ -1429,7 +1429,7 @@ declare global {
         sqlserverQuery(input: {
             /** Database connection string */
             connection_string: string;
-            /** Maximum number of rows to return for SELECT queries, at least 1 on a SELECT (default 1000); truncated tells whether rows were left out */
+            /** Maximum number of rows to return for SELECT queries, at least 1 and at most 100000 on a SELECT (default 1000); truncated tells whether rows were left out */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
             parameters?: Record<string, unknown> | null;
@@ -1479,7 +1479,7 @@ declare global {
             glob?: string | null;
             /** Language of the pattern and of the files rewritten (csharp, typescript, python...). Required with pattern or rule; a rule_file names its own. */
             language?: string;
-            /** Most files scanned (default 500); truncated says when more were candidates. */
+            /** Most files scanned, at least 1 (default 500); truncated says when more were candidates. */
             max_files?: number;
             /** Virtual paths of the files or folders rewritten; empty takes the mounted roots. */
             paths?: readonly string[];
@@ -1501,9 +1501,9 @@ declare global {
             glob?: string | null;
             /** Language of the pattern and of the files searched (csharp, typescript, python, markdown...). Required with pattern or rule; a rule_file names its own. */
             language?: string;
-            /** Most files scanned (default 500); truncated says when more were candidates. */
+            /** Most files scanned, at least 1 (default 500); truncated says when more were candidates. */
             max_files?: number;
-            /** Most matches returned (default 100); truncated says when more exist. */
+            /** Most matches returned, at least 1 (default 100); truncated says when more exist. */
             max_results?: number;
             /** Virtual paths of the files or folders searched; empty searches the mounted roots. */
             paths?: readonly string[];
@@ -1521,7 +1521,7 @@ declare global {
 
         /** `sub_graph` - What surrounds these symbols? Expands the graph from the seeds (FQNs) along edge_kinds, Forward (what they call or extend) or Backward (who calls or extends them), up to depth hops and max_nodes nodes (100); truncated says when the expansion stopped early. For the whole graph at a scope, dependency_graph; for the paths between two symbols, flow_trace. */
         subGraph(input: {
-            /** How many hops from the seeds (default 2). */
+            /** How many hops from the seeds, at least 1 (default 2). */
             depth?: number;
             /** Forward follows the edges from the seeds (what X calls, what X extends); Backward follows them into the seeds (who calls X, who extends X); Both. */
             direction?: "Forward" | "Backward" | "Both";
@@ -1529,7 +1529,7 @@ declare global {
             edge_kinds?: readonly string[];
             /** Add a Mermaid flowchart of the nodes and edges (mermaid_flowchart), for a human reader; false by default: the data alone answers an agent. */
             include_mermaid?: boolean;
-            /** Most nodes returned (default 100); truncated says when the expansion stopped before its depth. */
+            /** Most nodes returned, at least 1 (default 100); truncated says when the expansion stopped before its depth. */
             max_nodes?: number;
             /** Keep only expanded nodes of these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node. */
             node_kinds?: readonly string[];

@@ -31,6 +31,19 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(DependencyGraphRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.MaxNodes < 1)
+            return $"max_nodes must be at least 1 (got {request.MaxNodes}); omit it for the default of 200";
+        if (request.MaxCycles < 1)
+            return $"max_cycles must be at least 1 (got {request.MaxCycles}); omit it for the default of 20";
+        if (request.MaxCycleMembers < 1)
+            return $"max_cycle_members must be at least 1 (got {request.MaxCycleMembers}); omit it for the default of 50";
+        return null;
+    }
+
     protected override Task<DependencyGraphResponse> ExecuteTypedAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

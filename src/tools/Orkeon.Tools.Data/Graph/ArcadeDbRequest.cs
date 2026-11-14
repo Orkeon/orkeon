@@ -48,6 +48,6 @@ public record ArcadeDbRequest
     public ArcadeDbQueryLanguage QueryLanguage { get; init; } = ArcadeDbQueryLanguage.Cypher;
 
     /// <summary>Gets the maximum number of result records to return.</summary>
-    [FieldSchema(Description = "Maximum number of result records to return", IsRequired = false, Example = "1000")]
+    [FieldSchema(Description = "Maximum number of result records to return, at least 1 (default 1000)", IsRequired = false, Example = "1000")]
     public int MaxResults { get; init; } = 1000;
 }

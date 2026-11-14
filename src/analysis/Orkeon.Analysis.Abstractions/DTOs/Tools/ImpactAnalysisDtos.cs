@@ -12,10 +12,10 @@ public sealed record ImpactAnalysisRequest
     [FieldSchema(Description = "Backward (default) lists what depends on target; Forward what target depends on; Both.", IsRequired = false, Default = "Backward")]
     public Direction Direction { get; init; } = Direction.Backward;
 
-    [FieldSchema(Description = "Most hops followed for the transitive impact (default 3).", IsRequired = false, Default = 3)]
+    [FieldSchema(Description = "Most hops followed for the transitive impact, at least 1 (default 3).", IsRequired = false, Default = 3)]
     public int MaxDepth { get; init; } = 3;
 
-    [FieldSchema(Description = "Most symbols visited (default 500); truncated says when the walk stopped early.", IsRequired = false, Default = 500)]
+    [FieldSchema(Description = "Most symbols visited, at least 1 (default 500); truncated says when the walk stopped early.", IsRequired = false, Default = 500)]
     public int MaxNodes { get; init; } = 500;
 }
 

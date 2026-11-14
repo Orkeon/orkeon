@@ -32,7 +32,7 @@ public sealed class FileReadRequest
 
     /// <summary>Maximum number of characters to read (default: no limit).</summary>
     [JsonPropertyName("max_length")]
-    [FieldSchema(Description = "Maximum number of characters to read (default: no limit). Applied after offset/limit: when it cuts a line range, only whole lines are kept and has_more is true, except that when the first line alone exceeds max_length it is cut by characters.", IsRequired = false, Example = 10000)]
+    [FieldSchema(Description = "Maximum number of characters to read, at least 1 (default: no limit; omit it for no limit). Applied after offset/limit: when it cuts a line range, only whole lines are kept and has_more is true, except that when the first line alone exceeds max_length it is cut by characters.", IsRequired = false, Example = 10000)]
     public int? MaxLength { get; init; }
 
     /// <summary>When true, attempts to serve content from the RaggableTree index if a module matches by path and SHA-256.</summary>
@@ -135,6 +135,9 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
             return "Offset must be at least 1 (lines are 1-based)";
         if (request.Limit is <= 0)
             return "Limit must be at least 1";
+        // A small model fills every optional field and sends 0, which would return an empty content as a success.
+        if (request.MaxLength is < 1)
+            return $"max_length must be at least 1 (got {request.MaxLength}); omit it for no limit";
         return null;
     }
 

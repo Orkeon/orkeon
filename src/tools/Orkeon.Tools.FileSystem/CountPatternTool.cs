@@ -53,7 +53,7 @@ public sealed class CountPatternRequest
     /// is true. Prevents context blow-up on very dense documents. Default: 200.
     /// </summary>
     [JsonPropertyName("max_matches_returned")]
-    [FieldSchema(Description = "Cap on the returned matches list size (only applies when include_matches=true)", IsRequired = false, Example = 200)]
+    [FieldSchema(Description = "Cap on the returned matches list size, at least 1 (default: 200; only read when include_matches=true, where it must be at least 1). To count without listing matches, leave include_matches false", IsRequired = false, Example = 200)]
     public int? MaxMatchesReturned { get; init; }
 }
 
@@ -150,6 +150,9 @@ public partial class CountPatternTool : FileToolBase<CountPatternRequest, CountP
             return "Path parameter is required";
         if (request.Patterns is null || request.Patterns.Count == 0)
             return "At least one pattern is required";
+        // Only read with include_matches: 0 there would return an empty list beside a non-zero count.
+        if (request.IncludeMatches && request.MaxMatchesReturned is < 1)
+            return $"max_matches_returned must be at least 1 (got {request.MaxMatchesReturned}); omit it for the default of {DefaultMaxMatchesReturned}";
         return null;
     }
 
@@ -181,7 +184,6 @@ public partial class CountPatternTool : FileToolBase<CountPatternRequest, CountP
                 : RegexOptions.CultureInvariant;
 
             var maxMatchesReturned = request.MaxMatchesReturned ?? DefaultMaxMatchesReturned;
-            if (maxMatchesReturned < 0) maxMatchesReturned = 0;
 
             var counts = CountAllPatterns(request, content, options, maxMatchesReturned);
 

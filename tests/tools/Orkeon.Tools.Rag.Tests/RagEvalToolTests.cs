@@ -90,6 +90,22 @@ public sealed class RagEvalToolTests
         Assert.Contains("/output/rag/eval/golden-compare.md", view.Reports);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public async Task Call_WithKBelowOne_IsRefusedNamingTheFieldAndDefault(int k)
+    {
+        var harness = new FakeRagEvalHarness();
+        using var tool = new RagEvalTool(harness);
+
+        var response = await tool.CallAsync(
+            Request(new() { ["dataset"] = "/workspace/golden.json", ["k"] = k }),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(response.Success);
+        Assert.Contains($"k must be at least 1 (got {k}); omit it for the default of 5", response.Error, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Call_WithoutDataset_Fails()
     {

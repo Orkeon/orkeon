@@ -25,6 +25,17 @@ public sealed class SubGraphTool : ToolBase<SubGraphRequest, SubGraphResponse>
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(SubGraphRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Depth < 1)
+            return $"depth must be at least 1 (got {request.Depth}); omit it for the default of 2";
+        if (request.MaxNodes < 1)
+            return $"max_nodes must be at least 1 (got {request.MaxNodes}); omit it for the default of 100";
+        return null;
+    }
+
     protected override Task<SubGraphResponse> ExecuteTypedAsync(SubGraphRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

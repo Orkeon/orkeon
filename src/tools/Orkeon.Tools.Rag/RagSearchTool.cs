@@ -58,7 +58,7 @@ public class RagSearchTool : ToolBase<RagSearchRequest, RagSearchResponse>
                 Required: true),
             ["top_k"] = new ParameterSchema(
                 "integer",
-                "Number of relevant chunks to retrieve (default: 3)",
+                "Number of relevant chunks to retrieve, at least 1 (default: 3)",
                 Required: false,
                 Default: 3),
             ["collection"] = new ParameterSchema(
@@ -138,7 +138,14 @@ public class RagSearchTool : ToolBase<RagSearchRequest, RagSearchResponse>
     protected override string? ValidateTypedRequest(RagSearchRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return string.IsNullOrWhiteSpace(request.Question) ? "question parameter is required" : null;
+        if (string.IsNullOrWhiteSpace(request.Question))
+        {
+            return "question parameter is required";
+        }
+
+        return request.TopK < 1
+            ? $"top_k must be at least 1 (got {request.TopK}); omit it for the default of 3"
+            : null;
     }
 
     /// <summary>The configured default collection, else <see cref="DefaultCollection"/>.</summary>

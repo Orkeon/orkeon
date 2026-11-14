@@ -40,6 +40,21 @@ public class RagSearchToolTests
         Assert.False(tool.Schema.Parameters["collection"].Required);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-2)]
+    public async Task CallAsync_WithTopKBelowOne_IsRefusedNamingTheFieldAndDefault(int topK)
+    {
+        using var tool = new RagSearchTool(new FakeRagPipeline { Answer = AnswerWithCitations() });
+
+        var response = await tool.CallAsync(new ToolCallRequest("rag_search",
+            new Dictionary<string, object?> { ["question"] = "refund policy?", ["top_k"] = topK }),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(response.Success);
+        Assert.Contains($"top_k must be at least 1 (got {topK}); omit it for the default of 3", response.Error, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task CallAsync_FormatsAnswer_AndSourcesBlock_LikeTheLegacyTool()
     {

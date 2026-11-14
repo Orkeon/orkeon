@@ -158,6 +158,16 @@ Migration:
   rows `max_rows` left out (absent on Execute and Scalar). `csv_reader` refuses a `max_rows` below 1 the same way, its
   `truncated` is no longer true when the file holds exactly `max_rows` rows, and a cancelled read is a cancellation
   instead of a partial success.
+- The other tools that read a result limit refuse a value that would return nothing as a success (#372), in a
+  message that names the field and its default: `janusgraph_query` and `arcadedb_query` `max_results`, `rag_search`
+  `top_k`, `rag_eval` `k`, `structural_search` `max_results` and `max_files`, `structural_rewrite` `max_files`,
+  `file_read` `max_length` (where a negative value threw), and `count_pattern` `max_matches_returned` when
+  `include_matches` is true (a negative value was silently read as 0), `package_summary` `max_exports`,
+  `dependency_graph` `max_cycles`, `max_cycle_members` and `max_nodes` (a `max_cycles` of 0 gave no cycle and
+  `cycles_truncated: true`), `flow_trace` `max_depth`, `impact_analysis` `max_depth` and `max_nodes`, `sub_graph`
+  `depth` and `max_nodes` (where 0 was silently read as 1). `mongodb_query` keeps MongoDB's `limit: 0` as
+  "no limit", now stated in its schema, and refuses a negative `limit` or `skip` on a Find. A SELECT of
+  `relational_database_query` refuses a `max_rows` above 100000.
 
 - A consumer of `Orkeon.Tools.Embeddings.Local` or `Orkeon.Scripting` gets the BGE-micro-v2 model (#368). The
   `SmartComponents.LocalEmbeddings` package (~40 KB) carries no weights: its `build/` target downloads `model.onnx`

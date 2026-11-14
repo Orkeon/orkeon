@@ -227,6 +227,40 @@ public sealed class JanusGraphToolTests : IDisposable
         Assert.Equal(5, (int)dict["result_count"]!);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public async Task ShouldRefuseMaxResultsBelowOne(int maxResults)
+    {
+        var result = await _tool.CallAsync(JanusRequest(maxResults), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("max_results must be at least 1", result.Error);
+        Assert.Contains("1000", result.Error);
+    }
+
+    [Fact]
+    public async Task ShouldAcceptMaxResultsOfOne()
+    {
+        _client.SetDictResult([new Dictionary<string, object?> { ["id"] = 1 }, new Dictionary<string, object?> { ["id"] = 2 }]);
+
+        var result = await _tool.CallAsync(JanusRequest(1), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = result.Result as Dictionary<string, object?>;
+        Assert.NotNull(dict);
+        Assert.Equal(1, (int)dict["result_count"]!);
+    }
+
+    private static ToolCallRequest JanusRequest(int maxResults) => new(
+        ToolName: "janusgraph_query",
+        Parameters: new Dictionary<string, object?>
+        {
+            ["gremlin_endpoint"] = "ws://localhost:8182/gremlin",
+            ["traversal"] = "g.V()",
+            ["max_results"] = maxResults
+        });
+
     // ── Schema tests ──────────────────────────────────────────────
 
     [Fact]

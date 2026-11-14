@@ -121,4 +121,16 @@ public class PackageSummaryToolTests
 
         Assert.Equal(["/src/a/Program.cs", "/src/a/__main__.py", "/src/a/main.go"], resp.EntryPoints.Order(StringComparer.Ordinal));
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ShouldRefuseMaxExportsBelowOne_WhenValidated(int value)
+    {
+        using var tool = new PackageSummaryTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new PackageSummaryRequest { Fqn = "root::a" } with { MaxExports = value });
+
+        Assert.Equal($"max_exports must be at least 1 (got {value}); omit it for the default of 50", error);
+    }
 }

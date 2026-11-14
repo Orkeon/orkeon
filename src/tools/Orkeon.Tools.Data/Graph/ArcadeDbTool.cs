@@ -71,6 +71,10 @@ public partial class ArcadeDbTool : ToolBase<ArcadeDbRequest, ArcadeDbResponse>
         if (DeleteRegex().IsMatch(trimmedQuery) && !WhereRegex().IsMatch(trimmedQuery))
             return "DELETE without WHERE clause is not allowed";
 
+        // A small model fills every optional field and sends 0, which would return no record.
+        if (request.MaxResults < 1)
+            return $"max_results must be at least 1 (got {request.MaxResults}); omit it for the default of 1000";
+
         return null;
     }
 
