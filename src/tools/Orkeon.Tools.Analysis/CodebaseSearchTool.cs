@@ -28,6 +28,15 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(CodebaseSearchRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.TopK < 1)
+            return $"top_k must be at least 1 (got {request.TopK}); omit it for the default of 10";
+        return null;
+    }
+
     protected override Task<CodebaseSearchResponse> ExecuteTypedAsync(CodebaseSearchRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -43,7 +52,7 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
 
             var preFilter = BuildPreFilter(request);
             // One hit past the page: truncated says that more hits match, never that the page is full (#283).
-            var topK = Math.Max(1, request.TopK);
+            var topK = request.TopK;
             var query = new SemanticQuery
             {
                 Text = request.Query,

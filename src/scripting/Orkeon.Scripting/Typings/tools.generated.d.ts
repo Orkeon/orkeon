@@ -113,7 +113,7 @@ declare global {
             include_metrics?: boolean;
             /** Level of the entries: L0_Monorepo, L1_Package (default), L2_Module or L3_Symbol. */
             level?: "L0_Monorepo" | "L1_Package" | "L2_Module" | "L3_Symbol" | "L4_Statement";
-            /** Most entries returned (default 200); truncated says when more exist. */
+            /** Most entries returned, at least 1 (default 200); truncated says when more exist. */
             max_entries?: number;
             /** Keep only the entries at or under this node (a package or folder by path, a namespace by its files and name, a type by FQN); a node id, an FQN or a path. */
             root_fqn?: string | null;
@@ -142,7 +142,7 @@ declare global {
             mode?: "Hybrid" | "Vector" | "Lexical";
             /** A symbol name, or words describing what the code does. */
             query: string;
-            /** Most hits returned (default 10); truncated says when more match. */
+            /** Most hits returned, at least 1 (default 10); truncated says when more match. */
             top_k?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly hits: readonly { readonly fqn: string; readonly match_origin: string; readonly score: number; readonly signature?: string; readonly summary_short?: string; }[];
@@ -157,7 +157,7 @@ declare global {
             metric?: "Cyclomatic" | "NestingDepth" | "FanOut" | "LoC" | "Callers";
             /** Keep only the symbols under this FQN. */
             root_fqn?: string | null;
-            /** How many symbols are listed, the highest first (default 20). */
+            /** How many symbols are listed, the highest first, at least 1 (default 20). */
             top_n?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly evaluated_count: number;
@@ -506,7 +506,7 @@ declare global {
             include_all_paths?: boolean;
             /** Most hops per path, at least 1 (default 4). */
             max_depth?: number;
-            /** Most paths returned (default 20); truncated says when more exist. */
+            /** Most paths returned, at least 1 (default 20); truncated says when more exist. */
             max_paths?: number;
             /** FQN the paths must reach; omit it to list every path from the start. */
             to?: string | null;
@@ -1462,7 +1462,7 @@ declare global {
             parent_fqns?: readonly string[];
             /** Words describing the statements wanted; ranks the hits by similarity. */
             semantic_query?: string | null;
-            /** Most hits returned (default 50); truncated says when more exist. */
+            /** Most hits returned, at least 1 (default 50); truncated says when more exist. */
             top_k?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly hits: readonly { readonly condition?: string; readonly end_line?: number; readonly expression?: string; readonly kind: string; readonly parent_fqn: string; readonly score?: number; readonly start_line: number; readonly statement_id: string; }[];
@@ -1554,7 +1554,7 @@ declare global {
             include_doc?: boolean;
             /** Return the signature. */
             include_signature?: boolean;
-            /** Most members returned under Members (default 50); truncated says when more exist. */
+            /** Most members returned under Members, 1 to 200 (default 50); truncated says when more exist. */
             max_children?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly body?: { readonly await_count: number; readonly branch_count: number; readonly call_count: number; readonly closure_count: number; readonly cyclomatic_complexity: number; readonly early_return_count: number; readonly is_partial: boolean; readonly loop_count: number; readonly max_depth: number; readonly statement_count: number; readonly try_catch_count: number; };
@@ -1580,7 +1580,7 @@ declare global {
         symbolSource(input: {
             /** FQN of the symbol to cite. */
             fqn: string;
-            /** Most lines returned (default 40); truncated says when the span is longer. */
+            /** Most lines returned, at least 1 (default 40); truncated says when the span is longer. */
             max_lines?: number;
             /** Span cited: SignatureOnly, SignatureAndDoc, SignatureAndBody (default), FullSpan, StatementSpan (with statement_id). */
             mode?: "SignatureOnly" | "SignatureAndDoc" | "SignatureAndBody" | "FullSpan" | "StatementSpan";

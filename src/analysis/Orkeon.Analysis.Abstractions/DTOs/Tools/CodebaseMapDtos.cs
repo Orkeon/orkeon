@@ -14,7 +14,7 @@ public sealed record CodebaseMapRequest
     [FieldSchema(Description = "Keep only the entries at or under this node (a package or folder by path, a namespace by its files and name, a type by FQN); a node id, an FQN or a path.", IsRequired = false)]
     public string? RootFqn { get; init; }
 
-    [FieldSchema(Description = "Most entries returned (default 200); truncated says when more exist.", IsRequired = false, Default = 200)]
+    [FieldSchema(Description = "Most entries returned, at least 1 (default 200); truncated says when more exist.", IsRequired = false, Default = 200)]
     public int MaxEntries { get; init; } = 200;
 }
 

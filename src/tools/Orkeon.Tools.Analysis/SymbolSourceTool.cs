@@ -30,6 +30,15 @@ public sealed class SymbolSourceTool : ToolBase<SymbolSourceRequest, SymbolSourc
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(SymbolSourceRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.MaxLines < 1)
+            return $"max_lines must be at least 1 (got {request.MaxLines}); omit it for the default of 40";
+        return null;
+    }
+
     protected override Task<SymbolSourceResponse> ExecuteTypedAsync(SymbolSourceRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -50,7 +59,7 @@ public sealed class SymbolSourceTool : ToolBase<SymbolSourceRequest, SymbolSourc
                     .ConfigureAwait(false);
             }
 
-            var linesRequested = Math.Max(1, request.MaxLines);
+            var linesRequested = request.MaxLines;
             var actualLines = Math.Max(1, slice.EndLine - slice.StartLine + 1);
             var truncated = actualLines > linesRequested;
 

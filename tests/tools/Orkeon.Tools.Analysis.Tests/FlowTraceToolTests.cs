@@ -163,4 +163,16 @@ public class FlowTraceToolTests
 
         Assert.Equal($"max_depth must be at least 1 (got {value}); omit it for the default of 4", error);
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ShouldRefuseMaxPathsBelowOne_WhenValidated(int value)
+    {
+        using var tool = new FlowTraceTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new FlowTraceRequest { From = "/src::a" } with { MaxPaths = value });
+
+        Assert.Equal($"max_paths must be at least 1 (got {value}); omit it for the default of 20", error);
+    }
 }

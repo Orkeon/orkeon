@@ -83,4 +83,16 @@ public class SymbolSourceToolTests
 
         Assert.Equal("function handle()", resp.Source);
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ShouldRefuseMaxLinesBelowOne_WhenValidated(int value)
+    {
+        using var tool = new SymbolSourceTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new SymbolSourceRequest { Fqn = "/src::a" } with { MaxLines = value });
+
+        Assert.Equal($"max_lines must be at least 1 (got {value}); omit it for the default of 40", error);
+    }
 }

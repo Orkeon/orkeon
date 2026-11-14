@@ -30,6 +30,17 @@ public sealed class SymbolDetailTool : ToolBase<SymbolDetailRequest, SymbolDetai
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(SymbolDetailRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.MaxChildren < 1)
+            return $"max_children must be at least 1 (got {request.MaxChildren}); omit it for the default of 50";
+        if (request.MaxChildren > 200)
+            return $"max_children must be at most 200 (got {request.MaxChildren}); omit it for the default of 50";
+        return null;
+    }
+
     protected override Task<SymbolDetailResponse> ExecuteTypedAsync(SymbolDetailRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -41,7 +52,7 @@ public sealed class SymbolDetailTool : ToolBase<SymbolDetailRequest, SymbolDetai
             if (node is null) throw await FqnSuggestions.BuildAsync(_store, request.Fqn, cancellationToken).ConfigureAwait(false);
 
             var expand = request.Expand;
-            var maxChildren = Math.Clamp(request.MaxChildren, 1, 200);
+            var maxChildren = request.MaxChildren;
 
             var (members, truncated) = await LoadMembersAsync(node, expand, maxChildren, cancellationToken).ConfigureAwait(false);
             var inheritance = await LoadInheritanceAsync(node, expand, cancellationToken).ConfigureAwait(false);

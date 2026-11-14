@@ -165,7 +165,9 @@ Migration:
   `include_matches` is true (a negative value was silently read as 0), `package_summary` `max_exports`,
   `dependency_graph` `max_cycle_members` and `max_nodes` (`max_cycles` keeps 0 as its count-only mode, now stated in
   its schema, and refuses a negative value), `flow_trace` `max_depth`, `impact_analysis` `max_depth` and `max_nodes`, `sub_graph`
-  `depth` and `max_nodes` (where 0 was silently read as 1). On a Find, `mongodb_query` refuses a `limit` below 1
+  `depth` and `max_nodes`, `flow_trace` `max_paths`, `codebase_search` and `statement_query` `top_k`,
+  `complexity_report` `top_n`, `symbol_detail` `max_children` (also refused above 200), `symbol_source` `max_lines`
+  and `codebase_map` `max_entries` (where 0 was silently read as 1). On a Find, `mongodb_query` refuses a `limit` below 1
   (MongoDB reads 0 as "no limit": the whole collection came back) and a negative `skip`.
 
 - A consumer of `Orkeon.Tools.Embeddings.Local` or `Orkeon.Scripting` gets the BGE-micro-v2 model (#368). The

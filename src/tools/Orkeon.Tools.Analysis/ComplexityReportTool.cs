@@ -24,6 +24,15 @@ public sealed class ComplexityReportTool : ToolBase<ComplexityReportRequest, Com
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(ComplexityReportRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.TopN < 1)
+            return $"top_n must be at least 1 (got {request.TopN}); omit it for the default of 20";
+        return null;
+    }
+
     protected override Task<ComplexityReportResponse> ExecuteTypedAsync(ComplexityReportRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -35,7 +44,7 @@ public sealed class ComplexityReportTool : ToolBase<ComplexityReportRequest, Com
             {
                 RootFqn = request.RootFqn,
                 Metric = request.Metric,
-                TopN = Math.Max(1, request.TopN),
+                TopN = request.TopN,
             };
             var top = await _store.TopComplexityAsync(topQuery, cancellationToken).ConfigureAwait(false);
 

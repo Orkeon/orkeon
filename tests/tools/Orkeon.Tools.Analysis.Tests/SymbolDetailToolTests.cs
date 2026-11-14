@@ -172,4 +172,28 @@ public class SymbolDetailToolTests
         Assert.Empty(resp.DerivedBy);
         Assert.Empty(resp.Extends);
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ShouldRefuseMaxChildrenBelowOne_WhenValidated(int value)
+    {
+        using var tool = new SymbolDetailTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new SymbolDetailRequest { Fqn = "/src::a" } with { MaxChildren = value });
+
+        Assert.Equal($"max_children must be at least 1 (got {value}); omit it for the default of 50", error);
+    }
+
+    [Theory]
+    [InlineData(201)]
+    [InlineData(1000)]
+    public void ShouldRefuseMaxChildrenAboveTwoHundred_WhenValidated(int value)
+    {
+        using var tool = new SymbolDetailTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new SymbolDetailRequest { Fqn = "/src::a" } with { MaxChildren = value });
+
+        Assert.Equal($"max_children must be at most 200 (got {value}); omit it for the default of 50", error);
+    }
 }

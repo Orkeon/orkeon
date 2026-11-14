@@ -31,6 +31,15 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A small model fills every optional field and sends 0: refuse it rather than return an empty result.
+    protected override string? ValidateTypedRequest(CodebaseMapRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.MaxEntries < 1)
+            return $"max_entries must be at least 1 (got {request.MaxEntries}); omit it for the default of 200";
+        return null;
+    }
+
     protected override Task<CodebaseMapResponse> ExecuteTypedAsync(CodebaseMapRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -42,7 +51,7 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
             if (_freshness is not null)
                 await _freshness.EnsureFreshAsync(cancellationToken).ConfigureAwait(false);
             // One entry past the page: truncated says that more entries exist, never that the page is full (#283).
-            var maxEntries = Math.Max(1, request.MaxEntries);
+            var maxEntries = request.MaxEntries;
             // The root goes into the query (a package or a folder by path, a namespace by its files, a type by FQN):
             // the page and truncated then describe the root's subset, not the first page of the whole level.
             var query = new NodeQuery

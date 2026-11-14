@@ -52,4 +52,16 @@ public class ComplexityReportToolTests
         Assert.True(resp.Top[0].Value >= resp.Top[1].Value);
         Assert.NotNull(resp.Median);
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ShouldRefuseTopNBelowOne_WhenValidated(int value)
+    {
+        using var tool = new ComplexityReportTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new ComplexityReportRequest { Metric = ComplexityMetric.Cyclomatic } with { TopN = value });
+
+        Assert.Equal($"top_n must be at least 1 (got {value}); omit it for the default of 20", error);
+    }
 }

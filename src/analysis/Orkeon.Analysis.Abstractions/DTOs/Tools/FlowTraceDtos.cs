@@ -25,7 +25,7 @@ public sealed record FlowTraceRequest
     [FieldSchema(Description = "With to: every path up to max_paths instead of the shortest one.", IsRequired = false, Default = false)]
     public bool IncludeAllPaths { get; init; }
 
-    [FieldSchema(Description = "Most paths returned (default 20); truncated says when more exist.", IsRequired = false, Default = 20)]
+    [FieldSchema(Description = "Most paths returned, at least 1 (default 20); truncated says when more exist.", IsRequired = false, Default = 20)]
     public int MaxPaths { get; init; } = 20;
 }
 

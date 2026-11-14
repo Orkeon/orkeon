@@ -37,6 +37,8 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
         ArgumentNullException.ThrowIfNull(request);
         if (request.MaxDepth < 1)
             return $"max_depth must be at least 1 (got {request.MaxDepth}); omit it for the default of 4";
+        if (request.MaxPaths < 1)
+            return $"max_paths must be at least 1 (got {request.MaxPaths}); omit it for the default of 20";
         return null;
     }
 
@@ -54,7 +56,7 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
             var parsed = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
             ImmutableArray<EdgeKind> edgeKinds = parsed.IsDefaultOrEmpty ? [EdgeKind.Calls] : parsed;
             if (string.IsNullOrEmpty(request.From)) return new FlowTraceResponse { Paths = [] };
-            var maxPaths = Math.Max(1, request.MaxPaths);
+            var maxPaths = request.MaxPaths;
 
             if (!request.IncludeAllPaths && !string.IsNullOrEmpty(request.To))
             {
