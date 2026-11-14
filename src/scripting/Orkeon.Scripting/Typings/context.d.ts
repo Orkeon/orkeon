@@ -129,7 +129,7 @@ declare global {
          */
         llm?: { profile?: string; model?: string; provider?: never };
         /** Turns the provider's thinking on at this effort for the call. */
-        effort?: "low" | "medium" | "high" | "xhigh" | "max";
+        effort?: EffortLevel;
         /**
          * The prompt-cache request of the call, as `agentBuilder().cache(...)` takes it; it wins over the
          * agent's own. `{}` turns caching off for the call.
@@ -176,6 +176,8 @@ declare global {
          * also logs progress every 200 deltas.
          */
         readonly reasoningChunks: number;
+        /** The effort the call asks for and the one the provider sends; `null` when none is asked. Readable at once. */
+        readonly reasoning: LlmReasoning | null;
     }
 
     /** Terminal usage of one streamed call, on `LlmStream.usage`. */
@@ -331,6 +333,8 @@ declare global {
          * `BudgetExhaustedError` instead.
          */
         readonly budgetExhausted?: true;
+        /** The effort the loop's turns ask for and the one the provider sends; `null` when none is asked. */
+        readonly reasoning: LlmReasoning | null;
     }
 
     interface Message {
@@ -345,6 +349,8 @@ declare global {
         readonly content: string;
         readonly tokensUsed: number;
         readonly model: string;
+        /** The effort the call asks for and the one the provider sends; `null` when none is asked. */
+        readonly reasoning: LlmReasoning | null;
     }
 
     interface JsonSchema {

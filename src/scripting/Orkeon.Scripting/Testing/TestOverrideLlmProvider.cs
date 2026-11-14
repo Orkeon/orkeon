@@ -48,6 +48,12 @@ public sealed class TestOverrideLlmProvider : ILlmProvider, IStreamingLlmProvide
     /// <inheritdoc />
     public LlmProviderCapabilities Capabilities => _inner?.Capabilities ?? LlmProviderCapabilities.Unknown;
 
+    /// <inheritdoc/>
+    public LlmReasoningCapabilities? DescribeReasoning(string? model) => _inner?.DescribeReasoning(model);
+
+    /// <inheritdoc/>
+    public LlmEffortReport? ReportEffort(LlmConfig? config) => _inner?.ReportEffort(config);
+
     private IStreamingLlmProvider? InnerStreaming => _inner is IStreamingLlmProvider { SupportsStreaming: true } streaming ? streaming : null;
 
     /// <summary>Whether the configured provider streams: the override streams what it forwards, and nothing else.</summary>

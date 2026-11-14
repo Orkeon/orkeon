@@ -113,7 +113,56 @@ internal static class ReasoningJudgement
         return new ReasoningVerdict(support, toggle, askedOn, effort, budget, notices);
     }
 
-    private static ThinkingSupport Effective(ThinkingSupport provider, ThinkingSupport? model)
+    /// <summary>
+    /// What <paramref name="provider"/> and the model of <paramref name="entry"/> take together (#359), by the rule
+    /// <see cref="Judge"/> applies: the lower thinking support, and the levels of <see cref="LlmThinkingConfig.Levels"/>
+    /// a call sees sent as asked.
+    /// </summary>
+    /// <param name="provider">The provider's declared capabilities.</param>
+    /// <param name="entry">The model's entry of the table, or null when the table does not know it.</param>
+    /// <param name="model">The model id.</param>
+    public static LlmReasoningCapabilities Describe(LlmProviderCapabilities provider, ModelCapabilities? entry, string model)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        var support = Effective(provider.Thinking, entry?.Thinking);
+        IReadOnlyList<string> efforts = support == ThinkingSupport.None
+            ? []
+            : LlmThinkingConfig.Levels
+                .Where(level => provider.EffortLevels.Contains(level, StringComparer.OrdinalIgnoreCase)
+                    && (entry?.ReasoningEfforts is not { } listed || listed.Contains(level, StringComparer.OrdinalIgnoreCase)))
+                .ToList();
+        return new LlmReasoningCapabilities(model, entry is not null, support, efforts);
+    }
+
+    /// <summary>
+    /// What became of the effort <paramref name="thinking"/> asks for (#360), from the verdict <see cref="Judge"/>
+    /// gave it; null when it asks for none.
+    /// </summary>
+    /// <param name="thinking">The call's options, or null.</param>
+    /// <param name="verdict">Their verdict.</param>
+    /// <param name="sent">The effort the dialect writes: <see cref="ReasoningVerdict.Effort"/> unless the dialect drops it.</param>
+    /// <param name="model">The model the call goes to.</param>
+    public static LlmEffortReport? Report(LlmThinkingConfig? thinking, ReasoningVerdict verdict, string? sent, string model)
+    {
+        ArgumentNullException.ThrowIfNull(verdict);
+        if (string.IsNullOrWhiteSpace(thinking?.Effort))
+            return null;
+
+        var trimmed = thinking.Effort.Trim();
+        var asked = LlmThinkingConfig.Levels.FirstOrDefault(level => string.Equals(level, trimmed, StringComparison.OrdinalIgnoreCase))
+            ?? trimmed;
+        LlmEffortNotice? notice = sent is null
+            ? LlmEffortNotice.Dropped
+            : verdict.Notices.Any(n => n.Kind == ReasoningNoticeKind.EffortLowered)
+                ? LlmEffortNotice.Lowered
+                : verdict.Notices.Any(n => n.Kind == ReasoningNoticeKind.EffortUnchecked)
+                    ? LlmEffortNotice.Unchecked
+                    : null;
+        return new LlmEffortReport(model, asked, sent, notice);
+    }
+
+    /// <summary>The lower of the provider's thinking support and the model's.</summary>
+    internal static ThinkingSupport Effective(ThinkingSupport provider, ThinkingSupport? model)
         => model is { } narrowed && narrowed < provider ? narrowed : provider;
 
     private static (bool? Toggle, bool AskedOn) JudgeToggle(

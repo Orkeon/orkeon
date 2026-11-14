@@ -401,6 +401,19 @@ key: .NET configuration has no escape for the path separator `:`. Key its prefix
   efforts than the primary's is warned about once, next to vision, response format and grammar. Each link is read
   with its provider's name, so a `<provider>/<model>` entry applies; a vendor value (`none`, `minimal`) is not
   reported missing on a fallback model the table does not list, since a call would send it unchecked.
+- **Asking the provider** (#359, #360, `ORKEXP005`). `ILlmProvider.DescribeReasoning(model)` answers what a model
+  takes with this provider: `LlmReasoningCapabilities` (the model, whether the table knows it, the effective
+  `ThinkingSupport`, and the levels among `low` to `max`, in order, the provider's `EffortLevels` narrowed by the
+  model's `ReasoningEfforts`: empty when the model takes no effort or does not reason). A null or blank model reads
+  the provider's own. `ILlmProvider.ReportEffort(config)` applies the same judgement as the call to the
+  configuration merged with the host's (so `Llm:Thinking:Effort` counts) and answers `LlmEffortReport`: the effort
+  asked, the effort sent (null when none goes out, Ollama's "off" included) and `LlmEffortNotice` `Lowered`,
+  `Dropped` or `Unchecked` (a model the table does not know), null when the effort went as asked. It is null when no
+  effort is asked. Both default to null on the interface; `HttpLlmProviderBase` answers them, and every decorator
+  forwards them to its inner provider. A fallback chain answers for its first profile: a call that fails over
+  is judged by the link that serves it. The scripting DSL reads them as `LlmConfig.capabilities` and the
+  `reasoning` field of `LlmConfig`, `ActResult`, `ChatResponse` and `LlmStream`
+  ([DSL reference](../reference/scripting-dsl.md)).
 
 ## Embedding providers
 

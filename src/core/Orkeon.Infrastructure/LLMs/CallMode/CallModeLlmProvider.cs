@@ -57,6 +57,12 @@ internal sealed partial class CallModeLlmProvider : ILlmProvider, IStreamingLlmP
 
     public LlmProviderCapabilities Capabilities => _inner.Capabilities;
 
+    /// <inheritdoc/>
+    public LlmReasoningCapabilities? DescribeReasoning(string? model) => _inner.DescribeReasoning(model);
+
+    /// <inheritdoc/>
+    public LlmEffortReport? ReportEffort(LlmConfig? config) => _inner.ReportEffort(config);
+
     public bool SupportsStreaming => (_inner as IStreamingLlmProvider)?.SupportsStreaming ?? false;
 
     public bool StreamsNatively => StreamsOnTheWire;

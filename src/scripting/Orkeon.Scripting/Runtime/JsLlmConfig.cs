@@ -37,16 +37,38 @@ public sealed class JsLlmConfig
     /// </summary>
     internal Orkeon.Domain.SharedKernel.ILlmProvider? ProfileProvider { get; }
 
+    /// <summary>
+    /// The provider a call on this configuration talks to: the profile's, else the host's default one; null when
+    /// there is none. <c>capabilities</c> and <c>reasoning</c> ask it, so they judge as the call will.
+    /// </summary>
+    internal Orkeon.Domain.SharedKernel.ILlmProvider? Target => ProfileProvider ?? _hostProvider;
+
+    private readonly Orkeon.Domain.SharedKernel.ILlmProvider? _hostProvider;
+
+    /// <summary>
+    /// What the provider and this configuration's model take for reasoning (#359): the effort levels, the thinking
+    /// support, and whether the capability table knows the model. Null when the provider cannot tell.
+    /// </summary>
+    public JsLlmCapabilities? capabilities => JsLlmCapabilities.From(Target?.DescribeReasoning(Domain.Model));
+
+    /// <summary>
+    /// The effort a call on this configuration asks for and the one the provider sends (#360), the host's
+    /// <c>Llm:Thinking:Effort</c> included. Null when no effort is asked or the provider cannot tell.
+    /// </summary>
+    public JsLlmReasoning? reasoning => JsLlmReasoning.From(Target?.ReportEffort(Domain));
+
     internal JsLlmConfig(
         string provider,
         LlmConfig domain,
         double? temperature = null,
         int? maxTokens = null,
-        Orkeon.Domain.SharedKernel.ILlmProvider? profileProvider = null)
+        Orkeon.Domain.SharedKernel.ILlmProvider? profileProvider = null,
+        Orkeon.Domain.SharedKernel.ILlmProvider? hostProvider = null)
     {
         this.provider = provider;
         Domain = domain;
         ProfileProvider = profileProvider;
+        _hostProvider = hostProvider;
         model = domain.Model;
         this.temperature = temperature;
         this.maxTokens = maxTokens;
@@ -99,7 +121,8 @@ public sealed class JsLlmConfig
             domain,
             newTemp.IsNumber() ? newTemp.AsNumber() : temperature,
             newMax.IsUndefined() ? maxTokens : RequireMaxTokens(newMax),
-            ProfileProvider);
+            ProfileProvider,
+            _hostProvider);
     }
 
     private static int RequireMaxTokens(JsValue value)

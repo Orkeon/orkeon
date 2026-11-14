@@ -31,6 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   switch (`chat_template_kwargs.enable_thinking`). The steps carry
   `tableCheck` and `tableNote` in the JSON, a `Table` column in the report, and the campaign's
   "Reasoning per model" table gains a `Table` column naming the contradictions.
+- A script reads what a model takes for reasoning (#359): `LlmConfig.capabilities` gives `{ model, known,
+  thinking, efforts }`, the effort levels being the provider's narrowed by the model's (empty when the model takes
+  none), `thinking` one of `none`, `effortOnly`, `toggle`, `budget`, and `known` whether the capability table has
+  an entry. The C# side is `ILlmProvider.DescribeReasoning(model)` (`LlmReasoningCapabilities`, `ORKEXP005`).
+- A script reads what became of the effort it asked (#360): `reasoning` on `LlmConfig`, on the results of `act` and
+  `chat` and on the object `stream()` returns gives `{ model, asked, sent, notice }`, `sent` null when no effort
+  went out and `notice` `lowered`, `dropped` or `unchecked`, whichever set the effort (the call, the agent, the
+  configuration or `Llm:Thinking:Effort`). The C# side is `ILlmProvider.ReportEffort(config)` (`LlmEffortReport`,
+  `LlmEffortNotice`, `ORKEXP005`), judged as the call is and forwarded by every decorator. The typings name the
+  levels `EffortLevel`.
 
 ### Changed — thinking and effort are judged against the model, on every provider **[breaking]** (#356)
 

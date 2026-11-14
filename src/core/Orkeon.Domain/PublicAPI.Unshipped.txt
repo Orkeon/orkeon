@@ -1,2 +1,44 @@
 #nullable enable
+[ORKEXP005]Orkeon.Domain.SharedKernel.ILlmProvider.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities?
+[ORKEXP005]Orkeon.Domain.SharedKernel.ILlmProvider.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice.Dropped = 1 -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice.Lowered = 0 -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice.Unchecked = 2 -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport!
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Asked.get -> string!
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Asked.init -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Deconstruct(out string! Model, out string! Asked, out string? Sent, out Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice? Notice) -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Equals(Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? other) -> bool
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.LlmEffortReport(string! Model, string! Asked, string? Sent, Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice? Notice) -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Model.get -> string!
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Model.init -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Notice.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice?
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Notice.init -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Sent.get -> string?
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Sent.init -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities!
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Deconstruct(out string! Model, out bool Known, out Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport Thinking, out System.Collections.Generic.IReadOnlyList<string!>! Efforts) -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Efforts.get -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Efforts.init -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Equals(Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? other) -> bool
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Known.get -> bool
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Known.init -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.LlmReasoningCapabilities(string! Model, bool Known, Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport Thinking, System.Collections.Generic.IReadOnlyList<string!>! Efforts) -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Model.get -> string!
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Model.init -> void
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Thinking.get -> Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport
+[ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Thinking.init -> void
+[ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Equals(object? obj) -> bool
+[ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.GetHashCode() -> int
+[ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.ToString() -> string!
+[ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Equals(object? obj) -> bool
+[ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.GetHashCode() -> int
+[ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.ToString() -> string!
+[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? right) -> bool
+[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? right) -> bool
+[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? right) -> bool
+[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? right) -> bool
 const Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys.FinishReason = "finish_reason" -> string!

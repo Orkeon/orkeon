@@ -40,7 +40,7 @@ declare global {
          * entry in the capability table narrows the levels further (GLM-5.3 takes `low`, `high` and `max` only).
          * Applies to the agent's `ctx.llm` calls too, unless a call sets its own.
          */
-        effort(level: "low" | "medium" | "high" | "xhigh" | "max"): this;
+        effort(level: EffortLevel): this;
         /**
          * YAML parity `cache:` — asks the provider's prompt cache to keep the system prompt and/or the
          * tool definitions. Only a provider whose cache is explicit (Anthropic) needs it; the others cache

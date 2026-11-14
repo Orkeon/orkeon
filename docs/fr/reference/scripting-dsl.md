@@ -206,6 +206,20 @@ toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max`)
 jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte. `embed` est un stub local :
 il n'appelle aucun fournisseur et ne lit aucune de ces options.
 
+Ce que prend le modèle et ce que devient l'effort se lisent, sans se deviner (#359, #360). Un `LlmConfig`
+(`llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})`) porte `capabilities` : `{ model, known,
+thinking, efforts }`, `thinking` valant `"none"`, `"effortOnly"`, `"toggle"` ou `"budget"`, et `efforts` les niveaux
+parmi `low` à `max`, dans l'ordre, que le fournisseur et le modèle prennent tous deux (vide quand le modèle ne prend
+aucun effort ou ne raisonne pas ; `known: false` quand la table des capacités n'a pas d'entrée, les niveaux du
+fournisseur s'appliquent alors sans vérification). Il porte aussi `reasoning`, comme les résultats de `act` et de
+`chat` et l'objet que rend `stream()` : `{ model, asked, sent, notice }`, l'effort demandé (par l'`effort` de
+l'appel, `agentBuilder().effort`, `.with({ effort })` ou le `Llm:Thinking:Effort` de l'hôte), l'effort envoyé
+(`null` quand aucun ne part) et `notice`, `"lowered"`, `"dropped"`, `"unchecked"` (un modèle que la table ne connaît
+pas) ou `null` quand il est parti tel que demandé ; `reasoning` vaut `null` quand aucun effort n'est demandé.
+`complete` et `extract` rendent le texte ou l'objet seul : lisez `reasoning` sur la configuration de l'appel
+(`llm.default_.with({ effort: "medium" }).reasoning`). Les deux valent `null` sans fournisseur, et un profil de
+bascule répond pour son premier maillon.
+
 `chat` prend un tableau de messages nu ou `{ messages: [...] }`. `extract(prompt, schema, opts)`
 prend les mêmes formes en premier argument, les tours de l'appelant envoyés dans l'ordre, en plus
 d'une chaîne de prompt ; ses options ajoutent `system`, envoyé en premier message avec l'instruction

@@ -71,6 +71,14 @@ internal sealed partial class FallbackLlmProvider : ILlmProvider, IStreamingLlmP
     /// <summary>What the first profile declares; <see cref="LlmProfileRegistry"/> warns about a later profile that does less.</summary>
     public LlmProviderCapabilities Capabilities => _links[0].Provider.Capabilities;
 
+    /// <summary>What the first profile's provider and <paramref name="model"/> take: a call starts there, and a later profile that does less is warned about.</summary>
+    /// <param name="model">The model to judge; null or blank for the first profile's own.</param>
+    public LlmReasoningCapabilities? DescribeReasoning(string? model) => _links[0].Provider.DescribeReasoning(model);
+
+    /// <summary>The effort the first profile sends for <paramref name="config"/>: a call that fails over may land on a profile that judges it otherwise.</summary>
+    /// <param name="config">The call's configuration.</param>
+    public LlmEffortReport? ReportEffort(LlmConfig? config) => _links[0].Provider.ReportEffort(config);
+
     /// <summary>Always true: a link that cannot stream answers buffered.</summary>
     public bool SupportsStreaming => true;
 

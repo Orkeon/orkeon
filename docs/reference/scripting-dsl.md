@@ -196,6 +196,19 @@ any other value is refused with `effort must be low|medium|high|xhigh|max`) and 
 already observes the context's. `embed` is a local stub: it calls no provider and reads none of these
 options.
 
+What the model takes and what becomes of the effort are read, not guessed (#359, #360). An `LlmConfig`
+(`llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})`) carries `capabilities`: `{ model, known,
+thinking, efforts }`, `thinking` one of `"none"`, `"effortOnly"`, `"toggle"`, `"budget"`, and `efforts` the levels
+among `low` to `max`, in order, that the provider and the model both take (empty when the model takes no effort or
+does not reason; `known: false` when the capability table has no entry, the provider's levels then apply unchecked).
+It also carries `reasoning`, and so do the results of `act` and `chat` and the object `stream()` returns: `{ model,
+asked, sent, notice }`, the effort asked (by the call's `effort`, `agentBuilder().effort`, `.with({ effort })` or the
+host's `Llm:Thinking:Effort`), the effort sent (`null` when none goes out) and `notice`, `"lowered"`, `"dropped"`,
+`"unchecked"` (a model the table does not know) or `null` when it went as asked; `reasoning` is `null` when no effort
+is asked. `complete` and `extract` return the text or the object alone: read `reasoning` on the configuration of the
+call (`llm.default_.with({ effort: "medium" }).reasoning`). Both are `null` without a provider, and a fallback
+profile answers for its first link.
+
 `chat` takes a bare message array or `{ messages: [...] }`. `extract(prompt, schema, opts)` takes
 the same forms as its first argument, the caller's turns sent in order, plus a prompt string; its
 options add `system`, sent as the first message with the JSON instruction appended to it, so the
