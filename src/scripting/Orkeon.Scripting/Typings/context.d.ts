@@ -40,7 +40,9 @@ declare global {
         /**
          * One prompt, the answer. A call a stage of the host's decision profile blocks rejects
          * with a `DecisionBlockedError`, as `chat`, `extract`, `decide`, `act` and a `stream`
-         * iteration do; uncaught, it fails the run.
+         * iteration do; uncaught, it fails the run. A `llm: { profile }` the host does not offer,
+         * or an option it refuses, rejects with an `Error` (its `clrType` `"InvalidScriptException"`),
+         * as `chat`, `extract` and `decide` do.
          */
         complete(prompt: string, opts?: LlmCallOptions): Promise<string>;
         /** A conversation, the answer. Takes a bare message array or `{ messages: [...] }`. */

@@ -109,7 +109,7 @@ two script shapes actually honours each method**.
 | Lifecycle hooks (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — answer dispatched CLI commands by name | [cli-ts-commands.md](./cli-ts-commands.md#the-agent-side--oncommand) |
 | Built-in `tools.X(...)` namespace | `tools.d.ts`, `tools.generated.d.ts` (written by `BuiltInToolTypings` from the tools a run registers, pinned by `BuiltInToolTypingsTests`) |
-| The agent's model settings (`llm.default_`, `llm.model(...)`) | `llm.d.ts` |
+| The agent's model settings (`llm.default_`, `llm.model(...)`, `llm.profile(...)`, `llm.profiles`) | `llm.d.ts` |
 | RAG (`rag.ingest`, `rag.query`, `rag.retrieve`) | `rag.d.ts` |
 
 ## Autonomous tools in act

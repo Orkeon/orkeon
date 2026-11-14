@@ -81,6 +81,29 @@ public sealed class LlmProfileBindingTests
         Assert.Equal("true|true|default,claude,local", shown);
     }
 
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldStayFrozen_WhenTheScriptReplacedObjectFreezeBeforeTheFirstRead()
+    {
+        var shown = Engine(Profiles()).Evaluate("""
+            Object.freeze = a => a;
+            [Object.isFrozen(llm.profiles), llm.profiles === llm.profiles].join('|');
+            """).AsString();
+
+        Assert.Equal("true|true", shown);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldGiveTheHostsSpelling_WhenTheScriptNamesAProfileInAnotherCase()
+    {
+        var shown = Engine(Profiles()).Evaluate("""
+            [llm.profiles.includes("CLAUDE"), llm.profile("CLAUDE").provider, llm.profile(" claude ").provider].join('|');
+            """).AsString();
+
+        Assert.Equal("false|anthropic|anthropic", shown);
+    }
+
     [Theory]
     [Trait("BR", "CH-364")]
     [InlineData("llm.profile('ghost')", "names the LLM profile 'ghost', which this host does not offer. Known profiles: default, claude, local.")]
@@ -92,11 +115,11 @@ public sealed class LlmProfileBindingTests
     {
         var caught = Engine(Profiles()).Evaluate($$"""
             let caught = "not caught";
-            try { {{call}}; } catch (e) { caught = (e instanceof Error) + "|" + e.message; }
+            try { {{call}}; } catch (e) { caught = [e instanceof Error, e.clrType, e.message].join("|"); }
             caught;
             """).AsString();
 
-        Assert.StartsWith("true|", caught, StringComparison.Ordinal);
+        Assert.StartsWith("true|InvalidScriptException|", caught, StringComparison.Ordinal);
         Assert.Contains(expected, caught, StringComparison.Ordinal);
     }
 

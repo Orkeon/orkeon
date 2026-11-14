@@ -32,6 +32,18 @@ internal static class JsExceptionUnwrap
                 current = agg.InnerExceptions[0];
                 continue;
             }
+            // A bridged Error (JsHostError.Wrap) carries the CLR exception on `clr`, thrown or
+            // rejected: a host reports that exception, not the Jint wrapper (#364).
+            if (current is Jint.Runtime.JavaScriptException thrown && JsHostError.Unwrap(thrown.Error) is { } thrownClr)
+            {
+                current = thrownClr;
+                continue;
+            }
+            if (current is Jint.Runtime.PromiseRejectedException rejected && JsHostError.Unwrap(rejected.RejectedValue) is { } rejectedClr)
+            {
+                current = rejectedClr;
+                continue;
+            }
             var typeName = current.GetType().FullName ?? string.Empty;
             if (typeName == "Jint.Runtime.PromiseRejectedException" && current.InnerException is not null)
             {

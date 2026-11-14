@@ -161,16 +161,21 @@ public sealed class JsLlmReasoningTests : IDisposable
     [InlineData("ctx.llm.reasoning({ llm: { profile: \"ghost\" } })")]
     [InlineData("ctx.llm.capabilities({ llm: { profile: \"ghost\" } })")]
     [InlineData("ctx.llm.stream(\"hi\", { llm: { profile: \"ghost\" } })")]
+    [InlineData("await ctx.llm.complete(\"hi\", { llm: { profile: \"ghost\" } })")]
+    [InlineData("await ctx.llm.chat([{ role: \"user\", content: \"hi\" }], { llm: { profile: \"ghost\" } })")]
+    [InlineData("await ctx.llm.extract(\"hi\", { type: \"object\" }, { llm: { profile: \"ghost\" } })")]
+    [InlineData("await ctx.llm.decide(\"hi\", [\"a\", \"b\"], { llm: { profile: \"ghost\" } })")]
     public async Task ShouldReachTheBodysCatch_WhenTheCallNamesAProfileTheHostLacks(string call)
     {
         var shown = await RunBodyAsync("", $$"""
             let caught = "not caught";
-            try { {{call}}; } catch (e) { caught = (e instanceof Error) + "|" + e.message; }
+            try { {{call}}; } catch (e) { caught = [e instanceof Error, e.clrType, e.message].join("|"); }
             globalThis.out = caught;
             """);
 
-        Assert.StartsWith("true|", shown, StringComparison.Ordinal);
+        Assert.StartsWith("true|InvalidScriptException|", shown, StringComparison.Ordinal);
         Assert.Contains("names the LLM profile 'ghost', which this host does not offer. Known profiles: default.", shown, StringComparison.Ordinal);
+        // Refused before any request: the awaited calls would otherwise reach the provider.
         Assert.Empty(_handler.Bodies);
     }
 }

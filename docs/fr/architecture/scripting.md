@@ -111,7 +111,7 @@ de votre projet avec `orkeon typings` ([Référence](#référence)).
 | Hooks de cycle de vie (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — répondre par nom aux commandes CLI dispatchées | [cli-ts-commands.md](../architecture/cli-ts-commands.md#côté-agent--oncommand) |
 | Namespace intégré `tools.X(...)` | `tools.d.ts`, `tools.generated.d.ts` (écrit par `BuiltInToolTypings` depuis les outils qu'un run enregistre, épinglé par `BuiltInToolTypingsTests`) |
-| Les réglages de modèle de l'agent (`llm.default_`, `llm.model(...)`) | `llm.d.ts` |
+| Les réglages de modèle de l'agent (`llm.default_`, `llm.model(...)`, `llm.profile(...)`, `llm.profiles`) | `llm.d.ts` |
 | RAG (`rag.ingest`, `rag.query`, `rag.retrieve`) | `rag.d.ts` |
 
 ## Outils autonomes dans act

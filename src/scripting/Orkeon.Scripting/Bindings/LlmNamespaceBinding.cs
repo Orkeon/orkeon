@@ -87,7 +87,7 @@ internal sealed partial class JsLlmNamespace
     private readonly Func<ILlmProvider, ILlmProvider>? _wrapProfileProvider;
     private JsLlmConfig? _default;
     private readonly Lock _defaultLock = new();
-    private JsValue? _profileNames;
+    private readonly JsValue _profileNames;
 
     // The namespace each engine registered, for ctx.llm { llm: { profile } } (#331): held on the CLR
     // side, so a script that shadows the global `llm` cannot change the profiles a call resolves.
@@ -106,6 +106,20 @@ internal sealed partial class JsLlmNamespace
         _logger = logger;
         _defaultProvider = defaultProvider;
         _profiles = profiles;
+        _profileNames = FrozenNames(engine, profiles);
+    }
+
+    // Built when the binding registers, before any script runs: a script that replaces
+    // Object.freeze cannot leave the array open, and every read is the same array.
+    private static JsArray FrozenNames(Engine engine, Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles)
+    {
+        var names = new[] { Orkeon.Application.Interfaces.Ports.LlmProfiles.Default }
+            .Concat(profiles?.Names ?? [])
+            .Select(n => (JsValue)new JsString(n))
+            .ToArray();
+        var array = new JsArray(engine, names);
+        engine.Invoke(engine.Intrinsics.Object.Get("freeze"), array);
+        return array;
     }
 
     /// <summary>
@@ -145,8 +159,10 @@ internal sealed partial class JsLlmNamespace
     /// configured with it runs its turns, and its <c>ctx.llm</c> calls, on that provider.
     /// <c>"default"</c> is <c>llm.default_</c>.
     /// </summary>
-    /// <exception cref="Orkeon.Scripting.Exceptions.InvalidScriptException">
-    /// The host offers no such profile; the message lists the known ones.
+    /// <exception cref="Jint.Runtime.JavaScriptException">
+    /// The host offers no such profile, or an override is refused: an <c>Error</c> the script catches,
+    /// with the message listing the known profiles and the <see cref="Orkeon.Scripting.Exceptions.InvalidScriptException"/>
+    /// on <c>clr</c> (#364).
     /// </exception>
     public JsLlmConfig profile(JsValue name, JsValue? overrides = null) => JsHostError.Guard(_engine, () =>
     {
@@ -160,20 +176,13 @@ internal sealed partial class JsLlmNamespace
 
     /// <summary>
     /// <c>llm.profiles</c> (#364): the names <c>llm.profile(name)</c> takes, <c>"default"</c> first, then
-    /// the host's profiles in the order it declared them (an allow-list's refusals left out) - the list
-    /// the refusal of an unknown name gives. Names only, never an endpoint or a key. A frozen array,
-    /// built at the first read: the host's profiles do not change while the engine lives.
+    /// the host's profiles in the order and the spelling it declared them (an allow-list's refusals left
+    /// out) - the list the refusal of an unknown name gives. <c>llm.profile</c> compares names without
+    /// case, so a script that checks a name first compares the same way. Names only, never an endpoint
+    /// or a key. A frozen array, the same at every read: the host's profiles do not change while the
+    /// engine lives.
     /// </summary>
-    public JsValue profiles => _profileNames ??= JsHostError.Guard(_engine, () =>
-    {
-        var names = new[] { Orkeon.Application.Interfaces.Ports.LlmProfiles.Default }
-            .Concat(_profiles?.Names ?? [])
-            .Select(n => (JsValue)new JsString(n))
-            .ToArray();
-        var array = new JsArray(_engine, names);
-        _engine.Invoke(_engine.Intrinsics.Object.Get("freeze"), array);
-        return (JsValue)array;
-    });
+    public JsValue profiles => _profileNames;
 
     /// <summary>Records the namespace <paramref name="engine"/> registered.</summary>
     internal static void Attach(Engine engine, JsLlmNamespace ns) => s_byEngine.AddOrUpdate(engine, ns);

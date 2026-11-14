@@ -182,7 +182,9 @@ internal static class JsHostError
     /// wrapped <see cref="AggregateException"/>, never an <c>Error</c>, so <c>err instanceof
     /// ReceiveTimeoutError</c> could not hold. The conversion runs in the function's own <c>catch</c>,
     /// a promise reaction on the thread draining the engine — never on the pool thread that faulted
-    /// the task. A rejection with no declared class (a cancellation) passes through unchanged.
+    /// the task. A script's own mistake (<see cref="InvalidScriptException"/>: a profile the host lacks,
+    /// an option it refuses) rejects as a plain <c>Error</c>, as its synchronous refusal throws (#364).
+    /// Any other rejection with no declared class (a cancellation) passes through unchanged.
     /// </summary>
     public static JsValue BridgeAsync(Engine engine, Delegate raw)
     {
@@ -194,15 +196,18 @@ internal static class JsHostError
 
     /// <summary>
     /// A rejection value as the declared error class when it carries an exception that has one —
-    /// a wrapped CLR exception from a faulted task becomes the bridged Error — else unchanged.
-    /// Call on the engine thread.
+    /// a wrapped CLR exception from a faulted task becomes the bridged Error — or as a plain
+    /// <c>Error</c> when it carries a script's mistake (<see cref="InvalidScriptException"/>), else
+    /// unchanged. Call on the engine thread.
     /// </summary>
     internal static JsValue ToDeclaredError(Engine engine, JsValue rejected)
     {
         if (rejected is JsError || Unwrap(rejected) is not { } clr)
             return rejected;
         var innermost = JsExceptionUnwrap.UnwrapToInnermost(clr);
-        return Describe(innermost) is null ? rejected : Wrap(engine, innermost).Error;
+        return Describe(innermost) is null && innermost is not InvalidScriptException
+            ? rejected
+            : Wrap(engine, innermost).Error;
     }
 
     /// <summary>
