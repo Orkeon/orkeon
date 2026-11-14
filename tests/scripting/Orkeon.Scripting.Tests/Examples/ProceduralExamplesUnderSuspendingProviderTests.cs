@@ -26,8 +26,9 @@ namespace Orkeon.Scripting.Tests.Examples;
 /// store); <c>13-email-triage</c> needs a real mailbox behind <c>tools.email*</c>, declared under
 /// <c>Orkeon:Tools:Email</c>. An engine without the service fails loudly on the first call by
 /// design. Both still typecheck against the shipped typings (<c>scripts/check-scripting-typings.sh</c>).
-/// <c>crew-review-desk/</c> is the declarative shape, whose bodies never run; the CI validates it
-/// separately.</para>
+/// The files of <see cref="Declarative"/> are not here either: they hand their crew off
+/// (<c>globalThis.crew = crew</c>) to the declarative engine, where bodies never run and tasks do,
+/// as <c>crew-review-desk/</c> does; the CI validates them separately.</para>
 /// <para>The scripts are real files bundled by esbuild (<c>RunFromFileAsync</c> with the physical
 /// path), so a relative import would resolve; a 20 s guard turns a hang into a failure.</para>
 /// </remarks>
@@ -49,6 +50,15 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
         "13-email-triage.ork.ts", // a real mailbox, declared under Orkeon:Tools:Email
     ];
 
+    /// <summary>
+    /// The numbered files of the declarative shape: their tasks, decisions and conditions run in
+    /// the declarative engine only, so this procedural run would prove nothing about them.
+    /// </summary>
+    private static readonly string[] Declarative =
+    [
+        "14-decision-and-when.ork.ts", // a decision task and its when(...) fan-out
+    ];
+
 
     private static readonly string[] Files =
     [
@@ -63,7 +73,6 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
         "10-inputs-and-memory.ork.ts",
         "11-await-before-run.ork.ts",
         "12-events-async-handlers.ork.ts",
-        "14-decision-and-when.ork.ts",
     ];
 
     public static TheoryData<string> ProceduralExamples
@@ -188,7 +197,7 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
 
     /// <summary>
     /// A new numbered example must be added to <see cref="Files"/>, or to
-    /// <see cref="NeedsALiveService"/> when it cannot run here: this class is what guarantees that
+    /// <see cref="NeedsALiveService"/> or <see cref="Declarative"/> when it cannot run here: this class is what guarantees that
     /// the catalogue runs under a suspending provider, and a theory that silently missed a file
     /// would leave it uncovered. An exemption must name a file that exists — a stale one would
     /// exempt nothing today and whatever takes its name tomorrow.
@@ -197,12 +206,13 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
     public void Every_numbered_example_is_listed()
     {
         var examplesDir = ExamplesDirectory();
-        Assert.All(NeedsALiveService, f =>
+        string[] exempted = [.. NeedsALiveService, .. Declarative];
+        Assert.All(exempted, f =>
             Assert.True(File.Exists(Path.Combine(examplesDir, f)), $"Exempted example '{f}' is not in {examplesDir}."));
 
         var onDisk = Directory.EnumerateFiles(examplesDir, "*.ork.ts")
             .Select(Path.GetFileName)
-            .Where(f => !NeedsALiveService.Contains(f, StringComparer.Ordinal))
+            .Where(f => !exempted.Contains(f, StringComparer.Ordinal))
             .OrderBy(f => f, StringComparer.Ordinal)
             .ToArray();
         var listed = Files.OrderBy(f => f, StringComparer.Ordinal).ToArray();

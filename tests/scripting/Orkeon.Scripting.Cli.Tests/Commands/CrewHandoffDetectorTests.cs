@@ -74,11 +74,13 @@ public class CrewHandoffDetectorTests
         Assert.False(CrewHandoffDetector.DeclaresHandoff(File.ReadAllText(script)));
     }
 
-    [Fact]
-    public void The_shipped_declarative_example_is_read_as_declarative()
+    [Theory]
+    [InlineData("crew-review-desk/main.ork.ts")]
+    [InlineData("14-decision-and-when.ork.ts")]
+    public void The_shipped_declarative_examples_are_read_as_declarative(string example)
     {
         var repo = RepoRoot();
-        var script = Path.Combine(repo, "examples", "scripting", "crew-review-desk", "main.ork.ts");
+        var script = Path.Combine(repo, "examples", "scripting", example);
         Assert.True(File.Exists(script), $"Missing example '{script}'.");
 
         Assert.True(CrewHandoffDetector.DeclaresHandoff(File.ReadAllText(script)));

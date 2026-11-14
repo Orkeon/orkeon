@@ -170,7 +170,10 @@ Migration:
   it (`typeof res.output === "string"`); a C# caller of `JsCrew.RunAsync` casts `output`. The REPL's
   `script-host.runCrew` summary shows an object output as its JSON.
 - Eight scripting examples print their run (#370): `01`–`07` and `14` ended with a bare `await crew.run()`, so
-  `orkeon run` printed `{"result": null}`; they now end with `globalThis.result = await crew.run()`. The first
+  `orkeon run` printed `{"result": null}`; `01`–`07` now end with `globalThis.result = await crew.run()`.
+  `14-decision-and-when` hands its crew off (`globalThis.crew = crew`) instead: run procedurally, its decision
+  and `when` tasks never ran and its body-less agent returned nothing; the declarative engine runs them, and
+  the examples CI validates it by name. The first
   snippet of `write-a-crew-in-typescript.md` does the same, and the `result` row of `scripting-dsl.md` no longer
   says a `CrewResult` cannot be serialised.
 - A script catches the refusals of the `llm` namespace (#364): `llm.profile(name)` on a profile the host does

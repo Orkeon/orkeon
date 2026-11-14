@@ -2,6 +2,10 @@
 // two questions about what `intake` produced; `refund` runs only when the category is billing,
 // `fix` only when it is a bug, and `other` when no sibling matched (`"otherwise"`).
 //
+// Tasks, decisions and conditions run in the declarative engine only, so this file hands its
+// crew off (`globalThis.crew = crew`) instead of calling `crew.run()`: the procedural shape
+// would run each agent's `.body()` - this agent has none - and ignore every task.
+//
 // With the decision circuit off (`--no-decision`, no model) `triage` answers from `fallback`.
 // A `choice` value, a `score` entry and a `fallback` value must all be strings, and a task that
 // gates on a decision has exactly one `.when(...)`: the loader refuses the script otherwise.
@@ -66,4 +70,4 @@ const crew = crewBuilder()
     .withTask(other)
     .build();
 
-globalThis.result = await crew.run();
+globalThis.crew = crew;
