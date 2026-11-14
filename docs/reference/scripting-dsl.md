@@ -94,9 +94,10 @@ per dropped declaration, naming the method and the agent it was written on. It i
 dropped — the two shapes are two engines.
 
 **What `await crew.run()` resolves to** — a `CrewResult`, exactly what `crew.d.ts` declares:
-`output`, the text of the last agent output that was not `null` (`""` when no agent returned
-anything), and `tasks`, one `{ name, output, durationMs }` per agent run, in the order they ran,
-`output` being what the body returned. Nothing more: no `artifacts` map, and `output` is always a string;
+`output`, the last agent output that was not `null`, as the body returned it — the same value as
+that run's `tasks[i].output`, an object staying an object (`""` when no agent returned anything) —
+and `tasks`, one `{ name, output, durationMs }` per agent run, in the order they ran, `output` being
+what the body returned. Nothing more: no `artifacts` map.
 `TypingsRuntimeParityTests` compares the two result shapes type by type.
 
 #### `process("graph")` is not `stateGraph`

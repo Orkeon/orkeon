@@ -98,10 +98,11 @@ un avertissement par déclaration abandonnée, en nommant la méthode et l'agent
 était écrite. C'est toujours abandonné — les deux formes sont deux moteurs.
 
 **Ce que rend `await crew.run()`** — un `CrewResult`, exactement ce que déclare `crew.d.ts` :
-`output`, le texte de la dernière sortie d'agent qui n'était pas `null` (`""` quand aucun agent
-n'a rien rendu), et `tasks`, une entrée `{ name, output, durationMs }` par exécution d'agent,
+`output`, la dernière sortie d'agent qui n'était pas `null`, telle que le corps l'a rendue — la même
+valeur que le `tasks[i].output` de cette exécution, un objet restant un objet (`""` quand aucun agent
+n'a rien rendu) — et `tasks`, une entrée `{ name, output, durationMs }` par exécution d'agent,
 dans l'ordre où ils ont tourné, `output` étant ce que le corps a rendu. Rien de plus : aucune table
-`artifacts`, et `output` est toujours une chaîne ; `TypingsRuntimeParityTests` compare les deux
+`artifacts`. `TypingsRuntimeParityTests` compare les deux
 formes de résultat type par type.
 
 #### `process("graph")` n'est pas `stateGraph`

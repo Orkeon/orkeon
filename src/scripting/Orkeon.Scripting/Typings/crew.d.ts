@@ -55,8 +55,11 @@ declare global {
      * it was declared and always empty, so `result.artifacts.get("x")` compiled and threw.
      */
     interface CrewResult {
-        /** The text of the last non-null agent output; `""` when no agent returned anything. */
-        readonly output: string;
+        /**
+         * What the last agent that returned something returned — the same value as its
+         * `tasks[i].output`, an object staying an object; `""` when no agent returned anything.
+         */
+        readonly output: unknown;
         /** One entry per agent run, in the order they ran. */
         readonly tasks: readonly TaskResult[];
     }

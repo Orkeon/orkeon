@@ -144,6 +144,10 @@ Migration:
 
 ### Fixed
 
+- `crew.run()`'s `output` is what the last body that returned something returned (#369) **[breaking]**: an
+  object stays an object, the same value as that run's `tasks[i].output`, where it was the object's CLR type
+  name (`"System.Dynamic.ExpandoObject"`). `CrewResult.output` is `unknown` in `crew.d.ts` and
+  `JsCrewResult.output` an `object?` in C#; `""` still means no agent returned anything.
 - A script catches the refusals of the `llm` namespace (#364): `llm.profile(name)` on a profile the host does
   not offer, `llm.model(name)` and `LlmConfig.with(...)` on a value they refuse, and `ctx.llm.reasoning`,
   `ctx.llm.capabilities` and `ctx.llm.stream` on a `llm: { profile }` the host lacks threw a CLR exception

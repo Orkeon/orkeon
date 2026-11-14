@@ -238,7 +238,7 @@ Orkeon.Scripting.Runtime.JsCrewProxy.has(string! agentName) -> bool
 Orkeon.Scripting.Runtime.JsCrewProxy.lock.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Runtime.JsCrewProxy.name.get -> string!
 Orkeon.Scripting.Runtime.JsCrewResult
-Orkeon.Scripting.Runtime.JsCrewResult.output.get -> string!
+Orkeon.Scripting.Runtime.JsCrewResult.output.get -> object?
 Orkeon.Scripting.Runtime.JsCrewResult.tasks.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Runtime.JsTaskResult!>!
 Orkeon.Scripting.Runtime.JsEventBroker
 Orkeon.Scripting.Runtime.JsEventBroker.queue(string! name) -> Orkeon.Scripting.Runtime.JsEventQueue!

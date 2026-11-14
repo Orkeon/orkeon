@@ -8,10 +8,10 @@ namespace Orkeon.Scripting.Runtime;
 #pragma warning disable CS1591 // JS-interop mirror of CrewResult/TaskResult in Typings/crew.d.ts; that declaration is the contract scripts read.
 public sealed class JsCrewResult
 {
-    public string output { get; }
+    public object? output { get; }
     public IReadOnlyList<JsTaskResult> tasks { get; }
 
-    internal JsCrewResult(string output, IReadOnlyList<JsTaskResult> tasks)
+    internal JsCrewResult(object? output, IReadOnlyList<JsTaskResult> tasks)
     {
         this.output = output;
         this.tasks = tasks;
