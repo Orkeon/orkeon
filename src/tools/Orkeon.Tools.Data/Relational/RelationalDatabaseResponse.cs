@@ -20,10 +20,11 @@ public record RelationalDatabaseResponse
     public int? RowCount { get; init; }
 
     /// <summary>
-    /// Gets whether the SELECT result set held more rows than <c>max_rows</c>, so rows were left out.
+    /// Gets whether the SELECT result set held more rows than <c>max_rows</c>, so rows were left out;
+    /// <see langword="null"/> for an Execute or a Scalar query.
     /// </summary>
-    [ReturnSchema(Description = "Whether the SELECT result held more rows than max_rows, so rows were left out", Example = false)]
-    public bool Truncated { get; init; }
+    [ReturnSchema(Description = "Whether the SELECT result held more rows than max_rows, so rows were left out (SELECT only)", Example = false)]
+    public bool? Truncated { get; init; }
 
     /// <summary>Gets the number of columns in the result set.</summary>
     [ReturnSchema(Description = "Number of columns in the result set", Example = 3)]

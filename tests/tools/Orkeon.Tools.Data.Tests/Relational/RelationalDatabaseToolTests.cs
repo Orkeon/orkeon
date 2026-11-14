@@ -220,6 +220,28 @@ public sealed class RelationalDatabaseToolTests : IDisposable
         Assert.Contains("timeout_seconds must be at least 1", result.Error);
     }
 
+    [Theory]
+    [InlineData("Execute", "UPDATE users SET active = 1 WHERE name = 'Bob'")]
+    [InlineData("Scalar", "SELECT COUNT(*) FROM users")]
+    public async Task NonSelect_IgnoresMaxRowsAndCarriesNoTruncated(string queryType, string query)
+    {
+        var request = new ToolCallRequest("relational_database_query", new Dictionary<string, object?>
+        {
+            [ParamConnectionString] = _connectionString,
+            ["provider_name"] = "Microsoft.Data.Sqlite",
+            [ParamQuery] = query,
+            ["query_type"] = queryType,
+            ["max_rows"] = 0,
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = result.Result as Dictionary<string, object?>;
+        Assert.NotNull(dict);
+        Assert.False(dict.TryGetValue("truncated", out var truncated) && truncated is not null);
+    }
+
     private async Task<Dictionary<string, object?>> SelectUsersAsync(int maxRows)
     {
         var request = new ToolCallRequest("relational_database_query", new Dictionary<string, object?>

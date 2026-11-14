@@ -169,8 +169,8 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
         var truncated = false;
         while (await csv.ReadAsync().ConfigureAwait(false))
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
+            // A cancelled read is a cancellation, never a partial success that says nothing was left out.
+            cancellationToken.ThrowIfCancellationRequested();
 
             // A row read past the limit: the file held rows left out.
             if (maxRows.HasValue && rowCount >= maxRows.Value)

@@ -48,9 +48,10 @@ public partial class RelationalDatabaseTool : ToolBase<RelationalDatabaseRequest
         if (!_providerFactory.IsSupported(request.ProviderName))
             return $"Unsupported provider '{request.ProviderName}'. Supported: {string.Join(", ", _providerFactory.SupportedProviders)}";
 
-        // A small model fills every optional field and sends 0: refused, so the call never
-        // reads as an empty result (max_rows) or waits without bound (timeout_seconds).
-        if (request.MaxRows < 1)
+        // A small model fills every optional field and sends 0: refused, so a SELECT never
+        // reads as an empty result (max_rows) and no query waits without bound (timeout_seconds).
+        // Execute and Scalar never read max_rows, so its value is left alone there.
+        if (request.QueryType == RelationalQueryType.Select && request.MaxRows < 1)
             return $"max_rows must be at least 1 (got {request.MaxRows}); omit it for the default of {DatabaseDefaults.DefaultMaxRows}";
 
         if (request.TimeoutSeconds < 1)
