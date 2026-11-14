@@ -99,6 +99,21 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         _toolCallingStrategy = toolCallingStrategy;
     }
 
+    /// <summary>
+    /// Constructor overload that accepts both a resilience policy and a tool calling strategy;
+    /// <see langword="null"/> for the strategy sends no <c>tools</c>, leaving the text protocol in charge.
+    /// </summary>
+    public AnthropicLlmProvider(
+        LlmConfig config,
+        IHttpClientFactory httpClientFactory,
+        IAsyncPolicy<HttpResponseMessage>? resiliencePolicy,
+        IToolCallingStrategy? toolCallingStrategy,
+        ILogger<AnthropicLlmProvider>? logger = null)
+        : base(config, httpClientFactory, resiliencePolicy, logger)
+    {
+        _toolCallingStrategy = toolCallingStrategy;
+    }
+
     /// <inheritdoc />
     protected override void ConfigureHttpClient(HttpClient client, LlmConfig config)
     {

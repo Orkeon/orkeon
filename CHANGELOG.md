@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `e instanceof InvalidScriptError` instead of comparing `clrType`. A value over a domain limit
   (`ArgumentException`) and an out-of-range `ErrorAction.retry` delay (`OverflowException`) stay a plain
   `Error`; a C# caller still gets the `InvalidScriptException`.
+- Every LLM provider takes a resilience policy and a tool calling strategy together (#367): a public constructor
+  `(config, httpClientFactory, resiliencePolicy, toolCallingStrategy, logger = null)` on the fourteen OpenAI-compatible
+  providers, `OllamaLlmProvider` and `AnthropicLlmProvider`. A caller that brings its own Polly policy can still keep
+  the text protocol (`null` strategy), which the constructor taking a policy alone no longer allows since it sends the
+  tools natively.
 - An agent declares the only virtual paths its tools may touch (#349): `filesystem:` in YAML, a list of
   paths or `{path, access}` items (`ro`, `rw`, `rwnd`), `AgentBuilder.FileSystem(...)` in C#,
   `.filesystem([...])` in `.ork.ts`. An entry selects and narrows the mount that holds it, never widens it;

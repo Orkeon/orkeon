@@ -86,6 +86,20 @@ public partial class HuggingFaceLlmProvider : OpenAICompatibleProviderBase
     }
 
     /// <summary>
+    /// Constructor overload that accepts both a resilience policy and a tool calling strategy;
+    /// <see langword="null"/> for the strategy sends no <c>tools</c>, leaving the text protocol in charge.
+    /// </summary>
+    public HuggingFaceLlmProvider(
+        LlmConfig config,
+        IHttpClientFactory httpClientFactory,
+        IAsyncPolicy<HttpResponseMessage>? resiliencePolicy,
+        IToolCallingStrategy? toolCallingStrategy,
+        ILogger<HuggingFaceLlmProvider>? logger = null)
+        : base(config, httpClientFactory, resiliencePolicy, toolCallingStrategy, logger)
+    {
+    }
+
+    /// <summary>
     /// Extracts HuggingFace-specific usage metadata from the response.
     /// </summary>
     protected override void ExtractResponseMetadata(JsonDocument doc, LlmResponseMetadata.Builder metadata)

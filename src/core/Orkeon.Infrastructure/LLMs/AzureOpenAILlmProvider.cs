@@ -101,6 +101,20 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
     {
     }
 
+    /// <summary>
+    /// Constructor overload that accepts both a resilience policy and a tool calling strategy;
+    /// <see langword="null"/> for the strategy sends no <c>tools</c>, leaving the text protocol in charge.
+    /// </summary>
+    public AzureOpenAILlmProvider(
+        LlmConfig config,
+        IHttpClientFactory httpClientFactory,
+        IAsyncPolicy<HttpResponseMessage>? resiliencePolicy,
+        IToolCallingStrategy? toolCallingStrategy,
+        ILogger<AzureOpenAILlmProvider>? logger = null)
+        : base(config, httpClientFactory, resiliencePolicy, toolCallingStrategy, logger)
+    {
+    }
+
     /// <inheritdoc />
     protected override void ConfigureHttpClient(HttpClient client, LlmConfig config)
     {

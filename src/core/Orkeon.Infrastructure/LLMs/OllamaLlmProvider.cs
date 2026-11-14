@@ -127,6 +127,23 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     }
 
     /// <summary>
+    /// Constructor overload that accepts both a resilience policy and a tool calling strategy;
+    /// <see langword="null"/> for the strategy sends no <c>tools</c>, leaving the text protocol in charge.
+    /// </summary>
+    public OllamaLlmProvider(
+        LlmConfig config,
+        IHttpClientFactory httpClientFactory,
+        IAsyncPolicy<HttpResponseMessage>? resiliencePolicy,
+        IToolCallingStrategy? toolCallingStrategy,
+        ILogger<OllamaLlmProvider>? logger = null)
+        : base(config, httpClientFactory, resiliencePolicy, logger)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        _baseUrl = ResolveBaseUrl(config);
+        _toolCallingStrategy = toolCallingStrategy;
+    }
+
+    /// <summary>
     /// Resolves the base URL using the priority chain:
     /// 1. config.BaseUrl (if provided and not empty)
     /// 2. OLLAMA_BASE_URL environment variable (if set)

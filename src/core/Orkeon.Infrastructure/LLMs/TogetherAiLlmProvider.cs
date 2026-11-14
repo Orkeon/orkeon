@@ -100,6 +100,20 @@ public partial class TogetherAiLlmProvider : OpenAICompatibleProviderBase
     }
 
     /// <summary>
+    /// Constructor overload that accepts both a resilience policy and a tool calling strategy;
+    /// <see langword="null"/> for the strategy sends no <c>tools</c>, leaving the text protocol in charge.
+    /// </summary>
+    public TogetherAiLlmProvider(
+        LlmConfig config,
+        IHttpClientFactory httpClientFactory,
+        IAsyncPolicy<HttpResponseMessage>? resiliencePolicy,
+        IToolCallingStrategy? toolCallingStrategy,
+        ILogger<TogetherAiLlmProvider>? logger = null)
+        : base(config, httpClientFactory, resiliencePolicy, toolCallingStrategy, logger)
+    {
+    }
+
+    /// <summary>
     /// Extracts Together AI usage metadata from the response.
     /// </summary>
     protected override void ExtractResponseMetadata(JsonDocument doc, LlmResponseMetadata.Builder metadata)

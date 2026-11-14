@@ -333,4 +333,36 @@ public class AnthropicThinkingReplayTests
         using var doc = JsonDocument.Parse(raw);
         Assert.Equal("get_weather", doc.RootElement.GetProperty("tools")[0].GetProperty("name").GetString());
     }
+
+    /// <summary>
+    /// The constructor taking a resilience policy and a strategy together: a <see langword="null"/>
+    /// strategy sends no <c>tools</c>, the native one sends them (#367).
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("BR", "CH-367")]
+    public async Task ShouldHonourTheStrategy_WhenBuiltWithAPolicyAndAStrategy(bool withStrategy)
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, """
+            {"id":"msg_1","type":"message","role":"assistant","model":"claude-haiku-5-5",
+             "content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn",
+             "usage":{"input_tokens":1,"output_tokens":1}}
+            """);
+        var factory = new TestHttpClientFactory();
+        factory.RegisterClient("AnthropicLlmProvider", new HttpClient(handler));
+        var config = HttpConfig() with { Tools = [new ToolSchema("get_weather", "Get the weather", [])] };
+        using var provider = new AnthropicLlmProvider(
+            config, factory, Polly.Policy.NoOpAsync<HttpResponseMessage>(),
+            withStrategy ? AnthropicToolCallingStrategy.Default : null);
+
+        await provider.ChatAsync([LlmMessage.User("weather?")], config, TestContext.Current.CancellationToken);
+
+        var raw = await handler.CapturedRequests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(raw);
+        if (withStrategy)
+            Assert.Equal("get_weather", doc.RootElement.GetProperty("tools")[0].GetProperty("name").GetString());
+        else
+            Assert.False(doc.RootElement.TryGetProperty("tools", out _), "Payload should NOT contain 'tools' when the strategy is null");
+    }
 }

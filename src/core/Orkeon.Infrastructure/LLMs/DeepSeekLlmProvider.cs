@@ -81,6 +81,20 @@ public class DeepSeekLlmProvider : OpenAICompatibleProviderBase
     }
 
     /// <summary>
+    /// Constructor overload that accepts both a resilience policy and a tool calling strategy;
+    /// <see langword="null"/> for the strategy sends no <c>tools</c>, leaving the text protocol in charge.
+    /// </summary>
+    public DeepSeekLlmProvider(
+        LlmConfig config,
+        IHttpClientFactory httpClientFactory,
+        IAsyncPolicy<HttpResponseMessage>? resiliencePolicy,
+        IToolCallingStrategy? toolCallingStrategy,
+        ILogger<DeepSeekLlmProvider>? logger = null)
+        : base(config, httpClientFactory, resiliencePolicy, toolCallingStrategy, logger)
+    {
+    }
+
+    /// <summary>
     /// Adds the DeepSeek usage breakdown on top of the base reasoning trace: the context
     /// cache is auto-populated by the API when a prompt prefix matches a recent request and
     /// is billed at a tenth of the input price, so both sides are surfaced.
