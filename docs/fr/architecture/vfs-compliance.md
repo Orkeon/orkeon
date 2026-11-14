@@ -224,22 +224,56 @@ agents:
 - Les droits viennent du mount : une entrée sélectionne et réduit (une intersection), n'étend jamais. Une
   entrée hors de tout mount, ou un `access` que le mount n'accorde pas à cet endroit (ses surcharges de
   sous-chemin comprises), refuse le run au démarrage avec une erreur qui nomme l'agent et l'entrée ; de
-  même un chemin relatif, un `..` et une entrée déclarée deux fois. Une liste vide est refusée au
-  chargement.
+  même un chemin relatif, un `..`, une entrée déclarée deux fois et une entrée dont l'accès n'accorde
+  aucun droit. Une liste vide est refusée au chargement.
 - Un périmètre déclaré est exhaustif : pendant les appels d'outil de l'agent, le système de fichiers
   refuse tout chemin hors de lui sur tous les mounts, dans sa forme de refus habituelle
-  (`Access denied for '<chemin>'`), en nommant l'agent et son périmètre. Le contrôle est dans
-  `FileSystemService.ResolveAndValidate` : tout outil qui passe par le VFS est tenu — les outils fichier,
-  `list_mounts` (qui liste les entrées du périmètre avec les droits en vigueur), `glob`/`grep`, les outils
-  de recherche, PDF et RAG, les pièces jointes e-mail et drive. `shell_command` ne lie dans son bac à sable
-  que les entrées du périmètre, chacune avec les droits en vigueur.
+  (`Access denied for '<chemin virtuel>'`), en nommant l'agent et son périmètre, et aucun autre mount. Le
+  contrôle est dans `FileSystemService.ResolveAndValidate`, avant celui des mounts : tout outil qui passe
+  par le VFS est tenu — les outils fichier, `list_mounts` (qui liste les entrées du périmètre avec les
+  droits en vigueur), `glob`/`grep`, les outils de recherche, PDF et RAG, les pièces jointes e-mail et
+  drive. Un chemin que le périmètre accorde mais qu'un mount refuse est refusé dans la même forme, en
+  nommant le périmètre, jamais les autres mounts du run. `shell_command` ne lie dans son bac à sable que
+  les entrées du périmètre, chacune avec les droits en vigueur.
+- Un chemin contrôlé est lu comme l'hôte le lit, et quand cette lecture est ambiguë le périmètre n'accorde
+  que ce que chaque lecture accorde. Hors Windows, une barre oblique inverse fait partie d'un nom
+  (`/output/notes\x.md` est le fichier `notes\x.md` de `/output`), sauf juste après la racine d'un mount,
+  où le registre la prend pour un séparateur. L'entrée la plus spécifique est aussi cherchée sans la casse
+  et sans les points ou espaces finaux d'un segment, si bien qu'un hôte insensible à la casse
+  (`/output/REPORT`, ou `/output/report.` sous Windows) n'obtient jamais plus que ce que cette entrée
+  accorde. Le périmètre peut ainsi refuser un chemin qu'un hôte sensible à la casse permettrait, jamais
+  l'inverse.
+- Une énumération sous un périmètre (`directory_read`, `glob`, `grep`, toute énumération du VFS) ne donne
+  que les entrées qu'une lecture permettrait, chacune contrôlée contre le périmètre et les surcharges de
+  sous-chemin du mount. Une suppression récursive est refusée avant que rien ne soit supprimé quand une
+  entrée sous le répertoire retient `Delete` (`/output` rw, `/output/report` ro).
+- Les outils du graphe sémantique lisent un index qu'un autre run a pu remplir : pendant un appel à
+  périmètre, ils écartent chaque nœud dont le périmètre ne laisse pas l'agent lire le fichier, et tout ce
+  qui en nomme un (une arête, un chemin d'appel, un cycle, un résultat de recherche, une entrée de
+  complexité ou de centralité, la source d'un symbole, en cache ou non). Un nœud de monorepo ou de paquet
+  (un répertoire) reste visible sur le chemin d'une entrée du périmètre ; un nœud sans chemin virtuel (un
+  symbole externe, un nœud du plan d'une page Firefox) est gardé. `rag_ingest` juge chaque source qui
+  n'est pas une adresse web, quelle que soit son écriture (relative, avec barres obliques inverses,
+  enracinée à la Windows). `start_job` écrit son journal de job sous `jobs/` d'un endroit où le périmètre
+  laisse l'agent écrire (`/output/jobs` d'abord), sinon il est refusé en nommant le périmètre.
 - Seuls les appels d'outil de l'agent sont tenus. Les E/S propres du framework pendant le run (mémoire,
   connaissances, fichiers de sortie, manifestes) ne sont pas celles de l'agent et gardent les droits des
   mounts.
 - Un enfant lancé depuis un appel d'outil d'un agent à périmètre (`spawn_agent`, une tâche déléguée,
   `ctx.spawnBackground`, un `crew.send` ultérieur à cette instance) s'exécute sous le périmètre de son
   parent ; son propre `filesystem:` ne peut que le réduire, et une entrée hors du périmètre du parent ou
-  au-delà de ses droits refuse le run de l'enfant.
+  au-delà de ses droits refuse le run de l'enfant. Un enfant qui n'en déclare aucun tient les droits de son
+  parent sous son propre nom d'agent, que nomment ses refus et son prompt.
+- En `.ork.ts`, `ctx.delegate` transmet le périmètre de l'appelant comme le fait
+  `delegate_work_to_coworker` (la racine de travail de l'agent délégué reste la sienne). Un run que le
+  script lance lui-même pendant que des agents tournent (`crew.run`, `crew.runAgent`, `crew.runStream`,
+  celui d'une sous-crew) prend le périmètre des tentatives ouvertes, et il est refusé quand leurs
+  périmètres diffèrent ; `tools.*` appelé depuis le code est tenu de la même façon. Les périmètres se
+  comparent par ce qu'ils accordent, chaîne des parents comprise. Les hooks `onAgentStart`/`onAgentStop`
+  d'un agent exécutent leurs outils sous sa racine de travail et son périmètre, un hook de crew sous ceux
+  du premier agent ; un hook de cycle de vie dont les mounts refusent le périmètre de l'agent n'est pas
+  exécuté, et un avertissement dit pourquoi. `rag.ingest` appelé depuis un corps à périmètre développe
+  ses globs sous le périmètre et refuse une source hors de lui.
 - Avec une `working_root`, la racine doit être dans le périmètre (sinon le run est refusé) : le périmètre
   dit ce que l'agent peut toucher, la racine où il travaille par défaut et où se résolvent les chemins
   relatifs. Déclarer les deux donne un répertoire par défaut à un agent à périmètre.
@@ -249,11 +283,13 @@ Absent, rien ne change : les mounts (et la `working_root`, s'il y en a une) conf
 ### Le système de fichiers dans le prompt
 
 Un agent qui a un outil de fichiers (`IBaseTool.UsesFileSystem` : les outils fichier, de recherche, RAG,
-de pièces jointes, `list_mounts`, `shell_command`) reçoit une section `## File system` dans son prompt
-système : les entrées de son périmètre, sinon les mounts du run visibles des agents (jamais les internes),
-chacun avec ses droits et ses surcharges de sous-chemin, triés par chemin virtuel pour que le prompt soit
-le même d'un run à l'autre ; puis sa racine de travail, ou le répertoire contre lequel se résolvent les
-chemins relatifs. `announce_mounts: false` la retire, pour un agent ou, au niveau crew, pour chaque agent
+de pièces jointes, `email_parser`, `image_generation`, `firefox`, `index_codebase`, `incremental_reindex`,
+`list_mounts`, `shell_command`) reçoit une section `## File system` dans son prompt système : les entrées
+de son périmètre, sinon les mounts du run visibles des agents (jamais les internes), chacun avec ses
+droits et ses surcharges de sous-chemin, triés par chemin virtuel pour que le prompt soit le même d'un run
+à l'autre ; puis sa racine de travail, ou le répertoire contre lequel se résolvent les chemins relatifs
+(dit hors du périmètre quand il l'est, pour que l'agent écrive chaque chemin en entier).
+`announce_mounts: false` la retire, pour un agent ou, au niveau crew, pour chaque agent
 qui ne fixe pas le sien (`AgentBuilder.AnnounceMounts(false)`, `.announceMounts(false)`). Le prompt de
 `ctx.llm.act` d'un agent scripté est celui du script et ne porte pas cette section.
 

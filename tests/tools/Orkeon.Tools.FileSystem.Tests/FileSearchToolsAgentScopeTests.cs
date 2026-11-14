@@ -26,11 +26,11 @@ public sealed class FileSearchToolsAgentScopeTests : IDisposable
     public FileSearchToolsAgentScopeTests()
     {
         _tempDir = Path.Combine(Path.GetTempPath(), $"orkeon-search-scope-{Guid.NewGuid():N}");
-        Write("project/open.txt", "needle in the open");
-        Write("project/secret/key.txt", "needle in the key");
+        Write("repo/open.txt", "needle in the open");
+        Write("repo/secret/key.txt", "needle in the key");
         Write("other/secret.txt", "needle outside");
         _registry = new FileSystemRegistry([new FileSystemMount(_tempDir, "/workspace", FileAccessRights.ReadWrite,
-            [new SubPathOverride("project/secret", FileAccessRights.None)])]);
+            [new SubPathOverride("repo/secret", FileAccessRights.None)])]);
         var validator = new PathValidator(new PathSecurityOptions { DefaultWorkspaceRoot = _tempDir }, NullLogger<PathValidator>.Instance);
         _service = new FileSystemService(_registry, validator, NullLogger<FileSystemService>.Instance);
     }
@@ -50,25 +50,25 @@ public sealed class FileSearchToolsAgentScopeTests : IDisposable
     }
 
     /// <summary>
-    /// The project is readable, its <c>secret</c> folder grants nothing (a mount override: a scope entry
+    /// The repo is readable, its <c>secret</c> folder grants nothing (a mount override: a scope entry
     /// cannot grant nothing), the rest of the mount is outside.
     /// </summary>
     private AgentFileSystemScope Scope()
-        => AgentFileSystemScope.Resolve("reader", [new FileSystemScopeEntry("/workspace/project")], _service.GetAvailableMounts());
+        => AgentFileSystemScope.Resolve("reader", [new FileSystemScopeEntry("/workspace/repo")], _service.GetAvailableMounts());
 
     public static TheoryData<string, string> Searches() => new()
     {
         { "glob", "/workspace" },
         { "grep", "/workspace" },
-        { "grep", "/workspace/project" },
+        { "grep", "/workspace/repo" },
         { "directory_read", "/workspace" },
     };
 
     /// <summary>A listing that starts inside the scope, over a sub-entry that grants nothing.</summary>
     public static TheoryData<string, string> ListingsOverAWithheldSubEntry() => new()
     {
-        { "glob", "/workspace/project" },
-        { "directory_read", "/workspace/project" },
+        { "glob", "/workspace/repo" },
+        { "directory_read", "/workspace/repo" },
     };
 
     private IBaseTool NewTool(string name) => name switch
@@ -110,7 +110,7 @@ public sealed class FileSearchToolsAgentScopeTests : IDisposable
             var answered = JsonSerializer.Serialize(response.Result);
             Assert.DoesNotContain("secret", answered, StringComparison.Ordinal);
             Assert.DoesNotContain(_tempDir, response.Error ?? "", StringComparison.Ordinal);
-            if (response.Success && path == "/workspace/project")
+            if (response.Success && path == "/workspace/repo")
                 Assert.Contains("open.txt", answered, StringComparison.Ordinal);
         }
         finally

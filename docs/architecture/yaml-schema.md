@@ -76,7 +76,7 @@ agents:
     maxExecutionTime: int # default: none — the seconds a task may take on this agent (alias max_execution_time); 0 or less, or above 4294967 (about 49.7 days), fails the load, and so does a limit on the hierarchical manager
     permissionMode: string # default: none (Orkeon:Security:PermissionGate:DefaultMode) — default, acceptEdits, bypassPermissions, plan or dontAsk (C# AgentBuilder.PermissionMode): the mode the permission gate reads for this agent's tool calls, once Orkeon:Security:PermissionGate:Enabled is true; any other value fails the load
     working_root: string  # default: none — a virtual path (alias workingRoot, C# AgentBuilder.WorkingRoot) under a mount that confines this agent's file tools and shell_command to it; refused at run start, naming the root, when no mount holds it
-    filesystem:           # default: none — the only virtual paths this agent's tools may touch (C# AgentBuilder.FileSystem); each entry narrows its mount, never widens it
+    filesystem:           # default: none — the only virtual paths this agent's tools may touch (C# AgentBuilder.FileSystem); each entry narrows its mount, never widens it. A list: a lone path or map fails the load naming the agent; no value, ~ or null is no declaration
       - string            # a path: the mount's rights there
       - path: string      # or a path with
         access: string    # "ro" | "rw" | "rwnd" — refused at run start, naming the agent and the entry, above the mount's rights or under no mount; an empty list, an unknown key or access fails the load

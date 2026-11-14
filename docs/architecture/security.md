@@ -110,7 +110,10 @@ agent's **shell session**, which the operating system confines
   [file-system scope](vfs-compliance.md#agent-file-system-scope) sees its entries alone: a mount no
   entry selects is not bound, and each entry is bound with the rights in force there (the mount's,
   narrowed by the entry), its sub-path overrides beneath it. Under a working root as well, the
-  entries are clipped to the root.
+  entries are clipped to the root. Unconfined (`Mode = None`, or inside a container), the shell
+  holds the scope only for the paths its command line names and its working directory, as it
+  holds the mounts. A denial under a scope names the scope and no other mount; a listing gives
+  only what a read would allow; the semantic-graph tools leave out the nodes of files outside it.
 - **Agent working root.** An agent that declares a
   [working root](vfs-compliance.md#agent-working-root-vs-mount) sees, of the mount that holds it,
   the root alone. When the root is a linked git worktree (its `.git` is a file,
