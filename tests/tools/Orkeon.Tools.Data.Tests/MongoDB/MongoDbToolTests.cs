@@ -303,7 +303,8 @@ public sealed class MongoDbToolTests : IDisposable
     }
 
     [Theory]
-    [InlineData("limit", -1, "limit must be at least 0")]
+    [InlineData("limit", 0, "limit must be at least 1 (got 0); omit it for the default of 100")]
+    [InlineData("limit", -1, "limit must be at least 1 (got -1)")]
     [InlineData("skip", -2, "skip must be at least 0")]
     public async Task ShouldRefuseNegativeLimitOrSkip_OnFind(string field, int value, string expected)
     {
@@ -316,17 +317,17 @@ public sealed class MongoDbToolTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldAcceptLimitZero_AsNoLimit()
+    public async Task ShouldAcceptLimitOfOne_OnFind()
     {
-        _state.FindResult = new List<BsonDocument>();
+        _state.FindResult = new List<BsonDocument> { new() { ["name"] = "Alice" } };
 
-        var result = await _tool.CallAsync(MakeFindRequest("limit", 0), TestContext.Current.CancellationToken);
+        var result = await _tool.CallAsync(MakeFindRequest("limit", 1), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, result.Error);
     }
 
     [Fact]
-    public async Task ShouldIgnoreNegativeLimit_OnCount()
+    public async Task ShouldIgnoreLimitAndSkip_OnCount()
     {
         var request = MakeRequest(new Dictionary<string, object?>
         {
@@ -334,12 +335,14 @@ public sealed class MongoDbToolTests : IDisposable
             ["database"] = "testdb",
             ["collection"] = "users",
             ["operation"] = "Count",
-            ["limit"] = -1
+            ["limit"] = 0,
+            ["skip"] = -1
         });
+        _state.CountResult = 7;
 
         var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
 
-        Assert.DoesNotContain("limit must be", result.Error ?? "");
+        Assert.True(result.Success, result.Error);
     }
 
     private static ToolCallRequest MakeFindRequest(string field, int value) => MakeRequest(new Dictionary<string, object?>

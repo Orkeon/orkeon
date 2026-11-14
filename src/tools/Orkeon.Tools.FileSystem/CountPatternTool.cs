@@ -53,7 +53,7 @@ public sealed class CountPatternRequest
     /// is true. Prevents context blow-up on very dense documents. Default: 200.
     /// </summary>
     [JsonPropertyName("max_matches_returned")]
-    [FieldSchema(Description = "Cap on the returned matches list size, at least 1 (default: 200; only read when include_matches=true, where it must be at least 1). To count without listing matches, leave include_matches false", IsRequired = false, Example = 200)]
+    [FieldSchema(Description = "Cap on the returned matches list size, at least 1 (default: 200); read only when include_matches is true. To count without listing matches, leave include_matches false", IsRequired = false, Example = 200)]
     public int? MaxMatchesReturned { get; init; }
 }
 

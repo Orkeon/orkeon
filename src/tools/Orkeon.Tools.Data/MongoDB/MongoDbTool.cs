@@ -57,13 +57,14 @@ public partial class MongoDbTool : ToolBase<MongoDbRequest, MongoDbResponse>
         if (string.IsNullOrWhiteSpace(request.Collection))
             return "Collection name cannot be empty";
 
-        // Limit and Skip are read by Find only. MongoDB reads a Limit of 0 as "no limit", which is
-        // kept and documented; a negative value is meaningless for the model (MongoDB would return
-        // one batch and close the cursor), so it is refused.
+        // Limit and Skip are read by Find only. MongoDB reads a Limit of 0 as "no limit": a small
+        // model that fills every field would read the whole collection, with nothing to say rows
+        // were left out, so a Limit below 1 is refused like every other result limit; a negative
+        // Skip is meaningless (the server rejects it).
         if (request.Operation == MongoDbOperation.Find)
         {
-            if (request.Limit < 0)
-                return $"limit must be at least 0 (got {request.Limit}); 0 means no limit, omit it for the default of 100";
+            if (request.Limit < 1)
+                return $"limit must be at least 1 (got {request.Limit}); omit it for the default of 100";
 
             if (request.Skip < 0)
                 return $"skip must be at least 0 (got {request.Skip}); omit it for the default of 0";

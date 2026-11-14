@@ -151,8 +151,8 @@ Migration:
 ### Fixed
 
 - `relational_database_query` (and `mysql_query`, `mariadb_query`, `postgres_query`, `sqlserver_query`) refuses a
-  SELECT whose `max_rows` is below 1, and any query whose `timeout_seconds` is below 1 (#372), in a message that names
-  the field and its default. A small model that filled every field sent `max_rows: 0`, got no row and a success, and
+  SELECT whose `max_rows` is below 1 or above 100000, and any query whose `timeout_seconds` is below 1 (#372), in a
+  message that names the field and its default. A small model that filled every field sent `max_rows: 0`, got no row and a success, and
   the crew reported made-up figures; a `timeout_seconds: 0` waited without bound. An Execute or a Scalar query, which
   never reads `max_rows`, still takes any value. A SELECT response carries `truncated`, true when the result set held
   rows `max_rows` left out (absent on Execute and Scalar). `csv_reader` refuses a `max_rows` below 1 the same way, its
@@ -163,11 +163,10 @@ Migration:
   `top_k`, `rag_eval` `k`, `structural_search` `max_results` and `max_files`, `structural_rewrite` `max_files`,
   `file_read` `max_length` (where a negative value threw), and `count_pattern` `max_matches_returned` when
   `include_matches` is true (a negative value was silently read as 0), `package_summary` `max_exports`,
-  `dependency_graph` `max_cycles`, `max_cycle_members` and `max_nodes` (a `max_cycles` of 0 gave no cycle and
-  `cycles_truncated: true`), `flow_trace` `max_depth`, `impact_analysis` `max_depth` and `max_nodes`, `sub_graph`
-  `depth` and `max_nodes` (where 0 was silently read as 1). `mongodb_query` keeps MongoDB's `limit: 0` as
-  "no limit", now stated in its schema, and refuses a negative `limit` or `skip` on a Find. A SELECT of
-  `relational_database_query` refuses a `max_rows` above 100000.
+  `dependency_graph` `max_cycle_members` and `max_nodes` (`max_cycles` keeps 0 as its count-only mode, now stated in
+  its schema, and refuses a negative value), `flow_trace` `max_depth`, `impact_analysis` `max_depth` and `max_nodes`, `sub_graph`
+  `depth` and `max_nodes` (where 0 was silently read as 1). On a Find, `mongodb_query` refuses a `limit` below 1
+  (MongoDB reads 0 as "no limit": the whole collection came back) and a negative `skip`.
 
 - A consumer of `Orkeon.Tools.Embeddings.Local` or `Orkeon.Scripting` gets the BGE-micro-v2 model (#368). The
   `SmartComponents.LocalEmbeddings` package (~40 KB) carries no weights: its `build/` target downloads `model.onnx`

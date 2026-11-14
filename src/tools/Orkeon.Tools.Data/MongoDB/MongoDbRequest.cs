@@ -69,7 +69,7 @@ public record MongoDbRequest
     public string? Sort { get; init; }
 
     /// <summary>Gets the maximum number of documents to return.</summary>
-    [FieldSchema(Description = "Maximum number of documents to return for Find (default 100); 0 means no limit, a negative value is refused", IsRequired = false, Example = "100")]
+    [FieldSchema(Description = "Maximum number of documents to return for Find, at least 1 (default 100)", IsRequired = false, Example = "100")]
     public int Limit { get; init; } = 100;
 
     /// <summary>Gets the number of documents to skip.</summary>

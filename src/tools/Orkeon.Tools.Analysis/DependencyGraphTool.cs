@@ -37,8 +37,9 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
         ArgumentNullException.ThrowIfNull(request);
         if (request.MaxNodes < 1)
             return $"max_nodes must be at least 1 (got {request.MaxNodes}); omit it for the default of 200";
-        if (request.MaxCycles < 1)
-            return $"max_cycles must be at least 1 (got {request.MaxCycles}); omit it for the default of 20";
+        // 0 is a count-only mode (no cycle listed, cycles_truncated true, cycle_count kept); only a negative is meaningless.
+        if (request.MaxCycles < 0)
+            return $"max_cycles must be at least 0 (got {request.MaxCycles}); 0 returns cycle_count alone, omit it for the default of 20";
         if (request.MaxCycleMembers < 1)
             return $"max_cycle_members must be at least 1 (got {request.MaxCycleMembers}); omit it for the default of 50";
         return null;

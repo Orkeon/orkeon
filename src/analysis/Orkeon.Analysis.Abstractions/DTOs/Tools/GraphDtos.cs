@@ -66,7 +66,7 @@ public sealed record DependencyGraphRequest
     [FieldSchema(Description = "Most nodes returned, at least 1 (default 200); truncated says when more exist.", IsRequired = false, Default = 200)]
     public int MaxNodes { get; init; } = 200;
 
-    [FieldSchema(Description = "Most cycles returned, at least 1 (default 20), the largest first. cycle_count keeps the full count.", IsRequired = false, Default = 20)]
+    [FieldSchema(Description = "Most cycles returned, at least 0 (default 20), the largest first; 0 lists none. cycle_count keeps the full count.", IsRequired = false, Default = 20)]
     [JsonPropertyName("max_cycles")]
     public int MaxCycles { get; init; } = 20;
 

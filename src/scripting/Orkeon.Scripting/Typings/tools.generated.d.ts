@@ -173,7 +173,7 @@ declare global {
             distinct_matches?: boolean;
             /** Return the matched substrings themselves (capped by max_matches_returned) */
             include_matches?: boolean;
-            /** Cap on the returned matches list size, at least 1 (default: 200; only read when include_matches=true, where it must be at least 1). To count without listing matches, leave include_matches false */
+            /** Cap on the returned matches list size, at least 1 (default: 200); read only when include_matches is true. To count without listing matches, leave include_matches false */
             max_matches_returned?: number | null;
             /** Apply RegexOptions.Multiline so ^/$ match line starts/ends */
             multiline?: boolean;
@@ -235,7 +235,7 @@ declare global {
             include_mermaid?: boolean;
             /** Most members returned per cycle, at least 1 (default 50). member_count keeps the full size. */
             max_cycle_members?: number;
-            /** Most cycles returned, at least 1 (default 20), the largest first. cycle_count keeps the full count. */
+            /** Most cycles returned, at least 0 (default 20), the largest first; 0 lists none. cycle_count keeps the full count. */
             max_cycles?: number;
             /** Most nodes returned, at least 1 (default 200); truncated says when more exist. */
             max_nodes?: number;
@@ -914,7 +914,7 @@ declare global {
             document?: string | null;
             /** JSON filter document for Find/Update/Delete/Count/Distinct operations */
             filter?: string | null;
-            /** Maximum number of documents to return for Find (default 100); 0 means no limit, a negative value is refused */
+            /** Maximum number of documents to return for Find, at least 1 (default 100) */
             limit?: number;
             /** Operation to perform: Find, Aggregate, InsertOne, UpdateOne, DeleteOne, Count, Distinct */
             operation: "Find" | "Aggregate" | "InsertOne" | "UpdateOne" | "DeleteOne" | "Count" | "Distinct";

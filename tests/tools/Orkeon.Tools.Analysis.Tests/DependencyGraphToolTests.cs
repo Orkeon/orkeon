@@ -424,16 +424,22 @@ public class DependencyGraphToolTests
         Assert.False(whole.Truncated);
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void ShouldRefuseMaxCyclesBelowOne_WhenValidated(int value)
+    [Fact]
+    public void ShouldRefuseNegativeMaxCycles_WhenValidated()
     {
         using var tool = new DependencyGraphTool(TestGraph.Store([], []));
 
-        var error = tool.ValidateTypedForTest(new DependencyGraphRequest { Scope = NodeLevel.L2_Module } with { MaxCycles = value });
+        var error = tool.ValidateTypedForTest(new DependencyGraphRequest { Scope = NodeLevel.L2_Module } with { MaxCycles = -1 });
 
-        Assert.Equal($"max_cycles must be at least 1 (got {value}); omit it for the default of 20", error);
+        Assert.Equal("max_cycles must be at least 0 (got -1); 0 returns cycle_count alone, omit it for the default of 20", error);
+    }
+
+    [Fact]
+    public void ShouldAcceptMaxCyclesZero_AsCountOnly_WhenValidated()
+    {
+        using var tool = new DependencyGraphTool(TestGraph.Store([], []));
+
+        Assert.Null(tool.ValidateTypedForTest(new DependencyGraphRequest { Scope = NodeLevel.L2_Module } with { MaxCycles = 0 }));
     }
 
     [Theory]
