@@ -100,3 +100,4 @@ static Orkeon.Tools.Code.ShellCommandTool.MatchesMountPrefix(string! path, strin
 static Orkeon.Tools.Code.ShellCommandTool.ParseCommand(string! command) -> (string! Executable, string![]! Arguments)
 static Orkeon.Tools.Code.ShellCommandTool.RewriteOutboundPaths(string! output, System.Collections.Generic.IReadOnlyList<(string! PhysicalBase, string! VirtualPrefix)>! replacements) -> string!
 static Orkeon.Tools.Code.ShellCommandTool.TokenizeCommand(string! command) -> System.Collections.Generic.IReadOnlyList<string!>!
+override Orkeon.Tools.Code.ShellCommandTool.UsesFileSystem.get -> bool

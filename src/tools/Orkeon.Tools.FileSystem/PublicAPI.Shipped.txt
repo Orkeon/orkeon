@@ -417,3 +417,4 @@ virtual Orkeon.Tools.FileSystem.DirectorySearchResult.<Clone>$() -> Orkeon.Tools
 virtual Orkeon.Tools.FileSystem.DirectorySearchResult.EqualityContract.get -> System.Type!
 virtual Orkeon.Tools.FileSystem.DirectorySearchResult.Equals(Orkeon.Tools.FileSystem.DirectorySearchResult? other) -> bool
 virtual Orkeon.Tools.FileSystem.DirectorySearchResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+override Orkeon.Tools.FileSystem.DirectorySearchTool.UsesFileSystem.get -> bool

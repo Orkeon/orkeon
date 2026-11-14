@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-14
+
+A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries
+three changes marked **[breaking]** below, made on purpose as exceptions to the 1.x commitment of
+[the stability policy](docs/reference/stability.md); each one fixes behaviour that was wrong, and its entry gives
+the migration:
+
+- `crew.run()`'s `output` (#369): `JsCrewResult.output` is an `object?`, where it was a `string` holding the CLR type
+  name of an object output. It is the one line removed from the 1.0.0 frozen surface.
+- Thinking and effort are judged against the model on every provider (#356).
+- A C# host that evaluates a script catches a `Jint.Runtime.JavaScriptException`, the CLR exception on its `clr`
+  property, where it caught the CLR type itself (#364).
+
 ### Added
 - `llm.profiles` (#364): the names `llm.profile(name)` takes, a frozen array — `"default"` first, then the
   host's profiles in the order and the spelling it declared them, those its allow-list refuses left out.
@@ -12103,7 +12116,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.7...v1.0.0
 [1.0.0-rc.7]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.6...v1.0.0-rc.7
 [1.0.0-rc.6]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.5...v1.0.0-rc.6

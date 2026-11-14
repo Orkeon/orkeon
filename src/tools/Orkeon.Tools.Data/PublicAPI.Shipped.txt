@@ -1236,3 +1236,8 @@ virtual Orkeon.Tools.Data.XmlParserResponse.<Clone>$() -> Orkeon.Tools.Data.XmlP
 virtual Orkeon.Tools.Data.XmlParserResponse.EqualityContract.get -> System.Type!
 virtual Orkeon.Tools.Data.XmlParserResponse.Equals(Orkeon.Tools.Data.XmlParserResponse? other) -> bool
 virtual Orkeon.Tools.Data.XmlParserResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+override Orkeon.Tools.Data.JsonTool.UsesFileSystem.get -> bool
+override Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>.UsesFileSystem.get -> bool
+override Orkeon.Tools.Data.Search.PdfSearchTool.UsesFileSystem.get -> bool
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.Truncated.get -> bool?
+Orkeon.Tools.Data.Relational.RelationalDatabaseResponse.Truncated.init -> void
