@@ -56,8 +56,9 @@ declare global {
      */
     interface CrewResult {
         /**
-         * What the last agent that returned something returned — the same value as its
-         * `tasks[i].output`, an object staying an object; `""` when no agent returned anything.
+         * The last agent output that was not `null` (a body returning `undefined` gives `null`),
+         * as the body returned it — the same value as its `tasks[i].output`, an object staying an
+         * object, `false`, `0` and `""` counting; `""` when every output was `null`.
          */
         readonly output: unknown;
         /** One entry per agent run, in the order they ran. */

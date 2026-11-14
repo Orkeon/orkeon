@@ -51,6 +51,7 @@ import sys
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
+from typing import NamedTuple
 
 REPO = Path(__file__).resolve().parent.parent
 PACKAGING = {
@@ -65,41 +66,147 @@ PACKAGING = {
 }
 NON_FLOWING = {"Microsoft.CodeAnalysis.PublicApiAnalyzers"}  # PrivateAssets=all analyzers
 # Externals that deliver what a consumer needs through their `build/` assets: NuGet's default
-# for a PackageReference (PrivateAssets="contentfiles;analyzers;build") writes
-# exclude="Build,Analyzers" into the nuspec and the consumer never runs that target, so a
-# packaging project references them with PrivateAssets="none" (#368).
+# for a reference (PrivateAssets="contentfiles;analyzers;build") writes exclude="Build,Analyzers"
+# into the nuspec, and NuGet narrows the assets of a package to what every link of the path
+# from the consumer lets through. A single link that hides `build` - the reference to the
+# external itself, or the reference to an Orkeon package whose closure reaches it - and the
+# consumer never runs that target, so every such link lets `build` flow (#368).
 BUILD_ASSET_EXTERNALS = {
-    # build/SmartComponents.LocalEmbeddings.targets copies the BGE-micro-v2 model and vocabulary
-    # to LocalEmbeddingsModel/default/; without it AddOrkeonLocalEmbeddings() throws at startup.
+    # build/SmartComponents.LocalEmbeddings.targets downloads the BGE-micro-v2 model and
+    # vocabulary on the consumer's first build and copies them to LocalEmbeddingsModel/default/;
+    # without it AddOrkeonLocalEmbeddings() throws at startup.
     "SmartComponents.LocalEmbeddings",
 }
+# NuGet's PrivateAssets when a reference names none.
+DEFAULT_PRIVATE_ASSETS = "contentfiles;analyzers;build"
 
 
-def build_asset_reference_errors(pkg_id: str, packaging_csproj: Path) -> list[str]:
-    """A BUILD_ASSET_EXTERNALS PackageReference of a packaging project that hides `build`."""
-    text = packaging_csproj.read_text()
-    errors = []
-    for include, attrs in re.findall(r'<PackageReference\s+Include="([^"]+)"([^>]*)>', text):
-        if include not in BUILD_ASSET_EXTERNALS:
+class Reference(NamedTuple):
+    """A PackageReference or ProjectReference item of a csproj, its metadata merged from the
+    attributes and child elements of its Include and of the Update items that follow it."""
+    kind: str  # "Package" or "Project"
+    include: str
+    metadata: dict[str, str]  # metadata name, lower-cased -> value
+
+
+def reference_items(project: Path) -> list[Reference]:
+    """The reference items of `project`, read as XML. Conditions are ignored."""
+    root = ET.parse(project).getroot()
+    items: dict[tuple[str, str], Reference] = {}
+    for el in root.iter():
+        tag = strip_ns(el.tag)
+        if tag not in ("PackageReference", "ProjectReference"):
             continue
-        private = re.search(r'PrivateAssets="([^"]*)"', attrs)
-        if not private or private.group(1).strip().lower() != "none":
+        kind = tag.removesuffix("Reference")
+        metadata = {k.lower(): v for k, v in el.attrib.items() if k not in ("Include", "Update", "Remove")}
+        for child in el:
+            metadata[strip_ns(child.tag).lower()] = (child.text or "").strip()
+        if "Include" in el.attrib:
+            for name in filter(None, (n.strip() for n in el.attrib["Include"].split(";"))):
+                items[(kind, name.lower())] = Reference(kind, name, dict(metadata))
+        elif "Update" in el.attrib:
+            for name in filter(None, (n.strip() for n in el.attrib["Update"].split(";"))):
+                existing = items.get((kind, name.lower()))
+                if existing is not None:  # an Update applies to the items defined before it
+                    existing.metadata.update(metadata)
+    return list(items.values())
+
+
+def asset_tags(value: str | None) -> set[str]:
+    return {t.strip().lower() for t in re.split(r"[;,]", value or "") if t.strip()}
+
+
+def flows_build(include: set[str], excluded: set[str]) -> bool:
+    return bool({"all", "build"} & include) and not {"all", "build"} & excluded
+
+
+def reference_flows_build(ref: Reference) -> bool:
+    """Whether `ref` lets the `build` assets of what it references reach a consumer: NuGet
+    keeps IncludeAssets minus ExcludeAssets minus PrivateAssets, and an absent (or empty)
+    PrivateAssets means DEFAULT_PRIVATE_ASSETS, which holds `build`."""
+    private = asset_tags(ref.metadata.get("privateassets") or DEFAULT_PRIVATE_ASSETS)
+    excluded = asset_tags(ref.metadata.get("excludeassets"))
+    include = asset_tags(ref.metadata.get("includeassets") or "all")
+    return flows_build(include, private | excluded)
+
+
+def is_embedded(ref: Reference) -> bool:
+    """A ProjectReference whose assembly the package embeds: no nuspec dependency."""
+    return "all" in asset_tags(ref.metadata.get("privateassets"))
+
+
+def nuspec_dependency_flows_build(el: ET.Element) -> bool:
+    return flows_build(asset_tags(el.attrib.get("include") or "all"), asset_tags(el.attrib.get("exclude")))
+
+
+_CLOSURE: dict[Path, frozenset[str]] = {}
+
+
+def package_closure(project: Path) -> frozenset[str]:
+    """The external packages a consumer restores through the package `project` publishes as:
+    for a lineup wrapper (`project` is the wrapper or the project it wraps), the wrapper's own
+    PackageReferences and the closures of its nuspec dependencies; for a project packed from
+    its own csproj, the externals of its ProjectReference closure."""
+    project = project.resolve()
+    if project in _CLOSURE:
+        return _CLOSURE[project]
+    by_path = {csproj.resolve(): csproj for csproj in PACKAGING.values()}
+    wrapper = by_path.get(project)
+    if wrapper is None and project.is_file():
+        wrapped_id = wrapped_lineup_id(project)
+        wrapper = PACKAGING[wrapped_id] if wrapped_id else None
+    _CLOSURE[project] = frozenset()  # a cycle contributes nothing more
+    if wrapper is None:
+        found = external_union([project]) if project.is_file() else set()
+    else:
+        found = set()
+        for ref in reference_items(wrapper):
+            if ref.kind == "Package":
+                found.add(ref.include)
+            elif not is_embedded(ref) and ref.metadata.get("referenceoutputassembly", "").lower() != "false":
+                found |= package_closure(wrapper.parent / ref.include.replace("\\", "/"))
+    _CLOSURE[project] = frozenset(found)
+    return _CLOSURE[project]
+
+
+def build_asset_reference_errors(pkg_id: str, project: Path) -> list[str]:
+    """The references of a lineup project that hide `build` on the way to a
+    BUILD_ASSET_EXTERNALS package: a PackageReference to one, or a nuspec-dependency
+    ProjectReference to an Orkeon package whose closure reaches one."""
+    errors = []
+    for ref in reference_items(project):
+        if reference_flows_build(ref):
+            continue
+        if ref.kind == "Package":
+            reached = {ref.include} & BUILD_ASSET_EXTERNALS
+        elif is_embedded(ref) or ref.metadata.get("referenceoutputassembly", "").lower() == "false":
+            continue  # no nuspec dependency: the package declares the externals itself
+        else:
+            reached = package_closure(project.parent / ref.include.replace("\\", "/")) & BUILD_ASSET_EXTERNALS
+        if reached:
             errors.append(
-                f"{pkg_id}: PackageReference {include} must carry PrivateAssets=\"none\": its build/ "
-                f"target delivers what a consumer needs, and the default hides it (#368)"
+                f"{pkg_id}: {ref.kind}Reference {ref.include} hides build/ from its consumers, but "
+                f"it leads to {sorted(reached)}, whose build/ target delivers what a consumer "
+                f"needs: give it PrivateAssets=\"none\" (#368)"
             )
     return errors
 
 
-def nuspec_build_exclusions(root: ET.Element) -> list[str]:
-    """The BUILD_ASSET_EXTERNALS dependencies whose nuspec entry excludes `Build`."""
-    return sorted(
-        el.attrib["id"]
-        for el in root.iter()
-        if strip_ns(el.tag) == "dependency"
-        and el.attrib.get("id") in BUILD_ASSET_EXTERNALS
-        and "build" in {x.strip().lower() for x in el.attrib.get("exclude", "").split(",")}
-    )
+def nuspec_build_exclusions(root: ET.Element, projects_by_id: dict[str, Path]) -> list[str]:
+    """The nuspec dependencies that hide `build` while leading to a BUILD_ASSET_EXTERNALS
+    package: the external itself, or an Orkeon package whose closure reaches one."""
+    out = []
+    for el in root.iter():
+        if strip_ns(el.tag) != "dependency" or nuspec_dependency_flows_build(el):
+            continue
+        dep = el.attrib.get("id", "")
+        project = projects_by_id.get(dep)
+        reached = {dep} & BUILD_ASSET_EXTERNALS
+        if project is not None:
+            reached |= package_closure(project) & BUILD_ASSET_EXTERNALS
+        if reached:
+            out.append(dep)
+    return sorted(out)
 
 # The canonical NuGet.org lineup (PUB-25 — docs/reference/publication-matrix.md is
 # the source of truth this mirrors). Order matters for the push: `Orkeon` first,
@@ -411,11 +518,27 @@ def source_errors(lineup: list[str]) -> list[str]:
                 f"referencing it"
             )
 
-    # 6. Externals whose build/ assets a consumer needs flow them (#368).
-    for pkg_id, csproj in PACKAGING.items():
-        errors.extend(build_asset_reference_errors(pkg_id, csproj))
+    # 6. Externals whose build/ assets a consumer needs flow them, through every link of the
+    #    lineup that leads to them (#368).
+    for pkg_id in lineup:
+        project = packable.get(pkg_id)
+        if project is None:
+            continue
+        if (msbuild_property(text_of[project.resolve()], "PackAsTool") or "false").lower() == "true":
+            continue  # a tool package carries its whole publish output; no nuspec deps
+        errors.extend(build_asset_reference_errors(pkg_id, project))
 
     return errors
+
+
+def lineup_projects() -> dict[str, Path]:
+    """The project each packable PackageId under src/ is packed from."""
+    out: dict[str, Path] = {}
+    for f in src_projects():
+        text = f.read_text(encoding="utf-8")
+        if is_packable(text):
+            out[package_id(f, text)] = f
+    return out
 
 
 def main() -> int:
@@ -463,6 +586,17 @@ def main() -> int:
                 f"(NU1101 for consumers): {sorted(orphan)}"
             )
 
+    # 1b. No dependency hides the build/ target of a BUILD_ASSET_EXTERNALS package (#368)
+    projects_by_id = lineup_projects()
+    for pkg_id in sorted(lineup & nupkgs.keys()):
+        excluded = nuspec_build_exclusions(nuspec_of(nupkgs[pkg_id]), projects_by_id)
+        if excluded:
+            errors.append(
+                f"{pkg_id}: the nuspec excludes Build from {excluded}, which lead to "
+                f"{sorted(BUILD_ASSET_EXTERNALS)}, whose build/ target delivers what a consumer "
+                f"needs (#368)"
+            )
+
     # 2. Umbrella drift: nuspec externals vs recomputed union of embedded csproj
     for pkg_id, csproj in PACKAGING.items():
         if pkg_id not in nupkgs:
@@ -481,12 +615,6 @@ def main() -> int:
         union = external_union(embedded)
         if pkg_id != "Orkeon":
             union -= provided_by_dependencies(csproj)[0]  # carried by its lineup dependencies
-        excluded = nuspec_build_exclusions(root)
-        if excluded:
-            errors.append(
-                f"{pkg_id}: the nuspec excludes Build from {excluded}, whose build/ target "
-                f"delivers what a consumer needs (#368)"
-            )
         undeclared = {u for u in union if u not in deps}
         if undeclared:
             errors.append(

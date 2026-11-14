@@ -14,12 +14,13 @@ internal static class ScriptRefusal
     /// Runs <paramref name="call"/> inside a script's <c>try … catch</c> and returns what the
     /// <c>catch</c> saw: <c>instanceof Error|clrType|message</c>, or <c>not caught</c> when the call
     /// did not throw. The first field is <c>false</c> as well for an <c>InvalidScriptException</c>
-    /// that is not an <c>InvalidScriptError</c>: every script refusal is that class (#366).
+    /// that is not an <c>InvalidScriptError</c>, and for any other refusal that is one: every script
+    /// refusal is that class, and only those (#366).
     /// </summary>
     public static string Caught(Engine engine, string call) => engine.Evaluate($$"""
         (() => {
             try { {{call}}; } catch (e) {
-                const classed = e.clrType !== "InvalidScriptException" || e instanceof InvalidScriptError;
+                const classed = (e.clrType === "InvalidScriptException") === (e instanceof InvalidScriptError);
                 return [e instanceof Error && classed, e.clrType, e.message].join("|");
             }
             return "not caught";

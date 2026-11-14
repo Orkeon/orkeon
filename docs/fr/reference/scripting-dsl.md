@@ -340,8 +340,10 @@ la topologie fautive, `llm.profile("ghost")` — lève une `InvalidScriptError` 
 `"InvalidScriptException"`) que le script rattrape, et un appel `ctx.llm.*` attendu refusé de la même
 façon est rejeté avec elle : le message nomme la faute, si bien qu'un script qui construit à partir de
 données teste `e instanceof InvalidScriptError` et se rabat sur une valeur par défaut. Une valeur
-au-delà d'une limite du domaine reste un simple `Error`, de `clrType` `"ArgumentException"`. Les limites propres du moteur (temps, mémoire, récursion) ne sont pas des refus :
-elles arrêtent le script quoi qu'il rattrape. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
+au-delà d'une limite du domaine reste un simple `Error`, de `clrType` `"ArgumentException"`, tout
+comme un délai `ErrorAction.retry` hors bornes (`"OverflowException"`). Les limites propres du
+moteur (temps, mémoire, récursion) ne sont pas des refus : elles arrêtent le script quoi qu'il
+rattrape. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
 agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `timeout`,
 `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked` ou `unknown`.
 

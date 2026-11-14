@@ -234,6 +234,17 @@ public sealed class ScriptHostFacadeTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-369")]
+    public void MapResult_summarises_an_object_final_output_as_its_json()
+    {
+        var output = new Dictionary<string, object?> { ["summary"] = "x" };
+
+        var result = ScriptHostFacade.MapResult(new { finalOutput = (object?)output }, streamed: false);
+
+        Assert.Equal("""{"summary":"x"}""", result.summary);
+    }
+
+    [Fact]
     public async Task RunCrewAsync_completes_with_streamed_false_even_when_a_crew_turn_streamed()
     {
         WriteCrew("talk", "tools.streamTurn({}); \"the answer\";");

@@ -89,10 +89,13 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
     {
         var (result, source) = await RunExampleAsync(fileName);
 
-        // The run settled without throwing, which is the whole claim. The files that assign
-        // globalThis.result hand a plain object back (the CLI prints it); the others hand back
-        // nothing, and the CLI prints `{ "result": null }` for them.
-        if (source.Contains("globalThis.result =", StringComparison.Ordinal))
+        // The run settled without throwing, which is the whole claim. A file that assigns
+        // globalThis.result hands back the CrewResult itself (`= await crew.run()`, #370) or a
+        // plain projection of it, and the CLI prints either; one that assigns nothing hands back
+        // nothing, and the CLI prints `{ "result": null }` for it.
+        if (source.Contains("globalThis.result = await crew.run();", StringComparison.Ordinal))
+            Assert.IsType<Orkeon.Scripting.Runtime.JsCrewResult>(result);
+        else if (source.Contains("globalThis.result =", StringComparison.Ordinal))
             Assert.IsType<IDictionary<string, object?>>(result, exactMatch: false);
         else
             Assert.Null(result);

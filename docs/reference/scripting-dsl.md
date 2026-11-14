@@ -315,9 +315,10 @@ properties. A builder or factory method that refuses its argument — `agentBuil
 throws an `InvalidScriptError` (`clrType` `"InvalidScriptException"`) the script catches, and an
 awaited `ctx.llm.*` call refused the same way rejects with one: the message names the fault, so a
 script that builds from data tests `e instanceof InvalidScriptError` and falls back to a default. A
-value over a domain limit stays a plain `Error`, its `clrType` `"ArgumentException"`. The engine's own limits (time, memory, recursion) are not
-refusals: they stop the script whatever it catches. An `onError` handler receives `{ code, message, exception, attempt, agent: { id,
-name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
+value over a domain limit stays a plain `Error`, its `clrType` `"ArgumentException"`, and so does
+an out-of-range `ErrorAction.retry` delay (`"OverflowException"`). The engine's own limits (time,
+memory, recursion) are not refusals: they stop the script whatever it catches. An `onError` handler
+receives `{ code, message, exception, attempt, agent: { id, name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
 `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked`, `unknown`.
 
 ## The namespaces

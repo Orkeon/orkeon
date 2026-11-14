@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   builder method or `build()`, a `stateMachine`/`stateGraph` literal, `llm.profile`, an `llm` option, the rejection of
   an awaited `ctx.llm.*` call) is an instance of this global class, an `Error` subclass, so a script tests
   `e instanceof InvalidScriptError` instead of comparing `clrType`. A value over a domain limit
-  (`ArgumentException`) stays a plain `Error`; a C# caller still gets the `InvalidScriptException`.
+  (`ArgumentException`) and an out-of-range `ErrorAction.retry` delay (`OverflowException`) stay a plain
+  `Error`; a C# caller still gets the `InvalidScriptException`.
 - An agent declares the only virtual paths its tools may touch (#349): `filesystem:` in YAML, a list of
   paths or `{path, access}` items (`ro`, `rw`, `rwnd`), `AgentBuilder.FileSystem(...)` in C#,
   `.filesystem([...])` in `.ork.ts`. An entry selects and narrows the mount that holds it, never widens it;
@@ -144,21 +145,30 @@ Migration:
 
 ### Fixed
 
-- The `Orkeon.Tools.Embeddings.Local` package lets its consumer receive the BGE-micro-v2 model (#368): it referenced
-  `SmartComponents.LocalEmbeddings` with NuGet's default private assets, so its nuspec excluded `Build`, the upstream
-  target that copies `model.onnx` and `vocab.txt` to `LocalEmbeddingsModel/default/` never ran in a consumer, and
-  `AddOrkeonLocalEmbeddings()` threw at startup. The reference now carries `PrivateAssets="none"`, and
-  `scripts/check-package-closure.py` refuses a packaging project, or a packed nuspec, that hides that target again.
+- A consumer of `Orkeon.Tools.Embeddings.Local` or `Orkeon.Scripting` gets the BGE-micro-v2 model (#368). The
+  `SmartComponents.LocalEmbeddings` package (~40 KB) carries no weights: its `build/` target downloads `model.onnx`
+  and `vocab.txt` from huggingface.co on the consumer's first build and copies them to `LocalEmbeddingsModel/default/`.
+  `Orkeon.Tools.Embeddings.Local` referenced SmartComponents, and `Orkeon.Scripting` referenced
+  `Orkeon.Tools.Embeddings.Local`, with NuGet's default private assets, so each nuspec excluded `Build` on that
+  dependency, the target never ran in a consumer, and `AddOrkeonLocalEmbeddings()` (which `RunnerHost` calls by
+  default) threw at startup. Both references now carry `PrivateAssets="none"`, and `scripts/check-package-closure.py`
+  refuses a lineup project, or a packed nuspec, that hides `build` on any dependency whose closure reaches that
+  package. The first build of such a consumer needs the network: offline, it fails in the upstream `DownloadFile` task.
 - A provider constructed by hand sends an agent's tools (#367): the constructors without an
   `IToolCallingStrategy` — `new OllamaLlmProvider(llm, httpClientFactory)` as `bootstrap.md` shows,
   `new OpenAILlmProvider(...)` and every OpenAI-compatible provider, `new AnthropicLlmProvider(...)` — left the
   strategy null and sent no `tools`, so the model wrote the call as text and the task completed without it. They
   now take the vendor's native strategy, as `LlmProviderFactory` does; the overload that takes a strategy still
   accepts `null` to keep the text protocol.
-- `crew.run()`'s `output` is what the last body that returned something returned (#369) **[breaking]**: an
-  object stays an object, the same value as that run's `tasks[i].output`, where it was the object's CLR type
-  name (`"System.Dynamic.ExpandoObject"`). `CrewResult.output` is `unknown` in `crew.d.ts` and
-  `JsCrewResult.output` an `object?` in C#; `""` still means no agent returned anything.
+- `crew.run()`'s `output` is the last agent output that was not `null` (#369) **[breaking]**: an object stays
+  an object, the same value as that run's `tasks[i].output`, where it was the object's CLR type name
+  (`"System.Dynamic.ExpandoObject"`); `false`, `0` and `""` count, and `""` still means every output was
+  `null`. `CrewResult.output` is `unknown` in `crew.d.ts` and `JsCrewResult.output` an `object?` in C#: this
+  edits a member of the 1.0.0 frozen surface (`*REMOVED*` in `PublicAPI.Unshipped.txt`), a deliberate
+  exception to the [stability policy](docs/reference/stability.md) — a string output reads the same, and the
+  type name an object gave was of no use. Migration: a script that read `res.output` as a `string` narrows
+  it (`typeof res.output === "string"`); a C# caller of `JsCrew.RunAsync` casts `output`. The REPL's
+  `script-host.runCrew` summary shows an object output as its JSON.
 - Eight scripting examples print their run (#370): `01`–`07` and `14` ended with a bare `await crew.run()`, so
   `orkeon run` printed `{"result": null}`; they now end with `globalThis.result = await crew.run()`. The first
   snippet of `write-a-crew-in-typescript.md` does the same, and the `result` row of `scripting-dsl.md` no longer
