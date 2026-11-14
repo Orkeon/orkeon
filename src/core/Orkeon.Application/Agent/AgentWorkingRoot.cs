@@ -38,9 +38,10 @@ namespace Orkeon.Application.Agent
 
         /// <summary>
         /// #349: the file-system scope an agent run starts with. Its declared entries are checked against
-        /// the mounts and bounded by <paramref name="parent"/>; without entries, the run inherits
-        /// <paramref name="parent"/> as it is (<see langword="null"/> when there is none, and the mounts
-        /// alone decide). A working root must lie inside the scope: the agent could not work there.
+        /// the mounts and bounded by <paramref name="parent"/>; without entries, the run inherits the rights of
+        /// <paramref name="parent"/> under its own agent name, so its denials and its prompt name it
+        /// (<see langword="null"/> when there is no parent, and the mounts alone decide). A working root must
+        /// lie inside the scope: the agent could not work there.
         /// </summary>
         /// <param name="agentName">The agent, named by the refusals.</param>
         /// <param name="declared">The entries the agent declares; empty when it declares none.</param>
@@ -53,7 +54,9 @@ namespace Orkeon.Application.Agent
             AgentFileSystemScope? parent, string? root)
         {
             ArgumentNullException.ThrowIfNull(declared);
-            var scope = declared.Count > 0 ? AgentFileSystemScope.Resolve(agentName, declared, mounts, parent) : parent;
+            var scope = declared.Count > 0
+                ? AgentFileSystemScope.Resolve(agentName, declared, mounts, parent)
+                : parent is null ? null : AgentFileSystemScope.InheritedBy(agentName, parent);
             if (scope is not null && root is not null && scope.RightsAt(root) == FileAccessRights.None)
                 throw new InvalidOperationException(
                     $"The agent working root '{root}' of agent '{agentName}' lies outside its file-system scope: {scope.Describe()}.");

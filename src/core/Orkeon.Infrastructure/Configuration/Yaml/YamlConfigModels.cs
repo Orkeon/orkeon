@@ -28,9 +28,10 @@ public class AgentYamlConfig
     public string? WorkingRoot { get; set; }
     /// <summary>
     /// Gets or sets the file-system scope of the agent (<c>filesystem:</c>, #349): each item a virtual path, or a
-    /// map with <c>path</c> and an optional <c>access</c> (<c>ro</c>, <c>rw</c>, <c>rwnd</c>).
+    /// map with <c>path</c> and an optional <c>access</c> (<c>ro</c>, <c>rw</c>, <c>rwnd</c>). Read as a raw value so a
+    /// lone path or a lone map is refused naming the agent (<see cref="YamlCrewMapper"/>), not by the deserializer.
     /// </summary>
-    public Collection<object>? Filesystem { get; set; }
+    public object? Filesystem { get; set; }
     /// <summary>Gets or sets whether the agent's prompt names the virtual paths it may touch (<c>announceMounts:</c>, #348); unset, the crew's.</summary>
     public bool? AnnounceMounts { get; set; }
     /// <summary>Gets or sets the permission mode of the agent's tool calls (<c>permissionMode:</c>): default, acceptEdits, bypassPermissions, plan or dontAsk.</summary>

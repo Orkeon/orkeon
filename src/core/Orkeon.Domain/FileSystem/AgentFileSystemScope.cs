@@ -13,6 +13,15 @@ namespace Orkeon.Domain.FileSystem;
 /// the scope removes what its entries do not grant. The most specific entry covering a path decides there.
 /// </para>
 /// <para>
+/// A checked path is read as the host's file system reads it, and when that reading is ambiguous the
+/// scope grants only what every reading grants: off Windows a backslash is part of a name (the registry
+/// maps <c>/output/notes\x.md</c> to the file <c>notes\x.md</c> of <c>/output</c>), save right after a
+/// mount root, where the registry takes it as a separator; and on a case-insensitive host
+/// (<c>/output/REPORT</c> is <c>/output/report</c>, as is <c>/output/report.</c> on Windows) the most
+/// specific entry is also sought without case and without trailing dots or spaces. The scope may so refuse
+/// a path a case-sensitive host would allow, never the reverse.
+/// </para>
+/// <para>
 /// A scope started under another (a child of <c>spawn_agent</c> or <c>ctx.spawnBackground</c>) keeps its
 /// parent: what it grants is also bounded by the parent's, so a child only narrows.
 /// </para>
@@ -64,6 +73,8 @@ public sealed class AgentFileSystemScope
             if (entries.Any(e => e.Path.Equals(path, StringComparison.Ordinal)))
                 throw Refused(agentName, entry.Path, "is declared twice");
 
+            if (entry.Access == FileAccessRights.None)
+                throw Refused(agentName, entry.Path, "grants no right; leave the path out of the scope instead");
             var mountRights = MountRightsAt(mounts, path)
                 ?? throw Refused(agentName, entry.Path, "is not under any mount of the file system");
             if (entry.Access is { } access && (access & ~mountRights) != FileAccessRights.None)
@@ -94,11 +105,65 @@ public sealed class AgentFileSystemScope
     public FileAccessRights RightsAt(string virtualPath)
     {
         ArgumentNullException.ThrowIfNull(virtualPath);
-        var path = Normalize(virtualPath);
-        var entry = Entries.Where(e => Contains(e.Path, path)).MaxBy(e => e.Path.Length);
-        var own = entry is null ? FileAccessRights.None : entry.Access ?? FileAccessRights.ReadWrite;
-        return Parent is null ? own : own & Parent.RightsAt(path);
+        var readings = HostReadings(virtualPath);
+        var own = readings.Count == 0 ? FileAccessRights.None : FileAccessRights.ReadWrite;
+        foreach (var path in readings)
+            own &= MostSpecificRights(path, folded: false) & MostSpecificRights(path, folded: true);
+        return Parent is null ? own : own & Parent.RightsAt(virtualPath);
     }
+
+    /// <summary>
+    /// The rights of the most specific entry covering <paramref name="path"/> (normalised);
+    /// <see cref="FileAccessRights.None"/> when none does. <paramref name="folded"/> compares without case
+    /// and without trailing dots or spaces in a segment, and intersects the entries that then tie.
+    /// </summary>
+    private FileAccessRights MostSpecificRights(string path, bool folded)
+    {
+        var key = folded ? Fold(path) : path;
+        var comparison = folded ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var covering = Entries
+            .Select(e => (Key: folded ? Fold(e.Path) : e.Path, Rights: e.Access ?? FileAccessRights.ReadWrite))
+            .Where(e => Contains(e.Key, key, comparison))
+            .ToList();
+        if (covering.Count == 0)
+            return FileAccessRights.None;
+        var longest = covering.Max(e => e.Key.Length);
+        return covering.Where(e => e.Key.Length == longest)
+            .Aggregate(FileAccessRights.ReadWrite, (rights, e) => rights & e.Rights);
+    }
+
+    /// <summary>The most backslashes a checked path may hold off Windows; past it, the path is refused.</summary>
+    private const int MaxBackslashReadings = 32;
+
+    /// <summary>
+    /// The normalised paths the host may read <paramref name="virtualPath"/> as. On Windows a backslash is
+    /// a separator: one reading. Elsewhere it is part of a name, save the one the registry takes as a
+    /// separator right after a mount root: the literal reading, plus one per backslash read as the only
+    /// separator. Empty (the path is refused) past <see cref="MaxBackslashReadings"/> backslashes.
+    /// </summary>
+    private static List<string> HostReadings(string virtualPath)
+    {
+        if (OperatingSystem.IsWindows())
+            return [Normalize(virtualPath)];
+
+        var readings = new List<string> { NormalizeLiteral(virtualPath) };
+        var backslashes = 0;
+        for (var i = virtualPath.IndexOf('\\', StringComparison.Ordinal); i >= 0; i = virtualPath.IndexOf('\\', i + 1))
+        {
+            if (++backslashes > MaxBackslashReadings)
+                return [];
+            readings.Add(NormalizeLiteral(string.Concat(virtualPath.AsSpan(0, i), "/", virtualPath.AsSpan(i + 1))));
+        }
+        return readings;
+    }
+
+    /// <summary>A normalised path as a case-insensitive host compares it: each segment without its trailing dots or spaces.</summary>
+    private static string Fold(string path)
+        => path == "/" ? path : "/" + string.Join('/', path[1..].Split('/').Select(segment =>
+        {
+            var trimmed = segment.TrimEnd('.', ' ');
+            return trimmed.Length == 0 ? segment : trimmed;
+        }));
 
     /// <summary>Whether the scope grants every right of <paramref name="requiredRight"/> at <paramref name="virtualPath"/>.</summary>
     /// <param name="virtualPath">An absolute virtual path.</param>
@@ -123,6 +188,28 @@ public sealed class AgentFileSystemScope
     }
 
     /// <summary>
+    /// The refusal of a path the scope grants but the mounts refuse, in the same shape as
+    /// <see cref="DescribeDenial"/>: it names the agent's scope and never the run's other mounts.
+    /// </summary>
+    /// <param name="virtualPath">The refused path, as the caller wrote it.</param>
+    /// <param name="requiredRight">The rights the operation needed.</param>
+    internal string DescribeMountDenial(string virtualPath, FileAccessRights requiredRight)
+        => $"Access denied for '{virtualPath}': the mounts do not grant {requiredRight} there, inside the file-system scope of agent '{AgentName}'. Its scope: {Describe()}.";
+
+    /// <summary>
+    /// The scope a run started under <paramref name="parent"/> holds when it declares none (#349): the
+    /// parent's entries and rights, under the run's own agent name, so its denials and its prompt name it.
+    /// </summary>
+    /// <param name="agentName">The agent of the child run.</param>
+    /// <param name="parent">The scope of the run that started it.</param>
+    internal static AgentFileSystemScope InheritedBy(string agentName, AgentFileSystemScope parent)
+    {
+        ArgumentNullException.ThrowIfNull(agentName);
+        ArgumentNullException.ThrowIfNull(parent);
+        return new AgentFileSystemScope(agentName, parent.Entries, parent);
+    }
+
+    /// <summary>
     /// The mounts as the agent sees them under this scope: one per entry, at the entry's path, with the
     /// rights in force there (the mount's, narrowed by the scope) and the mount's sub-path overrides below
     /// it, relative to the entry and narrowed the same way. Sorted by virtual path; an entry whose mount
@@ -141,7 +228,7 @@ public sealed class AgentFileSystemScope
             if (rights == FileAccessRights.None)
                 continue;
 
-            var mount = mounts.Where(m => Contains(Normalize(m.VirtualPath), entry.Path)).MaxBy(m => Normalize(m.VirtualPath).Length)!;
+            var mount = mounts.Where(m => Contains(Normalize(m.VirtualPath), entry.Path, StringComparison.Ordinal)).MaxBy(m => Normalize(m.VirtualPath).Length)!;
             var mountRoot = Normalize(mount.VirtualPath);
             var overrides = mount.Overrides
                 .Select(o => mountRoot == "/" ? Normalize("/" + o.RelativePath) : Normalize(mountRoot + "/" + o.RelativePath))
@@ -172,7 +259,7 @@ public sealed class AgentFileSystemScope
         ArgumentNullException.ThrowIfNull(mounts);
         ArgumentNullException.ThrowIfNull(virtualPath);
         var path = Normalize(virtualPath);
-        var mount = mounts.Where(m => Contains(Normalize(m.VirtualPath), path)).MaxBy(m => Normalize(m.VirtualPath).Length);
+        var mount = mounts.Where(m => Contains(Normalize(m.VirtualPath), path, StringComparison.Ordinal)).MaxBy(m => Normalize(m.VirtualPath).Length);
         if (mount is null)
             return null;
 
@@ -199,16 +286,22 @@ public sealed class AgentFileSystemScope
             : rights.ToString();
 
     /// <summary>Whether <paramref name="parent"/> holds <paramref name="child"/> (itself included); both normalised.</summary>
-    internal static bool Contains(string parent, string child) =>
+    private static bool Contains(string parent, string child, StringComparison comparison) =>
         parent == "/"
-        || child.Equals(parent, StringComparison.Ordinal)
-        || child.StartsWith(parent + "/", StringComparison.Ordinal);
+        || child.Equals(parent, comparison)
+        || child.StartsWith(parent + "/", comparison);
 
-    /// <summary>A virtual path without <c>//</c>, <c>.</c>, <c>..</c> or trailing <c>/</c>, always starting with <c>/</c>.</summary>
-    internal static string Normalize(string path)
+    /// <summary>
+    /// A virtual path without <c>//</c>, <c>.</c>, <c>..</c> or trailing <c>/</c>, always starting with <c>/</c>, a
+    /// backslash read as a separator: the form of a declared entry and of a mount.
+    /// </summary>
+    internal static string Normalize(string path) => NormalizeLiteral(path.Replace('\\', '/'));
+
+    /// <summary>As <see cref="Normalize"/>, a backslash kept as part of a name.</summary>
+    private static string NormalizeLiteral(string path)
     {
         var segments = new List<string>();
-        foreach (var segment in path.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var segment in path.Split('/', StringSplitOptions.RemoveEmptyEntries))
         {
             if (segment == ".")
                 continue;

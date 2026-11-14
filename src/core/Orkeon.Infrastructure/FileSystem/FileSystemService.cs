@@ -84,7 +84,21 @@ public sealed partial class FileSystemService : IFileSystemService
     /// <inheritdoc />
     public PathValidationResult ResolveAndValidate(string virtualPath, FileAccessRights requiredRight)
     {
-        // Step 1: Resolve virtual path via the domain registry
+        ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
+
+        // Step 1: the agent's file-system scope (#349), while one of its tool calls runs. The mounts
+        // stay the ceiling (step 2); the scope only removes what its entries do not grant. It is checked
+        // first so a path outside it is refused in its words, never with the run's other mounts listed.
+        // Asking no right is a probe of where a path lives (the shell's binds), not an access: it is left
+        // to the mounts. The privileged instance serves the framework, never a tool.
+        var scope = EnforcedScope;
+        if (scope is not null && requiredRight != FileAccessRights.None && !scope.Allows(virtualPath, requiredRight))
+        {
+            LogAccessDeniedByScope(virtualPath, requiredRight);
+            return PathValidationResult.Denied(scope.DescribeDenial(virtualPath, requiredRight));
+        }
+
+        // Step 2: Resolve virtual path via the domain registry
         string physicalPath;
         try
         {
@@ -93,24 +107,15 @@ public sealed partial class FileSystemService : IFileSystemService
         catch (FileAccessDeniedException ex)
         {
             LogAccessDeniedByRegistry(virtualPath, requiredRight);
+            // Under a scope, a refusal that would list the mounts names the scope instead: the agent
+            // must not learn of a mount its scope leaves out.
+            if (scope is not null && ex.NamesMounts)
+                return PathValidationResult.Denied(scope.DescribeMountDenial(virtualPath, requiredRight));
             var safeMessage = RedactPhysicalPaths(ex.Message);
             return PathValidationResult.Denied(safeMessage);
         }
 
-        // Step 1b: the agent's file-system scope (#349), while one of its tool calls runs. The mounts
-        // stay the ceiling (step 1); the scope only removes what its entries do not grant. Asking no
-        // right is a probe of where a path lives (the shell's binds), not an access: it is left to
-        // the mounts. The privileged instance serves the framework, never a tool.
-        if (!_internalAccess
-            && requiredRight != FileAccessRights.None
-            && Orkeon.Domain.Execution.AgentRunScope.EnforcedFileSystem is { } scope
-            && !scope.Allows(virtualPath, requiredRight))
-        {
-            LogAccessDeniedByScope(virtualPath, requiredRight);
-            return PathValidationResult.Denied(scope.DescribeDenial(virtualPath, requiredRight));
-        }
-
-        // Step 2: Defense-in-depth — run through IPathValidator
+        // Step 3: Defense-in-depth — run through IPathValidator
         var pathValidation = _pathValidator.ValidatePath(physicalPath, requiredRight);
         if (!pathValidation.IsAllowed)
         {

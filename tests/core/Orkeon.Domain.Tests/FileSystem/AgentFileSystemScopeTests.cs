@@ -187,4 +187,54 @@ public sealed class AgentFileSystemScopeTests
         }
         Assert.Null(AgentRunScope.EnforcedFileSystem);
     }
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public void ShouldReadBackslashAsTheHostDoes_WhenCheckedPathHoldsOne()
+    {
+        var scope = Resolve(new FileSystemScopeEntry("/output/notes"));
+
+        // Off Windows the file system keeps a backslash in the name: '/output/notes\x.md' is the file
+        // 'notes\x.md' at the root of /output, outside the scope. On Windows it is /output/notes/x.md.
+        var expected = OperatingSystem.IsWindows() ? FileAccessRights.ReadWrite : FileAccessRights.None;
+        Assert.Equal(expected, scope.RightsAt("/output/notes\\x.md"));
+        Assert.Equal(FileAccessRights.ReadWrite, scope.RightsAt("/output/notes/x.md"));
+    }
+
+    [Theory]
+    [Trait("BR", "#349")]
+    [InlineData("/output/REPORT/f.md")]
+    [InlineData("/output/Report/f.md")]
+    [InlineData("/output/report./f.md")]
+    [InlineData("/output/report /f.md")]
+    public void ShouldNeverGrantMoreThanMostSpecificEntry_WhenCaseOrTrailingDotDiffers(string path)
+    {
+        var scope = Resolve(new FileSystemScopeEntry("/output"), new FileSystemScopeEntry("/output/report", FileAccessRights.ReadOnly));
+
+        Assert.True(scope.Allows(path, FileAccessRights.Read));
+        Assert.False(scope.Allows(path, FileAccessRights.Write));
+        Assert.True(scope.Allows("/output/other/f.md", FileAccessRights.Write));
+    }
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public void ShouldKeepDeeperWiderEntry_WhenCaseMatches()
+    {
+        var scope = Resolve(new FileSystemScopeEntry("/output", FileAccessRights.ReadOnly), new FileSystemScopeEntry("/output/notes"));
+
+        Assert.True(scope.Allows("/output/notes/x.md", FileAccessRights.Write));
+        Assert.False(scope.Allows("/output/x.md", FileAccessRights.Write));
+    }
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public void ShouldRefuseEntry_WhenAccessGrantsNothing()
+    {
+        var error = Assert.Throws<InvalidOperationException>(
+            () => Resolve(new FileSystemScopeEntry("/output"), new FileSystemScopeEntry("/output/secret", FileAccessRights.None)));
+
+        Assert.Equal(
+            "The file-system scope of agent 'writer': '/output/secret' grants no right; leave the path out of the scope instead.",
+            error.Message);
+    }
 }

@@ -24,7 +24,15 @@ public sealed class FileSystemServiceAgentScopeTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_tempDir, "other"));
         File.WriteAllText(Path.Combine(_tempDir, "project", "a.txt"), "inside");
         File.WriteAllText(Path.Combine(_tempDir, "other", "b.txt"), "outside");
-        _registry = new FileSystemRegistry([new FileSystemMount(_tempDir, "/workspace", FileAccessRights.ReadWrite)]);
+        Directory.CreateDirectory(Path.Combine(_tempDir, "archive"));
+        Directory.CreateDirectory(Path.Combine(_tempDir, "project", "locked"));
+        _registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(Path.Combine(_tempDir, "project"), "/workspace/project", FileAccessRights.ReadWrite,
+                [new SubPathOverride("locked", FileAccessRights.ReadOnly)]),
+            new FileSystemMount(_tempDir, "/workspace", FileAccessRights.ReadWrite),
+            new FileSystemMount(Path.Combine(_tempDir, "archive"), "/archive", FileAccessRights.ReadWrite),
+        ]);
         var validator = new PathValidator(new PathSecurityOptions { DefaultWorkspaceRoot = _tempDir }, NullLogger<PathValidator>.Instance);
         _service = new FileSystemService(_registry, validator, NullLogger<FileSystemService>.Instance);
     }
@@ -36,8 +44,22 @@ public sealed class FileSystemServiceAgentScopeTests : IDisposable
             Directory.Delete(_tempDir, recursive: true);
     }
 
-    private AgentFileSystemScope Scope(FileAccessRights? access = null)
-        => AgentFileSystemScope.Resolve("writer", [new FileSystemScopeEntry("/workspace/project", access)], _service.GetAvailableMounts());
+    private AgentFileSystemScope Scope(FileAccessRights? access = null, params FileSystemScopeEntry[] more)
+        => AgentFileSystemScope.Resolve(
+            "writer", [new FileSystemScopeEntry("/workspace/project", access), .. more], _service.GetAvailableMounts());
+
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+    private static void AssertNamesScopeOnly(string virtualPath, string? denial)
+    {
+        Assert.NotNull(denial);
+        Assert.StartsWith($"Access denied for '{virtualPath}': ", denial, StringComparison.Ordinal);
+        Assert.Contains("of agent 'writer'. Its scope: /workspace/project", denial, StringComparison.Ordinal);
+        // The refused path is quoted as written; past it, no mount the scope leaves out is named.
+        Assert.DoesNotContain("/archive", denial[$"Access denied for '{virtualPath}': ".Length..], StringComparison.Ordinal);
+        Assert.DoesNotContain("Available mounts", denial, StringComparison.Ordinal);
+        Assert.DoesNotContain("Mounts granting", denial, StringComparison.Ordinal);
+    }
 
     [Fact]
     [Trait("BR", "#349")]
@@ -51,9 +73,98 @@ public sealed class FileSystemServiceAgentScopeTests : IDisposable
 
         Assert.Equal("inside", inside);
         Assert.False(outside.IsAllowed);
-        Assert.Contains("Access denied for '/workspace/other/b.txt'", outside.DenialReason, StringComparison.Ordinal);
-        Assert.Contains("agent 'writer'", outside.DenialReason, StringComparison.Ordinal);
+        Assert.Equal(
+            "Access denied for '/workspace/other/b.txt': the path is outside the file-system scope of agent 'writer'. Its scope: /workspace/project.",
+            outside.DenialReason);
         Assert.DoesNotContain(_tempDir, outside.DenialReason, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "#349")]
+    [InlineData("/nowhere/x.md", FileAccessRights.Read)]
+    [InlineData("/archive/x.md", FileAccessRights.Write)]
+    [InlineData("/workspace/project/locked/x.md", FileAccessRights.Write)]
+    public async Task ShouldNameScopeAndNoOtherMount_WhenScopedPathIsDenied(string virtualPath, FileAccessRights required)
+    {
+        await using var run = AgentRunScope.Begin("id", "writer", null, Scope());
+        using var call = AgentRunScope.EnterToolCall();
+
+        var denied = _service.ResolveAndValidate(virtualPath, required);
+
+        Assert.False(denied.IsAllowed);
+        AssertNamesScopeOnly(virtualPath, denied.DenialReason);
+    }
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldNotWriteBesideScope_WhenPathHoldsBackslash()
+    {
+        await using var run = AgentRunScope.Begin("id", "writer", null, AgentFileSystemScope.Resolve(
+            "writer", [new FileSystemScopeEntry("/workspace/other")], _service.GetAvailableMounts()));
+        using var call = AgentRunScope.EnterToolCall();
+
+        if (OperatingSystem.IsWindows())
+        {
+            await _service.WriteAllTextAsync("/workspace/other\\x.md", "note", Ct);
+            Assert.True(File.Exists(Path.Combine(_tempDir, "other", "x.md")));
+            return;
+        }
+
+        await Assert.ThrowsAsync<FileAccessDeniedException>(() => _service.WriteAllTextAsync("/workspace/other\\x.md", "note", Ct));
+        Assert.False(File.Exists(Path.Combine(_tempDir, "other\\x.md")));
+    }
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldRefuseDelete_WhenScopeEntryIsReadWriteNoDelete()
+    {
+        await using var run = AgentRunScope.Begin("id", "writer", null, Scope(FileAccessRights.ReadWriteNoDelete));
+        using var call = AgentRunScope.EnterToolCall();
+
+        Assert.True(_service.ResolveAndValidate("/workspace/project/a.txt", FileAccessRights.Write).IsAllowed);
+        var error = await Assert.ThrowsAsync<FileAccessDeniedException>(
+            () => _service.DeleteAsync("/workspace/project/a.txt", recursive: false, Ct));
+
+        Assert.Equal(
+            "Access denied for '/workspace/project/a.txt': the path needs Delete but the file-system scope grants rwnd there of agent 'writer'. Its scope: /workspace/project (rwnd).",
+            error.Message);
+        Assert.True(File.Exists(Path.Combine(_tempDir, "project", "a.txt")));
+    }
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldRefuseRecursiveDelete_WhenSubtreeHoldsNarrowerEntry()
+    {
+        Directory.CreateDirectory(Path.Combine(_tempDir, "project", "keep"));
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "project", "keep", "k.txt"), "kept", Ct);
+        await using var run = AgentRunScope.Begin("id", "writer", null,
+            Scope(null, new FileSystemScopeEntry("/workspace/project/keep", FileAccessRights.ReadOnly)));
+        using var call = AgentRunScope.EnterToolCall();
+
+        var error = await Assert.ThrowsAsync<FileAccessDeniedException>(
+            () => _service.DeleteAsync("/workspace/project", recursive: true, Ct));
+
+        Assert.Contains("of agent 'writer'", error.Message, StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(_tempDir, "project", "keep", "k.txt")));
+    }
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldListOnlyReadableChildren_WhenEnumeratingScopedDirectory()
+    {
+        Directory.CreateDirectory(Path.Combine(_tempDir, "project", "drop"));
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "project", "drop", "d.txt"), "dropped", Ct);
+        await using var run = AgentRunScope.Begin("id", "writer", null,
+            Scope(null, new FileSystemScopeEntry("/workspace/project/drop", FileAccessRights.Write | FileAccessRights.Create)));
+        using var call = AgentRunScope.EnterToolCall();
+
+        var listed = new List<string>();
+        await foreach (var entry in _service.EnumerateFilesAsync(
+            "/workspace/project", new VirtualEnumerationOptions { Recursive = true }, Ct))
+            listed.Add(entry.VirtualPath);
+
+        Assert.Contains("/workspace/project/a.txt", listed);
+        Assert.DoesNotContain(listed, p => p.StartsWith("/workspace/project/drop", StringComparison.Ordinal));
     }
 
     [Fact]

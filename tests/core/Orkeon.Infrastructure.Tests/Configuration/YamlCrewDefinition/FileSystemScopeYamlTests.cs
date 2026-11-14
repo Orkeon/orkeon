@@ -83,6 +83,30 @@ public sealed class FileSystemScopeYamlTests
         Assert.Contains(expected, error.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [Trait("BR", "#349")]
+    [InlineData("    filesystem: /workspace/docs")]
+    [InlineData("    filesystem: { path: /workspace/docs }")]
+    public async Task ShouldRefuseAtLoad_WhenFilesystemIsNotAList(string writerLines)
+    {
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => LoadAsync(Yaml(writerLines: writerLines)));
+
+        Assert.Contains("Agent 'writer' filesystem: ", error.Message, StringComparison.Ordinal);
+        Assert.Contains("a list", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "#349")]
+    [InlineData("    filesystem:")]
+    [InlineData("    filesystem: ~")]
+    [InlineData("    filesystem: null")]
+    public async Task ShouldDeclareNoScope_WhenFilesystemIsNull(string writerLines)
+    {
+        var (writer, _) = await LoadAsync(Yaml(writerLines: writerLines));
+
+        Assert.Empty(writer.FileSystem);
+    }
+
     [Fact]
     [Trait("BR", "#348")]
     public async Task ShouldAnnounceMounts_WhenNothingOptsOut()

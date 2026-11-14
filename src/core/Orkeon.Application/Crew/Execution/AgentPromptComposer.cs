@@ -88,10 +88,15 @@ internal static class AgentPromptComposer
                     $"  - {mount.VirtualPath.TrimEnd('/')}/{subPath.RelativePath.Trim('/')} ({DescribeRights(subPath.Rights)})"));
         }
 
+        // A scoped run whose working directory lies outside its scope is told so: a relative path would
+        // resolve where it is refused (a working root always lies inside, AgentWorkingRoot.ResolveScope).
         if (!string.IsNullOrWhiteSpace(workingDirectory))
             prompt.AppendLine(isRoot
                 ? FormattableString.Invariant($"Your working root is {workingDirectory}: relative paths resolve there.")
-                : FormattableString.Invariant($"Relative paths resolve against {workingDirectory}."));
+                : scope is not null && scope.RightsAt(workingDirectory) == Domain.FileSystem.FileAccessRights.None
+                    ? FormattableString.Invariant(
+                        $"Relative paths resolve against {workingDirectory}, outside your file-system scope: write every path in full, under one of the paths above.")
+                    : FormattableString.Invariant($"Relative paths resolve against {workingDirectory}."));
         if (visible.Any(m => m.DefaultRights.HasFlag(Domain.FileSystem.FileAccessRights.Write)
                              || m.Overrides.Any(o => o.Rights.HasFlag(Domain.FileSystem.FileAccessRights.Write))))
             prompt.AppendLine("Write intermediate notes under a read-write path.");

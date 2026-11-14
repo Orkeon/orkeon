@@ -99,17 +99,21 @@ public sealed partial class YamlCrewMapper
         };
     }
 
-    // The permissionMode: of an agent, refused at load when it names no mode.
     /// <summary>
     /// Maps an agent's <c>filesystem:</c> list (#349): each item a virtual path, or a map with <c>path</c> and
-    /// an optional <c>access</c>. Strict: an item of another shape, an unknown key or an unknown access is
-    /// refused at load, and so is an empty list, which would read as "no access" and grant every mount.
+    /// an optional <c>access</c>. Strict: a value that is not a list (a lone path, a lone map), an item of
+    /// another shape, an unknown key or an unknown access is refused at load naming the agent, and so is an
+    /// empty list, which would read as "no access" and grant every mount. A null value (<c>filesystem:</c>,
+    /// <c>~</c>, <c>null</c>) is no declaration, as if the key were absent: the mounts alone decide.
     /// Whether each path lies under a mount is checked when the run starts, against the run's mounts.
     /// </summary>
-    private static List<FileSystemScopeEntry> MapFileSystemScope(string agentKey, Collection<object>? yaml)
+    private static List<FileSystemScopeEntry> MapFileSystemScope(string agentKey, object? written)
     {
-        if (yaml is null)
+        if (written is null)
             return [];
+        if (written is not IList<object> yaml)
+            throw new InvalidOperationException(
+                $"Agent '{agentKey}' filesystem: expected a list, each item a virtual path or a map with path and access; got '{DescribeYamlValue(written)}'. Write each path as an item: '- /workspace/docs'.");
         if (yaml.Count == 0)
             throw new InvalidOperationException(
                 $"Agent '{agentKey}' filesystem: the list is empty; declare at least one path, or remove the key to leave the mounts alone to decide.");
@@ -156,6 +160,14 @@ public sealed partial class YamlCrewMapper
         return new FileSystemScopeEntry(path.Trim(), access);
     }
 
+    /// <summary>A YAML value as a refusal quotes it: a scalar as written, a map as its keys.</summary>
+    private static string DescribeYamlValue(object value) => value switch
+    {
+        IDictionary<object, object> map => "{ " + string.Join(", ", map.Keys) + " }",
+        _ => value.ToString() ?? string.Empty,
+    };
+
+    // The permissionMode: of an agent, refused at load when it names no mode.
     private static Orkeon.Domain.Security.PermissionMode? ReadPermissionMode(string agentKey, string? written)
     {
         if (string.IsNullOrWhiteSpace(written))

@@ -304,7 +304,8 @@ public sealed class FileSystemRegistry : IDisposable
             $"Available mounts: {string.Join(", ", described)}",
             virtualPath,
             requiredRight,
-            availableVirtualPaths);
+            availableVirtualPaths)
+        { NamesMounts = true };
     }
 
     /// <summary>Builds the denial for a path whose effective rights lack the required one. The caller holds the read lock.</summary>
@@ -319,7 +320,8 @@ public sealed class FileSystemRegistry : IDisposable
             $"Access denied for '{virtualPath}': required {requiredRight}, effective {effectiveRights}. " +
             $"Mounts granting {requiredRight}: {(granting.Count > 0 ? string.Join(", ", granting) : "(none)")}.",
             virtualPath,
-            requiredRight);
+            requiredRight)
+        { NamesMounts = true };
     }
 
     /// <summary>

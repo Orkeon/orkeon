@@ -1,7 +1,7 @@
 #nullable enable
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.AnnounceMounts.get -> bool?
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.AnnounceMounts.set -> void
-Orkeon.Infrastructure.Configuration.AgentYamlConfig.Filesystem.get -> System.Collections.ObjectModel.Collection<object!>?
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.Filesystem.get -> object?
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.Filesystem.set -> void
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.AnnounceMounts.get -> bool?
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.AnnounceMounts.init -> void

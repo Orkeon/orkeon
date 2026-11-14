@@ -21,6 +21,9 @@ public sealed partial class FileSystemService
 
         var physicalRoot = ResolveOrThrow(virtualRoot, FileAccessRights.Read);
         options ??= new VirtualEnumerationOptions();
+        // #349: the root's check does not cover what lies below it; an entry the agent's scope does not
+        // let it read (a narrower entry below a wider one) is not listed.
+        var scope = EnforcedScope;
 
         if (!Directory.Exists(physicalRoot))
             yield break;
@@ -57,6 +60,8 @@ public sealed partial class FileSystemService
 
             var virtualPath = ToVirtualPath(physicalEntry);
             if (virtualPath is null)
+                continue;
+            if (scope is not null && !scope.Allows(virtualPath, FileAccessRights.Read))
                 continue;
 
             yield return BuildEntry(physicalEntry, virtualPath);
@@ -335,7 +340,10 @@ public sealed partial class FileSystemService
         if (Directory.Exists(physical))
         {
             if (recursive)
+            {
                 EnsureNoOutOfMountSymlinks(physical);
+                EnsureScopeDeletesSubtree(physical);
+            }
 
             Directory.Delete(physical, recursive);
             return Task.FromResult(true);
@@ -343,6 +351,32 @@ public sealed partial class FileSystemService
 
         return Task.FromResult(false);
     }
+
+    /// <summary>
+    /// The agent's file-system scope (#349) applies below a directory deleted recursively, not only at it:
+    /// a narrower entry under it (<c>/output</c> rw, <c>/output/report</c> ro) keeps its subtree, so the
+    /// whole delete is refused before anything is removed.
+    /// </summary>
+    private void EnsureScopeDeletesSubtree(string physicalDir)
+    {
+        if (EnforcedScope is not { } scope)
+            return;
+        foreach (var entry in Directory.EnumerateFileSystemEntries(physicalDir, "*",
+            new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.None, ReturnSpecialDirectories = false }))
+        {
+            var virtualPath = ToVirtualPath(entry);
+            if (virtualPath is null || !scope.Allows(virtualPath, FileAccessRights.Delete))
+                throw new FileAccessDeniedException(
+                    "Recursive delete aborted: " + scope.DescribeDenial(virtualPath ?? "(outside every mount)", FileAccessRights.Delete),
+                    virtualPath ?? string.Empty,
+                    FileAccessRights.Delete);
+        }
+    }
+
+    /// <summary>The agent's file-system scope while one of its tool calls runs; never for the privileged instance.</summary>
+    private AgentFileSystemScope? EnforcedScope
+        => _internalAccess ? null : Orkeon.Domain.Execution.AgentRunScope.EnforcedFileSystem;
 
     private void EnsureNoOutOfMountSymlinks(string physicalDir)
     {

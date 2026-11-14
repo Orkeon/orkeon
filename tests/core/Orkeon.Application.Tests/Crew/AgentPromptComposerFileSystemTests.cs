@@ -1,10 +1,14 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Tests.Doubles;
+using Orkeon.Application.Tests.Fixtures;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Execution;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Task;
-using Orkeon.Domain.Tools;
-using Orkeon.Domain.Tools.Protocol;
+using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.Serialization;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
@@ -18,7 +22,7 @@ public sealed class AgentPromptComposerFileSystemTests
         .AddMount("/docs", FileAccessRights.ReadOnly);
 
     private static DomainAgent Agent(bool fileTool = true, bool announce = true)
-        => new AgentBuilder().Role("Writer").Goal("Write").WithTool(new StubTool(fileTool)).AnnounceMounts(announce).Build();
+        => new AgentBuilder().Role("Writer").Goal("Write").WithTool(new StubBaseTool(fileTool ? "file_read" : "web_search") { UsesFileSystem = fileTool }).AnnounceMounts(announce).Build();
 
     private string Prompt(DomainAgent agent)
     {
@@ -70,6 +74,79 @@ public sealed class AgentPromptComposerFileSystemTests
 
     [Fact]
     [Trait("BR", "#348")]
+    [Trait("BR", "#349")]
+    public async System.Threading.Tasks.Task ShouldSayWorkingDirectoryIsOutsideScope_WhenScopedRunHasNoRoot()
+    {
+        _fileSystem.WorkingDirectory = "/workspace";
+        var scope = AgentFileSystemScope.Resolve(
+            "Writer", [new FileSystemScopeEntry("/workspace/project")], _fileSystem.GetAvailableMounts());
+        await using var run = AgentRunScope.Begin("id", "Writer", null, scope);
+
+        var prompt = Prompt(Agent());
+
+        Assert.DoesNotContain("Relative paths resolve against /workspace.", prompt, StringComparison.Ordinal);
+        Assert.Contains(
+            "Relative paths resolve against /workspace, outside your file-system scope: write every path in full, under one of the paths above.",
+            prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "#348")]
+    [Trait("BR", "#349")]
+    public async System.Threading.Tasks.Task ShouldNameWorkingDirectory_WhenScopeCoversIt()
+    {
+        _fileSystem.WorkingDirectory = "/workspace";
+        var scope = AgentFileSystemScope.Resolve(
+            "Writer", [new FileSystemScopeEntry("/workspace", FileAccessRights.ReadOnly)], _fileSystem.GetAvailableMounts());
+        await using var run = AgentRunScope.Begin("id", "Writer", null, scope);
+
+        Assert.Contains("Relative paths resolve against /workspace.", Prompt(Agent()), StringComparison.Ordinal);
+    }
+
+    private static string CrewYaml(string crewLine) => $$"""
+        name: announced
+        goal: Read
+        process: sequential
+        {{crewLine}}
+        agents:
+          reader:
+            role: Reader
+            goal: Read the docs
+            tools: [file_read]
+        tasks:
+          read:
+            description: Read the docs
+            expected_output: A summary
+            agent: reader
+        """;
+
+    private async System.Threading.Tasks.Task<string> PromptOfLoadedAgentAsync(string yaml)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var loader = new YamlCrewDefinitionLoader(
+            new YamlDotNetSerializer(), new FakeFileSystemService(), NullLogger<YamlCrewDefinitionLoader>.Instance);
+        var registry = new TestToolRegistry();
+        await registry.RegisterToolAsync(new StubBaseTool("file_read") { UsesFileSystem = true });
+        var agents = new TestAgentRepository();
+        var factory = new CrewFactory(
+            loader, registry, NullLogger<CrewFactory>.Instance, new TestCrewRepository(), agents, new TestTaskRepository());
+        var crew = await factory.CreateFromConfigAsync(await loader.LoadFromStringAsync(yaml, ct), ct);
+        return Prompt((await agents.GetByIdAsync(crew.Agents.Single(), ct))!);
+    }
+
+    [Theory]
+    [Trait("BR", "#348")]
+    [InlineData("", true)]
+    [InlineData("announce_mounts: false", false)]
+    public async System.Threading.Tasks.Task ShouldFollowCrewSetting_WhenAgentIsBuiltByCrewFactory(string crewLine, bool announced)
+    {
+        var prompt = await PromptOfLoadedAgentAsync(CrewYaml(crewLine));
+
+        Assert.Equal(announced, prompt.Contains("## File system", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "#348")]
     public void ShouldGiveSamePrompt_WhenMountsAreRegisteredInAnotherOrder()
     {
         var reversed = new FakeFileSystemService()
@@ -81,22 +158,5 @@ public sealed class AgentPromptComposerFileSystemTests
         Assert.Equal(
             Prompt(agent),
             AgentPromptComposer.BuildSystemPrompt(agent, task, TaskToolbelt.Compose(agent, task), supportsNativeToolCalling: true, reversed));
-    }
-
-    private sealed class StubTool(bool usesFileSystem) : IBaseTool
-    {
-        public string Name => usesFileSystem ? "file_read" : "web_search";
-        public string Description => "stub";
-        public bool UsesFileSystem => usesFileSystem;
-        public ToolSchema Schema => new(Name, Description, new Dictionary<string, ParameterSchema>());
-
-        public System.Threading.Tasks.Task<ToolCallResponse> CallAsync(
-            Orkeon.Domain.Tools.Protocol.ToolCallRequest request, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(new ToolCallResponse(true, "ok", null));
-
-        public System.Threading.Tasks.Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
-            => System.Threading.Tasks.Task.FromResult(ToolResult.CreateSuccess("ok"));
-
-        public bool ValidateInput(string input) => true;
     }
 }

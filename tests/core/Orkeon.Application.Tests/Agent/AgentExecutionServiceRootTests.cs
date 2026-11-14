@@ -198,7 +198,9 @@ public sealed class AgentExecutionServiceRootTests : IDisposable
 
         var refusal = await RefusalAsync(agent);
 
-        Assert.Contains("/output", refusal, StringComparison.Ordinal);
+        Assert.Equal(
+            "The agent working root '/output' of agent 'Scoped' lies outside its file-system scope: /workspace/docs.",
+            refusal);
         Assert.Null(_orchestrator.RunScopeDuringRun);
     }
 
@@ -213,6 +215,13 @@ public sealed class AgentExecutionServiceRootTests : IDisposable
 
         await CreateService().ExecuteTaskAsync(child, CreateTask(), CreateContext(), TestContext.Current.CancellationToken);
 
-        Assert.Same(parent, _orchestrator.RunScopeDuringRun?.FileSystem);
+        var scope = _orchestrator.RunScopeDuringRun?.FileSystem;
+        Assert.NotNull(scope);
+        Assert.Equal("Child", scope.AgentName);
+        Assert.Same(parent, scope.Parent);
+        Assert.Equal(parent.Entries, scope.Entries);
+        Assert.Equal(FileAccessRights.Read, scope.RightsAt("/workspace/docs/a.md") & FileAccessRights.Read);
+        Assert.Equal(FileAccessRights.None, scope.RightsAt("/output/a.md"));
+        Assert.Contains("of agent 'Child'", scope.DescribeDenial("/output/a.md", FileAccessRights.Read), StringComparison.Ordinal);
     }
 }
