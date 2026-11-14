@@ -1,1 +1,4 @@
 #nullable enable
+override Orkeon.Tools.Data.JsonTool.UsesFileSystem.get -> bool
+override Orkeon.Tools.Data.Search.FileSearchToolBase<TRequest>.UsesFileSystem.get -> bool
+override Orkeon.Tools.Data.Search.PdfSearchTool.UsesFileSystem.get -> bool

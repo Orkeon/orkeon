@@ -206,6 +206,57 @@ parent, comme chaque `crew.send` ultérieur à cette instance.
 
 Absente, rien ne change : les mounts seuls confinent l'agent.
 
+## Périmètre de fichiers d'un agent
+
+Un agent peut aussi déclarer une liste `filesystem:` (YAML ; `AgentBuilder.FileSystem(...)` en C# ;
+`.filesystem([...])` sur un agent scripté `.ork.ts`) : les seuls chemins virtuels que ses outils peuvent
+toucher. Une entrée est un chemin, ou `{path, access}` avec `access` parmi `ro`, `rw`, `rwnd` :
+
+```yaml
+agents:
+  writer:
+    filesystem:
+      - /workspace/docs                 # les droits du mount à cet endroit
+      - path: /output/report
+        access: rwnd                    # réduit à lecture-écriture sans suppression
+```
+
+- Les droits viennent du mount : une entrée sélectionne et réduit (une intersection), n'étend jamais. Une
+  entrée hors de tout mount, ou un `access` que le mount n'accorde pas à cet endroit (ses surcharges de
+  sous-chemin comprises), refuse le run au démarrage avec une erreur qui nomme l'agent et l'entrée ; de
+  même un chemin relatif, un `..` et une entrée déclarée deux fois. Une liste vide est refusée au
+  chargement.
+- Un périmètre déclaré est exhaustif : pendant les appels d'outil de l'agent, le système de fichiers
+  refuse tout chemin hors de lui sur tous les mounts, dans sa forme de refus habituelle
+  (`Access denied for '<chemin>'`), en nommant l'agent et son périmètre. Le contrôle est dans
+  `FileSystemService.ResolveAndValidate` : tout outil qui passe par le VFS est tenu — les outils fichier,
+  `list_mounts` (qui liste les entrées du périmètre avec les droits en vigueur), `glob`/`grep`, les outils
+  de recherche, PDF et RAG, les pièces jointes e-mail et drive. `shell_command` ne lie dans son bac à sable
+  que les entrées du périmètre, chacune avec les droits en vigueur.
+- Seuls les appels d'outil de l'agent sont tenus. Les E/S propres du framework pendant le run (mémoire,
+  connaissances, fichiers de sortie, manifestes) ne sont pas celles de l'agent et gardent les droits des
+  mounts.
+- Un enfant lancé depuis un appel d'outil d'un agent à périmètre (`spawn_agent`, une tâche déléguée,
+  `ctx.spawnBackground`, un `crew.send` ultérieur à cette instance) s'exécute sous le périmètre de son
+  parent ; son propre `filesystem:` ne peut que le réduire, et une entrée hors du périmètre du parent ou
+  au-delà de ses droits refuse le run de l'enfant.
+- Avec une `working_root`, la racine doit être dans le périmètre (sinon le run est refusé) : le périmètre
+  dit ce que l'agent peut toucher, la racine où il travaille par défaut et où se résolvent les chemins
+  relatifs. Déclarer les deux donne un répertoire par défaut à un agent à périmètre.
+
+Absent, rien ne change : les mounts (et la `working_root`, s'il y en a une) confinent seuls l'agent.
+
+### Le système de fichiers dans le prompt
+
+Un agent qui a un outil de fichiers (`IBaseTool.UsesFileSystem` : les outils fichier, de recherche, RAG,
+de pièces jointes, `list_mounts`, `shell_command`) reçoit une section `## File system` dans son prompt
+système : les entrées de son périmètre, sinon les mounts du run visibles des agents (jamais les internes),
+chacun avec ses droits et ses surcharges de sous-chemin, triés par chemin virtuel pour que le prompt soit
+le même d'un run à l'autre ; puis sa racine de travail, ou le répertoire contre lequel se résolvent les
+chemins relatifs. `announce_mounts: false` la retire, pour un agent ou, au niveau crew, pour chaque agent
+qui ne fixe pas le sien (`AgentBuilder.AnnounceMounts(false)`, `.announceMounts(false)`). Le prompt de
+`ctx.llm.act` d'un agent scripté est celui du script et ne porte pas cette section.
+
 ## Racines internes et accès privilégié
 
 Un runner monte pour lui-même quelques racines en montages **internes**

@@ -69,6 +69,9 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
         + "For a plain text, grep; to change the matches, structural_rewrite.";
     public override ToolAccess Access => ToolAccess.Read;
 
+    /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
     protected override string? ValidateTypedRequest(StructuralSearchRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

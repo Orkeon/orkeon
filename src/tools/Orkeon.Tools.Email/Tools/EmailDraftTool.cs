@@ -33,6 +33,9 @@ internal sealed class EmailDraftTool : ToolBase<EmailComposeRequest, EmailDraftR
     public override ToolAccess Access => ToolAccess.Edit;
 
     /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     protected override async Task<EmailDraftResponse> ExecuteTypedAsync(EmailComposeRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

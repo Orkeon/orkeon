@@ -30,6 +30,9 @@ mounts:
   - /output
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data
 
+# The crew's default for every agent's file-system section (#348); researcher turns it back on.
+announceMounts: false
+
 links:
   - to: pricing-crew
     direction: outbound
@@ -62,6 +65,11 @@ agents:
 
       *sourcing
     workingRoot: /workspace/project
+    filesystem:
+      - /workspace/project
+      - path: /output/research
+        access: rwnd
+    announceMounts: true
     permissionMode: acceptEdits
     tools: [web_search, file_read]
     allowDelegation: false

@@ -1,1 +1,4 @@
 #nullable enable
+override Orkeon.Tools.Analysis.NodeOutlineTool.UsesFileSystem.get -> bool
+override Orkeon.Tools.Analysis.NodeReadTool.UsesFileSystem.get -> bool
+override Orkeon.Tools.Analysis.StructuralSearchTool.UsesFileSystem.get -> bool

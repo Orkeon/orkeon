@@ -1,1 +1,4 @@
 #nullable enable
+override Orkeon.Tools.Abstractions.Base.FileToolBase.UsesFileSystem.get -> bool
+override Orkeon.Tools.Abstractions.Tools.ListMountsTool.UsesFileSystem.get -> bool
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.UsesFileSystem.get -> bool

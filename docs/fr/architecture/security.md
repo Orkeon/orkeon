@@ -112,6 +112,11 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
 - **Chemins.** Sous bubblewrap, les arguments sont vérifiés et passés virtuels. Sous Seatbelt,
   AppContainer et `None`, ils sont traduits virtuel→physique, et les chemins physiques de la
   sortie reviennent virtuels.
+- **Périmètre de fichiers de l'agent.** Un agent qui déclare un
+  [périmètre de fichiers](vfs-compliance.md#périmètre-de-fichiers-dun-agent) ne voit que ses entrées :
+  un mount qu'aucune entrée ne sélectionne n'est pas lié, et chaque entrée est liée avec les droits en
+  vigueur à cet endroit (ceux du mount, réduits par l'entrée), ses surcharges de sous-chemin en dessous.
+  Sous une racine de travail aussi, les entrées sont rognées à la racine.
 - **Racine de travail de l'agent.** Un agent qui déclare une
   [racine de travail](vfs-compliance.md#racine-de-travail-dun-agent-et-mount) ne voit, du mount qui
   la tient, que la racine. Quand la racine est un worktree git lié (son `.git` est un fichier,

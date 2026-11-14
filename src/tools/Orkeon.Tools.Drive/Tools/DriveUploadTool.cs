@@ -33,6 +33,9 @@ internal sealed class DriveUploadTool : ToolBase<DriveUploadRequest, DriveUpload
     public override ToolAccess Access => ToolAccess.Edit;
 
     /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     protected override string? ValidateTypedRequest(DriveUploadRequest request)
     {
         if (string.IsNullOrWhiteSpace(request?.Path))

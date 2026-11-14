@@ -1,4 +1,42 @@
 #nullable enable
+const Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys.FinishReason = "finish_reason" -> string!
+Orkeon.Domain.Agent.Agent.AnnounceMounts.get -> bool
+Orkeon.Domain.Agent.Agent.FileSystemScope.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemScopeEntry!>!
+Orkeon.Domain.Agent.AgentBuilder.AnnounceMounts(bool announce) -> Orkeon.Domain.Agent.AgentBuilder!
+Orkeon.Domain.Agent.AgentBuilder.FileSystem(params Orkeon.Domain.FileSystem.FileSystemScopeEntry![]! entries) -> Orkeon.Domain.Agent.AgentBuilder!
+Orkeon.Domain.Configuration.AgentConfiguration.AnnounceMounts.get -> bool
+Orkeon.Domain.Configuration.AgentConfiguration.AnnounceMounts.init -> void
+Orkeon.Domain.Configuration.AgentConfiguration.FileSystem.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemScopeEntry!>!
+Orkeon.Domain.Configuration.AgentConfiguration.FileSystem.init -> void
+static Orkeon.Domain.Execution.AgentRunScope.Begin(string? agentId, string? agentRole, string? root, Orkeon.Domain.FileSystem.AgentFileSystemScope? fileSystem) -> Orkeon.Domain.Execution.AgentRunScope!
+static Orkeon.Domain.Execution.AgentRunScope.Create(string? agentId, string? agentRole, string? root, Orkeon.Domain.FileSystem.AgentFileSystemScope? fileSystem) -> Orkeon.Domain.Execution.AgentRunScope!
+static Orkeon.Domain.Execution.AgentRunScope.EnforcedFileSystem.get -> Orkeon.Domain.FileSystem.AgentFileSystemScope?
+static Orkeon.Domain.Execution.AgentRunScope.EnterToolCall() -> System.IDisposable!
+Orkeon.Domain.Execution.AgentRunScope.FileSystem.get -> Orkeon.Domain.FileSystem.AgentFileSystemScope?
+Orkeon.Domain.FileSystem.AgentFileSystemScope
+Orkeon.Domain.FileSystem.AgentFileSystemScope.AgentName.get -> string!
+Orkeon.Domain.FileSystem.AgentFileSystemScope.Allows(string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight) -> bool
+Orkeon.Domain.FileSystem.AgentFileSystemScope.Describe() -> string!
+Orkeon.Domain.FileSystem.AgentFileSystemScope.DescribeDenial(string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight) -> string!
+Orkeon.Domain.FileSystem.AgentFileSystemScope.Entries.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemScopeEntry!>!
+static Orkeon.Domain.FileSystem.AgentFileSystemScope.FormatRights(Orkeon.Domain.FileSystem.FileAccessRights rights) -> string!
+static Orkeon.Domain.FileSystem.AgentFileSystemScope.MountRightsAt(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>! mounts, string! virtualPath) -> Orkeon.Domain.FileSystem.FileAccessRights?
+Orkeon.Domain.FileSystem.AgentFileSystemScope.Narrow(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>! mounts) -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>!
+Orkeon.Domain.FileSystem.AgentFileSystemScope.Parent.get -> Orkeon.Domain.FileSystem.AgentFileSystemScope?
+static Orkeon.Domain.FileSystem.AgentFileSystemScope.Resolve(string! agentName, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemScopeEntry!>! declared, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>! mounts, Orkeon.Domain.FileSystem.AgentFileSystemScope? parent = null) -> Orkeon.Domain.FileSystem.AgentFileSystemScope!
+Orkeon.Domain.FileSystem.AgentFileSystemScope.RightsAt(string! virtualPath) -> Orkeon.Domain.FileSystem.FileAccessRights
+Orkeon.Domain.FileSystem.FileSystemScopeEntry
+Orkeon.Domain.FileSystem.FileSystemScopeEntry.<Clone>$() -> Orkeon.Domain.FileSystem.FileSystemScopeEntry!
+Orkeon.Domain.FileSystem.FileSystemScopeEntry.Access.get -> Orkeon.Domain.FileSystem.FileAccessRights?
+Orkeon.Domain.FileSystem.FileSystemScopeEntry.Access.init -> void
+Orkeon.Domain.FileSystem.FileSystemScopeEntry.Deconstruct(out string! Path, out Orkeon.Domain.FileSystem.FileAccessRights? Access) -> void
+Orkeon.Domain.FileSystem.FileSystemScopeEntry.Equals(Orkeon.Domain.FileSystem.FileSystemScopeEntry? other) -> bool
+Orkeon.Domain.FileSystem.FileSystemScopeEntry.FileSystemScopeEntry(string! Path, Orkeon.Domain.FileSystem.FileAccessRights? Access = null) -> void
+static Orkeon.Domain.FileSystem.FileSystemScopeEntry.operator !=(Orkeon.Domain.FileSystem.FileSystemScopeEntry? left, Orkeon.Domain.FileSystem.FileSystemScopeEntry? right) -> bool
+static Orkeon.Domain.FileSystem.FileSystemScopeEntry.operator ==(Orkeon.Domain.FileSystem.FileSystemScopeEntry? left, Orkeon.Domain.FileSystem.FileSystemScopeEntry? right) -> bool
+static Orkeon.Domain.FileSystem.FileSystemScopeEntry.ParseAccess(string! access) -> Orkeon.Domain.FileSystem.FileAccessRights
+Orkeon.Domain.FileSystem.FileSystemScopeEntry.Path.get -> string!
+Orkeon.Domain.FileSystem.FileSystemScopeEntry.Path.init -> void
 [ORKEXP005]Orkeon.Domain.SharedKernel.ILlmProvider.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities?
 [ORKEXP005]Orkeon.Domain.SharedKernel.ILlmProvider.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice
@@ -16,6 +54,8 @@
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Model.init -> void
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Notice.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortNotice?
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Notice.init -> void
+[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? right) -> bool
+[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? right) -> bool
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Sent.get -> string?
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Sent.init -> void
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities
@@ -29,16 +69,17 @@
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.LlmReasoningCapabilities(string! Model, bool Known, Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport Thinking, System.Collections.Generic.IReadOnlyList<string!>! Efforts) -> void
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Model.get -> string!
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Model.init -> void
+[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? right) -> bool
+[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? right) -> bool
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Thinking.get -> Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport
 [ORKEXP005]Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Thinking.init -> void
+Orkeon.Domain.Tools.IBaseTool.UsesFileSystem.get -> bool
+override Orkeon.Domain.FileSystem.FileSystemScopeEntry.Equals(object? obj) -> bool
+override Orkeon.Domain.FileSystem.FileSystemScopeEntry.GetHashCode() -> int
+override Orkeon.Domain.FileSystem.FileSystemScopeEntry.ToString() -> string!
 [ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.Equals(object? obj) -> bool
 [ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.GetHashCode() -> int
 [ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.ToString() -> string!
 [ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.Equals(object? obj) -> bool
 [ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.GetHashCode() -> int
 [ORKEXP005]override Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.ToString() -> string!
-[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? right) -> bool
-[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport? right) -> bool
-[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? right) -> bool
-[ORKEXP005]static Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities? right) -> bool
-const Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys.FinishReason = "finish_reason" -> string!

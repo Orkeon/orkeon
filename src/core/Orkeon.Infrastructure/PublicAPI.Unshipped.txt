@@ -1,12 +1,22 @@
 #nullable enable
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.AnnounceMounts.get -> bool?
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.AnnounceMounts.set -> void
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.Filesystem.get -> System.Collections.ObjectModel.Collection<object!>?
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.Filesystem.set -> void
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.AnnounceMounts.get -> bool?
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.AnnounceMounts.init -> void
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.AnnounceMounts.get -> bool?
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.AnnounceMounts.set -> void
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.AnnounceMounts.get -> bool?
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.AnnounceMounts.set -> void
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities!
+Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
+[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry.TryGet(string? model, string? provider) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.Thinking.get -> Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport?
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities.Thinking.init -> void
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Thinking.get -> Orkeon.Domain.SharedKernel.ValueObjects.ThinkingSupport?
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityOverride.Thinking.init -> void
-[ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.IModelCapabilityRegistry.TryGet(string? model, string? provider) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
 [ORKEXP005]Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry.TryGet(string? model, string? provider) -> Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilities?
-Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities!
-Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
 Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities?
 Orkeon.Infrastructure.LLMs.Decision.DecisionLlmProvider.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
 Orkeon.Infrastructure.LLMs.MeteredLlmProvider.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities?

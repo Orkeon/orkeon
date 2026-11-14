@@ -1,1 +1,2 @@
 #nullable enable
+static Orkeon.Application.Agent.AgentWorkingRoot.ResolveScope(string! agentName, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemScopeEntry!>! declared, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>! mounts, Orkeon.Domain.FileSystem.AgentFileSystemScope? parent, string? root) -> Orkeon.Domain.FileSystem.AgentFileSystemScope?

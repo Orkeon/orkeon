@@ -157,6 +157,31 @@ public sealed class ShellCommandToolAgentRootTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldBindScopeEntriesOnly_WhenAgentDeclaresFileSystemScope()
+    {
+        var (tool, sandbox, workspace, output) = NewMultiMountTool();
+        using var _ = tool;
+        var scope = AgentFileSystemScope.Resolve("dev",
+            [new FileSystemScopeEntry("/workspace/job"), new FileSystemScopeEntry("/output", FileAccessRights.ReadOnly)],
+            [
+                new MountInfo("/workspace", FileAccessRights.ReadWrite, [new SubPathOverride("job/.env", FileAccessRights.None)]),
+                new MountInfo("/output", FileAccessRights.ReadWrite, []),
+            ]);
+
+        ToolCallResponse response;
+        await using (AgentRunScope.Begin("agent-1", "dev", null, scope))
+            response = await tool.CallAsync(Request("echo x", "/workspace/job"), Ct);
+
+        Assert.True(response.Success, response.Error);
+        var view = Assert.Single(sandbox.Views);
+        Assert.Contains(view.Paths, p =>
+            p.Source == Path.Combine(workspace, "job") && p.Destination == "/workspace/job" && p.Access == ConfinedAccess.ReadWrite);
+        Assert.Contains(view.Paths, p => p.Source == output && p.Destination == "/output" && p.Access == ConfinedAccess.ReadOnly);
+        Assert.DoesNotContain(view.Paths, p => p.Destination == "/workspace");
+    }
+
+    [Fact]
     [Trait("BR", "RT-06")]
     public async Task ShouldKeepMountOverridesUnderRoot_WhenRootDeclared()
     {

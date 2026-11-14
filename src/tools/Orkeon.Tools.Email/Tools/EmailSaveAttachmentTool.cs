@@ -34,6 +34,9 @@ internal sealed class EmailSaveAttachmentTool : ToolBase<EmailSaveAttachmentRequ
     public override ToolAccess Access => ToolAccess.Edit;
 
     /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     protected override string? ValidateTypedRequest(EmailSaveAttachmentRequest request)
     {
         if (string.IsNullOrWhiteSpace(request?.Id))

@@ -62,6 +62,9 @@ internal sealed class ObservedTool : IBaseTool, IToolWrapper, IDisposable
     public ToolAccess Access => _inner.Access;
 
     /// <inheritdoc />
+    public bool UsesFileSystem => _inner.UsesFileSystem;
+
+    /// <inheritdoc />
     public ToolAccess AccessFor(IReadOnlyDictionary<string, object?> arguments) => _inner.AccessFor(arguments);
 
     /// <inheritdoc />

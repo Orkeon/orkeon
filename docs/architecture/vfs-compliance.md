@@ -201,6 +201,52 @@ own runs under its parent's, and so does each later `crew.send` to that instance
 
 Absent, nothing changes: the mounts alone confine the agent.
 
+## Agent file-system scope
+
+An agent may also declare a `filesystem:` list (YAML; `AgentBuilder.FileSystem(...)` in C#;
+`.filesystem([...])` on a script agent of `.ork.ts`): the only virtual paths its tools may touch. An entry
+is a path, or `{path, access}` with `access` one of `ro`, `rw`, `rwnd`:
+
+```yaml
+agents:
+  writer:
+    filesystem:
+      - /workspace/docs                 # the mount's own rights there
+      - path: /output/report
+        access: rwnd                    # narrowed to read-write, no delete
+```
+
+- The rights come from the mount: an entry selects and narrows (an intersection), never extends. An entry
+  under no mount, or an `access` the mount does not grant there (its sub-path overrides included), refuses
+  the run at start with an error naming the agent and the entry; so do a relative path, a `..` and an
+  entry declared twice. An empty list is refused at load.
+- A declared scope is exhaustive: during the agent's tool calls, the file system refuses every path outside
+  it on every mount, in its usual denial shape (`Access denied for '<path>'`), naming the agent and its
+  scope. The check sits in `FileSystemService.ResolveAndValidate`, so every tool that goes through the VFS
+  is held: the file tools, `list_mounts` (which lists the scope's entries with the rights in force there),
+  `glob`/`grep`, the search, PDF and RAG tools, the e-mail and drive attachments. `shell_command` binds the
+  scope's entries alone in its sandbox, each with the rights in force there.
+- Only the agent's tool calls are held. The framework's own I/O during the run (memory, knowledge,
+  output files, manifests) is not the agent's and keeps the mounts' rights.
+- A child started from a scoped agent's tool call (`spawn_agent`, a delegated task, `ctx.spawnBackground`,
+  a later `crew.send` to that instance) runs under its parent's scope; its own `filesystem:` can only
+  narrow it, and an entry outside the parent's scope or above its rights refuses the child's run.
+- With a `working_root`, the root must lie inside the scope (else the run is refused): the scope says
+  what the agent may touch, the root where it works by default and where relative paths resolve. Set both
+  to give a scoped agent a default directory.
+
+Absent, nothing changes: the mounts (and the `working_root`, if any) alone confine the agent.
+
+### The file system in the prompt
+
+An agent with a file-system tool (`IBaseTool.UsesFileSystem`: the file, search, RAG, attachment tools,
+`list_mounts`, `shell_command`) gets a `## File system` section in its system prompt: its scope's entries,
+else the run's agent-facing mounts (internal ones never), each with its rights and sub-path overrides,
+sorted by virtual path so the prompt is the same from run to run; then its working root, or the directory
+relative paths resolve against. `announce_mounts: false` turns it off, for one agent or, at crew level, for
+every agent that does not set its own (`AgentBuilder.AnnounceMounts(false)`, `.announceMounts(false)`). A
+script agent's `ctx.llm.act` prompt is the script's own and carries no such section.
+
 ## Internal roots and privileged access
 
 A runner mounts a few roots for itself as **internal** mounts (`Orkeon:FileSystem:InternalMounts`,

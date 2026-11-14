@@ -32,7 +32,7 @@ La structure YAML suit ce schéma :
 
 ```yaml
 # Schéma CrewYamlConfig — clés les plus utilisées (surface complète dans docs/architecture/yaml-schema.md :
-# llm:/rag:/links:/mounts: au niveau crew, workingRoot:/knowledge: agent, decision:/when: tâche (voir docs/fr/architecture/decision-models.md), tools:/deliverable:/llm_override: tâche, llm thinking/responseFormat/cache)
+# llm:/rag:/links:/mounts:/announce_mounts: au niveau crew, workingRoot:/filesystem:/knowledge: agent, decision:/when: tâche (voir docs/fr/architecture/decision-models.md), tools:/deliverable:/llm_override: tâche, llm thinking/responseFormat/cache)
 name: string              # Identifiant de la crew ; portée de sa mémoire long terme (les crews d'un même nom la partagent)
 goal: string              # Objectif (requis)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"

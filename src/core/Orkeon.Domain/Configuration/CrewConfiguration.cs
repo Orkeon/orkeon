@@ -90,6 +90,13 @@ public sealed record AgentConfiguration
     public string Backstory { get; init; } = string.Empty;
     /// <summary>Gets the virtual working root of the agent (<c>working_root:</c>, RT-06); null when none.</summary>
     public string? WorkingRoot { get; init; }
+    /// <summary>Gets the file-system scope of the agent (<c>filesystem:</c>, #349); empty when none is declared.</summary>
+    public IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemScopeEntry> FileSystem { get; init; } = [];
+    /// <summary>
+    /// Gets whether the agent's prompt names its virtual paths (<c>announceMounts:</c>, #348): the agent's own
+    /// setting, else its crew's, else <see langword="true"/>.
+    /// </summary>
+    public bool AnnounceMounts { get; init; } = true;
     /// <summary>Gets the permission mode of the agent's tool calls (<c>permissionMode:</c>); null when none is declared.</summary>
     public Orkeon.Domain.Security.PermissionMode? PermissionMode { get; init; }
     /// <summary>Gets the tool names available to this agent.</summary>

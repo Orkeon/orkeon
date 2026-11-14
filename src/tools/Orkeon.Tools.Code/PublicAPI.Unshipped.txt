@@ -1,1 +1,2 @@
 #nullable enable
+override Orkeon.Tools.Code.ShellCommandTool.UsesFileSystem.get -> bool

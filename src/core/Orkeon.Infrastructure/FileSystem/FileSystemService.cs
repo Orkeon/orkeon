@@ -97,6 +97,19 @@ public sealed partial class FileSystemService : IFileSystemService
             return PathValidationResult.Denied(safeMessage);
         }
 
+        // Step 1b: the agent's file-system scope (#349), while one of its tool calls runs. The mounts
+        // stay the ceiling (step 1); the scope only removes what its entries do not grant. Asking no
+        // right is a probe of where a path lives (the shell's binds), not an access: it is left to
+        // the mounts. The privileged instance serves the framework, never a tool.
+        if (!_internalAccess
+            && requiredRight != FileAccessRights.None
+            && Orkeon.Domain.Execution.AgentRunScope.EnforcedFileSystem is { } scope
+            && !scope.Allows(virtualPath, requiredRight))
+        {
+            LogAccessDeniedByScope(virtualPath, requiredRight);
+            return PathValidationResult.Denied(scope.DescribeDenial(virtualPath, requiredRight));
+        }
+
         // Step 2: Defense-in-depth — run through IPathValidator
         var pathValidation = _pathValidator.ValidatePath(physicalPath, requiredRight);
         if (!pathValidation.IsAllowed)
@@ -178,6 +191,10 @@ public sealed partial class FileSystemService : IFileSystemService
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Access denied by path validator for virtual path '{VirtualPath}'")]
     private partial void LogAccessDeniedByPathValidator(string virtualPath);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Access denied by the agent's file-system scope for virtual path '{VirtualPath}' requiring {RequiredRight}")]
+    private partial void LogAccessDeniedByScope(string virtualPath, FileAccessRights requiredRight);
 
     [LoggerMessage(Level = LogLevel.Debug,
         Message = "Access granted for virtual path '{VirtualPath}'")]

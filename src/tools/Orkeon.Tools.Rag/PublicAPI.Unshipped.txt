@@ -1,1 +1,2 @@
 #nullable enable
+Orkeon.Tools.Rag.RagIngestTool.UsesFileSystem.get -> bool

@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- An agent declares the only virtual paths its tools may touch (#349): `filesystem:` in YAML, a list of
+  paths or `{path, access}` items (`ro`, `rw`, `rwnd`), `AgentBuilder.FileSystem(...)` in C#,
+  `.filesystem([...])` in `.ork.ts`. An entry selects and narrows the mount that holds it, never widens it;
+  an entry under no mount or above the mount's rights refuses the run at start, naming the agent and the
+  entry. During the agent's tool calls the file system refuses every other path on every mount
+  (`FileSystemService`, so the file, search, RAG and attachment tools alike), `list_mounts` lists the
+  scope, and `shell_command` binds the scope's entries alone. A spawned or delegated child runs under its
+  parent's scope, which its own can only narrow; a `working_root` must lie inside the scope. The C# side
+  is `FileSystemScopeEntry`, `AgentFileSystemScope` and `AgentRunScope.FileSystem`.
+- The system prompt of an agent with a file-system tool gains a `## File system` section (#348): its scope,
+  else the run's agent-facing mounts, with their rights, sorted by path, and its working root.
+  `announce_mounts: false` turns it off for an agent or, at crew level, for every agent that does not set
+  its own (`AgentBuilder.AnnounceMounts`, `.announceMounts(false)`). A tool says it touches the file
+  system with `IBaseTool.UsesFileSystem` (`ToolBase.UsesFileSystem`, false by default).
 - `orkeon llm probe` tests the reasoning controls per model: M15 sends the thinking toggle on then off,
   M16 sweeps the effort levels (`low` to `max` then the values of M18's `effort:*` fragments, or the list of the new `--sweep-efforts`, which takes
   vendor values such as `none`), M17 sends a thinking budget. Each step reports what went on the wire

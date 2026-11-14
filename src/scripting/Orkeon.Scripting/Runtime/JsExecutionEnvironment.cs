@@ -79,4 +79,7 @@ internal sealed record JsExecutionEnvironment
 
     /// <summary>The agent run's working root (RT-06), already checked against the mounts; null for an unrooted run or a context that is no run.</summary>
     internal string? WorkingRoot { get; init; }
+
+    /// <summary>The agent run's file-system scope (#349), already resolved against the mounts; null for a run without one.</summary>
+    internal Orkeon.Domain.FileSystem.AgentFileSystemScope? FileSystem { get; init; }
 }

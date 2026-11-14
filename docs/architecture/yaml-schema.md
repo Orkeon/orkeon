@@ -50,6 +50,8 @@ mounts:                   # The virtual roots the crew uses (optional) — selec
   - /output               # a root a settings entry (or a --mount) must provide; refused in one line when nothing does
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # a root pinned to ONE settings entry by its id, when several entries declare it
 
+announce_mounts: bool     # default: true — every agent with a file-system tool lists its virtual paths in its system prompt (alias announceMounts); an agent's own key wins
+
 rag:                      # Crew-level RAG configuration (optional)
   provider: string        # Removed: the load refuses it and points to Orkeon:Rag:Provider — the store is the host's
   collections:
@@ -74,6 +76,11 @@ agents:
     maxExecutionTime: int # default: none — the seconds a task may take on this agent (alias max_execution_time); 0 or less, or above 4294967 (about 49.7 days), fails the load, and so does a limit on the hierarchical manager
     permissionMode: string # default: none (Orkeon:Security:PermissionGate:DefaultMode) — default, acceptEdits, bypassPermissions, plan or dontAsk (C# AgentBuilder.PermissionMode): the mode the permission gate reads for this agent's tool calls, once Orkeon:Security:PermissionGate:Enabled is true; any other value fails the load
     working_root: string  # default: none — a virtual path (alias workingRoot, C# AgentBuilder.WorkingRoot) under a mount that confines this agent's file tools and shell_command to it; refused at run start, naming the root, when no mount holds it
+    filesystem:           # default: none — the only virtual paths this agent's tools may touch (C# AgentBuilder.FileSystem); each entry narrows its mount, never widens it
+      - string            # a path: the mount's rights there
+      - path: string      # or a path with
+        access: string    # "ro" | "rw" | "rwnd" — refused at run start, naming the agent and the entry, above the mount's rights or under no mount; an empty list, an unknown key or access fails the load
+    announce_mounts: bool # default: the crew's announce_mounts — list this agent's virtual paths and working root in its system prompt (alias announceMounts, C# AgentBuilder.AnnounceMounts)
     verbose: bool         # default: false — detailed logs for this agent (tool calls, tool results, model responses, at Information, category Orkeon.Verbose)
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
       profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section
@@ -531,6 +538,7 @@ All the YAML models live in `Orkeon.Infrastructure.Configuration` (`src/core/Ork
 - `GuardrailsYamlConfig` (agent- and task-level `guardrails:`)
 - `LinkYamlConfig` (the crew-level `links:` ACL)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (the crew-level `mounts:` block — `/root` or `<ulid>|/root` items) → `CrewConfiguration.Mounts` (`MountReference`)
+- `AgentYamlConfig.Filesystem` (path or `{path, access}` items) → `AgentConfiguration.FileSystem` (`FileSystemScopeEntry`); `AgentYamlConfig.AnnounceMounts`, else the crew's `announce_mounts` → `AgentConfiguration.AnnounceMounts`
 - `GraphYamlConfig` (start, nodes, edges, circuitBreakerPreset and its limits) with `GraphNodeYamlConfig`, `GraphEdgeYamlConfig`
 - `RagYamlConfig` (collections + sources/chunking, defaults — with `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (short/long form entries) → `KnowledgeAttachment`

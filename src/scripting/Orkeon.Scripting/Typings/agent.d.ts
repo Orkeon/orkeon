@@ -72,6 +72,23 @@ declare global {
          * parent's, and so does each later `crew.send` to it. Left out, the run is unrooted.
          */
         workingRoot(path: string): this;
+        /**
+         * YAML parity `filesystem:` (#349) — the only virtual paths the agent's tools may touch, each a
+         * path or `{ path, access }` with `access` one of `"ro"`, `"rw"`, `"rwnd"` (left out: the
+         * mount's own rights). An entry selects and narrows the mount that holds it, never widens it:
+         * a path under no mount, or an access the mount does not grant, refuses the agent's run when it
+         * starts, never at build. Every other path is refused on every mount, by the file tools,
+         * `list_mounts`, the search and RAG tools and `shell_command` alike. A `.workingRoot(...)` must
+         * lie inside it. A child started by `spawn_agent` or `ctx.spawnBackground` runs under its
+         * parent's scope, which its own can only narrow. Left out, the run's mounts apply.
+         */
+        filesystem(entries: ReadonlyArray<string | { path: string; access?: "ro" | "rw" | "rwnd" }>): this;
+        /**
+         * YAML parity `announce_mounts:` (#348) — whether the agent's declarative turns list its
+         * virtual paths (its `.filesystem([...])`, else the run's mounts) and its working root in the
+         * system prompt, when it has a file-system tool. On by default.
+         */
+        announceMounts(value: boolean): this;
         concurrency(n: number): this;
         withState<S>(factory: (() => S) | S): AgentBuilder<TIn, TOut, S>;
         /**

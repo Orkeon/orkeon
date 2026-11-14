@@ -56,6 +56,9 @@ public partial class PdfSearchTool : ToolBase<PdfSearchRequest, PdfSearchRespons
     }
 
     /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     protected override string? ValidateTypedRequest(PdfSearchRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

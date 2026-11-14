@@ -336,7 +336,9 @@ public sealed partial class JsCrew
             scope.Budget = ScriptRunBudget(_engine, bag, budget);
         scope.Permit = bag?.Get("permit").ToObject() as GatePermit;
         scope.Instance = bag?.Get("instance").ToObject() as AgentInstanceRun;
-        scope.InheritedRoot = (bag?.Get("root").ToObject() as InheritedWorkingRoot)?.Root;
+        var inherited = bag?.Get("root").ToObject() as InheritedWorkingRoot;
+        scope.InheritedRoot = inherited?.Root;
+        scope.InheritedFileSystem = inherited?.FileSystem;
         var floor = bag?.Get("permissionFloor") ?? JsValue.Undefined;
         scope.PermissionFloor = floor.IsString() ? floor.AsString() : null;
         return scope;
@@ -377,8 +379,8 @@ public sealed partial class JsCrew
         options.Set("budget", JsValue.FromObject(_engine, begun.Budget));
         options.Set("instance", JsValue.FromObject(_engine, begun.Run));
         options.Set("bare", true);
-        if (begun.InheritedRoot is { } root)
-            options.Set("root", JsValue.FromObject(_engine, new InheritedWorkingRoot(root)));
+        if (begun.InheritedRoot is not null || begun.InheritedFileSystem is not null)
+            options.Set("root", JsValue.FromObject(_engine, new InheritedWorkingRoot(begun.InheritedRoot, begun.InheritedFileSystem)));
         if (begun.PermissionFloor is { } floor)
             options.Set("permissionFloor", floor);
         return options;

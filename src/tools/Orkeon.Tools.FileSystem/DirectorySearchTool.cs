@@ -29,6 +29,9 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
     private readonly IEphemeralCollectionSearch _search;
     private readonly IFileSystemService _fileSystemService;
 

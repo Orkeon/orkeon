@@ -53,11 +53,12 @@ internal static class JsEngineAttempts
         if (!Registries.TryGetValue(engine, out var registry)) return null;
         List<BrokerAttribution> open;
         lock (registry.Sync) open = [.. registry.Entries];
-        var roots = open.Select(entry => entry.RunScope?.Root).Distinct(StringComparer.Ordinal).ToList();
-        if (roots.All(root => root is null)) return null;
-        if (roots.Count == 1) return open[^1].RunScope;
+        // #349: a file-system scope holds the call as a root does, compared by what it grants.
+        var areas = open.Select(entry => (entry.RunScope?.Root, Scope: entry.RunScope?.FileSystem?.Describe())).Distinct().ToList();
+        if (areas.All(area => area.Root is null && area.Scope is null)) return null;
+        if (areas.Count == 1) return open[^1].RunScope;
         throw new InvalidOperationException(
-            $"tools.{jsName} was called from code while agents with different working roots run: the call cannot be held to one of them. " +
+            $"tools.{jsName} was called from code while agents with different working roots run (or different file-system scopes): the call cannot be held to one of them. " +
             $"Call it as ctx.tools.{jsName}(...) from the agent's body.");
     }
 

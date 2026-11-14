@@ -40,6 +40,12 @@ public interface IBaseTool
     ToolAccess AccessFor(IReadOnlyDictionary<string, object?> arguments) => Access;
 
     /// <summary>
+    /// Whether the tool reads or writes virtual paths of the file system (#348): an agent holding one has
+    /// its prompt name the paths it may touch. Defaults to <see langword="false"/>.
+    /// </summary>
+    bool UsesFileSystem => false;
+
+    /// <summary>
     /// Executes the tool with the given request.
     /// </summary>
     /// <param name="request">The tool call request with parameters.</param>

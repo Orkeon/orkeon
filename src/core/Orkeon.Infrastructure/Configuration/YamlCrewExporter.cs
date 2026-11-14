@@ -314,6 +314,17 @@ public partial class YamlCrewExporter
             Goal = agent.Goal,
             Backstory = string.IsNullOrWhiteSpace(agent.Backstory) ? null : agent.Backstory,
             WorkingRoot = string.IsNullOrWhiteSpace(agent.WorkingRoot) ? null : agent.WorkingRoot,
+            // #349: a bare path when the entry inherits the mount's rights, as an author writes it.
+            Filesystem = agent.FileSystem.Count > 0
+                ? new Collection<object>(agent.FileSystem.Select(e => e.Access is { } access
+                    ? (object)new Dictionary<string, string>
+                    {
+                        ["path"] = e.Path,
+                        ["access"] = Orkeon.Domain.FileSystem.AgentFileSystemScope.FormatRights(access),
+                    }
+                    : e.Path).ToList())
+                : null,
+            AnnounceMounts = agent.AnnounceMounts ? null : false,
             PermissionMode = agent.PermissionMode is { } mode ? Orkeon.Domain.Security.PermissionModes.ToWireName(mode) : null,
             Tools = agent.Tools.Count > 0 ? new Collection<string>(agent.Tools.ToList()) : null,
             AllowDelegation = agent.AllowDelegation ? null : false,

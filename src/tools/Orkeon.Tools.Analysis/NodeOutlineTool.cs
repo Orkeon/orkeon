@@ -48,6 +48,9 @@ public sealed class NodeOutlineTool : ToolBase<NodeOutlineRequest, NodeOutlineRe
     public override string Description => "Outline of a file's members.";
     public override ToolAccess Access => ToolAccess.Read;
 
+    /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
     // A missing path is named as such: the empty extension used to surface as
     // "No tree-sitter grammar for extension ''" (#200). The path the tool will read is judged
     // against the agent's root once made absolute, as every file tool does: '../p2' under a root

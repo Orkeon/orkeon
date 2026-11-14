@@ -122,6 +122,9 @@ public partial class JsonTool : ToolBase<JsonToolRequest, JsonToolResponse>
     }
 
     /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     protected override string? ValidateTypedRequest(JsonToolRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

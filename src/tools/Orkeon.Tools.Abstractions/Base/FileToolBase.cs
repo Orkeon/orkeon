@@ -19,6 +19,9 @@ public abstract partial class FileToolBase : ToolBase
     /// <inheritdoc />
     public override string Category => "File Operations";
 
+    /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
     /// <summary>
     /// Initializes a new instance of <see cref="FileToolBase"/> with virtual file system support.
     /// </summary>

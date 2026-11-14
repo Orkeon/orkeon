@@ -439,7 +439,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
                     agent, task, toolbelt,
-                    _toolCallingStrategy?.SupportsNativeToolCalling == true);
+                    _toolCallingStrategy?.SupportsNativeToolCalling == true,
+                    _fileSystem);
                 var knowledgeContext = await ResolveKnowledgeContextAsync(
                     agent, task, context, taskToken).ConfigureAwait(false);
                 // The task's plan, when the crew plans (GAP-31): the run's scope holds it, so it
