@@ -81,6 +81,12 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
 
     public JsValue state { get; private set; }
 
+    /// <summary>
+    /// #378: <c>ctx.fileSystem</c>, the <c>## File system</c> section a declarative turn of this agent would
+    /// hold, for the body to place in the prompt it writes.
+    /// </summary>
+    public JsAgentFileSystem fileSystem { get; }
+
     /// <summary>The id (<c>a1</c>…) of the agent instance this body runs as; <c>undefined</c> for a run that is not one (RT-03).</summary>
     public JsValue instanceId { get; }
 
@@ -111,6 +117,11 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         _runScope = AgentRunScope.Create(_self.id, _self.name, environment.WorkingRoot, environment.FileSystem);
         _builtInTools = environment.BuiltInTools ?? [];
         llm.AttachRunScope(_runScope);
+        var crew = _crewRef;
+        var self = _self;
+        var root = environment.WorkingRoot;
+        var scope = environment.FileSystem;
+        fileSystem = new JsAgentFileSystem(() => crew.FileSystemPrompt(self, AgentTools, root, scope));
         state = BuildStateProxy(_stateRaw);
     }
 

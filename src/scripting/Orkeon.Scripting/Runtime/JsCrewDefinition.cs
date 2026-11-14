@@ -51,6 +51,9 @@ internal sealed record JsCrewDefinition
     /// <summary>The mounts an agent's working root is checked against (RT-06); null refuses every root.</summary>
     public Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }
 
+    /// <summary>Where the host resolves a relative path, for a run with no working root (#378); null names none.</summary>
+    public Func<string?>? WorkingDirectory { get; init; }
+
     /// <summary>Optional transcript caps of the agent instances.</summary>
     public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
 

@@ -54,6 +54,7 @@ internal static class CrewBuilderBinding
             ToolLimits = services.ToolLimits,
             AgentInstances = services.AgentInstances,
             Mounts = services.Mounts,
+            WorkingDirectory = services.WorkingDirectory,
         }));
     }
 
@@ -76,5 +77,8 @@ internal static class CrewBuilderBinding
         public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
         public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
         public Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }
+
+        /// <summary>Where the host resolves a relative path, for a run with no working root (#378).</summary>
+        public Func<string?>? WorkingDirectory { get; init; }
     }
 }

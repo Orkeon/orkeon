@@ -56,10 +56,8 @@ internal static class AgentPromptComposer
     }
 
     /// <summary>
-    /// #348: the virtual paths the agent may touch, so it never guesses one (<c>/</c>, <c>/tmp</c>) the file
-    /// system refuses: its file-system scope when it declares one (#349), else the run's agent-facing
-    /// mounts (internal ones are never listed, ADR-008). Sorted by virtual path, so the same mounts give the
-    /// same prompt and the prompt cache holds across runs. Nothing when no path is visible.
+    /// #348: the <c>## File system</c> section (<see cref="Orkeon.Application.Agent.AgentFileSystemPrompt.Render"/>), after a blank
+    /// line; nothing when no path is visible.
     /// </summary>
     /// <param name="prompt">The system prompt being built.</param>
     /// <param name="mounts">The agent-facing mounts of the run.</param>
@@ -70,48 +68,13 @@ internal static class AgentPromptComposer
         StringBuilder prompt, IReadOnlyList<Domain.FileSystem.MountInfo> mounts, Domain.FileSystem.AgentFileSystemScope? scope,
         string? workingDirectory, bool isRoot)
     {
-        var visible = (scope is null ? mounts : scope.Narrow(mounts))
-            .OrderBy(m => m.VirtualPath, StringComparer.Ordinal)
-            .ToList();
-        if (visible.Count == 0)
+        var section = Orkeon.Application.Agent.AgentFileSystemPrompt.Render(mounts, scope, workingDirectory, isRoot);
+        if (section.Length == 0)
             return;
 
         prompt.AppendLine();
-        prompt.AppendLine("## File system");
-        prompt.AppendLine();
-        prompt.AppendLine("Only these virtual paths exist; any other path is refused:");
-        foreach (var mount in visible)
-        {
-            prompt.AppendLine(FormattableString.Invariant($"- {mount.VirtualPath} ({DescribeRights(mount.DefaultRights)})"));
-            foreach (var subPath in mount.Overrides.OrderBy(o => o.RelativePath, StringComparer.Ordinal))
-                prompt.AppendLine(FormattableString.Invariant(
-                    $"  - {mount.VirtualPath.TrimEnd('/')}/{subPath.RelativePath.Trim('/')} ({DescribeRights(subPath.Rights)})"));
-        }
-
-        // A scoped run whose working directory lies outside its scope is told so: a relative path would
-        // resolve where it is refused (a working root always lies inside, AgentWorkingRoot.ResolveScope).
-        if (!string.IsNullOrWhiteSpace(workingDirectory))
-            prompt.AppendLine(isRoot
-                ? FormattableString.Invariant($"Your working root is {workingDirectory}: relative paths resolve there.")
-                : scope is not null && scope.RightsAt(workingDirectory) == Domain.FileSystem.FileAccessRights.None
-                    ? FormattableString.Invariant(
-                        $"Relative paths resolve against {workingDirectory}, outside your file-system scope: write every path in full, under one of the paths above.")
-                    : FormattableString.Invariant($"Relative paths resolve against {workingDirectory}."));
-        if (visible.Any(m => m.DefaultRights.HasFlag(Domain.FileSystem.FileAccessRights.Write)
-                             || m.Overrides.Any(o => o.Rights.HasFlag(Domain.FileSystem.FileAccessRights.Write))))
-            prompt.AppendLine("Write intermediate notes under a read-write path.");
+        prompt.AppendLine(section);
     }
-
-    private static string DescribeRights(Domain.FileSystem.FileAccessRights rights) => rights switch
-    {
-        Domain.FileSystem.FileAccessRights.ReadOnly => "read-only",
-        Domain.FileSystem.FileAccessRights.ReadWrite => "read-write",
-        Domain.FileSystem.FileAccessRights.ReadWriteNoDelete => "read-write, no delete",
-        Domain.FileSystem.FileAccessRights.None => "no access",
-#pragma warning disable CA1308 // the enum's words, lowered for the prompt, not a normalisation for a comparison
-        _ => rights.ToString().ToLowerInvariant(),
-#pragma warning restore CA1308
-    };
 
     private static void AppendRoleSection(StringBuilder prompt, DomainAgent agent)
     {

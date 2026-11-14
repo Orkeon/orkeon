@@ -91,7 +91,8 @@ declare global {
         /**
          * YAML parity `announce_mounts:` (#348) — whether the agent's declarative turns list its
          * virtual paths (its `.filesystem([...])`, else the run's mounts) and its working root in the
-         * system prompt, when it has a file-system tool. On by default.
+         * system prompt, when it has a file-system tool. On by default. A body places that section itself,
+         * from `ctx.fileSystem.prompt`, which is `""` when this is off.
          */
         announceMounts(value: boolean): this;
         concurrency(n: number): this;

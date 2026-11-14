@@ -21,6 +21,13 @@ the migration:
   property, where it caught the CLR type itself (#364).
 
 ### Added
+- `ctx.fileSystem.prompt` (#378): an agent body reads the `## File system` section a declarative turn of the agent
+  holds in its system prompt (its scope, else the agent-facing mounts, sorted by virtual path, their rights, its
+  working root or where relative paths resolve, the note on read-write paths) and places it in the `system` prompt
+  it gives `ctx.llm.act`, which stays the script's: nothing is added to it. `""` when no path is visible, when none
+  of the agent's tools uses the file system, or when it sets `.announceMounts(false)`, which so gains a meaning for
+  a body. Both shapes render it through `AgentFileSystemPrompt.Render` (`Orkeon.Application.Agent`), so the
+  wording and the order cannot drift, and a body no longer needs a `list_mounts` call to rebuild part of it.
 - `llm.profiles` (#364): the names `llm.profile(name)` takes, a frozen array — `"default"` first, then the
   host's profiles in the order and the spelling it declared them, those its allow-list refuses left out.
   Names only, never an endpoint or a key: a script checks a name before it asks for the profile, without

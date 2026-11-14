@@ -243,6 +243,9 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
                 ToolCallDlp = Orkeon.Application.Crew.ToolCallDeltaDlp.From(_services),
                 ToolInvocation = _services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 LlmProfiles = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
+                // The trial's mounts (it follows the ambient scope Enter opens): a body's working root is
+                // checked against them and its ctx.fileSystem.prompt names them, as under orkeon run (#378).
+                FileSystem = _services.GetService<Orkeon.Domain.FileSystem.IFileSystemService>(),
             });
 
         var transpiler = _transpilerFactory();

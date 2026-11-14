@@ -578,3 +578,6 @@ Orkeon.Scripting.Runtime.StreamObservations.reasoning.get -> Orkeon.Scripting.Ru
 Orkeon.Scripting.Testing.TestOverrideLlmProvider.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities?
 Orkeon.Scripting.Testing.TestOverrideLlmProvider.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
 Orkeon.Scripting.Runtime.JsCrewResult.output.get -> object?
+Orkeon.Scripting.Runtime.JsAgentContext.fileSystem.get -> Orkeon.Scripting.Runtime.JsAgentFileSystem!
+Orkeon.Scripting.Runtime.JsAgentFileSystem
+Orkeon.Scripting.Runtime.JsAgentFileSystem.prompt.get -> string!

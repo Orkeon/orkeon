@@ -159,4 +159,17 @@ public sealed class AgentPromptComposerFileSystemTests
             Prompt(agent),
             AgentPromptComposer.BuildSystemPrompt(agent, task, TaskToolbelt.Compose(agent, task), supportsNativeToolCalling: true, reversed));
     }
+
+    [Fact]
+    [Trait("BR", "#378")]
+    public void ShouldHoldRenderedSection_WhenAgentHasFileSystemTool()
+    {
+        _fileSystem.WorkingDirectory = "/workspace";
+        var section = Orkeon.Application.Agent.AgentFileSystemPrompt.Render(_fileSystem.GetAvailableMounts(), null, "/workspace", isRoot: false);
+
+        var prompt = Prompt(Agent());
+
+        Assert.StartsWith("## File system", section, StringComparison.Ordinal);
+        Assert.Contains(Environment.NewLine + Environment.NewLine + section + Environment.NewLine, prompt, StringComparison.Ordinal);
+    }
 }
