@@ -125,7 +125,9 @@ rights `ro`, `rw` or `rwnd`; the physical directory must exist):
 Any of the 16 providers is registered the same way: construct it from an `LlmConfig`, or
 let `ILlmProviderFactory.Create(config)` pick it from the base URL, the model name or the
 key. `AddOrkeonLlmProvider` puts one instance behind `ILlmProvider`, `IBasicLlmProvider`
-and `IChatClient`, metered like every provider the factory builds.
+and `IChatClient`, metered like every provider the factory builds. A provider constructed
+directly sends an agent's tools natively, as the factory's does: the model calls a tool rather
+than writing the call as text.
 
 The `orkeon` CLI does all of this in `RunnerHost` (`Llm` section, mounts, a registry fed
 from DI) and registers a few more suites a host adds the same way when its crews use them:

@@ -92,7 +92,7 @@ public sealed class CrewBudgetRunTests
         var result = await crew.RunAsync(null, CancellationToken.None);
 
         Assert.Equal(3, tool.CallCount);
-        Assert.Contains("max tool-call iterations", result.output, StringComparison.Ordinal);
+        Assert.Contains("max tool-call iterations", Assert.IsType<string>(result.output), StringComparison.Ordinal);
     }
 
     // ── a delegated run's budget (#189) ─────────────────────────────────────────
@@ -153,7 +153,7 @@ public sealed class CrewBudgetRunTests
     private static async Task<string> RunCrewAsync(Jint.Engine engine)
     {
         var crew = (JsCrew)(await engine.EvaluateAsync("crew", null, Ct)).ToObject()!;
-        return (await crew.RunAsync(null, Ct)).output;
+        return Assert.IsType<string>((await crew.RunAsync(null, Ct)).output);
     }
 
     private static async Task<string> RunAAsync(Jint.Engine engine)
@@ -228,7 +228,7 @@ public sealed class CrewBudgetRunTests
         // Assert: the turn of each run in flight when the tally reached 100 may land, never a later
         // one, and no tool it asks for runs: the three turns before it ran theirs (fewer when two turns
         // land together past 75). Each run then makes its one wrap-up call (#218), which answers nothing here
-        var parts = result.output.Split(" | ");
+        var parts = Assert.IsType<string>(result.output).Split(" | ");
         Assert.Equal(2, parts.Length);
         Assert.StartsWith("completed: budget: Token budget exhausted: ", parts[0], StringComparison.Ordinal);
         Assert.StartsWith("budget: Token budget exhausted: ", parts[1], StringComparison.Ordinal);

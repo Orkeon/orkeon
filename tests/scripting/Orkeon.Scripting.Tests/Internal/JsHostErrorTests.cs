@@ -88,7 +88,8 @@ public sealed class JsHostErrorTests
 
     [Fact]
     [Trait("BR", "CH-364")]
-    public async Task ShouldRejectWithAnError_WhenABridgedTaskFaultsWithAScriptMistake()
+    [Trait("BR", "CH-366")]
+    public async Task ShouldRejectWithAnInvalidScriptError_WhenABridgedTaskFaultsWithAScriptMistake()
     {
         var engine = NewEngine();
         Func<Task<object?>> raw = () => Task.FromException<object?>(new Orkeon.Scripting.Exceptions.InvalidScriptException("refused"));
@@ -97,11 +98,11 @@ public sealed class JsHostErrorTests
         var shown = await RunAsync(engine, """
             (async () => {
               try { await call(); return 'not caught'; }
-              catch (e) { return [e instanceof Error, e.message, e.clrType].join('|'); }
+              catch (e) { return [e instanceof InvalidScriptError, e instanceof Error, e.name, e.message, e.clrType].join('|'); }
             })()
             """);
 
-        Assert.Equal("true|refused|InvalidScriptException", shown.AsString());
+        Assert.Equal("true|true|InvalidScriptError|refused|InvalidScriptException", shown.AsString());
     }
 
     [Fact]

@@ -84,6 +84,20 @@ public class ZaiLlmProvider : OpenAICompatibleProviderBase
     }
 
     /// <summary>
+    /// Constructor overload that accepts both a resilience policy and a tool calling strategy;
+    /// <see langword="null"/> for the strategy sends no <c>tools</c>, leaving the text protocol in charge.
+    /// </summary>
+    public ZaiLlmProvider(
+        LlmConfig config,
+        IHttpClientFactory httpClientFactory,
+        IAsyncPolicy<HttpResponseMessage>? resiliencePolicy,
+        IToolCallingStrategy? toolCallingStrategy,
+        ILogger<ZaiLlmProvider>? logger = null)
+        : base(config, httpClientFactory, resiliencePolicy, toolCallingStrategy, logger)
+    {
+    }
+
+    /// <summary>
     /// Adds the Z.AI usage breakdown on top of the base reasoning trace and reasoning tokens:
     /// <c>prompt_tokens_details.cached_tokens</c> for the implicit context cache. The typed
     /// <see cref="LlmResponse.CacheHitTokens"/>/<see cref="LlmResponse.CacheMissTokens"/>

@@ -31,13 +31,15 @@ const greeter = agentBuilder()
 
 const crew = crewBuilder().name("greeting-crew").withAgent(greeter).build();
 
-await crew.run();
+globalThis.result = await crew.run();
 ```
 
 Trois choses y sont déjà vraies et méritent d'être nommées. `agentBuilder()`, `crewBuilder()`
 et consorts sont des **globales** — il n'y a rien à importer. Le `.body()` est l'agent : ici
 il rend une chaîne et aucun modèle n'est appelé. Et la dernière ligne, `await crew.run()`,
-n'est pas un détail de style : elle sélectionne le moteur.
+n'est pas un détail de style : elle sélectionne le moteur. Son affectation à
+`globalThis.result` est ce qu'affiche `orkeon run` — l'`output` du run et une entrée par agent
+sous `tasks` ; sans elle, `{"result": null}`.
 
 ## La chose à comprendre d'abord : il y a deux formes
 

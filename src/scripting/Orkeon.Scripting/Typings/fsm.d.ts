@@ -28,8 +28,8 @@ declare global {
     interface FsmTransition<TState extends string = string, TPayload = unknown> {
         /**
          * Where this event leads. Validated when the literal is built: a target that is not
-         * a key of `states` throws an `Error` the script catches (`clrType`
-         * `"InvalidScriptException"`) before the machine ever runs.
+         * a key of `states` throws an `InvalidScriptError` the script catches before the
+         * machine ever runs.
          */
         target: TState;
         /**
@@ -74,7 +74,7 @@ declare global {
      * Builds a state machine from a literal. Rejects at build time: a missing or non-string
      * `name`/`initial`, a `states` that is not an object, an `initial` that is not declared,
      * a transition without a string `target`, and a `target` naming an undeclared state. The
-     * refusal is an `Error` the script catches, its `clrType` `"InvalidScriptException"`.
+     * refusal is an `InvalidScriptError` the script catches.
      */
     function stateMachine<TState extends string, TPayload = unknown>(
         def: FsmDefinition<TState, TPayload>,

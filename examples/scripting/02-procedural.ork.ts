@@ -12,4 +12,4 @@ const calculator = agentBuilder()
     .build();
 
 const crew = crewBuilder().withAgent(calculator).build();
-await crew.run();
+globalThis.result = await crew.run();

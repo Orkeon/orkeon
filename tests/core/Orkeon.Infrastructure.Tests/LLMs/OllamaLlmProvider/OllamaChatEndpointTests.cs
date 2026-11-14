@@ -77,6 +77,72 @@ public class OllamaChatEndpointTests
         Assert.Equal("length", response.Metadata[LlmResponseMetadataKeys.FinishReason]);
     }
 
+    /// <summary>
+    /// The provider <c>bootstrap.md</c> builds — the two-argument constructor, no strategy — sends
+    /// the tools on <c>/api/chat</c> as the factory's does, so a model can call one (#367).
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-367")]
+    public async Task ShouldSendTheTools_WhenBuiltWithoutAStrategy()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"hi"},"done":true}""");
+        _httpClientFactory.RegisterClient("OllamaLlmProvider", new HttpClient(handler));
+        using var provider = new OllamaLlmProvider(WithTools(BaseConfig()), _httpClientFactory);
+
+        await provider.ChatAsync(
+            [LlmMessage.User("weather?")], cancellationToken: TestContext.Current.CancellationToken);
+
+        var request = handler.CapturedRequests.Single();
+        Assert.EndsWith("/api/chat", request.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        var payload = await ReadRequestAsync(request);
+        Assert.Equal("get_weather",
+            payload.GetProperty("tools")[0].GetProperty("function").GetProperty("name").GetString());
+    }
+
+    /// <summary>
+    /// The constructor taking a resilience policy and a strategy together keeps the text protocol
+    /// for a <see langword="null"/> strategy: no <c>tools</c> on the wire (#367).
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-367")]
+    public async Task ShouldSendNoTools_WhenBuiltWithAPolicyAndANullStrategy()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"hi"},"done":true}""");
+        _httpClientFactory.RegisterClient("OllamaLlmProvider", new HttpClient(handler));
+        using var provider = new OllamaLlmProvider(
+            WithTools(BaseConfig()), _httpClientFactory, Polly.Policy.NoOpAsync<HttpResponseMessage>(), toolCallingStrategy: null);
+
+        await provider.ChatAsync(
+            [LlmMessage.User("weather?")], cancellationToken: TestContext.Current.CancellationToken);
+
+        var payload = await ReadRequestAsync(handler.CapturedRequests.Single());
+        Assert.False(payload.TryGetProperty("tools", out _), "Payload should NOT contain 'tools' when the strategy is null");
+    }
+
+    /// <summary>The same constructor with a strategy sends the tools on <c>/api/chat</c> (#367).</summary>
+    [Fact]
+    [Trait("BR", "CH-367")]
+    public async Task ShouldSendTheTools_WhenBuiltWithAPolicyAndAStrategy()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"hi"},"done":true}""");
+        _httpClientFactory.RegisterClient("OllamaLlmProvider", new HttpClient(handler));
+        using var provider = new OllamaLlmProvider(
+            WithTools(BaseConfig()), _httpClientFactory, Polly.Policy.NoOpAsync<HttpResponseMessage>(),
+            new OpenAIToolCallingStrategy(NullLogger<OpenAIToolCallParser>.Instance));
+
+        await provider.ChatAsync(
+            [LlmMessage.User("weather?")], cancellationToken: TestContext.Current.CancellationToken);
+
+        var request = handler.CapturedRequests.Single();
+        Assert.EndsWith("/api/chat", request.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        var payload = await ReadRequestAsync(request);
+        Assert.Equal("get_weather",
+            payload.GetProperty("tools")[0].GetProperty("function").GetProperty("name").GetString());
+    }
+
     [Fact]
     public async Task ShouldSwitchToChat_WhenToolsAreDeclared()
     {

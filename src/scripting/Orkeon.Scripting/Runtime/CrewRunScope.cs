@@ -52,7 +52,7 @@ internal sealed class CrewRunScope : IDisposable
     private readonly HashSet<AgentStep> _steps = new();
     private readonly HashSet<AgentAttempt> _attempts = new();
     private readonly List<JsTaskResult> _results = new();
-    private string _aggregate = string.Empty;
+    private object? _aggregate = string.Empty;
     private RunState _state;
     private bool _started;
 
@@ -340,7 +340,8 @@ internal sealed class CrewRunScope : IDisposable
 
     /// <summary>
     /// Records an agent's output: the task result carries the CLR value (<c>undefined</c>, <c>null</c>
-    /// and a skipped body all record <c>null</c>), the aggregate is the last non-null output's text.
+    /// and a skipped body all record <c>null</c>), the aggregate is the last non-null output itself —
+    /// an object stays an object, never its CLR type name (#369).
     /// The duration spans every attempt. A no-op once the run ended.
     /// </summary>
     internal void Record(AgentStep step, JsValue output)
@@ -351,7 +352,7 @@ internal sealed class CrewRunScope : IDisposable
         }
         var clr = output.ToObject();
         _results.Add(new JsTaskResult(step.Agent.name, clr, (DateTime.UtcNow - step.StartUtc).TotalMilliseconds));
-        if (clr is not null) _aggregate = clr.ToString() ?? _aggregate;
+        if (clr is not null) _aggregate = clr;
     }
 
     internal JsCrewResult Finish() => new(_aggregate, _results);

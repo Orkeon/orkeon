@@ -129,7 +129,8 @@ Chacun des 16 fournisseurs s'enregistre de la même façon : construisez-le à p
 `LlmConfig`, ou laissez `ILlmProviderFactory.Create(config)` le choisir d'après l'URL de
 base, le nom du modèle ou la clé. `AddOrkeonLlmProvider` place une seule instance derrière
 `ILlmProvider`, `IBasicLlmProvider` et `IChatClient`, mesurée comme tout fournisseur que la
-factory construit.
+factory construit. Un fournisseur construit directement envoie les outils d'un agent en natif,
+comme celui de la factory : le modèle appelle un outil au lieu d'en écrire l'appel en texte.
 
 La CLI `orkeon` fait tout cela dans `RunnerHost` (section `Llm`, montages, registre
 alimenté depuis la DI) et enregistre quelques suites de plus, qu'un hôte ajoute de la même

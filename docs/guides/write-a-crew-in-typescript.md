@@ -30,13 +30,15 @@ const greeter = agentBuilder()
 
 const crew = crewBuilder().name("greeting-crew").withAgent(greeter).build();
 
-await crew.run();
+globalThis.result = await crew.run();
 ```
 
 Three things are already true here and worth naming. `agentBuilder()`, `crewBuilder()` and
 friends are **globals** — there is nothing to import. The `.body()` is the agent: here it
 returns a string and no model is called. And the last line, `await crew.run()`, is not a
-detail of style: it selects the engine.
+detail of style: it selects the engine. Its assignment to `globalThis.result` is what
+`orkeon run` prints — the run's `output` and one entry per agent under `tasks`; without it,
+`{"result": null}`.
 
 ## The thing to understand first: there are two shapes
 

@@ -4,6 +4,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.ToolCalling;
+using Polly;
 
 namespace Orkeon.Infrastructure.Tests.LLMs.ToolCalling;
 
@@ -298,39 +299,151 @@ public class ToolCallingIntegrationTests
 
     #endregion
 
-    #region Test 4: FallbackToText_WhenNoToolCallingStrategy
+    #region Test 4: native tools by default, text fallback on an explicit null strategy
 
+    /// <summary>A conversation that replays one tool call, the path that carries the tools.</summary>
+    private static LlmMessage[] ToolTurn() =>
+    [
+        LlmMessage.User("List files in /src"),
+        new LlmMessage
+        {
+            Role = "assistant",
+            Content = null!,
+            RawToolCalls = """[{"id":"call_prev","type":"function","function":{"name":"directory_read","arguments":"{\"path\":\"/src\"}"}}]""",
+        },
+        new LlmMessage { Role = "tool", Content = "file1.cs\nfile2.cs", ToolCallId = "call_prev" },
+    ];
+
+    /// <summary>
+    /// A provider built by hand without a strategy (the bootstrap's two-argument constructor) sends
+    /// the tools natively, as one <c>LlmProviderFactory</c> builds does (#367).
+    /// </summary>
     [Fact]
-    public async Task FallbackToText_WhenNoToolCallingStrategy()
+    [Trait("BR", "CH-367")]
+    public async Task ShouldSendTheToolsNatively_WhenBuiltWithoutAStrategy()
     {
-        // Arrange
         using var handler = new MockHttpMessageHandler();
         handler.EnqueueResponse(TextResponse);
-
         var factory = CreateMockFactory(handler);
-        // No tool calling strategy — use the constructor without strategy
         var config = CreateConfig(tools: new List<ToolSchema> { SampleToolSchema });
 
         using var provider = new OpenAILlmProvider(config, factory, logger: null);
+        var response = await provider.ChatAsync(ToolTurn(), config, TestContext.Current.CancellationToken);
 
-        // Act
-        var response = await provider.GenerateAsync("Hello", config, TestContext.Current.CancellationToken);
+        Assert.NotNull(handler.CapturedRequestBody);
+        using var doc = JsonDocument.Parse(handler.CapturedRequestBody);
+        var tools = doc.RootElement.GetProperty("tools");
+        Assert.Equal(SampleToolSchema.Name, tools[0].GetProperty("function").GetProperty("name").GetString());
+        Assert.NotNull(response.RawResponseBody);
+        Assert.Equal("Hello!", response.Content);
+    }
 
-        // Assert: payload should NOT contain "tools"
+    /// <summary>An explicit <see langword="null"/> strategy sends no <c>tools</c>: the text protocol stays in charge.</summary>
+    [Fact]
+    public async Task FallbackToText_WhenTheStrategyIsExplicitlyNull()
+    {
+        using var handler = new MockHttpMessageHandler();
+        handler.EnqueueResponse(TextResponse);
+        var factory = CreateMockFactory(handler);
+        var config = CreateConfig(tools: new List<ToolSchema> { SampleToolSchema });
+
+        using var provider = new OpenAILlmProvider(config, factory, (Orkeon.Application.Interfaces.LLM.IToolCallingStrategy?)null, logger: null);
+        var response = await provider.ChatAsync(ToolTurn(), config, TestContext.Current.CancellationToken);
+
         Assert.NotNull(handler.CapturedRequestBody);
         using var doc = JsonDocument.Parse(handler.CapturedRequestBody);
         var root = doc.RootElement;
-
-        Assert.False(root.TryGetProperty("tools", out _),
-            "Payload should NOT contain 'tools' when no strategy is set");
-        Assert.False(root.TryGetProperty("tool_choice", out _),
-            "Payload should NOT contain 'tool_choice' when no strategy is set");
-
-        // RawResponseBody should be null without a strategy
+        Assert.False(root.TryGetProperty("tools", out _), "Payload should NOT contain 'tools' when the strategy is null");
+        Assert.False(root.TryGetProperty("tool_choice", out _), "Payload should NOT contain 'tool_choice' when the strategy is null");
         Assert.Null(response.RawResponseBody);
-
-        // Content should still be parsed normally
         Assert.Equal("Hello!", response.Content);
+    }
+
+    /// <summary>
+    /// A caller that brings its own resilience policy can still keep the text protocol: the
+    /// constructor taking both sends no <c>tools</c> for a <see langword="null"/> strategy, and the
+    /// policy wraps the call (#367).
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-367")]
+    public async Task ShouldKeepTheTextProtocol_WhenBuiltWithAPolicyAndANullStrategy()
+    {
+        using var handler = new MockHttpMessageHandler();
+        handler.EnqueueResponse(TextResponse);
+        var factory = CreateMockFactory(handler);
+        var config = CreateConfig(tools: new List<ToolSchema> { SampleToolSchema });
+        var (policy, executions) = CountingPolicy();
+
+        using var provider = new OpenAILlmProvider(config, factory, policy, toolCallingStrategy: null);
+        var response = await provider.ChatAsync(ToolTurn(), config, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(handler.CapturedRequestBody);
+        using var doc = JsonDocument.Parse(handler.CapturedRequestBody);
+        Assert.False(doc.RootElement.TryGetProperty("tools", out _), "Payload should NOT contain 'tools' when the strategy is null");
+        Assert.Equal(1, executions());
+        Assert.Equal("Hello!", response.Content);
+    }
+
+    /// <summary>The same constructor with a strategy sends the tools natively under the caller's policy (#367).</summary>
+    [Fact]
+    [Trait("BR", "CH-367")]
+    public async Task ShouldSendTheTools_WhenBuiltWithAPolicyAndAStrategy()
+    {
+        using var handler = new MockHttpMessageHandler();
+        handler.EnqueueResponse(TextResponse);
+        var factory = CreateMockFactory(handler);
+        var config = CreateConfig(tools: new List<ToolSchema> { SampleToolSchema });
+        var (policy, executions) = CountingPolicy();
+
+        using var provider = new OpenAILlmProvider(config, factory, policy, new OpenAIToolCallingStrategy(NullLogger<OpenAIToolCallParser>.Instance));
+        await provider.ChatAsync(ToolTurn(), config, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(handler.CapturedRequestBody);
+        using var doc = JsonDocument.Parse(handler.CapturedRequestBody);
+        Assert.Equal(SampleToolSchema.Name,
+            doc.RootElement.GetProperty("tools")[0].GetProperty("function").GetProperty("name").GetString());
+        Assert.Equal(1, executions());
+    }
+
+    /// <summary>
+    /// Every concrete HTTP provider of <c>Orkeon.Infrastructure.LLMs</c> (the decorators aside) offers the public constructor
+    /// <c>(config, httpClientFactory, resiliencePolicy, toolCallingStrategy, logger)</c>, so no
+    /// vendor forces a choice between a custom policy and the text protocol (#367).
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-367")]
+    public void EveryProvider_ShouldTakeAPolicyAndAStrategyTogether()
+    {
+        var providers = typeof(OpenAILlmProvider).Assembly.GetTypes()
+            .Where(t => t is { IsClass: true, IsAbstract: false, IsPublic: true }
+                && t.Namespace == typeof(OpenAILlmProvider).Namespace
+                && typeof(Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase).IsAssignableFrom(t))
+            .ToList();
+
+        Assert.Equal(16, providers.Count);
+        Assert.All(providers, t =>
+        {
+            var parameters = t.GetConstructors()
+                .Select(c => c.GetParameters().Select(p => p.ParameterType).ToArray())
+                .Where(ps => ps.Length == 5)
+                .ToList();
+            Assert.Contains(parameters, ps =>
+                ps[0] == typeof(LlmConfig)
+                && ps[1] == typeof(IHttpClientFactory)
+                && ps[2] == typeof(IAsyncPolicy<HttpResponseMessage>)
+                && ps[3] == typeof(Orkeon.Application.Interfaces.LLM.IToolCallingStrategy)
+                && ps[4] == typeof(Microsoft.Extensions.Logging.ILogger<>).MakeGenericType(t));
+        });
+    }
+
+    /// <summary>A pass-through policy that counts the calls it wraps.</summary>
+    private static (IAsyncPolicy<HttpResponseMessage> Policy, Func<int> Executions) CountingPolicy()
+    {
+        var count = 0;
+        var policy = Policy
+            .HandleResult<HttpResponseMessage>(_ => Interlocked.Increment(ref count) < 0)
+            .RetryAsync(0);
+        return (policy, () => Volatile.Read(ref count));
     }
 
     #endregion

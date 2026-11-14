@@ -26,18 +26,22 @@ and refuses the echo rather than misfile your mail (see below).
 | `11-await-before-run.ork.ts` | A file read as the first top-level await, `crew.run()` as the second |
 | `12-events-async-handlers.ork.ts` | Topic handlers that await the LLM, then two crews run in sequence |
 | `13-email-triage.ork.ts` | `tools.email*` on a real mailbox: files unread mail by kind, drafts the replies for a human to send |
-| `14-decision-and-when.ork.ts` | A decision task (`choice`, `score`, `fallback`, `minConfidence`) and `when(...)` fan-out tasks, `"otherwise"` included |
+| `14-decision-and-when.ork.ts` | A decision task (`choice`, `score`, `fallback`, `minConfidence`) and `when(...)` fan-out tasks, `"otherwise"` included — declarative, handed off with `globalThis.crew = crew` |
 
-Every file above is the **procedural** shape — it runs its crew(s) with `await crew.run()`
+Every file above but `14` is the **procedural** shape — it runs its crew(s) with `await crew.run()`
 (`08-rag` has no crew and only exercises `rag.*`; `12` runs two in sequence) and never assigns
-`globalThis.crew`; each agent's `.body()` runs and tasks are ignored.
-[`crew-review-desk/`](crew-review-desk/README.md) is
-the other one: a three-agent crew with tasks, a dependency chain and a deliverable, handed
-off with `globalThis.crew = crew`. Mixing the two endings is the mistake this catalogue is
-arranged to prevent.
+`globalThis.crew`; each agent's `.body()` runs and tasks are ignored. What a file assigns to
+`globalThis.result` is what `orkeon run` prints: most end with
+`globalThis.result = await crew.run()`.
+`14` and [`crew-review-desk/`](crew-review-desk/README.md) are the other shape, the
+**declarative** one: tasks with dependencies, decisions and conditions, handed off with
+`globalThis.crew = crew` to the engine that runs them — `crew-review-desk/` is a three-agent crew
+with a dependency chain and a deliverable. `orkeon run 14-decision-and-when.ork.ts --no-decision`
+answers `triage` from its `fallback` without a decision model. Mixing the two endings is the
+mistake this catalogue is arranged to prevent.
 
-Every numbered file but `08-rag` and `13-email-triage` (they need a RAG backend and a real
-mailbox) is also run by the test suite against a provider that really suspends — `Task.Delay`
+Every numbered file but `08-rag`, `13-email-triage` (they need a RAG backend and a real
+mailbox) and the declarative `14` is also run by the test suite against a provider that really suspends — `Task.Delay`
 before every answer, the way an HTTP provider behaves — not only against the echo. `11` and
 `12` exist because the two shapes they use, an await before `crew.run()` and a topic handler
 that awaits, once hung under exactly that provider.

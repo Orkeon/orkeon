@@ -55,8 +55,12 @@ declare global {
      * it was declared and always empty, so `result.artifacts.get("x")` compiled and threw.
      */
     interface CrewResult {
-        /** The text of the last non-null agent output; `""` when no agent returned anything. */
-        readonly output: string;
+        /**
+         * The last agent output that was not `null` (a body returning `undefined` gives `null`),
+         * as the body returned it — the same value as its `tasks[i].output`, an object staying an
+         * object, `false`, `0` and `""` counting; `""` when every output was `null`.
+         */
+        readonly output: unknown;
         /** One entry per agent run, in the order they ran. */
         readonly tasks: readonly TaskResult[];
     }
@@ -107,8 +111,8 @@ declare global {
 
     /**
      * A method that refuses its argument, and `build()` refusing the crew (two agents of one name:
-     * `clrType` `"DuplicateAgentNameException"`), throws an `Error` the script catches
-     * (`try … catch`), its `clrType` `"InvalidScriptException"` otherwise.
+     * a `DuplicateAgentNameError`), throws an error the script catches (`try … catch`), an
+     * `InvalidScriptError` otherwise.
      */
     interface CrewBuilder {
         name(value: string): this;

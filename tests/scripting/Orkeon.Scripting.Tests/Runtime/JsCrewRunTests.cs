@@ -692,7 +692,7 @@ public sealed class JsCrewRunTests
 
         var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
-        Assert.StartsWith("receive_timeout|", result.output, StringComparison.Ordinal);
+        Assert.StartsWith("receive_timeout|", Assert.IsType<string>(result.output), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -813,5 +813,52 @@ public sealed class JsCrewRunTests
         var values = ((object[])stamps.ToObject()!).Select(v => Convert.ToInt64(v, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
         Assert.Equal(2, values.Length);
         Assert.All(values, at => Assert.InRange(at, before, after));
+    }
+
+    /// <summary>
+    /// The run's <c>output</c> is what the last body that returned something returned, the same
+    /// value as its task's <c>output</c>: an object stays an object, not its CLR type name
+    /// (<c>"System.Dynamic.ExpandoObject"</c>), for the script and for a CLR caller (#369).
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-369")]
+    public async Task ShouldGiveTheLastBodysValue_WhenTheRunsOutputIsAnObject()
+    {
+        var engine = NewEngine();
+
+        var shown = await engine.EvaluateAsync("""
+            const a = agentBuilder().name("A").role("R").goal("G").body(() => "first").build();
+            const b = agentBuilder().name("B").role("R").goal("G").body(() => ({ summary: "s", n: 2 })).build();
+            const c = agentBuilder().name("C").role("R").goal("G").body(() => undefined).build();
+            const crew = crewBuilder().withAgent(a).withAgent(b).withAgent(c).build();
+            (async () => {
+                const r = await crew.run();
+                return [typeof r.output, r.output.summary, r.output.n, JSON.stringify(r.output) === JSON.stringify(r.tasks[1].output)].join("|");
+            })()
+            """, cancellationToken: Ct).WaitAsync(HangGuards.EnginePromise, Ct);
+
+        Assert.Equal("object|s|2|true", shown.AsString());
+
+        var crew = Eval<JsCrew>(engine, "crew");
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
+        var output = Assert.IsType<IDictionary<string, object?>>(result.output, exactMatch: false);
+        Assert.Equal("s", output["summary"]);
+        Assert.Same(result.tasks[1].output, result.output);
+    }
+
+    /// <summary>A run where no body returned anything reports <c>""</c>; a string stays the string.</summary>
+    [Fact]
+    [Trait("BR", "CH-369")]
+    public async Task ShouldGiveAnEmptyString_WhenNoBodyReturnedAnything()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G").body(() => null).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
+
+        Assert.Equal("", result.output);
     }
 }

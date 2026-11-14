@@ -9,6 +9,13 @@ namespace Orkeon.Infrastructure.LLMs.ToolCalling;
 /// </summary>
 internal sealed class OpenAIToolCallingStrategy : IToolCallingStrategy
 {
+    /// <summary>
+    /// The strategy a provider built without one uses (#367): native tool calling, as
+    /// <see cref="LlmProviderFactory"/> wires it, the parser logging nowhere. Stateless, so shared.
+    /// </summary>
+    internal static OpenAIToolCallingStrategy Default { get; } =
+        new(Microsoft.Extensions.Logging.Abstractions.NullLogger<OpenAIToolCallParser>.Instance);
+
     /// <inheritdoc />
     public IToolSchemaFormatter Formatter { get; }
 

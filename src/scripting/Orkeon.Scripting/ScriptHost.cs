@@ -135,7 +135,7 @@ public sealed partial class ScriptHost
                 return new
                 {
                     crewName = jsCrew.name,
-                    finalOutput = crewResult.output ?? "(no aggregated output)",
+                    finalOutput = crewResult.output is null or "" ? "(no aggregated output)" : crewResult.output,
                     tasks = crewResult.tasks.Select(t => new
                     {
                         name = t.name,

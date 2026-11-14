@@ -20,9 +20,10 @@ declare global {
     }
 
     /**
-     * A method that refuses its argument, and `build()` missing a field, throws an `Error` the
-     * script catches (`try … catch`), its `clrType` `"InvalidScriptException"` — `"ArgumentException"`
-     * for a value the domain refuses (a description or expected output over its length limit).
+     * A method that refuses its argument, and `build()` missing a field, throws an
+     * `InvalidScriptError` the script catches (`try … catch`) — a plain `Error`, its `clrType`
+     * `"ArgumentException"`, for a value the domain refuses (a description or expected output
+     * over its length limit).
      */
     interface TaskBuilder<TIn = unknown, TOut = unknown> {
         name(value: string): this;

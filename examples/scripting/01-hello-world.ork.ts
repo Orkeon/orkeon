@@ -11,4 +11,4 @@ const crew = crewBuilder()
     .withAgent(greeter)
     .build();
 
-await crew.run();
+globalThis.result = await crew.run();

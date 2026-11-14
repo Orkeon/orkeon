@@ -14,6 +14,7 @@ using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs.Converters;
+using Orkeon.Infrastructure.LLMs.ToolCalling;
 using Orkeon.Infrastructure.Security;
 
 namespace Orkeon.Infrastructure.LLMs.Base;
@@ -125,7 +126,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
     private readonly IToolCallingStrategy? _toolCallingStrategy;
 
-    /// <summary>Initializes a new instance of <see cref="OpenAICompatibleProviderBase"/>.</summary>
+    /// <summary>
+    /// Initializes a new instance of <see cref="OpenAICompatibleProviderBase"/> with native tool
+    /// calling: an agent's tools go out as the request's <c>tools</c>, as when
+    /// <see cref="LlmProviderFactory"/> builds the provider (#367).
+    /// </summary>
     /// <param name="config">The LLM configuration.</param>
     /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <param name="logger">Optional logger.</param>
@@ -135,9 +140,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         ILogger? logger = null)
         : base(config, httpClientFactory, logger)
     {
+        _toolCallingStrategy = OpenAIToolCallingStrategy.Default;
     }
 
-    /// <summary>Initializes a new instance of <see cref="OpenAICompatibleProviderBase"/> with an explicit resilience policy.</summary>
+    /// <summary>
+    /// Initializes a new instance of <see cref="OpenAICompatibleProviderBase"/> with an explicit
+    /// resilience policy and native tool calling.
+    /// </summary>
     /// <param name="config">The LLM configuration.</param>
     /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <param name="resiliencePolicy">Optional custom resilience policy.</param>
@@ -149,9 +158,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         ILogger? logger = null)
         : base(config, httpClientFactory, resiliencePolicy, logger)
     {
+        _toolCallingStrategy = OpenAIToolCallingStrategy.Default;
     }
 
-    /// <summary>Initializes a new instance of <see cref="OpenAICompatibleProviderBase"/> with a tool calling strategy.</summary>
+    /// <summary>
+    /// Initializes a new instance of <see cref="OpenAICompatibleProviderBase"/> with a tool calling
+    /// strategy; <see langword="null"/> sends no <c>tools</c>, leaving the text protocol in charge.
+    /// </summary>
     protected OpenAICompatibleProviderBase(
         LlmConfig config,
         IHttpClientFactory httpClientFactory,

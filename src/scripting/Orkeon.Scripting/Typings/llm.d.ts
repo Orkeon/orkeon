@@ -43,7 +43,7 @@ declare global {
 
         /**
          * Returns a copy with the given fields overridden. Any other key, or a value out of its domain,
-         * throws an `Error` the script catches (its `clrType` is `"InvalidScriptException"`).
+         * throws an `InvalidScriptError` the script catches.
          */
         with(overrides: LlmConfigOverrides): LlmConfig;
     }
@@ -152,8 +152,8 @@ declare global {
          * One of the host's named profiles (`Llm:Profiles:<name>`), on its own model unless
          * `overrides.model` names another. An agent configured with it runs on that profile's
          * provider — its turns and its `ctx.llm` calls. `"default"` is `llm.default_`. A name the
-         * host does not offer throws an `Error` the script catches (`try … catch`), listing the
-         * known profiles, its `clrType` `"InvalidScriptException"`; `llm.profiles` tells beforehand
+         * host does not offer throws an `InvalidScriptError` the script catches (`try … catch`),
+         * listing the known profiles; `llm.profiles` tells beforehand
          * whether a name is one of them.
          */
         function profile(name: string, overrides?: LlmConfigOverrides): LlmConfig;

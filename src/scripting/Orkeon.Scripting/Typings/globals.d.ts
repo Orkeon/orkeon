@@ -29,8 +29,8 @@ declare global {
     /**
      * What the runner reports as the run's result. Optional: the value of the last
      * expression is used when a script never assigns it. Whatever goes here is serialised
-     * to JSON, so assign a plain projection -- a `CrewResult` holds host objects and does
-     * not survive the trip.
+     * to JSON: a `CrewResult` goes whole (`output` and `tasks`), a plain projection only
+     * what it names.
      */
     var result: unknown;
 }

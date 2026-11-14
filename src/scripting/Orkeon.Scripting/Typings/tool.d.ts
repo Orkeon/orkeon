@@ -22,8 +22,8 @@ declare global {
     }
 
     /**
-     * A method that refuses its argument, and `build()` missing a field, throws an `Error` the
-     * script catches (`try … catch`), its `clrType` `"InvalidScriptException"`.
+     * A method that refuses its argument, and `build()` missing a field, throws an
+     * `InvalidScriptError` the script catches (`try … catch`).
      */
     interface ToolBuilder<TIn = unknown, TOut = unknown> {
         name(value: string): this;

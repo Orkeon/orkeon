@@ -41,8 +41,14 @@
          project referenced, and the wrapper's is Orkeon.Tools.Embeddings.Local.Package (its
          public id is applied at pack time only). The wrapped project restores as
          Orkeon.Tools.Embeddings.Local, the id the lineup publishes - scripts/check-package-closure.py
-         accepts this reference for that reason. -->
-    <ProjectReference Include="..\..\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
+         accepts this reference for that reason.
+         PrivateAssets="none": NuGet narrows the assets of SmartComponents.LocalEmbeddings to
+         what every link from the consumer lets through. The default here wrote
+         exclude="Build,Analyzers" on this dependency, so a consumer of Orkeon.Scripting alone
+         never ran build/SmartComponents.LocalEmbeddings.targets, got no model, and the
+         AddOrkeonLocalEmbeddings() of RunnerHost threw at startup (#368).
+         scripts/check-package-closure.py refuses that default here. -->
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" PrivateAssets="none" />
   </ItemGroup>
 
   <!-- Externals of the embedded assemblies that none of the three dependencies carries.

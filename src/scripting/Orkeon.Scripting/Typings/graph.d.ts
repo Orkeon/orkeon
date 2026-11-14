@@ -83,8 +83,7 @@ declare global {
 
     /**
      * Builds a graph from a literal. A literal it refuses (a bad shape, an invalid topology:
-     * every fault in one message) throws an `Error` the script catches, its `clrType`
-     * `"InvalidScriptException"`.
+     * every fault in one message) throws an `InvalidScriptError` the script catches.
      *
      * `TState` cannot be inferred from the node bodies -- a node both takes and returns the
      * state, so inference is circular -- and falls back to `Record<string, unknown>`, which

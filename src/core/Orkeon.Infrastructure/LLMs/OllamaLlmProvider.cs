@@ -13,6 +13,7 @@ using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
 using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs.Converters;
+using Orkeon.Infrastructure.LLMs.ToolCalling;
 using Orkeon.Infrastructure.Security;
 using Orkeon.Constants.Configuration;
 
@@ -78,7 +79,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     private readonly IToolCallingStrategy? _toolCallingStrategy;
 
     /// <summary>
-    /// Initializes a new instance of the OllamaLlmProvider class.
+    /// Initializes a new instance of the OllamaLlmProvider class with the native <c>/api/chat</c>
+    /// tool protocol: an agent's tools go out as the request's <c>tools</c>, as when
+    /// <see cref="LlmProviderFactory"/> builds the provider (#367).
     /// </summary>
     public OllamaLlmProvider(
         LlmConfig config,
@@ -88,10 +91,12 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     {
         ArgumentNullException.ThrowIfNull(config);
         _baseUrl = ResolveBaseUrl(config);
+        _toolCallingStrategy = OpenAIToolCallingStrategy.Default;
     }
 
     /// <summary>
-    /// Constructor overload that accepts an optional resilience policy for testing.
+    /// Constructor overload that accepts an optional resilience policy for testing, with the
+    /// native tool protocol.
     /// </summary>
     public OllamaLlmProvider(
         LlmConfig config,
@@ -101,11 +106,13 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         : base(config, httpClientFactory, resiliencePolicy, logger)
     {
         _baseUrl = ResolveBaseUrl(config);
+        _toolCallingStrategy = OpenAIToolCallingStrategy.Default;
     }
 
     /// <summary>
     /// Constructor overload that accepts a tool calling strategy, enabling the native
-    /// <c>/api/chat</c> tool protocol (LLM-07).
+    /// <c>/api/chat</c> tool protocol (LLM-07); <see langword="null"/> sends no <c>tools</c>,
+    /// leaving the text protocol in charge.
     /// </summary>
     public OllamaLlmProvider(
         LlmConfig config,
@@ -113,6 +120,23 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         IToolCallingStrategy? toolCallingStrategy,
         ILogger<OllamaLlmProvider>? logger = null)
         : base(config, httpClientFactory, logger)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        _baseUrl = ResolveBaseUrl(config);
+        _toolCallingStrategy = toolCallingStrategy;
+    }
+
+    /// <summary>
+    /// Constructor overload that accepts both a resilience policy and a tool calling strategy;
+    /// <see langword="null"/> for the strategy sends no <c>tools</c>, leaving the text protocol in charge.
+    /// </summary>
+    public OllamaLlmProvider(
+        LlmConfig config,
+        IHttpClientFactory httpClientFactory,
+        IAsyncPolicy<HttpResponseMessage>? resiliencePolicy,
+        IToolCallingStrategy? toolCallingStrategy,
+        ILogger<OllamaLlmProvider>? logger = null)
+        : base(config, httpClientFactory, resiliencePolicy, logger)
     {
         ArgumentNullException.ThrowIfNull(config);
         _baseUrl = ResolveBaseUrl(config);

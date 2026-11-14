@@ -12,4 +12,4 @@ const summarizer = agentBuilder()
     .build();
 
 const crew = crewBuilder().withAgent(summarizer).build();
-await crew.run();
+globalThis.result = await crew.run();

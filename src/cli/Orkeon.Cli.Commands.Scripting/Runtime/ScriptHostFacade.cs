@@ -364,17 +364,22 @@ public sealed partial class ScriptHostFacade
         if (result is string s)
             return new CrewRunOutput { ok = true, summary = s, artifacts = s, streamed = streamed };
 
-        // ScriptHost returns an anonymous { crewName, finalOutput, tasks } for crew runs.
-        var finalOutput = TryGetStringProperty(result, "finalOutput");
+        // ScriptHost returns an anonymous { crewName, finalOutput, tasks } for crew runs; a
+        // finalOutput that is not a string (the last body returned an object, #369) is its JSON.
+        var finalOutput = TryGetTextProperty(result, "finalOutput");
         string? summary = finalOutput ?? SafeSerialize(result);
         return new CrewRunOutput { ok = true, summary = summary, artifacts = result, streamed = streamed };
     }
 
-    private static string? TryGetStringProperty(object obj, string propertyName)
+    private static string? TryGetTextProperty(object obj, string propertyName)
     {
         var prop = obj.GetType().GetProperty(propertyName);
-        var value = prop?.GetValue(obj);
-        return value?.ToString();
+        return prop?.GetValue(obj) switch
+        {
+            null => null,
+            string text => text,
+            var value => SafeSerialize(value),
+        };
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Defensive serialization: any JsonSerializer failure on an arbitrary crew result falls back to ToString so summary rendering can never throw.")]

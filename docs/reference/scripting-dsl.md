@@ -94,9 +94,10 @@ per dropped declaration, naming the method and the agent it was written on. It i
 dropped — the two shapes are two engines.
 
 **What `await crew.run()` resolves to** — a `CrewResult`, exactly what `crew.d.ts` declares:
-`output`, the text of the last agent output that was not `null` (`""` when no agent returned
-anything), and `tasks`, one `{ name, output, durationMs }` per agent run, in the order they ran,
-`output` being what the body returned. Nothing more: no `artifacts` map, and `output` is always a string;
+`output`, the last agent output that was not `null`, as the body returned it — the same value as
+that run's `tasks[i].output`, an object staying an object (`""` when no agent returned anything) —
+and `tasks`, one `{ name, output, durationMs }` per agent run, in the order they ran, `output` being
+what the body returned. Nothing more: no `artifacts` map.
 `TypingsRuntimeParityTests` compares the two result shapes type by type.
 
 #### `process("graph")` is not `stateGraph`
@@ -158,7 +159,7 @@ Three names the runner exchanges with the script, declared in `globals.d.ts`.
 |---|---|---|
 | `crew` | script → runner | The declarative handoff. Assigning it *is* what selects the declarative engine. |
 | `inputs` | runner → script | What `--inputs` / `--inputs-file` parsed — or the `input` of the REPL's `script-host.runCrew(name, input)`. Procedural shape only. |
-| `result` | script → runner | What a procedural run reports when the script's completion value is `undefined` — which is always the case once the file has a top-level `await`, because it then runs wrapped in an async function. Assign it as `globalThis.result = …`: a top-level `const result` is local to that wrapper. Serialised to JSON, so assign a plain projection — a `CrewResult` holds host objects and does not survive the trip. |
+| `result` | script → runner | What a procedural run reports when the script's completion value is `undefined` — which is always the case once the file has a top-level `await`, because it then runs wrapped in an async function. Assign it as `globalThis.result = …`: a top-level `const result` is local to that wrapper. Serialised to JSON: a `CrewResult` goes whole — its `output` and one `{ name, output, durationMs }` per agent under `tasks` — and a plain projection prints only what it names. Left unassigned, the run prints `{"result": null}`. |
 
 ## `ctx` — the agent context
 
@@ -310,12 +311,14 @@ A host failure reaches the script as an instance of the class `errors.d.ts` decl
 — with that class's fields (`agentName`, `timeoutMs`…), plus `clrType` (the .NET type name) and
 `clr` (the exception). A failure with no declared class is a plain `Error` with the same two
 properties. A builder or factory method that refuses its argument — `agentBuilder().effort("turbo")`, a
-`build()` missing a field, a `stateGraph(...)` literal with a bad topology — throws such an `Error`
-(`try … catch`): the message names the fault, `clrType` the .NET exception behind it
-(`"InvalidScriptException"`, `"ArgumentException"` for a value over a domain limit), so a script that
-builds from data can fall back to a default. The engine's own limits (time, memory, recursion) are not
-refusals: they stop the script whatever it catches. An `onError` handler receives `{ code, message, exception, attempt, agent: { id,
-name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
+`build()` missing a field, a `stateGraph(...)` literal with a bad topology, `llm.profile("ghost")` —
+throws an `InvalidScriptError` (`clrType` `"InvalidScriptException"`) the script catches, and an
+awaited `ctx.llm.*` call refused the same way rejects with one: the message names the fault, so a
+script that builds from data tests `e instanceof InvalidScriptError` and falls back to a default. A
+value over a domain limit stays a plain `Error`, its `clrType` `"ArgumentException"`, and so does
+an out-of-range `ErrorAction.retry` delay (`"OverflowException"`). The engine's own limits (time,
+memory, recursion) are not refusals: they stop the script whatever it catches. An `onError` handler
+receives `{ code, message, exception, attempt, agent: { id, name } }` and the context; `code` is one of `rate_limit`, `network`, `timeout`,
 `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked`, `unknown`.
 
 ## The namespaces
@@ -392,7 +395,7 @@ An edge is a node name, `END`, or a function of the state returning one (a condi
 (`{ fromNode, toNode, state }`) for `for await`.
 
 `stateGraph(...)` checks the graph's shape when it is built, with the validator the Domain engine
-and the crew's graph share (ADR-018), and reports **every** fault in one `Error` the script catches (`clrType` `"InvalidScriptException"`): an edge from or to
+and the crew's graph share (ADR-018), and reports **every** fault in one `InvalidScriptError` the script catches: an edge from or to
 an undeclared node, a node with no outgoing edge, a node nothing reaches (an orphan), no path from `START` to `END`, a node
 that cannot reach `END`. A function edge cannot be read before it runs, so it is assumed to be able to lead anywhere,
 `END` included. Each time the loop enters a node, a `graph.node.entered` event goes to the host

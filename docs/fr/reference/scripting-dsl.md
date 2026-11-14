@@ -98,10 +98,11 @@ un avertissement par déclaration abandonnée, en nommant la méthode et l'agent
 était écrite. C'est toujours abandonné — les deux formes sont deux moteurs.
 
 **Ce que rend `await crew.run()`** — un `CrewResult`, exactement ce que déclare `crew.d.ts` :
-`output`, le texte de la dernière sortie d'agent qui n'était pas `null` (`""` quand aucun agent
-n'a rien rendu), et `tasks`, une entrée `{ name, output, durationMs }` par exécution d'agent,
+`output`, la dernière sortie d'agent qui n'était pas `null`, telle que le corps l'a rendue — la même
+valeur que le `tasks[i].output` de cette exécution, un objet restant un objet (`""` quand aucun agent
+n'a rien rendu) — et `tasks`, une entrée `{ name, output, durationMs }` par exécution d'agent,
 dans l'ordre où ils ont tourné, `output` étant ce que le corps a rendu. Rien de plus : aucune table
-`artifacts`, et `output` est toujours une chaîne ; `TypingsRuntimeParityTests` compare les deux
+`artifacts`. `TypingsRuntimeParityTests` compare les deux
 formes de résultat type par type.
 
 #### `process("graph")` n'est pas `stateGraph`
@@ -166,7 +167,7 @@ Trois noms que le runner échange avec le script, déclarés dans `globals.d.ts`
 |---|---|---|
 | `crew` | script → runner | Le handoff déclaratif. L'affecter *est* ce qui sélectionne le moteur déclaratif. |
 | `inputs` | runner → script | Ce que `--inputs` / `--inputs-file` a analysé — ou l'`input` de `script-host.runCrew(name, input)` dans le REPL. Forme procédurale uniquement. |
-| `result` | script → runner | Ce qu'un run procédural rapporte quand la valeur de complétion du script est `undefined` — ce qui est toujours le cas dès que le fichier a un `await` de premier niveau, puisqu'il s'exécute alors enveloppé dans une fonction async. Affectez-la sous la forme `globalThis.result = …` : un `const result` de premier niveau reste local à cette enveloppe. Sérialisé en JSON : affectez une projection simple — un `CrewResult` porte des objets hôtes et ne survit pas au voyage. |
+| `result` | script → runner | Ce qu'un run procédural rapporte quand la valeur de complétion du script est `undefined` — ce qui est toujours le cas dès que le fichier a un `await` de premier niveau, puisqu'il s'exécute alors enveloppé dans une fonction async. Affectez-la sous la forme `globalThis.result = …` : un `const result` de premier niveau reste local à cette enveloppe. Sérialisé en JSON : un `CrewResult` passe entier — son `output` et un `{ name, output, durationMs }` par agent sous `tasks` — et une projection simple n'affiche que ce qu'elle nomme. Non affectée, le run affiche `{"result": null}`. |
 
 ## `ctx` — le contexte d'agent
 
@@ -335,11 +336,14 @@ Un échec côté hôte parvient au script comme une instance de la classe que d�
 .NET) et `clr` (l'exception). Un échec sans classe déclarée est un simple `Error` qui porte ces
 deux mêmes propriétés. Une méthode de builder ou de fabrique qui refuse son argument —
 `agentBuilder().effort("turbo")`, un `build()` auquel manque un champ, un littéral `stateGraph(...)` à
-la topologie fautive — lève une telle `Error` (`try … catch`) : le message nomme la faute, `clrType`
-l'exception .NET derrière (`"InvalidScriptException"`, `"ArgumentException"` pour une valeur au-delà
-d'une limite du domaine), si bien qu'un script qui construit à partir de données peut se rabattre sur
-une valeur par défaut. Les limites propres du moteur (temps, mémoire, récursion) ne sont pas des refus :
-elles arrêtent le script quoi qu'il rattrape. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
+la topologie fautive, `llm.profile("ghost")` — lève une `InvalidScriptError` (`clrType`
+`"InvalidScriptException"`) que le script rattrape, et un appel `ctx.llm.*` attendu refusé de la même
+façon est rejeté avec elle : le message nomme la faute, si bien qu'un script qui construit à partir de
+données teste `e instanceof InvalidScriptError` et se rabat sur une valeur par défaut. Une valeur
+au-delà d'une limite du domaine reste un simple `Error`, de `clrType` `"ArgumentException"`, tout
+comme un délai `ErrorAction.retry` hors bornes (`"OverflowException"`). Les limites propres du
+moteur (temps, mémoire, récursion) ne sont pas des refus : elles arrêtent le script quoi qu'il
+rattrape. Un gestionnaire `onError` reçoit `{ code, message, exception, attempt,
 agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `timeout`,
 `receive_timeout`, `state_mutation`, `agent_not_in_crew`, `validation`, `decision_blocked` ou `unknown`.
 
@@ -419,7 +423,7 @@ temps annule le run. `runStream(state)` produit chaque saut (`{ fromNode, toNode
 pour un `for await`.
 
 `stateGraph(...)` vérifie la forme du graphe à sa construction, avec le validateur que partagent le moteur du
-Domain et le graphe d'une crew (ADR-018), et signale **toutes** les fautes dans une seule `Error` que le script rattrape (`clrType` `"InvalidScriptException"`) : une arête depuis ou
+Domain et le graphe d'une crew (ADR-018), et signale **toutes** les fautes dans une seule `InvalidScriptError` que le script rattrape : une arête depuis ou
 vers un nœud non déclaré, un nœud sans arête sortante, un nœud que rien n'atteint (un orphelin), aucun chemin de `START` à `END`,
 un nœud qui ne peut pas atteindre `END`. Une arête fonction ne se lit pas avant de s'exécuter : on suppose qu'elle peut mener
 n'importe où, `END` compris. Chaque fois que la boucle entre dans un nœud, un événement `graph.node.entered` part vers l'hôte

@@ -38,4 +38,4 @@ const agent = agentBuilder()
     .build();
 
 const crew = crewBuilder().withAgent(agent).build();
-await crew.run();
+globalThis.result = await crew.run();

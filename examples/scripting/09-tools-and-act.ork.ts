@@ -65,8 +65,8 @@ const crew = crewBuilder().name("release-desk").withAgent(analyst).build();
 
 // The CLI prints `globalThis.result`, not the return of `crew.run()`. A script that only
 // calls `await crew.run()` prints `{ "result": null }` — the work happened, nothing was
-// handed back. Assign a PLAIN object: the CrewResult itself is a CLR object the serializer
-// refuses, and you get a ToString() fallback instead of your data.
+// handed back. The CrewResult itself prints whole (`output` and `tasks`); this file
+// projects it to keep only the fields it wants.
 const res = await crew.run();
 globalThis.result = {
     output: res.output,

@@ -8,6 +8,12 @@ namespace Orkeon.Infrastructure.LLMs.ToolCalling;
 /// </summary>
 internal sealed class AnthropicToolCallingStrategy : IToolCallingStrategy
 {
+    /// <summary>
+    /// The strategy an Anthropic provider built without one uses (#367): native tool calling, as
+    /// <see cref="LlmProviderFactory"/> wires it. Stateless, so shared.
+    /// </summary>
+    internal static AnthropicToolCallingStrategy Default { get; } = new();
+
     /// <inheritdoc />
     public IToolSchemaFormatter Formatter { get; } = new AnthropicToolSchemaFormatter();
 

@@ -38,7 +38,25 @@ public sealed class ChatStreamingTests : IDisposable
         Assert.Equal(HelloWorldDeltas, deltas);
         var completed = Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed);
         Assert.Equal("Hello world", completed.FinalResponse!.Content);
-        Assert.Null(completed.FinalResponse.RawResponseBody); // no tool calls streamed
+        // Native protocol by default (#367): the buffered body is rebuilt, its content the assembled text (GAP-32).
+        Assert.Contains("Hello world", completed.FinalResponse.RawResponseBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-367")]
+    public async Task ChatStreaming_on_the_text_protocol_completes_without_a_raw_body()
+    {
+        var sse = BuildSseStream(
+            """{"choices":[{"delta":{"content":"Hello"}}]}""",
+            """{"choices":[{"delta":{"content":" world"}}]}""");
+        using var provider = CreateDeepSeekProvider(sse, toolCallingStrategy: null);
+
+        var events = await Collect(provider.ChatStreamingAsync(OneUserMessage, cancellationToken: TestContext.Current.CancellationToken));
+
+        var completed = Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed);
+        Assert.Equal("Hello world", completed.FinalResponse!.Content);
+        // An explicit null strategy keeps the text protocol (#367): no vendor body is rebuilt.
+        Assert.Null(completed.FinalResponse.RawResponseBody);
     }
 
     [Fact]
@@ -196,7 +214,7 @@ public sealed class ChatStreamingTests : IDisposable
 
     /// <summary>A provider on the native protocol, as <c>LlmProviderFactory</c> builds every one.</summary>
     private DeepSeekLlmProvider CreateDeepSeekProvider(
-        string sseBody, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy toolCallingStrategy)
+        string sseBody, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy)
     {
         SetupHttpClient(sseBody, HttpStatusCode.OK);
         var config = LlmConfig.Create("deepseek-chat") with { MaxRetries = 0, ApiKey = "sk-test" };

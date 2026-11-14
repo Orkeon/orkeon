@@ -507,7 +507,7 @@ public sealed class EngineThreadingContractTests
             var res = await crew.RunAsync(null, TestContext.Current.CancellationToken)
                 .WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken);
 
-            var parts = res.output!.Split('|');
+            var parts = Assert.IsType<string>(res.output).Split('|');
             Assert.Equal("d0d1d2", parts[2]);
             Assert.Equal(3, parts[1].Split(',').Length);
             Assert.All(parts[1].Split(','), tid => Assert.Equal(parts[0], tid));

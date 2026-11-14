@@ -11,6 +11,7 @@ using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs.Base;
 using Orkeon.Infrastructure.LLMs.Capabilities;
 using Orkeon.Infrastructure.LLMs.Converters;
+using Orkeon.Infrastructure.LLMs.ToolCalling;
 
 namespace Orkeon.Infrastructure.LLMs;
 
@@ -65,6 +66,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         ILogger<AnthropicLlmProvider>? logger = null)
         : base(config, httpClientFactory, logger)
     {
+        _toolCallingStrategy = AnthropicToolCallingStrategy.Default;
     }
 
     /// <summary>
@@ -77,6 +79,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         ILogger<AnthropicLlmProvider>? logger = null)
         : base(config, httpClientFactory, resiliencePolicy, logger)
     {
+        _toolCallingStrategy = AnthropicToolCallingStrategy.Default;
     }
 
     /// <summary>
@@ -92,6 +95,21 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         IToolCallingStrategy? toolCallingStrategy,
         ILogger<AnthropicLlmProvider>? logger = null)
         : base(config, httpClientFactory, logger)
+    {
+        _toolCallingStrategy = toolCallingStrategy;
+    }
+
+    /// <summary>
+    /// Constructor overload that accepts both a resilience policy and a tool calling strategy;
+    /// <see langword="null"/> for the strategy sends no <c>tools</c>, leaving the text protocol in charge.
+    /// </summary>
+    public AnthropicLlmProvider(
+        LlmConfig config,
+        IHttpClientFactory httpClientFactory,
+        IAsyncPolicy<HttpResponseMessage>? resiliencePolicy,
+        IToolCallingStrategy? toolCallingStrategy,
+        ILogger<AnthropicLlmProvider>? logger = null)
+        : base(config, httpClientFactory, resiliencePolicy, logger)
     {
         _toolCallingStrategy = toolCallingStrategy;
     }
