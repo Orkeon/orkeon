@@ -186,6 +186,18 @@ public class SymbolDetailToolTests
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(200)]
+    public void ShouldAcceptMaxChildrenFromOneToTwoHundred_WhenValidated(int value)
+    {
+        using var tool = new SymbolDetailTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new SymbolDetailRequest { Fqn = "/src::a" } with { MaxChildren = value });
+
+        Assert.Null(error);
+    }
+
+    [Theory]
     [InlineData(201)]
     [InlineData(1000)]
     public void ShouldRefuseMaxChildrenAboveTwoHundred_WhenValidated(int value)

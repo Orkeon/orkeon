@@ -154,4 +154,16 @@ public class CodebaseMapToolTests
 
         Assert.Equal($"max_entries must be at least 1 (got {value}); omit it for the default of 200", error);
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptMaxEntriesFromOne_WhenValidated(int value)
+    {
+        using var tool = new CodebaseMapTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new CodebaseMapRequest { Level = NodeLevel.L2_Module } with { MaxEntries = value });
+
+        Assert.Null(error);
+    }
 }

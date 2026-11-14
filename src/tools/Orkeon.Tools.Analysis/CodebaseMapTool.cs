@@ -8,6 +8,7 @@ using Orkeon.Analysis.Core;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Analysis.Internal;
 
 namespace Orkeon.Tools.Analysis;
 
@@ -58,7 +59,7 @@ public sealed class CodebaseMapTool : ToolBase<CodebaseMapRequest, CodebaseMapRe
             {
                 Level = request.Level,
                 RootFqn = string.IsNullOrEmpty(request.RootFqn) ? null : request.RootFqn,
-                Take = maxEntries + 1,
+                Take = PageProbe.OnePast(maxEntries),
             };
             var nodes = await _store.QueryAsync(query, cancellationToken).ConfigureAwait(false);
             var truncated = nodes.Count > maxEntries;

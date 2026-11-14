@@ -64,4 +64,16 @@ public class ComplexityReportToolTests
 
         Assert.Equal($"top_n must be at least 1 (got {value}); omit it for the default of 20", error);
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptTopNFromOne_WhenValidated(int value)
+    {
+        using var tool = new ComplexityReportTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new ComplexityReportRequest { Metric = ComplexityMetric.Cyclomatic } with { TopN = value });
+
+        Assert.Null(error);
+    }
 }

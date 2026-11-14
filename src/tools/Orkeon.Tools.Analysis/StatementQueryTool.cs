@@ -6,6 +6,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Analysis.Internal;
 
 namespace Orkeon.Tools.Analysis;
 
@@ -48,11 +49,11 @@ public sealed class StatementQueryTool : ToolBase<StatementQueryRequest, Stateme
             var topK = request.TopK;
 
             // One hit past the page: truncated says that more statements match, never that the page is full (#283).
-            var hits = await CollectHitsAsync(parents, kinds, topK + 1, cancellationToken).ConfigureAwait(false);
+            var hits = await CollectHitsAsync(parents, kinds, PageProbe.OnePast(topK), cancellationToken).ConfigureAwait(false);
 
             if (!string.IsNullOrEmpty(request.SemanticQuery))
             {
-                hits = await RankBySemanticScoreAsync(hits, request.SemanticQuery, topK + 1, cancellationToken).ConfigureAwait(false);
+                hits = await RankBySemanticScoreAsync(hits, request.SemanticQuery, PageProbe.OnePast(topK), cancellationToken).ConfigureAwait(false);
             }
 
             return new StatementQueryResponse

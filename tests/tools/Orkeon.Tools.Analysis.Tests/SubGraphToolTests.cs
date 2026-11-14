@@ -129,6 +129,18 @@ public class SubGraphToolTests
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptDepthFromOne_WhenValidated(int value)
+    {
+        using var tool = new SubGraphTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new SubGraphRequest { Seeds = ["/src::a"] } with { Depth = value });
+
+        Assert.Null(error);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     public void ShouldRefuseMaxNodesBelowOne_WhenValidated(int value)
@@ -138,5 +150,17 @@ public class SubGraphToolTests
         var error = tool.ValidateTypedForTest(new SubGraphRequest { Seeds = ["/src::a"] } with { MaxNodes = value });
 
         Assert.Equal($"max_nodes must be at least 1 (got {value}); omit it for the default of 100", error);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptMaxNodesFromOne_WhenValidated(int value)
+    {
+        using var tool = new SubGraphTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new SubGraphRequest { Seeds = ["/src::a"] } with { MaxNodes = value });
+
+        Assert.Null(error);
     }
 }

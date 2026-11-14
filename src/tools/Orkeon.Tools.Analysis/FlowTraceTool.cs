@@ -8,6 +8,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Analysis.Internal;
 
 namespace Orkeon.Tools.Analysis;
 
@@ -82,7 +83,7 @@ public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse
                     Direction = request.Direction,
                     MaxDepth = request.MaxDepth,
                     // One path past the page: truncated says that more paths exist, never that the page is full (#283).
-                    MaxPaths = maxPaths + 1,
+                    MaxPaths = PageProbe.OnePast(maxPaths),
                 },
                 cancellationToken).ConfigureAwait(false);
             return new FlowTraceResponse

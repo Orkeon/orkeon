@@ -109,4 +109,16 @@ public class StatementQueryToolTests
 
         Assert.Equal($"top_k must be at least 1 (got {value}); omit it for the default of 50", error);
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptTopKFromOne_WhenValidated(int value)
+    {
+        using var tool = new StatementQueryTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new StatementQueryRequest { ParentFqns = TestGraph.Arr("/src::a") } with { TopK = value });
+
+        Assert.Null(error);
+    }
 }

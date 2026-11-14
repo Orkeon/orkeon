@@ -165,6 +165,18 @@ public class FlowTraceToolTests
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptMaxDepthFromOne_WhenValidated(int value)
+    {
+        using var tool = new FlowTraceTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new FlowTraceRequest { From = "/src::a" } with { MaxDepth = value });
+
+        Assert.Null(error);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     public void ShouldRefuseMaxPathsBelowOne_WhenValidated(int value)
@@ -174,5 +186,17 @@ public class FlowTraceToolTests
         var error = tool.ValidateTypedForTest(new FlowTraceRequest { From = "/src::a" } with { MaxPaths = value });
 
         Assert.Equal($"max_paths must be at least 1 (got {value}); omit it for the default of 20", error);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptMaxPathsFromOne_WhenValidated(int value)
+    {
+        using var tool = new FlowTraceTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new FlowTraceRequest { From = "/src::a" } with { MaxPaths = value });
+
+        Assert.Null(error);
     }
 }

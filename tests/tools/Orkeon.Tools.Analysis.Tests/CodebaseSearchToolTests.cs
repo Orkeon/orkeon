@@ -264,4 +264,16 @@ public class CodebaseSearchToolTests
 
         Assert.Equal($"top_k must be at least 1 (got {value}); omit it for the default of 10", error);
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptTopKFromOne_WhenValidated(int value)
+    {
+        using var tool = new CodebaseSearchTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new CodebaseSearchRequest { Query = "q" } with { TopK = value });
+
+        Assert.Null(error);
+    }
 }

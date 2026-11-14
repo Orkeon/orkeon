@@ -93,7 +93,7 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
     private async Task<(IReadOnlyList<RaggableNode> Nodes, bool Truncated)> ResolveNodesAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
     {
         var maxNodes = Math.Max(1, request.MaxNodes);
-        var probe = maxNodes + 1;
+        var probe = PageProbe.OnePast(maxNodes);
         // The root goes into the query: the page and truncated then describe the root's subset, not the whole scope.
         var root = string.IsNullOrEmpty(request.RootFqn) ? null : request.RootFqn;
         IReadOnlyList<RaggableNode> nodes;

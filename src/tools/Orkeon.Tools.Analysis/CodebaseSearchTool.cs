@@ -5,6 +5,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Analysis.Internal;
 
 namespace Orkeon.Tools.Analysis;
 
@@ -56,7 +57,7 @@ public sealed class CodebaseSearchTool : ToolBase<CodebaseSearchRequest, Codebas
             var query = new SemanticQuery
             {
                 Text = request.Query,
-                TopK = topK + 1,
+                TopK = PageProbe.OnePast(topK),
                 MinScore = request.MinScore,
                 PreFilter = preFilter,
                 Mode = request.Mode,

@@ -168,7 +168,9 @@ Migration:
   `depth` and `max_nodes`, `flow_trace` `max_paths`, `codebase_search` and `statement_query` `top_k`,
   `complexity_report` `top_n`, `symbol_detail` `max_children` (also refused above 200), `symbol_source` `max_lines`
   and `codebase_map` `max_entries` (where 0 was silently read as 1). On a Find, `mongodb_query` refuses a `limit` below 1
-  (MongoDB reads 0 as "no limit": the whole collection came back) and a negative `skip`.
+  (MongoDB reads 0 as "no limit": the whole collection came back) and a negative `skip`. A limit of `int.MaxValue` on
+  `codebase_search`, `statement_query`, `flow_trace`, `codebase_map` or `dependency_graph` no longer overflows the
+  one-past probe that sets `truncated`, which asked the store for nothing.
 
 - A consumer of `Orkeon.Tools.Embeddings.Local` or `Orkeon.Scripting` gets the BGE-micro-v2 model (#368). The
   `SmartComponents.LocalEmbeddings` package (~40 KB) carries no weights: its `build/` target downloads `model.onnx`

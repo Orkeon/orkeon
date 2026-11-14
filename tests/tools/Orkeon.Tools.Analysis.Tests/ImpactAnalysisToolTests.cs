@@ -100,6 +100,18 @@ public class ImpactAnalysisToolTests
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptMaxDepthFromOne_WhenValidated(int value)
+    {
+        using var tool = new ImpactAnalysisTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new ImpactAnalysisRequest { Target = "/src::a" } with { MaxDepth = value });
+
+        Assert.Null(error);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     public void ShouldRefuseMaxNodesBelowOne_WhenValidated(int value)
@@ -109,5 +121,17 @@ public class ImpactAnalysisToolTests
         var error = tool.ValidateTypedForTest(new ImpactAnalysisRequest { Target = "/src::a" } with { MaxNodes = value });
 
         Assert.Equal($"max_nodes must be at least 1 (got {value}); omit it for the default of 500", error);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptMaxNodesFromOne_WhenValidated(int value)
+    {
+        using var tool = new ImpactAnalysisTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new ImpactAnalysisRequest { Target = "/src::a" } with { MaxNodes = value });
+
+        Assert.Null(error);
     }
 }

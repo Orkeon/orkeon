@@ -133,4 +133,16 @@ public class PackageSummaryToolTests
 
         Assert.Equal($"max_exports must be at least 1 (got {value}); omit it for the default of 50", error);
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(int.MaxValue)]
+    public void ShouldAcceptMaxExportsFromOne_WhenValidated(int value)
+    {
+        using var tool = new PackageSummaryTool(TestGraph.Store([], []));
+
+        var error = tool.ValidateTypedForTest(new PackageSummaryRequest { Fqn = "root::a" } with { MaxExports = value });
+
+        Assert.Null(error);
+    }
 }
