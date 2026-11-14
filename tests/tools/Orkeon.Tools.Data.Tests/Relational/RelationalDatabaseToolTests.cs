@@ -281,8 +281,7 @@ public sealed class RelationalDatabaseToolTests : IDisposable
         var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, result.Error);
-        var dict = result.Result as Dictionary<string, object?>;
-        Assert.NotNull(dict);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result);
         Assert.False(dict.TryGetValue("truncated", out var truncated) && truncated is not null);
     }
 

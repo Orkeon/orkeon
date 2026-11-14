@@ -247,8 +247,7 @@ public sealed class JanusGraphToolTests : IDisposable
         var result = await _tool.CallAsync(JanusRequest(1), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, result.Error);
-        var dict = result.Result as Dictionary<string, object?>;
-        Assert.NotNull(dict);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result);
         Assert.Equal(1, (int)dict["result_count"]!);
     }
 
