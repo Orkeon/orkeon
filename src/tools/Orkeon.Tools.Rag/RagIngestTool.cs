@@ -121,8 +121,11 @@ public class RagIngestTool : IBaseTool
                 sources = await ResolveSourcesAsync(locations, cancellationToken).ConfigureAwait(false);
             if (sources.Count == 0)
                 return new ToolCallResponse(false, null, $"no source matched: {string.Join(", ", locations)}");
+            // Every source but a web address is a file: a Windows-rooted, relative or backslashed spelling
+            // resolves through the mounts too, and is judged like any virtual path (the scope's entries are
+            // all '/'-rooted, so a spelling no entry covers is refused).
             if (Orkeon.Domain.Execution.AgentRunScope.Current?.FileSystem is { } scope
-                && sources.FirstOrDefault(s => s.Location.StartsWith('/') && !scope.Allows(s.Location, FileAccessRights.Read)) is { } outside)
+                && sources.FirstOrDefault(s => !SourceGlobExpander.IsWebAddress(s.Location) && !scope.Allows(s.Location, FileAccessRights.Read)) is { } outside)
                 return new ToolCallResponse(false, null, scope.DescribeDenial(outside.Location, FileAccessRights.Read));
 
             var report = await _ingestionPipeline.IngestAsync(

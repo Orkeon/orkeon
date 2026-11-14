@@ -43,6 +43,26 @@ public sealed class SourceSliceReaderTests
     }
 
     [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldRefuseACachedFile_WhenTheToolCallScopeDoesNotReadIt()
+    {
+        var reader = new SourceSliceReader(_fs, 10);
+        // An earlier, unscoped read fills the cache.
+        await reader.ReadAsync(Node(2, 4), SourceMode.FullSpan, CancellationToken.None);
+        var scope = Orkeon.Domain.FileSystem.AgentFileSystemScope.Resolve(
+            "reader",
+            [new Orkeon.Domain.FileSystem.FileSystemScopeEntry("/src/docs", null)],
+            [new Orkeon.Domain.FileSystem.MountInfo("/src", Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite, [])]);
+        await using var run = Orkeon.Domain.Execution.AgentRunScope.Begin("id", "reader", null, scope);
+        using var call = Orkeon.Domain.Execution.AgentRunScope.EnterToolCall();
+
+        var denied = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => reader.ReadAsync(Node(2, 4), SourceMode.FullSpan, CancellationToken.None));
+
+        Assert.Contains("outside the file-system scope", denied.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldSliceFreshLinesAndMarkStable_WhenHashMatches()
     {
         var reader = new SourceSliceReader(_fs, 10);

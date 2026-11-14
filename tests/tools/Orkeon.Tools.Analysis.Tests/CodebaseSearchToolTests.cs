@@ -40,6 +40,23 @@ public class CodebaseSearchToolTests
     }
 
     [Fact]
+    [Trait("BR", "#349")]
+    public async Task Leaves_out_the_hits_of_files_outside_the_agent_scope()
+    {
+        var open = TestGraph.Symbol("/src::handleOpen", "/src/a/a.ts", signature: "handle request open");
+        var secret = TestGraph.Symbol("/src::handleSecret", "/src/b/b.ts", signature: "handle request secret");
+        using var tool = new CodebaseSearchTool(TestGraph.Store([open, secret], []));
+        await using var run = TestGraph.ScopedRun("/src/a");
+        using var call = Orkeon.Domain.Execution.AgentRunScope.EnterToolCall();
+
+        var resp = await tool.ExecuteTypedForTest(
+            new CodebaseSearchRequest { Query = "handle request", TopK = 5 },
+            CancellationToken.None);
+
+        Assert.Equal(["/src::handleOpen"], resp.Hits.Select(h => h.Fqn));
+    }
+
+    [Fact]
     public async Task Explicit_Vector_mode_without_embedder_keeps_the_historical_empty()
     {
         var sym = TestGraph.Symbol("/src::handle", "/src/a.ts");

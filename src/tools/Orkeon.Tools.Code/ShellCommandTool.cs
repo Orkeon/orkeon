@@ -601,16 +601,29 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return "start_job needs a running agent run";
         if (registry.IsFull)
             return $"{ShellJobRegistry.MaxLiveJobs} jobs are already running: wait for one to exit";
-        return JobDirectory() is null ? "start_job needs a writable mount for the job log, and none is available" : null;
+        return JobDirectory() is null ? NoJobDirectory() : null;
     }
 
-    /// <summary>The virtual directory of the job logs: <c>/output/jobs</c> when /output is writable, else under the first writable mount.</summary>
+    /// <summary>Why no job log can be written: no writable mount, or, under a file-system scope (#349), no place it lets the agent write.</summary>
+    private static string NoJobDirectory() => AgentRunScope.Current?.FileSystem is { } scope
+        ? $"start_job needs a place the agent's file-system scope lets it write for the job log, and it grants none. Its scope: {scope.Describe()}."
+        : "start_job needs a writable mount for the job log, and none is available";
+
+    /// <summary>
+    /// The virtual directory of the job logs: <c>/output/jobs</c> when /output is writable, else <c>jobs</c>
+    /// under the first writable mount. Under a file-system scope (#349) the places are the scope's entries,
+    /// and a directory the scope does not let the agent write is never chosen.
+    /// </summary>
     private string? JobDirectory()
     {
-        var mount = _fileSystem.ResolveAndValidate("/output", FileAccessRights.Write).IsAllowed
-            ? "/output"
-            : _fileSystem.GetAvailableMounts().FirstOrDefault(m => m.DefaultRights.HasFlag(FileAccessRights.Write))?.VirtualPath;
-        return mount is null ? null : mount.TrimEnd('/') + "/jobs";
+        var scope = AgentRunScope.Current?.FileSystem;
+        var mounts = _fileSystem.GetAvailableMounts();
+        var places = scope is null ? mounts : scope.Narrow(mounts);
+        return places.Where(m => m.DefaultRights.HasFlag(FileAccessRights.Write)).Select(m => m.VirtualPath)
+            .Prepend("/output")
+            .Select(place => place.TrimEnd('/') + "/jobs")
+            .FirstOrDefault(directory => (scope?.Allows(directory, FileAccessRights.Write) ?? true)
+                && _fileSystem.ResolveAndValidate(directory, FileAccessRights.Write).IsAllowed);
     }
 
     /// <inheritdoc />
@@ -693,7 +706,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         IShellSandbox sandbox, ShellSessionView view, ShellInvocation invocation, CancellationToken cancellationToken)
     {
         var registry = ShellJobRegistry.Current() ?? throw new InvalidOperationException("start_job needs a running agent run");
-        var directory = JobDirectory() ?? throw new InvalidOperationException("start_job needs a writable mount for the job log, and none is available");
+        var directory = JobDirectory() ?? throw new InvalidOperationException(NoJobDirectory());
         var id = Guid.NewGuid().ToString("N")[..12];
         var outputPath = $"{directory}/{id}.log";
 

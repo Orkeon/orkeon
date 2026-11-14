@@ -93,6 +93,55 @@ public class RagIngestToolTests
         Assert.True(pipeline.LastRequest.Reindex);
     }
 
+    [Theory]
+    [Trait("BR", "#349")]
+    [InlineData("/workspace/secret/a.md")]
+    [InlineData("C:\\data\\a.md")]
+    [InlineData("secret/a.md")]
+    [InlineData("\\workspace\\secret\\a.md")]
+    public async Task CallAsync_RefusesASourceOutsideTheAgentScope_WhateverItsSpelling(string location)
+    {
+        var pipeline = new FakeIngestionPipeline { Report = SampleReport() };
+        var tool = CreateTool(pipeline);
+        await using var run = ScopedRun("/workspace/docs");
+
+        var response = await tool.CallAsync(new ToolCallRequest("rag_ingest",
+            new Dictionary<string, object?> { ["collection"] = "docs", ["sources"] = location }),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(response.Success);
+        Assert.Contains("outside the file-system scope", response.Error, StringComparison.Ordinal);
+        Assert.Null(pipeline.LastRequest);
+    }
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public async Task CallAsync_IngestsAWebAddressAndASourceInsideTheScope_WhenTheAgentIsScoped()
+    {
+        var pipeline = new FakeIngestionPipeline { Report = SampleReport() };
+        var tool = CreateTool(pipeline);
+        await using var run = ScopedRun("/workspace/docs");
+
+        var response = await tool.CallAsync(new ToolCallRequest("rag_ingest",
+            new Dictionary<string, object?>
+            {
+                ["collection"] = "docs",
+                ["sources"] = new List<object?> { "/workspace/docs/a.md", "https://example.com/page" },
+            }), TestContext.Current.CancellationToken);
+
+        Assert.True(response.Success, response.Error);
+        Assert.Equal(["/workspace/docs/a.md", "https://example.com/page"], pipeline.LastRequest!.Sources.Select(s => s.Location));
+    }
+
+    private static Orkeon.Domain.Execution.AgentRunScope ScopedRun(string entry)
+    {
+        var scope = Orkeon.Domain.FileSystem.AgentFileSystemScope.Resolve(
+            "reader",
+            [new Orkeon.Domain.FileSystem.FileSystemScopeEntry(entry, null)],
+            [new Orkeon.Domain.FileSystem.MountInfo("/workspace", Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite, [])]);
+        return Orkeon.Domain.Execution.AgentRunScope.Begin("id", "reader", null, scope);
+    }
+
     [Fact]
     public async Task CallAsync_Defaults_NoChunkingStrategy_NoReindex()
     {

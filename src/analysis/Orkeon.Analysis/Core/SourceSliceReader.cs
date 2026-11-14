@@ -119,6 +119,13 @@ public sealed class SourceSliceReader
     private async Task<string?> TryReadFreshAsync(string virtualPath, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(virtualPath)) return null;
+        // The scope of the tool call in progress (#349) is checked before the cache, filled by
+        // any earlier run: a file the agent may not read is refused, never served from memory nor
+        // from the indexed snapshot.
+        if (Orkeon.Domain.Execution.AgentRunScope.EnforcedFileSystem is { } scope
+            && virtualPath.StartsWith('/')
+            && !scope.Allows(virtualPath, FileAccessRights.Read))
+            throw new UnauthorizedAccessException(scope.DescribeDenial(virtualPath, FileAccessRights.Read));
         if (_sourceFileCache.TryGetValue(virtualPath, out var cached)) return cached;
         var content = await _fileSystem.TryReadAllTextAsync(virtualPath, ct).ConfigureAwait(false);
         if (content is null) return null;

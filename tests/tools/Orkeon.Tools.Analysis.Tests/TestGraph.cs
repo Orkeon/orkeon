@@ -103,6 +103,19 @@ internal static class TestGraph
         callee.CalledByIdsMutable.Add(caller.Id);
     }
 
+    /// <summary>
+    /// Begins a run whose file-system scope (#349) holds <paramref name="entries"/> under the <see cref="Root"/>
+    /// mount; a tool call of the run (<c>CallAsync</c>, or <c>AgentRunScope.EnterToolCall</c>) is bound by it.
+    /// </summary>
+    public static Orkeon.Domain.Execution.AgentRunScope ScopedRun(params string[] entries)
+    {
+        var scope = Orkeon.Domain.FileSystem.AgentFileSystemScope.Resolve(
+            "reader",
+            [.. entries.Select(e => new Orkeon.Domain.FileSystem.FileSystemScopeEntry(e, null))],
+            [new Orkeon.Domain.FileSystem.MountInfo(Root, Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite, [])]);
+        return Orkeon.Domain.Execution.AgentRunScope.Begin("id", "reader", null, scope);
+    }
+
     public static InMemoryRaggableStore Store(IReadOnlyList<RaggableNode> nodes, IReadOnlyList<RaggableEdge> edges)
         => new(nodes, edges, new FakeFileSystemService());
 

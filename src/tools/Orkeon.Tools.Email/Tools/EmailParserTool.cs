@@ -32,6 +32,9 @@ internal sealed class EmailParserTool : ToolBase<EmailParserRequest, EmailReadRe
     public override ToolAccess Access => ToolAccess.Read;
 
     /// <inheritdoc />
+    public override bool UsesFileSystem => true;
+
+    /// <inheritdoc />
     protected override string? ValidateTypedRequest(EmailParserRequest request) =>
         string.IsNullOrWhiteSpace(request?.Path) ? "`path` is required: the virtual path of an .eml file" : null;
 

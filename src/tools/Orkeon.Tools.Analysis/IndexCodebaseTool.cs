@@ -34,6 +34,10 @@ public sealed class IndexCodebaseTool : ToolBase<IndexCodebaseRequest, IndexCode
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    /// <inheritdoc />
+    /// <remarks><c>root_path</c> is a virtual path the indexer reads (#348).</remarks>
+    public override bool UsesFileSystem => true;
+
     protected override Task<IndexCodebaseResponse> ExecuteTypedAsync(IndexCodebaseRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

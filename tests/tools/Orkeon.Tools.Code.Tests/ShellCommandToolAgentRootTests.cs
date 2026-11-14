@@ -179,6 +179,10 @@ public sealed class ShellCommandToolAgentRootTests : IDisposable
             p.Source == Path.Combine(workspace, "job") && p.Destination == "/workspace/job" && p.Access == ConfinedAccess.ReadWrite);
         Assert.Contains(view.Paths, p => p.Source == output && p.Destination == "/output" && p.Access == ConfinedAccess.ReadOnly);
         Assert.DoesNotContain(view.Paths, p => p.Destination == "/workspace");
+        // The mount's override (job/.env, no rights) stays hidden under the bound entry.
+        var env = Assert.Single(view.Paths, p => p.Destination == "/workspace/job/.env");
+        Assert.Equal(Path.Combine(workspace, "job", ".env"), env.Source);
+        Assert.Equal(ConfinedAccess.HiddenFile, env.Access);
     }
 
     [Fact]

@@ -35,6 +35,22 @@ public class SubGraphToolTests
         Assert.Null(resp.MermaidFlowchart);
     }
 
+    [Trait("BR", "#349")]
+    [Fact]
+    public async Task ShouldLeaveOutTheNodesAndEdgesOfAFileOutsideTheScope_WhenAScopedAgentExpands()
+    {
+        var a = TestGraph.Symbol("/src::a", "/src/a/a.ts");
+        var hidden = TestGraph.Symbol("/src::hidden", "/src/b/hidden.ts");
+        using var tool = new SubGraphTool(TestGraph.Store([a, hidden], [TestGraph.Edge(a, hidden, EdgeKind.Calls)]));
+        await using var run = TestGraph.ScopedRun("/src/a");
+        using var call = Orkeon.Domain.Execution.AgentRunScope.EnterToolCall();
+
+        var resp = await tool.ExecuteTypedForTest(new SubGraphRequest { Seeds = TestGraph.Arr("/src::a", "/src::hidden") }, CancellationToken.None);
+
+        Assert.Equal(["/src::a"], resp.Nodes.Select(n => n.Fqn));
+        Assert.Empty(resp.Edges);
+    }
+
     [Fact]
     public void Has_stable_tool_contract()
     {

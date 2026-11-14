@@ -1,1 +1,3 @@
 #nullable enable
+override Orkeon.Tools.Web.FirefoxTool.UsesFileSystem.get -> bool
+override Orkeon.Tools.Web.ImageGenerationTool.UsesFileSystem.get -> bool

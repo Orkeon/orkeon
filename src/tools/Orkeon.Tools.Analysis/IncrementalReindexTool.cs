@@ -29,6 +29,10 @@ public sealed class IncrementalReindexTool : ToolBase<IncrementalReindexRequest,
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
 
+    /// <inheritdoc />
+    /// <remarks><c>root_path</c> and <c>changed_files</c> are virtual paths the indexer reads (#348).</remarks>
+    public override bool UsesFileSystem => true;
+
     protected override Task<IndexCodebaseResponse> ExecuteTypedAsync(IncrementalReindexRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

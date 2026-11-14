@@ -105,6 +105,55 @@ public sealed class ShellCommandToolJobTests : IDisposable
         Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
     }
 
+    private static AgentFileSystemScope JobScope(params FileSystemScopeEntry[] entries)
+        => AgentFileSystemScope.Resolve("dev", entries,
+        [
+            new MountInfo("/workspace", FileAccessRights.ReadWrite, []),
+            new MountInfo("/output", FileAccessRights.ReadWrite, []),
+        ]);
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldLogTheJobWhereTheScopeWrites_WhenTheAgentScopeOnlyReadsOutput()
+    {
+        var sandbox = new FakeShellSandbox();
+        var tool = NewTool(sandbox);
+        var scope = JobScope(new FileSystemScopeEntry("/workspace/job"), new FileSystemScopeEntry("/output", FileAccessRights.ReadOnly));
+        Directory.CreateDirectory(Path.Combine(_tempDir, "ws", "job"));
+        var request = Request("start_job", command: "echo hi");
+        request.Parameters["working_directory"] = "/workspace/job";
+
+        Dictionary<string, object?> dict;
+        await using (AgentRunScope.Begin("agent-1", "dev", null, scope))
+            dict = Unpack(await tool.CallAsync(request, Ct));
+
+        var id = JobIdOf(dict);
+        Assert.Equal($"/workspace/job/jobs/{id}.log", dict["output_path"]);
+        Assert.Equal(Path.Combine(_tempDir, "ws", "job", "jobs", id + ".log"), JobOf(sandbox).LogPath);
+        Assert.False(Directory.Exists(Path.Combine(_tempDir, "ws", "jobs")));
+    }
+
+    [Fact]
+    [Trait("BR", "#349")]
+    public async Task ShouldRefuseStartJob_WhenTheAgentScopeWritesNowhere()
+    {
+        var sandbox = new FakeShellSandbox();
+        var tool = NewTool(sandbox);
+        var scope = JobScope(new FileSystemScopeEntry("/workspace", FileAccessRights.ReadOnly), new FileSystemScopeEntry("/output", FileAccessRights.ReadOnly));
+        var request = Request("start_job", command: "echo hi");
+        request.Parameters["working_directory"] = "/workspace";
+
+        ToolCallResponse refused;
+        await using (AgentRunScope.Begin("agent-1", "dev", null, scope))
+            refused = await tool.CallAsync(request, Ct);
+
+        Assert.False(refused.Success);
+        Assert.Contains("start_job needs a place the agent's file-system scope lets it write for the job log", refused.Error, StringComparison.Ordinal);
+        Assert.Empty(sandbox.Sessions.SelectMany(s => s.Jobs));
+        Assert.False(Directory.Exists(Path.Combine(_tempDir, "ws", "jobs")));
+        Assert.False(Directory.Exists(Path.Combine(Output, "jobs")));
+    }
+
     [Fact]
     public async Task ShouldRefuseStartJob_WhenNoAgentRunIsActive()
     {
