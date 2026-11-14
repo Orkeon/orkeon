@@ -104,7 +104,7 @@ public sealed class JsLlmReasoningTests : IDisposable
 
         Assert.Equal("xhigh|high|lowered|glm-5.3 / medium|low|lowered|glm-5.3 / max|max||glm-5.3", shown);
         // What the result names is what went out.
-        var sent = _handler.Bodies.Select(b => JsonDocument.Parse(b).RootElement.GetProperty("reasoning_effort").GetString());
+        var sent = _handler.Bodies.Select(b => JsonElement.Parse(b).GetProperty("reasoning_effort").GetString());
         Assert.Equal(ActThenChat, sent.Take(2));
     }
 
@@ -126,7 +126,7 @@ public sealed class JsLlmReasoningTests : IDisposable
 
         Assert.Equal("medium|low|lowered|glm-5.3 / max|max||glm-5.3 / high|high|unchecked|house-model-7", shown);
         // The report read before the call names what the call sent.
-        var sent = JsonDocument.Parse(Assert.Single(_handler.Bodies)).RootElement.GetProperty("reasoning_effort").GetString();
+        var sent = JsonElement.Parse(Assert.Single(_handler.Bodies)).GetProperty("reasoning_effort").GetString();
         Assert.Equal("low", sent);
     }
 
