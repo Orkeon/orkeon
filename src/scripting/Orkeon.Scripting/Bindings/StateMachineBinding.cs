@@ -1,6 +1,7 @@
 using Jint;
 using Jint.Native;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Orchestration;
 
 namespace Orkeon.Scripting.Bindings;
@@ -17,7 +18,9 @@ internal static class StateMachineBinding
     public static void Register(Engine engine)
     {
         ArgumentNullException.ThrowIfNull(engine);
-        engine.SetValue(GlobalName, new Func<JsValue, JsStateMachine>(literal => Build(engine, literal)));
+        // A literal the factory refuses is an Error the script catches (SCR-25, #364).
+        engine.SetValue(GlobalName, new Func<JsValue, JsStateMachine>(
+            literal => JsHostError.Guard(engine, () => Build(engine, literal))));
     }
 
     private static JsStateMachine Build(Engine engine, JsValue literal)

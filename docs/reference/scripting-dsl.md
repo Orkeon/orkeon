@@ -42,6 +42,11 @@ orchestrator: it runs the exported crew **procedurally**, bodies and all, tasks 
 
 ## What each shape reads
 
+A builder or factory method that refuses its argument — `agentBuilder().effort("turbo")`, a `build()`
+missing a field, a `stateGraph(...)` literal with a bad topology — throws an `Error` the script catches
+(`try … catch`): the message names the fault, `clrType` the .NET exception behind it
+(`"InvalidScriptException"`). A script that builds from data can fall back to a default.
+
 Measured against `JsCrewConfigurationAdapter.cs`, `JsCrew.cs` and `JsExecutionContext.cs`, not
 inferred.
 
@@ -120,7 +125,7 @@ known ones). `name` is the task's key: `when(...)` and a decision's `state` refe
 decision task requires it. Accepted but not acted on: `expect` (recorded in the
 task context when there is no `deliverable`, never validated).
 
-`decision(spec)` makes the task a decision task: `spec` is an object literal `{ questions, minConfidence, state, longContext, fallback }`, the shape of the YAML `decision:` block. It needs no `agent`, and a task that has both is refused at load. `when(decisionTask, clauses)` runs the task only when the decision task named answered as asked: `clauses` is a clause object (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) or the string `"otherwise"`; `when()` throws an `InvalidScriptException` only for an empty task name or for `clauses` that is neither an object nor a string. A string other than `"otherwise"`, an unknown question or option, or a malformed clause passes the builder and is refused at load. Two decision tasks with the same `name` in one script are refused at load (`Task '<name>' declares a decision twice.`). `state` lists the tasks whose output is the decision's state (default: each dependency that ran); with the circuit off, or by `--no-decision`, the task answers from `fallback` (see [Decision models](../architecture/decision-models.md#the-decision-circuit-and-the-fallback)). Decision tasks and conditions run in the Sequential, Parallel and Graph processes only. A second `.when()` on one task throws an `InvalidScriptException` naming the task. A `state` that is not an array, a `fallback` that is not an object, and a `choice` value, `score` entry or `fallback` value that is not a string are refused at load, naming the task and the key. Two tasks with the same `name` are refused at load. A task without `.name()` is keyed by its full description; truncation is display only. See [Decision models](../architecture/decision-models.md).
+`decision(spec)` makes the task a decision task: `spec` is an object literal `{ questions, minConfidence, state, longContext, fallback }`, the shape of the YAML `decision:` block. It needs no `agent`, and a task that has both is refused at load. `when(decisionTask, clauses)` runs the task only when the decision task named answered as asked: `clauses` is a clause object (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) or the string `"otherwise"`; `when()` throws (an `Error` the script catches) only for an empty task name or for `clauses` that is neither an object nor a string. A string other than `"otherwise"`, an unknown question or option, or a malformed clause passes the builder and is refused at load. Two decision tasks with the same `name` in one script are refused at load (`Task '<name>' declares a decision twice.`). `state` lists the tasks whose output is the decision's state (default: each dependency that ran); with the circuit off, or by `--no-decision`, the task answers from `fallback` (see [Decision models](../architecture/decision-models.md#the-decision-circuit-and-the-fallback)). Decision tasks and conditions run in the Sequential, Parallel and Graph processes only. A second `.when()` on one task throws an `Error` naming the task. A `state` that is not an array, a `fallback` that is not an object, and a `choice` value, `score` entry or `fallback` value that is not a string are refused at load, naming the task and the key. Two tasks with the same `name` are refused at load. A task without `.name()` is keyed by its full description; truncation is display only. See [Decision models](../architecture/decision-models.md).
 
 `asyncExecution()` follows the YAML rule: under `.process("sequential")` the task runs alongside
 the tasks after it, and a task that lists it in `withContext` waits for it; under
@@ -128,7 +133,7 @@ the tasks after it, and a task that lists it in `withContext` waits for it; unde
 when the run adapts it, naming the task (see
 [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
 
-`retry({ attempts, backoffMs?, backoff? })` is the YAML `retry:` block (see [Task retry](../architecture/yaml-schema.md#task-retry)): a failed attempt runs the whole task again, tool calls included, up to `attempts` runs in all (at least 1, required); `backoffMs` (default 0) and `backoff` (`"fixed"`, the default, or `"exponential"`) set the wait. A missing or invalid `attempts`, a negative `backoffMs`, an unknown `backoff`, or a `retry` on a decision task throws an `InvalidScriptException` at the call (or at `build()` for the decision task). It is the only retry of a `.process("graph")` crew.
+`retry({ attempts, backoffMs?, backoff? })` is the YAML `retry:` block (see [Task retry](../architecture/yaml-schema.md#task-retry)): a failed attempt runs the whole task again, tool calls included, up to `attempts` runs in all (at least 1, required); `backoffMs` (default 0) and `backoff` (`"fixed"`, the default, or `"exponential"`) set the wait. A missing or invalid `attempts`, a negative `backoffMs`, an unknown `backoff`, or a `retry` on a decision task throws an `Error` the script catches at the call (or at `build()` for the decision task). It is the only retry of a `.process("graph")` crew.
 
 A task's `agent` and the tasks of its `withContext(s)` are the crew's own (`withAgent(s)`,
 `withTask(s)`): one the crew does not hold is refused when the run adapts the crew, naming the
@@ -383,7 +388,7 @@ An edge is a node name, `END`, or a function of the state returning one (a condi
 (`{ fromNode, toNode, state }`) for `for await`.
 
 `stateGraph(...)` checks the graph's shape when it is built, with the validator the Domain engine
-and the crew's graph share (ADR-018), and reports **every** fault in one `InvalidScriptException`: an edge from or to
+and the crew's graph share (ADR-018), and reports **every** fault in one `Error` the script catches (`clrType` `"InvalidScriptException"`): an edge from or to
 an undeclared node, a node with no outgoing edge, a node nothing reaches (an orphan), no path from `START` to `END`, a node
 that cannot reach `END`. A function edge cannot be read before it runs, so it is assumed to be able to lead anywhere,
 `END` included. Each time the loop enters a node, a `graph.node.entered` event goes to the host

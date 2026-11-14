@@ -67,10 +67,16 @@ declare global {
         /** The mocked tool named `name`, created on first use. */
         function mockTool(name: string): MockToolHandle;
 
-        /** Throws when the model was not called as `options` says. */
+        /**
+         * Throws when the model was not called as `options` says: an `Error` the script catches,
+         * its `clrType` `"AssertionException"`.
+         */
         function assertLlmCalled(options?: AssertLlmCalledOptions): void;
 
-        /** Throws when the mocked tool `name` was not called as `options` says, or is unknown. */
+        /**
+         * Throws when the mocked tool `name` was not called as `options` says, or is unknown: an
+         * `Error` the script catches, its `clrType` `"AssertionException"`.
+         */
         function assertToolCalled(name: string, options?: AssertToolCalledOptions): void;
     }
 }

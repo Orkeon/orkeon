@@ -5,6 +5,7 @@ using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Orchestration;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Orchestration;
 
@@ -49,7 +50,7 @@ public sealed class StateMachineTests
     [Fact]
     public void FSM_invalid_initial_throws_InvalidScriptException()
     {
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => NewEngine().Evaluate("""
                 stateMachine({ name: "x", initial: "missing", states: { a: {} } });
                 """),
@@ -61,7 +62,7 @@ public sealed class StateMachineTests
     [Fact]
     public void FSM_transition_to_undeclared_target_throws_InvalidScriptException()
     {
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => NewEngine().Evaluate("""
                 stateMachine({
                     name: "x",
@@ -289,5 +290,17 @@ public sealed class StateMachineTests
         Assert.Same(fsm.send, fsm.send);
         Assert.Equal("send", fsm.send.AsObject().Get("name").AsString());
         Assert.True(engine.Evaluate("typeof stateMachine({ name: 'v', initial: 'a', states: { a: {} } }).send === 'function'").AsBoolean());
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("""stateMachine(42)""", "stateMachine() expects a literal")]
+    [InlineData("""stateMachine({ name: "m", initial: "ghost", states: { idle: {} } })""", "'ghost' is not declared")]
+    public void ShouldReachTheScriptsCatch_WhenTheMachineLiteralIsRefused(string call, string expected)
+    {
+        var caught = ScriptRefusal.Caught(NewEngine(), call);
+
+        Assert.StartsWith("true|InvalidScriptException|", caught, StringComparison.Ordinal);
+        Assert.Contains(expected, caught, StringComparison.Ordinal);
     }
 }

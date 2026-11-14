@@ -5,6 +5,7 @@ using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Runtime;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Builders;
 
@@ -39,7 +40,7 @@ public sealed class CrewBuilderTests
     {
         var engine = NewEngine();
 
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => engine.Evaluate("""
                 const a = agentBuilder().name("A").role("R").goal("G").build();
                 crewBuilder().process("hierarchical").withAgent(a).build();
@@ -54,7 +55,7 @@ public sealed class CrewBuilderTests
     {
         var engine = NewEngine();
 
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => engine.Evaluate("""crewBuilder().process("nonsense");"""),
             "Unknown process");
 
@@ -150,11 +151,11 @@ public sealed class CrewBuilderTests
     {
         var engine = NewEngine();
 
-        var ex = Assert.Throws<DuplicateAgentNameException>(() => engine.Evaluate("""
+        var ex = ScriptRefusal.Bridged<DuplicateAgentNameException>(() => engine.Evaluate("""
             const a1 = agentBuilder().name("Twin").role("R").goal("G").build();
             const a2 = agentBuilder().name("Twin").role("R").goal("G").build();
             crewBuilder().withAgent(a1).withAgent(a2).build();
-            """));
+            """), "Twin");
         Assert.Equal("Twin", ex.AgentName);
     }
 
@@ -195,5 +196,32 @@ public sealed class CrewBuilderTests
             """, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("agent.start:A,agent.stop:A,agent.start:B,agent.stop:B", types.AsString());
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("""crewBuilder().process("bogus")""", "Unknown process 'bogus'")]
+    [InlineData("""crewBuilder().withAgent({ name: "a" })""", "a builder callback or a plain object is not accepted")]
+    [InlineData("""crewBuilder().withTasks(42)""", "expects an array.")]
+    [InlineData("""crewBuilder().process("hierarchical").build()""", "requires .manager(agent).")]
+    public void ShouldReachTheScriptsCatch_WhenTheCrewBuilderRefuses(string call, string expected)
+    {
+        var caught = ScriptRefusal.Caught(NewEngine(), call);
+
+        Assert.StartsWith("true|InvalidScriptException|", caught, StringComparison.Ordinal);
+        Assert.Contains(expected, caught, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldReachTheScriptsCatch_WhenTheCrewHoldsTwoAgentsOfOneName()
+    {
+        var caught = ScriptRefusal.Caught(NewEngine(), """
+            const a1 = agentBuilder().name("Twin").role("R").goal("G").build();
+            const a2 = agentBuilder().name("Twin").role("R").goal("G").build();
+            crewBuilder().withAgent(a1).withAgent(a2).build()
+            """);
+
+        Assert.StartsWith("true|DuplicateAgentNameException|", caught, StringComparison.Ordinal);
     }
 }

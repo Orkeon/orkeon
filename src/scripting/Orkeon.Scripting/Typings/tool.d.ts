@@ -21,6 +21,10 @@ declare global {
         execute(input: TIn, ctx?: unknown): TOut | Promise<TOut>;
     }
 
+    /**
+     * A method that refuses its argument, and `build()` missing a field, throws an `Error` the
+     * script catches (`try … catch`), its `clrType` `"InvalidScriptException"`.
+     */
     interface ToolBuilder<TIn = unknown, TOut = unknown> {
         name(value: string): this;
         description(value: string): this;

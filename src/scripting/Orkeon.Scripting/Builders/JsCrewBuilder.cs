@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Runtime;
 
 namespace Orkeon.Scripting.Builders;
@@ -80,47 +81,51 @@ internal sealed partial class JsCrewBuilder
     /// <summary>The mounts a script agent's working root is checked against (RT-06); null refuses every root.</summary>
     internal Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }
 
-    public JsCrewBuilder name(string value) { _name = value; _nameSet = true; return this; }
+    // Every member a script calls goes through Guard (SCR-25, #364): a CLR throw from a wrapped
+    // object would cross the script's try ... catch and end the command.
+    private TResult Guarded<TResult>(Func<TResult> body) => JsHostError.Guard(_engine, body);
 
-    public JsCrewBuilder goal(string value) { _goal = value; return this; }
+    public JsCrewBuilder name(string value) => Guarded(() => { _name = value; _nameSet = true; return this; });
 
-    public JsCrewBuilder process(string value)
+    public JsCrewBuilder goal(string value) => Guarded(() => { _goal = value; return this; });
+
+    public JsCrewBuilder process(string value) => Guarded(() =>
     {
         if (!AllowedProcesses.Contains(value))
             throw new InvalidScriptException($"Unknown process '{value}'. Expected one of: {string.Join(", ", AllowedProcesses)}.");
         _process = value;
         return this;
-    }
+    });
 
     // withAgent / withTask take BUILT values. The typings used to offer a builder callback
     // (`withTask(b => b.description(...))`): withAgent threw a conversion error on it and
     // withTask stored the function, which the adapter then filtered out — the task vanished
     // without a word (GAP-12). Anything that is not an agent or a task is refused here.
-    public JsCrewBuilder withAgent(JsValue agent)
+    public JsCrewBuilder withAgent(JsValue agent) => Guarded(() =>
     {
         _agents.Add(RequireBuilt<JsAgent>(agent, ".withAgent(agent)", "agentBuilder()…build()"));
         return this;
-    }
+    });
 
-    public JsCrewBuilder withAgents(JsValue agents)
+    public JsCrewBuilder withAgents(JsValue agents) => Guarded(() =>
     {
         foreach (var entry in RequireArray(agents, ".withAgents(agents)"))
             _agents.Add(RequireBuilt<JsAgent>(entry, ".withAgents(agents)", "agentBuilder()…build()"));
         return this;
-    }
+    });
 
-    public JsCrewBuilder withTask(JsValue task)
+    public JsCrewBuilder withTask(JsValue task) => Guarded(() =>
     {
         _tasks.Add(RequireBuilt<JsTask>(task, ".withTask(task)", "taskBuilder()…build()"));
         return this;
-    }
+    });
 
-    public JsCrewBuilder withTasks(JsValue tasks)
+    public JsCrewBuilder withTasks(JsValue tasks) => Guarded(() =>
     {
         foreach (var entry in RequireArray(tasks, ".withTasks(tasks)"))
             _tasks.Add(RequireBuilt<JsTask>(entry, ".withTasks(tasks)", "taskBuilder()…build()"));
         return this;
-    }
+    });
 
     private static T RequireBuilt<T>(JsValue? value, string where, string how) where T : class
         => value?.ToObject() as T
@@ -135,9 +140,9 @@ internal sealed partial class JsCrewBuilder
             yield return arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
-    public JsCrewBuilder manager(JsAgent agent) { _manager = agent; return this; }
+    public JsCrewBuilder manager(JsAgent agent) => Guarded(() => { _manager = agent; return this; });
 
-    public JsCrewBuilder budget(JsValue spec)
+    public JsCrewBuilder budget(JsValue spec) => Guarded(() =>
     {
         if (spec is not null && spec.IsObject())
         {
@@ -147,48 +152,48 @@ internal sealed partial class JsCrewBuilder
             }
         }
         return this;
-    }
+    });
 
     /// <summary>
     /// YAML parity <c>memory: true</c> — the crew remembers: each run stores the result of its tasks
     /// and recalls the closest ones before each task, in the host's default memory store, under the
     /// crew's name (GAP-30). Off by default. Not <c>ctx.memory.*</c>, the scoped key/value stores of a run.
     /// </summary>
-    public JsCrewBuilder memory(bool value = true) { _memory = value; return this; }
+    public JsCrewBuilder memory(bool value = true) => Guarded(() => { _memory = value; return this; });
 
     /// <summary>
     /// YAML parity <c>planning: true</c> (GAP-31) — before the first task, a planner writes a
     /// step-by-step plan for each task, which the task reads in its prompt; the plan changes neither
     /// the order of the tasks nor who runs them. On the host's default LLM profile. Off by default.
     /// </summary>
-    public JsCrewBuilder planning(bool value = true) { _planning = value; return this; }
+    public JsCrewBuilder planning(bool value = true) => Guarded(() => { _planning = value; return this; });
 
     /// <summary>
     /// YAML parity <c>maxRpm:</c> (GAP-38): the model requests the crew may make per minute on the
     /// declarative shape, all its agents and its manager together; the request of too many waits its
     /// turn. Left out, no limit of its own. Zero or less is refused at <see cref="build"/>.
     /// </summary>
-    public JsCrewBuilder maxRpm(int value) { _maxRpm = value; return this; }
+    public JsCrewBuilder maxRpm(int value) => Guarded(() => { _maxRpm = value; return this; });
 
     /// <summary>
     /// The crew-wide cap on children running at once, background and <c>spawn_agent</c> alike; default 4.
     /// Zero or less is refused at <see cref="build"/>.
     /// </summary>
-    public JsCrewBuilder concurrency(int value) { _concurrency = value; return this; }
+    public JsCrewBuilder concurrency(int value) => Guarded(() => { _concurrency = value; return this; });
 
     /// <summary>
     /// The most agent instances (<c>crew.instances()</c>) the crew keeps; default 32. The oldest ended one
     /// goes first, a running one never. Zero or less is refused at <see cref="build"/>.
     /// </summary>
-    public JsCrewBuilder maxInstances(int value) { _maxInstances = value; return this; }
+    public JsCrewBuilder maxInstances(int value) => Guarded(() => { _maxInstances = value; return this; });
 
-    public JsCrewBuilder verbose() { _verbose = true; return this; }
-    public JsCrewBuilder verbose(bool value) { _verbose = value; return this; }
-    public JsCrewBuilder onCrewStart(JsValue hook) { _onCrewStart = hook; return this; }
-    public JsCrewBuilder onCrewComplete(JsValue hook) { _onCrewComplete = hook; return this; }
-    public JsCrewBuilder onCrewError(JsValue hook) { _onCrewError = hook; return this; }
+    public JsCrewBuilder verbose() => Guarded(() => { _verbose = true; return this; });
+    public JsCrewBuilder verbose(bool value) => Guarded(() => { _verbose = value; return this; });
+    public JsCrewBuilder onCrewStart(JsValue hook) => Guarded(() => { _onCrewStart = hook; return this; });
+    public JsCrewBuilder onCrewComplete(JsValue hook) => Guarded(() => { _onCrewComplete = hook; return this; });
+    public JsCrewBuilder onCrewError(JsValue hook) => Guarded(() => { _onCrewError = hook; return this; });
 
-    public JsCrew build()
+    public JsCrew build() => Guarded(() =>
     {
         if (string.Equals(_process, "hierarchical", StringComparison.Ordinal) && _manager is null)
             throw new InvalidScriptException("crewBuilder().process(\"hierarchical\") requires .manager(agent).");
@@ -240,7 +245,7 @@ internal sealed partial class JsCrewBuilder
         crew._onCrewComplete = _onCrewComplete;
         crew._onCrewError = _onCrewError;
         return crew;
-    }
+    });
 
     private void WarnOnAutonomousToolsWithoutSchema()
     {

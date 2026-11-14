@@ -5,6 +5,7 @@ using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainAgentRole = Orkeon.Domain.Agent.ValueObjects.AgentRole;
 using DomainAgentGoal = Orkeon.Domain.Agent.ValueObjects.AgentGoal;
 using DomainAgentBackstory = Orkeon.Domain.Agent.ValueObjects.AgentBackstory;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Builders;
 
@@ -23,6 +24,27 @@ namespace Orkeon.Scripting.Builders;
 #pragma warning disable CS1591 // JS-interop mirror of AgentBuilder in Typings/agent.d.ts; that declaration is the contract scripts read.
 public sealed class JsAgentBuilder
 {
+    private readonly Engine? _engine;
+
+    /// <summary>
+    /// A builder no script holds: its refusals are the raw CLR exceptions a CLR caller catches.
+    /// </summary>
+    public JsAgentBuilder()
+    {
+    }
+
+    /// <summary>
+    /// A builder for <paramref name="engine"/>'s scripts (<c>agentBuilder()</c>): every refusal of
+    /// a member a script calls is an <c>Error</c> the script catches
+    /// (<see cref="JsHostError.Guard{T}"/>, #364).
+    /// </summary>
+    internal JsAgentBuilder(Engine engine) => _engine = engine;
+
+    // Every member a script calls goes through Guard (SCR-25): a CLR throw from a wrapped object
+    // would cross the script's try ... catch and end the command.
+    private TResult Guarded<TResult>(Func<TResult> body)
+        => _engine is null ? body() : JsHostError.Guard(_engine, body);
+
     internal string? AgentName { get; private set; }
     internal string? AgentRole { get; private set; }
     internal string? AgentGoal { get; private set; }
@@ -99,10 +121,10 @@ public sealed class JsAgentBuilder
     /// <summary>Declared <c>onCommand</c> handlers — the seam through which an agent answers dispatched commands (design §8 item 9).</summary>
     internal List<AgentCommandHandler> OnCommandHandlers { get; } = new();
 
-    public JsAgentBuilder name(string value) { AgentName = value; return this; }
-    public JsAgentBuilder role(string value) { AgentRole = value; return this; }
-    public JsAgentBuilder goal(string value) { AgentGoal = value; return this; }
-    public JsAgentBuilder backstory(string value) { AgentBackstoryText = value; return this; }
+    public JsAgentBuilder name(string value) => Guarded(() => { AgentName = value; return this; });
+    public JsAgentBuilder role(string value) => Guarded(() => { AgentRole = value; return this; });
+    public JsAgentBuilder goal(string value) => Guarded(() => { AgentGoal = value; return this; });
+    public JsAgentBuilder backstory(string value) => Guarded(() => { AgentBackstoryText = value; return this; });
 
     /// <summary>
     /// Registers built-in tool names to resolve via <c>IToolRegistry</c> at runtime —
@@ -110,7 +132,7 @@ public sealed class JsAgentBuilder
     /// single string, a JS array of strings, or a comma-separated list (rejected: tool
     /// instances belong to <see cref="withAutonomousTool"/>).
     /// </summary>
-    public JsAgentBuilder tools(JsValue names)
+    public JsAgentBuilder tools(JsValue names) => Guarded(() =>
     {
         ArgumentNullException.ThrowIfNull(names);
         if (names.IsString())
@@ -143,18 +165,18 @@ public sealed class JsAgentBuilder
         }
         throw new InvalidScriptException(
             ".tools(...) expects a string or a string[] (built-in tool names).");
-    }
+    });
 
     // Tool INSTANCES only. A name belongs to `.tools([...])`; a plain object was stored here
     // and then read by nothing — the declarative adapter took names and JsTool instances, so
     // `{ name: "t" }` vanished without a word (GAP-12).
-    public JsAgentBuilder withAutonomousTool(JsValue tool)
+    public JsAgentBuilder withAutonomousTool(JsValue tool) => Guarded(() =>
     {
         AutonomousTools.Add(RequireTool(tool, ".withAutonomousTool(tool)"));
         return this;
-    }
+    });
 
-    public JsAgentBuilder withAutonomousTools(JsValue tools)
+    public JsAgentBuilder withAutonomousTools(JsValue tools) => Guarded(() =>
     {
         if (tools is not Jint.Native.Array.ArrayInstance arr)
             throw new InvalidScriptException(".withAutonomousTools(tools) expects an array of toolBuilder()…build() values.");
@@ -162,7 +184,7 @@ public sealed class JsAgentBuilder
         for (uint i = 0; i < len; i++)
             AutonomousTools.Add(RequireTool(arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture)), ".withAutonomousTools(tools)"));
         return this;
-    }
+    });
 
     private static Orkeon.Scripting.Runtime.JsTool RequireTool(JsValue? value, string where)
         => value?.ToObject() as Orkeon.Scripting.Runtime.JsTool
@@ -175,7 +197,7 @@ public sealed class JsAgentBuilder
     /// <c>{ provider, model }</c> literal — is refused here: the runtime used to drop it without
     /// a word, and the agent ran on the host's model while the script said otherwise (GAP-12).
     /// </summary>
-    public JsAgentBuilder llm(JsValue config)
+    public JsAgentBuilder llm(JsValue config) => Guarded(() =>
     {
         if (config?.ToObject() is not Orkeon.Scripting.Runtime.JsLlmConfig resolved)
         {
@@ -185,7 +207,7 @@ public sealed class JsAgentBuilder
         }
         LlmConfig = resolved;
         return this;
-    }
+    });
 
     /// <summary>What <c>.llm(...)</c> was given instead of an LlmConfig, for the refusal.</summary>
     private static string DescribeLlmArgument(JsValue? config)
@@ -198,13 +220,13 @@ public sealed class JsAgentBuilder
             return "null";
         return "a plain object";
     }
-    public JsAgentBuilder withResponseFormat(string type)
+    public JsAgentBuilder withResponseFormat(string type) => Guarded(() =>
     {
         if (string.IsNullOrWhiteSpace(type))
             throw new InvalidScriptException(".withResponseFormat(type) requires a non-empty string.");
         ResponseFormatValue = type;
         return this;
-    }
+    });
 
     /// <summary>
     /// Constrains this agent's output to a JSON Schema, on the providers whose API validates
@@ -214,7 +236,7 @@ public sealed class JsAgentBuilder
     /// <param name="name">Schema name, required by the OpenAI dialect.</param>
     /// <param name="schema">The JSON Schema, as an object literal or a JSON string.</param>
     /// <param name="strict">Whether the provider must reject any deviation. Defaults to true.</param>
-    public JsAgentBuilder withResponseSchema(string name, JsValue schema, JsValue? strict = null)
+    public JsAgentBuilder withResponseSchema(string name, JsValue schema, JsValue? strict = null) => Guarded(() =>
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new InvalidScriptException(".withResponseSchema(name, schema) requires a non-empty name.");
@@ -225,59 +247,59 @@ public sealed class JsAgentBuilder
         ResponseSchemaValue = schema;
         ResponseSchemaStrict = strict is null || strict.IsUndefined() || strict.IsNull() || strict.AsBoolean();
         return this;
-    }
+    });
 
     /// <summary>
     /// Turns the provider's thinking on at <c>low</c>, <c>medium</c>, <c>high</c>, <c>xhigh</c> or <c>max</c>
     /// effort. A provider whose field does not know the level sends the nearest it knows, and warns.
     /// </summary>
-    public JsAgentBuilder effort(string level)
+    public JsAgentBuilder effort(string level) => Guarded(() =>
     {
         EffortValue = Orkeon.Scripting.Runtime.JsLlmConfig.RequireEffort(level);
         return this;
-    }
+    });
 
     /// <summary>
     /// YAML parity <c>cache:</c> (#254): asks the provider's prompt cache to keep the system prompt
     /// and/or the tool definitions, for <c>ttl</c> <c>5m</c> or <c>1h</c>. Only providers whose cache
     /// is explicit (Anthropic) need it; the others cache by their own rules. Anything else is refused.
     /// </summary>
-    public JsAgentBuilder cache(JsValue options)
+    public JsAgentBuilder cache(JsValue options) => Guarded(() =>
     {
         CacheValue = Orkeon.Scripting.Runtime.JsLlmConfig.CacheFrom(options, ".cache(...)");
         return this;
-    }
-    public JsAgentBuilder allowDelegation(bool value) { AllowDelegationFlag = value; return this; }
-    public JsAgentBuilder maxIterations(int value) { MaxIterationsValue = value; return this; }
+    });
+    public JsAgentBuilder allowDelegation(bool value) => Guarded(() => { AllowDelegationFlag = value; return this; });
+    public JsAgentBuilder maxIterations(int value) => Guarded(() => { MaxIterationsValue = value; return this; });
 
     /// <summary>
     /// YAML parity <c>maxRpm:</c> (GAP-38): the model requests this agent may make per minute on the
     /// declarative shape — each of its turns; the request of too many waits its turn. Left out, no
     /// limit of its own. Zero or less is refused at <see cref="build"/>.
     /// </summary>
-    public JsAgentBuilder maxRpm(int value) { MaxRpmValue = value; return this; }
+    public JsAgentBuilder maxRpm(int value) => Guarded(() => { MaxRpmValue = value; return this; });
 
     /// <summary>
     /// YAML parity <c>maxExecutionTime:</c> (CH-02): the seconds this agent may spend on a task of the
     /// declarative shape. Left out, no limit of its own. Zero, negative, decimal or above the ceiling
     /// is refused at <see cref="build"/>.
     /// </summary>
-    public JsAgentBuilder maxExecutionTime(double seconds) { MaxExecutionTimeSeconds = seconds; return this; }
-    public JsAgentBuilder verbose() { VerboseFlag = true; return this; }
-    public JsAgentBuilder verbose(bool value) { VerboseFlag = value; return this; }
+    public JsAgentBuilder maxExecutionTime(double seconds) => Guarded(() => { MaxExecutionTimeSeconds = seconds; return this; });
+    public JsAgentBuilder verbose() => Guarded(() => { VerboseFlag = true; return this; });
+    public JsAgentBuilder verbose(bool value) => Guarded(() => { VerboseFlag = value; return this; });
 
     /// <summary>
     /// YAML parity <c>working_root:</c> (RT-06): the virtual directory the agent's file and shell tools
     /// stay inside. An absolute VFS path under a mount, with no <c>..</c>; one that is not is refused
     /// when the agent's run starts, never at build. Left out, the run is unrooted.
     /// </summary>
-    public JsAgentBuilder workingRoot(string path)
+    public JsAgentBuilder workingRoot(string path) => Guarded(() =>
     {
         if (string.IsNullOrWhiteSpace(path))
             throw new InvalidScriptException(".workingRoot(path) requires a non-empty virtual path.");
         WorkingRootValue = path;
         return this;
-    }
+    });
 
     /// <summary>
     /// YAML parity <c>filesystem:</c> (#349): the only virtual paths the agent's tools may touch, each a
@@ -285,7 +307,7 @@ public sealed class JsAgentBuilder
     /// entry narrows the mount that holds it, never widens it; a path under no mount, or an access the
     /// mount does not grant, refuses the agent's run when it starts. Left out, the run's mounts apply.
     /// </summary>
-    public JsAgentBuilder filesystem(JsValue entries)
+    public JsAgentBuilder filesystem(JsValue entries) => Guarded(() =>
     {
         if (entries is not JsArray array || array.Length == 0)
             throw new InvalidScriptException(".filesystem([...]) requires a non-empty array of paths or { path, access } objects.");
@@ -294,7 +316,7 @@ public sealed class JsAgentBuilder
             parsed.Add(FileSystemEntry(item));
         FileSystemValue = parsed;
         return this;
-    }
+    });
 
     private static Orkeon.Domain.FileSystem.FileSystemScopeEntry FileSystemEntry(JsValue item)
     {
@@ -333,13 +355,13 @@ public sealed class JsAgentBuilder
     /// YAML parity <c>announce_mounts:</c> (#348): whether the declarative turns of this agent list its
     /// virtual paths in the system prompt. On by default.
     /// </summary>
-    public JsAgentBuilder announceMounts(bool value) { AnnounceMountsValue = value; return this; }
-    public JsAgentBuilder withState(JsValue factoryOrSeed) { StateFactory = factoryOrSeed; return this; }
-    public JsAgentBuilder concurrency(int value) { ConcurrencyValue = value; return this; }
-    public JsAgentBuilder body(JsValue fn) { BodyFunction = fn; return this; }
-    public JsAgentBuilder onError(JsValue handler) { OnErrorHandler = handler; return this; }
-    public JsAgentBuilder onAgentStart(JsValue handler) { OnAgentStartHandler = handler; return this; }
-    public JsAgentBuilder onAgentStop(JsValue handler) { OnAgentStopHandler = handler; return this; }
+    public JsAgentBuilder announceMounts(bool value) => Guarded(() => { AnnounceMountsValue = value; return this; });
+    public JsAgentBuilder withState(JsValue factoryOrSeed) => Guarded(() => { StateFactory = factoryOrSeed; return this; });
+    public JsAgentBuilder concurrency(int value) => Guarded(() => { ConcurrencyValue = value; return this; });
+    public JsAgentBuilder body(JsValue fn) => Guarded(() => { BodyFunction = fn; return this; });
+    public JsAgentBuilder onError(JsValue handler) => Guarded(() => { OnErrorHandler = handler; return this; });
+    public JsAgentBuilder onAgentStart(JsValue handler) => Guarded(() => { OnAgentStartHandler = handler; return this; });
+    public JsAgentBuilder onAgentStop(JsValue handler) => Guarded(() => { OnAgentStopHandler = handler; return this; });
 
     /// <summary>
     /// Declares that this agent answers dispatched commands (design §8 item 9). With one
@@ -347,21 +369,21 @@ public sealed class JsAgentBuilder
     /// The handler receives the command envelope and returns the response payload (string) or
     /// <c>{ success?, payload, error? }</c>.
     /// </summary>
-    public JsAgentBuilder onCommand(JsValue handler)
+    public JsAgentBuilder onCommand(JsValue handler) => Guarded(() =>
     {
         RequireFunction(handler, ".onCommand(handler)");
         OnCommandHandlers.Add(new AgentCommandHandler(null, handler));
         return this;
-    }
+    });
 
-    public JsAgentBuilder onCommand(string intent, JsValue handler)
+    public JsAgentBuilder onCommand(string intent, JsValue handler) => Guarded(() =>
     {
         if (string.IsNullOrWhiteSpace(intent))
             throw new InvalidScriptException(".onCommand(intent, handler) requires a non-empty intent.");
         RequireFunction(handler, ".onCommand(intent, handler)");
         OnCommandHandlers.Add(new AgentCommandHandler(intent, handler));
         return this;
-    }
+    });
 
     private static void RequireFunction(JsValue handler, string where)
     {
@@ -369,7 +391,7 @@ public sealed class JsAgentBuilder
             throw new InvalidScriptException($"{where} requires a function.");
     }
 
-    public JsAgent build()
+    public JsAgent build() => Guarded(() =>
     {
         if (string.IsNullOrWhiteSpace(AgentName))
             throw new InvalidScriptException("agentBuilder() requires .name(...).");
@@ -413,7 +435,7 @@ public sealed class JsAgentBuilder
             verbose: VerboseFlag);
 
         return new JsAgent(AgentName!, domain, this);
-    }
+    });
 }
 #pragma warning restore CS1591
 #pragma warning restore IDE1006

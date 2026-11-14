@@ -5,6 +5,7 @@ using Orkeon.Scripting.Adapters;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Builders;
 
@@ -35,7 +36,7 @@ public sealed class TaskBuilderTests
     [Fact]
     public void TaskBuilder_missing_agent_throws_InvalidScriptException()
     {
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => NewEngine().Evaluate("""
                 taskBuilder().description("x").expectedOutput("y").build();
                 """),
@@ -47,7 +48,7 @@ public sealed class TaskBuilderTests
     [Fact]
     public void TaskBuilder_missing_description_throws_InvalidScriptException()
     {
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => NewEngine().Evaluate("""
                 const a = agentBuilder().name("A").role("R").goal("G").build();
                 taskBuilder().agent(a).expectedOutput("y").build();
@@ -414,16 +415,13 @@ public sealed class TaskBuilderTests
     [Trait("BR", "R-03")]
     public void ShouldRefuseTask_WhenWhenIsCalledTwice()
     {
-        var ex = Assert.ThrowsAny<Exception>(() => NewEngine().Evaluate("""
+        ScriptRefusal.Bridged<InvalidScriptException>(() => NewEngine().Evaluate("""
             const writer = agentBuilder().name("writer").role("Writer").goal("Write").build();
             taskBuilder().name("refund").agent(writer)
                 .description("Handle the refund").expectedOutput("A refund")
                 .when("triage", { category: ["bug"] })
                 .when("triage", "otherwise").build();
-            """));
-
-        Assert.Contains("InvalidScriptException", ex.GetType().Name + ex.InnerException?.GetType().Name, StringComparison.Ordinal);
-        Assert.Contains("refund", ex.Message, StringComparison.Ordinal);
+            """), "refund");
     }
 
     [Fact]
@@ -537,5 +535,21 @@ public sealed class TaskBuilderTests
             """);
 
         Assert.Contains("'report'", message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("""taskBuilder().retry(3)""", ".retry(spec) expects an object literal")]
+    [InlineData("""taskBuilder().retry({ attempts: 2, backoff: "random" })""", "is unknown, use")]
+    [InlineData("""taskBuilder().when("", "otherwise")""", "requires the name of a decision task")]
+    [InlineData("""taskBuilder().withProfile("")""", ".withProfile(name) takes the profile name")]
+    [InlineData("""taskBuilder().decision(42)""", ".decision(spec) expects an object literal.")]
+    [InlineData("""taskBuilder().name("t").build()""", "taskBuilder() requires .description(...).")]
+    public void ShouldReachTheScriptsCatch_WhenTheTaskBuilderRefuses(string call, string expected)
+    {
+        var caught = ScriptRefusal.Caught(NewEngine(), call);
+
+        Assert.StartsWith("true|InvalidScriptException|", caught, StringComparison.Ordinal);
+        Assert.Contains(expected, caught, StringComparison.Ordinal);
     }
 }

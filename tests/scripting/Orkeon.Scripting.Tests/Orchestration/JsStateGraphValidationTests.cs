@@ -6,6 +6,7 @@ using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Orchestration;
 using Orkeon.Scripting.Tests.Doubles;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Orchestration;
 
@@ -19,7 +20,7 @@ public sealed class JsStateGraphValidationTests
         new JsEngineFactory(hostPorts: new ScriptingHostPorts { GraphObserver = observer }).Create();
 
     private static InvalidScriptException Refused(string literal) =>
-        Assert.Throws<InvalidScriptException>(() => NewEngine().Evaluate($"stateGraph({literal});"));
+        ScriptRefusal.Bridged<InvalidScriptException>(() => NewEngine().Evaluate($"stateGraph({literal});"), "stateGraph");
 
     [Fact]
     [Trait("BR", "FWK-27")]

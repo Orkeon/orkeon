@@ -23,7 +23,7 @@ internal static class TestNamespaceBinding
     public static JsTestNamespace Register(Engine engine, TestOverrideLlmProvider? provider)
     {
         ArgumentNullException.ThrowIfNull(engine);
-        var ns = provider is null ? new JsTestNamespace() : new JsTestNamespace(provider.Mock);
+        var ns = new JsTestNamespace(provider?.Mock, engine);
         engine.SetValue(GlobalName, ns);
         return ns;
     }

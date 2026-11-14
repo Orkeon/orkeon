@@ -1,6 +1,7 @@
 using Jint;
 using Jint.Native;
 using Orkeon.Scripting.ErrorPolicy;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Bindings;
 
@@ -18,7 +19,7 @@ internal static class ErrorActionBinding
     public static void Register(Engine engine)
     {
         ArgumentNullException.ThrowIfNull(engine);
-        engine.SetValue(GlobalName, new JsErrorActionFactory());
+        engine.SetValue(GlobalName, new JsErrorActionFactory(engine));
     }
 }
 
@@ -28,17 +29,18 @@ internal static class ErrorActionBinding
 /// </summary>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop factory for the ErrorAction union typed in Typings/agent.d.ts; the four members it exposes are named on the type summary above.
-// CA1822: methods are intentionally instance members — Jint exposes only instance
-// members of the object handed to engine.SetValue(...). Making them static would
-// remove ErrorAction.fail()/skip()/fallback()/retry() from the script surface.
-#pragma warning disable CA1822
-internal sealed class JsErrorActionFactory
+// Every member a script calls goes through Guard (SCR-25, #364): a delay out of range is an
+// Error the script catches, not a CLR throw that crosses its try ... catch.
+internal sealed class JsErrorActionFactory(Engine engine)
 {
-    public JsErrorAction fail() => new(JsErrorActionKind.Fail);
-    public JsErrorAction skip() => new(JsErrorActionKind.Skip);
-    public JsErrorAction fallback(JsValue value) => new(JsErrorActionKind.Fallback, fallback: value);
+    public JsErrorAction fail() => JsHostError.Guard(engine, () => new JsErrorAction(JsErrorActionKind.Fail));
+    public JsErrorAction skip() => JsHostError.Guard(engine, () => new JsErrorAction(JsErrorActionKind.Skip));
+    public JsErrorAction fallback(JsValue value)
+        => JsHostError.Guard(engine, () => new JsErrorAction(JsErrorActionKind.Fallback, fallback: value));
 
-    public JsErrorAction retry(JsValue? options = null)
+    public JsErrorAction retry(JsValue? options = null) => JsHostError.Guard(engine, () => Retry(options));
+
+    private static JsErrorAction Retry(JsValue? options)
     {
         TimeSpan? delay = null;
         int? max = null;
@@ -72,6 +74,5 @@ internal sealed class JsErrorActionFactory
         };
     }
 }
-#pragma warning restore CA1822
 #pragma warning restore CS1591
 #pragma warning restore IDE1006

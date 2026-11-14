@@ -1,6 +1,7 @@
 using Jint;
 using Jint.Native;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Orchestration;
 using Orkeon.Scripting.Runtime;
 
@@ -27,7 +28,9 @@ internal static class StateGraphBinding
         ArgumentNullException.ThrowIfNull(engine);
         engine.SetValue("START", GraphSentinels.Start);
         engine.SetValue("END", GraphSentinels.End);
-        engine.SetValue(GlobalName, new Func<JsValue, JsStateGraph>(literal => Build(engine, literal, observer)));
+        // A literal the factory refuses is an Error the script catches (SCR-25, #364).
+        engine.SetValue(GlobalName, new Func<JsValue, JsStateGraph>(
+            literal => JsHostError.Guard(engine, () => Build(engine, literal, observer))));
     }
 
     private static JsStateGraph Build(Engine engine, JsValue literal, Orkeon.Domain.Graph.IGraphNodeObserver? observer)

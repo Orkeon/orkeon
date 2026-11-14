@@ -9,6 +9,7 @@ using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Scripting.Adapters;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Scripting.Tests.Internal;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
@@ -81,7 +82,7 @@ public sealed class TaskProfileTests
     [InlineData("""withProfile(42)""")]
     public void withProfile_takes_a_profile_name(string call)
     {
-        var error = Assert.Throws<InvalidScriptException>(() => Crew("." + call));
+        var error = ScriptRefusal.Bridged<InvalidScriptException>(() => Crew("." + call), "withProfile");
 
         Assert.Contains("withProfile", error.Message, StringComparison.Ordinal);
     }

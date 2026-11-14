@@ -3,6 +3,7 @@ using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Bindings;
 using Orkeon.Scripting.Testing;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Testing;
 
@@ -63,7 +64,7 @@ public sealed class MockingTests
         var (engine, ns) = NewEngineWithTest();
         await ns.Llm.GenerateAsync("ping", null, TestContext.Current.CancellationToken);
 
-        var ex = ThrowsContaining<AssertionException>(
+        var ex = ScriptRefusal.Bridged<AssertionException>(
             () => engine.Evaluate("test.assertLlmCalled({ times: 5 });"),
             "expected 5");
 
@@ -86,10 +87,26 @@ public sealed class MockingTests
     {
         var (engine, _) = NewEngineWithTest();
 
-        var ex = ThrowsContaining<AssertionException>(
+        var ex = ScriptRefusal.Bridged<AssertionException>(
             () => engine.Evaluate("test.assertToolCalled('phantom');"),
             "phantom");
 
         Assert.NotNull(ex);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("test.assertLlmCalled()", "AssertionException", "expected at least one call")]
+    [InlineData("test.assertToolCalled('ghost')", "AssertionException", "no mock tool registered as 'ghost'")]
+    [InlineData("test.mockTool('')", "ArgumentException", "")]
+    [InlineData("test.mockLlm.when({ prompt: /\\u{41}/u }).respond('x')", "RegexParseException", "")]
+    public void ShouldReachTheScriptsCatch_WhenATestHelperRefuses(string call, string clrType, string expected)
+    {
+        var (engine, _) = NewEngineWithTest();
+
+        var caught = ScriptRefusal.Caught(engine, call);
+
+        Assert.StartsWith($"true|{clrType}|", caught, StringComparison.Ordinal);
+        Assert.Contains(expected, caught, StringComparison.Ordinal);
     }
 }

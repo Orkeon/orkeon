@@ -281,10 +281,10 @@ public sealed partial class JsCrew
     internal JsValue? _onCrewComplete;
     internal JsValue? _onCrewError;
 
-    public bool has(JsAgent agent) => _agents.Contains(agent);
+    public bool has(JsAgent agent) => JsHostError.Guard(_engine, () => _agents.Contains(agent));
 
     /// <summary>By name, as crew.d.ts declares: whether an agent of that name is a member.</summary>
-    public bool has(string agentName) => findByName(agentName) is not null;
+    public bool has(string agentName) => JsHostError.Guard(_engine, () => FindByName(agentName) is not null);
 
     /// <summary>
     /// The member named <paramref name="agentName"/>, or <see cref="AgentNotInThisCrewException"/>:
@@ -292,16 +292,19 @@ public sealed partial class JsCrew
     /// <c>ctx.delegate(name, …)</c> (<c>crew.runAgent</c> resolves the same way).
     /// </summary>
     internal JsAgent Resolve(string agentName)
-        => findByName(agentName) ?? throw new AgentNotInThisCrewException(agentName, name);
+        => FindByName(agentName) ?? throw new AgentNotInThisCrewException(agentName, name);
 
-    public JsAgent? findByName(string name)
-        => _agents.FirstOrDefault(a => string.Equals(a.name, name, StringComparison.Ordinal));
+    // The lookups a script calls go through Guard like every other member (SCR-25, #364).
+    public JsAgent? findByName(string name) => JsHostError.Guard(_engine, () => FindByName(name));
 
-    public JsAgent? findById(string id)
-        => _agents.FirstOrDefault(a => string.Equals(a.id, id, StringComparison.Ordinal));
+    private JsAgent? FindByName(string agentName)
+        => _agents.FirstOrDefault(a => string.Equals(a.name, agentName, StringComparison.Ordinal));
 
-    public IReadOnlyList<JsAgent> findByRole(string role)
-        => _agents.Where(a => string.Equals(a.Domain.Role.Value, role, StringComparison.Ordinal)).ToList();
+    public JsAgent? findById(string id) => JsHostError.Guard(_engine,
+        () => _agents.FirstOrDefault(a => string.Equals(a.id, id, StringComparison.Ordinal)));
+
+    public IReadOnlyList<JsAgent> findByRole(string role) => JsHostError.Guard(_engine,
+        () => (IReadOnlyList<JsAgent>)_agents.Where(a => string.Equals(a.Domain.Role.Value, role, StringComparison.Ordinal)).ToList());
 
     /// <summary>
     /// The CLR entry point (ScriptHost's <c>globalThis.crew</c> handoff, hosts, tests): a root pump. The
@@ -540,17 +543,17 @@ public sealed partial class JsCrew
     internal AgentInstanceRegistry Instances { get; }
 
     /// <summary>The kept instances, oldest first: <c>{ id, agent, state }</c> with the state <c>running</c>, <c>completed</c>, <c>failed</c> or <c>stopped</c>.</summary>
-    public JsValue instances() => new Jint.Native.JsArray(_engine, [.. Instances.List().Select(i =>
+    public JsValue instances() => JsHostError.Guard(_engine, () => (JsValue)new Jint.Native.JsArray(_engine, [.. Instances.List().Select(i =>
     {
         var row = new Jint.Native.JsObject(_engine);
         row.Set("id", i.Id);
         row.Set("agent", i.Agent);
         row.Set("state", i.State);
         return (JsValue)row;
-    })]);
+    })]));
 
     /// <summary>Cancels the running instance <paramref name="id"/> at once; <c>false</c> when none runs under it.</summary>
-    public bool stop(string id) => Instances.Stop(id);
+    public bool stop(string id) => JsHostError.Guard(_engine, () => Instances.Stop(id));
 
     private static async Task<JsValue> AcquireGateAsync(GatePermit permit, CancellationToken? signal)
     {

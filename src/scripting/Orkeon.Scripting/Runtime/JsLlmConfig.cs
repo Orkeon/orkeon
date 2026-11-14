@@ -54,13 +54,16 @@ public sealed class JsLlmConfig
     /// What the provider and this configuration's model take for reasoning (#359): the effort levels, the thinking
     /// support, and whether the capability table knows the model. Null when the provider cannot tell.
     /// </summary>
-    public JsLlmCapabilities? capabilities => JsLlmCapabilities.From(Target?.DescribeReasoning(Domain.Model));
+    public JsLlmCapabilities? capabilities => Guarded(() => JsLlmCapabilities.From(Target?.DescribeReasoning(Domain.Model)));
 
     /// <summary>
     /// The effort a call on this configuration asks for and the one the provider sends (#360), the host's
     /// <c>Llm:Thinking:Effort</c> included. Null when no effort is asked or the provider cannot tell.
     /// </summary>
-    public JsLlmReasoning? reasoning => JsLlmReasoning.From(Target?.ReportEffort(Domain));
+    public JsLlmReasoning? reasoning => Guarded(() => JsLlmReasoning.From(Target?.ReportEffort(Domain)));
+
+    // A provider that throws while it describes the model reaches the script's catch (SCR-25, #364).
+    private T Guarded<T>(Func<T> body) => _engine is null ? body() : JsHostError.Guard(_engine, body);
 
     internal JsLlmConfig(
         string provider,

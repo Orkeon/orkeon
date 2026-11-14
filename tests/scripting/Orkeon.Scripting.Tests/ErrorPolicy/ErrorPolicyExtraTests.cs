@@ -3,6 +3,7 @@ using Jint;
 using Orkeon.Scripting.Bindings;
 using Orkeon.Scripting.ErrorPolicy;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.ErrorPolicy;
 
@@ -153,5 +154,16 @@ public sealed class ErrorPolicyExtraTests
         Assert.Same(agent, ctx.agent);
         Assert.Equal("id-1", ctx.agent.id);
         Assert.Equal("Alice", ctx.agent.name);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("ErrorAction.retry({ delay: NaN })", "ArgumentException")]
+    [InlineData("ErrorAction.retry({ delay: Infinity })", "OverflowException")]
+    public void ShouldReachTheScriptsCatch_WhenARetryDelayIsOutOfRange(string call, string clrType)
+    {
+        var caught = ScriptRefusal.Caught(NewEngine(), call);
+
+        Assert.StartsWith($"true|{clrType}|", caught, StringComparison.Ordinal);
     }
 }

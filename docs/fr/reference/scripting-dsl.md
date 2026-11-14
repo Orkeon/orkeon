@@ -46,6 +46,12 @@ appelle `RunFromFileAsync` — n'a pas d'orchestrateur : il exécute la crew exp
 
 ## Ce que lit chaque forme
 
+Une méthode de builder ou de fabrique qui refuse son argument — `agentBuilder().effort("turbo")`, un
+`build()` auquel manque un champ, un littéral `stateGraph(...)` à la topologie fautive — lève une `Error`
+que le script rattrape (`try … catch`) : le message nomme la faute, `clrType` l'exception .NET derrière
+(`"InvalidScriptException"`). Un script qui construit à partir de données peut se rabattre sur une
+valeur par défaut.
+
 Mesuré sur `JsCrewConfigurationAdapter.cs`, `JsCrew.cs` et `JsExecutionContext.cs`, pas
 déduit.
 
@@ -128,7 +134,7 @@ tâche : `when(...)` et le `state` d'une décision désignent une tâche par ell
 décision l'exige. Accepté mais sans effet : `expect` (consigné dans le contexte de la tâche en l'absence de
 `deliverable`, jamais validé).
 
-`decision(spec)` fait de la tâche une tâche de décision : `spec` est un littéral d'objet `{ questions, minConfidence, state, longContext, fallback }`, la forme du bloc YAML `decision:`. Elle n'a pas besoin d'`agent`, et une tâche qui a les deux est refusée au chargement. `when(decisionTask, clauses)` n'exécute la tâche que si la tâche de décision nommée a répondu comme demandé : `clauses` est un objet de clauses (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) ou la chaîne `"otherwise"` ; `when()` ne lève une `InvalidScriptException` que pour un nom de tâche vide ou pour des `clauses` qui ne sont ni un objet ni une chaîne. Une chaîne autre que `"otherwise"`, une question ou une option inconnue, ou une clause mal formée passe le builder et est refusée au chargement. Deux tâches de décision de même `name` dans un script sont refusées au chargement (`Task '<name>' declares a decision twice.`). `state` liste les tâches dont la sortie est l'état de la décision (par défaut : chaque dépendance qui a tourné) ; circuit désactivé, ou par `--no-decision`, la tâche répond par son `fallback` (voir [Modèles de décision](../architecture/decision-models.md#le-circuit-de-décision-et-le-repli)). Les tâches de décision et les conditions ne s'exécutent que dans les processus Sequential, Parallel et Graph. Un second `.when()` sur une tâche lève une `InvalidScriptException` qui nomme la tâche. Un `state` qui n'est pas un tableau, un `fallback` qui n'est pas un objet, et une valeur de `choice`, une entrée de `score` ou une valeur de `fallback` qui n'est pas une chaîne sont refusés au chargement, en nommant la tâche et la clé. Deux tâches de même `name` sont refusées au chargement. Une tâche sans `.name()` est identifiée par sa description complète ; la troncature n'est que l'affichage. Voir [Modèles de décision](../architecture/decision-models.md).
+`decision(spec)` fait de la tâche une tâche de décision : `spec` est un littéral d'objet `{ questions, minConfidence, state, longContext, fallback }`, la forme du bloc YAML `decision:`. Elle n'a pas besoin d'`agent`, et une tâche qui a les deux est refusée au chargement. `when(decisionTask, clauses)` n'exécute la tâche que si la tâche de décision nommée a répondu comme demandé : `clauses` est un objet de clauses (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) ou la chaîne `"otherwise"` ; `when()` ne lève (une `Error` que le script rattrape) que pour un nom de tâche vide ou pour des `clauses` qui ne sont ni un objet ni une chaîne. Une chaîne autre que `"otherwise"`, une question ou une option inconnue, ou une clause mal formée passe le builder et est refusée au chargement. Deux tâches de décision de même `name` dans un script sont refusées au chargement (`Task '<name>' declares a decision twice.`). `state` liste les tâches dont la sortie est l'état de la décision (par défaut : chaque dépendance qui a tourné) ; circuit désactivé, ou par `--no-decision`, la tâche répond par son `fallback` (voir [Modèles de décision](../architecture/decision-models.md#le-circuit-de-décision-et-le-repli)). Les tâches de décision et les conditions ne s'exécutent que dans les processus Sequential, Parallel et Graph. Un second `.when()` sur une tâche lève une `Error` qui nomme la tâche. Un `state` qui n'est pas un tableau, un `fallback` qui n'est pas un objet, et une valeur de `choice`, une entrée de `score` ou une valeur de `fallback` qui n'est pas une chaîne sont refusés au chargement, en nommant la tâche et la clé. Deux tâches de même `name` sont refusées au chargement. Une tâche sans `.name()` est identifiée par sa description complète ; la troncature n'est que l'affichage. Voir [Modèles de décision](../architecture/decision-models.md).
 
 `asyncExecution()` suit la règle du YAML : sous `.process("sequential")` la tâche tourne pendant
 les tâches qui la suivent, et une tâche qui la cite dans `withContext` l'attend ; sous
@@ -136,7 +142,7 @@ les tâches qui la suivent, et une tâche qui la cite dans `withContext` l'atten
 refusée quand le run l'adapte, en nommant la tâche (voir
 [Tâches asynchrones](../orchestration/process-types.md#tâches-asynchrones-asyncexecution)).
 
-`retry({ attempts, backoffMs?, backoff? })` est le bloc YAML `retry:` (voir [Retry d'une tâche](../architecture/yaml-schema.md#retry-dune-tâche)) : une tentative en échec rejoue la tâche entière, appels d'outils compris, jusqu'à `attempts` exécutions au total (au moins 1, obligatoire) ; `backoffMs` (défaut 0) et `backoff` (`"fixed"`, le défaut, ou `"exponential"`) règlent l'attente. Un `attempts` absent ou invalide, un `backoffMs` négatif, un `backoff` inconnu, ou un `retry` sur une tâche de décision lève une `InvalidScriptException` à l'appel (ou à `build()` pour la tâche de décision). C'est le seul retry d'une crew `.process("graph")`.
+`retry({ attempts, backoffMs?, backoff? })` est le bloc YAML `retry:` (voir [Retry d'une tâche](../architecture/yaml-schema.md#retry-dune-tâche)) : une tentative en échec rejoue la tâche entière, appels d'outils compris, jusqu'à `attempts` exécutions au total (au moins 1, obligatoire) ; `backoffMs` (défaut 0) et `backoff` (`"fixed"`, le défaut, ou `"exponential"`) règlent l'attente. Un `attempts` absent ou invalide, un `backoffMs` négatif, un `backoff` inconnu, ou un `retry` sur une tâche de décision lève une `Error` que le script rattrape à l'appel (ou à `build()` pour la tâche de décision). C'est le seul retry d'une crew `.process("graph")`.
 
 L'`agent` d'une tâche et les tâches de son `withContext(s)` sont ceux de la crew (`withAgent(s)`,
 `withTask(s)`) : un agent ou une tâche que la crew ne tient pas est refusé quand le run adapte la
@@ -409,7 +415,7 @@ temps annule le run. `runStream(state)` produit chaque saut (`{ fromNode, toNode
 pour un `for await`.
 
 `stateGraph(...)` vérifie la forme du graphe à sa construction, avec le validateur que partagent le moteur du
-Domain et le graphe d'une crew (ADR-018), et signale **toutes** les fautes dans une seule `InvalidScriptException` : une arête depuis ou
+Domain et le graphe d'une crew (ADR-018), et signale **toutes** les fautes dans une seule `Error` que le script rattrape (`clrType` `"InvalidScriptException"`) : une arête depuis ou
 vers un nœud non déclaré, un nœud sans arête sortante, un nœud que rien n'atteint (un orphelin), aucun chemin de `START` à `END`,
 un nœud qui ne peut pas atteindre `END`. Une arête fonction ne se lit pas avant de s'exécuter : on suppose qu'elle peut mener
 n'importe où, `END` compris. Chaque fois que la boucle entre dans un nœud, un événement `graph.node.entered` part vers l'hôte

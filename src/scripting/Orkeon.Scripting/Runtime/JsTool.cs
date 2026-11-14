@@ -77,8 +77,8 @@ public sealed class JsTool : IBaseTool
     /// value, or a Promise the caller awaits (Jint's event loop settles it). <paramref name="ctx"/>
     /// is passed through verbatim so a caller that has a context can forward it.
     /// </summary>
-    public JsValue execute(JsValue input, JsValue? ctx = null) =>
-        _engine.Invoke(_executeCallback, [input, ctx ?? JsValue.Undefined]);
+    public JsValue execute(JsValue input, JsValue? ctx = null) => Orkeon.Scripting.Internal.JsHostError.Guard(_engine,
+        () => _engine.Invoke(_executeCallback, [input, ctx ?? JsValue.Undefined]));
 
     // ---- Pipeline-facing members ----
 

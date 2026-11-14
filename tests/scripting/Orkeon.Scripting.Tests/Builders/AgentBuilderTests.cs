@@ -2,6 +2,7 @@ using Jint;
 using Orkeon.Scripting.Builders;
 using Orkeon.Scripting.Exceptions;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Builders;
 
@@ -31,7 +32,7 @@ public sealed class AgentBuilderTests
     {
         var engine = NewEngine();
 
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => engine.Evaluate("""agentBuilder().name("X").goal("G").build();"""),
             "role");
 
@@ -130,5 +131,37 @@ public sealed class AgentBuilderTests
         Assert.True(agent.Builder.AllowDelegationFlag);
         Assert.True(agent.Domain.AllowDelegation);
         Assert.Equal(50, agent.Domain.MaxIterations);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("""agentBuilder().effort("bogus")""", "effort must be low|medium|high|xhigh|max, not 'bogus'")]
+    [InlineData("""agentBuilder().onCommand(42)""", ".onCommand(handler) requires a function.")]
+    [InlineData("""agentBuilder().onCommand("", () => 1)""", "requires a non-empty intent")]
+    [InlineData("""agentBuilder().withAutonomousTool("file_read")""", "toolBuilder()")]
+    [InlineData("""agentBuilder().name("X").goal("G").build()""", "role")]
+    public void ShouldReachTheScriptsCatch_WhenTheAgentBuilderRefuses(string call, string expected)
+    {
+        var caught = ScriptRefusal.Caught(NewEngine(), call);
+
+        Assert.StartsWith("true|InvalidScriptException|", caught, StringComparison.Ordinal);
+        Assert.Contains(expected, caught, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-364")]
+    public void ShouldFallBackToADefault_WhenTheEffortReadFromDataIsRefused()
+    {
+        var chosen = NewEngine().Evaluate("""
+            const settings = { effort: "turbo" };
+            const accepts = level => {
+                try { agentBuilder().effort(level); return true; } catch { return false; }
+            };
+            let cleaned = false;
+            try { agentBuilder().effort(settings.effort); } catch { } finally { cleaned = true; }
+            [accepts(settings.effort) ? settings.effort : "medium", cleaned].join("|");
+            """).AsString();
+
+        Assert.Equal("medium|true", chosen);
     }
 }

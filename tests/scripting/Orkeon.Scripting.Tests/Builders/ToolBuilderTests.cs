@@ -4,6 +4,7 @@ using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Tests.Shared.Doubles;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
+using Orkeon.Scripting.Tests.Internal;
 
 namespace Orkeon.Scripting.Tests.Builders;
 
@@ -33,7 +34,7 @@ public sealed class ToolBuilderTests
     [Fact]
     public void ToolBuilder_missing_execute_throws_InvalidScriptException()
     {
-        var ex = ThrowsContaining<InvalidScriptException>(
+        var ex = ScriptRefusal.Bridged<InvalidScriptException>(
             () => NewEngine().Evaluate("""toolBuilder().name("x").description("y").build();"""),
             "execute");
 
@@ -176,11 +177,23 @@ public sealed class ToolBuilderTests
             """);
         Assert.Equal(Orkeon.Domain.Tools.ToolAccess.Unspecified, undeclared.Access);
 
-        ThrowsContaining<InvalidScriptException>(
+        ScriptRefusal.Bridged<InvalidScriptException>(
             () => NewEngine().Evaluate("""
                 toolBuilder().name("t").description("d").access("root")
                   .execute((i) => i).build();
                 """),
             "access");
+    }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("""toolBuilder().build()""", "toolBuilder() requires .name(...).")]
+    [InlineData("""toolBuilder().name("t").description("d").execute(() => 1).access("bogus").build()""", "accepts 'read', 'edit' or 'execute' (got 'bogus')")]
+    public void ShouldReachTheScriptsCatch_WhenTheToolBuilderRefuses(string call, string expected)
+    {
+        var caught = ScriptRefusal.Caught(NewEngine(), call);
+
+        Assert.StartsWith("true|InvalidScriptException|", caught, StringComparison.Ordinal);
+        Assert.Contains(expected, caught, StringComparison.Ordinal);
     }
 }

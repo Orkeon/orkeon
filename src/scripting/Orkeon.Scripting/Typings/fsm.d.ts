@@ -72,7 +72,8 @@ declare global {
     /**
      * Builds a state machine from a literal. Rejects at build time: a missing or non-string
      * `name`/`initial`, a `states` that is not an object, an `initial` that is not declared,
-     * a transition without a string `target`, and a `target` naming an undeclared state.
+     * a transition without a string `target`, and a `target` naming an undeclared state. The
+     * refusal is an `Error` the script catches, its `clrType` `"InvalidScriptException"`.
      */
     function stateMachine<TState extends string, TPayload = unknown>(
         def: FsmDefinition<TState, TPayload>,

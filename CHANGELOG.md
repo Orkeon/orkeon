@@ -149,6 +149,15 @@ Migration:
   `Error` too. Uncaught, a bridged error reaches the host as its CLR exception: `orkeon run` reports
   `InvalidScriptException` as the root cause after the `JavaScriptException` wrapper, where it stopped at
   the wrapper.
+- A script catches the refusals of the builders and factories too: every method of `agentBuilder()`,
+  `taskBuilder()`, `crewBuilder()` and `toolBuilder()`, `stateGraph(...)`, `stateMachine(...)`,
+  `ErrorAction.*` and the `test` namespace (a failed `test.assertLlmCalled`, a refused mock) threw its CLR
+  exception the same raw way, so `agentBuilder().effort(level)` on a level read from data could not fall
+  back inside a `try`. Each goes through `JsHostError.Guard` now: an `Error` with the same message, its
+  `clrType` naming the exception (`InvalidScriptException`, `DuplicateAgentNameException`,
+  `AssertionException`). The synchronous members of a built crew (`has`, `findByName`, `findById`,
+  `findByRole`, `instances`, `stop`), `tool.execute` and an `LlmConfig`'s `capabilities` and `reasoning`
+  follow the same rule. A C# caller of `new JsAgentBuilder()` still gets the raw exception.
 - Z.AI's `reasoning_effort` takes `xhigh` (#356): the campaign of 2026-11-14 found GLM-5.2 accepting it and
   reasoning at it, between `high` and `max`, where Orkeon lowered it to `high`. The provider now declares the five
   levels; the GLM-5.3 family keeps its table restriction (`low`, `high`, `max`). The campaign re-run of M15–M18 on
