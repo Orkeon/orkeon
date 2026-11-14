@@ -249,7 +249,21 @@ public sealed partial class JsCrew
     private void InvokeAgentLifecycleHook(JsAgent agent, JsValue? hook, string hookName)
     {
         if (hook is null || hook.IsUndefined() || hook.IsNull()) return;
-        var ctx = new JsExecutionContext(CreateEnvironment(agent, budget: null, CancellationToken.None));
+        // #349: the hook's tools are held to the agent's working root and file-system scope. One the mounts
+        // refuse refuses the agent's run when it starts; the hook, which could not be held to it, is not run.
+        string? root;
+        Orkeon.Domain.FileSystem.AgentFileSystemScope? fileSystem;
+        try
+        {
+            root = ResolveWorkingRoot(agent, inherited: null);
+            fileSystem = ResolveFileSystem(agent, inherited: null, root);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogLifecycleHookSkipped(_logger, hookName, agent.name, name, ex.Message);
+            return;
+        }
+        var ctx = new JsExecutionContext(CreateEnvironment(agent, budget: null, CancellationToken.None, workingRoot: root, fileSystem: fileSystem));
         var raw = _engine.Invoke(hook, [ctx]);
         if (!raw.IsPromise()) return;
         Action<JsValue> onRejected = reason => JsHostError.Guard(_engine,
@@ -259,6 +273,9 @@ public sealed partial class JsCrew
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Lifecycle hook {Hook} of agent '{Agent}' in crew '{Crew}' rejected: {Reason}")]
     private static partial void LogLifecycleHookRejected(ILogger logger, string hook, string agent, string crew, string reason);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Warning, Message = "Lifecycle hook {Hook} of agent '{Agent}' in crew '{Crew}' not run: {Reason}")]
+    private static partial void LogLifecycleHookSkipped(ILogger logger, string hook, string agent, string crew, string reason);
 
     internal JsValue? _onCrewStart;
     internal JsValue? _onCrewComplete;

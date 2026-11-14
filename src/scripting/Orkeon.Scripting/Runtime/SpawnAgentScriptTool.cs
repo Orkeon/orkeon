@@ -100,9 +100,9 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
         if (inheritPermit && _environment.Permit is { } permit)
             options.Set("permit", JsValue.FromObject(engine, permit));
         // RT-06: a child without a working root of its own runs under its parent's; #349: its
-        // file-system scope can only narrow its parent's.
-        if (inheritedRoot is not null || inheritedFileSystem is not null)
-            options.Set("root", JsValue.FromObject(engine, new InheritedWorkingRoot(inheritedRoot, inheritedFileSystem)));
+        // file-system scope can only narrow its parent's. Always handed, even empty: the child runs
+        // under what its parent had, never under a neighbour's read off the open attempts.
+        options.Set("root", JsValue.FromObject(engine, new InheritedWorkingRoot(inheritedRoot, inheritedFileSystem)));
         if (floor is not null)
             options.Set("permissionFloor", floor);
         JsValue promise;

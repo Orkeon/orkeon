@@ -43,13 +43,13 @@ internal static partial class RagNamespaceBinding
         var log = logger ?? NullLogger.Instance;
 
         IDictionary<string, object?> ns = new ExpandoObject();
-        ns["ingest"] = BuildIngest(backend);
+        ns["ingest"] = BuildIngest(engine, backend);
         ns["query"] = BuildQuery(backend, log, generate: true);
         ns["retrieve"] = BuildQuery(backend, log, generate: false);
         engine.SetValue(GlobalName, ns);
     }
 
-    private static Func<JsValue?, Task<object>> BuildIngest(RagScriptingBackend? backend)
+    private static Func<JsValue?, Task<object>> BuildIngest(Engine engine, RagScriptingBackend? backend)
     {
         return async options =>
         {
@@ -59,6 +59,14 @@ internal static partial class RagNamespaceBinding
                     "rag.ingest: the RAG subsystem is not configured on this host. " +
                     "Register it with AddOrkeonRag(configuration) (Orkeon.Rag.DependencyInjection).");
             }
+
+            // #349: called from a scoped agent's body, the ingest is held to that agent's file-system
+            // scope as tools.ragIngest is: its glob matches inside the scope and every source must lie
+            // inside it. Read here, before the first await, while the calling body's attempt is open.
+            var scope = Orkeon.Domain.Execution.AgentRunScope.Current is { } current
+                ? current.FileSystem
+                : Runtime.JsEngineAttempts.FileSystemForCode(engine, "rag.ingest",
+                    "Give the agent the rag_ingest tool and call ctx.tools.ragIngest(...) from its body.");
 
             if (options is null || !options.IsObject())
                 throw new ArgumentException("rag.ingest expects an options object: { collection, sources[, chunkingStrategy, reindex, prune] }.");
@@ -76,11 +84,14 @@ internal static partial class RagNamespaceBinding
             var prune = pruneValue.IsBoolean() && pruneValue.AsBoolean();
 
             IReadOnlyList<SourceDescriptor> sources = locations.Any(SourceGlobExpander.HasWildcard)
-                ? await SourceGlobExpander.ExpandAsync(backend.FileSystem, locations).ConfigureAwait(false)
+                ? await ExpandHeldAsync(backend.FileSystem, locations, scope).ConfigureAwait(false)
                 : locations.Select(l => new SourceDescriptor { Location = l }).ToList();
 
             if (sources.Count == 0)
                 throw new InvalidOperationException($"rag.ingest: no source matched: {string.Join(", ", locations)}");
+            if (scope is not null
+                && sources.FirstOrDefault(s => s.Location.StartsWith('/') && !scope.Allows(s.Location, Orkeon.Domain.FileSystem.FileAccessRights.Read)) is { } outside)
+                throw new InvalidOperationException("rag.ingest: " + scope.DescribeDenial(outside.Location, Orkeon.Domain.FileSystem.FileAccessRights.Read));
 
             var report = await backend.IngestionPipeline.IngestAsync(new IngestionRequest
             {
@@ -109,6 +120,25 @@ internal static partial class RagNamespaceBinding
             // a thread-pool thread, where the engine must not be touched.
             return payload;
         };
+    }
+
+    /// <summary>
+    /// Expands the glob sources of <c>rag.ingest</c>, under <paramref name="scope"/> when the call is held to
+    /// one: the file system enforces it as it does during an agent's tool call (#349).
+    /// </summary>
+    private static async Task<IReadOnlyList<SourceDescriptor>> ExpandHeldAsync(
+        Orkeon.Domain.FileSystem.IFileSystemService fileSystem, IReadOnlyList<string> locations,
+        Orkeon.Domain.FileSystem.AgentFileSystemScope? scope)
+    {
+        if (scope is null)
+            return await SourceGlobExpander.ExpandAsync(fileSystem, locations).ConfigureAwait(false);
+        var held = Orkeon.Domain.Execution.AgentRunScope.Create(null, "rag.ingest", null, scope);
+        await using (held.ConfigureAwait(false))
+        {
+            using (held.Enter())
+            using (Orkeon.Domain.Execution.AgentRunScope.EnterToolCall())
+                return await SourceGlobExpander.ExpandAsync(fileSystem, locations).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

@@ -24,6 +24,7 @@ public class JsExecutionContext
     private readonly JsAgentChannel _channel;
     private readonly CancellationToken _ct;
     private readonly Orkeon.Domain.Autonomous.AgentExecutionBudget? _budget;
+    private readonly Orkeon.Domain.FileSystem.AgentFileSystemScope? _fileSystem;
 
     public JsCrewProxy crew { get; }
     public JsMemoryRoot memory { get; }
@@ -44,6 +45,7 @@ public class JsExecutionContext
         _channel = environment.Channel;
         _ct = environment.Ct;
         _budget = environment.Budget;
+        _fileSystem = environment.FileSystem;
         memory = new JsMemoryRoot(environment.CrewMemory);
         crew = new JsCrewProxy(environment.Crew, environment.Engine, environment.Ct);
         log = new JsLogger(environment.Logger);
@@ -77,6 +79,10 @@ public class JsExecutionContext
         {
             ToolLimits = environment.ToolLimits,
             AgentSettings = environment.Self.Builder.WithEffortAndCache(environment.Self.Builder.LlmConfig?.Domain),
+            // A context with no agent run of its own (a lifecycle or crew hook) still holds act's tools to
+            // the agent's working root and file-system scope (#349).
+            OwnedRunRoot = environment.WorkingRoot,
+            OwnedRunFileSystem = environment.FileSystem,
         };
 #pragma warning restore CA2000
     }
@@ -189,6 +195,10 @@ public class JsExecutionContext
             options.Set("charge", opts.Get("charge"));
             options.Set("caller", JsValue.FromObject(_engine, new CallerBudget(_budget)));
         }
+        // #349: the delegated run stays inside this context's file-system scope, as delegate_work's does;
+        // its own .filesystem([...]) can only narrow it. Its working root stays its own (RT-06 hands a
+        // root down to spawned children alone).
+        options.Set("root", JsValue.FromObject(_engine, new InheritedWorkingRoot(null, _fileSystem)));
         return _engine.Invoke(_crew.runAgent, [JsValue.FromObject(_engine, agent), input ?? JsValue.Undefined, options]);
     });
 

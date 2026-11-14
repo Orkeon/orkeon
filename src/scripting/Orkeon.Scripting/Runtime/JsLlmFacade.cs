@@ -144,6 +144,12 @@ public sealed partial class JsLlmFacade
     /// </summary>
     internal void AttachRunScope(AgentRunScope scope) => _agentRunScope = scope;
 
+    /// <summary>The working root of the run scope an <c>act</c> creates for itself, without an attached agent run scope (a hook's context).</summary>
+    internal string? OwnedRunRoot { get; init; }
+
+    /// <summary>The file-system scope (#349) of the run scope an <c>act</c> creates for itself, without an attached agent run scope.</summary>
+    internal Orkeon.Domain.FileSystem.AgentFileSystemScope? OwnedRunFileSystem { get; init; }
+
     // chat {model} spans with the gen_ai.* attributes (Orkeon.Constants.Llm.GenAiAttributes),
     // like the C# execution loop: one backend view for both runtimes.
     private Activity? StartChatActivity(string method, ILlmProvider? provider)
@@ -1327,8 +1333,9 @@ public sealed partial class JsLlmFacade
         var completedIterations = 0;
         using var usage = BeginUsageScope("act");
         // The tools this loop runs see the agent's run scope (AgentRunScope.Current): the agent
-        // body's when there is one, else a scope of this act() alone, ended in the finally.
-        var ownedRunScope = _agentRunScope is null ? AgentRunScope.Create(agentRole: _agentName) : null;
+        // body's when there is one, else a scope of this act() alone, ended in the finally, under the
+        // agent's working root and file-system scope (a hook's context).
+        var ownedRunScope = _agentRunScope is null ? AgentRunScope.Create(null, _agentName, OwnedRunRoot, OwnedRunFileSystem) : null;
         IDisposable? enteredRunScope = null;
         try
         {
