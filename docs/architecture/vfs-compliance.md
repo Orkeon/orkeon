@@ -277,7 +277,10 @@ virtual path so the prompt is the same from run to run; then its working root, o
 paths resolve against (said to lie outside the scope when it does, so that the agent writes every path
 in full). `announce_mounts: false` turns it off, for one agent or, at crew level, for
 every agent that does not set its own (`AgentBuilder.AnnounceMounts(false)`, `.announceMounts(false)`). A
-script agent's `ctx.llm.act` prompt is the script's own and carries no such section.
+script agent's `ctx.llm.act` prompt is the script's own and carries no such section: the body reads it as
+`ctx.fileSystem.prompt` (the same text, `""` when no path is visible, when the agent has no file-system tool or
+when it sets `.announceMounts(false)`) and places it where it wants (`AgentFileSystemPrompt.Render` renders it for
+both shapes).
 
 ## Internal roots and privileged access
 

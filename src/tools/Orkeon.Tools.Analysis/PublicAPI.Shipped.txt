@@ -727,3 +727,8 @@ static Orkeon.Tools.Analysis.StructuralSearchRequest.operator !=(Orkeon.Tools.An
 static Orkeon.Tools.Analysis.StructuralSearchRequest.operator ==(Orkeon.Tools.Analysis.StructuralSearchRequest? left, Orkeon.Tools.Analysis.StructuralSearchRequest? right) -> bool
 static Orkeon.Tools.Analysis.StructuralSearchResponse.operator !=(Orkeon.Tools.Analysis.StructuralSearchResponse? left, Orkeon.Tools.Analysis.StructuralSearchResponse? right) -> bool
 static Orkeon.Tools.Analysis.StructuralSearchResponse.operator ==(Orkeon.Tools.Analysis.StructuralSearchResponse? left, Orkeon.Tools.Analysis.StructuralSearchResponse? right) -> bool
+override Orkeon.Tools.Analysis.NodeOutlineTool.UsesFileSystem.get -> bool
+override Orkeon.Tools.Analysis.NodeReadTool.UsesFileSystem.get -> bool
+override Orkeon.Tools.Analysis.StructuralSearchTool.UsesFileSystem.get -> bool
+override Orkeon.Tools.Analysis.IncrementalReindexTool.UsesFileSystem.get -> bool
+override Orkeon.Tools.Analysis.IndexCodebaseTool.UsesFileSystem.get -> bool

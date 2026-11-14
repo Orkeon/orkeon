@@ -28,6 +28,7 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
     private readonly Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? _agentInstances;
     private readonly Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? _mounts;
+    private readonly Func<string?>? _workingDirectory;
     private readonly Bindings.RagScriptingBackend? _ragBackend;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
 
@@ -78,6 +79,7 @@ public sealed class JsEngineFactory
         _toolLimits = hostPorts?.ToolLimits;
         _agentInstances = hostPorts?.AgentInstances;
         _mounts = hostPorts?.FileSystem is { } fileSystem ? fileSystem.GetAvailableMounts : null;
+        _workingDirectory = hostPorts?.FileSystem is { } host ? () => host.WorkingDirectory : null;
         _llmProfiles = hostPorts?.LlmProfiles;
         _ragBackend = ragBackend;
     }
@@ -218,6 +220,7 @@ public sealed class JsEngineFactory
             ToolLimits = _toolLimits,
             AgentInstances = _agentInstances,
             Mounts = _mounts,
+            WorkingDirectory = _workingDirectory,
         });
         TaskBuilderBinding.Register(engine);
         ToolBuilderBinding.Register(engine);

@@ -658,3 +658,5 @@ virtual Orkeon.Tools.Web.WebScrapeResponse.<Clone>$() -> Orkeon.Tools.Web.WebScr
 virtual Orkeon.Tools.Web.WebScrapeResponse.EqualityContract.get -> System.Type!
 virtual Orkeon.Tools.Web.WebScrapeResponse.Equals(Orkeon.Tools.Web.WebScrapeResponse? other) -> bool
 virtual Orkeon.Tools.Web.WebScrapeResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+override Orkeon.Tools.Web.FirefoxTool.UsesFileSystem.get -> bool
+override Orkeon.Tools.Web.ImageGenerationTool.UsesFileSystem.get -> bool

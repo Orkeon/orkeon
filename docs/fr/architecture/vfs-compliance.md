@@ -291,7 +291,10 @@ droits et ses surcharges de sous-chemin, triés par chemin virtuel pour que le p
 (dit hors du périmètre quand il l'est, pour que l'agent écrive chaque chemin en entier).
 `announce_mounts: false` la retire, pour un agent ou, au niveau crew, pour chaque agent
 qui ne fixe pas le sien (`AgentBuilder.AnnounceMounts(false)`, `.announceMounts(false)`). Le prompt de
-`ctx.llm.act` d'un agent scripté est celui du script et ne porte pas cette section.
+`ctx.llm.act` d'un agent scripté est celui du script et ne porte pas cette section : le corps la lit dans
+`ctx.fileSystem.prompt` (le même texte, `""` quand aucun chemin n'est visible, quand l'agent n'a pas d'outil de
+fichiers ou quand il fixe `.announceMounts(false)`) et la place où il veut (`AgentFileSystemPrompt.Render` la rend
+pour les deux formes).
 
 ## Racines internes et accès privilégié
 

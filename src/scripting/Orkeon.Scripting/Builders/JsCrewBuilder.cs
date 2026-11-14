@@ -81,6 +81,9 @@ internal sealed partial class JsCrewBuilder
     /// <summary>The mounts a script agent's working root is checked against (RT-06); null refuses every root.</summary>
     internal Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }
 
+    /// <summary>Where the host resolves a relative path, for a run with no working root (#378); null names none.</summary>
+    internal Func<string?>? WorkingDirectory { get; init; }
+
     // Every member a script calls goes through Guard (SCR-25, #364): a CLR throw from a wrapped
     // object would cross the script's try ... catch and end the command.
     private TResult Guarded<TResult>(Func<TResult> body) => JsHostError.Guard(_engine, body);
@@ -239,6 +242,7 @@ internal sealed partial class JsCrewBuilder
             ToolLimits = ToolLimits,
             AgentInstances = AgentInstances,
             Mounts = Mounts,
+            WorkingDirectory = WorkingDirectory,
             Goal = _goal,
         });
         crew._onCrewStart = _onCrewStart;

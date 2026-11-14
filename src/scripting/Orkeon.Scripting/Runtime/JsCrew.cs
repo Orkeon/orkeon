@@ -51,6 +51,7 @@ public sealed partial class JsCrew
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
     private readonly Orkeon.Application.Runs.IRunEventSink? _runEvents;
     private readonly Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? _mounts;
+    private readonly Func<string?>? _workingDirectory;
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
 
     /// <summary>Crew display name (defaults to <c>"crew"</c> when none was supplied).</summary>
@@ -98,6 +99,7 @@ public sealed partial class JsCrew
         _runEvents = definition.RunEvents;
         _toolLimits = definition.ToolLimits;
         _mounts = definition.Mounts;
+        _workingDirectory = definition.WorkingDirectory;
         _agents = new List<JsAgent>();
         _tasks = new List<JsTask>(definition.Tasks);
 
@@ -161,6 +163,22 @@ public sealed partial class JsCrew
         JsAgent agent, Orkeon.Domain.FileSystem.AgentFileSystemScope? inherited, string? root)
         => Orkeon.Application.Agent.AgentWorkingRoot.ResolveScope(agent.name, agent.Builder.FileSystemValue,
             _mounts is null ? [] : _mounts(), inherited, root);
+
+    /// <summary>
+    /// #378: the <c>## File system</c> section a declarative turn of this agent would hold
+    /// (<see cref="Orkeon.Application.Agent.AgentFileSystemPrompt"/>): its scope, else the mounts, and the
+    /// working root, else the host's working directory. Empty when the agent sets <c>announceMounts(false)</c>
+    /// or none of <paramref name="tools"/> uses the file system.
+    /// </summary>
+    internal string FileSystemPrompt(
+        JsAgent agent, IReadOnlyList<Orkeon.Domain.Tools.IBaseTool> tools, string? root,
+        Orkeon.Domain.FileSystem.AgentFileSystemScope? fileSystem)
+    {
+        if (!agent.Builder.AnnounceMountsValue || !tools.Any(t => t.UsesFileSystem))
+            return string.Empty;
+        return Orkeon.Application.Agent.AgentFileSystemPrompt.Render(
+            _mounts is null ? [] : _mounts(), fileSystem, root ?? _workingDirectory?.Invoke(), root is not null);
+    }
 
     private JsEventBroker? _eventBroker;
     internal JsEventBroker EventBroker

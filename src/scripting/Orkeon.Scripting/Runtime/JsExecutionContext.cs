@@ -36,6 +36,9 @@ public class JsExecutionContext
     /// <summary>The background children this context started, and the inbox of their completions.</summary>
     internal BackgroundAgents Background { get; }
 
+    /// <summary>The tools of this agent that <c>ctx.llm.act</c> offers: its <c>.tools([...])</c> the host answers to, then its own.</summary>
+    internal IReadOnlyList<Orkeon.Domain.Tools.IBaseTool> AgentTools { get; }
+
     internal JsExecutionContext(JsExecutionEnvironment environment)
     {
         ArgumentNullException.ThrowIfNull(environment);
@@ -51,6 +54,7 @@ public class JsExecutionContext
         log = new JsLogger(environment.Logger);
         events = environment.Crew.EventBroker;
         var (tools, unknownTools) = ResolveAgentTools(environment);
+        AgentTools = tools;
         // The spawn tool holds no resource of its own: its ToolBase disposal has nothing to release.
 #pragma warning disable CA2000
         var spawn = new SpawnAgentScriptTool(environment);

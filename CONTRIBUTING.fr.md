@@ -281,6 +281,9 @@ ce qu'un hôte refuse porte `<!-- settings-check:off -->` sur la ligne au-dessus
 * Un test qui attend un moteur de script attend sous `HangGuards.EnginePromise`
   (`Orkeon.Tests.Shared.Timing`), jamais sous les 10 secondes implicites de Jint — voir le modèle de
   threading de [`docs/fr/architecture/scripting.md`](docs/fr/architecture/scripting.md#modèle-de-threading)
+* Un test d'intégration qui démarre un vrai programme de la machine (un Firefox headless) lui laisse
+  `HangGuards.ProcessStart` pour démarrer, jamais le délai de démarrage par défaut du produit : un
+  démarrage à froid sur un runner chargé le dépasse (#379)
 
 ```csharp
 [Fact]

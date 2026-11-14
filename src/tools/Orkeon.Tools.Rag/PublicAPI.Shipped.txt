@@ -160,3 +160,4 @@ virtual Orkeon.Tools.Rag.RagSearchResponse.<Clone>$() -> Orkeon.Tools.Rag.RagSea
 virtual Orkeon.Tools.Rag.RagSearchResponse.EqualityContract.get -> System.Type!
 virtual Orkeon.Tools.Rag.RagSearchResponse.Equals(Orkeon.Tools.Rag.RagSearchResponse? other) -> bool
 virtual Orkeon.Tools.Rag.RagSearchResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Tools.Rag.RagIngestTool.UsesFileSystem.get -> bool

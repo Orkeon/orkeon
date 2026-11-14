@@ -353,7 +353,8 @@ public sealed class JsAgentBuilder
 
     /// <summary>
     /// YAML parity <c>announce_mounts:</c> (#348): whether the declarative turns of this agent list its
-    /// virtual paths in the system prompt. On by default.
+    /// virtual paths in the system prompt, and whether a body's <c>ctx.fileSystem.prompt</c> holds that
+    /// section (#378). On by default.
     /// </summary>
     public JsAgentBuilder announceMounts(bool value) => Guarded(() => { AnnounceMountsValue = value; return this; });
     public JsAgentBuilder withState(JsValue factoryOrSeed) => Guarded(() => { StateFactory = factoryOrSeed; return this; });

@@ -7,6 +7,7 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tests.Shared.Network;
+using Orkeon.Tests.Shared.Timing;
 using Orkeon.Tools.Web.Firefox;
 using Orkeon.Tools.Web.Tests.Doubles;
 
@@ -46,7 +47,13 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
     private readonly PageServer _server = new();
     private readonly FakeFileSystemService _files = new FakeFileSystemService().AddMount("/output", FileAccessRights.ReadWrite);
     private readonly FakeEphemeralCollectionSearch _search = new();
-    private readonly FirefoxToolOptions _options = new() { Headless = true };
+    // The start is bounded by a hang guard, not the product's default: a cold start on a loaded
+    // runner outlasted 30 s (#379), and no test here is about how long Firefox takes to start.
+    private readonly FirefoxToolOptions _options = new()
+    {
+        Headless = true,
+        StartupTimeoutSeconds = (int)HangGuards.ProcessStart.TotalSeconds,
+    };
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

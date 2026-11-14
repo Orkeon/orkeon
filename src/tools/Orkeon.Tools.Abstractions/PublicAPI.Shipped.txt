@@ -220,3 +220,6 @@ virtual Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.<Clone>$() -
 virtual Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.EqualityContract.get -> System.Type!
 virtual Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.Equals(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? other) -> bool
 virtual Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+override Orkeon.Tools.Abstractions.Base.FileToolBase.UsesFileSystem.get -> bool
+override Orkeon.Tools.Abstractions.Tools.ListMountsTool.UsesFileSystem.get -> bool
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.UsesFileSystem.get -> bool

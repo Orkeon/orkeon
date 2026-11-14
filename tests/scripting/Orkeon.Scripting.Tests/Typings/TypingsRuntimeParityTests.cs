@@ -37,6 +37,7 @@ public sealed partial class TypingsRuntimeParityTests
         ["CrewView"] = typeof(JsCrewProxy),
         ["ExecutionContext"] = typeof(JsExecutionContext),
         ["AgentContext"] = typeof(JsAgentContext),
+        ["AgentFileSystem"] = typeof(JsAgentFileSystem),
         ["Logger"] = typeof(JsLogger),
         ["MemoryScope"] = typeof(JsMemoryScope),
         ["LlmFacade"] = typeof(JsLlmFacade),

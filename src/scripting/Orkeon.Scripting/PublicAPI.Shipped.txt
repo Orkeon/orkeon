@@ -238,7 +238,6 @@ Orkeon.Scripting.Runtime.JsCrewProxy.has(string! agentName) -> bool
 Orkeon.Scripting.Runtime.JsCrewProxy.lock.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Runtime.JsCrewProxy.name.get -> string!
 Orkeon.Scripting.Runtime.JsCrewResult
-Orkeon.Scripting.Runtime.JsCrewResult.output.get -> string!
 Orkeon.Scripting.Runtime.JsCrewResult.tasks.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Runtime.JsTaskResult!>!
 Orkeon.Scripting.Runtime.JsEventBroker
 Orkeon.Scripting.Runtime.JsEventBroker.queue(string! name) -> Orkeon.Scripting.Runtime.JsEventQueue!
@@ -559,3 +558,26 @@ static Orkeon.Scripting.Versioning.VersionDirectiveParser.ParseOrDefault(string!
 static readonly Orkeon.Scripting.Telemetry.ScriptingActivitySource.Instance -> System.Diagnostics.ActivitySource!
 static readonly Orkeon.Scripting.Toolchain.PassThroughTranspiler.Instance -> Orkeon.Scripting.Toolchain.PassThroughTranspiler!
 static readonly Orkeon.Scripting.Versioning.VersionDirectiveParser.SupportedVersions -> System.Collections.Generic.IReadOnlySet<string!>!
+Orkeon.Scripting.Builders.JsAgentBuilder.announceMounts(bool value) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Builders.JsAgentBuilder.filesystem(Jint.Native.JsValue! entries) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.Runtime.JsLlmCapabilities
+Orkeon.Scripting.Runtime.JsLlmCapabilities.efforts.get -> string![]!
+Orkeon.Scripting.Runtime.JsLlmCapabilities.known.get -> bool
+Orkeon.Scripting.Runtime.JsLlmCapabilities.model.get -> string!
+Orkeon.Scripting.Runtime.JsLlmCapabilities.thinking.get -> string!
+Orkeon.Scripting.Runtime.JsLlmConfig.capabilities.get -> Orkeon.Scripting.Runtime.JsLlmCapabilities?
+Orkeon.Scripting.Runtime.JsLlmConfig.reasoning.get -> Orkeon.Scripting.Runtime.JsLlmReasoning?
+Orkeon.Scripting.Runtime.JsLlmFacade.capabilities.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmCapabilities?>!
+Orkeon.Scripting.Runtime.JsLlmFacade.reasoning.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmReasoning?>!
+Orkeon.Scripting.Runtime.JsLlmReasoning
+Orkeon.Scripting.Runtime.JsLlmReasoning.asked.get -> string!
+Orkeon.Scripting.Runtime.JsLlmReasoning.model.get -> string!
+Orkeon.Scripting.Runtime.JsLlmReasoning.notice.get -> string?
+Orkeon.Scripting.Runtime.JsLlmReasoning.sent.get -> string?
+Orkeon.Scripting.Runtime.StreamObservations.reasoning.get -> Orkeon.Scripting.Runtime.JsLlmReasoning?
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.DescribeReasoning(string? model) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmReasoningCapabilities?
+Orkeon.Scripting.Testing.TestOverrideLlmProvider.ReportEffort(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEffortReport?
+Orkeon.Scripting.Runtime.JsCrewResult.output.get -> object?
+Orkeon.Scripting.Runtime.JsAgentContext.fileSystem.get -> Orkeon.Scripting.Runtime.JsAgentFileSystem!
+Orkeon.Scripting.Runtime.JsAgentFileSystem
+Orkeon.Scripting.Runtime.JsAgentFileSystem.prompt.get -> string!

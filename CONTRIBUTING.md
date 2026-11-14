@@ -270,6 +270,9 @@ refuses carries `<!-- settings-check:off -->` on the line above its fence.
 * A test that awaits a script engine waits under `HangGuards.EnginePromise`
   (`Orkeon.Tests.Shared.Timing`), never under Jint's implicit 10 seconds — see the threading model of
   [`docs/architecture/scripting.md`](docs/architecture/scripting.md#threading-model)
+* An integration test that starts a real program of the machine (a headless Firefox) gives it
+  `HangGuards.ProcessStart` to start, never the product's own start-up default: a cold start on a
+  loaded runner outlasts it (#379)
 
 ```csharp
 [Fact]

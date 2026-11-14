@@ -433,3 +433,7 @@ static Orkeon.Cli.TerminalGui.Logging.LogEntry.operator !=(Orkeon.Cli.TerminalGu
 static Orkeon.Cli.TerminalGui.Logging.LogEntry.operator ==(Orkeon.Cli.TerminalGui.Logging.LogEntry? left, Orkeon.Cli.TerminalGui.Logging.LogEntry? right) -> bool
 static Orkeon.Cli.TerminalGui.Telemetry.ToolActivityAggregator.ComposeSentence(System.Collections.Generic.IReadOnlyList<System.Collections.Generic.KeyValuePair<string!, int>>! counts) -> string!
 static readonly Orkeon.Cli.TerminalGui.Layout.StatusLineFormatter.Gerunds -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.AnswerPrompt.get -> System.Func<string?>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.AnswerPrompt.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.NotifyQuestionChanged() -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.QuestionChanged -> System.EventHandler?
