@@ -58,6 +58,9 @@ declare global {
          * reasoning is COUNTED on the returned object, not yielded — it is not
          * part of the answer, and a caller writing chunks to a file must not
          * find it there.
+         *
+         * A `llm: { profile }` the host does not offer throws here, at the call, an `Error` the
+         * script catches.
          */
         stream(prompt: string, opts?: LlmCallOptions): LlmStream;
         /**
@@ -95,12 +98,14 @@ declare global {
          * agent's provider, model and effort, the options' own `effort` and `llm: { profile, model }`
          * over them. The report `complete` and `extract` cannot carry, since they return the answer
          * alone; `act`, `chat` and `stream` carry it as `reasoning`. `null` when no effort is asked or
-         * no provider answers. Places no call.
+         * no provider answers. Places no call. A `llm: { profile }` the host does not offer throws an
+         * `Error` the script catches, listing the known profiles (`llm.profiles`).
          */
         reasoning(opts?: LlmCallOptions): LlmReasoning | null;
         /**
          * What the model of the call these options name takes for reasoning (#359), on the provider
-         * that call goes to. `null` when no provider answers. Places no call.
+         * that call goes to. `null` when no provider answers. Places no call. A `llm: { profile }` the
+         * host does not offer throws an `Error` the script catches, listing the known profiles.
          */
         capabilities(opts?: LlmCallOptions): LlmCapabilities | null;
         /** Cancels the in-flight and future llm calls of this context; a running `act()` resolves with `{ interrupted: true }`. */

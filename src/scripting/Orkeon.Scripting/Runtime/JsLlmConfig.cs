@@ -2,6 +2,7 @@ using Jint;
 using Jint.Native;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Runtime;
 
@@ -15,7 +16,9 @@ namespace Orkeon.Scripting.Runtime;
 /// host's default one, or the one of the host profile <c>llm.profile(name)</c> picked (GAP-17).
 /// A script never names a vendor, a key or an endpoint: the per-vendor factories were removed
 /// (GAP-12), and a profile is what the host configured. <c>with(...)</c> refuses a key it does
-/// not apply, so a setting never vanishes.
+/// not apply, so a setting never vanishes. Its refusal is a JavaScript throw a script catches
+/// (<see cref="JsHostError.Guard{T}"/>, #364) on a configuration the <c>llm</c> namespace of an engine
+/// built; one a CLR caller builds without an engine throws the CLR exception.
 /// </remarks>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop mirror of LlmConfig in Typings/llm.d.ts; that declaration is the contract scripts read.
@@ -45,6 +48,8 @@ public sealed class JsLlmConfig
 
     private readonly Orkeon.Domain.SharedKernel.ILlmProvider? _hostProvider;
 
+    private readonly Engine? _engine;
+
     /// <summary>
     /// What the provider and this configuration's model take for reasoning (#359): the effort levels, the thinking
     /// support, and whether the capability table knows the model. Null when the provider cannot tell.
@@ -63,8 +68,10 @@ public sealed class JsLlmConfig
         double? temperature = null,
         int? maxTokens = null,
         Orkeon.Domain.SharedKernel.ILlmProvider? profileProvider = null,
-        Orkeon.Domain.SharedKernel.ILlmProvider? hostProvider = null)
+        Orkeon.Domain.SharedKernel.ILlmProvider? hostProvider = null,
+        Engine? engine = null)
     {
+        _engine = engine;
         this.provider = provider;
         Domain = domain;
         ProfileProvider = profileProvider;
@@ -74,7 +81,10 @@ public sealed class JsLlmConfig
         this.maxTokens = maxTokens;
     }
 
-    public JsLlmConfig with(JsValue overrides)
+    public JsLlmConfig with(JsValue overrides) =>
+        _engine is null ? WithCore(overrides) : JsHostError.Guard(_engine, () => WithCore(overrides));
+
+    private JsLlmConfig WithCore(JsValue overrides)
     {
         if (overrides is null || overrides.IsUndefined() || overrides.IsNull()) return this;
         if (!overrides.IsObject())
@@ -122,7 +132,8 @@ public sealed class JsLlmConfig
             newTemp.IsNumber() ? newTemp.AsNumber() : temperature,
             newMax.IsUndefined() ? maxTokens : RequireMaxTokens(newMax),
             ProfileProvider,
-            _hostProvider);
+            _hostProvider,
+            _engine);
     }
 
     private static int RequireMaxTokens(JsValue value)

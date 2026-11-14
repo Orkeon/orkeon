@@ -197,9 +197,11 @@ public sealed class JsLlmFacadeCallProfileTests
     {
         var host = new Host();
 
-        // stream() itself refuses, before the script's for await asks for a first chunk.
-        var error = Assert.Throws<InvalidScriptException>(
+        // stream() itself refuses, before the script's for await asks for a first chunk, with a
+        // JavaScript throw the script catches (#364).
+        var thrown = Assert.Throws<Jint.Runtime.JavaScriptException>(
             () => host.Facade.stream("p", host.Options("({ llm: { profile: 'huge' } })")));
+        var error = Assert.IsType<InvalidScriptException>(Orkeon.Scripting.Internal.JsHostError.Unwrap(thrown.Error));
 
         Assert.Contains("'huge'", error.Message, StringComparison.Ordinal);
     }

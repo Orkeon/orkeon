@@ -155,4 +155,22 @@ public sealed class JsLlmReasoningTests : IDisposable
 
         Assert.Equal("true|true|true", shown);
     }
+
+    [Theory]
+    [Trait("BR", "CH-364")]
+    [InlineData("ctx.llm.reasoning({ llm: { profile: \"ghost\" } })")]
+    [InlineData("ctx.llm.capabilities({ llm: { profile: \"ghost\" } })")]
+    [InlineData("ctx.llm.stream(\"hi\", { llm: { profile: \"ghost\" } })")]
+    public async Task ShouldReachTheBodysCatch_WhenTheCallNamesAProfileTheHostLacks(string call)
+    {
+        var shown = await RunBodyAsync("", $$"""
+            let caught = "not caught";
+            try { {{call}}; } catch (e) { caught = (e instanceof Error) + "|" + e.message; }
+            globalThis.out = caught;
+            """);
+
+        Assert.StartsWith("true|", shown, StringComparison.Ordinal);
+        Assert.Contains("names the LLM profile 'ghost', which this host does not offer. Known profiles: default.", shown, StringComparison.Ordinal);
+        Assert.Empty(_handler.Bodies);
+    }
 }

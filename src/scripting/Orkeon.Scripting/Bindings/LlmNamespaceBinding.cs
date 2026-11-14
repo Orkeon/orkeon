@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Runtime;
 
 namespace Orkeon.Scripting.Bindings;
@@ -11,7 +12,9 @@ namespace Orkeon.Scripting.Bindings;
 /// <summary>
 /// Registers the global <c>llm</c> namespace on a Jint engine: <c>llm.default_</c>, the host's
 /// provider on its own model, <c>llm.model(name, overrides?)</c>, the same provider on another
-/// model, and <c>llm.profile(name, overrides?)</c>, one of the host's named profiles (GAP-17).
+/// model, <c>llm.profile(name, overrides?)</c>, one of the host's named profiles (GAP-17), and
+/// <c>llm.profiles</c>, the names a script may give it (#364). A refusal is a JavaScript throw a
+/// script catches (<see cref="JsHostError.Guard{T}"/>, SCR-25).
 /// There is no per-vendor factory: a script picks among the providers the host configured, by
 /// profile name, and a factory named after a vendor only renamed the host's one (GAP-12).
 /// </summary>
@@ -61,7 +64,7 @@ internal static class LlmNamespaceBinding
         ArgumentNullException.ThrowIfNull(engine);
         var log = logger ?? NullLogger.Instance;
 
-        var ns = new JsLlmNamespace(log, defaultProvider, profiles, wrapProfileProvider);
+        var ns = new JsLlmNamespace(engine, log, defaultProvider, profiles, wrapProfileProvider);
         engine.SetValue(GlobalName, ns);
         JsLlmNamespace.Attach(engine, ns);
     }
@@ -69,29 +72,36 @@ internal static class LlmNamespaceBinding
 
 /// <summary>
 /// Surface exposed to scripts as <c>llm</c>: the lazily resolved <c>default_</c>, the
-/// <c>model(...)</c> shorthand and the host profiles of <c>profile(...)</c>.
+/// <c>model(...)</c> shorthand, the host profiles of <c>profile(...)</c> and their names in
+/// <c>profiles</c>. Every method runs under <see cref="JsHostError.Guard{T}"/>: a CLR exception
+/// thrown by a method of a wrapped object unwinds through the script's <c>catch</c> (#364).
 /// </summary>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop mirror of the "llm" namespace declared in Typings/llm.d.ts; that declaration is the contract scripts read.
 internal sealed partial class JsLlmNamespace
 {
+    private readonly Engine _engine;
     private readonly ILogger _logger;
     private readonly ILlmProvider? _defaultProvider;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _profiles;
     private readonly Func<ILlmProvider, ILlmProvider>? _wrapProfileProvider;
     private JsLlmConfig? _default;
     private readonly Lock _defaultLock = new();
+    private JsValue? _profileNames;
 
     // The namespace each engine registered, for ctx.llm { llm: { profile } } (#331): held on the CLR
     // side, so a script that shadows the global `llm` cannot change the profiles a call resolves.
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Engine, JsLlmNamespace> s_byEngine = new();
 
     internal JsLlmNamespace(
+        Engine engine,
         ILogger logger,
         ILlmProvider? defaultProvider = null,
         Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? profiles = null,
         Func<ILlmProvider, ILlmProvider>? wrapProfileProvider = null)
     {
+        ArgumentNullException.ThrowIfNull(engine);
+        _engine = engine;
         _wrapProfileProvider = wrapProfileProvider;
         _logger = logger;
         _defaultProvider = defaultProvider;
@@ -118,15 +128,15 @@ internal sealed partial class JsLlmNamespace
     /// with the optional <c>temperature</c> / <c>maxTokens</c> / <c>responseFormat</c> of
     /// <paramref name="overrides"/> — the shorthand of <c>llm.default_.with({ model: name, … })</c>.
     /// </summary>
-    public JsLlmConfig model(JsValue name, JsValue? overrides = null)
+    public JsLlmConfig model(JsValue name, JsValue? overrides = null) => JsHostError.Guard(_engine, () =>
     {
         if (name is null || !name.IsString())
             throw new Orkeon.Scripting.Exceptions.InvalidScriptException("llm.model(name) takes the model name as a string.");
         var onModel = new JsLlmConfig(default_.provider,
             default_.Domain with { Model = JsLlmConfig.RequireModel(name.AsString()) },
-            default_.temperature, default_.maxTokens, hostProvider: default_.Target);
+            default_.temperature, default_.maxTokens, hostProvider: default_.Target, engine: _engine);
         return overrides is null ? onModel : onModel.with(overrides);
-    }
+    });
 
     /// <summary>
     /// <c>llm.profile(name, overrides?)</c>: the host's profile <paramref name="name"/> — its
@@ -138,7 +148,7 @@ internal sealed partial class JsLlmNamespace
     /// <exception cref="Orkeon.Scripting.Exceptions.InvalidScriptException">
     /// The host offers no such profile; the message lists the known ones.
     /// </exception>
-    public JsLlmConfig profile(JsValue name, JsValue? overrides = null)
+    public JsLlmConfig profile(JsValue name, JsValue? overrides = null) => JsHostError.Guard(_engine, () =>
     {
         if (name is null || !name.IsString() || string.IsNullOrWhiteSpace(name.AsString()))
             throw new Orkeon.Scripting.Exceptions.InvalidScriptException("llm.profile(name) takes the profile name as a string.");
@@ -146,7 +156,24 @@ internal sealed partial class JsLlmNamespace
         var profileName = name.AsString().Trim();
         var onProfile = OnProfile(profileName, $"llm.profile(\"{profileName}\")");
         return overrides is null ? onProfile : onProfile.with(overrides);
-    }
+    });
+
+    /// <summary>
+    /// <c>llm.profiles</c> (#364): the names <c>llm.profile(name)</c> takes, <c>"default"</c> first, then
+    /// the host's profiles in the order it declared them (an allow-list's refusals left out) - the list
+    /// the refusal of an unknown name gives. Names only, never an endpoint or a key. A frozen array,
+    /// built at the first read: the host's profiles do not change while the engine lives.
+    /// </summary>
+    public JsValue profiles => _profileNames ??= JsHostError.Guard(_engine, () =>
+    {
+        var names = new[] { Orkeon.Application.Interfaces.Ports.LlmProfiles.Default }
+            .Concat(_profiles?.Names ?? [])
+            .Select(n => (JsValue)new JsString(n))
+            .ToArray();
+        var array = new JsArray(_engine, names);
+        _engine.Invoke(_engine.Intrinsics.Object.Get("freeze"), array);
+        return (JsValue)array;
+    });
 
     /// <summary>Records the namespace <paramref name="engine"/> registered.</summary>
     internal static void Attach(Engine engine, JsLlmNamespace ns) => s_byEngine.AddOrUpdate(engine, ns);
@@ -200,7 +227,7 @@ internal sealed partial class JsLlmNamespace
                 with { Profile = profileName };
             LogResolvedProfile(profileName, resolved.Provider.Name);
             var provider = _wrapProfileProvider is null ? resolved.Provider : _wrapProfileProvider(resolved.Provider);
-            onProfile = new JsLlmConfig(resolved.Provider.Name, domain, profileProvider: provider);
+            onProfile = new JsLlmConfig(resolved.Provider.Name, domain, profileProvider: provider, engine: _engine);
         }
 
         return onProfile;
@@ -220,11 +247,11 @@ internal sealed partial class JsLlmNamespace
             var hostModel = _defaultProvider.BaseConfig?.Model;
             return new JsLlmConfig(_defaultProvider.Name,
                 string.IsNullOrWhiteSpace(hostModel) ? LlmConfig.OnProfile() : LlmConfig.Create(hostModel),
-                hostProvider: _defaultProvider);
+                hostProvider: _defaultProvider, engine: _engine);
         }
 
         LogNoDefaultProvider();
-        return new JsLlmConfig("undefined", LlmConfig.OnProfile());
+        return new JsLlmConfig("undefined", LlmConfig.OnProfile(), engine: _engine);
     }
 
     // --- source-generated logging ---
