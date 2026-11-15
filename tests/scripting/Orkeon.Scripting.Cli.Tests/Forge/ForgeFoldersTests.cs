@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Scripting.Cli.Commands.Forge;
+using Orkeon.Scripting.Cli.Tests.Doubles;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
@@ -768,6 +769,48 @@ public sealed class ForgeFoldersTests : IDisposable
 
         Assert.Equal("/output", trial.WorkingDirectory);
         Assert.Equal("/output", trial.WriteDirectory);
+    }
+
+    private FileInfo Present(string name)
+    {
+        var path = Path.Combine(_workspace, name);
+        File.WriteAllText(path, "x");
+        return new FileInfo(path);
+    }
+
+    private FileInfo Missing(string name) => new(Path.Combine(_workspace, name));
+
+    [Fact]
+    [Trait("BR", "CH-44")]
+    public void ShouldSkipTheEntry_WhenOneFileLengthCannotBeRead()
+    {
+        using var walk = new StubFileEnumerator(Present("a.txt"), Missing("b.txt"), Present("c.txt"));
+
+        var (_, existing) = ForgeFolders.Survey(_workspace, () => walk);
+
+        Assert.Equal(["a.txt", "c.txt"], existing);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-44")]
+    public void ShouldSkipOneEntry_WhenTheWalkFailsOnceThenAdvances()
+    {
+        using var walk = new StubFileEnumerator(Present("a.txt"), null, Present("c.txt"), Present("d.txt"));
+
+        var (_, existing) = ForgeFolders.Survey(_workspace, () => walk);
+
+        Assert.Equal(["a.txt", "c.txt", "d.txt"], existing);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-44")]
+    public void ShouldEndTheWalkWithWhatWasRead_WhenTheWalkFailsTwiceInARow()
+    {
+        using var walk = new StubFileEnumerator(Present("a.txt"), null, null, Present("d.txt"));
+
+        var (_, existing) = ForgeFolders.Survey(_workspace, () => walk);
+
+        Assert.Equal(["a.txt"], existing);
     }
 }
 

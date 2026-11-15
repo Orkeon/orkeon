@@ -107,7 +107,8 @@ function stableHeader() {
     lines.push("  final answer — never below 6.");
     lines.push("- Hand-offs: a file one task writes for another is that task's deliverable, and");
     lines.push("  the task that reads it lists the writer in dependencies; a task names no other");
-    lines.push("  file of the deliverable folders.");
+    lines.push("  file of the deliverable folders. An agent's goal and backstory count too: they name only");
+    lines.push("  files its own tasks, or the tasks they depend on, write.");
     if (((input.brief && input.brief.folders) || []).some(function (f) { return f.large && f.large.length > 0; })) {
       lines.push("- Large files are listed below: an agent that reads one searches first (grep when");
       lines.push("  its tools offer it) and reads only the ranges found, never the whole file page by");

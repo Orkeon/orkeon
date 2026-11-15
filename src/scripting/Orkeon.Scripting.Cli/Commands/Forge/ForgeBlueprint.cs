@@ -274,29 +274,10 @@ internal sealed record ForgeBlueprint
         var sequential = string.IsNullOrWhiteSpace(Crew?.Process)
             || string.Equals(Crew.Process.Trim(), "sequential", StringComparison.OrdinalIgnoreCase);
 
-        // Only the description and the expected output are scanned: goal and backstory are left as they are.
         for (var i = 0; i < tasks.Count; i++)
         {
             var task = tasks[i];
-            var allowed = new HashSet<string>(StringComparer.Ordinal);
-            if (task.Deliverable is { } own)
-                allowed.Add(own);
-
-            var visited = new HashSet<string>(StringComparer.Ordinal);
-            var pending = new Stack<string>(task.Dependencies ?? []);
-            while (pending.Count > 0)
-            {
-                var key = pending.Pop();
-                if (!visited.Add(key))
-                    continue;
-                foreach (var dependency in tasks.Where(t => string.Equals(t.Key, key, StringComparison.Ordinal)))
-                {
-                    if (dependency.Deliverable is { } path)
-                        allowed.Add(path);
-                    foreach (var next in dependency.Dependencies ?? [])
-                        pending.Push(next);
-                }
-            }
+            var allowed = AllowedPaths(tasks, task);
 
             foreach (var path in NamedPaths(roots, task.Description, task.ExpectedOutput).Distinct(StringComparer.Ordinal))
             {
@@ -312,6 +293,55 @@ internal sealed record ForgeBlueprint
                 }
             }
         }
+
+        var agents = Agents ?? [];
+        for (var i = 0; i < agents.Count; i++)
+        {
+            var agent = agents[i];
+            var allowed = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var task in tasks.Where(t => string.Equals(t.Agent, agent.Key, StringComparison.Ordinal)))
+                allowed.UnionWith(AllowedPaths(tasks, task));
+
+            foreach (var (field, text) in new[] { ("goal", agent.Goal), ("backstory", agent.Backstory) })
+            {
+                foreach (var path in NamedPaths(roots, text).Distinct(StringComparer.Ordinal))
+                {
+                    if (!allowed.Contains(path) && !existingPaths.Contains(path))
+                    {
+                        errors.Add(
+                            $"agents[{i}] ('{agent.Key}'): its {field} names '{path}', which none of its tasks, nor a task they depend on, "
+                            + "declares as its deliverable — name no file in the goal or the backstory, or make it the deliverable of "
+                            + "a task of this agent (or of one it depends on).");
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>A task's own deliverable and those of the tasks it depends on, transitively.</summary>
+    private static HashSet<string> AllowedPaths(IReadOnlyList<ForgeBlueprintTask> tasks, ForgeBlueprintTask task)
+    {
+        var allowed = new HashSet<string>(StringComparer.Ordinal);
+        if (task.Deliverable is { } own)
+            allowed.Add(own);
+
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        var pending = new Stack<string>(task.Dependencies ?? []);
+        while (pending.Count > 0)
+        {
+            var key = pending.Pop();
+            if (!visited.Add(key))
+                continue;
+            foreach (var dependency in tasks.Where(t => string.Equals(t.Key, key, StringComparison.Ordinal)))
+            {
+                if (dependency.Deliverable is { } path)
+                    allowed.Add(path);
+                foreach (var next in dependency.Dependencies ?? [])
+                    pending.Push(next);
+            }
+        }
+
+        return allowed;
     }
 
     private static readonly char[] PathEnd = ['\'', '"', '`', '(', ')', '[', ']', '{', '}', '<', '>', ',', ';', '|', '«', '»', '“', '”', '‘', '’'];

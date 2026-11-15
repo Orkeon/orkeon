@@ -333,7 +333,7 @@ internal static class ForgeFolders
     /// <summary>Bytes from which a file is large (128 KiB).</summary>
     public const long LargeFileBytes = 128 * 1024;
 
-    /// <summary>The most files <see cref="Survey"/> lists in <see cref="ForgeFolder.Existing"/>; a bound tree may be huge.</summary>
+    /// <summary>The most files <see cref="Survey(string)"/> lists in <see cref="ForgeFolder.Existing"/>; a bound tree may be huge.</summary>
     public const int MaxExisting = 10_000;
 
     /// <summary>
@@ -356,9 +356,16 @@ internal static class ForgeFolders
             return ([], []);
 
         var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = 0 };
+        return Survey(directory, () => new System.IO.DirectoryInfo(directory).EnumerateFiles("*", options).GetEnumerator());
+    }
+
+    /// <summary><see cref="Survey(string)"/> over a given file walk, for tests.</summary>
+    internal static (IReadOnlyList<ForgeLargeFile> Large, IReadOnlyList<string> Existing) Survey(
+        string directory, Func<IEnumerator<System.IO.FileInfo>> walk)
+    {
         var found = new List<ForgeLargeFile>();
         var existing = new List<string>();
-        using var files = new System.IO.DirectoryInfo(directory).EnumerateFiles("*", options).GetEnumerator();
+        using var files = walk();
         var failedMoves = 0;
         while (true)
         {
