@@ -267,10 +267,10 @@ Haiku 5 at 0.10 / 0.50 and Haiku 4.5 at 1 / 5. Cache tariffs: a 5-minute write a
 (0.50 / 2.50) is not modelled.
 
 Every paid provider's default model is priced (read 2026-11-15), $ per million input / output tokens: DeepSeek
-`deepseek-flash` 0.30 / 1.20 (the peak rate of this page); Z.AI `glm-5.3-flashx` 0.37 / 1.25, `glm-5.3-flash` 0.15 / 0.50 and
+`deepseek-flash` 0.30 / 1.20 (the peak rate of this page; cache read 0.006); Z.AI `glm-5.3-flashx` 0.37 / 1.25, `glm-5.3-flash` 0.15 / 0.50 and
 `glm-5.3` 1.4 / 4.4 (docs.z.ai pricing); Kimi `kimi-k3.1-pro` 2 / 10 and `kimi-k3` 3 / 15 and Qwen `qwen3.7-plus` 0.4 / 1.6
 (Alibaba Cloud Model Studio, Singapore: Kimi's own page shows no figure, and Qwen's rate is the limited-time one);
-Gemini `gemini-3.8-flash` and `gemini-3.7-flash` 0.75 / 3.75; Mistral `mistral-medium-2604` 1.50 / 7.50; Grok `grok-4.6` and
+Gemini `gemini-3.8-flash` 1.50 / 7.50 with a cache read at 0.15 (the rate Google applies from 2027-01-01, kept as the conservative figure for budgets) and `gemini-3.7-flash` 0.75 / 3.75 (no cache-read price); Mistral `mistral-medium-2604` 1.50 / 7.50; Grok `grok-4.6` and
 `grok-4.7` 2 / 6; MiniMax `MiniMax-M3` 0.30 / 1.20. The gateways are priced by their own rows, scoped by provider:
 Together `zai-org/GLM-5.3-Flash` 0.15 / 0.50, Mammouth `gemini-3.8-flash` and `gemini-3.7-flash` 1.5 / 7.5 (the gateway's upper
 bound, from secondary sources). Ollama and Docker Model Runner models cost 0. Hugging Face stays unpriced: its routed

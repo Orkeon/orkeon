@@ -70,7 +70,10 @@ agent's **shell session**, which the operating system confines
   or listing the tool logs nothing. The line states the confinement in force: the backend and what it
   shows the process; or `none` and why (the host runs in a container, or `Mode = None`, where commands run
   on the host unconfined); or `unavailable` with the reason, when every call will fail rather than run
-  unconfined.
+  unconfined. A confining backend also states the network, `network on` or `network off` (from
+  `Confinement:AllowNetwork`), and bubblewrap adds `system directories are read-only`. Under `Mode = None`, or
+  unconfined inside a container, the line always says `network on` (the unconfined shell never cuts the
+  network) and makes no read-only claim.
 - **No network** unless `Confinement:AllowNetwork = true`: a network namespace with loopback only
   under bubblewrap, `(deny network*)` under Seatbelt, no network capability under AppContainer.
 - **Session sockets.** The shell's environment allow-list carries `XDG_RUNTIME_DIR` and

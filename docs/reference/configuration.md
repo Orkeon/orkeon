@@ -542,10 +542,12 @@ and the task ends `BudgetExhausted`, never retried. The caps
 on the number of calls are [`RateLimiting`](#ratelimiting). The built-in price list covers the default
 model of every paid provider except Hugging Face, whose routed provider sets the price; a gateway
 (Together, Mammouth) is priced by its own rows, set with `CustomPricings:<i>:Provider`, and `ollama`
-and Docker Model Runner models cost nothing. A model with no price is counted at zero and logs one
-warning per model, naming `Orkeon:CostTracking:CustomPricings`: add a row there to price it. Under a
-`MaxCostUsd` budget a second warning, once per crew and model, says the budget cannot count that
-model's calls. With `Enabled` set to `false` every call is still recorded and priced (the history and
+and Docker Model Runner models cost nothing. A `CustomPricings` row always wins over a built-in one: a row with no `Provider` applies to every
+provider, a row that names a provider applies to that provider only. A model with no price is counted
+at zero and logs one warning per model per host process (an `orkeon-host` daemon warns once for its
+lifetime, not once per run), naming `Orkeon:CostTracking:CustomPricings`: add a row there to price it.
+Under a `MaxCostUsd` budget, the crew's or an agent's, a second warning, once per crew and model, says
+the budget cannot count that model's calls (it needs a cap above 0 and a call that carries tokens). With `Enabled` set to `false` every call is still recorded and priced (the history and
 the report count it, an unpriced model still warns once), but none is refused, no budget alert is
 raised and the "budget cannot count" warning is not logged.
 
@@ -952,9 +954,13 @@ three speak the OpenAI embeddings wire format and read `ApiKey` (or `ApiKeyEnvVa
 `FingerprintPath` and refuses to start when they changed. `orkeon forge` defaults `FingerprintPath`
 to `/forge/embedding-fingerprint.json`, recorded per session, so it guards nothing across sessions;
 `orkeon rag` sets it empty and guards each collection through its manifest instead (`ingest`,
-`search` and `eval rag --no-ingest -c`; `--reindex` rebuilds). A value set in the settings wins. A
-path under no mount skips the guard at Debug, and a first write that a read-only mount denies is
-logged at Debug. Read by
+`search`, `eval rag --no-ingest -c` and `eval rag -c` with its ingest pre-pass and no `--reindex`;
+`--reindex` rebuilds). A value set in the settings wins. A path under no mount skips the guard at
+Debug. Where the covering mount, overrides included, grants no Write or Create on the file and no
+Create on its folder (a read-only `/workspace`), the guard still reads and compares a recorded
+fingerprint and still refuses a changed model, but writes nothing, and when no fingerprint is recorded yet logs one Debug
+line that names `FingerprintPath`, never a Warning. A provider that cannot report its dimensions (a custom
+`ModelPath` that is missing) makes the guard log a Warning with the provider's own message. Read by
 `DefaultEmbeddingProviderResolver`, when no local or code-analysis provider is registered. Bound
 by `AddOrkeonInfrastructure()`, and by `AddOrkeonVectorSearch(configuration)` (called by
 `AddOrkeonInfrastructure(configuration)`).
@@ -1459,7 +1465,9 @@ host runs in a container; `None` turns it off. A backend that cannot run fails t
 reason, rather than run it unconfined. The `SECURITY` line of the interpreters is logged once per
 host, at the first `shell_command` call validated once interpreters are enabled, and states the
 confinement in force: the backend, or `none` with its reason (a container, `Mode = None`), or
-`unavailable` when every call fails; building or listing the tool logs nothing. `AllowNetwork` opens the network (off by default) and
+`unavailable` when every call fails; a confining backend also says `network on` or `network off`
+(from `AllowNetwork`) and, under bubblewrap, `system directories are read-only`, while `none` always
+says `network on` and makes no read-only claim; building or listing the tool logs nothing. `AllowNetwork` opens the network (off by default) and
 `ReadOnlyPaths` lends a toolchain outside the system directories
 ([Shell confinement](../architecture/security.md#shell-confinement), [limits](./limitations.md)).
 `Environment:Propagate` names extra host variables handed to the shell session and to the code

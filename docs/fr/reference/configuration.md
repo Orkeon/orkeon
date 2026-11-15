@@ -567,10 +567,14 @@ termine `BudgetExhausted`, sans nouvelle tentative. Les plafonds sur le nombre d
 [`RateLimiting`](#ratelimiting). La liste de prix intégrée couvre le modèle par défaut de chaque
 fournisseur payant, sauf Hugging Face, dont le fournisseur routé fixe le prix ; une passerelle
 (Together, Mammouth) est tarifée par ses propres lignes, posées avec `CustomPricings:<i>:Provider`,
-et les modèles `ollama` et Docker Model Runner ne coûtent rien. Un modèle sans prix est compté à
-zéro et journalise un seul avertissement par modèle, qui nomme `Orkeon:CostTracking:CustomPricings` :
-ajoutez-y une ligne pour le tarifer. Sous un budget `MaxCostUsd`, un second avertissement, une fois
-par crew et par modèle, dit que le budget ne peut pas compter les appels de ce modèle. Avec `Enabled`
+et les modèles `ollama` et Docker Model Runner ne coûtent rien. Une ligne `CustomPricings` l'emporte
+toujours sur une ligne intégrée : une ligne sans `Provider` s'applique à tous les fournisseurs, une
+ligne qui nomme un fournisseur à ce fournisseur seul. Un modèle sans prix est compté à zéro et
+journalise un seul avertissement par modèle et par processus hôte (un démon `orkeon-host` avertit une
+fois pour toute sa durée de vie, non une fois par run), qui nomme `Orkeon:CostTracking:CustomPricings` :
+ajoutez-y une ligne pour le tarifer. Sous un budget `MaxCostUsd`, celui du crew ou celui d'un agent,
+un second avertissement, une fois par crew et par modèle, dit que le budget ne peut pas compter les
+appels de ce modèle (il faut un plafond au-dessus de 0 et un appel qui porte des tokens). Avec `Enabled`
 à `false`, chaque appel est toujours enregistré et tarifé (l'historique et le rapport le comptent, un
 modèle sans prix avertit toujours une fois), mais aucun n'est refusé, aucune alerte de budget n'est
 levée et l'avertissement « le budget ne peut pas compter » n'est pas journalisé.
@@ -984,9 +988,14 @@ du déploiement comme `Model`. Au démarrage, l'hôte compare le provider, le mo
 ceux consignés dans `FingerprintPath` et refuse de démarrer s'ils ont changé. `orkeon forge` prend
 par défaut, pour `FingerprintPath`, `/forge/embedding-fingerprint.json`, consigné par session : il ne
 garde donc rien d'une session à l'autre ; `orkeon rag` le vide et garde chaque collection par son
-manifeste (`ingest`, `search` et `eval rag --no-ingest -c` ; `--reindex` reconstruit). Une valeur
-posée dans les settings l'emporte. Un chemin sous aucun montage désactive le garde-fou en Debug, et
-une première écriture qu'un montage en lecture seule refuse est journalisée en Debug. Lue par
+manifeste (`ingest`, `search`, `eval rag --no-ingest -c` et `eval rag -c` avec sa passe d'ingestion et sans
+`--reindex` ; `--reindex` reconstruit). Une valeur posée dans les settings l'emporte. Un chemin sous
+aucun montage désactive le garde-fou en Debug. Là où le montage qui le couvre, surcharges comprises,
+n'accorde ni Write ni Create sur le fichier ni Create sur son dossier (un `/workspace` en lecture
+seule), le garde-fou lit et compare encore une empreinte consignée et refuse encore un changement de
+modèle, mais n'écrit rien, et quand aucune empreinte n'est encore consignée journalise une ligne
+Debug qui nomme `FingerprintPath`, jamais un Warning. Un provider qui ne peut pas donner ses dimensions (un `ModelPath` personnalisé introuvable)
+fait journaliser au garde-fou un Warning avec le message du provider lui-même. Lue par
 `DefaultEmbeddingProviderResolver`, quand aucun provider local ni d'analyse de code n'est inscrit.
 Liée par `AddOrkeonInfrastructure()`, et par `AddOrkeonVectorSearch(configuration)` (appelé par
 `AddOrkeonInfrastructure(configuration)`).
@@ -1499,8 +1508,10 @@ dans un conteneur ; `None` le coupe. Un backend qui ne peut pas tourner fait éc
 avec la raison, plutôt que de le lancer hors confinement. La ligne `SECURITY` des interpréteurs est
 journalisée une seule fois par hôte, à la validation du premier appel de `shell_command` une fois les
 interpréteurs activés, et dit le confinement en vigueur : le backend, ou `none` avec sa raison (un conteneur,
-`Mode = None`), ou `unavailable` quand chaque appel échoue ; construire ou lister l'outil ne
-journalise rien. `AllowNetwork` ouvre le réseau (coupé
+`Mode = None`), ou `unavailable` quand chaque appel échoue ; un backend confinant dit aussi `network on` ou
+`network off` (d'après `AllowNetwork`) et, sous bubblewrap, `system directories are read-only`, alors
+que `none` dit toujours `network on` et ne prétend rien sur la lecture seule ; construire ou lister
+l'outil ne journalise rien. `AllowNetwork` ouvre le réseau (coupé
 par défaut) et `ReadOnlyPaths` prête une chaîne d'outils hors des répertoires système
 ([Confinement du shell](../architecture/security.md#confinement-du-shell), [limites](./limitations.md)).
 `Environment:Propagate` nomme des variables de l'hôte remises à la session shell et au bac à sable

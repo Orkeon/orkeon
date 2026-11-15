@@ -72,7 +72,10 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
   confinement en vigueur : le backend et ce qu'il montre au processus ; ou `none` et pourquoi (l'hôte
   tourne dans un conteneur, ou `Mode = None`, où les commandes s'exécutent sur l'hôte sans
   confinement) ; ou `unavailable` avec la raison, quand chaque appel échouera plutôt que de
-  s'exécuter hors confinement.
+  s'exécuter hors confinement. Un backend confinant énonce aussi le réseau, `network on` ou `network off`
+  (d'après `Confinement:AllowNetwork`), et bubblewrap ajoute `system directories are read-only`. Sous
+  `Mode = None`, ou sans confinement dans un conteneur, la ligne dit toujours `network on` (le shell
+  sans confinement ne coupe jamais le réseau) et ne prétend rien sur la lecture seule.
 - **Pas de réseau** sauf `Confinement:AllowNetwork = true` : un espace de noms réseau limité au
   loopback sous bubblewrap, `(deny network*)` sous Seatbelt, aucune capacité réseau sous
   AppContainer.

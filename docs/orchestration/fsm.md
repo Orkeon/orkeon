@@ -12,7 +12,7 @@ Orkeon provides a generic finite state machine framework (`StateMachine<TState, 
 - **The [Graph mode](./graph.md)** bounds its `StateGraph` runs with a `CircuitBreakerPolicy` built from the crew's `graph:` block.
 - **The corrective RAG graph** (`CorrectiveRagPipeline`) bounds its retrieve → evaluate → regenerate loop with its own `CircuitBreakerPolicy`.
 
-> **No task state machine.** A crew's tasks do not run through an FSM. What bounds a task is its agent loop: the agent's `maxIter`, a stop after 3 consecutive identical tool errors, and the output-validation retries (an agent with two iterations left is told once; one that reaches `maxIter` gets a last tool-free turn, and its task is flagged `endedOnIterationCap`). A YAML `circuitBreaker:` block, at the crew root or on a task, is refused at load. In YAML, the only circuit-breaker setting is a Graph crew's `graph:` block (see [YAML schema](../architecture/yaml-schema.md)).
+> **No task state machine.** A crew's tasks do not run through an FSM. What bounds a task is its agent loop: the agent's `maxIter`, a stop after 3 consecutive identical tool errors, and the output-validation retries (an agent with two iterations left is told once; one that reaches `maxIter` gets a last tool-free turn, and its task is flagged `endedOnIterationCap`; this is the main agent loop, the native tool-calling and legacy text fallback loops do neither and still end on the cap). A YAML `circuitBreaker:` block, at the crew root or on a task, is refused at load. In YAML, the only circuit-breaker setting is a Graph crew's `graph:` block (see [YAML schema](../architecture/yaml-schema.md)).
 
 ## Architecture
 
