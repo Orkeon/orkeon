@@ -346,7 +346,8 @@ internal static class ForgeFolders
     /// <summary>
     /// One walk of <paramref name="directory"/>: its large files (<see cref="LargeFiles"/>) and
     /// every file, relative with <c>/</c> separators, up to <see cref="MaxExisting"/>. An entry
-    /// this process cannot read is skipped; both are empty when the folder is gone.
+    /// this process cannot read is skipped; the walk ends, keeping what it read, when it fails to
+    /// advance twice in a row; both are empty when the folder is gone.
     /// </summary>
     public static (IReadOnlyList<ForgeLargeFile> Large, IReadOnlyList<string> Existing) Survey(string directory)
     {
@@ -358,13 +359,29 @@ internal static class ForgeFolders
         var found = new List<ForgeLargeFile>();
         var existing = new List<string>();
         using var files = new System.IO.DirectoryInfo(directory).EnumerateFiles("*", options).GetEnumerator();
+        var failedMoves = 0;
         while (true)
         {
+            bool moved;
             try
             {
-                if (!files.MoveNext())
+                moved = files.MoveNext();
+                failedMoves = 0;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // the walk could not advance: one failure skips the entry, a second in a row
+                // (a persistent readdir error) ends it with what was read
+                if (++failedMoves >= 2)
                     break;
+                continue;
+            }
 
+            if (!moved)
+                break;
+
+            try
+            {
                 var file = files.Current;
                 var relative = System.IO.Path.GetRelativePath(directory, file.FullName).Replace('\\', '/');
                 var length = file.Length;
