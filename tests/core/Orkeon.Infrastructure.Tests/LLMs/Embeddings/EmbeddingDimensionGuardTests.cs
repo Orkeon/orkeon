@@ -100,6 +100,119 @@ public class EmbeddingDimensionGuardTests
     }
 
     [Fact]
+    [Trait("BR", "CH-38")]
+    public async Task ShouldStillRefuse_WhenAReadOnlyWorkspaceHoldsAFingerprintOfAnotherModel()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ch38-ro-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(root, ".orkeon");
+        Directory.CreateDirectory(dir);
+        var file = Path.Combine(dir, "embedding-fingerprint.json");
+        var json = System.Text.Json.JsonSerializer.Serialize(new EmbeddingFingerprint("OpenAI", "text-embedding-3-small", 1536));
+        await File.WriteAllTextAsync(file, json, TestContext.Current.CancellationToken);
+        try
+        {
+            using var loggers = new FakeLoggerFactory();
+            using var registry = new FileSystemRegistry([new FileSystemMount(root, "/workspace", FileAccessRights.Read)]);
+            var fs = (IFileSystemService)(new Orkeon.Infrastructure.FileSystem.FileSystemService(
+                registry, new Orkeon.Tests.Shared.Doubles.StubPathValidator().AllowAll(),
+                Microsoft.Extensions.Logging.LoggerFactoryExtensions.CreateLogger<Orkeon.Infrastructure.FileSystem.FileSystemService>(loggers)));
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>(loggers);
+            services.AddSingleton<IFileSystemService>(fs);
+            services.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(Provider("Mistral", "mistral-embed", 1024));
+            services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+            services.AddOrkeonInfrastructure();
+            await using var sp = services.BuildServiceProvider();
+
+            var ex = await Assert.ThrowsAsync<EmbeddingModelChangedException>(async () =>
+            {
+                foreach (var service in sp.GetServices<IHostedService>())
+                    await service.StartAsync(TestContext.Current.CancellationToken);
+            });
+
+            Assert.Contains("text-embedding-3-small", ex.Message, StringComparison.Ordinal);
+            Assert.Equal(json, await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken));
+            Assert.Single(Directory.GetFileSystemEntries(dir));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-38")]
+    public async Task ShouldLogTheProviderFailure_WhenTheDimensionsCannotBeRead()
+    {
+        using var loggers = new FakeLoggerFactory();
+        var store = new MockEmbeddingFingerprintStore();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>(loggers);
+        services.AddSingleton<IEmbeddingFingerprintStore>(store);
+        services.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(new StubThrowingDimensionsEmbeddingProvider());
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddOrkeonInfrastructure();
+        await using var sp = services.BuildServiceProvider();
+
+        foreach (var service in sp.GetServices<IHostedService>())
+            await service.StartAsync(TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(loggers.Entries, e => e.Message.Contains(StubThrowingDimensionsEmbeddingProvider.FailureMessage, StringComparison.Ordinal));
+        Assert.DoesNotContain("writable path", entry.Message, StringComparison.Ordinal);
+        Assert.Equal(0, store.SaveCallCount);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-38")]
+    public async Task ShouldWriteNothingAndLogNoWarning_WhenTheCoveringMountLacksCreate()
+    {
+        await AssertNothingWrittenAsync(FileAccessRights.Read | FileAccessRights.Write, null);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-38")]
+    public async Task ShouldWriteNothingAndLogNoWarning_WhenAnOverrideMakesTheFolderReadOnly()
+    {
+        await AssertNothingWrittenAsync(
+            FileAccessRights.ReadWrite | FileAccessRights.Create | FileAccessRights.Delete,
+            [new SubPathOverride(".orkeon", FileAccessRights.Read)]);
+    }
+
+    private static async Task AssertNothingWrittenAsync(FileAccessRights rights, IReadOnlyList<SubPathOverride>? overrides)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ch38-nw-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            using var loggers = new FakeLoggerFactory();
+            using var registry = new FileSystemRegistry([new FileSystemMount(root, "/workspace", rights, overrides)]);
+            var fs = new Orkeon.Infrastructure.FileSystem.FileSystemService(
+                registry, new Orkeon.Tests.Shared.Doubles.StubPathValidator().AllowAll(),
+                Microsoft.Extensions.Logging.LoggerFactoryExtensions.CreateLogger<Orkeon.Infrastructure.FileSystem.FileSystemService>(loggers));
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>(loggers);
+            services.AddSingleton<IFileSystemService>(fs);
+            services.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(Provider("Mistral", "mistral-embed", 1024));
+            services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+            services.AddOrkeonInfrastructure();
+            await using var sp = services.BuildServiceProvider();
+
+            foreach (var service in sp.GetServices<IHostedService>())
+                await service.StartAsync(TestContext.Current.CancellationToken);
+
+            Assert.DoesNotContain(loggers.Entries, e => e.Level >= Microsoft.Extensions.Logging.LogLevel.Warning);
+            Assert.Empty(Directory.GetFileSystemEntries(root));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
     public async Task ShouldRecordTheFingerprint_WhenNothingIsStoredYet()
     {
         var store = new MockEmbeddingFingerprintStore();

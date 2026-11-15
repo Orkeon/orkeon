@@ -78,7 +78,7 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
         // VFS validation stays eager; only the model load is deferred to the first embedding.
         var resolvedPath = ResolveModelPath(_options, fileSystem);
         _embedderFactory = () => embedderFactory(resolvedPath);
-        _dimensions = new Lazy<int>(ProbeDimensions, LazyThreadSafetyMode.ExecutionAndPublication);
+        _dimensions = new Lazy<int>(ProbeDimensions, LazyThreadSafetyMode.PublicationOnly);
     }
 
     /// <summary>
@@ -172,8 +172,8 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
 
             var what = string.IsNullOrEmpty(_options.ModelPath)
                 ? "the embedded model (LocalEmbeddingsModel/default/model.onnx). The build may have "
-                    + "excluded it (ExcludeAssets=\"build\" on the SmartComponents.LocalEmbeddings "
-                    + "reference): drop that exclusion to get the model back, or avoid the local "
+                    + "excluded it (ExcludeAssets=\"build\" on every reference that brings SmartComponents.LocalEmbeddings: "
+                    + "Orkeon.Scripting, Orkeon.Tools.Embeddings.Local, or the package SmartComponents.LocalEmbeddings itself): drop that exclusion to get the model back, or avoid the local "
                     + "provider by configuring a remote one (Orkeon:Embeddings) or setting "
                     + "RaggableTree:Embedding:Provider=None."
                 : $"the model '{_options.ModelPath}'.";

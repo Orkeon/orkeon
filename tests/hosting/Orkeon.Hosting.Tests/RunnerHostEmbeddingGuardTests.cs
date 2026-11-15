@@ -74,10 +74,11 @@ public sealed class RunnerHostEmbeddingGuardTests : IDisposable
 
     [Fact]
     [Trait("BR", "CH-17")]
+    [Trait("BR", "CH-38")]
     public void ShouldLogNoGuardWarning_WhenTheWorkspaceIsMountedReadOnly()
     {
         var path = Path.Combine(_root, "appsettings.json");
-        File.WriteAllText(path, """{ "RaggableTree": { "Enabled": false } }""");
+        File.WriteAllText(path, """{ "RaggableTree": { "Enabled": false }, "Llm": { "Model": "embedded-model", "ApiKey": "sk-test" }, "Orkeon": { "Embeddings": { "Provider": "ollama", "Model": "nomic-embed-text", "Dimension": 768 } } }""");
         using var capture = new CapturingLoggerProvider();
         var original = Console.Error;
         using var muted = new StringWriter();
@@ -102,8 +103,7 @@ public sealed class RunnerHostEmbeddingGuardTests : IDisposable
 
         Assert.True(built);
         Assert.False(File.Exists(Fingerprint));
-        Assert.DoesNotContain(capture.Entries, e => e.Level >= LogLevel.Warning
-            && e.Category.Contains("EmbeddingDimensionGuardRunner", StringComparison.Ordinal));
+        Assert.DoesNotContain(capture.Entries, e => e.Level >= LogLevel.Warning);
     }
 
     [Fact]

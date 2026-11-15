@@ -639,7 +639,7 @@ public sealed class ForgeCommandTests : IDisposable
         const string content = """{"Provider":"other","Model":"other-model","Dimensions":3}""";
         File.WriteAllText(stale, content);
 
-        using var host = BuildForgeHost("""{ "RaggableTree": { "Enabled": false } }""");
+        using var host = BuildForgeHost("""{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Embeddings": { "Provider": "ollama", "Model": "nomic-embed-text", "Dimension": 768 } } }""");
 
         Assert.NotEqual(ReadOnlyFingerprintPath, ResolvedFingerprintPath(host));
         Assert.Equal("/forge/embedding-fingerprint.json", ResolvedFingerprintPath(host));

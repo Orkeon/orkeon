@@ -503,7 +503,34 @@ public sealed class RagCommandTests
 
         var exit = await IngestRealAsync(console, scratch, "model-b", 16, reindex: false);
 
-        Assert.NotEqual(Program.ExitOk, exit);
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("--reindex", console.Stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-38")]
+    public async Task ShouldRefuseTheEval_WhenTheModelChangedWithoutReindex()
+    {
+        using var scratch = new ScriptScratch();
+        using (var first = new TestConsole())
+            Assert.Equal(Program.ExitOk, await IngestRealAsync(first, scratch, "model-a", 8, reindex: false));
+        var dataset = scratch.WriteFile("golden.yaml", "name: golden\ncollection: docs\ncorpus: ./docs\ncases:\n  - id: q-001\n    question: \"alpha?\"\n    relevant: [\"docs/a.md\"]\n");
+        using var console = new TestConsole();
+
+        var exit = await RagCommand.ExecuteEvalAsync(console, new RagEvalCommandOptions
+        {
+            Dataset = dataset,
+            Collection = "docs",
+            Reindex = false,
+            NoIngest = false,
+            SettingsPath = scratch.WriteFile("appsettings.json", """{ "RaggableTree": { "Enabled": false } }"""),
+            WorkingDirectoryOverride = scratch.Root,
+            ConfigureTestServices = (_, s) => s.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(
+                new StubEmbeddingProvider("model-b", 16)),
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("--reindex", console.Stderr, StringComparison.Ordinal);
     }
 
     [Fact]

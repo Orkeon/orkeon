@@ -195,6 +195,40 @@ public sealed class LocalEmbeddingProviderDeferredModelTests
         }
     }
 
+    // Needs the real embedded model once the factory succeeds: Slow, like the dispose test below.
+    [Fact]
+    [Trait("BR", "CH-38")]
+    [Trait("Category", "Slow")]
+    public void ShouldTryTheDimensionsAgain_WhenTheCustomModelAppearsAfterAFailure()
+    {
+        var modelPresent = false;
+        using var provider = new LocalEmbeddingProvider(
+            new FakeFileSystemService(),
+            new LocalEmbeddingOptions { ModelPath = "/models/custom.onnx" },
+            null,
+            _ => modelPresent ? new LocalEmbedder() : throw new FileNotFoundException(MissingModelMessage));
+
+        Assert.ThrowsAny<Exception>(() => provider.Dimensions);
+        modelPresent = true;
+
+        Assert.Equal(384, provider.Dimensions);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-38")]
+    public async Task ShouldNameEveryReference_InTheOptOutMessage()
+    {
+        using var provider = CreateProviderWithFactory(ThrowMissingModel);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => provider.EmbedBatchAsync(["hello"], CancellationToken.None));
+
+        Assert.Contains("Orkeon.Scripting", ex.Message);
+        Assert.Contains("Orkeon.Tools.Embeddings.Local", ex.Message);
+        Assert.Contains("SmartComponents.LocalEmbeddings", ex.Message);
+        Assert.Contains("ExcludeAssets=\"build\"", ex.Message);
+    }
+
     private static void InterlockedMax(ref int target, int value)
     {
         var current = Volatile.Read(ref target);

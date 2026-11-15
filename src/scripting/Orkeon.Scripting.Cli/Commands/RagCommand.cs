@@ -348,9 +348,10 @@ internal static class RagCommand
                 : options.Compare!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .ToImmutableList();
 
-            // Only --no-ingest with a named collection: an ingest pre-pass is covered by the ingest check,
-            // and without -c the collection is only known to the harness (dataset name), so nothing is read.
-            if (options.NoIngest && !string.IsNullOrWhiteSpace(options.Collection))
+            // Same drift check as `rag ingest`, for a named collection: --no-ingest reads the stored vectors,
+            // an ingest without --reindex adds to them. Without -c the collection is only known to the
+            // harness (dataset name), so nothing is read.
+            if ((options.NoIngest || !options.Reindex) && !string.IsNullOrWhiteSpace(options.Collection))
             {
                 var drift = await CheckEmbeddingDriftAsync(host, options.Collection, console, ct).ConfigureAwait(false);
                 if (drift is not null)
