@@ -78,6 +78,7 @@ public static class CodeToolExtensions
             ShellConfinementResolver.CurrentPlatform,
             sp.GetService<ILogger<ShellSandboxSelector>>(),
             sp.GetRequiredService<AppContainerShellSandbox>()));
+        services.TryAddSingleton<ShellSecurityNotice>();
         services.AddTransient<IBaseTool>(sp =>
         {
             var fs = sp.GetRequiredService<IFileSystemService>();
@@ -85,7 +86,8 @@ public static class CodeToolExtensions
             var shell = sp.GetRequiredService<IOptions<ShellToolOptions>>().Value;
             return new ShellCommandTool(fs, allowedCommands: CommandList(shell.AllowedCommands), blockedPatterns: null, logger,
                 allowInterpreters: shell.AllowInterpreters, extraAllowedCommands: CommandList(shell.ExtraAllowedCommands),
-                limits: sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value)
+                limits: sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
+                securityNotice: sp.GetRequiredService<ShellSecurityNotice>())
             {
                 Confinement = shell.Confinement,
                 WindowsPaths = shell.WindowsPaths,
