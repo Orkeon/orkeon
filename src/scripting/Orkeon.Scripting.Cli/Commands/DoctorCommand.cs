@@ -649,24 +649,53 @@ internal static class DoctorCommand
     /// The TypeScript compiler <c>orkeon run --validate</c> type-checks a <c>.ork.ts</c> with (FWK-12),
     /// resolved by the checker's own chain and named with the mode the settings give it.
     /// </summary>
-    private static async Task<DoctorCheckResult> CheckTscAsync(IConfiguration configuration, CancellationToken ct)
+    private static Task<DoctorCheckResult> CheckTscAsync(IConfiguration configuration, CancellationToken ct)
+        => CheckTscAsync(configuration, new TscTypeChecker(ScriptingToolchainOptions.FromConfiguration(configuration)).ResolveBinary, ct);
+
+    // Test seam: the resolver is injected. A missing tsc follows the type-check mode (CH-24).
+    internal static async Task<DoctorCheckResult> CheckTscAsync(IConfiguration configuration, Func<string> resolveBinary, CancellationToken ct)
     {
         const string Check = "tsc";
         var options = ScriptingToolchainOptions.FromConfiguration(configuration);
         string binary;
         try
         {
-            binary = new TscTypeChecker(options).ResolveBinary();
+            binary = resolveBinary();
         }
         catch (TscNotFoundException ex)
         {
-            return new DoctorCheckResult
+            var always = options.TypeCheck == TypeCheckMode.Always;
+            if (!string.IsNullOrWhiteSpace(options.TscPath))
             {
-                Check = Check,
-                Status = StatusWarn,
-                Detail = options.TypeCheck == TypeCheckMode.Off
-                    ? "not found — the type check of .ork.ts scripts is off (Orkeon:Scripting:Toolchain:TypeCheck)"
-                    : $"not found — {ex.Message}",
+                return new DoctorCheckResult
+                {
+                    Check = Check,
+                    Status = always ? StatusFail : StatusWarn,
+                    Detail = $"not found — {ex.Message}",
+                };
+            }
+
+            return options.TypeCheck switch
+            {
+                TypeCheckMode.Off => new DoctorCheckResult
+                {
+                    Check = Check,
+                    Status = StatusOk,
+                    Detail = "not installed — the type check of .ork.ts scripts is off",
+                },
+                TypeCheckMode.Always => new DoctorCheckResult
+                {
+                    Check = Check,
+                    Status = StatusFail,
+                    Detail = "not installed — the type check is always on: `npm install -g typescript`, or set Orkeon:Scripting:Toolchain:TscPath, or set Orkeon:Scripting:Toolchain:TypeCheck: off"
+                        + (RunsFromCheckout() ? "; in a checkout: `npm --prefix tools/scripting-typecheck install --prefer-offline`" : string.Empty),
+                },
+                _ => new DoctorCheckResult
+                {
+                    Check = Check,
+                    Status = StatusOk,
+                    Detail = "not installed — optional, needed only to type-check .ork.ts scripts in orkeon run --validate (npm install -g typescript, or Orkeon:Scripting:Toolchain:TscPath)",
+                },
             };
         }
 
@@ -679,6 +708,19 @@ internal static class DoctorCommand
                 ? $"{version} at {binary} (type check: {options.TypeCheck}; needed only to type-check .ork.ts scripts in `orkeon run --validate`)"
                 : $"resolved at {binary}, but `--version` did not answer (is Node installed?)",
         };
+    }
+
+    // OUT-OF-SCOPE: system probing, same signal as TscTypeChecker's candidate walk (install directory and ancestors).
+    private static bool RunsFromCheckout()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, "tools", "scripting-typecheck")))
+                return true;
+        }
+
+        return false;
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort version read: any failure downgrades the check detail, never crashes doctor.")]
