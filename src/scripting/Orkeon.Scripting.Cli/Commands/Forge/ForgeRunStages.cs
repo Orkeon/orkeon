@@ -19,6 +19,21 @@ internal sealed class ForgeRunObserver : ICrewExecutionHook, ILlmCallObserver
     private ForgeEventWriter? _events;
     private RunEventsLlmCallObserver? _calls;
 
+    private readonly object _gate = new();
+    private readonly Dictionary<string, bool> _lastAttemptCapped = [];
+
+    /// <summary>Tasks whose last attempt ended on the iteration cap (a task seen twice counts once).</summary>
+    public int CappedTasks
+    {
+        get { lock (_gate) { return _lastAttemptCapped.Values.Count(capped => capped); } }
+    }
+
+    /// <summary>Starts a trial: forgets the previous trial's tasks so <see cref="CappedTasks"/> counts this trial only.</summary>
+    public void BeginTrial()
+    {
+        lock (_gate) { _lastAttemptCapped.Clear(); }
+    }
+
     /// <summary>Attaches the stream; before this, the observer stays silent. <paramref name="withCalls"/> also writes the model calls (llm.call.*).</summary>
     public void Attach(ForgeEventWriter events, bool withCalls = false)
     {
@@ -45,6 +60,9 @@ internal sealed class ForgeRunObserver : ICrewExecutionHook, ILlmCallObserver
     /// <inheritdoc />
     public Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
     {
+        lock (_gate)
+            _lastAttemptCapped[snapshot.TaskId] = snapshot.EndedOnIterationCap;
+
         _events?.Emit("task.completed", new
         {
             taskId = snapshot.TaskId,
@@ -84,10 +102,14 @@ internal sealed class TestStage : IForgeStageRunner
     public const string LastRunFileName = "last-run.json";
 
     private readonly IForgeTestBench _bench;
+    private readonly ForgeRunObserver? _observer;
 
-    /// <summary>Builds the stage over the bench seam.</summary>
-    public TestStage(IForgeTestBench bench) =>
+    /// <summary>Builds the stage over the bench seam; the optional observer supplies the capped-task count.</summary>
+    public TestStage(IForgeTestBench bench, ForgeRunObserver? observer = null)
+    {
         _bench = bench ?? throw new ArgumentNullException(nameof(bench));
+        _observer = observer;
+    }
 
     /// <inheritdoc />
     public ForgeState Stage => ForgeState.Test;
@@ -96,6 +118,8 @@ internal sealed class TestStage : IForgeStageRunner
     public async Task<ForgeStageOutcome> RunAsync(
         ForgeSession session, ForgeEventWriter events, CancellationToken cancellationToken)
     {
+        _observer?.BeginTrial();
+
         var runNumber = session.Document.Iteration;
         var runDirectory = Path.Combine(session.Directory, RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture));
         Directory.CreateDirectory(runDirectory);
@@ -146,6 +170,7 @@ internal sealed class TestStage : IForgeStageRunner
             cacheHitTokens = run.CacheHitTokens,
             cacheMissTokens = run.CacheMissTokens,
             mailActions = run.MailActions,
+            cappedTasks = _observer?.CappedTasks ?? 0,
         });
 
         return new ForgeStageOutcome
