@@ -262,7 +262,9 @@ internal sealed record ForgeBlueprint
     /// <summary>
     /// A task names, in its description or expected output, only a deliverable-root file that is its
     /// own deliverable, one a task it depends on (transitively, whatever the process) declares, or one
-    /// already present in an output folder.
+    /// already present in an output folder. An agent's goal and backstory follow the same rule over
+    /// the tasks it is given; an agent with no task (a manager, an arbiter) coordinates them all and
+    /// may name any task's deliverable.
     /// </summary>
     private void ValidateHandOffs(List<string> errors, IReadOnlyCollection<string> existingPaths)
     {
@@ -298,8 +300,11 @@ internal sealed record ForgeBlueprint
         for (var i = 0; i < agents.Count; i++)
         {
             var agent = agents[i];
+            var own = tasks.Where(t => string.Equals(t.Agent, agent.Key, StringComparison.Ordinal)).ToList();
             var allowed = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var task in tasks.Where(t => string.Equals(t.Agent, agent.Key, StringComparison.Ordinal)))
+            if (own.Count == 0)
+                allowed.UnionWith(tasks.Select(static t => t.Deliverable).OfType<string>());
+            foreach (var task in own)
                 allowed.UnionWith(AllowedPaths(tasks, task));
 
             foreach (var (field, text) in new[] { ("goal", agent.Goal), ("backstory", agent.Backstory) })

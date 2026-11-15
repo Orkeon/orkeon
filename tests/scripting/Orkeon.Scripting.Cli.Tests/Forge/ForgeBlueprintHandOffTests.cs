@@ -81,9 +81,28 @@ public sealed class ForgeBlueprintHandOffTests
         var errors = plan.Validate([]);
 
         var error = Assert.Single(errors, e => e.StartsWith("agents[0] ('a')", StringComparison.Ordinal));
-        Assert.Contains(field, error, StringComparison.Ordinal);
+        Assert.Contains($"its {field} names", error, StringComparison.Ordinal);
         Assert.Contains("'/output/notes.md'", error, StringComparison.Ordinal);
         Assert.Empty(plan.Validate(["/output/notes.md"]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-44")]
+    public void ShouldAcceptAPlan_WhenAManagerWithNoTaskNamesTheFinalDeliverable()
+    {
+        var plan = new ForgeBlueprint
+        {
+            Crew = new ForgeBlueprintCrew { Name = "team", Goal = "goal", Process = "hierarchical" },
+            Manager = "lead",
+            Agents =
+            [
+                new ForgeBlueprintAgent { Key = "a", Role = "r", Goal = "g" },
+                new ForgeBlueprintAgent { Key = "lead", Role = "r2", Goal = "Deliver /output/report.md on time" },
+            ],
+            Tasks = [Task("w", deliverable: "/output/report.md")],
+        };
+
+        Assert.DoesNotContain(plan.Validate([]), e => e.StartsWith("agents[", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -98,13 +117,13 @@ public sealed class ForgeBlueprintHandOffTests
                 new ForgeBlueprintAgent { Key = "a", Role = "r", Goal = "g" },
                 new ForgeBlueprintAgent { Key = "idle", Role = "r2", Goal = "g", Backstory = "You maintain /output/notes.md" },
             ],
-            Tasks = [Task("w", deliverable: "/output/notes.md")],
+            Tasks = [Task("w", deliverable: "/output/report.md")],
         };
 
         var error = Assert.Single(plan.Validate([]));
 
         Assert.StartsWith("agents[1] ('idle')", error, StringComparison.Ordinal);
-        Assert.Contains("backstory", error, StringComparison.Ordinal);
+        Assert.Contains("its backstory names", error, StringComparison.Ordinal);
         Assert.Contains("'/output/notes.md'", error, StringComparison.Ordinal);
         Assert.Empty(plan.Validate(["/output/notes.md"]));
     }
