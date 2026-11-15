@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.CostTracking;
 using TokenBudgetTrackerSut = Orkeon.Infrastructure.Security.TokenBudgetTracker;
 using static Orkeon.Tests.Shared.Constants.TestEntityIds;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
@@ -159,5 +161,23 @@ public class TokenBudgetTrackerTests
         // Large usage should still be within budget
         var result = tracker.RecordUsage(CrewIdAlt1, "researcher", 1_000_000, 1_000_000, ModelGpt4);
         Assert.True(result.IsWithinBudget);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-36")]
+    public void ShouldPriceWithTheProviderlessRegistryRow_WhenTheRegistryHasACustomRowForTheModel()
+    {
+        var options = new CostTrackingOptions();
+        options.CustomPricings.Add(new ModelPricing
+        {
+            ModelPattern = "invented-model-ch36",
+            PromptPricePerMillion = 3m,
+            CompletionPricePerMillion = 6m,
+        });
+        var registry = new ModelPricingRegistry(Options.Create(options), NullLogger<ModelPricingRegistry>.Instance);
+
+        var cost = TokenBudgetTrackerSut.EstimateCost(1_000_000, 500_000, "invented-model-ch36", registry);
+
+        Assert.Equal(6m, cost);
     }
 }

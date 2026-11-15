@@ -918,6 +918,12 @@
       "description": "Cost per million prompt (input) tokens in the specified currency."
     },
     {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:Provider",
+      "section": "Orkeon:CostTracking",
+      "type": "string",
+      "description": "Provider this row is scoped to; null means any provider."
+    },
+    {
       "path": "Orkeon:CostTracking:DefaultCrewBudget:AlertThresholdPercent",
       "section": "Orkeon:CostTracking",
       "type": "number",

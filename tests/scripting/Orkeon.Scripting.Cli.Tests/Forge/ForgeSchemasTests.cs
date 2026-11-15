@@ -113,7 +113,7 @@ public class ForgeBlueprintTests
     [Fact]
     public void A_valid_blueprint_parses_with_its_entities()
     {
-        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out var errors));
+        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out var errors, []));
         Assert.Empty(errors);
         Assert.Equal(2, blueprint!.Agents!.Count);
         Assert.Equal(["collecte"], blueprint.Tasks![1].Dependencies);
@@ -125,7 +125,7 @@ public class ForgeBlueprintTests
     {
         var json = """{ "crew": { "name": "x" }, "agents": [], "tasks": [ { "key": "t" } ] }""";
 
-        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors, []));
         Assert.Contains(errors, e => e.Contains("'crew.goal'", StringComparison.Ordinal));
         Assert.Contains(errors, e => e.Contains("'agents' must hold", StringComparison.Ordinal));
         Assert.Contains(errors, e => e.Contains("'description'", StringComparison.Ordinal));
@@ -146,7 +146,7 @@ public class ForgeBlueprintTests
             }
             """;
 
-        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors, []));
         Assert.Contains(errors, e => e.Contains("short display name", StringComparison.Ordinal));
     }
 
@@ -164,7 +164,7 @@ public class ForgeBlueprintTests
             }
             """;
 
-        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors, []));
         Assert.Contains(errors, e => e.Contains("used twice", StringComparison.Ordinal));
     }
 
@@ -182,7 +182,7 @@ public class ForgeBlueprintTests
             }
             """;
 
-        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors, []));
         var error = Assert.Single(errors);
         Assert.Contains("tasks[0] ('t')", error, StringComparison.Ordinal);
         Assert.Contains("client://", error, StringComparison.Ordinal);
@@ -201,6 +201,6 @@ public class ForgeBlueprintTests
             }
             """;
 
-        Assert.True(ForgeBlueprint.TryParse(json, out _, out var errors), string.Join("; ", errors));
+        Assert.True(ForgeBlueprint.TryParse(json, out _, out var errors, []), string.Join("; ", errors));
     }
 }

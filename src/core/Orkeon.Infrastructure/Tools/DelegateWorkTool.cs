@@ -71,6 +71,11 @@ public record DelegateWorkResponse
     /// <summary>Gets the list of tools used by the target agent (only set when wait_for_result=true).</summary>
     [ReturnSchema(Description = "List of tools used by the target agent (only set when wait_for_result=true)")]
     public IReadOnlyList<string> ToolsUsed { get; init; } = [];
+
+    /// <summary>Gets whether the coworker spent its iteration cap and answered on the tool-free retry.</summary>
+    [System.Text.Json.Serialization.JsonPropertyName("ended_on_iteration_cap")]
+    [ReturnSchema(Description = "Whether the coworker spent its iteration cap and answered on the tool-free retry; its deliverable may be missing")]
+    public bool EndedOnIterationCap { get; init; }
 }
 
 /// <summary>
@@ -259,16 +264,20 @@ public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWo
 
         return new DelegateWorkResponse
         {
-            Message = result.Success
+            Message = (result.Success
                 ? $"Task executed by {request.CoworkerRole}"
-                : $"Task failed on {request.CoworkerRole}: {result.Error}",
+                : $"Task failed on {request.CoworkerRole}: {result.Error}")
+                + (result.EndedOnIterationCap
+                    ? $"; {request.CoworkerRole} ended on its iteration cap and its deliverable may be missing"
+                    : ""),
             TargetAgentId = targetAgentId.ToString(),
             TaskDescription = request.Task,
             Success = result.Success,
             Result = result.Output,
             ExecutionTimeMs = sw.ElapsedMilliseconds,
             Error = result.Error ?? "",
-            ToolsUsed = result.ToolsUsed.Select(t => t.ToolName).ToArray()
+            ToolsUsed = result.ToolsUsed.Select(t => t.ToolName).ToArray(),
+            EndedOnIterationCap = result.EndedOnIterationCap,
         };
     }
 

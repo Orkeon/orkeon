@@ -227,6 +227,7 @@ public sealed partial class AutoSummaryWriter : ICrewExecutionHook
     private static string StatusLabel(TaskExecutionSnapshot task) => task switch
     {
         { Skipped: true } => "⊘ skipped",
+        { Success: true, EndedOnIterationCap: true } => "⚠ completed on its iteration cap",
         { Success: true } => "✓ completed",
         _ => "✗ failed",
     };

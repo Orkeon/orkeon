@@ -597,4 +597,52 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.Equal("--lang needs a language: fr, en, es, de or zh.", ForgeCommandOptions.Parse(["une", "veille", "--lang", "it"]).Error);
         Assert.Equal("--lang only applies to a new session or to `forge resume`.", ForgeCommandOptions.Parse(["reopen", "/teams/veille", "--lang", "fr"]).Error);
     }
+
+    private const string ReadOnlyFingerprintPath = "/workspace/.orkeon/embedding-fingerprint.json";
+
+    /// <summary>Builds the forge engine host over a fresh session with the given settings body.</summary>
+    private Microsoft.Extensions.Hosting.IHost BuildForgeHost(string settingsJson)
+    {
+        Directory.CreateDirectory(_workspace);
+        var settings = Path.Combine(_workspace, "appsettings.json");
+        File.WriteAllText(settings, settingsJson);
+        var session = ForgeSession.Create(_workspace, "fingerprint");
+        Directory.CreateDirectory(Path.Combine(session.Directory, TestStage.OutputDirectoryName));
+        var plan = ForgeCommand.BuildMountPlan(_workspace, readRoot: null, session);
+        using var console = new TestConsole();
+        return ForgeCommand.BuildEngineHost(
+            console, settings, plan with { AllowExternalMounts = true },
+            new ForgeSubmissionBox(), new ForgeUsageTally(), new ForgeRunObserver());
+    }
+
+    private static string ResolvedFingerprintPath(Microsoft.Extensions.Hosting.IHost host) =>
+        Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<Orkeon.Application.Configuration.EmbeddingOptions>>(host.Services)
+            .Value.FingerprintPath;
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    [Trait("BR", "CH-06")]
+    public void ShouldPointTheFingerprintAtTheForgeSession_WhenNoPathIsConfigured()
+    {
+        using var host = BuildForgeHost("""{ "RaggableTree": { "Enabled": false } }""");
+
+        Assert.Equal("/forge/embedding-fingerprint.json", ResolvedFingerprintPath(host));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-06")]
+    public void ShouldIgnoreAFingerprintInTheReadFolder_WhenTheForgeStarts()
+    {
+        var readFolder = Directory.CreateDirectory(Path.Combine(_workspace, ".orkeon")).FullName;
+        var stale = Path.Combine(readFolder, "embedding-fingerprint.json");
+        const string content = """{"Provider":"other","Model":"other-model","Dimensions":3}""";
+        File.WriteAllText(stale, content);
+
+        using var host = BuildForgeHost("""{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Embeddings": { "Provider": "ollama", "Model": "nomic-embed-text", "Dimension": 768 } } }""");
+
+        Assert.NotEqual(ReadOnlyFingerprintPath, ResolvedFingerprintPath(host));
+        Assert.Equal("/forge/embedding-fingerprint.json", ResolvedFingerprintPath(host));
+        Assert.Equal(content, File.ReadAllText(stale));
+    }
 }

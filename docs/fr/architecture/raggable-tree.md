@@ -632,6 +632,8 @@ services.AddRaggableTree(new RaggableTreeOptions
 });
 ```
 
+Un `ModelPath` qui ne contient aucun modèle chargeable (un dossier vide, un chemin sans rien derrière, un fichier qui n'est pas un modèle) ne fait échouer ni la construction de l'hôte ni la liste des outils : le provider se construit, et le premier embedding lève une `InvalidOperationException` qui nomme le `ModelPath`, l'erreur de la bibliothèque en exception interne. Ni l'échec de l'embedder ni celui de `Dimensions` ne sont mis en cache : l'appel suivant réessaie une fois le modèle en place. Le garde-fou du modèle d'embeddings signale un provider qui ne peut pas donner ses dimensions avec le message du provider lui-même, en Warning, et saute sa vérification. Le chemin lui-même reste vérifié sans attendre contre les montages.
+
 Sans `AddOrkeonLocalEmbeddings`, `EmbeddingOptions.Local` porte les mêmes options et `AddRaggableTree` instancie le provider par réflexion — ce qui échoue bruyamment si l'assembly `Orkeon.Tools.Embeddings.Local` n'est pas référencée par l'hôte.
 
 Les licences du modèle et du package upstream sont tracées dans [`THIRD-PARTY-NOTICES.md`](../../../THIRD-PARTY-NOTICES.md). Un exemple console minimal vit dans [`examples/local-embeddings/`](https://github.com/Orkeon/orkeon/tree/main/examples/local-embeddings).

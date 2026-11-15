@@ -332,6 +332,9 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         // The outcome of a decision task, which a route reads: kept so that a resumed run replays it.
         public Orkeon.Domain.Task.ValueObjects.DecisionOutcome? Decision { get; init; }
 
+        // Whether the answer came from the tool-free retry after the iteration cap (#388): a resumed run reports it again.
+        public bool EndedOnIterationCap { get; init; }
+
         public static StoredResult Of(TaskResult result, string fingerprint) => new()
         {
             Success = result.Success,
@@ -348,6 +351,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             IterationsUsed = result.IterationsUsed,
             EndedAt = result.EndedAt,
             Decision = result.Decision,
+            EndedOnIterationCap = result.EndedOnIterationCap,
         };
 
         public static StoredResult Of<TOutput>(TaskResult<TOutput> result, string fingerprint)
@@ -362,6 +366,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 PromptTokens = result.PromptTokens,
                 CompletionTokens = result.CompletionTokens,
                 IterationsUsed = result.IterationsUsed,
+                EndedOnIterationCap = result.EndedOnIterationCap,
             };
 
         public TaskResult ToResult() => new(Success, Output, StructuredValue(), [], TimeSpan.FromTicks(ExecutionTicks))
@@ -375,6 +380,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             IterationsUsed = IterationsUsed,
             EndedAt = EndedAt,
             Decision = Decision,
+            EndedOnIterationCap = EndedOnIterationCap,
         };
 
         public TaskResult<TOutput> ToResult<TOutput>()
@@ -390,6 +396,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 PromptTokens = PromptTokens,
                 CompletionTokens = CompletionTokens,
                 IterationsUsed = IterationsUsed,
+                EndedOnIterationCap = EndedOnIterationCap,
             };
 
         // The structured output as the type it was produced as, when that type can be found again

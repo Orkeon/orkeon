@@ -467,7 +467,7 @@ task state machine that no execution path ran, along with three guard limits (`m
 Graph mode alone, where the `graph:` block carries the same preset and the same three effective limits.
 
 What bounds a task is its agent loop: the agent's `maxIter`, the stop after three identical
-consecutive tool errors, and the output-validation retries. What bounds a graph run is
+consecutive tool errors, and the output-validation retries. An agent with two iterations left is told so once, while it can still act (nothing is sent when `maxIter` is 2 or less); one that reaches `maxIter` gets a last tool-free turn that asks it to state what it could not do, and its task keeps `Success` but is flagged `endedOnIterationCap`. This holds for the main agent loop; the native tool-calling and legacy text fallback loops do neither: they still end on the cap, without the note and without the flag. What bounds a graph run is
 `graph:` (above). The generic state-machine engine and `CircuitBreakerPolicy` stay — the
 Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../orchestration/fsm.md)).
 

@@ -115,6 +115,25 @@ public sealed class SequentialOutcomeTests : IDisposable
         Assert.Null(plainSnapshot.DecisionAnswers);
     }
 
+    [Fact]
+    [Trait("BR", "CH-25")]
+    public async System.Threading.Tasks.Task ShouldCarryTheCapFlagIntoTheSnapshot()
+    {
+        var capped = new CrewTaskBuilder().Description("Capped").ExpectedOutput("Capped").Build();
+        var normal = new CrewTaskBuilder().Description("Normal").ExpectedOutput("Normal").Build();
+        var (crew, strategy) = Build([capped, normal], DecisionCircuit.Off);
+        _executionService.SetExecuteFunc((_, task, _, _) =>
+            new TaskResult(true, "out", null, [], TimeSpan.Zero) { EndedOnIterationCap = task.TaskId == capped.Id });
+
+        await Run(strategy, crew);
+
+        var cappedSnapshot = Assert.Single(_hook.Tasks, s => s.TaskId == capped.Id.ToString());
+        Assert.True(cappedSnapshot.Success);
+        Assert.True(cappedSnapshot.EndedOnIterationCap);
+        var normalSnapshot = Assert.Single(_hook.Tasks, s => s.TaskId == normal.Id.ToString());
+        Assert.False(normalSnapshot.EndedOnIterationCap);
+    }
+
     private static System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput> Run(SequentialProcessStrategy strategy, DomainCrew crew) =>
         strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 

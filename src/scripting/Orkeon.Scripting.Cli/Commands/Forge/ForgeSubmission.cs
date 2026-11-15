@@ -33,6 +33,9 @@ internal sealed class ForgeSubmissionBox
             _blueprintJson = json;
     }
 
+    /// <summary>The files the brief's folders already hold; the assistant sets it before each turn.</summary>
+    public IReadOnlyCollection<string> ExistingPaths { get; set; } = [];
+
     /// <summary>Empties the box; the assistant wrapper calls this before every turn.</summary>
     public void Reset()
     {
@@ -206,7 +209,7 @@ internal sealed class BlueprintSubmitTool : ForgeSubmitToolBase
     /// <inheritdoc />
     private protected override string Submit(string json)
     {
-        if (!ForgeBlueprint.TryParse(json, out _, out var errors))
+        if (!ForgeBlueprint.TryParse(json, out _, out var errors, Box.ExistingPaths))
             return "REJECTED — fix these and call blueprint_submit again: " + string.Join(" ", errors);
 
         Box.OfferBlueprint(json);

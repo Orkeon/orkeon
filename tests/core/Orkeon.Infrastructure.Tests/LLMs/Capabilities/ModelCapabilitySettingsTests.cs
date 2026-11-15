@@ -95,6 +95,27 @@ public sealed class ModelCapabilitySettingsTests
         Assert.Contains("EffortOnly", ex.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [Trait("BR", "CH-20")]
+    [InlineData("Llm:ModelCapabilities:", null)]
+    [InlineData("Llm:ModelCapabilities:", "")]
+    [InlineData("Llm:ModelCapabilities: ", null)]
+    [InlineData("Llm:ModelCapabilities: :Vision", "true")]
+    [InlineData("Llm:ModelCapabilities: :Vision", null)]
+    [InlineData("Llm:ModelCapabilities::Vision", "true")]
+    [InlineData("Llm:ModelCapabilities::Vision", null)]
+    [InlineData("Llm:ModelCapabilities::", null)]
+    public void A_blank_model_id_refuses_the_host_naming_the_section(string key, string? value)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection([KeyValuePair.Create<string, string?>(key, value)])
+            .Build();
+
+        var ex = Assert.Throws<InvalidOperationException>(() => Resolved(configuration));
+
+        Assert.Contains("Llm:ModelCapabilities", ex.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void The_section_alone_is_not_a_default_provider()
     {

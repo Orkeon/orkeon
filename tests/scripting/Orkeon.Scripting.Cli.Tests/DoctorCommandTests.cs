@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 using Orkeon.Hosting;
+using Orkeon.Scripting.Toolchain;
 using Orkeon.Scripting.Cli.Commands;
 
 namespace Orkeon.Scripting.Cli.Tests;
@@ -215,13 +217,14 @@ public sealed class DoctorCommandTests : IDisposable
             StringComparison.OrdinalIgnoreCase);
     }
 
-    private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(ScriptScratch scratch)
+    private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(ScriptScratch scratch, Func<string>? tscResolver = null)
     {
         using var console = new TestConsole();
         var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
+            TscResolver = tscResolver,
         });
 
         using var doc = JsonDocument.Parse(console.Stdout);
@@ -692,5 +695,174 @@ public sealed class DoctorCommandTests : IDisposable
         var warn = Assert.Single(lines, l => l.Check == "llm-profiles" && l.Status == "warn");
         Assert.Contains(Orkeon.Constants.Configuration.OperatorMessages.LlmBaseUrlSilent("Llm:Profiles:local:BaseUrl", "http://localhost:8080"),
             warn.Detail, StringComparison.Ordinal);
+    }
+
+    // ── CH-24: a missing tsc is judged by the type-check mode ───────────────
+
+    private static IConfiguration TscConfig(string? typeCheck, string? tscPath = null)
+    {
+        var values = new Dictionary<string, string?>();
+        if (typeCheck is not null)
+            values["Orkeon:Scripting:Toolchain:TypeCheck"] = typeCheck;
+        if (tscPath is not null)
+            values["Orkeon:Scripting:Toolchain:TscPath"] = tscPath;
+        return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    }
+
+    private static string MissingTscPath() =>
+        Path.Combine(Path.GetTempPath(), "orkeon-doctor-no-tsc-" + Guid.NewGuid().ToString("N"), "tsc");
+
+    private static Func<string> TscMissing() =>
+        () => throw new TscNotFoundException("TypeScript compiler (tsc) not found.");
+
+    [Fact]
+    [Trait("BR", "CH-24")]
+    public async Task ShouldReportTscOkAndOptional_WhenItIsMissingUnderValidate()
+    {
+        var result = await DoctorCommand.CheckTscAsync(TscConfig(null), TscMissing(), CancellationToken.None);
+
+        Assert.Equal("ok", result.Status);
+        Assert.Contains("optional", result.Detail, StringComparison.Ordinal);
+        Assert.Contains("orkeon run --validate", result.Detail, StringComparison.Ordinal);
+        Assert.Contains("npm install -g typescript", result.Detail, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Scripting:Toolchain:TscPath", result.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-24")]
+    public async Task ShouldReportTscOk_WhenItIsMissingAndTheTypeCheckIsOff()
+    {
+        var result = await DoctorCommand.CheckTscAsync(TscConfig("Off"), TscMissing(), CancellationToken.None);
+
+        Assert.Equal("ok", result.Status);
+        Assert.Equal("not installed — the type check of .ork.ts scripts is off", result.Detail);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-24")]
+    public async Task ShouldReportTscNotOk_WithTheInstalledRemedyFirst_WhenItIsMissingUnderAlways()
+    {
+        var result = await DoctorCommand.CheckTscAsync(TscConfig("Always"), TscMissing(), CancellationToken.None);
+
+        Assert.Equal("fail", result.Status);
+        var install = result.Detail.IndexOf("npm install -g typescript", StringComparison.Ordinal);
+        Assert.True(install >= 0, result.Detail);
+        var checkout = result.Detail.IndexOf("tools/scripting-typecheck", StringComparison.Ordinal);
+        Assert.True(checkout < 0 || checkout > install, result.Detail);
+        Assert.Contains("Orkeon:Scripting:Toolchain:TscPath", result.Detail, StringComparison.Ordinal);
+        Assert.Contains("TypeCheck: off", result.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-24")]
+    [Trait("BR", "CH-32")]
+    public async Task ShouldReportNoWarning_WhenTheDoctorRunsWithoutTscUnderDefaults()
+    {
+        using var scratch = new ScriptScratch();
+
+        var (_, lines) = await DoctorJsonAsync(scratch, TscMissing());
+
+        var tsc = Assert.Single(lines, l => l.Check == "tsc");
+        Assert.Equal("ok", tsc.Status);
+        Assert.Contains("optional", tsc.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-32")]
+    [Trait("BR", "CH-40")]
+    public async Task ShouldReportTscOk_WhenTheConfiguredTscPathDoesNotExistUnderOff()
+    {
+        Func<string> missing = () => throw new TscNotFoundException(
+            "TypeScript compiler not found: 'Orkeon:Scripting:Toolchain:TscPath' names a file that does not exist.");
+        var path = MissingTscPath();
+        var result = await DoctorCommand.CheckTscAsync(TscConfig("Off", path), missing, CancellationToken.None);
+
+        Assert.Equal("ok", result.Status);
+        Assert.Contains($"TscPath {path} does not exist; unused while the type check is off", result.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-24")]
+    public async Task ShouldKeepTscWarn_WhenTheConfiguredTscPathDoesNotExistUnderValidate()
+    {
+        Func<string> missing = () => throw new TscNotFoundException(
+            "TypeScript compiler not found: 'Orkeon:Scripting:Toolchain:TscPath' names a file that does not exist.");
+        var result = await DoctorCommand.CheckTscAsync(TscConfig("Validate", MissingTscPath()), missing, CancellationToken.None);
+
+        Assert.Equal("warn", result.Status);
+        Assert.Equal("not found — TypeScript compiler not found: 'Orkeon:Scripting:Toolchain:TscPath' names a file that does not exist.", result.Detail);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-24")]
+    public async Task ShouldReportTscNotOk_WhenTheConfiguredTscPathDoesNotExistUnderAlways()
+    {
+        var result = await DoctorCommand.CheckTscAsync(TscConfig("Always", MissingTscPath()), TscMissing(), CancellationToken.None);
+
+        Assert.Equal("fail", result.Status);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-40")]
+    public async Task ShouldPutTheInstalledRemedyFirst_WhenTheConfiguredTscPathDoesNotExistUnderAlways()
+    {
+        Func<string> missing = () => throw new TscNotFoundException(
+            "TypeScript compiler not found: 'Orkeon:Scripting:Toolchain:TscPath' names a file that does not exist.");
+        var result = await DoctorCommand.CheckTscAsync(TscConfig("Always", MissingTscPath()), missing, CancellationToken.None);
+
+        Assert.Equal("fail", result.Status);
+        var reason = result.Detail.IndexOf("names a file that does not exist", StringComparison.Ordinal);
+        var install = result.Detail.IndexOf("npm install -g typescript", StringComparison.Ordinal);
+        var checkout = result.Detail.IndexOf("tools/scripting-typecheck", StringComparison.Ordinal);
+        Assert.True(reason >= 0, result.Detail);
+        Assert.True(install > reason, result.Detail);
+        Assert.True(checkout < 0 || checkout > install, result.Detail);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-40")]
+    [InlineData("Off")]
+    [InlineData("Validate")]
+    [InlineData("Always")]
+    public async Task ShouldReportTscOkOnlyUnderOff_WhenTscDoesNotAnswerItsVersion(string mode)
+    {
+        // Seam: the TscResolver-style Func<string> of CheckTscAsync, returning a path that cannot run.
+        var binary = MissingTscPath();
+        var result = await DoctorCommand.CheckTscAsync(TscConfig(mode), () => binary, CancellationToken.None);
+
+        if (mode == "Off")
+            Assert.Equal("ok", result.Status);
+        else
+            Assert.Equal("warn", result.Status);
+        Assert.Contains(binary, result.Detail, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-40")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldListTheCheckoutBootstrap_OnlyWhenRunFromACheckout(bool fromCheckout)
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """{ "Orkeon": { "Scripting": { "Toolchain": { "TypeCheck": "Always" } } } }""");
+        var install = Path.Combine(scratch.Root, "install", "bin");
+        Directory.CreateDirectory(install);
+        if (fromCheckout)
+            Directory.CreateDirectory(Path.Combine(scratch.Root, "install", "tools", "scripting-typecheck"));
+        using var console = new TestConsole();
+
+        await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
+        {
+            Json = true,
+            WorkingDirectoryOverride = scratch.Root,
+            InstallDirectoryOverride = install,
+            TscResolver = TscMissing(),
+        });
+
+        using var doc = JsonDocument.Parse(console.Stdout);
+        var tsc = doc.RootElement.EnumerateArray().Single(e => e.GetProperty("check").GetString() == "tsc");
+        var detail = tsc.GetProperty("detail").GetString()!;
+        Assert.Equal("fail", tsc.GetProperty("status").GetString());
+        Assert.Equal(fromCheckout, detail.Contains("npm --prefix tools/scripting-typecheck install --prefer-offline", StringComparison.Ordinal));
     }
 }

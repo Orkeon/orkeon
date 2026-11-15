@@ -153,10 +153,10 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
 /// because they execute arbitrary host code without any forbidden operator
 /// (e.g. <c>node -e "require('child_process').execSync('id')"</c>). They can be
 /// re-enabled with the explicit opt-in (<c>allowInterpreters: true</c>), which
-/// emits a security warning. In that mode this tool offers <b>no confinement</b>
-/// and must be treated as remote-code-execution-equivalent. If you need to run
-/// untrusted interpreter code, route it through an isolating
-/// <c>ICodeSandbox</c> (Docker <c>--network=none</c>) instead.
+/// logs a security line at the first call. In that mode the tool is
+/// remote-code-execution-equivalent inside the confinement in force; it is unconfined only in a
+/// container or with <c>Mode=None</c>. If you need to run untrusted interpreter code, route it
+/// through an isolating <c>ICodeSandbox</c> (Docker <c>--network=none</c>) instead.
 /// </para>
 /// <para>
 /// <b>Confinement (on by default).</b> <see cref="Confinement"/> defaults to
@@ -256,6 +256,27 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         return _defaultSandbox;
     }
 
+    /// <summary>Tells, for the interpreter opt-in line, the confinement the commands run under.</summary>
+    private string DescribeConfinement()
+    {
+        var mode = Confinement.Mode;
+        var network = Confinement.AllowNetwork ? "network on" : "network off";
+        var resolution = ShellConfinementResolver.Resolve(
+            mode, Platform, mode == ShellConfinementMode.Auto && ContainerDetector.IsInContainer());
+        if (resolution.Backend is null)
+            return $"unavailable ({resolution.UnavailableReason}): every call will fail rather than run unconfined";
+        if (resolution.Backend == ShellConfinementBackend.None)
+            return resolution.Notice is not null
+                ? $"none (running in a container, network on - set {ShellToolOptions.SectionName}:Confinement:Mode to force it)"
+                : $"none (Mode=None): commands run on the host unconfined, network on. Do not expose this tool to untrusted input.";
+        var availability = ActiveSandbox.Availability;
+        if (!availability.IsAvailable)
+            return $"{resolution.Backend} is unavailable ({availability.Reason}): every call will fail rather than run unconfined";
+        return resolution.Backend == ShellConfinementBackend.Bubblewrap
+            ? $"bubblewrap (the VFS view only, {network}, system directories are read-only)"
+            : $"{resolution.Backend} (the VFS view only, {network})";
+    }
+
     /// <summary>Maximum number of characters captured from stdout/stderr.</summary>
     public const int MaxOutputLength = 10_000;
 
@@ -338,7 +359,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// Interpreter / build commands that grant host code execution. They are
     /// NOT in the default allowlist and are only added when the caller opts in
     /// explicitly (<c>allowInterpreters: true</c>). In that mode the tool is
-    /// RCE-equivalent: there is no OS confinement.
+    /// RCE-equivalent inside the confinement in force; it is unconfined only in a
+    /// container or with <c>Mode=None</c>.
     /// </summary>
     private static readonly string[] s_interpreterCommands =
     [
@@ -412,8 +434,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <param name="allowInterpreters">
     /// When <c>true</c>, re-enables general-purpose interpreters
     /// (<c>node</c>/<c>dotnet</c>/<c>npm</c>/<c>find</c>) on top of the default
-    /// allowlist. This is RCE-equivalent (no OS confinement) and emits a security
-    /// warning. Ignored when a custom <paramref name="allowedCommands"/> is supplied.
+    /// allowlist. This is RCE-equivalent inside the confinement in force (unconfined in
+    /// a container or with Mode=None) and logs a security line at the first call. Ignored when a custom <paramref name="allowedCommands"/> is supplied.
     /// </param>
     /// <param name="extraAllowedCommands">
     /// Extra executables unioned into the effective allowlist — additive on top of the
@@ -431,6 +453,19 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         bool allowInterpreters = false,
         IEnumerable<string>? extraAllowedCommands = null,
         Orkeon.Domain.Tools.ToolResultLimitsOptions? limits = null)
+        : this(fileSystem, allowedCommands, blockedPatterns, logger, allowInterpreters, extraAllowedCommands, limits, new ShellSecurityNotice())
+    {
+    }
+
+    internal ShellCommandTool(
+        IFileSystemService fileSystem,
+        IEnumerable<string>? allowedCommands,
+        IEnumerable<string>? blockedPatterns,
+        ILogger<ShellCommandTool>? logger,
+        bool allowInterpreters,
+        IEnumerable<string>? extraAllowedCommands,
+        Orkeon.Domain.Tools.ToolResultLimitsOptions? limits,
+        ShellSecurityNotice securityNotice)
         : base(logger)
     {
         ArgumentNullException.ThrowIfNull(fileSystem);
@@ -441,10 +476,10 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (extraAllowedCommands is not null)
             _allowedCommands.UnionWith(extraAllowedCommands);
         _blockedPatterns = [.. blockedPatterns ?? s_defaultBlockedPatterns];
-
-        if (_interpretersAllowed)
-            LogInterpretersEnabled(Logger);
+        _securityNotice = securityNotice ?? throw new ArgumentNullException(nameof(securityNotice));
     }
+
+    private readonly ShellSecurityNotice _securityNotice;
 
     /// <summary>
     /// Builds the effective allowlist. A custom <paramref name="allowedCommands"/>
@@ -490,6 +525,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     protected override string? ValidateTypedRequest(ShellCommandRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // The first hook of a call, so the line comes before any refusal of the command.
+        if (_interpretersAllowed && _securityNotice.TryClaim())
+            LogInterpretersEnabled(Logger, DescribeConfinement());
         var action = string.IsNullOrWhiteSpace(request.Action) ? RunAction : request.Action;
         if (action is JobStatusAction or JobTailAction)
             return ShellJobRegistry.Current()?.Find(request.JobId) is null ? $"Unknown job '{request.JobId}' in this run" : null;
@@ -1733,6 +1771,6 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     [LoggerMessage(Level = LogLevel.Warning, Message = "Shell command refused: the configured confinement is unavailable ({Reason})")]
     private static partial void LogConfinementUnavailable(ILogger logger, string reason);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "SECURITY: ShellCommandTool interpreter opt-in enabled (node/dotnet/npm/find). This is RCE-equivalent: commands run on the host with NO OS confinement. Do not expose this tool to untrusted (LLM-produced) input in this mode.")]
-    private static partial void LogInterpretersEnabled(ILogger logger);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "SECURITY: shell_command allows interpreters (node/dotnet/npm/find), which run arbitrary code; confinement: {Confinement}.")]
+    private static partial void LogInterpretersEnabled(ILogger logger, string confinement);
 }

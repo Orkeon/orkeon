@@ -9,12 +9,16 @@ internal sealed class MockEmbeddingFingerprintStore : IEmbeddingFingerprintStore
     public int SaveCallCount { get; private set; }
     public Exception? LoadFailure { get; set; }
 
+    public Exception? SaveFailure { get; set; }
+
     public Task<EmbeddingFingerprint?> LoadAsync(CancellationToken cancellationToken) =>
         LoadFailure is null ? Task.FromResult(Stored) : Task.FromException<EmbeddingFingerprint?>(LoadFailure);
 
     public Task SaveAsync(EmbeddingFingerprint fingerprint, CancellationToken cancellationToken)
     {
         SaveCallCount++;
+        if (SaveFailure is not null)
+            return Task.FromException(SaveFailure);
         Stored = fingerprint;
         return Task.CompletedTask;
     }

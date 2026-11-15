@@ -17,6 +17,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
     private readonly ConcurrentDictionary<string, BudgetLimit> _crewBudgets = new();
     private readonly ConcurrentDictionary<string, BudgetLimit> _agentBudgets = new();
     private readonly ConcurrentBag<BudgetAlert> _alerts = [];
+    private readonly ConcurrentDictionary<string, byte> _budgetWarned = new(StringComparer.OrdinalIgnoreCase);
     // The recorded calls nobody priced (no vendor charge, no registry price), by reference: their settled cost is 0.
     private readonly ConcurrentDictionary<CostUsageEvent, byte> _unpriced = new(ReferenceEqualityComparer.Instance);
     // The answer given for each event recorded, by reference: the meter and a host's own sink may both hand
@@ -58,18 +59,22 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         // reading 0 as "not provided" charged the registry price for a call that cost nothing.
         // Only a call nobody priced (null) is estimated, for this manager's accounting alone.
         var cost = usageEvent.Cost ?? EstimateCost(usageEvent);
-        var priced = usageEvent.Cost is not null || _pricingRegistry.TryGetPricing(usageEvent.Model) is not null;
+        var priced = usageEvent.Cost is not null || _pricingRegistry.TryGetPricing(usageEvent.Provider, usageEvent.Model) is not null;
 
         // Store the event (with its cost settled); an unpriced one is marked before the report can see it
         var eventWithCost = usageEvent with { Cost = cost };
         if (!priced)
+        {
             _unpriced.TryAdd(eventWithCost, 0);
+            if (_options.Enabled)
+                WarnIfCostBudgetCannotCount(usageEvent);
+        }
         _history.Add(eventWithCost);
 
         LogRecordedUsageCrewAgentModel(usageEvent.CrewId ?? "", usageEvent.AgentId ?? "", usageEvent.Model ?? "", usageEvent.PromptTokens + usageEvent.CompletionTokens, cost);
 
-        // Check budgets
-        var result = CheckBudgets(eventWithCost) with { Cost = priced ? cost : null };
+        // Off: the call is recorded and priced, nothing is checked, no alert raised
+        var result = (_options.Enabled ? CheckBudgets(eventWithCost) : CostBudgetCheckResult.WithinBudget()) with { Cost = priced ? cost : null };
         answer.Result = result;
         return result;
     }
@@ -117,14 +122,28 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         return null;
     }
 
+    private void WarnIfCostBudgetCannotCount(CostUsageEvent usageEvent)
+    {
+        if (string.IsNullOrEmpty(usageEvent.CrewId) || usageEvent.PromptTokens <= 0 && usageEvent.CompletionTokens <= 0)
+            return;
+
+        var agentBudget = !string.IsNullOrEmpty(usageEvent.AgentId) && _agentBudgets.TryGetValue(MakeAgentKey(usageEvent.CrewId, usageEvent.AgentId), out var found) ? found : null;
+        if (ResolveCrewBudget(usageEvent.CrewId)?.MaxCostUsd is not > 0 && agentBudget?.MaxCostUsd is not > 0)
+            return;
+
+        var model = usageEvent.Model ?? "";
+        if (_budgetWarned.TryAdd(usageEvent.CrewId + "|" + model, 0))
+            LogCostBudgetCannotCountModel(usageEvent.CrewId, model);
+    }
+
     private decimal EstimateCost(CostUsageEvent usageEvent)
     {
         if (usageEvent.PromptTokens <= 0 && usageEvent.CompletionTokens <= 0)
             return 0m;
 
-        var pricing = _pricingRegistry.TryGetPricing(usageEvent.Model);
+        var pricing = _pricingRegistry.TryGetPricing(usageEvent.Provider, usageEvent.Model);
         if (pricing is { CacheWritePricePerMillion: null, CacheReadPricePerMillion: null } or null)
-            return _pricingRegistry.CalculateCost(usageEvent.Model, usageEvent.PromptTokens, usageEvent.CompletionTokens);
+            return _pricingRegistry.CalculateCost(usageEvent.Provider, usageEvent.Model, usageEvent.PromptTokens, usageEvent.CompletionTokens);
 
         // PromptTokens already includes the cache tokens: only the remainder pays the plain prompt rate.
         // A rate the model does not declare falls back to the prompt rate.
@@ -428,6 +447,9 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Set agent budget for '{CrewId}/{AgentId}': maxCost={MaxCost}, maxTokens={MaxTokens}")]
     private partial void LogSetAgentBudgetForMaxcost(string crewId, string agentId, decimal maxCost, int maxTokens);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The cost budget of crew '{CrewId}' cannot count the calls of model '{Model}': it has no price")]
+    private partial void LogCostBudgetCannotCountModel(string crewId, string model);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Budget alert: {AlertType} for crew '{CrewId}' agent '{AgentId}' - usage {UsagePercent:F1}%")]
     private partial void LogBudgetAlertForCrewAgent(BudgetAlertType alertType, string crewId, string agentId, decimal usagePercent);

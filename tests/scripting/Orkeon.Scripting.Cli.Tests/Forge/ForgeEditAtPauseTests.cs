@@ -35,7 +35,7 @@ public sealed class ForgeEditAtPauseTests : IDisposable
     private ForgeSession CreateSessionAtDryPause()
     {
         var session = ForgeSession.Create(_workspace, "veille");
-        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _));
+        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _, []));
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
         session.Document.Budget.RegisterIteration();
         session.Document.Iteration = 1;
@@ -96,6 +96,38 @@ public sealed class ForgeEditAtPauseTests : IDisposable
         var history = await File.ReadAllTextAsync(
             Path.Combine(reloaded.Directory, ForgeSession.HistoryFileName), TestContext.Current.CancellationToken);
         Assert.Contains("BlueprintEdited", history, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-34")]
+    [Trait("BR", "CH-37")]
+    public async Task ShouldAcceptTheEditedPlan_WhenTheBriefOfTheSessionListsTheNamedFile()
+    {
+        var settings = WriteSettings();
+        var session = CreateSessionAtDryPause();
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        // The fill step filled Contents on the brief; the confirmed folders.json list never carries them.
+        session.SaveArtifact(ForgeSession.BriefFileName, brief! with
+        {
+            Folders = [new ForgeFolder { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"], Existing = ["template.md"] }],
+        });
+        session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList
+        {
+            Folders = [new ForgeFolder { Path = "/output", Role = "output", Purpose = "The results" }],
+            Filled = true,
+        });
+        var amended = ForgeDocuments.ValidBlueprint.Replace(
+            "Rédiger le résumé\", \"expectedOutput", "Fill /output/template.md then write the summary\", \"expectedOutput", StringComparison.Ordinal);
+        Assert.Contains("Fill /output/template.md", amended, StringComparison.Ordinal);
+        using var console = new TestConsole(stdin: BlueprintLine(amended) + Environment.NewLine);
+
+        var exitCode = await ForgeCommand.DispatchAsync(console,
+            ["resume", "veille", "--edit", "--dry", "--events", "jsonl", "--settings", settings], _workspace);
+
+        Assert.Equal(0, exitCode);
+        Assert.DoesNotContain("FORGE-BLUEPRINT-INVALID", console.Stdout, StringComparison.Ordinal);
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "veille", out var reloaded, out _));
+        Assert.Contains("template.md", reloaded!.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName)!.Tasks![1].Description, StringComparison.Ordinal);
     }
 
     [Fact]

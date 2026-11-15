@@ -30,6 +30,9 @@ public sealed record TaskExecutionSnapshot
     /// <summary>Task identifier string.</summary>
     public required string TaskId { get; init; }
 
+    /// <summary>Whether the agent spent its iteration cap and answered on the tool-free retry.</summary>
+    public bool EndedOnIterationCap { get; init; }
+
     /// <summary>Role of the agent that executed the task.</summary>
     public required string AgentRole { get; init; }
 

@@ -33,7 +33,11 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
     /// <summary>The name of the model embedded in the package.</summary>
     public const string EmbeddedModelName = "bge-micro-v2";
 
-    private readonly LocalEmbedder _embedder;
+    private const int EmbeddedModelDimensions = 384;
+
+    private readonly Func<LocalEmbedder> _embedderFactory;
+    private readonly object _embedderLock = new();
+    private Lazy<LocalEmbedder>? _attempt;
     private readonly LocalEmbeddingOptions _options;
     private readonly Lazy<int> _dimensions;
     private int _disposed;
@@ -58,11 +62,23 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
         IFileSystemService fileSystem,
         LocalEmbeddingOptions? options = null,
         ILogger<LocalEmbeddingProvider>? logger = null)
+        : this(fileSystem, options, logger, CreateRealEmbedder)
+    {
+    }
+
+    internal LocalEmbeddingProvider(
+        IFileSystemService fileSystem,
+        LocalEmbeddingOptions? options,
+        ILogger<LocalEmbeddingProvider>? logger,
+        Func<string?, LocalEmbedder> embedderFactory)
     {
         ArgumentNullException.ThrowIfNull(fileSystem);
+        ArgumentNullException.ThrowIfNull(embedderFactory);
         _options = options ?? new LocalEmbeddingOptions();
-        _embedder = CreateEmbedder(_options, fileSystem);
-        _dimensions = new Lazy<int>(ProbeDimensions, LazyThreadSafetyMode.ExecutionAndPublication);
+        // VFS validation stays eager; only the model load is deferred to the first embedding.
+        var resolvedPath = ResolveModelPath(_options, fileSystem);
+        _embedderFactory = () => embedderFactory(resolvedPath);
+        _dimensions = new Lazy<int>(ProbeDimensions, LazyThreadSafetyMode.PublicationOnly);
     }
 
     /// <summary>
@@ -88,15 +104,12 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
     /// mount membership and <see cref="FileAccessRights.Read"/> rights.
     /// </para>
     /// </remarks>
-    private static LocalEmbedder CreateEmbedder(
+    private static string? ResolveModelPath(
         LocalEmbeddingOptions options,
         IFileSystemService fs)
     {
-        if (string.IsNullOrEmpty(options.ModelPath))
-        {
-            // Embedded BGE-micro-v2 (384 dims). Parameterless ctor selects the bundled model.
-            return new LocalEmbedder();
-        }
+        // Embedded BGE-micro-v2 (384 dims) when no path is set.
+        if (string.IsNullOrEmpty(options.ModelPath)) return null;
 
         // VFS routing: validate mount + Read rights before handing anything to the upstream lib.
         // ResolveAndValidate is the explicit boundary API for boundaries requiring a physical handle.
@@ -110,7 +123,81 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
                 requiredRight: FileAccessRights.Read);
         }
 
-        return new LocalEmbedder(validation.ResolvedPath);
+        return validation.ResolvedPath;
+    }
+
+    private static LocalEmbedder CreateRealEmbedder(string? resolvedPath)
+    {
+        if (resolvedPath is not null) return new LocalEmbedder(resolvedPath);
+
+        // The upstream loads the model files on the first Embed, not in the constructor: probe here
+        // so a missing model fails inside GetEmbedder's wrapper, which adds the hint.
+        var embedder = new LocalEmbedder();
+        try
+        {
+            embedder.Embed("probe");
+        }
+        catch
+        {
+            embedder.Dispose();
+            throw;
+        }
+
+        return embedder;
+    }
+
+    private LocalEmbedder GetEmbedder()
+    {
+        Lazy<LocalEmbedder> attempt;
+        lock (_embedderLock)
+        {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            // Single flight: concurrent first calls share one load and, if it fails, its failure.
+            attempt = _attempt ??= new Lazy<LocalEmbedder>(
+                _embedderFactory, LazyThreadSafetyMode.ExecutionAndPublication);
+        }
+
+        LocalEmbedder embedder;
+        try
+        {
+            embedder = attempt.Value;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            lock (_embedderLock)
+            {
+                // A failed load is not cached: the next call starts a new attempt.
+                if (ReferenceEquals(_attempt, attempt)) _attempt = null;
+            }
+
+            var what = string.IsNullOrEmpty(_options.ModelPath)
+                ? "the embedded model (LocalEmbeddingsModel/default/model.onnx). The build may have "
+                    + "excluded it (ExcludeAssets=\"build\" on every reference that brings SmartComponents.LocalEmbeddings: "
+                    + "Orkeon.Scripting, Orkeon.Tools.Embeddings.Local, or the package SmartComponents.LocalEmbeddings itself): drop that exclusion to get the model back, or avoid the local "
+                    + "provider by configuring a remote one (Orkeon:Embeddings) or setting "
+                    + "RaggableTree:Embedding:Provider=None."
+                : $"the model '{_options.ModelPath}'.";
+            throw new InvalidOperationException(
+                "LocalEmbeddingProvider could not load " + what, ex);
+        }
+
+        lock (_embedderLock)
+        {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                // Disposed while this call was loading the model: Dispose saw no embedder yet, so the
+                // load that finished owns it. An attempt Dispose already released is no longer _attempt.
+                if (ReferenceEquals(_attempt, attempt))
+                {
+                    _attempt = null;
+                    embedder.Dispose();
+                }
+
+                throw new ObjectDisposedException(GetType().FullName);
+            }
+        }
+
+        return embedder;
     }
 
     /// <summary>
@@ -124,7 +211,7 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
         get
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-            return _dimensions.Value;
+            return string.IsNullOrEmpty(_options.ModelPath) ? EmbeddedModelDimensions : _dimensions.Value;
         }
     }
 
@@ -152,6 +239,7 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
 
         ct.ThrowIfCancellationRequested();
 
+        var embedder = GetEmbedder();
         var truncated = ApplyTruncation(texts);
         var results = new ReadOnlyMemory<float>[truncated.Count];
 
@@ -168,7 +256,7 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
         // could observe each other's bytes.
         Parallel.For(0, truncated.Count, po, i =>
         {
-            var emb = _embedder.Embed(truncated[i]);
+            var emb = embedder.Embed(truncated[i]);
             results[i] = emb.Values.ToArray();
         });
 
@@ -190,7 +278,7 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
 
     private int ProbeDimensions()
     {
-        var probe = _embedder.Embed("probe");
+        var probe = GetEmbedder().Embed("probe");
         return probe.Values.Length;
     }
 
@@ -201,6 +289,14 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        _embedder.Dispose();
+        lock (_embedderLock)
+        {
+            // An attempt still loading is released by the call that loads it (GetEmbedder).
+            if (_attempt is { IsValueCreated: true })
+            {
+                _attempt.Value.Dispose();
+                _attempt = null;
+            }
+        }
     }
 }

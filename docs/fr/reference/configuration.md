@@ -136,6 +136,9 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   qu'un hôte sans le reranker ONNX refuse `balanced` et `quality` en nommant `onnx` ;
   `Orkeon:Rag:QueryRouting:Classifier` ; `Orkeon:Embeddings:Provider` ;
   `RaggableTree:Embedding:Provider`. Le `memoryProvider:` d'une crew YAML est vérifié à son chargement.
+- **Un identifiant de modèle vide** : une entrée de `Llm:ModelCapabilities` nommée `""` ou `" "`, ou
+  `:Vision` (une clé sans identifiant avant son champ), quoi qu'elle contienne, est refusée avec
+  `Llm:ModelCapabilities: an entry has no model id; name each entry by the model it describes.`
 
 **Ce qui reste ouvert** : la racine de la configuration — elle reçoit aussi les variables
 d'environnement sans préfixe, et rien n'y distingue une section mal écrite d'une variable de la
@@ -186,7 +189,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 103 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -198,7 +201,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 529 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 530 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -561,7 +564,20 @@ qu'un script fait lui-même par `ctx.llm` se cumulent sous le nom de la crew pen
 processus, à part de ses tâches orchestrées. Un appel hors crew n'est soumis à aucun budget. L'appel
 qui franchit un plafond va à son terme ; le suivant est refusé avant tout envoi et la tâche se
 termine `BudgetExhausted`, sans nouvelle tentative. Les plafonds sur le nombre d'appels sont
-[`RateLimiting`](#ratelimiting).
+[`RateLimiting`](#ratelimiting). La liste de prix intégrée couvre le modèle par défaut de chaque
+fournisseur payant, sauf Hugging Face, dont le fournisseur routé fixe le prix ; une passerelle
+(Together, Mammouth) est tarifée par ses propres lignes, posées avec `CustomPricings:<i>:Provider`,
+et les modèles `ollama` et Docker Model Runner ne coûtent rien. Une ligne `CustomPricings` l'emporte
+toujours sur une ligne intégrée : une ligne sans `Provider` s'applique à tous les fournisseurs, une
+ligne qui nomme un fournisseur à ce fournisseur seul. Un modèle sans prix est compté à zéro et
+journalise un seul avertissement par modèle et par processus hôte (un démon `orkeon-host` avertit une
+fois pour toute sa durée de vie, non une fois par run), qui nomme `Orkeon:CostTracking:CustomPricings` :
+ajoutez-y une ligne pour le tarifer. Sous un budget `MaxCostUsd`, celui du crew ou celui d'un agent,
+un second avertissement, une fois par crew et par modèle, dit que le budget ne peut pas compter les
+appels de ce modèle (il faut un plafond au-dessus de 0 et un appel qui porte des tokens). Avec `Enabled`
+à `false`, chaque appel est toujours enregistré et tarifé (l'historique et le rapport le comptent, un
+modèle sans prix avertit toujours une fois), mais aucun n'est refusé, aucune alerte de budget n'est
+levée et l'avertissement « le budget ne peut pas compter » n'est pas journalisé.
 
 <!-- settings:Orkeon:CostTracking -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -576,6 +592,7 @@ termine `BudgetExhausted`, sans nouvelle tentative. Les plafonds sur le nombre d
 | `CustomPricings:<i>:EmbeddingPricePerMillion` | nombre | — | Coût par million de tokens d'embedding (null si ce n'est pas un modèle d'embedding). |
 | `CustomPricings:<i>:ModelPattern` | chaîne | `""` | Nom ou motif du modèle (p. ex. "gpt-4o", "claude-3-opus"). |
 | `CustomPricings:<i>:PromptPricePerMillion` | nombre | `0` | Coût par million de tokens de prompt (entrée), dans la devise indiquée. |
+| `CustomPricings:<i>:Provider` | chaîne | — | Fournisseur auquel cette ligne est rattachée ; null signifie n'importe quel fournisseur. |
 | `DefaultCrewBudget:AlertThresholdPercent` | nombre | `80` | Pourcentage du budget à partir duquel une alerte d'avertissement est émise (défaut : 80 %). |
 | `DefaultCrewBudget:MaxCostUsd` | nombre | — | Coût total maximal en USD (null = illimité) : une fois que les appels enregistrés l'atteignent, l'appel LLM suivant est refusé (`BudgetExhaustedException`, dimension `Cost`). |
 | `DefaultCrewBudget:MaxTokens` | entier | — | Nombre total maximal de tokens (null = illimité) : une fois que les appels enregistrés l'atteignent, l'appel LLM suivant est refusé (`BudgetExhaustedException`, dimension `Tokens`). |
@@ -968,7 +985,17 @@ qu'inscrit l'hôte, `ollama`, `mistral`, `azure-openai` ou `gemini` ; un autre n
 Les trois derniers parlent le format d'embeddings d'OpenAI et lisent `ApiKey` (ou `ApiKeyEnvVar`),
 `Endpoint` et `Model` ; `azure-openai` exige aussi `Endpoint` (l'URL de la ressource) et prend le nom
 du déploiement comme `Model`. Au démarrage, l'hôte compare le provider, le modèle et les dimensions à
-ceux consignés dans `FingerprintPath` et refuse de démarrer s'ils ont changé. Lue par
+ceux consignés dans `FingerprintPath` et refuse de démarrer s'ils ont changé. `orkeon forge` prend
+par défaut, pour `FingerprintPath`, `/forge/embedding-fingerprint.json`, consigné par session : il ne
+garde donc rien d'une session à l'autre ; `orkeon rag` le vide et garde chaque collection par son
+manifeste (`ingest`, `search`, `eval rag --no-ingest -c` et `eval rag -c` avec sa passe d'ingestion et sans
+`--reindex` ; `--reindex` reconstruit). Une valeur posée dans les settings l'emporte. Un chemin sous
+aucun montage désactive le garde-fou en Debug. Là où le montage qui le couvre, surcharges comprises,
+n'accorde ni Write ni Create sur le fichier ni Create sur son dossier (un `/workspace` en lecture
+seule), le garde-fou lit et compare encore une empreinte consignée et refuse encore un changement de
+modèle, mais n'écrit rien, et quand aucune empreinte n'est encore consignée journalise une ligne
+Debug qui nomme `FingerprintPath`, jamais un Warning. Un provider qui ne peut pas donner ses dimensions (un `ModelPath` personnalisé introuvable)
+fait journaliser au garde-fou un Warning avec le message du provider lui-même. Lue par
 `DefaultEmbeddingProviderResolver`, quand aucun provider local ni d'analyse de code n'est inscrit.
 Liée par `AddOrkeonInfrastructure()`, et par `AddOrkeonVectorSearch(configuration)` (appelé par
 `AddOrkeonInfrastructure(configuration)`).
@@ -1478,7 +1505,13 @@ par les outils de fichiers. `Confinement` dit comment le système d'exploitation
 session shell de l'agent : `Mode = Auto` (le défaut) choisit bubblewrap sous Linux, Seatbelt sous
 macOS, un AppContainer dans un Job Object sous Windows, et aucun confinement quand l'hôte tourne
 dans un conteneur ; `None` le coupe. Un backend qui ne peut pas tourner fait échouer l'appel,
-avec la raison, plutôt que de le lancer hors confinement. `AllowNetwork` ouvre le réseau (coupé
+avec la raison, plutôt que de le lancer hors confinement. La ligne `SECURITY` des interpréteurs est
+journalisée une seule fois par hôte, à la validation du premier appel de `shell_command` une fois les
+interpréteurs activés, et dit le confinement en vigueur : le backend, ou `none` avec sa raison (un conteneur,
+`Mode = None`), ou `unavailable` quand chaque appel échoue ; un backend confinant dit aussi `network on` ou
+`network off` (d'après `AllowNetwork`) et, sous bubblewrap, `system directories are read-only`, alors
+que `none` dit toujours `network on` et ne prétend rien sur la lecture seule ; construire ou lister
+l'outil ne journalise rien. `AllowNetwork` ouvre le réseau (coupé
 par défaut) et `ReadOnlyPaths` prête une chaîne d'outils hors des répertoires système
 ([Confinement du shell](../architecture/security.md#confinement-du-shell), [limites](./limitations.md)).
 `Environment:Propagate` nomme des variables de l'hôte remises à la session shell et au bac à sable

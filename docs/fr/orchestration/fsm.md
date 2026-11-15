@@ -12,7 +12,7 @@ Orkeon fournit un framework de machine à états finis générique (`StateMachin
 - **Le [mode Graph](./graph.md)** borne les runs de son `StateGraph` avec une `CircuitBreakerPolicy` construite depuis le bloc `graph:` de la crew.
 - **Le graphe RAG correctif** (`CorrectiveRagPipeline`) borne sa boucle récupérer → évaluer → régénérer avec sa propre `CircuitBreakerPolicy`.
 
-> **Pas de machine à états de tâche.** Les tâches d'une crew ne passent par aucune FSM. Ce qui borne une tâche, c'est sa boucle d'agent : le `maxIter` de l'agent, un arrêt après 3 erreurs d'outil identiques consécutives, et les reprises de validation de sortie. Un bloc YAML `circuitBreaker:`, à la racine de la crew ou sur une tâche, est refusé au chargement. En YAML, le seul réglage de circuit breaker est le bloc `graph:` d'une crew Graph (voir [Schéma YAML](../architecture/yaml-schema.md)).
+> **Pas de machine à états de tâche.** Les tâches d'une crew ne passent par aucune FSM. Ce qui borne une tâche, c'est sa boucle d'agent : le `maxIter` de l'agent, un arrêt après 3 erreurs d'outil identiques consécutives, et les reprises de validation de sortie (un agent à deux itérations de son plafond en est prévenu une fois ; celui qui atteint `maxIter` reçoit un dernier tour sans outil, et sa tâche porte le drapeau `endedOnIterationCap` ; c'est la boucle d'agent principale, les boucles de repli native et textuelle héritée ne font ni l'un ni l'autre et finissent toujours sur le plafond). Un bloc YAML `circuitBreaker:`, à la racine de la crew ou sur une tâche, est refusé au chargement. En YAML, le seul réglage de circuit breaker est le bloc `graph:` d'une crew Graph (voir [Schéma YAML](../architecture/yaml-schema.md)).
 
 ## Architecture
 

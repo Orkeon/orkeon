@@ -1,1 +1,13 @@
 #nullable enable
+Orkeon.Application.Interfaces.Ports.IModelPricingRegistry.CalculateCost(string? provider, string! model, int promptTokens, int completionTokens) -> decimal
+Orkeon.Application.Interfaces.Ports.IModelPricingRegistry.TryGetPricing(string? provider, string! model) -> Orkeon.Application.Interfaces.Ports.ModelPricing?
+Orkeon.Application.Interfaces.Ports.ModelPricing.Provider.get -> string?
+Orkeon.Application.Interfaces.Ports.ModelPricing.Provider.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult.EndedOnIterationCap.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult.EndedOnIterationCap.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.EndedOnIterationCap.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.EndedOnIterationCap.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.EndedOnIterationCap.get -> bool
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.EndedOnIterationCap.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedOnIterationCap.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedOnIterationCap.init -> void

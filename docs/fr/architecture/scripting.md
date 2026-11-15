@@ -493,7 +493,7 @@ renseigné), puis `tools/scripting-typecheck/node_modules/.bin/` d'un checkout (
 `npm --prefix tools/scripting-typecheck install --prefer-offline`), puis `PATH`
 (`npm install -g typescript`). Rien n'est téléchargé. Sans compilateur, `Validate` imprime
 `WARNING: type check skipped: …` et valide le reste ; `Always` échoue avec
-`VALIDATION FAILED: type check unavailable`. Un `tsc` qui meurt sans diagnostic (crash, signal, code de sortie non nul) échoue en `type check failed (exit N)`, jamais en « aucune erreur ». `orkeon doctor` le rapporte comme la vérification `tsc`.
+`VALIDATION FAILED: type check unavailable`. Un `tsc` qui meurt sans diagnostic (crash, signal, code de sortie non nul) échoue en `type check failed (exit N)`, jamais en « aucune erreur ». `orkeon doctor` le rapporte comme la vérification `tsc` : un compilateur absent est `ok` sous `Off` et `Validate`, où il est optionnel, et `fail` sous `Always` ; un `TscPath` configuré qui n'existe pas reste `warn` sous `Off` et `Validate` et est `fail` sous `Always`.
 
 ## Limites V1
 

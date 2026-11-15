@@ -319,6 +319,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             CompletedAt = DateTimeOffset.UtcNow,
             Defaulted = result.Decision?.IsDefaulted ?? false,
             TokensUsed = result.TokensUsed,
+            EndedOnIterationCap = result.EndedOnIterationCap,
         }, domainOutput, isDecisionTask: true)).ConfigureAwait(false);
     }
 
@@ -598,6 +599,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             UnknownFqns = executionResult.UnknownFqns,
             RewrittenFqns = executionResult.RewrittenFqns,
             AmbiguousFqns = executionResult.AmbiguousFqns,
+            EndedOnIterationCap = executionResult.EndedOnIterationCap,
         };
 
         return new TaskRun(executionResult, domainOutput, appOutput, snapshot);

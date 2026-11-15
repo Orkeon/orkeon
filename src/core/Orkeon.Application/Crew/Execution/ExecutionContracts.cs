@@ -28,6 +28,8 @@ internal sealed record AgentLoopResult(
     public long? CacheHitTokens { get; init; }
     /// <summary>Cumulative cache-missed prompt tokens across the loop; null when no turn reported the count.</summary>
     public long? CacheMissTokens { get; init; }
+    /// <summary>Whether the loop spent its iteration cap and the tool-free retry produced the answer.</summary>
+    public bool EndedOnIterationCap { get; init; }
 }
 
 /// <summary>

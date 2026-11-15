@@ -283,6 +283,18 @@ Haiku 5 à 0,10 / 0,50 et Haiku 4.5 à 1 / 5. Tarifs de cache : écriture 5 minu
 (chiffrée par le gestionnaire de coût), lecture à 0,1x (0,25 pour Fable 5.1, 0,20 pour Opus 5.5). Le palier Haiku 5.5 au-delà de
 100K tokens de prompt (0,50 / 2,50) n'est pas modélisé.
 
+Le modèle par défaut de chaque fournisseur payant est tarifé (lu le 2026-11-15), en $ par million de tokens d'entrée / de sortie :
+DeepSeek `deepseek-flash` 0,30 / 1,20 (le tarif de pointe de cette page ; lecture de cache 0,006) ; Z.AI `glm-5.3-flashx` 0,37 / 1,25, `glm-5.3-flash`
+0,15 / 0,50 et `glm-5.3` 1,4 / 4,4 (tarifs de docs.z.ai) ; Kimi `kimi-k3.1-pro` 2 / 10 et `kimi-k3` 3 / 15 et Qwen `qwen3.7-plus`
+0,4 / 1,6 (Alibaba Cloud Model Studio, Singapour : la page de Kimi n'affiche aucun chiffre, et le tarif de Qwen est celui de la
+promotion limitée) ; Gemini `gemini-3.8-flash` 1,50 / 7,50 avec une lecture de cache à 0,15 (le tarif que Google applique à partir du 2027-01-01, retenu comme chiffre prudent pour les budgets) et `gemini-3.7-flash` 0,75 / 3,75 (sans prix de lecture de cache) ; Mistral `mistral-medium-2604` 1,50 / 7,50 ;
+Grok `grok-4.6` et `grok-4.7` 2 / 6 ; MiniMax `MiniMax-M3` 0,30 / 1,20. Les passerelles sont tarifées par leurs propres lignes,
+rattachées au fournisseur : Together `zai-org/GLM-5.3-Flash` 0,15 / 0,50, Mammouth `gemini-3.8-flash` et `gemini-3.7-flash`
+1,5 / 7,5 (la borne haute de la passerelle, d'après des sources secondaires). Les modèles Ollama et Docker Model Runner coûtent 0.
+Hugging Face reste sans prix : son fournisseur routé fixe le tarif, si bien qu'un appel avertit une fois par modèle et nomme
+`Orkeon:CostTracking:CustomPricings`, où une ligne le tarife. Non modélisés : le tarif de Qwen au-delà de 256K tokens d'entrée
+(1,2 / 4,8), celui de Gemini à partir du 2027-01-01 (1,50 / 7,50) et celui de Grok au-delà de 200K tokens de prompt (4 / 12).
+
 ## Modèles servis et leurs options par défaut — lecture des catalogues du 2026-11-11
 
 > Le dernier résultat de chaque modèle campagné, régénéré après chaque campagne, est sur

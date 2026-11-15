@@ -278,12 +278,21 @@ internal sealed class BriefStage : IForgeStageRunner
             folder => folder.Path!,
             folder => ForgeFolders.Inventory(folder.Directory!),
             StringComparer.Ordinal);
+        var surveys = held.Concat(list.Folders.Where(static f => f.Directory is { Length: > 0 }))
+            .Where(static f => f.Path is not null)
+            .DistinctBy(static f => f.Path, StringComparer.Ordinal)
+            .ToDictionary(folder => folder.Path!, folder => ForgeFolders.Survey(folder.Directory!), StringComparer.Ordinal);
         var filled = brief with
         {
             Folders = [.. (brief.Folders ?? []).Select(folder =>
-                folder.Path is { } path && contents.TryGetValue(path, out var entries) && entries.Count > 0
+            {
+                var withContents = folder.Path is { } path && contents.TryGetValue(path, out var entries) && entries.Count > 0
                     ? folder with { Contents = entries }
-                    : folder with { Contents = null })],
+                    : folder with { Contents = null };
+                return folder.Path is { } surveyed && surveys.TryGetValue(surveyed, out var survey)
+                    ? withContents with { Large = survey.Large.Count > 0 ? survey.Large : null, Existing = survey.Existing }
+                    : withContents with { Large = null, Existing = [] };
+            })],
         };
         session.SaveArtifact(ForgeSession.BriefFileName, filled);
         session.SaveArtifact(ForgeFolders.FileName, list with { Filled = true });
@@ -398,7 +407,7 @@ internal sealed class BlueprintStage : IForgeStageRunner
 
             if (reply.BlueprintJson is { } json)
             {
-                if (ForgeBlueprint.TryParse(json, out var blueprint, out var blueprintErrors))
+                if (ForgeBlueprint.TryParse(json, out var blueprint, out var blueprintErrors, ForgeFolders.ExistingPaths(brief.Folders)))
                 {
                     session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint);
                     events.Emit("blueprint.ready", new { blueprint, iteration = session.Document.Iteration });

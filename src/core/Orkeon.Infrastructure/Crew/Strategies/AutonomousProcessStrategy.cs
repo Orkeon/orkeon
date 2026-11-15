@@ -287,6 +287,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         Success = executed.Domain.Success,
         Duration = executed.Domain.ExecutionTime,
         CompletedAt = DateTimeOffset.UtcNow,
+        EndedOnIterationCap = executed.EndedOnIterationCap,
     };
 
     /// <summary>
@@ -501,7 +502,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         ApplicationTaskOutput App,
         string AgentRole,
         string? Error = null,
-        BudgetExhaustedException? Exhausted = null);
+        BudgetExhaustedException? Exhausted = null,
+        bool EndedOnIterationCap = false);
 
     private async Task<ExecutedTask> ExecuteTaskAutonomouslyAsync(
         AutonomousTaskContext taskContext,
@@ -562,7 +564,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 BuildAppTaskOutput(task, agent, result),
                 agent.Role.Value,
                 error,
-                budgetSpent);
+                budgetSpent,
+                result.EndedOnIterationCap);
         }
         catch (BudgetExhaustedException ex)
         {

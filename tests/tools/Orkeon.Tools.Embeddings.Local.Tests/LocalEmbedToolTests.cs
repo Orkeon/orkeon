@@ -1,5 +1,6 @@
 using Orkeon.Analysis.Abstractions.DependencyInjection;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Tools.Embeddings.Local.Tests;
 
@@ -101,6 +102,23 @@ public sealed class LocalEmbedToolTests
 
         Assert.Equal(2, response.TruncatedCount);
         Assert.Equal(3, response.Embeddings.Count);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldConstructLocalEmbedTool_WhenTheModelIsMissing()
+    {
+        var ex = Record.Exception(() =>
+        {
+            var provider = new LocalEmbeddingProvider(
+                new FakeFileSystemService(),
+                new LocalEmbeddingOptions(),
+                null,
+                _ => throw new FileNotFoundException("model.onnx is missing"));
+            using var tool = new LocalEmbedTool(provider, new LocalEmbeddingOptions());
+        });
+
+        Assert.Null(ex);
     }
 
     /// <summary>

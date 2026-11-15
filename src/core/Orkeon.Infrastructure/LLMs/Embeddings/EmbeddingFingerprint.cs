@@ -36,6 +36,22 @@ internal sealed class EmbeddingModelChangedException : InvalidOperationException
     public EmbeddingModelChangedException(string message, Exception innerException) : base(message, innerException) { }
 }
 
+/// <summary>What the startup guard did with the fingerprint.</summary>
+internal enum EmbeddingGuardOutcome
+{
+    /// <summary>The recorded fingerprint matches the provider's.</summary>
+    Passed,
+
+    /// <summary>No fingerprint existed: the provider's was recorded.</summary>
+    Recorded,
+
+    /// <summary>No fingerprint existed and a read-only mount refused the first write.</summary>
+    NotRecorded,
+
+    /// <summary>The host has no embedding provider: nothing was checked.</summary>
+    Skipped,
+}
+
 /// <summary>
 /// The startup guard of the embedding model: vectors stored under one model mean nothing under another,
 /// so a change of provider, model or dimensions is refused, never migrated silently.
@@ -45,25 +61,37 @@ internal static class EmbeddingDimensionGuard
     /// <summary>
     /// Records the provider's fingerprint when none exists, passes when it matches, and throws
     /// <see cref="EmbeddingModelChangedException"/> when it differs. A host with no provider is skipped.
+    /// With <paramref name="canRecord"/> false (a read-only mount) nothing is ever written.
     /// </summary>
-    public static async System.Threading.Tasks.Task CheckAsync(
-        IEmbeddingProvider provider, IEmbeddingFingerprintStore store, CancellationToken cancellationToken)
+    public static async System.Threading.Tasks.Task<EmbeddingGuardOutcome> CheckAsync(
+        IEmbeddingProvider provider, IEmbeddingFingerprintStore store, CancellationToken cancellationToken, bool canRecord = true)
     {
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(store);
         if (provider.Dimensions <= 0)
-            return;
+            return EmbeddingGuardOutcome.Skipped;
 
         var current = new EmbeddingFingerprint(provider.Name, provider.Model, provider.Dimensions);
         var stored = await store.LoadAsync(cancellationToken).ConfigureAwait(false);
         if (stored is null)
         {
-            await store.SaveAsync(current, cancellationToken).ConfigureAwait(false);
-            return;
+            if (!canRecord)
+                return EmbeddingGuardOutcome.NotRecorded;
+
+            try
+            {
+                await store.SaveAsync(current, cancellationToken).ConfigureAwait(false);
+            }
+            catch (FileAccessDeniedException)
+            {
+                return EmbeddingGuardOutcome.NotRecorded;
+            }
+
+            return EmbeddingGuardOutcome.Recorded;
         }
 
         if (stored == current)
-            return;
+            return EmbeddingGuardOutcome.Passed;
 
         var before = stored.Dimensions.ToString(CultureInfo.InvariantCulture);
         var after = current.Dimensions.ToString(CultureInfo.InvariantCulture);
@@ -81,6 +109,9 @@ internal sealed class FileEmbeddingFingerprintStore : IEmbeddingFingerprintStore
 {
     private readonly IFileSystemService _fileSystem;
     private readonly string _path;
+
+    /// <summary>The virtual path of the fingerprint file.</summary>
+    public string Path => _path;
 
     /// <summary>Initializes the store.</summary>
     public FileEmbeddingFingerprintStore(IFileSystemService fileSystem, string path)
@@ -147,10 +178,38 @@ internal static partial class EmbeddingDimensionGuardRunner
         if (store is null)
             return;
 
+        var canRecord = true;
+        if (store is FileEmbeddingFingerprintStore fileStore
+            && services.GetService<IFileSystemService>() is { } fileSystem)
+        {
+            var mounts = fileSystem.GetAvailableMounts();
+            if (AgentFileSystemScope.MountRightsAt(mounts, fileStore.Path) is null)
+            {
+                if (logger is not null)
+                    LogGuardOff(logger, fileStore.Path);
+                return;
+            }
+
+            canRecord = CanRecord(mounts, fileStore.Path);
+        }
+
         try
         {
             var provider = services.GetRequiredService<IEmbeddingProvider>();
-            await EmbeddingDimensionGuard.CheckAsync(provider, store, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                _ = provider.Dimensions;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                if (logger is not null)
+                    LogProviderFailed(logger, ex.Message);
+                return;
+            }
+
+            var outcome = await EmbeddingDimensionGuard.CheckAsync(provider, store, cancellationToken, canRecord).ConfigureAwait(false);
+            if (outcome == EmbeddingGuardOutcome.NotRecorded && logger is not null)
+                LogGuardNotRecorded(logger, store is FileEmbeddingFingerprintStore file ? file.Path : "the fingerprint path");
         }
         catch (EmbeddingModelChangedException)
         {
@@ -177,9 +236,30 @@ internal static partial class EmbeddingDimensionGuardRunner
             : new FileEmbeddingFingerprintStore(fileSystem, path);
     }
 
+    // What SaveAsync needs: Create on the folder, Write and Create on the file.
+    private static bool CanRecord(IReadOnlyList<MountInfo> mounts, string path)
+    {
+        const FileAccessRights Needed = FileAccessRights.Write | FileAccessRights.Create;
+        var slash = path.LastIndexOf('/');
+        return (AgentFileSystemScope.MountRightsAt(mounts, path) & Needed) == Needed
+            && (slash <= 0 || (AgentFileSystemScope.MountRightsAt(mounts, path[..slash]) & FileAccessRights.Create) != 0);
+    }
+
+    [LoggerMessage(EventId = 3, Level = LogLevel.Debug,
+        Message = "The embedding model guard is off: no mount covers {Path}")]
+    private static partial void LogGuardOff(ILogger logger, string path);
+
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
-        Message = "The embedding model guard could not read or write its fingerprint, the check is skipped: {Reason}")]
+        Message = "The embedding model guard could not read or write its fingerprint, the check is skipped: {Reason}. Point Orkeon:Embeddings:FingerprintPath to a writable path, or set it empty to turn the guard off")]
     private static partial void LogGuardSkipped(ILogger logger, string reason);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Warning,
+        Message = "The embedding model guard is skipped, the embedding provider could not report its dimensions: {Reason}")]
+    private static partial void LogProviderFailed(ILogger logger, string reason);
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Debug,
+        Message = "The embedding fingerprint at {Path} was not recorded (read-only mount); a recorded fingerprint is still checked. Set Orkeon:Embeddings:FingerprintPath to a writable path to record one")]
+    private static partial void LogGuardNotRecorded(ILogger logger, string path);
 }
 
 /// <summary>Runs <see cref="EmbeddingDimensionGuard"/> when a host that starts its hosted services starts.</summary>

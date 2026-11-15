@@ -200,6 +200,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             _session.AppendTranscript("user", userMessage);
 
         _box.Reset();
+        _box.ExistingPaths = ForgeFolders.ExistingPaths(request.Brief?.Folders);
         var before = _tally.Snapshot;
 
         // Every model call — and every streamed chunk — reports the turn's running total.
@@ -278,7 +279,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             language = LanguageOf(request),
             message = request.UserMessage,
             history,
-            brief = request.Brief,
+            brief = request.Brief is { } sent ? sent with { Folders = sent.Folders?.Select(static f => f with { Existing = [] }).ToList() } : null,
             previousBlueprint = request.PreviousBlueprint,
             errors = request.Errors,
             readTools = _readTools,

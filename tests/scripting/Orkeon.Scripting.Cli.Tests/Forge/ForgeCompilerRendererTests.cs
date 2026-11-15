@@ -16,7 +16,7 @@ public class ForgeBlueprintCompilerTests
 
     private static ForgeBlueprint Parse(string json)
     {
-        Assert.True(ForgeBlueprint.TryParse(json, out var blueprint, out var errors), string.Join("; ", errors));
+        Assert.True(ForgeBlueprint.TryParse(json, out var blueprint, out var errors, []), string.Join("; ", errors));
         return blueprint!;
     }
 
@@ -80,7 +80,7 @@ public class ForgeBlueprintCompilerTests
             }
             """;
 
-        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors, []));
 
         Assert.Contains(errors, e => e.Contains("'ghost'", StringComparison.Ordinal) && e.Contains("Agents: a", StringComparison.Ordinal));
         Assert.Contains(errors, e => e.Contains("'nowhere'", StringComparison.Ordinal) && e.Contains("Tasks: t", StringComparison.Ordinal));
@@ -98,7 +98,7 @@ public class ForgeBlueprintCompilerTests
             }
             """;
 
-        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors, []));
 
         Assert.Contains(errors, e => e.Contains("'phantom'", StringComparison.Ordinal) && e.Contains("Agents: a", StringComparison.Ordinal));
     }
@@ -123,7 +123,7 @@ public class ForgeBlueprintCompilerTests
             }
             """;
 
-        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors));
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors, []));
 
         var error = Assert.Single(errors);
         Assert.Contains("'manager'", error, StringComparison.Ordinal);
@@ -161,7 +161,7 @@ public class ForgeBlueprintCompilerTests
             "\"tasks\": [", "\"manager\": \"redacteur\",\n  \"tasks\": [", StringComparison.Ordinal);
         using var output = new StringWriter();
 
-        var edited = VerdictStage.ValidateEditedBlueprint(json, ForgeDocuments.KnownTools, new ForgeEventWriter(output));
+        var edited = VerdictStage.ValidateEditedBlueprint(json, ForgeDocuments.KnownTools, new ForgeEventWriter(output), []);
 
         Assert.Null(edited);
         using var line = System.Text.Json.JsonDocument.Parse(Assert.Single(
@@ -171,6 +171,23 @@ public class ForgeBlueprintCompilerTests
         Assert.Equal(ForgeErrorCodes.BlueprintInvalid, error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());
         Assert.Contains("'redacteur'", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-34")]
+    [Trait("BR", "CH-37")]
+    public void ShouldAcceptTheEditedPlan_WhenTheNamedFileAlreadyExistsInAnOutputFolder()
+    {
+        var json = ForgeDocuments.ValidBlueprint.Replace(
+            "Rédiger le résumé\", \"expectedOutput", "Fill /output/template.md then write the summary\", \"expectedOutput", StringComparison.Ordinal);
+        Assert.Contains("Fill /output/template.md", json, StringComparison.Ordinal);
+        ForgeFolder[] folders = [new() { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"], Existing = ["template.md"] }];
+        using var output = new StringWriter();
+
+        var edited = VerdictStage.ValidateEditedBlueprint(json, ForgeDocuments.KnownTools, new ForgeEventWriter(output), ForgeFolders.ExistingPaths(folders), folders);
+
+        Assert.NotNull(edited);
+        Assert.Equal(string.Empty, output.ToString());
     }
 
     [Fact]
@@ -240,7 +257,7 @@ public sealed class ForgeYamlRendererTests : IDisposable
 
     private static ForgeCompilation CompileValid()
     {
-        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _));
+        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _, []));
         return ForgeBlueprintCompiler.Compile(blueprint!);
     }
 
@@ -251,7 +268,7 @@ public sealed class ForgeYamlRendererTests : IDisposable
         // refuses instead of writing nowhere — and the same list reaches the configuration the
         // validator judges. The confirmed folder list is that set; a plan compiled
         // without one names what it addresses by itself.
-        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _));
+        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _, []));
         var derived = ForgePromoter.DerivedMounts(blueprint).Select(m => m.VirtualRoot).ToList();
         Assert.NotEmpty(derived);
 
@@ -376,7 +393,7 @@ public sealed class ForgeYamlRendererTests : IDisposable
               "tasks": [ { "key": "t", "description": "d", "expectedOutput": "o", "agent": "solo" } ]
             }
             """;
-        Assert.True(ForgeBlueprint.TryParse(smaller, out var blueprint, out _));
+        Assert.True(ForgeBlueprint.TryParse(smaller, out var blueprint, out _, []));
         ForgeYamlRenderer.Render(ForgeBlueprintCompiler.Compile(blueprint!), _sessionDirectory);
 
         var agentFiles = Directory.EnumerateFiles(Path.Combine(_sessionDirectory, "crew", "agents"))

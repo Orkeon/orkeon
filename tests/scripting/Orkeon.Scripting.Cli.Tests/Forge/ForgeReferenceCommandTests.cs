@@ -315,7 +315,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
     {
         var session = ForgeSession.Create(_workspace, slug, now: Now, reference: reference);
         Assert.True(ForgeBrief.TryParse(brief, out var parsedBrief, out _));
-        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _));
+        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _, []));
         session.SaveArtifact(ForgeSession.BriefFileName, parsedBrief!);
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
         ForgeYamlRenderer.Render(ForgeBlueprintCompiler.Compile(blueprint!), session.Directory);

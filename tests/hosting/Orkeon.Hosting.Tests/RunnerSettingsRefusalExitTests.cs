@@ -57,6 +57,10 @@ public sealed class RunnerSettingsRefusalExitTests : IDisposable
             // start, before the crew loads: --validate said VALIDATION OK on them, a run exited 2.
             data.Add(mode, """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Guardian": { "Enabled": "oui" } } }""", "Orkeon:Guardian:Enabled");
             data.Add(mode, """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Rag": { "Retrieval": { "TopK": "many" } } } }""", "Orkeon:Rag:Retrieval:TopK");
+
+            // CH-20: a blank model id (the entry holds a leaf so the key reaches the reader).
+            foreach (var key in new[] { "", " ", ":Vision" })
+                data.Add(mode, "{ \"RaggableTree\": { \"Enabled\": false }, \"Llm\": { \"ModelCapabilities\": { \"" + key + "\": { \"Vision\": true } } } }", "Llm:ModelCapabilities");
         }
 
         // --list-tools built every tool, and the shell tool read its switch then: an unhandled exception.
@@ -91,6 +95,7 @@ public sealed class RunnerSettingsRefusalExitTests : IDisposable
     }
 
     [Theory]
+    [Trait("BR", "CH-20")]
     [MemberData(nameof(Cases))]
     public async Task A_refused_setting_exits_1_with_one_last_line_naming_it(string mode, string json, string named)
     {

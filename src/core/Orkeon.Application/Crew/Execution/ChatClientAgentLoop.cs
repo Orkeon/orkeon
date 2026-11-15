@@ -156,6 +156,7 @@ internal sealed class ChatClientAgentLoop
             CacheMissTokens = cacheMissTotal,
         };
 
+        bool budgetNoteInjected = false;
         for (int iteration = 0; iteration < maxIter; iteration++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -163,6 +164,14 @@ internal sealed class ChatClientAgentLoop
             if (!softBudgetSteeringInjected)
             {
                 softBudgetSteeringInjected = TryInjectSoftBudgetSteering(agent, task, messages, totalTokensUsed);
+            }
+
+            if (!budgetNoteInjected && maxIter > 2 && maxIter - iteration == 2)
+            {
+                budgetNoteInjected = true;
+                messages.Add(new ChatMessage(ChatRole.User,
+                    "2 iterations left on this task. If its deliverable needs a tool (writing a file, sending a message), " +
+                    "call it now; after that, tools are no longer available."));
             }
 
             ExecutionLog.LogChatClientIteration(_logger, agent.Role, iteration + 1, maxIter, messages.Count);
@@ -512,11 +521,12 @@ internal sealed class ChatClientAgentLoop
         CancellationToken cancellationToken)
     {
         ExecutionLog.LogEmptyFinalMessageRetrying(_logger, loop.Agent.Role, iteration + 1, DescribeMaxTokens(loop.Options));
+        var onCap = iteration == loop.MaxIter - 1;
 
         (string Text, int Tokens) retryText;
         try
         {
-            retryText = await RetryWithoutToolsAsync(loop.Agent, loop.Messages, loop.Options, cancellationToken).ConfigureAwait(false);
+            retryText = await RetryWithoutToolsAsync(loop.Agent, loop.Messages, loop.Options, cancellationToken, afterIterationCap: onCap).ConfigureAwait(false);
         }
         catch (Exception ex) when (IsCallFailure(ex, cancellationToken))
         {
@@ -527,7 +537,10 @@ internal sealed class ChatClientAgentLoop
         {
             ExecutionLog.LogChatClientFinalResponse(_logger, loop.Agent.Role, iteration + 1, elapsedMs);
             return (new AgentLoopResult(retryText.Text, totalTokensUsed + retryText.Tokens,
-                AgentExitReason.Completed, IterationsUsed: iteration + 2), retryText.Tokens);
+                AgentExitReason.Completed, IterationsUsed: iteration + 2)
+            {
+                EndedOnIterationCap = onCap,
+            }, retryText.Tokens);
         }
 
         ExecutionLog.LogEmptyFinalAnswer(_logger, loop.Agent.Role, loop.TaskId);
@@ -594,7 +607,7 @@ internal sealed class ChatClientAgentLoop
         (string Text, int Tokens) retry;
         try
         {
-            retry = await RetryWithoutToolsAsync(agent, messages, options, cancellationToken).ConfigureAwait(false);
+            retry = await RetryWithoutToolsAsync(agent, messages, options, cancellationToken, afterIterationCap: true).ConfigureAwait(false);
         }
         catch (Exception ex) when (IsCallFailure(ex, cancellationToken))
         {
@@ -605,7 +618,10 @@ internal sealed class ChatClientAgentLoop
         if (!string.IsNullOrWhiteSpace(retry.Text))
         {
             return new AgentLoopResult(retry.Text, totalTokensUsed,
-                AgentExitReason.Completed, IterationsUsed: maxIter);
+                AgentExitReason.Completed, IterationsUsed: maxIter)
+            {
+                EndedOnIterationCap = true,
+            };
         }
 
         // Every iteration went to tool calls and the synthesis retry came back empty: the
@@ -631,9 +647,14 @@ internal sealed class ChatClientAgentLoop
         DomainAgent agent,
         List<ChatMessage> messages,
         ChatOptions options,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool afterIterationCap = false)
     {
-        messages.Add(new ChatMessage(ChatRole.User, FinalAnswerPolicy.BuildFinalAnswerNudge(escalated: false)));
+        string Nudge(bool escalated) => afterIterationCap
+            ? FinalAnswerPolicy.BuildIterationCapNudge(escalated)
+            : FinalAnswerPolicy.BuildFinalAnswerNudge(escalated);
+
+        messages.Add(new ChatMessage(ChatRole.User, Nudge(escalated: false)));
 
         var retryOptions = FinalAnswerPolicy.CloneForToolFreeRetry(options);
 
@@ -645,7 +666,7 @@ internal sealed class ChatClientAgentLoop
         // First retry was rejected (likely DeepSeek emitting DSML tool-call markup as text).
         // Append a second, stricter prompt and re-issue exactly once.
         ExecutionLog.LogToolCallMimicryDetected(_logger, agent.Role);
-        messages.Add(new ChatMessage(ChatRole.User, FinalAnswerPolicy.BuildFinalAnswerNudge(escalated: true)));
+        messages.Add(new ChatMessage(ChatRole.User, Nudge(escalated: true)));
 
         var (text2, tokens2) = await SendToolFreeRetryAsync(
             agent, messages, retryOptions, cancellationToken).ConfigureAwait(false);

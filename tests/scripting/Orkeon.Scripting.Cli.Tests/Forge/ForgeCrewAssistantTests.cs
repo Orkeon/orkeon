@@ -161,13 +161,14 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         ForgeReference? reference = null,
         IReadOnlyList<string>? crewTools = null,
         ForgeSession? session = null,
-        string? language = null)
+        string? language = null,
+        ILoggerFactory? loggerFactory = null)
     {
         session ??= _session;
         var packPath = ForgePack.Ensure(session.Directory);
 
         var services = new ServiceCollection()
-            .AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance)
+            .AddSingleton<ILoggerFactory>(loggerFactory ?? NullLoggerFactory.Instance)
             .AddSingleton<IConfiguration>(new ConfigurationBuilder().Build())
             .AddSingleton<IFileSystemService>(new DiskBackedFileSystemService(session.Directory, "/forge"))
             .AddSingleton(_box)
@@ -184,6 +185,30 @@ public sealed class ForgeCrewAssistantTests : IDisposable
             services.AddSingleton<IBaseTool>(new StubBaseTool(tool) { Description = $"The {tool} tool." });
 
         return new ForgeCrewAssistant(services.BuildServiceProvider(), session, packPath, reference: reference, language: language);
+    }
+
+    /// <summary>
+    /// The built-in pack runs without a scripting warning: the factory records every category
+    /// into one logger, so any Warning or above of the whole run is checked.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldLogNoScriptingWarning_WhenTheAssistantPackRuns()
+    {
+        using var logs = new Orkeon.Tests.Shared.Doubles.RecordingLoggerFactory();
+        var provider = new ScriptedLlmProvider().Answers("Quel est votre besoin ?");
+        var assistant = Build(provider, loggerFactory: logs);
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = "trier mes e-mails" },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        var offending = logs.Logger.Entries
+            .Where(entry => entry.Level >= LogLevel.Warning)
+            .Select(entry => $"{entry.Level}: {entry.Message}")
+            .ToList();
+        Assert.True(offending.Count == 0, "Warnings logged: " + string.Join(" | ", offending));
     }
 
     /// <summary>
@@ -299,6 +324,58 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.Contains("email_send", section, StringComparison.Ordinal);
     }
 
+    private async Task<string> PlanHeaderWith(IReadOnlyList<ForgeLargeFile>? large)
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        brief = brief! with
+        {
+            Folders =
+            [
+                new ForgeFolder { Path = "/workspace", Role = "input", Purpose = "Les rapports", Contents = ["report.md"], Large = large },
+                new ForgeFolder { Path = "/output", Role = "output", Purpose = "Les notes" },
+            ],
+        };
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+        return provider.Chats[0][0].Content;
+    }
+
+    [Fact]
+    [Trait("BR", "CH-33")]
+    public async Task ShouldNameLargeFilesAndTheReadingRules_InThePlanPrompt()
+    {
+        var header = await PlanHeaderWith([new ForgeLargeFile { Name = "report.md", Bytes = 768000 }]);
+
+        Assert.Contains("report.md (750 KB)", header, StringComparison.Ordinal);
+        Assert.Contains("grep", header, StringComparison.Ordinal);
+        Assert.Contains("at least 30", header, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-34")]
+    public async Task ShouldStateTheHandOffRule_InThePlanPrompt()
+    {
+        var header = await PlanHeaderWith(null);
+
+        Assert.Contains("a file one task writes for another is that task's deliverable", header, StringComparison.Ordinal);
+        Assert.Contains("the task that reads it lists the writer in dependencies", header, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-33")]
+    public async Task ShouldAddNoLargeFileRules_WhenNoFileIsLarge()
+    {
+        var header = await PlanHeaderWith(null);
+
+        Assert.DoesNotContain("(750 KB)", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("grep", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("at least 30", header, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// What the user put in a folder kept inside the team reaches the design prompt,
     /// by names relative to the folder, so the tasks are made for the files that are there.
@@ -326,6 +403,33 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         var header = provider.Chats[0][0].Content;
         Assert.Contains("The user put in it: a.pdf, lots/, lots/b.pdf", header, StringComparison.Ordinal);
         Assert.Contains("design the tasks for them", header, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-37")]
+    public async Task ShouldNotSendTheExistingFileList_InTheDesignerInputs()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        brief = brief! with
+        {
+            Folders =
+            [
+                new ForgeFolder { Path = "/workspace", Role = "input", Purpose = "Les offres", Contents = ["alpha.md", "sub/"], Existing = ["alpha.md", "sub/beta.md"] },
+                new ForgeFolder { Path = "/output", Role = "output", Purpose = "Les resumes" },
+            ],
+        };
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        var sent = string.Join("\n", provider.Chats[0].Select(m => m.Content));
+        Assert.Contains("alpha.md", sent, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"existing\"", sent, StringComparison.Ordinal);
+        Assert.DoesNotContain("sub/beta.md", sent, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -433,6 +537,33 @@ public sealed class ForgeCrewAssistantTests : IDisposable
 
         // A submission is not conversation: only the user turn joined the transcript.
         Assert.Equal(["user"], _session.LoadTranscript().Select(t => t.Role));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-34")]
+    [Trait("BR", "CH-37")]
+    public async Task ShouldAcceptAPlanNamingAnExistingOutputFile_WhenTheBriefListsItInItsContents()
+    {
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        brief = brief! with
+        {
+            Folders = [new ForgeFolder { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"], Existing = ["template.md"] }],
+        };
+        var json = ForgeDocuments.ValidBlueprint.Replace(
+            "Rédiger le résumé\", \"expectedOutput", "Fill /output/template.md then write the summary\", \"expectedOutput", StringComparison.Ordinal);
+        Assert.Contains("Fill /output/template.md", json, StringComparison.Ordinal);
+        var provider = new ScriptedLlmProvider()
+            .CallsTool("blueprint_submit", JsonSerializer.Deserialize<JsonElement>(json))
+            .Answers("Sent.");
+        var assistant = Build(provider);
+
+        var reply = await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(reply.BlueprintJson);
+        Assert.Contains("Fill /output/template.md", reply.BlueprintJson, StringComparison.Ordinal);
     }
 
     [Fact]

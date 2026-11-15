@@ -150,6 +150,20 @@ public sealed class RunEventsTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-25")]
+    public async Task ShouldEmitEndedOnIterationCap_InTaskCompleted()
+    {
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        await observer.OnTaskCompletedAsync(Snapshot("capped") with { EndedOnIterationCap = true }, TestContext.Current.CancellationToken);
+        await observer.OnTaskCompletedAsync(Snapshot("plain"), TestContext.Current.CancellationToken);
+
+        var events = Events();
+        Assert.True(events[0].GetProperty("endedOnIterationCap").GetBoolean());
+        Assert.False(events[1].GetProperty("endedOnIterationCap").GetBoolean());
+    }
+
+    [Fact]
     [Trait("BR", "FWK-15")]
     public async Task A_task_events_carry_the_attempt_they_belong_to()
     {

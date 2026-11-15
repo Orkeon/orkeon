@@ -127,6 +127,9 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   a host without the ONNX reranker refuses `balanced` and `quality`, naming `onnx`;
   `Orkeon:Rag:QueryRouting:Classifier`; `Orkeon:Embeddings:Provider`;
   `RaggableTree:Embedding:Provider`. A YAML crew's `memoryProvider:` is checked when the crew loads.
+- **A blank model id**: an entry of `Llm:ModelCapabilities` named `""` or `" "`, or `:Vision` (a key with
+  no id before its field), whatever it holds, is refused with `Llm:ModelCapabilities: an entry has no
+  model id; name each entry by the model it describes.`
 
 **What stays open**: the configuration root — it also holds the environment variables without a
 prefix, and nothing tells a misspelt section there from a variable of the machine —, `Logging`
@@ -175,7 +178,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 102 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 103 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -187,7 +190,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 529 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+80 sections, 530 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -536,7 +539,17 @@ budget is per run; the calls a script makes itself through `ctx.llm` are summed 
 name for the life of the process, apart from its orchestrated tasks. A call outside a crew is under
 no budget. The call that crosses a cap completes; the next one is refused before anything is sent
 and the task ends `BudgetExhausted`, never retried. The caps
-on the number of calls are [`RateLimiting`](#ratelimiting).
+on the number of calls are [`RateLimiting`](#ratelimiting). The built-in price list covers the default
+model of every paid provider except Hugging Face, whose routed provider sets the price; a gateway
+(Together, Mammouth) is priced by its own rows, set with `CustomPricings:<i>:Provider`, and `ollama`
+and Docker Model Runner models cost nothing. A `CustomPricings` row always wins over a built-in one: a row with no `Provider` applies to every
+provider, a row that names a provider applies to that provider only. A model with no price is counted
+at zero and logs one warning per model per host process (an `orkeon-host` daemon warns once for its
+lifetime, not once per run), naming `Orkeon:CostTracking:CustomPricings`: add a row there to price it.
+Under a `MaxCostUsd` budget, the crew's or an agent's, a second warning, once per crew and model, says
+the budget cannot count that model's calls (it needs a cap above 0 and a call that carries tokens). With `Enabled` set to `false` every call is still recorded and priced (the history and
+the report count it, an unpriced model still warns once), but none is refused, no budget alert is
+raised and the "budget cannot count" warning is not logged.
 
 <!-- settings:Orkeon:CostTracking -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -551,6 +564,7 @@ on the number of calls are [`RateLimiting`](#ratelimiting).
 | `CustomPricings:<i>:EmbeddingPricePerMillion` | number | — | Cost per million embedding tokens (null if not an embedding model). |
 | `CustomPricings:<i>:ModelPattern` | string | `""` | Model name or pattern (e.g., "gpt-4o", "claude-3-opus"). |
 | `CustomPricings:<i>:PromptPricePerMillion` | number | `0` | Cost per million prompt (input) tokens in the specified currency. |
+| `CustomPricings:<i>:Provider` | string | — | Provider this row is scoped to; null means any provider. |
 | `DefaultCrewBudget:AlertThresholdPercent` | number | `80` | Percentage of budget at which a warning alert is fired (default: 80%). |
 | `DefaultCrewBudget:MaxCostUsd` | number | — | Maximum total cost in USD (null = unlimited): once the calls recorded reach it, the next LLM call is refused (`BudgetExhaustedException`, dimension `Cost`). |
 | `DefaultCrewBudget:MaxTokens` | integer | — | Maximum total tokens (null = unlimited): once the calls recorded reach it, the next LLM call is refused (`BudgetExhaustedException`, dimension `Tokens`). |
@@ -937,7 +951,16 @@ registers, `ollama`, `mistral`, `azure-openai` or `gemini`; another name refuses
 three speak the OpenAI embeddings wire format and read `ApiKey` (or `ApiKeyEnvVar`), `Endpoint` and
 `Model`; `azure-openai` also needs `Endpoint` (the resource URL) and takes the deployment name as
 `Model`. At start the host compares the provider, model and dimensions with the ones recorded at
-`FingerprintPath` and refuses to start when they changed. Read by
+`FingerprintPath` and refuses to start when they changed. `orkeon forge` defaults `FingerprintPath`
+to `/forge/embedding-fingerprint.json`, recorded per session, so it guards nothing across sessions;
+`orkeon rag` sets it empty and guards each collection through its manifest instead (`ingest`,
+`search`, `eval rag --no-ingest -c` and `eval rag -c` with its ingest pre-pass and no `--reindex`;
+`--reindex` rebuilds). A value set in the settings wins. A path under no mount skips the guard at
+Debug. Where the covering mount, overrides included, grants no Write or Create on the file and no
+Create on its folder (a read-only `/workspace`), the guard still reads and compares a recorded
+fingerprint and still refuses a changed model, but writes nothing, and when no fingerprint is recorded yet logs one Debug
+line that names `FingerprintPath`, never a Warning. A provider that cannot report its dimensions (a custom
+`ModelPath` that is missing) makes the guard log a Warning with the provider's own message. Read by
 `DefaultEmbeddingProviderResolver`, when no local or code-analysis provider is registered. Bound
 by `AddOrkeonInfrastructure()`, and by `AddOrkeonVectorSearch(configuration)` (called by
 `AddOrkeonInfrastructure(configuration)`).
@@ -1439,7 +1462,12 @@ it and stays readable through the file tools. `Confinement` says how the operati
 confines the agent's shell session: `Mode = Auto` (the default) picks bubblewrap on Linux,
 Seatbelt on macOS, an AppContainer inside a Job Object on Windows, and no confinement when the
 host runs in a container; `None` turns it off. A backend that cannot run fails the call, with the
-reason, rather than run it unconfined. `AllowNetwork` opens the network (off by default) and
+reason, rather than run it unconfined. The `SECURITY` line of the interpreters is logged once per
+host, at the first `shell_command` call validated once interpreters are enabled, and states the
+confinement in force: the backend, or `none` with its reason (a container, `Mode = None`), or
+`unavailable` when every call fails; a confining backend also says `network on` or `network off`
+(from `AllowNetwork`) and, under bubblewrap, `system directories are read-only`, while `none` always
+says `network on` and makes no read-only claim; building or listing the tool logs nothing. `AllowNetwork` opens the network (off by default) and
 `ReadOnlyPaths` lends a toolchain outside the system directories
 ([Shell confinement](../architecture/security.md#shell-confinement), [limits](./limitations.md)).
 `Environment:Propagate` names extra host variables handed to the shell session and to the code

@@ -236,6 +236,9 @@ public sealed record CrewExecutionEvent
     /// <summary>What happened: a <c>RunEventKinds</c> constant (<c>task.started</c>, <c>llm.delta</c>, …).</summary>
     public required string Kind { get; init; }
 
+    /// <summary>Whether the agent spent its iteration cap and answered on the tool-free retry.</summary>
+    public bool EndedOnIterationCap { get; init; }
+
     /// <summary>When it happened (UTC).</summary>
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
 

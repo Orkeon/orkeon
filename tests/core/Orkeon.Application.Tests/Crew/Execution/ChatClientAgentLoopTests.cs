@@ -586,6 +586,118 @@ public class ChatClientAgentLoopTests
         Assert.Equal(4, client.Requests.Count);
     }
 
+    // ── CH-25..CH-27: the iteration cap is flagged, the nudge asks what was not done, a budget note ──
+
+    private static List<string> UserTexts(ScriptedChatClient client, int request) =>
+        client.Requests[request].Messages.Where(m => m.Role == ChatRole.User).Select(m => m.Text).ToList();
+
+    [Fact]
+    [Trait("BR", "CH-25")]
+    public async System.Threading.Tasks.Task ShouldNotFlagTheCap_WhenTheAgentAnswersBeforeIt()
+    {
+        var tool = new SpyTool("busy", result: "more work");
+        var agent = BuildAgent(5, tool);
+        var (loop, client) = BuildLoop(tool);
+        client.EnqueueFunctionCall("c1", "busy");
+        client.EnqueueText("the answer");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.Completed, result.ExitReason);
+        Assert.Equal("the answer", result.Output);
+        Assert.False(result.EndedOnIterationCap);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-25")]
+    public async System.Threading.Tasks.Task ShouldFlagTheCapAndStayCompleted_WhenTheToolFreeRetryAnswers()
+    {
+        var tool = new SpyTool("busy", result: "more work");
+        var agent = BuildAgent(2, tool);
+        var (loop, client) = BuildLoop(tool);
+        client.EnqueueFunctionCall("c1", "busy");
+        client.EnqueueFunctionCall("c2", "busy");
+        client.EnqueueText("answer from the retry");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.Completed, result.ExitReason);
+        Assert.Equal("answer from the retry", result.Output);
+        Assert.True(result.EndedOnIterationCap);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-26")]
+    public async System.Threading.Tasks.Task ShouldAskWhatWasNotDone_WhenTheRetryFollowsTheCap()
+    {
+        var tool = new SpyTool("busy", result: "more work");
+        var (loop, client) = BuildLoop(tool);
+        client.EnqueueFunctionCall("c1", "busy");
+        client.EnqueueFunctionCall("c2", "busy");
+        client.EnqueueText("answer from the retry");
+
+        await loop.ExecuteAsync(
+            BuildAgent(2, tool), BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        var capNudge = UserTexts(client, client.Requests.Count - 1)[^1];
+        Assert.Contains("was not done", capNudge, StringComparison.Ordinal);
+
+        // The retry of an empty first turn is not a cap: its nudge does not ask it.
+        var (emptyLoop, emptyClient) = BuildLoop();
+        emptyClient.EnqueueText("");
+        emptyClient.EnqueueText("the answer, at last");
+
+        await emptyLoop.ExecuteAsync(
+            BuildAgent(5), BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        var emptyNudge = UserTexts(emptyClient, emptyClient.Requests.Count - 1)[^1];
+        Assert.DoesNotContain("was not done", emptyNudge, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-27")]
+    public async System.Threading.Tasks.Task ShouldTellTheAgentTwoIterationsAreLeft_Once()
+    {
+        var tool = new SpyTool("busy", result: "more work");
+        var agent = BuildAgent(5, tool);
+        var (loop, client) = BuildLoop(tool);
+        for (var i = 0; i < 5; i++)
+            client.EnqueueFunctionCall($"c{i}", "busy");
+        client.EnqueueText("answer from the retry");
+
+        await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        const string note = "2 iterations left";
+        for (var i = 0; i < 3; i++)
+            Assert.DoesNotContain(UserTexts(client, i), t => t.Contains(note, StringComparison.Ordinal));
+        Assert.Single(UserTexts(client, 3), t => t.Contains(note, StringComparison.Ordinal));
+        Assert.Single(UserTexts(client, client.Requests.Count - 1), t => t.Contains(note, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-27")]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async System.Threading.Tasks.Task ShouldAddNoBudgetNote_WhenTheCapIsTwoOrLess(int cap)
+    {
+        var tool = new SpyTool("busy", result: "more work");
+        var agent = BuildAgent(cap, tool);
+        var (loop, client) = BuildLoop(tool);
+        for (var i = 0; i < cap; i++)
+            client.EnqueueFunctionCall($"c{i}", "busy");
+        client.EnqueueText("answer from the retry");
+
+        await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(cap + 1, client.Requests.Count);
+        for (var i = 0; i < client.Requests.Count; i++)
+            Assert.DoesNotContain(UserTexts(client, i), t => t.Contains("iterations left", StringComparison.Ordinal));
+    }
+
     // ── RT-07: the read function calls of one turn fan out in the chat dispatcher ─────
 
     [Fact]
@@ -616,5 +728,45 @@ public class ChatClientAgentLoopTests
             .SelectMany(m => m.Contents.OfType<FunctionResultContent>())
             .Select(r => r.CallId);
         Assert.Equal(["c1", "c2", "c3"], resultIds);
+    }
+
+    // ── CH-39: an empty answer on the last allowed iteration takes the iteration-cap path ──
+
+    [Fact]
+    [Trait("BR", "CH-39")]
+    public async System.Threading.Tasks.Task ShouldFlagTheTask_WhenTheLastIterationAnswersEmpty()
+    {
+        var tool = new SpyTool("busy", result: "more work");
+        var agent = BuildAgent(2, tool);
+        var (loop, client) = BuildLoop(tool);
+        client.EnqueueFunctionCall("c1", "busy");
+        client.EnqueueText(string.Empty);
+        client.EnqueueText("answer from the retry");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.Completed, result.ExitReason);
+        Assert.Equal("answer from the retry", result.Output);
+        Assert.True(result.EndedOnIterationCap);
+        Assert.Contains(UserTexts(client, 2), t => t.Contains("State plainly, at the start of your answer", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-39")]
+    public async System.Threading.Tasks.Task ShouldNotFlagTheTask_WhenAnEarlierIterationAnswersEmpty()
+    {
+        var tool = new SpyTool("busy", result: "more work");
+        var agent = BuildAgent(4, tool);
+        var (loop, client) = BuildLoop(tool);
+        client.EnqueueFunctionCall("c1", "busy");
+        client.EnqueueText(string.Empty);
+        client.EnqueueText("answer from the retry");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal("answer from the retry", result.Output);
+        Assert.False(result.EndedOnIterationCap);
     }
 }

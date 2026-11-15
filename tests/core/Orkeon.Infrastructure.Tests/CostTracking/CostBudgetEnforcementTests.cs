@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Common.DTOs;
@@ -28,6 +29,18 @@ public sealed class CostBudgetEnforcementTests
             NullLogger<CostBudgetManager>.Instance);
     }
 
+    private static CostBudgetManager Manager(BudgetLimit? crewBudget, FakeLoggerFactory logs, bool enabled = true)
+    {
+        var options = new CostTrackingOptions { Enabled = enabled, DefaultCrewBudget = crewBudget };
+        return new CostBudgetManager(
+            new ModelPricingRegistry(Options.Create(new CostTrackingOptions()), NullLogger<ModelPricingRegistry>.Instance),
+            Options.Create(options),
+            logs.CreateLogger<CostBudgetManager>());
+    }
+
+    private static List<(string Category, LogLevel Level, string Message)> BudgetWarnings(FakeLoggerFactory logs) =>
+        [.. logs.Entries.Where(e => e.Level == LogLevel.Warning && e.Category.EndsWith("CostBudgetManager", StringComparison.Ordinal))];
+
     private static CostUsageEvent Usage(int prompt, int completion, string crewId = Crew, decimal? cost = null) => new()
     {
         CrewId = crewId,
@@ -48,6 +61,45 @@ public sealed class CostBudgetEnforcementTests
     };
 
     private static LlmMessage[] Conversation() => [LlmMessage.User("hello")];
+
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void ShouldWarnThatTheBudgetCannotCoverIt_WhenAnUnpricedModelRunsUnderMaxCostUsd()
+    {
+        using var logs = new FakeLoggerFactory();
+        var manager = Manager(new BudgetLimit { MaxCostUsd = 5m }, logs);
+
+        manager.RecordUsage(Usage(10, 10));
+        manager.RecordUsage(Usage(10, 10));
+        var afterSame = BudgetWarnings(logs);
+        manager.RecordUsage(Usage(10, 10) with { Model = "vendor/model-y" });
+        var afterOther = BudgetWarnings(logs);
+
+        Assert.Single(afterSame);
+        Assert.Contains("vendor/model-x", afterSame[0].Message, StringComparison.Ordinal);
+        Assert.Contains("budget", afterSame[0].Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, afterOther.Count);
+        Assert.Contains("vendor/model-y", afterOther[1].Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void ShouldNotWarnAboutTheBudget_WhenNoCostBudgetIsSet()
+    {
+        using var logs = new FakeLoggerFactory();
+        var withCost = Manager(new BudgetLimit { MaxCostUsd = 5m }, logs);
+        var tokenOnly = Manager(new BudgetLimit { MaxTokens = 1000 }, logs);
+        var none = Manager(crewBudget: null, logs);
+
+        withCost.RecordUsage(Usage(10, 10));
+        var control = BudgetWarnings(logs);
+        tokenOnly.RecordUsage(Usage(10, 10));
+        none.RecordUsage(Usage(10, 10));
+        var after = BudgetWarnings(logs);
+
+        Assert.Single(control);
+        Assert.Single(after);
+    }
 
     [Fact]
     public void ShouldRefuse_WhenRecordedTokensReachTheCap()
@@ -266,5 +318,150 @@ public sealed class CostBudgetEnforcementTests
 
         Assert.Equal(1, sink.Events);
         Assert.Equal(20, manager.GetReport(Crew).TotalTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-31")]
+    public void ShouldRecordAndRefuseNothing_WhenCostTrackingIsOff()
+    {
+        var manager = Manager(new BudgetLimit { MaxCostUsd = 0.10m, MaxTokens = 10 }, enabled: false);
+
+        var first = manager.RecordUsage(Usage(10, 10, cost: 0.5m));
+        var second = manager.RecordUsage(Usage(10, 10, cost: 0.5m));
+
+        Assert.True(first.IsWithinBudget);
+        Assert.True(second.IsWithinBudget);
+        Assert.Equal(0.5m, second.Cost);
+        Assert.Equal(40, manager.GetReport(Crew).TotalTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-31")]
+    public void ShouldRaiseNoAlert_WhenCostTrackingIsOff()
+    {
+        var manager = Manager(new BudgetLimit { MaxCostUsd = 0.10m, MaxTokens = 10 }, enabled: false);
+        var raised = 0;
+        manager.OnBudgetAlert += (_, _) => raised++;
+
+        var answer = manager.RecordUsage(Usage(10, 10, cost: 0.5m));
+
+        Assert.Null(answer.Alert);
+        Assert.Equal(0, raised);
+        Assert.Empty(manager.GetActiveAlerts());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-31")]
+    public void ShouldNotWarnTheBudgetCannotCount_WhenCostTrackingIsOff()
+    {
+        using var logs = new FakeLoggerFactory();
+        var manager = Manager(new BudgetLimit { MaxCostUsd = 5m }, logs, enabled: false);
+
+        manager.RecordUsage(Usage(10, 10));
+
+        Assert.Empty(BudgetWarnings(logs));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-31")]
+    public void ShouldStillRefuse_WhenCostTrackingIsOn()
+    {
+        using var logs = new FakeLoggerFactory();
+        var manager = Manager(new BudgetLimit { MaxCostUsd = 5m, MaxTokens = 10 }, logs);
+
+        var answer = manager.RecordUsage(Usage(10, 10));
+
+        Assert.False(answer.IsWithinBudget);
+        Assert.Equal(BudgetAlertType.TokenBudgetExceeded, answer.Alert?.Type);
+        Assert.Single(BudgetWarnings(logs), w => w.Message.Contains("vendor/model-x", StringComparison.Ordinal));
+    }
+
+    private static CostBudgetManager ManagerWithRegistry(
+        BudgetLimit? crewBudget, FakeLoggerFactory logs, params ModelPricing[] custom)
+    {
+        var pricingOptions = new CostTrackingOptions();
+        foreach (var row in custom)
+        {
+            pricingOptions.CustomPricings.Add(row);
+        }
+
+        return new CostBudgetManager(
+            new ModelPricingRegistry(Options.Create(pricingOptions), logs.CreateLogger<ModelPricingRegistry>()),
+            Options.Create(new CostTrackingOptions { DefaultCrewBudget = crewBudget }),
+            logs.CreateLogger<CostBudgetManager>());
+    }
+
+    private static CostUsageEvent DeepSeekUsage() => Usage(100_000, 100_000) with
+    {
+        Model = "deepseek-flash",
+        Provider = "deepseek",
+    };
+
+    [Fact]
+    [Trait("BR", "CH-36")]
+    public void ShouldPriceAndNotWarn_WhenRecordUsageCarriesAProviderWithABuiltInRow()
+    {
+        using var logs = new FakeLoggerFactory();
+        var manager = ManagerWithRegistry(new BudgetLimit { MaxCostUsd = 5m }, logs);
+
+        var answer = manager.RecordUsage(DeepSeekUsage());
+
+        Assert.Equal(0.15m, answer.Cost);
+        Assert.DoesNotContain(logs.Entries, e => e.Level >= LogLevel.Warning);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-36")]
+    public void ShouldPriceWithTheCustomRow_WhenAProviderlessCustomRowNamesTheModel()
+    {
+        using var logs = new FakeLoggerFactory();
+        var custom = new ModelPricing
+        {
+            ModelPattern = "deepseek-flash",
+            PromptPricePerMillion = 2m,
+            CompletionPricePerMillion = 4m,
+        };
+        var manager = ManagerWithRegistry(new BudgetLimit { MaxCostUsd = 5m }, logs, custom);
+
+        var answer = manager.RecordUsage(DeepSeekUsage());
+
+        Assert.Equal(0.6m, answer.Cost);
+        Assert.DoesNotContain(logs.Entries, e => e.Level >= LogLevel.Warning);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-36")]
+    public void ShouldWarnCannotCount_WhenOnlyAnAgentBudgetHasACostCap()
+    {
+        using var logs = new FakeLoggerFactory();
+        var manager = Manager(crewBudget: null, logs);
+        manager.SetAgentBudget(Crew, "writer", new BudgetLimit { MaxCostUsd = 5m });
+
+        manager.RecordUsage(Usage(10, 10) with { AgentId = "writer" });
+
+        var warnings = BudgetWarnings(logs);
+        Assert.Single(warnings);
+        Assert.Contains("vendor/model-x", warnings[0].Message, StringComparison.Ordinal);
+        Assert.Contains("budget", warnings[0].Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-36")]
+    [InlineData(0, -1, 10, 10)]
+    [InlineData(-1, 0, 10, 10)]
+    [InlineData(5, -1, 0, 0)]
+    public void ShouldNotWarnCannotCount_WhenMaxCostIsZeroOrTheCallHasNoTokens(
+        int crewCap, int agentCap, int prompt, int completion)
+    {
+        using var logs = new FakeLoggerFactory();
+        var manager = Manager(crewCap < 0 ? null : new BudgetLimit { MaxCostUsd = crewCap }, logs);
+        if (agentCap >= 0)
+        {
+            manager.SetAgentBudget(Crew, "writer", new BudgetLimit { MaxCostUsd = agentCap });
+        }
+
+        manager.RecordUsage(Usage(prompt, completion) with { AgentId = "writer" });
+
+        Assert.Empty(BudgetWarnings(logs));
     }
 }

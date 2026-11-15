@@ -386,6 +386,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             TokensUsed = used.Tokens,
             CacheHitTokens = used.CacheHit,
             CacheMissTokens = used.CacheMiss,
+            EndedOnIterationCap = taskResult.EndedOnIterationCap,
         };
         run.TaskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);

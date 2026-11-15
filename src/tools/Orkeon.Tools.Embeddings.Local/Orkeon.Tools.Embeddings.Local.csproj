@@ -30,6 +30,10 @@
 
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Tools.Embeddings.Local.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 

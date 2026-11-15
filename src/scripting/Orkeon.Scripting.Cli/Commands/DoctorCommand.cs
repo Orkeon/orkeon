@@ -34,6 +34,10 @@ internal sealed class DoctorCommandOptions : CliOptions
 
     /// <summary>Test seam: overrides <see cref="AppContext.BaseDirectory"/> for the install channel.</summary>
     internal string? InstallDirectoryOverride { get; set; }
+
+    /// <summary>Test seam: overrides the tsc resolver of the tsc check, so a test can inject a missing tsc;
+    /// <see langword="null"/> uses the real <c>TscTypeChecker</c> resolver. Not bound by the CLI grammar.</summary>
+    internal Func<string>? TscResolver { get; init; }
 }
 
 /// <summary>One diagnostic result. The <c>--json</c> schema is a CI contract — keep it stable.</summary>
@@ -159,7 +163,7 @@ internal static class DoctorCommand
         {
             var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
             var installDirectory = options.InstallDirectoryOverride ?? AppContext.BaseDirectory;
-            var results = await RunChecksAsync(cwd, installDirectory, cts.Token).ConfigureAwait(false);
+            var results = await RunChecksAsync(cwd, installDirectory, options.TscResolver, cts.Token).ConfigureAwait(false);
 
             if (options.Json)
                 await console.Output.WriteLineAsync(JsonSerializer.Serialize(results)).ConfigureAwait(false);
@@ -181,7 +185,7 @@ internal static class DoctorCommand
     }
 
     private static async Task<IReadOnlyList<DoctorCheckResult>> RunChecksAsync(
-        string cwd, string installDirectory, CancellationToken ct)
+        string cwd, string installDirectory, Func<string>? tscResolver, CancellationToken ct)
     {
         var llm = ReadLlmContext(cwd);
 
@@ -196,7 +200,7 @@ internal static class DoctorCommand
             .. CheckRunnerSettings(llm),
             await CheckLlmReachabilityAsync(llm, ct).ConfigureAwait(false),
             await CheckEsbuildAsync(llm.Configuration, ct).ConfigureAwait(false),
-            await CheckTscAsync(llm.Configuration, ct).ConfigureAwait(false),
+            await CheckConfiguredTscAsync(llm.Configuration, tscResolver, installDirectory, ct).ConfigureAwait(false),
             CheckLocalEmbeddings(),
             CheckOnnxReranker(),
             CheckTreeSitterGrammars(),
@@ -649,24 +653,63 @@ internal static class DoctorCommand
     /// The TypeScript compiler <c>orkeon run --validate</c> type-checks a <c>.ork.ts</c> with (FWK-12),
     /// resolved by the checker's own chain and named with the mode the settings give it.
     /// </summary>
-    private static async Task<DoctorCheckResult> CheckTscAsync(IConfiguration configuration, CancellationToken ct)
+    private static Task<DoctorCheckResult> CheckConfiguredTscAsync(IConfiguration configuration, Func<string>? resolverOverride, string installDirectory, CancellationToken ct)
+        => CheckTscAsync(configuration, resolverOverride ?? new TscTypeChecker(ScriptingToolchainOptions.FromConfiguration(configuration)).ResolveBinary, ct, installDirectory);
+
+    // Test seam: the resolver is injected. A missing tsc follows the type-check mode (CH-24).
+    internal static async Task<DoctorCheckResult> CheckTscAsync(IConfiguration configuration, Func<string> resolveBinary, CancellationToken ct, string? installDirectory = null)
     {
         const string Check = "tsc";
+        installDirectory ??= AppContext.BaseDirectory;
         var options = ScriptingToolchainOptions.FromConfiguration(configuration);
         string binary;
         try
         {
-            binary = new TscTypeChecker(options).ResolveBinary();
+            binary = resolveBinary();
         }
         catch (TscNotFoundException ex)
         {
-            return new DoctorCheckResult
+            var always = options.TypeCheck == TypeCheckMode.Always;
+            if (!string.IsNullOrWhiteSpace(options.TscPath))
             {
-                Check = Check,
-                Status = StatusWarn,
-                Detail = options.TypeCheck == TypeCheckMode.Off
-                    ? "not found — the type check of .ork.ts scripts is off (Orkeon:Scripting:Toolchain:TypeCheck)"
-                    : $"not found — {ex.Message}",
+                if (options.TypeCheck == TypeCheckMode.Off)
+                {
+                    return new DoctorCheckResult
+                    {
+                        Check = Check,
+                        Status = StatusOk,
+                        Detail = $"TscPath {options.TscPath} does not exist; unused while the type check is off",
+                    };
+                }
+
+                return new DoctorCheckResult
+                {
+                    Check = Check,
+                    Status = always ? StatusFail : StatusWarn,
+                    Detail = $"not found — {ex.Message}" + (always ? "; " + AlwaysRemedy(installDirectory) : string.Empty),
+                };
+            }
+
+            return options.TypeCheck switch
+            {
+                TypeCheckMode.Off => new DoctorCheckResult
+                {
+                    Check = Check,
+                    Status = StatusOk,
+                    Detail = "not installed — the type check of .ork.ts scripts is off",
+                },
+                TypeCheckMode.Always => new DoctorCheckResult
+                {
+                    Check = Check,
+                    Status = StatusFail,
+                    Detail = "not installed — the type check is always on: " + AlwaysRemedy(installDirectory),
+                },
+                _ => new DoctorCheckResult
+                {
+                    Check = Check,
+                    Status = StatusOk,
+                    Detail = "not installed — optional, needed only to type-check .ork.ts scripts in orkeon run --validate (npm install -g typescript, or Orkeon:Scripting:Toolchain:TscPath)",
+                },
             };
         }
 
@@ -674,11 +717,28 @@ internal static class DoctorCommand
         return new DoctorCheckResult
         {
             Check = Check,
-            Status = version is not null ? StatusOk : StatusWarn,
+            Status = version is not null || options.TypeCheck == TypeCheckMode.Off ? StatusOk : StatusWarn,
             Detail = version is not null
                 ? $"{version} at {binary} (type check: {options.TypeCheck}; needed only to type-check .ork.ts scripts in `orkeon run --validate`)"
                 : $"resolved at {binary}, but `--version` did not answer (is Node installed?)",
         };
+    }
+
+    private static string AlwaysRemedy(string installDirectory)
+        => "`npm install -g typescript`, or set Orkeon:Scripting:Toolchain:TscPath, or set Orkeon:Scripting:Toolchain:TypeCheck: off"
+            + (RunsFromCheckout(installDirectory) ? "; in a checkout: `npm --prefix tools/scripting-typecheck install --prefer-offline`" : string.Empty);
+
+    // OUT-OF-SCOPE: system probing, same signal as TscTypeChecker's candidate walk (install directory and ancestors).
+    private static bool RunsFromCheckout(string installDirectory)
+    {
+        var dir = new DirectoryInfo(installDirectory);
+        for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, "tools", "scripting-typecheck")))
+                return true;
+        }
+
+        return false;
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort version read: any failure downgrades the check detail, never crashes doctor.")]

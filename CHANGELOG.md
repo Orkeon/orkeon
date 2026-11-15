@@ -7,6 +7,121 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ModelPricing.Provider` scopes a pricing row to a provider (null means any provider), and `IModelPricingRegistry` gains
+  the provider-aware `TryGetPricing(string? provider, string model)` and `CalculateCost(string? provider, string model, ...)`
+  overloads, as default interface methods that delegate to the existing members: an implementation of your own still
+  compiles. `Orkeon:CostTracking:CustomPricings:<i>:Provider` sets it from the settings (#383).
+- `TaskResult.EndedOnIterationCap`, `TaskResult<TOutput>.EndedOnIterationCap`, `TaskExecutionSnapshot.EndedOnIterationCap`
+  and `CrewExecutionEvent.EndedOnIterationCap` (all `bool`, `false` by default, `init` properties) mark a task whose answer came from the tool-free turn after the agent
+  loop's iteration cap. The task keeps `Success` and `AgentExitReason.Completed`: the flag sits beside them, it is no new
+  enum member. The `task.completed` line of `orkeon run --events` carries it as `endedOnIterationCap` (always written, the
+  last key), the forge trial's `task.completed` too, and a resumed capped task, typed or not, replays it from its checkpoint
+  (#388). The flag is set in every orchestration mode, with one exception: a peer takeover in Autonomous mode
+  (`AttemptDelegationAsync`), whose channel response carries no flag, so a task it runs is never flagged. The two fallback
+  agent loops, the native tool-calling one and the legacy text one, cannot take the tool-free turn: they end on the cap
+  without the note and without the flag, as before. `DelegateWorkResponse.EndedOnIterationCap` (JSON
+  `ended_on_iteration_cap`) tells the delegating agent that its coworker ended on its cap, and the tool's message says so.
+  `TaskResult<TOutput>` now keeps the tokens, the iterations and the retries of the run (#388).
+
+### Changed — a collection indexed with another embedding model is refused **[breaking]** (#381)
+
+**Before**: `orkeon rag ingest`, `rag search` and `eval rag` read and wrote a collection whatever embedding model had built
+it, so a changed model mixed the vectors of two models. **Now**: the manifest of a collection records the provider, the model
+and the dimensions, and a different current model is refused on `rag ingest` (without `--reindex`), on `rag search`, on
+`eval rag --no-ingest -c <collection>` and on `eval rag -c <collection>` when its ingest pre-pass runs without `--reindex`:
+exit `1`, one line that names the collection, both models and `orkeon rag ingest --reindex`. A collection with no manifest,
+and `eval rag` without `-c`, are not checked. **What to do**: run `orkeon rag ingest --reindex` to rebuild the collection
+with the current model, or go back to the model that built it.
+
+### Changed — `orkeon doctor` fails when `tsc` is required and missing **[breaking]** (#387)
+
+**Before**: a missing or unusable `tsc` was a warning (exit `0`) whatever the type-check mode. **Now**, by
+`Orkeon:Scripting:Toolchain:TypeCheck`: under `Off` a `tsc` that is missing, a configured `TscPath` that does not exist or a
+`tsc` that does not answer `--version` is `ok` (unused); under `Validate` a `tsc` found nowhere is `ok` (optional) and the
+other two cases `warn`; under `Always` a `tsc` found nowhere or a `TscPath` that does not exist is `fail` (exit `1`,
+`ExitScriptError`; a `tsc` that does not answer `--version` stays `warn`), and its detail gives the reason, then the installed remedy (`npm install -g typescript`,
+`Orkeon:Scripting:Toolchain:TscPath`, `TypeCheck: off`), and the checkout bootstrap only when `orkeon` runs from a checkout.
+**What to do**: install `typescript`, point `TscPath` at it, or set `TypeCheck` to `Off` or `Validate` where a CI step runs
+`orkeon doctor` under `Always` without `tsc`.
+
+### Changed — the forge assistant tags its crews `sequential` **[breaking]** (#382)
+
+**Before**: the forge assistant's `orkeon.crew.process` tag read `autonomous`, a process the runtime ignored. **Now**: it
+reads `sequential`. The `crew.run` span and the `orkeon.crew.executions` and `orkeon.crew.active` metrics report the process
+of the crew that runs and are unchanged. **What to do**: a dashboard or a filter that selects the assistant by
+`orkeon.crew.process = autonomous` must select `sequential`.
+
+### Changed — a forge plan must list the writer of every path its tasks read **[breaking]** (#388)
+
+**Before**: in a sequential plan, a task could read a path under a deliverable root that a task listed before it wrote,
+without depending on that task. **Now**: a path under a deliverable root that a task names in its description or its expected
+output must be the task's own deliverable, the deliverable of a task it depends on (directly or through other dependencies),
+or a file already present under an output folder of the team, held by the forge or bound to a user `dir`: every file counts,
+found recursively, up to 10 000 per folder, with no 40-entry cap. Being listed earlier is no longer enough, whatever the
+process; the plan is refused with an error that names the task and the path, which the designer gets back to fix. A path is
+read up to any Unicode whitespace (a no-break space, the narrow space before a French `:`) or a quote (`« » “ ” ‘ ’`), and
+starts after whitespace, `=` or `:` (`path=/output/x`, `fichier:/output/x`); the goal and the backstory are not scanned.
+`orkeon forge reopen` of a crew promoted before this rule does not fail on it: the crew opens, and the next validation (the
+Blueprint stage, a `blueprint_submit`, a verdict edit) enforces it. **What to do**: list the task that writes the file among
+the dependencies of the task that reads it.
+
+### Fixed
+
+- A project that references `Orkeon.Scripting` or `Orkeon.Tools.Embeddings.Local` with `ExcludeAssets="build"` now builds
+  offline and its host starts: the local embedder is built once, at the first embedding, and the embedded model reports its
+  384 dimensions without loading. A missing model fails the first local embedding with an `InvalidOperationException` that
+  names `LocalEmbeddingsModel/default/model.onnx` and the exclusion. Put `ExcludeAssets="build"` on every reference that
+  reaches the package, `Orkeon.Scripting` and `Orkeon.Tools.Embeddings.Local` alike: NuGet unions the flags, so one reference
+  without it keeps the model download. A Slow end-to-end test pins both. A custom `LocalEmbeddingOptions.ModelPath` that holds
+  no loadable model builds the provider the same way and fails the first embedding with an `InvalidOperationException` that
+  names the `ModelPath`, the library's error as inner exception; neither the failure of the embedder nor that of `Dimensions` is cached, so the next call tries again (#376). The guard
+  reports a provider that cannot give its dimensions with the provider's own message, as a Warning.
+- The embedding model guard no longer warns where it cannot act (#381); the refusal of a changed model by `orkeon rag`
+  and `eval rag` is a breaking change, filed under Changed. `orkeon forge` records its fingerprint per session,
+  at `/forge/embedding-fingerprint.json` (the default of `Orkeon:Embeddings:FingerprintPath` at the lowest precedence: an
+  explicit setting still wins), so it guards nothing across sessions. `orkeon rag` uses no host fingerprint (its default
+  `FingerprintPath` is empty): the manifest of each collection guards the collection instead, and `orkeon rag ingest
+  --reindex`, which rebuilds it, is no longer blocked. Every warning of the guard names `Orkeon:Embeddings:FingerprintPath`.
+  Where the covering mount, overrides included, grants no Write or Create on the fingerprint file and no Create on its folder
+  (a read-only `/workspace`, a promoted reading team), the guard still reads and compares a recorded fingerprint and still
+  refuses a changed model, but writes nothing, and when no fingerprint is recorded yet logs one Debug line, never a Warning; any other failure still warns. A run whose `FingerprintPath` lies under no mount
+  (no `/workspace`) skips the guard at Debug, with no "Access denied" line and no Warning.
+- Every paid provider's default model is priced: DeepSeek, Z.AI, Kimi, Qwen, Gemini, Mistral, Grok and MiniMax, and the
+  Together and Mammouth gateways by their own provider-scoped rows. `ollama` and Docker Model Runner models cost 0 without a
+  warning. Hugging Face stays unpriced (its routed provider sets the price): a call warns once per model per host process (an
+  `orkeon-host` daemon warns once for its lifetime), no longer once per call, naming `Orkeon:CostTracking:CustomPricings`,
+  and under a `MaxCostUsd` budget, the crew's or an agent's, a second warning, once per crew and model, says the budget
+  cannot count that model's calls (it needs a cap above 0 and a call that carries tokens). A `CustomPricings` row always wins
+  over a built-in one: a row with no `Provider` applies to every provider, a row that names a provider to that provider
+  only. `gemini-3.8-flash` is priced 1.50 / 7.50 per million tokens with a cache read at 0.15 (Google's rate from
+  2027-01-01, kept as the conservative figure for budgets), `deepseek-flash` has a cache read at 0.006 and
+  `gemini-3.7-flash` is unchanged. Long-context price tiers are not modelled (#383).
+- `Orkeon:CostTracking:Enabled` `false` now does what its documentation says: every call is recorded and priced (the history,
+  the report and the unpriced-model warning of the registry are unchanged), none is refused, and no budget alert and no
+  "budget cannot count this model" warning is raised. `true` is unchanged (#383).
+- The `SECURITY` line of the shell interpreters is logged once per host, at the first `shell_command` call validated once
+  interpreters are enabled, instead of at construction and listing of `shell_command`. It states the confinement in force:
+  the backend, or `none` with its reason (a container, `Mode = None`), or `unavailable` when every call fails. Under a
+  confining backend it also says `network on` or `network off` (from `Confinement.AllowNetwork`), and under bubblewrap
+  `system directories are read-only`; under `Mode = None`, or unconfined inside a container, it always says `network on`
+  (the unconfined shell never cuts the network) and makes no read-only claim (#384).
+- A blank model id under `Llm:ModelCapabilities` (`""`, `" "` or a key `:Vision`) is a settings refusal naming
+  `Llm:ModelCapabilities`, whatever the entry holds: the host build refuses it, and `orkeon run`, `--validate` and
+  `--list-tools` print the settings error and exit 1 (#385).
+- `orkeon doctor` no longer reports a missing `tsc` as a warning when nothing needs it (#387); the `fail` under
+  `Orkeon:Scripting:Toolchain:TypeCheck` `Always` is a breaking change, filed under Changed.
+- A task that ends on its iteration cap says so (#388). The tool-free turn after the cap tells the agent that tools are no
+  longer available and asks it to state what it could not do (a file it did not write); an agent with two iterations left is
+  told so once, while it can still act (nothing is sent when the cap is two or less); and the run summary labels the task
+  `⚠ completed on its iteration cap`, next to `⊘ skipped`. An empty answer on the last allowed iteration takes the cap path too: the
+  nudge is sent and the flag is set. The forge designs for a large document: a file of 128 KiB or
+  more in a folder the user filled or bound with a `dir` is named to the designer with its size (`report.md (750 KB)`,
+  largest first), and the plan prompt adds the reading rules (search with `grep` first, then read by range) and a
+  `maxIterations` of at least 30 for an agent that reads it. The hand-off rule that refuses a plan whose task reads a path
+  it does not write or depend on is a breaking change, filed under Changed.
+
 ## [1.1.0] - 2026-11-15
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries
