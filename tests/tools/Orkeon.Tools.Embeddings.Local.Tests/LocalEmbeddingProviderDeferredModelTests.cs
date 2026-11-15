@@ -6,7 +6,8 @@ namespace Orkeon.Tools.Embeddings.Local.Tests;
 
 /// <summary>
 /// A host without the local ONNX model starts; only the first embedding fails.
-/// Only throwing or counting factories are used: the real model is never loaded.
+/// Most tests use throwing or counting factories, so the real model is never loaded; the CH-30 tests use the
+/// real factory over a mounted folder that holds no model.
 /// </summary>
 public sealed class LocalEmbeddingProviderDeferredModelTests
 {
@@ -114,6 +115,84 @@ public sealed class LocalEmbeddingProviderDeferredModelTests
         await Task.WhenAll(racers);
 
         Assert.Equal(1, Volatile.Read(ref maxInFlight));
+    }
+
+    private const string EmptyModelVirtualPath = "/models/empty";
+
+    private static string CreateEmptyModelFolder()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "orkeon-nomodel-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        return folder;
+    }
+
+    private static LocalEmbeddingProvider CreateRealProvider(string folder) =>
+        new(
+            new DiskBackedFileSystemService(folder, "/models"),
+            new LocalEmbeddingOptions { ModelPath = EmptyModelVirtualPath });
+
+    [Fact]
+    [Trait("BR", "CH-30")]
+    public void ShouldBuild_WhenTheCustomModelIsMissing()
+    {
+        var folder = CreateEmptyModelFolder();
+        try
+        {
+            var ex = Record.Exception(() => CreateRealProvider(folder).Dispose());
+
+            Assert.Null(ex);
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-30")]
+    public async Task ShouldNameTheModelPath_WhenTheFirstEmbeddingFindsNoCustomModel()
+    {
+        var folder = CreateEmptyModelFolder();
+        try
+        {
+            using var provider = CreateRealProvider(folder);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => provider.EmbedBatchAsync(["hello"], CancellationToken.None));
+
+            Assert.Contains(EmptyModelVirtualPath, ex.Message);
+            Assert.NotNull(ex.InnerException);
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-30")]
+    public async Task ShouldTryAgain_WhenTheCustomModelFailedOnce()
+    {
+        var folder = CreateEmptyModelFolder();
+        try
+        {
+            using var provider = CreateRealProvider(folder);
+
+            var first = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => provider.EmbedBatchAsync(["hello"], CancellationToken.None));
+            var second = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => provider.EmbedBatchAsync(["hello"], CancellationToken.None));
+
+            Assert.Contains(EmptyModelVirtualPath, first.Message);
+            Assert.Contains(EmptyModelVirtualPath, second.Message);
+            Assert.NotNull(second.InnerException);
+            Assert.NotSame(first, second);
+            Assert.NotSame(first.InnerException, second.InnerException);
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
     }
 
     private static void InterlockedMax(ref int target, int value)
