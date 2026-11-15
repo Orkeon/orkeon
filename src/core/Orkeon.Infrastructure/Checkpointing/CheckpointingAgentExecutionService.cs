@@ -366,6 +366,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 PromptTokens = result.PromptTokens,
                 CompletionTokens = result.CompletionTokens,
                 IterationsUsed = result.IterationsUsed,
+                EndedOnIterationCap = result.EndedOnIterationCap,
             };
 
         public TaskResult ToResult() => new(Success, Output, StructuredValue(), [], TimeSpan.FromTicks(ExecutionTicks))
@@ -395,6 +396,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 PromptTokens = PromptTokens,
                 CompletionTokens = CompletionTokens,
                 IterationsUsed = IterationsUsed,
+                EndedOnIterationCap = EndedOnIterationCap,
             };
 
         // The structured output as the type it was produced as, when that type can be found again

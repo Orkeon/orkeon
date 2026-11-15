@@ -1,8 +1,14 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Agent;
+using Orkeon.Application.Tests.Services;
+using Orkeon.Application.Context;
+using Orkeon.Application.Interfaces.Services;
+using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
+using DomainAgent = Orkeon.Domain.Agent.Agent;
 using TaskStatus = Orkeon.Domain.Task.ValueObjects.TaskStatus;
 
 namespace Orkeon.Application.Tests.Agent;
@@ -48,6 +54,44 @@ public class AgentExecutionServiceTests
             AgentExecutionService.CastToDomainTask(task));
         Assert.Contains("Task must be a Domain Task", ex.Message);
     }
+
+    [Fact]
+    [Trait("BR", "CH-29")]
+    public async System.Threading.Tasks.Task ShouldCarryTheCapFlag_WhenTheTypedTaskEndedOnItsCap()
+    {
+        var result = await RunTypedAsync(endedOnIterationCap: true);
+
+        Assert.True(result.Success);
+        Assert.True(result.EndedOnIterationCap);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-29")]
+    public async System.Threading.Tasks.Task ShouldNotCarryTheCapFlag_WhenTheTypedTaskDidNotEndOnIt()
+    {
+        var plain = await RunTypedAsync(endedOnIterationCap: false);
+
+        Assert.True(plain.Success);
+        Assert.False(plain.EndedOnIterationCap);
+    }
+
+    private static async System.Threading.Tasks.Task<TaskResult<Answer>> RunTypedAsync(bool endedOnIterationCap)
+    {
+        var orchestrator = new TestExecutionOrchestrator();
+        orchestrator.SetupResult(new TaskResult(true, "raw", null, [], TimeSpan.Zero) { EndedOnIterationCap = endedOnIterationCap });
+        var service = new AgentExecutionService(
+            NullLogger<AgentExecutionService>.Instance,
+            orchestrator,
+            new TestCallbackOrchestrator(),
+            new TestMemoryCoordinator());
+        var agent = new AgentBuilder().Role("Worker").Goal("Work").Build();
+        var task = new CrewTaskBuilder().WithKey("t").Description("do t").ExpectedOutput("done").Build();
+        var context = new SimpleExecutionContext(CrewId.Create(), new Dictionary<string, string>(), NullMemoryScope.Instance, [], CancellationToken.None);
+
+        return await service.ExecuteTaskAsync<Answer>(agent, task, context, TestContext.Current.CancellationToken);
+    }
+
+    private sealed record Answer(string Text);
 
     /// <summary>
     /// A stub implementation of ICrewTask that is NOT a CrewTask,

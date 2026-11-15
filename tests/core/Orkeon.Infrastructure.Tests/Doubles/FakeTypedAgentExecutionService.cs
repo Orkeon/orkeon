@@ -70,6 +70,7 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
                 PromptTokens = 4,
                 CompletionTokens = 3,
                 IterationsUsed = 2,
+                EndedOnIterationCap = EndedOnIterationCap,
             });
     }
 }

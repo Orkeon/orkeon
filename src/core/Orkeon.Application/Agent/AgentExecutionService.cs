@@ -102,6 +102,7 @@ namespace Orkeon.Application.Agent
                 Error: result.Error)
             {
                 ExitReason = result.ExitReason,
+                EndedOnIterationCap = result.EndedOnIterationCap,
             };
         }
 

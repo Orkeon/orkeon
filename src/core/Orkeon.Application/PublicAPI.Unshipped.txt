@@ -9,3 +9,5 @@ Orkeon.Application.Crew.TaskExecutionSnapshot.EndedOnIterationCap.get -> bool
 Orkeon.Application.Crew.TaskExecutionSnapshot.EndedOnIterationCap.init -> void
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.EndedOnIterationCap.get -> bool
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.EndedOnIterationCap.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedOnIterationCap.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedOnIterationCap.init -> void

@@ -208,6 +208,9 @@ public sealed record TaskResult<TOutput>(
     /// <summary>Gets why the agent loop ended (the untyped result's reason, carried over; FWK-15).</summary>
     public AgentExitReason ExitReason { get; init; } = AgentExitReason.Completed;
 
+    /// <summary>Gets whether the task ended on its iteration cap (the untyped result's flag, carried over; CH-29).</summary>
+    public bool EndedOnIterationCap { get; init; }
+
     /// <summary>Gets the tokens the task consumed, or zero when not tracked.</summary>
     public int TokensUsed { get; init; }
 
