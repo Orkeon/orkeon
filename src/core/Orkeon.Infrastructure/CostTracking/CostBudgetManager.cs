@@ -66,14 +66,15 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         if (!priced)
         {
             _unpriced.TryAdd(eventWithCost, 0);
-            WarnIfCostBudgetCannotCount(usageEvent);
+            if (_options.Enabled)
+                WarnIfCostBudgetCannotCount(usageEvent);
         }
         _history.Add(eventWithCost);
 
         LogRecordedUsageCrewAgentModel(usageEvent.CrewId ?? "", usageEvent.AgentId ?? "", usageEvent.Model ?? "", usageEvent.PromptTokens + usageEvent.CompletionTokens, cost);
 
-        // Check budgets
-        var result = CheckBudgets(eventWithCost) with { Cost = priced ? cost : null };
+        // Off: the call is recorded and priced, nothing is checked, no alert raised
+        var result = (_options.Enabled ? CheckBudgets(eventWithCost) : CostBudgetCheckResult.WithinBudget()) with { Cost = priced ? cost : null };
         answer.Result = result;
         return result;
     }

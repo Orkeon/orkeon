@@ -29,9 +29,9 @@ public sealed class CostBudgetEnforcementTests
             NullLogger<CostBudgetManager>.Instance);
     }
 
-    private static CostBudgetManager Manager(BudgetLimit? crewBudget, FakeLoggerFactory logs)
+    private static CostBudgetManager Manager(BudgetLimit? crewBudget, FakeLoggerFactory logs, bool enabled = true)
     {
-        var options = new CostTrackingOptions { Enabled = true, DefaultCrewBudget = crewBudget };
+        var options = new CostTrackingOptions { Enabled = enabled, DefaultCrewBudget = crewBudget };
         return new CostBudgetManager(
             new ModelPricingRegistry(Options.Create(new CostTrackingOptions()), NullLogger<ModelPricingRegistry>.Instance),
             Options.Create(options),
@@ -318,5 +318,61 @@ public sealed class CostBudgetEnforcementTests
 
         Assert.Equal(1, sink.Events);
         Assert.Equal(20, manager.GetReport(Crew).TotalTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-31")]
+    public void ShouldRecordAndRefuseNothing_WhenCostTrackingIsOff()
+    {
+        var manager = Manager(new BudgetLimit { MaxCostUsd = 0.10m, MaxTokens = 10 }, enabled: false);
+
+        var first = manager.RecordUsage(Usage(10, 10, cost: 0.5m));
+        var second = manager.RecordUsage(Usage(10, 10, cost: 0.5m));
+
+        Assert.True(first.IsWithinBudget);
+        Assert.True(second.IsWithinBudget);
+        Assert.Equal(0.5m, second.Cost);
+        Assert.Equal(40, manager.GetReport(Crew).TotalTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-31")]
+    public void ShouldRaiseNoAlert_WhenCostTrackingIsOff()
+    {
+        var manager = Manager(new BudgetLimit { MaxCostUsd = 0.10m, MaxTokens = 10 }, enabled: false);
+        var raised = 0;
+        manager.OnBudgetAlert += (_, _) => raised++;
+
+        var answer = manager.RecordUsage(Usage(10, 10, cost: 0.5m));
+
+        Assert.Null(answer.Alert);
+        Assert.Equal(0, raised);
+        Assert.Empty(manager.GetActiveAlerts());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-31")]
+    public void ShouldNotWarnTheBudgetCannotCount_WhenCostTrackingIsOff()
+    {
+        using var logs = new FakeLoggerFactory();
+        var manager = Manager(new BudgetLimit { MaxCostUsd = 5m }, logs, enabled: false);
+
+        manager.RecordUsage(Usage(10, 10));
+
+        Assert.Empty(BudgetWarnings(logs));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-31")]
+    public void ShouldStillRefuse_WhenCostTrackingIsOn()
+    {
+        using var logs = new FakeLoggerFactory();
+        var manager = Manager(new BudgetLimit { MaxCostUsd = 5m, MaxTokens = 10 }, logs);
+
+        var answer = manager.RecordUsage(Usage(10, 10));
+
+        Assert.False(answer.IsWithinBudget);
+        Assert.Equal(BudgetAlertType.TokenBudgetExceeded, answer.Alert?.Type);
+        Assert.Single(BudgetWarnings(logs), w => w.Message.Contains("vendor/model-x", StringComparison.Ordinal));
     }
 }
