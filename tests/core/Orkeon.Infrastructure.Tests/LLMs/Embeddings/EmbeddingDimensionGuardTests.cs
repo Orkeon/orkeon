@@ -137,6 +137,38 @@ public class EmbeddingDimensionGuardTests
     }
 
     [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldLogDebugNotWarning_WhenTheFirstFingerprintWriteIsDeniedByAReadOnlyMount()
+    {
+        var store = new MockEmbeddingFingerprintStore { SaveFailure = new FileAccessDeniedException("read-only mount", "/workspace/.orkeon/embedding-fingerprint.json") };
+        using var loggers = new FakeLoggerFactory();
+        using var sp = BuildHost(store, loggers, ("Orkeon:Embeddings:Provider", "ollama"));
+
+        foreach (var service in sp.GetServices<IHostedService>())
+            await service.StartAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, store.SaveCallCount);
+        Assert.DoesNotContain(loggers.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+        Assert.Contains(loggers.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Debug && e.Message.Contains("read-only mount", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldStillWarn_WhenTheFirstFingerprintWriteFailsForAnotherReason()
+    {
+        var store = new MockEmbeddingFingerprintStore { SaveFailure = new IOException("disk full") };
+        using var loggers = new FakeLoggerFactory();
+        using var sp = BuildHost(store, loggers, ("Orkeon:Embeddings:Provider", "ollama"));
+
+        foreach (var service in sp.GetServices<IHostedService>())
+            await service.StartAsync(TestContext.Current.CancellationToken);
+
+        var warning = Assert.Single(loggers.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+        Assert.Contains("disk full", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(loggers.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Debug && e.Message.Contains("disk full", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ShouldWriteNothing_WhenTheHostHasNoEmbeddingProvider()
     {
         var fs = new MockFileSystemService(Path.Combine(Path.GetTempPath(), "fwk25-none-" + Guid.NewGuid().ToString("N")));

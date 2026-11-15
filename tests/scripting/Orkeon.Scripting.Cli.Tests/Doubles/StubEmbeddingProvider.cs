@@ -8,11 +8,11 @@ namespace Orkeon.Scripting.Cli.Tests.Doubles;
 /// for the <c>semantic_search</c> tool graph (SearchTool → EmbeddingServiceAdapter → provider) to
 /// resolve. Returns fixed-length zero vectors — enough to construct and enumerate the tool.
 /// </summary>
-internal sealed class StubEmbeddingProvider : IEmbeddingProvider
+internal sealed class StubEmbeddingProvider(string model = "stub-model", int dimensions = 8) : IEmbeddingProvider
 {
     public string Name => "stub";
-    public string Model => "stub-model";
-    public int Dimensions => 8;
+    public string Model => model;
+    public int Dimensions => dimensions;
 
     public Task<float[]> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
         => Task.FromResult(new float[Dimensions]);

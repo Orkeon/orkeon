@@ -832,7 +832,7 @@ internal static class ForgeCommand
     /// in the middle of the event stream and every consumer has to guess which lines are
     /// events. Warnings still matter — they go to stderr.
     /// </summary>
-    private static Microsoft.Extensions.Hosting.IHost BuildEngineHost(IRunnerConsole console,
+    internal static Microsoft.Extensions.Hosting.IHost BuildEngineHost(IRunnerConsole console,
         string? settingsPath, RunnerMountPlan mountPlan, ForgeSubmissionBox box, ForgeUsageTally tally, ForgeRunObserver observer) =>
         RunnerHost.Build(
             settingsPath,
@@ -857,7 +857,11 @@ internal static class ForgeCommand
             {
                 services.AddSingleton(console);
                 AddEngineServices(services, box, tally, observer);
-            });
+            },
+            configureBuilder: b => EmbeddingFingerprintDefault.Apply(b, ForgeFingerprintPath));
+
+    /// <summary>The embedding fingerprint's default home: the session's writable mount.</summary>
+    private const string ForgeFingerprintPath = "/forge/embedding-fingerprint.json";
 
     /// <summary>
     /// The interview stage. A run that does not stop before its trial holds that trial in this

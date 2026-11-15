@@ -398,4 +398,78 @@ public sealed class RagCommandTests
         Assert.False(RagCommand.ClaimsVirtualRoot("/x:/output", "/output"));
         Assert.False(RagCommand.ClaimsVirtualRoot("", "/output"));
     }
+
+    // --- embedding fingerprint (CH-05) ---
+
+    private static async Task<int> IngestWithEmbeddingModelAsync(
+        TestConsole console, ScriptScratch scratch, string model, int dimensions,
+        string settingsText = """{ "RaggableTree": { "Enabled": false } }""")
+    {
+        Directory.CreateDirectory(Path.Combine(scratch.Root, "docs"));
+        await File.WriteAllTextAsync(Path.Combine(scratch.Root, "docs", "a.md"), "alpha", TestContext.Current.CancellationToken);
+        var settings = scratch.WriteFile("appsettings.json", settingsText);
+        return await RagCommand.ExecuteIngestAsync(console, new RagIngestCommandOptions
+        {
+            Collection = "docs",
+            Sources = ["./docs/**/*.md"],
+            SettingsPath = settings,
+            WorkingDirectoryOverride = scratch.Root,
+            ConfigureTestServices = (_, s) =>
+            {
+                s.AddSingleton<IIngestionPipeline>(new FakeIngestionPipeline());
+                s.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(
+                    new Orkeon.Scripting.Cli.Tests.Doubles.StubEmbeddingProvider(model, dimensions));
+            },
+        });
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public async Task ShouldRecordTheFingerprintUnderOutput_WhenRagRuns()
+    {
+        using var scratch = new ScriptScratch();
+        using var console = new TestConsole();
+
+        var exit = await IngestWithEmbeddingModelAsync(console, scratch, "model-a", 8);
+
+        Assert.Equal(Program.ExitOk, exit);
+        var recorded = Path.Combine(scratch.Root, ".orkeon", "rag", "embedding-fingerprint.json");
+        Assert.True(File.Exists(recorded), "expected " + recorded);
+        Assert.Contains("model-a", await File.ReadAllTextAsync(recorded, TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public async Task ShouldRefuseRag_WhenTheRecordedEmbeddingModelChanged()
+    {
+        using var scratch = new ScriptScratch();
+        var recorded = Path.Combine(scratch.Root, ".orkeon", "rag");
+        Directory.CreateDirectory(recorded);
+        await File.WriteAllTextAsync(
+            Path.Combine(recorded, "embedding-fingerprint.json"),
+            """{"Provider":"named","Model":"model-a","Dimensions":8}""",
+            TestContext.Current.CancellationToken);
+        using var console = new TestConsole();
+
+        var exit = await IngestWithEmbeddingModelAsync(console, scratch, "model-b", 16);
+
+        Assert.NotEqual(Program.ExitOk, exit);
+        Assert.Contains("The embedding model changed", console.Stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldKeepAnExplicitFingerprintPath_WhenTheSettingsSetOne()
+    {
+        using var scratch = new ScriptScratch();
+        using var console = new TestConsole();
+
+        var exit = await IngestWithEmbeddingModelAsync(
+            console, scratch, "model-a", 8,
+            """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Embeddings": { "FingerprintPath": "/output/chosen.json" } } }""");
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.True(File.Exists(Path.Combine(scratch.Root, ".orkeon", "chosen.json")));
+        Assert.False(File.Exists(Path.Combine(scratch.Root, ".orkeon", "rag", "embedding-fingerprint.json")));
+    }
 }

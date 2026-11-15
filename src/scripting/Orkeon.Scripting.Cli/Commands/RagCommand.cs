@@ -522,15 +522,21 @@ internal static class RagCommand
             // --offline: the extractive stub answers in place of every model — the profile
             // Orkeon:Rag:LlmProfile names included, which is then neither checked nor
             // resolved (GAP-19). The override comes last, so it wins over the settings.
-            configureBuilder: options is RagEvalCommandOptions { Offline: true }
-                ? builder =>
+            configureBuilder: builder =>
+            {
+                EmbeddingFingerprintDefault.Apply(builder, RagFingerprintPath);
+                if (options is RagEvalCommandOptions { Offline: true })
                 {
                     builder.ConfigureAppConfiguration((_, configuration) =>
                         configuration.AddInMemoryCollection([new KeyValuePair<string, string?>(RagLlm.ProfileKey, string.Empty)]));
-                    configureBuilder?.Invoke(builder);
                 }
-                : configureBuilder);
+
+                configureBuilder?.Invoke(builder);
+            });
     }
+
+    /// <summary>The embedding fingerprint's default home: the verb's writable output mount.</summary>
+    private const string RagFingerprintPath = "/output/rag/embedding-fingerprint.json";
 
     /// <summary>True when the Docker-style mount string claims <paramref name="virtualRoot"/>.</summary>
     internal static bool ClaimsVirtualRoot(string mount, string virtualRoot)
