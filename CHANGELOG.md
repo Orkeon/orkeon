@@ -18,12 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   loop's iteration cap. The task keeps `Success` and `AgentExitReason.Completed`: the flag sits beside them, it is no new
   enum member. The `task.completed` line of `orkeon run --events` carries it as `endedOnIterationCap` (always written, the
   last key), the forge trial's `task.completed` too, and a resumed capped task, typed or not, replays it from its checkpoint
-  (#388). The flag is set in every orchestration mode, with one exception: a peer takeover in Autonomous mode
-  (`AttemptDelegationAsync`), whose channel response carries no flag, so a task it runs is never flagged. The two fallback
+  (#388). The flag is set in every orchestration mode, a peer takeover in Autonomous mode (`AttemptDelegationAsync`)
+  included: `AgentChannelResponse.EndedOnIterationCap` (experimental, `ORKEXP002`) carries it back from the channel. The one
+  exception is a channel answered by a script's agent-command handler (`AgentCommandRegistrar`), which has no cap
+  information and answers `false`. The two fallback
   agent loops, the native tool-calling one and the legacy text one, cannot take the tool-free turn: they end on the cap
   without the note and without the flag, as before. `DelegateWorkResponse.EndedOnIterationCap` (JSON
   `ended_on_iteration_cap`) tells the delegating agent that its coworker ended on its cap, and the tool's message says so.
-  `TaskResult<TOutput>` now keeps the tokens, the iterations and the retries of the run (#388).
+  `TaskResult<TOutput>` now keeps the tokens, the iterations, the retries, the cache tokens (`CacheHitTokens`,
+  `CacheMissTokens`) and `EndedAt` of the run, and a resumed task, typed or not, replays its `RetryCount` from its checkpoint
+  (a typed one also replays the cache tokens and `EndedAt`; a checkpoint written before this change replays `0` and no
+  date). The `run.finished` line carries `cappedTasks`, the number of tasks whose last attempt ended on the iteration cap
+  (always written, `0` when none did): `orkeon run`, the forge trial (counted per trial), `orkeon-host` and the MCP crew
+  tool host write it (#388).
 
 ### Changed — a collection indexed with another embedding model is refused **[breaking]** (#381)
 
@@ -62,7 +69,9 @@ or a file already present under an output folder of the team, held by the forge 
 found recursively, up to 10 000 per folder, with no 40-entry cap. Being listed earlier is no longer enough, whatever the
 process; the plan is refused with an error that names the task and the path, which the designer gets back to fix. A path is
 read up to any Unicode whitespace (a no-break space, the narrow space before a French `:`) or a quote (`« » “ ” ‘ ’`), and
-starts after whitespace, `=` or `:` (`path=/output/x`, `fichier:/output/x`); the goal and the backstory are not scanned.
+starts after whitespace, `=` or `:` (`path=/output/x`, `fichier:/output/x`). The same rule reads each agent's goal and backstory: a path under a deliverable root named in an agent's goal
+or backstory must be a deliverable of one of the agent's tasks, of a task they depend on, or an existing file; an agent with no task (a
+manager, an arbiter) may name any task's deliverable. The refusal names `agents[i] ('key'): its goal|backstory names '<path>'`; `orkeon forge reopen` does not apply this check.
 `orkeon forge reopen` of a crew promoted before this rule does not fail on it: the crew opens, and the next validation (the
 Blueprint stage, a `blueprint_submit`, a verdict edit) enforces it. **What to do**: list the task that writes the file among
 the dependencies of the task that reads it.
