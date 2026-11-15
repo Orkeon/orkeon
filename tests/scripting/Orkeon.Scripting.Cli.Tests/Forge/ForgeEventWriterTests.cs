@@ -327,6 +327,33 @@ public class ForgeEventWriterTests
             output.ToString().TrimEnd('\r', '\n'));
     }
 
+    [Theory]
+    [Trait("BR", "CH-25")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async System.Threading.Tasks.Task The_forge_trial_reports_a_task_that_ended_on_its_iteration_cap(bool capped)
+    {
+        var output = new StringWriter();
+        var observer = new ForgeRunObserver();
+        observer.Attach(new ForgeEventWriter(output, new FakeOrkeonClock()));
+
+        await observer.OnTaskCompletedAsync(
+            new Orkeon.Application.Crew.TaskExecutionSnapshot
+            {
+                TaskId = "read",
+                AgentRole = "reader",
+                Success = true,
+                Duration = TimeSpan.FromSeconds(1),
+                CompletedAt = DateTimeOffset.UnixEpoch,
+                EndedOnIterationCap = capped,
+            },
+            TestContext.Current.CancellationToken);
+
+        var root = System.Text.Json.JsonElement.Parse(output.ToString());
+        Assert.Equal("task.completed", root.GetProperty("kind").GetString());
+        Assert.Equal(capped, root.GetProperty("endedOnIterationCap").GetBoolean());
+    }
+
     [Fact]
     public void Stage_names_are_spelled_lowercase_on_the_wire()
     {

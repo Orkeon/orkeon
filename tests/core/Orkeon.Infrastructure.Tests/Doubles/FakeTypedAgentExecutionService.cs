@@ -34,6 +34,9 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
     public Func<string, object?> UntypedStructured { get; set; } = _ => null;
 
     /// <summary>A structured answer.</summary>
+    /// <summary>The cap flag every successful untyped result carries.</summary>
+    public bool EndedOnIterationCap { get; set; }
+
     public sealed record Answer(string Text);
 
     /// <inheritdoc />
@@ -47,7 +50,7 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
             throw new InvalidOperationException($"{key} blew up");
         return System.Threading.Tasks.Task.FromResult(FailOn.Contains(key)
             ? new TaskResult(false, "", null, [], TimeSpan.Zero, $"{key} failed")
-            : new TaskResult(true, $"out:{key}", UntypedStructured(key), [], TimeSpan.FromSeconds(2)) { TokensUsed = 42 });
+            : new TaskResult(true, $"out:{key}", UntypedStructured(key), [], TimeSpan.FromSeconds(2)) { TokensUsed = 42, EndedOnIterationCap = EndedOnIterationCap });
     }
 
     /// <inheritdoc />

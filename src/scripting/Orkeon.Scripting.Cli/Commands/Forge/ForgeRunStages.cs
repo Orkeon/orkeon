@@ -53,6 +53,7 @@ internal sealed class ForgeRunObserver : ICrewExecutionHook, ILlmCallObserver
             durationMs = (long)snapshot.Duration.TotalMilliseconds,
             tokens = snapshot.TokensUsed,
             toolCalls = snapshot.ToolCallCount,
+            endedOnIterationCap = snapshot.EndedOnIterationCap,
         });
         return Task.CompletedTask;
     }

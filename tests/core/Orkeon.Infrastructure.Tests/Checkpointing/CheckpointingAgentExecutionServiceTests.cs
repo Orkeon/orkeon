@@ -141,6 +141,25 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-25")]
+    public async System.Threading.Tasks.Task ShouldReplayTheCapFlag_WhenACappedTaskIsResumed()
+    {
+        _inner.EndedOnIterationCap = true;
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.True(replayed.EndedOnIterationCap);
+    }
+
+    [Fact]
     [Trait("BR", "FWK-07")]
     public async System.Threading.Tasks.Task ShouldCarryTheResumedFlagAndTheUsage_OnTheTypedResult()
     {
