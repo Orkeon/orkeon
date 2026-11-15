@@ -126,8 +126,25 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
         return validation.ResolvedPath;
     }
 
-    private static LocalEmbedder CreateRealEmbedder(string? resolvedPath) =>
-        resolvedPath is null ? new LocalEmbedder() : new LocalEmbedder(resolvedPath);
+    private static LocalEmbedder CreateRealEmbedder(string? resolvedPath)
+    {
+        if (resolvedPath is not null) return new LocalEmbedder(resolvedPath);
+
+        // The upstream loads the model files on the first Embed, not in the constructor: probe here
+        // so a missing model fails inside GetEmbedder's wrapper, which adds the hint.
+        var embedder = new LocalEmbedder();
+        try
+        {
+            embedder.Embed("probe");
+        }
+        catch
+        {
+            embedder.Dispose();
+            throw;
+        }
+
+        return embedder;
+    }
 
     private LocalEmbedder GetEmbedder()
     {
