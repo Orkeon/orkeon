@@ -161,13 +161,14 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         ForgeReference? reference = null,
         IReadOnlyList<string>? crewTools = null,
         ForgeSession? session = null,
-        string? language = null)
+        string? language = null,
+        ILoggerFactory? loggerFactory = null)
     {
         session ??= _session;
         var packPath = ForgePack.Ensure(session.Directory);
 
         var services = new ServiceCollection()
-            .AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance)
+            .AddSingleton<ILoggerFactory>(loggerFactory ?? NullLoggerFactory.Instance)
             .AddSingleton<IConfiguration>(new ConfigurationBuilder().Build())
             .AddSingleton<IFileSystemService>(new DiskBackedFileSystemService(session.Directory, "/forge"))
             .AddSingleton(_box)
@@ -184,6 +185,30 @@ public sealed class ForgeCrewAssistantTests : IDisposable
             services.AddSingleton<IBaseTool>(new StubBaseTool(tool) { Description = $"The {tool} tool." });
 
         return new ForgeCrewAssistant(services.BuildServiceProvider(), session, packPath, reference: reference, language: language);
+    }
+
+    /// <summary>
+    /// The built-in pack runs without a scripting warning: the factory records every category
+    /// into one logger, so any Warning or above of the whole run is checked.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public async Task ShouldLogNoScriptingWarning_WhenTheAssistantPackRuns()
+    {
+        using var logs = new Orkeon.Tests.Shared.Doubles.RecordingLoggerFactory();
+        var provider = new ScriptedLlmProvider().Answers("Quel est votre besoin ?");
+        var assistant = Build(provider, loggerFactory: logs);
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = "trier mes e-mails" },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        var offending = logs.Logger.Entries
+            .Where(entry => entry.Level >= LogLevel.Warning)
+            .Select(entry => $"{entry.Level}: {entry.Message}")
+            .ToList();
+        Assert.True(offending.Count == 0, "Warnings logged: " + string.Join(" | ", offending));
     }
 
     /// <summary>

@@ -269,7 +269,6 @@ var assistant = agentBuilder()
 globalThis.crew = crewBuilder()
   .name("forge-assistant")
   .goal("One forge turn")
-  .process("autonomous")
   .budget({ toolCalls: 24, wallTime: 600, tokens: 300000, delegationDepth: 1 })
   .withAgent(assistant)
   .build();
