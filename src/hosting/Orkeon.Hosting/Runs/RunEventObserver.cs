@@ -37,6 +37,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     private decimal? _vendorCost;
     private string? _vendorCostCurrency;
     private string? _pendingRequestId;
+    private readonly Dictionary<string, bool> _lastAttemptCapped = [];
 
     /// <summary>Builds the observer over the stream, the hook it must not displace, and the streaming flag.</summary>
     public RunEventObserver(IRunEventSink events, ICrewExecutionHook? inner, bool stream)
@@ -91,6 +92,12 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
         }
 
         return _inner?.OnHumanInputAsync(notice, ct) ?? Task.CompletedTask;
+    }
+
+    /// <summary>Tasks whose last <c>task.completed</c> attempt ended on the iteration cap, for the closing event.</summary>
+    public int CappedTasks
+    {
+        get { lock (_gate) { return _lastAttemptCapped.Values.Count(capped => capped); } }
     }
 
     /// <summary>Cumulative tokens seen on the meter, for the closing event.</summary>
@@ -180,6 +187,9 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     public async Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+
+        lock (_gate)
+            _lastAttemptCapped[snapshot.TaskId] = snapshot.EndedOnIterationCap;
 
         _events.Emit(
             RunEventKinds.TaskCompleted,

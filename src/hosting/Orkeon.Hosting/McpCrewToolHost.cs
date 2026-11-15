@@ -181,12 +181,14 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
             _identity = identity;
             _publisher = publisher;
             Id = id;
-            Observer = new RunEventObserver(publisher, inner: null, stream: false);
+            _observer = new RunEventObserver(publisher, inner: null, stream: false);
         }
+
+        private readonly RunEventObserver _observer;
 
         public ExecutionId Id { get; }
 
-        public ICrewExecutionHook Observer { get; }
+        public ICrewExecutionHook Observer => _observer;
 
         public bool Succeeded { get; set; }
 
@@ -213,6 +215,7 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
                 success = Succeeded,
                 exitCode = ExitCode(),
                 durationMs = (long)Stopwatch.GetElapsedTime(_started).TotalMilliseconds,
+                cappedTasks = _observer.CappedTasks,
             });
             _identity.Dispose();
         }
