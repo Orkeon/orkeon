@@ -28,7 +28,7 @@ public sealed class RunnerHostShellSecurityLineTests : IDisposable
     private IHost Build(CapturingLoggerProvider capture)
     {
         var path = Path.Combine(_root, "appsettings.json");
-        File.WriteAllText(path, """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Tools": { "Shell": { "AllowInterpreters": true } } } }""");
+        File.WriteAllText(path, """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Tools": { "Shell": { "AllowInterpreters": true, "Confinement": { "Mode": "None" } } } } }""");
         var original = Console.Error;
         using var muted = new StringWriter();
         Console.SetError(muted);
@@ -54,6 +54,7 @@ public sealed class RunnerHostShellSecurityLineTests : IDisposable
 
     [Fact]
     [Trait("BR", "CH-23")]
+    [Trait("BR", "CH-40")]
     public void ShouldLogNoSecurityLine_WhenTheRunHostIsBuilt()
     {
         using var capture = new CapturingLoggerProvider();
@@ -65,6 +66,7 @@ public sealed class RunnerHostShellSecurityLineTests : IDisposable
 
     [Fact]
     [Trait("BR", "CH-23")]
+    [Trait("BR", "CH-40")]
     public async Task ShouldLogTheSecurityLineOnce_WhenTheToolsAreResolvedAndValidatedTwice()
     {
         using var capture = new CapturingLoggerProvider();

@@ -769,13 +769,16 @@ public sealed class DoctorCommandTests : IDisposable
 
     [Fact]
     [Trait("BR", "CH-32")]
-    public async Task ShouldKeepTscWarn_WhenTheConfiguredTscPathDoesNotExistUnderOff()
+    [Trait("BR", "CH-40")]
+    public async Task ShouldReportTscOk_WhenTheConfiguredTscPathDoesNotExistUnderOff()
     {
         Func<string> missing = () => throw new TscNotFoundException(
             "TypeScript compiler not found: 'Orkeon:Scripting:Toolchain:TscPath' names a file that does not exist.");
-        var result = await DoctorCommand.CheckTscAsync(TscConfig("Off", MissingTscPath()), missing, CancellationToken.None);
+        var path = MissingTscPath();
+        var result = await DoctorCommand.CheckTscAsync(TscConfig("Off", path), missing, CancellationToken.None);
 
-        Assert.Equal("warn", result.Status);
+        Assert.Equal("ok", result.Status);
+        Assert.Contains($"TscPath {path} does not exist; unused while the type check is off", result.Detail, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -797,5 +800,69 @@ public sealed class DoctorCommandTests : IDisposable
         var result = await DoctorCommand.CheckTscAsync(TscConfig("Always", MissingTscPath()), TscMissing(), CancellationToken.None);
 
         Assert.Equal("fail", result.Status);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-40")]
+    public async Task ShouldPutTheInstalledRemedyFirst_WhenTheConfiguredTscPathDoesNotExistUnderAlways()
+    {
+        Func<string> missing = () => throw new TscNotFoundException(
+            "TypeScript compiler not found: 'Orkeon:Scripting:Toolchain:TscPath' names a file that does not exist.");
+        var result = await DoctorCommand.CheckTscAsync(TscConfig("Always", MissingTscPath()), missing, CancellationToken.None);
+
+        Assert.Equal("fail", result.Status);
+        var reason = result.Detail.IndexOf("names a file that does not exist", StringComparison.Ordinal);
+        var install = result.Detail.IndexOf("npm install -g typescript", StringComparison.Ordinal);
+        var checkout = result.Detail.IndexOf("tools/scripting-typecheck", StringComparison.Ordinal);
+        Assert.True(reason >= 0, result.Detail);
+        Assert.True(install > reason, result.Detail);
+        Assert.True(checkout < 0 || checkout > install, result.Detail);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-40")]
+    [InlineData("Off")]
+    [InlineData("Validate")]
+    [InlineData("Always")]
+    public async Task ShouldReportTscOkOnlyUnderOff_WhenTscDoesNotAnswerItsVersion(string mode)
+    {
+        // Seam: the TscResolver-style Func<string> of CheckTscAsync, returning a path that cannot run.
+        var binary = MissingTscPath();
+        var result = await DoctorCommand.CheckTscAsync(TscConfig(mode), () => binary, CancellationToken.None);
+
+        if (mode == "Off")
+            Assert.Equal("ok", result.Status);
+        else
+            Assert.Equal("warn", result.Status);
+        Assert.Contains(binary, result.Detail, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-40")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldListTheCheckoutBootstrap_OnlyWhenRunFromACheckout(bool fromCheckout)
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """{ "Orkeon": { "Scripting": { "Toolchain": { "TypeCheck": "Always" } } } }""");
+        var install = Path.Combine(scratch.Root, "install", "bin");
+        Directory.CreateDirectory(install);
+        if (fromCheckout)
+            Directory.CreateDirectory(Path.Combine(scratch.Root, "install", "tools", "scripting-typecheck"));
+        using var console = new TestConsole();
+
+        await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
+        {
+            Json = true,
+            WorkingDirectoryOverride = scratch.Root,
+            InstallDirectoryOverride = install,
+            TscResolver = TscMissing(),
+        });
+
+        using var doc = JsonDocument.Parse(console.Stdout);
+        var tsc = doc.RootElement.EnumerateArray().Single(e => e.GetProperty("check").GetString() == "tsc");
+        var detail = tsc.GetProperty("detail").GetString()!;
+        Assert.Equal("fail", tsc.GetProperty("status").GetString());
+        Assert.Equal(fromCheckout, detail.Contains("npm --prefix tools/scripting-typecheck install --prefer-offline", StringComparison.Ordinal));
     }
 }

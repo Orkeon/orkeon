@@ -260,20 +260,21 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private string DescribeConfinement()
     {
         var mode = Confinement.Mode;
+        var network = Confinement.AllowNetwork ? "network on" : "network off";
         var resolution = ShellConfinementResolver.Resolve(
             mode, Platform, mode == ShellConfinementMode.Auto && ContainerDetector.IsInContainer());
         if (resolution.Backend is null)
             return $"unavailable ({resolution.UnavailableReason}): every call will fail rather than run unconfined";
         if (resolution.Backend == ShellConfinementBackend.None)
             return resolution.Notice is not null
-                ? $"none (running in a container - set {ShellToolOptions.SectionName}:Confinement:Mode to force it)"
-                : "none (Mode=None): commands run on the host unconfined. Do not expose this tool to untrusted input.";
+                ? $"none (running in a container, network on - set {ShellToolOptions.SectionName}:Confinement:Mode to force it)"
+                : $"none (Mode=None): commands run on the host unconfined, network on. Do not expose this tool to untrusted input.";
         var availability = ActiveSandbox.Availability;
         if (!availability.IsAvailable)
             return $"{resolution.Backend} is unavailable ({availability.Reason}): every call will fail rather than run unconfined";
         return resolution.Backend == ShellConfinementBackend.Bubblewrap
-            ? "bubblewrap (the VFS view only, network off unless allowed)"
-            : $"{resolution.Backend} (the VFS view only, network off unless allowed)";
+            ? $"bubblewrap (the VFS view only, {network}, system directories are read-only)"
+            : $"{resolution.Backend} (the VFS view only, {network})";
     }
 
     /// <summary>Maximum number of characters captured from stdout/stderr.</summary>
@@ -358,7 +359,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// Interpreter / build commands that grant host code execution. They are
     /// NOT in the default allowlist and are only added when the caller opts in
     /// explicitly (<c>allowInterpreters: true</c>). In that mode the tool is
-    /// RCE-equivalent: there is no OS confinement.
+    /// RCE-equivalent inside the confinement in force; it is unconfined only in a
+    /// container or with <c>Mode=None</c>.
     /// </summary>
     private static readonly string[] s_interpreterCommands =
     [

@@ -152,6 +152,44 @@ public sealed class ShellCommandToolSecurityLineTests
         Assert.Contains(reason, line, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [Trait("BR", "CH-40")]
+    [InlineData(true, "network on")]
+    [InlineData(false, "network off")]
+    public async Task ShouldStateTheNetworkAndReadOnlySystemDirectories_InTheSecurityLine(bool allowNetwork, string network)
+    {
+        using var logs = new RecordingLoggerFactory();
+        var confinement = new ShellConfinementOptions { Mode = ShellConfinementMode.Bubblewrap, AllowNetwork = allowNetwork };
+        using var tool = Tool(logs, new ShellSecurityNotice(), confinement: confinement,
+            bubblewrap: () => BubblewrapAvailability.Available("/usr/bin/bwrap"));
+
+        await tool.CallAsync(Request("echo a"), Ct);
+
+        var line = Assert.Single(SecurityLines(logs));
+        Assert.StartsWith("SECURITY: shell_command", line, StringComparison.Ordinal);
+        Assert.Contains(network, line, StringComparison.Ordinal);
+        Assert.Contains("system directories are read-only", line, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-40")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldNotClaimReadOnlySystemDirectories_WhenModeIsNone(bool allowNetwork)
+    {
+        using var logs = new RecordingLoggerFactory();
+        var confinement = new ShellConfinementOptions { Mode = ShellConfinementMode.None, AllowNetwork = allowNetwork };
+        using var tool = Tool(logs, new ShellSecurityNotice(), confinement: confinement);
+
+        await tool.CallAsync(Request(RefusedCommand), Ct);
+
+        var line = Assert.Single(SecurityLines(logs));
+        Assert.StartsWith("SECURITY: shell_command", line, StringComparison.Ordinal);
+        Assert.Contains("network on", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("network off", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("read-only", line, StringComparison.Ordinal);
+    }
+
     [Fact]
     [Trait("BR", "CH-13")]
     public async Task ShouldLogNoSecurityLine_WhenInterpretersAreOff()
