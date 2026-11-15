@@ -103,6 +103,11 @@ namespace Orkeon.Application.Agent
             {
                 ExitReason = result.ExitReason,
                 EndedOnIterationCap = result.EndedOnIterationCap,
+                TokensUsed = result.TokensUsed,
+                PromptTokens = result.PromptTokens,
+                CompletionTokens = result.CompletionTokens,
+                IterationsUsed = result.IterationsUsed,
+                RetryCount = result.RetryCount,
             };
         }
 

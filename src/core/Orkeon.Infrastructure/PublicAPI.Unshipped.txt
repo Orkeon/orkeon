@@ -1,3 +1,5 @@
 #nullable enable
 Orkeon.Infrastructure.CostTracking.ModelPricingRegistry.CalculateCost(string? provider, string! model, int promptTokens, int completionTokens) -> decimal
 Orkeon.Infrastructure.CostTracking.ModelPricingRegistry.TryGetPricing(string? provider, string! model) -> Orkeon.Application.Interfaces.Ports.ModelPricing?
+Orkeon.Infrastructure.Tools.DelegateWorkResponse.EndedOnIterationCap.get -> bool
+Orkeon.Infrastructure.Tools.DelegateWorkResponse.EndedOnIterationCap.init -> void

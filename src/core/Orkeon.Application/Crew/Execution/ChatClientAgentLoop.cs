@@ -521,11 +521,12 @@ internal sealed class ChatClientAgentLoop
         CancellationToken cancellationToken)
     {
         ExecutionLog.LogEmptyFinalMessageRetrying(_logger, loop.Agent.Role, iteration + 1, DescribeMaxTokens(loop.Options));
+        var onCap = iteration == loop.MaxIter - 1;
 
         (string Text, int Tokens) retryText;
         try
         {
-            retryText = await RetryWithoutToolsAsync(loop.Agent, loop.Messages, loop.Options, cancellationToken).ConfigureAwait(false);
+            retryText = await RetryWithoutToolsAsync(loop.Agent, loop.Messages, loop.Options, cancellationToken, afterIterationCap: onCap).ConfigureAwait(false);
         }
         catch (Exception ex) when (IsCallFailure(ex, cancellationToken))
         {
@@ -536,7 +537,10 @@ internal sealed class ChatClientAgentLoop
         {
             ExecutionLog.LogChatClientFinalResponse(_logger, loop.Agent.Role, iteration + 1, elapsedMs);
             return (new AgentLoopResult(retryText.Text, totalTokensUsed + retryText.Tokens,
-                AgentExitReason.Completed, IterationsUsed: iteration + 2), retryText.Tokens);
+                AgentExitReason.Completed, IterationsUsed: iteration + 2)
+            {
+                EndedOnIterationCap = onCap,
+            }, retryText.Tokens);
         }
 
         ExecutionLog.LogEmptyFinalAnswer(_logger, loop.Agent.Role, loop.TaskId);

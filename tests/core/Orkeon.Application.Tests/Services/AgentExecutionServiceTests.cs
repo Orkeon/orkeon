@@ -574,6 +574,27 @@ public sealed class AgentExecutionServiceTests : IDisposable
         Assert.False(callerScope.IsEnded);
         Assert.Same(callerScope, AgentRunScope.Current);
     }
+
+    [Fact]
+    [Trait("BR", "CH-39")]
+    public async System.Threading.Tasks.Task ShouldCopyTheUsage_WhenATypedResultIsConverted()
+    {
+        _executionOrchestrator.SetupResult(new TaskResult(true, "raw", null, [], TimeSpan.FromSeconds(1), TokensUsed: 123)
+        {
+            PromptTokens = 80,
+            CompletionTokens = 43,
+            IterationsUsed = 7,
+            RetryCount = 2,
+        });
+
+        var typed = await _service.ExecuteTaskAsync<string>(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
+
+        Assert.Equal(123, typed.TokensUsed);
+        Assert.Equal(80, typed.PromptTokens);
+        Assert.Equal(43, typed.CompletionTokens);
+        Assert.Equal(7, typed.IterationsUsed);
+        Assert.Equal(2, typed.RetryCount);
+    }
 }
 
 // Test doubles for dependencies

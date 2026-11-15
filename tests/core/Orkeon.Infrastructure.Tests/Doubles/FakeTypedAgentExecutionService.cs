@@ -33,10 +33,10 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
     /// <summary>The structured output of an untyped call, by task key; null: none.</summary>
     public Func<string, object?> UntypedStructured { get; set; } = _ => null;
 
-    /// <summary>A structured answer.</summary>
-    /// <summary>The cap flag every successful untyped result carries.</summary>
+    /// <summary>The cap flag every successful result carries, typed and untyped.</summary>
     public bool EndedOnIterationCap { get; set; }
 
+    /// <summary>A structured answer.</summary>
     public sealed record Answer(string Text);
 
     /// <inheritdoc />

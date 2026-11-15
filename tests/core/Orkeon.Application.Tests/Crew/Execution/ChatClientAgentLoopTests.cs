@@ -729,4 +729,44 @@ public class ChatClientAgentLoopTests
             .Select(r => r.CallId);
         Assert.Equal(["c1", "c2", "c3"], resultIds);
     }
+
+    // ── CH-39: an empty answer on the last allowed iteration takes the iteration-cap path ──
+
+    [Fact]
+    [Trait("BR", "CH-39")]
+    public async System.Threading.Tasks.Task ShouldFlagTheTask_WhenTheLastIterationAnswersEmpty()
+    {
+        var tool = new SpyTool("busy", result: "more work");
+        var agent = BuildAgent(2, tool);
+        var (loop, client) = BuildLoop(tool);
+        client.EnqueueFunctionCall("c1", "busy");
+        client.EnqueueText(string.Empty);
+        client.EnqueueText("answer from the retry");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.Completed, result.ExitReason);
+        Assert.Equal("answer from the retry", result.Output);
+        Assert.True(result.EndedOnIterationCap);
+        Assert.Contains(UserTexts(client, 2), t => t.Contains("State plainly, at the start of your answer", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-39")]
+    public async System.Threading.Tasks.Task ShouldNotFlagTheTask_WhenAnEarlierIterationAnswersEmpty()
+    {
+        var tool = new SpyTool("busy", result: "more work");
+        var agent = BuildAgent(4, tool);
+        var (loop, client) = BuildLoop(tool);
+        client.EnqueueFunctionCall("c1", "busy");
+        client.EnqueueText(string.Empty);
+        client.EnqueueText("answer from the retry");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal("answer from the retry", result.Output);
+        Assert.False(result.EndedOnIterationCap);
+    }
 }

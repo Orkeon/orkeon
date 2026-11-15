@@ -312,4 +312,20 @@ public sealed class RetryingAgentExecutionServiceTests : IDisposable
         Assert.Equal(3, inner.Calls);
         Assert.Equal(2, result.RetryCount);
     }
+
+    [Fact]
+    [Trait("BR", "CH-39")]
+    public async System.Threading.Tasks.Task ShouldKeepTheFlag_WhenARetryEndsOnTheCap()
+    {
+        var inner = new FakeScriptedAgentExecutionService(
+            FakeScriptedAgentExecutionService.Fail(),
+            _ => new TaskResult(true, "late", null, [], TimeSpan.Zero) { EndedOnIterationCap = true });
+
+        var result = await Decorate(inner).ExecuteTaskAsync(
+            _agent, Task(new TaskRetryPolicy(2)), Context(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, result.RetryCount);
+        Assert.True(result.EndedOnIterationCap);
+    }
 }

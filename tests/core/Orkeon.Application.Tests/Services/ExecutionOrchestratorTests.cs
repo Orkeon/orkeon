@@ -470,36 +470,10 @@ public class ExecutionOrchestratorTests
 
     #region Iteration cap flag (CH-25)
 
-    /// <summary>Chat client that makes tool calls for a number of turns, then answers.</summary>
-    private sealed class ToolThenAnswerChatClient(int toolTurns, string answer) : Mea.IChatClient
-    {
-        private int _calls;
-
-        public System.Threading.Tasks.Task<Mea.ChatResponse> GetResponseAsync(
-            IEnumerable<Mea.ChatMessage> messages, Mea.ChatOptions? options = null, CancellationToken cancellationToken = default)
-        {
-            var turn = _calls++;
-            var message = turn < toolTurns
-                ? new Mea.ChatMessage(Mea.ChatRole.Assistant, [new Mea.FunctionCallContent($"c{turn}", "busy", arguments: null)])
-                : new Mea.ChatMessage(Mea.ChatRole.Assistant, answer);
-            return System.Threading.Tasks.Task.FromResult(new Mea.ChatResponse([message]));
-        }
-
-        public IAsyncEnumerable<Mea.ChatResponseUpdate> GetStreamingResponseAsync(
-            IEnumerable<Mea.ChatMessage> messages, Mea.ChatOptions? options = null, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public object? GetService(Type serviceType, object? serviceKey = null) => null;
-
-        public void Dispose()
-        {
-        }
-    }
-
     private static async System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult> RunWithToolTurnsAsync(int toolTurns)
     {
         var tool = new Orkeon.Application.Tests.Doubles.SpyTool("busy", result: "more work");
-        using var chatClient = new ToolThenAnswerChatClient(toolTurns, "the deliverable");
+        using var chatClient = new Orkeon.Application.Tests.Doubles.StubToolThenAnswerChatClient(toolTurns, "the deliverable");
         var orchestrator = new ExecutionOrchestrator(
             new TestLogger(), new TestLlmProvider(), chatClient,
             [tool], new FakeFileSystemService());

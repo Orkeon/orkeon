@@ -160,6 +160,42 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-39")]
+    public async System.Threading.Tasks.Task ShouldReplayNoCapFlag_WhenAnUncappedTaskIsResumed_Untyped()
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.False(replayed.EndedOnIterationCap);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-39")]
+    public async System.Threading.Tasks.Task ShouldReplayNoCapFlag_WhenAnUncappedTaskIsResumed_Typed()
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult<FakeTypedAgentExecutionService.Answer> replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.False(replayed.EndedOnIterationCap);
+    }
+
+    [Fact]
     [Trait("BR", "CH-29")]
     public async System.Threading.Tasks.Task ShouldReplayTheCapFlag_WhenACappedTypedTaskIsResumed()
     {
