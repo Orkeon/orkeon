@@ -215,7 +215,7 @@ internal static class ForgeTeamReader
     /// fixes the files. Never an exception for a malformed file.
     /// </summary>
     public static bool TryRead(
-        string crewDirectory, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string>? existingPaths = null)
+        string crewDirectory, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string> existingPaths)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(crewDirectory);
         blueprint = null;
@@ -258,10 +258,14 @@ internal static class ForgeTeamReader
         var agents = new Dictionary<string, AgentYamlConfig>(StringComparer.Ordinal);
         foreach (var (key, agent) in crew.Agents ?? [])
             agents[key] = agent;
+        var fileOf = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (key, path) in EntityFiles(Path.Combine(crewDirectory, "agents")))
         {
             if (!agents.ContainsKey(key) && Read<AgentYamlConfig>(serializer, path, problems) is { } agent)
+            {
                 agents[key] = agent;
+                fileOf[$"agents/{key}"] = $"agents/{Path.GetFileName(path)}";
+            }
         }
 
         var tasks = new Dictionary<string, TaskYamlConfig>(StringComparer.Ordinal);
@@ -270,7 +274,10 @@ internal static class ForgeTeamReader
         foreach (var (key, path) in EntityFiles(Path.Combine(crewDirectory, "tasks")))
         {
             if (!tasks.ContainsKey(key) && Read<TaskYamlConfig>(serializer, path, problems) is { } task)
+            {
                 tasks[key] = task;
+                fileOf[$"tasks/{key}"] = $"tasks/{Path.GetFileName(path)}";
+            }
         }
 
         if (problems.Count > 0)
@@ -312,10 +319,11 @@ internal static class ForgeTeamReader
             Rationale = "Plan read back from the team's crew files: what they describe, not what an assistant proposed.",
         };
 
-        var structural = candidate.Validate(existingPaths);
+        // A crew promoted before the hand-off rule still reopens: the rule is enforced at the next validation.
+        var structural = candidate.Validate(existingPaths, enforceHandOffs: false);
         if (structural.Count > 0)
         {
-            errors = [.. structural.Select(error => $"{Path.GetFileName(settingsPath)}: {error}")];
+            errors = [.. structural.Select(error => $"{OriginOf(error, fileOf, Path.GetFileName(settingsPath))}: {error}")];
             return false;
         }
 
@@ -323,6 +331,18 @@ internal static class ForgeTeamReader
         errors = [];
         return true;
     }
+
+    /// <summary>The file an entity error comes from: its own file for an entity read from one, else the settings file.</summary>
+    private static string OriginOf(string error, Dictionary<string, string> fileOf, string settingsFile)
+    {
+        var match = EntityError.Match(error);
+        return match.Success && fileOf.TryGetValue($"{match.Groups[1].Value}/{match.Groups[2].Value}", out var file)
+            ? file
+            : settingsFile;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex EntityError =
+        new(@"^(tasks|agents)\[\d+\] \('([^']*)'\)", System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
     /// <summary>The entity files of <paramref name="directory"/>, key = file stem, in a stable order.</summary>
     private static IEnumerable<(string Key, string Path)> EntityFiles(string directory)

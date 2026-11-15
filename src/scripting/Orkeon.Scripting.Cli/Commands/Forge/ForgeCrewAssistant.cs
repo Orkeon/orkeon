@@ -279,7 +279,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             language = LanguageOf(request),
             message = request.UserMessage,
             history,
-            brief = request.Brief,
+            brief = request.Brief is { } sent ? sent with { Folders = sent.Folders?.Select(static f => f with { Existing = [] }).ToList() } : null,
             previousBlueprint = request.PreviousBlueprint,
             errors = request.Errors,
             readTools = _readTools,

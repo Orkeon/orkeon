@@ -143,7 +143,7 @@ internal sealed record ForgeBlueprint
     };
 
     /// <summary>Parses a submitted blueprint; errors, never exceptions.</summary>
-    public static bool TryParse(string json, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string>? existingPaths = null)
+    public static bool TryParse(string json, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string> existingPaths)
     {
         blueprint = null;
 
@@ -182,7 +182,7 @@ internal sealed record ForgeBlueprint
     }
 
     /// <summary>The structural rules a blueprint must satisfy before compilation.</summary>
-    public IReadOnlyList<string> Validate(IReadOnlyCollection<string>? existingPaths = null)
+    public IReadOnlyList<string> Validate(IReadOnlyCollection<string> existingPaths, bool enforceHandOffs = true)
     {
         var errors = new List<string>();
 
@@ -190,7 +190,8 @@ internal sealed record ForgeBlueprint
         ValidateEntities(errors, Agents, "agents", static a => a.Key, ValidateAgent);
         ValidateEntities(errors, Tasks, "tasks", static t => t.Key, ValidateTask);
         ValidateReferences(errors);
-        ValidateHandOffs(errors, existingPaths);
+        if (enforceHandOffs)
+            ValidateHandOffs(errors, existingPaths);
 
         return errors;
     }
@@ -260,10 +261,10 @@ internal sealed record ForgeBlueprint
 
     /// <summary>
     /// A task names, in its description or expected output, only a deliverable-root file that is its
-    /// own deliverable, one a task it depends on (transitively, or any earlier task of a sequential
-    /// plan) declares, or one already present in an output folder.
+    /// own deliverable, one a task it depends on (transitively, whatever the process) declares, or one
+    /// already present in an output folder.
     /// </summary>
-    private void ValidateHandOffs(List<string> errors, IReadOnlyCollection<string>? existingPaths)
+    private void ValidateHandOffs(List<string> errors, IReadOnlyCollection<string> existingPaths)
     {
         var tasks = Tasks ?? [];
         var roots = tasks.Select(static t => DeliverableRoot(t.Deliverable)).OfType<string>().ToHashSet(StringComparer.Ordinal);
@@ -273,20 +274,13 @@ internal sealed record ForgeBlueprint
         var sequential = string.IsNullOrWhiteSpace(Crew?.Process)
             || string.Equals(Crew.Process.Trim(), "sequential", StringComparison.OrdinalIgnoreCase);
 
+        // Only the description and the expected output are scanned: goal and backstory are left as they are.
         for (var i = 0; i < tasks.Count; i++)
         {
             var task = tasks[i];
             var allowed = new HashSet<string>(StringComparer.Ordinal);
             if (task.Deliverable is { } own)
                 allowed.Add(own);
-            if (sequential)
-            {
-                foreach (var earlier in tasks.Take(i))
-                {
-                    if (earlier.Deliverable is { } path)
-                        allowed.Add(path);
-                }
-            }
 
             var visited = new HashSet<string>(StringComparer.Ordinal);
             var pending = new Stack<string>(task.Dependencies ?? []);
@@ -306,17 +300,23 @@ internal sealed record ForgeBlueprint
 
             foreach (var path in NamedPaths(roots, task.Description, task.ExpectedOutput).Distinct(StringComparer.Ordinal))
             {
-                if (!allowed.Contains(path) && existingPaths?.Contains(path) != true)
+                if (!allowed.Contains(path) && !existingPaths.Contains(path))
                 {
+                    var earlierWriter = sequential && tasks.Take(i).Any(t => string.Equals(t.Deliverable, path, StringComparison.Ordinal));
                     errors.Add(
                         $"tasks[{i}] ('{task.Key}'): names '{path}', which no task it depends on declares as its deliverable — "
+                        + (earlierWriter
+                            ? "being listed earlier is not enough: a reader must list its writer, directly or transitively, among its dependencies, whatever the process. "
+                            : string.Empty)
                         + "make it the deliverable of the task that writes it and list that task in dependencies.");
                 }
             }
         }
     }
 
-    private static readonly char[] PathEnd = [' ', '\t', '\r', '\n', '\'', '"', '`', '(', ')', '[', ']', '{', '}', '<', '>', ',', ';', '|'];
+    private static readonly char[] PathEnd = ['\'', '"', '`', '(', ')', '[', ']', '{', '}', '<', '>', ',', ';', '|', '«', '»', '“', '”', '‘', '’'];
+
+    private static readonly char[] PathStart = ['=', ':'];
 
     /// <summary>The concrete paths under a deliverable root that the texts name.</summary>
     private static IEnumerable<string> NamedPaths(HashSet<string> roots, params string?[] texts)
@@ -328,10 +328,13 @@ internal sealed record ForgeBlueprint
 
             for (var at = text.IndexOf('/', StringComparison.Ordinal); at >= 0; at = text.IndexOf('/', at + 1))
             {
-                if (at > 0 && Array.IndexOf(PathEnd, text[at - 1]) < 0)
+                var before = at > 0 ? text[at - 1] : ' ';
+                if (before == ':' && at >= 2 && char.IsLetter(text[at - 2]) && (at == 2 || !char.IsLetterOrDigit(text[at - 3])))
+                    continue; // a drive letter (C:/...), not a label
+                if (!char.IsWhiteSpace(before) && Array.IndexOf(PathEnd, before) < 0 && Array.IndexOf(PathStart, before) < 0)
                     continue;
 
-                var end = text.IndexOfAny(PathEnd, at);
+                var end = IndexOfPathEnd(text, at);
                 var candidate = text[at..(end < 0 ? text.Length : end)].TrimEnd('.', ':', '!', '?');
                 var slash = candidate.IndexOf('/', 1);
                 if (slash > 1
@@ -344,6 +347,17 @@ internal sealed record ForgeBlueprint
                 }
             }
         }
+    }
+
+    private static int IndexOfPathEnd(string text, int from)
+    {
+        for (var i = from; i < text.Length; i++)
+        {
+            if (char.IsWhiteSpace(text[i]) || Array.IndexOf(PathEnd, text[i]) >= 0)
+                return i;
+        }
+
+        return -1;
     }
 
     /// <summary>A task's agent and dependencies name an agent and tasks of the plan.</summary>

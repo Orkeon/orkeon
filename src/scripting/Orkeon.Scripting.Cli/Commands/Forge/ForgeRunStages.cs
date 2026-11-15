@@ -491,7 +491,7 @@ internal sealed class VerdictStage : IForgeStageRunner
             return false;
         }
 
-        if (ValidateEditedBlueprint(json, _knownTools, events, ForgeFolders.Of(session), ForgeFolders.ExistingPaths(session)) is not { } blueprint)
+        if (ValidateEditedBlueprint(json, _knownTools, events, ForgeFolders.ExistingPaths(session), ForgeFolders.Of(session)) is not { } blueprint)
             return false;
 
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint);
@@ -509,10 +509,10 @@ internal sealed class VerdictStage : IForgeStageRunner
     /// <c>forge resume --edit</c> at the dry pause.
     /// </summary>
     internal static ForgeBlueprint? ValidateEditedBlueprint(
-        string json, IReadOnlyCollection<string> knownTools, ForgeEventWriter events, IReadOnlyList<ForgeFolder>? folders = null,
-        IReadOnlyCollection<string>? existingPaths = null)
+        string json, IReadOnlyCollection<string> knownTools, ForgeEventWriter events, IReadOnlyCollection<string> existingPaths,
+        IReadOnlyList<ForgeFolder>? folders = null)
     {
-        if (!ForgeBlueprint.TryParse(json, out var blueprint, out var errors, existingPaths ?? ForgeFolders.ExistingPaths(folders)))
+        if (!ForgeBlueprint.TryParse(json, out var blueprint, out var errors, existingPaths))
         {
             events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", errors), recoverable: true);
             return null;

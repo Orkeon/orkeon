@@ -34,7 +34,7 @@ internal sealed class ForgeSubmissionBox
     }
 
     /// <summary>The files the brief's folders already hold; the assistant sets it before each turn.</summary>
-    public IReadOnlyCollection<string>? ExistingPaths { get; set; }
+    public IReadOnlyCollection<string> ExistingPaths { get; set; } = [];
 
     /// <summary>Empties the box; the assistant wrapper calls this before every turn.</summary>
     public void Reset()

@@ -349,6 +349,58 @@ public sealed class ForgeStagesTests : IDisposable
         Assert.Null(folders[1].Large);
     }
 
+    [Fact]
+    [Trait("BR", "CH-37")]
+    public async Task ShouldFillLargeFilesAndExistingFiles_ForABoundFolder()
+    {
+        var session = ForgeSession.Create(_workspace, "fill-bound");
+        var bound = Path.Combine(_workspace, "user-bound");
+        Directory.CreateDirectory(Path.Combine(bound, "sub"));
+        await File.WriteAllBytesAsync(Path.Combine(bound, "big.bin"), new byte[200 * 1024], TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(bound, "sub", "note.txt"), "x", TestContext.Current.CancellationToken);
+        var channel = new ScriptedUserChannel().ConfirmsFolders(
+        [
+            new ForgeFolder { Path = "/held", Role = "output", Purpose = "kept in the team" },
+            new ForgeFolder { Path = "/bound", Role = "input", Purpose = "the user's files", Directory = bound },
+        ]);
+
+        await Engine(session, new BriefStage(new ScriptedAssistant().SubmitsBrief(ForgeDocuments.ValidBrief), channel))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        var folders = Assert.IsType<ForgeBrief>(session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)).Folders!;
+        var folder = Assert.Single(folders, f => f.Path == "/bound");
+        Assert.Equal("big.bin", Assert.Single(folder.Large!).Name);
+        Assert.Equal(["big.bin", "sub/note.txt"], folder.Existing.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-37")]
+    public async Task ShouldAcceptAPlan_WhenTheNamedFileIsNestedOrPastTheFortiethEntryOfAnOutputFolder()
+    {
+        var session = ForgeSession.Create(_workspace, "fill-past-cap");
+        var root = "";
+        var channel = new ScriptedUserChannel
+        {
+            WhileFilling = held =>
+            {
+                root = held[0].Path!.TrimEnd('/');
+                var directory = held[0].Directory!;
+                Directory.CreateDirectory(Path.Combine(directory, "sub"));
+                for (var i = 0; i < 45; i++)
+                    File.WriteAllText(Path.Combine(directory, $"f{i:00}.txt"), "x");
+                File.WriteAllText(Path.Combine(directory, "sub", "deep.txt"), "x");
+            },
+        };
+
+        await Engine(session, new BriefStage(new ScriptedAssistant().SubmitsBrief(ForgeDocuments.ValidBrief), channel))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        var existing = ForgeFolders.ExistingPaths(session);
+        Assert.Contains($"{root}/sub/deep.txt", existing);
+        Assert.Contains($"{root}/f44.txt", existing);
+        Assert.Equal(46, existing.Count(p => p.StartsWith(root + "/", StringComparison.Ordinal)));
+    }
+
     /// <summary>
     /// The owner's report, on a screenshot of step 1 mid-interview: still no live view of
     /// the tokens exchanged. The meter was emitted by the ENGINE, once a stage returned — and an

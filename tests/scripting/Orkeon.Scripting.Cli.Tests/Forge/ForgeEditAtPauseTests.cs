@@ -35,7 +35,7 @@ public sealed class ForgeEditAtPauseTests : IDisposable
     private ForgeSession CreateSessionAtDryPause()
     {
         var session = ForgeSession.Create(_workspace, "veille");
-        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _));
+        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _, []));
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
         session.Document.Budget.RegisterIteration();
         session.Document.Iteration = 1;
@@ -100,6 +100,7 @@ public sealed class ForgeEditAtPauseTests : IDisposable
 
     [Fact]
     [Trait("BR", "CH-34")]
+    [Trait("BR", "CH-37")]
     public async Task ShouldAcceptTheEditedPlan_WhenTheBriefOfTheSessionListsTheNamedFile()
     {
         var settings = WriteSettings();
@@ -108,7 +109,7 @@ public sealed class ForgeEditAtPauseTests : IDisposable
         // The fill step filled Contents on the brief; the confirmed folders.json list never carries them.
         session.SaveArtifact(ForgeSession.BriefFileName, brief! with
         {
-            Folders = [new ForgeFolder { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"] }],
+            Folders = [new ForgeFolder { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"], Existing = ["template.md"] }],
         });
         session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList
         {

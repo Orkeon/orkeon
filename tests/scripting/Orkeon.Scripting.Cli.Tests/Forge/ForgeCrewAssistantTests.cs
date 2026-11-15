@@ -405,6 +405,33 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.Contains("design the tasks for them", header, StringComparison.Ordinal);
     }
 
+    [Fact]
+    [Trait("BR", "CH-37")]
+    public async Task ShouldNotSendTheExistingFileList_InTheDesignerInputs()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        brief = brief! with
+        {
+            Folders =
+            [
+                new ForgeFolder { Path = "/workspace", Role = "input", Purpose = "Les offres", Contents = ["alpha.md", "sub/"], Existing = ["alpha.md", "sub/beta.md"] },
+                new ForgeFolder { Path = "/output", Role = "output", Purpose = "Les resumes" },
+            ],
+        };
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        var sent = string.Join("\n", provider.Chats[0].Select(m => m.Content));
+        Assert.Contains("alpha.md", sent, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"existing\"", sent, StringComparison.Ordinal);
+        Assert.DoesNotContain("sub/beta.md", sent, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// D-03, measured: the same composition with and without the same use case. The reference
     /// adds its section to the stable header and nothing else, within the bound of its outline
@@ -514,12 +541,13 @@ public sealed class ForgeCrewAssistantTests : IDisposable
 
     [Fact]
     [Trait("BR", "CH-34")]
+    [Trait("BR", "CH-37")]
     public async Task ShouldAcceptAPlanNamingAnExistingOutputFile_WhenTheBriefListsItInItsContents()
     {
         Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
         brief = brief! with
         {
-            Folders = [new ForgeFolder { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"] }],
+            Folders = [new ForgeFolder { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"], Existing = ["template.md"] }],
         };
         var json = ForgeDocuments.ValidBlueprint.Replace(
             "Rédiger le résumé\", \"expectedOutput", "Fill /output/template.md then write the summary\", \"expectedOutput", StringComparison.Ordinal);

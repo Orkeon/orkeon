@@ -671,7 +671,7 @@ public sealed class ForgeFoldersTests : IDisposable
     [Fact]
     public void A_deliverable_under_a_confirmed_output_is_accepted_and_one_elsewhere_is_refused()
     {
-        Assert.True(ForgeBlueprint.TryParse(PdfBlueprint, out var blueprint, out _));
+        Assert.True(ForgeBlueprint.TryParse(PdfBlueprint, out var blueprint, out _, []));
         IReadOnlyList<ForgeFolder> folders = [Folder("/inpdf", "input"), Folder("/outmd", "output")];
 
         var accepted = ForgeBlueprintCompiler.Validate(
@@ -703,7 +703,7 @@ public sealed class ForgeFoldersTests : IDisposable
         var session = ForgeSession.Create(_workspace, "promote");
         Assert.True(ForgeBrief.TryParse(PdfBrief, out var brief, out _));
         session.SaveArtifact(ForgeSession.BriefFileName, brief!);
-        Assert.True(ForgeBlueprint.TryParse(PdfBlueprint, out var blueprint, out _));
+        Assert.True(ForgeBlueprint.TryParse(PdfBlueprint, out var blueprint, out _, []));
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
         IReadOnlyList<ForgeFolder> folders = [Folder("/inpdf", "input"), Folder("/outmd", "output")];
         session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList { Folders = folders });

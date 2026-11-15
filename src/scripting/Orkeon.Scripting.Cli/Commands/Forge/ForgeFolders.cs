@@ -49,6 +49,20 @@ internal sealed record ForgeFolder
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<ForgeLargeFile>? Large { get; init; }
 
+    /// <summary>Every file under the folder, relative with <c>/</c> separators, uncapped up to 10 000; set by the fill step.</summary>
+    [JsonIgnore]
+    internal IReadOnlyList<string> Existing { get; init; } = [];
+
+    /// <summary>The wire form of <see cref="Existing"/>: absent when empty.</summary>
+    [JsonInclude]
+    [JsonPropertyName("existing")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    internal IReadOnlyList<string>? ExistingOnWire
+    {
+        get => Existing.Count > 0 ? Existing : null;
+        init => Existing = value ?? [];
+    }
+
     /// <summary>Whether the team only reads this folder.</summary>
     [JsonIgnore]
     public bool IsInput => string.Equals(Role, ForgeFolders.InputRole, StringComparison.Ordinal);
@@ -319,43 +333,59 @@ internal static class ForgeFolders
     /// <summary>Bytes from which a file is large (128 KiB).</summary>
     public const long LargeFileBytes = 128 * 1024;
 
+    /// <summary>The most files <see cref="Survey"/> lists in <see cref="ForgeFolder.Existing"/>; a bound tree may be huge.</summary>
+    public const int MaxExisting = 10_000;
+
     /// <summary>
     /// The files under <paramref name="directory"/> of <see cref="LargeFileBytes"/> or more, by
     /// relative path with <c>/</c> separators, largest first, at most <see cref="MaxContents"/>.
     /// Empty when the folder is gone.
     /// </summary>
-    public static IReadOnlyList<ForgeLargeFile> LargeFiles(string directory)
+    public static IReadOnlyList<ForgeLargeFile> LargeFiles(string directory) => Survey(directory).Large;
+
+    /// <summary>
+    /// One walk of <paramref name="directory"/>: its large files (<see cref="LargeFiles"/>) and
+    /// every file, relative with <c>/</c> separators, up to <see cref="MaxExisting"/>. An entry
+    /// this process cannot read is skipped; both are empty when the folder is gone.
+    /// </summary>
+    public static (IReadOnlyList<ForgeLargeFile> Large, IReadOnlyList<string> Existing) Survey(string directory)
     {
         ArgumentException.ThrowIfNullOrEmpty(directory);
         if (!System.IO.Directory.Exists(directory))
-            return [];
+            return ([], []);
 
         var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = 0 };
         var found = new List<ForgeLargeFile>();
-        try
+        var existing = new List<string>();
+        using var files = new System.IO.DirectoryInfo(directory).EnumerateFiles("*", options).GetEnumerator();
+        while (true)
         {
-            foreach (var file in new System.IO.DirectoryInfo(directory).EnumerateFiles("*", options))
+            try
             {
-                if (file.Length >= LargeFileBytes)
-                    found.Add(new ForgeLargeFile
-                    {
-                        Name = System.IO.Path.GetRelativePath(directory, file.FullName).Replace('\\', '/'),
-                        Bytes = file.Length,
-                    });
+                if (!files.MoveNext())
+                    break;
+
+                var file = files.Current;
+                var relative = System.IO.Path.GetRelativePath(directory, file.FullName).Replace('\\', '/');
+                var length = file.Length;
+                if (existing.Count < MaxExisting)
+                    existing.Add(relative);
+                if (length >= LargeFileBytes)
+                    found.Add(new ForgeLargeFile { Name = relative, Bytes = length });
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // this entry is skipped; the walk goes on with the next one
             }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // what was read so far stands
-        }
 
-        return [.. found.OrderByDescending(f => f.Bytes).ThenBy(f => f.Name, StringComparer.Ordinal).Take(MaxContents)];
+        return ([.. found.OrderByDescending(f => f.Bytes).ThenBy(f => f.Name, StringComparer.Ordinal).Take(MaxContents)], existing);
     }
 
     /// <summary>Every file the folders already hold, as <c>&lt;folder&gt;/&lt;entry&gt;</c>.</summary>
     public static List<string> ExistingPaths(IEnumerable<ForgeFolder>? folders) =>
         [.. (folders ?? []).Where(static f => f.Path is not null)
-            .SelectMany(static f => (f.Contents ?? []).Select(entry => $"{f.Path!.TrimEnd('/')}/{entry}"))];
+            .SelectMany(static f => f.Existing.Select(entry => $"{f.Path!.TrimEnd('/')}/{entry}"))];
 
     /// <summary>Every file the session's filled brief records in its folders, as <c>&lt;folder&gt;/&lt;entry&gt;</c>.</summary>
     public static List<string> ExistingPaths(ForgeSession session) =>

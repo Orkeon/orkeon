@@ -30,7 +30,7 @@ public sealed class ForgeScriptRendererTests : IDisposable
 
     private static ForgeBlueprint Parse(string json)
     {
-        Assert.True(ForgeBlueprint.TryParse(json, out var blueprint, out var errors), string.Join("; ", errors));
+        Assert.True(ForgeBlueprint.TryParse(json, out var blueprint, out var errors, []), string.Join("; ", errors));
         return blueprint!;
     }
 
