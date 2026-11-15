@@ -522,7 +522,7 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `orkeon run <crew> --resume <id>|latest` continue le run `<id>` (l'id qu'imprime un run échoué :
   `Run <id> did not complete. Resume it ...`), ou le dernier run de ce fichier de crew qui n'est pas terminé (et pas encore marqué `Running` : `latest` ne reprend pas un run qui peut être vivant dans un autre processus, le magasin ne tient aucun bail ; nommer son id pour le reprendre) : le run
   garde son id, les tâches qu'il avait terminées reviennent du checkpoint (`task.completed` porte
-  `resumed: true`, aucun modèle n'est interrogé), les autres s'exécutent. Avec sa sortie, un checkpoint garde une empreinte de la tâche (description, sortie attendue, agent, dépendances) : une tâche modifiée depuis est rejouée avec chaque tâche qui la suit, et un avertissement la nomme. Il demande
+  `resumed: true`, aucun modèle n'est interrogé ; une tâche qui s'était terminée sur son plafond d'itérations revient avec `endedOnIterationCap: true`), les autres s'exécutent. Avec sa sortie, un checkpoint garde une empreinte de la tâche (description, sortie attendue, agent, dépendances) : une tâche modifiée depuis est rejouée avec chaque tâche qui la suit, et un avertissement la nomme. Il demande
   `Orkeon:Checkpointing:Enabled=true` et est refusé avec `--validate`, avec `--list-tools`, sur un `.ork.ts`
   procédural et, avec `--events`, sans id de run explicite. Dans un hôte écrit en C#, passer
   `KickoffOptions.Resume` (`"latest"` ou l'id). Les noms de tâche sont uniques dans une crew.

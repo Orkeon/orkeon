@@ -13,17 +13,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the provider-aware `TryGetPricing(string? provider, string model)` and `CalculateCost(string? provider, string model, ...)`
   overloads, as default interface methods that delegate to the existing members: an implementation of your own still
   compiles. `Orkeon:CostTracking:CustomPricings:<i>:Provider` sets it from the settings (#383).
+- `TaskResult.EndedOnIterationCap`, `TaskExecutionSnapshot.EndedOnIterationCap` and `CrewExecutionEvent.EndedOnIterationCap`
+  (all `bool`, `false` by default, `init` properties) mark a task whose answer came from the tool-free turn after the agent
+  loop's iteration cap. The task keeps `Success` and `AgentExitReason.Completed`: the flag sits beside them, it is no new
+  enum member. The `task.completed` line of `orkeon run --events` carries it as `endedOnIterationCap` (always written, the
+  last key), the forge trial's `task.completed` too, and a resumed capped task replays it from its checkpoint. The typed
+  `TaskResult<TOutput>` has no such flag (#388).
 
 ### Fixed
 
 - A project that references `Orkeon.Scripting` or `Orkeon.Tools.Embeddings.Local` with `ExcludeAssets="build"` now builds
   offline and its host starts: the local embedder is built once, at the first embedding, and the embedded model reports its
   384 dimensions without loading. A missing model fails the first local embedding with an `InvalidOperationException` that
-  names `LocalEmbeddingsModel/default/model.onnx` and the exclusion. A Slow end-to-end test pins the opt-out (#376).
-- `orkeon forge` and `orkeon rag` record the embedding fingerprint where they can write: `/forge/embedding-fingerprint.json`
-  and `/output/rag/embedding-fingerprint.json` (`{cwd}/.orkeon/rag/embedding-fingerprint.json` on disk) become the default of
-  `Orkeon:Embeddings:FingerprintPath` at the lowest precedence, so an explicit setting still wins. A first write that a
-  read-only mount denies is logged at Debug instead of Warning; any other failure still warns (#381).
+  names `LocalEmbeddingsModel/default/model.onnx` and the exclusion. Put `ExcludeAssets="build"` on every reference that
+  reaches the package, `Orkeon.Scripting` and `Orkeon.Tools.Embeddings.Local` alike: NuGet unions the flags, so one reference
+  without it keeps the model download. A Slow end-to-end test pins both (#376).
+- The embedding model guard no longer warns where it cannot act (#381). `orkeon forge` records its fingerprint per session,
+  at `/forge/embedding-fingerprint.json` (the default of `Orkeon:Embeddings:FingerprintPath` at the lowest precedence: an
+  explicit setting still wins), so it guards nothing across sessions. `orkeon rag` uses no host fingerprint (its default
+  `FingerprintPath` is empty): the manifest of each collection refuses a model change on `ingest`, on `search` and on
+  `eval rag --no-ingest -c`, with one line that names the collection, both models and `orkeon rag ingest --reindex`, which
+  rebuilds the collection and is no longer blocked. `eval rag` without `-c`, or with its ingest pre-pass, has no check of
+  its own: the harness resolves the collection and the pre-pass rebuilds it. Every warning of the guard names
+  `Orkeon:Embeddings:FingerprintPath`. A read-only `/workspace` with no fingerprint recorded (a promoted reading team) is quiet: a first write that a
+  read-only mount denies is logged at Debug; any other failure still warns. A run whose `FingerprintPath` lies under no mount
+  (no `/workspace`) skips the guard at Debug, with no "Access denied" line and no Warning.
 - The forge assistant's `orkeon.crew.process` tag changes from `autonomous` to `sequential`: the pack no longer declares a
   process the runtime ignores (#382).
 - Every paid provider's default model is priced: DeepSeek, Z.AI, Kimi, Qwen, Gemini, Mistral, Grok and MiniMax, and the
@@ -34,6 +48,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `SECURITY` line of the shell interpreters is logged once per host, at the first `shell_command` call validated once
   interpreters are enabled, instead of at construction and listing of `shell_command`. It states the confinement in force:
   the backend, or `none` with its reason (a container, `Mode = None`), or `unavailable` when every call fails (#384).
+- A blank model id under `Llm:ModelCapabilities` (`""`, `" "` or a key `:Vision`) is a settings refusal naming
+  `Llm:ModelCapabilities`, whatever the entry holds: the host build refuses it, and `orkeon run`, `--validate` and
+  `--list-tools` print the settings error and exit 1 (#385).
+- `orkeon doctor` no longer reports a missing `tsc` as a warning when nothing needs it. A `tsc` found nowhere is `ok` under
+  `Orkeon:Scripting:Toolchain:TypeCheck` `Off` and `Validate`, its detail saying it is optional, and `fail` under `Always`,
+  its detail naming `npm install -g typescript` and `TscPath` before any checkout bootstrap. A configured `TscPath` that does
+  not exist stays `warn` under `Off` and `Validate` and is `fail` under `Always`. A `fail` makes `orkeon doctor` exit 1 (#387).
+- A task that ends on its iteration cap says so (#388). The tool-free turn after the cap tells the agent that tools are no
+  longer available and asks it to state what it could not do (a file it did not write); an agent with two iterations left is
+  told so once, while it can still act (nothing is sent when the cap is two or less); and the run summary labels the task
+  `⚠ completed on its iteration cap`, next to `⊘ skipped`.
 
 ## [1.1.0] - 2026-11-15
 

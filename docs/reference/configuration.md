@@ -127,6 +127,9 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   a host without the ONNX reranker refuses `balanced` and `quality`, naming `onnx`;
   `Orkeon:Rag:QueryRouting:Classifier`; `Orkeon:Embeddings:Provider`;
   `RaggableTree:Embedding:Provider`. A YAML crew's `memoryProvider:` is checked when the crew loads.
+- **A blank model id**: an entry of `Llm:ModelCapabilities` named `""` or `" "`, or `:Vision` (a key with
+  no id before its field), whatever it holds, is refused with `Llm:ModelCapabilities: an entry has no
+  model id; name each entry by the model it describes.`
 
 **What stays open**: the configuration root — it also holds the environment variables without a
 prefix, and nothing tells a misspelt section there from a variable of the machine —, `Logging`
@@ -944,10 +947,12 @@ registers, `ollama`, `mistral`, `azure-openai` or `gemini`; another name refuses
 three speak the OpenAI embeddings wire format and read `ApiKey` (or `ApiKeyEnvVar`), `Endpoint` and
 `Model`; `azure-openai` also needs `Endpoint` (the resource URL) and takes the deployment name as
 `Model`. At start the host compares the provider, model and dimensions with the ones recorded at
-`FingerprintPath` and refuses to start when they changed. `orkeon forge` and `orkeon rag` default
-`FingerprintPath` to a mount they can write (`/forge/embedding-fingerprint.json`,
-`/output/rag/embedding-fingerprint.json`); a value set in the settings wins, and a first write that
-a read-only mount denies is logged at Debug. Read by
+`FingerprintPath` and refuses to start when they changed. `orkeon forge` defaults `FingerprintPath`
+to `/forge/embedding-fingerprint.json`, recorded per session, so it guards nothing across sessions;
+`orkeon rag` sets it empty and guards each collection through its manifest instead (`ingest`,
+`search` and `eval rag --no-ingest -c`; `--reindex` rebuilds). A value set in the settings wins. A
+path under no mount skips the guard at Debug, and a first write that a read-only mount denies is
+logged at Debug. Read by
 `DefaultEmbeddingProviderResolver`, when no local or code-analysis provider is registered. Bound
 by `AddOrkeonInfrastructure()`, and by `AddOrkeonVectorSearch(configuration)` (called by
 `AddOrkeonInfrastructure(configuration)`).

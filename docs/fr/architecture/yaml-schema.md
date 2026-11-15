@@ -482,7 +482,7 @@ lisait. Le bloc de crew n'était lu que par le mode Graph, où le bloc `graph:` 
 les trois mêmes limites effectives.
 
 Ce qui borne une tâche, c'est sa boucle d'agent : le `maxIter` de l'agent, l'arrêt après trois
-erreurs d'outil identiques consécutives, et les reprises de validation de sortie. Ce qui borne un
+erreurs d'outil identiques consécutives, et les reprises de validation de sortie. Un agent à deux itérations de son plafond en est prévenu une fois, tant qu'il peut agir (rien n'est envoyé quand `maxIter` vaut 2 ou moins) ; celui qui atteint `maxIter` reçoit un dernier tour sans outil qui lui demande de dire ce qu'il n'a pas pu faire, et sa tâche garde `Success` mais porte le drapeau `endedOnIterationCap`. Ce qui borne un
 run de graphe, c'est `graph:` (ci-dessus). Le moteur générique de machine d'états et
 `CircuitBreakerPolicy` restent — le mode Graph, `orkeon forge` et le graphe RAG correctif s'en
 servent (voir [FSM](../orchestration/fsm.md)).

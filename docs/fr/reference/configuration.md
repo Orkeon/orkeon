@@ -136,6 +136,9 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   qu'un hôte sans le reranker ONNX refuse `balanced` et `quality` en nommant `onnx` ;
   `Orkeon:Rag:QueryRouting:Classifier` ; `Orkeon:Embeddings:Provider` ;
   `RaggableTree:Embedding:Provider`. Le `memoryProvider:` d'une crew YAML est vérifié à son chargement.
+- **Un identifiant de modèle vide** : une entrée de `Llm:ModelCapabilities` nommée `""` ou `" "`, ou
+  `:Vision` (une clé sans identifiant avant son champ), quoi qu'elle contienne, est refusée avec
+  `Llm:ModelCapabilities: an entry has no model id; name each entry by the model it describes.`
 
 **Ce qui reste ouvert** : la racine de la configuration — elle reçoit aussi les variables
 d'environnement sans préfixe, et rien n'y distingue une section mal écrite d'une variable de la
@@ -975,11 +978,12 @@ qu'inscrit l'hôte, `ollama`, `mistral`, `azure-openai` ou `gemini` ; un autre n
 Les trois derniers parlent le format d'embeddings d'OpenAI et lisent `ApiKey` (ou `ApiKeyEnvVar`),
 `Endpoint` et `Model` ; `azure-openai` exige aussi `Endpoint` (l'URL de la ressource) et prend le nom
 du déploiement comme `Model`. Au démarrage, l'hôte compare le provider, le modèle et les dimensions à
-ceux consignés dans `FingerprintPath` et refuse de démarrer s'ils ont changé. `orkeon forge` et
-`orkeon rag` prennent par défaut, pour `FingerprintPath`, un montage qu'ils peuvent écrire
-(`/forge/embedding-fingerprint.json`, `/output/rag/embedding-fingerprint.json`) ; une valeur posée
-dans les settings l'emporte, et une première écriture qu'un montage en lecture seule refuse est
-journalisée en Debug. Lue par
+ceux consignés dans `FingerprintPath` et refuse de démarrer s'ils ont changé. `orkeon forge` prend
+par défaut, pour `FingerprintPath`, `/forge/embedding-fingerprint.json`, consigné par session : il ne
+garde donc rien d'une session à l'autre ; `orkeon rag` le vide et garde chaque collection par son
+manifeste (`ingest`, `search` et `eval rag --no-ingest -c` ; `--reindex` reconstruit). Une valeur
+posée dans les settings l'emporte. Un chemin sous aucun montage désactive le garde-fou en Debug, et
+une première écriture qu'un montage en lecture seule refuse est journalisée en Debug. Lue par
 `DefaultEmbeddingProviderResolver`, quand aucun provider local ni d'analyse de code n'est inscrit.
 Liée par `AddOrkeonInfrastructure()`, et par `AddOrkeonVectorSearch(configuration)` (appelé par
 `AddOrkeonInfrastructure(configuration)`).
