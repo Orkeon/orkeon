@@ -214,7 +214,8 @@ internal static class ForgeTeamReader
     /// valid plan (<see cref="ForgeBlueprint.Validate"/>) — the caller lists them, the user
     /// fixes the files. Never an exception for a malformed file.
     /// </summary>
-    public static bool TryRead(string crewDirectory, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors)
+    public static bool TryRead(
+        string crewDirectory, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string>? existingPaths = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(crewDirectory);
         blueprint = null;
@@ -311,7 +312,7 @@ internal static class ForgeTeamReader
             Rationale = "Plan read back from the team's crew files: what they describe, not what an assistant proposed.",
         };
 
-        var structural = candidate.Validate();
+        var structural = candidate.Validate(existingPaths);
         if (structural.Count > 0)
         {
             errors = [.. structural.Select(error => $"{Path.GetFileName(settingsPath)}: {error}")];
@@ -397,14 +398,14 @@ internal static class ForgeSessionRebuilder
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
         var crewDirectory = Path.Combine(teamDirectory, ForgeYamlRenderer.CrewDirectoryName);
-        if (!ForgeTeamReader.TryRead(crewDirectory, out var blueprint, out var errors))
+        var record = ForgeTeamRecord.TryRead(teamDirectory);
+        if (!ForgeTeamReader.TryRead(crewDirectory, out var blueprint, out var errors, ForgeFolders.ExistingPaths(record?.Brief?.Folders)))
         {
             throw new InvalidOperationException(
                 $"'{teamDirectory}' holds no crew the forge can read back into a plan:"
                 + string.Concat(errors.Select(error => $"\n  - {error}")));
         }
 
-        var record = ForgeTeamRecord.TryRead(teamDirectory);
         var briefSource = record?.Brief is { } recorded && recorded.Validate().Count == 0
             ? ForgeBriefSource.Recorded
             : ForgeBriefSource.Derived;

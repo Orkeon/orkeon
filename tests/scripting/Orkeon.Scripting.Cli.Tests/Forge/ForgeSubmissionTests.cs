@@ -113,4 +113,21 @@ public class ForgeSubmissionTests
 
         Assert.Equal(175, tally.TotalTokens);
     }
+
+    [Fact]
+    [Trait("BR", "CH-34")]
+    public async Task ShouldAcceptAPlan_WhenTheNamedFileAlreadyExistsInAnOutputFolder_ThroughBlueprintSubmit()
+    {
+        var box = new ForgeSubmissionBox();
+        box.ExistingPaths = ["/output/template.md"];
+        var tool = new BlueprintSubmitTool(box);
+        var json = ForgeDocuments.ValidBlueprint.Replace(
+            "Rédiger le résumé\", \"expectedOutput", "Fill /output/template.md then write the summary\", \"expectedOutput", StringComparison.Ordinal);
+        Assert.Contains("Fill /output/template.md", json, StringComparison.Ordinal);
+
+        var accepted = await tool.ExecuteAsync(json, TestContext.Current.CancellationToken);
+
+        Assert.Equal("Blueprint submitted. Do not call blueprint_submit again.", accepted.Output);
+        Assert.NotNull(box.Take().Item2);
+    }
 }

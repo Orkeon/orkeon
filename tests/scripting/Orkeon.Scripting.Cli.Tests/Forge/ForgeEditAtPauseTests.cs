@@ -99,6 +99,37 @@ public sealed class ForgeEditAtPauseTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-34")]
+    public async Task ShouldAcceptTheEditedPlan_WhenTheBriefOfTheSessionListsTheNamedFile()
+    {
+        var settings = WriteSettings();
+        var session = CreateSessionAtDryPause();
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        // The fill step filled Contents on the brief; the confirmed folders.json list never carries them.
+        session.SaveArtifact(ForgeSession.BriefFileName, brief! with
+        {
+            Folders = [new ForgeFolder { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"] }],
+        });
+        session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList
+        {
+            Folders = [new ForgeFolder { Path = "/output", Role = "output", Purpose = "The results" }],
+            Filled = true,
+        });
+        var amended = ForgeDocuments.ValidBlueprint.Replace(
+            "Rédiger le résumé\", \"expectedOutput", "Fill /output/template.md then write the summary\", \"expectedOutput", StringComparison.Ordinal);
+        Assert.Contains("Fill /output/template.md", amended, StringComparison.Ordinal);
+        using var console = new TestConsole(stdin: BlueprintLine(amended) + Environment.NewLine);
+
+        var exitCode = await ForgeCommand.DispatchAsync(console,
+            ["resume", "veille", "--edit", "--dry", "--events", "jsonl", "--settings", settings], _workspace);
+
+        Assert.Equal(0, exitCode);
+        Assert.DoesNotContain("FORGE-BLUEPRINT-INVALID", console.Stdout, StringComparison.Ordinal);
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "veille", out var reloaded, out _));
+        Assert.Contains("template.md", reloaded!.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName)!.Tasks![1].Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task An_invalid_edit_leaves_the_session_exactly_at_its_pause()
     {
         var settings = WriteSettings();

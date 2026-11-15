@@ -382,6 +382,24 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.Empty(ForgeFolders.Inventory(Path.Combine(_workspace, "absent")));
     }
 
+    [Fact]
+    [Trait("BR", "CH-33")]
+    public void ShouldListLargeFiles_WithTheirSize()
+    {
+        var directory = Path.Combine(_workspace, "big");
+        Directory.CreateDirectory(Path.Combine(directory, "sub"));
+        File.WriteAllBytes(Path.Combine(directory, "small.txt"), new byte[1024]);
+        File.WriteAllBytes(Path.Combine(directory, "mid.bin"), new byte[200 * 1024]);
+        File.WriteAllBytes(Path.Combine(directory, "sub", "huge.bin"), new byte[500 * 1024]);
+        File.WriteAllBytes(Path.Combine(directory, "edge.bin"), new byte[(int)ForgeFolders.LargeFileBytes]);
+
+        var large = ForgeFolders.LargeFiles(directory);
+
+        Assert.Equal(["sub/huge.bin", "mid.bin", "edge.bin"], large.Select(f => f.Name));
+        Assert.Equal([500L * 1024, 200L * 1024, 128L * 1024], large.Select(f => f.Bytes));
+        Assert.Empty(ForgeFolders.LargeFiles(Path.Combine(_workspace, "absent")));
+    }
+
     [Theory]
     [InlineData("/forge")]
     [InlineData("/credentials")]

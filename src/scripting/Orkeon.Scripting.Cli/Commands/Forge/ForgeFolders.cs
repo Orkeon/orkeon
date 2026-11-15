@@ -44,6 +44,11 @@ internal sealed record ForgeFolder
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? Contents { get; init; }
 
+    /// <summary>The files of <see cref="ForgeFolders.LargeFileBytes"/> or more, largest first; null when none. Set by the fill step.</summary>
+    [JsonPropertyName("large")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<ForgeLargeFile>? Large { get; init; }
+
     /// <summary>Whether the team only reads this folder.</summary>
     [JsonIgnore]
     public bool IsInput => string.Equals(Role, ForgeFolders.InputRole, StringComparison.Ordinal);
@@ -311,6 +316,51 @@ internal static class ForgeFolders
         return kept;
     }
 
+    /// <summary>Bytes from which a file is large (128 KiB).</summary>
+    public const long LargeFileBytes = 128 * 1024;
+
+    /// <summary>
+    /// The files under <paramref name="directory"/> of <see cref="LargeFileBytes"/> or more, by
+    /// relative path with <c>/</c> separators, largest first, at most <see cref="MaxContents"/>.
+    /// Empty when the folder is gone.
+    /// </summary>
+    public static IReadOnlyList<ForgeLargeFile> LargeFiles(string directory)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(directory);
+        if (!System.IO.Directory.Exists(directory))
+            return [];
+
+        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = 0 };
+        var found = new List<ForgeLargeFile>();
+        try
+        {
+            foreach (var file in new System.IO.DirectoryInfo(directory).EnumerateFiles("*", options))
+            {
+                if (file.Length >= LargeFileBytes)
+                    found.Add(new ForgeLargeFile
+                    {
+                        Name = System.IO.Path.GetRelativePath(directory, file.FullName).Replace('\\', '/'),
+                        Bytes = file.Length,
+                    });
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // what was read so far stands
+        }
+
+        return [.. found.OrderByDescending(f => f.Bytes).ThenBy(f => f.Name, StringComparer.Ordinal).Take(MaxContents)];
+    }
+
+    /// <summary>Every file the folders already hold, as <c>&lt;folder&gt;/&lt;entry&gt;</c>.</summary>
+    public static List<string> ExistingPaths(IEnumerable<ForgeFolder>? folders) =>
+        [.. (folders ?? []).Where(static f => f.Path is not null)
+            .SelectMany(static f => (f.Contents ?? []).Select(entry => $"{f.Path!.TrimEnd('/')}/{entry}"))];
+
+    /// <summary>Every file the session's filled brief records in its folders, as <c>&lt;folder&gt;/&lt;entry&gt;</c>.</summary>
+    public static List<string> ExistingPaths(ForgeSession session) =>
+        ExistingPaths(session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)?.Folders);
+
     /// <summary>
     /// The list a session's team uses: the confirmed one — empty included, when the user kept
     /// no folder at all; for a session that never confirmed one — rebuilt by
@@ -417,4 +467,14 @@ internal static class ForgeFolders
         var root = slash > 1 ? value[..slash] : value;
         return folders.FirstOrDefault(f => !f.IsInput && string.Equals(f.Path, root, StringComparison.Ordinal));
     }
+}
+
+/// <summary>A large file of a held folder: its relative path and its size in bytes.</summary>
+internal sealed record ForgeLargeFile
+{
+    [JsonPropertyName("name")]
+    public string Name { get; init; } = "";
+
+    [JsonPropertyName("bytes")]
+    public long Bytes { get; init; }
 }

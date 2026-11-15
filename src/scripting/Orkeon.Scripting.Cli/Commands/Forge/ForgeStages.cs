@@ -278,12 +278,16 @@ internal sealed class BriefStage : IForgeStageRunner
             folder => folder.Path!,
             folder => ForgeFolders.Inventory(folder.Directory!),
             StringComparer.Ordinal);
+        var large = held.ToDictionary(
+            folder => folder.Path!,
+            folder => ForgeFolders.LargeFiles(folder.Directory!),
+            StringComparer.Ordinal);
         var filled = brief with
         {
             Folders = [.. (brief.Folders ?? []).Select(folder =>
                 folder.Path is { } path && contents.TryGetValue(path, out var entries) && entries.Count > 0
-                    ? folder with { Contents = entries }
-                    : folder with { Contents = null })],
+                    ? folder with { Contents = entries, Large = large[path] is { Count: > 0 } files ? files : null }
+                    : folder with { Contents = null, Large = null })],
         };
         session.SaveArtifact(ForgeSession.BriefFileName, filled);
         session.SaveArtifact(ForgeFolders.FileName, list with { Filled = true });
@@ -398,7 +402,7 @@ internal sealed class BlueprintStage : IForgeStageRunner
 
             if (reply.BlueprintJson is { } json)
             {
-                if (ForgeBlueprint.TryParse(json, out var blueprint, out var blueprintErrors))
+                if (ForgeBlueprint.TryParse(json, out var blueprint, out var blueprintErrors, ForgeFolders.ExistingPaths(brief.Folders)))
                 {
                     session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint);
                     events.Emit("blueprint.ready", new { blueprint, iteration = session.Document.Iteration });

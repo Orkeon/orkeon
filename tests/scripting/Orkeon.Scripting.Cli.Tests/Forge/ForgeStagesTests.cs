@@ -324,6 +324,31 @@ public sealed class ForgeStagesTests : IDisposable
         Assert.Equal("Résumer chaque matin les nouvelles offres du fournisseur", request.Brief!.Goal);
     }
 
+    [Fact]
+    [Trait("BR", "CH-33")]
+    public async Task ShouldFillLargeFiles_IntoTheBrief_AtTheFillStep()
+    {
+        var session = ForgeSession.Create(_workspace, "fill-large");
+        var channel = new ScriptedUserChannel
+        {
+            WhileFilling = held =>
+            {
+                File.WriteAllBytes(Path.Combine(held[0].Directory!, "big.bin"), new byte[200 * 1024]);
+                File.WriteAllText(Path.Combine(held[0].Directory!, "small.txt"), "x");
+            },
+        };
+
+        await Engine(session, new BriefStage(new ScriptedAssistant().SubmitsBrief(ForgeDocuments.ValidBrief), channel))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        var folders = Assert.IsType<ForgeBrief>(session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)).Folders!;
+        var large = Assert.Single(folders[0].Large!);
+        Assert.Equal("big.bin", large.Name);
+        Assert.Equal(200L * 1024, large.Bytes);
+        Assert.Equal(["big.bin", "small.txt"], folders[0].Contents);
+        Assert.Null(folders[1].Large);
+    }
+
     /// <summary>
     /// The owner's report, on a screenshot of step 1 mid-interview: still no live view of
     /// the tokens exchanged. The meter was emitted by the ENGINE, once a stage returned — and an

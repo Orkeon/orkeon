@@ -105,6 +105,14 @@ function stableHeader() {
     lines.push("- maxIterations: leave it out (the engine's default fits most agents). When you");
     lines.push("  set it, count one iteration per tool call, one per retry and one for the");
     lines.push("  final answer — never below 6.");
+    lines.push("- Hand-offs: a file one task writes for another is that task's deliverable, and");
+    lines.push("  the task that reads it lists the writer in dependencies; a task names no other");
+    lines.push("  file of the deliverable folders.");
+    if (((input.brief && input.brief.folders) || []).some(function (f) { return f.large && f.large.length > 0; })) {
+      lines.push("- Large files are listed below: an agent that reads one searches first (grep when");
+      lines.push("  its tools offer it) and reads only the ranges found, never the whole file page by");
+      lines.push("  page; it writes its notes deliverable as it goes; its maxIterations is at least 30.");
+    }
     lines.push("- If errors are listed below, fix exactly those — change nothing else —");
     lines.push("  and submit again. Do not converse in this phase.");
   }
@@ -124,6 +132,11 @@ function stableHeader() {
       // What the user put in a folder kept inside the team, read after the fill step.
       if (folder.contents && folder.contents.length > 0)
         lines.push("  The user put in it: " + folder.contents.join(", "));
+      if (folder.large && folder.large.length > 0)
+        lines.push("  Large files: " + folder.large.map(function (l) {
+          var kb = Math.round(l.bytes / 1024);
+          return l.name + " (" + (kb >= 1024 ? Math.round(kb / 102.4) / 10 + " MB" : kb + " KB") + ")";
+        }).join(", "));
     }
     if (folders.some(function (f) { return f.contents && f.contents.length > 0; })) {
       lines.push("The files and sub-folders listed are already there: design the tasks for them,");

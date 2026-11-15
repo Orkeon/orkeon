@@ -174,6 +174,22 @@ public class ForgeBlueprintCompilerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-34")]
+    public void ShouldAcceptTheEditedPlan_WhenTheNamedFileAlreadyExistsInAnOutputFolder()
+    {
+        var json = ForgeDocuments.ValidBlueprint.Replace(
+            "Rédiger le résumé\", \"expectedOutput", "Fill /output/template.md then write the summary\", \"expectedOutput", StringComparison.Ordinal);
+        Assert.Contains("Fill /output/template.md", json, StringComparison.Ordinal);
+        ForgeFolder[] folders = [new() { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"] }];
+        using var output = new StringWriter();
+
+        var edited = VerdictStage.ValidateEditedBlueprint(json, ForgeDocuments.KnownTools, new ForgeEventWriter(output), folders);
+
+        Assert.NotNull(edited);
+        Assert.Equal(string.Empty, output.ToString());
+    }
+
+    [Fact]
     public void A_hierarchical_blueprint_without_a_manager_is_refused_before_its_trial()
     {
         // GAP-19: it passed with a warning — "the first agent will be used as manager" — and its

@@ -200,6 +200,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             _session.AppendTranscript("user", userMessage);
 
         _box.Reset();
+        _box.ExistingPaths = ForgeFolders.ExistingPaths(request.Brief?.Folders);
         var before = _tally.Snapshot;
 
         // Every model call — and every streamed chunk — reports the turn's running total.

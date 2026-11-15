@@ -1135,7 +1135,7 @@ internal static class ForgeCommand
 
         var json = await channel.ReadBlueprintAsync(CancellationToken.None).ConfigureAwait(false)
             ?? throw new OperationCanceledException("The user channel closed while sending the edited blueprint.");
-        if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events, ForgeFolders.Of(session)) is not { } edited)
+        if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events, ForgeFolders.Of(session), ForgeFolders.ExistingPaths(session)) is not { } edited)
         {
             // The session has not moved: it waits at the same pause, resumable again.
             events.SessionFinished("paused", ExitError);

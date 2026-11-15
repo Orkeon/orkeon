@@ -324,6 +324,58 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.Contains("email_send", section, StringComparison.Ordinal);
     }
 
+    private async Task<string> PlanHeaderWith(IReadOnlyList<ForgeLargeFile>? large)
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        brief = brief! with
+        {
+            Folders =
+            [
+                new ForgeFolder { Path = "/workspace", Role = "input", Purpose = "Les rapports", Contents = ["report.md"], Large = large },
+                new ForgeFolder { Path = "/output", Role = "output", Purpose = "Les notes" },
+            ],
+        };
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+        return provider.Chats[0][0].Content;
+    }
+
+    [Fact]
+    [Trait("BR", "CH-33")]
+    public async Task ShouldNameLargeFilesAndTheReadingRules_InThePlanPrompt()
+    {
+        var header = await PlanHeaderWith([new ForgeLargeFile { Name = "report.md", Bytes = 768000 }]);
+
+        Assert.Contains("report.md (750 KB)", header, StringComparison.Ordinal);
+        Assert.Contains("grep", header, StringComparison.Ordinal);
+        Assert.Contains("at least 30", header, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-34")]
+    public async Task ShouldStateTheHandOffRule_InThePlanPrompt()
+    {
+        var header = await PlanHeaderWith(null);
+
+        Assert.Contains("a file one task writes for another is that task's deliverable", header, StringComparison.Ordinal);
+        Assert.Contains("the task that reads it lists the writer in dependencies", header, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-33")]
+    public async Task ShouldAddNoLargeFileRules_WhenNoFileIsLarge()
+    {
+        var header = await PlanHeaderWith(null);
+
+        Assert.DoesNotContain("(750 KB)", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("grep", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("at least 30", header, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// What the user put in a folder kept inside the team reaches the design prompt,
     /// by names relative to the folder, so the tasks are made for the files that are there.
@@ -458,6 +510,32 @@ public sealed class ForgeCrewAssistantTests : IDisposable
 
         // A submission is not conversation: only the user turn joined the transcript.
         Assert.Equal(["user"], _session.LoadTranscript().Select(t => t.Role));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-34")]
+    public async Task ShouldAcceptAPlanNamingAnExistingOutputFile_WhenTheBriefListsItInItsContents()
+    {
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        brief = brief! with
+        {
+            Folders = [new ForgeFolder { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"] }],
+        };
+        var json = ForgeDocuments.ValidBlueprint.Replace(
+            "Rédiger le résumé\", \"expectedOutput", "Fill /output/template.md then write the summary\", \"expectedOutput", StringComparison.Ordinal);
+        Assert.Contains("Fill /output/template.md", json, StringComparison.Ordinal);
+        var provider = new ScriptedLlmProvider()
+            .CallsTool("blueprint_submit", JsonSerializer.Deserialize<JsonElement>(json))
+            .Answers("Sent.");
+        var assistant = Build(provider);
+
+        var reply = await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(reply.BlueprintJson);
+        Assert.Contains("Fill /output/template.md", reply.BlueprintJson, StringComparison.Ordinal);
     }
 
     [Fact]
