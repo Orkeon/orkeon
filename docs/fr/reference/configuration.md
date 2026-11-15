@@ -570,7 +570,10 @@ fournisseur payant, sauf Hugging Face, dont le fournisseur routé fixe le prix ;
 et les modèles `ollama` et Docker Model Runner ne coûtent rien. Un modèle sans prix est compté à
 zéro et journalise un seul avertissement par modèle, qui nomme `Orkeon:CostTracking:CustomPricings` :
 ajoutez-y une ligne pour le tarifer. Sous un budget `MaxCostUsd`, un second avertissement, une fois
-par crew et par modèle, dit que le budget ne peut pas compter les appels de ce modèle.
+par crew et par modèle, dit que le budget ne peut pas compter les appels de ce modèle. Avec `Enabled`
+à `false`, chaque appel est toujours enregistré et tarifé (l'historique et le rapport le comptent, un
+modèle sans prix avertit toujours une fois), mais aucun n'est refusé, aucune alerte de budget n'est
+levée et l'avertissement « le budget ne peut pas compter » n'est pas journalisé.
 
 <!-- settings:Orkeon:CostTracking -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

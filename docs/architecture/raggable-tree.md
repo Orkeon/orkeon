@@ -622,6 +622,8 @@ services.AddRaggableTree(new RaggableTreeOptions
 });
 ```
 
+A `ModelPath` that holds no loadable model (an empty folder, a path with nothing behind it, a file that is not a model) does not fail the host build or the tool listing: the provider builds, and the first embedding throws an `InvalidOperationException` that names the `ModelPath`, the library's error as its inner exception. The failure is not cached, so the next call tries again once the model is in place. The path itself is still checked eagerly against the mounts.
+
 Without `AddOrkeonLocalEmbeddings`, `EmbeddingOptions.Local` carries the same options and `AddRaggableTree` instantiates the provider by reflection — which fails loudly if the `Orkeon.Tools.Embeddings.Local` assembly is not referenced by the host.
 
 The licenses of the model and of the upstream package are tracked in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md). A minimal console example lives in [`examples/local-embeddings/`](https://github.com/Orkeon/orkeon/tree/main/examples/local-embeddings).

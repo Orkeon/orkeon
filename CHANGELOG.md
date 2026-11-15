@@ -13,12 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the provider-aware `TryGetPricing(string? provider, string model)` and `CalculateCost(string? provider, string model, ...)`
   overloads, as default interface methods that delegate to the existing members: an implementation of your own still
   compiles. `Orkeon:CostTracking:CustomPricings:<i>:Provider` sets it from the settings (#383).
-- `TaskResult.EndedOnIterationCap`, `TaskExecutionSnapshot.EndedOnIterationCap` and `CrewExecutionEvent.EndedOnIterationCap`
-  (all `bool`, `false` by default, `init` properties) mark a task whose answer came from the tool-free turn after the agent
+- `TaskResult.EndedOnIterationCap`, `TaskResult<TOutput>.EndedOnIterationCap`, `TaskExecutionSnapshot.EndedOnIterationCap`
+  and `CrewExecutionEvent.EndedOnIterationCap` (all `bool`, `false` by default, `init` properties) mark a task whose answer came from the tool-free turn after the agent
   loop's iteration cap. The task keeps `Success` and `AgentExitReason.Completed`: the flag sits beside them, it is no new
   enum member. The `task.completed` line of `orkeon run --events` carries it as `endedOnIterationCap` (always written, the
-  last key), the forge trial's `task.completed` too, and a resumed capped task replays it from its checkpoint. The typed
-  `TaskResult<TOutput>` has no such flag (#388).
+  last key), the forge trial's `task.completed` too, and a resumed capped task, typed or not, replays it from its checkpoint
+  (#388).
 
 ### Fixed
 
@@ -27,7 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   384 dimensions without loading. A missing model fails the first local embedding with an `InvalidOperationException` that
   names `LocalEmbeddingsModel/default/model.onnx` and the exclusion. Put `ExcludeAssets="build"` on every reference that
   reaches the package, `Orkeon.Scripting` and `Orkeon.Tools.Embeddings.Local` alike: NuGet unions the flags, so one reference
-  without it keeps the model download. A Slow end-to-end test pins both (#376).
+  without it keeps the model download. A Slow end-to-end test pins both. A custom `LocalEmbeddingOptions.ModelPath` that holds
+  no loadable model builds the provider the same way and fails the first embedding with an `InvalidOperationException` that
+  names the `ModelPath`, the library's error as inner exception; the failure is not cached, so the next call tries again (#376).
 - The embedding model guard no longer warns where it cannot act (#381). `orkeon forge` records its fingerprint per session,
   at `/forge/embedding-fingerprint.json` (the default of `Orkeon:Embeddings:FingerprintPath` at the lowest precedence: an
   explicit setting still wins), so it guards nothing across sessions. `orkeon rag` uses no host fingerprint (its default
@@ -45,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   warning. Hugging Face stays unpriced (its routed provider sets the price): a call warns once per model, no longer once per
   call, naming `Orkeon:CostTracking:CustomPricings`, and under a `MaxCostUsd` budget a second warning, once per crew and
   model, says the budget cannot count that model's calls. Long-context price tiers are not modelled (#383).
+- `Orkeon:CostTracking:Enabled` `false` now does what its documentation says: every call is recorded and priced (the history,
+  the report and the unpriced-model warning of the registry are unchanged), none is refused, and no budget alert and no
+  "budget cannot count this model" warning is raised. `true` is unchanged (#383).
 - The `SECURITY` line of the shell interpreters is logged once per host, at the first `shell_command` call validated once
   interpreters are enabled, instead of at construction and listing of `shell_command`. It states the confinement in force:
   the backend, or `none` with its reason (a container, `Mode = None`), or `unavailable` when every call fails (#384).
@@ -58,7 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A task that ends on its iteration cap says so (#388). The tool-free turn after the cap tells the agent that tools are no
   longer available and asks it to state what it could not do (a file it did not write); an agent with two iterations left is
   told so once, while it can still act (nothing is sent when the cap is two or less); and the run summary labels the task
-  `⚠ completed on its iteration cap`, next to `⊘ skipped`.
+  `⚠ completed on its iteration cap`, next to `⊘ skipped`. The forge designs for a large document: a file of 128 KiB or
+  more in a folder the user filled is named to the designer with its size (`report.md (750 KB)`, largest first), and the plan
+  prompt adds the reading rules (search with `grep` first, then read by range) and a `maxIterations` of at least 30 for an
+  agent that reads it. A plan is refused, with an error naming the task and the path that the designer gets back to fix, when
+  a task names a path under an output folder a deliverable lands in that is none of its own deliverable, the deliverable of one of its dependencies
+  (transitively), the deliverable of a task listed before it when the process is sequential, or a file already in an output
+  folder. `orkeon forge reopen` applies the same rule to a promoted crew.
 
 ## [1.1.0] - 2026-11-15
 

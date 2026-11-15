@@ -545,7 +545,9 @@ model of every paid provider except Hugging Face, whose routed provider sets the
 and Docker Model Runner models cost nothing. A model with no price is counted at zero and logs one
 warning per model, naming `Orkeon:CostTracking:CustomPricings`: add a row there to price it. Under a
 `MaxCostUsd` budget a second warning, once per crew and model, says the budget cannot count that
-model's calls.
+model's calls. With `Enabled` set to `false` every call is still recorded and priced (the history and
+the report count it, an unpriced model still warns once), but none is refused, no budget alert is
+raised and the "budget cannot count" warning is not logged.
 
 <!-- settings:Orkeon:CostTracking -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
