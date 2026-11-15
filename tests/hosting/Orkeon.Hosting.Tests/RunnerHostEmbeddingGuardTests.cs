@@ -105,4 +105,42 @@ public sealed class RunnerHostEmbeddingGuardTests : IDisposable
         Assert.DoesNotContain(capture.Entries, e => e.Level >= LogLevel.Warning
             && e.Category.Contains("EmbeddingDimensionGuardRunner", StringComparison.Ordinal));
     }
+
+    [Fact]
+    [Trait("BR", "CH-22")]
+    public void ShouldLogNoGuardOrAccessWarning_WhenNoWorkspaceIsMounted()
+    {
+        var path = Path.Combine(_root, "appsettings.json");
+        File.WriteAllText(path, Embeddings);
+        var docs = Path.Combine(_root, "docs");
+        var output = Path.Combine(_root, "out");
+        Directory.CreateDirectory(docs);
+        Directory.CreateDirectory(output);
+        using var capture = new CapturingLoggerProvider();
+        var original = Console.Error;
+        using var muted = new StringWriter();
+        Console.SetError(muted);
+        var built = false;
+        try
+        {
+            using var host = RunnerHost.Build(
+                path,
+                new RunnerMountPlan { CliMounts = [$"{docs}:/documents:ro", $"{output}:/output:rw"], AllowExternalMounts = true },
+                configureLogging: (_, logging) =>
+                {
+                    logging.SetMinimumLevel(LogLevel.Trace);
+                    logging.AddProvider(capture);
+                });
+            built = true;
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+
+        Assert.True(built);
+        Assert.DoesNotContain(capture.Entries, e => e.Level >= LogLevel.Warning
+            && (e.Category.Contains("EmbeddingDimensionGuardRunner", StringComparison.Ordinal)
+                || e.Category.Contains("FileSystemService", StringComparison.Ordinal)));
+    }
 }

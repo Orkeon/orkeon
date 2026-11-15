@@ -31,6 +31,74 @@ public class EmbeddingDimensionGuardTests
         return services.BuildServiceProvider();
     }
 
+    private static async Task StartWithMountsAsync(FakeLoggerFactory loggers, params (string Dir, string Virtual)[] mounts)
+    {
+        using var registry = new FileSystemRegistry(mounts.Select(m => new FileSystemMount(
+            m.Dir, m.Virtual, FileAccessRights.ReadWrite | FileAccessRights.Create | FileAccessRights.Delete)));
+        var fs = new Orkeon.Infrastructure.FileSystem.FileSystemService(
+            registry, new Orkeon.Tests.Shared.Doubles.StubPathValidator().AllowAll(), Microsoft.Extensions.Logging.LoggerFactoryExtensions.CreateLogger<Orkeon.Infrastructure.FileSystem.FileSystemService>(loggers));
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>(loggers);
+        services.AddSingleton<IFileSystemService>(fs);
+        services.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(Provider("Mistral", "mistral-embed", 1024));
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddOrkeonInfrastructure();
+        await using var sp = services.BuildServiceProvider();
+        foreach (var service in sp.GetServices<IHostedService>())
+            await service.StartAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-22")]
+    public async Task ShouldStillGuard_WhenAMountCoversTheFingerprintPath()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ch22-mounted-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            using var loggers = new FakeLoggerFactory();
+
+            await StartWithMountsAsync(loggers, (root, "/workspace"));
+
+            Assert.True(File.Exists(Path.Combine(root, ".orkeon", "embedding-fingerprint.json")));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-22")]
+    public async Task ShouldSkipAtDebug_WhenNoMountCoversTheFingerprintPath()
+    {
+        var docs = Path.Combine(Path.GetTempPath(), "ch22-docs-" + Guid.NewGuid().ToString("N"));
+        var output = Path.Combine(Path.GetTempPath(), "ch22-out-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(docs);
+        Directory.CreateDirectory(output);
+        try
+        {
+            using var loggers = new FakeLoggerFactory();
+
+            await StartWithMountsAsync(loggers, (docs, "/documents"), (output, "/output"));
+
+            Assert.DoesNotContain(loggers.Entries, e => e.Level >= Microsoft.Extensions.Logging.LogLevel.Warning);
+            var debug = Assert.Single(
+                loggers.Entries,
+                e => e.Level == Microsoft.Extensions.Logging.LogLevel.Debug
+                    && e.Message.Contains("/workspace/.orkeon/embedding-fingerprint.json", StringComparison.Ordinal));
+            Assert.Contains("EmbeddingDimensionGuardRunner", debug.Category, StringComparison.Ordinal);
+            Assert.Empty(Directory.GetFileSystemEntries(docs));
+            Assert.Empty(Directory.GetFileSystemEntries(output));
+        }
+        finally
+        {
+            Directory.Delete(docs, true);
+            Directory.Delete(output, true);
+        }
+    }
+
     [Fact]
     public async Task ShouldRecordTheFingerprint_WhenNothingIsStoredYet()
     {

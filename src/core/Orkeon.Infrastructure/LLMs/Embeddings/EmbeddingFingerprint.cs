@@ -174,6 +174,15 @@ internal static partial class EmbeddingDimensionGuardRunner
         if (store is null)
             return;
 
+        if (store is FileEmbeddingFingerprintStore fileStore
+            && services.GetService<IFileSystemService>() is { } fileSystem
+            && !IsCovered(fileSystem.GetAvailableMounts(), fileStore.Path))
+        {
+            if (logger is not null)
+                LogGuardOff(logger, fileStore.Path);
+            return;
+        }
+
         try
         {
             var provider = services.GetRequiredService<IEmbeddingProvider>();
@@ -205,6 +214,23 @@ internal static partial class EmbeddingDimensionGuardRunner
             ? null
             : new FileEmbeddingFingerprintStore(fileSystem, path);
     }
+
+    private static bool IsCovered(IReadOnlyList<MountInfo> mounts, string path)
+    {
+        foreach (var mount in mounts)
+        {
+            var root = mount.VirtualPath.TrimEnd('/');
+            if (root.Length == 0
+                || (path.StartsWith(root, StringComparison.Ordinal) && (path.Length == root.Length || path[root.Length] == '/')))
+                return true;
+        }
+
+        return false;
+    }
+
+    [LoggerMessage(EventId = 3, Level = LogLevel.Debug,
+        Message = "The embedding model guard is off: no mount covers {Path}")]
+    private static partial void LogGuardOff(ILogger logger, string path);
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
         Message = "The embedding model guard could not read or write its fingerprint, the check is skipped: {Reason}. Point Orkeon:Embeddings:FingerprintPath to a writable path, or set it empty to turn the guard off")]
