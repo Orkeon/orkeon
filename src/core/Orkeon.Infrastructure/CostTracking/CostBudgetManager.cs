@@ -124,7 +124,11 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
 
     private void WarnIfCostBudgetCannotCount(CostUsageEvent usageEvent)
     {
-        if (string.IsNullOrEmpty(usageEvent.CrewId) || ResolveCrewBudget(usageEvent.CrewId)?.MaxCostUsd is null)
+        if (string.IsNullOrEmpty(usageEvent.CrewId) || usageEvent.PromptTokens <= 0 && usageEvent.CompletionTokens <= 0)
+            return;
+
+        var agentBudget = !string.IsNullOrEmpty(usageEvent.AgentId) && _agentBudgets.TryGetValue(MakeAgentKey(usageEvent.CrewId, usageEvent.AgentId), out var found) ? found : null;
+        if (ResolveCrewBudget(usageEvent.CrewId)?.MaxCostUsd is not > 0 && agentBudget?.MaxCostUsd is not > 0)
             return;
 
         var model = usageEvent.Model ?? "";

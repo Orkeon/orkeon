@@ -14,6 +14,9 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
 {
     private readonly ConcurrentDictionary<string, ModelPricing> _pricings = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ModelPricing>> _providerPricings = new(StringComparer.OrdinalIgnoreCase);
+    // The user's CustomPricings rows, in their own tables: they are consulted before any built-in row.
+    private readonly ConcurrentDictionary<string, ModelPricing> _customPricings = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ModelPricing>> _customProviderPricings = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, byte> _warned = new(StringComparer.OrdinalIgnoreCase);
     private readonly ILogger<ModelPricingRegistry> _logger;
 
@@ -33,7 +36,7 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         {
             foreach (var pricing in customPricings)
             {
-                RegisterPricing(pricing.ModelPattern, pricing);
+                RowsFor(_customPricings, _customProviderPricings, pricing.Provider)[pricing.ModelPattern] = pricing;
             }
 
             LogRegisteredCustomModelPricings(customPricings.Count);
@@ -54,7 +57,7 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
 
     /// <inheritdoc />
     public ModelPricing? TryGetPricing(string model)
-        => string.IsNullOrWhiteSpace(model) ? null : Lookup(_pricings, model, matchAll: false);
+        => string.IsNullOrWhiteSpace(model) ? null : Lookup(_customPricings, model, matchAll: false) ?? Lookup(_pricings, model, matchAll: false);
 
     /// <inheritdoc />
     public ModelPricing? TryGetPricing(string? provider, string model)
@@ -62,19 +65,19 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         if (string.IsNullOrWhiteSpace(model))
             return null;
 
-        if (provider is not null && _providerPricings.TryGetValue(provider, out var rows))
-        {
-            var scoped = Lookup(rows, model, matchAll: true);
-            if (scoped is not null)
-                return scoped;
-        }
-
-        return Lookup(_pricings, model, matchAll: false);
+        // A custom row beats a built-in one; within each tier, the provider's own rows come first.
+        return LookupScoped(_customProviderPricings, provider, model)
+            ?? Lookup(_customPricings, model, matchAll: false)
+            ?? LookupScoped(_providerPricings, provider, model)
+            ?? Lookup(_pricings, model, matchAll: false);
     }
 
     /// <inheritdoc />
     public decimal CalculateCost(string? provider, string model, int promptTokens, int completionTokens)
         => Cost(TryGetPricing(provider, model), model, promptTokens, completionTokens);
+
+    private static ModelPricing? LookupScoped(ConcurrentDictionary<string, ConcurrentDictionary<string, ModelPricing>> tables, string? provider, string model)
+        => provider is not null && tables.TryGetValue(provider, out var rows) ? Lookup(rows, model, matchAll: true) : null;
 
     // matchAll: an empty pattern matches every model. Only a provider's own rows allow it (ollama prices every
     // model at 0); a provider-less row with an empty pattern would price every unknown model and hide its warning.
@@ -104,14 +107,18 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
     public void RegisterPricing(string modelPattern, ModelPricing pricing)
     {
         ArgumentNullException.ThrowIfNull(pricing);
-        RowsFor(pricing.Provider)[modelPattern] = pricing;
+        RowsFor(_pricings, _providerPricings, pricing.Provider)[modelPattern] = pricing;
         LogRegisteredPricingForModelPattern(modelPattern, pricing.PromptPricePerMillion, pricing.CompletionPricePerMillion);
     }
 
-    /// <inheritdoc />
+    /// <summary>Lists the provider-less rows in effect, custom rows included; rows scoped to one provider are not part of it.</summary>
+    /// <returns>The provider-less rows in effect by model pattern.</returns>
     public IReadOnlyDictionary<string, ModelPricing> GetAllPricings()
     {
-        return new Dictionary<string, ModelPricing>(_pricings, StringComparer.OrdinalIgnoreCase);
+        var rows = new Dictionary<string, ModelPricing>(_pricings, StringComparer.OrdinalIgnoreCase);
+        foreach (var custom in _customPricings)
+            rows[custom.Key] = custom.Value;
+        return rows;
     }
 
     /// <inheritdoc />
@@ -133,10 +140,13 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         return promptCost + completionCost;
     }
 
-    private ConcurrentDictionary<string, ModelPricing> RowsFor(string? provider)
+    private static ConcurrentDictionary<string, ModelPricing> RowsFor(
+        ConcurrentDictionary<string, ModelPricing> providerless,
+        ConcurrentDictionary<string, ConcurrentDictionary<string, ModelPricing>> byProvider,
+        string? provider)
         => provider is null
-            ? _pricings
-            : _providerPricings.GetOrAdd(provider, _ => new(StringComparer.OrdinalIgnoreCase));
+            ? providerless
+            : byProvider.GetOrAdd(provider, _ => new(StringComparer.OrdinalIgnoreCase));
 
     private void RegisterDefaultPricings()
     {
@@ -193,8 +203,8 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         RegisterAnthropic("claude-3-haiku", 0.25m, 1.25m);
 
         // Paid providers' default models, per provider so a gateway's row never shadows the vendor's.
-        // deepseek: comparison doc (peak price).
-        RegisterFor("deepseek", "deepseek-flash", 0.30m, null, 1.20m);
+        // deepseek: peak rate, https://api-docs.deepseek.com/quick_start/pricing read 2026-11-15 (cache read 0.006).
+        RegisterFor("deepseek", "deepseek-flash", 0.30m, 0.006m, 1.20m);
         // zai: docs.z.ai pricing; glm-5.3 is a prefix of the others, the longest prefix wins.
         RegisterFor("zai", "glm-5.3-flashx", 0.37m, 0.075m, 1.25m);
         RegisterFor("zai", "glm-5.3-flash", 0.15m, 0.03m, 0.50m);
@@ -204,8 +214,10 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         RegisterFor("kimi", "kimi-k3", 3m, null, 15m);
         // qwen: Alibaba Cloud model pricing, Singapore, limited-time 20% off; above 256K input is not modelled.
         RegisterFor("qwen", "qwen3.7-plus", 0.4m, null, 1.6m);
-        // gemini: comparison doc; the 1.50 / 7.50 rate from 2027-01-01 is not modelled.
-        RegisterFor("gemini", "gemini-3.8-flash", 0.75m, null, 3.75m);
+        // gemini-3.8-flash: https://ai.google.dev/gemini-api/docs/pricing read 2026-11-15; the 1.50 / 7.50 rate
+        // Google applies from 2027-01-01, kept as the conservative figure for budgets.
+        RegisterFor("gemini", "gemini-3.8-flash", 1.50m, 0.15m, 7.50m);
+        // gemini-3.7-flash: comparison doc, not on the vendor page, so no cache-read price.
         RegisterFor("gemini", "gemini-3.7-flash", 0.75m, null, 3.75m);
         RegisterFor("mistral", "mistral-medium-2604", 1.50m, null, 7.50m);
         // grok: comparison doc; the 4 / 12 rate above 200K is not modelled.
@@ -234,7 +246,7 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         decimal? cacheReadPricePerMillion,
         decimal completionPricePerMillion)
     {
-        RowsFor(provider)[model] = new ModelPricing
+        RowsFor(_pricings, _providerPricings, provider)[model] = new ModelPricing
         {
             ModelPattern = model,
             Provider = provider,

@@ -68,7 +68,7 @@ public interface IModelPricingRegistry
     void RegisterPricing(string modelPattern, ModelPricing pricing);
 
     /// <summary>
-    /// Gets all registered pricings.
+    /// Gets the provider-less pricings in effect, custom rows included; rows scoped to one provider are not listed.
     /// </summary>
     IReadOnlyDictionary<string, ModelPricing> GetAllPricings();
 

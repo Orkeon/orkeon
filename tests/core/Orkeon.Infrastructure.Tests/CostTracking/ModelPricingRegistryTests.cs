@@ -28,14 +28,14 @@ public sealed class ModelPricingRegistryTests
     // ollama and Docker Model Runner (local, zero cost).
     [Theory]
     [Trait("BR", "CH-08")]
-    [InlineData("deepseek", "deepseek-flash", 0.30, NoCacheRead, 1.20)]
+    [InlineData("deepseek", "deepseek-flash", 0.30, 0.006, 1.20)]
     [InlineData("zai", "glm-5.3-flashx", 0.37, 0.075, 1.25)]
     [InlineData("zai", "glm-5.3-flash", 0.15, 0.03, 0.50)]
     [InlineData("zai", "glm-5.3", 1.4, 0.26, 4.4)]
     [InlineData("kimi", "kimi-k3.1-pro", 2, 0.2, 10)]
     [InlineData("kimi", "kimi-k3", 3, NoCacheRead, 15)]
     [InlineData("qwen", "qwen3.7-plus", 0.4, NoCacheRead, 1.6)]
-    [InlineData("gemini", "gemini-3.8-flash", 0.75, NoCacheRead, 3.75)]
+    [InlineData("gemini", "gemini-3.8-flash", 1.50, 0.15, 7.50)]
     [InlineData("gemini", "gemini-3.7-flash", 0.75, NoCacheRead, 3.75)]
     [InlineData("mistral", "mistral-medium-2604", 1.50, NoCacheRead, 7.50)]
     [InlineData("grok", "grok-4.6", 2, 0.5, 6)]
@@ -135,9 +135,9 @@ public sealed class ModelPricingRegistryTests
 
     [Theory]
     [Trait("BR", "CH-11")]
-    [InlineData("gemini-3.8-flash")]
-    [InlineData("gemini-3.7-flash")]
-    public void ShouldPriceAGatewayByItsOwnRow_WhenTheVendorSharesTheModelId(string model)
+    [InlineData("gemini-3.8-flash", 1.5, 7.5)]
+    [InlineData("gemini-3.7-flash", 0.75, 3.75)]
+    public void ShouldPriceAGatewayByItsOwnRow_WhenTheVendorSharesTheModelId(string model, double vendorInput, double vendorOutput)
     {
         using var logs = new FakeLoggerFactory();
         var registry = Create(logs);
@@ -149,8 +149,8 @@ public sealed class ModelPricingRegistryTests
         Assert.Equal(1.5m, gateway.PromptPricePerMillion);
         Assert.Equal(7.5m, gateway.CompletionPricePerMillion);
         Assert.NotNull(vendor);
-        Assert.Equal(0.75m, vendor.PromptPricePerMillion);
-        Assert.Equal(3.75m, vendor.CompletionPricePerMillion);
+        Assert.Equal((decimal)vendorInput, vendor.PromptPricePerMillion);
+        Assert.Equal((decimal)vendorOutput, vendor.CompletionPricePerMillion);
     }
 
     [Theory]
@@ -213,5 +213,105 @@ public sealed class ModelPricingRegistryTests
         Assert.Equal(7m, forX.PromptPricePerMillion);
         Assert.Equal(9m, forX.CompletionPricePerMillion);
         Assert.Null(forOther);
+    }
+
+    private static ModelPricing Row(string pattern, decimal input, decimal output, string? provider = null) => new()
+    {
+        ModelPattern = pattern,
+        Provider = provider,
+        PromptPricePerMillion = input,
+        CompletionPricePerMillion = output,
+    };
+
+    [Theory]
+    [Trait("BR", "CH-36")]
+    [InlineData("deepseek", "deepseek-flash", "deepseek-flash")]
+    [InlineData("zai", "glm-5.3-flash-ultra", "glm-5.3-flash-ultra")]
+    public void ShouldUseTheCustomPrice_WhenAProviderlessCustomRowNamesABuiltInModel(
+        string provider, string model, string pattern)
+    {
+        using var logs = new FakeLoggerFactory();
+        var registry = Create(logs, Row(pattern, 41m, 43m));
+
+        var pricing = registry.TryGetPricing(provider, model);
+
+        Assert.NotNull(pricing);
+        Assert.Equal(41m, pricing.PromptPricePerMillion);
+        Assert.Equal(43m, pricing.CompletionPricePerMillion);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-36")]
+    public void ShouldApplyAProviderNamingCustomRowToThatProviderOnly()
+    {
+        using var logs = new FakeLoggerFactory();
+        var registry = Create(
+            logs,
+            Row("gemini-3.7-flash", 9m, 11m, provider: "gemini"),
+            Row("providerless-model", 5m, 6m));
+
+        var gemini = registry.TryGetPricing("gemini", "gemini-3.7-flash");
+        var gateway = registry.TryGetPricing("mammouth", "gemini-3.7-flash");
+        var anyA = registry.TryGetPricing("alpha", "providerless-model");
+        var anyB = registry.TryGetPricing("beta", "providerless-model");
+
+        Assert.Equal(9m, gemini?.PromptPricePerMillion);
+        Assert.Equal(1.5m, gateway?.PromptPricePerMillion);
+        Assert.Equal(5m, anyA?.PromptPricePerMillion);
+        Assert.Equal(5m, anyB?.PromptPricePerMillion);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-36")]
+    public void ShouldKeepTodaysPrecedence_WhenRegisterPricingIsCalledAfterConstruction()
+    {
+        using var logs = new FakeLoggerFactory();
+        var registry = Create(logs);
+
+        registry.RegisterPricing("deepseek-flash", Row("deepseek-flash", 41m, 43m));
+        var pricing = registry.TryGetPricing("deepseek", "deepseek-flash");
+
+        Assert.Equal(0.30m, pricing?.PromptPricePerMillion);
+        Assert.Equal(1.20m, pricing?.CompletionPricePerMillion);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-36")]
+    public void ShouldPriceTheCacheRead_ForDeepSeekAndGemini()
+    {
+        using var logs = new FakeLoggerFactory();
+        var registry = Create(logs);
+
+        var deepseek = registry.TryGetPricing("deepseek", "deepseek-flash");
+        var flash38 = registry.TryGetPricing("gemini", "gemini-3.8-flash");
+        var flash37 = registry.TryGetPricing("gemini", "gemini-3.7-flash");
+
+        Assert.Equal(0.006m, deepseek?.CacheReadPricePerMillion);
+        Assert.Equal(1.50m, flash38?.PromptPricePerMillion);
+        Assert.Equal(7.50m, flash38?.CompletionPricePerMillion);
+        Assert.Equal(0.15m, flash38?.CacheReadPricePerMillion);
+        Assert.Equal(0.75m, flash37?.PromptPricePerMillion);
+        Assert.Equal(3.75m, flash37?.CompletionPricePerMillion);
+        Assert.Null(flash37?.CacheReadPricePerMillion);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-36")]
+    public void ShouldListTheEffectiveProviderlessRows_WhenCustomRowsOverrideOrAddModels()
+    {
+        using var logs = new FakeLoggerFactory();
+        var registry = Create(
+            logs,
+            Row("gpt-4o", 71m, 73m),
+            Row("brand-new-model-ch36", 5m, 6m));
+
+        var all = registry.GetAllPricings();
+
+        Assert.Equal(71m, registry.TryGetPricing("gpt-4o")?.PromptPricePerMillion);
+        Assert.Equal(71m, all["gpt-4o"].PromptPricePerMillion);
+        Assert.Equal(73m, all["gpt-4o"].CompletionPricePerMillion);
+        Assert.Equal(5m, registry.TryGetPricing("brand-new-model-ch36")?.PromptPricePerMillion);
+        Assert.Equal(5m, all["brand-new-model-ch36"].PromptPricePerMillion);
+        Assert.Equal(6m, all["brand-new-model-ch36"].CompletionPricePerMillion);
     }
 }
