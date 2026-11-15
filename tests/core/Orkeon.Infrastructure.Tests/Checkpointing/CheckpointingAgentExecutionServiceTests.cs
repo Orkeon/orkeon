@@ -302,6 +302,31 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
 
     [Fact]
     [Trait("BR", "CH-42")]
+    public async System.Threading.Tasks.Task ShouldReplayNoRetries_WhenAnUntypedCheckpointPredatesTheRetryCount()
+    {
+        _inner.RetryCount = 2;
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var written = await PlanOfAsync(id);
+
+        // An older untyped checkpoint is the same JSON without the retry count.
+        var current = System.Text.Json.Nodes.JsonNode.Parse(written.CompletedOutputs["first#1"]!)!.AsObject();
+        Assert.True(current["retryCount"] is not null, "the checkpoint keeps retryCount");
+        current.Remove("retryCount");
+        var legacy = new ResumePlan(id.ToString(), new Dictionary<string, string?> { ["first#1"] = current.ToJsonString() });
+
+        TaskResult replayed;
+        using (Enter(id, legacy))
+            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.Equal(0, replayed.RetryCount);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-42")]
     public async System.Threading.Tasks.Task ShouldReplayCompletedExitReason_WhenATypedTaskIsResumed()
     {
         var id = ExecutionId.New();
