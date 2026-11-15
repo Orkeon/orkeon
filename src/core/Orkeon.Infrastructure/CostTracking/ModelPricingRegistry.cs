@@ -13,6 +13,8 @@ namespace Orkeon.Infrastructure.CostTracking;
 public sealed partial class ModelPricingRegistry : IModelPricingRegistry
 {
     private readonly ConcurrentDictionary<string, ModelPricing> _pricings = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ModelPricing>> _providerPricings = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, byte> _warned = new(StringComparer.OrdinalIgnoreCase);
     private readonly ILogger<ModelPricingRegistry> _logger;
 
     /// <summary>Initializes a new instance of <see cref="ModelPricingRegistry"/> with default pricings and optional custom overrides.</summary>
@@ -52,19 +54,39 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
 
     /// <inheritdoc />
     public ModelPricing? TryGetPricing(string model)
+        => string.IsNullOrWhiteSpace(model) ? null : Lookup(_pricings, model);
+
+    /// <inheritdoc />
+    public ModelPricing? TryGetPricing(string? provider, string model)
     {
         if (string.IsNullOrWhiteSpace(model))
             return null;
 
+        if (provider is not null && _providerPricings.TryGetValue(provider, out var rows))
+        {
+            var scoped = Lookup(rows, model);
+            if (scoped is not null)
+                return scoped;
+        }
+
+        return Lookup(_pricings, model);
+    }
+
+    /// <inheritdoc />
+    public decimal CalculateCost(string? provider, string model, int promptTokens, int completionTokens)
+        => Cost(TryGetPricing(provider, model), model, promptTokens, completionTokens);
+
+    private static ModelPricing? Lookup(ConcurrentDictionary<string, ModelPricing> rows, string model)
+    {
         // 1. Exact match
-        if (_pricings.TryGetValue(model, out var exactMatch))
+        if (rows.TryGetValue(model, out var exactMatch))
             return exactMatch;
 
         // 2. Prefix match (longest prefix wins)
         ModelPricing? bestMatch = null;
-        var bestLength = 0;
+        var bestLength = -1;
 
-        foreach (var kvp in _pricings)
+        foreach (var kvp in rows)
         {
             if (model.StartsWith(kvp.Key, StringComparison.OrdinalIgnoreCase) && kvp.Key.Length > bestLength)
             {
@@ -80,7 +102,7 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
     public void RegisterPricing(string modelPattern, ModelPricing pricing)
     {
         ArgumentNullException.ThrowIfNull(pricing);
-        _pricings[modelPattern] = pricing;
+        RowsFor(pricing.Provider)[modelPattern] = pricing;
         LogRegisteredPricingForModelPattern(modelPattern, pricing.PromptPricePerMillion, pricing.CompletionPricePerMillion);
     }
 
@@ -92,11 +114,14 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
 
     /// <inheritdoc />
     public decimal CalculateCost(string model, int promptTokens, int completionTokens)
+        => Cost(TryGetPricing(model), model, promptTokens, completionTokens);
+
+    private decimal Cost(ModelPricing? pricing, string model, int promptTokens, int completionTokens)
     {
-        var pricing = TryGetPricing(model);
         if (pricing is null)
         {
-            LogNoPricingFoundForModel(model);
+            if (_warned.TryAdd(model, 0))
+                LogNoPricingFoundForModel(model);
             return 0m;
         }
 
@@ -105,6 +130,11 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
 
         return promptCost + completionCost;
     }
+
+    private ConcurrentDictionary<string, ModelPricing> RowsFor(string? provider)
+        => provider is null
+            ? _pricings
+            : _providerPricings.GetOrAdd(provider, _ => new(StringComparer.OrdinalIgnoreCase));
 
     private void RegisterDefaultPricings()
     {
@@ -160,10 +190,57 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         RegisterAnthropic("claude-3.5-haiku", 0.80m, 4.00m);
         RegisterAnthropic("claude-3-haiku", 0.25m, 1.25m);
 
+        // Paid providers' default models, per provider so a gateway's row never shadows the vendor's.
+        // deepseek: comparison doc (peak price).
+        RegisterFor("deepseek", "deepseek-flash", 0.30m, null, 1.20m);
+        // zai: docs.z.ai pricing; glm-5.3 is a prefix of the others, the longest prefix wins.
+        RegisterFor("zai", "glm-5.3-flashx", 0.37m, 0.075m, 1.25m);
+        RegisterFor("zai", "glm-5.3-flash", 0.15m, 0.03m, 0.50m);
+        RegisterFor("zai", "glm-5.3", 1.4m, 0.26m, 4.4m);
+        // kimi: Alibaba Model Studio (k3.1-pro) and the comparison doc (k3).
+        RegisterFor("kimi", "kimi-k3.1-pro", 2m, 0.2m, 10m);
+        RegisterFor("kimi", "kimi-k3", 3m, null, 15m);
+        // qwen: Alibaba Cloud model pricing, Singapore, limited-time 20% off; above 256K input is not modelled.
+        RegisterFor("qwen", "qwen3.7-plus", 0.4m, null, 1.6m);
+        // gemini: comparison doc; the 1.50 / 7.50 rate from 2027-01-01 is not modelled.
+        RegisterFor("gemini", "gemini-3.8-flash", 0.75m, null, 3.75m);
+        RegisterFor("gemini", "gemini-3.7-flash", 0.75m, null, 3.75m);
+        RegisterFor("mistral", "mistral-medium-2604", 1.50m, null, 7.50m);
+        // grok: comparison doc; the 4 / 12 rate above 200K is not modelled.
+        RegisterFor("grok", "grok-4.6", 2m, 0.5m, 6m);
+        RegisterFor("grok", "grok-4.7", 2m, 0.5m, 6m);
+        RegisterFor("minimax", "MiniMax-M3", 0.30m, null, 1.20m);
+        RegisterFor("together", "zai-org/GLM-5.3-Flash", 0.15m, null, 0.50m);
+        // mammouth: the gateway's own row, its upper bound.
+        RegisterFor("mammouth", "gemini-3.8-flash", 1.5m, null, 7.5m);
+        RegisterFor("mammouth", "gemini-3.7-flash", 1.5m, null, 7.5m);
+        // Local providers cost nothing: ollama prices any model at 0; Docker Model Runner
+        // (provider OpenAI) serves the Docker Hub "ai/" namespace.
+        RegisterFor("ollama", string.Empty, 0m, null, 0m);
+        Register("ai/", 0m, 0m);
+
         // Embedding models
         RegisterEmbedding("text-embedding-3-small", 0.02m);
         RegisterEmbedding("text-embedding-3-large", 0.13m);
         RegisterEmbedding("text-embedding-ada-002", 0.10m);
+    }
+
+    private void RegisterFor(
+        string provider,
+        string model,
+        decimal promptPricePerMillion,
+        decimal? cacheReadPricePerMillion,
+        decimal completionPricePerMillion)
+    {
+        RowsFor(provider)[model] = new ModelPricing
+        {
+            ModelPattern = model,
+            Provider = provider,
+            PromptPricePerMillion = promptPricePerMillion,
+            CompletionPricePerMillion = completionPricePerMillion,
+            CacheReadPricePerMillion = cacheReadPricePerMillion,
+            EffectiveDate = new DateTime(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc)
+        };
     }
 
     private void Register(string model, decimal promptPricePerMillion, decimal completionPricePerMillion)
@@ -216,7 +293,7 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Registered pricing for model pattern '{ModelPattern}': prompt={PromptPrice}/M, completion={CompletionPrice}/M")]
     private partial void LogRegisteredPricingForModelPattern(string modelPattern, decimal promptPrice, decimal completionPrice);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "No pricing found for model '{Model}', returning zero cost")]
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "No pricing found for model '{Model}', returning zero cost; add a price under Orkeon:CostTracking:CustomPricings")]
     private partial void LogNoPricingFoundForModel(string model);
 
 }

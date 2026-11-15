@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Common.DTOs;
@@ -28,6 +29,18 @@ public sealed class CostBudgetEnforcementTests
             NullLogger<CostBudgetManager>.Instance);
     }
 
+    private static CostBudgetManager Manager(BudgetLimit? crewBudget, FakeLoggerFactory logs)
+    {
+        var options = new CostTrackingOptions { Enabled = true, DefaultCrewBudget = crewBudget };
+        return new CostBudgetManager(
+            new ModelPricingRegistry(Options.Create(new CostTrackingOptions()), NullLogger<ModelPricingRegistry>.Instance),
+            Options.Create(options),
+            logs.CreateLogger<CostBudgetManager>());
+    }
+
+    private static List<(string Category, LogLevel Level, string Message)> BudgetWarnings(FakeLoggerFactory logs) =>
+        [.. logs.Entries.Where(e => e.Level == LogLevel.Warning && e.Category.EndsWith("CostBudgetManager", StringComparison.Ordinal))];
+
     private static CostUsageEvent Usage(int prompt, int completion, string crewId = Crew, decimal? cost = null) => new()
     {
         CrewId = crewId,
@@ -48,6 +61,45 @@ public sealed class CostBudgetEnforcementTests
     };
 
     private static LlmMessage[] Conversation() => [LlmMessage.User("hello")];
+
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void ShouldWarnThatTheBudgetCannotCoverIt_WhenAnUnpricedModelRunsUnderMaxCostUsd()
+    {
+        using var logs = new FakeLoggerFactory();
+        var manager = Manager(new BudgetLimit { MaxCostUsd = 5m }, logs);
+
+        manager.RecordUsage(Usage(10, 10));
+        manager.RecordUsage(Usage(10, 10));
+        var afterSame = BudgetWarnings(logs);
+        manager.RecordUsage(Usage(10, 10) with { Model = "vendor/model-y" });
+        var afterOther = BudgetWarnings(logs);
+
+        Assert.Single(afterSame);
+        Assert.Contains("vendor/model-x", afterSame[0].Message, StringComparison.Ordinal);
+        Assert.Contains("budget", afterSame[0].Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, afterOther.Count);
+        Assert.Contains("vendor/model-y", afterOther[1].Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void ShouldNotWarnAboutTheBudget_WhenNoCostBudgetIsSet()
+    {
+        using var logs = new FakeLoggerFactory();
+        var withCost = Manager(new BudgetLimit { MaxCostUsd = 5m }, logs);
+        var tokenOnly = Manager(new BudgetLimit { MaxTokens = 1000 }, logs);
+        var none = Manager(crewBudget: null, logs);
+
+        withCost.RecordUsage(Usage(10, 10));
+        var control = BudgetWarnings(logs);
+        tokenOnly.RecordUsage(Usage(10, 10));
+        none.RecordUsage(Usage(10, 10));
+        var after = BudgetWarnings(logs);
+
+        Assert.Single(control);
+        Assert.Single(after);
+    }
 
     [Fact]
     public void ShouldRefuse_WhenRecordedTokensReachTheCap()

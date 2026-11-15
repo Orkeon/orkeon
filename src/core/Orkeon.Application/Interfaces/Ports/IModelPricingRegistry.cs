@@ -12,6 +12,9 @@ public sealed record ModelPricing
     /// </summary>
     public string ModelPattern { get; init; } = string.Empty;
 
+    /// <summary>Provider this row is scoped to; null means any provider.</summary>
+    public string? Provider { get; init; }
+
     /// <summary>
     /// Cost per million prompt (input) tokens in the specified currency.
     /// </summary>
@@ -73,4 +76,11 @@ public interface IModelPricingRegistry
     /// Calculates the cost for the given token usage on the specified model.
     /// </summary>
     decimal CalculateCost(string model, int promptTokens, int completionTokens);
+
+    /// <summary>Tries to get pricing for a model called through the given provider.</summary>
+    ModelPricing? TryGetPricing(string? provider, string model) => TryGetPricing(model);
+
+    /// <summary>Calculates the cost of a call made through the given provider.</summary>
+    decimal CalculateCost(string? provider, string model, int promptTokens, int completionTokens)
+        => CalculateCost(model, promptTokens, completionTokens);
 }

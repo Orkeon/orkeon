@@ -112,6 +112,7 @@
     "Orkeon:CostTracking:CustomPricings:<i>:EmbeddingPricePerMillion": "Coût par million de tokens d'embedding (null si ce n'est pas un modèle d'embedding).",
     "Orkeon:CostTracking:CustomPricings:<i>:ModelPattern": "Nom ou motif du modèle (p. ex. \"gpt-4o\", \"claude-3-opus\").",
     "Orkeon:CostTracking:CustomPricings:<i>:PromptPricePerMillion": "Coût par million de tokens de prompt (entrée), dans la devise indiquée.",
+    "Orkeon:CostTracking:CustomPricings:<i>:Provider": "Fournisseur auquel cette ligne est rattachée ; null signifie n'importe quel fournisseur.",
     "Orkeon:CostTracking:DefaultCrewBudget:AlertThresholdPercent": "Pourcentage du budget à partir duquel une alerte d'avertissement est émise (défaut : 80 %).",
     "Orkeon:CostTracking:DefaultCrewBudget:MaxCostUsd": "Coût total maximal en USD (null = illimité) : une fois que les appels enregistrés l'atteignent, l'appel LLM suivant est refusé (`BudgetExhaustedException`, dimension `Cost`).",
     "Orkeon:CostTracking:DefaultCrewBudget:MaxTokens": "Nombre total maximal de tokens (null = illimité) : une fois que les appels enregistrés l'atteignent, l'appel LLM suivant est refusé (`BudgetExhaustedException`, dimension `Tokens`).",
