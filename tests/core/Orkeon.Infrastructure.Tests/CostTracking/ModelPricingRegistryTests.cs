@@ -58,6 +58,54 @@ public sealed class ModelPricingRegistryTests
         }
     }
 
+    // Read from the defaults themselves, so a renamed default model is caught unpriced. The provider is the
+    // field name: every provider's Name matches it case-insensitively.
+    public static TheoryData<string, string> PaidDefaultModels()
+    {
+        string[] unpriced = ["HuggingFace", "OpenRouter", "Ollama", "DockerModelRunner"];
+        var data = new TheoryData<string, string>();
+        foreach (var field in typeof(Orkeon.Constants.Llm.LlmProviderDefaultModels).GetFields(
+                     System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+        {
+            if (field.IsLiteral || field.FieldType != typeof(string) || unpriced.Contains(field.Name))
+            {
+                continue;
+            }
+
+            data.Add(field.Name, (string)field.GetValue(null)!);
+        }
+
+        return data;
+    }
+
+    [Theory]
+    [Trait("BR", "CH-08")]
+    [MemberData(nameof(PaidDefaultModels))]
+    public void ShouldPriceEveryPaidDefaultModel_ReadFromTheDefaults(string provider, string model)
+    {
+        using var logs = new FakeLoggerFactory();
+
+        var pricing = Create(logs).TryGetPricing(provider, model);
+
+        Assert.NotNull(pricing);
+        Assert.True(pricing.PromptPricePerMillion > 0, $"{provider} '{model}' has no input price");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void ShouldNotPriceEveryModel_WhenACustomPricingHasNoPattern()
+    {
+        using var logs = new FakeLoggerFactory();
+        var registry = Create(logs, new ModelPricing
+        {
+            ModelPattern = "",
+            PromptPricePerMillion = 1m,
+            CompletionPricePerMillion = 1m,
+        });
+
+        Assert.Null(registry.TryGetPricing("some-provider", "an-unknown-model"));
+    }
+
     [Fact]
     [Trait("BR", "CH-08")]
     public void ShouldKeepTheOpenAIAndAnthropicPrices_WhenTheTableGrows()

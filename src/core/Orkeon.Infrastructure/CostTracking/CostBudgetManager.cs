@@ -17,8 +17,8 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
     private readonly ConcurrentDictionary<string, BudgetLimit> _crewBudgets = new();
     private readonly ConcurrentDictionary<string, BudgetLimit> _agentBudgets = new();
     private readonly ConcurrentBag<BudgetAlert> _alerts = [];
-    // The recorded calls nobody priced (no vendor charge, no registry price), by reference: their settled cost is 0.
     private readonly ConcurrentDictionary<string, byte> _budgetWarned = new(StringComparer.OrdinalIgnoreCase);
+    // The recorded calls nobody priced (no vendor charge, no registry price), by reference: their settled cost is 0.
     private readonly ConcurrentDictionary<CostUsageEvent, byte> _unpriced = new(ReferenceEqualityComparer.Instance);
     // The answer given for each event recorded, by reference: the meter and a host's own sink may both hand
     // the manager the same event, which is counted once. Weak: the table holds no event past its callers.

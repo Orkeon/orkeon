@@ -54,7 +54,7 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
 
     /// <inheritdoc />
     public ModelPricing? TryGetPricing(string model)
-        => string.IsNullOrWhiteSpace(model) ? null : Lookup(_pricings, model);
+        => string.IsNullOrWhiteSpace(model) ? null : Lookup(_pricings, model, matchAll: false);
 
     /// <inheritdoc />
     public ModelPricing? TryGetPricing(string? provider, string model)
@@ -64,19 +64,21 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
 
         if (provider is not null && _providerPricings.TryGetValue(provider, out var rows))
         {
-            var scoped = Lookup(rows, model);
+            var scoped = Lookup(rows, model, matchAll: true);
             if (scoped is not null)
                 return scoped;
         }
 
-        return Lookup(_pricings, model);
+        return Lookup(_pricings, model, matchAll: false);
     }
 
     /// <inheritdoc />
     public decimal CalculateCost(string? provider, string model, int promptTokens, int completionTokens)
         => Cost(TryGetPricing(provider, model), model, promptTokens, completionTokens);
 
-    private static ModelPricing? Lookup(ConcurrentDictionary<string, ModelPricing> rows, string model)
+    // matchAll: an empty pattern matches every model. Only a provider's own rows allow it (ollama prices every
+    // model at 0); a provider-less row with an empty pattern would price every unknown model and hide its warning.
+    private static ModelPricing? Lookup(ConcurrentDictionary<string, ModelPricing> rows, string model, bool matchAll)
     {
         // 1. Exact match
         if (rows.TryGetValue(model, out var exactMatch))
@@ -84,7 +86,7 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
 
         // 2. Prefix match (longest prefix wins)
         ModelPricing? bestMatch = null;
-        var bestLength = -1;
+        var bestLength = matchAll ? -1 : 0;
 
         foreach (var kvp in rows)
         {
