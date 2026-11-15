@@ -34,6 +34,10 @@ internal sealed class DoctorCommandOptions : CliOptions
 
     /// <summary>Test seam: overrides <see cref="AppContext.BaseDirectory"/> for the install channel.</summary>
     internal string? InstallDirectoryOverride { get; set; }
+
+    /// <summary>Test seam: overrides the tsc resolver of the tsc check, so a test can inject a missing tsc;
+    /// <see langword="null"/> uses the real <c>TscTypeChecker</c> resolver. Not bound by the CLI grammar.</summary>
+    internal Func<string>? TscResolver { get; init; }
 }
 
 /// <summary>One diagnostic result. The <c>--json</c> schema is a CI contract — keep it stable.</summary>
@@ -159,7 +163,7 @@ internal static class DoctorCommand
         {
             var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
             var installDirectory = options.InstallDirectoryOverride ?? AppContext.BaseDirectory;
-            var results = await RunChecksAsync(cwd, installDirectory, cts.Token).ConfigureAwait(false);
+            var results = await RunChecksAsync(cwd, installDirectory, options.TscResolver, cts.Token).ConfigureAwait(false);
 
             if (options.Json)
                 await console.Output.WriteLineAsync(JsonSerializer.Serialize(results)).ConfigureAwait(false);
@@ -181,7 +185,7 @@ internal static class DoctorCommand
     }
 
     private static async Task<IReadOnlyList<DoctorCheckResult>> RunChecksAsync(
-        string cwd, string installDirectory, CancellationToken ct)
+        string cwd, string installDirectory, Func<string>? tscResolver, CancellationToken ct)
     {
         var llm = ReadLlmContext(cwd);
 
@@ -196,7 +200,7 @@ internal static class DoctorCommand
             .. CheckRunnerSettings(llm),
             await CheckLlmReachabilityAsync(llm, ct).ConfigureAwait(false),
             await CheckEsbuildAsync(llm.Configuration, ct).ConfigureAwait(false),
-            await CheckTscAsync(llm.Configuration, ct).ConfigureAwait(false),
+            await CheckConfiguredTscAsync(llm.Configuration, tscResolver, ct).ConfigureAwait(false),
             CheckLocalEmbeddings(),
             CheckOnnxReranker(),
             CheckTreeSitterGrammars(),
@@ -649,8 +653,8 @@ internal static class DoctorCommand
     /// The TypeScript compiler <c>orkeon run --validate</c> type-checks a <c>.ork.ts</c> with (FWK-12),
     /// resolved by the checker's own chain and named with the mode the settings give it.
     /// </summary>
-    private static Task<DoctorCheckResult> CheckTscAsync(IConfiguration configuration, CancellationToken ct)
-        => CheckTscAsync(configuration, new TscTypeChecker(ScriptingToolchainOptions.FromConfiguration(configuration)).ResolveBinary, ct);
+    private static Task<DoctorCheckResult> CheckConfiguredTscAsync(IConfiguration configuration, Func<string>? resolverOverride, CancellationToken ct)
+        => CheckTscAsync(configuration, resolverOverride ?? new TscTypeChecker(ScriptingToolchainOptions.FromConfiguration(configuration)).ResolveBinary, ct);
 
     // Test seam: the resolver is injected. A missing tsc follows the type-check mode (CH-24).
     internal static async Task<DoctorCheckResult> CheckTscAsync(IConfiguration configuration, Func<string> resolveBinary, CancellationToken ct)

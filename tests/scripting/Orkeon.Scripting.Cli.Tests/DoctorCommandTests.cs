@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 using Orkeon.Hosting;
+using Orkeon.Scripting.Toolchain;
 using Orkeon.Scripting.Cli.Commands;
 
 namespace Orkeon.Scripting.Cli.Tests;
@@ -216,13 +217,14 @@ public sealed class DoctorCommandTests : IDisposable
             StringComparison.OrdinalIgnoreCase);
     }
 
-    private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(ScriptScratch scratch)
+    private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(ScriptScratch scratch, Func<string>? tscResolver = null)
     {
         using var console = new TestConsole();
         var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
+            TscResolver = tscResolver,
         });
 
         using var doc = JsonDocument.Parse(console.Stdout);
@@ -697,21 +699,21 @@ public sealed class DoctorCommandTests : IDisposable
 
     // ── CH-24: a missing tsc is judged by the type-check mode ───────────────
 
-    private static Microsoft.Extensions.Configuration.IConfiguration TscConfig(string? typeCheck, string? tscPath = null)
+    private static IConfiguration TscConfig(string? typeCheck, string? tscPath = null)
     {
         var values = new Dictionary<string, string?>();
         if (typeCheck is not null)
             values["Orkeon:Scripting:Toolchain:TypeCheck"] = typeCheck;
         if (tscPath is not null)
             values["Orkeon:Scripting:Toolchain:TscPath"] = tscPath;
-        return new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(values).Build();
+        return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
     }
 
     private static string MissingTscPath() =>
         Path.Combine(Path.GetTempPath(), "orkeon-doctor-no-tsc-" + Guid.NewGuid().ToString("N"), "tsc");
 
     private static Func<string> TscMissing() =>
-        () => throw new Orkeon.Scripting.Toolchain.TscNotFoundException("TypeScript compiler (tsc) not found.");
+        () => throw new TscNotFoundException("TypeScript compiler (tsc) not found.");
 
     [Fact]
     [Trait("BR", "CH-24")]
@@ -753,21 +755,34 @@ public sealed class DoctorCommandTests : IDisposable
 
     [Fact]
     [Trait("BR", "CH-24")]
+    [Trait("BR", "CH-32")]
     public async Task ShouldReportNoWarning_WhenTheDoctorRunsWithoutTscUnderDefaults()
     {
         using var scratch = new ScriptScratch();
 
-        var (_, lines) = await DoctorJsonAsync(scratch);
+        var (_, lines) = await DoctorJsonAsync(scratch, TscMissing());
 
         var tsc = Assert.Single(lines, l => l.Check == "tsc");
         Assert.Equal("ok", tsc.Status);
+        Assert.Contains("optional", tsc.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-32")]
+    public async Task ShouldKeepTscWarn_WhenTheConfiguredTscPathDoesNotExistUnderOff()
+    {
+        Func<string> missing = () => throw new TscNotFoundException(
+            "TypeScript compiler not found: 'Orkeon:Scripting:Toolchain:TscPath' names a file that does not exist.");
+        var result = await DoctorCommand.CheckTscAsync(TscConfig("Off", MissingTscPath()), missing, CancellationToken.None);
+
+        Assert.Equal("warn", result.Status);
     }
 
     [Fact]
     [Trait("BR", "CH-24")]
     public async Task ShouldKeepTscWarn_WhenTheConfiguredTscPathDoesNotExistUnderValidate()
     {
-        Func<string> missing = () => throw new Orkeon.Scripting.Toolchain.TscNotFoundException(
+        Func<string> missing = () => throw new TscNotFoundException(
             "TypeScript compiler not found: 'Orkeon:Scripting:Toolchain:TscPath' names a file that does not exist.");
         var result = await DoctorCommand.CheckTscAsync(TscConfig("Validate", MissingTscPath()), missing, CancellationToken.None);
 
