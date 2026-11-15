@@ -214,6 +214,110 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
         Assert.True(replayed.EndedOnIterationCap);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("BR", "CH-42")]
+    public async System.Threading.Tasks.Task ShouldReplayTheRetryCount_WhenAResumedTaskRetried(bool typed)
+    {
+        _inner.RetryCount = 2;
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            if (typed)
+                await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+            else
+                await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        }
+
+        var plan = await PlanOfAsync(id);
+        int replayedRetries;
+        using (Enter(id, plan))
+        {
+            replayedRetries = typed
+                ? (await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken)).RetryCount
+                : (await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken)).RetryCount;
+        }
+
+        Assert.Equal(2, replayedRetries);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-42")]
+    public async System.Threading.Tasks.Task ShouldReplayTheCacheTokensAndEndTime_WhenATypedTaskIsResumed()
+    {
+        var endedAt = new DateTimeOffset(2026, 11, 15, 10, 30, 0, TimeSpan.Zero);
+        _inner.CacheHitTokens = 120L;
+        _inner.CacheMissTokens = 30L;
+        _inner.EndedAt = endedAt;
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult<FakeTypedAgentExecutionService.Answer> replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.Equal(120L, replayed.CacheHitTokens);
+        Assert.Equal(30L, replayed.CacheMissTokens);
+        Assert.Equal(endedAt, replayed.EndedAt);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-42")]
+    public async System.Threading.Tasks.Task ShouldReplayDefaults_WhenATypedCheckpointPredatesTheNewFields()
+    {
+        _inner.RetryCount = 2;
+        _inner.CacheHitTokens = 120L;
+        _inner.CacheMissTokens = 30L;
+        _inner.EndedAt = new DateTimeOffset(2026, 11, 15, 10, 30, 0, TimeSpan.Zero);
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var written = await PlanOfAsync(id);
+
+        // The checkpoint now keeps the fields; an older one is the same JSON without those keys.
+        var fields = new[] { "retryCount", "cacheHitTokens", "cacheMissTokens", "endedAt" };
+        var current = System.Text.Json.Nodes.JsonNode.Parse(written.CompletedOutputs["first#1"]!)!.AsObject();
+        Assert.All(fields, field => Assert.True(current[field] is not null, $"the checkpoint keeps {field}"));
+        foreach (var field in fields)
+            current.Remove(field);
+        var legacy = new ResumePlan(id.ToString(), new Dictionary<string, string?> { ["first#1"] = current.ToJsonString() });
+
+        TaskResult<FakeTypedAgentExecutionService.Answer> replayed;
+        using (Enter(id, legacy))
+            replayed = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.Equal(0, replayed.RetryCount);
+        Assert.Null(replayed.CacheHitTokens);
+        Assert.Null(replayed.CacheMissTokens);
+        Assert.Null(replayed.EndedAt);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-42")]
+    public async System.Threading.Tasks.Task ShouldReplayCompletedExitReason_WhenATypedTaskIsResumed()
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult<FakeTypedAgentExecutionService.Answer> replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.Equal(AgentExitReason.Completed, replayed.ExitReason);
+    }
+
     [Fact]
     [Trait("BR", "FWK-07")]
     public async System.Threading.Tasks.Task ShouldCarryTheResumedFlagAndTheUsage_OnTheTypedResult()

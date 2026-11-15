@@ -327,6 +327,8 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
 
         public int IterationsUsed { get; init; }
 
+        public int RetryCount { get; init; }
+
         public DateTimeOffset? EndedAt { get; init; }
 
         // The outcome of a decision task, which a route reads: kept so that a resumed run replays it.
@@ -349,6 +351,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             CacheHitTokens = result.CacheHitTokens,
             CacheMissTokens = result.CacheMissTokens,
             IterationsUsed = result.IterationsUsed,
+            RetryCount = result.RetryCount,
             EndedAt = result.EndedAt,
             Decision = result.Decision,
             EndedOnIterationCap = result.EndedOnIterationCap,
@@ -365,7 +368,11 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 TokensUsed = result.TokensUsed,
                 PromptTokens = result.PromptTokens,
                 CompletionTokens = result.CompletionTokens,
+                CacheHitTokens = result.CacheHitTokens,
+                CacheMissTokens = result.CacheMissTokens,
                 IterationsUsed = result.IterationsUsed,
+                RetryCount = result.RetryCount,
+                EndedAt = result.EndedAt,
                 EndedOnIterationCap = result.EndedOnIterationCap,
             };
 
@@ -378,6 +385,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             CacheHitTokens = CacheHitTokens,
             CacheMissTokens = CacheMissTokens,
             IterationsUsed = IterationsUsed,
+            RetryCount = RetryCount,
             EndedAt = EndedAt,
             Decision = Decision,
             EndedOnIterationCap = EndedOnIterationCap,
@@ -395,7 +403,11 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 TokensUsed = TokensUsed,
                 PromptTokens = PromptTokens,
                 CompletionTokens = CompletionTokens,
+                CacheHitTokens = CacheHitTokens,
+                CacheMissTokens = CacheMissTokens,
                 IterationsUsed = IterationsUsed,
+                RetryCount = RetryCount,
+                EndedAt = EndedAt,
                 EndedOnIterationCap = EndedOnIterationCap,
             };
 

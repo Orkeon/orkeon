@@ -36,6 +36,18 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
     /// <summary>The cap flag every successful result carries, typed and untyped.</summary>
     public bool EndedOnIterationCap { get; set; }
 
+    /// <summary>The retry count every successful result carries, typed and untyped.</summary>
+    public int RetryCount { get; set; }
+
+    /// <summary>The cache-hit tokens every successful result carries, typed and untyped.</summary>
+    public long? CacheHitTokens { get; set; }
+
+    /// <summary>The cache-miss tokens every successful result carries, typed and untyped.</summary>
+    public long? CacheMissTokens { get; set; }
+
+    /// <summary>The end time every successful result carries, typed and untyped.</summary>
+    public DateTimeOffset? EndedAt { get; set; }
+
     /// <summary>A structured answer.</summary>
     public sealed record Answer(string Text);
 
@@ -50,7 +62,7 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
             throw new InvalidOperationException($"{key} blew up");
         return System.Threading.Tasks.Task.FromResult(FailOn.Contains(key)
             ? new TaskResult(false, "", null, [], TimeSpan.Zero, $"{key} failed")
-            : new TaskResult(true, $"out:{key}", UntypedStructured(key), [], TimeSpan.FromSeconds(2)) { TokensUsed = 42, EndedOnIterationCap = EndedOnIterationCap });
+            : new TaskResult(true, $"out:{key}", UntypedStructured(key), [], TimeSpan.FromSeconds(2)) { TokensUsed = 42, EndedOnIterationCap = EndedOnIterationCap, RetryCount = RetryCount, CacheHitTokens = CacheHitTokens, CacheMissTokens = CacheMissTokens, EndedAt = EndedAt });
     }
 
     /// <inheritdoc />
@@ -71,6 +83,10 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
                 CompletionTokens = 3,
                 IterationsUsed = 2,
                 EndedOnIterationCap = EndedOnIterationCap,
+                RetryCount = RetryCount,
+                CacheHitTokens = CacheHitTokens,
+                CacheMissTokens = CacheMissTokens,
+                EndedAt = EndedAt,
             });
     }
 }

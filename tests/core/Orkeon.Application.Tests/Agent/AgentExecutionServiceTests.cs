@@ -75,10 +75,24 @@ public class AgentExecutionServiceTests
         Assert.False(plain.EndedOnIterationCap);
     }
 
-    private static async System.Threading.Tasks.Task<TaskResult<Answer>> RunTypedAsync(bool endedOnIterationCap)
+    [Fact]
+    [Trait("BR", "CH-42")]
+    public async System.Threading.Tasks.Task ShouldCopyTheCacheTokensAndEndTime_WhenATypedResultIsConverted()
+    {
+        var endedAt = new DateTimeOffset(2026, 11, 15, 10, 30, 0, TimeSpan.Zero);
+
+        var result = await RunTypedAsync(endedOnIterationCap: false, cacheHit: 120L, cacheMiss: 30L, endedAt: endedAt);
+
+        Assert.Equal(120L, result.CacheHitTokens);
+        Assert.Equal(30L, result.CacheMissTokens);
+        Assert.Equal(endedAt, result.EndedAt);
+    }
+
+    private static async System.Threading.Tasks.Task<TaskResult<Answer>> RunTypedAsync(
+        bool endedOnIterationCap, long? cacheHit = null, long? cacheMiss = null, DateTimeOffset? endedAt = null)
     {
         var orchestrator = new TestExecutionOrchestrator();
-        orchestrator.SetupResult(new TaskResult(true, "raw", null, [], TimeSpan.Zero) { EndedOnIterationCap = endedOnIterationCap });
+        orchestrator.SetupResult(new TaskResult(true, "raw", null, [], TimeSpan.Zero) { EndedOnIterationCap = endedOnIterationCap, CacheHitTokens = cacheHit, CacheMissTokens = cacheMiss, EndedAt = endedAt });
         var service = new AgentExecutionService(
             NullLogger<AgentExecutionService>.Instance,
             orchestrator,

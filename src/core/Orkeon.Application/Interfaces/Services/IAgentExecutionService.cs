@@ -222,4 +222,13 @@ public sealed record TaskResult<TOutput>(
 
     /// <summary>Gets the number of agent-loop iterations the task used.</summary>
     public int IterationsUsed { get; init; }
+
+    /// <summary>Gets the cumulative prompt tokens that hit the provider's prompt cache, or null when no call reported the count.</summary>
+    public long? CacheHitTokens { get; init; }
+
+    /// <summary>Gets the cumulative prompt tokens that missed the provider's prompt cache, or null when no call reported the count.</summary>
+    public long? CacheMissTokens { get; init; }
+
+    /// <summary>Gets when the task ended, or null when not recorded.</summary>
+    public DateTimeOffset? EndedAt { get; init; }
 }
