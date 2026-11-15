@@ -137,6 +137,24 @@ public class EmbeddingDimensionGuardTests
     }
 
     [Fact]
+    [Trait("BR", "CH-14")]
+    public async Task ShouldNameTheFingerprintSetting_WhenTheGuardIsSkipped()
+    {
+        var store = new MockEmbeddingFingerprintStore { LoadFailure = new FileAccessDeniedException("no mount", "/workspace/.orkeon/embedding-fingerprint.json") };
+        using var loggers = new FakeLoggerFactory();
+        using var sp = BuildHost(store, loggers, ("Orkeon:Embeddings:Provider", "ollama"));
+
+        foreach (var service in sp.GetServices<IHostedService>())
+            await service.StartAsync(TestContext.Current.CancellationToken);
+
+        var warning = Assert.Single(
+            loggers.Entries,
+            e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning && e.Message.Contains("check is skipped", StringComparison.Ordinal));
+        Assert.Contains("Orkeon:Embeddings:FingerprintPath", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("no mount", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     [Trait("BR", "CH-04")]
     public async Task ShouldLogDebugNotWarning_WhenTheFirstFingerprintWriteIsDeniedByAReadOnlyMount()
     {

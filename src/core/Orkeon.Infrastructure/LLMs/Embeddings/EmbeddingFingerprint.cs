@@ -207,7 +207,7 @@ internal static partial class EmbeddingDimensionGuardRunner
     }
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
-        Message = "The embedding model guard could not read or write its fingerprint, the check is skipped: {Reason}")]
+        Message = "The embedding model guard could not read or write its fingerprint, the check is skipped: {Reason}. Point Orkeon:Embeddings:FingerprintPath to a writable path, or set it empty to turn the guard off")]
     private static partial void LogGuardSkipped(ILogger logger, string reason);
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Debug,

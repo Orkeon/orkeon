@@ -212,4 +212,46 @@ public sealed class RagEvalCommandTests
             Assert.Equal(Program.ExitOk, exit);
         }
     }
+
+    [Fact]
+    [Trait("BR", "CH-16")]
+    public async Task ShouldRefuseTheEval_WhenTheCollectionWasIndexedWithAnotherModelAndNoIngest()
+    {
+        using var scratch = new ScriptScratch();
+        Directory.CreateDirectory(Path.Combine(scratch.Root, "docs"));
+        await File.WriteAllTextAsync(Path.Combine(scratch.Root, "docs", "a.md"), "alpha", TestContext.Current.CancellationToken);
+        var settings = scratch.WriteFile("appsettings.json", """{ "RaggableTree": { "Enabled": false } }""");
+        using (var first = new TestConsole())
+        {
+            var ingest = await RagCommand.ExecuteIngestAsync(first, new RagIngestCommandOptions
+            {
+                Collection = "docs",
+                Sources = ["./docs/**/*.md"],
+                SettingsPath = settings,
+                WorkingDirectoryOverride = scratch.Root,
+                ConfigureTestServices = (_, s) => s.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(
+                    new StubEmbeddingProvider("model-a", 8)),
+            });
+            Assert.Equal(Program.ExitOk, ingest);
+        }
+        using var console = new TestConsole();
+
+        var exit = await RagCommand.ExecuteEvalAsync(console, new RagEvalCommandOptions
+        {
+            Dataset = "golden.yaml",
+            Collection = "docs",
+            NoIngest = true,
+            SettingsPath = settings,
+            WorkingDirectoryOverride = scratch.Root,
+            ConfigureTestServices = (_, s) =>
+            {
+                s.AddSingleton<IRagEvalHarness>(new FakeRagEvalHarness());
+                s.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(new StubEmbeddingProvider("model-b", 16));
+            },
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("docs", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("orkeon rag ingest --reindex", console.Stderr, StringComparison.Ordinal);
+    }
 }

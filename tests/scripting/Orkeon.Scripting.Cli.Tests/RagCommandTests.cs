@@ -403,7 +403,8 @@ public sealed class RagCommandTests
 
     private static async Task<int> IngestWithEmbeddingModelAsync(
         TestConsole console, ScriptScratch scratch, string model, int dimensions,
-        string settingsText = """{ "RaggableTree": { "Enabled": false } }""")
+        string settingsText = """{ "RaggableTree": { "Enabled": false } }""",
+        Action<IServiceCollection>? configureServices = null)
     {
         Directory.CreateDirectory(Path.Combine(scratch.Root, "docs"));
         await File.WriteAllTextAsync(Path.Combine(scratch.Root, "docs", "a.md"), "alpha", TestContext.Current.CancellationToken);
@@ -419,42 +420,121 @@ public sealed class RagCommandTests
                 s.AddSingleton<IIngestionPipeline>(new FakeIngestionPipeline());
                 s.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(
                     new Orkeon.Scripting.Cli.Tests.Doubles.StubEmbeddingProvider(model, dimensions));
+                configureServices?.Invoke(s);
             },
         });
     }
 
     [Fact]
-    [Trait("BR", "CH-05")]
-    public async Task ShouldRecordTheFingerprintUnderOutput_WhenRagRuns()
+    [Trait("BR", "CH-15")]
+    public async Task ShouldWriteNoHostFingerprint_WhenRagRuns()
     {
         using var scratch = new ScriptScratch();
         using var console = new TestConsole();
+        string? fingerprintPath = null;
 
-        var exit = await IngestWithEmbeddingModelAsync(console, scratch, "model-a", 8);
+        var exit = await IngestWithEmbeddingModelAsync(
+            console, scratch, "model-a", 8,
+            configureServices: s => s.AddSingleton<Microsoft.Extensions.Options.IConfigureOptions<Orkeon.Application.Configuration.EmbeddingOptions>>(
+                new Microsoft.Extensions.Options.ConfigureOptions<Orkeon.Application.Configuration.EmbeddingOptions>(o => fingerprintPath = o.FingerprintPath)));
 
         Assert.Equal(Program.ExitOk, exit);
-        var recorded = Path.Combine(scratch.Root, ".orkeon", "rag", "embedding-fingerprint.json");
-        Assert.True(File.Exists(recorded), "expected " + recorded);
-        Assert.Contains("model-a", await File.ReadAllTextAsync(recorded, TestContext.Current.CancellationToken), StringComparison.Ordinal);
+        Assert.True(string.IsNullOrEmpty(fingerprintPath), "FingerprintPath was " + fingerprintPath);
+        Assert.False(File.Exists(Path.Combine(scratch.Root, ".orkeon", "rag", "embedding-fingerprint.json")));
+    }
+
+    private static async Task<int> IngestRealAsync(
+        TestConsole console, ScriptScratch scratch, string model, int dimensions, bool reindex)
+    {
+        Directory.CreateDirectory(Path.Combine(scratch.Root, "docs"));
+        await File.WriteAllTextAsync(Path.Combine(scratch.Root, "docs", "a.md"), "alpha", TestContext.Current.CancellationToken);
+        var settings = scratch.WriteFile("appsettings.json", """{ "RaggableTree": { "Enabled": false } }""");
+        return await RagCommand.ExecuteIngestAsync(console, new RagIngestCommandOptions
+        {
+            Collection = "docs",
+            Sources = ["./docs/**/*.md"],
+            Reindex = reindex,
+            SettingsPath = settings,
+            WorkingDirectoryOverride = scratch.Root,
+            ConfigureTestServices = (_, s) => s.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(
+                new StubEmbeddingProvider(model, dimensions)),
+        });
+    }
+
+    private static async Task<int> SearchAsync(TestConsole console, ScriptScratch scratch, string model, int dimensions)
+    {
+        var settings = scratch.WriteFile("appsettings.json", """{ "RaggableTree": { "Enabled": false } }""");
+        return await RagCommand.ExecuteSearchAsync(console, new RagSearchCommandOptions
+        {
+            Question = "alpha?",
+            Collection = "docs",
+            SettingsPath = settings,
+            WorkingDirectoryOverride = scratch.Root,
+            ConfigureTestServices = (_, s) =>
+            {
+                s.AddSingleton<IRagPipeline>(new FakeRagPipeline { Answer = new RagAnswer { Text = "found" } });
+                s.AddSingleton<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>(new StubEmbeddingProvider(model, dimensions));
+            },
+        });
     }
 
     [Fact]
-    [Trait("BR", "CH-05")]
-    public async Task ShouldRefuseRag_WhenTheRecordedEmbeddingModelChanged()
+    [Trait("BR", "CH-15")]
+    public async Task ShouldReindex_WhenTheEmbeddingModelChanged()
     {
         using var scratch = new ScriptScratch();
-        var recorded = Path.Combine(scratch.Root, ".orkeon", "rag");
-        Directory.CreateDirectory(recorded);
-        await File.WriteAllTextAsync(
-            Path.Combine(recorded, "embedding-fingerprint.json"),
-            """{"Provider":"named","Model":"model-a","Dimensions":8}""",
-            TestContext.Current.CancellationToken);
+        using (var first = new TestConsole())
+            Assert.Equal(Program.ExitOk, await IngestRealAsync(first, scratch, "model-a", 8, reindex: false));
         using var console = new TestConsole();
 
-        var exit = await IngestWithEmbeddingModelAsync(console, scratch, "model-b", 16);
+        var exit = await IngestRealAsync(console, scratch, "model-b", 16, reindex: true);
+
+        Assert.Equal(Program.ExitOk, exit);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-15")]
+    public async Task ShouldRefuseTheIngest_WhenTheModelChangedWithoutReindex()
+    {
+        using var scratch = new ScriptScratch();
+        using (var first = new TestConsole())
+            Assert.Equal(Program.ExitOk, await IngestRealAsync(first, scratch, "model-a", 8, reindex: false));
+        using var console = new TestConsole();
+
+        var exit = await IngestRealAsync(console, scratch, "model-b", 16, reindex: false);
 
         Assert.NotEqual(Program.ExitOk, exit);
-        Assert.Contains("The embedding model changed", console.Stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-16")]
+    public async Task ShouldSearch_WhenTheCollectionWasIndexedWithTheSameModel()
+    {
+        using var scratch = new ScriptScratch();
+        using (var first = new TestConsole())
+            Assert.Equal(Program.ExitOk, await IngestRealAsync(first, scratch, "model-a", 8, reindex: false));
+        using var console = new TestConsole();
+
+        var exit = await SearchAsync(console, scratch, "model-a", 8);
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains("found", console.Stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-16")]
+    public async Task ShouldRefuseTheSearch_WhenTheCollectionWasIndexedWithAnotherModel()
+    {
+        using var scratch = new ScriptScratch();
+        using (var first = new TestConsole())
+            Assert.Equal(Program.ExitOk, await IngestRealAsync(first, scratch, "model-a", 8, reindex: false));
+        using var console = new TestConsole();
+
+        var exit = await SearchAsync(console, scratch, "model-b", 16);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("docs", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("orkeon rag ingest --reindex", console.Stderr, StringComparison.Ordinal);
     }
 
     [Fact]

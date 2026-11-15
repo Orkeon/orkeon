@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Orkeon.Hosting.Tests.Doubles;
 
 namespace Orkeon.Hosting.Tests;
@@ -67,5 +70,39 @@ public sealed class RunnerHostEmbeddingGuardTests : IDisposable
         Build("""{ "RaggableTree": { "Enabled": false } }""");
 
         Assert.False(File.Exists(Fingerprint));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-17")]
+    public void ShouldLogNoGuardWarning_WhenTheWorkspaceIsMountedReadOnly()
+    {
+        var path = Path.Combine(_root, "appsettings.json");
+        File.WriteAllText(path, """{ "RaggableTree": { "Enabled": false } }""");
+        using var capture = new CapturingLoggerProvider();
+        var original = Console.Error;
+        using var muted = new StringWriter();
+        Console.SetError(muted);
+        var built = false;
+        try
+        {
+            using var host = RunnerHost.Build(
+                path,
+                new RunnerMountPlan { CliMounts = [$"{_root}:/workspace:ro"], AllowExternalMounts = true },
+                configureLogging: (_, logging) =>
+                {
+                    logging.SetMinimumLevel(LogLevel.Trace);
+                    logging.AddProvider(capture);
+                });
+            built = true;
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+
+        Assert.True(built);
+        Assert.False(File.Exists(Fingerprint));
+        Assert.DoesNotContain(capture.Entries, e => e.Level >= LogLevel.Warning
+            && e.Category.Contains("EmbeddingDimensionGuardRunner", StringComparison.Ordinal));
     }
 }

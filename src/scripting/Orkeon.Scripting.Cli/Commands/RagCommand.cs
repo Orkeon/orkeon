@@ -12,6 +12,7 @@ using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.DependencyInjection;
 using Orkeon.Rag.Evaluation;
+using Orkeon.Rag.Ingestion;
 using Orkeon.Rag.Onnx.DependencyInjection;
 using Orkeon.Tools.Rag;
 
@@ -223,6 +224,13 @@ internal static class RagCommand
                 return Program.ExitScriptError;
             }
 
+            if (!options.Reindex)
+            {
+                var drift = await CheckEmbeddingDriftAsync(host, options.Collection, console, ct).ConfigureAwait(false);
+                if (drift is not null)
+                    return drift.Value;
+            }
+
             var pipeline = host.Services.GetRequiredService<IIngestionPipeline>();
             var report = await pipeline.IngestAsync(new IngestionRequest
             {
@@ -255,6 +263,10 @@ internal static class RagCommand
             using var host = BuildHost(console, options, cwd);
             if (host is null)
                 return Program.ExitScriptError;
+
+            var drift = await CheckEmbeddingDriftAsync(host, options.Collection, console, ct).ConfigureAwait(false);
+            if (drift is not null)
+                return drift.Value;
 
             var pipeline = host.Services.GetRequiredService<IRagPipeline>();
             var answer = await pipeline.QueryAsync(new RagQuery
@@ -335,6 +347,15 @@ internal static class RagCommand
                 ? singleProfile
                 : options.Compare!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .ToImmutableList();
+
+            // Only --no-ingest with a named collection: an ingest pre-pass is covered by the ingest check,
+            // and without -c the collection is only known to the harness (dataset name), so nothing is read.
+            if (options.NoIngest && !string.IsNullOrWhiteSpace(options.Collection))
+            {
+                var drift = await CheckEmbeddingDriftAsync(host, options.Collection, console, ct).ConfigureAwait(false);
+                if (drift is not null)
+                    return drift.Value;
+            }
 
             var harness = host.Services.GetRequiredService<IRagEvalHarness>();
             var result = await harness.RunAsync(new RagEvalRunRequest
@@ -524,7 +545,9 @@ internal static class RagCommand
             // resolved (GAP-19). The override comes last, so it wins over the settings.
             configureBuilder: builder =>
             {
-                EmbeddingFingerprintDefault.Apply(builder, RagFingerprintPath);
+                // No host guard: the verb has no ingest-time home for a fingerprint it could trust, so the
+                // default is empty (guard off, silently); an explicit Orkeon:Embeddings:FingerprintPath wins.
+                EmbeddingFingerprintDefault.Apply(builder, string.Empty);
                 if (options is RagEvalCommandOptions { Offline: true })
                 {
                     builder.ConfigureAppConfiguration((_, configuration) =>
@@ -535,8 +558,33 @@ internal static class RagCommand
             });
     }
 
-    /// <summary>The embedding fingerprint's default home: the verb's writable output mount.</summary>
-    private const string RagFingerprintPath = "/output/rag/embedding-fingerprint.json";
+    /// <summary>
+    /// Refuses a collection whose manifest was written under another embedding model: the pipeline's own
+    /// check is skipped when the (in-memory) store is empty, so the CLI compares the persisted manifest itself.
+    /// Returns the exit code to stop with, or null when there is no manifest or no drift.
+    /// </summary>
+    private static async Task<int?> CheckEmbeddingDriftAsync(
+        IHost host, string collection, IRunnerConsole console, CancellationToken ct)
+    {
+        var manifest = await host.Services.GetRequiredService<IIngestionManifestStore>()
+            .LoadAsync(collection, ct).ConfigureAwait(false);
+        if (manifest is null)
+            return null;
+
+        var provider = host.Services.GetRequiredService<Orkeon.Application.Interfaces.Ports.IEmbeddingProvider>();
+        var stored = manifest.Embedding;
+        if (string.Equals(stored.Provider, provider.Name, StringComparison.Ordinal)
+            && string.Equals(stored.Model, provider.Model, StringComparison.Ordinal)
+            && stored.Dimensions == provider.Dimensions)
+        {
+            return null;
+        }
+
+        await console.ErrorOutput.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
+            $"orkeon rag: collection '{collection}' was indexed with embedding '{stored.Provider}/{stored.Model}' ({stored.Dimensions} dimensions), but the current provider is '{provider.Name}/{provider.Model}' ({provider.Dimensions} dimensions); run 'orkeon rag ingest --reindex' to rebuild it."))
+            .ConfigureAwait(false);
+        return Program.ExitScriptError;
+    }
 
     /// <summary>True when the Docker-style mount string claims <paramref name="virtualRoot"/>.</summary>
     internal static bool ClaimsVirtualRoot(string mount, string virtualRoot)
