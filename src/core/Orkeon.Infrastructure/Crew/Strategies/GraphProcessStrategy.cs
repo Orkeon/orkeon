@@ -305,6 +305,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                     CacheHitTokens = usage.CacheHit,
                     CacheMissTokens = usage.CacheMiss,
                     Defaulted = result.TaskId is { } id && (state.Outcome.DecisionOf(id)?.IsDefaulted ?? false),
+                    EndedOnIterationCap = state.CappedResults.Contains(index),
                 }, result, state.CrewTasks.Any(t => t.Id == result.TaskId && t.IsDecision));
             snapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot).ConfigureAwait(false);
@@ -594,6 +595,9 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             ToolsUsed: executionResult.ToolsUsed);
         state.AddApplicationOutput(appOutput);
 
+        if (executionResult.EndedOnIterationCap)
+            state.CappedResults.Add(state.DomainResults.Count);
+
         state.AddDomainResult(DomainTaskOutput.Create(
             rawOutput: rawOutput,
             format: "text",
@@ -810,6 +814,9 @@ public sealed class CrewGraphState
 
     /// <summary>Skip reasons, keyed by the index of the skipped task's entry in <see cref="DomainResults"/>.</summary>
     internal Dictionary<int, string> SkipReasons { get; } = [];
+
+    /// <summary>The indexes of the entries of <see cref="DomainResults"/> whose attempt ended on its iteration cap.</summary>
+    internal HashSet<int> CappedResults { get; } = [];
 
     /// <summary>The tasks skipped by their condition, which leave no result: their snapshot and the count of results when they were skipped.</summary>
     internal List<(int Position, TaskExecutionSnapshot Snapshot)> ConditionSkips { get; } = [];

@@ -371,6 +371,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         {
             ExitReason = loopResult.ExitReason,
             IterationsUsed = loopResult.IterationsUsed,
+            EndedOnIterationCap = loopResult.EndedOnIterationCap,
             LastError = loopResult.LastError,
             UnknownFqns = fqnOutcome.UnknownFqns,
             RewrittenFqns = fqnOutcome.RewrittenFqns,

@@ -486,6 +486,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             CacheHitTokens = result.CacheHitTokens,
             CacheMissTokens = result.CacheMissTokens,
             Defaulted = result.Decision?.IsDefaulted ?? false,
+            EndedOnIterationCap = result.EndedOnIterationCap,
         }, domainOutput, isDecisionTask: agent is null);
         taskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);

@@ -60,6 +60,15 @@ internal static class FinalAnswerPolicy
     }
 
     /// <summary>
+    /// The final-answer nudge of the max-iteration path: the same statement that tools are gone,
+    /// plus a request to say plainly what needed a tool and was not done.
+    /// </summary>
+    internal static string BuildIterationCapNudge(bool escalated) =>
+        BuildFinalAnswerNudge(escalated) +
+        " State plainly, at the start of your answer, any part of the task that needed a tool " +
+        "and was not done (for instance a file you did not write), so the next step does not rely on it.";
+
+    /// <summary>
     /// Detects DeepSeek-style tool-call mimicry in plain-text responses. Thinking-mode models
     /// occasionally emit their native special tokens — <c>&lt;｜｜DSML｜｜tool_calls&gt;</c>,
     /// <c>&lt;invoke name=…&gt;</c>, etc. — when forbidden from calling tools, instead of

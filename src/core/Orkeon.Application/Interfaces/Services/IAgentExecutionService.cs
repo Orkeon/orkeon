@@ -109,6 +109,9 @@ public sealed record TaskResult(
     /// </summary>
     public int RetryCount { get; init; }
 
+    /// <summary>Gets whether the agent spent its iteration cap and answered on the tool-free retry.</summary>
+    public bool EndedOnIterationCap { get; init; }
+
     /// <summary>
     /// Number of iterations the agent actually performed before exiting.
     /// </summary>

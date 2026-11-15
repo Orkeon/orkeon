@@ -17,6 +17,7 @@ using static Orkeon.Tests.Shared.Constants.TestToolConstants;
 using static Orkeon.Tests.Shared.Constants.TestToolParamKeys;
 using static Orkeon.Tests.Shared.Constants.TestTimingConstants;
 using Orkeon.Tests.Shared.FileSystem;
+using Mea = Microsoft.Extensions.AI;
 
 namespace Orkeon.Application.Tests.Services;
 
@@ -463,6 +464,71 @@ public class ExecutionOrchestratorTests
         // Assert - When cancelled, the orchestrator should return quickly with a result
         Assert.NotNull(result);
         // The implementation doesn't throw TaskCanceledException, it handles cancellation gracefully
+    }
+
+    #endregion
+
+    #region Iteration cap flag (CH-25)
+
+    /// <summary>Chat client that makes tool calls for a number of turns, then answers.</summary>
+    private sealed class ToolThenAnswerChatClient(int toolTurns, string answer) : Mea.IChatClient
+    {
+        private int _calls;
+
+        public System.Threading.Tasks.Task<Mea.ChatResponse> GetResponseAsync(
+            IEnumerable<Mea.ChatMessage> messages, Mea.ChatOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            var turn = _calls++;
+            var message = turn < toolTurns
+                ? new Mea.ChatMessage(Mea.ChatRole.Assistant, [new Mea.FunctionCallContent($"c{turn}", "busy", arguments: null)])
+                : new Mea.ChatMessage(Mea.ChatRole.Assistant, answer);
+            return System.Threading.Tasks.Task.FromResult(new Mea.ChatResponse([message]));
+        }
+
+        public IAsyncEnumerable<Mea.ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<Mea.ChatMessage> messages, Mea.ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private static async System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult> RunWithToolTurnsAsync(int toolTurns)
+    {
+        var tool = new Orkeon.Application.Tests.Doubles.SpyTool("busy", result: "more work");
+        using var chatClient = new ToolThenAnswerChatClient(toolTurns, "the deliverable");
+        var orchestrator = new ExecutionOrchestrator(
+            new TestLogger(), new TestLlmProvider(), chatClient,
+            [tool], new FakeFileSystemService());
+
+        return await orchestrator.ExecuteTaskCoreAsync(
+            CreateTestAgent(tools: [tool], maxIterations: 2), CreateTestTask(), CreateTestContext(),
+            TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-25")]
+    public async System.Threading.Tasks.Task ShouldCarryTheCapFlag_WhenTheLoopEndedOnItsCap()
+    {
+        var result = await RunWithToolTurnsAsync(toolTurns: 2);
+
+        Assert.True(result.Success);
+        Assert.Equal("the deliverable", result.Output);
+        Assert.True(result.EndedOnIterationCap);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-25")]
+    public async System.Threading.Tasks.Task ShouldNotCarryTheCapFlag_WhenTheLoopDidNotEndOnIt()
+    {
+        var result = await RunWithToolTurnsAsync(toolTurns: 1);
+
+        Assert.True(result.Success);
+        Assert.Equal("the deliverable", result.Output);
+        Assert.False(result.EndedOnIterationCap);
     }
 
     #endregion

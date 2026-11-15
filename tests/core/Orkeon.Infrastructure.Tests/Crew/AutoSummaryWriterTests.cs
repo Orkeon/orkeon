@@ -174,6 +174,26 @@ public sealed class AutoSummaryWriterTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-25")]
+    public async System.Threading.Tasks.Task ShouldLabelACappedTask_InTheSummary()
+    {
+        var writer = CreateWriter();
+        var snapshot = BuildSnapshot(CrewHookStatus.Completed, taskCount: 2);
+        var capped = snapshot.Tasks[0] with { EndedOnIterationCap = true };
+        snapshot = snapshot with { Tasks = snapshot.Tasks.SetItem(0, capped) };
+
+        await writer.OnCrewCompletedAsync(snapshot, CancellationToken.None);
+
+        var content = await File.ReadAllTextAsync(ExpectedPhysicalPath, TestContext.Current.CancellationToken);
+        var lines = content.Split('\n');
+        var cappedRow = Assert.Single(lines, l => l.Contains("| task-01 |", StringComparison.Ordinal));
+        Assert.Contains("iteration cap", cappedRow, StringComparison.Ordinal);
+        Assert.DoesNotContain("✗ failed", cappedRow, StringComparison.Ordinal);
+        var plainRow = Assert.Single(lines, l => l.Contains("| task-02 |", StringComparison.Ordinal));
+        Assert.Contains("✓ completed", plainRow, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task OnCrewFailedAsync_TellsASkippedTaskApartFromAFailedOne()
     {
         // LLM-11: a task that never ran because its dependency failed is neither ✓ nor ✗.

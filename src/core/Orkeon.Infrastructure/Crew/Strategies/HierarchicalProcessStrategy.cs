@@ -295,6 +295,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             TokensUsed = used.Tokens,
             CacheHitTokens = used.CacheHit,
             CacheMissTokens = used.CacheMiss,
+            EndedOnIterationCap = processed.EndedOnIterationCap,
         };
         run.TaskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
@@ -341,7 +342,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         DomainTaskOutput? Domain = null,
         ApplicationTaskOutput? Application = null,
         SimpleExecutionContext? Context = null,
-        string? Error = null);
+        string? Error = null,
+        bool EndedOnIterationCap = false);
 
     private async Task<ProcessedTask> ProcessSingleTaskAsync(
         CrewTask task,
@@ -368,17 +370,17 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         // another (GAP-21).
         await run.Outcome.RecordStartAsync(task, assignedAgent).ConfigureAwait(false);
 
-        var (domainOutput, appOutput, error) = await ExecuteWithRevisionLoopAsync(
+        var (domainOutput, appOutput, error, capped) = await ExecuteWithRevisionLoopAsync(
             assignedAgent, task, task.Id, run.Manager, context, run.ApplicationTaskOutputs, run.TokenTally, cancellationToken).ConfigureAwait(false);
 
         // Derived, never rebuilt: a context's init settings survive from task to task (GAP-30).
         var updatedContext = context with { PreviousOutputs = run.ApplicationTaskOutputs };
 
-        return new ProcessedTask(assignedAgent, assignment.AssignedAgent, domainOutput, appOutput, updatedContext, error);
+        return new ProcessedTask(assignedAgent, assignment.AssignedAgent, domainOutput, appOutput, updatedContext, error, capped);
     }
 
 #pragma warning disable S107 // the task, who runs it and who reviews it, its context and the run's tallies
-    private async Task<(DomainTaskOutput Domain, ApplicationTaskOutput Application, string? Error)> ExecuteWithRevisionLoopAsync(
+    private async Task<(DomainTaskOutput Domain, ApplicationTaskOutput Application, string? Error, bool EndedOnIterationCap)> ExecuteWithRevisionLoopAsync(
         DomainAgent assignedAgent,
         CrewTask task,
         TaskId taskId,
@@ -440,7 +442,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 assignedAgent, task, executionResult.Output, context, cancellationToken).ConfigureAwait(false);
         }
 
-        return (domainOutput, appOutput, error);
+        return (domainOutput, appOutput, error, executionResult.EndedOnIterationCap);
     }
 
     /// <summary>
