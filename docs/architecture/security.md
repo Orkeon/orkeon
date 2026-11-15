@@ -65,6 +65,12 @@ agent's **shell session**, which the operating system confines
 - **Fail closed.** A backend that cannot run (`bwrap` missing, user namespaces refused, Windows
   older than 10, a mode for another platform) fails the call with the reason and the way out
   (`Mode = None`); the command never falls back to running unconfined.
+- **The `SECURITY` line.** When the interpreters (`node`, `dotnet`, `npm`, `find`) are enabled, the tool
+  logs one `SECURITY` line, once per host, at the first `shell_command` call validated, whatever the command: constructing
+  or listing the tool logs nothing. The line states the confinement in force: the backend and what it
+  shows the process; or `none` and why (the host runs in a container, or `Mode = None`, where commands run
+  on the host unconfined); or `unavailable` with the reason, when every call will fail rather than run
+  unconfined.
 - **No network** unless `Confinement:AllowNetwork = true`: a network namespace with loopback only
   under bubblewrap, `(deny network*)` under Seatbelt, no network capability under AppContainer.
 - **Session sockets.** The shell's environment allow-list carries `XDG_RUNTIME_DIR` and

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ModelPricing.Provider` scopes a pricing row to a provider (null means any provider), and `IModelPricingRegistry` gains
+  the provider-aware `TryGetPricing(string? provider, string model)` and `CalculateCost(string? provider, string model, ...)`
+  overloads, as default interface methods that delegate to the existing members: an implementation of your own still
+  compiles. `Orkeon:CostTracking:CustomPricings:<i>:Provider` sets it from the settings (#383).
+
+### Fixed
+
+- A project that references `Orkeon.Scripting` or `Orkeon.Tools.Embeddings.Local` with `ExcludeAssets="build"` now builds
+  offline and its host starts: the local embedder is built once, at the first embedding, and the embedded model reports its
+  384 dimensions without loading. A missing model fails the first local embedding with an `InvalidOperationException` that
+  names `LocalEmbeddingsModel/default/model.onnx` and the exclusion. A Slow end-to-end test pins the opt-out (#376).
+- `orkeon forge` and `orkeon rag` record the embedding fingerprint where they can write: `/forge/embedding-fingerprint.json`
+  and `/output/rag/embedding-fingerprint.json` (`{cwd}/.orkeon/rag/embedding-fingerprint.json` on disk) become the default of
+  `Orkeon:Embeddings:FingerprintPath` at the lowest precedence, so an explicit setting still wins. A first write that a
+  read-only mount denies is logged at Debug instead of Warning; any other failure still warns (#381).
+- The forge assistant's `orkeon.crew.process` tag changes from `autonomous` to `sequential`: the pack no longer declares a
+  process the runtime ignores (#382).
+- Every paid provider's default model is priced: DeepSeek, Z.AI, Kimi, Qwen, Gemini, Mistral, Grok and MiniMax, and the
+  Together and Mammouth gateways by their own provider-scoped rows. `ollama` and Docker Model Runner models cost 0 without a
+  warning. Hugging Face stays unpriced (its routed provider sets the price): a call warns once per model, no longer once per
+  call, naming `Orkeon:CostTracking:CustomPricings`, and under a `MaxCostUsd` budget a second warning, once per crew and
+  model, says the budget cannot count that model's calls. Long-context price tiers are not modelled (#383).
+- The `SECURITY` line of the shell interpreters is logged once per host, at the first `shell_command` call validated once
+  interpreters are enabled, instead of at construction and listing of `shell_command`. It states the confinement in force:
+  the backend, or `none` with its reason (a container, `Mode = None`), or `unavailable` when every call fails (#384).
+
 ## [1.1.0] - 2026-11-15
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries

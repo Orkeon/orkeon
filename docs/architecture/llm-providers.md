@@ -447,6 +447,8 @@ records it; a different one stops the host with an error that names both models.
 restore the previous settings, or re-embed and clear the stored vectors, then delete the fingerprint file.
 Every host whose embedding provider is configured is guarded, with or without an `Orkeon:Embeddings` section: a host that embedded under the default provider and then writes a section (a switch to Mistral or Gemini) finds the default's fingerprint and is refused. A host with no embedding provider (none registered, no section) writes nothing. A host with no `/workspace` mount (the read is refused, a warning is logged), or an empty `FingerprintPath`, runs unguarded.
 
+`/workspace` is not always writable for `orkeon forge` and `orkeon rag` (rag mounts the working directory read-only), so each defaults `FingerprintPath` to a mount it can write: `/forge/embedding-fingerprint.json` for the forge, `/output/rag/embedding-fingerprint.json` for rag (`{cwd}/.orkeon/rag/embedding-fingerprint.json` on disk). That default sits at the lowest precedence: a `FingerprintPath` set explicitly in the settings wins. A first write the mount denies (a read-only mount) is logged at Debug; any other failure to write still warns.
+
 Cohere, Voyage and pgvector are not shipped.
 
 ## Decorators and registration

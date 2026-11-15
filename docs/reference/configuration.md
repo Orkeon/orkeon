@@ -536,7 +536,13 @@ budget is per run; the calls a script makes itself through `ctx.llm` are summed 
 name for the life of the process, apart from its orchestrated tasks. A call outside a crew is under
 no budget. The call that crosses a cap completes; the next one is refused before anything is sent
 and the task ends `BudgetExhausted`, never retried. The caps
-on the number of calls are [`RateLimiting`](#ratelimiting).
+on the number of calls are [`RateLimiting`](#ratelimiting). The built-in price list covers the default
+model of every paid provider except Hugging Face, whose routed provider sets the price; a gateway
+(Together, Mammouth) is priced by its own rows, set with `CustomPricings:<i>:Provider`, and `ollama`
+and Docker Model Runner models cost nothing. A model with no price is counted at zero and logs one
+warning per model, naming `Orkeon:CostTracking:CustomPricings`: add a row there to price it. Under a
+`MaxCostUsd` budget a second warning, once per crew and model, says the budget cannot count that
+model's calls.
 
 <!-- settings:Orkeon:CostTracking -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -938,7 +944,10 @@ registers, `ollama`, `mistral`, `azure-openai` or `gemini`; another name refuses
 three speak the OpenAI embeddings wire format and read `ApiKey` (or `ApiKeyEnvVar`), `Endpoint` and
 `Model`; `azure-openai` also needs `Endpoint` (the resource URL) and takes the deployment name as
 `Model`. At start the host compares the provider, model and dimensions with the ones recorded at
-`FingerprintPath` and refuses to start when they changed. Read by
+`FingerprintPath` and refuses to start when they changed. `orkeon forge` and `orkeon rag` default
+`FingerprintPath` to a mount they can write (`/forge/embedding-fingerprint.json`,
+`/output/rag/embedding-fingerprint.json`); a value set in the settings wins, and a first write that
+a read-only mount denies is logged at Debug. Read by
 `DefaultEmbeddingProviderResolver`, when no local or code-analysis provider is registered. Bound
 by `AddOrkeonInfrastructure()`, and by `AddOrkeonVectorSearch(configuration)` (called by
 `AddOrkeonInfrastructure(configuration)`).
@@ -1440,7 +1449,10 @@ it and stays readable through the file tools. `Confinement` says how the operati
 confines the agent's shell session: `Mode = Auto` (the default) picks bubblewrap on Linux,
 Seatbelt on macOS, an AppContainer inside a Job Object on Windows, and no confinement when the
 host runs in a container; `None` turns it off. A backend that cannot run fails the call, with the
-reason, rather than run it unconfined. `AllowNetwork` opens the network (off by default) and
+reason, rather than run it unconfined. The `SECURITY` line of the interpreters is logged once per
+host, at the first `shell_command` call validated once interpreters are enabled, and states the
+confinement in force: the backend, or `none` with its reason (a container, `Mode = None`), or
+`unavailable` when every call fails; building or listing the tool logs nothing. `AllowNetwork` opens the network (off by default) and
 `ReadOnlyPaths` lends a toolchain outside the system directories
 ([Shell confinement](../architecture/security.md#shell-confinement), [limits](./limitations.md)).
 `Environment:Propagate` names extra host variables handed to the shell session and to the code

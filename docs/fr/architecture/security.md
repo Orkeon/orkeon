@@ -66,6 +66,13 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
   utilisateur refusés, Windows antérieur à 10, un mode d'une autre plateforme) fait échouer l'appel
   avec la raison et la façon d'en sortir (`Mode = None`) ; la commande ne se rabat jamais sur une
   exécution non confinée.
+- **La ligne `SECURITY`.** Quand les interpréteurs (`node`, `dotnet`, `npm`, `find`) sont activés,
+  l'outil journalise une ligne `SECURITY`, une seule fois par hôte, à la validation du premier appel
+  de `shell_command`, quelle que soit la commande : construire ou lister l'outil ne journalise rien. La ligne dit le
+  confinement en vigueur : le backend et ce qu'il montre au processus ; ou `none` et pourquoi (l'hôte
+  tourne dans un conteneur, ou `Mode = None`, où les commandes s'exécutent sur l'hôte sans
+  confinement) ; ou `unavailable` avec la raison, quand chaque appel échouera plutôt que de
+  s'exécuter hors confinement.
 - **Pas de réseau** sauf `Confinement:AllowNetwork = true` : un espace de noms réseau limité au
   loopback sous bubblewrap, `(deny network*)` sous Seatbelt, aucune capacité réseau sous
   AppContainer.

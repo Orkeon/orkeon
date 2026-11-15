@@ -463,6 +463,8 @@ premier démarrage la consigne ; une empreinte différente arrête l'hôte avec 
 modèles. Rien n'est migré : rétablir les réglages précédents, ou ré-embedder et vider les vecteurs
 stockés, puis supprimer le fichier d'empreinte. Tout hôte dont le provider d'embeddings est configuré est gardé, avec ou sans section `Orkeon:Embeddings` : un hôte qui a produit des vecteurs avec le provider par défaut puis écrit une section (passage à Mistral ou Gemini) trouve l'empreinte du défaut et est refusé. Un hôte sans provider d'embeddings (aucun enregistré, pas de section) n'écrit rien. Un hôte sans montage `/workspace` (la lecture est refusée, un avertissement est journalisé), ou avec un `FingerprintPath` vide, tourne sans garde-fou.
 
+`/workspace` n'est pas toujours inscriptible pour `orkeon forge` et `orkeon rag` (rag monte le répertoire de travail en lecture seule) : chacun prend donc par défaut, pour `FingerprintPath`, un montage qu'il peut écrire — `/forge/embedding-fingerprint.json` pour la forge, `/output/rag/embedding-fingerprint.json` pour rag (`{cwd}/.orkeon/rag/embedding-fingerprint.json` sur le disque). Ce défaut est de plus faible précédence : un `FingerprintPath` posé explicitement dans les settings l'emporte. Une première écriture que le montage refuse (montage en lecture seule) est journalisée en Debug ; toute autre erreur d'écriture avertit encore.
+
 Cohere, Voyage et pgvector ne sont pas livrés.
 
 ## Décorateurs et enregistrement

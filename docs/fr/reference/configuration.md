@@ -561,7 +561,13 @@ qu'un script fait lui-même par `ctx.llm` se cumulent sous le nom de la crew pen
 processus, à part de ses tâches orchestrées. Un appel hors crew n'est soumis à aucun budget. L'appel
 qui franchit un plafond va à son terme ; le suivant est refusé avant tout envoi et la tâche se
 termine `BudgetExhausted`, sans nouvelle tentative. Les plafonds sur le nombre d'appels sont
-[`RateLimiting`](#ratelimiting).
+[`RateLimiting`](#ratelimiting). La liste de prix intégrée couvre le modèle par défaut de chaque
+fournisseur payant, sauf Hugging Face, dont le fournisseur routé fixe le prix ; une passerelle
+(Together, Mammouth) est tarifée par ses propres lignes, posées avec `CustomPricings:<i>:Provider`,
+et les modèles `ollama` et Docker Model Runner ne coûtent rien. Un modèle sans prix est compté à
+zéro et journalise un seul avertissement par modèle, qui nomme `Orkeon:CostTracking:CustomPricings` :
+ajoutez-y une ligne pour le tarifer. Sous un budget `MaxCostUsd`, un second avertissement, une fois
+par crew et par modèle, dit que le budget ne peut pas compter les appels de ce modèle.
 
 <!-- settings:Orkeon:CostTracking -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -969,7 +975,11 @@ qu'inscrit l'hôte, `ollama`, `mistral`, `azure-openai` ou `gemini` ; un autre n
 Les trois derniers parlent le format d'embeddings d'OpenAI et lisent `ApiKey` (ou `ApiKeyEnvVar`),
 `Endpoint` et `Model` ; `azure-openai` exige aussi `Endpoint` (l'URL de la ressource) et prend le nom
 du déploiement comme `Model`. Au démarrage, l'hôte compare le provider, le modèle et les dimensions à
-ceux consignés dans `FingerprintPath` et refuse de démarrer s'ils ont changé. Lue par
+ceux consignés dans `FingerprintPath` et refuse de démarrer s'ils ont changé. `orkeon forge` et
+`orkeon rag` prennent par défaut, pour `FingerprintPath`, un montage qu'ils peuvent écrire
+(`/forge/embedding-fingerprint.json`, `/output/rag/embedding-fingerprint.json`) ; une valeur posée
+dans les settings l'emporte, et une première écriture qu'un montage en lecture seule refuse est
+journalisée en Debug. Lue par
 `DefaultEmbeddingProviderResolver`, quand aucun provider local ni d'analyse de code n'est inscrit.
 Liée par `AddOrkeonInfrastructure()`, et par `AddOrkeonVectorSearch(configuration)` (appelé par
 `AddOrkeonInfrastructure(configuration)`).
@@ -1479,7 +1489,11 @@ par les outils de fichiers. `Confinement` dit comment le système d'exploitation
 session shell de l'agent : `Mode = Auto` (le défaut) choisit bubblewrap sous Linux, Seatbelt sous
 macOS, un AppContainer dans un Job Object sous Windows, et aucun confinement quand l'hôte tourne
 dans un conteneur ; `None` le coupe. Un backend qui ne peut pas tourner fait échouer l'appel,
-avec la raison, plutôt que de le lancer hors confinement. `AllowNetwork` ouvre le réseau (coupé
+avec la raison, plutôt que de le lancer hors confinement. La ligne `SECURITY` des interpréteurs est
+journalisée une seule fois par hôte, à la validation du premier appel de `shell_command` une fois les
+interpréteurs activés, et dit le confinement en vigueur : le backend, ou `none` avec sa raison (un conteneur,
+`Mode = None`), ou `unavailable` quand chaque appel échoue ; construire ou lister l'outil ne
+journalise rien. `AllowNetwork` ouvre le réseau (coupé
 par défaut) et `ReadOnlyPaths` prête une chaîne d'outils hors des répertoires système
 ([Confinement du shell](../architecture/security.md#confinement-du-shell), [limites](./limitations.md)).
 `Environment:Propagate` nomme des variables de l'hôte remises à la session shell et au bac à sable
