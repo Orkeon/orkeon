@@ -18,6 +18,31 @@ public sealed class RunnerHostModelCapabilitiesTests : IDisposable
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { /* best-effort */ }
     }
 
+    /// <summary>CH-20: a blank model id is the operator's to fix, not a raw ArgumentException of the registry.</summary>
+    [Theory]
+    [Trait("BR", "CH-20")]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(":Vision")]
+    public void A_blank_model_id_in_the_settings_file_is_a_settings_refusal(string key)
+    {
+        var path = Path.Combine(_root, "appsettings.json");
+        File.WriteAllText(path, "{ \"RaggableTree\": { \"Enabled\": false }, \"Llm\": { \"ModelCapabilities\": { \""
+            + key + "\": { \"Vision\": true } } } }");
+        var original = Console.Error;
+        using var muted = new StringWriter();
+        Console.SetError(muted);
+        try
+        {
+            var ex = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(path, new RunnerMountPlan()));
+            Assert.Contains("Llm:ModelCapabilities", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+    }
+
     [Fact]
     public void An_empty_json_array_of_efforts_means_none_and_a_missing_one_means_no_restriction()
     {

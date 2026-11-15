@@ -211,6 +211,10 @@ public static class LlmSettings
         var result = new Dictionary<string, ModelCapabilityOverride>(StringComparer.OrdinalIgnoreCase);
         foreach (var section in configuration.GetSection(ConfigurationKeys.LlmSection).GetSection(ModelCapabilitiesKey).GetChildren())
         {
+            if (string.IsNullOrWhiteSpace(section.Key))
+                throw new InvalidOperationException(
+                    $"{ConfigurationKeys.LlmSection}:{ModelCapabilitiesKey}: an entry has no model id; name each entry by the model it describes.");
+
             var efforts = section.GetSection("ReasoningEfforts");
             IReadOnlyList<string>? listed = null;
             var items = efforts.GetChildren().Select(c => c.Value).Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim()).ToList();
