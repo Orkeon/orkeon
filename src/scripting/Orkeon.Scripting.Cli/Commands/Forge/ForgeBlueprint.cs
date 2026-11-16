@@ -191,9 +191,44 @@ internal sealed record ForgeBlueprint
         ValidateEntities(errors, Tasks, "tasks", static t => t.Key, ValidateTask);
         ValidateReferences(errors);
         if (enforceHandOffs)
+        {
             ValidateHandOffs(errors, existingPaths);
+            // A team promoted before this rule still reopens, like the hand-off rule: it applies at the next validation.
+            ValidateBinaryDeliverables(errors);
+        }
 
         return errors;
+    }
+
+    /// <summary>
+    /// A binary deliverable (.docx, .xlsx, .pdf, an image) is written by the tool that writes its format, never
+    /// saved from the final answer's text (#392, D22): every agent that may run the task
+    /// (<see cref="ForgeBlueprintCompiler.CandidatesOf"/>) must hold that tool, else the plan is refused here,
+    /// where <c>blueprint_submit</c> answers the designer, rather than switched to <c>final_message</c>.
+    /// </summary>
+    private void ValidateBinaryDeliverables(List<string> errors)
+    {
+        for (var i = 0; i < (Tasks?.Count ?? 0); i++)
+        {
+            var task = Tasks![i];
+            if (task.Deliverable is not { } path || !ForgeBlueprintCompiler.IsBinary(path))
+                continue;
+
+            var lacking = ForgeBlueprintCompiler.CandidatesOf(this, task)
+                .Where(agent => !ForgeBlueprintCompiler.CanWrite(agent, path))
+                .Select(static agent => $"'{agent.Key}'")
+                .ToList();
+            if (lacking.Count == 0)
+                continue;
+
+            var who = lacking.Count == 1 ? $"agent {lacking[0]}" : $"agents {string.Join(", ", lacking)}";
+            var prefix = $"tasks[{i}] ('{task.Key}'): its deliverable '{path}' is a binary file, which the final answer's text cannot be, "
+                + $"and {who}, which may run the task, cannot write it — ";
+            var writers = ForgeBlueprintCompiler.FormatWritersOf(path);
+            errors.Add(writers.Count > 0
+                ? prefix + $"give {(lacking.Count == 1 ? "it" : "each of them")} {writers[0]}, or deliver a text format (.md, .html, .csv) instead."
+                : prefix + $"no built-in tool writes that format: deliver a text format (.md, .html, .csv) instead.");
+        }
     }
 
     /// <summary>

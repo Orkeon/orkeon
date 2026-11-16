@@ -365,6 +365,18 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.Contains("the task that reads it lists the writer in dependencies", header, StringComparison.Ordinal);
     }
 
+    // #392 (D22): the designer learns that a binary deliverable needs the tool that writes its format,
+    // the rule plan validation enforces.
+    [Fact]
+    public async Task ShouldStateThatABinaryDeliverableNeedsItsFormatWriter_InThePlanPrompt()
+    {
+        var header = await PlanHeaderWith(null);
+
+        Assert.Contains("a .docx deliverable needs docx_writer", header, StringComparison.Ordinal);
+        Assert.Contains("xlsx_writer", header, StringComparison.Ordinal);
+        Assert.Contains("image_generation", header, StringComparison.Ordinal);
+    }
+
     [Fact]
     [Trait("BR", "CH-33")]
     public async Task ShouldAddNoLargeFileRules_WhenNoFileIsLarge()

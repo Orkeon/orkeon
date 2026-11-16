@@ -114,7 +114,12 @@ function stableHeader() {
     lines.push("  autonomous crews any agent may.");
     lines.push("- Deliverables: an agent with file_write writes its task's deliverable itself; for an");
     lines.push("  agent without it, the team saves the agent's final answer to the deliverable path.");
-    lines.push("  Give file_write only to an agent that must write a file as it works.");
+    lines.push("  Give file_write only to an agent that must write a file as it works. In hierarchical,");
+    lines.push("  consensual and autonomous crews any agent but the manager may run a task: the answer");
+    lines.push("  is saved unless every one of them holds file_write. A binary deliverable is never an");
+    lines.push("  answer's text: a .docx deliverable needs docx_writer, a .xlsx one xlsx_writer, an image");
+    lines.push("  image_generation, held by every agent that may run the task; prefer .md, .html or .csv");
+    lines.push("  for any other binary format (.pdf, .pptx), which no tool here writes.");
     if (((input.brief && input.brief.folders) || []).some(function (f) { return f.large && f.large.length > 0; })) {
       lines.push("- Large files are listed below: an agent that reads one searches first (grep when");
       lines.push("  its tools offer it) and reads only the ranges found, never the whole file page by");

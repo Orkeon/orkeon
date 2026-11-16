@@ -105,11 +105,10 @@ internal static class ForgeScriptRenderer
 
         if (!string.IsNullOrWhiteSpace(task.Deliverable))
         {
-            // Same source as the YAML render: final_message when the agent has no file_write (#392).
-            script.Append("    .deliverable({ path: ").Append(Literal(task.Deliverable));
-            if (ForgeBlueprintCompiler.EmittedDeliverableSource(blueprint, task) is { } source)
-                script.Append(", source: ").Append(Literal(source));
-            script.Append(" })\n");
+            // Same source as the YAML render (#392), always written: the typings require it (D24).
+            script.Append("    .deliverable({ path: ").Append(Literal(task.Deliverable))
+                .Append(", source: ").Append(Literal(ForgeBlueprintCompiler.EmittedDeliverableSource(blueprint, task)))
+                .Append(" })\n");
         }
         script.Append("    .build();\n");
     }

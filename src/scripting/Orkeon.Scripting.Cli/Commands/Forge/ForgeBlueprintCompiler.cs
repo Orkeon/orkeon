@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Crew;
 using Orkeon.Domain.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Configuration;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
@@ -32,33 +33,82 @@ internal static class ForgeBlueprintCompiler
     /// <summary>The deliverable source the forge writes when the delivering agent cannot write the file itself.</summary>
     internal const string FinalMessageSource = "final_message";
 
+    /// <summary>The deliverable source the forge writes when every agent that may run the task writes the file itself.</summary>
+    internal const string ToolCallSource = "tool_call";
+
+    // Formats the final answer's text cannot be: a binary deliverable needs the tool that writes its format.
+    private static readonly HashSet<string> s_binaryExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".odt", ".ods", ".odp", ".pdf",
+        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".ico",
+        ".zip", ".gz", ".tar", ".7z", ".mp3", ".wav", ".mp4", ".webm",
+    };
+
     /// <summary>
-    /// Whether the agent that delivers <paramref name="task"/> holds <c>file_write</c> (#392): the agent the
-    /// task names, else every agent of the plan (a hierarchical, consensual or autonomous crew picks one at
-    /// run time). A plan task carries no tools of its own, so the agent's are the ones the run offers.
+    /// The agents that may run <paramref name="task"/> at run time (#392, D21): the agent it names in a
+    /// sequential, parallel or graph crew; every agent but the manager in a hierarchical or consensual
+    /// crew (the manager coordinates and runs no task); every agent in an autonomous crew. Mirrors
+    /// <see cref="DeliverableToolCheck"/>'s reading of a loaded crew.
     /// </summary>
-    internal static bool DelivererCanWrite(ForgeBlueprint blueprint, ForgeBlueprintTask task)
+    internal static IReadOnlyList<ForgeBlueprintAgent> CandidatesOf(ForgeBlueprint blueprint, ForgeBlueprintTask task)
     {
         ArgumentNullException.ThrowIfNull(blueprint);
         ArgumentNullException.ThrowIfNull(task);
 
         var agents = blueprint.Agents ?? [];
-        var deliverers = task.Agent is { } key
-            ? agents.Where(agent => string.Equals(agent.Key, key, StringComparison.Ordinal)).ToList()
-            : agents.ToList();
-        return deliverers.Count > 0
-            && deliverers.All(agent => (agent.Tools ?? []).Contains(DeliverableToolCheck.FileWriteToolName, StringComparer.Ordinal));
+        var process = string.IsNullOrWhiteSpace(blueprint.Crew?.Process) ? "sequential" : blueprint.Crew.Process.Trim();
+        var known = ProcessType.All.FirstOrDefault(p => string.Equals(p.Value, process, StringComparison.OrdinalIgnoreCase));
+        var bindsDeclaredAgent = known is null
+            || known == ProcessType.Sequential || known == ProcessType.Parallel || known == ProcessType.Graph;
+        if (bindsDeclaredAgent)
+        {
+            var declared = agents.Where(agent => string.Equals(agent.Key, task.Agent, StringComparison.Ordinal)).ToList();
+            return declared.Count > 0 ? declared : agents;
+        }
+
+        return known!.AcceptsManagerAgent && !string.IsNullOrWhiteSpace(blueprint.Manager)
+            ? agents.Where(agent => !string.Equals(agent.Key, blueprint.Manager, StringComparison.Ordinal)).ToList()
+            : agents;
     }
 
+    /// <summary>Whether <paramref name="path"/> names a binary format: one the final answer's text cannot be.</summary>
+    internal static bool IsBinary(string path) => s_binaryExtensions.Contains(Path.GetExtension(path));
+
     /// <summary>
-    /// The <c>deliverable.source</c> the forge writes for <paramref name="task"/>: none (the engine's default,
-    /// <c>tool_call</c>) when its agent holds <c>file_write</c> and writes the file itself, else
-    /// <c>final_message</c>: the framework saves the agent's final answer to the path, and no tool is
-    /// granted for it (least privilege). Before #392 every deliverable was <c>tool_call</c>, and a reading
-    /// agent's file was never written. The source follows from the plan, so a reopened team gets it back.
+    /// Whether <paramref name="agent"/> holds a built-in tool that writes <paramref name="path"/>
+    /// (<see cref="DeliverableToolCheck.WritersOf"/>). For a binary format <c>file_write</c>, which writes
+    /// text, does not count: only the tool that writes the format does.
     /// </summary>
-    internal static string? EmittedDeliverableSource(ForgeBlueprint blueprint, ForgeBlueprintTask task)
-        => DelivererCanWrite(blueprint, task) ? null : FinalMessageSource;
+    internal static bool CanWrite(ForgeBlueprintAgent agent, string path)
+    {
+        ArgumentNullException.ThrowIfNull(agent);
+        var tools = agent.Tools ?? [];
+        return IsBinary(path)
+            ? FormatWritersOf(path).Any(writer => tools.Contains(writer, StringComparer.Ordinal))
+            : DeliverableToolCheck.CanWrite(tools, path);
+    }
+
+    /// <summary>The built-in tools that write <paramref name="path"/>'s own format, <c>file_write</c> left out.</summary>
+    internal static IReadOnlyList<string> FormatWritersOf(string path) =>
+        [.. DeliverableToolCheck.WritersOf(path).Where(static tool => tool != DeliverableToolCheck.FileWriteToolName)];
+
+    /// <summary>
+    /// The <c>deliverable.source</c> the forge writes for <paramref name="task"/> (#392): <c>tool_call</c> when
+    /// every agent that may run it (<see cref="CandidatesOf"/>) writes the file itself, else
+    /// <c>final_message</c>: the framework saves the agent's final answer to the path, and no tool is granted
+    /// for it (least privilege). A binary deliverable is always <c>tool_call</c>: the answer's text cannot be
+    /// a .docx, and <see cref="ForgeBlueprint.Validate"/> refuses the plan whose agent lacks the tool that
+    /// writes the format (D22). The source follows from the plan, so a reopened team gets it back.
+    /// </summary>
+    internal static string EmittedDeliverableSource(ForgeBlueprint blueprint, ForgeBlueprintTask task)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+        if (task.Deliverable is not { } path || IsBinary(path))
+            return ToolCallSource;
+
+        var candidates = CandidatesOf(blueprint, task);
+        return candidates.Count > 0 && candidates.All(agent => CanWrite(agent, path)) ? ToolCallSource : FinalMessageSource;
+    }
 
     /// <summary>
     /// Compiles <paramref name="blueprint"/> (structurally valid — run
@@ -114,7 +164,7 @@ internal static class ForgeBlueprintCompiler
                 Dependencies = task.Dependencies is { Count: > 0 } deps ? new Collection<string>([.. deps]) : null,
                 Deliverable = string.IsNullOrWhiteSpace(task.Deliverable)
                     ? null
-                    : new DeliverableYamlConfig { Path = task.Deliverable, Source = EmittedDeliverableSource(blueprint, task) },
+                    : new DeliverableYamlConfig { Path = task.Deliverable, Source = EmittedDeliverableSource(blueprint, task) is FinalMessageSource ? FinalMessageSource : null },
             };
         }
 
