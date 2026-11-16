@@ -470,7 +470,10 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             CompletedAt: DateTime.UtcNow,
             Success: result.Success,
             ExecutionTime: result.ExecutionTime,
-            ToolsUsed: result.ToolsUsed);
+            ToolsUsed: result.ToolsUsed)
+        {
+            DeliverablePath = result.DeliverablePath,
+        };
 
         LogCompletedParallelExecutionOfTask(task.Id, result.Success);
 
@@ -487,6 +490,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             CacheMissTokens = result.CacheMissTokens,
             Defaulted = result.Decision?.IsDefaulted ?? false,
             EndedOnIterationCap = result.EndedOnIterationCap,
+            DeliverableMissing = result.DeliverableMissing,
         }, domainOutput, isDecisionTask: agent is null);
         taskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);

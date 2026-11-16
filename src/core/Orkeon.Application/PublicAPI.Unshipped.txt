@@ -19,3 +19,17 @@ Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedAt.get -> System
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedAt.init -> void
 [ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.EndedOnIterationCap.get -> bool
 [ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.EndedOnIterationCap.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverableMissing.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverableMissing.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverablePath.get -> string?
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverablePath.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverableMissing.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverableMissing.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.DeliverableMissing.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.DeliverableMissing.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DeliverableMissing.get -> bool
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DeliverableMissing.init -> void
+Orkeon.Application.Execution.TaskOutput.DeliverablePath.get -> string?
+Orkeon.Application.Execution.TaskOutput.DeliverablePath.init -> void
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverableMissing.get -> bool
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverableMissing.init -> void

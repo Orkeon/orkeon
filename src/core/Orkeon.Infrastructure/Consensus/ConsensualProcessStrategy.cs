@@ -344,7 +344,10 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             CompletedAt: DateTime.UtcNow,
             Success: taskResult.Success,
             ExecutionTime: taskResult.ExecutionTime,
-            ToolsUsed: taskResult.ToolsUsed);
+            ToolsUsed: taskResult.ToolsUsed)
+        {
+            DeliverablePath = taskResult.DeliverablePath,
+        };
         run.ApplicationOutputs.Add(appOutput);
 
         // Build domain output
@@ -387,6 +390,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             CacheHitTokens = used.CacheHit,
             CacheMissTokens = used.CacheMiss,
             EndedOnIterationCap = taskResult.EndedOnIterationCap,
+            DeliverableMissing = taskResult.DeliverableMissing,
         };
         run.TaskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);

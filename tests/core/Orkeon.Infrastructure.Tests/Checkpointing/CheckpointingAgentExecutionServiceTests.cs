@@ -160,6 +160,25 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayTheMissingDeliverable_WhenATaskWithoutItsDeliverableIsResumed()
+    {
+        _inner.DeliverableMissing = true;
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.True(replayed.DeliverableMissing);
+    }
+
+    [Fact]
     [Trait("BR", "CH-39")]
     public async System.Threading.Tasks.Task ShouldReplayNoCapFlag_WhenAnUncappedTaskIsResumed_Untyped()
     {
@@ -175,6 +194,45 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
 
         Assert.True(replayed.Resumed);
         Assert.False(replayed.EndedOnIterationCap);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayTheDeliverablePath_WhenATaskThatWroteItIsResumed()
+    {
+        _inner.DeliverablePath = "/output/notes.md";
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.False(replayed.DeliverableMissing);
+        Assert.Equal("/output/notes.md", replayed.DeliverablePath);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayNoMissingDeliverable_WhenATaskThatWroteItIsResumed_Untyped()
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.False(replayed.DeliverableMissing);
+        Assert.Null(replayed.DeliverablePath);
     }
 
     [Fact]
@@ -212,6 +270,25 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
 
         Assert.True(replayed.Resumed);
         Assert.True(replayed.EndedOnIterationCap);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayTheMissingDeliverable_WhenATypedTaskWithoutItsDeliverableIsResumed()
+    {
+        _inner.DeliverableMissing = true;
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult<FakeTypedAgentExecutionService.Answer> replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.True(replayed.DeliverableMissing);
     }
 
     [Theory]

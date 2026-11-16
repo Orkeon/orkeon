@@ -47,4 +47,37 @@ public sealed class HierarchicalCapFlagTests : IDisposable
         Assert.True(snapshot.Success);
         Assert.Equal(capped, snapshot.EndedOnIterationCap);
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldCarryTheMissingDeliverableIntoTheSnapshot(bool missing)
+    {
+        var lead = _fixture.Agent("Lead", allowDelegation: true);
+        var worker = _fixture.Agent("Worker");
+        var draft = _fixture.Task("draft");
+        _fixture.Execution.SetExecuteFunc((_, _, _, _) =>
+            new TaskResult(true, "out", null, [], TimeSpan.Zero) { DeliverableMissing = missing });
+        _manager.SetAssignResult(new TaskAssignment(draft.Id, worker.Id, "the only worker", DateTime.UtcNow));
+        var crew = LifecycleFixture.Build(
+            new CrewBuilder().Goal("Pipeline").Hierarchical(lead), [lead, worker], [draft]);
+        var strategy = new HierarchicalProcessStrategy(
+            _fixture.Tasks,
+            _fixture.Agents,
+            NullLogger<HierarchicalProcessStrategy>.Instance,
+            _manager,
+            TestManagerLlm.Resolver(),
+            _fixture.Execution,
+            _fixture.MemoryScope,
+            new MockMemoryCoordinator(),
+            _fixture.Hook,
+            _fixture.Events);
+
+        await strategy.ExecuteHierarchicalAsync(crew, lead.Id, cancellationToken: TestContext.Current.CancellationToken);
+
+        var snapshot = Assert.Single(_fixture.Hook.CompletedTasks, s => s.TaskId == draft.Id.ToString());
+        Assert.True(snapshot.Success);
+        Assert.Equal(missing, snapshot.DeliverableMissing);
+    }
 }

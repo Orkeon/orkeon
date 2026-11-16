@@ -239,6 +239,9 @@ public sealed record CrewExecutionEvent
     /// <summary>Whether the agent spent its iteration cap and answered on the tool-free retry.</summary>
     public bool EndedOnIterationCap { get; init; }
 
+    /// <summary>Whether the task succeeded although its <c>tool_call</c> deliverable does not exist (#392).</summary>
+    public bool DeliverableMissing { get; init; }
+
     /// <summary>When it happened (UTC).</summary>
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
 

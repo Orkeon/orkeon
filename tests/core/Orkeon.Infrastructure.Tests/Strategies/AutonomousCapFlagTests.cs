@@ -59,6 +59,37 @@ public sealed class AutonomousCapFlagTests : IDisposable
         Assert.Equal(capped, snapshot.EndedOnIterationCap);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldFlagTheTask_WhenAnAutonomousRunMissesItsDeliverable(bool missing)
+    {
+        var agent = new AgentBuilder().Role("worker").Goal("Goal").Backstory("Backstory").Build();
+        var task = new CrewTaskBuilder().Description("missing work").ExpectedOutput("Complete it").Build();
+        var crew = DomainCrew.Create("Autonomous crew", ProcessType.Autonomous);
+        _agentRepo.AddAgentToStore(agent);
+        crew.AddAgent(agent.Id);
+        _taskRepo.AddTaskToStore(task);
+        crew.AddTask(task.Id);
+        _execService.SetExecuteFunc((_, _, _, _) =>
+            new TaskResult(true, "out", null, [], TimeSpan.Zero) { DeliverableMissing = missing });
+        var strategy = new AutonomousProcessStrategy(
+            new CrewStrategyDependencies(_taskRepo, _agentRepo, _execService, _memoryScope),
+            _channel,
+            _manager,
+            TestManagerLlm.Resolver(),
+            NullLogger<AutonomousProcessStrategy>.Instance,
+            _hook);
+
+        await strategy.ExecuteAutonomousAsync(
+            crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
+
+        var snapshot = Assert.Single(_hook.CompletedTasks, s => s.TaskId == task.Id.Value.ToString());
+        Assert.True(snapshot.Success);
+        Assert.Equal(missing, snapshot.DeliverableMissing);
+    }
+
     private (DomainCrew Crew, CrewTask Task) BuildDelegationCrew(bool helperCapped = true)
     {
         var delegator = new AgentBuilder().Role("delegator").Goal("Goal").Backstory("Backstory")
@@ -109,6 +140,27 @@ public sealed class AutonomousCapFlagTests : IDisposable
         var snapshot = Assert.Single(_hook.CompletedTasks, s => s.TaskId == task.Id.Value.ToString());
         Assert.True(snapshot.Success);
         Assert.Equal(capped, snapshot.EndedOnIterationCap);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldKeepTheMissingDeliverable_WhenAPeerTakesTheTaskOver(bool missing)
+    {
+        var (crew, task) = BuildDelegationCrew();
+        var channel = new FakeAgentChannel
+        {
+            Answer = request => new AgentChannelResponse(
+                request.CorrelationId, request.ToAgentId, true, "helper out") { DeliverableMissing = missing },
+        };
+
+        await BuildStrategy(channel).ExecuteAutonomousAsync(
+            crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
+
+        var snapshot = Assert.Single(_hook.CompletedTasks, s => s.TaskId == task.Id.Value.ToString());
+        Assert.True(snapshot.Success);
+        Assert.Equal(missing, snapshot.DeliverableMissing);
     }
 
     [Theory]

@@ -383,6 +383,47 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         };
     }
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Task {TaskId} (agent {AgentRole}) completed without writing its deliverable '{Path}': the file does not exist")]
+    private static partial void LogDeliverableMissing(ILogger logger, object taskId, object agentRole, string path);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Task {TaskId}: could not check whether its deliverable '{Path}' exists")]
+    private static partial void LogDeliverableProbeFailed(ILogger logger, Exception exception, object taskId, string path);
+
+    /// <summary>
+    /// What the task's deliverable became once the task succeeded (#392): a <c>tool_call</c>
+    /// deliverable the agent did not write marks the result <see cref="TaskResult.DeliverableMissing"/>
+    /// and logs a warning; a deliverable known to exist — written by the agent, or persisted by a
+    /// resolver — is named in <see cref="TaskResult.DeliverablePath"/>. Best-effort: a probe that
+    /// fails leaves the result as it was, it never fails the task.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort probe: a failure to check the deliverable never fails a task that succeeded.")]
+    private async System.Threading.Tasks.Task<TaskResult> WithDeliverableStateAsync(
+        DomainAgent agent, CrewTask task, TaskResult result, string? persistedPath, CancellationToken cancellationToken)
+    {
+        if (!result.Success)
+            return result;
+
+        if (persistedPath is { Length: > 0 })
+            return result with { DeliverablePath = persistedPath };
+
+        if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path.Length: > 0 } deliverable || _fileSystem is null)
+            return result;
+
+        try
+        {
+            if (await _fileSystem.ExistsAsync(deliverable.Path, cancellationToken).ConfigureAwait(false))
+                return result with { DeliverablePath = deliverable.Path };
+
+            LogDeliverableMissing(_logger, task.Id, agent.Role, deliverable.Path);
+            return result with { DeliverableMissing = true };
+        }
+        catch (Exception ex)
+        {
+            LogDeliverableProbeFailed(_logger, ex, task.Id, deliverable.Path);
+            return result;
+        }
+    }
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent [{AgentRole}]: the task ran past its maximum execution time of {LimitSeconds}s and is cancelled")]
     private static partial void LogExecutionTimeExceeded(ILogger logger, object agentRole, double limitSeconds);
 
@@ -448,7 +489,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // reaches the task the same way in every mode — a takeover and a revision of the
                 // same task included, a ballot or a delegated sub-task (other tasks) not.
                 var userPrompt = AgentPromptComposer.BuildUserPrompt(
-                    task, context, knowledgeContext, CrewPlanScope.InstructionsFor(task.Id), agent.PromptTemplate);
+                    task, context, knowledgeContext, CrewPlanScope.InstructionsFor(task.Id), agent.PromptTemplate, toolbelt);
 
                 // Input phase: the prompt the provider is about to read — previous outputs and
                 // retrieved knowledge included — is screened first. A block is a readable task
@@ -504,7 +545,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // file_write tool-call flow; no resolver is invoked for them.
                 var fqnOutcome = await ResolveDeliverableIfDeclaredAsync(task, finalOutput, taskToken).ConfigureAwait(false);
 
-                return CompletedResult(loopResult, finalOutput, structuredOutput, toolsUsed, DateTime.UtcNow - startTime, fqnOutcome);
+                var completed = CompletedResult(loopResult, finalOutput, structuredOutput, toolsUsed, DateTime.UtcNow - startTime, fqnOutcome);
+                return await WithDeliverableStateAsync(agent, task, completed, fqnOutcome.PersistedPath, taskToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -902,7 +944,10 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 RewrittenFqns: result.RewrittenFqns ?? ImmutableDictionary<string, string>.Empty,
                 AmbiguousFqns: result.AmbiguousFqns is { } amb
                     ? amb.Select(a => new TaskAmbiguousFqn(a.BareFqn, a.Candidates)).ToImmutableArray()
-                    : ImmutableArray<TaskAmbiguousFqn>.Empty);
+                    : ImmutableArray<TaskAmbiguousFqn>.Empty)
+            {
+                PersistedPath = result.Persisted ? result.Path ?? deliv.Path : null,
+            };
         }
         catch (Exception ex)
         {
@@ -920,6 +965,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         ImmutableDictionary<string, string> RewrittenFqns,
         ImmutableArray<TaskAmbiguousFqn> AmbiguousFqns)
     {
+        /// <summary>The path the resolver persisted the deliverable at, or null when it wrote nothing (#392).</summary>
+        public string? PersistedPath { get; init; }
+
         public static DeliverableFqnOutcome Empty { get; } = new(
             ImmutableArray<string>.Empty,
             ImmutableDictionary<string, string>.Empty,

@@ -80,7 +80,7 @@ public sealed class HostRunFinishedCountsCappedTasksTests : IDisposable
             });
     }
 
-    private static TaskExecutionSnapshot Completed(string taskId, int attempt, bool capped) => new()
+    private static TaskExecutionSnapshot Completed(string taskId, int attempt, bool capped, bool missing = false) => new()
     {
         TaskId = taskId,
         AgentRole = "Helper",
@@ -89,6 +89,7 @@ public sealed class HostRunFinishedCountsCappedTasksTests : IDisposable
         CompletedAt = DateTimeOffset.UtcNow,
         Attempt = attempt,
         EndedOnIterationCap = capped,
+        DeliverableMissing = missing,
     };
 
     private async Task<JsonElement> RunFinishedPayloadAsync(params TaskExecutionSnapshot[] completions)
@@ -152,6 +153,30 @@ public sealed class HostRunFinishedCountsCappedTasksTests : IDisposable
 
         Assert.True(payload.TryGetProperty("cappedTasks", out var capped));
         Assert.Equal(0, capped.GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldCountTheMissingDeliverables_OnTheLastAttempt_InRunFinished()
+    {
+        var payload = await RunFinishedPayloadAsync(
+            Completed("a", 1, capped: false, missing: true),
+            Completed("a", 2, capped: false, missing: false),
+            Completed("b", 1, capped: false, missing: true),
+            Completed("c", 1, capped: false));
+
+        Assert.True(payload.TryGetProperty("missingDeliverables", out var missing));
+        Assert.Equal(1, missing.GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldWriteZeroMissingDeliverables_WhenTheRunEndsBeforeAnyTask()
+    {
+        var payload = await RunFinishedPayloadAsync();
+
+        Assert.True(payload.TryGetProperty("missingDeliverables", out var missing));
+        Assert.Equal(0, missing.GetInt32());
     }
 
     private sealed class RecordingHook : ICrewExecutionHook

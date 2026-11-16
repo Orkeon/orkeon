@@ -21,6 +21,7 @@ internal sealed class ForgeRunObserver : ICrewExecutionHook, ILlmCallObserver
 
     private readonly object _gate = new();
     private readonly Dictionary<string, bool> _lastAttemptCapped = [];
+    private readonly Dictionary<string, bool> _lastAttemptMissingDeliverable = [];
 
     /// <summary>Tasks whose last attempt ended on the iteration cap (a task seen twice counts once).</summary>
     public int CappedTasks
@@ -28,10 +29,23 @@ internal sealed class ForgeRunObserver : ICrewExecutionHook, ILlmCallObserver
         get { lock (_gate) { return _lastAttemptCapped.Values.Count(capped => capped); } }
     }
 
-    /// <summary>Starts a trial: forgets the previous trial's tasks so <see cref="CappedTasks"/> counts this trial only.</summary>
+    /// <summary>Tasks whose last attempt succeeded without writing its <c>tool_call</c> deliverable (a task seen twice counts once, #392).</summary>
+    public int MissingDeliverables
+    {
+        get { lock (_gate) { return _lastAttemptMissingDeliverable.Values.Count(missing => missing); } }
+    }
+
+    /// <summary>
+    /// Starts a trial: forgets the previous trial's tasks so <see cref="CappedTasks"/> and
+    /// <see cref="MissingDeliverables"/> count this trial only.
+    /// </summary>
     public void BeginTrial()
     {
-        lock (_gate) { _lastAttemptCapped.Clear(); }
+        lock (_gate)
+        {
+            _lastAttemptCapped.Clear();
+            _lastAttemptMissingDeliverable.Clear();
+        }
     }
 
     /// <summary>Attaches the stream; before this, the observer stays silent. <paramref name="withCalls"/> also writes the model calls (llm.call.*).</summary>
@@ -61,7 +75,10 @@ internal sealed class ForgeRunObserver : ICrewExecutionHook, ILlmCallObserver
     public Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
     {
         lock (_gate)
+        {
             _lastAttemptCapped[snapshot.TaskId] = snapshot.EndedOnIterationCap;
+            _lastAttemptMissingDeliverable[snapshot.TaskId] = snapshot.DeliverableMissing;
+        }
 
         _events?.Emit("task.completed", new
         {
@@ -72,6 +89,7 @@ internal sealed class ForgeRunObserver : ICrewExecutionHook, ILlmCallObserver
             tokens = snapshot.TokensUsed,
             toolCalls = snapshot.ToolCallCount,
             endedOnIterationCap = snapshot.EndedOnIterationCap,
+            deliverableMissing = snapshot.DeliverableMissing,
         });
         return Task.CompletedTask;
     }
@@ -188,6 +206,7 @@ internal sealed class TestStage : IForgeStageRunner
             cacheMissTokens,
             mailActions,
             cappedTasks = _observer.CappedTasks,
+            missingDeliverables = _observer.MissingDeliverables,
         });
 
     /// <summary>
