@@ -515,10 +515,38 @@ La clé `outputFile:` d'une tâche n'existe plus, et une crew qui en écrit enco
 chargement** par un message qui indique le remplacement : le bloc `deliverable:` de la tâche (plus haut),
 par exemple `deliverable: { path: /output/report.md }`. Avec la `source: tool_call` par défaut, l'agent
 reçoit la consigne d'écrire ce chemin ; avec `source: final_message`, le framework y écrit la réponse finale.
-Un livrable `tool_call` dont l'agent n'a aucun outil `file_write` (ni le sien ni celui de la tâche) ne peut pas
-être écrit : le chargement journalise un avertissement qui nomme la tâche, le chemin et l'agent, et
-`orkeon run --validate` l'imprime ; la crew se charge quand même. Donnez `file_write` à l'agent, ou posez
-`source: final_message` (#392).
+Le chargement vérifie qu'un livrable `tool_call` peut être écrit ([plus bas](#livrables-vérifiés-au-chargement)).
+
+## Livrables vérifiés au chargement
+
+Un livrable `tool_call` qu'aucun agent capable d'exécuter sa tâche ne peut écrire est signalé au chargement
+de la crew (#392) : un avertissement nomme la tâche, le chemin et les agents, et la crew se charge quand
+même. `orkeon run --validate` l'imprime en une ligne `WARNING:` par tâche
+([cli](../reference/cli.md#orkeon-run)) ; un run signale de toute façon un fichier qui n'a pas été écrit
+([le livrable `tool_call`](#le-livrable-tool_call)).
+
+- **Les agents jugés** sont ceux à qui le processus peut confier la tâche : l'agent que la tâche nomme
+  dans une crew `sequential`, `parallel` ou `graph` (chaque agent quand elle n'en nomme aucun, choisi à
+  tour de rôle à l'exécution) ; chaque agent sauf le `managerAgent` dans une crew `hierarchical` ou
+  `consensual` ; chaque agent dans une crew `autonomous`. L'avertissement ne vient que si **aucun** d'eux
+  ne peut écrire le fichier.
+- **Un agent peut écrire le fichier** quand sa ceinture d'outils, ses outils plus ceux de la tâche, contient
+  un outil intégré qui écrit ce chemin : `file_write` pour tout chemin, `docx_writer` pour un `.docx`,
+  `xlsx_writer` pour un `.xlsx`, `image_generation` pour un `.png`, `.jpg`, `.jpeg` ou `.webp`, `firefox`
+  (sa capture d'écran) pour un `.png`. Les éditeurs (`edit_file`, `edit_batch`, `structural_rewrite`)
+  modifient un fichier existant, les téléchargeurs (`drive_download`, `email_save_attachment`) nomment le
+  fichier eux-mêmes, et `shell_command` ne nomme aucun chemin : aucun ne compte.
+- **Aucun avertissement** quand la ceinture contient un outil qu'Orkeon ne livre pas (celui d'un serveur
+  MCP, d'un script, d'un plugin) : le contrôle ne peut pas savoir ce qu'il écrit. Ni pour un agent dont le
+  modèle exécute ses propres outils.
+- **Les chemins qui chargent sans le contrôle** sont listés dans les [limitations](../reference/limitations.md) :
+  une crew construite en C# avec `CrewBuilder`, et un `.ork.ts` procédural sous `--validate`, qui n'est pas
+  chargé comme une crew.
+
+Un hôte C# lance le même contrôle avec `DeliverableToolCheck.Check(tasks, agents, processType,
+managerAgentId)` (`Orkeon.Application.Crew`), qui renvoie un `DeliverableToolFinding` par tâche, dont le
+`Message` est le texte de l'avertissement. `CrewFactoryOptions.WarnOnDeliverableTools` (`true` par défaut)
+coupe l'avertissement du chargement ; `--validate` le coupe, pour imprimer chaque constat une seule fois.
 
 ## Budget autonome
 

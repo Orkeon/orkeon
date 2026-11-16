@@ -496,10 +496,36 @@ before.
 A task's `outputFile:` key is gone, and a crew that still writes one is **refused at load** with a
 message pointing to the replacement: the task's `deliverable:` block (above), e.g.
 `deliverable: { path: /output/report.md }`. With the default `source: tool_call` the agent is told to
-write that path; with `source: final_message` the framework writes the final answer there. A `tool_call`
-deliverable whose agent holds no `file_write` tool (neither its own nor the task's) cannot be written: the load
-logs a warning naming the task, the path and the agent, and `orkeon run --validate` prints it; the crew still
-loads. Give the agent `file_write`, or set `source: final_message` (#392).
+write that path; with `source: final_message` the framework writes the final answer there. Loading checks
+that a `tool_call` deliverable can be written ([below](#deliverables-checked-at-load)).
+
+## Deliverables checked at load
+
+A `tool_call` deliverable that no agent able to run its task can write is reported when the crew loads
+(#392): a warning names the task, the path and the agents, and the crew still loads. `orkeon run
+--validate` prints it as one `WARNING:` line per task ([cli](../reference/cli.md#orkeon-run)); a run flags a
+file that was not written all the same ([the `tool_call` deliverable](#the-tool_call-deliverable)).
+
+- **The agents judged** are those the process may give the task to: the agent the task names in a
+  `sequential`, `parallel` or `graph` crew (every agent when it names none, picked in turn at run time);
+  every agent but the `managerAgent` in a `hierarchical` or `consensual` crew; every agent in an
+  `autonomous` crew. The warning comes only when **none** of them can write the file.
+- **An agent can write the file** when its toolbelt, its own tools plus the task's, holds a built-in tool
+  that writes that path: `file_write` for any path, `docx_writer` for a `.docx`, `xlsx_writer` for a
+  `.xlsx`, `image_generation` for a `.png`, `.jpg`, `.jpeg` or `.webp`, `firefox` (its screenshot) for a
+  `.png`. The editors (`edit_file`, `edit_batch`, `structural_rewrite`) change a file that exists, the
+  downloaders (`drive_download`, `email_save_attachment`) name the file themselves, and `shell_command`
+  names no path: none of them counts.
+- **No warning** when the toolbelt holds a tool Orkeon does not ship (an MCP server's, a script's, a
+  plugin's): the check cannot know what it writes. Nor for an agent whose model runs its own tools.
+- **Paths that load without the check** are listed in the [limitations](../reference/limitations.md):
+  a crew built in C# with `CrewBuilder`, and a procedural `.ork.ts` under `--validate`, which is not loaded
+  as a crew.
+
+A C# host runs the same check with `DeliverableToolCheck.Check(tasks, agents, processType,
+managerAgentId)` (`Orkeon.Application.Crew`), which returns one `DeliverableToolFinding` per task, its
+`Message` the text of the warning. `CrewFactoryOptions.WarnOnDeliverableTools` (default `true`) turns the
+load warning off; `--validate` does, to print each finding once.
 
 ## Autonomous budget
 

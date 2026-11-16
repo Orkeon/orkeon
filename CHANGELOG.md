@@ -31,6 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tokens and no date). The `run.finished` line carries `cappedTasks`, the number of tasks whose last attempt ended on the iteration cap
   (always written, `0` when none did): `orkeon run`, the forge trial (counted per trial), `orkeon-host` and the MCP crew
   tool host write it (#388).
+- Loading a crew, YAML or `.ork.ts`, checks its `tool_call` deliverables: a task whose deliverable no agent able to run
+  it can write (the agent it names in a `sequential`, `parallel` or `graph` crew, every worker of a coordinated crew, with
+  a built-in tool that writes that path: `file_write`, or `docx_writer`, `xlsx_writer`, `image_generation`, `firefox` for
+  their formats) logs a warning, and `orkeon run --validate` prints it once as a `WARNING:` line on stderr with the exit
+  code unchanged; nothing is refused. A toolbelt holding a tool Orkeon does not ship (MCP, script, plugin) is not warned
+  about. `DeliverableToolCheck.Check(tasks, agents, processType, managerAgentId)` and `DeliverableToolFinding`
+  (`Orkeon.Application.Crew`) expose the check to a C# host, with `DeliverableToolCheck.WritersOf`, `PreferredWriterOf`,
+  `CanWrite` and `FileWriterToolNames`; `CrewFactoryOptions.WarnOnDeliverableTools` (default `true`) turns the load
+  warning off (#392).
 
 ### Changed — a collection indexed with another embedding model is refused **[breaking]** (#381)
 
@@ -52,20 +61,6 @@ other two cases `warn`; under `Always` a `tsc` found nowhere or a `TscPath` that
 `Orkeon:Scripting:Toolchain:TscPath`, `TypeCheck: off`), and the checkout bootstrap only when `orkeon` runs from a checkout.
 **What to do**: install `typescript`, point `TscPath` at it, or set `TypeCheck` to `Off` or `Validate` where a CI step runs
 `orkeon doctor` under `Always` without `tsc`.
-
-### Changed — the forge writes `source: final_message` for a deliverable its agent cannot write (#392)
-
-**Before**: every deliverable of a forged crew was `source: tool_call`, so a task whose agent held no
-`file_write` tool never wrote its file. **Now**: the forge keeps `tool_call` (written as no `source`) when the
-task's agent holds `file_write` — every agent of the plan for a task that names none — and writes
-`source: final_message` otherwise, in the YAML crew and in `crew.ork.ts` alike: the framework saves the agent's
-final answer to the path. `forge reopen` derives the source again from the plan. Loading any crew, YAML or
-`.ork.ts`, whose `tool_call` deliverable's agent has no `file_write` (its own or the task's) now logs a warning,
-and `orkeon run --validate` prints it as a `WARNING:` line on stderr with the exit code unchanged; nothing is
-refused. `DeliverableToolCheck` and `DeliverableToolFinding` (`Orkeon.Application.Crew`) expose the check.
-**What to do**: a hand-written crew that sees the warning gives the agent `file_write` or sets
-`deliverable.source: final_message`; a forged team regenerated after this change may differ from the one before
-by that `source` line.
 
 ### Changed — the forge assistant tags its crews `sequential` **[breaking]** (#382)
 
@@ -98,6 +93,21 @@ opens, and the next validation (the Blueprint stage, a `blueprint_submit`, a ver
 
 **What to do**: for a task, list the task that writes the file among the dependencies of the task that reads it. For an
 agent, remove the path from its goal or backstory, give the agent the task that writes it, or a dependency on that task.
+
+### Changed — the forge writes `source: final_message` for a deliverable its agents cannot write **[breaking]** (#392)
+
+**Before**: every deliverable of a forged crew was `source: tool_call`, so a task whose agent held no tool to write it
+never wrote its file. **Now**: the forge keeps `tool_call` when every agent that may run the task writes the path
+itself (the agent the task names in a `sequential`, `parallel` or `graph` crew, every agent but the manager in a
+`hierarchical` or `consensual` crew, every agent in an `autonomous` one), and writes `source: final_message` otherwise:
+the framework saves the agent's final answer to the path. A binary deliverable (`.docx`, `.xlsx`, `.pdf`, an image…) is
+never switched: a plan whose agent lacks the tool that writes its format is refused, with an error naming the task, the
+agents and the tool to give (`docx_writer`, `xlsx_writer`, `image_generation`), or a text format when no built-in tool
+writes it. The YAML crew writes `source: final_message` only; `crew.ork.ts` always writes the source
+(`source: "tool_call"` or `"final_message"`, which the typings require). `forge reopen` derives the source again from the
+plan, so a source edited by hand in the crew files is replaced. **What to do**: a forged team regenerated after this
+change may differ from the one before by its `source` lines; a plan that delivered a binary file from an agent without
+its writer tool gives that agent the tool, or delivers a text format.
 
 ### Fixed
 
