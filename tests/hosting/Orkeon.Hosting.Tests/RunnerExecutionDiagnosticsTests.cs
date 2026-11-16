@@ -170,10 +170,29 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         Assert.Equal(0, exit);
         Assert.Contains("VALIDATION OK:", stdout, StringComparison.Ordinal);
         Assert.Contains(
-            "WARNING: Task 'do_read' declares the deliverable '/output/notes.md' (source tool_call), but its agent 'Reader' has no file_write tool",
+            "WARNING: Task 'do_read' declares the deliverable '/output/notes.md' (source tool_call), but its agent 'Reader' has no tool that writes it (file_write)",
             stderr,
             StringComparison.Ordinal);
         Assert.Contains("set deliverable.source: final_message", stderr, StringComparison.Ordinal);
+    }
+
+    // D23 (VF-3, CO-3): the factory's load warning and the WARNING: line are the same finding, said once.
+    [Fact]
+    public async Task Validate_reports_each_deliverable_finding_once()
+    {
+        var configPath = WriteConfig("config.yaml", DeliverableWithoutFileWriteCrewYaml);
+        var opts = new TestOptions { ConfigPath = configPath, AllowExternalMounts = true };
+
+        var (exit, stdout, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(0, exit);
+        var output = stdout + stderr;
+        const string Finding = "declares the deliverable '/output/notes.md'";
+        var count = 0;
+        for (var at = output.IndexOf(Finding, StringComparison.Ordinal); at >= 0; at = output.IndexOf(Finding, at + 1, StringComparison.Ordinal))
+            count++;
+        Assert.Equal(1, count);
     }
 
     [Fact]
@@ -192,7 +211,7 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
 
         Assert.Equal(0, exit);
         Assert.Contains("VALIDATION OK:", stdout, StringComparison.Ordinal);
-        Assert.DoesNotContain("no file_write tool", stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("has no tool that writes it", stderr, StringComparison.Ordinal);
     }
 
     /// <summary>
