@@ -310,7 +310,7 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 - **Activation** : `services.AddOrkeonToolRateLimiting();`
 - **Dépendances** : logging + `IConfiguration`. Si `AddOrkeonCostTracking()` (inclus
   dans le socle) a enregistré `IModelPricingRegistry`, le tracker l'utilise pour la
-  conversion tokens → coût. Son estimation de coût ne lit que les lignes de prix qui ne nomment aucun fournisseur : une ligne rattachée à un fournisseur (les lignes intégrées de DeepSeek, Z.AI, Kimi, Qwen, Gemini, Mistral, Grok, MiniMax, Together et Mammouth, ou une ligne `CustomPricings` avec un `Provider`) n'est pas vue, et le tracker applique alors ses propres taux approximatifs. Le budget `MaxCostUsd` d'`Orkeon:CostTracking` tient compte du fournisseur.
+  conversion tokens → coût. Son estimation de coût ne lit que les lignes de prix qui ne nomment aucun fournisseur : une ligne rattachée à un fournisseur (les lignes intégrées de DeepSeek, Z.AI, Kimi, Qwen, Gemini, Mistral, Grok, MiniMax, Together, Mammouth et Ollama — un modèle Ollama est alors compté aux taux du tracker, pas à 0 — ou une ligne `CustomPricings` avec un `Provider`) n'est pas vue, et le tracker applique alors ses propres taux approximatifs. Le budget `MaxCostUsd` d'`Orkeon:CostTracking` tient compte du fournisseur.
 - **Limites connues** : non câblé dans l'exécution des outils — l'hôte interroge le
   limiteur/le tracker autour de ses appels d'outils. Le rate-limiting **LLM**
   (`ILlmRateLimiter`), lui, reste enregistré par défaut car il est posé à l'entrée de

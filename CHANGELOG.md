@@ -118,7 +118,7 @@ opens, and the next validation (the Blueprint stage, a `blueprint_submit`, a ver
 
 **What to do**: for a task, list the task that writes the file among the dependencies of the task that reads it. For an
 agent, remove the path from its goal or backstory, give the agent the task that writes it, or a dependency on that task.
-A team promoted before this release records no folder survey, nor does a brief `forge reopen` derives from the crew files:
+A team promoted before this release records no folder survey, nor does a brief that `forge reopen` derives from the crew files:
 after `forge reopen`, a path to a file the user put in a folder is refused like any other, until a task delivers it or
 the text no longer names it.
 
@@ -126,8 +126,8 @@ the text no longer names it.
 
 **Before**: every deliverable of a forged crew was `source: tool_call`, so a task whose agent held no tool to write it
 never wrote its file. **Now**: the forge keeps `tool_call` when every agent that may run the task writes the path
-itself (the agent the task names in a `sequential`, `parallel` or `graph` crew, or in a plan with no or an unknown
-process, every agent when the task names none; every agent but the manager in a `hierarchical` or `consensual` crew,
+itself (the agent the task names in a `sequential` crew, which a plan naming no process gets, or in a `parallel` or
+`graph` one; every agent but the manager in a `hierarchical` or `consensual` crew,
 every agent in an `autonomous` one), and writes `source: final_message` otherwise:
 the framework saves the agent's final answer to the path. An agent's tools are its own plus the ones the task grants
 (a crew file's task-level `tools:`), as the engine counts them; `forge reopen` reads those back and the forge writes

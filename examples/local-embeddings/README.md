@@ -26,6 +26,6 @@ Results (descending similarity):
 
 ## Network requirements
 
-- **First build**: the `SmartComponents.LocalEmbeddings` package fetches the BGE-micro-v2 ONNX file once (~17 MB) from Hugging Face during `dotnet build` and caches it under the user's NuGet packages folder.
-- **Offline build**: `ExcludeAssets="build"` on every reference that reaches the package skips the download; the first embedding then fails unless the model is in place ([limitations](../../docs/reference/limitations.md)).
+- **First build**: the `SmartComponents.LocalEmbeddings` package fetches the BGE-micro-v2 ONNX file once (~17 MB) from Hugging Face during `dotnet build` and caches it in the `.cache/` folder of that package, under the packages folder of the restore (the repository's `packages/` under Linux).
+- **Offline build**: this example builds `Orkeon.Tools.Embeddings.Local` from source, and that project's own reference to the package runs the download, so an offline first build fails; `ExcludeAssets="build"` skips it only in a project that consumes the Orkeon packages ([limitations](../../docs/reference/limitations.md)).
 - **Subsequent runs**: zero network — model and vocabulary are loaded from disk.

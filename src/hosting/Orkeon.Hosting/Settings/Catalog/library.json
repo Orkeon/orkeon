@@ -3790,7 +3790,7 @@
         "Validate",
         "Always"
       ],
-      "description": "When the TypeScript compiler (`tsc`) checks the types of a `.ork.ts` script against the typings this build ships: `Off` never, `Validate` (default) in `orkeon run --validate`, `Always` in `--validate` and before every run. Under `Validate` a missing compiler is a warning; under `Always` it is a failure. `orkeon doctor` judges its `tsc` check by this mode too: a `tsc` found nowhere is `ok` under `Off` and `Validate` and `fail` under `Always`; under `Validate` a `TscPath` that does not exist, or a `tsc` that does not answer `--version`, is `warn`."
+      "description": "When the TypeScript compiler (`tsc`) checks the types of a `.ork.ts` script against the typings this build ships: `Off` never, `Validate` (default) in `orkeon run --validate`, `Always` in `--validate` and before every run. Under `Validate` a missing compiler is a warning; under `Always` it is a failure. `orkeon doctor` judges its `tsc` check by this mode too: a `tsc` found nowhere is `ok` under `Off` and `Validate` and `fail` under `Always`; a `TscPath` that does not exist is `ok` under `Off`, `warn` under `Validate` and `fail` under `Always`; a `tsc` that does not answer `--version` is `ok` under `Off` and `warn` otherwise."
     },
     {
       "path": "Orkeon:Scripting:Toolchain:TypeCheckTimeout",

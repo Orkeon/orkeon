@@ -276,7 +276,7 @@ Vingt-neuf tools sur le graphe sémantique de code RaggableTree — le guide com
 | Tool | Classe | Enregistrement | Cas d'usage |
 |-------|--------|------|-------------|
 | `list_mounts` | `ListMountsTool` (`Orkeon.Tools.Abstractions`) | `AddOrkeonAbstractionTools()` | Lister les montages VFS visibles par l'agent, avec chemins virtuels et droits d'accès. Résultat typé `{ mounts: [{ virtual_path, access, overrides: [{ virtual_path, access }] }] }` |
-| `local_embed_text` | `LocalEmbedTool` (`Orkeon.Tools.Embeddings.Local`) | `AddOrkeonLocalEmbeddings()` | Embarquer des textes sur l'appareil (BGE-micro-v2 ONNX, 384 dims, CPU — pas de réseau à l'exécution, pas de clé d'API ; le premier build d'un consommateur télécharge le modèle depuis huggingface.co ; `ExcludeAssets="build"` sur chaque référence qui atteint le paquet évite le téléchargement, et le premier embedding échoue alors si le modèle n'est pas dans `LocalEmbeddingsModel/default/model.onnx`, voir [limitations](../reference/limitations.md)) |
+| `local_embed_text` | `LocalEmbedTool` (`Orkeon.Tools.Embeddings.Local`) | `AddOrkeonLocalEmbeddings()` | Embarquer des textes sur l'appareil (BGE-micro-v2 ONNX, 384 dims, CPU — pas de réseau à l'exécution, pas de clé d'API ; le premier build d'un consommateur télécharge le modèle depuis huggingface.co ; `ExcludeAssets="build"` sur chaque référence qui atteint le paquet évite le téléchargement, et le premier embedding échoue alors sauf si le modèle est dans `LocalEmbeddingsModel/default/model.onnx` ou si `LocalEmbeddingOptions.ModelPath` en nomme un, voir [limitations](../reference/limitations.md)) |
 
 ## Tools côté hôte
 

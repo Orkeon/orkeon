@@ -159,9 +159,10 @@ Une tâche peut écrire sa sortie dans un fichier :
 ```
 
 `source` vaut `final_message` (le framework enregistre la réponse finale), `structured_output` (il
-enregistre le JSON vérifié par le schéma) ou `tool_call` (l'agent écrit le fichier lui-même :
-donnez-lui `file_write`, ou `docx_writer`, `xlsx_writer`, `image_generation` pour ces formats, sinon
-le chargement avertit et `orkeon run --validate` imprime une ligne `WARNING:`). Voir
+enregistre le JSON vérifié par le schéma), `tool_call` (l'agent écrit le fichier lui-même :
+donnez-lui `file_write`, ou `docx_writer`, `xlsx_writer`, `image_generation`, `firefox` pour ces
+formats, sinon le chargement avertit et `orkeon run --validate` imprime une ligne `WARNING:`) ou
+`none` (aucun fichier). Voir
 [livrables vérifiés au chargement](../architecture/yaml-schema.md#livrables-vérifiés-au-chargement).
 
 `/output` est un montage virtuel. Sans lui le run réussit quand même, et le fichier n'a

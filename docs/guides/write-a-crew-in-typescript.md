@@ -157,9 +157,9 @@ A task can write its output to a file:
 ```
 
 `source` is `final_message` (the framework saves the final answer), `structured_output` (it saves
-the schema-checked JSON) or `tool_call` (the agent writes the file itself: give it `file_write`, or
-`docx_writer`, `xlsx_writer`, `image_generation` for those formats, or the load warns and
-`orkeon run --validate` prints a `WARNING:` line). See
+the schema-checked JSON), `tool_call` (the agent writes the file itself: give it `file_write`, or
+`docx_writer`, `xlsx_writer`, `image_generation`, `firefox` for those formats, or the load warns and
+`orkeon run --validate` prints a `WARNING:` line) or `none` (no file). See
 [deliverables checked at load](../architecture/yaml-schema.md#deliverables-checked-at-load).
 
 `/output` is a virtual mount. Without it the run still succeeds and the file simply has

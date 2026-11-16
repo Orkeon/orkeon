@@ -43,9 +43,10 @@ No API key or `appsettings` needed — embeddings are computed on-device.
 **First build only**: the `SmartComponents.LocalEmbeddings` package fetches the
 BGE-micro-v2 ONNX file once (~17 MB) during `dotnet build`; subsequent builds
 and every run are network-free.
-An offline machine skips that download with `ExcludeAssets="build"` on every
-reference that reaches the package; the first embedding then fails unless the
-model is in place ([limitations](../../../docs/reference/limitations.md)).
+This example builds `Orkeon.Tools.Embeddings.Local` from source, and that
+project's own reference to the package runs the download, so an offline first
+build fails; `ExcludeAssets="build"` skips it only in a project that consumes
+the Orkeon packages ([limitations](../../../docs/reference/limitations.md)).
 
 ## Run it
 

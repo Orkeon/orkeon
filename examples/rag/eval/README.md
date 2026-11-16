@@ -33,7 +33,7 @@ programmatic one is `IRagEvaluator` (a port in `Orkeon.Rag.Abstractions.Interfac
 >
 > A collection named with `-c` that was indexed under another embedding
 > provider, model or dimensions is refused (exit 1, one line naming both
-> models); `--reindex` rebuilds it.
+> models); `--reindex` without `--no-ingest` rebuilds it.
 
 ## Profiles (RAG-04/C4, `adaptive` since RAG-05, `corrective` since RAG-06)
 

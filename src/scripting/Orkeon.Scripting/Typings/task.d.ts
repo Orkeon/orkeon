@@ -87,10 +87,10 @@ declare global {
          * First-class deliverable contract — mirror of YAML's `deliverable: { ... }`
          * block. With `source: "final_message"` the framework writes the final answer
          * as-is to `path`; with `"structured_output"` it writes the JSON, checked against
-         * `schema`. With `"tool_call"` (the default) the agent writes the file itself, so
-         * an agent that may run the task needs a tool that writes that format
-         * (`file_write` for a text file, `docx_writer`, `xlsx_writer`,
-         * `image_generation` for theirs): the load warns otherwise, and a task that
+         * `schema`. With `"tool_call"` the agent writes the file itself, so an agent
+         * that may run the task needs a tool that writes that format (`file_write` for a
+         * text file, `docx_writer`, `xlsx_writer`, `image_generation`, `firefox` for
+         * theirs): the load warns otherwise, and a task that
          * succeeds without writing it is flagged `deliverableMissing`. `"none"` declares
          * no file.
          */
