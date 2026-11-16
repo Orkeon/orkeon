@@ -192,7 +192,7 @@ et la porte CI lit l'une ou l'autre forme.
 public class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse> { … }
 ```
 
-Quatre autres membres virtuels méritent d'être déclarés :
+Cinq autres membres virtuels méritent d'être déclarés :
 
 | Membre | Défaut | Qui la lit |
 |---|---|---|
@@ -200,6 +200,7 @@ Quatre autres membres virtuels méritent d'être déclarés :
 | `AccessFor(arguments)` | `Access` | La classe d'un appel, pour un outil dont les opérations diffèrent (`github`, `http_api`) ; renvoyer la classe la plus restrictive pour des arguments non reconnus |
 | `Category` | la `Category` du contrat, sinon `"General"` (`"File Operations"` / `"Web Operations"` pour les deux bases spécialisées) | Catalogues et listes |
 | `RequiresHumanApproval` | `false` | Les appelants qui gèrent une approbation |
+| `UsesFileSystem` | `false` (`true` dans `FileToolBase`) | Le bloc des montages du prompt de l'agent ; le mettre à `true` pour un outil qui lit ou écrit des chemins virtuels |
 
 Les bases donnent leurs services à un outil sous forme de propriétés protégées en lecture
 seule : `Logger` et `JsonOptions` (`ToolBase`), `HttpClient` (`HttpToolBase`),

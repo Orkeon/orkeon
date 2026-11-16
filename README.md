@@ -57,7 +57,7 @@ flowchart LR
 
 **What is sensitive stays closed until a person opens it.** Sending mail and sharing a drive stay closed until an operator opens the allow-list. When a host turns the permission gate on, an action that needs approval goes to the host's approval channel, to a person, and is refused when the host has none: the model cannot grant it to itself; and a team generated from a sentence is, by default, adopted only after your verdict. Opening access is a human decision, never an agent's deduction.
 
-**Autonomy has a budget.** An autonomous team runs under a budget on tool calls, depth, wall time, tokens and spawned agents: the run stops when the budget is spent, and circuit breakers catch the loops. The other modes are bound by the token and cost cap the host sets; there is none by default. An agent can fail; it cannot spend more than it was given.
+**Autonomy has a budget.** An autonomous team runs under a budget on tool calls, depth, wall time, tokens and spawned agents: the run stops when the budget is spent, and circuit breakers catch the loops. The other modes are bound by the token and cost cap the host sets; there is none by default. The cost cap counts only the models that have a price ([configuration](docs/reference/configuration.md#orkeoncosttracking)). An agent can fail; it cannot spend more than it was given.
 
 **The rule can bind the code itself.** [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) is a standalone Roslyn analyzer: add it to any C# project, with or without Orkeon, and direct file access through `System.IO` no longer compiles.
 

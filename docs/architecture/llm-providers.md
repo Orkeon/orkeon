@@ -239,6 +239,10 @@ prompt rate: Anthropic reports it in `usage.cache_creation.ephemeral_1h_input_to
 `CostUsageEvent` as `CacheWrite1hTokens`, a subset of `CacheWriteTokens`. `claude-opus-4-5` (and its dated ids) is priced at the
 official 5 / 25 $/M, not at the `claude-opus-4` prefix's. Haiku 5.5 is priced
 at its rate for a prompt up to 100K tokens; a longer prompt bills more, which the registry does not model.
+A `ModelPricing` row may name a `Provider` (null: any provider; `CustomPricings:<i>:Provider` in the settings).
+`CostBudgetManager` prices a call with `IModelPricingRegistry.TryGetPricing(provider, model)` /
+`CalculateCost(provider, model, …)`: a custom row beats a built-in one, and within each tier the provider's own rows
+come first (see [configuration](../reference/configuration.md)).
 
 The cache TTL is `LlmCacheConfig.Ttl` (`5m` or `1h`). A call can carry it as the option
 `LlmChatOptionsKeys.CacheTtl` (`orkeon:cache_ttl`), which `ChatOptionsComposer` fills from the agent's
@@ -361,7 +365,8 @@ says the model takes none. `Thinking` takes one name: a comma-separated value (`
 load. A registry the host registers itself (`IModelCapabilityRegistry`, before
 `AddOrkeonLlmProfiles`) wins over the configured one. A model id containing `:` (Ollama's `llama3:8b`) cannot be a
 key: .NET configuration has no escape for the path separator `:`. Key its prefix instead (`llama3` matches
-`llama3:8b` and every other tag).
+`llama3:8b` and every other tag). An entry without a model id (`""`, `" "`, or a key such as `:Vision`) is refused,
+whatever it holds ([configuration](../reference/configuration.md)).
 
 - **Audio in.** An `AudioContentPart` reaches a model that takes it as an `input_audio` part of the Chat
   Completions API (raw bytes, `audio/wav` or `audio/mpeg`; the API takes no audio address). The OpenAI-compatible
@@ -445,7 +450,7 @@ provider, model and dimensions with the fingerprint recorded at `Orkeon:Embeddin
 (default `/workspace/.orkeon/embedding-fingerprint.json`, in the virtual file system). The first start
 records it; a different one stops the host with an error that names both models. Nothing is migrated:
 restore the previous settings, or re-embed and clear the stored vectors, then delete the fingerprint file.
-The guard acts only where a mount covers `FingerprintPath`. A host whose embedding provider is configured, with or without an `Orkeon:Embeddings` section, is guarded there: a host that embedded under the default provider and then writes a section (a switch to Mistral or Gemini) finds the default's fingerprint and is refused. A host with no embedding provider (none registered, no section) writes nothing. A host whose `FingerprintPath` lies under no mount (a run with no `/workspace`) skips the guard at Debug, with no warning and no "Access denied" line; on a mount that grants no Write or Create on the file and no Create on its folder (overrides included; a read-only `/workspace`) the guard still reads and compares a recorded fingerprint and still refuses a changed model, but writes nothing, and when no fingerprint is recorded yet logs one Debug line that names `Orkeon:Embeddings:FingerprintPath`, never a Warning; a provider that cannot report its dimensions at start (a custom `ModelPath` that is missing) makes the guard log a Warning with the provider's own message, and the next call asks again; and an empty `FingerprintPath` turns the guard off, with no log. Every warning the guard does log names `Orkeon:Embeddings:FingerprintPath`.
+The guard acts only where a mount covers `FingerprintPath`. A host whose embedding provider is configured, with or without an `Orkeon:Embeddings` section, is guarded there: a host that embedded under the default provider and then writes a section (a switch to Mistral or Gemini) finds the default's fingerprint and is refused. A host with no embedding provider (none registered, no section) writes nothing. A host whose `FingerprintPath` lies under no mount (a run with no `/workspace`) skips the guard at Debug, with no warning and no "Access denied" line; on a mount that grants no Write or Create on the file and no Create on its folder (overrides included; a read-only `/workspace`) the guard still reads and compares a recorded fingerprint and still refuses a changed model, but writes nothing, and when no fingerprint is recorded yet logs one Debug line that names `Orkeon:Embeddings:FingerprintPath`, never a Warning; a provider that cannot report its dimensions at start (a custom `ModelPath` that is missing) makes the guard log a Warning with the provider's own message, and the next call asks again; and an empty `FingerprintPath` turns the guard off, with no log. Every warning about reading or writing the fingerprint names `Orkeon:Embeddings:FingerprintPath`; the warning for a provider that cannot report its dimensions carries that provider's own message instead.
 
 `/workspace` is not always writable, so the two commands that cannot rely on it guard where it means something. `orkeon forge` defaults `FingerprintPath` to `/forge/embedding-fingerprint.json`, recorded per session: the guard there protects one session and nothing across sessions. That default sits at the lowest precedence: a `FingerprintPath` set explicitly in the settings wins. `orkeon rag` uses no host fingerprint (its default `FingerprintPath` is empty): the manifest of each collection records the provider, model and dimensions it was indexed with and refuses a change on `ingest` without `--reindex`, on `search`, on `eval rag --no-ingest -c` and on `eval rag -c` when its ingest pre-pass runs without `--reindex`, with a line that names the collection, both models and `orkeon rag ingest --reindex`, which rebuilds the collection and passes. A first write that a read-only mount denies is logged at Debug; any other failure to write still warns.
 

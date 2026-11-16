@@ -4669,3 +4669,11 @@ Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Do
 Orkeon.Infrastructure.LLMs.QwenLlmProvider.QwenLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.QwenLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.TogetherAiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.ZaiLlmProvider.ZaiLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.ZaiLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.CostTracking.ModelPricingRegistry.CalculateCost(string? provider, string! model, int promptTokens, int completionTokens) -> decimal
+Orkeon.Infrastructure.CostTracking.ModelPricingRegistry.TryGetPricing(string? provider, string! model) -> Orkeon.Application.Interfaces.Ports.ModelPricing?
+Orkeon.Infrastructure.Tools.DelegateWorkResponse.EndedOnIterationCap.get -> bool
+Orkeon.Infrastructure.Tools.DelegateWorkResponse.EndedOnIterationCap.init -> void
+Orkeon.Infrastructure.Configuration.CrewFactoryOptions.WarnOnDeliverableTools.get -> bool
+Orkeon.Infrastructure.Configuration.CrewFactoryOptions.WarnOnDeliverableTools.set -> void
+Orkeon.Infrastructure.Checkpointing.CheckpointingAgentExecutionService.FileSystem.get -> Orkeon.Domain.FileSystem.IFileSystemService?
+Orkeon.Infrastructure.Checkpointing.CheckpointingAgentExecutionService.FileSystem.init -> void

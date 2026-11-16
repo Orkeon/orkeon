@@ -292,8 +292,8 @@ Grok `grok-4.6` et `grok-4.7` 2 / 6 ; MiniMax `MiniMax-M3` 0,30 / 1,20. Les pass
 rattachées au fournisseur : Together `zai-org/GLM-5.3-Flash` 0,15 / 0,50, Mammouth `gemini-3.8-flash` et `gemini-3.7-flash`
 1,5 / 7,5 (la borne haute de la passerelle, d'après des sources secondaires). Les modèles Ollama et Docker Model Runner coûtent 0.
 Hugging Face reste sans prix : son fournisseur routé fixe le tarif, si bien qu'un appel avertit une fois par modèle et nomme
-`Orkeon:CostTracking:CustomPricings`, où une ligne le tarife. Non modélisés : le tarif de Qwen au-delà de 256K tokens d'entrée
-(1,2 / 4,8), celui de Gemini à partir du 2027-01-01 (1,50 / 7,50) et celui de Grok au-delà de 200K tokens de prompt (4 / 12).
+`Orkeon:CostTracking:CustomPricings`, où une ligne le tarife. OpenRouter est compté d'après le `usage.cost` que renvoie le fournisseur, non d'après cette liste ; un déploiement Azure OpenAI n'est tarifé que si son nom correspond à une ligne (ajoutez-en une sous `CustomPricings`). Non modélisés : le tarif de Qwen au-delà de 256K tokens d'entrée
+(1,2 / 4,8) et celui de Grok au-delà de 200K tokens de prompt (4 / 12).
 
 ## Modèles servis et leurs options par défaut — lecture des catalogues du 2026-11-11
 

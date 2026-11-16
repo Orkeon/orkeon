@@ -323,7 +323,7 @@ compte), puis :
 
 ```bash
 orkeon init      # écrit la config globale : quel LLM, quel modèle, quel endpoint
-orkeon doctor    # vérifie l'installation : runtime, config, profils LLM, joignabilité du LLM, esbuild, grammaires, …
+orkeon doctor    # vérifie l'installation : runtime, config, profils LLM, joignabilité du LLM, esbuild, tsc, grammaires, …
 orkeon run chemin/vers/crew.yaml
 ```
 

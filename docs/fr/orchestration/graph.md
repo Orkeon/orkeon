@@ -104,8 +104,8 @@ Le StateGraph réutilise `CircuitBreakerPolicy` de `Orkeon.Domain.Common.StateMa
 
 En mode Graph, chaque entrée dans un nœud est une visite (les tentatives du `retry:` d'une tâche s'y déroulent), donc :
 
-- `MaxStateVisits` plafonne les **tentatives d'une même tâche** (sa première exécution et ses retries) ;
-- `MaxTransitions` plafonne les exécutions de nœuds sur tout le run : chaque tentative de chaque tâche.
+- `MaxStateVisits` (`maxVisits` en YAML) plafonne les **visites d'un même nœud** : une boucle qui entre de nouveau dans un nœud y compte ;
+- `MaxTransitions` plafonne les exécutions de nœuds sur tout le run.
 
 Sans `maxVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : la somme sur les tâches de `1 + retries` visites (les tentatives du `retry:` de chaque tâche comptent ; `tâches × (1 + retries)` quand elles réessaient toutes pareil) — le maximum qu'une crew peut faire — et `2 × visites + 1` transitions. Une crew saine n'est jamais coupée, quelle que soit sa taille ; une vraie boucle déclenche encore le disjoncteur. Une valeur explicite dans `graph:` l'emporte. `MaxTotalDuration` reste celle du preset — 10 minutes en Strict, le défaut — une borne de coût que `maxTotalDurationSeconds` surcharge. Quand une condition est violée, une `GraphCircuitBrokenException` est levée avec la trace complète ; `GraphProcessStrategy` l'intercepte et renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») qui conserve les sorties et l'usage de tokens produits jusque-là.
 

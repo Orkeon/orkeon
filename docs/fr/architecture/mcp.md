@@ -340,7 +340,9 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
     jeton et l'appel n'est pas répondu.
   - **Le run est enregistré comme tout run de l'hôte.** Avec `Orkeon:RunHistory:Enabled` activé dans les réglages de la
     crew, chaque appel est un run de l'historique : `run.started`, les événements de tâche, `run.finished`, sous son
-    propre identifiant de run (celui des checkpoints), lu avec `orkeon runs`. Historique éteint, rien n'est écrit. Les
+    propre identifiant de run (celui des checkpoints), lu avec `orkeon runs`. Historique éteint, rien n'est écrit. `run.finished` porte `success`, `exitCode`,
+    `durationMs`, `cappedTasks` et `missingDeliverables`, et aucun champ de tokens (voir [le bus d'événements de
+    run](./run-event-bus.md)). Les
     événements ne portent pas de compte de tokens : l'usage du modèle n'est pas attribué par appel.
   - **Il n'y a pas de mode hors ligne.** L'hôte du serveur lit les vrais réglages et une crew appelle les modèles
     qu'ils déclarent ; le fournisseur mock ne s'atteint qu'en pointant les profils vers lui.

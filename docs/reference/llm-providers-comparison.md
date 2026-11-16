@@ -274,9 +274,8 @@ Gemini `gemini-3.8-flash` 1.50 / 7.50 with a cache read at 0.15 (the rate Google
 `grok-4.7` 2 / 6; MiniMax `MiniMax-M3` 0.30 / 1.20. The gateways are priced by their own rows, scoped by provider:
 Together `zai-org/GLM-5.3-Flash` 0.15 / 0.50, Mammouth `gemini-3.8-flash` and `gemini-3.7-flash` 1.5 / 7.5 (the gateway's upper
 bound, from secondary sources). Ollama and Docker Model Runner models cost 0. Hugging Face stays unpriced: its routed
-provider sets the price, so a call warns once per model and names `Orkeon:CostTracking:CustomPricings`, where a row prices it.
-Not modelled: the Qwen rate above 256K input tokens (1.2 / 4.8), the Gemini rate from 2027-01-01 (1.50 / 7.50) and the Grok rate
-above 200K prompt tokens (4 / 12).
+provider sets the price, so a call warns once per model and names `Orkeon:CostTracking:CustomPricings`, where a row prices it. OpenRouter is counted from the vendor's own `usage.cost`, not from this list; an Azure OpenAI deployment is priced only when its name matches a row (add one under `CustomPricings`).
+Not modelled: the Qwen rate above 256K input tokens (1.2 / 4.8) and the Grok rate above 200K prompt tokens (4 / 12).
 
 ## Models served and their default options — catalogue read of 2026-11-11
 

@@ -81,6 +81,10 @@ cascade).
 
 **First build only**: the `SmartComponents.LocalEmbeddings` package fetches the
 BGE-micro-v2 ONNX file once (~17 MB) during `dotnet build`.
+This example builds `Orkeon.Tools.Embeddings.Local` from source, and that
+project's own reference to the package runs the download, so an offline first
+build fails; `ExcludeAssets="build"` skips it only in a project that consumes
+the Orkeon packages ([limitations](../../../docs/reference/limitations.md)).
 
 ## Run it
 

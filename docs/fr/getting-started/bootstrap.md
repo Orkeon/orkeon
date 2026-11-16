@@ -307,6 +307,8 @@ public record CrewOutput(
 {
     public bool Succeeded { get; init; } = true;  // false quand l'exécution a échoué
     public string? Error { get; init; }           // l'échec, quand Succeeded vaut false
+    public string? ExecutionId { get; init; }     // l'id du run, par lequel un run en échec reprend
+    public PendingInputRequest? PendingInput { get; init; } // posé quand le run s'est arrêté sur une question
 }
 ```
 
@@ -319,7 +321,10 @@ public record TaskOutput(
     DateTime CompletedAt,
     bool Success,
     TimeSpan ExecutionTime,
-    IReadOnlyList<ToolUsage>? ToolsUsed = null);
+    IReadOnlyList<ToolUsage>? ToolsUsed = null)
+{
+    public string? DeliverablePath { get; init; }  // le fichier livrable de la tâche, quand on sait qu'il existe
+}
 ```
 
 ## Modes d'exécution alternatifs
@@ -371,7 +376,7 @@ await foreach (var e in orchestrator.KickoffStreamingAsync(crew.Id, input))
 > qui se passe au fil du run. Chaque `CrewExecutionEvent` porte un `Kind` de `RunEventKinds`, le
 > vocabulaire qu'`orkeon run --events jsonl` écrit sur le fil ([le bus d'événements du
 > run](../architecture/run-event-bus.md)) : `task.started` et `task.completed` pour chaque tâche
-> (avec son id et le rôle de son agent), `tool.called` et `tool.returned` pour chaque appel d'outil (le
+> (avec son id et le rôle de son agent ; `task.completed` pose `DeliverableMissing` quand la tâche a réussi sans écrire son livrable `tool_call`, et `EndedOnIterationCap` quand la tâche a répondu au tour sans outil qui suit son plafond d'itérations), `tool.called` et `tool.returned` pour chaque appel d'outil (le
 > nom de l'outil, jamais ses arguments), `llm.delta` pour le texte du modèle tel qu'il arrive, et —
 > toujours en dernier — `run.finished`, dont l'`Output` est le `CrewOutput` que `KickoffAsync` aurait
 > rendu. Un run en échec le dit d'abord : un `error` dont le `Code` vaut `crew_failed` ou

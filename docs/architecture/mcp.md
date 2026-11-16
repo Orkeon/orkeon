@@ -326,7 +326,8 @@ stdout, one per line; closing stdin ends the server.
     a client's `notifications/cancelled` cancels the running crew: its agents see the token and the call is not answered.
   - **The run is recorded like any run of the host.** With `Orkeon:RunHistory:Enabled` on in the crew's settings, each call
     is a run of the history: `run.started`, the task events, `run.finished`, under its own run id (the one the
-    checkpoints use), read with `orkeon runs`. With the history off nothing is written. The events carry no token
+    checkpoints use), read with `orkeon runs`. With the history off nothing is written. `run.finished` carries `success`, `exitCode`,
+    `durationMs`, `cappedTasks` and `missingDeliverables`, and no token fields (see [the run event bus](./run-event-bus.md)). The events carry no token
     count: the model's usage is not attributed per call.
   - **There is no offline mode.** The serve host reads the real settings and a crew calls the models they declare; the
     mock provider is reached only by pointing the profiles at it.

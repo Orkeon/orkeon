@@ -63,7 +63,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Étages de middleware EventHub | `AddOrkeonEventHubObservability()` (journalisation + télémétrie) · `AddOrkeonEventHubAcl(policy?)` (applique les blocs `links:` des crews — **déjà câblé par le host du runner et `orkeon-host`, avec le défaut permissif** : une crew sans liens se comporte comme avant, une crew qui déclare y est tenue ; seule la politique fermée reste un opt-in) · `AddOrkeonEventHubIdempotency(capacity?)` (point à point seulement, en mémoire, ne survit pas au processus) · `AddOrkeonEventHubValidation()` (un `SchemaId` déclaré doit être enregistré — l'existence du contrat, pas la conformité de la charge utile). Chacun est indépendant ; l'ordre d'enregistrement est l'ordre du pipeline — voir [EventHub §12](../architecture/event-hub-and-crew-lifecycle.md) | Infrastructure | `IEventHubMiddleware`, `ICrewLinkProvider`/`ICrewLinkRegistry`, `IEventSchemaRegistry` | Stable |
 | Persistance d'état d'exécution | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Stable |
 | Barrière de permissions (par appel d'outil) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consommé par la boucle scriptée `ctx.llm.act` et par les appels d'outils des crews YAML (`ToolInvocationPipeline`) | Stable |
-| Shell : interpréteurs & git mutant | config seule : `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (ré-enregistre `ShellCommandTool` avec `allowInterpreters: true` — équivalent RCE, avertissement de sécurité émis) | Stable |
+| Shell : interpréteurs & git mutant | config seule : `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (ré-enregistre `ShellCommandTool` avec `allowInterpreters: true` — équivalent RCE, ligne `SECURITY` journalisée au premier appel) | Stable |
 | Shell : allowlist personnalisée | config seule : `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (remplacement intégral — annule `AllowInterpreters`) | Tools.Code | (façonne l'allowlist d'exécutables de `ShellCommandTool` ; section absente/vide = défauts) | Stable |
 | Streaming console LLM natif | `AddLlmConsoleStreaming(config, enabledByDefault)` (la REPL : actif sauf `Orkeon:Cli:ConsoleStreaming:Enabled = false`) | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL, l'act de premier plan à mesure, tout autre tour ligne entière par ligne entière | Stable |
 | Système de plugins | `AddOrkeonPlugins(...)` (jamais enregistré implicitement ; `orkeon-repl` l'appelle quand ses réglages portent une section `Plugins`, aucun autre binaire livré ne le fait) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — découverte par répertoire, `AssemblyLoadContext` collectables isolés ; ⚠️ les assemblies chargées s'exécutent en pleine confiance — voir [Plugins](../architecture/plugins.md) | Stable |
@@ -310,7 +310,7 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 - **Activation** : `services.AddOrkeonToolRateLimiting();`
 - **Dépendances** : logging + `IConfiguration`. Si `AddOrkeonCostTracking()` (inclus
   dans le socle) a enregistré `IModelPricingRegistry`, le tracker l'utilise pour la
-  conversion tokens → coût.
+  conversion tokens → coût. Son estimation de coût ne lit que les lignes de prix qui ne nomment aucun fournisseur : une ligne rattachée à un fournisseur (les lignes intégrées de DeepSeek, Z.AI, Kimi, Qwen, Gemini, Mistral, Grok, MiniMax, Together, Mammouth et Ollama — un modèle Ollama est alors compté aux taux du tracker, pas à 0 — ou une ligne `CustomPricings` avec un `Provider`) n'est pas vue, et le tracker applique alors ses propres taux approximatifs. Le budget `MaxCostUsd` d'`Orkeon:CostTracking` tient compte du fournisseur.
 - **Limites connues** : non câblé dans l'exécution des outils — l'hôte interroge le
   limiteur/le tracker autour de ses appels d'outils. Le rate-limiting **LLM**
   (`ILlmRateLimiter`), lui, reste enregistré par défaut car il est posé à l'entrée de
@@ -522,7 +522,7 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `orkeon run <crew> --resume <id>|latest` continue le run `<id>` (l'id qu'imprime un run échoué :
   `Run <id> did not complete. Resume it ...`), ou le dernier run de ce fichier de crew qui n'est pas terminé (et pas encore marqué `Running` : `latest` ne reprend pas un run qui peut être vivant dans un autre processus, le magasin ne tient aucun bail ; nommer son id pour le reprendre) : le run
   garde son id, les tâches qu'il avait terminées reviennent du checkpoint (`task.completed` porte
-  `resumed: true`, aucun modèle n'est interrogé ; une tâche qui s'était terminée sur son plafond d'itérations revient avec `endedOnIterationCap: true`, une tâche typée aussi, en `TaskResult<TOutput>.EndedOnIterationCap`, et celle qui s'était terminée sans son livrable `tool_call` revient avec `deliverableMissing: true`, `false` depuis un checkpoint écrit avant le drapeau ; le chemin du livrable revient aussi, résultats typés compris, et un livrable dont le fichier a disparu à la reprise revient manquant), les autres s'exécutent. Avec sa sortie, un checkpoint garde une empreinte de la tâche (description, sortie attendue, agent, dépendances) : une tâche modifiée depuis est rejouée avec chaque tâche qui la suit, et un avertissement la nomme. Il demande
+  `resumed: true`, aucun modèle n'est interrogé ; une tâche qui s'était terminée sur son plafond d'itérations revient avec `endedOnIterationCap: true`, une tâche typée aussi, en `TaskResult<TOutput>.EndedOnIterationCap`, et celle qui s'était terminée sans son livrable `tool_call` revient avec `deliverableMissing: true`, `false` depuis un checkpoint écrit avant le drapeau ; le chemin du livrable revient aussi, résultats typés compris, un livrable `tool_call` dont le fichier a disparu à la reprise revient manquant, un livrable `final_message` ou `structured_output` perd seulement son chemin, et une tâche qui avait été réessayée rapporte `attempt` = ses retries + 1), les autres s'exécutent. Avec sa sortie, un checkpoint garde une empreinte de la tâche (description, sortie attendue, agent, dépendances) : une tâche modifiée depuis est rejouée avec chaque tâche qui la suit, et un avertissement la nomme. Il demande
   `Orkeon:Checkpointing:Enabled=true` et est refusé avec `--validate`, avec `--list-tools`, sur un `.ork.ts`
   procédural et, avec `--events`, sans id de run explicite. Dans un hôte écrit en C#, passer
   `KickoffOptions.Resume` (`"latest"` ou l'id). Les noms de tâche sont uniques dans une crew.
@@ -617,8 +617,9 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 - **Activation** : config seule — `AddOrkeonCodeTools()` lit le flag et, quand il vaut
   `true`, construit `ShellCommandTool` avec `allowInterpreters: true` (réactive
   `node`/`dotnet`/`npm`/`find` ET lève la restriction git lecture-seule, si bien que
-  `git add`/`commit`/`branch` fonctionnent). L'outil journalise son avertissement de
-  sécurité quand il est actif.
+  `git add`/`commit`/`branch` fonctionnent). L'outil journalise une ligne `SECURITY` par
+  hôte, au premier appel de `shell_command`, qui énonce le confinement en vigueur (le backend,
+  ou `none`/`unavailable` avec sa raison, réseau on/off).
 - **Sécurité** : équivalent RCE sur l'hôte — à réserver aux hôtes coding-agent de
   confiance qui tournent dans un espace de travail confiné (le REPL scripted-commands est
   le consommateur de référence — voir `examples/cli-ts-commands/` ; une commande de commit

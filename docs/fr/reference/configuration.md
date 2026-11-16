@@ -567,7 +567,7 @@ termine `BudgetExhausted`, sans nouvelle tentative. Les plafonds sur le nombre d
 [`RateLimiting`](#ratelimiting). La liste de prix intégrée couvre le modèle par défaut de chaque
 fournisseur payant, sauf Hugging Face, dont le fournisseur routé fixe le prix ; une passerelle
 (Together, Mammouth) est tarifée par ses propres lignes, posées avec `CustomPricings:<i>:Provider`,
-et les modèles `ollama` et Docker Model Runner ne coûtent rien. Une ligne `CustomPricings` l'emporte
+et les modèles `ollama` et Docker Model Runner ne coûtent rien. OpenRouter est compté d'après le `usage.cost` que renvoie le fournisseur, non d'après cette liste ; un déploiement Azure OpenAI n'est tarifé que si son nom correspond à une ligne (ajoutez-en une sous `CustomPricings`). Une ligne `CustomPricings` l'emporte
 toujours sur une ligne intégrée : une ligne sans `Provider` s'applique à tous les fournisseurs, une
 ligne qui nomme un fournisseur à ce fournisseur seul. Un modèle sans prix est compté à zéro et
 journalise un seul avertissement par modèle et par processus hôte (un démon `orkeon-host` avertit une
@@ -778,7 +778,7 @@ enregistrée (voir [sous-systèmes opt-in](./opt-in-subsystems.md)).
 
 ### `TokenBudget`
 
-Budgets de tokens. Même opt-in que [`ToolRateLimiting`](#toolratelimiting).
+Budgets de tokens. Même opt-in que [`ToolRateLimiting`](#toolratelimiting). `MaxCostPerCrew` est une estimation qui ignore les lignes de prix rattachées à un fournisseur : voir les [limites connues](limitations.md).
 
 <!-- settings:TokenBudget -->
 **Lue par** : un hôte écrit en C# seulement, par `AddOrkeonToolRateLimiting()` — aucun binaire livré ne lit cette section.
@@ -1012,7 +1012,7 @@ Liée par `AddOrkeonInfrastructure()`, et par `AddOrkeonVectorSearch(configurati
 | `Dimension` | entier | `1536` | La dimension des vecteurs d'embedding. |
 | `EnableCache` | booléen | `true` | Si le cache d'embeddings est activé. |
 | `Endpoint` | chaîne | `""` | URL de base du point d'accès des embeddings. Vide : le point d'accès public du fournisseur. Obligatoire pour `azure-openai` : l'URL de la ressource, `https://<ressource>.openai.azure.com`. |
-| `FingerprintPath` | chaîne | `"/workspace/.orkeon/embedding-fingerprint.json"` | Chemin virtuel du fichier qui consigne le fournisseur, le modèle et les dimensions dont viennent les vecteurs stockés ; l'hôte refuse de démarrer quand ils changent. Vide : le garde-fou est désactivé. |
+| `FingerprintPath` | chaîne | `"/workspace/.orkeon/embedding-fingerprint.json"` | Chemin virtuel du fichier qui consigne le fournisseur, le modèle et les dimensions dont viennent les vecteurs stockés ; l'hôte refuse de démarrer quand ils changent. Vide : le garde-fou est désactivé. `orkeon forge` le règle par défaut sur `/forge/embedding-fingerprint.json`, `orkeon rag` et `orkeon eval rag` sur vide. |
 | `Model` | chaîne | `"text-embedding-3-small"` | Le nom du modèle utilisé pour les embeddings. |
 | `Provider` | chaîne | `"openai"` | Le provider d'embeddings à utiliser : "openai", "ollama", "mistral", "azure-openai" ou "gemini". |
 <!-- /settings -->
@@ -1495,8 +1495,9 @@ des outils Drive et Email est une borne distincte, hors de ce réglage.
 ### `Orkeon:Tools:Shell`
 
 Ce que `ShellCommandTool` peut lancer, par la configuration seule (`AddOrkeonCodeTools()`) :
-`AllowInterpreters` autorise les interpréteurs et le git mutant (**équivalent RCE**, un
-avertissement est émis) ; `ExtraAllowedCommands` ajoute à l'allowlist et `AllowedCommands` la
+`AllowInterpreters` autorise les interpréteurs et le git mutant (**équivalent RCE** ;
+l'avertissement `SECURITY` est journalisé une fois par hôte, au premier appel de `shell_command`, et
+dit le confinement en vigueur) ; `ExtraAllowedCommands` ajoute à l'allowlist et `AllowedCommands` la
 remplace en entier — le remplacement annule `AllowInterpreters`. Une commande hors de la liste
 par défaut en lecture seule (un interpréteur, une commande ajoutée, git une fois sa restriction
 levée) peut écrire : un chemin virtuel de sa ligne de commande et son répertoire de travail
@@ -2001,7 +2002,9 @@ profondeur de récursion de 64 et 30 s par défaut.
 
 Résolution de la toolchain esbuild : `EsbuildPath` vient en premier dans l'ordre de recherche.
 Lue par le transpileur esbuild (`IScriptTranspiler`) d'`orkeon run`, le runner partagé, `orkeon doctor`,
-`orkeon forge`, les commandes `*.cmd.ts`.
+`orkeon forge`, les commandes `*.cmd.ts`. `orkeon doctor` juge son contrôle `tsc` selon `TypeCheck` : un
+`tsc` introuvable est `ok` (optionnel) sous `Off` et `Validate`, et `fail` sous `Always`
+([son contrôle `tsc`](./cli.md#orkeon-doctor)).
 
 <!-- settings:Orkeon:Scripting:Toolchain -->
 **Lue par** : `orkeon`, `orkeon-host`.
@@ -2011,7 +2014,7 @@ Lue par le transpileur esbuild (`IScriptTranspiler`) d'`orkeon run`, le runner p
 | `EsbuildPath` | chaîne | — |  | Chemin absolu du binaire esbuild. À null, le transpileur se rabat sur la variable d'environnement `ORKEON_ESBUILD_PATH`, puis sur un binaire livré à côté de l'application (`esbuild-bin/esbuild`), puis sur la copie que `npm install` dépose dans une copie de travail du dépôt (`tools/scripting-esbuild/node_modules/`, cherchée en remontant depuis le répertoire de travail et le répertoire de l'application), puis sur une recherche dans le PATH. |
 | `EsbuildTimeout` | durée | `"00:00:30"` |  | Temps maximal dont dispose esbuild pour transpiler une source. Défaut : 30 s. |
 | `TscPath` | chaîne | — |  | Chemin absolu du binaire `tsc`. Renseigné, c'est le seul candidat : un chemin relatif, ou qui n'existe pas, est signalé comme un compilateur absent, jamais résolu depuis le répertoire de travail ni remplacé en silence. À null, le vérificateur de types cherche dans `tools/scripting-typecheck/node_modules/.bin/` au-dessus du répertoire de l'application, puis dans `PATH` ; jamais dans le répertoire de travail. Comme `EsbuildPath`, il peut venir de l'`appsettings.json` posé à côté de la crew : ce fichier a la confiance de la crew elle-même. |
-| `TypeCheck` | énumération | `"Validate"` | `Off`, `Validate`, `Always` | Quand le compilateur TypeScript (`tsc`) vérifie les types d'un script `.ork.ts` contre les typings que ce build livre : `Off` jamais, `Validate` (défaut) dans `orkeon run --validate`, `Always` dans `--validate` et avant chaque exécution. Sous `Validate` un compilateur absent est un avertissement ; sous `Always` c'est un échec. |
+| `TypeCheck` | énumération | `"Validate"` | `Off`, `Validate`, `Always` | Quand le compilateur TypeScript (`tsc`) vérifie les types d'un script `.ork.ts` contre les typings que ce build livre : `Off` jamais, `Validate` (défaut) dans `orkeon run --validate`, `Always` dans `--validate` et avant chaque exécution. Sous `Validate` un compilateur absent est un avertissement ; sous `Always` c'est un échec. `orkeon doctor` juge aussi son contrôle `tsc` selon ce mode : un `tsc` introuvable est `ok` sous `Off` et `Validate` et `fail` sous `Always` ; un `TscPath` qui n'existe pas est `ok` sous `Off`, `warn` sous `Validate` et `fail` sous `Always` ; un `tsc` qui ne répond pas à `--version` est `ok` sous `Off` et `warn` sinon. |
 | `TypeCheckTimeout` | durée | `"00:01:00"` |  | Temps maximal dont dispose `tsc` pour vérifier un script. Défaut : 60 s. |
 <!-- /settings -->
 
