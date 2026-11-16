@@ -473,23 +473,41 @@ Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../o
 
 ## The `tool_call` deliverable
 
-With `source: tool_call` (the default) the agent writes the file itself. The prompt names the path and
-`file_write` only when the agent's toolbelt, its own tools plus the task's, holds `file_write`: an agent
-without it is never told to call a tool it does not have. When such a task succeeds, the framework checks
-through the virtual file system that the path exists. A file that is not there leaves the task a success
-but flags it `deliverableMissing` (`TaskResult.DeliverableMissing`): a warning names the task, the agent
-and the path, `AUTO_SUMMARY.md` shows `⚠ completed without writing its deliverable`, the `task.completed`
-event carries `deliverableMissing: true` and `run.finished` counts it in `missingDeliverables`
-([run event bus](run-event-bus.md)). The check is best-effort: a file system that cannot answer leaves
-the flag `false`, and a task run without a file system is not checked. A resumed task replays the flag
-from its checkpoint; a checkpoint written before the flag replays `false`.
+With `source: tool_call` (the default) the agent writes the file itself. The prompt always names the path:
+`Deliverable: write the final result to '<path>' using the file_write tool.` when the agent's toolbelt, its
+own tools plus the task's, holds `file_write`, and `Deliverable: write the final result to '<path>'.`
+otherwise, so an agent is never told to call a tool it does not have. With `source: final_message` the
+prompt says the framework writes the final answer as-is to the path, so the agent gives the complete
+content and does not write the file itself; `source: structured_output` adds no line.
+
+When a `tool_call` task succeeds, the framework checks through the virtual file system that the file was
+written **during the attempt**: it reads the file's state (existence, size, last write time) when the
+attempt starts and again when it ends. A file absent at the end, or present but unchanged since the start
+(a file left by an earlier run), leaves the task a success but flags it `deliverableMissing`
+(`TaskResult.DeliverableMissing`): a warning names the task (its key, else the start of its description),
+the agent and the path, `AUTO_SUMMARY.md` shows `⚠ completed without writing its deliverable`, the
+`task.completed` event carries `deliverableMissing: true` and `run.finished` counts it in
+`missingDeliverables` ([run event bus](run-event-bus.md)). A file system that gives no size or write time
+falls back on existence alone. The check is best-effort: a file system that cannot answer leaves the flag
+`false`, a task run without a file system is not checked, and a cancellation during the check cancels the
+task as any other. Only a task that succeeded is flagged: a failed task, a hierarchical task the manager
+rejected to the end included, never is. In a consensual vote the file is judged on the whole vote: a
+candidate that wrote it counts, whichever answer the vote retains.
+
+A resumed task replays the flag and the path from its checkpoint (a checkpoint written before them replays
+`false` and none); when the file the checkpoint names is gone at resume, the task reports its deliverable
+missing.
+
+A decision task runs no agent and writes no file: a `deliverable:` declared on one is never written, and
+the load logs a warning naming the task and the path.
 
 When the output of a previous task is cut to fit the prompt of a later one and the file of its
 deliverable is known to exist (written by the framework for `final_message` and `structured_output`,
-found by that check for `tool_call`), the cut text ends with
-`[full result in '<path>': read it with file_read]`; a previous output left out entirely is named by
-`[result of task <id> in '<path>': read it with file_read]`. An output without a known file is cut as
-before.
+found by that check for `tool_call`, in every mode, an autonomous takeover included), the cut text ends
+with `[full result in '<path>': read it with file_read]`; a previous output left out entirely is named by
+`[result of task <id> in '<path>': read it with file_read]`. Both pointers are written only to an agent
+whose toolbelt holds `file_read`; an agent without it gets the cut text alone. An output without a known
+file is cut as before.
 
 ## Removed: `outputFile`
 
