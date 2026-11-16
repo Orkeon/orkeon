@@ -539,9 +539,10 @@ file that was not written all the same ([the `tool_call` deliverable](#the-tool_
   that writes that path: `docx_writer` for a `.docx`, `xlsx_writer` for a `.xlsx`, `image_generation` for
   a `.png`, `.jpg`, `.jpeg` or `.webp`, `firefox` (its screenshot) for a `.png`, and `file_write` for any
   text file, never a binary one. A path is binary when its extension, whatever its case, names an office
-  document (`.docx`, `.xlsx`, `.pptx`, `.odt`, `.pdf`, `.epub`, `.rtf` and their kin), an image, an
+  document (`.docx`, `.xlsx`, `.pptx`, `.odt`, `.pdf`, `.epub` and their kin), an image, an
   archive, audio or video, a database or data file (`.sqlite`, `.db`, `.parquet`), a font or an
-  executable: the final answer's text cannot be one, so no source but a writer of its format delivers it. The editors (`edit_file`, `edit_batch`, `structural_rewrite`) change a file that exists, the
+  executable: the final answer's text cannot be one, so no source but a writer of its format delivers it. A
+  format that is plain text (`.rtf`, `.svg`, `.csv`, `.html`) is not binary: `file_write` writes it. The editors (`edit_file`, `edit_batch`, `structural_rewrite`) change a file that exists, the
   downloaders (`drive_download`, `email_save_attachment`) name the file themselves, and `shell_command`
   names no path: none of them counts.
 - **No warning** when the toolbelt holds a tool Orkeon does not ship (an MCP server's, a script's, a

@@ -562,9 +562,10 @@ même. `orkeon run --validate` l'imprime en une ligne `WARNING:` par tâche
   `image_generation` pour un `.png`, `.jpg`, `.jpeg` ou `.webp`, `firefox` (sa capture d'écran) pour un
   `.png`, et `file_write` pour tout fichier texte, jamais un fichier binaire. Un chemin est binaire quand
   son extension, quelle que soit sa casse, nomme un document bureautique (`.docx`, `.xlsx`, `.pptx`,
-  `.odt`, `.pdf`, `.epub`, `.rtf` et leurs voisins), une image, une archive, de l'audio ou de la vidéo, une
+  `.odt`, `.pdf`, `.epub` et leurs voisins), une image, une archive, de l'audio ou de la vidéo, une
   base ou un fichier de données (`.sqlite`, `.db`, `.parquet`), une police ou un exécutable : le texte de
-  la réponse finale ne peut pas en être un, si bien que seul un outil qui écrit son format le livre. Les éditeurs (`edit_file`, `edit_batch`, `structural_rewrite`)
+  la réponse finale ne peut pas en être un, si bien que seul un outil qui écrit son format le livre. Un
+  format qui est du texte brut (`.rtf`, `.svg`, `.csv`, `.html`) n'est pas binaire : `file_write` l'écrit. Les éditeurs (`edit_file`, `edit_batch`, `structural_rewrite`)
   modifient un fichier existant, les téléchargeurs (`drive_download`, `email_save_attachment`) nomment le
   fichier eux-mêmes, et `shell_command` ne nomme aucun chemin : aucun ne compte.
 - **Aucun avertissement** quand la ceinture contient un outil qu'Orkeon ne livre pas (celui d'un serveur

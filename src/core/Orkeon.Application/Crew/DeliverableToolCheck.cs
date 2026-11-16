@@ -127,11 +127,12 @@ public static class DeliverableToolCheck
 
     // The formats a final answer's text, or file_write's, cannot be: office documents, archives, images,
     // audio, video, databases, fonts and executables. The one list the prompt, the load check and the
-    // forge read (#392); every extension a writer above writes is in it.
+    // forge read (#392); every extension a writer above writes is in it. A format that is plain text
+    // (.rtf, .svg, .csv, .html) is not: file_write writes it.
     private static readonly HashSet<string> s_binaryExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".docx", ".docm", ".dotx", ".dotm", ".doc", ".xlsx", ".xlsm", ".xltx", ".xltm", ".xlsb", ".xls",
-        ".pptx", ".pptm", ".potx", ".ppsx", ".ppt", ".odt", ".ods", ".odp", ".odg", ".pdf", ".epub", ".rtf",
+        ".pptx", ".pptm", ".potx", ".ppsx", ".ppt", ".odt", ".ods", ".odp", ".odg", ".pdf", ".epub",
         ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".ico", ".heic", ".avif", ".psd",
         ".zip", ".gz", ".tgz", ".tar", ".7z", ".rar", ".bz2", ".xz",
         ".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".mp4", ".webm", ".mov", ".avi", ".mkv",

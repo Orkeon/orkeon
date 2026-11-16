@@ -107,6 +107,18 @@ public sealed class DeliverableToolCheckTests
         Assert.Empty(DeliverableToolCheck.Check([task], [agent], ProcessType.Sequential, managerAgentId: null));
     }
 
+    // RTF is plain text: file_write writes it, and the agent that holds it is told to (#392).
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldReportNothing_WhenFileWriteWritesAnRtfDeliverable()
+    {
+        var agent = Agent("file_read", "file_write");
+        var task = Task(agent, Deliverable(DeliverableSource.ToolCall, "/output/letter.rtf"));
+
+        Assert.Empty(DeliverableToolCheck.Check([task], [agent], ProcessType.Sequential, managerAgentId: null));
+        Assert.Equal(DeliverableToolCheck.FileWriteToolName, DeliverableToolCheck.PreferredWriterOf("/output/letter.rtf"));
+    }
+
     [Fact]
     public void ShouldReportNothing_WhenTheTaskItselfGrantsFileWrite()
     {
@@ -328,7 +340,8 @@ public sealed class DeliverableToolCheckTests
     [InlineData("/output/macro.docm", true)]
     [InlineData("/output/macro.xlsm", true)]
     [InlineData("/output/book.epub", true)]
-    [InlineData("/output/letter.rtf", true)]
+    [InlineData("/output/letter.rtf", false)]
+    [InlineData("/output/LETTER.RTF", false)]
     [InlineData("/output/store.sqlite", true)]
     [InlineData("/output/table.parquet", true)]
     [InlineData("/output/cover.png", true)]

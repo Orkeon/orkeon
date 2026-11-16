@@ -197,6 +197,24 @@ public class AgentPromptComposerDeliverableTests
         Assert.Contains("file_write", prompt, StringComparison.Ordinal);
     }
 
+    // RTF is plain text: the agent holding file_write is told to write it with that tool (#392).
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNameFileWrite_WhenTheDeliverableIsAnRtfFile()
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = "/output/letter.rtf",
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+        });
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(
+            task, Context(), toolbelt: [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_write")]);
+
+        Assert.Contains("/output/letter.rtf", prompt, StringComparison.Ordinal);
+        Assert.Contains("file_write", prompt, StringComparison.Ordinal);
+    }
+
     [Theory]
     [Trait("BR", "CH-392")]
     [InlineData(false)]
