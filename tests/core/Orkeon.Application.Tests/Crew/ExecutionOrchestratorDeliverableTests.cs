@@ -84,13 +84,35 @@ public sealed class ExecutionOrchestratorDeliverableTests : IDisposable
         var warning = Assert.Single(lines, line => line.Level == LogLevel.Warning);
         Assert.Contains(NotesPath, warning.Message, StringComparison.Ordinal);
         Assert.Contains("Reader", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("Task 'Take notes on the lecture'", warning.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     [Trait("BR", "CH-392")]
-    public async System.Threading.Tasks.Task ShouldNameTheDeliverable_WhenTheToolCallFileExists()
+    public async System.Threading.Tasks.Task ShouldNameTheTaskByItsKey_WhenTheDeliverableIsMissing()
     {
-        var fileSystem = Output().AddFile(NotesPath, "notes");
+        var lines = new ConcurrentQueue<CategoryLogLine>();
+        var task = new CrewTaskBuilder()
+            .WithKey("notes")
+            .Description("Take notes on the lecture")
+            .ExpectedOutput("The notes")
+            .Build();
+        task.SetDeliverable(new TaskDeliverable { Path = NotesPath, Source = DeliverableSource.ToolCall });
+
+        await Orchestrator(Output(), new RecordingCategoryLogger("orchestrator", lines))
+            .ExecuteTaskCoreAsync(Agent(), task, Context(), TestContext.Current.CancellationToken);
+
+        var warning = Assert.Single(lines, line => line.Level == LogLevel.Warning);
+        Assert.Contains("Task 'notes'", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(task.Id.ToString(), warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldNameTheDeliverable_WhenTheAgentWritesTheFileDuringTheTask()
+    {
+        var fileSystem = Output();
+        _chatClient.OnAnswer = () => fileSystem.AddFile(NotesPath, "notes");
 
         var result = await Orchestrator(fileSystem)
             .ExecuteTaskCoreAsync(Agent(), Task(DeliverableSource.ToolCall), Context(), TestContext.Current.CancellationToken);
@@ -98,6 +120,51 @@ public sealed class ExecutionOrchestratorDeliverableTests : IDisposable
         Assert.True(result.Success, result.Error);
         Assert.False(result.DeliverableMissing);
         Assert.Equal(NotesPath, result.DeliverablePath);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldNameTheDeliverable_WhenTheAgentRewritesAFileThatExistedBefore()
+    {
+        var fileSystem = Output().AddFile(NotesPath, "old notes", DateTimeOffset.UtcNow.AddDays(-1));
+        _chatClient.OnAnswer = () => fileSystem.AddFile(NotesPath, "new notes");
+
+        var result = await Orchestrator(fileSystem)
+            .ExecuteTaskCoreAsync(Agent(), Task(DeliverableSource.ToolCall), Context(), TestContext.Current.CancellationToken);
+
+        Assert.False(result.DeliverableMissing);
+        Assert.Equal(NotesPath, result.DeliverablePath);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldMarkTheDeliverableMissing_WhenTheFileWasLeftUnchangedFromBeforeTheTask()
+    {
+        // A file an earlier run (or an earlier attempt) left: the task did not write it.
+        var fileSystem = Output().AddFile(NotesPath, "stale notes", DateTimeOffset.UtcNow.AddDays(-1));
+
+        var result = await Orchestrator(fileSystem)
+            .ExecuteTaskCoreAsync(Agent(), Task(DeliverableSource.ToolCall), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        Assert.True(result.DeliverableMissing);
+        Assert.Null(result.DeliverablePath);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReportTheCancellation_WhenTheRunIsCancelledDuringTheProbe()
+    {
+        using var run = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var fileSystem = new FakeCancellingFileSystemService(Output(), run);
+        _chatClient.OnAnswer = () => fileSystem.Armed = true;
+
+        var result = await Orchestrator(fileSystem)
+            .ExecuteTaskCoreAsync(Agent(), Task(DeliverableSource.ToolCall), Context(), run.Token);
+
+        Assert.Equal(1, fileSystem.Cancellations);
+        Assert.False(result.Success);
+        Assert.Equal(Orkeon.Application.Interfaces.Services.AgentExitReason.Cancelled, result.ExitReason);
     }
 
     [Theory]
