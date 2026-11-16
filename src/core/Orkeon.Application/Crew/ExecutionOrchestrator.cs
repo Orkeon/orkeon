@@ -555,7 +555,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // attempt tells a file the task wrote, in this attempt or an earlier one of the run (a
                 // retry, a revision, another ballot), from one an earlier run left behind.
                 var deliverableBaseline = await DeliverableBaselineScope.FirstAttemptAsync(
-                    task.Id, () => ReadDeliverableBaselineAsync(task, taskToken)).ConfigureAwait(false);
+                    task.Id, token => ReadDeliverableBaselineAsync(task, token), taskToken).ConfigureAwait(false);
 
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
                     agent, task, toolbelt,

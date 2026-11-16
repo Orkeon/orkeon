@@ -35,20 +35,31 @@ public static class DeliverableBaselineScope
     /// The state <paramref name="read"/> gives at the first attempt of <paramref name="taskId"/> in the run,
     /// read once and handed to every later attempt; read afresh at each call outside a run.
     /// </summary>
-    internal static async System.Threading.Tasks.Task<T?> FirstAttemptAsync<T>(TaskId taskId, Func<System.Threading.Tasks.Task<T?>> read)
+    /// <remarks>
+    /// In a run, attempts of one task may wait on the same read at once (the ballots of a vote): that read
+    /// belongs to none of them, so it is made with no cancellation, and each attempt stops waiting on its
+    /// own <paramref name="cancellationToken"/>. An attempt cancelled while it waits leaves the read, and
+    /// its result, to the others; a read that is itself cut short is dropped, and the next attempt reads again.
+    /// </remarks>
+    internal static async System.Threading.Tasks.Task<T?> FirstAttemptAsync<T>(
+        TaskId taskId, Func<CancellationToken, System.Threading.Tasks.Task<T?>> read, CancellationToken cancellationToken)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(read);
         if (Ambient.Value is not { } baselines)
-            return await read().ConfigureAwait(false);
+            return await read(cancellationToken).ConfigureAwait(false);
 
-        var first = baselines.GetOrAdd(taskId, _ => new Lazy<System.Threading.Tasks.Task<object?>>(async () => await read().ConfigureAwait(false)));
+        var first = baselines.GetOrAdd(
+            taskId,
+            _ => new Lazy<System.Threading.Tasks.Task<object?>>(async () => await read(CancellationToken.None).ConfigureAwait(false)));
+        var shared = first.Value;
         try
         {
-            return (T?)await first.Value.ConfigureAwait(false);
+            return (T?)await shared.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (shared.IsCanceled)
         {
-            // A read cut short (the attempt's deadline, the run's cancellation) is no state: the next attempt reads again.
+            // The shared read itself was cut short: it is no state, the next attempt reads again.
             baselines.TryRemove(new KeyValuePair<TaskId, Lazy<System.Threading.Tasks.Task<object?>>>(taskId, first));
             throw;
         }
