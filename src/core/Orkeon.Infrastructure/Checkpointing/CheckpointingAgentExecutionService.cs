@@ -353,6 +353,12 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         // Whether the answer came from the tool-free retry after the iteration cap (#388): a resumed run reports it again.
         public bool EndedOnIterationCap { get; init; }
 
+        // Whether the task succeeded without writing its tool_call deliverable, and where the deliverable
+        // known to exist is (#392): a resumed run reports them again; a checkpoint written before replays false and null.
+        public bool DeliverableMissing { get; init; }
+
+        public string? DeliverablePath { get; init; }
+
         public static StoredResult Of(TaskResult result, string fingerprint) => new()
         {
             Success = result.Success,
@@ -371,6 +377,8 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             EndedAt = result.EndedAt,
             Decision = result.Decision,
             EndedOnIterationCap = result.EndedOnIterationCap,
+            DeliverableMissing = result.DeliverableMissing,
+            DeliverablePath = result.DeliverablePath,
         };
 
         public static StoredResult Of<TOutput>(TaskResult<TOutput> result, string fingerprint)
@@ -390,6 +398,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 RetryCount = result.RetryCount,
                 EndedAt = result.EndedAt,
                 EndedOnIterationCap = result.EndedOnIterationCap,
+                DeliverableMissing = result.DeliverableMissing,
             };
 
         public TaskResult ToResult() => new(Success, Output, StructuredValue(), [], TimeSpan.FromTicks(ExecutionTicks))
@@ -405,6 +414,8 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             EndedAt = EndedAt,
             Decision = Decision,
             EndedOnIterationCap = EndedOnIterationCap,
+            DeliverableMissing = DeliverableMissing,
+            DeliverablePath = DeliverablePath,
         };
 
         public TaskResult<TOutput> ToResult<TOutput>()
@@ -425,6 +436,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 RetryCount = RetryCount,
                 EndedAt = EndedAt,
                 EndedOnIterationCap = EndedOnIterationCap,
+                DeliverableMissing = DeliverableMissing,
             };
 
         // The structured output as the type it was produced as, when that type can be found again

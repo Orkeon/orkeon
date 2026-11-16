@@ -39,3 +39,17 @@ override Orkeon.Application.Crew.DeliverableToolFinding.ToString() -> string!
 static Orkeon.Application.Crew.DeliverableToolCheck.Check(System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.CrewTask!>! tasks, System.Collections.Generic.IEnumerable<Orkeon.Domain.Agent.Agent!>! agents) -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Crew.DeliverableToolFinding!>!
 static Orkeon.Application.Crew.DeliverableToolFinding.operator !=(Orkeon.Application.Crew.DeliverableToolFinding? left, Orkeon.Application.Crew.DeliverableToolFinding? right) -> bool
 static Orkeon.Application.Crew.DeliverableToolFinding.operator ==(Orkeon.Application.Crew.DeliverableToolFinding? left, Orkeon.Application.Crew.DeliverableToolFinding? right) -> bool
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverableMissing.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverableMissing.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverablePath.get -> string?
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverablePath.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverableMissing.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverableMissing.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.DeliverableMissing.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.DeliverableMissing.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DeliverableMissing.get -> bool
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DeliverableMissing.init -> void
+Orkeon.Application.Execution.TaskOutput.DeliverablePath.get -> string?
+Orkeon.Application.Execution.TaskOutput.DeliverablePath.init -> void
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverableMissing.get -> bool
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverableMissing.init -> void

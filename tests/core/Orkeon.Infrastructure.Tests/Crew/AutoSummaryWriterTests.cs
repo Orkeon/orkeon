@@ -194,6 +194,25 @@ public sealed class AutoSummaryWriterTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldLabelATaskWithoutItsDeliverable_InTheSummary()
+    {
+        var writer = CreateWriter();
+        var snapshot = BuildSnapshot(CrewHookStatus.Completed, taskCount: 2);
+        var missing = snapshot.Tasks[0] with { DeliverableMissing = true };
+        snapshot = snapshot with { Tasks = snapshot.Tasks.SetItem(0, missing) };
+
+        await writer.OnCrewCompletedAsync(snapshot, CancellationToken.None);
+
+        var content = await File.ReadAllTextAsync(ExpectedPhysicalPath, TestContext.Current.CancellationToken);
+        var lines = content.Split('\n');
+        var missingRow = Assert.Single(lines, l => l.Contains("| task-01 |", StringComparison.Ordinal));
+        Assert.Contains("completed without writing its deliverable", missingRow, StringComparison.Ordinal);
+        var plainRow = Assert.Single(lines, l => l.Contains("| task-02 |", StringComparison.Ordinal));
+        Assert.Contains("✓ completed", plainRow, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task OnCrewFailedAsync_TellsASkippedTaskApartFromAFailedOne()
     {
         // LLM-11: a task that never ran because its dependency failed is neither ✓ nor ✗.

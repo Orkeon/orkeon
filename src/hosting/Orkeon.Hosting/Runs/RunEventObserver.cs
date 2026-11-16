@@ -38,6 +38,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     private string? _vendorCostCurrency;
     private string? _pendingRequestId;
     private readonly Dictionary<string, bool> _lastAttemptCapped = [];
+    private readonly Dictionary<string, bool> _lastAttemptMissingDeliverable = [];
 
     /// <summary>Builds the observer over the stream, the hook it must not displace, and the streaming flag.</summary>
     public RunEventObserver(IRunEventSink events, ICrewExecutionHook? inner, bool stream)
@@ -98,6 +99,12 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     public int CappedTasks
     {
         get { lock (_gate) { return _lastAttemptCapped.Values.Count(capped => capped); } }
+    }
+
+    /// <summary>Tasks whose last <c>task.completed</c> attempt succeeded without writing its <c>tool_call</c> deliverable, for the closing event (#392).</summary>
+    public int MissingDeliverables
+    {
+        get { lock (_gate) { return _lastAttemptMissingDeliverable.Values.Count(missing => missing); } }
     }
 
     /// <summary>Cumulative tokens seen on the meter, for the closing event.</summary>
@@ -189,7 +196,10 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
         ArgumentNullException.ThrowIfNull(snapshot);
 
         lock (_gate)
+        {
             _lastAttemptCapped[snapshot.TaskId] = snapshot.EndedOnIterationCap;
+            _lastAttemptMissingDeliverable[snapshot.TaskId] = snapshot.DeliverableMissing;
+        }
 
         _events.Emit(
             RunEventKinds.TaskCompleted,
@@ -210,6 +220,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                 isDecision = snapshot.IsDecision,
                 decision = snapshot.DecisionAnswers,
                 endedOnIterationCap = snapshot.EndedOnIterationCap,
+                deliverableMissing = snapshot.DeliverableMissing,
             });
 
         if (_inner is not null)

@@ -164,6 +164,20 @@ public sealed class RunEventsTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldEmitDeliverableMissing_InTaskCompleted()
+    {
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        await observer.OnTaskCompletedAsync(Snapshot("missing") with { DeliverableMissing = true }, TestContext.Current.CancellationToken);
+        await observer.OnTaskCompletedAsync(Snapshot("plain"), TestContext.Current.CancellationToken);
+
+        var events = Events();
+        Assert.True(events[0].GetProperty("deliverableMissing").GetBoolean());
+        Assert.False(events[1].GetProperty("deliverableMissing").GetBoolean());
+    }
+
+    [Fact]
     [Trait("BR", "FWK-15")]
     public async Task A_task_events_carry_the_attempt_they_belong_to()
     {

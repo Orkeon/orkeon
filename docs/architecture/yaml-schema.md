@@ -131,7 +131,7 @@ tasks:
     tools: [string]       # Tools ADDED to the agent's own for this task only (never replacing them) — resolved like an agent's tools: an unknown name fails the load under StrictTools
     deliverable:          # Output-file contract (ignored without a path)
       path: string        # Virtual path, e.g. "/output/report.md"
-      source: string      # "tool_call" (default — the agent is told to write the path with file_write) | "final_message" (the framework writes the final answer) | "structured_output" (JSON written by the framework, constrained by the schema as json_schema where the provider declares it, as a GBNF grammar where Llm:Grammar is on, and always parse-checked) | "none" — any other value fails the load
+      source: string      # "tool_call" (default — the agent writes the path; told to with file_write when it holds that tool) | "final_message" (the framework writes the final answer) | "structured_output" (JSON written by the framework, constrained by the schema as json_schema where the provider declares it, as a GBNF grammar where Llm:Grammar is on, and always parse-checked) | "none" — any other value fails the load
       format: string      # "markdown" (default) | "json" | "text"
       sanitize: bool      # default: true — strips trailing template tokens (final_message)
       schema_path: string # Virtual path of a JSON Schema file (structured_output needs it or schema_inline)
@@ -470,6 +470,26 @@ What bounds a task is its agent loop: the agent's `maxIter`, the stop after thre
 consecutive tool errors, and the output-validation retries. An agent with two iterations left is told so once, while it can still act (nothing is sent when `maxIter` is 2 or less); one that reaches `maxIter` gets a last tool-free turn that asks it to state what it could not do, and its task keeps `Success` but is flagged `endedOnIterationCap`. This holds for the main agent loop; the native tool-calling and legacy text fallback loops do neither: they still end on the cap, without the note and without the flag. What bounds a graph run is
 `graph:` (above). The generic state-machine engine and `CircuitBreakerPolicy` stay — the
 Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../orchestration/fsm.md)).
+
+## The `tool_call` deliverable
+
+With `source: tool_call` (the default) the agent writes the file itself. The prompt names the path and
+`file_write` only when the agent's toolbelt, its own tools plus the task's, holds `file_write`: an agent
+without it is never told to call a tool it does not have. When such a task succeeds, the framework checks
+through the virtual file system that the path exists. A file that is not there leaves the task a success
+but flags it `deliverableMissing` (`TaskResult.DeliverableMissing`): a warning names the task, the agent
+and the path, `AUTO_SUMMARY.md` shows `⚠ completed without writing its deliverable`, the `task.completed`
+event carries `deliverableMissing: true` and `run.finished` counts it in `missingDeliverables`
+([run event bus](run-event-bus.md)). The check is best-effort: a file system that cannot answer leaves
+the flag `false`, and a task run without a file system is not checked. A resumed task replays the flag
+from its checkpoint; a checkpoint written before the flag replays `false`.
+
+When the output of a previous task is cut to fit the prompt of a later one and the file of its
+deliverable is known to exist (written by the framework for `final_message` and `structured_output`,
+found by that check for `tool_call`), the cut text ends with
+`[full result in '<path>': read it with file_read]`; a previous output left out entirely is named by
+`[result of task <id> in '<path>': read it with file_read]`. An output without a known file is cut as
+before.
 
 ## Removed: `outputFile`
 

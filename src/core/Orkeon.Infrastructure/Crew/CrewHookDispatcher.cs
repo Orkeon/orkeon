@@ -105,6 +105,7 @@ internal sealed partial class CrewHookDispatcher
             IsDecision = snapshot.IsDecision,
             DecisionAnswers = snapshot.DecisionAnswers,
             EndedOnIterationCap = snapshot.EndedOnIterationCap,
+            DeliverableMissing = snapshot.DeliverableMissing,
             Duration = snapshot.Duration,
             Tokens = snapshot.TokensUsed,
             ToolCalls = snapshot.ToolCallCount,

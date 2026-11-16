@@ -171,6 +171,23 @@ agent, remove the path from its goal or backstory, give the agent the task that 
   (`src/packaging/Orkeon.Templates/home/...`): the absolute intermediate path was appended to the project path. They are
   staged under `obj-linux/` now, or in the folder `OrkeonTemplateStageDirectory` names; the E2E pack tests give each run
   its own (#390).
+- An agent without `file_write` is no longer told to write its `tool_call` deliverable with it: the prompt names the path
+  and the tool only when the effective toolbelt (the agent's tools plus the task's) holds `file_write` (#392).
+- A task that succeeds with a `tool_call` deliverable whose file does not exist when it ends is no longer silent: it keeps
+  `Success`, is flagged by `TaskResult.DeliverableMissing`, `TaskResult<TOutput>.DeliverableMissing`,
+  `TaskExecutionSnapshot.DeliverableMissing`, `CrewExecutionEvent.DeliverableMissing` and
+  `AgentChannelResponse.DeliverableMissing` (experimental, `ORKEXP002`) (all `bool`, `false` by default, `init`
+  properties), logs a warning naming the task, the agent and the path, and shows as `⚠ completed without writing its
+  deliverable` in `AUTO_SUMMARY.md`. The check goes through the virtual file system and is best-effort: a probe that fails
+  leaves the flag `false`. The `task.completed` line carries `deliverableMissing` (always written, the last key), in every
+  orchestration mode and in the forge trial; a resumed task replays it from its checkpoint (one written before this change
+  replays `false`). The `run.finished` line carries `missingDeliverables`, counted like `cappedTasks` on each task's last
+  attempt (always written, `0` when none): `orkeon run`, the forge trial (per trial), `orkeon-host` and the MCP crew tool
+  host write it (#392).
+- A previous task output cut to fit a later prompt now names the file of its deliverable when that file is known to exist:
+  `[full result in '<path>': read it with file_read]` after the cut text, and `[result of task <id> in '<path>': read it
+  with file_read]` for an output left out entirely. `TaskResult.DeliverablePath` and the application
+  `TaskOutput.DeliverablePath` (`string?`, `init`) carry that path (#392).
 
 ## [1.1.0] - 2026-11-15
 

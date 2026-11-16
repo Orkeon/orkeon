@@ -573,7 +573,10 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             CompletedAt: DateTime.UtcNow,
             Success: executionResult.Success,
             ExecutionTime: executionResult.ExecutionTime,
-            ToolsUsed: executionResult.ToolsUsed);
+            ToolsUsed: executionResult.ToolsUsed)
+        {
+            DeliverablePath = executionResult.DeliverablePath,
+        };
 
         var domainOutput = DomainTaskOutput.Create(
             rawOutput: rawOutput,
@@ -600,6 +603,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             RewrittenFqns = executionResult.RewrittenFqns,
             AmbiguousFqns = executionResult.AmbiguousFqns,
             EndedOnIterationCap = executionResult.EndedOnIterationCap,
+            DeliverableMissing = executionResult.DeliverableMissing,
         };
 
         return new TaskRun(executionResult, domainOutput, appOutput, snapshot);

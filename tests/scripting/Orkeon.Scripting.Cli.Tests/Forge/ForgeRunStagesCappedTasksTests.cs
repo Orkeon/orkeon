@@ -42,7 +42,7 @@ public sealed class ForgeRunStagesCappedTasksTests : IDisposable
             Directory.Delete(_workspace, recursive: true);
     }
 
-    private static TaskExecutionSnapshot Completed(string taskId, int attempt, bool capped) => new()
+    private static TaskExecutionSnapshot Completed(string taskId, int attempt, bool capped, bool missing = false) => new()
     {
         TaskId = taskId,
         AgentRole = "Helper",
@@ -51,6 +51,7 @@ public sealed class ForgeRunStagesCappedTasksTests : IDisposable
         CompletedAt = DateTimeOffset.UnixEpoch,
         Attempt = attempt,
         EndedOnIterationCap = capped,
+        DeliverableMissing = missing,
     };
 
     private async Task<JsonElement> RunFinishedAsync(string slug, params TaskExecutionSnapshot[] completions)
@@ -153,5 +154,52 @@ public sealed class ForgeRunStagesCappedTasksTests : IDisposable
         Assert.Equal(2, finished.Count);
         Assert.Equal(1, finished[0].GetProperty("cappedTasks").GetInt32());
         Assert.Equal(0, finished[1].GetProperty("cappedTasks").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldCountTheMissingDeliverables_InTheForgeTrialRunFinished()
+    {
+        // a: missing then written (not counted); b: written then missing (counted); c: missing (counted).
+        var finished = await RunFinishedAsync(
+            "missing",
+            Completed("a", 1, capped: false, missing: true),
+            Completed("a", 2, capped: false, missing: false),
+            Completed("b", 1, capped: false, missing: false),
+            Completed("b", 2, capped: false, missing: true),
+            Completed("c", 1, capped: false, missing: true));
+
+        Assert.True(finished.TryGetProperty("missingDeliverables", out var missing));
+        Assert.Equal(2, missing.GetInt32());
+
+        var none = await RunFinishedAsync("written", Completed("a", 1, capped: false));
+        Assert.True(none.TryGetProperty("missingDeliverables", out var zero));
+        Assert.Equal(0, zero.GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldScopeTheMissingDeliverablesToTheTrial_WhenTwoTrialsShareTheObserver()
+    {
+        using var output = new StringWriter();
+        var session = ForgeSession.Create(_workspace, "two-trials-missing");
+        var observer = new ForgeRunObserver();
+        var events = new ForgeEventWriter(output, new FakeOrkeonClock());
+        var first = new TestStage(
+            new FakeFeedingTestBench(observer, [Completed("a", 1, capped: false, missing: true)]), observer);
+        var second = new TestStage(
+            new FakeFeedingTestBench(observer, [Completed("b", 1, capped: false)]), observer);
+
+        await first.RunAsync(session, events, TestContext.Current.CancellationToken);
+        await second.RunAsync(session, events, TestContext.Current.CancellationToken);
+
+        var finished = output.ToString()
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => JsonElement.Parse(l))
+            .Where(e => e.GetProperty("kind").GetString() == "run.finished")
+            .ToList();
+        Assert.Equal(2, finished.Count);
+        Assert.Equal(1, finished[0].GetProperty("missingDeliverables").GetInt32());
+        Assert.Equal(0, finished[1].GetProperty("missingDeliverables").GetInt32());
     }
 }

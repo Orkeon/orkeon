@@ -26,6 +26,9 @@ internal static class AgentPromptComposer
     /// </summary>
     private const int MaxPreviousOutputContextChars = 8000;
 
+    /// <summary>The tool an agent writes a <c>tool_call</c> deliverable with.</summary>
+    internal const string FileWriteToolName = "file_write";
+
     /// <summary>How much of a recalled memory's task description its heading line shows.</summary>
     private const int MaxMemoryTaskDescriptionChars = 80;
 
@@ -177,9 +180,13 @@ internal static class AgentPromptComposer
     /// The agent's prompt template, when it has one: wraps the composed prompt, every
     /// <see cref="AgentDefaults.PromptTemplateMark"/> replaced by it. Null or empty leaves the prompt unchanged.
     /// </param>
+    /// <param name="toolbelt">
+    /// The task's toolbelt, from <see cref="TaskToolbelt.Compose"/>: the deliverable line names
+    /// <c>file_write</c> only when the belt holds it (#392). Null is an empty belt.
+    /// </param>
     internal static string BuildUserPrompt(
         CrewTask task, SimpleExecutionContext context, string? knowledgeContext = null, string? plan = null,
-        string? promptTemplate = null)
+        string? promptTemplate = null, IReadOnlyList<Domain.Tools.IBaseTool>? toolbelt = null)
     {
         var (description, expectedOutput) = InterpolateTaskFields(task, context);
 
@@ -188,7 +195,7 @@ internal static class AgentPromptComposer
         prompt.AppendLine(description);
         prompt.AppendLine();
         prompt.AppendLine(FormattableString.Invariant($"{PromptDefaults.ExpectedOutputPrefix}{expectedOutput}"));
-        AppendDeliverableInstruction(prompt, task);
+        AppendDeliverableInstruction(prompt, task, toolbelt);
 
         AppendPlan(prompt, plan);
         AppendContextVariables(prompt, context);
@@ -275,11 +282,16 @@ internal static class AgentPromptComposer
     /// only sees the prose description and guesses paths — the owner's forge trial
     /// showed a writer burning three denied file_write calls before finding /output.
     /// The other sources are persisted by the framework, so naming a path there would
-    /// invite a redundant (and possibly conflicting) manual write.
+    /// invite a redundant (and possibly conflicting) manual write. An agent whose belt lacks
+    /// <c>file_write</c> is not told to use a tool it cannot call (#392): the line is left out.
     /// </summary>
-    private static void AppendDeliverableInstruction(StringBuilder prompt, CrewTask task)
+    private static void AppendDeliverableInstruction(
+        StringBuilder prompt, CrewTask task, IReadOnlyList<Domain.Tools.IBaseTool>? toolbelt)
     {
         if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path.Length: > 0 } deliverable)
+            return;
+
+        if (toolbelt?.Any(tool => string.Equals(tool.Name, FileWriteToolName, StringComparison.OrdinalIgnoreCase)) != true)
             return;
 
         prompt.AppendLine(FormattableString.Invariant(
@@ -361,6 +373,9 @@ internal static class AgentPromptComposer
     /// <summary>
     /// Appends the <c>Previous Outputs</c> section — skipping empty entries and truncating once
     /// <see cref="MaxPreviousOutputContextChars"/> is exceeded so downstream prompts stay bounded.
+    /// An output cut or left out whose deliverable file is known to exist
+    /// (<see cref="Orkeon.Application.Execution.TaskOutput.DeliverablePath"/>) is followed by a line naming
+    /// the file, so the agent reads it instead of guessing paths (#392).
     /// </summary>
     private static void AppendPreviousOutputs(StringBuilder prompt, SimpleExecutionContext? context)
     {
@@ -380,16 +395,40 @@ internal static class AgentPromptComposer
             if (remaining <= 0)
             {
                 prompt.AppendLine(PromptDefaults.TruncationMessage);
+                AppendLeftOutDeliverables(prompt, context.PreviousOutputs, prevOutput);
                 break;
             }
 
             var content = prevOutput.Content;
-            if (content.Length > remaining)
+            var truncated = content.Length > remaining;
+            if (truncated)
                 content = content[..remaining] + "... [truncated]";
 
             prompt.AppendLine(FormattableString.Invariant($"--- Task {prevOutput.TaskId} (success={prevOutput.Success}) ---"));
             prompt.AppendLine(content);
+            if (truncated)
+                AppendFullResultPointer(prompt, prevOutput);
             totalChars += content.Length;
         }
+    }
+
+    // The outputs from the first one left out on: each whose deliverable exists is named, so its
+    // content is not lost to the bound.
+    private static void AppendLeftOutDeliverables(
+        StringBuilder prompt, IReadOnlyList<Orkeon.Application.Execution.TaskOutput> outputs, Orkeon.Application.Execution.TaskOutput firstLeftOut)
+    {
+        var leftOut = false;
+        foreach (var output in outputs)
+        {
+            leftOut |= ReferenceEquals(output, firstLeftOut);
+            if (leftOut && !string.IsNullOrWhiteSpace(output.Content) && output.DeliverablePath is { Length: > 0 } path)
+                prompt.AppendLine(FormattableString.Invariant($"[result of task {output.TaskId} in '{path}': read it with file_read]"));
+        }
+    }
+
+    private static void AppendFullResultPointer(StringBuilder prompt, Orkeon.Application.Execution.TaskOutput output)
+    {
+        if (output.DeliverablePath is { Length: > 0 } path)
+            prompt.AppendLine(FormattableString.Invariant($"[full result in '{path}': read it with file_read]"));
     }
 }

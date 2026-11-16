@@ -36,6 +36,12 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
     /// <summary>The cap flag every successful result carries, typed and untyped.</summary>
     public bool EndedOnIterationCap { get; set; }
 
+    /// <summary>The missing-deliverable flag every successful result carries, typed and untyped.</summary>
+    public bool DeliverableMissing { get; set; }
+
+    /// <summary>The deliverable path every successful untyped result carries.</summary>
+    public string? DeliverablePath { get; set; }
+
     /// <summary>The retry count every successful result carries, typed and untyped.</summary>
     public int RetryCount { get; set; }
 
@@ -62,7 +68,7 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
             throw new InvalidOperationException($"{key} blew up");
         return System.Threading.Tasks.Task.FromResult(FailOn.Contains(key)
             ? new TaskResult(false, "", null, [], TimeSpan.Zero, $"{key} failed")
-            : new TaskResult(true, $"out:{key}", UntypedStructured(key), [], TimeSpan.FromSeconds(2)) { TokensUsed = 42, EndedOnIterationCap = EndedOnIterationCap, RetryCount = RetryCount, CacheHitTokens = CacheHitTokens, CacheMissTokens = CacheMissTokens, EndedAt = EndedAt });
+            : new TaskResult(true, $"out:{key}", UntypedStructured(key), [], TimeSpan.FromSeconds(2)) { TokensUsed = 42, EndedOnIterationCap = EndedOnIterationCap, DeliverableMissing = DeliverableMissing, DeliverablePath = DeliverablePath, RetryCount = RetryCount, CacheHitTokens = CacheHitTokens, CacheMissTokens = CacheMissTokens, EndedAt = EndedAt });
     }
 
     /// <inheritdoc />
@@ -83,6 +89,7 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
                 CompletionTokens = 3,
                 IterationsUsed = 2,
                 EndedOnIterationCap = EndedOnIterationCap,
+                DeliverableMissing = DeliverableMissing,
                 RetryCount = RetryCount,
                 CacheHitTokens = CacheHitTokens,
                 CacheMissTokens = CacheMissTokens,

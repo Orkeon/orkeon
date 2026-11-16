@@ -190,10 +190,113 @@ public class AgentPromptComposerDeliverableTests
             Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
         });
 
-        var prompt = AgentPromptComposer.BuildUserPrompt(task, Context());
+        var prompt = AgentPromptComposer.BuildUserPrompt(
+            task, Context(), toolbelt: [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_read"), new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_write")]);
 
         Assert.Contains("/output/synthese_nouveautes.md", prompt, StringComparison.Ordinal);
         Assert.Contains("file_write", prompt, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BuildUserPrompt_ShouldNotNameFileWrite_WhenTheAgentLacksTheTool(bool withOtherTools)
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = "/output/notes-lecture.md",
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+        });
+        IReadOnlyList<IBaseTool>? toolbelt = withOtherTools
+            ? [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_read"), new Orkeon.Tests.Shared.Doubles.StubBaseTool("pdf_reader")]
+            : null;
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(task, Context(), toolbelt: toolbelt);
+
+        Assert.DoesNotContain("file_write", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("Deliverable:", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNameTheDeliverableOfATruncatedPreviousOutput_WhenItsFileIsKnown()
+    {
+        var longContent = new string('x', 9000);
+        var context = Context() with
+        {
+            PreviousOutputs =
+            [
+                new Orkeon.Application.Execution.TaskOutput("read", null, longContent, DateTime.UtcNow, true, TimeSpan.Zero)
+                {
+                    DeliverablePath = "/output/notes.md",
+                },
+            ],
+        };
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(Task(null), context);
+
+        var cut = prompt.IndexOf("... [truncated]", StringComparison.Ordinal);
+        var pointer = prompt.IndexOf("[full result in '/output/notes.md': read it with file_read]", StringComparison.Ordinal);
+        Assert.True(cut >= 0 && pointer > cut, prompt);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNotNameAPath_WhenThePreviousOutputIsCutWithoutAKnownFile()
+    {
+        var context = Context() with
+        {
+            PreviousOutputs = [new Orkeon.Application.Execution.TaskOutput("read", null, new string('x', 9000), DateTime.UtcNow, true, TimeSpan.Zero)],
+        };
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(Task(null), context);
+
+        Assert.Contains("... [truncated]", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("full result in", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNotNameAPath_WhenThePreviousOutputFitsWhole()
+    {
+        var context = Context() with
+        {
+            PreviousOutputs =
+            [
+                new Orkeon.Application.Execution.TaskOutput("read", null, "short notes", DateTime.UtcNow, true, TimeSpan.Zero)
+                {
+                    DeliverablePath = "/output/notes.md",
+                },
+            ],
+        };
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(Task(null), context);
+
+        Assert.Contains("short notes", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("/output/notes.md", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNameTheDeliverableOfAPreviousOutputLeftOut_WhenItsFileIsKnown()
+    {
+        var context = Context() with
+        {
+            PreviousOutputs =
+            [
+                new Orkeon.Application.Execution.TaskOutput("first", null, new string('x', 8000), DateTime.UtcNow, true, TimeSpan.Zero),
+                new Orkeon.Application.Execution.TaskOutput("second", null, "left out", DateTime.UtcNow, true, TimeSpan.Zero)
+                {
+                    DeliverablePath = "/output/second.md",
+                },
+            ],
+        };
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(Task(null), context);
+
+        Assert.DoesNotContain("left out", prompt, StringComparison.Ordinal);
+        Assert.Contains("[result of task second in '/output/second.md': read it with file_read]", prompt, StringComparison.Ordinal);
     }
 
     [Fact]

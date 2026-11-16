@@ -133,7 +133,7 @@ tasks:
     tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement (sans jamais les remplacer) — résolus comme ceux d'un agent : un nom inconnu fait échouer le chargement sous StrictTools
     deliverable:          # Contrat de fichier de sortie (ignoré sans path)
       path: string        # Chemin virtuel, p. ex. "/output/report.md"
-      source: string      # "tool_call" (défaut — l'agent reçoit la consigne d'écrire le chemin avec file_write) | "final_message" (le framework écrit la réponse finale) | "structured_output" (JSON écrit par le framework, contraint par le schéma en json_schema là où le fournisseur le déclare, en grammaire GBNF là où Llm:Grammar est allumé, et toujours vérifié au parsing) | "none" — toute autre valeur fait échouer le chargement
+      source: string      # "tool_call" (défaut — l'agent écrit le chemin ; consigne avec file_write quand il a cet outil) | "final_message" (le framework écrit la réponse finale) | "structured_output" (JSON écrit par le framework, contraint par le schéma en json_schema là où le fournisseur le déclare, en grammaire GBNF là où Llm:Grammar est allumé, et toujours vérifié au parsing) | "none" — toute autre valeur fait échouer le chargement
       format: string      # "markdown" (défaut) | "json" | "text"
       sanitize: bool      # default: true — retire les tokens de template en fin de texte (final_message)
       schema_path: string # Chemin virtuel d'un fichier JSON Schema (structured_output exige lui ou schema_inline)
@@ -486,6 +486,28 @@ erreurs d'outil identiques consécutives, et les reprises de validation de sorti
 run de graphe, c'est `graph:` (ci-dessus). Le moteur générique de machine d'états et
 `CircuitBreakerPolicy` restent — le mode Graph, `orkeon forge` et le graphe RAG correctif s'en
 servent (voir [FSM](../orchestration/fsm.md)).
+
+## Le livrable `tool_call`
+
+Avec `source: tool_call` (le défaut), l'agent écrit le fichier lui-même. Le prompt nomme le chemin et
+`file_write` seulement quand la boîte à outils de l'agent, ses propres outils plus ceux de la tâche,
+contient `file_write` : un agent qui ne l'a pas ne reçoit jamais la consigne d'appeler un outil qu'il n'a
+pas. Quand une telle tâche réussit, le framework vérifie par le système de fichiers virtuel que le chemin
+existe. Un fichier absent laisse la tâche réussie mais lui pose le drapeau `deliverableMissing`
+(`TaskResult.DeliverableMissing`) : un avertissement nomme la tâche, l'agent et le chemin,
+`AUTO_SUMMARY.md` affiche `⚠ completed without writing its deliverable`, l'événement `task.completed`
+porte `deliverableMissing: true` et `run.finished` la compte dans `missingDeliverables`
+([bus d'événements de run](run-event-bus.md)). La vérification est au mieux : un système de fichiers qui
+ne peut pas répondre laisse le drapeau à `false`, et une tâche exécutée sans système de fichiers n'est pas
+vérifiée. Une tâche reprise rejoue le drapeau depuis son checkpoint ; un checkpoint écrit avant le drapeau
+rejoue `false`.
+
+Quand la sortie d'une tâche précédente est coupée pour tenir dans le prompt d'une tâche suivante et que le
+fichier de son livrable est connu pour exister (écrit par le framework pour `final_message` et
+`structured_output`, trouvé par cette vérification pour `tool_call`), le texte coupé se termine par
+`[full result in '<path>': read it with file_read]` ; une sortie précédente laissée de côté entièrement est
+nommée par `[result of task <id> in '<path>': read it with file_read]`. Une sortie sans fichier connu est
+coupée comme avant.
 
 ## Supprimé : `outputFile`
 

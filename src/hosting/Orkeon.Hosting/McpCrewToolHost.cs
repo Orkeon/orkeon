@@ -216,6 +216,7 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
                 exitCode = ExitCode(),
                 durationMs = (long)Stopwatch.GetElapsedTime(_started).TotalMilliseconds,
                 cappedTasks = _observer.CappedTasks,
+                missingDeliverables = _observer.MissingDeliverables,
             });
             _identity.Dispose();
         }

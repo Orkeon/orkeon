@@ -50,6 +50,8 @@ public sealed class McpRunFinishedCountsCappedTasksTests : IDisposable
     {
         public HashSet<string> Capped { get; } = [];
 
+        public HashSet<string> Missing { get; } = [];
+
         public bool Throws { get; set; }
 
         public System.Threading.Tasks.Task<TaskResult> ExecuteTaskAsync(
@@ -59,7 +61,7 @@ public sealed class McpRunFinishedCountsCappedTasksTests : IDisposable
                 throw new InvalidOperationException("the model is unreachable");
             var key = task.Key ?? task.TaskId.ToString();
             return System.Threading.Tasks.Task.FromResult(
-                new TaskResult(true, "done", null, [], TimeSpan.Zero) { EndedOnIterationCap = Capped.Contains(key) });
+                new TaskResult(true, "done", null, [], TimeSpan.Zero) { EndedOnIterationCap = Capped.Contains(key), DeliverableMissing = Missing.Contains(key) });
         }
 
         public System.Threading.Tasks.Task<TaskResult<TOutput>> ExecuteTaskAsync<TOutput>(
@@ -160,5 +162,34 @@ public sealed class McpRunFinishedCountsCappedTasksTests : IDisposable
         var finished = await FinishedAsync(host);
         Assert.True(finished.Payload!.ContainsKey("cappedTasks"));
         Assert.Equal(0, finished.Payload["cappedTasks"]!.GetValue<int>());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldCountTheMissingDeliverables_InTheMcpRunFinished()
+    {
+        _service.Missing.Add("draft");
+        using var host = await OpenAsync();
+
+        await host.CallToolAsync("run_crew_report_writer",
+            JsonSerializer.SerializeToElement(new { topic = "bees" }), new NoProgress(), TestContext.Current.CancellationToken);
+
+        var finished = await FinishedAsync(host);
+        Assert.True(finished.Payload!.ContainsKey("missingDeliverables"));
+        Assert.Equal(1, finished.Payload["missingDeliverables"]!.GetValue<int>());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldWriteZeroMissingDeliverables_InTheMcpRunFinished_WhenEveryTaskWroteIt()
+    {
+        using var host = await OpenAsync();
+
+        await host.CallToolAsync("run_crew_report_writer",
+            JsonSerializer.SerializeToElement(new { topic = "bees" }), new NoProgress(), TestContext.Current.CancellationToken);
+
+        var finished = await FinishedAsync(host);
+        Assert.True(finished.Payload!.ContainsKey("missingDeliverables"));
+        Assert.Equal(0, finished.Payload["missingDeliverables"]!.GetValue<int>());
     }
 }

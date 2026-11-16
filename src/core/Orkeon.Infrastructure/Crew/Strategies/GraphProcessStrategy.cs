@@ -306,6 +306,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                     CacheMissTokens = usage.CacheMiss,
                     Defaulted = result.TaskId is { } id && (state.Outcome.DecisionOf(id)?.IsDefaulted ?? false),
                     EndedOnIterationCap = state.CappedResults.Contains(index),
+                    DeliverableMissing = state.MissingDeliverableResults.Contains(index),
                 }, result, state.CrewTasks.Any(t => t.Id == result.TaskId && t.IsDecision));
             snapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot).ConfigureAwait(false);
@@ -592,11 +593,16 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             CompletedAt: DateTime.UtcNow,
             Success: executionResult.Success,
             ExecutionTime: executionResult.ExecutionTime,
-            ToolsUsed: executionResult.ToolsUsed);
+            ToolsUsed: executionResult.ToolsUsed)
+        {
+            DeliverablePath = executionResult.DeliverablePath,
+        };
         state.AddApplicationOutput(appOutput);
 
         if (executionResult.EndedOnIterationCap)
             state.CappedResults.Add(state.DomainResults.Count);
+        if (executionResult.DeliverableMissing)
+            state.MissingDeliverableResults.Add(state.DomainResults.Count);
 
         state.AddDomainResult(DomainTaskOutput.Create(
             rawOutput: rawOutput,
@@ -817,6 +823,9 @@ public sealed class CrewGraphState
 
     /// <summary>The indexes of the entries of <see cref="DomainResults"/> whose attempt ended on its iteration cap.</summary>
     internal HashSet<int> CappedResults { get; } = [];
+
+    /// <summary>The indexes of the entries of <see cref="DomainResults"/> whose attempt succeeded without writing its <c>tool_call</c> deliverable (#392).</summary>
+    internal HashSet<int> MissingDeliverableResults { get; } = [];
 
     /// <summary>The tasks skipped by their condition, which leave no result: their snapshot and the count of results when they were skipped.</summary>
     internal List<(int Position, TaskExecutionSnapshot Snapshot)> ConditionSkips { get; } = [];
