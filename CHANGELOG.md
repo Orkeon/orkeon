@@ -103,7 +103,8 @@ agent, remove the path from its goal or backstory, give the agent the task that 
 never wrote its file. **Now**: the forge keeps `tool_call` when every agent that may run the task writes the path
 itself (the agent the task names in a `sequential`, `parallel` or `graph` crew, every agent but the manager in a
 `hierarchical` or `consensual` crew, every agent in an `autonomous` one), and writes `source: final_message` otherwise:
-the framework saves the agent's final answer to the path. A binary deliverable (`.docx`, `.xlsx`, `.pdf`, an image…) is
+the framework saves the agent's final answer to the path. An agent's tools are its own plus the ones the task grants
+(a crew file's task-level `tools:`), as the engine counts them, and `forge reopen` reads those back. A binary deliverable (`.docx`, `.xlsx`, `.pdf`, an image…) is
 never switched: a plan whose agent lacks the tool that writes its format is refused, with an error naming the task, the
 agents and the tool to give (`docx_writer`, `xlsx_writer`, `image_generation`), or a text format when no built-in tool
 writes it; `file_write` never counts for a binary file, and `forge reopen` applies this refusal too, naming the crew

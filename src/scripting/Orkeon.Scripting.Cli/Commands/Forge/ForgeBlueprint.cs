@@ -100,6 +100,13 @@ internal sealed record ForgeBlueprintTask
     /// <summary>Virtual path of a framework-managed output file (<c>/output/…</c>), when the task produces one.</summary>
     [JsonPropertyName("deliverable")]
     public string? Deliverable { get; init; }
+
+    /// <summary>
+    /// Tools the task itself grants its agent (a crew file's task-level <c>tools:</c>), on top of the agent's
+    /// own: a hand-written crew reads back with them (#392).
+    /// </summary>
+    [JsonPropertyName("tools")]
+    public IReadOnlyList<string>? Tools { get; init; }
 }
 
 /// <summary>
@@ -215,7 +222,7 @@ internal sealed record ForgeBlueprint
                 continue;
 
             var lacking = ForgeBlueprintCompiler.CandidatesOf(this, task)
-                .Where(agent => !ForgeBlueprintCompiler.CanWrite(agent, path))
+                .Where(agent => !ForgeBlueprintCompiler.CanWrite(agent, task, path))
                 .Select(static agent => $"'{agent.Key}'")
                 .ToList();
             if (lacking.Count == 0)

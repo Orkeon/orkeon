@@ -103,6 +103,13 @@ internal static class ForgeScriptRenderer
                 script.Append("    .withContext(").Append(dependencyIdentifier).Append(")\n");
         }
 
+        if (task.Tools is { Count: > 0 } tools)
+        {
+            script.Append("    .tools([")
+                .Append(string.Join(", ", tools.Select(Literal)))
+                .Append("])\n");
+        }
+
         if (!string.IsNullOrWhiteSpace(task.Deliverable))
         {
             // Same source as the YAML render (#392), always written: the typings require it (D24).

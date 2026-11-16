@@ -314,6 +314,7 @@ internal static class ForgeTeamReader
                 Agent = pair.Value.Agent,
                 Dependencies = pair.Value.Dependencies is { Count: > 0 } deps ? [.. deps] : null,
                 Deliverable = pair.Value.Deliverable?.Path,
+                Tools = pair.Value.Tools is { Count: > 0 } taskTools ? [.. taskTools] : null,
             }).ToList(),
             Manager = crew.ManagerAgent,
             Rationale = "Plan read back from the team's crew files: what they describe, not what an assistant proposed.",

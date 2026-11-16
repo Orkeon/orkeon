@@ -88,6 +88,23 @@ public sealed class ForgeScriptRendererTests : IDisposable
         Assert.True(verdict.IsValid, string.Join("; ", verdict.Errors));
     }
 
+    // #392: the tools a task grants itself are rendered, so the script grants what the YAML does.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldRenderTheTasksOwnTools_WhenTheTaskGrantsSome()
+    {
+        var blueprint = Parse(ForgeDocuments.ValidBlueprint);
+        blueprint = blueprint with
+        {
+            Tasks = [.. blueprint.Tasks!.Select(task => task.Key == "resume" ? task with { Tools = ["file_write"] } : task)],
+        };
+
+        ForgeScriptRenderer.Render(blueprint, _sessionDirectory);
+        var configuration = await ReloadAsync();
+
+        Assert.Equal(["file_write"], configuration.Tasks.Single(t => t.Description == "Rédiger le résumé").Tools);
+    }
+
     [Fact]
     public async Task An_iteration_cap_below_the_floor_is_rendered_raised()
     {

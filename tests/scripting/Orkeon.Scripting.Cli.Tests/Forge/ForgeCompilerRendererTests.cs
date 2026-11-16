@@ -338,6 +338,48 @@ public class ForgeBlueprintCompilerTests
 
         Assert.Equal("tool_call", ForgeBlueprintCompiler.EmittedDeliverableSource(plan, task));
     }
+
+    // The engine counts the task's own tools beside its agent's (#392): so does the forge.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldCountTheTasksOwnTools_WhenDecidingWhetherItsAgentWrites()
+    {
+        var text = DeliveringTask("reader") with { Tools = ["file_write"] };
+        var binary = DeliveringTask("reader", "/output/rapport.docx") with { Tools = ["docx_writer"] };
+        var textPlan = Plan("sequential", null, text, Agent("reader", "file_read"));
+        var binaryPlan = Plan("sequential", null, binary, Agent("reader", "file_read"));
+
+        Assert.Equal("tool_call", ForgeBlueprintCompiler.EmittedDeliverableSource(textPlan, text));
+        Assert.Empty(binaryPlan.Validate([]));
+        Assert.Equal(["file_write"], ForgeBlueprintCompiler.Compile(textPlan).Tasks["t"].Tools!);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldRefuseATaskTool_WhenItIsNotInTheCatalogue()
+    {
+        var task = DeliveringTask("reader") with { Tools = ["ghost_tool"] };
+        var compilation = ForgeBlueprintCompiler.Compile(Plan("sequential", null, task, Agent("reader", "file_read")));
+
+        var error = Assert.Single(ForgeBlueprintCompiler.Validate(compilation, ForgeDocuments.KnownTools).Errors,
+            e => e.Contains("ghost_tool", StringComparison.Ordinal));
+        Assert.Contains("task 't' names tool 'ghost_tool'", error, StringComparison.Ordinal);
+    }
+
+    // RTF is plain text (#392): the forge treats it as a text deliverable, never refused as a binary one.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldTreatAnRtfDeliverableAsText()
+    {
+        var task = DeliveringTask("reader", "/output/letter.rtf");
+        var plan = Plan("sequential", null, task, Agent("reader", "file_read"));
+
+        Assert.Equal("final_message", ForgeBlueprintCompiler.EmittedDeliverableSource(plan, task));
+        Assert.Empty(plan.Validate([]));
+        var writing = DeliveringTask("writer", "/output/letter.rtf");
+        Assert.Equal("tool_call", ForgeBlueprintCompiler.EmittedDeliverableSource(
+            Plan("sequential", null, writing, Agent("writer", "file_write")), writing));
+    }
 }
 
 /// <summary>

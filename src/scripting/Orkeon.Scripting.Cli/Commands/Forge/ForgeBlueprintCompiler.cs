@@ -64,15 +64,17 @@ internal static class ForgeBlueprintCompiler
     }
 
     /// <summary>
-    /// Whether <paramref name="agent"/> holds a built-in tool that writes <paramref name="path"/>
-    /// (<see cref="DeliverableToolCheck.CanWrite(IEnumerable{string}, string)"/>): for a binary format only the
-    /// tool that writes the format counts, <c>file_write</c>, which writes text, does not. The forge reads a path
-    /// and compares tool names through the engine's helpers, so it and the load check never disagree (#392).
+    /// Whether <paramref name="agent"/>, running <paramref name="task"/>, holds a built-in tool that writes
+    /// <paramref name="path"/> (<see cref="DeliverableToolCheck.CanWrite(IEnumerable{string}, string)"/>): its own
+    /// tools and the ones the task grants, as the engine counts them. For a binary format only the tool that
+    /// writes the format counts, <c>file_write</c>, which writes text, does not. The forge reads a path and
+    /// compares tool names through the engine's helpers, so it and the load check never disagree (#392).
     /// </summary>
-    internal static bool CanWrite(ForgeBlueprintAgent agent, string path)
+    internal static bool CanWrite(ForgeBlueprintAgent agent, ForgeBlueprintTask task, string path)
     {
         ArgumentNullException.ThrowIfNull(agent);
-        return DeliverableToolCheck.CanWrite(agent.Tools ?? [], path);
+        ArgumentNullException.ThrowIfNull(task);
+        return DeliverableToolCheck.CanWrite((agent.Tools ?? []).Concat(task.Tools ?? []), path);
     }
 
     /// <summary>
@@ -90,7 +92,7 @@ internal static class ForgeBlueprintCompiler
             return ToolCallSource;
 
         var candidates = CandidatesOf(blueprint, task);
-        return candidates.Count > 0 && candidates.All(agent => CanWrite(agent, path)) ? ToolCallSource : FinalMessageSource;
+        return candidates.Count > 0 && candidates.All(agent => CanWrite(agent, task, path)) ? ToolCallSource : FinalMessageSource;
     }
 
     /// <summary>
@@ -145,6 +147,7 @@ internal static class ForgeBlueprintCompiler
                 ExpectedOutput = task.ExpectedOutput,
                 Agent = task.Agent,
                 Dependencies = task.Dependencies is { Count: > 0 } deps ? new Collection<string>([.. deps]) : null,
+                Tools = task.Tools is { Count: > 0 } taskTools ? new Collection<string>([.. taskTools]) : null,
                 Deliverable = string.IsNullOrWhiteSpace(task.Deliverable)
                     ? null
                     : new DeliverableYamlConfig { Path = task.Deliverable, Source = EmittedDeliverableSource(blueprint, task) is FinalMessageSource ? FinalMessageSource : null },
@@ -205,6 +208,15 @@ internal static class ForgeBlueprintCompiler
             {
                 if (!known.Contains(tool))
                     errors.Add($"{ForgeErrorCodes.ToolUnknown}: agent '{key}' names tool '{tool}', which is not in the catalogue.");
+            }
+        }
+
+        foreach (var (key, task) in compilation.Tasks)
+        {
+            foreach (var tool in task.Tools ?? [])
+            {
+                if (!known.Contains(tool))
+                    errors.Add($"{ForgeErrorCodes.ToolUnknown}: task '{key}' names tool '{tool}', which is not in the catalogue.");
             }
         }
 
