@@ -444,7 +444,10 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 assignedAgent, task, executionResult.Output, context, cancellationToken).ConfigureAwait(false);
         }
 
-        return (domainOutput, appOutput, error, executionResult.EndedOnIterationCap, executionResult.DeliverableMissing);
+        // A task the manager rejected to the end is a failure: its deliverable is not flagged missing,
+        // as for any failed task (#392).
+        return (domainOutput, appOutput, error, executionResult.EndedOnIterationCap,
+            domainOutput.Success && executionResult.DeliverableMissing);
     }
 
     /// <summary>

@@ -335,6 +335,7 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
                 false, $"[NO CONSENSUS] {ConsensusNotReached(task.Id)}", null, [], TimeSpan.Zero,
                 Error: ConsensusNotReached(task.Id))
             : await RememberAsync(vote, retained, ct).ConfigureAwait(false);
+        taskResult = WithVoteDeliverable(vote, taskResult);
 
         // Build application output for context propagation
         var appOutput = new ApplicationTaskOutput(
@@ -396,6 +397,21 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         await _hooks.TaskCompletedAsync(snapshot, ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// The deliverable judged on the whole vote, not on the retained answer alone (#392): the candidates
+    /// share the file, so the one that wrote it need not be the one the vote retains, and an answer that
+    /// ended before another wrote it saw no file. A successful task whose vote saw the file written
+    /// carries its path and is not flagged; a failed task is never flagged.
+    /// </summary>
+    private static TaskResult WithVoteDeliverable(VoteContext vote, TaskResult result)
+    {
+        if (!result.Success)
+            return result.DeliverableMissing ? result with { DeliverableMissing = false } : result;
+        if (result.DeliverablePath is not null || vote.WrittenDeliverablePath is not { } written)
+            return result;
+        return result with { DeliverableMissing = false, DeliverablePath = written };
+    }
+
     /// <summary>The cause a task reports when the <c>Fail</c> fallback found no consensus.</summary>
     private string ConsensusNotReached(TaskId taskId) =>
         $"Consensus could not be reached for task {taskId} after {_options.MaxVotingRounds} voting round(s)";
@@ -428,6 +444,12 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
         /// task with (GAP-21). Empty until a round is held.
         /// </summary>
         public Dictionary<string, TaskResult> LastAnswers { get; set; } = [];
+
+        /// <summary>
+        /// The path of the deliverable a candidate's successful answer found written, in any round;
+        /// null until one does (#392).
+        /// </summary>
+        public string? WrittenDeliverablePath { get; set; }
     }
 
     /// <summary>
@@ -489,6 +511,8 @@ public sealed partial class ConsensualProcessStrategy : IProcessStrategy
             // Execute task with all agents in parallel
             var agentResults = await ExecuteWithAllAgentsAsync(vote, previousResults, ct).ConfigureAwait(false);
             vote.LastAnswers = agentResults;
+            vote.WrittenDeliverablePath ??= agentResults.Values
+                .FirstOrDefault(r => r.Success && r.DeliverablePath is not null)?.DeliverablePath;
 
             // Record the cost of the whole round: every agent execution consumed tokens,
             // whichever result ends up winning the vote.

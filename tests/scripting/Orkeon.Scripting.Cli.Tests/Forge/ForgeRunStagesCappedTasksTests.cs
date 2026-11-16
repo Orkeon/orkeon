@@ -42,11 +42,11 @@ public sealed class ForgeRunStagesCappedTasksTests : IDisposable
             Directory.Delete(_workspace, recursive: true);
     }
 
-    private static TaskExecutionSnapshot Completed(string taskId, int attempt, bool capped, bool missing = false) => new()
+    private static TaskExecutionSnapshot Completed(string taskId, int attempt, bool capped, bool missing = false, bool success = true) => new()
     {
         TaskId = taskId,
         AgentRole = "Helper",
-        Success = true,
+        Success = success,
         Duration = TimeSpan.FromMilliseconds(5),
         CompletedAt = DateTimeOffset.UnixEpoch,
         Attempt = attempt,
@@ -127,6 +127,39 @@ public sealed class ForgeRunStagesCappedTasksTests : IDisposable
             .Single(e => e.GetProperty("kind").GetString() == "run.finished");
         Assert.False(finished.GetProperty("success").GetBoolean());
         Assert.Equal(2, finished.GetProperty("cappedTasks").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldCountTheMissingDeliverables_WhenTheTrialBenchCrashes()
+    {
+        using var output = new StringWriter();
+        var session = ForgeSession.Create(_workspace, "crash-missing");
+        var observer = new ForgeRunObserver();
+        var events = new ForgeEventWriter(output, new FakeOrkeonClock());
+        var stage = new TestStage(
+            new FakeCrashingTestBench(observer, [Completed("a", 1, capped: false, missing: true), Completed("b", 1, capped: false)]),
+            observer);
+
+        await stage.RunAsync(session, events, TestContext.Current.CancellationToken);
+
+        var finished = output.ToString()
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => JsonElement.Parse(l))
+            .Single(e => e.GetProperty("kind").GetString() == "run.finished");
+        Assert.Equal(1, finished.GetProperty("missingDeliverables").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldNotCountTheMissingDeliverable_WhenTheTasksLastAttemptFailed()
+    {
+        var finished = await RunFinishedAsync(
+            "failed-missing",
+            Completed("a", 1, capped: false, missing: true),
+            Completed("a", 2, capped: false, missing: true, success: false));
+
+        Assert.Equal(0, finished.GetProperty("missingDeliverables").GetInt32());
     }
 
     [Fact]

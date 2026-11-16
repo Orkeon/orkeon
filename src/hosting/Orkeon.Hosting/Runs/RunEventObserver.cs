@@ -198,7 +198,8 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
         lock (_gate)
         {
             _lastAttemptCapped[snapshot.TaskId] = snapshot.EndedOnIterationCap;
-            _lastAttemptMissingDeliverable[snapshot.TaskId] = snapshot.DeliverableMissing;
+            // Only a task that succeeded counts: a failed one is never flagged (#392).
+            _lastAttemptMissingDeliverable[snapshot.TaskId] = snapshot.Success && snapshot.DeliverableMissing;
         }
 
         _events.Emit(

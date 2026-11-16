@@ -10,6 +10,7 @@ using Orkeon.Infrastructure.Checkpointing;
 using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.FileSystem;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
 namespace Orkeon.Infrastructure.Tests.Checkpointing;
@@ -37,6 +38,9 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
 
     private CheckpointingAgentExecutionService Decorate(ICheckpointManager? manager = null) =>
         new(_inner, _scope, manager ?? _manager, _log);
+
+    private CheckpointingAgentExecutionService Decorate(Orkeon.Domain.FileSystem.IFileSystemService files) =>
+        new(_inner, _scope, _manager, _log) { FileSystem = files };
 
     private SimpleExecutionContext Context() =>
         new(CrewId.Create(), new Dictionary<string, string>(), _memory, [], CancellationToken.None);
@@ -289,6 +293,74 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
 
         Assert.True(replayed.Resumed);
         Assert.True(replayed.DeliverableMissing);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayTheDeliverablePath_WhenATypedTaskThatWroteItIsResumed()
+    {
+        _inner.DeliverablePath = "/output/notes.md";
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            var first = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+            Assert.Equal("/output/notes.md", first.DeliverablePath);
+        }
+
+        var plan = await PlanOfAsync(id);
+
+        TaskResult<FakeTypedAgentExecutionService.Answer> replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.Equal("/output/notes.md", replayed.DeliverablePath);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayTheDeliverableMissing_WhenTheFileIsGoneAtResume(bool typed, bool gone)
+    {
+        _inner.DeliverablePath = "/output/notes.md";
+        var files = new FakeFileSystemService();
+        files.AddFile("/output/notes.md", "notes");
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            if (typed)
+                await Decorate(files).ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+            else
+                await Decorate(files).ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        }
+
+        var plan = await PlanOfAsync(id);
+        if (gone)
+            await files.DeleteAsync("/output/notes.md", recursive: false, TestContext.Current.CancellationToken);
+
+        (bool Resumed, bool Missing, string? Path) replayed;
+        using (Enter(id, plan))
+        {
+            if (typed)
+            {
+                var result = await Decorate(files).ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+                replayed = (result.Resumed, result.DeliverableMissing, result.DeliverablePath);
+            }
+            else
+            {
+                var result = await Decorate(files).ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+                replayed = (result.Resumed, result.DeliverableMissing, result.DeliverablePath);
+            }
+        }
+
+        Assert.True(replayed.Resumed);
+        Assert.Equal(gone, replayed.Missing);
+        Assert.Equal(gone ? null : "/output/notes.md", replayed.Path);
     }
 
     [Theory]

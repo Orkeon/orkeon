@@ -45,6 +45,8 @@ Orkeon.Application.Interfaces.Services.TaskResult.DeliverablePath.get -> string?
 Orkeon.Application.Interfaces.Services.TaskResult.DeliverablePath.init -> void
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverableMissing.get -> bool
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverableMissing.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverablePath.get -> string?
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverablePath.init -> void
 Orkeon.Application.Crew.TaskExecutionSnapshot.DeliverableMissing.get -> bool
 Orkeon.Application.Crew.TaskExecutionSnapshot.DeliverableMissing.init -> void
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DeliverableMissing.get -> bool
@@ -53,3 +55,5 @@ Orkeon.Application.Execution.TaskOutput.DeliverablePath.get -> string?
 Orkeon.Application.Execution.TaskOutput.DeliverablePath.init -> void
 [ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverableMissing.get -> bool
 [ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverableMissing.init -> void
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverablePath.get -> string?
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverablePath.init -> void

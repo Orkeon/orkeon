@@ -104,6 +104,7 @@ namespace Orkeon.Application.Agent
                 ExitReason = result.ExitReason,
                 EndedOnIterationCap = result.EndedOnIterationCap,
                 DeliverableMissing = result.DeliverableMissing,
+                DeliverablePath = result.DeliverablePath,
                 TokensUsed = result.TokensUsed,
                 PromptTokens = result.PromptTokens,
                 CompletionTokens = result.CompletionTokens,

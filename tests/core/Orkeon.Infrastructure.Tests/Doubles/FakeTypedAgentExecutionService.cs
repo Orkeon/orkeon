@@ -39,7 +39,7 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
     /// <summary>The missing-deliverable flag every successful result carries, typed and untyped.</summary>
     public bool DeliverableMissing { get; set; }
 
-    /// <summary>The deliverable path every successful untyped result carries.</summary>
+    /// <summary>The deliverable path every successful result carries, typed and untyped.</summary>
     public string? DeliverablePath { get; set; }
 
     /// <summary>The retry count every successful result carries, typed and untyped.</summary>
@@ -90,6 +90,7 @@ public sealed class FakeTypedAgentExecutionService : IAgentExecutionService
                 IterationsUsed = 2,
                 EndedOnIterationCap = EndedOnIterationCap,
                 DeliverableMissing = DeliverableMissing,
+                DeliverablePath = DeliverablePath,
                 RetryCount = RetryCount,
                 CacheHitTokens = CacheHitTokens,
                 CacheMissTokens = CacheMissTokens,
