@@ -52,7 +52,8 @@ public class EmbeddingOptions
 
     /// <summary>
     /// Virtual path of the file recording the provider, model and dimensions the stored vectors came from;
-    /// the host refuses to start when they change. Empty: the guard is off.
+    /// the host refuses to start when they change. Empty: the guard is off. <c>orkeon forge</c> defaults it to
+    /// <c>/forge/embedding-fingerprint.json</c>, <c>orkeon rag</c> and <c>orkeon eval rag</c> to empty.
     /// </summary>
     public string FingerprintPath { get; set; } = "/workspace/.orkeon/embedding-fingerprint.json";
 }

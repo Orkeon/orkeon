@@ -35,6 +35,7 @@ public sealed record ScriptingToolchainOptions
     /// <see cref="TypeCheckMode.Validate"/> (default) in <c>orkeon run --validate</c>,
     /// <see cref="TypeCheckMode.Always"/> in <c>--validate</c> and before every run. Under
     /// <c>Validate</c> a missing compiler is a warning; under <c>Always</c> it is a failure.
+    /// <c>orkeon doctor</c> judges its <c>tsc</c> check by this mode too.
     /// </summary>
     public TypeCheckMode TypeCheck { get; init; } = TypeCheckMode.Validate;
 
