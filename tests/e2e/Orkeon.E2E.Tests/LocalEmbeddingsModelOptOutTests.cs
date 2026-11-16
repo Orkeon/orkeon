@@ -1,10 +1,12 @@
 namespace Orkeon.E2E.Tests;
 
 /// <summary>
-/// CH-01 / CH-02: a consumer of the packed <c>Orkeon.Scripting</c> that sets <c>ExcludeAssets="build"</c> builds
-/// without the local embedding model download (no <c>LocalEmbeddingsModel/</c> in its output); a consumer that
-/// keeps the default reference runs the upstream download target, which fails here because no network is reachable.
-/// Nothing is downloaded: restore reads a local feed and the repository's package cache.
+/// The local embedding model of the packed <c>Orkeon.Scripting</c>. Opted out (CH-01, CH-18, CH-19): a consumer that
+/// sets <c>ExcludeAssets="build"</c> downloads nothing, builds without <c>LocalEmbeddingsModel/</c> in its output and
+/// runs offline, the first local embedding failing with a clear message. Default reference offline (CH-02): the
+/// upstream download target runs and fails because no network is reachable. Online (CH-45, Category=Integration):
+/// a consumer that keeps the default reference downloads the model over the network, then embeds
+/// (384 dimensions). Offline tests restore from a local feed and the repository's package cache.
 /// Category=Slow: the pack builds the lineup.
 /// </summary>
 [Trait("Category", "Slow")]

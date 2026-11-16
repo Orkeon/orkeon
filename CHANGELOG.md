@@ -26,9 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without the note and without the flag, as before. `DelegateWorkResponse.EndedOnIterationCap` (JSON
   `ended_on_iteration_cap`) tells the delegating agent that its coworker ended on its cap, and the tool's message says so.
   `TaskResult<TOutput>` now keeps the tokens, the iterations, the retries, the cache tokens (`CacheHitTokens`,
-  `CacheMissTokens`) and `EndedAt` of the run, and a resumed task, typed or not, replays its `RetryCount` from its checkpoint
-  (a typed one also replays the cache tokens and `EndedAt`; a checkpoint written before this change replays `0` and no
-  date). The `run.finished` line carries `cappedTasks`, the number of tasks whose last attempt ended on the iteration cap
+  `CacheMissTokens`) and `EndedAt` of the run, as `init` properties, and a resumed typed task replays the cache tokens and
+  `EndedAt` from its checkpoint (a typed checkpoint written before this change holds none of them: it replays no cache
+  tokens and no date). The `run.finished` line carries `cappedTasks`, the number of tasks whose last attempt ended on the iteration cap
   (always written, `0` when none did): `orkeon run`, the forge trial (counted per trial), `orkeon-host` and the MCP crew
   tool host write it (#388).
 
@@ -63,18 +63,27 @@ of the crew that runs and are unchanged. **What to do**: a dashboard or a filter
 ### Changed — a forge plan must list the writer of every path its tasks read **[breaking]** (#388)
 
 **Before**: in a sequential plan, a task could read a path under a deliverable root that a task listed before it wrote,
-without depending on that task. **Now**: a path under a deliverable root that a task names in its description or its expected
-output must be the task's own deliverable, the deliverable of a task it depends on (directly or through other dependencies),
-or a file already present under an output folder of the team, held by the forge or bound to a user `dir`: every file counts,
-found recursively, up to 10 000 per folder, with no 40-entry cap. Being listed earlier is no longer enough, whatever the
-process; the plan is refused with an error that names the task and the path, which the designer gets back to fix. A path is
-read up to any Unicode whitespace (a no-break space, the narrow space before a French `:`) or a quote (`« » “ ” ‘ ’`), and
-starts after whitespace, `=` or `:` (`path=/output/x`, `fichier:/output/x`). The same rule reads each agent's goal and backstory: a path under a deliverable root named in an agent's goal
-or backstory must be a deliverable of one of the agent's tasks, of a task they depend on, or an existing file; an agent with no task (a
-manager, an arbiter) may name any task's deliverable. The refusal names `agents[i] ('key'): its goal|backstory names '<path>'`; `orkeon forge reopen` does not apply this check.
-`orkeon forge reopen` of a crew promoted before this rule does not fail on it: the crew opens, and the next validation (the
-Blueprint stage, a `blueprint_submit`, a verdict edit) enforces it. **What to do**: list the task that writes the file among
-the dependencies of the task that reads it.
+without depending on that task, and the goal and the backstory of the agents were not scanned at all. **Now**: a path
+under a deliverable root that a task names in its description or its expected output must be the task's own deliverable,
+the deliverable of a task it depends on (directly or through other dependencies), or a file already present under an
+output folder of the team, held by the forge or bound to a user `dir`: every file counts, found recursively, up to 10
+000 per folder, with no 40-entry cap. Being listed earlier is no longer enough, whatever the process; the plan is
+refused with an error that names the task and the path, which the designer gets back to fix. A path is read up to any
+Unicode whitespace (a no-break space, the narrow space before a French `:`) or a quote (`« » “ ” ‘ ’`), and starts after
+whitespace, `=` or `:` (`path=/output/x`, `fichier:/output/x`). A path that is a folder is accepted when an allowed
+deliverable or an existing file lies under it (`/output/reports` with a deliverable `/output/reports/summary.md`), for
+tasks and agents alike.
+
+The same rule reads each agent's goal and backstory: a path under a deliverable root named there must be a deliverable
+of one of the agent's tasks, of a task they depend on, or an existing file. An agent with no task (a manager, an
+arbiter) may name any task's deliverable, and so may any agent of a `hierarchical`, `consensual` or `autonomous` crew;
+`sequential`, `parallel` and `graph` crews, and a crew with no or an unknown process, keep the per-agent rule. A path
+that no task delivers and no existing file holds is refused in every mode. The refusal names `agents[i] ('key'): its
+goal|backstory names '<path>'`. `orkeon forge reopen` of a crew promoted before this rule does not fail on it: the crew
+opens, and the next validation (the Blueprint stage, a `blueprint_submit`, a verdict edit) enforces it.
+
+**What to do**: for a task, list the task that writes the file among the dependencies of the task that reads it. For an
+agent, remove the path from its goal or backstory, give the agent the task that writes it, or a dependency on that task.
 
 ### Fixed
 
@@ -130,6 +139,12 @@ the dependencies of the task that reads it.
   largest first), and the plan prompt adds the reading rules (search with `grep` first, then read by range) and a
   `maxIterations` of at least 30 for an agent that reads it. The hand-off rule that refuses a plan whose task reads a path
   it does not write or depend on is a breaking change, filed under Changed.
+- A task resumed from its checkpoint replays its `RetryCount`, typed or not, and reports the attempt that ended it: the
+  replay sets the run's attempt to `RetryCount + 1`, so `task.completed` says `attempt` 3 for a task that took three
+  attempts, where it said 1 (untyped, typed and decision replays alike). A checkpoint written before this change holds no
+  `retryCount` and replays `0`. A peer takeover in Autonomous mode whose task fails is now reported as a failure: the
+  channel answers the peer's error (else `the peer failed`), the delegating agent takes its `[DELEGATION FAILED]` path and
+  the task's snapshot reads `Success = false`; it read as a success with an empty answer before (#388).
 
 ## [1.1.0] - 2026-11-15
 
