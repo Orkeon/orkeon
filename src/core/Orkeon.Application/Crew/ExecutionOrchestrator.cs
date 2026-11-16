@@ -393,20 +393,6 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private static partial void LogDeliverableProbeFailed(ILogger logger, Exception exception, string taskName, string path);
 
     /// <summary>
-    /// The name a log gives a task: its key, else the start of its description - the rule the
-    /// load-time check of deliverables follows, so the operator reads the same name at load and at
-    /// run time (#392).
-    /// </summary>
-    private static string TaskNameOf(CrewTask task)
-    {
-        if (!string.IsNullOrWhiteSpace(task.Key))
-            return task.Key;
-
-        var description = task.Description.Value;
-        return description.Length <= 60 ? description : string.Concat(description.AsSpan(0, 57), "...");
-    }
-
-    /// <summary>
     /// What a <c>tool_call</c> deliverable's file was at one point of an attempt: whether it exists and,
     /// when the file system gives them, its metadata (size, last write). <see cref="Unknown"/> when it
     /// could not be read.
@@ -439,7 +425,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path.Length: > 0 } deliverable || _fileSystem is null)
             return null;
 
-        var taskName = TaskNameOf(task);
+        var taskName = DeliverableToolCheck.NameOf(task);
         try
         {
             return await ReadDeliverableFileAsync(_fileSystem, deliverable.Path, cancellationToken).ConfigureAwait(false);
@@ -484,7 +470,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             || _fileSystem is null || baseline is null || baseline.IsUnknown)
             return result;
 
-        var taskName = TaskNameOf(task);
+        var taskName = DeliverableToolCheck.NameOf(task);
         try
         {
             var after = await ReadDeliverableFileAsync(_fileSystem, deliverable.Path, cancellationToken).ConfigureAwait(false);

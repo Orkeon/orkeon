@@ -218,7 +218,11 @@ public static class DeliverableToolCheck
         return dot > slash + 1 ? path[dot..] : string.Empty;
     }
 
-    private static string NameOf(CrewTask task)
+    /// <summary>
+    /// The name a task is reported under: its key, else the start of its description. The load check
+    /// and the run-time logs share it, so the operator reads the same name at load and at run time.
+    /// </summary>
+    internal static string NameOf(CrewTask task)
     {
         if (!string.IsNullOrWhiteSpace(task.Key))
             return task.Key;
