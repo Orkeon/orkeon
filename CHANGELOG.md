@@ -9,13 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.0] - 2026-11-16
 
-A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries five
+A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries six
 changes marked **[breaking]** below, made on purpose as exceptions to the 1.x commitment of
 [the stability policy](docs/reference/stability.md). None of them removes or changes a member of the frozen surface:
 each one changes a behaviour that was wrong, and its entry gives the migration:
 
 - A RAG collection indexed with another embedding model is refused (#381).
 - `orkeon doctor` fails when `tsc` is required by `TypeCheck: Always` and missing (#387).
+- A blank model id under `Llm:ModelCapabilities` is a settings refusal (#385).
 - The forge assistant tags its crews `sequential` (#382).
 - A forge plan must list the writer of every path its tasks and agents read (#388).
 - The forge writes `source: final_message` for a deliverable its agents cannot write, and refuses a binary one (#392).
@@ -29,8 +30,8 @@ each one changes a behaviour that was wrong, and its entry gives the migration:
 - `TaskResult.EndedOnIterationCap`, `TaskResult<TOutput>.EndedOnIterationCap`, `TaskExecutionSnapshot.EndedOnIterationCap`
   and `CrewExecutionEvent.EndedOnIterationCap` (all `bool`, `false` by default, `init` properties) mark a task whose answer came from the tool-free turn after the agent
   loop's iteration cap. The task keeps `Success` and `AgentExitReason.Completed`: the flag sits beside them, it is no new
-  enum member. The `task.completed` line of `orkeon run --events` carries it as `endedOnIterationCap` (always written, the
-  last key), the forge trial's `task.completed` too, and a resumed capped task, typed or not, replays it from its checkpoint
+  enum member. The `task.completed` line of `orkeon run --events` carries it as `endedOnIterationCap` (always written, just
+  before `deliverableMissing`), the forge trial's `task.completed` too, and a resumed capped task, typed or not, replays it from its checkpoint
   (#388). The flag is set in every orchestration mode, a peer takeover in Autonomous mode (`AttemptDelegationAsync`)
   included: `AgentChannelResponse.EndedOnIterationCap` (experimental, `ORKEXP002`) carries it back from the channel. The one
   exception is a channel answered by a script's agent-command handler (`AgentCommandRegistrar`), which has no cap
@@ -52,16 +53,16 @@ each one changes a behaviour that was wrong, and its entry gives the migration:
   ship (MCP, script, plugin) is not warned about, nor is an agent whose model runs its own tools (a Microsoft Agent
   Framework agent), which counts as able to write. `DeliverableToolCheck.Check(tasks, agents, processType,
   managerAgentId)`, `DeliverableToolFinding` (with `Kind`) and `DeliverableFindingKind` (`Orkeon.Application.Crew`)
-  expose the check to a C# host, with `DeliverableToolCheck.IsBinary`, `WritersOf`, `PreferredWriterOf` (now nullable),
-  `WriterHeldFor`, `CanWrite` and `FileWriterToolNames`, and `DeliverableBaselineScope` (`Orkeon.Application.Crew.Execution`)
+  expose the check to a C# host, with `DeliverableToolCheck.IsBinary`, `WritersOf`, `PreferredWriterOf` (`string?`),
+  `WriterHeldFor`, `CanWrite`, `FileWriterToolNames` and the `FileWriteToolName` constant, and `DeliverableBaselineScope` (`Orkeon.Application.Crew.Execution`)
   holds a run's first-attempt state of each deliverable; `CrewFactoryOptions.WarnOnDeliverableTools` (default `true`) turns the load
   warning off (#392).
 
 ### Changed — a collection indexed with another embedding model is refused **[breaking]** (#381)
 
 **Before**: `orkeon rag ingest`, `rag search` and `eval rag` read and wrote a collection whatever embedding model had built
-it, so a changed model mixed the vectors of two models. **Now**: the manifest of a collection records the provider, the model
-and the dimensions, and a different current model is refused on `rag ingest` (without `--reindex`), on `rag search`, on
+it, so a changed model mixed the vectors of two models. **Now**: the provider, the model and the dimensions that the manifest of a
+collection records are compared with the current model, and a different one is refused on `rag ingest` (without `--reindex`), on `rag search`, on
 `eval rag --no-ingest -c <collection>` and on `eval rag -c <collection>` when its ingest pre-pass runs without `--reindex`:
 exit `1`, one line that names the collection, both models and `orkeon rag ingest --reindex`. A collection with no manifest,
 and `eval rag` without `-c`, are not checked. **What to do**: run `orkeon rag ingest --reindex` to rebuild the collection
@@ -77,6 +78,13 @@ other two cases `warn`; under `Always` a `tsc` found nowhere or a `TscPath` that
 `Orkeon:Scripting:Toolchain:TscPath`, `TypeCheck: off`), and the checkout bootstrap only when `orkeon` runs from a checkout.
 **What to do**: install `typescript`, point `TscPath` at it, or set `TypeCheck` to `Off` or `Validate` where a CI step runs
 `orkeon doctor` under `Always` without `tsc`.
+
+### Changed — a blank model id under `Llm:ModelCapabilities` is refused **[breaking]** (#385)
+
+**Before**: an entry of `Llm:ModelCapabilities` with a blank model id (`""`, `" "` or a key `:Vision`) was loaded as the
+capabilities of a model that no call names, so it changed nothing. **Now**: it is a settings refusal naming
+`Llm:ModelCapabilities`, whatever the entry holds: the host build refuses it, and `orkeon run`, `--validate` and
+`--list-tools` print the settings error and exit `1`. **What to do**: name the entry by the model it describes, or remove it.
 
 ### Changed — the forge assistant tags its crews `sequential` **[breaking]** (#382)
 
@@ -117,7 +125,8 @@ never wrote its file. **Now**: the forge keeps `tool_call` when every agent that
 itself (the agent the task names in a `sequential`, `parallel` or `graph` crew, every agent but the manager in a
 `hierarchical` or `consensual` crew, every agent in an `autonomous` one), and writes `source: final_message` otherwise:
 the framework saves the agent's final answer to the path. An agent's tools are its own plus the ones the task grants
-(a crew file's task-level `tools:`), as the engine counts them, and `forge reopen` reads those back. A binary deliverable (`.docx`, `.xlsx`, `.pdf`, an image…) is
+(a crew file's task-level `tools:`), as the engine counts them, and `forge reopen` reads those back; a promoted team mounts `/read` when a task's `tools:`
+grants `file_read` or `directory_read`, as when an agent holds it. A binary deliverable (`.docx`, `.xlsx`, `.pdf`, an image…) is
 never switched: a plan whose agent lacks the tool that writes its format is refused, with an error naming the task, the
 agents and the tool to give (`docx_writer`, `xlsx_writer`, `image_generation`), or a text format when no built-in tool
 writes it; `file_write` never counts for a binary file, and `forge reopen` applies this refusal too, naming the crew
@@ -157,7 +166,9 @@ its writer tool gives that agent the tool, or delivers a text format.
   over a built-in one: a row with no `Provider` applies to every provider, a row that names a provider to that provider
   only. `gemini-3.8-flash` is priced 1.50 / 7.50 per million tokens with a cache read at 0.15 (Google's rate from
   2027-01-01, kept as the conservative figure for budgets), `deepseek-flash` has a cache read at 0.006 and
-  `gemini-3.7-flash` is unchanged. Long-context price tiers are not modelled (#383).
+  `gemini-3.7-flash` is unchanged. Long-context price tiers are not modelled (#383). **What to do**: a
+  `MaxCostUsd` cap set while one of these models cost 0 now counts its calls and can stop a run 1.1.0 let finish: raise the
+  cap, or add a `CustomPricings` row for that model at 0.
 - `Orkeon:CostTracking:Enabled` `false` now does what its documentation says: every call is recorded and priced (the history,
   the report and the unpriced-model warning of the registry are unchanged), none is refused, and no budget alert and no
   "budget cannot count this model" warning is raised. `true` is unchanged (#383).
@@ -167,9 +178,6 @@ its writer tool gives that agent the tool, or delivers a text format.
   confining backend it also says `network on` or `network off` (from `Confinement.AllowNetwork`), and under bubblewrap
   `system directories are read-only`; under `Mode = None`, or unconfined inside a container, it always says `network on`
   (the unconfined shell never cuts the network) and makes no read-only claim (#384).
-- A blank model id under `Llm:ModelCapabilities` (`""`, `" "` or a key `:Vision`) is a settings refusal naming
-  `Llm:ModelCapabilities`, whatever the entry holds: the host build refuses it, and `orkeon run`, `--validate` and
-  `--list-tools` print the settings error and exit 1 (#385).
 - `orkeon doctor` no longer reports a missing `tsc` as a warning when nothing needs it (#387); the `fail` under
   `Orkeon:Scripting:Toolchain:TypeCheck` `Always` is a breaking change, filed under Changed.
 - A task that ends on its iteration cap says so (#388). The tool-free turn after the cap tells the agent that tools are no
