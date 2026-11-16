@@ -149,7 +149,7 @@ public sealed class LocalEmbeddingsModelOptOutTests : IClassFixture<LocalEmbeddi
         List<string> runArgs = ["run", "--no-build", "-c", "Release", "--project", Path.Combine(_fixture.Scratch, name, "Consumer.csproj")];
         if (dimensions)
             runArgs.AddRange(["--", "--dimensions"]);
-        return TemplatesPackTests.Run("dotnet", runArgs, Path.Combine(_fixture.Scratch, name));
+        return LineupPackFixture.Run("dotnet", runArgs, Path.Combine(_fixture.Scratch, name));
     }
 
     // Reflection keeps the program independent of the packed surface: it adds the public local embeddings registration,
@@ -245,13 +245,10 @@ public sealed class LocalEmbeddingsModelOptOutTests : IClassFixture<LocalEmbeddi
             """);
         File.WriteAllText(Path.Combine(project, "Program.cs"), program);
 
-        var (restoreExit, restoreOutput) = TemplatesPackTests.Run("dotnet",
-        [
-            "restore", csproj, "-p:NuGetAudit=false",
-            $"-p:RestoreSources={_fixture.FeedDirectory}",
-            $"-p:RestorePackagesPath={_fixture.PackagesPath}",
-        ], project);
+        var (restoreExit, restoreOutput) = _fixture.Restore(csproj, project);
         Assert.True(restoreExit == 0, $"restore of {name} failed ({restoreExit}):\n{restoreOutput}");
+        var foreign = _fixture.FindPackagesNotFromThisRun(project);
+        Assert.True(foreign.Count == 0, $"{name} restored packages this run did not pack: {string.Join(", ", foreign)}.");
 
         List<string> buildArgs = ["build", csproj, "--no-restore", "-nologo", "-c", "Release", "-v:n"];
         if (!online)
@@ -261,12 +258,15 @@ public sealed class LocalEmbeddingsModelOptOutTests : IClassFixture<LocalEmbeddi
         }
 
         buildArgs.Add($"-p:LocalEmbeddingsModelCacheDir={cache}{Path.DirectorySeparatorChar}");
-        var (buildExit, buildOutput) = TemplatesPackTests.Run("dotnet", buildArgs, project);
+        var (buildExit, buildOutput) = LineupPackFixture.Run("dotnet", buildArgs, project);
         return (buildExit, buildOutput, Path.Combine(project, "bin"));
     }
 
-    /// <summary>Packs the lineup the consumer restores from into one local feed; removes the scratch folder at the end.</summary>
-    public sealed class PackFixture : IDisposable
+    /// <summary>
+    /// Packs the lineup the consumer restores from into one local feed at the run version; removes the scratch folder and
+    /// the cache folders of the run at the end.
+    /// </summary>
+    public sealed class PackFixture : LineupPackFixture
     {
         private static readonly string[] PackagedProjects =
         [
@@ -279,74 +279,8 @@ public sealed class LocalEmbeddingsModelOptOutTests : IClassFixture<LocalEmbeddi
 
         /// <summary>Initializes the fixture: packs; failures are kept for the tests to assert on.</summary>
         public PackFixture()
+            : base("orkeon-optout-", PackagedProjects)
         {
-            var repoRoot = FindRepoRoot();
-            PackagesPath = Path.Combine(repoRoot, "packages");
-            Scratch = Path.Combine(Path.GetTempPath(), "orkeon-optout-" + Guid.NewGuid().ToString("N")[..8]);
-            FeedDirectory = Path.Combine(Scratch, "feed");
-            Directory.CreateDirectory(FeedDirectory);
-
-            var props = System.Xml.Linq.XDocument.Load(Path.Combine(repoRoot, "src", "Directory.Build.props"));
-            var prefix = props.Descendants("VersionPrefix").Single().Value;
-            var suffix = props.Descendants("VersionSuffix").SingleOrDefault()?.Value ?? "";
-            Version = suffix.Length == 0 ? prefix : $"{prefix}-{suffix}";
-
-            var configuration = AppContext.BaseDirectory.Contains($"{Path.DirectorySeparatorChar}Release{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                ? "Release" : "Debug";
-            var outputs = new List<string>();
-            foreach (var project in PackagedProjects)
-            {
-                var (exit, output) = TemplatesPackTests.Run("dotnet",
-                    ["pack", Path.Combine(repoRoot, project), "-c", configuration, "-o", FeedDirectory, "--no-restore", "-nologo"], repoRoot);
-                outputs.Add(output);
-                if (exit != 0)
-                {
-                    PackExitCode = exit;
-                    break;
-                }
-            }
-
-            PackOutput = string.Join('\n', outputs);
-        }
-
-        /// <summary>Folder holding the feed and the consumers.</summary>
-        public string Scratch { get; }
-
-        /// <summary>The local feed of packed nupkgs.</summary>
-        public string FeedDirectory { get; }
-
-        /// <summary>The repository's package cache.</summary>
-        public string PackagesPath { get; }
-
-        /// <summary>The package version, from src/Directory.Build.props.</summary>
-        public string Version { get; }
-
-        /// <summary>Exit code of the first pack that failed, else 0.</summary>
-        public int PackExitCode { get; }
-
-        /// <summary>Output of the packs.</summary>
-        public string PackOutput { get; }
-
-        /// <summary>Removes the scratch folder.</summary>
-        public void Dispose()
-        {
-            try
-            {
-                Directory.Delete(Scratch, recursive: true);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // The scratch folder is temporary: a leftover is not a failure.
-            }
-        }
-
-        private static string FindRepoRoot()
-        {
-            var dir = AppContext.BaseDirectory;
-            while (dir != null && !File.Exists(Path.Combine(dir, "Orkeon.sln")))
-                dir = Path.GetDirectoryName(dir);
-
-            return dir ?? throw new InvalidOperationException("Orkeon.sln not found above the test base directory.");
         }
     }
 }

@@ -40,8 +40,14 @@
   </ItemGroup>
 
   <Target Name="OrkeonTemplateStage" BeforeTargets="_GetPackageFiles;GenerateNuspec">
+    <!-- OrkeonTemplateStageDirectory moves the staging folder: the E2E pack tests give each run its own, since
+         every run writes its own version into the staged project files. NormalizeDirectory keeps an absolute
+         IntermediateOutputPath (Directory.Build.props roots it in obj-linux/) as it is, where a concatenation
+         staged under the project folder itself. -->
     <PropertyGroup>
-      <_OrkeonStage>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)templates/</_OrkeonStage>
+      <_OrkeonStage>$(OrkeonTemplateStageDirectory)</_OrkeonStage>
+      <_OrkeonStage Condition="'$(_OrkeonStage)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'templates'))</_OrkeonStage>
+      <_OrkeonStage>$([MSBuild]::EnsureTrailingSlash('$(_OrkeonStage)'))</_OrkeonStage>
       <_OrkeonToken>$([System.String]::Concat('$', '(OrkeonVersion)'))</_OrkeonToken>
     </PropertyGroup>
     <ItemGroup>
