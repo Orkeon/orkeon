@@ -102,13 +102,13 @@ internal sealed class TestStage : IForgeStageRunner
     public const string LastRunFileName = "last-run.json";
 
     private readonly IForgeTestBench _bench;
-    private readonly ForgeRunObserver? _observer;
+    private readonly ForgeRunObserver _observer;
 
-    /// <summary>Builds the stage over the bench seam; the optional observer supplies the capped-task count.</summary>
-    public TestStage(IForgeTestBench bench, ForgeRunObserver? observer = null)
+    /// <summary>Builds the stage over the bench seam; the observer supplies the capped-task count.</summary>
+    public TestStage(IForgeTestBench bench, ForgeRunObserver observer)
     {
         _bench = bench ?? throw new ArgumentNullException(nameof(bench));
-        _observer = observer;
+        _observer = observer ?? throw new ArgumentNullException(nameof(observer));
     }
 
     /// <inheritdoc />
@@ -118,7 +118,7 @@ internal sealed class TestStage : IForgeStageRunner
     public async Task<ForgeStageOutcome> RunAsync(
         ForgeSession session, ForgeEventWriter events, CancellationToken cancellationToken)
     {
-        _observer?.BeginTrial();
+        _observer.BeginTrial();
 
         var runNumber = session.Document.Iteration;
         var runDirectory = Path.Combine(session.Directory, RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture));
@@ -138,6 +138,10 @@ internal sealed class TestStage : IForgeStageRunner
 #pragma warning disable CA1031 // stage fault barrier: a bench crash must end the cycle as a failure, not as an unhandled exception
         catch (Exception ex)
         {
+            // The trial ends on a failure, but its closing event is still written: a consumer
+            // of the stream waits for run.finished, whatever the verdict.
+            EmitRunFinished(events, runNumber, success: false, outputPath: null, durationMs: 0, tokens: 0,
+                promptTokens: 0, completionTokens: 0, cacheHitTokens: 0, cacheMissTokens: 0, mailActions: Array.Empty<object>());
             return new ForgeStageOutcome
             {
                 Trigger = ForgeTrigger.Fail,
@@ -158,20 +162,8 @@ internal sealed class TestStage : IForgeStageRunner
 
         // W-08: the closing event carries what the trial itself cost — distinct from the
         // session-cumulative cost.updated, which folds in assistant and judge usage.
-        events.Emit("run.finished", new
-        {
-            run = runNumber,
-            success = run.Success,
-            outputPath = relativeOutput,
-            durationMs = run.DurationMs,
-            tokens = run.Tokens,
-            promptTokens = run.PromptTokens,
-            completionTokens = run.CompletionTokens,
-            cacheHitTokens = run.CacheHitTokens,
-            cacheMissTokens = run.CacheMissTokens,
-            mailActions = run.MailActions,
-            cappedTasks = _observer?.CappedTasks ?? 0,
-        });
+        EmitRunFinished(events, runNumber, run.Success, relativeOutput, run.DurationMs, run.Tokens, run.PromptTokens,
+            run.CompletionTokens, run.CacheHitTokens, run.CacheMissTokens, run.MailActions);
 
         return new ForgeStageOutcome
         {
@@ -179,6 +171,24 @@ internal sealed class TestStage : IForgeStageRunner
             Usage = TrialUsage(run),
         };
     }
+
+    private void EmitRunFinished(
+        ForgeEventWriter events, int runNumber, bool success, string? outputPath, long? durationMs, long? tokens,
+        long? promptTokens, long? completionTokens, long? cacheHitTokens, long? cacheMissTokens, object mailActions) =>
+        events.Emit("run.finished", new
+        {
+            run = runNumber,
+            success,
+            outputPath,
+            durationMs,
+            tokens,
+            promptTokens,
+            completionTokens,
+            cacheHitTokens,
+            cacheMissTokens,
+            mailActions,
+            cappedTasks = _observer.CappedTasks,
+        });
 
     /// <summary>
     /// What the trial itself cost, as the budget will charge it. A run that reported only

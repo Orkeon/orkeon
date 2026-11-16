@@ -151,7 +151,7 @@ public sealed class ForgeRunStagesTests : IDisposable
         new BlueprintStage(assistant),
         new RenderStage(),
         new ValidateStage(ForgeDocuments.KnownTools),
-        new TestStage(bench),
+        new TestStage(bench, new ForgeRunObserver()),
         new DiagnoseStage(judge),
         new VerdictStage(auto, channel, ForgeDocuments.KnownTools),
     ];

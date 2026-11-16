@@ -17,6 +17,19 @@ internal sealed class FakeFeedingTestBench(ForgeRunObserver observer, IReadOnlyL
     }
 }
 
+/// <summary>Bench that feeds the observer, then crashes with a non-cancellation exception.</summary>
+internal sealed class FakeCrashingTestBench(ForgeRunObserver observer, IReadOnlyList<TaskExecutionSnapshot> completions) : IForgeTestBench
+{
+    /// <inheritdoc />
+    public async Task<ForgeTestRun> ExecuteAsync(ForgeSession session, int runNumber, CancellationToken cancellationToken)
+    {
+        foreach (var snapshot in completions)
+            await observer.OnTaskCompletedAsync(snapshot, cancellationToken);
+
+        throw new InvalidOperationException("bench exploded");
+    }
+}
+
 /// <summary>CH-43: the <c>run.finished</c> line of the forge trial carries <c>cappedTasks</c>.</summary>
 public sealed class ForgeRunStagesCappedTasksTests : IDisposable
 {
@@ -89,6 +102,30 @@ public sealed class ForgeRunStagesCappedTasksTests : IDisposable
         var none = await RunFinishedAsync("plain", Completed("a", 1, capped: false));
         Assert.True(none.TryGetProperty("cappedTasks", out var zero));
         Assert.Equal(0, zero.GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-49")]
+    public async Task ShouldWriteRunFinished_WhenTheTrialBenchCrashes()
+    {
+        using var output = new StringWriter();
+        var session = ForgeSession.Create(_workspace, "crash");
+        var observer = new ForgeRunObserver();
+        var events = new ForgeEventWriter(output, new FakeOrkeonClock());
+        var stage = new TestStage(
+            new FakeCrashingTestBench(observer, [Completed("a", 1, capped: true), Completed("b", 1, capped: true)]),
+            observer);
+
+        var outcome = await stage.RunAsync(session, events, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ForgeTrigger.Fail, outcome.Trigger);
+        Assert.Equal("The test bench crashed: bench exploded", outcome.Detail);
+        var finished = output.ToString()
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => JsonElement.Parse(l))
+            .Single(e => e.GetProperty("kind").GetString() == "run.finished");
+        Assert.False(finished.GetProperty("success").GetBoolean());
+        Assert.Equal(2, finished.GetProperty("cappedTasks").GetInt32());
     }
 
     [Fact]

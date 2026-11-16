@@ -154,7 +154,7 @@ public sealed class ForgeFoldersTests : IDisposable
             new BlueprintStage(assistant),
             new RenderStage(),
             new ValidateStage(["file_read", "file_write"]),
-            new TestStage(bench),
+            new TestStage(bench, new ForgeRunObserver()),
             new DiagnoseStage(new FakeJudge().Approves()),
             new VerdictStage(auto: true, channel, ["file_read", "file_write"]))
             .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
