@@ -490,10 +490,12 @@ servent (voir [FSM](../orchestration/fsm.md)).
 ## Le livrable `tool_call`
 
 Avec `source: tool_call` (le défaut), l'agent écrit le fichier lui-même. Le prompt nomme toujours le
-chemin : `Deliverable: write the final result to '<path>' using the file_write tool.` quand la boîte à
-outils de l'agent, ses propres outils plus ceux de la tâche, contient `file_write`, et
+chemin : `Deliverable: write the final result to '<path>' using the <tool> tool.` quand la boîte à
+outils de l'agent, ses propres outils plus ceux de la tâche, contient un outil intégré qui écrit ce chemin,
+l'outil de son format d'abord (`docx_writer` pour un `.docx`, `file_write` pour un fichier texte ;
+[les outils qui écrivent](#livrables-vérifiés-au-chargement)), et
 `Deliverable: write the final result to '<path>'.` sinon : un agent ne reçoit jamais la consigne d'appeler
-un outil qu'il n'a pas. Avec `source: final_message`, le prompt dit que le framework écrit la réponse
+un outil qu'il n'a pas, ni `file_write` pour un fichier binaire. Avec `source: final_message`, le prompt dit que le framework écrit la réponse
 finale telle quelle au chemin : l'agent donne le contenu complet et n'écrit pas le fichier lui-même ;
 `source: structured_output` n'ajoute aucune ligne.
 
@@ -522,7 +524,8 @@ reprise ne donne aucun chemin aux tâches suivantes, et une tâche `tool_call` s
 (un fichier écrit par le framework, avec `final_message` ou `structured_output`, perd seulement son chemin).
 
 Une tâche de décision n'exécute aucun agent et n'écrit aucun fichier : un `deliverable:` déclaré sur
-elle n'est jamais écrit, et le chargement journalise un avertissement qui nomme la tâche et le chemin.
+elle n'est jamais écrit, et le contrôle du chargement le signale une fois, quelle que soit la source, dans
+une crew YAML, un `crew.ork.ts` comme sous `--validate` ([livrables vérifiés au chargement](#livrables-vérifiés-au-chargement)).
 
 Quand la sortie d'une tâche précédente est coupée pour tenir dans le prompt d'une tâche suivante et que le
 fichier de son livrable est connu pour exister (écrit par le framework pour `final_message` et
@@ -555,21 +558,31 @@ même. `orkeon run --validate` l'imprime en une ligne `WARNING:` par tâche
   `consensual` ; chaque agent dans une crew `autonomous`. L'avertissement ne vient que si **aucun** d'eux
   ne peut écrire le fichier.
 - **Un agent peut écrire le fichier** quand sa ceinture d'outils, ses outils plus ceux de la tâche, contient
-  un outil intégré qui écrit ce chemin : `file_write` pour tout chemin, `docx_writer` pour un `.docx`,
-  `xlsx_writer` pour un `.xlsx`, `image_generation` pour un `.png`, `.jpg`, `.jpeg` ou `.webp`, `firefox`
-  (sa capture d'écran) pour un `.png`. Les éditeurs (`edit_file`, `edit_batch`, `structural_rewrite`)
+  un outil intégré qui écrit ce chemin : `docx_writer` pour un `.docx`, `xlsx_writer` pour un `.xlsx`,
+  `image_generation` pour un `.png`, `.jpg`, `.jpeg` ou `.webp`, `firefox` (sa capture d'écran) pour un
+  `.png`, et `file_write` pour tout fichier texte, jamais un fichier binaire. Un chemin est binaire quand
+  son extension, quelle que soit sa casse, nomme un document bureautique (`.docx`, `.xlsx`, `.pptx`,
+  `.odt`, `.pdf`, `.epub`, `.rtf` et leurs voisins), une image, une archive, de l'audio ou de la vidéo, une
+  base ou un fichier de données (`.sqlite`, `.db`, `.parquet`), une police ou un exécutable : le texte de
+  la réponse finale ne peut pas en être un, si bien que seul un outil qui écrit son format le livre. Les éditeurs (`edit_file`, `edit_batch`, `structural_rewrite`)
   modifient un fichier existant, les téléchargeurs (`drive_download`, `email_save_attachment`) nomment le
   fichier eux-mêmes, et `shell_command` ne nomme aucun chemin : aucun ne compte.
 - **Aucun avertissement** quand la ceinture contient un outil qu'Orkeon ne livre pas (celui d'un serveur
   MCP, d'un script, d'un plugin) : le contrôle ne peut pas savoir ce qu'il écrit. Ni pour un agent dont le
   modèle exécute ses propres outils.
+- **Une tâche de décision** qui déclare un `deliverable:` reçoit son propre constat, quelle que soit la
+  source : une décision n'exécute aucun agent et n'écrit aucun fichier, le remède est donc de retirer le
+  bloc ou de le déplacer vers une tâche qui exécute un agent. Le contrôle des outils qui écrivent la saute.
 - **Les chemins qui chargent sans le contrôle** sont listés dans les [limitations](../reference/limitations.md) :
-  une crew construite en C# avec `CrewBuilder`, et un `.ork.ts` procédural sous `--validate`, qui n'est pas
-  chargé comme une crew.
+  une crew construite en C# avec `CrewBuilder`, un `.ork.ts` procédural sous `--validate`, qui n'est pas
+  chargé comme une crew, et un agent dont le modèle exécute ses propres outils (un agent Microsoft Agent
+  Framework), qui compte comme capable d'écrire.
 
 Un hôte C# lance le même contrôle avec `DeliverableToolCheck.Check(tasks, agents, processType,
 managerAgentId)` (`Orkeon.Application.Crew`), qui renvoie un `DeliverableToolFinding` par tâche, dont le
-`Message` est le texte de l'avertissement. `CrewFactoryOptions.WarnOnDeliverableTools` (`true` par défaut)
+`Message` est le texte de l'avertissement et le `Kind` (`DeliverableFindingKind.NoWriter` ou `DecisionTask`)
+ce qu'il signale. `DeliverableToolCheck.IsBinary(path)`, `WritersOf(path)`, `PreferredWriterOf(path)` et
+`WriterHeldFor(toolNames, path)` donnent la règle que partagent le contrôle, le prompt et la forge. `CrewFactoryOptions.WarnOnDeliverableTools` (`true` par défaut)
 coupe l'avertissement du chargement ; `--validate` le coupe, pour imprimer chaque constat une seule fois.
 
 ## Budget autonome

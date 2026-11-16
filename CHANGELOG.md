@@ -33,12 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tool host write it (#388).
 - Loading a crew, YAML or `.ork.ts`, checks its `tool_call` deliverables: a task whose deliverable no agent able to run
   it can write (the agent it names in a `sequential`, `parallel` or `graph` crew, every worker of a coordinated crew, with
-  a built-in tool that writes that path: `file_write`, or `docx_writer`, `xlsx_writer`, `image_generation`, `firefox` for
-  their formats) logs a warning, and `orkeon run --validate` prints it once as a `WARNING:` line on stderr with the exit
-  code unchanged; nothing is refused. A toolbelt holding a tool Orkeon does not ship (MCP, script, plugin) is not warned
-  about. `DeliverableToolCheck.Check(tasks, agents, processType, managerAgentId)` and `DeliverableToolFinding`
-  (`Orkeon.Application.Crew`) expose the check to a C# host, with `DeliverableToolCheck.WritersOf`, `PreferredWriterOf`,
-  `CanWrite` and `FileWriterToolNames`; `CrewFactoryOptions.WarnOnDeliverableTools` (default `true`) turns the load
+  a built-in tool that writes that path: `docx_writer`, `xlsx_writer`, `image_generation`, `firefox` for their formats,
+  or `file_write` for a text file, never a binary one) logs a warning, and `orkeon run --validate` prints it once as a
+  `WARNING:` line on stderr with the exit code unchanged; nothing is refused. A toolbelt holding a tool Orkeon does not
+  ship (MCP, script, plugin) is not warned about, nor is an agent whose model runs its own tools (a Microsoft Agent
+  Framework agent), which counts as able to write. `DeliverableToolCheck.Check(tasks, agents, processType,
+  managerAgentId)`, `DeliverableToolFinding` (with `Kind`) and `DeliverableFindingKind` (`Orkeon.Application.Crew`)
+  expose the check to a C# host, with `DeliverableToolCheck.IsBinary`, `WritersOf`, `PreferredWriterOf` (now nullable),
+  `WriterHeldFor`, `CanWrite` and `FileWriterToolNames`, and `DeliverableBaselineScope` (`Orkeon.Application.Crew.Execution`)
+  holds a run's first-attempt state of each deliverable; `CrewFactoryOptions.WarnOnDeliverableTools` (default `true`) turns the load
   warning off (#392).
 
 ### Changed — a collection indexed with another embedding model is refused **[breaking]** (#381)
@@ -103,7 +106,8 @@ itself (the agent the task names in a `sequential`, `parallel` or `graph` crew, 
 the framework saves the agent's final answer to the path. A binary deliverable (`.docx`, `.xlsx`, `.pdf`, an image…) is
 never switched: a plan whose agent lacks the tool that writes its format is refused, with an error naming the task, the
 agents and the tool to give (`docx_writer`, `xlsx_writer`, `image_generation`), or a text format when no built-in tool
-writes it. The YAML crew writes `source: final_message` only; `crew.ork.ts` always writes the source
+writes it; `file_write` never counts for a binary file, and `forge reopen` applies this refusal too, naming the crew
+file to fix. The YAML crew writes `source: final_message` only; `crew.ork.ts` always writes the source
 (`source: "tool_call"` or `"final_message"`, which the typings require). `forge reopen` derives the source again from the
 plan, so a source edited by hand in the crew files is replaced. **What to do**: a forged team regenerated after this
 change may differ from the one before by its `source` lines; a plan that delivered a binary file from an agent without
@@ -182,11 +186,13 @@ its writer tool gives that agent the tool, or delivers a text format.
   staged under `obj-linux/` now, or in the folder `OrkeonTemplateStageDirectory` names; the E2E pack tests give each run
   its own (#390).
 - An agent without `file_write` is no longer told to write its `tool_call` deliverable with it: the prompt always names
-  the path, and the tool only when the effective toolbelt (the agent's tools plus the task's) holds `file_write`. A
+  the path, and the tool only when the effective toolbelt (the agent's tools plus the task's) holds a built-in tool that
+  writes that path, the tool of its format first (`docx_writer` for a `.docx`), never `file_write` for a binary file. A
   `final_message` deliverable is announced too: the framework writes the final answer as-is to the path, so the agent
   gives the complete content and does not write the file itself (#392).
-- A task that succeeds with a `tool_call` deliverable whose file was not written during its attempt (absent when it
-  ends, or unchanged since it started) is no longer silent: it keeps
+- A task that succeeds with a `tool_call` deliverable whose file it did not write during the run (absent when an attempt
+  ends, or unchanged since the task's first attempt of the run started, so a retry or a revision that keeps the file an
+  earlier attempt wrote is not flagged) is no longer silent: it keeps
   `Success`, is flagged by `TaskResult.DeliverableMissing`, `TaskResult<TOutput>.DeliverableMissing`,
   `TaskExecutionSnapshot.DeliverableMissing`, `CrewExecutionEvent.DeliverableMissing` and
   `AgentChannelResponse.DeliverableMissing` (experimental, `ORKEXP002`) (all `bool`, `false` by default, `init`
@@ -196,11 +202,14 @@ its writer tool gives that agent the tool, or delivers a text format.
   a successful task is flagged (a hierarchical task the manager rejected to the end is not), and a consensual task judges
   the file on the whole vote. The `task.completed` line carries `deliverableMissing` (always written, the last key), in
   every orchestration mode and in the forge trial; a resumed task replays it from its checkpoint (one written before this
-  change replays `false`) and reports it when the file is gone at resume
-  (`CheckpointingAgentExecutionService.FileSystem`, `init`). The `run.finished` line carries `missingDeliverables`,
+  change replays `false`) and reports it when the file of a `tool_call` deliverable is gone at resume, while a
+  `final_message` or `structured_output` file gone at resume only loses its path
+  (`CheckpointingAgentExecutionService.FileSystem`, `init`). The failed output of a hierarchical task the manager
+  rejected to the end names no deliverable path to the tasks after it. The `run.finished` line carries `missingDeliverables`,
   counted like `cappedTasks` on each task's last attempt when it succeeded (always written, `0` when none): `orkeon run`,
   the forge trial (per trial), `orkeon-host` and the MCP crew tool host write it. A decision task that declares a
-  `deliverable:` logs a warning at load: a decision runs no agent and never writes it (#392).
+  `deliverable:` is reported once at load, in a YAML crew, a `crew.ork.ts` and under `orkeon run --validate` alike, by
+  its own finding (`DeliverableFindingKind.DecisionTask`): a decision runs no agent and never writes it (#392).
 - A previous task output cut to fit a later prompt now names the file of its deliverable when that file is known to exist:
   `[full result in '<path>': read it with file_read]` after the cut text, and `[result of task <id> in '<path>': read it
   with file_read]` for an output left out entirely, both only to an agent whose toolbelt holds `file_read`.

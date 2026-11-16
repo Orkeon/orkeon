@@ -474,9 +474,11 @@ Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../o
 ## The `tool_call` deliverable
 
 With `source: tool_call` (the default) the agent writes the file itself. The prompt always names the path:
-`Deliverable: write the final result to '<path>' using the file_write tool.` when the agent's toolbelt, its
-own tools plus the task's, holds `file_write`, and `Deliverable: write the final result to '<path>'.`
-otherwise, so an agent is never told to call a tool it does not have. With `source: final_message` the
+`Deliverable: write the final result to '<path>' using the <tool> tool.` when the agent's toolbelt, its
+own tools plus the task's, holds a built-in tool that writes that path, the tool of its format first
+(`docx_writer` for a `.docx`, `file_write` for a text file; [the writers](#deliverables-checked-at-load)), and
+`Deliverable: write the final result to '<path>'.` otherwise, so an agent is never told to call a tool it
+does not have, nor `file_write` for a binary file. With `source: final_message` the
 prompt says the framework writes the final answer as-is to the path, so the agent gives the complete
 content and does not write the file itself; `source: structured_output` adds no line.
 
@@ -503,7 +505,8 @@ tasks after it, and a `tool_call` task reports its deliverable missing (a file t
 `final_message` or `structured_output`, only loses its path).
 
 A decision task runs no agent and writes no file: a `deliverable:` declared on one is never written, and
-the load logs a warning naming the task and the path.
+the load check reports it once, whatever the source, in a YAML crew, a `crew.ork.ts` and under `--validate`
+alike ([deliverables checked at load](#deliverables-checked-at-load)).
 
 When the output of a previous task is cut to fit the prompt of a later one and the file of its
 deliverable is known to exist (written by the framework for `final_message` and `structured_output`,
@@ -533,20 +536,29 @@ file that was not written all the same ([the `tool_call` deliverable](#the-tool_
   every agent but the `managerAgent` in a `hierarchical` or `consensual` crew; every agent in an
   `autonomous` crew. The warning comes only when **none** of them can write the file.
 - **An agent can write the file** when its toolbelt, its own tools plus the task's, holds a built-in tool
-  that writes that path: `file_write` for any path, `docx_writer` for a `.docx`, `xlsx_writer` for a
-  `.xlsx`, `image_generation` for a `.png`, `.jpg`, `.jpeg` or `.webp`, `firefox` (its screenshot) for a
-  `.png`. The editors (`edit_file`, `edit_batch`, `structural_rewrite`) change a file that exists, the
+  that writes that path: `docx_writer` for a `.docx`, `xlsx_writer` for a `.xlsx`, `image_generation` for
+  a `.png`, `.jpg`, `.jpeg` or `.webp`, `firefox` (its screenshot) for a `.png`, and `file_write` for any
+  text file, never a binary one. A path is binary when its extension, whatever its case, names an office
+  document (`.docx`, `.xlsx`, `.pptx`, `.odt`, `.pdf`, `.epub`, `.rtf` and their kin), an image, an
+  archive, audio or video, a database or data file (`.sqlite`, `.db`, `.parquet`), a font or an
+  executable: the final answer's text cannot be one, so no source but a writer of its format delivers it. The editors (`edit_file`, `edit_batch`, `structural_rewrite`) change a file that exists, the
   downloaders (`drive_download`, `email_save_attachment`) name the file themselves, and `shell_command`
   names no path: none of them counts.
 - **No warning** when the toolbelt holds a tool Orkeon does not ship (an MCP server's, a script's, a
   plugin's): the check cannot know what it writes. Nor for an agent whose model runs its own tools.
+- **A decision task** that declares a `deliverable:` gets its own finding, whatever the source: a decision
+  runs no agent and writes no file, so the remedy is to remove the block or move it to a task that runs an
+  agent. The writer check skips it.
 - **Paths that load without the check** are listed in the [limitations](../reference/limitations.md):
-  a crew built in C# with `CrewBuilder`, and a procedural `.ork.ts` under `--validate`, which is not loaded
-  as a crew.
+  a crew built in C# with `CrewBuilder`, a procedural `.ork.ts` under `--validate`, which is not loaded
+  as a crew, and an agent whose model runs its own tools (a Microsoft Agent Framework agent), which counts
+  as able to write.
 
 A C# host runs the same check with `DeliverableToolCheck.Check(tasks, agents, processType,
 managerAgentId)` (`Orkeon.Application.Crew`), which returns one `DeliverableToolFinding` per task, its
-`Message` the text of the warning. `CrewFactoryOptions.WarnOnDeliverableTools` (default `true`) turns the
+`Message` the text of the warning and its `Kind` (`DeliverableFindingKind.NoWriter` or `DecisionTask`) what
+it reports. `DeliverableToolCheck.IsBinary(path)`, `WritersOf(path)`, `PreferredWriterOf(path)` and
+`WriterHeldFor(toolNames, path)` give the rule the check, the prompt and the forge share. `CrewFactoryOptions.WarnOnDeliverableTools` (default `true`) turns the
 load warning off; `--validate` does, to print each finding once.
 
 ## Autonomous budget
