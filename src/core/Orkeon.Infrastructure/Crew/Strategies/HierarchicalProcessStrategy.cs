@@ -515,11 +515,9 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             CompletedAt: appOutput.CompletedAt,
             Success: false,
             ExecutionTime: appOutput.ExecutionTime,
-            ToolsUsed: appOutput.ToolsUsed)
-        {
-            DeliverablePath = appOutput.DeliverablePath,
-        };
+            ToolsUsed: appOutput.ToolsUsed);
 
+        // No DeliverablePath: a later task reading the earlier outputs is not pointed to a file the manager rejected (#392).
         return (updatedDomain, updatedApp);
     }
 

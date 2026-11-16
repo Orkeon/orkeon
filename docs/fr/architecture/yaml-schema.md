@@ -512,7 +512,8 @@ d'écriture se rabat sur la seule existence. La vérification est au mieux : un 
 peut pas répondre laisse le drapeau à `false`, une tâche exécutée sans système de fichiers n'est pas
 vérifiée, et une annulation pendant la vérification annule la tâche comme toute autre. Seule une tâche
 réussie reçoit le drapeau : une tâche en échec, y compris une tâche hiérarchique que le manager a rejetée
-jusqu'au bout, jamais. Dans un vote consensuel, le fichier est jugé sur tout le vote : un candidat qui l'a
+jusqu'au bout, jamais, et la sortie en échec d'une telle tâche hiérarchique ne nomme aucun chemin de
+livrable aux tâches suivantes. Dans un vote consensuel, le fichier est jugé sur tout le vote : un candidat qui l'a
 écrit compte, quelle que soit la réponse retenue.
 
 Une tâche reprise rejoue le drapeau et le chemin depuis son checkpoint (un checkpoint écrit avant eux

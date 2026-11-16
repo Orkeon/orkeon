@@ -114,6 +114,40 @@ public sealed class HierarchicalCapFlagTests : IDisposable
         Assert.False(snapshot.DeliverableMissing);
     }
 
+    // VX-10: a deliverable the manager rejected to the end is not pointed to: a later task that reads the earlier outputs
+    // gets the failed answer without a path to the rejected file.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldNotHandTheRejectedDeliverableToALaterTask()
+    {
+        var lead = _fixture.Agent("Lead", allowDelegation: true);
+        var worker = _fixture.Agent("Worker");
+        var draft = _fixture.Task("draft");
+        var later = _fixture.Task("later");
+        IReadOnlyList<Orkeon.Application.Execution.TaskOutput>? seenByLater = null;
+        _fixture.Execution.SetExecuteFunc((_, task, context, _) =>
+        {
+            if (task.TaskId == later.Id)
+            {
+                seenByLater = context.PreviousOutputs;
+                return new TaskResult(true, "later out", null, [], TimeSpan.Zero);
+            }
+
+            return new TaskResult(true, "draft", null, [], TimeSpan.Zero) { DeliverablePath = "/output/draft.md" };
+        });
+        _manager.SetAssignResult(new TaskAssignment(draft.Id, worker.Id, "the only worker", DateTime.UtcNow));
+        _manager.SetReviewResult(false);
+        var crew = LifecycleFixture.Build(
+            new CrewBuilder().Goal("Pipeline").Hierarchical(lead), [lead, worker], [draft, later]);
+
+        await Strategy().ExecuteHierarchicalAsync(crew, lead.Id, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(seenByLater);
+        var rejected = Assert.Single(seenByLater, output => output.TaskId == draft.Id.Value.ToString());
+        Assert.False(rejected.Success);
+        Assert.Null(rejected.DeliverablePath);
+    }
+
     [Fact]
     [Trait("BR", "CH-392")]
     public async System.Threading.Tasks.Task ShouldHandTheRevisedDeliverableToTheNextTask()

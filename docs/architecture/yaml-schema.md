@@ -493,7 +493,8 @@ the agent and the path, `AUTO_SUMMARY.md` shows `⚠ completed without writing i
 falls back on existence alone. The check is best-effort: a file system that cannot answer leaves the flag
 `false`, a task run without a file system is not checked, and a cancellation during the check cancels the
 task as any other. Only a task that succeeded is flagged: a failed task, a hierarchical task the manager
-rejected to the end included, never is. In a consensual vote the file is judged on the whole vote: a
+rejected to the end included, never is, and the failed output of such a hierarchical task names no
+deliverable path to the tasks after it. In a consensual vote the file is judged on the whole vote: a
 candidate that wrote it counts, whichever answer the vote retains.
 
 A resumed task replays the flag and the path from its checkpoint (a checkpoint written before them replays
