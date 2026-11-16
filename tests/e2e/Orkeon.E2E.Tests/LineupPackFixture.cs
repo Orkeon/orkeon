@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Orkeon.E2E.Tests;
@@ -11,8 +12,10 @@ namespace Orkeon.E2E.Tests;
 /// product version of <c>src/Directory.Build.props</c>, a consumer restored the copy an earlier commit had extracted
 /// there, and a change to a packaged <c>.targets</c> or to the package content went unseen until the next version bump.
 /// The run version is the product version with the prerelease identifier <c>e2e-&lt;8 hex&gt;</c> appended; dispose
-/// removes the <c>orkeon.*/&lt;run version&gt;</c> folders the restores extracted, and nothing else of the cache:
-/// third-party packages stay shared and are never downloaded again. Every restore source is the local feed alone.
+/// removes the <c>orkeon*/&lt;run version&gt;</c> folders the restores extracted, and start-up removes those a killed
+/// run left behind once they are old enough; nothing else of the cache is touched: third-party packages stay shared
+/// and are never downloaded again. Every restore source is the local feed alone. The nuspecs and the staged templates
+/// of the packs go to the scratch folder, not to the checkout's <c>obj</c>.
 /// </summary>
 public abstract class LineupPackFixture : IDisposable
 {
@@ -20,8 +23,6 @@ public abstract class LineupPackFixture : IDisposable
     private static readonly TimeSpan LeftoverAge = TimeSpan.FromHours(12);
 
     private static readonly Regex RunVersionFolder = new(@"(^|[.-])e2e-[0-9a-f]{8}$", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
-
-    private readonly HashSet<string> _existingIdFolders;
 
     /// <summary>Packs <paramref name="packagedProjects"/> (paths from the repository root) in order into the feed.</summary>
     protected LineupPackFixture(string scratchPrefix, IReadOnlyList<string> packagedProjects)
@@ -37,14 +38,10 @@ public abstract class LineupPackFixture : IDisposable
         var prefix = props.Descendants("VersionPrefix").Single().Value;
         // A final version carries no VersionSuffix element at all.
         var suffix = props.Descendants("VersionSuffix").SingleOrDefault()?.Value ?? "";
-        ProductVersion = suffix.Length == 0 ? prefix : $"{prefix}-{suffix}";
         // One alphanumeric identifier: a hex run id made of digits alone may start with 0, which SemVer refuses
         // in a numeric identifier.
         Version = suffix.Length == 0 ? $"{prefix}-e2e-{runId}" : $"{prefix}-{suffix}.e2e-{runId}";
 
-        _existingIdFolders = Directory.Exists(PackagesPath)
-            ? Directory.GetDirectories(PackagesPath).Select(Path.GetFileName).OfType<string>().ToHashSet(StringComparer.Ordinal)
-            : [];
         RemoveLeftovers();
 
         var configuration = AppContext.BaseDirectory.Contains($"{Path.DirectorySeparatorChar}Release{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
@@ -53,9 +50,16 @@ public abstract class LineupPackFixture : IDisposable
         foreach (var project in packagedProjects)
         {
             // PackageVersion, not Version: the assemblies are not rebuilt, and the global property reaches every project
-            // reference, so the nuspec dependencies between lineup packages carry the run version too.
+            // reference, so the nuspec dependencies between lineup packages carry the run version too. The nuspec of a
+            // run and the staged templates (which hold the run version) stay in the scratch folder: a concurrent pass
+            // writes its own.
             var (exit, output) = Run("dotnet",
-                ["pack", Path.Combine(RepoRoot, project), "-c", configuration, "-o", FeedDirectory, "--no-restore", "-nologo", $"-p:PackageVersion={Version}"],
+                [
+                    "pack", Path.Combine(RepoRoot, project), "-c", configuration, "-o", FeedDirectory, "--no-restore", "-nologo",
+                    $"-p:PackageVersion={Version}",
+                    $"-p:NuspecOutputPath={Path.Combine(Scratch, "nuspec")}{Path.DirectorySeparatorChar}",
+                    $"-p:OrkeonTemplateStageDirectory={Path.Combine(Scratch, "template-stage")}{Path.DirectorySeparatorChar}",
+                ],
                 RepoRoot);
             outputs.Add(output);
             if (exit != 0)
@@ -80,10 +84,10 @@ public abstract class LineupPackFixture : IDisposable
     /// <summary>The repository's package cache: every restore reads and fills it.</summary>
     public string PackagesPath { get; }
 
-    /// <summary>The product version, from src/Directory.Build.props.</summary>
-    public string ProductVersion { get; }
-
-    /// <summary>The version every package of this run is packed at: <see cref="ProductVersion"/> and a run identifier.</summary>
+    /// <summary>
+    /// The version every package of this run is packed at: the product version of src/Directory.Build.props followed by
+    /// the run identifier <c>e2e-&lt;8 hex&gt;</c>.
+    /// </summary>
     public string Version { get; }
 
     /// <summary>Exit code of the first pack that failed, else 0.</summary>
@@ -102,33 +106,56 @@ public abstract class LineupPackFixture : IDisposable
         ], workingDirectory);
 
     /// <summary>
-    /// The packages of the feed whose copy extracted in the package cache is not the nupkg this run packed, compared by
-    /// the SHA-512 NuGet records at extraction (<c>&lt;id&gt;.&lt;version&gt;.nupkg.sha512</c>). A package no restore
-    /// extracted is not listed.
+    /// The Orkeon packages the restore of the project in <paramref name="projectDirectory"/> resolved that are not the
+    /// nupkgs this run packed: an Orkeon library of its <c>project.assets.json</c> at another version than
+    /// <see cref="Version"/> (a copy an earlier run extracted into the cache), absent from the feed, or whose SHA-512
+    /// differs from the nupkg of the feed. Empty when every Orkeon package came from this run; a project with no assets
+    /// file yields one entry saying so.
     /// </summary>
-    public IReadOnlyList<string> FindStaleExtractions()
+    public IReadOnlyList<string> FindPackagesNotFromThisRun(string projectDirectory)
     {
-        var stale = new List<string>();
-        foreach (var nupkg in Directory.GetFiles(FeedDirectory, $"*.{Version}.nupkg"))
+        var assets = Directory.GetFiles(projectDirectory, "project.assets.json", SearchOption.AllDirectories).FirstOrDefault();
+        if (assets is null)
+            return [$"no project.assets.json under {projectDirectory}"];
+
+        using var document = JsonDocument.Parse(File.ReadAllText(assets));
+        var foreign = new List<string>();
+        foreach (var library in document.RootElement.GetProperty("libraries").EnumerateObject())
         {
-            var name = Path.GetFileName(nupkg);
-            var id = name[..^$".{Version}.nupkg".Length].ToLowerInvariant();
-            var version = Version.ToLowerInvariant();
-            var folder = Path.Combine(PackagesPath, id, version);
-            if (!Directory.Exists(folder))
+            var slash = library.Name.IndexOf('/', StringComparison.Ordinal);
+            var id = library.Name[..slash];
+            var version = library.Name[(slash + 1)..];
+            if (!id.StartsWith("Orkeon", StringComparison.OrdinalIgnoreCase)
+                || !library.Value.TryGetProperty("type", out var type) || type.GetString() != "package")
                 continue;
 
-            var recorded = Path.Combine(folder, $"{id}.{version}.nupkg.sha512");
+            var nupkg = Path.Combine(FeedDirectory, $"{id}.{Version}.nupkg");
+            if (!string.Equals(version, Version, StringComparison.OrdinalIgnoreCase))
+            {
+                foreign.Add($"{library.Name} (not the run version {Version})");
+                continue;
+            }
+
+            if (!File.Exists(nupkg))
+            {
+                foreign.Add($"{library.Name} (not packed by this run)");
+                continue;
+            }
+
             using var stream = File.OpenRead(nupkg);
             var packed = Convert.ToBase64String(SHA512.HashData(stream));
-            if (!File.Exists(recorded) || File.ReadAllText(recorded).Trim() != packed)
-                stale.Add($"{id}/{version}");
+            var restored = library.Value.TryGetProperty("sha512", out var sha) ? sha.GetString() : null;
+            if (restored != packed)
+                foreign.Add($"{library.Name} (SHA-512 differs from the nupkg of the feed)");
         }
 
-        return stale;
+        return foreign;
     }
 
-    /// <summary>Removes the cache folders this run's restores extracted, then the scratch folder.</summary>
+    /// <summary>
+    /// Removes the cache folders this run's restores extracted, then the scratch folder. An id folder is kept, even
+    /// empty: a concurrent pass may be extracting into it.
+    /// </summary>
     public void Dispose()
     {
         Dispose(true);
@@ -144,7 +171,7 @@ public abstract class LineupPackFixture : IDisposable
         if (Directory.Exists(PackagesPath))
         {
             foreach (var idFolder in Directory.GetDirectories(PackagesPath, "orkeon*"))
-                RemoveFolder(Path.Combine(idFolder, Version.ToLowerInvariant()), Path.GetFileName(idFolder));
+                TryDelete(Path.Combine(idFolder, Version.ToLowerInvariant()));
         }
 
         TryDelete(Scratch);
@@ -195,18 +222,6 @@ public abstract class LineupPackFixture : IDisposable
                     TryDelete(versionFolder);
             }
         }
-    }
-
-    // The id folder goes too when this run created it and nothing else is left in it.
-    private void RemoveFolder(string versionFolder, string? id)
-    {
-        if (!Directory.Exists(versionFolder))
-            return;
-
-        TryDelete(versionFolder);
-        var idFolder = Path.GetDirectoryName(versionFolder)!;
-        if (id is not null && !_existingIdFolders.Contains(id) && Directory.Exists(idFolder) && !Directory.EnumerateFileSystemEntries(idFolder).Any())
-            TryDelete(idFolder);
     }
 
     private static void TryDelete(string folder)

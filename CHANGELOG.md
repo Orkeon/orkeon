@@ -149,9 +149,14 @@ agent, remove the path from its goal or backstory, give the agent the task that 
   have just packed. They packed at the product version, so NuGet took the copy an earlier commit had extracted into
   `<repo>/packages` under that version, and a change to a packaged `.targets` or to the package content went unseen until
   the next version bump. One shared fixture, `LineupPackFixture`, now packs under a run version (the product version plus
-  `e2e-<8 hex>`), checks each restore against the SHA-512 of the nupkg it packed, and on dispose removes only the
-  `orkeon.*/<run version>` folders the run extracted. Third-party packages stay in the shared cache and are not downloaded
-  again (#390).
+  `e2e-<8 hex>`) and fails a restore whose `project.assets.json` holds an Orkeon package at another version or with
+  another SHA-512 than the nupkg it packed. It removes the `orkeon*/<run version>` folders its restores extracted when it
+  is disposed, and those a killed run left behind, once more than 12 hours old, when it starts; no other folder of the
+  cache is touched, and third-party packages are not downloaded again (#390).
+- Packing `Orkeon.Templates` staged its templates under the project folder itself
+  (`src/packaging/Orkeon.Templates/home/...`): the absolute intermediate path was appended to the project path. They are
+  staged under `obj-linux/` now, or in the folder `OrkeonTemplateStageDirectory` names; the E2E pack tests give each run
+  its own (#390).
 
 ## [1.1.0] - 2026-11-15
 

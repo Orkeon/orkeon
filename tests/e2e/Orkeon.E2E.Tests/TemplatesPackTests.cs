@@ -65,8 +65,8 @@ public sealed class TemplatesPackTests : IClassFixture<TemplatesPackTests.Templa
 
         var (restoreExit, restoreOutput) = _fixture.Restore(csproj, project);
         Assert.True(restoreExit == 0, $"restore of {shortName} failed ({restoreExit}):\n{restoreOutput}");
-        var stale = _fixture.FindStaleExtractions();
-        Assert.True(stale.Count == 0, $"{shortName} restored packages this run did not pack: {string.Join(", ", stale)}.");
+        var foreign = _fixture.FindPackagesNotFromThisRun(project);
+        Assert.True(foreign.Count == 0, $"{shortName} restored packages this run did not pack: {string.Join(", ", foreign)}.");
 
         var (buildExit, buildOutput) = LineupPackFixture.Run("dotnet", ["build", csproj, "--no-restore", "-warnaserror", "-nologo"], project);
         Assert.True(buildExit == 0, $"build of {shortName} failed ({buildExit}):\n{buildOutput}");

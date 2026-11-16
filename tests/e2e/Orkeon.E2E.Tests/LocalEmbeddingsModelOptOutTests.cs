@@ -247,8 +247,8 @@ public sealed class LocalEmbeddingsModelOptOutTests : IClassFixture<LocalEmbeddi
 
         var (restoreExit, restoreOutput) = _fixture.Restore(csproj, project);
         Assert.True(restoreExit == 0, $"restore of {name} failed ({restoreExit}):\n{restoreOutput}");
-        var stale = _fixture.FindStaleExtractions();
-        Assert.True(stale.Count == 0, $"{name} restored packages this run did not pack: {string.Join(", ", stale)}.");
+        var foreign = _fixture.FindPackagesNotFromThisRun(project);
+        Assert.True(foreign.Count == 0, $"{name} restored packages this run did not pack: {string.Join(", ", foreign)}.");
 
         List<string> buildArgs = ["build", csproj, "--no-restore", "-nologo", "-c", "Release", "-v:n"];
         if (!online)
