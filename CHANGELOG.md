@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-16
+
+A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries five
+changes marked **[breaking]** below, made on purpose as exceptions to the 1.x commitment of
+[the stability policy](docs/reference/stability.md). None of them removes or changes a member of the frozen surface:
+each one changes a behaviour that was wrong, and its entry gives the migration:
+
+- A RAG collection indexed with another embedding model is refused (#381).
+- `orkeon doctor` fails when `tsc` is required by `TypeCheck: Always` and missing (#387).
+- The forge assistant tags its crews `sequential` (#382).
+- A forge plan must list the writer of every path its tasks and agents read (#388).
+- The forge writes `source: final_message` for a deliverable its agents cannot write, and refuses a binary one (#392).
+
 ### Added
 
 - `ModelPricing.Provider` scopes a pricing row to a provider (null means any provider), and `IModelPricingRegistry` gains
@@ -12334,7 +12347,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Orkeon/orkeon/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.7...v1.0.0
 [1.0.0-rc.7]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.6...v1.0.0-rc.7
