@@ -137,6 +137,143 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         Assert.Contains("definitely_not_a_real_tool", stderr, StringComparison.Ordinal);
     }
 
+    private const string DeliverableWithoutFileWriteCrewYaml = """
+        name: "validate-deliverable"
+        goal: "A tool_call deliverable whose agent cannot write it"
+        process: "sequential"
+        agents:
+          reader:
+            role: "Reader"
+            goal: "Read a file"
+            backstory: "A minimal test agent."
+            tools:
+              - "file_read"
+            maxIter: 1
+        tasks:
+          do_read:
+            description: "Read a file and write notes."
+            expectedOutput: "The notes."
+            agent: "reader"
+            deliverable:
+              path: "/output/notes.md"
+        """;
+
+    [Fact]
+    public async Task Validate_warns_on_a_tool_call_deliverable_without_file_write_and_still_exits_0()
+    {
+        var configPath = WriteConfig("config.yaml", DeliverableWithoutFileWriteCrewYaml);
+        var opts = new TestOptions { ConfigPath = configPath, AllowExternalMounts = true };
+
+        var (exit, stdout, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(0, exit);
+        Assert.Contains("VALIDATION OK:", stdout, StringComparison.Ordinal);
+        Assert.Contains(
+            "WARNING: Task 'do_read' declares the deliverable '/output/notes.md' (source tool_call), but its agent 'Reader' has no tool that writes it (file_write)",
+            stderr,
+            StringComparison.Ordinal);
+        Assert.Contains("set deliverable.source: final_message", stderr, StringComparison.Ordinal);
+    }
+
+    // D23 (VF-3, CO-3): the factory's load warning and the WARNING: line are the same finding, said once.
+    [Fact]
+    public async Task Validate_reports_each_deliverable_finding_once()
+    {
+        var configPath = WriteConfig("config.yaml", DeliverableWithoutFileWriteCrewYaml);
+        var opts = new TestOptions { ConfigPath = configPath, AllowExternalMounts = true };
+
+        var (exit, stdout, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(0, exit);
+        var output = stdout + stderr;
+        const string Finding = "declares the deliverable '/output/notes.md'";
+        var count = 0;
+        for (var at = output.IndexOf(Finding, StringComparison.Ordinal); at >= 0; at = output.IndexOf(Finding, at + 1, StringComparison.Ordinal))
+            count++;
+        Assert.Equal(1, count);
+    }
+
+    private const string DecisionWithDeliverableCrewYaml = """
+        name: "validate-decision"
+        goal: "A decision task that declares a deliverable"
+        process: "sequential"
+        agents:
+          writer:
+            role: "Writer"
+            goal: "Write the answer"
+            backstory: "A minimal test agent."
+            tools:
+              - "file_read"
+            maxIter: 1
+        tasks:
+          intake:
+            description: "Read the ticket."
+            expectedOutput: "A summary."
+            agent: "writer"
+          triage:
+            description: "Classify the ticket."
+            expectedOutput: "A classification."
+            decision:
+              questions:
+                category:
+                  choice:
+                    bug: "a defect"
+                    billing: "an invoice question"
+              state: [intake]
+              fallback:
+                category: "bug"
+            deliverable:
+              path: "/output/triage.md"
+          refund:
+            description: "Handle the refund."
+            expectedOutput: "A refund."
+            agent: "writer"
+            when:
+              triage.category: [billing]
+        """;
+
+    // VX-3, VX-4: --validate prints the decision-task finding once, as a WARNING: line, and never the writer advice.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task Validate_warns_once_on_a_decision_task_that_declares_a_deliverable()
+    {
+        var configPath = WriteConfig("config.yaml", DecisionWithDeliverableCrewYaml);
+        var opts = new TestOptions { ConfigPath = configPath, AllowExternalMounts = true };
+
+        var (exit, stdout, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(0, exit);
+        var output = stdout + stderr;
+        Assert.Contains(
+            "WARNING: Task 'triage' is a decision task: its deliverable '/output/triage.md' is never written",
+            stderr,
+            StringComparison.Ordinal);
+        Assert.Single(output.Split('\n'), static line => line.Contains("is a decision task", StringComparison.Ordinal));
+        Assert.DoesNotContain("has no tool that writes it", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Validate_does_not_warn_when_the_deliverable_is_the_final_message()
+    {
+        var configPath = WriteConfig(
+            "config.yaml",
+            DeliverableWithoutFileWriteCrewYaml.Replace(
+                "path: \"/output/notes.md\"",
+                "path: \"/output/notes.md\"\n      source: final_message",
+                StringComparison.Ordinal));
+        var opts = new TestOptions { ConfigPath = configPath, AllowExternalMounts = true };
+
+        var (exit, stdout, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(0, exit);
+        Assert.Contains("VALIDATION OK:", stdout, StringComparison.Ordinal);
+        Assert.DoesNotContain("has no tool that writes it", stderr, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Builds a crew directory that declares the agents twice — once flat (<c>agents.yaml</c>)
     /// and once per-entity (<c>agents/</c>) — which the loader rejects as a mixed layout.

@@ -133,7 +133,7 @@ tasks:
     tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement (sans jamais les remplacer) — résolus comme ceux d'un agent : un nom inconnu fait échouer le chargement sous StrictTools
     deliverable:          # Contrat de fichier de sortie (ignoré sans path)
       path: string        # Chemin virtuel, p. ex. "/output/report.md"
-      source: string      # "tool_call" (défaut — l'agent reçoit la consigne d'écrire le chemin avec file_write) | "final_message" (le framework écrit la réponse finale) | "structured_output" (JSON écrit par le framework, contraint par le schéma en json_schema là où le fournisseur le déclare, en grammaire GBNF là où Llm:Grammar est allumé, et toujours vérifié au parsing) | "none" — toute autre valeur fait échouer le chargement
+      source: string      # "tool_call" (défaut — l'agent écrit le chemin ; consigne avec file_write quand il a cet outil) | "final_message" (le framework écrit la réponse finale) | "structured_output" (JSON écrit par le framework, contraint par le schéma en json_schema là où le fournisseur le déclare, en grammaire GBNF là où Llm:Grammar est allumé, et toujours vérifié au parsing) | "none" — toute autre valeur fait échouer le chargement
       format: string      # "markdown" (défaut) | "json" | "text"
       sanitize: bool      # default: true — retire les tokens de template en fin de texte (final_message)
       schema_path: string # Chemin virtuel d'un fichier JSON Schema (structured_output exige lui ou schema_inline)
@@ -487,12 +487,104 @@ run de graphe, c'est `graph:` (ci-dessus). Le moteur générique de machine d'é
 `CircuitBreakerPolicy` restent — le mode Graph, `orkeon forge` et le graphe RAG correctif s'en
 servent (voir [FSM](../orchestration/fsm.md)).
 
+## Le livrable `tool_call`
+
+Avec `source: tool_call` (le défaut), l'agent écrit le fichier lui-même. Le prompt nomme toujours le
+chemin : `Deliverable: write the final result to '<path>' using the <tool> tool.` quand la boîte à
+outils de l'agent, ses propres outils plus ceux de la tâche, contient un outil intégré qui écrit ce chemin,
+l'outil de son format d'abord (`docx_writer` pour un `.docx`, `file_write` pour un fichier texte ;
+[les outils qui écrivent](#livrables-vérifiés-au-chargement)), et
+`Deliverable: write the final result to '<path>'.` sinon : un agent ne reçoit jamais la consigne d'appeler
+un outil qu'il n'a pas, ni `file_write` pour un fichier binaire. Avec `source: final_message`, le prompt dit que le framework écrit la réponse
+finale telle quelle au chemin : l'agent donne le contenu complet et n'écrit pas le fichier lui-même ;
+`source: structured_output` n'ajoute aucune ligne.
+
+Quand une tâche `tool_call` réussit, le framework vérifie par le système de fichiers virtuel que le
+fichier a été écrit **par la tâche pendant le run** : il lit l'état du fichier (existence, taille, date de
+dernière écriture) une fois, au début de la première tentative de la tâche dans le run, et de nouveau à la
+fin de chaque tentative. Un retry, une révision hiérarchique ou un autre bulletin d'un vote qui garde le
+fichier qu'une tentative précédente de la même tâche a écrit n'est pas signalé. Un fichier absent à la fin,
+ou présent mais inchangé depuis ce premier début (un fichier laissé par un run précédent), laisse la tâche réussie mais lui
+pose le drapeau `deliverableMissing` (`TaskResult.DeliverableMissing`) : un avertissement nomme la tâche
+(sa clé, sinon le début de sa description), l'agent et le chemin, `AUTO_SUMMARY.md` affiche
+`⚠ completed without writing its deliverable`, l'événement `task.completed` porte
+`deliverableMissing: true` et `run.finished` la compte dans `missingDeliverables`
+([bus d'événements de run](run-event-bus.md)). Un système de fichiers qui ne donne ni taille ni date
+d'écriture se rabat sur la seule existence. La vérification est au mieux : un système de fichiers qui ne
+peut pas répondre laisse le drapeau à `false`, une tâche exécutée sans système de fichiers n'est pas
+vérifiée, et une annulation pendant la vérification annule la tâche comme toute autre. Seule une tâche
+réussie reçoit le drapeau : une tâche en échec, y compris une tâche hiérarchique que le manager a rejetée
+jusqu'au bout, jamais, et la sortie en échec d'une telle tâche hiérarchique ne nomme aucun chemin de
+livrable aux tâches suivantes. Dans un vote consensuel, le fichier est jugé sur tout le vote : un candidat qui l'a
+écrit compte, quelle que soit la réponse retenue.
+
+Une tâche reprise rejoue le drapeau et le chemin depuis son checkpoint (un checkpoint écrit avant eux
+rejoue `false` et aucun chemin) ; quand le fichier que nomme le checkpoint a disparu à la reprise, la
+reprise ne donne aucun chemin aux tâches suivantes, et une tâche `tool_call` signale son livrable manquant
+(un fichier écrit par le framework, avec `final_message` ou `structured_output`, perd seulement son chemin).
+
+Une tâche de décision n'exécute aucun agent et n'écrit aucun fichier : un `deliverable:` déclaré sur
+elle n'est jamais écrit, et le contrôle du chargement le signale une fois, quelle que soit la source, dans
+une crew YAML, un `crew.ork.ts` comme sous `--validate` ([livrables vérifiés au chargement](#livrables-vérifiés-au-chargement)).
+
+Quand la sortie d'une tâche précédente est coupée pour tenir dans le prompt d'une tâche suivante et que le
+fichier de son livrable est connu pour exister (écrit par le framework pour `final_message` et
+`structured_output`, trouvé par cette vérification pour `tool_call`, dans tous les modes, reprise autonome
+comprise), le texte coupé se termine par `[full result in '<path>': read it with file_read]` ; une sortie
+précédente laissée de côté entièrement est nommée par
+`[result of task <id> in '<path>': read it with file_read]`. Les deux renvois ne sont écrits que pour un
+agent dont la boîte à outils contient `file_read` ; un agent qui ne l'a pas reçoit le texte coupé seul.
+Une sortie sans fichier connu est coupée comme avant.
+
 ## Supprimé : `outputFile`
 
 La clé `outputFile:` d'une tâche n'existe plus, et une crew qui en écrit encore une est **refusée au
 chargement** par un message qui indique le remplacement : le bloc `deliverable:` de la tâche (plus haut),
 par exemple `deliverable: { path: /output/report.md }`. Avec la `source: tool_call` par défaut, l'agent
 reçoit la consigne d'écrire ce chemin ; avec `source: final_message`, le framework y écrit la réponse finale.
+Le chargement vérifie qu'un livrable `tool_call` peut être écrit ([plus bas](#livrables-vérifiés-au-chargement)).
+
+## Livrables vérifiés au chargement
+
+Un livrable `tool_call` qu'aucun agent capable d'exécuter sa tâche ne peut écrire est signalé au chargement
+de la crew (#392) : un avertissement nomme la tâche, le chemin et les agents, et la crew se charge quand
+même. `orkeon run --validate` l'imprime en une ligne `WARNING:` par tâche
+([cli](../reference/cli.md#orkeon-run)) ; un run signale de toute façon un fichier qui n'a pas été écrit
+([le livrable `tool_call`](#le-livrable-tool_call)).
+
+- **Les agents jugés** sont ceux à qui le processus peut confier la tâche : l'agent que la tâche nomme
+  dans une crew `sequential`, `parallel` ou `graph` (chaque agent quand elle n'en nomme aucun, choisi à
+  tour de rôle à l'exécution) ; chaque agent sauf le `managerAgent` dans une crew `hierarchical` ou
+  `consensual` ; chaque agent dans une crew `autonomous`. L'avertissement ne vient que si **aucun** d'eux
+  ne peut écrire le fichier.
+- **Un agent peut écrire le fichier** quand sa ceinture d'outils, ses outils plus ceux de la tâche, contient
+  un outil intégré qui écrit ce chemin : `docx_writer` pour un `.docx`, `xlsx_writer` pour un `.xlsx`,
+  `image_generation` pour un `.png`, `.jpg`, `.jpeg` ou `.webp`, `firefox` (sa capture d'écran) pour un
+  `.png`, et `file_write` pour tout fichier texte, jamais un fichier binaire. Un chemin est binaire quand
+  son extension, quelle que soit sa casse, nomme un document bureautique (`.docx`, `.xlsx`, `.pptx`,
+  `.odt`, `.pdf`, `.epub` et leurs voisins), une image, une archive, de l'audio ou de la vidéo, une
+  base ou un fichier de données (`.sqlite`, `.db`, `.parquet`), une police ou un exécutable : le texte de
+  la réponse finale ne peut pas en être un, si bien que seul un outil qui écrit son format le livre. Un
+  format qui est du texte brut (`.rtf`, `.svg`, `.csv`, `.html`) n'est pas binaire : `file_write` l'écrit. Les éditeurs (`edit_file`, `edit_batch`, `structural_rewrite`)
+  modifient un fichier existant, les téléchargeurs (`drive_download`, `email_save_attachment`) nomment le
+  fichier eux-mêmes, et `shell_command` ne nomme aucun chemin : aucun ne compte.
+- **Aucun avertissement** quand la ceinture contient un outil qu'Orkeon ne livre pas (celui d'un serveur
+  MCP, d'un script, d'un plugin) : le contrôle ne peut pas savoir ce qu'il écrit. Ni pour un agent dont le
+  modèle exécute ses propres outils.
+- **Une tâche de décision** qui déclare un `deliverable:` reçoit son propre constat, quelle que soit la
+  source : une décision n'exécute aucun agent et n'écrit aucun fichier, le remède est donc de retirer le
+  bloc ou de le déplacer vers une tâche qui exécute un agent. Le contrôle des outils qui écrivent la saute.
+- **Les chemins qui chargent sans le contrôle** sont listés dans les [limitations](../reference/limitations.md) :
+  une crew construite en C# avec `CrewBuilder`, un `.ork.ts` procédural sous `--validate`, qui n'est pas
+  chargé comme une crew, et un agent dont le modèle exécute ses propres outils (un agent Microsoft Agent
+  Framework), qui compte comme capable d'écrire.
+
+Un hôte C# lance le même contrôle avec `DeliverableToolCheck.Check(tasks, agents, processType,
+managerAgentId)` (`Orkeon.Application.Crew`), qui renvoie un `DeliverableToolFinding` par tâche, dont le
+`Message` est le texte de l'avertissement et le `Kind` (`DeliverableFindingKind.NoWriter` ou `DecisionTask`)
+ce qu'il signale. `DeliverableToolCheck.IsBinary(path)`, `WritersOf(path)`, `PreferredWriterOf(path)` et
+`WriterHeldFor(toolNames, path)` donnent la règle que partagent le contrôle, le prompt et la forge. `CrewFactoryOptions.WarnOnDeliverableTools` (`true` par défaut)
+coupe l'avertissement du chargement ; `--validate` le coupe, pour imprimer chaque constat une seule fois.
 
 ## Budget autonome
 

@@ -498,8 +498,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // on every run, empty without planning, so a run nested in a task sees its own plan only.
             // The crew's request window rides the same way (GAP-38): every model call made for one of
             // its agents or its manager during the run counts in it, a crew run from a task in its own.
+            // Each task's deliverable is judged against its state at the task's first attempt of the run.
             DomainCrewOutput domainOutput;
             using (CrewPlanScope.Begin(plan))
+            using (DeliverableBaselineScope.Begin())
             using (CrewVerbosity.Begin(crew.Verbose))
             using (RequestRates.BeginRun(crew, _time))
             {

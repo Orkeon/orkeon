@@ -104,6 +104,7 @@ internal sealed class HostRunRecording
             status = WaitingForInput ? RunFinishedStatuses.WaitingForInput : null,
             durationMs = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds,
             cappedTasks = _observer?.CappedTasks ?? 0,
+            missingDeliverables = _observer?.MissingDeliverables ?? 0,
         });
     }
 

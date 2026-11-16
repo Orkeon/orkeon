@@ -19,3 +19,54 @@ Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedAt.get -> System
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedAt.init -> void
 [ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.EndedOnIterationCap.get -> bool
 [ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.EndedOnIterationCap.init -> void
+const Orkeon.Application.Crew.DeliverableToolCheck.FileWriteToolName = "file_write" -> string!
+Orkeon.Application.Crew.DeliverableToolCheck
+Orkeon.Application.Crew.DeliverableToolFinding
+Orkeon.Application.Crew.DeliverableToolFinding.<Clone>$() -> Orkeon.Application.Crew.DeliverableToolFinding!
+Orkeon.Application.Crew.DeliverableToolFinding.Equals(Orkeon.Application.Crew.DeliverableToolFinding? other) -> bool
+Orkeon.Application.Crew.DeliverableToolFinding.Message.get -> string!
+Orkeon.Application.Crew.DeliverableToolFinding.Path.get -> string!
+Orkeon.Application.Crew.DeliverableToolFinding.Path.init -> void
+Orkeon.Application.Crew.DeliverableToolFinding.Task.get -> string!
+Orkeon.Application.Crew.DeliverableToolFinding.Task.init -> void
+override Orkeon.Application.Crew.DeliverableToolFinding.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.DeliverableToolFinding.GetHashCode() -> int
+override Orkeon.Application.Crew.DeliverableToolFinding.ToString() -> string!
+static Orkeon.Application.Crew.DeliverableToolFinding.operator !=(Orkeon.Application.Crew.DeliverableToolFinding? left, Orkeon.Application.Crew.DeliverableToolFinding? right) -> bool
+static Orkeon.Application.Crew.DeliverableToolFinding.operator ==(Orkeon.Application.Crew.DeliverableToolFinding? left, Orkeon.Application.Crew.DeliverableToolFinding? right) -> bool
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverableMissing.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverableMissing.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverablePath.get -> string?
+Orkeon.Application.Interfaces.Services.TaskResult.DeliverablePath.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverableMissing.get -> bool
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverableMissing.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverablePath.get -> string?
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverablePath.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.DeliverableMissing.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.DeliverableMissing.init -> void
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DeliverableMissing.get -> bool
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DeliverableMissing.init -> void
+Orkeon.Application.Execution.TaskOutput.DeliverablePath.get -> string?
+Orkeon.Application.Execution.TaskOutput.DeliverablePath.init -> void
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverableMissing.get -> bool
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverableMissing.init -> void
+Orkeon.Application.Crew.DeliverableToolFinding.Agents.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Application.Crew.DeliverableToolFinding.Agents.init -> void
+Orkeon.Application.Crew.DeliverableToolFinding.Deconstruct(out string! Task, out System.Collections.Generic.IReadOnlyList<string!>! Agents, out string! Path) -> void
+Orkeon.Application.Crew.DeliverableToolFinding.DeliverableToolFinding(string! Task, System.Collections.Generic.IReadOnlyList<string!>! Agents, string! Path) -> void
+static Orkeon.Application.Crew.DeliverableToolCheck.Check(System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.CrewTask!>! tasks, System.Collections.Generic.IEnumerable<Orkeon.Domain.Agent.Agent!>! agents, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! processType, Orkeon.Domain.Common.AgentId? managerAgentId) -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Crew.DeliverableToolFinding!>!
+static Orkeon.Application.Crew.DeliverableToolCheck.CanWrite(System.Collections.Generic.IEnumerable<string!>! toolNames, string! path) -> bool
+static Orkeon.Application.Crew.DeliverableToolCheck.FileWriterToolNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Application.Crew.DeliverableToolCheck.PreferredWriterOf(string! path) -> string?
+static Orkeon.Application.Crew.DeliverableToolCheck.WritersOf(string! path) -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverablePath.get -> string?
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverablePath.init -> void
+Orkeon.Application.Crew.DeliverableFindingKind
+Orkeon.Application.Crew.DeliverableFindingKind.DecisionTask = 1 -> Orkeon.Application.Crew.DeliverableFindingKind
+Orkeon.Application.Crew.DeliverableFindingKind.NoWriter = 0 -> Orkeon.Application.Crew.DeliverableFindingKind
+Orkeon.Application.Crew.DeliverableToolFinding.Kind.get -> Orkeon.Application.Crew.DeliverableFindingKind
+Orkeon.Application.Crew.DeliverableToolFinding.Kind.init -> void
+static Orkeon.Application.Crew.DeliverableToolCheck.IsBinary(string! path) -> bool
+static Orkeon.Application.Crew.DeliverableToolCheck.WriterHeldFor(System.Collections.Generic.IEnumerable<string!>! toolNames, string! path) -> string?
+Orkeon.Application.Crew.Execution.DeliverableBaselineScope
+static Orkeon.Application.Crew.Execution.DeliverableBaselineScope.Begin() -> System.IDisposable!

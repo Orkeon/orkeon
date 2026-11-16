@@ -6,10 +6,12 @@ using Orkeon.Application.Services.Checkpointing;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Task;
+using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Infrastructure.Checkpointing;
 using Orkeon.Infrastructure.Orchestration;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.FileSystem;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
 namespace Orkeon.Infrastructure.Tests.Checkpointing;
@@ -37,6 +39,9 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
 
     private CheckpointingAgentExecutionService Decorate(ICheckpointManager? manager = null) =>
         new(_inner, _scope, manager ?? _manager, _log);
+
+    private CheckpointingAgentExecutionService Decorate(Orkeon.Domain.FileSystem.IFileSystemService files) =>
+        new(_inner, _scope, _manager, _log) { FileSystem = files };
 
     private SimpleExecutionContext Context() =>
         new(CrewId.Create(), new Dictionary<string, string>(), _memory, [], CancellationToken.None);
@@ -160,6 +165,25 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayTheMissingDeliverable_WhenATaskWithoutItsDeliverableIsResumed()
+    {
+        _inner.DeliverableMissing = true;
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.True(replayed.DeliverableMissing);
+    }
+
+    [Fact]
     [Trait("BR", "CH-39")]
     public async System.Threading.Tasks.Task ShouldReplayNoCapFlag_WhenAnUncappedTaskIsResumed_Untyped()
     {
@@ -175,6 +199,45 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
 
         Assert.True(replayed.Resumed);
         Assert.False(replayed.EndedOnIterationCap);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayTheDeliverablePath_WhenATaskThatWroteItIsResumed()
+    {
+        _inner.DeliverablePath = "/output/notes.md";
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.False(replayed.DeliverableMissing);
+        Assert.Equal("/output/notes.md", replayed.DeliverablePath);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayNoMissingDeliverable_WhenATaskThatWroteItIsResumed_Untyped()
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.False(replayed.DeliverableMissing);
+        Assert.Null(replayed.DeliverablePath);
     }
 
     [Fact]
@@ -212,6 +275,158 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
 
         Assert.True(replayed.Resumed);
         Assert.True(replayed.EndedOnIterationCap);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayTheMissingDeliverable_WhenATypedTaskWithoutItsDeliverableIsResumed()
+    {
+        _inner.DeliverableMissing = true;
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+            await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        TaskResult<FakeTypedAgentExecutionService.Answer> replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.True(replayed.DeliverableMissing);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayTheDeliverablePath_WhenATypedTaskThatWroteItIsResumed()
+    {
+        _inner.DeliverablePath = "/output/notes.md";
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            var first = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+            Assert.Equal("/output/notes.md", first.DeliverablePath);
+        }
+
+        var plan = await PlanOfAsync(id);
+
+        TaskResult<FakeTypedAgentExecutionService.Answer> replayed;
+        using (Enter(id, plan))
+            replayed = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(replayed.Resumed);
+        Assert.Equal("/output/notes.md", replayed.DeliverablePath);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldReplayTheDeliverableMissing_WhenTheFileIsGoneAtResume(bool typed, bool gone)
+    {
+        _inner.DeliverablePath = "/output/notes.md";
+        var files = new FakeFileSystemService();
+        files.AddFile("/output/notes.md", "notes");
+        static CrewTask WritingNotes()
+        {
+            var task = Task("first");
+            task.SetDeliverable(new TaskDeliverable { Path = "/output/notes.md", Source = DeliverableSource.ToolCall });
+            return task;
+        }
+
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            if (typed)
+                await Decorate(files).ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, WritingNotes(), Context(), TestContext.Current.CancellationToken);
+            else
+                await Decorate(files).ExecuteTaskAsync(_agent, WritingNotes(), Context(), TestContext.Current.CancellationToken);
+        }
+
+        var plan = await PlanOfAsync(id);
+        if (gone)
+            await files.DeleteAsync("/output/notes.md", recursive: false, TestContext.Current.CancellationToken);
+
+        (bool Resumed, bool Missing, string? Path) replayed;
+        using (Enter(id, plan))
+        {
+            if (typed)
+            {
+                var result = await Decorate(files).ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, WritingNotes(), Context(), TestContext.Current.CancellationToken);
+                replayed = (result.Resumed, result.DeliverableMissing, result.DeliverablePath);
+            }
+            else
+            {
+                var result = await Decorate(files).ExecuteTaskAsync(_agent, WritingNotes(), Context(), TestContext.Current.CancellationToken);
+                replayed = (result.Resumed, result.DeliverableMissing, result.DeliverablePath);
+            }
+        }
+
+        Assert.True(replayed.Resumed);
+        Assert.Equal(gone, replayed.Missing);
+        Assert.Equal(gone ? null : "/output/notes.md", replayed.Path);
+    }
+
+    // VX-7: deliverableMissing speaks of a tool_call deliverable only. A file the framework wrote from the final answer or
+    // the structured output that is gone at resume loses its path, and the task is not flagged.
+    [Theory]
+    [InlineData(false, DeliverableSource.FinalMessage)]
+    [InlineData(true, DeliverableSource.FinalMessage)]
+    [InlineData(false, DeliverableSource.StructuredOutput)]
+    [InlineData(true, DeliverableSource.StructuredOutput)]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldOnlyDropThePath_WhenAFrameworkWrittenDeliverableIsGoneAtResume(bool typed, DeliverableSource source)
+    {
+        _inner.DeliverablePath = "/output/notes.md";
+        var files = new FakeFileSystemService();
+        files.AddFile("/output/notes.md", "notes");
+        CrewTask Delivering()
+        {
+            var task = Task("first");
+            task.SetDeliverable(new TaskDeliverable
+            {
+                Path = "/output/notes.md",
+                Source = source,
+                SchemaInline = source == DeliverableSource.StructuredOutput ? """{"type":"object"}""" : null,
+            });
+            return task;
+        }
+
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            if (typed)
+                await Decorate(files).ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Delivering(), Context(), TestContext.Current.CancellationToken);
+            else
+                await Decorate(files).ExecuteTaskAsync(_agent, Delivering(), Context(), TestContext.Current.CancellationToken);
+        }
+
+        var plan = await PlanOfAsync(id);
+        await files.DeleteAsync("/output/notes.md", recursive: false, TestContext.Current.CancellationToken);
+
+        (bool Resumed, bool Missing, string? Path) replayed;
+        using (Enter(id, plan))
+        {
+            if (typed)
+            {
+                var result = await Decorate(files).ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Delivering(), Context(), TestContext.Current.CancellationToken);
+                replayed = (result.Resumed, result.DeliverableMissing, result.DeliverablePath);
+            }
+            else
+            {
+                var result = await Decorate(files).ExecuteTaskAsync(_agent, Delivering(), Context(), TestContext.Current.CancellationToken);
+                replayed = (result.Resumed, result.DeliverableMissing, result.DeliverablePath);
+            }
+        }
+
+        Assert.True(replayed.Resumed);
+        Assert.False(replayed.Missing);
+        Assert.Null(replayed.Path);
     }
 
     [Theory]

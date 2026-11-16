@@ -203,4 +203,87 @@ public class ForgeBlueprintTests
 
         Assert.True(ForgeBlueprint.TryParse(json, out _, out var errors, []), string.Join("; ", errors));
     }
+
+    private static string DeliveringPlan(string path, string reporterTools, string process = "sequential", string extra = "") => $$"""
+        {
+          "crew": { "name": "x", "goal": "g", "process": "{{process}}" },{{extra}}
+          "agents": [
+            { "key": "lead", "role": "Lead", "goal": "g" },
+            { "key": "reporter", "role": "Reporter", "goal": "g", "tools": [ {{reporterTools}} ] },
+            { "key": "reader", "role": "Reader", "goal": "g", "tools": [ "file_read" ] }
+          ],
+          "tasks": [ { "key": "rapport", "description": "d", "expectedOutput": "o", "agent": "reporter", "deliverable": "{{path}}" } ]
+        }
+        """;
+
+    // D22 (VF-1): final_message would save the answer's text into a binary file; the plan is refused instead,
+    // on the channel blueprint_submit answers the designer with.
+    [Theory]
+    [InlineData("/output/rapport.docx", "docx_writer")]
+    [InlineData("/output/budget.xlsx", "xlsx_writer")]
+    [InlineData("/output/cover.png", "image_generation")]
+    public void ShouldRefuseABinaryDeliverable_WhenItsAgentLacksTheToolThatWritesItsFormat(string path, string tool)
+    {
+        Assert.False(ForgeBlueprint.TryParse(DeliveringPlan(path, "\"file_read\", \"file_write\""), out _, out var errors, []));
+
+        var error = Assert.Single(errors);
+        Assert.StartsWith($"tasks[0] ('rapport'): its deliverable '{path}' is a binary file", error, StringComparison.Ordinal);
+        Assert.Contains("agent 'reporter'", error, StringComparison.Ordinal);
+        Assert.Contains($"give it {tool}", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldAcceptABinaryDeliverable_WhenItsAgentHoldsTheToolThatWritesItsFormat()
+    {
+        var json = DeliveringPlan("/output/rapport.docx", "\"file_read\", \"docx_writer\"");
+
+        Assert.True(ForgeBlueprint.TryParse(json, out _, out var errors, []), string.Join("; ", errors));
+    }
+
+    [Theory]
+    [InlineData("/output/rapport.pdf")]
+    [InlineData("/output/slides.pptx")]
+    [InlineData("/output/macro.docm")]
+    [InlineData("/output/book.epub")]
+    public void ShouldRefuseABinaryDeliverable_WhenNoBuiltInToolWritesItsFormat(string path)
+    {
+        Assert.False(ForgeBlueprint.TryParse(DeliveringPlan(path, "\"file_write\""), out _, out var errors, []));
+
+        var error = Assert.Single(errors);
+        Assert.Contains("no built-in tool writes that format", error, StringComparison.Ordinal);
+        Assert.Contains("text format", error, StringComparison.Ordinal);
+    }
+
+    // D21: in a hierarchical crew every worker may run the task; the manager coordinates and runs none.
+    [Fact]
+    public void ShouldNameEveryWorkerThatCannotWrite_WhenACoordinatedCrewDeliversABinaryFile()
+    {
+        var json = DeliveringPlan("/output/rapport.docx", "\"docx_writer\"", "hierarchical", "\n  \"manager\": \"lead\",");
+
+        Assert.False(ForgeBlueprint.TryParse(json, out _, out var errors, []));
+
+        var error = Assert.Single(errors);
+        Assert.Contains("agent 'reader'", error, StringComparison.Ordinal);
+        Assert.DoesNotContain("'lead'", error, StringComparison.Ordinal);
+        Assert.DoesNotContain("'reporter'", error, StringComparison.Ordinal);
+    }
+
+    // VX-6: the forge reads an extension as the engine does: a name that starts with its only dot has none.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldReadTheExtensionAsTheEngineDoes_WhenTheFileNameStartsWithItsOnlyDot()
+    {
+        var json = DeliveringPlan("/output/.docx", "\"file_read\"");
+
+        Assert.True(ForgeBlueprint.TryParse(json, out _, out var errors, []), string.Join("; ", errors));
+    }
+
+    [Fact]
+    public void ShouldAcceptATextDeliverable_WhenItsAgentCannotWrite()
+    {
+        // The forge writes source: final_message for it: the answer's text is the file.
+        var json = DeliveringPlan("/output/rapport.md", "\"file_read\"");
+
+        Assert.True(ForgeBlueprint.TryParse(json, out _, out var errors, []), string.Join("; ", errors));
+    }
 }

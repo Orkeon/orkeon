@@ -54,7 +54,7 @@ internal static class ForgeScriptRenderer
             AppendAgent(script, agent, identifiers);
 
         foreach (var task in OrderByDependencies(blueprint.Tasks ?? []))
-            AppendTask(script, task, identifiers);
+            AppendTask(script, blueprint, task, identifiers);
 
         AppendCrew(script, blueprint, identifiers);
 
@@ -88,7 +88,7 @@ internal static class ForgeScriptRenderer
     }
 
     private static void AppendTask(
-        StringBuilder script, ForgeBlueprintTask task, Dictionary<string, string> identifiers)
+        StringBuilder script, ForgeBlueprint blueprint, ForgeBlueprintTask task, Dictionary<string, string> identifiers)
     {
         script.Append('\n');
         script.Append("const ").Append(identifiers[TaskKey(task.Key!)]).Append(" = taskBuilder()\n");
@@ -103,8 +103,20 @@ internal static class ForgeScriptRenderer
                 script.Append("    .withContext(").Append(dependencyIdentifier).Append(")\n");
         }
 
+        if (task.Tools is { Count: > 0 } tools)
+        {
+            script.Append("    .tools([")
+                .Append(string.Join(", ", tools.Select(Literal)))
+                .Append("])\n");
+        }
+
         if (!string.IsNullOrWhiteSpace(task.Deliverable))
-            script.Append("    .deliverable({ path: ").Append(Literal(task.Deliverable)).Append(" })\n");
+        {
+            // Same source as the YAML render (#392), always written: the typings require it (D24).
+            script.Append("    .deliverable({ path: ").Append(Literal(task.Deliverable))
+                .Append(", source: ").Append(Literal(ForgeBlueprintCompiler.EmittedDeliverableSource(blueprint, task)))
+                .Append(" })\n");
+        }
         script.Append("    .build();\n");
     }
 

@@ -26,4 +26,12 @@ public sealed class CrewFactoryOptions
     /// (e.g. <c>--validate</c>) disable it so loading a crew never touches the index.
     /// </summary>
     public bool PrepareRagCollections { get; set; } = true;
+
+    /// <summary>
+    /// When <c>true</c> (the default), loading a crew logs a warning for each task whose
+    /// <c>tool_call</c> deliverable no agent that may run it can write, and for each decision task that
+    /// declares a deliverable (<see cref="Orkeon.Application.Crew.DeliverableToolCheck"/>, #392). <c>orkeon run --validate</c>
+    /// turns it off: it prints the same findings as its own <c>WARNING:</c> lines, once each.
+    /// </summary>
+    public bool WarnOnDeliverableTools { get; set; } = true;
 }

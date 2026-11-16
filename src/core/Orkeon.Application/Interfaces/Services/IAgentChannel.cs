@@ -93,6 +93,15 @@ public sealed record AgentChannelResponse(
     /// <summary>Whether the task that produced this answer ended on its iteration cap.</summary>
     public bool EndedOnIterationCap { get; init; }
 
+    /// <summary>Whether the task that produced this answer succeeded without writing its <c>tool_call</c> deliverable (#392).</summary>
+    public bool DeliverableMissing { get; init; }
+
+    /// <summary>
+    /// The virtual path of the deliverable the task that produced this answer left behind, when it is
+    /// known to exist; null otherwise (#392). The delegator's task hands it to the tasks that follow.
+    /// </summary>
+    public string? DeliverablePath { get; init; }
+
     /// <summary>Creates a successful response.</summary>
     public static AgentChannelResponse Ok(Guid correlationId, AgentId from, string payload)
         => new(correlationId, from, true, payload);

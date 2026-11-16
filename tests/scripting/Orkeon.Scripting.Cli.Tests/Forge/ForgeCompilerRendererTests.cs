@@ -235,6 +235,151 @@ public class ForgeBlueprintCompilerTests
         Assert.Equal(12, compilation.Agents["roomy"].MaxIter);
         Assert.Null(compilation.Agents["unset"].MaxIter);
     }
+
+    /// <summary>The valid blueprint with its writer stripped of <c>file_write</c> (#392).</summary>
+    internal static readonly string BlueprintWithoutFileWrite = ForgeDocuments.ValidBlueprint.Replace(
+        "\"tools\": [ \"file_write\" ]", "\"tools\": [ \"file_read\" ]", StringComparison.Ordinal);
+
+    [Fact]
+    public void ShouldKeepTheToolCallSource_WhenTheDeliveringAgentHasFileWrite()
+    {
+        var compilation = ForgeBlueprintCompiler.Compile(Parse(ForgeDocuments.ValidBlueprint));
+
+        Assert.Null(compilation.Tasks["resume"].Deliverable!.Source);
+        var task = Assert.Single(compilation.Configuration.Tasks, t => t.Key == "resume");
+        Assert.Equal(Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall, task.Deliverable!.Source);
+    }
+
+    [Fact]
+    public void ShouldEmitTheFinalMessageSource_WhenTheDeliveringAgentHasNoFileWrite()
+    {
+        var compilation = ForgeBlueprintCompiler.Compile(Parse(BlueprintWithoutFileWrite));
+
+        Assert.Equal("final_message", compilation.Tasks["resume"].Deliverable!.Source);
+        var task = Assert.Single(compilation.Configuration.Tasks, t => t.Key == "resume");
+        Assert.Equal(Orkeon.Domain.Task.ValueObjects.DeliverableSource.FinalMessage, task.Deliverable!.Source);
+        Assert.Equal("/output/resume.md", task.Deliverable.Path);
+        Assert.Empty(ForgeBlueprintCompiler.Validate(compilation, ForgeDocuments.KnownTools).Errors);
+    }
+
+    private static ForgeBlueprintAgent Agent(string key, params string[] tools) => new() { Key = key, Role = key, Goal = "g", Tools = tools };
+
+    private static ForgeBlueprintTask DeliveringTask(string agent, string deliverable = "/output/t.md") =>
+        new() { Key = "t", Description = "d", ExpectedOutput = "o", Agent = agent, Deliverable = deliverable };
+
+    private static ForgeBlueprint Plan(string process, string? manager, ForgeBlueprintTask task, params ForgeBlueprintAgent[] agents) =>
+        new() { Crew = new ForgeBlueprintCrew { Name = "x", Goal = "g", Process = process }, Manager = manager, Agents = agents, Tasks = [task] };
+
+    // D21 (VF-6): a sequential, parallel or graph crew runs the task on the agent it names, and on that one only.
+    [Theory]
+    [InlineData("sequential")]
+    [InlineData("parallel")]
+    [InlineData("graph")]
+    public void ShouldKeepTheToolCallSource_WhenTheProcessBindsTheTaskToAnAgentThatWrites(string process)
+    {
+        var task = DeliveringTask("writer");
+        var plan = Plan(process, null, task, Agent("writer", "file_write"), Agent("reader", "file_read"));
+
+        Assert.Equal("tool_call", ForgeBlueprintCompiler.EmittedDeliverableSource(plan, task));
+    }
+
+    // D21 (VF-6): a coordinated crew may give the task to any worker, whatever agent the plan names.
+    [Theory]
+    [InlineData("hierarchical")]
+    [InlineData("consensual")]
+    [InlineData("autonomous")]
+    public void ShouldEmitTheFinalMessageSource_WhenAWorkerOfACoordinatedCrewCannotWrite(string process)
+    {
+        var task = DeliveringTask("writer");
+        var plan = Plan(process, null, task, Agent("writer", "file_write"), Agent("reader", "file_read"));
+
+        Assert.Equal("final_message", ForgeBlueprintCompiler.EmittedDeliverableSource(plan, task));
+    }
+
+    [Theory]
+    [InlineData("hierarchical")]
+    [InlineData("consensual")]
+    public void ShouldLeaveTheManagerOut_WhenEveryWorkerCanWrite(string process)
+    {
+        var task = DeliveringTask("writer");
+        var plan = Plan(process, "lead", task, Agent("lead"), Agent("writer", "file_write"), Agent("editor", "file_write"));
+
+        Assert.Equal("tool_call", ForgeBlueprintCompiler.EmittedDeliverableSource(plan, task));
+    }
+
+    // D20 (VF-1): docx_writer writes the .docx itself; final_message would overwrite it with the answer's text.
+    [Fact]
+    public void ShouldKeepTheToolCallSource_WhenTheAgentWritesTheBinaryFormatWithItsOwnTool()
+    {
+        var task = DeliveringTask("reporter", "/output/rapport.docx");
+        var plan = Plan("sequential", null, task, Agent("reporter", "file_read", "docx_writer"));
+
+        Assert.Equal("tool_call", ForgeBlueprintCompiler.EmittedDeliverableSource(plan, task));
+        var compiled = ForgeBlueprintCompiler.Compile(plan);
+        Assert.Null(compiled.Tasks["t"].Deliverable!.Source);
+        Assert.Equal(
+            Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+            Assert.Single(compiled.Configuration.Tasks).Deliverable!.Source);
+    }
+
+    // D22: a binary file is never the final answer's text; plan validation refuses the plan instead.
+    // VX-6: the binary formats are the engine's (DeliverableToolCheck.IsBinary), the macro and e-book ones included.
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData("/output/rapport.docx")]
+    [InlineData("/output/macro.docm")]
+    [InlineData("/output/book.epub")]
+    [InlineData("/output/store.sqlite")]
+    [InlineData("/output/table.parquet")]
+    public void ShouldNeverEmitTheFinalMessageSource_ForABinaryDeliverable(string path)
+    {
+        var task = DeliveringTask("reader", path);
+        var plan = Plan("sequential", null, task, Agent("reader", "file_read"));
+
+        Assert.Equal("tool_call", ForgeBlueprintCompiler.EmittedDeliverableSource(plan, task));
+    }
+
+    // The engine counts the task's own tools beside its agent's (#392): so does the forge.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldCountTheTasksOwnTools_WhenDecidingWhetherItsAgentWrites()
+    {
+        var text = DeliveringTask("reader") with { Tools = ["file_write"] };
+        var binary = DeliveringTask("reader", "/output/rapport.docx") with { Tools = ["docx_writer"] };
+        var textPlan = Plan("sequential", null, text, Agent("reader", "file_read"));
+        var binaryPlan = Plan("sequential", null, binary, Agent("reader", "file_read"));
+
+        Assert.Equal("tool_call", ForgeBlueprintCompiler.EmittedDeliverableSource(textPlan, text));
+        Assert.Empty(binaryPlan.Validate([]));
+        Assert.Equal(["file_write"], ForgeBlueprintCompiler.Compile(textPlan).Tasks["t"].Tools!);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldRefuseATaskTool_WhenItIsNotInTheCatalogue()
+    {
+        var task = DeliveringTask("reader") with { Tools = ["ghost_tool"] };
+        var compilation = ForgeBlueprintCompiler.Compile(Plan("sequential", null, task, Agent("reader", "file_read")));
+
+        var error = Assert.Single(ForgeBlueprintCompiler.Validate(compilation, ForgeDocuments.KnownTools).Errors,
+            e => e.Contains("ghost_tool", StringComparison.Ordinal));
+        Assert.Contains("task 't' names tool 'ghost_tool'", error, StringComparison.Ordinal);
+    }
+
+    // RTF is plain text (#392): the forge treats it as a text deliverable, never refused as a binary one.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldTreatAnRtfDeliverableAsText()
+    {
+        var task = DeliveringTask("reader", "/output/letter.rtf");
+        var plan = Plan("sequential", null, task, Agent("reader", "file_read"));
+
+        Assert.Equal("final_message", ForgeBlueprintCompiler.EmittedDeliverableSource(plan, task));
+        Assert.Empty(plan.Validate([]));
+        var writing = DeliveringTask("writer", "/output/letter.rtf");
+        Assert.Equal("tool_call", ForgeBlueprintCompiler.EmittedDeliverableSource(
+            Plan("sequential", null, writing, Agent("writer", "file_write")), writing));
+    }
 }
 
 /// <summary>

@@ -288,6 +288,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         Duration = executed.Domain.ExecutionTime,
         CompletedAt = DateTimeOffset.UtcNow,
         EndedOnIterationCap = executed.EndedOnIterationCap,
+        DeliverableMissing = executed.DeliverableMissing,
     };
 
     /// <summary>
@@ -429,7 +430,12 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 : AgentChannelResponse.Fail(
                     request.CorrelationId, peer.Id,
                     result.Error ?? result.LastError ?? "the peer failed");
-            return answer with { EndedOnIterationCap = result.EndedOnIterationCap };
+            return answer with
+            {
+                EndedOnIterationCap = result.EndedOnIterationCap,
+                DeliverableMissing = result.DeliverableMissing,
+                DeliverablePath = result.DeliverablePath,
+            };
         }
         catch (BudgetExhaustedException ex)
         {
@@ -508,7 +514,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         string AgentRole,
         string? Error = null,
         BudgetExhaustedException? Exhausted = null,
-        bool EndedOnIterationCap = false);
+        bool EndedOnIterationCap = false,
+        bool DeliverableMissing = false);
 
     private async Task<ExecutedTask> ExecuteTaskAutonomouslyAsync(
         AutonomousTaskContext taskContext,
@@ -570,7 +577,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 agent.Role.Value,
                 error,
                 budgetSpent,
-                result.EndedOnIterationCap);
+                result.EndedOnIterationCap,
+                result.DeliverableMissing);
         }
         catch (BudgetExhaustedException ex)
         {
@@ -646,13 +654,17 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             CompletedAt: DateTime.UtcNow,
             Success: response.Success,
             ExecutionTime: budget.Elapsed,
-            ToolsUsed: []);
+            ToolsUsed: [])
+        {
+            DeliverablePath = response.Success ? response.DeliverablePath : null,
+        };
 
         return new ExecutedTask(
             output, appOutput, delegateAgent.Role.Value,
             response.Success ? null : $"delegated to {delegateAgent.Role}, who failed: {response.Error}",
             takeover.Exhausted,
-            response.EndedOnIterationCap);
+            response.EndedOnIterationCap,
+            response.DeliverableMissing);
     }
 
     /// <summary>
@@ -689,7 +701,10 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             CompletedAt: DateTime.UtcNow,
             Success: result.Success,
             ExecutionTime: result.ExecutionTime,
-            ToolsUsed: result.ToolsUsed);
+            ToolsUsed: result.ToolsUsed)
+        {
+            DeliverablePath = result.DeliverablePath,
+        };
     }
 
     /// <summary>The crew's metadata: the token tally, the agent count and where the budget ended.</summary>

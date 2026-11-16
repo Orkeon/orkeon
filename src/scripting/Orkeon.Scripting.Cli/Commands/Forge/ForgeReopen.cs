@@ -314,12 +314,14 @@ internal static class ForgeTeamReader
                 Agent = pair.Value.Agent,
                 Dependencies = pair.Value.Dependencies is { Count: > 0 } deps ? [.. deps] : null,
                 Deliverable = pair.Value.Deliverable?.Path,
+                Tools = pair.Value.Tools is { Count: > 0 } taskTools ? [.. taskTools] : null,
             }).ToList(),
             Manager = crew.ManagerAgent,
             Rationale = "Plan read back from the team's crew files: what they describe, not what an assistant proposed.",
         };
 
-        // A crew promoted before the hand-off rule still reopens: the rule is enforced at the next validation.
+        // A crew promoted before the hand-off rule still reopens: the rule is enforced at the next validation. The binary
+        // deliverable rule is not skipped: the error names the file to fix (#392).
         var structural = candidate.Validate(existingPaths, enforceHandOffs: false);
         if (structural.Count > 0)
         {

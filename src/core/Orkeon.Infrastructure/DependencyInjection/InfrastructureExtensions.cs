@@ -443,7 +443,10 @@ public static class InfrastructureExtensions
             ? inner
             : new Checkpointing.CheckpointingAgentExecutionService(
                 inner, runScope, checkpoints, sp.GetRequiredService<ILogger<Checkpointing.CheckpointingAgentExecutionService>>(),
-                sp.GetService<Orkeon.Domain.Task.ITaskRepository>());
+                sp.GetService<Orkeon.Domain.Task.ITaskRepository>())
+            {
+                FileSystem = sp.GetService<Orkeon.Domain.FileSystem.IFileSystemService>(),
+            };
     }
 
     private static IServiceCollection AddOrkeonRepositoriesAndStrategies(this IServiceCollection services)

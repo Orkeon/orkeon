@@ -100,6 +100,13 @@ internal sealed record ForgeBlueprintTask
     /// <summary>Virtual path of a framework-managed output file (<c>/output/…</c>), when the task produces one.</summary>
     [JsonPropertyName("deliverable")]
     public string? Deliverable { get; init; }
+
+    /// <summary>
+    /// Tools the task itself grants its agent (a crew file's task-level <c>tools:</c>), on top of the agent's
+    /// own: a hand-written crew reads back with them (#392).
+    /// </summary>
+    [JsonPropertyName("tools")]
+    public IReadOnlyList<string>? Tools { get; init; }
 }
 
 /// <summary>
@@ -193,7 +200,42 @@ internal sealed record ForgeBlueprint
         if (enforceHandOffs)
             ValidateHandOffs(errors, existingPaths);
 
+        // Never skipped, a reopen included: a binary deliverable its agent cannot write runs into a file written as text,
+        // or none, while a hand-off only concerns what a prompt names (#392).
+        ValidateBinaryDeliverables(errors);
+
         return errors;
+    }
+
+    /// <summary>
+    /// A binary deliverable (.docx, .xlsx, .pdf, an image) is written by the tool that writes its format, never
+    /// saved from the final answer's text (#392, D22): every agent that may run the task
+    /// (<see cref="ForgeBlueprintCompiler.CandidatesOf"/>) must hold that tool, else the plan is refused here,
+    /// where <c>blueprint_submit</c> answers the designer, rather than switched to <c>final_message</c>.
+    /// </summary>
+    private void ValidateBinaryDeliverables(List<string> errors)
+    {
+        for (var i = 0; i < (Tasks?.Count ?? 0); i++)
+        {
+            var task = Tasks![i];
+            if (task.Deliverable is not { } path || !Orkeon.Application.Crew.DeliverableToolCheck.IsBinary(path))
+                continue;
+
+            var lacking = ForgeBlueprintCompiler.CandidatesOf(this, task)
+                .Where(agent => !ForgeBlueprintCompiler.CanWrite(agent, task, path))
+                .Select(static agent => $"'{agent.Key}'")
+                .ToList();
+            if (lacking.Count == 0)
+                continue;
+
+            var who = lacking.Count == 1 ? $"agent {lacking[0]}" : $"agents {string.Join(", ", lacking)}";
+            var prefix = $"tasks[{i}] ('{task.Key}'): its deliverable '{path}' is a binary file, which the final answer's text cannot be, "
+                + $"and {who}, which may run the task, cannot write it — ";
+            var writers = Orkeon.Application.Crew.DeliverableToolCheck.WritersOf(path);
+            errors.Add(writers.Count > 0
+                ? prefix + $"give {(lacking.Count == 1 ? "it" : "each of them")} {writers[0]}, or deliver a text format (.md, .html, .csv) instead."
+                : prefix + $"no built-in tool writes that format: deliver a text format (.md, .html, .csv) instead.");
+        }
     }
 
     /// <summary>

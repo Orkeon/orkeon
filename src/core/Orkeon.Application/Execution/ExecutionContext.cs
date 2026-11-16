@@ -208,5 +208,11 @@ public sealed record TaskOutput(
 {
     /// <summary>Tools Used.</summary>
     public IReadOnlyList<Orkeon.Domain.Tools.ToolUsage> ToolsUsed { get; init; } = ToolsUsed ?? Array.Empty<Orkeon.Domain.Tools.ToolUsage>();
+
+    /// <summary>
+    /// The virtual path of the task's deliverable when the file is known to exist, else null: a later
+    /// task whose prompt cuts this output is told where the whole result is (#392).
+    /// </summary>
+    public string? DeliverablePath { get; init; }
 }
 

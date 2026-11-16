@@ -220,10 +220,12 @@ public class SequentialCrewOrchestratorTests
         public List<string> ExecutedTasks { get; } = [];
         public bool ShouldFail { get; set; }
         public IReadOnlyDictionary<string, string>? LastReceivedVariables { get; private set; }
+        public bool DeliverableBaselinesOpen { get; private set; }
 
         public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteSequentialAsync(DomainCrew crew, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)
         {
             LastReceivedVariables = inputVariables;
+            DeliverableBaselinesOpen = Orkeon.Application.Crew.Execution.DeliverableBaselineScope.IsOpen;
             ExecutedTasks.Add($"Sequential execution: {crew.Goal}");
             return CreateOutput(crew);
         }
@@ -389,6 +391,25 @@ public class SequentialCrewOrchestratorTests
         Assert.NotNull(output.FinalOutput);
         Assert.Contains("Completed crew goal", output.FinalOutput);
         Assert.Contains("Sequential execution", strategyFactory.Strategy.ExecutedTasks[0]);
+    }
+
+    // VX-2: every run opens the scope that keeps each task's deliverable as its first attempt found it.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldOpenTheDeliverableBaselineScope_ForTheRun()
+    {
+        var repository = new TestCrewRepository();
+        var strategyFactory = new TestProcessStrategyFactory();
+        var orchestrator = new SequentialCrewOrchestrator(repository, new TestLogger(), new TestStateManager(), strategyFactory, new ExecutionPlanParser(), new Orkeon.Application.Tests.Fixtures.TestDomainEventDispatcher());
+        var crew = DomainCrew.Create("Write the notes", ProcessType.Sequential);
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        await orchestrator.KickoffAsync(crew.Id, new CrewInput("notes", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        Assert.True(strategyFactory.Strategy.DeliverableBaselinesOpen);
+        Assert.False(Orkeon.Application.Crew.Execution.DeliverableBaselineScope.IsOpen);
     }
 
     [Fact]

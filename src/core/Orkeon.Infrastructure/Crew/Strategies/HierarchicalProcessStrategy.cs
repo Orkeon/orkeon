@@ -296,6 +296,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             CacheHitTokens = used.CacheHit,
             CacheMissTokens = used.CacheMiss,
             EndedOnIterationCap = processed.EndedOnIterationCap,
+            DeliverableMissing = processed.DeliverableMissing,
         };
         run.TaskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
@@ -343,7 +344,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         ApplicationTaskOutput? Application = null,
         SimpleExecutionContext? Context = null,
         string? Error = null,
-        bool EndedOnIterationCap = false);
+        bool EndedOnIterationCap = false,
+        bool DeliverableMissing = false);
 
     private async Task<ProcessedTask> ProcessSingleTaskAsync(
         CrewTask task,
@@ -370,17 +372,17 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         // another (GAP-21).
         await run.Outcome.RecordStartAsync(task, assignedAgent).ConfigureAwait(false);
 
-        var (domainOutput, appOutput, error, capped) = await ExecuteWithRevisionLoopAsync(
+        var (domainOutput, appOutput, error, capped, missing) = await ExecuteWithRevisionLoopAsync(
             assignedAgent, task, task.Id, run.Manager, context, run.ApplicationTaskOutputs, run.TokenTally, cancellationToken).ConfigureAwait(false);
 
         // Derived, never rebuilt: a context's init settings survive from task to task (GAP-30).
         var updatedContext = context with { PreviousOutputs = run.ApplicationTaskOutputs };
 
-        return new ProcessedTask(assignedAgent, assignment.AssignedAgent, domainOutput, appOutput, updatedContext, error, capped);
+        return new ProcessedTask(assignedAgent, assignment.AssignedAgent, domainOutput, appOutput, updatedContext, error, capped, missing);
     }
 
 #pragma warning disable S107 // the task, who runs it and who reviews it, its context and the run's tallies
-    private async Task<(DomainTaskOutput Domain, ApplicationTaskOutput Application, string? Error, bool EndedOnIterationCap)> ExecuteWithRevisionLoopAsync(
+    private async Task<(DomainTaskOutput Domain, ApplicationTaskOutput Application, string? Error, bool EndedOnIterationCap, bool DeliverableMissing)> ExecuteWithRevisionLoopAsync(
         DomainAgent assignedAgent,
         CrewTask task,
         TaskId taskId,
@@ -442,7 +444,10 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 assignedAgent, task, executionResult.Output, context, cancellationToken).ConfigureAwait(false);
         }
 
-        return (domainOutput, appOutput, error, executionResult.EndedOnIterationCap);
+        // A task the manager rejected to the end is a failure: its deliverable is not flagged missing,
+        // as for any failed task (#392).
+        return (domainOutput, appOutput, error, executionResult.EndedOnIterationCap,
+            domainOutput.Success && executionResult.DeliverableMissing);
     }
 
     /// <summary>
@@ -512,6 +517,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             ExecutionTime: appOutput.ExecutionTime,
             ToolsUsed: appOutput.ToolsUsed);
 
+        // No DeliverablePath: a later task reading the earlier outputs is not pointed to a file the manager rejected (#392).
         return (updatedDomain, updatedApp);
     }
 
@@ -525,7 +531,10 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             CompletedAt: DateTime.UtcNow,
             Success: result.Success,
             ExecutionTime: result.ExecutionTime,
-            ToolsUsed: result.ToolsUsed);
+            ToolsUsed: result.ToolsUsed)
+        {
+            DeliverablePath = result.DeliverablePath,
+        };
     }
 
     private static DomainTaskOutput BuildDomainTaskOutput(

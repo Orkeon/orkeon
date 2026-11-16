@@ -383,6 +383,119 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         };
     }
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Task '{TaskName}' (agent {AgentRole}) completed without writing its deliverable '{Path}': the file does not exist")]
+    private static partial void LogDeliverableMissing(ILogger logger, string taskName, object agentRole, string path);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Task '{TaskName}' (agent {AgentRole}) completed without writing its deliverable '{Path}': the file is the one that was there before the task, unchanged")]
+    private static partial void LogDeliverableUnchanged(ILogger logger, string taskName, object agentRole, string path);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Task '{TaskName}': could not check whether its deliverable '{Path}' was written")]
+    private static partial void LogDeliverableProbeFailed(ILogger logger, Exception exception, string taskName, string path);
+
+    /// <summary>
+    /// What a <c>tool_call</c> deliverable's file was at one point of an attempt: whether it exists and,
+    /// when the file system gives them, its metadata (size, last write). <see cref="Unknown"/> when it
+    /// could not be read.
+    /// </summary>
+    private sealed record DeliverableFileState(bool Exists, Orkeon.Domain.FileSystem.VirtualFileEntry? Entry)
+    {
+        public static DeliverableFileState Unknown { get; } = new(false, null);
+
+        /// <summary>Whether the file could not be read: nothing is concluded from it.</summary>
+        public bool IsUnknown => ReferenceEquals(this, Unknown);
+
+        /// <summary>
+        /// Whether <paramref name="after"/> is this very file, untouched: same size, same last write.
+        /// Without metadata on either side nothing tells it apart, and the existence alone decides.
+        /// </summary>
+        public bool IsUnchangedIn(DeliverableFileState after) =>
+            Exists && after.Exists
+            && Entry is { } before && after.Entry is { } now
+            && before.SizeBytes == now.SizeBytes && before.LastModified == now.LastModified;
+    }
+
+    /// <summary>
+    /// The state of the task's <c>tool_call</c> deliverable as its first attempt of the run begins (#392,
+    /// read once per run through <see cref="DeliverableBaselineScope"/>), so that the end of an attempt
+    /// tells a file the task wrote from one an earlier run left. Null when the task has no such
+    /// deliverable (or no file system to read). A cancellation is never swallowed.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort probe: a failure to check the deliverable never fails the task.")]
+    private async System.Threading.Tasks.Task<DeliverableFileState?> ReadDeliverableBaselineAsync(CrewTask task, CancellationToken cancellationToken)
+    {
+        if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path.Length: > 0 } deliverable || _fileSystem is null)
+            return null;
+
+        var taskName = DeliverableToolCheck.NameOf(task);
+        try
+        {
+            return await ReadDeliverableFileAsync(_fileSystem, deliverable.Path, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogDeliverableProbeFailed(_logger, ex, taskName, deliverable.Path);
+            return DeliverableFileState.Unknown;
+        }
+    }
+
+    // The entry's metadata when the file system gives it; otherwise the existence alone.
+    private static async System.Threading.Tasks.Task<DeliverableFileState> ReadDeliverableFileAsync(
+        Orkeon.Domain.FileSystem.IFileSystemService fileSystem, string path, CancellationToken cancellationToken)
+    {
+        if (await fileSystem.TryGetEntryAsync(path, cancellationToken).ConfigureAwait(false) is { } entry)
+            return new DeliverableFileState(entry.Kind != Orkeon.Domain.FileSystem.VirtualEntryKind.Directory, entry);
+
+        return new DeliverableFileState(await fileSystem.ExistsAsync(path, cancellationToken).ConfigureAwait(false), null);
+    }
+
+    /// <summary>
+    /// What the task's deliverable became once the task succeeded (#392): a <c>tool_call</c>
+    /// deliverable the attempt did not write - absent at its end, or present but unchanged since its
+    /// start (<paramref name="baseline"/>) - marks the result <see cref="TaskResult.DeliverableMissing"/>
+    /// and logs a warning; a deliverable written during the attempt, or persisted by a resolver, is
+    /// named in <see cref="TaskResult.DeliverablePath"/>. Best-effort: a probe that fails leaves the
+    /// result as it was, it never fails the task; a cancellation is never swallowed.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort probe: a failure to check the deliverable never fails a task that succeeded.")]
+    private async System.Threading.Tasks.Task<TaskResult> WithDeliverableStateAsync(
+        DomainAgent agent, CrewTask task, TaskResult result, string? persistedPath, DeliverableFileState? baseline,
+        CancellationToken cancellationToken)
+    {
+        if (!result.Success)
+            return result;
+
+        if (persistedPath is { Length: > 0 })
+            return result with { DeliverablePath = persistedPath };
+
+        if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path.Length: > 0 } deliverable
+            || _fileSystem is null || baseline is null || baseline.IsUnknown)
+            return result;
+
+        var taskName = DeliverableToolCheck.NameOf(task);
+        try
+        {
+            var after = await ReadDeliverableFileAsync(_fileSystem, deliverable.Path, cancellationToken).ConfigureAwait(false);
+            if (!after.Exists)
+            {
+                LogDeliverableMissing(_logger, taskName, agent.Role, deliverable.Path);
+                return result with { DeliverableMissing = true };
+            }
+
+            if (baseline.IsUnchangedIn(after))
+            {
+                LogDeliverableUnchanged(_logger, taskName, agent.Role, deliverable.Path);
+                return result with { DeliverableMissing = true };
+            }
+
+            return result with { DeliverablePath = deliverable.Path };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogDeliverableProbeFailed(_logger, ex, taskName, deliverable.Path);
+            return result;
+        }
+    }
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent [{AgentRole}]: the task ran past its maximum execution time of {LimitSeconds}s and is cancelled")]
     private static partial void LogExecutionTimeExceeded(ILogger logger, object agentRole, double limitSeconds);
 
@@ -438,6 +551,12 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 if (RefuseOwnTools(agent, task, llm.Provider, toolbelt, toolsUsed, startTime) is { } refused)
                     return refused;
 
+                // The deliverable as the task's first attempt of the run began (#392): the end of this
+                // attempt tells a file the task wrote, in this attempt or an earlier one of the run (a
+                // retry, a revision, another ballot), from one an earlier run left behind.
+                var deliverableBaseline = await DeliverableBaselineScope.FirstAttemptAsync(
+                    task.Id, token => ReadDeliverableBaselineAsync(task, token), taskToken).ConfigureAwait(false);
+
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
                     agent, task, toolbelt,
                     _toolCallingStrategy?.SupportsNativeToolCalling == true,
@@ -448,7 +567,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // reaches the task the same way in every mode — a takeover and a revision of the
                 // same task included, a ballot or a delegated sub-task (other tasks) not.
                 var userPrompt = AgentPromptComposer.BuildUserPrompt(
-                    task, context, knowledgeContext, CrewPlanScope.InstructionsFor(task.Id), agent.PromptTemplate);
+                    task, context, knowledgeContext, CrewPlanScope.InstructionsFor(task.Id), agent.PromptTemplate, toolbelt);
 
                 // Input phase: the prompt the provider is about to read — previous outputs and
                 // retrieved knowledge included — is screened first. A block is a readable task
@@ -504,7 +623,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // file_write tool-call flow; no resolver is invoked for them.
                 var fqnOutcome = await ResolveDeliverableIfDeclaredAsync(task, finalOutput, taskToken).ConfigureAwait(false);
 
-                return CompletedResult(loopResult, finalOutput, structuredOutput, toolsUsed, DateTime.UtcNow - startTime, fqnOutcome);
+                var completed = CompletedResult(loopResult, finalOutput, structuredOutput, toolsUsed, DateTime.UtcNow - startTime, fqnOutcome);
+                return await WithDeliverableStateAsync(agent, task, completed, fqnOutcome.PersistedPath, deliverableBaseline, taskToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -902,7 +1022,10 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 RewrittenFqns: result.RewrittenFqns ?? ImmutableDictionary<string, string>.Empty,
                 AmbiguousFqns: result.AmbiguousFqns is { } amb
                     ? amb.Select(a => new TaskAmbiguousFqn(a.BareFqn, a.Candidates)).ToImmutableArray()
-                    : ImmutableArray<TaskAmbiguousFqn>.Empty);
+                    : ImmutableArray<TaskAmbiguousFqn>.Empty)
+            {
+                PersistedPath = result.Persisted ? result.Path ?? deliv.Path : null,
+            };
         }
         catch (Exception ex)
         {
@@ -920,6 +1043,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         ImmutableDictionary<string, string> RewrittenFqns,
         ImmutableArray<TaskAmbiguousFqn> AmbiguousFqns)
     {
+        /// <summary>The path the resolver persisted the deliverable at, or null when it wrote nothing (#392).</summary>
+        public string? PersistedPath { get; init; }
+
         public static DeliverableFqnOutcome Empty { get; } = new(
             ImmutableArray<string>.Empty,
             ImmutableDictionary<string, string>.Empty,

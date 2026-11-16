@@ -113,6 +113,20 @@ public sealed record TaskResult(
     public bool EndedOnIterationCap { get; init; }
 
     /// <summary>
+    /// Gets whether the task succeeded although the deliverable its agent had to write itself
+    /// (<c>source: tool_call</c>) does not exist when the task ends (#392). The task stays a success;
+    /// this says the file is missing.
+    /// </summary>
+    public bool DeliverableMissing { get; init; }
+
+    /// <summary>
+    /// Gets the virtual path of the task's deliverable when it is known to exist at the end of the
+    /// task: written by the agent (<c>tool_call</c>, found by the end-of-task probe) or persisted by the
+    /// framework (<c>final_message</c>, <c>structured_output</c>). Null otherwise (#392).
+    /// </summary>
+    public string? DeliverablePath { get; init; }
+
+    /// <summary>
     /// Number of iterations the agent actually performed before exiting.
     /// </summary>
     public int IterationsUsed { get; init; }
@@ -210,6 +224,12 @@ public sealed record TaskResult<TOutput>(
 
     /// <summary>Gets whether the task ended on its iteration cap (the untyped result's flag, carried over; CH-29).</summary>
     public bool EndedOnIterationCap { get; init; }
+
+    /// <summary>Gets whether the task's <c>tool_call</c> deliverable was missing when it ended (the untyped result's flag, carried over; #392).</summary>
+    public bool DeliverableMissing { get; init; }
+
+    /// <summary>Gets the virtual path of the task's deliverable when it is known to exist (the untyped result's path, carried over; #392).</summary>
+    public string? DeliverablePath { get; init; }
 
     /// <summary>Gets the tokens the task consumed, or zero when not tracked.</summary>
     public int TokensUsed { get; init; }

@@ -577,7 +577,8 @@ internal static class ForgePromoter
         var roots = new List<DeliverableMount>();
 
         // Read first, so the chips and the command line list it the way the Composer does.
-        if ((blueprint?.Agents ?? []).Any(a => (a.Tools ?? []).Intersect(ReadingTools, StringComparer.Ordinal).Any()))
+        if ((blueprint?.Agents ?? []).Select(static a => a.Tools).Concat((blueprint?.Tasks ?? []).Select(static t => t.Tools))
+            .Any(tools => (tools ?? []).Intersect(ReadingTools, StringComparer.Ordinal).Any()))
             roots.Add(new DeliverableMount(ReadVirtualRoot, ReadFolderName, ReadOnly: true));
 
         foreach (var task in blueprint?.Tasks ?? [])

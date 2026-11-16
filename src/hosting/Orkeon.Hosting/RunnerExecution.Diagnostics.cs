@@ -42,12 +42,16 @@ public static partial class RunnerExecution
         async Task<int> RunValidateCoreAsync()
         {
             // Validation must never touch the RAG index: loading the crew skips the
-            // ingestion of rag:-declared collections (CrewFactoryOptions).
+            // ingestion of rag:-declared collections (CrewFactoryOptions). The factory's
+            // deliverable warning is off too: the WARNING: lines below say each finding once.
             void ConfigureValidationServices(HostBuilderContext context, IServiceCollection services)
             {
                 configureServices?.Invoke(context, services);
-                services.Configure<Orkeon.Infrastructure.Configuration.CrewFactoryOptions>(
-                    o => o.PrepareRagCollections = false);
+                services.Configure<Orkeon.Infrastructure.Configuration.CrewFactoryOptions>(o =>
+                {
+                    o.PrepareRagCollections = false;
+                    o.WarnOnDeliverableTools = false;
+                });
             }
 
             if (!TryBuildHost(opts, loggerCategory, ConfigureValidationServices, out var bootstrap, out var errorCode))
@@ -106,6 +110,16 @@ public static partial class RunnerExecution
                     .Select(t => t.Name)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Count();
+
+                // A tool_call deliverable no agent that may run its task can write, or a decision task's
+                // deliverable, which nothing writes (#392): reported, not refused — a tool Orkeon does not
+                // ship may write the file. The exit code stays 0.
+                var taskRepository = scope.ServiceProvider.GetRequiredService<Domain.Task.ITaskRepository>();
+                var tasks = await taskRepository.GetByIdsAsync(crew.Tasks, cts.Token).ConfigureAwait(false);
+                var findings = Orkeon.Application.Crew.DeliverableToolCheck.Check(
+                    tasks, agents, crew.ProcessType, crew.ManagerAgentId);
+                foreach (var finding in findings)
+                    await console.ErrorOutput.WriteLineAsync($"WARNING: {finding.Message}").ConfigureAwait(false);
 
                 await console.Output.WriteLineAsync(
                     $"VALIDATION OK: {configPath} (agents={crew.Agents.Count}, tasks={crew.Tasks.Count}, tools resolved={toolsResolved})").ConfigureAwait(false);

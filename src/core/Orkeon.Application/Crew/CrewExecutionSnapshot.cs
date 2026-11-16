@@ -33,6 +33,12 @@ public sealed record TaskExecutionSnapshot
     /// <summary>Whether the agent spent its iteration cap and answered on the tool-free retry.</summary>
     public bool EndedOnIterationCap { get; init; }
 
+    /// <summary>
+    /// Whether the task succeeded although its <c>tool_call</c> deliverable does not exist when it
+    /// ended: the agent never wrote the file (#392).
+    /// </summary>
+    public bool DeliverableMissing { get; init; }
+
     /// <summary>Role of the agent that executed the task.</summary>
     public required string AgentRole { get; init; }
 

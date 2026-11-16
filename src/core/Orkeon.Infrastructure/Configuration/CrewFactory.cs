@@ -30,6 +30,7 @@ public partial class CrewFactory : ICrewFactory
     private readonly ITaskRepository _taskRepository;
     private readonly bool _strictTools;
     private readonly bool _prepareRagCollections;
+    private readonly bool _warnOnDeliverableTools;
     private readonly Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? _ragBootstrapper;
     private readonly ICrewLinkRegistry? _linkRegistry;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
@@ -88,6 +89,7 @@ public partial class CrewFactory : ICrewFactory
         _taskRepository = taskRepository;
         _strictTools = options?.Value.StrictTools ?? false;
         _prepareRagCollections = options?.Value.PrepareRagCollections ?? true;
+        _warnOnDeliverableTools = options?.Value.WarnOnDeliverableTools ?? true;
         _ragBootstrapper = ragBootstrapper;
         _linkRegistry = linkRegistry;
         _llmProfiles = llmProfiles;
@@ -121,6 +123,7 @@ public partial class CrewFactory : ICrewFactory
         AddTaskContextData(config.Tasks, taskMap);
 
         var crew = AssembleCrew(config, agentMap, taskMap);
+        WarnOnDeliverablesWithoutWriter(config, crew, agentMap, taskMap);
 
         // Persist all aggregates so the orchestrator can retrieve them by id
         foreach (var agent in agentMap.Values)
@@ -158,6 +161,30 @@ public partial class CrewFactory : ICrewFactory
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{CrewName}' declares a links: block but the EventHub ACL is not registered — call AddOrkeonEventHubAcl(); the declared authorizations are not enforced.")]
     private partial void LogLinksDeclaredButAclMissing(string crewName);
+
+    /// <summary>
+    /// A task whose <c>tool_call</c> deliverable no agent that may run it can write ends without its
+    /// file, and the run said nothing until #392: the load warns, once per task, with the fixes; so it does
+    /// for a decision task that declares a deliverable, which nothing ever writes. YAML
+    /// and <c>.ork.ts</c> crews both come through here; <c>orkeon run --validate</c> turns the log off
+    /// (<see cref="CrewFactoryOptions.WarnOnDeliverableTools"/>) and prints the same findings itself
+    /// (<see cref="Orkeon.Application.Crew.DeliverableToolCheck"/>).
+    /// </summary>
+    private void WarnOnDeliverablesWithoutWriter(
+        CrewConfiguration config, DomainCrew crew, Dictionary<string, DomainAgent> agentMap, Dictionary<string, CrewTask> taskMap)
+    {
+        if (!_warnOnDeliverableTools)
+            return;
+
+        var findings = Orkeon.Application.Crew.DeliverableToolCheck.Check(
+            taskMap.Values, agentMap.Values, crew.ProcessType, crew.ManagerAgentId);
+        foreach (var finding in findings)
+            LogDeliverableWithoutWriter(config.Name, finding.Message);
+    }
+
+    // The sentence is DeliverableToolFinding.Message, which names the task, the agents and the path.
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{CrewName}': {DeliverableWarning}")]
+    private partial void LogDeliverableWithoutWriter(string crewName, string deliverableWarning);
 
     /// <summary>
     /// Ingests the collections declared by the configuration's <c>rag:</c> block (RAG-03/C3).

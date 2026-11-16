@@ -254,6 +254,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
             cacheMissTokens = _observer?.CacheMissTokens,
             estimatedTokens = _observer?.EstimatedTokens,
             cappedTasks = _observer?.CappedTasks ?? 0,
+            missingDeliverables = _observer?.MissingDeliverables ?? 0,
         });
 
         // Whatever the host did, the buffer that waited for a late history is of no use now.

@@ -190,14 +190,136 @@ public class AgentPromptComposerDeliverableTests
             Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
         });
 
-        var prompt = AgentPromptComposer.BuildUserPrompt(task, Context());
+        var prompt = AgentPromptComposer.BuildUserPrompt(
+            task, Context(), toolbelt: [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_read"), new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_write")]);
 
         Assert.Contains("/output/synthese_nouveautes.md", prompt, StringComparison.Ordinal);
         Assert.Contains("file_write", prompt, StringComparison.Ordinal);
     }
 
+    // RTF is plain text: the agent holding file_write is told to write it with that tool (#392).
     [Fact]
-    public void BuildUserPrompt_ShouldStaySilent_WhenTheFrameworkPersistsTheDeliverable()
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNameFileWrite_WhenTheDeliverableIsAnRtfFile()
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = "/output/letter.rtf",
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+        });
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(
+            task, Context(), toolbelt: [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_write")]);
+
+        Assert.Contains("/output/letter.rtf", prompt, StringComparison.Ordinal);
+        Assert.Contains("file_write", prompt, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BuildUserPrompt_ShouldNameThePathWithoutATool_WhenTheAgentLacksFileWrite(bool withOtherTools)
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = "/output/notes-lecture.md",
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+        });
+        IReadOnlyList<IBaseTool>? toolbelt = withOtherTools
+            ? [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_read"), new Orkeon.Tests.Shared.Doubles.StubBaseTool("docx_writer")]
+            : null;
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(task, Context(), toolbelt: toolbelt);
+
+        Assert.DoesNotContain("file_write", prompt, StringComparison.Ordinal);
+        Assert.Contains("Deliverable: write the final result to '/output/notes-lecture.md'.", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNameTheDeliverableOfATruncatedPreviousOutput_WhenItsFileIsKnown()
+    {
+        var longContent = new string('x', 9000);
+        var context = Context() with
+        {
+            PreviousOutputs =
+            [
+                new Orkeon.Application.Execution.TaskOutput("read", null, longContent, DateTime.UtcNow, true, TimeSpan.Zero)
+                {
+                    DeliverablePath = "/output/notes.md",
+                },
+            ],
+        };
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(Task(null), context, toolbelt: [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_read")]);
+
+        var cut = prompt.IndexOf("... [truncated]", StringComparison.Ordinal);
+        var pointer = prompt.IndexOf("[full result in '/output/notes.md': read it with file_read]", StringComparison.Ordinal);
+        Assert.True(cut >= 0 && pointer > cut, prompt);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNotNameAPath_WhenThePreviousOutputIsCutWithoutAKnownFile()
+    {
+        var context = Context() with
+        {
+            PreviousOutputs = [new Orkeon.Application.Execution.TaskOutput("read", null, new string('x', 9000), DateTime.UtcNow, true, TimeSpan.Zero)],
+        };
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(Task(null), context);
+
+        Assert.Contains("... [truncated]", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("full result in", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNotNameAPath_WhenThePreviousOutputFitsWhole()
+    {
+        var context = Context() with
+        {
+            PreviousOutputs =
+            [
+                new Orkeon.Application.Execution.TaskOutput("read", null, "short notes", DateTime.UtcNow, true, TimeSpan.Zero)
+                {
+                    DeliverablePath = "/output/notes.md",
+                },
+            ],
+        };
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(Task(null), context);
+
+        Assert.Contains("short notes", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("/output/notes.md", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNameTheDeliverableOfAPreviousOutputLeftOut_WhenItsFileIsKnown()
+    {
+        var context = Context() with
+        {
+            PreviousOutputs =
+            [
+                new Orkeon.Application.Execution.TaskOutput("first", null, new string('x', 8000), DateTime.UtcNow, true, TimeSpan.Zero),
+                new Orkeon.Application.Execution.TaskOutput("second", null, "left out", DateTime.UtcNow, true, TimeSpan.Zero)
+                {
+                    DeliverablePath = "/output/second.md",
+                },
+            ],
+        };
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(Task(null), context, toolbelt: [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_read")]);
+
+        Assert.DoesNotContain("left out", prompt, StringComparison.Ordinal);
+        Assert.Contains("[result of task second in '/output/second.md': read it with file_read]", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldSayTheFrameworkWritesTheAnswer_WhenTheDeliverableIsTheFinalMessage()
     {
         var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
         {
@@ -205,10 +327,92 @@ public class AgentPromptComposerDeliverableTests
             Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.FinalMessage,
         });
 
+        var prompt = AgentPromptComposer.BuildUserPrompt(
+            task, Context(), toolbelt: [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_write")]);
+
+        Assert.Contains(
+            "Deliverable: the framework writes your final answer as-is to '/output/report.md': give the complete content, "
+            + "not a summary, and do not write the file yourself.",
+            prompt,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildUserPrompt_ShouldStaySilent_WhenTheDeliverableIsTheStructuredOutput()
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = "/output/report.json",
+            SchemaInline = "{\"type\":\"object\"}",
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.StructuredOutput,
+        });
+
         var prompt = AgentPromptComposer.BuildUserPrompt(task, Context());
 
+        Assert.DoesNotContain("Deliverable:", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("/output/report.json", prompt, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BuildUserPrompt_ShouldNotPointAtAFile_WhenTheReaderLacksFileRead(bool leftOut)
+    {
+        var first = new Orkeon.Application.Execution.TaskOutput("first", null, new string('x', leftOut ? 8000 : 9000), DateTime.UtcNow, true, TimeSpan.Zero)
+        {
+            DeliverablePath = "/output/first.md",
+        };
+        var second = new Orkeon.Application.Execution.TaskOutput("second", null, "left out", DateTime.UtcNow, true, TimeSpan.Zero)
+        {
+            DeliverablePath = "/output/second.md",
+        };
+        var context = Context() with { PreviousOutputs = leftOut ? [first, second] : [first] };
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(
+            Task(null), context, toolbelt: [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_write")]);
+
+        Assert.DoesNotContain("file_read", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("/output/first.md", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("/output/second.md", prompt, StringComparison.Ordinal);
+    }
+
+    // VX-1: the line names the writer of the deliverable's format the agent holds, never file_write for a binary file.
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData("/output/report.docx", "file_write,docx_writer", "using the docx_writer tool.")]
+    [InlineData("/output/figures.xlsx", "xlsx_writer,file_write", "using the xlsx_writer tool.")]
+    [InlineData("/output/cover.png", "file_write,firefox,image_generation", "using the image_generation tool.")]
+    [InlineData("/output/notes.md", "docx_writer,file_write", "using the file_write tool.")]
+    public void BuildUserPrompt_ShouldNameTheWriterOfTheFormat_WhenTheAgentHoldsIt(string path, string tools, string expected)
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = path,
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+        });
+        IReadOnlyList<IBaseTool> toolbelt = [.. tools.Split(',').Select(static name => new Orkeon.Tests.Shared.Doubles.StubBaseTool(name))];
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(task, Context(), toolbelt: toolbelt);
+
+        Assert.Contains($"Deliverable: write the final result to '{path}' {expected}", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNameNoTool_WhenTheAgentHoldsOnlyFileWriteForABinaryDeliverable()
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = "/output/report.docx",
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+        });
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(
+            task, Context(), toolbelt: [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_write")]);
+
+        Assert.Contains("Deliverable: write the final result to '/output/report.docx'.", prompt, StringComparison.Ordinal);
         Assert.DoesNotContain("file_write", prompt, StringComparison.Ordinal);
-        Assert.DoesNotContain("/output/report.md", prompt, StringComparison.Ordinal);
     }
 
     [Fact]

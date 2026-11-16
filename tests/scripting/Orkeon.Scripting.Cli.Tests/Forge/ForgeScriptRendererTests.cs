@@ -88,6 +88,23 @@ public sealed class ForgeScriptRendererTests : IDisposable
         Assert.True(verdict.IsValid, string.Join("; ", verdict.Errors));
     }
 
+    // #392: the tools a task grants itself are rendered, so the script grants what the YAML does.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldRenderTheTasksOwnTools_WhenTheTaskGrantsSome()
+    {
+        var blueprint = Parse(ForgeDocuments.ValidBlueprint);
+        blueprint = blueprint with
+        {
+            Tasks = [.. blueprint.Tasks!.Select(task => task.Key == "resume" ? task with { Tools = ["file_write"] } : task)],
+        };
+
+        ForgeScriptRenderer.Render(blueprint, _sessionDirectory);
+        var configuration = await ReloadAsync();
+
+        Assert.Equal(["file_write"], configuration.Tasks.Single(t => t.Description == "Rédiger le résumé").Tools);
+    }
+
     [Fact]
     public async Task An_iteration_cap_below_the_floor_is_rendered_raised()
     {
@@ -178,5 +195,64 @@ public sealed class ForgeScriptRendererTests : IDisposable
                 < source.IndexOf("const task_resume", StringComparison.Ordinal),
             "the dependency must be declared before the task that references it");
         Assert.Contains(".withContext(task_collecte)", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRenderAndReloadTheFinalMessageSource_WhenTheDeliveringAgentHasNoFileWrite()
+    {
+        ForgeScriptRenderer.Render(Parse(ForgeBlueprintCompilerTests.BlueprintWithoutFileWrite), _sessionDirectory);
+        var source = await File.ReadAllTextAsync(Path.Combine(_sessionDirectory, "crew", ForgeScriptRenderer.ScriptFileName), TestContext.Current.CancellationToken);
+
+        Assert.Contains(".deliverable({ path: \"/output/resume.md\", source: \"final_message\" })", source, StringComparison.Ordinal);
+        var reloaded = await ReloadAsync();
+        var task = Assert.Single(reloaded.Tasks, t => t.Deliverable is not null);
+        Assert.Equal(Orkeon.Domain.Task.ValueObjects.DeliverableSource.FinalMessage, task.Deliverable!.Source);
+    }
+
+    // D24 (CO-2): the script always states the source, so a reader of the .ork.ts sees it without knowing the default.
+    [Fact]
+    public async Task ShouldRenderAndReloadTheToolCallSource_WhenTheDeliveringAgentHasFileWrite()
+    {
+        ForgeScriptRenderer.Render(Parse(ForgeDocuments.ValidBlueprint), _sessionDirectory);
+        var source = await File.ReadAllTextAsync(Path.Combine(_sessionDirectory, "crew", ForgeScriptRenderer.ScriptFileName), TestContext.Current.CancellationToken);
+
+        Assert.Contains(".deliverable({ path: \"/output/resume.md\", source: \"tool_call\" })", source, StringComparison.Ordinal);
+        var reloaded = await ReloadAsync();
+        var task = Assert.Single(reloaded.Tasks, t => t.Deliverable is not null);
+        Assert.Equal(Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall, task.Deliverable!.Source);
+    }
+
+    // D24 (CO-2): both sources type-check against the shipped typings. Skipped without node or the
+    // bootstrapped tsc (tools/scripting-typecheck), as the other type-check tests are.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldTypeCheckTheRenderedScript_WhicheverSourceItWrites(bool withoutFileWrite)
+    {
+        var checker = new TscTypeChecker();
+        Assert.SkipUnless(CompilerAvailable(checker), "tsc is not bootstrapped (npm --prefix tools/scripting-typecheck install --prefer-offline).");
+        ForgeScriptRenderer.Render(
+            Parse(withoutFileWrite ? ForgeBlueprintCompilerTests.BlueprintWithoutFileWrite : ForgeDocuments.ValidBlueprint),
+            _sessionDirectory);
+
+        var diagnostics = await checker.CheckAsync(
+            Path.Combine(_sessionDirectory, "crew", ForgeScriptRenderer.ScriptFileName),
+            $"/forge/crew/{ForgeScriptRenderer.ScriptFileName}",
+            TestContext.Current.CancellationToken);
+
+        Assert.Empty(diagnostics);
+    }
+
+    private static bool CompilerAvailable(TscTypeChecker checker)
+    {
+        try
+        {
+            _ = checker.ResolveBinary();
+            return true;
+        }
+        catch (TscNotFoundException)
+        {
+            return false;
+        }
     }
 }

@@ -131,7 +131,7 @@ tasks:
     tools: [string]       # Tools ADDED to the agent's own for this task only (never replacing them) — resolved like an agent's tools: an unknown name fails the load under StrictTools
     deliverable:          # Output-file contract (ignored without a path)
       path: string        # Virtual path, e.g. "/output/report.md"
-      source: string      # "tool_call" (default — the agent is told to write the path with file_write) | "final_message" (the framework writes the final answer) | "structured_output" (JSON written by the framework, constrained by the schema as json_schema where the provider declares it, as a GBNF grammar where Llm:Grammar is on, and always parse-checked) | "none" — any other value fails the load
+      source: string      # "tool_call" (default — the agent writes the path; told to with file_write when it holds that tool) | "final_message" (the framework writes the final answer) | "structured_output" (JSON written by the framework, constrained by the schema as json_schema where the provider declares it, as a GBNF grammar where Llm:Grammar is on, and always parse-checked) | "none" — any other value fails the load
       format: string      # "markdown" (default) | "json" | "text"
       sanitize: bool      # default: true — strips trailing template tokens (final_message)
       schema_path: string # Virtual path of a JSON Schema file (structured_output needs it or schema_inline)
@@ -471,12 +471,96 @@ consecutive tool errors, and the output-validation retries. An agent with two it
 `graph:` (above). The generic state-machine engine and `CircuitBreakerPolicy` stay — the
 Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../orchestration/fsm.md)).
 
+## The `tool_call` deliverable
+
+With `source: tool_call` (the default) the agent writes the file itself. The prompt always names the path:
+`Deliverable: write the final result to '<path>' using the <tool> tool.` when the agent's toolbelt, its
+own tools plus the task's, holds a built-in tool that writes that path, the tool of its format first
+(`docx_writer` for a `.docx`, `file_write` for a text file; [the writers](#deliverables-checked-at-load)), and
+`Deliverable: write the final result to '<path>'.` otherwise, so an agent is never told to call a tool it
+does not have, nor `file_write` for a binary file. With `source: final_message` the
+prompt says the framework writes the final answer as-is to the path, so the agent gives the complete
+content and does not write the file itself; `source: structured_output` adds no line.
+
+When a `tool_call` task succeeds, the framework checks through the virtual file system that the file was
+written **by the task during the run**: it reads the file's state (existence, size, last write time) once,
+when the task's first attempt of the run starts, and again when each attempt ends. A retry, a hierarchical
+revision or another ballot of a vote that keeps the file an earlier attempt of the same task wrote is not
+flagged. A file absent at the end, or present but unchanged since that first start (a file left by an
+earlier run), leaves the task a success but flags it `deliverableMissing`
+(`TaskResult.DeliverableMissing`): a warning names the task (its key, else the start of its description),
+the agent and the path, `AUTO_SUMMARY.md` shows `⚠ completed without writing its deliverable`, the
+`task.completed` event carries `deliverableMissing: true` and `run.finished` counts it in
+`missingDeliverables` ([run event bus](run-event-bus.md)). A file system that gives no size or write time
+falls back on existence alone. The check is best-effort: a file system that cannot answer leaves the flag
+`false`, a task run without a file system is not checked, and a cancellation during the check cancels the
+task as any other. Only a task that succeeded is flagged: a failed task, a hierarchical task the manager
+rejected to the end included, never is, and the failed output of such a hierarchical task names no
+deliverable path to the tasks after it. In a consensual vote the file is judged on the whole vote: a
+candidate that wrote it counts, whichever answer the vote retains.
+
+A resumed task replays the flag and the path from its checkpoint (a checkpoint written before them replays
+`false` and none); when the file the checkpoint names is gone at resume, the replay hands no path to the
+tasks after it, and a `tool_call` task reports its deliverable missing (a file the framework wrote, with
+`final_message` or `structured_output`, only loses its path).
+
+A decision task runs no agent and writes no file: a `deliverable:` declared on one is never written, and
+the load check reports it once, whatever the source, in a YAML crew, a `crew.ork.ts` and under `--validate`
+alike ([deliverables checked at load](#deliverables-checked-at-load)).
+
+When the output of a previous task is cut to fit the prompt of a later one and the file of its
+deliverable is known to exist (written by the framework for `final_message` and `structured_output`,
+found by that check for `tool_call`, in every mode, an autonomous takeover included), the cut text ends
+with `[full result in '<path>': read it with file_read]`; a previous output left out entirely is named by
+`[result of task <id> in '<path>': read it with file_read]`. Both pointers are written only to an agent
+whose toolbelt holds `file_read`; an agent without it gets the cut text alone. An output without a known
+file is cut as before.
+
 ## Removed: `outputFile`
 
 A task's `outputFile:` key is gone, and a crew that still writes one is **refused at load** with a
 message pointing to the replacement: the task's `deliverable:` block (above), e.g.
 `deliverable: { path: /output/report.md }`. With the default `source: tool_call` the agent is told to
-write that path; with `source: final_message` the framework writes the final answer there.
+write that path; with `source: final_message` the framework writes the final answer there. Loading checks
+that a `tool_call` deliverable can be written ([below](#deliverables-checked-at-load)).
+
+## Deliverables checked at load
+
+A `tool_call` deliverable that no agent able to run its task can write is reported when the crew loads
+(#392): a warning names the task, the path and the agents, and the crew still loads. `orkeon run
+--validate` prints it as one `WARNING:` line per task ([cli](../reference/cli.md#orkeon-run)); a run flags a
+file that was not written all the same ([the `tool_call` deliverable](#the-tool_call-deliverable)).
+
+- **The agents judged** are those the process may give the task to: the agent the task names in a
+  `sequential`, `parallel` or `graph` crew (every agent when it names none, picked in turn at run time);
+  every agent but the `managerAgent` in a `hierarchical` or `consensual` crew; every agent in an
+  `autonomous` crew. The warning comes only when **none** of them can write the file.
+- **An agent can write the file** when its toolbelt, its own tools plus the task's, holds a built-in tool
+  that writes that path: `docx_writer` for a `.docx`, `xlsx_writer` for a `.xlsx`, `image_generation` for
+  a `.png`, `.jpg`, `.jpeg` or `.webp`, `firefox` (its screenshot) for a `.png`, and `file_write` for any
+  text file, never a binary one. A path is binary when its extension, whatever its case, names an office
+  document (`.docx`, `.xlsx`, `.pptx`, `.odt`, `.pdf`, `.epub` and their kin), an image, an
+  archive, audio or video, a database or data file (`.sqlite`, `.db`, `.parquet`), a font or an
+  executable: the final answer's text cannot be one, so no source but a writer of its format delivers it. A
+  format that is plain text (`.rtf`, `.svg`, `.csv`, `.html`) is not binary: `file_write` writes it. The editors (`edit_file`, `edit_batch`, `structural_rewrite`) change a file that exists, the
+  downloaders (`drive_download`, `email_save_attachment`) name the file themselves, and `shell_command`
+  names no path: none of them counts.
+- **No warning** when the toolbelt holds a tool Orkeon does not ship (an MCP server's, a script's, a
+  plugin's): the check cannot know what it writes. Nor for an agent whose model runs its own tools.
+- **A decision task** that declares a `deliverable:` gets its own finding, whatever the source: a decision
+  runs no agent and writes no file, so the remedy is to remove the block or move it to a task that runs an
+  agent. The writer check skips it.
+- **Paths that load without the check** are listed in the [limitations](../reference/limitations.md):
+  a crew built in C# with `CrewBuilder`, a procedural `.ork.ts` under `--validate`, which is not loaded
+  as a crew, and an agent whose model runs its own tools (a Microsoft Agent Framework agent), which counts
+  as able to write.
+
+A C# host runs the same check with `DeliverableToolCheck.Check(tasks, agents, processType,
+managerAgentId)` (`Orkeon.Application.Crew`), which returns one `DeliverableToolFinding` per task, its
+`Message` the text of the warning and its `Kind` (`DeliverableFindingKind.NoWriter` or `DecisionTask`) what
+it reports. `DeliverableToolCheck.IsBinary(path)`, `WritersOf(path)`, `PreferredWriterOf(path)` and
+`WriterHeldFor(toolNames, path)` give the rule the check, the prompt and the forge share. `CrewFactoryOptions.WarnOnDeliverableTools` (default `true`) turns the
+load warning off; `--validate` does, to print each finding once.
 
 ## Autonomous budget
 

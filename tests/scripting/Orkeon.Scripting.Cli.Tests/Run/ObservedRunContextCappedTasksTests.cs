@@ -22,15 +22,16 @@ public sealed class ObservedRunContextCappedTasksTests : IDisposable
 
     public void Dispose() => _output.Dispose();
 
-    private static TaskExecutionSnapshot Completed(string taskId, int attempt, bool capped) => new()
+    private static TaskExecutionSnapshot Completed(string taskId, int attempt, bool capped, bool missing = false, bool success = true) => new()
     {
         TaskId = taskId,
         AgentRole = "Writer",
-        Success = true,
+        Success = success,
         Duration = TimeSpan.FromMilliseconds(5),
         CompletedAt = DateTimeOffset.UnixEpoch,
         Attempt = attempt,
         EndedOnIterationCap = capped,
+        DeliverableMissing = missing,
     };
 
     private async Task<JsonElement> RunFinishedAsync(params TaskExecutionSnapshot[] completions)
@@ -68,5 +69,37 @@ public sealed class ObservedRunContextCappedTasksTests : IDisposable
 
         Assert.True(finished.TryGetProperty("cappedTasks", out var capped));
         Assert.Equal(0, capped.GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldCountTheMissingDeliverables_InTheRunFinishedOfOrkeonRun()
+    {
+        var finished = await RunFinishedAsync(
+            Completed("a", 1, capped: false, missing: true), Completed("b", 1, capped: false));
+
+        Assert.True(finished.TryGetProperty("missingDeliverables", out var missing));
+        Assert.Equal(1, missing.GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldWriteZeroMissingDeliverables_WhenEveryTaskOfOrkeonRunWroteIt()
+    {
+        var finished = await RunFinishedAsync(Completed("a", 1, capped: false));
+
+        Assert.True(finished.TryGetProperty("missingDeliverables", out var missing));
+        Assert.Equal(0, missing.GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldNotCountTheMissingDeliverable_WhenTheTasksLastAttemptFailed()
+    {
+        var finished = await RunFinishedAsync(
+            Completed("a", 1, capped: false, missing: true),
+            Completed("a", 2, capped: false, missing: true, success: false));
+
+        Assert.Equal(0, finished.GetProperty("missingDeliverables").GetInt32());
     }
 }

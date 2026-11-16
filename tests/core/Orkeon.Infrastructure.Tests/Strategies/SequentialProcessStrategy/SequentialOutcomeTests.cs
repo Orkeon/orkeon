@@ -134,6 +134,49 @@ public sealed class SequentialOutcomeTests : IDisposable
         Assert.False(normalSnapshot.EndedOnIterationCap);
     }
 
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldCarryTheMissingDeliverableIntoTheSnapshot()
+    {
+        var missing = new CrewTaskBuilder().Description("Missing").ExpectedOutput("Missing").Build();
+        var normal = new CrewTaskBuilder().Description("Normal").ExpectedOutput("Normal").Build();
+        var (crew, strategy) = Build([missing, normal], DecisionCircuit.Off);
+        _executionService.SetExecuteFunc((_, task, _, _) =>
+            new TaskResult(true, "out", null, [], TimeSpan.Zero) { DeliverableMissing = task.TaskId == missing.Id });
+
+        await Run(strategy, crew);
+
+        var missingSnapshot = Assert.Single(_hook.Tasks, s => s.TaskId == missing.Id.ToString());
+        Assert.True(missingSnapshot.Success);
+        Assert.True(missingSnapshot.DeliverableMissing);
+        var normalSnapshot = Assert.Single(_hook.Tasks, s => s.TaskId == normal.Id.ToString());
+        Assert.False(normalSnapshot.DeliverableMissing);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldHandTheDeliverablePathToTheNextTask()
+    {
+        var writer = new CrewTaskBuilder().Description("Writer").ExpectedOutput("Writer").Build();
+        var reader = new CrewTaskBuilder().Description("Reader").ExpectedOutput("Reader").Build();
+        var (crew, strategy) = Build([writer, reader], DecisionCircuit.Off);
+        IReadOnlyList<Orkeon.Application.Execution.TaskOutput>? seenByReader = null;
+        _executionService.SetExecuteFunc((_, task, context, _) =>
+        {
+            if (task.TaskId == reader.Id)
+                seenByReader = context.PreviousOutputs;
+            return task.TaskId == writer.Id
+                ? new TaskResult(true, "written", null, [], TimeSpan.Zero) { DeliverablePath = "/output/notes.md" }
+                : new TaskResult(true, "read", null, [], TimeSpan.Zero);
+        });
+
+        await Run(strategy, crew);
+
+        Assert.NotNull(seenByReader);
+        var previous = Assert.Single(seenByReader);
+        Assert.Equal("/output/notes.md", previous.DeliverablePath);
+    }
+
     private static System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput> Run(SequentialProcessStrategy strategy, DomainCrew crew) =>
         strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 

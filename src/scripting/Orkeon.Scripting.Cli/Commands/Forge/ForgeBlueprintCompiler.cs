@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Application.Crew;
 using Orkeon.Domain.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Configuration;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
@@ -28,6 +30,71 @@ internal sealed record ForgeCompilation
 /// </summary>
 internal static class ForgeBlueprintCompiler
 {
+    /// <summary>The deliverable source the forge writes when the delivering agent cannot write the file itself.</summary>
+    internal const string FinalMessageSource = "final_message";
+
+    /// <summary>The deliverable source the forge writes when every agent that may run the task writes the file itself.</summary>
+    internal const string ToolCallSource = "tool_call";
+
+    /// <summary>
+    /// The agents that may run <paramref name="task"/> at run time (#392, D21): the agent it names in a
+    /// sequential, parallel or graph crew; every agent but the manager in a hierarchical or consensual
+    /// crew (the manager coordinates and runs no task); every agent in an autonomous crew. Mirrors
+    /// <see cref="DeliverableToolCheck"/>'s reading of a loaded crew.
+    /// </summary>
+    internal static IReadOnlyList<ForgeBlueprintAgent> CandidatesOf(ForgeBlueprint blueprint, ForgeBlueprintTask task)
+    {
+        ArgumentNullException.ThrowIfNull(blueprint);
+        ArgumentNullException.ThrowIfNull(task);
+
+        var agents = blueprint.Agents ?? [];
+        var process = string.IsNullOrWhiteSpace(blueprint.Crew?.Process) ? "sequential" : blueprint.Crew.Process.Trim();
+        var known = ProcessType.All.FirstOrDefault(p => string.Equals(p.Value, process, StringComparison.OrdinalIgnoreCase));
+        var bindsDeclaredAgent = known is null
+            || known == ProcessType.Sequential || known == ProcessType.Parallel || known == ProcessType.Graph;
+        if (bindsDeclaredAgent)
+        {
+            var declared = agents.Where(agent => string.Equals(agent.Key, task.Agent, StringComparison.Ordinal)).ToList();
+            return declared.Count > 0 ? declared : agents;
+        }
+
+        return known!.AcceptsManagerAgent && !string.IsNullOrWhiteSpace(blueprint.Manager)
+            ? agents.Where(agent => !string.Equals(agent.Key, blueprint.Manager, StringComparison.Ordinal)).ToList()
+            : agents;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="agent"/>, running <paramref name="task"/>, holds a built-in tool that writes
+    /// <paramref name="path"/> (<see cref="DeliverableToolCheck.CanWrite(IEnumerable{string}, string)"/>): its own
+    /// tools and the ones the task grants, as the engine counts them. For a binary format only the tool that
+    /// writes the format counts, <c>file_write</c>, which writes text, does not. The forge reads a path and
+    /// compares tool names through the engine's helpers, so it and the load check never disagree (#392).
+    /// </summary>
+    internal static bool CanWrite(ForgeBlueprintAgent agent, ForgeBlueprintTask task, string path)
+    {
+        ArgumentNullException.ThrowIfNull(agent);
+        ArgumentNullException.ThrowIfNull(task);
+        return DeliverableToolCheck.CanWrite((agent.Tools ?? []).Concat(task.Tools ?? []), path);
+    }
+
+    /// <summary>
+    /// The <c>deliverable.source</c> the forge writes for <paramref name="task"/> (#392): <c>tool_call</c> when
+    /// every agent that may run it (<see cref="CandidatesOf"/>) writes the file itself, else
+    /// <c>final_message</c>: the framework saves the agent's final answer to the path, and no tool is granted
+    /// for it (least privilege). A binary deliverable is always <c>tool_call</c>: the answer's text cannot be
+    /// a .docx, and <see cref="ForgeBlueprint.Validate"/> refuses the plan whose agent lacks the tool that
+    /// writes the format (D22). The source follows from the plan, so a reopened team gets it back.
+    /// </summary>
+    internal static string EmittedDeliverableSource(ForgeBlueprint blueprint, ForgeBlueprintTask task)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+        if (task.Deliverable is not { } path || DeliverableToolCheck.IsBinary(path))
+            return ToolCallSource;
+
+        var candidates = CandidatesOf(blueprint, task);
+        return candidates.Count > 0 && candidates.All(agent => CanWrite(agent, task, path)) ? ToolCallSource : FinalMessageSource;
+    }
+
     /// <summary>
     /// Compiles <paramref name="blueprint"/> (structurally valid — run
     /// <see cref="ForgeBlueprint.Validate"/> first: the mapper refuses a reference that names
@@ -80,9 +147,10 @@ internal static class ForgeBlueprintCompiler
                 ExpectedOutput = task.ExpectedOutput,
                 Agent = task.Agent,
                 Dependencies = task.Dependencies is { Count: > 0 } deps ? new Collection<string>([.. deps]) : null,
+                Tools = task.Tools is { Count: > 0 } taskTools ? new Collection<string>([.. taskTools]) : null,
                 Deliverable = string.IsNullOrWhiteSpace(task.Deliverable)
                     ? null
-                    : new DeliverableYamlConfig { Path = task.Deliverable },
+                    : new DeliverableYamlConfig { Path = task.Deliverable, Source = EmittedDeliverableSource(blueprint, task) is FinalMessageSource ? FinalMessageSource : null },
             };
         }
 
@@ -140,6 +208,15 @@ internal static class ForgeBlueprintCompiler
             {
                 if (!known.Contains(tool))
                     errors.Add($"{ForgeErrorCodes.ToolUnknown}: agent '{key}' names tool '{tool}', which is not in the catalogue.");
+            }
+        }
+
+        foreach (var (key, task) in compilation.Tasks)
+        {
+            foreach (var tool in task.Tools ?? [])
+            {
+                if (!known.Contains(tool))
+                    errors.Add($"{ForgeErrorCodes.ToolUnknown}: task '{key}' names tool '{tool}', which is not in the catalogue.");
             }
         }
 
