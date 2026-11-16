@@ -90,6 +90,9 @@ public sealed record AgentChannelResponse(
     string Payload,
     string? Error = null)
 {
+    /// <summary>Whether the task that produced this answer ended on its iteration cap.</summary>
+    public bool EndedOnIterationCap { get; init; }
+
     /// <summary>Creates a successful response.</summary>
     public static AgentChannelResponse Ok(Guid correlationId, AgentId from, string payload)
         => new(correlationId, from, true, payload);

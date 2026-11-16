@@ -106,6 +106,9 @@ namespace Orkeon.Application.Agent
                 TokensUsed = result.TokensUsed,
                 PromptTokens = result.PromptTokens,
                 CompletionTokens = result.CompletionTokens,
+                CacheHitTokens = result.CacheHitTokens,
+                CacheMissTokens = result.CacheMissTokens,
+                EndedAt = result.EndedAt,
                 IterationsUsed = result.IterationsUsed,
                 RetryCount = result.RetryCount,
             };

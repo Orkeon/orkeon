@@ -103,6 +103,7 @@ internal sealed class HostRunRecording
             exitCode,
             status = WaitingForInput ? RunFinishedStatuses.WaitingForInput : null,
             durationMs = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+            cappedTasks = _observer?.CappedTasks ?? 0,
         });
     }
 

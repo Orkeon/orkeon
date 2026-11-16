@@ -262,7 +262,11 @@ internal sealed record ForgeBlueprint
     /// <summary>
     /// A task names, in its description or expected output, only a deliverable-root file that is its
     /// own deliverable, one a task it depends on (transitively, whatever the process) declares, or one
-    /// already present in an output folder.
+    /// already present in an output folder; a folder is declared when such a file lies under it. An
+    /// agent's goal and backstory follow the same rule over the tasks it is given; an agent with no task
+    /// (a manager, an arbiter) coordinates them all and may name any task's deliverable, and so may every
+    /// agent of a hierarchical, consensual or autonomous crew, where the runtime does not bind a task to
+    /// its declared agent.
     /// </summary>
     private void ValidateHandOffs(List<string> errors, IReadOnlyCollection<string> existingPaths)
     {
@@ -274,33 +278,14 @@ internal sealed record ForgeBlueprint
         var sequential = string.IsNullOrWhiteSpace(Crew?.Process)
             || string.Equals(Crew.Process.Trim(), "sequential", StringComparison.OrdinalIgnoreCase);
 
-        // Only the description and the expected output are scanned: goal and backstory are left as they are.
         for (var i = 0; i < tasks.Count; i++)
         {
             var task = tasks[i];
-            var allowed = new HashSet<string>(StringComparer.Ordinal);
-            if (task.Deliverable is { } own)
-                allowed.Add(own);
-
-            var visited = new HashSet<string>(StringComparer.Ordinal);
-            var pending = new Stack<string>(task.Dependencies ?? []);
-            while (pending.Count > 0)
-            {
-                var key = pending.Pop();
-                if (!visited.Add(key))
-                    continue;
-                foreach (var dependency in tasks.Where(t => string.Equals(t.Key, key, StringComparison.Ordinal)))
-                {
-                    if (dependency.Deliverable is { } path)
-                        allowed.Add(path);
-                    foreach (var next in dependency.Dependencies ?? [])
-                        pending.Push(next);
-                }
-            }
+            var allowed = AllowedPaths(tasks, task);
 
             foreach (var path in NamedPaths(roots, task.Description, task.ExpectedOutput).Distinct(StringComparer.Ordinal))
             {
-                if (!allowed.Contains(path) && !existingPaths.Contains(path))
+                if (!IsDeclared(path, allowed, existingPaths))
                 {
                     var earlierWriter = sequential && tasks.Take(i).Any(t => string.Equals(t.Deliverable, path, StringComparison.Ordinal));
                     errors.Add(
@@ -312,6 +297,75 @@ internal sealed record ForgeBlueprint
                 }
             }
         }
+
+        var coordinated = Crew?.Process is { } mode
+            && (string.Equals(mode.Trim(), "hierarchical", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(mode.Trim(), "consensual", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(mode.Trim(), "autonomous", StringComparison.OrdinalIgnoreCase));
+
+        var agents = Agents ?? [];
+        for (var i = 0; i < agents.Count; i++)
+        {
+            var agent = agents[i];
+            var own = tasks.Where(t => string.Equals(t.Agent, agent.Key, StringComparison.Ordinal)).ToList();
+            var allowed = new HashSet<string>(StringComparer.Ordinal);
+            if (own.Count == 0 || coordinated)
+                allowed.UnionWith(tasks.Select(static t => t.Deliverable).OfType<string>());
+            foreach (var task in own)
+                allowed.UnionWith(AllowedPaths(tasks, task));
+
+            foreach (var (field, text) in new[] { ("goal", agent.Goal), ("backstory", agent.Backstory) })
+            {
+                foreach (var path in NamedPaths(roots, text).Distinct(StringComparer.Ordinal))
+                {
+                    if (IsDeclared(path, allowed, existingPaths))
+                        continue;
+
+                    errors.Add(
+                        own.Count == 0
+                            ? $"agents[{i}] ('{agent.Key}'): its {field} names '{path}', which no task of the plan delivers and no output folder holds — "
+                                + "name no file in the goal or the backstory, or make it the deliverable of a task."
+                            : $"agents[{i}] ('{agent.Key}'): its {field} names '{path}', which none of its tasks, nor a task they depend on, "
+                                + "declares as its deliverable — name no file in the goal or the backstory, or make it the deliverable of "
+                                + "a task of this agent (or of one it depends on).");
+                }
+            }
+        }
+    }
+
+    /// <summary>A named path is declared when it is allowed or existing, or when a folder it names holds one.</summary>
+    private static bool IsDeclared(string path, HashSet<string> allowed, IReadOnlyCollection<string> existingPaths)
+    {
+        var folder = path + "/";
+        return allowed.Contains(path) || existingPaths.Contains(path)
+            || allowed.Any(a => a.StartsWith(folder, StringComparison.Ordinal))
+            || existingPaths.Any(e => e.StartsWith(folder, StringComparison.Ordinal));
+    }
+
+    /// <summary>A task's own deliverable and those of the tasks it depends on, transitively.</summary>
+    private static HashSet<string> AllowedPaths(IReadOnlyList<ForgeBlueprintTask> tasks, ForgeBlueprintTask task)
+    {
+        var allowed = new HashSet<string>(StringComparer.Ordinal);
+        if (task.Deliverable is { } own)
+            allowed.Add(own);
+
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        var pending = new Stack<string>(task.Dependencies ?? []);
+        while (pending.Count > 0)
+        {
+            var key = pending.Pop();
+            if (!visited.Add(key))
+                continue;
+            foreach (var dependency in tasks.Where(t => string.Equals(t.Key, key, StringComparison.Ordinal)))
+            {
+                if (dependency.Deliverable is { } path)
+                    allowed.Add(path);
+                foreach (var next in dependency.Dependencies ?? [])
+                    pending.Push(next);
+            }
+        }
+
+        return allowed;
     }
 
     private static readonly char[] PathEnd = ['\'', '"', '`', '(', ')', '[', ']', '{', '}', '<', '>', ',', ';', '|', '«', '»', '“', '”', '‘', '’'];

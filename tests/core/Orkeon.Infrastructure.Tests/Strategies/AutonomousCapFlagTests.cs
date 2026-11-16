@@ -58,4 +58,99 @@ public sealed class AutonomousCapFlagTests : IDisposable
         Assert.True(snapshot.Success);
         Assert.Equal(capped, snapshot.EndedOnIterationCap);
     }
+
+    private (DomainCrew Crew, CrewTask Task) BuildDelegationCrew(bool helperCapped = true)
+    {
+        var delegator = new AgentBuilder().Role("delegator").Goal("Goal").Backstory("Backstory")
+            .AllowDelegation(true).Build();
+        var helper = new AgentBuilder().Role("helper").Goal("Goal").Backstory("Backstory").Build();
+        var task = new CrewTaskBuilder().Description("hard work").ExpectedOutput("Complete it").Build();
+        var crew = DomainCrew.Create("Autonomous crew", ProcessType.Autonomous);
+        _agentRepo.AddAgentToStore(delegator);
+        _agentRepo.AddAgentToStore(helper);
+        crew.AddAgent(delegator.Id);
+        crew.AddAgent(helper.Id);
+        _taskRepo.AddTaskToStore(task);
+        crew.AddTask(task.Id);
+        _manager.SetAssignResult(new TaskAssignment(task.Id, delegator.Id, "lead", DateTime.UtcNow));
+        _execService.SetExecuteFunc((agent, _, _, _) =>
+            agent.Id == delegator.Id
+                ? new TaskResult(false, "", null, [], TimeSpan.Zero, "needs help")
+                : new TaskResult(true, "helper out", null, [], TimeSpan.Zero) { EndedOnIterationCap = helperCapped });
+        return (crew, task);
+    }
+
+    private AutonomousProcessStrategy BuildStrategy(IAgentChannel channel)
+        => new(
+            new CrewStrategyDependencies(_taskRepo, _agentRepo, _execService, _memoryScope),
+            channel,
+            _manager,
+            TestManagerLlm.Resolver(),
+            NullLogger<AutonomousProcessStrategy>.Instance,
+            _hook);
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("BR", "CH-42")]
+    [Trait("BR", "CH-48")]
+    public async System.Threading.Tasks.Task ShouldKeepTheCapFlag_WhenAPeerTakesTheTaskOver(bool capped)
+    {
+        var (crew, task) = BuildDelegationCrew();
+        var channel = new FakeAgentChannel
+        {
+            Answer = request => new AgentChannelResponse(
+                request.CorrelationId, request.ToAgentId, true, "helper out") { EndedOnIterationCap = capped },
+        };
+
+        await BuildStrategy(channel).ExecuteAutonomousAsync(
+            crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
+
+        var snapshot = Assert.Single(_hook.CompletedTasks, s => s.TaskId == task.Id.Value.ToString());
+        Assert.True(snapshot.Success);
+        Assert.Equal(capped, snapshot.EndedOnIterationCap);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("BR", "CH-42")]
+    [Trait("BR", "CH-48")]
+    public async System.Threading.Tasks.Task ShouldSetTheCapFlag_WhenTheLocalChannelAnswersFromACappedTask(bool capped)
+    {
+        var (crew, _) = BuildDelegationCrew(capped);
+        var channel = new FakeAgentChannel { Inner = _channel };
+
+        await BuildStrategy(channel).ExecuteAutonomousAsync(
+            crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
+
+        var answer = Assert.Single(channel.Answers);
+        Assert.True(answer.Success);
+        Assert.Equal(capped, answer.EndedOnIterationCap);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("BR", "CH-48")]
+    public async System.Threading.Tasks.Task ShouldReportAFailure_WhenThePeerThatTookTheTaskOverFails(bool capped)
+    {
+        var (crew, task) = BuildDelegationCrew();
+        _execService.SetExecuteFunc((agent, _, _, _) =>
+            agent.Role.Value == "delegator"
+                ? new TaskResult(false, "", null, [], TimeSpan.Zero, "needs help")
+                : new TaskResult(false, "", null, [], TimeSpan.Zero, "helper broke") { EndedOnIterationCap = capped });
+        var channel = new FakeAgentChannel { Inner = _channel };
+
+        await BuildStrategy(channel).ExecuteAutonomousAsync(
+            crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
+
+        var answer = Assert.Single(channel.Answers);
+        Assert.False(answer.Success);
+        Assert.Equal("helper broke", answer.Error);
+        Assert.Equal(capped, answer.EndedOnIterationCap);
+        var snapshot = Assert.Single(_hook.CompletedTasks, s => s.TaskId == task.Id.Value.ToString());
+        Assert.False(snapshot.Success);
+        Assert.Equal(capped, snapshot.EndedOnIterationCap);
+    }
 }

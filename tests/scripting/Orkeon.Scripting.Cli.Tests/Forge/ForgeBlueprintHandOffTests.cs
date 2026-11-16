@@ -29,6 +29,200 @@ public sealed class ForgeBlueprintHandOffTests
         $"tasks[{index}] ('{key}'): names '{path}', which no task it depends on declares as its deliverable — "
         + "make it the deliverable of the task that writes it and list that task in dependencies.";
 
+    private static ForgeBlueprint AgentPlan(string field, string text, params ForgeBlueprintTask[] tasks) =>
+        new()
+        {
+            Crew = new ForgeBlueprintCrew { Name = "team", Goal = "goal", Process = "parallel" },
+            Agents =
+            [
+                new ForgeBlueprintAgent
+                {
+                    Key = "a",
+                    Role = "r",
+                    Goal = field == "goal" ? text : "g",
+                    Backstory = field == "backstory" ? text : null,
+                },
+                new ForgeBlueprintAgent { Key = "idle", Role = "r2", Goal = "g" },
+            ],
+            Tasks = tasks,
+        };
+
+    private static ForgeBlueprint TwoAgentPlan(string process, string goalOfA) =>
+        new()
+        {
+            Crew = new ForgeBlueprintCrew { Name = "team", Goal = "goal", Process = process },
+            Agents =
+            [
+                new ForgeBlueprintAgent { Key = "a", Role = "r", Goal = goalOfA },
+                new ForgeBlueprintAgent { Key = "b", Role = "r2", Goal = "g" },
+            ],
+            Tasks =
+            [
+                new ForgeBlueprintTask { Key = "t1", Description = "Do", ExpectedOutput = "Done", Agent = "a", Deliverable = "/output/a.md" },
+                new ForgeBlueprintTask { Key = "t2", Description = "Do", ExpectedOutput = "Done", Agent = "b", Deliverable = "/output/b.md" },
+            ],
+        };
+
+    [Fact]
+    [Trait("BR", "CH-47")]
+    public void ShouldAcceptAPlan_WhenAGoalNamesTheFolderOfADeliverable()
+    {
+        var plan = AgentPlan("goal", "Collect everything in /output/reports",
+            Task("w", deliverable: "/output/reports/summary.md"));
+
+        Assert.Empty(plan.Validate([]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-47")]
+    public void ShouldAcceptAPlan_WhenADescriptionNamesTheFolderOfADependencyDeliverable()
+    {
+        var plan = Plan("parallel",
+            Task("w", deliverable: "/output/reports/summary.md"),
+            Task("r", "Read every file in /output/reports", dependencies: "w"));
+
+        Assert.Empty(plan.Validate([]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-47")]
+    public void ShouldRefuseAPlan_WhenAnAgentNamesAPeerDeliverableOutsideItsChain()
+    {
+        var plan = TwoAgentPlan("sequential", "Summarise /output/b.md");
+
+        var error = Assert.Single(plan.Validate([]));
+
+        Assert.StartsWith("agents[0] ('a'): its goal names '/output/b.md'", error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-47")]
+    [InlineData("consensual")]
+    [InlineData("hierarchical")]
+    [InlineData("autonomous")]
+    public void ShouldAcceptAPlan_WhenAVoterNamesAnotherTaskDeliverableInAConsensualCrew(string process)
+    {
+        var plan = TwoAgentPlan(process, "Summarise /output/b.md");
+
+        Assert.Empty(plan.Validate([]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-47")]
+    public void ShouldRefuseAPlan_WhenAnyAgentNamesAPathNoTaskDelivers()
+    {
+        var plan = TwoAgentPlan("consensual", "Summarise /output/ghost.md");
+
+        var error = Assert.Single(plan.Validate([]));
+
+        Assert.StartsWith("agents[0] ('a'): its goal names '/output/ghost.md'", error, StringComparison.Ordinal);
+        Assert.Empty(plan.Validate(["/output/ghost.md"]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-47")]
+    public void ShouldNameNoTask_WhenATaskLessAgentIsRefused()
+    {
+        var plan = new ForgeBlueprint
+        {
+            Crew = new ForgeBlueprintCrew { Name = "team", Goal = "goal", Process = "parallel" },
+            Agents =
+            [
+                new ForgeBlueprintAgent { Key = "a", Role = "r", Goal = "g" },
+                new ForgeBlueprintAgent { Key = "idle", Role = "r2", Goal = "Maintain /output/notes.md" },
+            ],
+            Tasks = [Task("w", deliverable: "/output/report.md")],
+        };
+
+        var error = Assert.Single(plan.Validate([]));
+
+        Assert.StartsWith(
+            "agents[1] ('idle'): its goal names '/output/notes.md', which no task of the plan delivers and no output folder holds",
+            error, StringComparison.Ordinal);
+        Assert.DoesNotContain("its tasks", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-44")]
+    public void ShouldAcceptAPlan_WhenAnAgentBackstoryNamesItsOwnTaskDeliverable()
+    {
+        var plan = AgentPlan("backstory", "You always write /output/notes.md with care.",
+            Task("w", deliverable: "/output/notes.md"));
+
+        Assert.Empty(plan.Validate([]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-44")]
+    public void ShouldAcceptAPlan_WhenAnAgentGoalNamesAFileItsTaskDependsOn()
+    {
+        var plan = AgentPlan("goal", "Summarise /output/notes.md",
+            new ForgeBlueprintTask { Key = "w", Description = "Do", ExpectedOutput = "Done", Agent = "idle", Deliverable = "/output/notes.md" },
+            Task("m", dependencies: "w"),
+            Task("r", dependencies: "m"));
+
+        Assert.Empty(plan.Validate([]));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-44")]
+    [InlineData("goal")]
+    [InlineData("backstory")]
+    public void ShouldRefuseAPlan_WhenAnAgentGoalNamesAFileNoTaskOfItGets(string field)
+    {
+        var plan = AgentPlan(field, "Turn /output/notes.md into a summary",
+            Task("w", deliverable: "/output/other.md"));
+
+        var errors = plan.Validate([]);
+
+        var error = Assert.Single(errors, e => e.StartsWith("agents[0] ('a')", StringComparison.Ordinal));
+        Assert.Contains($"its {field} names", error, StringComparison.Ordinal);
+        Assert.Contains("'/output/notes.md'", error, StringComparison.Ordinal);
+        Assert.Empty(plan.Validate(["/output/notes.md"]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-44")]
+    public void ShouldAcceptAPlan_WhenAManagerWithNoTaskNamesTheFinalDeliverable()
+    {
+        var plan = new ForgeBlueprint
+        {
+            Crew = new ForgeBlueprintCrew { Name = "team", Goal = "goal", Process = "hierarchical" },
+            Manager = "lead",
+            Agents =
+            [
+                new ForgeBlueprintAgent { Key = "a", Role = "r", Goal = "g" },
+                new ForgeBlueprintAgent { Key = "lead", Role = "r2", Goal = "Deliver /output/report.md on time" },
+            ],
+            Tasks = [Task("w", deliverable: "/output/report.md")],
+        };
+
+        Assert.DoesNotContain(plan.Validate([]), e => e.StartsWith("agents[", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-44")]
+    public void ShouldRefuseAPlan_WhenAnAgentWithNoTaskNamesAFileOutsideExistingPaths()
+    {
+        var plan = new ForgeBlueprint
+        {
+            Crew = new ForgeBlueprintCrew { Name = "team", Goal = "goal", Process = "parallel" },
+            Agents =
+            [
+                new ForgeBlueprintAgent { Key = "a", Role = "r", Goal = "g" },
+                new ForgeBlueprintAgent { Key = "idle", Role = "r2", Goal = "g", Backstory = "You maintain /output/notes.md" },
+            ],
+            Tasks = [Task("w", deliverable: "/output/report.md")],
+        };
+
+        var error = Assert.Single(plan.Validate([]));
+
+        Assert.StartsWith("agents[1] ('idle')", error, StringComparison.Ordinal);
+        Assert.Contains("its backstory names", error, StringComparison.Ordinal);
+        Assert.Contains("'/output/notes.md'", error, StringComparison.Ordinal);
+        Assert.Empty(plan.Validate(["/output/notes.md"]));
+    }
+
     [Fact]
     [Trait("BR", "CH-34")]
     public void ShouldAcceptAPlan_WhenTheReadFileIsADependencysDeliverable()

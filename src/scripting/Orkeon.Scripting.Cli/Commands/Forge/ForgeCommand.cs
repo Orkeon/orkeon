@@ -754,7 +754,8 @@ internal static class ForgeCommand
                 new RenderStage(),
                 new ValidateStage(knownTools),
                 new TestStage(new ForgeCrewTestBench(host.Services, workspace: workspace, readRoot: readRoot,
-                    mailAuthor: new ForgeTrialMailAuthor(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>()))),
+                    mailAuthor: new ForgeTrialMailAuthor(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>())),
+                    observer),
                 new DiagnoseStage(new LlmForgeJudge(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>())),
                 // A resume that lands AT the arbitration (a reopen, or an interruption
                 // there) re-announces the stored verdict before asking again.

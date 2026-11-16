@@ -11,3 +11,11 @@ Orkeon.Application.Interfaces.Services.CrewExecutionEvent.EndedOnIterationCap.ge
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.EndedOnIterationCap.init -> void
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedOnIterationCap.get -> bool
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedOnIterationCap.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.CacheHitTokens.get -> long?
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.CacheHitTokens.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.CacheMissTokens.get -> long?
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.CacheMissTokens.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedAt.get -> System.DateTimeOffset?
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedAt.init -> void
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.EndedOnIterationCap.get -> bool
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.EndedOnIterationCap.init -> void

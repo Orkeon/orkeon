@@ -1,10 +1,12 @@
 namespace Orkeon.E2E.Tests;
 
 /// <summary>
-/// CH-01 / CH-02: a consumer of the packed <c>Orkeon.Scripting</c> that sets <c>ExcludeAssets="build"</c> builds
-/// without the local embedding model download (no <c>LocalEmbeddingsModel/</c> in its output); a consumer that
-/// keeps the default reference runs the upstream download target, which fails here because no network is reachable.
-/// Nothing is downloaded: restore reads a local feed and the repository's package cache.
+/// The local embedding model of the packed <c>Orkeon.Scripting</c>. Opted out (CH-01, CH-18, CH-19): a consumer that
+/// sets <c>ExcludeAssets="build"</c> downloads nothing, builds without <c>LocalEmbeddingsModel/</c> in its output and
+/// runs offline, the first local embedding failing with a clear message. Default reference offline (CH-02): the
+/// upstream download target runs and fails because no network is reachable. Online (CH-45, Category=Integration):
+/// a consumer that keeps the default reference downloads the model over the network, then embeds
+/// (384 dimensions). Offline tests restore from a local feed and the repository's package cache.
 /// Category=Slow: the pack builds the lineup.
 /// </summary>
 [Trait("Category", "Slow")]
@@ -100,11 +102,54 @@ public sealed class LocalEmbeddingsModelOptOutTests : IClassFixture<LocalEmbeddi
             $"The upstream model download did not run:\n{result.BuildOutput}");
     }
 
-    private (int Exit, string Output) BuildAndRun(string name)
+    [Fact]
+    [Trait("BR", "CH-45")]
+    [Trait("Category", "Integration")]
+    public async Task ShouldDownloadTheModelAndEmbed_WhenTheConsumerKeepsBuildAssetsOnline()
     {
-        var build = BuildConsumer(name, excludeBuild: true, program: HostProgram);
-        Assert.True(build.BuildExit == 0, $"The opted-out consumer failed to build ({build.BuildExit}):\n{build.BuildOutput}");
-        return TemplatesPackTests.Run("dotnet", ["run", "--no-build", "-c", "Release", "--project", Path.Combine(_fixture.Scratch, name, "Consumer.csproj")], Path.Combine(_fixture.Scratch, name));
+        var targets = Directory.EnumerateFiles(_fixture.PackagesPath, "SmartComponents.LocalEmbeddings.targets", SearchOption.AllDirectories).FirstOrDefault();
+        Assert.SkipWhen(targets is null, "SmartComponents.LocalEmbeddings.targets was not found in the package cache.");
+        var text = await File.ReadAllTextAsync(targets!, TestContext.Current.CancellationToken);
+        var element = text.IndexOf("<LocalEmbeddingsModelUrl", StringComparison.Ordinal);
+        var start = element < 0 ? -1 : text.IndexOf("https://", element, StringComparison.Ordinal);
+        Assert.SkipWhen(start < 0, "No LocalEmbeddingsModelUrl download host found in the upstream targets file.");
+        var rest = text[start..];
+        var hostEnd = rest.IndexOf('/', "https://".Length);
+        var hostUrl = hostEnd < 0 ? rest : rest[..hostEnd];
+        var reachable = false;
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            using var request = new HttpRequestMessage(HttpMethod.Head, hostUrl);
+            using var response = await http.SendAsync(request, TestContext.Current.CancellationToken);
+            reachable = true;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            // Unreachable network: the test is skipped below, never failed.
+        }
+
+        Assert.SkipWhen(!reachable, $"The model download host {hostUrl} is unreachable.");
+
+        var run = BuildAndRun("online", excludeBuild: false, online: true, dimensions: true);
+        var outputDirectory = Path.Combine(_fixture.Scratch, "online", "bin");
+        var model = Directory.GetFiles(outputDirectory, "model.onnx", SearchOption.AllDirectories)
+            .FirstOrDefault(f => f.Replace('\\', '/').EndsWith("LocalEmbeddingsModel/default/model.onnx", StringComparison.Ordinal));
+        Assert.True(model is not null, $"LocalEmbeddingsModel/default/model.onnx was not found under {outputDirectory}.");
+        Assert.True(new FileInfo(model).Length > 0, $"{model} is empty.");
+        Assert.True(run.Exit == 0, $"The consumer program exited {run.Exit}:\n{run.Output}");
+        Assert.True(run.Output.Split('\n').Select(l => l.Trim()).Contains("DIMENSIONS=384"), $"DIMENSIONS=384 was not printed:\n{run.Output}");
+    }
+
+    // dimensions: the program only prints DIMENSIONS=<length of one local embedding> instead of the tool listing.
+    private (int Exit, string Output) BuildAndRun(string name, bool excludeBuild = true, bool online = false, bool dimensions = false)
+    {
+        var build = BuildConsumer(name, excludeBuild, program: HostProgram, online: online);
+        Assert.True(build.BuildExit == 0, $"The consumer failed to build ({build.BuildExit}):\n{build.BuildOutput}");
+        List<string> runArgs = ["run", "--no-build", "-c", "Release", "--project", Path.Combine(_fixture.Scratch, name, "Consumer.csproj")];
+        if (dimensions)
+            runArgs.AddRange(["--", "--dimensions"]);
+        return TemplatesPackTests.Run("dotnet", runArgs, Path.Combine(_fixture.Scratch, name));
     }
 
     // Reflection keeps the program independent of the packed surface: it adds the public local embeddings registration,
@@ -130,6 +175,21 @@ public sealed class LocalEmbeddingsModelOptOutTests : IClassFixture<LocalEmbeddi
             try { m?.Invoke(null, m.GetParameters().Select((p, i) => i == 0 ? (object?)services : p.HasDefaultValue ? p.DefaultValue : null).ToArray()); } catch (Exception ex) { Console.WriteLine("REGFAIL=" + extra + ": " + (ex.InnerException ?? ex).Message.Replace('\n', ' ')); }
         }
         using var sp = services.BuildServiceProvider();
+        if (args.Contains("--dimensions"))
+        {
+            var embeddingProviderType = types.First(t => t.FullName == "Orkeon.Analysis.Abstractions.Interfaces.IEmbeddingProvider");
+            var embeddingProvider = sp.GetRequiredService(embeddingProviderType);
+            var embedMethod = embeddingProviderType.GetMethods().First(m => m.Name.Contains("Embed", StringComparison.Ordinal));
+            var embedArgs = embedMethod.GetParameters().Select(p => p.ParameterType == typeof(string) ? "hello" : p.ParameterType.IsAssignableFrom(typeof(string[])) ? new[] { "hello" } : p.HasDefaultValue ? p.DefaultValue : p.ParameterType == typeof(CancellationToken) ? CancellationToken.None : null).ToArray();
+            var embedTask = (Task)embedMethod.Invoke(embeddingProvider, embedArgs)!;
+            await embedTask;
+            object? current = embedTask.GetType().GetProperty("Result")!.GetValue(embedTask);
+            if (current is Array outer && outer.Length > 0 && outer.GetValue(0) is not float) current = outer.GetValue(0);
+            else if (current is System.Collections.IEnumerable seq && current is not Array) current = seq.Cast<object>().FirstOrDefault();
+            var length = current is Array vector ? vector.Length : current?.GetType().GetProperty("Length")?.GetValue(current) as int? ?? -1;
+            Console.WriteLine("DIMENSIONS=" + length);
+            return 0;
+        }
         var toolType = types.First(t => t.Name == "IBaseTool");
         var names = new List<string>();
         foreach (var t in types.Where(t => !t.IsAbstract && !t.IsGenericTypeDefinition && toolType.IsAssignableFrom(t)))
@@ -158,7 +218,7 @@ public sealed class LocalEmbeddingsModelOptOutTests : IClassFixture<LocalEmbeddi
         return 0;
         """;
 
-    private (int BuildExit, string BuildOutput, string OutputDirectory) BuildConsumer(string name, bool excludeBuild, string? localReference = null, string program = "return 0;\n")
+    private (int BuildExit, string BuildOutput, string OutputDirectory) BuildConsumer(string name, bool excludeBuild, string? localReference = null, string program = "return 0;\n", bool online = false)
     {
         Assert.True(_fixture.PackExitCode == 0, $"Packing failed with exit code {_fixture.PackExitCode}:\n{_fixture.PackOutput}");
 
@@ -193,13 +253,15 @@ public sealed class LocalEmbeddingsModelOptOutTests : IClassFixture<LocalEmbeddi
         ], project);
         Assert.True(restoreExit == 0, $"restore of {name} failed ({restoreExit}):\n{restoreOutput}");
 
-        var (buildExit, buildOutput) = TemplatesPackTests.Run("dotnet",
-        [
-            "build", csproj, "--no-restore", "-nologo", "-c", "Release", "-v:n",
-            "-p:LocalEmbeddingsModelUrl=http://127.0.0.1:9/none",
-            "-p:LocalEmbeddingsVocabUrl=http://127.0.0.1:9/none",
-            $"-p:LocalEmbeddingsModelCacheDir={cache}{Path.DirectorySeparatorChar}",
-        ], project);
+        List<string> buildArgs = ["build", csproj, "--no-restore", "-nologo", "-c", "Release", "-v:n"];
+        if (!online)
+        {
+            buildArgs.Add("-p:LocalEmbeddingsModelUrl=http://127.0.0.1:9/none");
+            buildArgs.Add("-p:LocalEmbeddingsVocabUrl=http://127.0.0.1:9/none");
+        }
+
+        buildArgs.Add($"-p:LocalEmbeddingsModelCacheDir={cache}{Path.DirectorySeparatorChar}");
+        var (buildExit, buildOutput) = TemplatesPackTests.Run("dotnet", buildArgs, project);
         return (buildExit, buildOutput, Path.Combine(project, "bin"));
     }
 

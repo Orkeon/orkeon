@@ -77,7 +77,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             return await _inner.ExecuteTaskAsync(agent, task, context, cancellationToken).ConfigureAwait(false);
 
         if (call.Stored is { } stored)
+        {
+            NoteAttempt(call, task, stored);
             return stored.ToResult();
+        }
 
         var result = await RunAsync(call, () => _inner.ExecuteTaskAsync(agent, task, context, cancellationToken)).ConfigureAwait(false);
         if (result.Success)
@@ -97,7 +100,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         // A stored structured output that no longer reads as the task's type (edited, or a type that changed) is not an
         // answer: the task runs again instead of failing at every resume.
         if (call.Stored is { } stored && TryRebuild<TOutput>(stored, call, task) is { } rebuilt)
+        {
+            NoteAttempt(call, task, stored);
             return rebuilt;
+        }
 
         var result = await RunAsync(call, () => _inner.ExecuteTaskAsync<TOutput>(agent, task, context, cancellationToken)).ConfigureAwait(false);
         if (result.Success)
@@ -115,7 +121,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             return await decide().ConfigureAwait(false);
 
         if (call.Stored is { } stored)
+        {
+            NoteAttempt(call, task, stored);
             return stored.ToResult();
+        }
 
         var result = await RunAsync(call, decide).ConfigureAwait(false);
         if (result.Success)
@@ -146,6 +155,13 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             throw new RunSuspendedException(suspended.RequestId);
 
         return call;
+    }
+
+    // A replayed task that had retried ends on the attempt after its retries, as RetryingAgentExecutionService reports it.
+    private static void NoteAttempt(Call call, ICrewTask task, StoredResult stored)
+    {
+        if (stored.RetryCount > 0)
+            call.Run.TaskAttempts[task.TaskId.Value.ToString()] = stored.RetryCount + 1;
     }
 
     private StoredResult? Lookup(RunScope run, RunState state, string key, string fingerprint, ICrewTask task)
@@ -327,6 +343,8 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
 
         public int IterationsUsed { get; init; }
 
+        public int RetryCount { get; init; }
+
         public DateTimeOffset? EndedAt { get; init; }
 
         // The outcome of a decision task, which a route reads: kept so that a resumed run replays it.
@@ -349,6 +367,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             CacheHitTokens = result.CacheHitTokens,
             CacheMissTokens = result.CacheMissTokens,
             IterationsUsed = result.IterationsUsed,
+            RetryCount = result.RetryCount,
             EndedAt = result.EndedAt,
             Decision = result.Decision,
             EndedOnIterationCap = result.EndedOnIterationCap,
@@ -365,7 +384,11 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 TokensUsed = result.TokensUsed,
                 PromptTokens = result.PromptTokens,
                 CompletionTokens = result.CompletionTokens,
+                CacheHitTokens = result.CacheHitTokens,
+                CacheMissTokens = result.CacheMissTokens,
                 IterationsUsed = result.IterationsUsed,
+                RetryCount = result.RetryCount,
+                EndedAt = result.EndedAt,
                 EndedOnIterationCap = result.EndedOnIterationCap,
             };
 
@@ -378,6 +401,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             CacheHitTokens = CacheHitTokens,
             CacheMissTokens = CacheMissTokens,
             IterationsUsed = IterationsUsed,
+            RetryCount = RetryCount,
             EndedAt = EndedAt,
             Decision = Decision,
             EndedOnIterationCap = EndedOnIterationCap,
@@ -395,7 +419,11 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 TokensUsed = TokensUsed,
                 PromptTokens = PromptTokens,
                 CompletionTokens = CompletionTokens,
+                CacheHitTokens = CacheHitTokens,
+                CacheMissTokens = CacheMissTokens,
                 IterationsUsed = IterationsUsed,
+                RetryCount = RetryCount,
+                EndedAt = EndedAt,
                 EndedOnIterationCap = EndedOnIterationCap,
             };
 
