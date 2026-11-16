@@ -77,7 +77,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             return await _inner.ExecuteTaskAsync(agent, task, context, cancellationToken).ConfigureAwait(false);
 
         if (call.Stored is { } stored)
+        {
+            NoteAttempt(call, task, stored);
             return stored.ToResult();
+        }
 
         var result = await RunAsync(call, () => _inner.ExecuteTaskAsync(agent, task, context, cancellationToken)).ConfigureAwait(false);
         if (result.Success)
@@ -97,7 +100,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         // A stored structured output that no longer reads as the task's type (edited, or a type that changed) is not an
         // answer: the task runs again instead of failing at every resume.
         if (call.Stored is { } stored && TryRebuild<TOutput>(stored, call, task) is { } rebuilt)
+        {
+            NoteAttempt(call, task, stored);
             return rebuilt;
+        }
 
         var result = await RunAsync(call, () => _inner.ExecuteTaskAsync<TOutput>(agent, task, context, cancellationToken)).ConfigureAwait(false);
         if (result.Success)
@@ -115,7 +121,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             return await decide().ConfigureAwait(false);
 
         if (call.Stored is { } stored)
+        {
+            NoteAttempt(call, task, stored);
             return stored.ToResult();
+        }
 
         var result = await RunAsync(call, decide).ConfigureAwait(false);
         if (result.Success)
@@ -146,6 +155,13 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             throw new RunSuspendedException(suspended.RequestId);
 
         return call;
+    }
+
+    // A replayed task that had retried ends on the attempt after its retries, as RetryingAgentExecutionService reports it.
+    private static void NoteAttempt(Call call, ICrewTask task, StoredResult stored)
+    {
+        if (stored.RetryCount > 0)
+            call.Run.TaskAttempts[task.TaskId.Value.ToString()] = stored.RetryCount + 1;
     }
 
     private StoredResult? Lookup(RunScope run, RunState state, string key, string fingerprint, ICrewTask task)

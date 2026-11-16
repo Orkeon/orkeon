@@ -218,6 +218,7 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
     [InlineData(false)]
     [InlineData(true)]
     [Trait("BR", "CH-42")]
+    [Trait("BR", "CH-48")]
     public async System.Threading.Tasks.Task ShouldReplayTheRetryCount_WhenAResumedTaskRetried(bool typed)
     {
         _inner.RetryCount = 2;
@@ -232,15 +233,69 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
         }
 
         var plan = await PlanOfAsync(id);
+
+        // The inner double no longer reports a retry: the replayed count can only come from the checkpoint.
+        _inner.RetryCount = 0;
         int replayedRetries;
+        bool resumed;
         using (Enter(id, plan))
         {
-            replayedRetries = typed
-                ? (await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken)).RetryCount
-                : (await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken)).RetryCount;
+            if (typed)
+            {
+                var replayed = await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+                (replayedRetries, resumed) = (replayed.RetryCount, replayed.Resumed);
+            }
+            else
+            {
+                var replayed = await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+                (replayedRetries, resumed) = (replayed.RetryCount, replayed.Resumed);
+            }
         }
 
+        Assert.True(resumed);
         Assert.Equal(2, replayedRetries);
+    }
+
+    [Theory]
+    [InlineData(false, 2, 3)]
+    [InlineData(true, 2, 3)]
+    [InlineData(false, 0, 0)]
+    [InlineData(true, 0, 0)]
+    [Trait("BR", "CH-48")]
+    public async System.Threading.Tasks.Task ShouldReportTheEndingAttempt_WhenAResumedTaskHadRetried(bool typed, int retries, int expectedAttempt)
+    {
+        _inner.RetryCount = retries;
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        {
+            if (typed)
+                await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+            else
+                await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        }
+
+        var plan = await PlanOfAsync(id);
+        ICrewTask resumedTask = Task("first");
+        _inner.RetryCount = 0;
+        bool found;
+        int attempt;
+        using (Enter(id, plan))
+        {
+            if (typed)
+                await Decorate().ExecuteTaskAsync<FakeTypedAgentExecutionService.Answer>(_agent, resumedTask, Context(), TestContext.Current.CancellationToken);
+            else
+                await Decorate().ExecuteTaskAsync(_agent, resumedTask, Context(), TestContext.Current.CancellationToken);
+            found = _scope.Current!.TaskAttempts.TryGetValue(resumedTask.TaskId.Value.ToString(), out attempt);
+        }
+
+        if (expectedAttempt == 0)
+            Assert.False(found, "a task that never retried has no attempt entry");
+        else
+        {
+            Assert.True(found);
+            Assert.Equal(expectedAttempt, attempt);
+        }
     }
 
     [Fact]

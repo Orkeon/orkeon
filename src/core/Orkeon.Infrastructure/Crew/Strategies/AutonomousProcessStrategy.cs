@@ -424,10 +424,12 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             // even though only their payload travels back over the channel.
             tokenTally.Record(result);
 
-            return AgentChannelResponse.Ok(request.CorrelationId, peer.Id, result.Output) with
-            {
-                EndedOnIterationCap = result.EndedOnIterationCap,
-            };
+            var answer = result.Success
+                ? AgentChannelResponse.Ok(request.CorrelationId, peer.Id, result.Output)
+                : AgentChannelResponse.Fail(
+                    request.CorrelationId, peer.Id,
+                    result.Error ?? result.LastError ?? "the peer failed");
+            return answer with { EndedOnIterationCap = result.EndedOnIterationCap };
         }
         catch (BudgetExhaustedException ex)
         {
