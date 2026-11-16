@@ -977,7 +977,7 @@ by `AddOrkeonInfrastructure()`, and by `AddOrkeonVectorSearch(configuration)` (c
 | `Dimension` | integer | `1536` | The dimension of the embedding vectors. |
 | `EnableCache` | boolean | `true` | Whether to enable embedding caching. |
 | `Endpoint` | string | `""` | Base URL of the embeddings endpoint. Empty: the provider's public endpoint. Required by `azure-openai` (the resource URL, `https://<resource>.openai.azure.com`). |
-| `FingerprintPath` | string | `"/workspace/.orkeon/embedding-fingerprint.json"` | Virtual path of the file recording the provider, model and dimensions the stored vectors came from; the host refuses to start when they change. Empty: the guard is off. |
+| `FingerprintPath` | string | `"/workspace/.orkeon/embedding-fingerprint.json"` | Virtual path of the file recording the provider, model and dimensions the stored vectors came from; the host refuses to start when they change. Empty: the guard is off. `orkeon forge` defaults it to `/forge/embedding-fingerprint.json`, `orkeon rag` and `orkeon eval rag` to empty. |
 | `Model` | string | `"text-embedding-3-small"` | The model name to use for embeddings. |
 | `Provider` | string | `"openai"` | The embedding provider to use: "openai", "ollama", "mistral", "azure-openai" or "gemini". |
 <!-- /settings -->
@@ -1956,7 +1956,7 @@ the esbuild transpiler (`IScriptTranspiler`) of `orkeon run`, the shared runner,
 | `EsbuildPath` | string | — |  | Absolute path to the esbuild binary. When null, the transpiler falls back to the `ORKEON_ESBUILD_PATH` environment variable, then to a binary bundled next to the application (`esbuild-bin/esbuild`), then to the copy `npm install` places in a checkout of the repository (`tools/scripting-esbuild/node_modules/`, searched from the working directory and the application directory upwards), then to a PATH lookup. |
 | `EsbuildTimeout` | duration | `"00:00:30"` |  | Maximum time esbuild has to transpile a single source. Default: 30 s. |
 | `TscPath` | string | — |  | Absolute path to the `tsc` binary. When set it is the only candidate: a relative path, or one that does not exist, is reported as a missing compiler, never resolved against the working directory nor silently replaced. When null, the type checker looks in `tools/scripting-typecheck/node_modules/.bin/` above the application directory, then in `PATH`; never in the working directory. Like `EsbuildPath`, it may come from the `appsettings.json` next to the crew: that file is trusted as the crew itself is. |
-| `TypeCheck` | enum | `"Validate"` | `Off`, `Validate`, `Always` | When the TypeScript compiler (`tsc`) checks the types of a `.ork.ts` script against the typings this build ships: `Off` never, `Validate` (default) in `orkeon run --validate`, `Always` in `--validate` and before every run. Under `Validate` a missing compiler is a warning; under `Always` it is a failure. |
+| `TypeCheck` | enum | `"Validate"` | `Off`, `Validate`, `Always` | When the TypeScript compiler (`tsc`) checks the types of a `.ork.ts` script against the typings this build ships: `Off` never, `Validate` (default) in `orkeon run --validate`, `Always` in `--validate` and before every run. Under `Validate` a missing compiler is a warning; under `Always` it is a failure. `orkeon doctor` follows the mode too: see [its `tsc` check](./cli.md#orkeon-doctor). |
 | `TypeCheckTimeout` | duration | `"00:01:00"` |  | Maximum time `tsc` has to check one script. Default: 60 s. |
 <!-- /settings -->
 

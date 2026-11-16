@@ -208,7 +208,7 @@ tasks:
     dependencies:
       - "analyze_sales"
     deliverable:
-      path: "/output/weekly-report.md"   # default source: tool_call — the agent writes it with file_write
+      path: "/output/weekly-report.md"   # default source: tool_call — the agent writes it, so it needs file_write (without a writer tool, the load warns and `orkeon run --validate` prints WARNING)
       # source: final_message           # or structured_output: the framework writes the file itself
 ```
 

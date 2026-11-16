@@ -247,7 +247,11 @@ tarif prompt : Anthropic la rapporte dans `usage.cache_creation.ephemeral_1h_inp
 `CostUsageEvent` sous `CacheWrite1hTokens`, sous-ensemble de `CacheWriteTokens`. `claude-opus-4-5` (et ses ids datés) est
 tarifé à la grille officielle 5 / 25 $/M, et non à celle du préfixe `claude-opus-4`. Haiku 5.5
 est tarifé à son tarif pour un prompt jusqu'à 100K jetons ; un prompt plus long est facturé davantage, ce que le
-registre ne modélise pas.
+registre ne modélise pas. Une ligne `ModelPricing` peut nommer un `Provider` (null : tout fournisseur ;
+`CustomPricings:<i>:Provider` dans les réglages). `CostBudgetManager` tarife un appel avec
+`IModelPricingRegistry.TryGetPricing(provider, model)` / `CalculateCost(provider, model, …)` : une ligne
+personnalisée l'emporte sur une ligne intégrée, et dans chaque niveau les lignes propres au fournisseur passent
+d'abord (voir [configuration](../reference/configuration.md)).
 
 Le TTL du cache est `LlmCacheConfig.Ttl` (`5m` ou `1h`). Un appel peut le porter comme option
 `LlmChatOptionsKeys.CacheTtl` (`orkeon:cache_ttl`), que `ChatOptionsComposer` remplit depuis le

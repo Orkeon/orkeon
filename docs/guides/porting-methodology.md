@@ -188,7 +188,7 @@ Use `CrewTaskBuilder.DependsOn()` (YAML: `dependencies:`) to express prerequisit
 
 ### 4.4 Configure the execution options
 
-For each task, decide on: the priority (`TaskPriority`), human intervention (`HumanInput`, see 1.4), the output validation schema (`OutputJson`), and the file the framework writes from the result (the YAML `deliverable:` block — `path`, `format`, optional schema). `AsyncExecution` (`asyncExecution:`, CrewAI's `async_execution`) is honoured by `process: sequential` — the task runs alongside the tasks after it, and a task that depends on it waits for it — and accepted without an effect of its own by `process: parallel`; the four other modes refuse it at load (see [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
+For each task, decide on: the priority (`TaskPriority`), human intervention (`HumanInput`, see 1.4), the output validation schema (`OutputJson`), and the output file (the YAML `deliverable:` block — `path`, `source`, `format`, optional schema: with the default `source: tool_call` the agent writes it and needs a tool that writes it, such as `file_write`; `final_message` or `structured_output` make the framework write it — see [deliverables checked at load](../architecture/yaml-schema.md#deliverables-checked-at-load)). `AsyncExecution` (`asyncExecution:`, CrewAI's `async_execution`) is honoured by `process: sequential` — the task runs alongside the tasks after it, and a task that depends on it waits for it — and accepted without an effect of its own by `process: parallel`; the four other modes refuse it at load (see [Asynchronous tasks](../orchestration/process-types.md#asynchronous-tasks-asyncexecution)).
 
 ## Step 5 — Produce the porting plan
 

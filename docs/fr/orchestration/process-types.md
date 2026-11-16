@@ -368,7 +368,7 @@ tasks:
 
 ### Quand ne pas l'utiliser
 
-- Relance de tâches instables (utilisez Graph)
+- Relance de tâches instables (donnez à la tâche un `retry:`, dans n'importe quel mode)
 - API au rate limiting strict
 
 ---

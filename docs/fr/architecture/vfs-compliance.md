@@ -313,7 +313,8 @@ l'hôte des runners enregistre sur `/credentials/email`). Ils passent toujours p
 `credentials` et de son sous-répertoire `email` (réservés au propriétaire sous Unix) avant
 qu'aucun montage n'existe — du bootstrap `Hosting/Runner*`, une portée `EXCEPTION-BOOTSTRAP` déjà
 ratifiée, pas une nouvelle catégorie. Un montage utilisateur qui revendique l'une de ces racines
-est refusé (`RunnerVirtualRoots.All`, `/credentials` compris quels que soient les comptes).
+est refusé (`EnsureReservedRootsAreFree` : les racines du runner, `/state` et `/runs` compris, et
+`/credentials` toujours, quels que soient les comptes).
 
 ## Mounts par scope (surcharge ambiante des mounts)
 

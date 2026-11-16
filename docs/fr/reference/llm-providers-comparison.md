@@ -293,7 +293,7 @@ rattachées au fournisseur : Together `zai-org/GLM-5.3-Flash` 0,15 / 0,50, Mammo
 1,5 / 7,5 (la borne haute de la passerelle, d'après des sources secondaires). Les modèles Ollama et Docker Model Runner coûtent 0.
 Hugging Face reste sans prix : son fournisseur routé fixe le tarif, si bien qu'un appel avertit une fois par modèle et nomme
 `Orkeon:CostTracking:CustomPricings`, où une ligne le tarife. Non modélisés : le tarif de Qwen au-delà de 256K tokens d'entrée
-(1,2 / 4,8), celui de Gemini à partir du 2027-01-01 (1,50 / 7,50) et celui de Grok au-delà de 200K tokens de prompt (4 / 12).
+(1,2 / 4,8) et celui de Grok au-delà de 200K tokens de prompt (4 / 12).
 
 ## Modèles servis et leurs options par défaut — lecture des catalogues du 2026-11-11
 

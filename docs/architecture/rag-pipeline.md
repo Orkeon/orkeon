@@ -526,7 +526,10 @@ choice — set Orkeon:Rag:Provider in the settings`).
   generation stage, so a script that reads only `citations` should call
   `retrieve` — see below.
 - **CLI** (`orkeon`): `orkeon rag ingest|search|eval` over the same pipelines —
-  flags in the [CLI reference](../reference/cli.md#orkeon-rag).
+  flags in the [CLI reference](../reference/cli.md#orkeon-rag). A collection whose manifest records
+  another embedding provider, model or dimensions is refused (exit 1, naming the collection, both
+  models and `orkeon rag ingest --reindex`) on `rag ingest` without `--reindex`, on `rag search` and
+  on `eval rag -c <collection>` (without `--reindex` when its ingest pre-pass runs).
 - **Agent tools** (`Orkeon.Tools.Rag`, `AddOrkeonRagTools()`, requires `AddOrkeonRag`):
 
 | Tool | Parameters | Behaviour |

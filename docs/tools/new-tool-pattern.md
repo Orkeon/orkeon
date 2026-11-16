@@ -185,7 +185,7 @@ it — and the CI gate reads either form.
 public class WeatherTool : HttpToolBase<WeatherRequest, WeatherResponse> { … }
 ```
 
-Four more virtual members are worth declaring:
+Five more virtual members are worth declaring:
 
 | Member | Default | What reads it |
 |---|---|---|
@@ -193,6 +193,7 @@ Four more virtual members are worth declaring:
 | `AccessFor(arguments)` | `Access` | The class of one call, for a tool whose operations differ (`github`, `http_api`); return the most restrictive class for arguments it does not recognise |
 | `Category` | the contract's `Category`, else `"General"` (`"File Operations"` / `"Web Operations"` for the two specialized bases) | Catalogues and listings |
 | `RequiresHumanApproval` | `false` | Approval-aware callers |
+| `UsesFileSystem` | `false` (`true` in `FileToolBase`) | The mounts block of the agent's prompt; set it `true` for a tool that reads or writes virtual paths |
 
 The bases hand a tool their services as protected get-only properties: `Logger` and
 `JsonOptions` (`ToolBase`), `HttpClient` (`HttpToolBase`), `FileSystemService`
