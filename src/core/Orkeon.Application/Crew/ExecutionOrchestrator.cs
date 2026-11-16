@@ -415,9 +415,10 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     }
 
     /// <summary>
-    /// The state of the task's <c>tool_call</c> deliverable as the attempt begins (#392), so that the
-    /// end of the attempt tells a file it wrote from one an earlier run or attempt left. Null when the
-    /// task has no such deliverable (or no file system to read). A cancellation is never swallowed.
+    /// The state of the task's <c>tool_call</c> deliverable as its first attempt of the run begins (#392,
+    /// read once per run through <see cref="DeliverableBaselineScope"/>), so that the end of an attempt
+    /// tells a file the task wrote from one an earlier run left. Null when the task has no such
+    /// deliverable (or no file system to read). A cancellation is never swallowed.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort probe: a failure to check the deliverable never fails the task.")]
     private async System.Threading.Tasks.Task<DeliverableFileState?> ReadDeliverableBaselineAsync(CrewTask task, CancellationToken cancellationToken)
@@ -550,9 +551,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 if (RefuseOwnTools(agent, task, llm.Provider, toolbelt, toolsUsed, startTime) is { } refused)
                     return refused;
 
-                // The deliverable as the attempt begins (#392): its end tells a file this attempt
-                // wrote from one an earlier run or attempt left behind.
-                var deliverableBaseline = await ReadDeliverableBaselineAsync(task, taskToken).ConfigureAwait(false);
+                // The deliverable as the task's first attempt of the run began (#392): the end of this
+                // attempt tells a file the task wrote, in this attempt or an earlier one of the run (a
+                // retry, a revision, another ballot), from one an earlier run left behind.
+                var deliverableBaseline = await DeliverableBaselineScope.FirstAttemptAsync(
+                    task.Id, () => ReadDeliverableBaselineAsync(task, taskToken)).ConfigureAwait(false);
 
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
                     agent, task, toolbelt,

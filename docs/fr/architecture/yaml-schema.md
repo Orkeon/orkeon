@@ -498,9 +498,11 @@ finale telle quelle au chemin : l'agent donne le contenu complet et n'écrit pas
 `source: structured_output` n'ajoute aucune ligne.
 
 Quand une tâche `tool_call` réussit, le framework vérifie par le système de fichiers virtuel que le
-fichier a été écrit **pendant la tentative** : il lit l'état du fichier (existence, taille, date de
-dernière écriture) au début de la tentative et de nouveau à la fin. Un fichier absent à la fin, ou présent
-mais inchangé depuis le début (un fichier laissé par un run précédent), laisse la tâche réussie mais lui
+fichier a été écrit **par la tâche pendant le run** : il lit l'état du fichier (existence, taille, date de
+dernière écriture) une fois, au début de la première tentative de la tâche dans le run, et de nouveau à la
+fin de chaque tentative. Un retry, une révision hiérarchique ou un autre bulletin d'un vote qui garde le
+fichier qu'une tentative précédente de la même tâche a écrit n'est pas signalé. Un fichier absent à la fin,
+ou présent mais inchangé depuis ce premier début (un fichier laissé par un run précédent), laisse la tâche réussie mais lui
 pose le drapeau `deliverableMissing` (`TaskResult.DeliverableMissing`) : un avertissement nomme la tâche
 (sa clé, sinon le début de sa description), l'agent et le chemin, `AUTO_SUMMARY.md` affiche
 `⚠ completed without writing its deliverable`, l'événement `task.completed` porte

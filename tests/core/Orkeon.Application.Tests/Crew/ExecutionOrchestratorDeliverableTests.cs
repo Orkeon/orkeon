@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.Context;
 using Orkeon.Application.Crew;
 using Orkeon.Application.Crew.DeliverableResolvers;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
@@ -149,6 +150,52 @@ public sealed class ExecutionOrchestratorDeliverableTests : IDisposable
         Assert.True(result.Success, result.Error);
         Assert.True(result.DeliverableMissing);
         Assert.Null(result.DeliverablePath);
+    }
+
+    // VX-2: the state before the task is taken once per task and run, at its first attempt: a retry or a
+    // revision that keeps the file an earlier attempt of the same task wrote is not flagged.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldNameTheDeliverable_WhenALaterAttemptKeepsTheFileAnEarlierAttemptWrote()
+    {
+        var fileSystem = Output();
+        var orchestrator = Orchestrator(fileSystem);
+        var task = Task(DeliverableSource.ToolCall);
+        Orkeon.Application.Interfaces.Services.TaskResult second;
+        using (DeliverableBaselineScope.Begin())
+        {
+            _chatClient.OnAnswer = () => fileSystem.AddFile(NotesPath, "notes", DateTimeOffset.UtcNow.AddMinutes(-1));
+            await orchestrator.ExecuteTaskCoreAsync(Agent(), task, Context(), TestContext.Current.CancellationToken);
+            _chatClient.OnAnswer = null;
+
+            second = await orchestrator.ExecuteTaskCoreAsync(Agent(), task, Context(), TestContext.Current.CancellationToken);
+        }
+
+        Assert.True(second.Success, second.Error);
+        Assert.False(second.DeliverableMissing);
+        Assert.Equal(NotesPath, second.DeliverablePath);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldMarkTheDeliverableMissing_WhenALaterRunKeepsTheFileAnEarlierRunWrote()
+    {
+        var fileSystem = Output();
+        var orchestrator = Orchestrator(fileSystem);
+        var task = Task(DeliverableSource.ToolCall);
+        using (DeliverableBaselineScope.Begin())
+        {
+            _chatClient.OnAnswer = () => fileSystem.AddFile(NotesPath, "notes", DateTimeOffset.UtcNow.AddMinutes(-1));
+            await orchestrator.ExecuteTaskCoreAsync(Agent(), task, Context(), TestContext.Current.CancellationToken);
+            _chatClient.OnAnswer = null;
+        }
+
+        Orkeon.Application.Interfaces.Services.TaskResult rerun;
+        using (DeliverableBaselineScope.Begin())
+            rerun = await orchestrator.ExecuteTaskCoreAsync(Agent(), task, Context(), TestContext.Current.CancellationToken);
+
+        Assert.True(rerun.DeliverableMissing);
+        Assert.Null(rerun.DeliverablePath);
     }
 
     [Fact]

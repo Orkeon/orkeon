@@ -481,9 +481,11 @@ prompt says the framework writes the final answer as-is to the path, so the agen
 content and does not write the file itself; `source: structured_output` adds no line.
 
 When a `tool_call` task succeeds, the framework checks through the virtual file system that the file was
-written **during the attempt**: it reads the file's state (existence, size, last write time) when the
-attempt starts and again when it ends. A file absent at the end, or present but unchanged since the start
-(a file left by an earlier run), leaves the task a success but flags it `deliverableMissing`
+written **by the task during the run**: it reads the file's state (existence, size, last write time) once,
+when the task's first attempt of the run starts, and again when each attempt ends. A retry, a hierarchical
+revision or another ballot of a vote that keeps the file an earlier attempt of the same task wrote is not
+flagged. A file absent at the end, or present but unchanged since that first start (a file left by an
+earlier run), leaves the task a success but flags it `deliverableMissing`
 (`TaskResult.DeliverableMissing`): a warning names the task (its key, else the start of its description),
 the agent and the path, `AUTO_SUMMARY.md` shows `⚠ completed without writing its deliverable`, the
 `task.completed` event carries `deliverableMissing: true` and `run.finished` counts it in

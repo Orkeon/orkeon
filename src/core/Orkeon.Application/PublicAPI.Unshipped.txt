@@ -68,3 +68,5 @@ Orkeon.Application.Crew.DeliverableToolFinding.Kind.get -> Orkeon.Application.Cr
 Orkeon.Application.Crew.DeliverableToolFinding.Kind.init -> void
 static Orkeon.Application.Crew.DeliverableToolCheck.IsBinary(string! path) -> bool
 static Orkeon.Application.Crew.DeliverableToolCheck.WriterHeldFor(System.Collections.Generic.IEnumerable<string!>! toolNames, string! path) -> string?
+Orkeon.Application.Crew.Execution.DeliverableBaselineScope
+static Orkeon.Application.Crew.Execution.DeliverableBaselineScope.Begin() -> System.IDisposable!
