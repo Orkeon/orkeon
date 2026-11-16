@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Application.Crew;
 using Orkeon.Domain.Configuration;
 using Orkeon.Infrastructure.Configuration;
 
@@ -28,6 +29,37 @@ internal sealed record ForgeCompilation
 /// </summary>
 internal static class ForgeBlueprintCompiler
 {
+    /// <summary>The deliverable source the forge writes when the delivering agent cannot write the file itself.</summary>
+    internal const string FinalMessageSource = "final_message";
+
+    /// <summary>
+    /// Whether the agent that delivers <paramref name="task"/> holds <c>file_write</c> (#392): the agent the
+    /// task names, else every agent of the plan (a hierarchical, consensual or autonomous crew picks one at
+    /// run time). A plan task carries no tools of its own, so the agent's are the ones the run offers.
+    /// </summary>
+    internal static bool DelivererCanWrite(ForgeBlueprint blueprint, ForgeBlueprintTask task)
+    {
+        ArgumentNullException.ThrowIfNull(blueprint);
+        ArgumentNullException.ThrowIfNull(task);
+
+        var agents = blueprint.Agents ?? [];
+        var deliverers = task.Agent is { } key
+            ? agents.Where(agent => string.Equals(agent.Key, key, StringComparison.Ordinal)).ToList()
+            : agents.ToList();
+        return deliverers.Count > 0
+            && deliverers.All(agent => (agent.Tools ?? []).Contains(DeliverableToolCheck.FileWriteToolName, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// The <c>deliverable.source</c> the forge writes for <paramref name="task"/>: none (the engine's default,
+    /// <c>tool_call</c>) when its agent holds <c>file_write</c> and writes the file itself, else
+    /// <c>final_message</c>: the framework saves the agent's final answer to the path, and no tool is
+    /// granted for it (least privilege). Before #392 every deliverable was <c>tool_call</c>, and a reading
+    /// agent's file was never written. The source follows from the plan, so a reopened team gets it back.
+    /// </summary>
+    internal static string? EmittedDeliverableSource(ForgeBlueprint blueprint, ForgeBlueprintTask task)
+        => DelivererCanWrite(blueprint, task) ? null : FinalMessageSource;
+
     /// <summary>
     /// Compiles <paramref name="blueprint"/> (structurally valid — run
     /// <see cref="ForgeBlueprint.Validate"/> first: the mapper refuses a reference that names
@@ -82,7 +114,7 @@ internal static class ForgeBlueprintCompiler
                 Dependencies = task.Dependencies is { Count: > 0 } deps ? new Collection<string>([.. deps]) : null,
                 Deliverable = string.IsNullOrWhiteSpace(task.Deliverable)
                     ? null
-                    : new DeliverableYamlConfig { Path = task.Deliverable },
+                    : new DeliverableYamlConfig { Path = task.Deliverable, Source = EmittedDeliverableSource(blueprint, task) },
             };
         }
 

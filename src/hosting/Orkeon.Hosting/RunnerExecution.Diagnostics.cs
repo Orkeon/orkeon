@@ -107,6 +107,13 @@ public static partial class RunnerExecution
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Count();
 
+                // A tool_call deliverable its agent cannot write (#392): reported, not refused — a
+                // crew may write the file through another tool. The exit code stays 0.
+                var taskRepository = scope.ServiceProvider.GetRequiredService<Domain.Task.ITaskRepository>();
+                var tasks = await taskRepository.GetByIdsAsync(crew.Tasks, cts.Token).ConfigureAwait(false);
+                foreach (var finding in Orkeon.Application.Crew.DeliverableToolCheck.Check(tasks, agents))
+                    await console.ErrorOutput.WriteLineAsync($"WARNING: {finding.Message}").ConfigureAwait(false);
+
                 await console.Output.WriteLineAsync(
                     $"VALIDATION OK: {configPath} (agents={crew.Agents.Count}, tasks={crew.Tasks.Count}, tools resolved={toolsResolved})").ConfigureAwait(false);
                 return 0;

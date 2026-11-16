@@ -54,7 +54,7 @@ internal static class ForgeScriptRenderer
             AppendAgent(script, agent, identifiers);
 
         foreach (var task in OrderByDependencies(blueprint.Tasks ?? []))
-            AppendTask(script, task, identifiers);
+            AppendTask(script, blueprint, task, identifiers);
 
         AppendCrew(script, blueprint, identifiers);
 
@@ -88,7 +88,7 @@ internal static class ForgeScriptRenderer
     }
 
     private static void AppendTask(
-        StringBuilder script, ForgeBlueprintTask task, Dictionary<string, string> identifiers)
+        StringBuilder script, ForgeBlueprint blueprint, ForgeBlueprintTask task, Dictionary<string, string> identifiers)
     {
         script.Append('\n');
         script.Append("const ").Append(identifiers[TaskKey(task.Key!)]).Append(" = taskBuilder()\n");
@@ -104,7 +104,13 @@ internal static class ForgeScriptRenderer
         }
 
         if (!string.IsNullOrWhiteSpace(task.Deliverable))
-            script.Append("    .deliverable({ path: ").Append(Literal(task.Deliverable)).Append(" })\n");
+        {
+            // Same source as the YAML render: final_message when the agent has no file_write (#392).
+            script.Append("    .deliverable({ path: ").Append(Literal(task.Deliverable));
+            if (ForgeBlueprintCompiler.EmittedDeliverableSource(blueprint, task) is { } source)
+                script.Append(", source: ").Append(Literal(source));
+            script.Append(" })\n");
+        }
         script.Append("    .build();\n");
     }
 

@@ -235,6 +235,47 @@ public class ForgeBlueprintCompilerTests
         Assert.Equal(12, compilation.Agents["roomy"].MaxIter);
         Assert.Null(compilation.Agents["unset"].MaxIter);
     }
+
+    /// <summary>The valid blueprint with its writer stripped of <c>file_write</c> (#392).</summary>
+    internal static readonly string BlueprintWithoutFileWrite = ForgeDocuments.ValidBlueprint.Replace(
+        "\"tools\": [ \"file_write\" ]", "\"tools\": [ \"file_read\" ]", StringComparison.Ordinal);
+
+    [Fact]
+    public void ShouldKeepTheToolCallSource_WhenTheDeliveringAgentHasFileWrite()
+    {
+        var compilation = ForgeBlueprintCompiler.Compile(Parse(ForgeDocuments.ValidBlueprint));
+
+        Assert.Null(compilation.Tasks["resume"].Deliverable!.Source);
+        var task = Assert.Single(compilation.Configuration.Tasks, t => t.Key == "resume");
+        Assert.Equal(Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall, task.Deliverable!.Source);
+    }
+
+    [Fact]
+    public void ShouldEmitTheFinalMessageSource_WhenTheDeliveringAgentHasNoFileWrite()
+    {
+        var compilation = ForgeBlueprintCompiler.Compile(Parse(BlueprintWithoutFileWrite));
+
+        Assert.Equal("final_message", compilation.Tasks["resume"].Deliverable!.Source);
+        var task = Assert.Single(compilation.Configuration.Tasks, t => t.Key == "resume");
+        Assert.Equal(Orkeon.Domain.Task.ValueObjects.DeliverableSource.FinalMessage, task.Deliverable!.Source);
+        Assert.Equal("/output/resume.md", task.Deliverable.Path);
+        Assert.Empty(ForgeBlueprintCompiler.Validate(compilation, ForgeDocuments.KnownTools).Errors);
+    }
+
+    [Fact]
+    public void ShouldAskEveryAgentForFileWrite_WhenTheTaskNamesNoAgent()
+    {
+        // The plan schema requires an agent per task; the compiler still answers for a task without
+        // one (the manager of the run would pick any agent): every agent must hold file_write.
+        var task = new ForgeBlueprintTask { Key = "t", Description = "d", ExpectedOutput = "o", Deliverable = "/output/t.md" };
+        static ForgeBlueprintAgent Agent(string key, string tool) => new() { Key = key, Role = key, Goal = "g", Tools = [tool] };
+
+        var mixed = new ForgeBlueprint { Agents = [Agent("boss", "file_write"), Agent("reader", "file_read")], Tasks = [task] };
+        var allWrite = new ForgeBlueprint { Agents = [Agent("boss", "file_write"), Agent("writer", "file_write")], Tasks = [task] };
+
+        Assert.Equal("final_message", ForgeBlueprintCompiler.EmittedDeliverableSource(mixed, task));
+        Assert.Null(ForgeBlueprintCompiler.EmittedDeliverableSource(allWrite, task));
+    }
 }
 
 /// <summary>

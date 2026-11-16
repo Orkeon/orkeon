@@ -137,6 +137,64 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         Assert.Contains("definitely_not_a_real_tool", stderr, StringComparison.Ordinal);
     }
 
+    private const string DeliverableWithoutFileWriteCrewYaml = """
+        name: "validate-deliverable"
+        goal: "A tool_call deliverable whose agent cannot write it"
+        process: "sequential"
+        agents:
+          reader:
+            role: "Reader"
+            goal: "Read a file"
+            backstory: "A minimal test agent."
+            tools:
+              - "file_read"
+            maxIter: 1
+        tasks:
+          do_read:
+            description: "Read a file and write notes."
+            expectedOutput: "The notes."
+            agent: "reader"
+            deliverable:
+              path: "/output/notes.md"
+        """;
+
+    [Fact]
+    public async Task Validate_warns_on_a_tool_call_deliverable_without_file_write_and_still_exits_0()
+    {
+        var configPath = WriteConfig("config.yaml", DeliverableWithoutFileWriteCrewYaml);
+        var opts = new TestOptions { ConfigPath = configPath, AllowExternalMounts = true };
+
+        var (exit, stdout, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(0, exit);
+        Assert.Contains("VALIDATION OK:", stdout, StringComparison.Ordinal);
+        Assert.Contains(
+            "WARNING: Task 'do_read' declares the deliverable '/output/notes.md' (source tool_call), but its agent 'Reader' has no file_write tool",
+            stderr,
+            StringComparison.Ordinal);
+        Assert.Contains("set deliverable.source: final_message", stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Validate_does_not_warn_when_the_deliverable_is_the_final_message()
+    {
+        var configPath = WriteConfig(
+            "config.yaml",
+            DeliverableWithoutFileWriteCrewYaml.Replace(
+                "path: \"/output/notes.md\"",
+                "path: \"/output/notes.md\"\n      source: final_message",
+                StringComparison.Ordinal));
+        var opts = new TestOptions { ConfigPath = configPath, AllowExternalMounts = true };
+
+        var (exit, stdout, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(0, exit);
+        Assert.Contains("VALIDATION OK:", stdout, StringComparison.Ordinal);
+        Assert.DoesNotContain("no file_write tool", stderr, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Builds a crew directory that declares the agents twice — once flat (<c>agents.yaml</c>)
     /// and once per-entity (<c>agents/</c>) — which the loader rejects as a mixed layout.

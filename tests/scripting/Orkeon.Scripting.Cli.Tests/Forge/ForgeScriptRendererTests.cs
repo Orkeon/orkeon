@@ -179,4 +179,25 @@ public sealed class ForgeScriptRendererTests : IDisposable
             "the dependency must be declared before the task that references it");
         Assert.Contains(".withContext(task_collecte)", source, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task ShouldRenderAndReloadTheFinalMessageSource_WhenTheDeliveringAgentHasNoFileWrite()
+    {
+        ForgeScriptRenderer.Render(Parse(ForgeBlueprintCompilerTests.BlueprintWithoutFileWrite), _sessionDirectory);
+        var source = await File.ReadAllTextAsync(Path.Combine(_sessionDirectory, "crew", ForgeScriptRenderer.ScriptFileName), TestContext.Current.CancellationToken);
+
+        Assert.Contains(".deliverable({ path: \"/output/resume.md\", source: \"final_message\" })", source, StringComparison.Ordinal);
+        var reloaded = await ReloadAsync();
+        var task = Assert.Single(reloaded.Tasks, t => t.Deliverable is not null);
+        Assert.Equal(Orkeon.Domain.Task.ValueObjects.DeliverableSource.FinalMessage, task.Deliverable!.Source);
+    }
+
+    [Fact]
+    public void ShouldRenderNoSource_WhenTheDeliveringAgentHasFileWrite()
+    {
+        ForgeScriptRenderer.Render(Parse(ForgeDocuments.ValidBlueprint), _sessionDirectory);
+        var source = File.ReadAllText(Path.Combine(_sessionDirectory, "crew", ForgeScriptRenderer.ScriptFileName));
+
+        Assert.Contains(".deliverable({ path: \"/output/resume.md\" })", source, StringComparison.Ordinal);
+    }
 }

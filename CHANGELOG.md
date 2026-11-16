@@ -53,6 +53,20 @@ other two cases `warn`; under `Always` a `tsc` found nowhere or a `TscPath` that
 **What to do**: install `typescript`, point `TscPath` at it, or set `TypeCheck` to `Off` or `Validate` where a CI step runs
 `orkeon doctor` under `Always` without `tsc`.
 
+### Changed — the forge writes `source: final_message` for a deliverable its agent cannot write (#392)
+
+**Before**: every deliverable of a forged crew was `source: tool_call`, so a task whose agent held no
+`file_write` tool never wrote its file. **Now**: the forge keeps `tool_call` (written as no `source`) when the
+task's agent holds `file_write` — every agent of the plan for a task that names none — and writes
+`source: final_message` otherwise, in the YAML crew and in `crew.ork.ts` alike: the framework saves the agent's
+final answer to the path. `forge reopen` derives the source again from the plan. Loading any crew, YAML or
+`.ork.ts`, whose `tool_call` deliverable's agent has no `file_write` (its own or the task's) now logs a warning,
+and `orkeon run --validate` prints it as a `WARNING:` line on stderr with the exit code unchanged; nothing is
+refused. `DeliverableToolCheck` and `DeliverableToolFinding` (`Orkeon.Application.Crew`) expose the check.
+**What to do**: a hand-written crew that sees the warning gives the agent `file_write` or sets
+`deliverable.source: final_message`; a forged team regenerated after this change may differ from the one before
+by that `source` line.
+
 ### Changed — the forge assistant tags its crews `sequential` **[breaking]** (#382)
 
 **Before**: the forge assistant's `orkeon.crew.process` tag read `autonomous`, a process the runtime ignored. **Now**: it

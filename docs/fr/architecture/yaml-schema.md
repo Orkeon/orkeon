@@ -493,6 +493,10 @@ La clé `outputFile:` d'une tâche n'existe plus, et une crew qui en écrit enco
 chargement** par un message qui indique le remplacement : le bloc `deliverable:` de la tâche (plus haut),
 par exemple `deliverable: { path: /output/report.md }`. Avec la `source: tool_call` par défaut, l'agent
 reçoit la consigne d'écrire ce chemin ; avec `source: final_message`, le framework y écrit la réponse finale.
+Un livrable `tool_call` dont l'agent n'a aucun outil `file_write` (ni le sien ni celui de la tâche) ne peut pas
+être écrit : le chargement journalise un avertissement qui nomme la tâche, le chemin et l'agent, et
+`orkeon run --validate` l'imprime ; la crew se charge quand même. Donnez `file_write` à l'agent, ou posez
+`source: final_message` (#392).
 
 ## Budget autonome
 

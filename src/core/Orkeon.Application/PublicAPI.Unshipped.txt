@@ -19,3 +19,23 @@ Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedAt.get -> System
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.EndedAt.init -> void
 [ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.EndedOnIterationCap.get -> bool
 [ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.EndedOnIterationCap.init -> void
+const Orkeon.Application.Crew.DeliverableToolCheck.FileWriteToolName = "file_write" -> string!
+Orkeon.Application.Crew.DeliverableToolCheck
+Orkeon.Application.Crew.DeliverableToolFinding
+Orkeon.Application.Crew.DeliverableToolFinding.<Clone>$() -> Orkeon.Application.Crew.DeliverableToolFinding!
+Orkeon.Application.Crew.DeliverableToolFinding.Agent.get -> string!
+Orkeon.Application.Crew.DeliverableToolFinding.Agent.init -> void
+Orkeon.Application.Crew.DeliverableToolFinding.Deconstruct(out string! Task, out string! Agent, out string! Path) -> void
+Orkeon.Application.Crew.DeliverableToolFinding.DeliverableToolFinding(string! Task, string! Agent, string! Path) -> void
+Orkeon.Application.Crew.DeliverableToolFinding.Equals(Orkeon.Application.Crew.DeliverableToolFinding? other) -> bool
+Orkeon.Application.Crew.DeliverableToolFinding.Message.get -> string!
+Orkeon.Application.Crew.DeliverableToolFinding.Path.get -> string!
+Orkeon.Application.Crew.DeliverableToolFinding.Path.init -> void
+Orkeon.Application.Crew.DeliverableToolFinding.Task.get -> string!
+Orkeon.Application.Crew.DeliverableToolFinding.Task.init -> void
+override Orkeon.Application.Crew.DeliverableToolFinding.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.DeliverableToolFinding.GetHashCode() -> int
+override Orkeon.Application.Crew.DeliverableToolFinding.ToString() -> string!
+static Orkeon.Application.Crew.DeliverableToolCheck.Check(System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.CrewTask!>! tasks, System.Collections.Generic.IEnumerable<Orkeon.Domain.Agent.Agent!>! agents) -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Crew.DeliverableToolFinding!>!
+static Orkeon.Application.Crew.DeliverableToolFinding.operator !=(Orkeon.Application.Crew.DeliverableToolFinding? left, Orkeon.Application.Crew.DeliverableToolFinding? right) -> bool
+static Orkeon.Application.Crew.DeliverableToolFinding.operator ==(Orkeon.Application.Crew.DeliverableToolFinding? left, Orkeon.Application.Crew.DeliverableToolFinding? right) -> bool

@@ -121,6 +121,7 @@ public partial class CrewFactory : ICrewFactory
         AddTaskContextData(config.Tasks, taskMap);
 
         var crew = AssembleCrew(config, agentMap, taskMap);
+        WarnOnDeliverablesWithoutFileWrite(config, agentMap, taskMap);
 
         // Persist all aggregates so the orchestrator can retrieve them by id
         foreach (var agent in agentMap.Values)
@@ -158,6 +159,23 @@ public partial class CrewFactory : ICrewFactory
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{CrewName}' declares a links: block but the EventHub ACL is not registered — call AddOrkeonEventHubAcl(); the declared authorizations are not enforced.")]
     private partial void LogLinksDeclaredButAclMissing(string crewName);
+
+    /// <summary>
+    /// A task whose <c>tool_call</c> deliverable its agent cannot write ends without its file, and
+    /// the run said nothing until #392: the load warns, once per task, with the two fixes. YAML and
+    /// <c>.ork.ts</c> crews both come through here; <c>orkeon run --validate</c> prints the same
+    /// findings (<see cref="Orkeon.Application.Crew.DeliverableToolCheck"/>).
+    /// </summary>
+    private void WarnOnDeliverablesWithoutFileWrite(
+        CrewConfiguration config, Dictionary<string, DomainAgent> agentMap, Dictionary<string, CrewTask> taskMap)
+    {
+        foreach (var finding in Orkeon.Application.Crew.DeliverableToolCheck.Check(taskMap.Values, agentMap.Values))
+            LogDeliverableWithoutFileWrite(config.Name, finding.Task, finding.Path, finding.Agent);
+    }
+
+    // Same sentence as DeliverableToolFinding.Message, with its parts as structured fields.
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{CrewName}': task '{TaskName}' declares the deliverable '{DeliverablePath}' (source tool_call), but its agent '{AgentRole}' has no file_write tool: the file will not be written. Give the agent file_write, or set deliverable.source: final_message.")]
+    private partial void LogDeliverableWithoutFileWrite(string crewName, string taskName, string deliverablePath, string agentRole);
 
     /// <summary>
     /// Ingests the collections declared by the configuration's <c>rag:</c> block (RAG-03/C3).

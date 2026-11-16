@@ -476,7 +476,10 @@ Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../o
 A task's `outputFile:` key is gone, and a crew that still writes one is **refused at load** with a
 message pointing to the replacement: the task's `deliverable:` block (above), e.g.
 `deliverable: { path: /output/report.md }`. With the default `source: tool_call` the agent is told to
-write that path; with `source: final_message` the framework writes the final answer there.
+write that path; with `source: final_message` the framework writes the final answer there. A `tool_call`
+deliverable whose agent holds no `file_write` tool (neither its own nor the task's) cannot be written: the load
+logs a warning naming the task, the path and the agent, and `orkeon run --validate` prints it; the crew still
+loads. Give the agent `file_write`, or set `source: final_message` (#392).
 
 ## Autonomous budget
 
