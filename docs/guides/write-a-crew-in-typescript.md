@@ -301,7 +301,7 @@ do with your code:
 knowing before you are surprised by them:
 
 - **It is TypeScript syntax, not the TypeScript compiler.** The runtime strips types and never
-  checks them; `orkeon run --validate` does, with `tsc` (and before every run with
+  checks them; `orkeon run --validate` does, with `tsc` when it is installed (and before every run with
   `Orkeon:Scripting:Toolchain:TypeCheck: Always`) — which is why the tsconfig above matters.
 - **There is no Node and no DOM.** No `fs`, no `fetch`, no `process`. File access goes through
   tools; `ctx.signal` is a .NET cancellation token, not an `AbortSignal`.

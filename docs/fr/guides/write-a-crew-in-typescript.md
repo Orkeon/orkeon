@@ -310,7 +310,7 @@ Trois de ses options portent tout le poids, et les omettre produit des erreurs q
 vaut mieux connaître avant d'en être surpris :
 
 - **C'est la syntaxe TypeScript, pas le compilateur TypeScript.** Le runtime retire les types
-  sans jamais les vérifier ; `orkeon run --validate` les vérifie, avec `tsc` (et avant chaque run
+  sans jamais les vérifier ; `orkeon run --validate` les vérifie, avec `tsc` s'il est installé (et avant chaque run
   avec `Orkeon:Scripting:Toolchain:TypeCheck: Always`) — d'où l'importance du tsconfig ci-dessus.
 - **Il n'y a ni Node ni DOM.** Pas de `fs`, pas de `fetch`, pas de `process`. L'accès aux
   fichiers passe par les outils ; `ctx.signal` est un jeton d'annulation .NET, pas un

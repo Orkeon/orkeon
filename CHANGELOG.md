@@ -93,7 +93,7 @@ reads `sequential`. The `crew.run` span and the `orkeon.crew.executions` and `or
 of the crew that runs and are unchanged. **What to do**: a dashboard or a filter that selects the assistant by
 `orkeon.crew.process = autonomous` must select `sequential`.
 
-### Changed — a forge plan must list the writer of every path its tasks read **[breaking]** (#388)
+### Changed — a forge plan must list the writer of every path its tasks and agents read **[breaking]** (#388)
 
 **Before**: in a sequential plan, a task could read a path under a deliverable root that a task listed before it wrote,
 without depending on that task, and the goal and the backstory of the agents were not scanned at all. **Now**: a path
@@ -125,8 +125,9 @@ never wrote its file. **Now**: the forge keeps `tool_call` when every agent that
 itself (the agent the task names in a `sequential`, `parallel` or `graph` crew, every agent but the manager in a
 `hierarchical` or `consensual` crew, every agent in an `autonomous` one), and writes `source: final_message` otherwise:
 the framework saves the agent's final answer to the path. An agent's tools are its own plus the ones the task grants
-(a crew file's task-level `tools:`), as the engine counts them, and `forge reopen` reads those back; a promoted team mounts `/read` when a task's `tools:`
-grants `file_read` or `directory_read`, as when an agent holds it. A binary deliverable (`.docx`, `.xlsx`, `.pdf`, an image…) is
+(a crew file's task-level `tools:`), as the engine counts them, and `forge reopen` reads those back; a promoted team whose session holds no folder list
+mounts `/workspace` read-only (its `input/` folder) when a task's `tools:` grants `file_read` or `directory_read`, as when
+an agent holds it. A binary deliverable (`.docx`, `.xlsx`, `.pdf`, an image…) is
 never switched: a plan whose agent lacks the tool that writes its format is refused, with an error naming the task, the
 agents and the tool to give (`docx_writer`, `xlsx_writer`, `image_generation`), or a text format when no built-in tool
 writes it; `file_write` never counts for a binary file, and `forge reopen` applies this refusal too, naming the crew
