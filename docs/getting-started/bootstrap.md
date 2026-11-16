@@ -371,7 +371,7 @@ await foreach (var e in orchestrator.KickoffStreamingAsync(crew.Id, input))
 > its tasks and its domain events — and yields what happens as it goes. Each `CrewExecutionEvent`
 > carries a `Kind` from `RunEventKinds`, the vocabulary `orkeon run --events jsonl` writes on the
 > wire ([the run event bus](../architecture/run-event-bus.md)): `task.started` and `task.completed`
-> for each task (with its id and agent role; `task.completed` sets `DeliverableMissing` when the task succeeded without writing its `tool_call` deliverable), `tool.called` and `tool.returned` for each tool call
+> for each task (with its id and agent role; `task.completed` sets `DeliverableMissing` when the task succeeded without writing its `tool_call` deliverable, and `EndedOnIterationCap` when the task answered on the tool-free turn after its iteration cap), `tool.called` and `tool.returned` for each tool call
 > (the tool's name, never its arguments), `llm.delta` for the model's text as it arrives, and —
 > always last — `run.finished`, whose `Output` is the `CrewOutput` `KickoffAsync` would have returned.
 > A failed run says so first: an `error` whose `Code` is `crew_failed` or `crew_cancelled` and whose

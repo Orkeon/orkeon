@@ -158,6 +158,12 @@ Une tâche peut écrire sa sortie dans un fichier :
 .deliverable({ path: "/output/review.md", source: "final_message", format: "markdown" })
 ```
 
+`source` vaut `final_message` (le framework enregistre la réponse finale), `structured_output` (il
+enregistre le JSON vérifié par le schéma) ou `tool_call` (l'agent écrit le fichier lui-même :
+donnez-lui `file_write`, ou `docx_writer`, `xlsx_writer`, `image_generation` pour ces formats, sinon
+le chargement avertit et `orkeon run --validate` imprime une ligne `WARNING:`). Voir
+[livrables vérifiés au chargement](../architecture/yaml-schema.md#livrables-vérifiés-au-chargement).
+
 `/output` est un montage virtuel. Sans lui le run réussit quand même, et le fichier n'a
 simplement nulle part où atterrir.
 
@@ -310,8 +316,9 @@ Trois de ses options portent tout le poids, et les omettre produit des erreurs q
 vaut mieux connaître avant d'en être surpris :
 
 - **C'est la syntaxe TypeScript, pas le compilateur TypeScript.** Le runtime retire les types
-  sans jamais les vérifier ; `orkeon run --validate` les vérifie, avec `tsc` s'il est installé (et avant chaque run
-  avec `Orkeon:Scripting:Toolchain:TypeCheck: Always`) — d'où l'importance du tsconfig ci-dessus.
+  sans jamais les vérifier ; `orkeon run --validate` les vérifie, avec `tsc` s'il est installé (sauf si
+  `Orkeon:Scripting:Toolchain:TypeCheck` vaut `Off`, et avant chaque run quand il vaut `Always`) — d'où
+  l'importance du tsconfig ci-dessus.
 - **Il n'y a ni Node ni DOM.** Pas de `fs`, pas de `fetch`, pas de `process`. L'accès aux
   fichiers passe par les outils ; `ctx.signal` est un jeton d'annulation .NET, pas un
   `AbortSignal`.

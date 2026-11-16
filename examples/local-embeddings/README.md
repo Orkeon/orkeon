@@ -27,4 +27,5 @@ Results (descending similarity):
 ## Network requirements
 
 - **First build**: the `SmartComponents.LocalEmbeddings` package fetches the BGE-micro-v2 ONNX file once (~17 MB) from Hugging Face during `dotnet build` and caches it under the user's NuGet packages folder.
+- **Offline build**: `ExcludeAssets="build"` on every reference that reaches the package skips the download; the first embedding then fails unless the model is in place ([limitations](../../docs/reference/limitations.md)).
 - **Subsequent runs**: zero network — model and vocabulary are loaded from disk.

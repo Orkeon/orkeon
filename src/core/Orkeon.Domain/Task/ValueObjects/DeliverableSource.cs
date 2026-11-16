@@ -9,8 +9,9 @@ public enum DeliverableSource
     None,
 
     /// <summary>
-    /// Legacy mode: the agent must invoke a <c>file_write</c> tool call explicitly.
-    /// Suitable for multi-file or conditional writes.
+    /// The agent writes the file itself, with a built-in tool that writes that format
+    /// (<c>file_write</c> for text) or a tool of its own. The default when no source is
+    /// given; suitable for multi-file or conditional writes.
     /// </summary>
     ToolCall,
 

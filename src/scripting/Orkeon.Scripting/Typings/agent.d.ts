@@ -35,7 +35,11 @@ declare global {
          */
         withResponseSchema(name: string, schema: JsonSchema | string, strict?: boolean): this;
         allowDelegation(value: boolean): this;
-        /** The turns the agent may take on a task. Default 20 — YAML parity `maxIter:`. Must be 1 or more. */
+        /**
+         * The turns the agent may take on a task. Default 20 — YAML parity `maxIter:`. Must be 1 or more.
+         * When they run out, the agent gets one tool-free turn to answer, and the task, still successful,
+         * is flagged `endedOnIterationCap`.
+         */
         maxIterations(value: number): this;
         /**
          * Turns the provider's thinking on at this effort. A provider whose field knows fewer levels (three, the

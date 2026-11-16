@@ -60,6 +60,9 @@ stub before the infrastructure defaults so no real LLM is ever wired.
 
 **First build only**: the `SmartComponents.LocalEmbeddings` package fetches the
 BGE-micro-v2 ONNX file once (~17 MB) during `dotnet build`.
+An offline machine skips that download with `ExcludeAssets="build"` on every
+reference that reaches the package; the first embedding then fails unless the
+model is in place ([limitations](../../../docs/reference/limitations.md)).
 
 ## Run it
 

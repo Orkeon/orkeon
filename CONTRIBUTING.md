@@ -74,6 +74,11 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 > solution-wide in the nightly `integration.yml`; to run them locally (Docker required):
 > `dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8`
 > — `--ignore-exit-code 8` because most modules hold no test of either category.
+> The pack tests (`TemplatesPackTests`, `LocalEmbeddingsModelOptOutTests`) pack the lineup
+> under a run version of their own (the product version with the prerelease identifier
+> `e2e-<8 hex>` appended), fail a restore that resolves another version or SHA-512, and
+> remove their `orkeon*/<run version>` folders from `packages` when they end; a folder a
+> killed run left behind is removed once it is over 12 hours old.
 
 > **To install what you built**: `./scripts/install-from-source.sh`
 > (`.\scripts\install-from-source.ps1` on Windows, from PowerShell 7) puts the `orkeon` of

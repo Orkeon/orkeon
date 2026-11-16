@@ -536,7 +536,9 @@ qui écrit `rag.provider` est refusée au chargement
   dans la [référence CLI](../reference/cli.md#orkeon-rag). Une collection dont le manifeste consigne un
   autre fournisseur, modèle ou nombre de dimensions d'embedding est refusée (code 1, avec le nom de la
   collection, les deux modèles et `orkeon rag ingest --reindex`) sur `rag ingest` sans `--reindex`, sur
-  `rag search` et sur `eval rag -c <collection>` (sans `--reindex` quand sa pré-ingestion tourne).
+  `rag search`, sur `eval rag --no-ingest -c <collection>` et sur `eval rag -c <collection>` quand sa
+  pré-ingestion tourne sans `--reindex`. Une collection sans manifeste, et `eval rag` sans `-c`, ne sont
+  pas contrôlées.
 - **Outils agents** (`Orkeon.Tools.Rag`, `AddOrkeonRagTools()`, requiert `AddOrkeonRag`) :
 
 | Outil | Paramètres | Comportement |

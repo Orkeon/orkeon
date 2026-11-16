@@ -77,6 +77,11 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 > `dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8`
 > — `--ignore-exit-code 8` parce que la plupart des modules ne contiennent aucun test de
 > ces deux catégories.
+> Les tests de pack (`TemplatesPackTests`, `LocalEmbeddingsModelOptOutTests`) packent la
+> gamme sous une version de run propre (la version produit suivie de l'identifiant de
+> prerelease `e2e-<8 hex>`), font échouer une restauration qui résout une autre version ou
+> un autre SHA-512, et retirent leurs dossiers `orkeon*/<version du run>` de `packages` à
+> la fin ; un dossier laissé par un run tué est retiré au-delà de 12 heures.
 
 > **Pour installer ce que vous avez compilé** : `./scripts/install-from-source.sh`
 > (`.\scripts\install-from-source.ps1` sous Windows, depuis PowerShell 7) met sur votre

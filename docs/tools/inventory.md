@@ -270,7 +270,7 @@ Twenty-nine tools over the RaggableTree semantic code graph — the full guide i
 | Tool | Class | Registration | Use case |
 |-------|--------|------|-------------|
 | `list_mounts` | `ListMountsTool` (`Orkeon.Tools.Abstractions`) | `AddOrkeonAbstractionTools()` | List the VFS mounts visible to the agent, with virtual paths and access rights. Typed result `{ mounts: [{ virtual_path, access, overrides: [{ virtual_path, access }] }] }` |
-| `local_embed_text` | `LocalEmbedTool` (`Orkeon.Tools.Embeddings.Local`) | `AddOrkeonLocalEmbeddings()` | Embed texts on-device (BGE-micro-v2 ONNX, 384 dims, CPU — no network at run time, no API key; the first build of a consumer downloads the model from huggingface.co, see [limitations](../reference/limitations.md)) |
+| `local_embed_text` | `LocalEmbedTool` (`Orkeon.Tools.Embeddings.Local`) | `AddOrkeonLocalEmbeddings()` | Embed texts on-device (BGE-micro-v2 ONNX, 384 dims, CPU — no network at run time, no API key; the first build of a consumer downloads the model from huggingface.co; `ExcludeAssets="build"` on every reference that reaches the package skips the download, and the first embedding then fails unless the model is at `LocalEmbeddingsModel/default/model.onnx`, see [limitations](../reference/limitations.md)) |
 
 ## Host-side tools
 

@@ -312,9 +312,10 @@ l'hôte des runners enregistre sur `/credentials/email`). Ils passent toujours p
 `System.IO` brut sur ce chemin est la création, par le runner, du répertoire physique
 `credentials` et de son sous-répertoire `email` (réservés au propriétaire sous Unix) avant
 qu'aucun montage n'existe — du bootstrap `Hosting/Runner*`, une portée `EXCEPTION-BOOTSTRAP` déjà
-ratifiée, pas une nouvelle catégorie. Un montage utilisateur qui revendique l'une de ces racines
-est refusé (`EnsureReservedRootsAreFree` : les racines du runner, `/state` et `/runs` compris, et
-`/credentials` toujours, quels que soient les comptes).
+ratifiée, pas une nouvelle catégorie. `orkeon run` refuse un montage utilisateur qui revendique
+l'une de ces racines (`EnsureReservedRootsAreFree`, `/state` et `/runs` compris) ; chaque autre
+point d'entrée refuse les racines qu'il se réserve (`/crew` et `/sandbox` pour `--list-tools` et
+`mcp serve`), et tous refusent `/credentials`, quels que soient les comptes.
 
 ## Mounts par scope (surcharge ambiante des mounts)
 

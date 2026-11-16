@@ -9,24 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.0] - 2026-11-16
 
-A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries six
+A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries five
 changes marked **[breaking]** below, made on purpose as exceptions to the 1.x commitment of
 [the stability policy](docs/reference/stability.md). None of them removes or changes a member of the frozen surface:
 each one changes a behaviour that was wrong, and its entry gives the migration:
 
 - A RAG collection indexed with another embedding model is refused (#381).
 - `orkeon doctor` fails when `tsc` is required by `TypeCheck: Always` and missing (#387).
-- A blank model id under `Llm:ModelCapabilities` is a settings refusal (#385).
 - The forge assistant tags its crews `sequential` (#382).
 - A forge plan must list the writer of every path its tasks and agents read (#388).
-- The forge writes `source: final_message` for a deliverable its agents cannot write, and refuses a binary one (#392).
+- The forge writes `source: final_message` for a deliverable its agents cannot write, and refuses a plan whose binary
+  deliverable an agent that may run its task cannot write (#392).
 
 ### Added
 
 - `ModelPricing.Provider` scopes a pricing row to a provider (null means any provider), and `IModelPricingRegistry` gains
   the provider-aware `TryGetPricing(string? provider, string model)` and `CalculateCost(string? provider, string model, ...)`
   overloads, as default interface methods that delegate to the existing members: an implementation of your own still
-  compiles. `Orkeon:CostTracking:CustomPricings:<i>:Provider` sets it from the settings (#383).
+  compiles. `RegisterPricing` files a row that names a `Provider` under that provider, and `GetAllPricings` lists the
+  provider-less rows only, custom rows included: a provider-scoped row, built-in or custom, is not in it.
+  `Orkeon:CostTracking:CustomPricings:<i>:Provider` sets it from the settings (#383).
 - `TaskResult.EndedOnIterationCap`, `TaskResult<TOutput>.EndedOnIterationCap`, `TaskExecutionSnapshot.EndedOnIterationCap`
   and `CrewExecutionEvent.EndedOnIterationCap` (all `bool`, `false` by default, `init` properties) mark a task whose answer came from the tool-free turn after the agent
   loop's iteration cap. The task keeps `Success` and `AgentExitReason.Completed`: the flag sits beside them, it is no new
@@ -39,24 +41,27 @@ each one changes a behaviour that was wrong, and its entry gives the migration:
   agent loops, the native tool-calling one and the legacy text one, cannot take the tool-free turn: they end on the cap
   without the note and without the flag, as before. `DelegateWorkResponse.EndedOnIterationCap` (JSON
   `ended_on_iteration_cap`) tells the delegating agent that its coworker ended on its cap, and the tool's message says so.
-  `TaskResult<TOutput>` now keeps the tokens, the iterations, the retries, the cache tokens (`CacheHitTokens`,
-  `CacheMissTokens`) and `EndedAt` of the run, as `init` properties, and a resumed typed task replays the cache tokens and
-  `EndedAt` from its checkpoint (a typed checkpoint written before this change holds none of them: it replays no cache
+  `TaskResult<TOutput>` gains `CacheHitTokens`, `CacheMissTokens` (`long?`) and `EndedAt` (`DateTimeOffset?`), `init`
+  properties, and its `TokensUsed`, `PromptTokens`, `CompletionTokens`, `IterationsUsed` and `RetryCount`, which a typed
+  task left at 0, now carry the task's figures; a resumed typed task replays the cache tokens and `EndedAt` from its
+  checkpoint (a typed checkpoint written before this change holds none of them: it replays no cache
   tokens and no date). The `run.finished` line carries `cappedTasks`, the number of tasks whose last attempt ended on the iteration cap
   (always written, `0` when none did): `orkeon run`, the forge trial (counted per trial), `orkeon-host` and the MCP crew
   tool host write it (#388).
 - Loading a crew, YAML or `.ork.ts`, checks its `tool_call` deliverables: a task whose deliverable no agent able to run
-  it can write (the agent it names in a `sequential`, `parallel` or `graph` crew, every worker of a coordinated crew, with
-  a built-in tool that writes that path: `docx_writer`, `xlsx_writer`, `image_generation`, `firefox` for their formats,
+  it can write (the agent it names in a `sequential`, `parallel` or `graph` crew, every agent when it names none or one
+  the crew does not carry; every agent but the manager in a `hierarchical` or `consensual` crew, every agent in an
+  `autonomous` one; with a built-in tool that writes that path: `docx_writer`, `xlsx_writer`, `image_generation`, `firefox` for their formats,
   or `file_write` for a text file, never a binary one) logs a warning, and `orkeon run --validate` prints it once as a
   `WARNING:` line on stderr with the exit code unchanged; nothing is refused. A toolbelt holding a tool Orkeon does not
   ship (MCP, script, plugin) is not warned about, nor is an agent whose model runs its own tools (a Microsoft Agent
   Framework agent), which counts as able to write. `DeliverableToolCheck.Check(tasks, agents, processType,
-  managerAgentId)`, `DeliverableToolFinding` (with `Kind`) and `DeliverableFindingKind` (`Orkeon.Application.Crew`)
-  expose the check to a C# host, with `DeliverableToolCheck.IsBinary`, `WritersOf`, `PreferredWriterOf` (`string?`),
-  `WriterHeldFor`, `CanWrite`, `FileWriterToolNames` and the `FileWriteToolName` constant, and `DeliverableBaselineScope` (`Orkeon.Application.Crew.Execution`)
-  holds a run's first-attempt state of each deliverable; `CrewFactoryOptions.WarnOnDeliverableTools` (default `true`) turns the load
-  warning off (#392).
+  managerAgentId)`, `DeliverableToolFinding` (with `Kind` and `Message`, the sentence a host reports) and
+  `DeliverableFindingKind` (`Orkeon.Application.Crew`) expose the check to a C# host, with `DeliverableToolCheck.IsBinary`,
+  `WritersOf`, `PreferredWriterOf` (`string?`), `WriterHeldFor`, `CanWrite`, `FileWriterToolNames` and the
+  `FileWriteToolName` constant, and `DeliverableBaselineScope.Begin()` (`Orkeon.Application.Crew.Execution`), which the
+  crew orchestrator opens for each run, holds a run's first-attempt state of each deliverable;
+  `CrewFactoryOptions.WarnOnDeliverableTools` (default `true`) set to `false` turns the load warning off (#392).
 
 ### Changed — a collection indexed with another embedding model is refused **[breaking]** (#381)
 
@@ -79,29 +84,25 @@ other two cases `warn`; under `Always` a `tsc` found nowhere or a `TscPath` that
 **What to do**: install `typescript`, point `TscPath` at it, or set `TypeCheck` to `Off` or `Validate` where a CI step runs
 `orkeon doctor` under `Always` without `tsc`.
 
-### Changed — a blank model id under `Llm:ModelCapabilities` is refused **[breaking]** (#385)
-
-**Before**: an entry of `Llm:ModelCapabilities` with a blank model id (`""`, `" "` or a key `:Vision`) was loaded as the
-capabilities of a model that no call names, so it changed nothing. **Now**: it is a settings refusal naming
-`Llm:ModelCapabilities`, whatever the entry holds: the host build refuses it, and `orkeon run`, `--validate` and
-`--list-tools` print the settings error and exit `1`. **What to do**: name the entry by the model it describes, or remove it.
-
 ### Changed — the forge assistant tags its crews `sequential` **[breaking]** (#382)
 
 **Before**: the forge assistant's `orkeon.crew.process` tag read `autonomous`, a process the runtime ignored. **Now**: it
-reads `sequential`. The `crew.run` span and the `orkeon.crew.executions` and `orkeon.crew.active` metrics report the process
-of the crew that runs and are unchanged. **What to do**: a dashboard or a filter that selects the assistant by
+reads `sequential`. The tag is the one of the `crew.run` span of the `Orkeon.Scripting` source, which the assistant's
+procedural run opens; the `crew.run` span of the `Orkeon.Crew` source and the `orkeon.crew.executions` and
+`orkeon.crew.active` metrics, which report the process of a crew the orchestrator runs, are unchanged. The `Procedural crew
+script` warning each forge turn logged about `process("autonomous")` is gone. **What to do**: a dashboard or a filter that selects the assistant by
 `orkeon.crew.process = autonomous` must select `sequential`.
 
 ### Changed — a forge plan must list the writer of every path its tasks and agents read **[breaking]** (#388)
 
-**Before**: in a sequential plan, a task could read a path under a deliverable root that a task listed before it wrote,
-without depending on that task, and the goal and the backstory of the agents were not scanned at all. **Now**: a path
+**Before**: the forge did not check the paths a plan's texts name: a task could name a file under a deliverable root
+that no task it depends on writes (a later task's, an unrelated task's, or no task's), and the goal and the backstory of
+the agents were not read either. **Now**: a path
 under a deliverable root that a task names in its description or its expected output must be the task's own deliverable,
 the deliverable of a task it depends on (directly or through other dependencies), or a file already present under an
-output folder of the team, held by the forge or bound to a user `dir`: every file counts, found recursively, up to 10
-000 per folder, with no 40-entry cap. Being listed earlier is no longer enough, whatever the process; the plan is
-refused with an error that names the task and the path, which the designer gets back to fix. A path is read up to any
+output folder of the team, held by the forge or bound to a user `dir`, as the fill step recorded it: every file counts,
+found recursively, up to 10 000 per folder, with no 40-entry cap; a file put in a folder after the fill step is not
+known. In every process, a plan that breaks the rule is refused with an error that names the task and the path, which the designer gets back to fix. A path is read up to any
 Unicode whitespace (a no-break space, the narrow space before a French `:`) or a quote (`« » “ ” ‘ ’`), and starts after
 whitespace, `=` or `:` (`path=/output/x`, `fichier:/output/x`). A path that is a folder is accepted when an allowed
 deliverable or an existing file lies under it (`/output/reports` with a deliverable `/output/reports/summary.md`), for
@@ -117,15 +118,21 @@ opens, and the next validation (the Blueprint stage, a `blueprint_submit`, a ver
 
 **What to do**: for a task, list the task that writes the file among the dependencies of the task that reads it. For an
 agent, remove the path from its goal or backstory, give the agent the task that writes it, or a dependency on that task.
+A team promoted before this release records no folder survey, nor does a brief `forge reopen` derives from the crew files:
+after `forge reopen`, a path to a file the user put in a folder is refused like any other, until a task delivers it or
+the text no longer names it.
 
 ### Changed — the forge writes `source: final_message` for a deliverable its agents cannot write **[breaking]** (#392)
 
 **Before**: every deliverable of a forged crew was `source: tool_call`, so a task whose agent held no tool to write it
 never wrote its file. **Now**: the forge keeps `tool_call` when every agent that may run the task writes the path
-itself (the agent the task names in a `sequential`, `parallel` or `graph` crew, every agent but the manager in a
-`hierarchical` or `consensual` crew, every agent in an `autonomous` one), and writes `source: final_message` otherwise:
+itself (the agent the task names in a `sequential`, `parallel` or `graph` crew, or in a plan with no or an unknown
+process, every agent when the task names none; every agent but the manager in a `hierarchical` or `consensual` crew,
+every agent in an `autonomous` one), and writes `source: final_message` otherwise:
 the framework saves the agent's final answer to the path. An agent's tools are its own plus the ones the task grants
-(a crew file's task-level `tools:`), as the engine counts them, and `forge reopen` reads those back; a promoted team whose session holds no folder list
+(a crew file's task-level `tools:`), as the engine counts them; `forge reopen` reads those back and the forge writes
+them into the crew files (`tools:` in YAML, `.tools([...])` in `crew.ork.ts`), where 1.1.0 dropped them, and refuses a
+task tool outside the catalogue (`FORGE-TOOL-UNKNOWN`); a promoted team whose session holds no folder list
 mounts `/workspace` read-only (its `input/` folder) when a task's `tools:` grants `file_read` or `directory_read`, as when
 an agent holds it. A binary deliverable (`.docx`, `.xlsx`, `.pdf`, an image…) is
 never switched: a plan whose agent lacks the tool that writes its format is refused, with an error naming the task, the
@@ -134,7 +141,8 @@ writes it; `file_write` never counts for a binary file, and `forge reopen` appli
 file to fix. The YAML crew writes `source: final_message` only; `crew.ork.ts` always writes the source
 (`source: "tool_call"` or `"final_message"`, which the typings require). `forge reopen` derives the source again from the
 plan, so a source edited by hand in the crew files is replaced. **What to do**: a forged team regenerated after this
-change may differ from the one before by its `source` lines; a plan that delivered a binary file from an agent without
+change may differ from the one before by its `source` lines and, for a crew whose tasks grant tools, by their `tools:`
+lines; a plan that delivered a binary file from an agent without
 its writer tool gives that agent the tool, or delivers a text format.
 
 ### Fixed
@@ -151,10 +159,11 @@ its writer tool gives that agent the tool, or delivers a text format.
 - The embedding model guard no longer warns where it cannot act (#381); the refusal of a changed model by `orkeon rag`
   and `eval rag` is a breaking change, filed under Changed. `orkeon forge` records its fingerprint per session,
   at `/forge/embedding-fingerprint.json` (the default of `Orkeon:Embeddings:FingerprintPath` at the lowest precedence: an
-  explicit setting still wins), so it guards nothing across sessions. `orkeon rag` uses no host fingerprint (its default
-  `FingerprintPath` is empty): the manifest of each collection guards the collection instead, and `orkeon rag ingest
-  --reindex`, which rebuilds it, is no longer blocked. Every warning of the guard names `Orkeon:Embeddings:FingerprintPath`.
-  Where the covering mount, overrides included, grants no Write or Create on the fingerprint file and no Create on its folder
+  explicit setting still wins), so it guards nothing across sessions. `orkeon rag` and `orkeon eval rag` use no host fingerprint
+  (their default `FingerprintPath` is empty): the manifest of each collection guards the collection instead, and `orkeon rag ingest
+  --reindex`, which rebuilds it, is no longer blocked. The warning of a fingerprint it cannot read or write names
+  `Orkeon:Embeddings:FingerprintPath`; a provider that cannot give its dimensions is warned with its own message (#376).
+  Where the covering mount, overrides included, lacks Write or Create on the fingerprint file, or Create on its folder
   (a read-only `/workspace`, a promoted reading team), the guard still reads and compares a recorded fingerprint and still
   refuses a changed model, but writes nothing, and when no fingerprint is recorded yet logs one Debug line, never a Warning; any other failure still warns. A run whose `FingerprintPath` lies under no mount
   (no `/workspace`) skips the guard at Debug, with no "Access denied" line and no Warning.
@@ -165,9 +174,12 @@ its writer tool gives that agent the tool, or delivers a text format.
   and under a `MaxCostUsd` budget, the crew's or an agent's, a second warning, once per crew and model, says the budget
   cannot count that model's calls (it needs a cap above 0 and a call that carries tokens). A `CustomPricings` row always wins
   over a built-in one: a row with no `Provider` applies to every provider, a row that names a provider to that provider
-  only. `gemini-3.8-flash` is priced 1.50 / 7.50 per million tokens with a cache read at 0.15 (Google's rate from
-  2027-01-01, kept as the conservative figure for budgets), `deepseek-flash` has a cache read at 0.006 and
-  `gemini-3.7-flash` is unchanged. Long-context price tiers are not modelled (#383). **What to do**: a
+  only. In 1.1.0 a custom row shorter than a built-in one lost to it (the longest pattern won): a `CustomPricings` row
+  written as a fallback (`gpt`, `claude`) now prices every model it prefixes; narrow its `ModelPattern`, or scope it with
+  `Provider`. `gemini-3.8-flash` is priced 1.50 / 7.50 per million tokens with a cache read at 0.15 (Google's rate from
+  2027-01-01, kept as the conservative figure for budgets) and `deepseek-flash` has a cache read at 0.006. A few other
+  models of these providers are priced too: `gemini-3.7-flash` (0.75 / 3.75 through Gemini, 1.50 / 7.50 through
+  Mammouth), `glm-5.3`, `glm-5.3-flash`, `kimi-k3` and `grok-4.7`. Long-context price tiers are not modelled (#383). **What to do**: a
   `MaxCostUsd` cap set while one of these models cost 0 now counts its calls and can stop a run 1.1.0 let finish: raise the
   cap, or add a `CustomPricings` row for that model at 0.
 - `Orkeon:CostTracking:Enabled` `false` now does what its documentation says: every call is recorded and priced (the history,
@@ -179,6 +191,10 @@ its writer tool gives that agent the tool, or delivers a text format.
   confining backend it also says `network on` or `network off` (from `Confinement.AllowNetwork`), and under bubblewrap
   `system directories are read-only`; under `Mode = None`, or unconfined inside a container, it always says `network on`
   (the unconfined shell never cuts the network) and makes no read-only claim (#384).
+- A blank model id under `Llm:ModelCapabilities` (`""`, `" "` or a key `:Vision`), whatever the entry holds, stopped the
+  host at start with a raw `ArgumentException` (`ParamName` `id`) that named neither the section nor the file. It is now a
+  settings refusal naming `Llm:ModelCapabilities`: the host build refuses it with a `RunnerSettingsException`, and
+  `orkeon run`, `--validate` and `--list-tools` print the settings error and exit `1` (#385).
 - `orkeon doctor` no longer reports a missing `tsc` as a warning when nothing needs it (#387); the `fail` under
   `Orkeon:Scripting:Toolchain:TypeCheck` `Always` is a breaking change, filed under Changed.
 - A task that ends on its iteration cap says so (#388). The tool-free turn after the cap tells the agent that tools are no
@@ -195,19 +211,14 @@ its writer tool gives that agent the tool, or delivers a text format.
   attempts, where it said 1 (untyped, typed and decision replays alike). A checkpoint written before this change holds no
   `retryCount` and replays `0`. A peer takeover in Autonomous mode whose task fails is now reported as a failure: the
   channel answers the peer's error (else `the peer failed`), the delegating agent takes its `[DELEGATION FAILED]` path and
-  the task's snapshot reads `Success = false`; it read as a success with an empty answer before (#388).
-- The E2E pack tests (`TemplatesPackTests`, `LocalEmbeddingsModelOptOutTests`, `Category=Slow`) restore the packages they
-  have just packed. They packed at the product version, so NuGet took the copy an earlier commit had extracted into
-  `<repo>/packages` under that version, and a change to a packaged `.targets` or to the package content went unseen until
-  the next version bump. One shared fixture, `LineupPackFixture`, now packs under a run version (the product version plus
-  `e2e-<8 hex>`) and fails a restore whose `project.assets.json` holds an Orkeon package at another version or with
-  another SHA-512 than the nupkg it packed. It removes the `orkeon*/<run version>` folders its restores extracted when it
-  is disposed, and those a killed run left behind, once more than 12 hours old, when it starts; no other folder of the
-  cache is touched, and third-party packages are not downloaded again (#390).
-- Packing `Orkeon.Templates` staged its templates under the project folder itself
-  (`src/packaging/Orkeon.Templates/home/...`): the absolute intermediate path was appended to the project path. They are
-  staged under `obj-linux/` now, or in the folder `OrkeonTemplateStageDirectory` names; the E2E pack tests give each run
-  its own (#390).
+  the task's snapshot reads `Success = false`; it read as a success with an empty answer before (#388). A run whose
+  takeover failed can therefore end failed where 1.1.0 ended it green: the failure was there, unreported.
+- A forge trial whose test bench crashes now ends its `--events` stream with a `run.finished` line (`success: false`,
+  `outputPath` null, zero durations and tokens, the `cappedTasks` and `missingDeliverables` of what ran before the crash)
+  before its stage fails; it wrote `run.started` and no `run.finished` before. A cancelled trial still writes none (#388).
+- Repository tooling: the E2E pack tests pack the lineup under a run version (`<version>-e2e-<8 hex>`) and fail a
+  restore that did not take the packages they packed, and packing `Orkeon.Templates` from a checkout stages its templates
+  under `obj-linux/` instead of under the project folder; the published packages are unchanged (#390).
 - An agent without `file_write` is no longer told to write its `tool_call` deliverable with it: the prompt always names
   the path, and the tool only when the effective toolbelt (the agent's tools plus the task's) holds a built-in tool that
   writes that path, the tool of its format first (`docx_writer` for a `.docx`), never `file_write` for a binary file. A
@@ -220,7 +231,8 @@ its writer tool gives that agent the tool, or delivers a text format.
   `TaskExecutionSnapshot.DeliverableMissing`, `CrewExecutionEvent.DeliverableMissing` and
   `AgentChannelResponse.DeliverableMissing` (experimental, `ORKEXP002`) (all `bool`, `false` by default, `init`
   properties), logs a warning naming the task (its key, else the start of its description), the agent and the path, and
-  shows as `⚠ completed without writing its deliverable` in `AUTO_SUMMARY.md`. The check goes through the virtual file
+  shows as `⚠ completed without writing its deliverable` in `AUTO_SUMMARY.md` (`⚠ completed on its iteration cap
+  without writing its deliverable` when it also ended on its cap). The check goes through the virtual file
   system and is best-effort: a probe that fails leaves the flag `false`, a cancellation during it cancels the task. Only
   a successful task is flagged (a hierarchical task the manager rejected to the end is not), and a consensual task judges
   the file on the whole vote. The `task.completed` line carries `deliverableMissing` (always written, the last key), in

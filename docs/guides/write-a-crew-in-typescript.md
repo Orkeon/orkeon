@@ -156,6 +156,12 @@ A task can write its output to a file:
 .deliverable({ path: "/output/review.md", source: "final_message", format: "markdown" })
 ```
 
+`source` is `final_message` (the framework saves the final answer), `structured_output` (it saves
+the schema-checked JSON) or `tool_call` (the agent writes the file itself: give it `file_write`, or
+`docx_writer`, `xlsx_writer`, `image_generation` for those formats, or the load warns and
+`orkeon run --validate` prints a `WARNING:` line). See
+[deliverables checked at load](../architecture/yaml-schema.md#deliverables-checked-at-load).
+
 `/output` is a virtual mount. Without it the run still succeeds and the file simply has
 nowhere to land.
 
@@ -301,8 +307,9 @@ do with your code:
 knowing before you are surprised by them:
 
 - **It is TypeScript syntax, not the TypeScript compiler.** The runtime strips types and never
-  checks them; `orkeon run --validate` does, with `tsc` when it is installed (and before every run with
-  `Orkeon:Scripting:Toolchain:TypeCheck: Always`) — which is why the tsconfig above matters.
+  checks them; `orkeon run --validate` does, with `tsc` when it is installed (unless
+  `Orkeon:Scripting:Toolchain:TypeCheck` is `Off`, and before every run when it is `Always`) — which
+  is why the tsconfig above matters.
 - **There is no Node and no DOM.** No `fs`, no `fetch`, no `process`. File access goes through
   tools; `ctx.signal` is a .NET cancellation token, not an `AbortSignal`.
 - **One thread, no timers.** Promises and `await` work — every continuation runs on the one

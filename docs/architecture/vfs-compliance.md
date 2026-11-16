@@ -296,9 +296,10 @@ logger, the code sandboxes and the e-mail token store (`FileSystemEmailTokenStor
 runner host registers over `/credentials/email`). They still go through the VFS. The only raw
 `System.IO` on that path is the runner creating the physical `credentials` directory and its
 `email` subdirectory (owner-only on Unix) before any mount exists — `Hosting/Runner*` bootstrap,
-an already-ratified `EXCEPTION-BOOTSTRAP` scope, not a new category. A user mount claiming one
-of these roots is refused (`EnsureReservedRootsAreFree`: the runner's roots, `/state` and `/runs`
-included, and `/credentials` always, whatever the accounts).
+an already-ratified `EXCEPTION-BOOTSTRAP` scope, not a new category. `orkeon run` refuses a user
+mount claiming one of these roots (`EnsureReservedRootsAreFree`, `/state` and `/runs` included);
+every other entry point refuses the roots it reserves for itself (`/crew` and `/sandbox` for
+`--list-tools` and `mcp serve`), and all of them refuse `/credentials`, whatever the accounts.
 
 ## Per-scope mounts (ambient mount override)
 

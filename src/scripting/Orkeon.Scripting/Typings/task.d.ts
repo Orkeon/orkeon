@@ -85,8 +85,14 @@ declare global {
         tools(value: string | Tool<unknown, unknown> | readonly (string | Tool<unknown, unknown>)[]): this;
         /**
          * First-class deliverable contract — mirror of YAML's `deliverable: { ... }`
-         * block. The framework writes the produced output to `path` and (when the
-         * source is `structured_output`) validates against the inline `schema`.
+         * block. With `source: "final_message"` the framework writes the final answer
+         * as-is to `path`; with `"structured_output"` it writes the JSON, checked against
+         * `schema`. With `"tool_call"` (the default) the agent writes the file itself, so
+         * an agent that may run the task needs a tool that writes that format
+         * (`file_write` for a text file, `docx_writer`, `xlsx_writer`,
+         * `image_generation` for theirs): the load warns otherwise, and a task that
+         * succeeds without writing it is flagged `deliverableMissing`. `"none"` declares
+         * no file.
          */
         deliverable(spec: TaskDeliverableSpec): this;
         /**
@@ -140,6 +146,11 @@ declare global {
      */
     interface TaskDeliverableSpec {
         path: string;
+        /**
+         * `tool_call`: the agent writes `path` with a writer tool; `final_message`: the
+         * framework saves the final answer; `structured_output`: the framework saves the
+         * schema-checked JSON; `none`: no file.
+         */
         source: "final_message" | "structured_output" | "tool_call" | "none";
         format?: "markdown" | "json" | "text";
         sanitize?: boolean;

@@ -133,7 +133,7 @@ tasks:
     tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement (sans jamais les remplacer) — résolus comme ceux d'un agent : un nom inconnu fait échouer le chargement sous StrictTools
     deliverable:          # Contrat de fichier de sortie (ignoré sans path)
       path: string        # Chemin virtuel, p. ex. "/output/report.md"
-      source: string      # "tool_call" (défaut — l'agent écrit le chemin ; consigne avec file_write quand il a cet outil) | "final_message" (le framework écrit la réponse finale) | "structured_output" (JSON écrit par le framework, contraint par le schéma en json_schema là où le fournisseur le déclare, en grammaire GBNF là où Llm:Grammar est allumé, et toujours vérifié au parsing) | "none" — toute autre valeur fait échouer le chargement
+      source: string      # "tool_call" (défaut — l'agent écrit le chemin lui-même et a besoin d'un outil qui écrit ce format ; le prompt nomme celui qu'il détient, celui du format d'abord ; le chargement avertit si aucun agent ne le peut) | "final_message" (le framework écrit la réponse finale) | "structured_output" (JSON écrit par le framework, contraint par le schéma en json_schema là où le fournisseur le déclare, en grammaire GBNF là où Llm:Grammar est allumé, et toujours vérifié au parsing) | "none" — toute autre valeur fait échouer le chargement
       format: string      # "markdown" (défaut) | "json" | "text"
       sanitize: bool      # default: true — retire les tokens de template en fin de texte (final_message)
       schema_path: string # Chemin virtuel d'un fichier JSON Schema (structured_output exige lui ou schema_inline)
@@ -507,7 +507,8 @@ fichier qu'une tentative précédente de la même tâche a écrit n'est pas sign
 ou présent mais inchangé depuis ce premier début (un fichier laissé par un run précédent), laisse la tâche réussie mais lui
 pose le drapeau `deliverableMissing` (`TaskResult.DeliverableMissing`) : un avertissement nomme la tâche
 (sa clé, sinon le début de sa description), l'agent et le chemin, `AUTO_SUMMARY.md` affiche
-`⚠ completed without writing its deliverable`, l'événement `task.completed` porte
+`⚠ completed without writing its deliverable` (`⚠ completed on its iteration cap without writing its
+deliverable` quand la tâche a aussi fini sur son plafond d'itérations), l'événement `task.completed` porte
 `deliverableMissing: true` et `run.finished` la compte dans `missingDeliverables`
 ([bus d'événements de run](run-event-bus.md)). Un système de fichiers qui ne donne ni taille ni date
 d'écriture se rabat sur la seule existence. La vérification est au mieux : un système de fichiers qui ne
