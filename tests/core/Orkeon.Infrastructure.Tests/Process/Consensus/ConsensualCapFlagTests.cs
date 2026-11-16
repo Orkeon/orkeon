@@ -72,8 +72,9 @@ public sealed class ConsensualCapFlagTests : IDisposable
     [Trait("BR", "CH-392")]
     public async System.Threading.Tasks.Task ShouldJudgeTheDeliverableOnTheWholeVote_WhenTheRetainedAnswerDidNotWriteIt()
     {
-        // The reviewer finished before the writer wrote the file: its own probe found nothing. The vote
-        // retains the reviewer's answer, but the file exists once the vote ends.
+        // The reviewers finished before the writer wrote the file: their own probes found nothing. The vote
+        // retains a reviewer's answer (a voter never ranks its own answer, so a third agent breaks the tie),
+        // but the file exists once the vote ends.
         var draft = _fixture.Task("draft");
         var next = _fixture.Task("next", draft);
         IReadOnlyList<Orkeon.Application.Execution.TaskOutput>? seenByNext = null;
@@ -85,12 +86,12 @@ public sealed class ConsensualCapFlagTests : IDisposable
                 return new TaskResult(true, "next out", null, [], TimeSpan.Zero);
             }
 
-            return agent.Role.Value == "Reviewer"
+            return agent.Role.Value != "Writer"
                 ? new TaskResult(true, "review", null, [], TimeSpan.Zero) { DeliverableMissing = true }
                 : new TaskResult(true, "written", null, [], TimeSpan.Zero) { DeliverablePath = "/output/draft.md" };
         });
         var crew = FailedTaskFixture.Build(
-            new CrewBuilder().Goal("Vote").Consensual(), [_fixture.Agent("Reviewer"), _fixture.Agent("Writer")], [draft, next]);
+            new CrewBuilder().Goal("Vote").Consensual(), [_fixture.Agent("Reviewer"), _fixture.Agent("Writer"), _fixture.Agent("Checker")], [draft, next]);
         var ballots = new FakeBallotCollector { Vote = request => FakeBallotCollector.Prefer(request, "review") };
         var strategy = new ConsensualProcessStrategy(
             new MajorityVotingStrategy(),
