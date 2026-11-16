@@ -191,11 +191,11 @@ internal sealed record ForgeBlueprint
         ValidateEntities(errors, Tasks, "tasks", static t => t.Key, ValidateTask);
         ValidateReferences(errors);
         if (enforceHandOffs)
-        {
             ValidateHandOffs(errors, existingPaths);
-            // A team promoted before this rule still reopens, like the hand-off rule: it applies at the next validation.
-            ValidateBinaryDeliverables(errors);
-        }
+
+        // Never skipped, a reopen included: a binary deliverable its agent cannot write runs into a file written as text,
+        // or none, while a hand-off only concerns what a prompt names (#392).
+        ValidateBinaryDeliverables(errors);
 
         return errors;
     }
