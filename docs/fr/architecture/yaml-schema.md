@@ -517,7 +517,8 @@ jusqu'au bout, jamais. Dans un vote consensuel, le fichier est jugé sur tout le
 
 Une tâche reprise rejoue le drapeau et le chemin depuis son checkpoint (un checkpoint écrit avant eux
 rejoue `false` et aucun chemin) ; quand le fichier que nomme le checkpoint a disparu à la reprise, la
-tâche signale son livrable manquant.
+reprise ne donne aucun chemin aux tâches suivantes, et une tâche `tool_call` signale son livrable manquant
+(un fichier écrit par le framework, avec `final_message` ou `structured_output`, perd seulement son chemin).
 
 Une tâche de décision n'exécute aucun agent et n'écrit aucun fichier : un `deliverable:` déclaré sur
 elle n'est jamais écrit, et le chargement journalise un avertissement qui nomme la tâche et le chemin.

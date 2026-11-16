@@ -8,6 +8,7 @@ using Orkeon.Application.Context;
 using Orkeon.Application.Interfaces.Checkpointing;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Task;
+using Orkeon.Domain.Task.ValueObjects;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
 namespace Orkeon.Infrastructure.Checkpointing;
@@ -85,7 +86,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         if (call.Stored is { } stored)
         {
             NoteAttempt(call, task, stored);
-            return (await ReprobeDeliverableAsync(stored, cancellationToken).ConfigureAwait(false)).ToResult();
+            return (await ReprobeDeliverableAsync(task, stored, cancellationToken).ConfigureAwait(false)).ToResult();
         }
 
         var result = await RunAsync(call, () => _inner.ExecuteTaskAsync(agent, task, context, cancellationToken)).ConfigureAwait(false);
@@ -108,7 +109,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         if (call.Stored is { } stored && TryRebuild<TOutput>(stored, call, task) is { } rebuilt)
         {
             NoteAttempt(call, task, stored);
-            var reprobed = await ReprobeDeliverableAsync(stored, cancellationToken).ConfigureAwait(false);
+            var reprobed = await ReprobeDeliverableAsync(task, stored, cancellationToken).ConfigureAwait(false);
             return ReferenceEquals(reprobed, stored)
                 ? rebuilt
                 : rebuilt with { DeliverableMissing = reprobed.DeliverableMissing, DeliverablePath = reprobed.DeliverablePath };
@@ -167,9 +168,11 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
     }
 
     // A replayed task whose deliverable file is gone since the checkpoint (deleted between the run and its resume) has
-    // no deliverable any more: the replay reports it missing rather than handing a dead path to the tasks after it
-    // (#392). Without a file system, or when the probe itself fails, the checkpoint is trusted.
-    private async System.Threading.Tasks.Task<StoredResult> ReprobeDeliverableAsync(StoredResult stored, CancellationToken ct)
+    // no deliverable any more: the replay drops the path rather than handing a dead one to the tasks after it (#392).
+    // Only a tool_call deliverable, the file the agent had to write, is then reported missing: a file the framework wrote
+    // from the final answer or the structured output loses its path alone. Without a file system, or when the probe
+    // itself fails, the checkpoint is trusted.
+    private async System.Threading.Tasks.Task<StoredResult> ReprobeDeliverableAsync(ICrewTask task, StoredResult stored, CancellationToken ct)
     {
         if (FileSystem is not { } files || stored.DeliverablePath is not { Length: > 0 } path)
             return stored;
@@ -186,7 +189,8 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         }
 
         LogResumedDeliverableGone(path);
-        return stored with { DeliverableMissing = true, DeliverablePath = null };
+        var agentWrote = task is CrewTask { Deliverable.Source: DeliverableSource.ToolCall };
+        return stored with { DeliverableMissing = stored.DeliverableMissing || agentWrote, DeliverablePath = null };
     }
 
     // A replayed task that had retried ends on the attempt after its retries, as RetryingAgentExecutionService reports it.
@@ -338,7 +342,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
     [LoggerMessage(Level = LogLevel.Warning, Message = "Task {Key} changed since run {RunId} checkpointed it (its description, expected output, agent or dependencies): it and every task after it run again")]
     private partial void LogTaskChanged(string key, ExecutionId runId);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "The deliverable '{Path}' of a task answered from its checkpoint no longer exists: the task reports it missing")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The deliverable '{Path}' of a task answered from its checkpoint no longer exists: the replay hands no path to the tasks after it")]
     private partial void LogResumedDeliverableGone(string path);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "The deliverable '{Path}' of a task answered from its checkpoint could not be looked up: the checkpoint is trusted")]

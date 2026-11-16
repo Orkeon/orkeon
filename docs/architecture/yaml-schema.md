@@ -497,8 +497,9 @@ rejected to the end included, never is. In a consensual vote the file is judged 
 candidate that wrote it counts, whichever answer the vote retains.
 
 A resumed task replays the flag and the path from its checkpoint (a checkpoint written before them replays
-`false` and none); when the file the checkpoint names is gone at resume, the task reports its deliverable
-missing.
+`false` and none); when the file the checkpoint names is gone at resume, the replay hands no path to the
+tasks after it, and a `tool_call` task reports its deliverable missing (a file the framework wrote, with
+`final_message` or `structured_output`, only loses its path).
 
 A decision task runs no agent and writes no file: a `deliverable:` declared on one is never written, and
 the load logs a warning naming the task and the path.
