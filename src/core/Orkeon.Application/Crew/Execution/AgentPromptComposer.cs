@@ -27,7 +27,7 @@ internal static class AgentPromptComposer
     private const int MaxPreviousOutputContextChars = 8000;
 
     /// <summary>The tool an agent writes a <c>tool_call</c> deliverable with.</summary>
-    internal const string FileWriteToolName = "file_write";
+    internal const string FileWriteToolName = DeliverableToolCheck.FileWriteToolName;
 
     /// <summary>How much of a recalled memory's task description its heading line shows.</summary>
     private const int MaxMemoryTaskDescriptionChars = 80;
