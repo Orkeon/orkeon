@@ -76,7 +76,7 @@ public sealed class CrewFactoryDeliverableToolTests
 
     private static List<string> DeliverableWarnings(MockLogger<CrewFactory> logger) =>
         logger.LogEntries
-            .Where(entry => entry.Level == LogLevel.Warning && entry.Message.Contains("no file_write tool", StringComparison.Ordinal))
+            .Where(entry => entry.Level == LogLevel.Warning && entry.Message.Contains("declares the deliverable", StringComparison.Ordinal))
             .Select(entry => entry.Message)
             .ToList();
 
@@ -88,8 +88,8 @@ public sealed class CrewFactoryDeliverableToolTests
         await factory.CreateFromConfigAsync(Config(["file_read"], DeliverableSource.ToolCall), TestContext.Current.CancellationToken);
 
         var warning = Assert.Single(DeliverableWarnings(logger));
-        Assert.Contains("Crew 'notes-crew': task 'take_notes' declares the deliverable '/output/notes.md'", warning, StringComparison.Ordinal);
-        Assert.Contains("its agent 'Reader'", warning, StringComparison.Ordinal);
+        Assert.Contains("Crew 'notes-crew': Task 'take_notes' declares the deliverable '/output/notes.md'", warning, StringComparison.Ordinal);
+        Assert.Contains("its agent 'Reader' has no tool that writes it (file_write)", warning, StringComparison.Ordinal);
         Assert.Contains("set deliverable.source: final_message", warning, StringComparison.Ordinal);
     }
 
