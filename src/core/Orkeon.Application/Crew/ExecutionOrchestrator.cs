@@ -383,22 +383,96 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         };
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Task {TaskId} (agent {AgentRole}) completed without writing its deliverable '{Path}': the file does not exist")]
-    private static partial void LogDeliverableMissing(ILogger logger, object taskId, object agentRole, string path);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Task '{TaskName}' (agent {AgentRole}) completed without writing its deliverable '{Path}': the file does not exist")]
+    private static partial void LogDeliverableMissing(ILogger logger, string taskName, object agentRole, string path);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Task {TaskId}: could not check whether its deliverable '{Path}' exists")]
-    private static partial void LogDeliverableProbeFailed(ILogger logger, Exception exception, object taskId, string path);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Task '{TaskName}' (agent {AgentRole}) completed without writing its deliverable '{Path}': the file is the one that was there before the task, unchanged")]
+    private static partial void LogDeliverableUnchanged(ILogger logger, string taskName, object agentRole, string path);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Task '{TaskName}': could not check whether its deliverable '{Path}' was written")]
+    private static partial void LogDeliverableProbeFailed(ILogger logger, Exception exception, string taskName, string path);
+
+    /// <summary>
+    /// The name a log gives a task: its key, else the start of its description - the rule the
+    /// load-time check of deliverables follows, so the operator reads the same name at load and at
+    /// run time (#392).
+    /// </summary>
+    private static string TaskNameOf(CrewTask task)
+    {
+        if (!string.IsNullOrWhiteSpace(task.Key))
+            return task.Key;
+
+        var description = task.Description.Value;
+        return description.Length <= 60 ? description : string.Concat(description.AsSpan(0, 57), "...");
+    }
+
+    /// <summary>
+    /// What a <c>tool_call</c> deliverable's file was at one point of an attempt: whether it exists and,
+    /// when the file system gives them, its metadata (size, last write). <see cref="Unknown"/> when it
+    /// could not be read.
+    /// </summary>
+    private sealed record DeliverableFileState(bool Exists, Orkeon.Domain.FileSystem.VirtualFileEntry? Entry)
+    {
+        public static DeliverableFileState Unknown { get; } = new(false, null);
+
+        /// <summary>Whether the file could not be read: nothing is concluded from it.</summary>
+        public bool IsUnknown => ReferenceEquals(this, Unknown);
+
+        /// <summary>
+        /// Whether <paramref name="after"/> is this very file, untouched: same size, same last write.
+        /// Without metadata on either side nothing tells it apart, and the existence alone decides.
+        /// </summary>
+        public bool IsUnchangedIn(DeliverableFileState after) =>
+            Exists && after.Exists
+            && Entry is { } before && after.Entry is { } now
+            && before.SizeBytes == now.SizeBytes && before.LastModified == now.LastModified;
+    }
+
+    /// <summary>
+    /// The state of the task's <c>tool_call</c> deliverable as the attempt begins (#392), so that the
+    /// end of the attempt tells a file it wrote from one an earlier run or attempt left. Null when the
+    /// task has no such deliverable (or no file system to read). A cancellation is never swallowed.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort probe: a failure to check the deliverable never fails the task.")]
+    private async System.Threading.Tasks.Task<DeliverableFileState?> ReadDeliverableBaselineAsync(CrewTask task, CancellationToken cancellationToken)
+    {
+        if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path.Length: > 0 } deliverable || _fileSystem is null)
+            return null;
+
+        var taskName = TaskNameOf(task);
+        try
+        {
+            return await ReadDeliverableFileAsync(_fileSystem, deliverable.Path, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogDeliverableProbeFailed(_logger, ex, taskName, deliverable.Path);
+            return DeliverableFileState.Unknown;
+        }
+    }
+
+    // The entry's metadata when the file system gives it; otherwise the existence alone.
+    private static async System.Threading.Tasks.Task<DeliverableFileState> ReadDeliverableFileAsync(
+        Orkeon.Domain.FileSystem.IFileSystemService fileSystem, string path, CancellationToken cancellationToken)
+    {
+        if (await fileSystem.TryGetEntryAsync(path, cancellationToken).ConfigureAwait(false) is { } entry)
+            return new DeliverableFileState(entry.Kind != Orkeon.Domain.FileSystem.VirtualEntryKind.Directory, entry);
+
+        return new DeliverableFileState(await fileSystem.ExistsAsync(path, cancellationToken).ConfigureAwait(false), null);
+    }
 
     /// <summary>
     /// What the task's deliverable became once the task succeeded (#392): a <c>tool_call</c>
-    /// deliverable the agent did not write marks the result <see cref="TaskResult.DeliverableMissing"/>
-    /// and logs a warning; a deliverable known to exist — written by the agent, or persisted by a
-    /// resolver — is named in <see cref="TaskResult.DeliverablePath"/>. Best-effort: a probe that
-    /// fails leaves the result as it was, it never fails the task.
+    /// deliverable the attempt did not write - absent at its end, or present but unchanged since its
+    /// start (<paramref name="baseline"/>) - marks the result <see cref="TaskResult.DeliverableMissing"/>
+    /// and logs a warning; a deliverable written during the attempt, or persisted by a resolver, is
+    /// named in <see cref="TaskResult.DeliverablePath"/>. Best-effort: a probe that fails leaves the
+    /// result as it was, it never fails the task; a cancellation is never swallowed.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort probe: a failure to check the deliverable never fails a task that succeeded.")]
     private async System.Threading.Tasks.Task<TaskResult> WithDeliverableStateAsync(
-        DomainAgent agent, CrewTask task, TaskResult result, string? persistedPath, CancellationToken cancellationToken)
+        DomainAgent agent, CrewTask task, TaskResult result, string? persistedPath, DeliverableFileState? baseline,
+        CancellationToken cancellationToken)
     {
         if (!result.Success)
             return result;
@@ -406,20 +480,31 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         if (persistedPath is { Length: > 0 })
             return result with { DeliverablePath = persistedPath };
 
-        if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path.Length: > 0 } deliverable || _fileSystem is null)
+        if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path.Length: > 0 } deliverable
+            || _fileSystem is null || baseline is null || baseline.IsUnknown)
             return result;
 
+        var taskName = TaskNameOf(task);
         try
         {
-            if (await _fileSystem.ExistsAsync(deliverable.Path, cancellationToken).ConfigureAwait(false))
-                return result with { DeliverablePath = deliverable.Path };
+            var after = await ReadDeliverableFileAsync(_fileSystem, deliverable.Path, cancellationToken).ConfigureAwait(false);
+            if (!after.Exists)
+            {
+                LogDeliverableMissing(_logger, taskName, agent.Role, deliverable.Path);
+                return result with { DeliverableMissing = true };
+            }
 
-            LogDeliverableMissing(_logger, task.Id, agent.Role, deliverable.Path);
-            return result with { DeliverableMissing = true };
+            if (baseline.IsUnchangedIn(after))
+            {
+                LogDeliverableUnchanged(_logger, taskName, agent.Role, deliverable.Path);
+                return result with { DeliverableMissing = true };
+            }
+
+            return result with { DeliverablePath = deliverable.Path };
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            LogDeliverableProbeFailed(_logger, ex, task.Id, deliverable.Path);
+            LogDeliverableProbeFailed(_logger, ex, taskName, deliverable.Path);
             return result;
         }
     }
@@ -478,6 +563,10 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // (GAP-34). Its prompt therefore never lists a tool.
                 if (RefuseOwnTools(agent, task, llm.Provider, toolbelt, toolsUsed, startTime) is { } refused)
                     return refused;
+
+                // The deliverable as the attempt begins (#392): its end tells a file this attempt
+                // wrote from one an earlier run or attempt left behind.
+                var deliverableBaseline = await ReadDeliverableBaselineAsync(task, taskToken).ConfigureAwait(false);
 
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
                     agent, task, toolbelt,
@@ -546,7 +635,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 var fqnOutcome = await ResolveDeliverableIfDeclaredAsync(task, finalOutput, taskToken).ConfigureAwait(false);
 
                 var completed = CompletedResult(loopResult, finalOutput, structuredOutput, toolsUsed, DateTime.UtcNow - startTime, fqnOutcome);
-                return await WithDeliverableStateAsync(agent, task, completed, fqnOutcome.PersistedPath, taskToken).ConfigureAwait(false);
+                return await WithDeliverableStateAsync(agent, task, completed, fqnOutcome.PersistedPath, deliverableBaseline, taskToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

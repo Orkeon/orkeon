@@ -68,6 +68,12 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         _tasks = tasks;
     }
 
+    /// <summary>
+    /// Gets the file system a resumed task's deliverable is looked up in (#392): a replayed result whose
+    /// deliverable file no longer exists reports it missing. Null: the replay trusts the checkpoint.
+    /// </summary>
+    public Orkeon.Domain.FileSystem.IFileSystemService? FileSystem { get; init; }
+
     /// <inheritdoc />
     public async System.Threading.Tasks.Task<TaskResult> ExecuteTaskAsync(
         DomainAgent agent, ICrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken = default)
@@ -79,7 +85,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         if (call.Stored is { } stored)
         {
             NoteAttempt(call, task, stored);
-            return stored.ToResult();
+            return (await ReprobeDeliverableAsync(stored, cancellationToken).ConfigureAwait(false)).ToResult();
         }
 
         var result = await RunAsync(call, () => _inner.ExecuteTaskAsync(agent, task, context, cancellationToken)).ConfigureAwait(false);
@@ -102,7 +108,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         if (call.Stored is { } stored && TryRebuild<TOutput>(stored, call, task) is { } rebuilt)
         {
             NoteAttempt(call, task, stored);
-            return rebuilt;
+            var reprobed = await ReprobeDeliverableAsync(stored, cancellationToken).ConfigureAwait(false);
+            return ReferenceEquals(reprobed, stored)
+                ? rebuilt
+                : rebuilt with { DeliverableMissing = reprobed.DeliverableMissing, DeliverablePath = reprobed.DeliverablePath };
         }
 
         var result = await RunAsync(call, () => _inner.ExecuteTaskAsync<TOutput>(agent, task, context, cancellationToken)).ConfigureAwait(false);
@@ -155,6 +164,29 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             throw new RunSuspendedException(suspended.RequestId);
 
         return call;
+    }
+
+    // A replayed task whose deliverable file is gone since the checkpoint (deleted between the run and its resume) has
+    // no deliverable any more: the replay reports it missing rather than handing a dead path to the tasks after it
+    // (#392). Without a file system, or when the probe itself fails, the checkpoint is trusted.
+    private async System.Threading.Tasks.Task<StoredResult> ReprobeDeliverableAsync(StoredResult stored, CancellationToken ct)
+    {
+        if (FileSystem is not { } files || stored.DeliverablePath is not { Length: > 0 } path)
+            return stored;
+
+        try
+        {
+            if (await files.ExistsAsync(path, ct).ConfigureAwait(false))
+                return stored;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogDeliverableReprobeFailed(path, ex);
+            return stored;
+        }
+
+        LogResumedDeliverableGone(path);
+        return stored with { DeliverableMissing = true, DeliverablePath = null };
     }
 
     // A replayed task that had retried ends on the attempt after its retries, as RetryingAgentExecutionService reports it.
@@ -306,6 +338,12 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
     [LoggerMessage(Level = LogLevel.Warning, Message = "Task {Key} changed since run {RunId} checkpointed it (its description, expected output, agent or dependencies): it and every task after it run again")]
     private partial void LogTaskChanged(string key, ExecutionId runId);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The deliverable '{Path}' of a task answered from its checkpoint no longer exists: the task reports it missing")]
+    private partial void LogResumedDeliverableGone(string path);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "The deliverable '{Path}' of a task answered from its checkpoint could not be looked up: the checkpoint is trusted")]
+    private partial void LogDeliverableReprobeFailed(string path, Exception exception);
+
     private sealed class RunState
     {
         public ConcurrentDictionary<string, int> Ordinals { get; } = new(StringComparer.Ordinal);
@@ -399,6 +437,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 EndedAt = result.EndedAt,
                 EndedOnIterationCap = result.EndedOnIterationCap,
                 DeliverableMissing = result.DeliverableMissing,
+                DeliverablePath = result.DeliverablePath,
             };
 
         public TaskResult ToResult() => new(Success, Output, StructuredValue(), [], TimeSpan.FromTicks(ExecutionTicks))
@@ -437,6 +476,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
                 EndedAt = EndedAt,
                 EndedOnIterationCap = EndedOnIterationCap,
                 DeliverableMissing = DeliverableMissing,
+                DeliverablePath = DeliverablePath,
             };
 
         // The structured output as the type it was produced as, when that type can be found again

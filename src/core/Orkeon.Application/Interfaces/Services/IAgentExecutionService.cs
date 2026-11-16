@@ -228,6 +228,9 @@ public sealed record TaskResult<TOutput>(
     /// <summary>Gets whether the task's <c>tool_call</c> deliverable was missing when it ended (the untyped result's flag, carried over; #392).</summary>
     public bool DeliverableMissing { get; init; }
 
+    /// <summary>Gets the virtual path of the task's deliverable when it is known to exist (the untyped result's path, carried over; #392).</summary>
+    public string? DeliverablePath { get; init; }
+
     /// <summary>Gets the tokens the task consumed, or zero when not tracked.</summary>
     public int TokensUsed { get; init; }
 

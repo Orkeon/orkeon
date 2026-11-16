@@ -67,4 +67,49 @@ public sealed class ConsensualCapFlagTests : IDisposable
         Assert.True(snapshot.Success);
         Assert.Equal(missing, snapshot.DeliverableMissing);
     }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldJudgeTheDeliverableOnTheWholeVote_WhenTheRetainedAnswerDidNotWriteIt()
+    {
+        // The reviewers finished before the writer wrote the file: their own probes found nothing. The vote
+        // retains a reviewer's answer (a voter never ranks its own answer, so a third agent breaks the tie),
+        // but the file exists once the vote ends.
+        var draft = _fixture.Task("draft");
+        var next = _fixture.Task("next", draft);
+        IReadOnlyList<Orkeon.Application.Execution.TaskOutput>? seenByNext = null;
+        _fixture.Execution.SetExecuteFunc((agent, task, context, _) =>
+        {
+            if (task.TaskId == next.Id)
+            {
+                seenByNext ??= context.PreviousOutputs;
+                return new TaskResult(true, "next out", null, [], TimeSpan.Zero);
+            }
+
+            return agent.Role.Value != "Writer"
+                ? new TaskResult(true, "review", null, [], TimeSpan.Zero) { DeliverableMissing = true }
+                : new TaskResult(true, "written", null, [], TimeSpan.Zero) { DeliverablePath = "/output/draft.md" };
+        });
+        var crew = FailedTaskFixture.Build(
+            new CrewBuilder().Goal("Vote").Consensual(), [_fixture.Agent("Reviewer"), _fixture.Agent("Writer"), _fixture.Agent("Checker")], [draft, next]);
+        var ballots = new FakeBallotCollector { Vote = request => FakeBallotCollector.Prefer(request, "review") };
+        var strategy = new ConsensualProcessStrategy(
+            new MajorityVotingStrategy(),
+            ballots,
+            _fixture.Dependencies,
+            new MockMemoryCoordinator(),
+            NullLogger<ConsensualProcessStrategy>.Instance,
+            Options.Create(new ConsensualProcessOptions()),
+            _fixture.Hook);
+
+        await strategy.ExecuteConsensualAsync(crew, ct: TestContext.Current.CancellationToken);
+
+        var snapshot = Assert.Single(_fixture.Hook.CompletedTasks, s => s.TaskId == draft.Id.ToString());
+        Assert.True(snapshot.Success);
+        Assert.False(snapshot.DeliverableMissing);
+        Assert.NotNull(seenByNext);
+        var previous = Assert.Single(seenByNext, o => o.TaskId == draft.Id.Value.ToString());
+        Assert.Equal("review", previous.Content);
+        Assert.Equal("/output/draft.md", previous.DeliverablePath);
+    }
 }

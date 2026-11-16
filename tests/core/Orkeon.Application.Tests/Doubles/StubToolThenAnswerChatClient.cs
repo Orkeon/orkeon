@@ -7,10 +7,15 @@ public sealed class StubToolThenAnswerChatClient(int toolTurns, string answer) :
 {
     private int _calls;
 
+    /// <summary>Runs when the client answers, before the answer returns: what the agent does in its last turn.</summary>
+    public Action? OnAnswer { get; set; }
+
     public System.Threading.Tasks.Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
         var turn = _calls++;
+        if (turn >= toolTurns)
+            OnAnswer?.Invoke();
         var message = turn < toolTurns
             ? new ChatMessage(ChatRole.Assistant, [new FunctionCallContent($"c{turn}", "busy", arguments: null)])
             : new ChatMessage(ChatRole.Assistant, answer);

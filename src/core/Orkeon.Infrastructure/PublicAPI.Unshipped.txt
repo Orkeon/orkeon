@@ -5,3 +5,5 @@ Orkeon.Infrastructure.Tools.DelegateWorkResponse.EndedOnIterationCap.get -> bool
 Orkeon.Infrastructure.Tools.DelegateWorkResponse.EndedOnIterationCap.init -> void
 Orkeon.Infrastructure.Configuration.CrewFactoryOptions.WarnOnDeliverableTools.get -> bool
 Orkeon.Infrastructure.Configuration.CrewFactoryOptions.WarnOnDeliverableTools.set -> void
+Orkeon.Infrastructure.Checkpointing.CheckpointingAgentExecutionService.FileSystem.get -> Orkeon.Domain.FileSystem.IFileSystemService?
+Orkeon.Infrastructure.Checkpointing.CheckpointingAgentExecutionService.FileSystem.init -> void

@@ -430,7 +430,12 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 : AgentChannelResponse.Fail(
                     request.CorrelationId, peer.Id,
                     result.Error ?? result.LastError ?? "the peer failed");
-            return answer with { EndedOnIterationCap = result.EndedOnIterationCap, DeliverableMissing = result.DeliverableMissing };
+            return answer with
+            {
+                EndedOnIterationCap = result.EndedOnIterationCap,
+                DeliverableMissing = result.DeliverableMissing,
+                DeliverablePath = result.DeliverablePath,
+            };
         }
         catch (BudgetExhaustedException ex)
         {
@@ -649,7 +654,10 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             CompletedAt: DateTime.UtcNow,
             Success: response.Success,
             ExecutionTime: budget.Elapsed,
-            ToolsUsed: []);
+            ToolsUsed: [])
+        {
+            DeliverablePath = response.Success ? response.DeliverablePath : null,
+        };
 
         return new ExecutedTask(
             output, appOutput, delegateAgent.Role.Value,

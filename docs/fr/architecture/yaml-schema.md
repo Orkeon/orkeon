@@ -489,25 +489,45 @@ servent (voir [FSM](../orchestration/fsm.md)).
 
 ## Le livrable `tool_call`
 
-Avec `source: tool_call` (le défaut), l'agent écrit le fichier lui-même. Le prompt nomme le chemin et
-`file_write` seulement quand la boîte à outils de l'agent, ses propres outils plus ceux de la tâche,
-contient `file_write` : un agent qui ne l'a pas ne reçoit jamais la consigne d'appeler un outil qu'il n'a
-pas. Quand une telle tâche réussit, le framework vérifie par le système de fichiers virtuel que le chemin
-existe. Un fichier absent laisse la tâche réussie mais lui pose le drapeau `deliverableMissing`
-(`TaskResult.DeliverableMissing`) : un avertissement nomme la tâche, l'agent et le chemin,
-`AUTO_SUMMARY.md` affiche `⚠ completed without writing its deliverable`, l'événement `task.completed`
-porte `deliverableMissing: true` et `run.finished` la compte dans `missingDeliverables`
-([bus d'événements de run](run-event-bus.md)). La vérification est au mieux : un système de fichiers qui
-ne peut pas répondre laisse le drapeau à `false`, et une tâche exécutée sans système de fichiers n'est pas
-vérifiée. Une tâche reprise rejoue le drapeau depuis son checkpoint ; un checkpoint écrit avant le drapeau
-rejoue `false`.
+Avec `source: tool_call` (le défaut), l'agent écrit le fichier lui-même. Le prompt nomme toujours le
+chemin : `Deliverable: write the final result to '<path>' using the file_write tool.` quand la boîte à
+outils de l'agent, ses propres outils plus ceux de la tâche, contient `file_write`, et
+`Deliverable: write the final result to '<path>'.` sinon : un agent ne reçoit jamais la consigne d'appeler
+un outil qu'il n'a pas. Avec `source: final_message`, le prompt dit que le framework écrit la réponse
+finale telle quelle au chemin : l'agent donne le contenu complet et n'écrit pas le fichier lui-même ;
+`source: structured_output` n'ajoute aucune ligne.
+
+Quand une tâche `tool_call` réussit, le framework vérifie par le système de fichiers virtuel que le
+fichier a été écrit **pendant la tentative** : il lit l'état du fichier (existence, taille, date de
+dernière écriture) au début de la tentative et de nouveau à la fin. Un fichier absent à la fin, ou présent
+mais inchangé depuis le début (un fichier laissé par un run précédent), laisse la tâche réussie mais lui
+pose le drapeau `deliverableMissing` (`TaskResult.DeliverableMissing`) : un avertissement nomme la tâche
+(sa clé, sinon le début de sa description), l'agent et le chemin, `AUTO_SUMMARY.md` affiche
+`⚠ completed without writing its deliverable`, l'événement `task.completed` porte
+`deliverableMissing: true` et `run.finished` la compte dans `missingDeliverables`
+([bus d'événements de run](run-event-bus.md)). Un système de fichiers qui ne donne ni taille ni date
+d'écriture se rabat sur la seule existence. La vérification est au mieux : un système de fichiers qui ne
+peut pas répondre laisse le drapeau à `false`, une tâche exécutée sans système de fichiers n'est pas
+vérifiée, et une annulation pendant la vérification annule la tâche comme toute autre. Seule une tâche
+réussie reçoit le drapeau : une tâche en échec, y compris une tâche hiérarchique que le manager a rejetée
+jusqu'au bout, jamais. Dans un vote consensuel, le fichier est jugé sur tout le vote : un candidat qui l'a
+écrit compte, quelle que soit la réponse retenue.
+
+Une tâche reprise rejoue le drapeau et le chemin depuis son checkpoint (un checkpoint écrit avant eux
+rejoue `false` et aucun chemin) ; quand le fichier que nomme le checkpoint a disparu à la reprise, la
+tâche signale son livrable manquant.
+
+Une tâche de décision n'exécute aucun agent et n'écrit aucun fichier : un `deliverable:` déclaré sur
+elle n'est jamais écrit, et le chargement journalise un avertissement qui nomme la tâche et le chemin.
 
 Quand la sortie d'une tâche précédente est coupée pour tenir dans le prompt d'une tâche suivante et que le
 fichier de son livrable est connu pour exister (écrit par le framework pour `final_message` et
-`structured_output`, trouvé par cette vérification pour `tool_call`), le texte coupé se termine par
-`[full result in '<path>': read it with file_read]` ; une sortie précédente laissée de côté entièrement est
-nommée par `[result of task <id> in '<path>': read it with file_read]`. Une sortie sans fichier connu est
-coupée comme avant.
+`structured_output`, trouvé par cette vérification pour `tool_call`, dans tous les modes, reprise autonome
+comprise), le texte coupé se termine par `[full result in '<path>': read it with file_read]` ; une sortie
+précédente laissée de côté entièrement est nommée par
+`[result of task <id> in '<path>': read it with file_read]`. Les deux renvois ne sont écrits que pour un
+agent dont la boîte à outils contient `file_read` ; un agent qui ne l'a pas reçoit le texte coupé seul.
+Une sortie sans fichier connu est coupée comme avant.
 
 ## Supprimé : `outputFile`
 

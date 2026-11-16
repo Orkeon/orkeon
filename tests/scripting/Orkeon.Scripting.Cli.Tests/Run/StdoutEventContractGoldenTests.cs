@@ -65,6 +65,47 @@ public sealed class StdoutEventContractGoldenTests : IDisposable
         Assert.Equal(Golden, _output.ToString().TrimEnd('\n'));
     }
 
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task TheRunFinishedOfOrkeonRun_PinsItsFieldsAndTheirOrder()
+    {
+        var events = RunEventStreams.Stdout(_output, new AsyncLocalRunScope(), new FakeRunTimeProvider());
+        await using (var context = new ObservedRunContext(events, stream: false, clientName: "test", input: null, recordOnly: true))
+        {
+            var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+            context.WireServices(services);
+            await using var provider = Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(services);
+            var hook = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ICrewExecutionHook>(provider);
+            await hook.OnTaskCompletedAsync(
+                new TaskExecutionSnapshot
+                {
+                    TaskId = "t1",
+                    AgentRole = "Writer",
+                    Success = true,
+                    Duration = TimeSpan.FromMilliseconds(5),
+                    CompletedAt = DateTimeOffset.UnixEpoch,
+                    EndedOnIterationCap = true,
+                    DeliverableMissing = true,
+                },
+                CancellationToken.None);
+            await context.FinishAsync(0);
+        }
+
+        var finished = _output.ToString()
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => System.Text.Json.JsonElement.Parse(l))
+            .Single(e => e.GetProperty("kind").GetString() == "run.finished");
+
+        // durationMs is the run's wall clock: pinned by name and position, not by value.
+        Assert.Equal(
+            ["v", "seq", "ts", "kind", "success", "exitCode", "tokens", "durationMs", "promptTokens", "completionTokens", "cappedTasks", "missingDeliverables"],
+            finished.EnumerateObject().Select(p => p.Name).ToArray());
+        Assert.True(finished.GetProperty("success").GetBoolean());
+        Assert.Equal(0, finished.GetProperty("exitCode").GetInt32());
+        Assert.Equal(1, finished.GetProperty("cappedTasks").GetInt32());
+        Assert.Equal(1, finished.GetProperty("missingDeliverables").GetInt32());
+    }
+
     private const string Golden = """
         {"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"run.started","correlationId":"01K9FWK8000000000000000000","target":"crew.yaml","stream":true}
         {"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"task.started","agentId":"Rédacteur","correlationId":"01K9FWK8000000000000000000","taskId":"t1","agentRole":"Rédacteur","attempt":1}

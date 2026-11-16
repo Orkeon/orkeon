@@ -29,6 +29,9 @@ internal static class AgentPromptComposer
     /// <summary>The tool an agent writes a <c>tool_call</c> deliverable with.</summary>
     internal const string FileWriteToolName = DeliverableToolCheck.FileWriteToolName;
 
+    /// <summary>The tool an agent reads a previous task's deliverable file with.</summary>
+    internal const string FileReadToolName = "file_read";
+
     /// <summary>How much of a recalled memory's task description its heading line shows.</summary>
     private const int MaxMemoryTaskDescriptionChars = 80;
 
@@ -182,7 +185,8 @@ internal static class AgentPromptComposer
     /// </param>
     /// <param name="toolbelt">
     /// The task's toolbelt, from <see cref="TaskToolbelt.Compose"/>: the deliverable line names
-    /// <c>file_write</c> only when the belt holds it (#392). Null is an empty belt.
+    /// <c>file_write</c>, and a previous output names its file, only when the belt holds the tool that
+    /// writes or reads it (#392). Null is an empty belt.
     /// </param>
     internal static string BuildUserPrompt(
         CrewTask task, SimpleExecutionContext context, string? knowledgeContext = null, string? plan = null,
@@ -199,7 +203,7 @@ internal static class AgentPromptComposer
 
         AppendPlan(prompt, plan);
         AppendContextVariables(prompt, context);
-        AppendPreviousOutputs(prompt, context);
+        AppendPreviousOutputs(prompt, context, Holds(toolbelt, FileReadToolName));
         AppendRecalledMemories(prompt, context);
         AppendKnowledgeContext(prompt, knowledgeContext);
 
@@ -277,26 +281,44 @@ internal static class AgentPromptComposer
         string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>
-    /// Names the deliverable path when the task's contract says the agent writes it
-    /// itself (<see cref="DeliverableSource.ToolCall"/>). Without this line the agent
-    /// only sees the prose description and guesses paths — the owner's forge trial
-    /// showed a writer burning three denied file_write calls before finding /output.
-    /// The other sources are persisted by the framework, so naming a path there would
-    /// invite a redundant (and possibly conflicting) manual write. An agent whose belt lacks
-    /// <c>file_write</c> is not told to use a tool it cannot call (#392): the line is left out.
+    /// Names the deliverable path. When the task's contract says the agent writes it itself
+    /// (<see cref="DeliverableSource.ToolCall"/>), the path is always named: without it the agent only
+    /// sees the prose description and guesses paths — the owner's forge trial showed a writer burning
+    /// three denied file_write calls before finding /output. The line names <c>file_write</c> only when
+    /// the belt holds it (#392): an agent that writes through another tool (<c>docx_writer</c>, an MCP
+    /// server's, its own provider's) still learns where the file goes, and is never told to call a tool
+    /// it cannot. A <see cref="DeliverableSource.FinalMessage"/> deliverable is written by the framework
+    /// from the final answer as it stands: the line says so, so the agent gives the complete content
+    /// rather than a summary and does not write the file itself (#392). A
+    /// <see cref="DeliverableSource.StructuredOutput"/> deliverable needs no line: the structured output
+    /// is what the agent returns anyway.
     /// </summary>
     private static void AppendDeliverableInstruction(
         StringBuilder prompt, CrewTask task, IReadOnlyList<Domain.Tools.IBaseTool>? toolbelt)
     {
-        if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path.Length: > 0 } deliverable)
+        if (task.Deliverable is not { Path.Length: > 0 } deliverable)
             return;
 
-        if (toolbelt?.Any(tool => string.Equals(tool.Name, FileWriteToolName, StringComparison.OrdinalIgnoreCase)) != true)
-            return;
-
-        prompt.AppendLine(FormattableString.Invariant(
-            $"Deliverable: write the final result to '{deliverable.Path}' using the file_write tool."));
+        switch (deliverable.Source)
+        {
+            case DeliverableSource.ToolCall when Holds(toolbelt, FileWriteToolName):
+                prompt.AppendLine(FormattableString.Invariant(
+                    $"Deliverable: write the final result to '{deliverable.Path}' using the file_write tool."));
+                break;
+            case DeliverableSource.ToolCall:
+                prompt.AppendLine(FormattableString.Invariant(
+                    $"Deliverable: write the final result to '{deliverable.Path}'."));
+                break;
+            case DeliverableSource.FinalMessage:
+                prompt.AppendLine(FormattableString.Invariant(
+                    $"Deliverable: the framework writes your final answer as-is to '{deliverable.Path}': give the complete content, not a summary, and do not write the file yourself."));
+                break;
+        }
     }
+
+    /// <summary>Whether the belt holds the tool named <paramref name="toolName"/>. Null is an empty belt.</summary>
+    private static bool Holds(IReadOnlyList<Domain.Tools.IBaseTool>? toolbelt, string toolName) =>
+        toolbelt?.Any(tool => string.Equals(tool.Name, toolName, StringComparison.OrdinalIgnoreCase)) == true;
 
     /// <summary>
     /// Appends the retrieved-knowledge context block (RAG-03/C4) after the task
@@ -375,9 +397,11 @@ internal static class AgentPromptComposer
     /// <see cref="MaxPreviousOutputContextChars"/> is exceeded so downstream prompts stay bounded.
     /// An output cut or left out whose deliverable file is known to exist
     /// (<see cref="Orkeon.Application.Execution.TaskOutput.DeliverablePath"/>) is followed by a line naming
-    /// the file, so the agent reads it instead of guessing paths (#392).
+    /// the file, so the agent reads it instead of guessing paths (#392) - only when the reading agent
+    /// holds <c>file_read</c>: an agent without it is never told to call a tool it does not have, and its
+    /// prompt keeps the cut output alone.
     /// </summary>
-    private static void AppendPreviousOutputs(StringBuilder prompt, SimpleExecutionContext? context)
+    private static void AppendPreviousOutputs(StringBuilder prompt, SimpleExecutionContext? context, bool canReadFiles)
     {
         if (!(context?.PreviousOutputs?.Count > 0))
             return;
@@ -395,7 +419,8 @@ internal static class AgentPromptComposer
             if (remaining <= 0)
             {
                 prompt.AppendLine(PromptDefaults.TruncationMessage);
-                AppendLeftOutDeliverables(prompt, context.PreviousOutputs, prevOutput);
+                if (canReadFiles)
+                    AppendLeftOutDeliverables(prompt, context.PreviousOutputs, prevOutput);
                 break;
             }
 
@@ -406,7 +431,7 @@ internal static class AgentPromptComposer
 
             prompt.AppendLine(FormattableString.Invariant($"--- Task {prevOutput.TaskId} (success={prevOutput.Success}) ---"));
             prompt.AppendLine(content);
-            if (truncated)
+            if (truncated && canReadFiles)
                 AppendFullResultPointer(prompt, prevOutput);
             totalChars += content.Length;
         }
@@ -422,13 +447,13 @@ internal static class AgentPromptComposer
         {
             leftOut |= ReferenceEquals(output, firstLeftOut);
             if (leftOut && !string.IsNullOrWhiteSpace(output.Content) && output.DeliverablePath is { Length: > 0 } path)
-                prompt.AppendLine(FormattableString.Invariant($"[result of task {output.TaskId} in '{path}': read it with file_read]"));
+                prompt.AppendLine(FormattableString.Invariant($"[result of task {output.TaskId} in '{path}': read it with {FileReadToolName}]"));
         }
     }
 
     private static void AppendFullResultPointer(StringBuilder prompt, Orkeon.Application.Execution.TaskOutput output)
     {
         if (output.DeliverablePath is { Length: > 0 } path)
-            prompt.AppendLine(FormattableString.Invariant($"[full result in '{path}': read it with file_read]"));
+            prompt.AppendLine(FormattableString.Invariant($"[full result in '{path}': read it with {FileReadToolName}]"));
     }
 }

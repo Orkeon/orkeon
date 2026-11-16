@@ -205,4 +205,56 @@ public sealed class AutonomousCapFlagTests : IDisposable
         Assert.False(snapshot.Success);
         Assert.Equal(capped, snapshot.EndedOnIterationCap);
     }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldCarryTheDeliverablePath_WhenTheLocalChannelAnswersFromATakeover()
+    {
+        var (crew, _) = BuildDelegationCrew();
+        _execService.SetExecuteFunc((agent, _, _, _) =>
+            agent.Role.Value == "delegator"
+                ? new TaskResult(false, "", null, [], TimeSpan.Zero, "needs help")
+                : new TaskResult(true, "helper out", null, [], TimeSpan.Zero) { DeliverablePath = "/output/hard.md" });
+        var channel = new FakeAgentChannel { Inner = _channel };
+
+        await BuildStrategy(channel).ExecuteAutonomousAsync(
+            crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
+
+        var answer = Assert.Single(channel.Answers);
+        Assert.True(answer.Success);
+        Assert.Equal("/output/hard.md", answer.DeliverablePath);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async System.Threading.Tasks.Task ShouldHandTheTakenOverDeliverableToTheNextTask()
+    {
+        var (crew, task) = BuildDelegationCrew();
+        var next = new CrewTaskBuilder().Description("follow up").ExpectedOutput("Complete it").Build();
+        _taskRepo.AddTaskToStore(next);
+        crew.AddTask(next.Id);
+        IReadOnlyList<Orkeon.Application.Execution.TaskOutput>? seenByNext = null;
+        _execService.SetExecuteFunc((agent, executed, context, _) =>
+        {
+            if (executed.TaskId == next.Id)
+            {
+                seenByNext = context.PreviousOutputs;
+                return new TaskResult(true, "next out", null, [], TimeSpan.Zero);
+            }
+
+            return new TaskResult(false, "", null, [], TimeSpan.Zero, "needs help");
+        });
+        var channel = new FakeAgentChannel
+        {
+            Answer = request => new AgentChannelResponse(
+                request.CorrelationId, request.ToAgentId, true, "helper out") { DeliverablePath = "/output/hard.md" },
+        };
+
+        await BuildStrategy(channel).ExecuteAutonomousAsync(
+            crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(seenByNext);
+        var previous = Assert.Single(seenByNext, o => o.TaskId == task.Id.Value.ToString());
+        Assert.Equal("/output/hard.md", previous.DeliverablePath);
+    }
 }

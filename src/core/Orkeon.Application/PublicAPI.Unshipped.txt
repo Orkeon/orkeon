@@ -40,6 +40,8 @@ Orkeon.Application.Interfaces.Services.TaskResult.DeliverablePath.get -> string?
 Orkeon.Application.Interfaces.Services.TaskResult.DeliverablePath.init -> void
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverableMissing.get -> bool
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverableMissing.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverablePath.get -> string?
+Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.DeliverablePath.init -> void
 Orkeon.Application.Crew.TaskExecutionSnapshot.DeliverableMissing.get -> bool
 Orkeon.Application.Crew.TaskExecutionSnapshot.DeliverableMissing.init -> void
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DeliverableMissing.get -> bool
@@ -57,3 +59,5 @@ static Orkeon.Application.Crew.DeliverableToolCheck.CanWrite(System.Collections.
 static Orkeon.Application.Crew.DeliverableToolCheck.FileWriterToolNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Application.Crew.DeliverableToolCheck.PreferredWriterOf(string! path) -> string!
 static Orkeon.Application.Crew.DeliverableToolCheck.WritersOf(string! path) -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverablePath.get -> string?
+[ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverablePath.init -> void
