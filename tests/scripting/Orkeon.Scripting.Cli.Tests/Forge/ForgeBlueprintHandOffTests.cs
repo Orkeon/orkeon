@@ -47,6 +47,101 @@ public sealed class ForgeBlueprintHandOffTests
             Tasks = tasks,
         };
 
+    private static ForgeBlueprint TwoAgentPlan(string process, string goalOfA) =>
+        new()
+        {
+            Crew = new ForgeBlueprintCrew { Name = "team", Goal = "goal", Process = process },
+            Agents =
+            [
+                new ForgeBlueprintAgent { Key = "a", Role = "r", Goal = goalOfA },
+                new ForgeBlueprintAgent { Key = "b", Role = "r2", Goal = "g" },
+            ],
+            Tasks =
+            [
+                new ForgeBlueprintTask { Key = "t1", Description = "Do", ExpectedOutput = "Done", Agent = "a", Deliverable = "/output/a.md" },
+                new ForgeBlueprintTask { Key = "t2", Description = "Do", ExpectedOutput = "Done", Agent = "b", Deliverable = "/output/b.md" },
+            ],
+        };
+
+    [Fact]
+    [Trait("BR", "CH-47")]
+    public void ShouldAcceptAPlan_WhenAGoalNamesTheFolderOfADeliverable()
+    {
+        var plan = AgentPlan("goal", "Collect everything in /output/reports",
+            Task("w", deliverable: "/output/reports/summary.md"));
+
+        Assert.Empty(plan.Validate([]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-47")]
+    public void ShouldAcceptAPlan_WhenADescriptionNamesTheFolderOfADependencyDeliverable()
+    {
+        var plan = Plan("parallel",
+            Task("w", deliverable: "/output/reports/summary.md"),
+            Task("r", "Read every file in /output/reports", dependencies: "w"));
+
+        Assert.Empty(plan.Validate([]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-47")]
+    public void ShouldRefuseAPlan_WhenAnAgentNamesAPeerDeliverableOutsideItsChain()
+    {
+        var plan = TwoAgentPlan("sequential", "Summarise /output/b.md");
+
+        var error = Assert.Single(plan.Validate([]));
+
+        Assert.StartsWith("agents[0] ('a'): its goal names '/output/b.md'", error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-47")]
+    [InlineData("consensual")]
+    [InlineData("hierarchical")]
+    [InlineData("autonomous")]
+    public void ShouldAcceptAPlan_WhenAVoterNamesAnotherTaskDeliverableInAConsensualCrew(string process)
+    {
+        var plan = TwoAgentPlan(process, "Summarise /output/b.md");
+
+        Assert.Empty(plan.Validate([]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-47")]
+    public void ShouldRefuseAPlan_WhenAnyAgentNamesAPathNoTaskDelivers()
+    {
+        var plan = TwoAgentPlan("consensual", "Summarise /output/ghost.md");
+
+        var error = Assert.Single(plan.Validate([]));
+
+        Assert.StartsWith("agents[0] ('a'): its goal names '/output/ghost.md'", error, StringComparison.Ordinal);
+        Assert.Empty(plan.Validate(["/output/ghost.md"]));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-47")]
+    public void ShouldNameNoTask_WhenATaskLessAgentIsRefused()
+    {
+        var plan = new ForgeBlueprint
+        {
+            Crew = new ForgeBlueprintCrew { Name = "team", Goal = "goal", Process = "parallel" },
+            Agents =
+            [
+                new ForgeBlueprintAgent { Key = "a", Role = "r", Goal = "g" },
+                new ForgeBlueprintAgent { Key = "idle", Role = "r2", Goal = "Maintain /output/notes.md" },
+            ],
+            Tasks = [Task("w", deliverable: "/output/report.md")],
+        };
+
+        var error = Assert.Single(plan.Validate([]));
+
+        Assert.StartsWith(
+            "agents[1] ('idle'): its goal names '/output/notes.md', which no task of the plan delivers and no output folder holds",
+            error, StringComparison.Ordinal);
+        Assert.DoesNotContain("its tasks", error, StringComparison.Ordinal);
+    }
+
     [Fact]
     [Trait("BR", "CH-44")]
     public void ShouldAcceptAPlan_WhenAnAgentBackstoryNamesItsOwnTaskDeliverable()
