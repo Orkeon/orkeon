@@ -195,6 +195,66 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         Assert.Equal(1, count);
     }
 
+    private const string DecisionWithDeliverableCrewYaml = """
+        name: "validate-decision"
+        goal: "A decision task that declares a deliverable"
+        process: "sequential"
+        agents:
+          writer:
+            role: "Writer"
+            goal: "Write the answer"
+            backstory: "A minimal test agent."
+            tools:
+              - "file_read"
+            maxIter: 1
+        tasks:
+          intake:
+            description: "Read the ticket."
+            expectedOutput: "A summary."
+            agent: "writer"
+          triage:
+            description: "Classify the ticket."
+            expectedOutput: "A classification."
+            decision:
+              questions:
+                category:
+                  choice:
+                    bug: "a defect"
+                    billing: "an invoice question"
+              state: [intake]
+              fallback:
+                category: "bug"
+            deliverable:
+              path: "/output/triage.md"
+          refund:
+            description: "Handle the refund."
+            expectedOutput: "A refund."
+            agent: "writer"
+            when:
+              triage.category: [billing]
+        """;
+
+    // VX-3, VX-4: --validate prints the decision-task finding once, as a WARNING: line, and never the writer advice.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task Validate_warns_once_on_a_decision_task_that_declares_a_deliverable()
+    {
+        var configPath = WriteConfig("config.yaml", DecisionWithDeliverableCrewYaml);
+        var opts = new TestOptions { ConfigPath = configPath, AllowExternalMounts = true };
+
+        var (exit, stdout, stderr) = await CaptureAsync(
+            () => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        Assert.Equal(0, exit);
+        var output = stdout + stderr;
+        Assert.Contains(
+            "WARNING: Task 'triage' is a decision task: its deliverable '/output/triage.md' is never written",
+            stderr,
+            StringComparison.Ordinal);
+        Assert.Single(output.Split('\n'), static line => line.Contains("is a decision task", StringComparison.Ordinal));
+        Assert.DoesNotContain("has no tool that writes it", output, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Validate_does_not_warn_when_the_deliverable_is_the_final_message()
     {

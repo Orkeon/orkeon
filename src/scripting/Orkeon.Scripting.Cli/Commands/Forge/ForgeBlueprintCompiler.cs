@@ -36,14 +36,6 @@ internal static class ForgeBlueprintCompiler
     /// <summary>The deliverable source the forge writes when every agent that may run the task writes the file itself.</summary>
     internal const string ToolCallSource = "tool_call";
 
-    // Formats the final answer's text cannot be: a binary deliverable needs the tool that writes its format.
-    private static readonly HashSet<string> s_binaryExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".odt", ".ods", ".odp", ".pdf",
-        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".ico",
-        ".zip", ".gz", ".tar", ".7z", ".mp3", ".wav", ".mp4", ".webm",
-    };
-
     /// <summary>
     /// The agents that may run <paramref name="task"/> at run time (#392, D21): the agent it names in a
     /// sequential, parallel or graph crew; every agent but the manager in a hierarchical or consensual
@@ -71,26 +63,17 @@ internal static class ForgeBlueprintCompiler
             : agents;
     }
 
-    /// <summary>Whether <paramref name="path"/> names a binary format: one the final answer's text cannot be.</summary>
-    internal static bool IsBinary(string path) => s_binaryExtensions.Contains(Path.GetExtension(path));
-
     /// <summary>
     /// Whether <paramref name="agent"/> holds a built-in tool that writes <paramref name="path"/>
-    /// (<see cref="DeliverableToolCheck.WritersOf"/>). For a binary format <c>file_write</c>, which writes
-    /// text, does not count: only the tool that writes the format does.
+    /// (<see cref="DeliverableToolCheck.CanWrite(IEnumerable{string}, string)"/>): for a binary format only the
+    /// tool that writes the format counts, <c>file_write</c>, which writes text, does not. The forge reads a path
+    /// and compares tool names through the engine's helpers, so it and the load check never disagree (#392).
     /// </summary>
     internal static bool CanWrite(ForgeBlueprintAgent agent, string path)
     {
         ArgumentNullException.ThrowIfNull(agent);
-        var tools = agent.Tools ?? [];
-        return IsBinary(path)
-            ? FormatWritersOf(path).Any(writer => tools.Contains(writer, StringComparer.Ordinal))
-            : DeliverableToolCheck.CanWrite(tools, path);
+        return DeliverableToolCheck.CanWrite(agent.Tools ?? [], path);
     }
-
-    /// <summary>The built-in tools that write <paramref name="path"/>'s own format, <c>file_write</c> left out.</summary>
-    internal static IReadOnlyList<string> FormatWritersOf(string path) =>
-        [.. DeliverableToolCheck.WritersOf(path).Where(static tool => tool != DeliverableToolCheck.FileWriteToolName)];
 
     /// <summary>
     /// The <c>deliverable.source</c> the forge writes for <paramref name="task"/> (#392): <c>tool_call</c> when
@@ -103,7 +86,7 @@ internal static class ForgeBlueprintCompiler
     internal static string EmittedDeliverableSource(ForgeBlueprint blueprint, ForgeBlueprintTask task)
     {
         ArgumentNullException.ThrowIfNull(task);
-        if (task.Deliverable is not { } path || IsBinary(path))
+        if (task.Deliverable is not { } path || DeliverableToolCheck.IsBinary(path))
             return ToolCallSource;
 
         var candidates = CandidatesOf(blueprint, task);

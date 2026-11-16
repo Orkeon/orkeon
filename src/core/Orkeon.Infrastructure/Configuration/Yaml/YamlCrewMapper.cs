@@ -335,7 +335,7 @@ public sealed partial class YamlCrewMapper
                 Retry = MapRetry(kvp.Key, kvp.Value.Retry, decisions.ContainsKey(kvp.Key)),
                 HumanInput = kvp.Value.HumanInput ?? false,
                 Context = kvp.Value.Context ?? [],
-                Deliverable = MapDecisionDeliverable(kvp.Key, kvp.Value.Deliverable, decisions.ContainsKey(kvp.Key)),
+                Deliverable = MapDeliverable(kvp.Value.Deliverable),
                 LlmOverride = MapTaskLlmOverride(kvp.Value.LlmOverride),
                 Guardrails = MapGuardrails($"Task '{kvp.Key}'", kvp.Value.Guardrails),
                 Decision = decisions.GetValueOrDefault(kvp.Key),
@@ -500,22 +500,6 @@ public sealed partial class YamlCrewMapper
     /// Maps the YAML deliverable block to a <see cref="Orkeon.Domain.Task.ValueObjects.TaskDeliverable"/>.
     /// Returns <c>null</c> when the block is absent so the task falls back to legacy tool_call behavior.
     /// </summary>
-    /// <summary>
-    /// Maps a task's <c>deliverable:</c>; on a decision task, which runs no agent and writes no file, the
-    /// deliverable is kept but a warning says it is never written (#392).
-    /// </summary>
-    private Orkeon.Domain.Task.ValueObjects.TaskDeliverable? MapDecisionDeliverable(string taskKey, DeliverableYamlConfig? yaml, bool isDecision)
-    {
-        var deliverable = MapDeliverable(yaml);
-        if (isDecision && deliverable is not null)
-            LogDecisionDeliverableNeverWritten(taskKey, deliverable.Path);
-        return deliverable;
-    }
-
-    [LoggerMessage(EventId = 107, Level = LogLevel.Warning,
-        Message = "Task '{TaskKey}' is a decision task: its deliverable '{Path}' is never written, a decision runs no agent and writes no file. Remove deliverable:, or move it to a task that runs an agent.")]
-    private partial void LogDecisionDeliverableNeverWritten(string taskKey, string path);
-
     private static Orkeon.Domain.Task.ValueObjects.TaskDeliverable? MapDeliverable(DeliverableYamlConfig? yaml)
     {
         if (yaml == null) return null;

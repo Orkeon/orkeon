@@ -243,6 +243,8 @@ public class ForgeBlueprintTests
     [Theory]
     [InlineData("/output/rapport.pdf")]
     [InlineData("/output/slides.pptx")]
+    [InlineData("/output/macro.docm")]
+    [InlineData("/output/book.epub")]
     public void ShouldRefuseABinaryDeliverable_WhenNoBuiltInToolWritesItsFormat(string path)
     {
         Assert.False(ForgeBlueprint.TryParse(DeliveringPlan(path, "\"file_write\""), out _, out var errors, []));
@@ -264,6 +266,16 @@ public class ForgeBlueprintTests
         Assert.Contains("agent 'reader'", error, StringComparison.Ordinal);
         Assert.DoesNotContain("'lead'", error, StringComparison.Ordinal);
         Assert.DoesNotContain("'reporter'", error, StringComparison.Ordinal);
+    }
+
+    // VX-6: the forge reads an extension as the engine does: a name that starts with its only dot has none.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldReadTheExtensionAsTheEngineDoes_WhenTheFileNameStartsWithItsOnlyDot()
+    {
+        var json = DeliveringPlan("/output/.docx", "\"file_read\"");
+
+        Assert.True(ForgeBlueprint.TryParse(json, out _, out var errors, []), string.Join("; ", errors));
     }
 
     [Fact]

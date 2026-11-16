@@ -323,10 +323,17 @@ public class ForgeBlueprintCompilerTests
     }
 
     // D22: a binary file is never the final answer's text; plan validation refuses the plan instead.
-    [Fact]
-    public void ShouldNeverEmitTheFinalMessageSource_ForABinaryDeliverable()
+    // VX-6: the binary formats are the engine's (DeliverableToolCheck.IsBinary), the macro and e-book ones included.
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData("/output/rapport.docx")]
+    [InlineData("/output/macro.docm")]
+    [InlineData("/output/book.epub")]
+    [InlineData("/output/store.sqlite")]
+    [InlineData("/output/table.parquet")]
+    public void ShouldNeverEmitTheFinalMessageSource_ForABinaryDeliverable(string path)
     {
-        var task = DeliveringTask("reader", "/output/rapport.docx");
+        var task = DeliveringTask("reader", path);
         var plan = Plan("sequential", null, task, Agent("reader", "file_read"));
 
         Assert.Equal("tool_call", ForgeBlueprintCompiler.EmittedDeliverableSource(plan, task));

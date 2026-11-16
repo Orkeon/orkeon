@@ -164,7 +164,8 @@ public partial class CrewFactory : ICrewFactory
 
     /// <summary>
     /// A task whose <c>tool_call</c> deliverable no agent that may run it can write ends without its
-    /// file, and the run said nothing until #392: the load warns, once per task, with the two fixes. YAML
+    /// file, and the run said nothing until #392: the load warns, once per task, with the fixes; so it does
+    /// for a decision task that declares a deliverable, which nothing ever writes. YAML
     /// and <c>.ork.ts</c> crews both come through here; <c>orkeon run --validate</c> turns the log off
     /// (<see cref="CrewFactoryOptions.WarnOnDeliverableTools"/>) and prints the same findings itself
     /// (<see cref="Orkeon.Application.Crew.DeliverableToolCheck"/>).

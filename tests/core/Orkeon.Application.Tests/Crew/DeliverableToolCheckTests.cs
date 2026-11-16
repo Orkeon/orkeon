@@ -185,7 +185,7 @@ public sealed class DeliverableToolCheckTests
 
         var finding = Assert.Single(DeliverableToolCheck.Check([task], [agent], ProcessType.Sequential, managerAgentId: null));
 
-        Assert.Contains("has no tool that writes it (file_write, docx_writer)", finding.Message, StringComparison.Ordinal);
+        Assert.Contains("has no tool that writes it (docx_writer)", finding.Message, StringComparison.Ordinal);
         Assert.Contains("Give the agent docx_writer", finding.Message, StringComparison.Ordinal);
     }
 
@@ -303,6 +303,127 @@ public sealed class DeliverableToolCheckTests
         var finding = Assert.Single(DeliverableToolCheck.Check([task], [reader, manager], ProcessType.From(process), manager.Id));
 
         Assert.Equal(["Reader"], finding.Agents);
+    }
+
+    // VX-1: file_write writes text; a binary deliverable is written only by the tool of its format.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldReport_WhenTheAgentHoldsOnlyFileWriteForABinaryDeliverable()
+    {
+        var agent = Agent("file_read", "file_write");
+        var task = Task(agent, Deliverable(DeliverableSource.ToolCall, "/output/report.docx"));
+
+        var finding = Assert.Single(DeliverableToolCheck.Check([task], [agent], ProcessType.Sequential, managerAgentId: null));
+
+        Assert.Contains("has no tool that writes it (docx_writer)", finding.Message, StringComparison.Ordinal);
+        Assert.Contains("Give the agent docx_writer", finding.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("final_message", finding.Message, StringComparison.Ordinal);
+    }
+
+    // VX-1, VX-6: one definition of a binary path, shared by the prompt, the load check and the forge.
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData("/output/report.docx", true)]
+    [InlineData("/output/REPORT.DOCX", true)]
+    [InlineData("/output/macro.docm", true)]
+    [InlineData("/output/macro.xlsm", true)]
+    [InlineData("/output/book.epub", true)]
+    [InlineData("/output/letter.rtf", true)]
+    [InlineData("/output/store.sqlite", true)]
+    [InlineData("/output/table.parquet", true)]
+    [InlineData("/output/cover.png", true)]
+    [InlineData("/output/notes.md", false)]
+    [InlineData("/output/figures.csv", false)]
+    [InlineData("/output/page.html", false)]
+    [InlineData("/output/.docx", false)]
+    [InlineData("/output/archive.d/notes", false)]
+    public void ShouldTellABinaryPath_FromItsExtension(string path, bool binary)
+    {
+        Assert.Equal(binary, DeliverableToolCheck.IsBinary(path));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData("/output/report.docx", "docx_writer")]
+    [InlineData("/output/cover.png", "image_generation,firefox")]
+    [InlineData("/output/notes.md", "file_write")]
+    [InlineData("/output/rapport.pdf", "")]
+    public void ShouldListTheWritersOfAPath_FormatToolFirstAndNoFileWriteForABinary(string path, string expected)
+    {
+        Assert.Equal(expected, string.Join(",", DeliverableToolCheck.WritersOf(path)));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldNameNoPreferredWriter_WhenNoBuiltInToolWritesTheBinaryFormat()
+    {
+        Assert.Null(DeliverableToolCheck.PreferredWriterOf("/output/rapport.pdf"));
+        Assert.Equal("docx_writer", DeliverableToolCheck.PreferredWriterOf("/output/report.docx"));
+        Assert.Equal("file_write", DeliverableToolCheck.PreferredWriterOf("/output/notes.md"));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData("/output/report.docx", "FILE_WRITE,Docx_Writer", "docx_writer")]
+    [InlineData("/output/report.docx", "file_write", null)]
+    [InlineData("/output/notes.md", "docx_writer,file_write", "file_write")]
+    [InlineData("/output/notes.md", "file_read", null)]
+    public void ShouldNameTheWriterTheAgentHolds_InThePreferredOrder(string path, string tools, string? expected)
+    {
+        Assert.Equal(expected, DeliverableToolCheck.WriterHeldFor(tools.Split(','), path));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldReportTheFormatToFix_WhenNoBuiltInToolWritesTheBinaryDeliverable()
+    {
+        var agent = Agent("file_write");
+        var task = Task(agent, Deliverable(DeliverableSource.ToolCall, "/output/rapport.pdf"));
+
+        var finding = Assert.Single(DeliverableToolCheck.Check([task], [agent], ProcessType.Sequential, managerAgentId: null));
+
+        Assert.Contains("no built-in tool writes '.pdf'", finding.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("Give the agent file_write", finding.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("final_message", finding.Message, StringComparison.Ordinal);
+    }
+
+    // VX-3, VX-4: a decision runs no agent and writes no file: one finding of its own, never the writer advice.
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData("Sequential")]
+    [InlineData("Hierarchical")]
+    public void ShouldReportADecisionTaskDeliverable_AsNeverWrittenAndNotAsAMissingWriter(string process)
+    {
+        var reader = Agent("file_read");
+        var decision = TaskDecision.Create(
+            [ChoiceQuestionSpec.Create("intent", "Pick", new Dictionary<string, string> { ["a"] = "first", ["b"] = "second" })],
+            null, null, false, null);
+        var task = new CrewTaskBuilder()
+            .Description(TaskDescription.From("Decide the route."))
+            .ExpectedOutput("An outcome.")
+            .WithKey("triage")
+            .WithDecision(decision)
+            .Build();
+        task.SetDeliverable(Deliverable(DeliverableSource.ToolCall, "/output/triage.md"));
+
+        var finding = Assert.Single(DeliverableToolCheck.Check([task], [reader], ProcessType.From(process), managerAgentId: null));
+
+        Assert.Equal(DeliverableFindingKind.DecisionTask, finding.Kind);
+        Assert.Empty(finding.Agents);
+        Assert.Equal(
+            "Task 'triage' is a decision task: its deliverable '/output/triage.md' is never written, a decision runs no "
+            + "agent and writes no file. Remove deliverable:, or move it to a task that runs an agent.",
+            finding.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void ShouldMarkAWriterFinding_AsNoWriter()
+    {
+        var agent = Agent("file_read");
+        var task = Task(agent, Deliverable(DeliverableSource.ToolCall));
+
+        Assert.Equal(DeliverableFindingKind.NoWriter, Assert.Single(DeliverableToolCheck.Check([task], [agent], ProcessType.Sequential, null)).Kind);
     }
 
     private static DomainAgent Named(string role, params string[] tools) => new AgentBuilder()

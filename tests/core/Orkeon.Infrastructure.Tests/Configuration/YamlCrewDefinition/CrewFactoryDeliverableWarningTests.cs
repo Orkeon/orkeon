@@ -50,6 +50,37 @@ tasks:
     deliverable: { path: /output/report.md }
 """;
 
+    private const string DecisionYaml = """
+name: support
+goal: Handle tickets
+agents:
+  writer: { role: Writer, goal: Write the answer, tools: [file_read] }
+tasks:
+  intake:
+    description: Read the ticket
+    expectedOutput: A summary
+    agent: writer
+  triage:
+    description: Classify the ticket
+    expectedOutput: A classification
+    decision:
+      questions:
+        category:
+          choice:
+            bug: a defect
+            billing: an invoice question
+      state: [intake]
+      fallback:
+        category: bug
+    deliverable: { path: /output/triage.md }
+  refund:
+    description: Handle the refund
+    expectedOutput: A refund
+    agent: writer
+    when:
+      triage.category: [billing]
+""";
+
     private readonly MockMcpTransport _transport = new();
     private readonly McpClient _client;
 
@@ -152,6 +183,30 @@ tasks:
 
         await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
 
+        Assert.Empty(DeliverableWarnings(log));
+    }
+
+    // VX-3, VX-4: the decision-task rule is the shared check's, so YAML and .ork.ts crews (both built here) report it
+    // once, from the factory; the loader no longer says it, and the writer advice is never given for a decision.
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public async Task ShouldWarnOnce_WhenADecisionTaskDeclaresADeliverable()
+    {
+        var (_, factory, _, log) = Build();
+        var loaderLog = new MockLogger<YamlCrewDefinitionLoader>();
+        var loader = new YamlCrewDefinitionLoader(new YamlDotNetSerializer(), new FakeFileSystemService(), loaderLog);
+        var config = await loader.LoadFromStringAsync(DecisionYaml, TestContext.Current.CancellationToken);
+
+        await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
+
+        var said = loaderLog.LogEntries.Select(static entry => entry.Message)
+            .Concat(log.Entries.Select(static entry => entry.Message))
+            .Where(static message => message.Contains("is a decision task", StringComparison.Ordinal))
+            .ToList();
+        Assert.Equal(
+            "Crew 'support': Task 'triage' is a decision task: its deliverable '/output/triage.md' is never written, a "
+            + "decision runs no agent and writes no file. Remove deliverable:, or move it to a task that runs an agent.",
+            Assert.Single(said));
         Assert.Empty(DeliverableWarnings(log));
     }
 }

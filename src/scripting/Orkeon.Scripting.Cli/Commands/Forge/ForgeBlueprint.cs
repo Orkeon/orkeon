@@ -211,7 +211,7 @@ internal sealed record ForgeBlueprint
         for (var i = 0; i < (Tasks?.Count ?? 0); i++)
         {
             var task = Tasks![i];
-            if (task.Deliverable is not { } path || !ForgeBlueprintCompiler.IsBinary(path))
+            if (task.Deliverable is not { } path || !Orkeon.Application.Crew.DeliverableToolCheck.IsBinary(path))
                 continue;
 
             var lacking = ForgeBlueprintCompiler.CandidatesOf(this, task)
@@ -224,7 +224,7 @@ internal sealed record ForgeBlueprint
             var who = lacking.Count == 1 ? $"agent {lacking[0]}" : $"agents {string.Join(", ", lacking)}";
             var prefix = $"tasks[{i}] ('{task.Key}'): its deliverable '{path}' is a binary file, which the final answer's text cannot be, "
                 + $"and {who}, which may run the task, cannot write it — ";
-            var writers = ForgeBlueprintCompiler.FormatWritersOf(path);
+            var writers = Orkeon.Application.Crew.DeliverableToolCheck.WritersOf(path);
             errors.Add(writers.Count > 0
                 ? prefix + $"give {(lacking.Count == 1 ? "it" : "each of them")} {writers[0]}, or deliver a text format (.md, .html, .csv) instead."
                 : prefix + $"no built-in tool writes that format: deliver a text format (.md, .html, .csv) instead.");

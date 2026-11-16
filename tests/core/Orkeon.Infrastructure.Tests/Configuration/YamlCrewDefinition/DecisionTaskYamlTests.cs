@@ -147,27 +147,4 @@ tasks:
 
         Assert.Contains("Task 'other' when: is empty; name a decision task and its answers, or remove the key.", ex.Message, StringComparison.Ordinal);
     }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    [Trait("BR", "CH-392")]
-    public async Task ShouldWarnAtLoad_WhenADecisionTaskDeclaresADeliverable(bool declared)
-    {
-        var yaml = declared
-            ? CrewYaml.Replace("  refund:\n", "    deliverable:\n      path: /output/triage.md\n  refund:\n", StringComparison.Ordinal)
-            : CrewYaml;
-        var logger = new Orkeon.Tests.Shared.Doubles.MockLogger<YamlCrewDefinitionLoader>();
-        var loader = new YamlCrewDefinitionLoader(new YamlDotNetSerializer(), new FakeFileSystemService(), logger);
-
-        await loader.LoadFromStringAsync(yaml, Ct);
-
-        var warnings = logger.GetEntriesByLevel(Microsoft.Extensions.Logging.LogLevel.Warning)
-            .Where(e => e.Message.Contains("Task 'triage' is a decision task", StringComparison.Ordinal))
-            .ToList();
-        if (declared)
-            Assert.Contains("'/output/triage.md' is never written", Assert.Single(warnings).Message, StringComparison.Ordinal);
-        else
-            Assert.Empty(warnings);
-    }
 }

@@ -57,7 +57,14 @@ Orkeon.Application.Crew.DeliverableToolFinding.DeliverableToolFinding(string! Ta
 static Orkeon.Application.Crew.DeliverableToolCheck.Check(System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.CrewTask!>! tasks, System.Collections.Generic.IEnumerable<Orkeon.Domain.Agent.Agent!>! agents, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! processType, Orkeon.Domain.Common.AgentId? managerAgentId) -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Crew.DeliverableToolFinding!>!
 static Orkeon.Application.Crew.DeliverableToolCheck.CanWrite(System.Collections.Generic.IEnumerable<string!>! toolNames, string! path) -> bool
 static Orkeon.Application.Crew.DeliverableToolCheck.FileWriterToolNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
-static Orkeon.Application.Crew.DeliverableToolCheck.PreferredWriterOf(string! path) -> string!
+static Orkeon.Application.Crew.DeliverableToolCheck.PreferredWriterOf(string! path) -> string?
 static Orkeon.Application.Crew.DeliverableToolCheck.WritersOf(string! path) -> System.Collections.Generic.IReadOnlyList<string!>!
 [ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverablePath.get -> string?
 [ORKEXP002]Orkeon.Application.Interfaces.Services.AgentChannelResponse.DeliverablePath.init -> void
+Orkeon.Application.Crew.DeliverableFindingKind
+Orkeon.Application.Crew.DeliverableFindingKind.DecisionTask = 1 -> Orkeon.Application.Crew.DeliverableFindingKind
+Orkeon.Application.Crew.DeliverableFindingKind.NoWriter = 0 -> Orkeon.Application.Crew.DeliverableFindingKind
+Orkeon.Application.Crew.DeliverableToolFinding.Kind.get -> Orkeon.Application.Crew.DeliverableFindingKind
+Orkeon.Application.Crew.DeliverableToolFinding.Kind.init -> void
+static Orkeon.Application.Crew.DeliverableToolCheck.IsBinary(string! path) -> bool
+static Orkeon.Application.Crew.DeliverableToolCheck.WriterHeldFor(System.Collections.Generic.IEnumerable<string!>! toolNames, string! path) -> string?

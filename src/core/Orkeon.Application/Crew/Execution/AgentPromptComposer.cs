@@ -26,9 +26,6 @@ internal static class AgentPromptComposer
     /// </summary>
     private const int MaxPreviousOutputContextChars = 8000;
 
-    /// <summary>The tool an agent writes a <c>tool_call</c> deliverable with.</summary>
-    internal const string FileWriteToolName = DeliverableToolCheck.FileWriteToolName;
-
     /// <summary>The tool an agent reads a previous task's deliverable file with.</summary>
     internal const string FileReadToolName = "file_read";
 
@@ -284,14 +281,15 @@ internal static class AgentPromptComposer
     /// Names the deliverable path. When the task's contract says the agent writes it itself
     /// (<see cref="DeliverableSource.ToolCall"/>), the path is always named: without it the agent only
     /// sees the prose description and guesses paths — the owner's forge trial showed a writer burning
-    /// three denied file_write calls before finding /output. The line names <c>file_write</c> only when
-    /// the belt holds it (#392): an agent that writes through another tool (<c>docx_writer</c>, an MCP
-    /// server's, its own provider's) still learns where the file goes, and is never told to call a tool
-    /// it cannot. A <see cref="DeliverableSource.FinalMessage"/> deliverable is written by the framework
-    /// from the final answer as it stands: the line says so, so the agent gives the complete content
-    /// rather than a summary and does not write the file itself (#392). A
-    /// <see cref="DeliverableSource.StructuredOutput"/> deliverable needs no line: the structured output
-    /// is what the agent returns anyway.
+    /// three denied file_write calls before finding /output. The line names the writer of the path the
+    /// belt holds, the tool of its format first (<see cref="DeliverableToolCheck.WriterHeldFor"/>:
+    /// <c>docx_writer</c> for a <c>.docx</c>), and <c>file_write</c> only for a text file (#392): an agent
+    /// that writes through a tool the check does not know (an MCP server's, its own provider's) still learns
+    /// where the file goes, and is never told to call a tool it cannot, nor to write text into a binary
+    /// file. A <see cref="DeliverableSource.FinalMessage"/> deliverable is written by the framework from the
+    /// final answer as it stands: the line says so, so the agent gives the complete content rather than a
+    /// summary and does not write the file itself (#392). A <see cref="DeliverableSource.StructuredOutput"/>
+    /// deliverable needs no line: the structured output is what the agent returns anyway.
     /// </summary>
     private static void AppendDeliverableInstruction(
         StringBuilder prompt, CrewTask task, IReadOnlyList<Domain.Tools.IBaseTool>? toolbelt)
@@ -301,9 +299,10 @@ internal static class AgentPromptComposer
 
         switch (deliverable.Source)
         {
-            case DeliverableSource.ToolCall when Holds(toolbelt, FileWriteToolName):
+            case DeliverableSource.ToolCall
+                when DeliverableToolCheck.WriterHeldFor(toolbelt?.Select(static tool => tool.Name) ?? [], deliverable.Path) is { } writer:
                 prompt.AppendLine(FormattableString.Invariant(
-                    $"Deliverable: write the final result to '{deliverable.Path}' using the file_write tool."));
+                    $"Deliverable: write the final result to '{deliverable.Path}' using the {writer} tool."));
                 break;
             case DeliverableSource.ToolCall:
                 prompt.AppendLine(FormattableString.Invariant(

@@ -359,6 +359,44 @@ public class AgentPromptComposerDeliverableTests
         Assert.DoesNotContain("/output/second.md", prompt, StringComparison.Ordinal);
     }
 
+    // VX-1: the line names the writer of the deliverable's format the agent holds, never file_write for a binary file.
+    [Theory]
+    [Trait("BR", "CH-392")]
+    [InlineData("/output/report.docx", "file_write,docx_writer", "using the docx_writer tool.")]
+    [InlineData("/output/figures.xlsx", "xlsx_writer,file_write", "using the xlsx_writer tool.")]
+    [InlineData("/output/cover.png", "file_write,firefox,image_generation", "using the image_generation tool.")]
+    [InlineData("/output/notes.md", "docx_writer,file_write", "using the file_write tool.")]
+    public void BuildUserPrompt_ShouldNameTheWriterOfTheFormat_WhenTheAgentHoldsIt(string path, string tools, string expected)
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = path,
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+        });
+        IReadOnlyList<IBaseTool> toolbelt = [.. tools.Split(',').Select(static name => new Orkeon.Tests.Shared.Doubles.StubBaseTool(name))];
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(task, Context(), toolbelt: toolbelt);
+
+        Assert.Contains($"Deliverable: write the final result to '{path}' {expected}", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-392")]
+    public void BuildUserPrompt_ShouldNameNoTool_WhenTheAgentHoldsOnlyFileWriteForABinaryDeliverable()
+    {
+        var task = Task(new Orkeon.Domain.Task.ValueObjects.TaskDeliverable
+        {
+            Path = "/output/report.docx",
+            Source = Orkeon.Domain.Task.ValueObjects.DeliverableSource.ToolCall,
+        });
+
+        var prompt = AgentPromptComposer.BuildUserPrompt(
+            task, Context(), toolbelt: [new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_write")]);
+
+        Assert.Contains("Deliverable: write the final result to '/output/report.docx'.", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("file_write", prompt, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void BuildUserPrompt_ShouldStaySilent_WhenThereIsNoDeliverable()
     {

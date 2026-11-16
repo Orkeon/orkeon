@@ -111,8 +111,9 @@ public static partial class RunnerExecution
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Count();
 
-                // A tool_call deliverable no agent that may run its task can write (#392): reported,
-                // not refused — a tool Orkeon does not ship may write the file. The exit code stays 0.
+                // A tool_call deliverable no agent that may run its task can write, or a decision task's
+                // deliverable, which nothing writes (#392): reported, not refused — a tool Orkeon does not
+                // ship may write the file. The exit code stays 0.
                 var taskRepository = scope.ServiceProvider.GetRequiredService<Domain.Task.ITaskRepository>();
                 var tasks = await taskRepository.GetByIdsAsync(crew.Tasks, cts.Token).ConfigureAwait(false);
                 var findings = Orkeon.Application.Crew.DeliverableToolCheck.Check(

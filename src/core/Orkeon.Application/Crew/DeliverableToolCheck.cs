@@ -9,7 +9,9 @@ namespace Orkeon.Application.Crew;
 
 /// <summary>
 /// A task whose deliverable the agent must write itself (<see cref="DeliverableSource.ToolCall"/>, the
-/// default) while none of the agents that may run it holds a tool that writes that file (#392).
+/// default) while none of the agents that may run it holds a tool that writes that file
+/// (<see cref="DeliverableFindingKind.NoWriter"/>), or a decision task that declares a deliverable, which
+/// nothing writes (<see cref="DeliverableFindingKind.DecisionTask"/>) (#392).
 /// </summary>
 /// <param name="Task">The task's name: its key, else the start of its description.</param>
 /// <param name="Agents">
@@ -19,23 +21,59 @@ namespace Orkeon.Application.Crew;
 /// <param name="Path">The virtual path the deliverable declares.</param>
 public sealed record DeliverableToolFinding(string Task, IReadOnlyList<string> Agents, string Path)
 {
-    /// <summary>The sentence a host reports: the task, the agents, the path and the two fixes.</summary>
+    /// <summary>What the finding is about.</summary>
+    public DeliverableFindingKind Kind { get; init; } = DeliverableFindingKind.NoWriter;
+
+    /// <summary>
+    /// The sentence a host reports. For a missing writer: the task, the agents, the path and the fixes
+    /// (the tool of the file's format to give; for a text file, <c>deliverable.source: final_message</c>
+    /// as well). For a decision task: that the deliverable is never written.
+    /// </summary>
     public string Message
     {
         get
         {
-            var writers = string.Join(", ", DeliverableToolCheck.WritersOf(Path));
+            if (Kind == DeliverableFindingKind.DecisionTask)
+            {
+                return $"Task '{Task}' is a decision task: its deliverable '{Path}' is never written, a decision runs no "
+                    + "agent and writes no file. Remove deliverable:, or move it to a task that runs an agent.";
+            }
+
+            var writers = DeliverableToolCheck.WritersOf(Path);
+            var named = writers.Count > 0
+                ? string.Join(", ", writers)
+                : $"no built-in tool writes '{DeliverableToolCheck.ExtensionOf(Path)}'";
             var tool = DeliverableToolCheck.PreferredWriterOf(Path);
-            return Agents.Count == 1
-                ? $"Task '{Task}' declares the deliverable '{Path}' (source tool_call), but its agent '{Agents[0]}' has no "
-                    + $"tool that writes it ({writers}): the file may not be written. Give the agent {tool}, or set "
-                    + "deliverable.source: final_message."
-                : $"Task '{Task}' declares the deliverable '{Path}' (source tool_call), but none of the agents that may "
-                    + $"run it ({string.Join(", ", Agents.Select(static role => $"'{role}'"))}) has a tool that writes it "
-                    + $"({writers}): the file may not be written. Give {tool} to the agent meant to write it, or set "
-                    + "deliverable.source: final_message.";
+            var binary = DeliverableToolCheck.IsBinary(Path);
+            var single = Agents.Count == 1;
+            var give = (tool, single) switch
+            {
+                (not null, true) => $"Give the agent {tool}",
+                (not null, false) => $"Give {tool} to the agent meant to write it",
+                (null, true) => "Give the agent a tool that writes it (an MCP server's, a plugin's)",
+                (null, false) => "Give a tool that writes it (an MCP server's, a plugin's) to the agent meant to write it",
+            };
+            // A binary file is never the final answer's text: final_message is no fix for it.
+            var other = binary
+                ? "or deliver a text format (.md, .html, .csv) instead."
+                : "or set deliverable.source: final_message.";
+            var who = single
+                ? $"its agent '{Agents[0]}' has no tool that writes it"
+                : $"none of the agents that may run it ({string.Join(", ", Agents.Select(static role => $"'{role}'"))}) has a tool that writes it";
+            return $"Task '{Task}' declares the deliverable '{Path}' (source tool_call), but {who} ({named}): "
+                + $"the file may not be written. {give}, {other}";
         }
     }
+}
+
+/// <summary>What a <see cref="DeliverableToolFinding"/> is about.</summary>
+public enum DeliverableFindingKind
+{
+    /// <summary>No agent that may run the task holds a tool that writes its deliverable.</summary>
+    NoWriter,
+
+    /// <summary>A decision task declares a deliverable, which nothing ever writes.</summary>
+    DecisionTask,
 }
 
 /// <summary>
@@ -51,7 +89,13 @@ public sealed record DeliverableToolFinding(string Task, IReadOnlyList<string> A
 /// registry, plus the task's <c>tools:</c>) hold a built-in tool that writes a file of that kind at a given
 /// path (<see cref="FileWriterToolNames"/>), or any tool Orkeon does not ship (an MCP server's, a script's,
 /// a plugin's, a host's own), which may write it, or when its provider runs its own tools
-/// (<see cref="LlmProviderCapabilities.RunsOwnTools"/>): the check cannot see into either.
+/// (<see cref="LlmProviderCapabilities.RunsOwnTools"/>): the check cannot see into either. A binary file
+/// (<see cref="IsBinary"/>) is written only by the tool of its format: <c>file_write</c> writes text, and does
+/// not count for it.
+/// </para>
+/// <para>
+/// A decision task runs no agent: a deliverable it declares, whatever its source, is reported as never
+/// written (<see cref="DeliverableFindingKind.DecisionTask"/>), and its agents are not judged.
 /// </para>
 /// <para>
 /// The agents that may run a task follow the process. Sequential, parallel and graph crews run a task on
@@ -68,56 +112,99 @@ public static class DeliverableToolCheck
     public const string FileWriteToolName = "file_write";
 
     // The built-in tools that create or overwrite a file at a path the agent names, with the extensions
-    // they write (empty: any). Left out: the editors (edit_file, edit_batch, structural_rewrite change a
-    // file that exists), the downloaders (drive_download, email_save_attachment pick and sanitize the
-    // file name themselves, and never overwrite) and shell_command, whose contract names no path.
+    // they write (empty: any text file), in the order a prompt prefers them: the tool of a format before
+    // file_write. Left out: the editors (edit_file, edit_batch, structural_rewrite change a file that
+    // exists), the downloaders (drive_download, email_save_attachment pick and sanitize the file name
+    // themselves, and never overwrite) and shell_command, whose contract names no path.
     private static readonly (string Tool, string[] Extensions)[] s_writers =
     [
-        (FileWriteToolName, []),
         ("docx_writer", [".docx"]),
         ("xlsx_writer", [".xlsx"]),
         ("image_generation", [".png", ".jpg", ".jpeg", ".webp"]),
         ("firefox", [".png"]),
+        (FileWriteToolName, []),
     ];
 
+    // The formats a final answer's text, or file_write's, cannot be: office documents, archives, images,
+    // audio, video, databases, fonts and executables. The one list the prompt, the load check and the
+    // forge read (#392); every extension a writer above writes is in it.
+    private static readonly HashSet<string> s_binaryExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".docx", ".docm", ".dotx", ".dotm", ".doc", ".xlsx", ".xlsm", ".xltx", ".xltm", ".xlsb", ".xls",
+        ".pptx", ".pptm", ".potx", ".ppsx", ".ppt", ".odt", ".ods", ".odp", ".odg", ".pdf", ".epub", ".rtf",
+        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".ico", ".heic", ".avif", ".psd",
+        ".zip", ".gz", ".tgz", ".tar", ".7z", ".rar", ".bz2", ".xz",
+        ".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".mp4", ".webm", ".mov", ".avi", ".mkv",
+        ".sqlite", ".sqlite3", ".db", ".parquet", ".avro", ".orc", ".feather", ".npy", ".npz", ".pkl",
+        ".woff", ".woff2", ".ttf", ".otf", ".exe", ".dll", ".so", ".dylib", ".bin", ".jar", ".wasm",
+    };
+
     /// <summary>
-    /// The built-in tools that write a file at a path the agent names: <c>file_write</c> (any file),
-    /// <c>docx_writer</c> (<c>.docx</c>), <c>xlsx_writer</c> (<c>.xlsx</c>), <c>image_generation</c> (an image)
-    /// and <c>firefox</c> (a <c>.png</c> screenshot).
+    /// The built-in tools that write a file at a path the agent names: <c>docx_writer</c> (<c>.docx</c>),
+    /// <c>xlsx_writer</c> (<c>.xlsx</c>), <c>image_generation</c> (an image), <c>firefox</c> (a <c>.png</c>
+    /// screenshot) and <c>file_write</c> (any text file).
     /// </summary>
     public static IReadOnlyList<string> FileWriterToolNames { get; } = [.. s_writers.Select(static writer => writer.Tool)];
 
-    /// <summary>The built-in tools that can write the file at <paramref name="path"/>, <c>file_write</c> first.</summary>
+    /// <summary>
+    /// Whether <paramref name="path"/> names a binary format (<c>.docx</c>, <c>.xlsx</c>, <c>.pdf</c>, an image,
+    /// an archive...): one the final answer's text, or <c>file_write</c>'s, cannot be. Read from the extension,
+    /// whatever its case; a name that starts with its only dot (<c>/output/.docx</c>) has none.
+    /// </summary>
+    /// <param name="path">The deliverable's virtual path.</param>
+    public static bool IsBinary(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        return s_binaryExtensions.Contains(ExtensionOf(path));
+    }
+
+    /// <summary>
+    /// The built-in tools that can write the file at <paramref name="path"/>, the tool of its format first;
+    /// <c>file_write</c> last, and never for a binary path (<see cref="IsBinary"/>). Empty when no built-in tool
+    /// writes that binary format.
+    /// </summary>
     /// <param name="path">The deliverable's virtual path.</param>
     public static IReadOnlyList<string> WritersOf(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
         var extension = ExtensionOf(path);
+        var binary = IsBinary(path);
         return [.. s_writers
-            .Where(writer => writer.Extensions.Length == 0 || writer.Extensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+            .Where(writer => writer.Extensions.Length == 0
+                ? !binary
+                : writer.Extensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
             .Select(static writer => writer.Tool)];
     }
 
     /// <summary>
     /// The tool to give an agent that must write <paramref name="path"/>: the one made for its format when
-    /// there is one (<c>docx_writer</c> for a <c>.docx</c>), else <c>file_write</c>.
+    /// there is one (<c>docx_writer</c> for a <c>.docx</c>), else <c>file_write</c> for a text file; null for a
+    /// binary format no built-in tool writes (<c>.pdf</c>).
     /// </summary>
     /// <param name="path">The deliverable's virtual path.</param>
-    public static string PreferredWriterOf(string path)
+    public static string? PreferredWriterOf(string path)
     {
         var writers = WritersOf(path);
-        return writers.FirstOrDefault(static tool => tool != FileWriteToolName) ?? FileWriteToolName;
+        return writers.Count > 0 ? writers[0] : null;
+    }
+
+    /// <summary>
+    /// The writer of <paramref name="path"/> an agent holding <paramref name="toolNames"/> is told to use: the
+    /// first of <see cref="WritersOf"/> it holds, by its built-in name; null when it holds none.
+    /// </summary>
+    /// <param name="toolNames">The names of the tools the agent holds for the task.</param>
+    /// <param name="path">The deliverable's virtual path.</param>
+    public static string? WriterHeldFor(IEnumerable<string> toolNames, string path)
+    {
+        ArgumentNullException.ThrowIfNull(toolNames);
+        var held = toolNames.ToList();
+        return WritersOf(path).FirstOrDefault(writer => held.Contains(writer, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>Whether one of <paramref name="toolNames"/> is a built-in tool that writes <paramref name="path"/>.</summary>
     /// <param name="toolNames">The names of the tools an agent holds for the task.</param>
     /// <param name="path">The deliverable's virtual path.</param>
-    public static bool CanWrite(IEnumerable<string> toolNames, string path)
-    {
-        ArgumentNullException.ThrowIfNull(toolNames);
-        var writers = WritersOf(path);
-        return toolNames.Any(name => writers.Contains(name, StringComparer.OrdinalIgnoreCase));
-    }
+    public static bool CanWrite(IEnumerable<string> toolNames, string path) => WriterHeldFor(toolNames, path) is not null;
 
     /// <summary>
     /// The tasks of a built crew whose <c>tool_call</c> deliverable no agent that may run them can write, in
@@ -139,11 +226,19 @@ public static class DeliverableToolCheck
         var findings = new List<DeliverableToolFinding>();
         foreach (var task in tasks)
         {
-            if (task.Deliverable is not { Source: DeliverableSource.ToolCall, Path: { Length: > 0 } path }
-                || string.IsNullOrWhiteSpace(path))
+            if (task.Deliverable is not { Path: { Length: > 0 } path } deliverable || string.IsNullOrWhiteSpace(path))
+                continue;
+
+            // A decision runs no agent and writes no file: its deliverable is never written, whatever its source,
+            // and the agents' tools are beside the point (#392).
+            if (task.IsDecision)
             {
+                findings.Add(new DeliverableToolFinding(NameOf(task), [], path) { Kind = DeliverableFindingKind.DecisionTask });
                 continue;
             }
+
+            if (deliverable.Source != DeliverableSource.ToolCall)
+                continue;
 
             var candidates = CandidatesOf(task, crew, processType, managerAgentId);
             if (candidates.Count == 0 || candidates.Any(agent => CanWrite(agent, task, path)))
@@ -211,7 +306,8 @@ public static class DeliverableToolCheck
         return false;
     }
 
-    private static string ExtensionOf(string path)
+    /// <summary>The extension of the last segment of <paramref name="path"/>, dot included; empty when it has none.</summary>
+    internal static string ExtensionOf(string path)
     {
         var slash = path.LastIndexOf('/');
         var dot = path.LastIndexOf('.');
