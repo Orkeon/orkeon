@@ -1,0 +1,232 @@
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
+
+namespace Orkeon.E2E.Tests;
+
+/// <summary>
+/// Packs part of the Orkeon lineup into a local feed under a version of its own, so a consumer restored into the
+/// repository's package cache (<c>RestorePackagesPath</c>, <c>&lt;repo&gt;/packages</c>) always gets the nupkgs this run
+/// packed (#390). NuGet takes a package from that cache by id and version before it reads a source: packed at the
+/// product version of <c>src/Directory.Build.props</c>, a consumer restored the copy an earlier commit had extracted
+/// there, and a change to a packaged <c>.targets</c> or to the package content went unseen until the next version bump.
+/// The run version is the product version with the prerelease identifier <c>e2e-&lt;8 hex&gt;</c> appended; dispose
+/// removes the <c>orkeon.*/&lt;run version&gt;</c> folders the restores extracted, and nothing else of the cache:
+/// third-party packages stay shared and are never downloaded again. Every restore source is the local feed alone.
+/// </summary>
+public abstract class LineupPackFixture : IDisposable
+{
+    // A run killed before its dispose leaves its folders behind: the next run removes those older than this.
+    private static readonly TimeSpan LeftoverAge = TimeSpan.FromHours(12);
+
+    private static readonly Regex RunVersionFolder = new(@"(^|[.-])e2e-[0-9a-f]{8}$", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+
+    private readonly HashSet<string> _existingIdFolders;
+
+    /// <summary>Packs <paramref name="packagedProjects"/> (paths from the repository root) in order into the feed.</summary>
+    protected LineupPackFixture(string scratchPrefix, IReadOnlyList<string> packagedProjects)
+    {
+        RepoRoot = FindRepoRoot();
+        PackagesPath = Path.Combine(RepoRoot, "packages");
+        var runId = Guid.NewGuid().ToString("N")[..8];
+        Scratch = Path.Combine(Path.GetTempPath(), scratchPrefix + runId);
+        FeedDirectory = Path.Combine(Scratch, "feed");
+        Directory.CreateDirectory(FeedDirectory);
+
+        var props = System.Xml.Linq.XDocument.Load(Path.Combine(RepoRoot, "src", "Directory.Build.props"));
+        var prefix = props.Descendants("VersionPrefix").Single().Value;
+        // A final version carries no VersionSuffix element at all.
+        var suffix = props.Descendants("VersionSuffix").SingleOrDefault()?.Value ?? "";
+        ProductVersion = suffix.Length == 0 ? prefix : $"{prefix}-{suffix}";
+        // One alphanumeric identifier: a hex run id made of digits alone may start with 0, which SemVer refuses
+        // in a numeric identifier.
+        Version = suffix.Length == 0 ? $"{prefix}-e2e-{runId}" : $"{prefix}-{suffix}.e2e-{runId}";
+
+        _existingIdFolders = Directory.Exists(PackagesPath)
+            ? Directory.GetDirectories(PackagesPath).Select(Path.GetFileName).OfType<string>().ToHashSet(StringComparer.Ordinal)
+            : [];
+        RemoveLeftovers();
+
+        var configuration = AppContext.BaseDirectory.Contains($"{Path.DirectorySeparatorChar}Release{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+            ? "Release" : "Debug";
+        var outputs = new List<string>();
+        foreach (var project in packagedProjects)
+        {
+            // PackageVersion, not Version: the assemblies are not rebuilt, and the global property reaches every project
+            // reference, so the nuspec dependencies between lineup packages carry the run version too.
+            var (exit, output) = Run("dotnet",
+                ["pack", Path.Combine(RepoRoot, project), "-c", configuration, "-o", FeedDirectory, "--no-restore", "-nologo", $"-p:PackageVersion={Version}"],
+                RepoRoot);
+            outputs.Add(output);
+            if (exit != 0)
+            {
+                PackExitCode = exit;
+                break;
+            }
+        }
+
+        PackOutput = string.Join('\n', outputs);
+    }
+
+    /// <summary>The checkout holding <c>Orkeon.sln</c>.</summary>
+    public string RepoRoot { get; }
+
+    /// <summary>Folder holding the feed and the consumers.</summary>
+    public string Scratch { get; }
+
+    /// <summary>The local feed of packed nupkgs.</summary>
+    public string FeedDirectory { get; }
+
+    /// <summary>The repository's package cache: every restore reads and fills it.</summary>
+    public string PackagesPath { get; }
+
+    /// <summary>The product version, from src/Directory.Build.props.</summary>
+    public string ProductVersion { get; }
+
+    /// <summary>The version every package of this run is packed at: <see cref="ProductVersion"/> and a run identifier.</summary>
+    public string Version { get; }
+
+    /// <summary>Exit code of the first pack that failed, else 0.</summary>
+    public int PackExitCode { get; }
+
+    /// <summary>Output of the packs.</summary>
+    public string PackOutput { get; }
+
+    /// <summary>Restores <paramref name="csproj"/> from the local feed into the repository's package cache, audit off.</summary>
+    public (int ExitCode, string Output) Restore(string csproj, string workingDirectory) =>
+        Run("dotnet",
+        [
+            "restore", csproj, "-p:NuGetAudit=false",
+            $"-p:RestoreSources={FeedDirectory}",
+            $"-p:RestorePackagesPath={PackagesPath}",
+        ], workingDirectory);
+
+    /// <summary>
+    /// The packages of the feed whose copy extracted in the package cache is not the nupkg this run packed, compared by
+    /// the SHA-512 NuGet records at extraction (<c>&lt;id&gt;.&lt;version&gt;.nupkg.sha512</c>). A package no restore
+    /// extracted is not listed.
+    /// </summary>
+    public IReadOnlyList<string> FindStaleExtractions()
+    {
+        var stale = new List<string>();
+        foreach (var nupkg in Directory.GetFiles(FeedDirectory, $"*.{Version}.nupkg"))
+        {
+            var name = Path.GetFileName(nupkg);
+            var id = name[..^$".{Version}.nupkg".Length].ToLowerInvariant();
+            var version = Version.ToLowerInvariant();
+            var folder = Path.Combine(PackagesPath, id, version);
+            if (!Directory.Exists(folder))
+                continue;
+
+            var recorded = Path.Combine(folder, $"{id}.{version}.nupkg.sha512");
+            using var stream = File.OpenRead(nupkg);
+            var packed = Convert.ToBase64String(SHA512.HashData(stream));
+            if (!File.Exists(recorded) || File.ReadAllText(recorded).Trim() != packed)
+                stale.Add($"{id}/{version}");
+        }
+
+        return stale;
+    }
+
+    /// <summary>Removes the cache folders this run's restores extracted, then the scratch folder.</summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>Releases what the fixture created.</summary>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing)
+            return;
+
+        if (Directory.Exists(PackagesPath))
+        {
+            foreach (var idFolder in Directory.GetDirectories(PackagesPath, "orkeon*"))
+                RemoveFolder(Path.Combine(idFolder, Version.ToLowerInvariant()), Path.GetFileName(idFolder));
+        }
+
+        TryDelete(Scratch);
+    }
+
+    /// <summary>Runs a process to its end (20 minutes at most) and returns its exit code and its two streams.</summary>
+    internal static (int ExitCode, string Output) Run(string fileName, IEnumerable<string> arguments, string workingDirectory)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = fileName,
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var argument in arguments)
+            psi.ArgumentList.Add(argument);
+        psi.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
+        psi.Environment["DOTNET_NOLOGO"] = "1";
+        psi.Environment["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1";
+
+        using var process = Process.Start(psi)!;
+        var stdout = process.StandardOutput.ReadToEndAsync();
+        var stderr = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit((int)TimeSpan.FromMinutes(20).TotalMilliseconds))
+        {
+            process.Kill(entireProcessTree: true);
+            throw new TimeoutException($"`{fileName}` did not exit within 20 minutes:\n{stdout.Result}\n{stderr.Result}");
+        }
+
+        return (process.ExitCode, stdout.Result + "\n" + stderr.Result);
+    }
+
+    // Only run versions are touched (the e2e-<8 hex> identifier no published version carries), and only once they are
+    // old enough that no concurrent pass still restores from them.
+    private void RemoveLeftovers()
+    {
+        if (!Directory.Exists(PackagesPath))
+            return;
+
+        var before = DateTime.UtcNow - LeftoverAge;
+        foreach (var idFolder in Directory.GetDirectories(PackagesPath, "orkeon*"))
+        {
+            foreach (var versionFolder in Directory.GetDirectories(idFolder))
+            {
+                if (RunVersionFolder.IsMatch(Path.GetFileName(versionFolder)) && Directory.GetLastWriteTimeUtc(versionFolder) < before)
+                    TryDelete(versionFolder);
+            }
+        }
+    }
+
+    // The id folder goes too when this run created it and nothing else is left in it.
+    private void RemoveFolder(string versionFolder, string? id)
+    {
+        if (!Directory.Exists(versionFolder))
+            return;
+
+        TryDelete(versionFolder);
+        var idFolder = Path.GetDirectoryName(versionFolder)!;
+        if (id is not null && !_existingIdFolders.Contains(id) && Directory.Exists(idFolder) && !Directory.EnumerateFileSystemEntries(idFolder).Any())
+            TryDelete(idFolder);
+    }
+
+    private static void TryDelete(string folder)
+    {
+        try
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A leftover is not a failure: the next run removes a run version once it is old enough.
+        }
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir != null && !File.Exists(Path.Combine(dir, "Orkeon.sln")))
+            dir = Path.GetDirectoryName(dir);
+
+        return dir ?? throw new InvalidOperationException("Orkeon.sln not found above the test base directory.");
+    }
+}

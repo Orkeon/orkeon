@@ -145,6 +145,13 @@ agent, remove the path from its goal or backstory, give the agent the task that 
   `retryCount` and replays `0`. A peer takeover in Autonomous mode whose task fails is now reported as a failure: the
   channel answers the peer's error (else `the peer failed`), the delegating agent takes its `[DELEGATION FAILED]` path and
   the task's snapshot reads `Success = false`; it read as a success with an empty answer before (#388).
+- The E2E pack tests (`TemplatesPackTests`, `LocalEmbeddingsModelOptOutTests`, `Category=Slow`) restore the packages they
+  have just packed. They packed at the product version, so NuGet took the copy an earlier commit had extracted into
+  `<repo>/packages` under that version, and a change to a packaged `.targets` or to the package content went unseen until
+  the next version bump. One shared fixture, `LineupPackFixture`, now packs under a run version (the product version plus
+  `e2e-<8 hex>`), checks each restore against the SHA-512 of the nupkg it packed, and on dispose removes only the
+  `orkeon.*/<run version>` folders the run extracted. Third-party packages stay in the shared cache and are not downloaded
+  again (#390).
 
 ## [1.1.0] - 2026-11-15
 
