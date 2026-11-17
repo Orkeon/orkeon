@@ -23,6 +23,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The code index recorded no import between the Python files of a project (#406): the module of an import is a
+  dotted name, which the index did not read, so `dependency_graph` returned the modules with no edge and
+  `package_summary` no dependency. A Python import is now read from its syntax and resolved against the files of the
+  tree: `a/b.py` or `a/b/__init__.py` under the folders Python would search - for a script its own folder then each
+  folder above it, for a file of a package the folder above its topmost package first; a name of `from a.b import c`
+  that is a submodule reaches its file, the others reach `a.b`; `import a.b` where `b` is an attribute reaches `a.py`;
+  a relative import starts from the importing file's package. An absolute import that no folder holds still goes to
+  `ext::pypi::<first segment>`. An incremental refresh re-resolves the unchanged importers of a Python
+  file that joins the tree. An index built before this change holds no such edge until it is rebuilt.
+- `orkeon mcp serve` wrote every member it did not carry as `null` (#405): a response held `"error": null` beside its
+  result, or `"result": null` beside its error, where JSON-RPC allows one of the two. The client of the MCP TypeScript
+  SDK - the one Claude Code and most MCP hosts use - refuses such a message, so the answer to `initialize` was dropped
+  and the connection timed out. A response now carries `result` or `error`, never both, and an optional member is
+  absent when it has no value: `nextCursor` of a list, `mimeType` and `data` of a text content, `data` of an error,
+  `description` of a resource or a prompt, and the others of the MCP types. The answer to a line that could not be
+  parsed keeps `"id": null`, as JSON-RPC asks. The MCP client is corrected the same way: a request or a notification
+  without parameters no longer carries `"params": null`, and a `tools/call` without arguments no `"arguments": null`.
 - The container image `ghcr.io/orkeon/orkeon` had no `git` (#404). A crew that runs it through `shell_command` on the
   repository mounted on `/workspace` got `git: not found`, and read the empty output as an empty repository. The image
   now installs `git`, and declares every directory safe to it (`safe.directory`, system-wide): a repository whose owner

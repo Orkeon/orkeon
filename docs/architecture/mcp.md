@@ -70,6 +70,9 @@ revision (`McpClient.SendAsync`).
   SHOULD, for stable client caches) with the modern `resultType`/`ttlMs`/`cacheScope`
   fields; legacy clients ignore these additive members.
 - Notifications (no `id`, or `notifications/*`) are never answered.
+- A message never carries a `null` member: a response holds `result` or `error`, never both,
+  and an optional member with no value is absent - a strict client (the MCP SDKs) refuses the
+  message otherwise. The one `null` is the `id` of the answer to a line that could not be parsed.
 - The `arguments` of a `tools/call` reach the tool as the values an agent's tool call carries:
   an array is a list, an object a dictionary, a whole number a `long`, any other number a
   `double`, `null` is `null`. `tools/list` publishes the `items` of an array parameter.
