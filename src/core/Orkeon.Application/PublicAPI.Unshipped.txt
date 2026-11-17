@@ -1,1 +1,2 @@
 #nullable enable
+Orkeon.Application.Interfaces.Security.ITokenBudgetTracker.RecordUsage(string! crewId, string! agentRole, int promptTokens, int completionTokens, string! model, string? provider) -> Orkeon.Application.Interfaces.Security.BudgetCheckResult!

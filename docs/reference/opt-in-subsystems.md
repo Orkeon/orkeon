@@ -302,7 +302,7 @@ No attribute carries an id of a crew, task or agent.
 - **Activation**: `services.AddOrkeonToolRateLimiting();`
 - **Dependencies**: logging + `IConfiguration`. If `AddOrkeonCostTracking()` (included
   in the core) registered `IModelPricingRegistry`, the tracker uses it for the
-  tokens → cost conversion. Its cost estimate reads only the price rows that name no provider: a row scoped to a provider (the built-in rows of DeepSeek, Z.AI, Kimi, Qwen, Gemini, Mistral, Grok, MiniMax, Together, Mammouth and Ollama — an Ollama model is then counted at the tracker's rates, not at 0 — or a `CustomPricings` row with a `Provider`) is not seen, and the tracker uses its own approximate rates instead. The `MaxCostUsd` budget of `Orkeon:CostTracking` is provider-aware.
+  tokens → cost conversion. Its cost estimate reads the price rows of the provider when the host passes it (`RecordUsage(crewId, agentRole, promptTokens, completionTokens, model, provider)`): a row scoped to that provider (the built-in rows of DeepSeek, Z.AI, Kimi, Qwen, Gemini, Mistral, Grok, MiniMax, Together, Mammouth and Ollama — an Ollama model costs 0 — or a `CustomPricings` row with a `Provider`) comes first. Called without the provider, the tracker reads only the rows that name no provider, and uses its own approximate rates for a model they do not price.
 - **Known limits**: not wired into tool execution — the host queries the
   limiter/tracker around its tool calls. **LLM** rate-limiting
   (`ILlmRateLimiter`), for its part, remains registered by default because it is

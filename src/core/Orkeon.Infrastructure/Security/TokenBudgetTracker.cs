@@ -46,9 +46,13 @@ public partial class TokenBudgetTracker : ITokenBudgetTracker
 
     /// <inheritdoc />
     public BudgetCheckResult RecordUsage(string crewId, string agentRole, int promptTokens, int completionTokens, string model)
+        => RecordUsage(crewId, agentRole, promptTokens, completionTokens, model, provider: null);
+
+    /// <inheritdoc />
+    public BudgetCheckResult RecordUsage(string crewId, string agentRole, int promptTokens, int completionTokens, string model, string? provider)
     {
         var totalTokens = promptTokens + completionTokens;
-        var cost = EstimateCost(promptTokens, completionTokens, model, _pricingRegistry);
+        var cost = EstimateCost(promptTokens, completionTokens, model, provider, _pricingRegistry);
 
         var agentKey = $"{crewId}:{agentRole}";
 
@@ -122,11 +126,27 @@ public partial class TokenBudgetTracker : ITokenBudgetTracker
     public static decimal EstimateCost(
         int promptTokens, int completionTokens, string model,
         IModelPricingRegistry? registry)
+        => EstimateCost(promptTokens, completionTokens, model, provider: null, registry);
+
+    /// <summary>
+    /// Estimates the cost of a call made through <paramref name="provider"/>: the registry's rows scoped to
+    /// that provider come first, then its provider-less rows, then the built-in approximate rates when the
+    /// registry is null or has no entry for the model.
+    /// </summary>
+    /// <param name="promptTokens">The prompt tokens of the call.</param>
+    /// <param name="completionTokens">The completion tokens of the call.</param>
+    /// <param name="model">The model that served the call.</param>
+    /// <param name="provider">The provider that served the call, or null when it is not known.</param>
+    /// <param name="registry">The pricing registry, or null to use the built-in approximate rates.</param>
+    /// <returns>The estimated cost in USD.</returns>
+    public static decimal EstimateCost(
+        int promptTokens, int completionTokens, string model, string? provider,
+        IModelPricingRegistry? registry)
     {
         ArgumentNullException.ThrowIfNull(model);
         if (registry is not null)
         {
-            var pricing = registry.TryGetPricing(model);
+            var pricing = registry.TryGetPricing(provider, model);
             if (pricing is not null)
             {
                 // ModelPricingRegistry stores $/million tokens; convert to per-token cost

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`ITokenBudgetTracker.RecordUsage` and `TokenBudgetTracker.EstimateCost` take the provider** (#396). A new
+  overload of each carries the provider that served the call. The interface member has a default body that
+  forwards to the provider-less one, so a tracker written before it still compiles and ignores the provider.
+
+### Fixed
+
+- **The opt-in token budget priced a call without its provider** (#396). `TokenBudgetTracker` looked a price
+  up by model alone, so it missed every row scoped to a provider — the built-in rows of DeepSeek, Z.AI, Kimi,
+  Qwen, Gemini, Mistral, Grok, MiniMax, Together, Mammouth and Ollama, and a `CustomPricings` row with a
+  `Provider` — and compared `MaxCostPerCrew` with its own approximate rates; an Ollama model was counted at
+  those rates, not at 0. A host that passes the provider to the new `RecordUsage` overload now gets the
+  provider's rows first. A call to the provider-less overload is priced as before.
+
 ## [1.2.0] - 2026-11-16
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries five
