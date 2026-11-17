@@ -79,3 +79,7 @@ l'environnement, et Microsoft Graph en HTTP simple — le tout interne à `Orkeo
 
 - Les comptes des Conséquences (102 classes d'outils intégrées, 49 projets src et 37 projets de tests) sont ceux du jour d'écriture de l'ADR. À cette date, le dépôt compte 120 classes d'outils intégrées, 50 projets src et 38 projets de tests (`scripts/check-doc-claims.py`).
 - La dernière puce des Conséquences dit que le guide présente la famille comme pas encore campagnée. Un passage de campagne (DRIVE-07) a eu lieu le 2026-10-24 ; le guide ([Drive](../guides/drive.md)) dit ce qui est consigné, et la fiche DRIVE-07 n'est pas close.
+
+## Amendement (2026-11-17)
+
+- La campagne sur de vrais comptes (DRIVE-07) a été close le 2026-11-17. Les limites qui restent sont dans [les limitations](../reference/limitations.md).
