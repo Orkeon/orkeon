@@ -617,11 +617,16 @@ docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD:/workspace" \
 ```
 
 L'image embarque **git** : un crew qui le lance par `shell_command` travaille sur le
-dépôt monté sur `/workspace` — un statut, un commit, la recherche de la racine du projet.
-Tout répertoire est déclaré sûr pour git dans l'image (`safe.directory`) : un dépôt dont
-le propriétaire sur l'hôte n'est pas l'utilisateur du conteneur est lu quand même. Un
-commit demande une identité : passez `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`,
-`GIT_COMMITTER_NAME` et `GIT_COMMITTER_EMAIL` avec `-e`, l'image n'en fixe aucune.
+dépôt monté sur `/workspace`. Comme partout ailleurs, `shell_command` ne laisse par défaut
+un crew lancer que `git status`, `git log`, `git diff` et `git show` ; toute autre
+commande git (`rev-parse`, `add`, `commit`, `push`) demande
+`Orkeon:Tools:Shell:AllowInterpreters`, que l'image ne fixe pas
+([Sécurité](../architecture/security.md)). Tout répertoire est déclaré sûr pour git dans
+l'image (`safe.directory`) : un dépôt dont le propriétaire sur l'hôte n'est pas
+l'utilisateur du conteneur est lu quand même — git exécute alors aussi les hooks et la
+configuration de ce dépôt sans vérifier à qui il appartient. Un commit demande en plus une
+identité : passez `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME` et
+`GIT_COMMITTER_EMAIL` avec `-e`, l'image n'en fixe aucune.
 
 ---
 

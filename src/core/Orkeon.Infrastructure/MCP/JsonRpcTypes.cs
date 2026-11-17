@@ -20,6 +20,7 @@ public class JsonRpcRequest
 
     /// <summary>Gets or sets the method parameters.</summary>
     [JsonPropertyName("params")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? Params { get; set; }
 
     /// <summary>
@@ -27,6 +28,7 @@ public class JsonRpcRequest
     /// the raw element is kept so external ids round-trip unchanged.
     /// </summary>
     [JsonPropertyName("id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? Id { get; set; }
 }
 
@@ -42,10 +44,12 @@ public class JsonRpcResponse
 
     /// <summary>Gets or sets the successful result, if any.</summary>
     [JsonPropertyName("result")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? Result { get; set; }
 
     /// <summary>Gets or sets the error, if the request failed.</summary>
     [JsonPropertyName("error")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonRpcError? Error { get; set; }
 
     /// <summary>
@@ -72,6 +76,7 @@ public class JsonRpcError
 
     /// <summary>Gets or sets optional additional error data.</summary>
     [JsonPropertyName("data")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? Data { get; set; }
 
     /// <summary>Initializes a new instance of <see cref="JsonRpcError"/>.</summary>
@@ -103,6 +108,7 @@ public class JsonRpcNotification
 
     /// <summary>Gets or sets the notification parameters.</summary>
     [JsonPropertyName("params")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? Params { get; set; }
 }
 
