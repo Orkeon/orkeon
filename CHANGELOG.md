@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `shell_command` dropped the identity of a commit (#404): the command it starts receives a fixed list of the host's
+  variables, and `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME` and `GIT_COMMITTER_EMAIL` were not on
+  it. In the container image, where git has no `~/.gitconfig`, a crew allowed to commit
+  (`Orkeon:Tools:Shell:AllowInterpreters`) stopped on `Author identity unknown` whatever the caller passed with `-e`;
+  `Orkeon:Tools:Shell:Environment:Propagate` could not carry them either, its secret filter refusing `GIT_AUTHOR_*`
+  for the `AUTH` of `AUTHOR`. The four are now on the built-in list, under every confinement backend. They hold a name
+  and an address; no other `GIT_*` variable follows (`GIT_ASKPASS`, `GIT_SSH_COMMAND`, `GIT_CONFIG_GLOBAL`). The code
+  sandbox is unchanged.
 - The container image `ghcr.io/orkeon/orkeon` had no `git` (#404). A crew that runs it through `shell_command` on the
   repository mounted on `/workspace` got `git: not found`, and read the empty output as an empty repository. The image
   now installs `git`, and declares every directory safe to it (`safe.directory`, system-wide): a repository whose owner

@@ -50,7 +50,12 @@ internal static partial class ShellEnvironment
         "USERPROFILE", "SystemRoot", "SystemDrive", "PATHEXT", "TEMP", "TMP",
         "APPDATA", "LOCALAPPDATA", "ProgramFiles", "ProgramFiles(x86)",
         // The .NET and NuGet locations, load-bearing once interpreters are opted in.
-        "DOTNET_ROOT", "NUGET_PACKAGES"
+        "DOTNET_ROOT", "NUGET_PACKAGES",
+        // The identity a commit is recorded under (#404): a name and an address, no secret. In a
+        // container git has no ~/.gitconfig to read them from, and the operator hands them over this
+        // way; without them `git commit` stops on "Author identity unknown". Built in rather than left
+        // to Propagate, whose secret filter refuses GIT_AUTHOR_* for the AUTH of AUTHOR.
+        "GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"
     ];
 
     /// <summary>

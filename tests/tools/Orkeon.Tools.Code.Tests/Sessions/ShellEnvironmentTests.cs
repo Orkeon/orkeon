@@ -58,6 +58,43 @@ public sealed class ShellEnvironmentTests
         Assert.Equal("/home/operator", variables["HOME"]);
     }
 
+    [Theory]
+    [Trait("BR", "#404")]
+    [InlineData(nameof(ShellSessionSockets.All))]
+    [InlineData(nameof(ShellSessionSockets.WithoutBus))]
+    [InlineData(nameof(ShellSessionSockets.None))]
+    public void ShouldPropagateTheGitIdentity_WhenTheOperatorSetsIt(string socketsName)
+    {
+        var sockets = Enum.Parse<ShellSessionSockets>(socketsName);
+        var environment = OperatorSession();
+        environment.Variables["GIT_AUTHOR_NAME"] = "Ada";
+        environment.Variables["GIT_AUTHOR_EMAIL"] = "ada@example.invalid";
+        environment.Variables["GIT_COMMITTER_NAME"] = "Ada";
+        environment.Variables["GIT_COMMITTER_EMAIL"] = "ada@example.invalid";
+        // Not an identity: git reads credentials and arbitrary programs from these, they stay behind.
+        environment.Variables["GIT_ASKPASS"] = "/usr/bin/leak";
+        environment.Variables["GIT_SSH_COMMAND"] = "ssh -i /home/operator/.ssh/id";
+        environment.Variables["GIT_CONFIG_GLOBAL"] = "/home/operator/.gitconfig";
+
+        var variables = ShellEnvironment.RestrictedVariables(environment.Read, sockets);
+
+        Assert.Equal("Ada", variables["GIT_AUTHOR_NAME"]);
+        Assert.Equal("ada@example.invalid", variables["GIT_AUTHOR_EMAIL"]);
+        Assert.Equal("Ada", variables["GIT_COMMITTER_NAME"]);
+        Assert.Equal("ada@example.invalid", variables["GIT_COMMITTER_EMAIL"]);
+        Assert.DoesNotContain(variables.Keys, name => name.StartsWith("GIT_", StringComparison.Ordinal) && !name.StartsWith("GIT_AUTHOR_", StringComparison.Ordinal) && !name.StartsWith("GIT_COMMITTER_", StringComparison.Ordinal));
+        Assert.DoesNotContain("GH_TOKEN", variables.Keys);
+    }
+
+    [Fact]
+    [Trait("BR", "#404")]
+    public void ShouldSetNoGitIdentity_WhenTheParentHasNone()
+    {
+        var variables = ShellEnvironment.RestrictedVariables(OperatorSession().Read, ShellSessionSockets.All);
+
+        Assert.DoesNotContain(variables.Keys, name => name.StartsWith("GIT_", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void ShouldSetNoSessionSocket_WhenTheParentHasNone()
     {
