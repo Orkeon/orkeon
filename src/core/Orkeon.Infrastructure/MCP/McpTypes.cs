@@ -241,6 +241,7 @@ public class McpToolDefinition
 
     /// <summary>Gets or sets the JSON Schema describing the tool's input parameters.</summary>
     [JsonPropertyName("inputSchema")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? InputSchema { get; set; }
 
     /// <summary>
@@ -297,6 +298,7 @@ public class McpToolCallResult
 
     /// <summary>Gets or sets whether the result represents an error.</summary>
     [JsonPropertyName("isError")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? IsError { get; set; }
 
     /// <summary>
@@ -320,14 +322,17 @@ public class McpContent
 
     /// <summary>Gets or sets the text content for text-type blocks.</summary>
     [JsonPropertyName("text")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Text { get; set; }
 
     /// <summary>Gets or sets the MIME type for binary content blocks.</summary>
     [JsonPropertyName("mimeType")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? MimeType { get; set; }
 
     /// <summary>Gets or sets the Base64-encoded data for binary content blocks.</summary>
     [JsonPropertyName("data")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Data { get; set; }
 }
 
@@ -339,6 +344,7 @@ public class McpResource
 {
     /// <summary>Gets or sets the resource URI.</summary>
     [JsonPropertyName("uri")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Uri? Uri { get; set; }
 
     /// <summary>Gets or sets the resource name.</summary>
@@ -347,10 +353,12 @@ public class McpResource
 
     /// <summary>Gets or sets the optional resource description.</summary>
     [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Description { get; set; }
 
     /// <summary>Gets or sets the MIME type of the resource content.</summary>
     [JsonPropertyName("mimeType")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? MimeType { get; set; }
 }
 
@@ -362,6 +370,7 @@ public class McpServerCapabilities
 {
     /// <summary>Gets or sets the tools capability info, if supported.</summary>
     [JsonPropertyName("tools")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public McpCapabilityInfo? Tools { get; set; }
 
     /// <summary>Gets or sets the resources capability info, if supported.</summary>
@@ -383,6 +392,7 @@ public class McpCapabilityInfo
 {
     /// <summary>Gets or sets whether the server supports list-changed notifications for this capability.</summary>
     [JsonPropertyName("listChanged")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? ListChanged { get; set; }
 
     /// <summary>Gets or sets whether the server lets a client subscribe to updates of one resource (<c>resources.subscribe</c>).</summary>
@@ -397,18 +407,22 @@ public class McpResourceContents
 {
     /// <summary>Gets or sets the URI of the resource.</summary>
     [JsonPropertyName("uri")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Uri? Uri { get; set; }
 
     /// <summary>Gets or sets the MIME type of the content.</summary>
     [JsonPropertyName("mimeType")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? MimeType { get; set; }
 
     /// <summary>Gets or sets the text of a text resource.</summary>
     [JsonPropertyName("text")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Text { get; set; }
 
     /// <summary>Gets or sets the base64 data of a binary resource.</summary>
     [JsonPropertyName("blob")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Blob { get; set; }
 }
 
@@ -461,6 +475,7 @@ public class McpToolCallParams
 
     /// <summary>Gets or sets the tool arguments as a JSON object.</summary>
     [JsonPropertyName("arguments")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? Arguments { get; set; }
 }
 
@@ -476,6 +491,7 @@ public class McpToolListResult
 
     /// <summary>Gets the opaque cursor of the next page, absent on the last one.</summary>
     [JsonPropertyName("nextCursor")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NextCursor { get; init; }
 
     /// <summary>Gets or sets the result type ("complete"; absent on legacy servers, to be treated as complete).</summary>
@@ -511,6 +527,7 @@ public class McpResourceListResult
 
     /// <summary>Gets the opaque cursor of the next page, absent on the last one.</summary>
     [JsonPropertyName("nextCursor")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NextCursor { get; init; }
 }
 
@@ -530,6 +547,7 @@ public class McpInitializeResult
 
     /// <summary>Gets or sets optional server identification metadata.</summary>
     [JsonPropertyName("serverInfo")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public McpServerInfo? ServerInfo { get; set; }
 }
 
@@ -545,6 +563,7 @@ public class McpServerInfo
 
     /// <summary>Gets or sets the server version string.</summary>
     [JsonPropertyName("version")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Version { get; set; }
 }
 
@@ -614,6 +633,7 @@ public class McpPromptArgument
 
     /// <summary>Gets or sets what the argument is for.</summary>
     [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Description { get; set; }
 
     /// <summary>Gets or sets whether the server needs the argument.</summary>
@@ -631,6 +651,7 @@ public class McpPrompt
 
     /// <summary>Gets or sets what the prompt does.</summary>
     [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Description { get; set; }
 
     /// <summary>Gets the arguments the prompt takes.</summary>
@@ -661,6 +682,7 @@ public class McpPromptListResult
 
     /// <summary>Gets the opaque cursor of the next page, absent on the last one.</summary>
     [JsonPropertyName("nextCursor")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NextCursor { get; init; }
 }
 
@@ -670,6 +692,7 @@ public class McpPromptGetResult
 {
     /// <summary>Gets or sets what the prompt does.</summary>
     [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Description { get; set; }
 
     /// <summary>Gets the messages of the prompt, its arguments filled in.</summary>
