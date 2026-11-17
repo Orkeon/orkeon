@@ -26,10 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The code index recorded no import between the Python files of a project (#406): the module of an import is a
   dotted name, which the index did not read, so `dependency_graph` returned the modules with no edge and
   `package_summary` no dependency. A Python import is now read from its syntax and resolved against the files of the
-  tree: `a/b.py` or `a/b/__init__.py` under the importing file's folder, then under each folder above it; a name of
-  `from a.b import c` that is a submodule reaches its file, the others reach `a.b`; a relative import starts from the
-  importing file's package. An absolute import that no folder holds still goes to `ext::pypi::<first segment>`, and
-  `from __future__ import ...` draws no edge. An incremental refresh re-resolves the unchanged importers of a Python
+  tree: `a/b.py` or `a/b/__init__.py` under the folders Python would search - for a script its own folder then each
+  folder above it, for a file of a package the folder above its topmost package first; a name of `from a.b import c`
+  that is a submodule reaches its file, the others reach `a.b`; `import a.b` where `b` is an attribute reaches `a.py`;
+  a relative import starts from the importing file's package. An absolute import that no folder holds still goes to
+  `ext::pypi::<first segment>`. An incremental refresh re-resolves the unchanged importers of a Python
   file that joins the tree. An index built before this change holds no such edge until it is rebuilt.
 - `orkeon mcp serve` (`McpServer`) handed an array or an object of a `tools/call` to the tool as its raw JSON text (#402).
   A tool that validates its parameters refused the call (`Parameter 'edge_kinds' has invalid type. Expected: array`):

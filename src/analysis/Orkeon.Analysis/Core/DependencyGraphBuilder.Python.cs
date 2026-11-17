@@ -66,10 +66,12 @@ public sealed partial class DependencyGraphBuilder
     }
 
     /// <summary>
-    /// An absolute import, resolved as Python resolves it for a file run from its own folder or from
-    /// a folder above it: the importing file's folder first, then each folder above, nearest first.
-    /// The first folder under which the module is a file of the index wins; when none holds it, the
-    /// import is external (<c>ext::pypi::&lt;first segment&gt;</c>).
+    /// An absolute import, resolved against the folders Python would have on <c>sys.path</c>
+    /// (<see cref="PythonSearchRoots"/>). The first folder under which the module is a file of the index
+    /// wins; failing that, the first under which a leading part of its path is one (<c>import a.b</c>
+    /// where <c>b</c> is an attribute of <c>a.py</c>). When no folder holds any of it, or only the
+    /// importing file itself (a wrapper named like the library it imports), the import is external
+    /// (<c>ext::pypi::&lt;first segment&gt;</c>).
     /// </summary>
     private static void AddPythonAbsoluteImport(
         EdgeSet edges, ImportScope scope, RaggableNode moduleNode, string dir, string module, IReadOnlyList<string> names)
@@ -77,18 +79,51 @@ public sealed partial class DependencyGraphBuilder
         var first = module.Split('.')[0];
         if (first.Length == 0 || first == PythonFuture) return;
 
-        for (var root = dir; ; root = root[..root.LastIndexOf('/')])
+        var roots = PythonSearchRoots(dir, scope.Index);
+        var targets = roots
+            .Select(root => PythonTargets(root, module, names, scope.Index).Where(t => t.Id != moduleNode.Id).ToList())
+            .FirstOrDefault(found => found.Count > 0);
+        if (targets is null)
         {
-            var targets = PythonTargets(root, module, names, scope.Index);
-            if (targets.Count > 0)
+            // No folder holds the module itself: the longest leading part of its path that is a file.
+            for (var cut = module.LastIndexOf('.'); cut > 0 && targets is null; cut = module.LastIndexOf('.', cut - 1))
             {
-                foreach (var target in targets) AddImport(edges, moduleNode, target);
-                return;
+                var prefix = module[..cut];
+                targets = roots
+                    .Select(root => PythonTargets(root, prefix, [], scope.Index).Where(t => t.Id != moduleNode.Id).ToList())
+                    .FirstOrDefault(found => found.Count > 0);
             }
-            if (root.LastIndexOf('/') <= 0) break;
         }
 
-        AddImport(edges, moduleNode, External($"ext::pypi::{first}", scope.Index));
+        if (targets is null)
+        {
+            AddImport(edges, moduleNode, External($"ext::pypi::{first}", scope.Index));
+            return;
+        }
+        foreach (var target in targets) AddImport(edges, moduleNode, target);
+    }
+
+    /// <summary>
+    /// The folders an absolute import is looked for under, in order. A file of a package (its folder
+    /// holds an <c>__init__.py</c>) is imported from the folder above its topmost package: that folder
+    /// comes first, then the folders above it, and the folders inside the package last - they are on
+    /// the path only when the file is run as a script. A file outside any package is a script: its own
+    /// folder first, then each folder above, nearest first.
+    /// </summary>
+    private static List<string> PythonSearchRoots(string dir, Dictionary<string, RaggableNode> index)
+    {
+        var ancestors = new List<string>();
+        for (var folder = dir; ; folder = folder[..folder.LastIndexOf('/')])
+        {
+            ancestors.Add(folder);
+            if (folder.LastIndexOf('/') <= 0) break;
+        }
+
+        // The folders of the package chain: the importing folder and each one above it that is a package too.
+        var inside = 0;
+        while (inside < ancestors.Count && index.ContainsKey($"{ancestors[inside]}/__init__.py")) inside++;
+        if (inside == 0 || inside == ancestors.Count) return ancestors;
+        return [.. ancestors.Skip(inside), .. ancestors.Take(inside)];
     }
 
     /// <summary>

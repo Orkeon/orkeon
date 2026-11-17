@@ -372,6 +372,57 @@ public class ImportEdgesTests
 
     [Fact]
     [Trait("BR", "#406")]
+    public async Task ShouldSearchAbovePackagesFirst_WhenThePythonImporterIsInsideAPackage()
+    {
+        var (result, dir) = await BuildAsync(new PythonAdapter(),
+            ("utils.py", "TOP = 1\n"),
+            ("app/__init__.py", ""),
+            ("app/utils.py", "INNER = 1\n"),
+            ("app/packaged.py", "import utils\n"),
+            ("app/only_here.py", "import packaged\n"),
+            ("scripts/utils.py", "LOCAL = 1\n"),
+            ("scripts/run.py", "import utils\n"),
+            ("root_script.py", "import utils\nimport app.utils\n"));
+        try
+        {
+            var edges = result.Tree.Edges;
+            // Inside a package the sibling is not on the path: the module above the package wins.
+            Assert.Equal([Module("utils.py")], ImportTargets(edges, "app/packaged.py"));
+            // ... and the sibling is the fallback, for a file run as a script.
+            Assert.Equal([Module("app/packaged.py")], ImportTargets(edges, "app/only_here.py"));
+            // Outside a package the file is a script: its own folder comes first.
+            Assert.Equal([Module("scripts/utils.py")], ImportTargets(edges, "scripts/run.py"));
+            // A file directly under the indexed root.
+            Assert.Equal([Module("app/utils.py"), Module("utils.py")], ImportTargets(edges, "root_script.py"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "#406")]
+    public async Task ShouldFallBackToTheLeadingModuleOrTheLibrary_WhenAPythonImportIsNotAFileAsWritten()
+    {
+        var (result, dir) = await BuildAsync(new PythonAdapter(),
+            ("lib/conf.py", "class settings: DEBUG = 1\n"),
+            ("lib/attr.py", "import conf.settings\n"),
+            ("lib/redis.py", "import redis\n"),
+            ("lib/deep.py", "from ....nowhere import x\nimport lib_missing.sub\n"));
+        try
+        {
+            var edges = result.Tree.Edges;
+            // `settings` is an attribute of conf.py, not a file: the import reaches conf.py.
+            Assert.Equal([Module("lib/conf.py")], ImportTargets(edges, "lib/attr.py"));
+            // A wrapper named like the library it imports does not import itself.
+            Assert.Equal(["ext::pypi::redis"], ImportTargets(edges, "lib/redis.py"));
+            // More dots than folders draws nothing; a name nothing holds is external.
+            Assert.Equal(["ext::pypi::lib_missing"], ImportTargets(edges, "lib/deep.py"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+
+    [Fact]
+    [Trait("BR", "#406")]
     public async Task ShouldReResolvePythonImporters_WhenTheFileTheyNameJoinsTheTree()
     {
         var dir = await TestFixtures.WriteDirectoryAsync([
@@ -385,8 +436,9 @@ public class ImportEdgesTests
             var fs = TestFixtures.CreateFs(dir);
             var initial = await new RaggableTreeBuilder(new PythonAdapter(), fs)
                 .BuildAsync(Root, new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
-            // Before the file exists: the dotted import is external, the named one reaches the package.
-            Assert.Equal(["ext::pypi::pkg"], ImportTargets(initial.Tree.Edges, "app/absolute.py"));
+            // Before the file exists, both reach the package: the leading part of the dotted path, and the
+            // module the name is imported from.
+            Assert.Equal([Module("pkg/__init__.py")], ImportTargets(initial.Tree.Edges, "app/absolute.py"));
             Assert.Equal([Module("pkg/__init__.py")], ImportTargets(initial.Tree.Edges, "app/named.py"));
             await File.WriteAllTextAsync(
                 Path.Combine(dir, "pkg", "late.py"), "def f(): return 1\n", TestContext.Current.CancellationToken);
