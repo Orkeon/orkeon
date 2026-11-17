@@ -591,6 +591,13 @@ docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD:/workspace" \
 # orkeon /workspace % orkeon run /workspace/crews/my-crew/config.yaml --validate
 ```
 
+The image carries **git**: a crew that runs it through `shell_command` works on the
+repository mounted on `/workspace` - a status, a commit, the lookup of the project root.
+Every directory is declared safe to git inside the image (`safe.directory`), so a
+repository whose owner on the host is not the user the container runs as is read all the
+same. A commit needs an identity: pass `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`,
+`GIT_COMMITTER_NAME` and `GIT_COMMITTER_EMAIL` with `-e`, the image sets none.
+
 ---
 
 ## Which one should I use?

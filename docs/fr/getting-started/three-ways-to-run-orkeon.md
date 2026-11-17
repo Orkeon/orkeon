@@ -616,6 +616,13 @@ docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD:/workspace" \
 # orkeon /workspace % orkeon run /workspace/crews/my-crew/config.yaml --validate
 ```
 
+L'image embarque **git** : un crew qui le lance par `shell_command` travaille sur le
+dépôt monté sur `/workspace` — un statut, un commit, la recherche de la racine du projet.
+Tout répertoire est déclaré sûr pour git dans l'image (`safe.directory`) : un dépôt dont
+le propriétaire sur l'hôte n'est pas l'utilisateur du conteneur est lu quand même. Un
+commit demande une identité : passez `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`,
+`GIT_COMMITTER_NAME` et `GIT_COMMITTER_EMAIL` avec `-e`, l'image n'en fixe aucune.
+
 ---
 
 ## Laquelle choisir ?
