@@ -48,7 +48,17 @@ public partial class TokenBudgetTracker : ITokenBudgetTracker
     public BudgetCheckResult RecordUsage(string crewId, string agentRole, int promptTokens, int completionTokens, string model)
         => RecordUsage(crewId, agentRole, promptTokens, completionTokens, model, provider: null);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Records token usage for an agent within a crew and checks budget limits, pricing the call with the
+    /// rows of the provider that served it.
+    /// </summary>
+    /// <param name="crewId">The crew the usage belongs to.</param>
+    /// <param name="agentRole">The role of the agent that made the call.</param>
+    /// <param name="promptTokens">The prompt tokens of the call.</param>
+    /// <param name="completionTokens">The completion tokens of the call.</param>
+    /// <param name="model">The model that served the call.</param>
+    /// <param name="provider">The id of the provider that served the call (case is ignored), or null when it is not known.</param>
+    /// <returns>The budget check after the usage is recorded.</returns>
     public BudgetCheckResult RecordUsage(string crewId, string agentRole, int promptTokens, int completionTokens, string model, string? provider)
     {
         var totalTokens = promptTokens + completionTokens;
@@ -120,23 +130,30 @@ public partial class TokenBudgetTracker : ITokenBudgetTracker
     }
 
     /// <summary>
-    /// Estimates cost using the provided <see cref="IModelPricingRegistry"/> as the source of truth,
-    /// or falls back to built-in approximate rates when the registry is null or has no entry for the model.
+    /// Estimates the cost of a call whose provider is not known: the registry's provider-less rows are read,
+    /// the rows scoped to a provider are not, and the built-in approximate rates apply when the registry is
+    /// null or has no entry for the model.
     /// </summary>
+    /// <param name="promptTokens">The prompt tokens of the call.</param>
+    /// <param name="completionTokens">The completion tokens of the call.</param>
+    /// <param name="model">The model that served the call.</param>
+    /// <param name="registry">The pricing registry, or null to use the built-in approximate rates.</param>
+    /// <returns>The estimated cost in USD.</returns>
     public static decimal EstimateCost(
         int promptTokens, int completionTokens, string model,
         IModelPricingRegistry? registry)
         => EstimateCost(promptTokens, completionTokens, model, provider: null, registry);
 
     /// <summary>
-    /// Estimates the cost of a call made through <paramref name="provider"/>: the registry's rows scoped to
-    /// that provider come first, then its provider-less rows, then the built-in approximate rates when the
-    /// registry is null or has no entry for the model.
+    /// Estimates the cost of a call made through <paramref name="provider"/>. The registry decides which row
+    /// applies: a custom row beats a built-in one, and within each the rows scoped to the provider come before
+    /// the provider-less ones. The built-in approximate rates apply when the registry is null or has no entry
+    /// for the model.
     /// </summary>
     /// <param name="promptTokens">The prompt tokens of the call.</param>
     /// <param name="completionTokens">The completion tokens of the call.</param>
     /// <param name="model">The model that served the call.</param>
-    /// <param name="provider">The provider that served the call, or null when it is not known.</param>
+    /// <param name="provider">The id of the provider that served the call (case is ignored), or null when it is not known.</param>
     /// <param name="registry">The pricing registry, or null to use the built-in approximate rates.</param>
     /// <returns>The estimated cost in USD.</returns>
     public static decimal EstimateCost(
@@ -155,14 +172,14 @@ public partial class TokenBudgetTracker : ITokenBudgetTracker
             }
         }
 
-        // Fallback when no registry is injected: built-in approximate per-1K rates
+        // No registry, or no row for the model: built-in approximate per-1K rates
         var (promptRate, completionRate) = GetFallbackRatesPerThousand(model);
         return (promptTokens * promptRate / 1000m) + (completionTokens * completionRate / 1000m);
     }
 
     /// <summary>
-    /// Built-in approximate per-1K-token rates used when no <see cref="IModelPricingRegistry"/> is available.
-    /// These values mirror the authoritative prices in <c>ModelPricingRegistry</c> converted to $/1K.
+    /// Built-in approximate per-1K-token rates, used when no <see cref="IModelPricingRegistry"/> is available
+    /// or when it has no row for the model. They are rough figures, not the registry's prices.
     /// </summary>
     private static (decimal promptRate, decimal completionRate) GetFallbackRatesPerThousand(string model)
     {

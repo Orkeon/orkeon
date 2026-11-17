@@ -191,7 +191,7 @@ public class TokenBudgetTrackerTests
     }
 
     [Fact]
-    [Trait("Issue", "396")]
+    [Trait("BR", "#396")]
     public void ShouldPriceWithTheProviderRow_WhenACustomRowIsScopedToTheProvider()
     {
         var registry = Registry(options => options.CustomPricings.Add(new ModelPricing
@@ -211,7 +211,36 @@ public class TokenBudgetTrackerTests
     }
 
     [Fact]
-    [Trait("Issue", "396")]
+    [Trait("BR", "#396")]
+    public void ShouldPriceWithTheBuiltInProviderRow_WhenTheProviderHasItsOwnRowForTheModel()
+    {
+        var registry = Registry();
+        var row = registry.TryGetPricing("deepseek", "deepseek-flash");
+        Assert.NotNull(row);
+        Assert.Null(registry.TryGetPricing("deepseek-flash"));
+
+        var scoped = TokenBudgetTrackerSut.EstimateCost(1_000_000, 1_000_000, "deepseek-flash", "DeepSeek", registry);
+        var blind = TokenBudgetTrackerSut.EstimateCost(1_000_000, 1_000_000, "deepseek-flash", registry);
+
+        Assert.Equal(row.PromptPricePerMillion + row.CompletionPricePerMillion, scoped);
+        Assert.NotEqual(scoped, blind);
+    }
+
+    [Fact]
+    [Trait("BR", "#396")]
+    public void ShouldReachTheProviderOverload_WhenTheTrackerIsCalledThroughItsInterface()
+    {
+        var options = Options.Create(new TokenBudgetOptions { MaxTokensPerAgent = 0, MaxTokensPerCrew = 0, MaxCostPerCrew = 1m });
+        ITokenBudgetTracker tracker = new TokenBudgetTrackerSut(options, NullLogger<TokenBudgetTrackerSut>.Instance, Registry());
+
+        var result = tracker.RecordUsage(CrewIdAlt1, "researcher", 1_000_000, 1_000_000, "invented-local-model", "ollama");
+
+        Assert.True(result.IsWithinBudget);
+        Assert.Equal(0m, result.CrewUsage!.EstimatedCost);
+    }
+
+    [Fact]
+    [Trait("BR", "#396")]
     public void ShouldCostNothing_WhenTheModelIsServedByOllama()
     {
         var cost = TokenBudgetTrackerSut.EstimateCost(1_000_000, 1_000_000, "invented-local-model", "ollama", Registry());
@@ -220,7 +249,7 @@ public class TokenBudgetTrackerTests
     }
 
     [Fact]
-    [Trait("Issue", "396")]
+    [Trait("BR", "#396")]
     public void ShouldCheckTheCostBudgetWithTheProviderRow_WhenUsageIsRecordedWithItsProvider()
     {
         var options = Options.Create(new TokenBudgetOptions { MaxTokensPerAgent = 0, MaxTokensPerCrew = 0, MaxCostPerCrew = 1m });
@@ -236,7 +265,7 @@ public class TokenBudgetTrackerTests
     }
 
     [Fact]
-    [Trait("Issue", "396")]
+    [Trait("BR", "#396")]
     public void ShouldIgnoreTheProvider_WhenATrackerDoesNotOverrideTheProviderOverload()
     {
         var stub = new StubTokenBudgetTracker();
