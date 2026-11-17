@@ -28,7 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now installs `git`, and declares every directory safe to it (`safe.directory`, system-wide): a repository whose owner
   on the host is not the user the container runs as - a `--user` that differs, a mount owned by root - is read all the
   same. The image sets no git identity: a commit needs `GIT_AUTHOR_*` and `GIT_COMMITTER_*` from the caller. The
-  release workflow reads a mounted repository with the image's git before it pushes the image.
+  shell allowlist is unchanged: `shell_command` runs `git status`, `log`, `diff` and `show` by default, and any other
+  git command (`rev-parse`, `commit`) still needs `Orkeon:Tools:Shell:AllowInterpreters`, which the image does not
+  set. The release workflow runs the image's git on a mounted repository, as a user that does not own it, before it
+  pushes the image.
 - `orkeon mcp serve` (`McpServer`) handed an array or an object of a `tools/call` to the tool as its raw JSON text (#402).
   A tool that validates its parameters refused the call (`Parameter 'edge_kinds' has invalid type. Expected: array`):
   26 of the built-in tools have an array parameter, and 11 a required one (`count_pattern`, `docx_writer`,
