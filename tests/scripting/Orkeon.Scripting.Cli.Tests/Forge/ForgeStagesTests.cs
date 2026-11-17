@@ -366,7 +366,7 @@ public sealed class ForgeStagesTests : IDisposable
         });
         var channel = new ScriptedUserChannel
         {
-            WhileFilling = held => File.WriteAllText(Path.Combine(held.Single(f => f.Path == "/inbox").Directory!, "sample.md"), "x"),
+            WhileFilling = held => File.WriteAllText(Path.Join(held.Single(f => f.Path == "/inbox").Directory!, "sample.md"), "x"),
         }.ConfirmsFolders(
         [
             new ForgeFolder { Path = "/inbox", Role = "input", Purpose = "whatever is dropped" },
