@@ -778,7 +778,7 @@ enregistrée (voir [sous-systèmes opt-in](./opt-in-subsystems.md)).
 
 ### `TokenBudget`
 
-Budgets de tokens. Même opt-in que [`ToolRateLimiting`](#toolratelimiting). `MaxCostPerCrew` est une estimation qui ignore les lignes de prix rattachées à un fournisseur : voir les [limites connues](limitations.md).
+Budgets de tokens. Même opt-in que [`ToolRateLimiting`](#toolratelimiting). `MaxCostPerCrew` plafonne un coût estimé : l'estimation lit les lignes de prix rattachées à un fournisseur seulement quand l'hôte passe le fournisseur au tracker ([sous-systèmes opt-in](./opt-in-subsystems.md)).
 
 <!-- settings:TokenBudget -->
 **Lue par** : un hôte écrit en C# seulement, par `AddOrkeonToolRateLimiting()` — aucun binaire livré ne lit cette section.

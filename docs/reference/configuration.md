@@ -748,7 +748,7 @@ Per-tool rate limits. Opt-in: `AddOrkeonToolRateLimiting()`, which binds from th
 
 ### `TokenBudget`
 
-Token budgets. Same opt-in as [`ToolRateLimiting`](#toolratelimiting). `MaxCostPerCrew` is an estimate that ignores the price rows scoped to a provider: see the [known limits](limitations.md).
+Token budgets. Same opt-in as [`ToolRateLimiting`](#toolratelimiting). `MaxCostPerCrew` caps an estimated cost: the estimate reads the price rows scoped to a provider only when the host passes the provider to the tracker ([opt-in subsystems](./opt-in-subsystems.md)).
 
 <!-- settings:TokenBudget -->
 **Read by**: a host written in C# only, through `AddOrkeonToolRateLimiting()` — no shipped binary reads this section.

@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.CostTracking;
+using Orkeon.Infrastructure.Tests.Doubles;
 using TokenBudgetTrackerSut = Orkeon.Infrastructure.Security.TokenBudgetTracker;
 using static Orkeon.Tests.Shared.Constants.TestEntityIds;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
@@ -179,5 +181,98 @@ public class TokenBudgetTrackerTests
         var cost = TokenBudgetTrackerSut.EstimateCost(1_000_000, 500_000, "invented-model-ch36", registry);
 
         Assert.Equal(6m, cost);
+    }
+
+    private static ModelPricingRegistry Registry(Action<CostTrackingOptions>? configure = null)
+    {
+        var options = new CostTrackingOptions();
+        configure?.Invoke(options);
+        return new ModelPricingRegistry(Options.Create(options), NullLogger<ModelPricingRegistry>.Instance);
+    }
+
+    [Fact]
+    [Trait("BR", "#396")]
+    public void ShouldPriceWithTheProviderRow_WhenACustomRowIsScopedToTheProvider()
+    {
+        var registry = Registry(options => options.CustomPricings.Add(new ModelPricing
+        {
+            Provider = "invented-provider",
+            ModelPattern = "invented-model-396",
+            PromptPricePerMillion = 3m,
+            CompletionPricePerMillion = 6m,
+        }));
+
+        var scoped = TokenBudgetTrackerSut.EstimateCost(1_000_000, 500_000, "invented-model-396", "invented-provider", registry);
+        var blind = TokenBudgetTrackerSut.EstimateCost(1_000_000, 500_000, "invented-model-396", registry);
+
+        Assert.Equal(6m, scoped);
+        // Without the provider the scoped row stays unseen: the built-in approximate rates apply.
+        Assert.Equal(2m, blind);
+    }
+
+    [Fact]
+    [Trait("BR", "#396")]
+    public void ShouldPriceWithTheBuiltInProviderRow_WhenTheProviderHasItsOwnRowForTheModel()
+    {
+        var registry = Registry();
+        var row = registry.TryGetPricing("deepseek", "deepseek-flash");
+        Assert.NotNull(row);
+        Assert.Null(registry.TryGetPricing("deepseek-flash"));
+
+        var scoped = TokenBudgetTrackerSut.EstimateCost(1_000_000, 1_000_000, "deepseek-flash", "DeepSeek", registry);
+        var blind = TokenBudgetTrackerSut.EstimateCost(1_000_000, 1_000_000, "deepseek-flash", registry);
+
+        Assert.Equal(row.PromptPricePerMillion + row.CompletionPricePerMillion, scoped);
+        Assert.NotEqual(scoped, blind);
+    }
+
+    [Fact]
+    [Trait("BR", "#396")]
+    public void ShouldReachTheProviderOverload_WhenTheTrackerIsCalledThroughItsInterface()
+    {
+        var options = Options.Create(new TokenBudgetOptions { MaxTokensPerAgent = 0, MaxTokensPerCrew = 0, MaxCostPerCrew = 1m });
+        ITokenBudgetTracker tracker = new TokenBudgetTrackerSut(options, NullLogger<TokenBudgetTrackerSut>.Instance, Registry());
+
+        var result = tracker.RecordUsage(CrewIdAlt1, "researcher", 1_000_000, 1_000_000, "invented-local-model", "ollama");
+
+        Assert.True(result.IsWithinBudget);
+        Assert.Equal(0m, result.CrewUsage!.EstimatedCost);
+    }
+
+    [Fact]
+    [Trait("BR", "#396")]
+    public void ShouldCostNothing_WhenTheModelIsServedByOllama()
+    {
+        var cost = TokenBudgetTrackerSut.EstimateCost(1_000_000, 1_000_000, "invented-local-model", "ollama", Registry());
+
+        Assert.Equal(0m, cost);
+    }
+
+    [Fact]
+    [Trait("BR", "#396")]
+    public void ShouldCheckTheCostBudgetWithTheProviderRow_WhenUsageIsRecordedWithItsProvider()
+    {
+        var options = Options.Create(new TokenBudgetOptions { MaxTokensPerAgent = 0, MaxTokensPerCrew = 0, MaxCostPerCrew = 1m });
+        var withProvider = new TokenBudgetTrackerSut(options, NullLogger<TokenBudgetTrackerSut>.Instance, Registry());
+        var withoutProvider = new TokenBudgetTrackerSut(options, NullLogger<TokenBudgetTrackerSut>.Instance, Registry());
+
+        var local = withProvider.RecordUsage(CrewIdAlt1, "researcher", 1_000_000, 1_000_000, "invented-local-model", "ollama");
+        var blind = withoutProvider.RecordUsage(CrewIdAlt1, "researcher", 1_000_000, 1_000_000, "invented-local-model");
+
+        Assert.True(local.IsWithinBudget);
+        Assert.Equal(0m, local.CrewUsage!.EstimatedCost);
+        Assert.False(blind.IsWithinBudget);
+    }
+
+    [Fact]
+    [Trait("BR", "#396")]
+    public void ShouldIgnoreTheProvider_WhenATrackerDoesNotOverrideTheProviderOverload()
+    {
+        var stub = new StubTokenBudgetTracker();
+        ITokenBudgetTracker tracker = stub;
+
+        tracker.RecordUsage(CrewIdAlt1, "researcher", 10, 5, ModelGpt4o, "ollama");
+
+        Assert.Equal(1, stub.Calls);
     }
 }
