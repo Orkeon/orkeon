@@ -150,6 +150,9 @@ public sealed partial class DependencyGraphBuilder
             case "rust":
                 CollectRustUses(edges, scope, filePath, moduleNode, importNodes, _cargoRoots);
                 return;
+            case "python":
+                CollectPythonImports(edges, scope, filePath, moduleNode, importNodes);
+                return;
         }
 
         foreach (var importNode in importNodes)

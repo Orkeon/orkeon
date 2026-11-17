@@ -97,6 +97,7 @@ public sealed class IncrementalReindexEngine
         var root = virtualRoot.TrimEnd('/');
         var changedVirtual = NormalizeChangedPaths(changedFilePaths, root);
         changedVirtual.UnionWith(GoImportersOfChangedPackages(currentTree, changedVirtual));
+        changedVirtual.UnionWith(PythonImportersOfNewFiles(currentTree, changedVirtual));
 
         var (keptNodes, removedNodeIds) = PartitionNodes(currentTree, changedVirtual);
         var removedIds = new HashSet<string>(removedNodeIds, StringComparer.Ordinal);
@@ -489,6 +490,43 @@ public sealed class IncrementalReindexEngine
         return tree.Nodes
             .Where(n => n.Level == NodeLevel.L2_Module && importerModules.Contains(n.Id))
             .Select(n => n.VirtualFilePath);
+    }
+
+    // A Python import is resolved against the files of the index (#406): a file that joins the tree may be
+    // the module an import already names. The importers re-resolved with it are those the tree lets us
+    // find: a module whose import went to the external node of a name the new path holds (a folder or the
+    // file itself: `import pkg.new` drew `ext::pypi::pkg`), or to the `__init__.py` of a package above the
+    // new file (`from pkg import new` drew the package). An import that drew no edge is not found here.
+    private static IEnumerable<string> PythonImportersOfNewFiles(RaggableTree tree, HashSet<string> changed)
+    {
+        var changedPython = changed.Where(p => p.EndsWith(".py", StringComparison.Ordinal)).ToList();
+        if (changedPython.Count == 0) return [];
+        var modules = tree.Nodes
+            .Where(n => n.Level == NodeLevel.L2_Module && n.Language == "python")
+            .ToDictionary(n => n.VirtualFilePath, StringComparer.Ordinal);
+        var added = changedPython.Where(p => !modules.ContainsKey(p)).ToList();
+        if (added.Count == 0) return [];
+
+        var targets = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var path in added)
+        {
+            var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var segment in segments)
+            {
+                var name = segment.EndsWith(".py", StringComparison.Ordinal) ? segment[..^3] : segment;
+                targets.Add($"ext::pypi::{name}");
+            }
+            for (var dir = DirectoryOf(path); dir.Length > 0; dir = DirectoryOf(dir))
+            {
+                if (modules.TryGetValue($"{dir}/__init__.py", out var package)) targets.Add(package.Id);
+            }
+        }
+
+        var importers = tree.Edges
+            .Where(e => e.Kind == EdgeKind.Imports && targets.Contains(e.ToId))
+            .Select(e => e.FromId)
+            .ToHashSet(StringComparer.Ordinal);
+        return modules.Values.Where(n => importers.Contains(n.Id)).Select(n => n.VirtualFilePath);
     }
 
     private static string DirectoryOf(string path) => path[..Math.Max(path.LastIndexOf('/'), 0)];

@@ -291,6 +291,145 @@ public class ImportEdgesTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    private static readonly (string Path, string Content)[] PythonTree =
+    [
+        ("trading/bilan.py", "LIMITES = {\"a\": 1}\ndef poche(x): return x\n"),
+        ("trading/backtest.py", "import bilan\nfrom bilan import LIMITES\n"),
+        ("trading/matin.py", "import backtest\n"),
+        ("pkg/__init__.py", "VERSION = 1\n"),
+        ("pkg/sub/__init__.py", ""),
+        ("pkg/sub/util.py", "def g(): return 2\n"),
+        ("pkg/util.py", "def g(): return 2\n"),
+        ("pkg/main.py", "from pkg.sub import util\nfrom . import util as u2\n"),
+    ];
+
+    [Fact]
+    [Trait("BR", "#406")]
+    public async Task ShouldDrawPythonImportEdges_WhenAnImportNamesAFileOfTheProject()
+    {
+        var (result, dir) = await BuildAsync(new PythonAdapter(), PythonTree);
+        try
+        {
+            var edges = result.Tree.Edges;
+            // An absolute import of a package of the project, and a relative one.
+            Assert.Equal(
+                [Module("pkg/sub/util.py"), Module("pkg/util.py")],
+                ImportTargets(edges, "pkg/main.py"));
+            // A same-folder import, as Python resolves it for a script run from that folder.
+            Assert.Equal([Module("trading/bilan.py")], ImportTargets(edges, "trading/backtest.py"));
+            Assert.Equal([Module("trading/backtest.py")], ImportTargets(edges, "trading/matin.py"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "#406")]
+    public async Task ShouldReachThePackageOrTheSubmodule_WhenAPythonFromImportNamesEither()
+    {
+        var (result, dir) = await BuildAsync(new PythonAdapter(),
+            ("pkg/__init__.py", "VERSION = 1\n"),
+            ("pkg/core.py", "def run(): return 1\n"),
+            ("pkg/sub/__init__.py", ""),
+            ("pkg/sub/deep.py", "from .. import core\nfrom ..core import run\nfrom .nowhere import x\n"),
+            ("pkg/sub/names.py", "from . import LEVEL\n"),
+            ("app/names.py", "from pkg import VERSION, core\n"),
+            ("app/star.py", "from pkg.core import *\n"),
+            ("app/dotted.py", "import pkg.sub.deep as d, pkg.core\n"),
+            ("app/lazy.py", "def late():\n    import pkg.core\n    return pkg.core.run()\n"));
+        try
+        {
+            var edges = result.Tree.Edges;
+            // Two dots: one package up. A relative import that reaches no file draws nothing.
+            Assert.Equal([Module("pkg/core.py")], ImportTargets(edges, "pkg/sub/deep.py"));
+            // A name imported from the package that is no submodule is the package's own.
+            Assert.Equal([Module("pkg/sub/__init__.py")], ImportTargets(edges, "pkg/sub/names.py"));
+            // A name that is no submodule comes from the package itself, a submodule from its file.
+            Assert.Equal([Module("pkg/__init__.py"), Module("pkg/core.py")], ImportTargets(edges, "app/names.py"));
+            Assert.Equal([Module("pkg/core.py")], ImportTargets(edges, "app/star.py"));
+            Assert.Equal([Module("pkg/core.py"), Module("pkg/sub/deep.py")], ImportTargets(edges, "app/dotted.py"));
+            // An import inside a function is an import of the file.
+            Assert.Equal([Module("pkg/core.py")], ImportTargets(edges, "app/lazy.py"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "#406")]
+    public async Task ShouldSendAPythonImportToAnExternalNode_WhenNoFileOfTheProjectHoldsIt()
+    {
+        var (result, dir) = await BuildAsync(new PythonAdapter(),
+            ("app/main.py", "from __future__ import annotations\nimport os.path\nfrom numpy.linalg import norm\nimport local\n"),
+            ("app/local.py", "X = 1\n"));
+        try
+        {
+            // The first segment names the distribution; __future__ is a directive, not a module.
+            Assert.Equal(
+                [Module("app/local.py"), "ext::pypi::numpy", "ext::pypi::os"],
+                ImportTargets(result.Tree.Edges, "app/main.py"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "#406")]
+    public async Task ShouldReResolvePythonImporters_WhenTheFileTheyNameJoinsTheTree()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("pkg/__init__.py", "VERSION = 1\n"),
+            ("app/absolute.py", "import pkg.late\n"),
+            ("app/named.py", "from pkg import late\n"),
+            ("app/other.py", "import os\n"),
+        ]);
+        try
+        {
+            var fs = TestFixtures.CreateFs(dir);
+            var initial = await new RaggableTreeBuilder(new PythonAdapter(), fs)
+                .BuildAsync(Root, new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
+            // Before the file exists: the dotted import is external, the named one reaches the package.
+            Assert.Equal(["ext::pypi::pkg"], ImportTargets(initial.Tree.Edges, "app/absolute.py"));
+            Assert.Equal([Module("pkg/__init__.py")], ImportTargets(initial.Tree.Edges, "app/named.py"));
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, "pkg", "late.py"), "def f(): return 1\n", TestContext.Current.CancellationToken);
+
+            var reindexed = await new IncrementalReindexEngine(new PythonAdapter(), fs).ReindexAsync(
+                initial.Tree, Root, [$"{Root}/pkg/late.py"],
+                new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
+
+            Assert.Equal([Module("pkg/late.py")], ImportTargets(reindexed.Tree.Edges, "app/absolute.py"));
+            Assert.Equal([Module("pkg/late.py")], ImportTargets(reindexed.Tree.Edges, "app/named.py"));
+            // Only the two importers and the new file were parsed again.
+            Assert.Equal(3, reindexed.FilesParsed);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "#406")]
+    public async Task ShouldRebuildPythonImportEdges_WhenTheImporterChanges()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("lib/a.py", "A = 1\n"),
+            ("lib/b.py", "B = 2\n"),
+            ("lib/main.py", "import a\n"),
+        ]);
+        try
+        {
+            var fs = TestFixtures.CreateFs(dir);
+            var initial = await new RaggableTreeBuilder(new PythonAdapter(), fs)
+                .BuildAsync(Root, new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, "lib", "main.py"), "from . import b\n", TestContext.Current.CancellationToken);
+
+            var reindexed = await new IncrementalReindexEngine(new PythonAdapter(), fs).ReindexAsync(
+                initial.Tree, Root, [$"{Root}/lib/main.py"],
+                new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
+
+            Assert.Equal([Module("lib/b.py")], ImportTargets(reindexed.Tree.Edges, "lib/main.py"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+
     [Theory]
     [InlineData("crate::a::B", "crate::a::B")]
     [InlineData("crate::a::{b::C, d::{self, E as F}}", "crate::a::b::C|crate::a::d::self|crate::a::d::E")]
