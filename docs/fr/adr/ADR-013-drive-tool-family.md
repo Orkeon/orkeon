@@ -82,4 +82,4 @@ l'environnement, et Microsoft Graph en HTTP simple — le tout interne à `Orkeo
 
 ## Amendement (2026-11-17)
 
-- La campagne sur de vrais comptes (DRIVE-07) a été close le 2026-11-17. Les limites qui restent sont dans [les limitations](../reference/limitations.md).
+- La campagne sur de vrais comptes (DRIVE-07) a été close le 2026-11-17. Ce qu'elle a couvert et les limites qui restent sont dans [les limitations](../reference/limitations.md) ; le guide garde une note générale de couverture de test et ne consigne pas le passage.

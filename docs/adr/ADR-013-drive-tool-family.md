@@ -75,4 +75,4 @@ internal to `Orkeon.Tools.Email`.
 
 ## Amendment (2026-11-17)
 
-- The real-account campaign (DRIVE-07) was closed on 2026-11-17. The limits that remain are in [limitations](../reference/limitations.md).
+- The real-account campaign (DRIVE-07) was closed on 2026-11-17. What it covered and the limits that remain are in [limitations](../reference/limitations.md); the guide keeps a general test-coverage note and does not record the pass.
