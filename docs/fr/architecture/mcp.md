@@ -73,6 +73,10 @@ supportée des deux côtés (`McpClient.SendAsync`).
   2026-07-28, pour des caches clients stables) avec les champs modernes
   `resultType`/`ttlMs`/`cacheScope` ; les clients legacy ignorent ces membres additifs.
 - Les notifications (sans `id`, ou `notifications/*`) ne reçoivent jamais de réponse.
+- Les `arguments` d'un `tools/call` arrivent à l'outil comme les valeurs que porte l'appel
+  d'outil d'un agent : un tableau est une liste, un objet un dictionnaire, un nombre entier un
+  `long`, tout autre nombre un `double`, `null` est `null`. `tools/list` publie les `items`
+  d'un paramètre tableau.
 - `tools/call` passe par `IToolInvocationPipeline`, le point d'invocation unique de chaque
   tour d'agent, sous l'appelant `mcp` (son identifiant et son rôle d'agent) : la
   phase outil de la garde (`ToolGuard` — remontée de chemin, cibles SSRF, injection SQL),

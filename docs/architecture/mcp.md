@@ -70,6 +70,9 @@ revision (`McpClient.SendAsync`).
   SHOULD, for stable client caches) with the modern `resultType`/`ttlMs`/`cacheScope`
   fields; legacy clients ignore these additive members.
 - Notifications (no `id`, or `notifications/*`) are never answered.
+- The `arguments` of a `tools/call` reach the tool as the values an agent's tool call carries:
+  an array is a list, an object a dictionary, a whole number a `long`, any other number a
+  `double`, `null` is `null`. `tools/list` publishes the `items` of an array parameter.
 - `tools/call` goes through `IToolInvocationPipeline`, the single invocation point of every
   agent turn, under the caller `mcp` (its agent id and role): the guardian's tool
   phase (`ToolGuard` — path traversal, SSRF targets, SQL injection), the call, the one

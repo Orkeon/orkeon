@@ -75,7 +75,8 @@ internal sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
         };
     }
 
-    private static Dictionary<string, object> FormatItems(ParameterSchema param, string itemsType)
+    /// <summary>The JSON Schema of the items of an array parameter: their type, format and, for objects, their properties.</summary>
+    internal static Dictionary<string, object> FormatItems(ParameterSchema param, string itemsType)
     {
         var items = new Dictionary<string, object> { ["type"] = itemsType };
         if (param.ItemsFormat is not null)

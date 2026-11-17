@@ -638,22 +638,11 @@ public partial class McpServer
                 $"Tool not found: {callParams.Name}");
         }
 
-        var parameters = new Dictionary<string, object?>();
-        if (callParams.Arguments.HasValue &&
-            callParams.Arguments.Value.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var prop in callParams.Arguments.Value.EnumerateObject())
-            {
-                parameters[prop.Name] = prop.Value.ValueKind switch
-                {
-                    JsonValueKind.String => prop.Value.GetString()!,
-                    JsonValueKind.Number => prop.Value.GetDouble(),
-                    JsonValueKind.True => true,
-                    JsonValueKind.False => false,
-                    _ => prop.Value.GetRawText()
-                };
-            }
-        }
+        // The values an agent's tool call carries (#402): an array is a list, an object a
+        // dictionary, a whole number a long, null is null - never the raw JSON text.
+        var parameters = callParams.Arguments is { ValueKind: JsonValueKind.Object } arguments
+            ? Serialization.JsonElementConverter.ToDict(arguments)
+            : [];
 
         // The invocation point of every agent turn (GAP-24): a blocked call never reaches the
         // tool, a result is truncated and tagged as data, each call is audited — and the client
@@ -953,6 +942,10 @@ public partial class McpServer
 
             if (kvp.Value.Enum != null && kvp.Value.Enum.Count > 0)
                 paramSchema["enum"] = kvp.Value.Enum;
+
+            // What an array holds (#402), as a model reads it in an agent's tool list.
+            if (kvp.Value.Type == "array" && kvp.Value.ItemsType != null)
+                paramSchema["items"] = LLMs.ToolCalling.OpenAIToolSchemaFormatter.FormatItems(kvp.Value, kvp.Value.ItemsType);
 
             if (kvp.Value.Values != null)
                 paramSchema["additionalProperties"] = kvp.Value.Values.ToValueDocument();

@@ -416,4 +416,75 @@ public class McpServerTests
         Assert.False(map.TryGetProperty("items", out _));
         Assert.Equal("string", map.GetProperty("additionalProperties").GetProperty("type").GetString());
     }
+
+    [Fact]
+    [Trait("BR", "#402")]
+    public async Task ShouldHandArraysObjectsAndNullAsValues_WhenHandlingToolsCall()
+    {
+        var server = CreateServer();
+        var tool = new InlineMockBaseTool("graph", "Graph");
+        _mockRegistry.AddTool("graph", tool);
+
+        var request = McpServerTestsFixture.CreateToolCallRequest(
+            "graph",
+            @"{""edge_kinds"": [""imports"", ""calls""], ""headers"": {""accept"": ""text/plain"", ""depth"": 2},
+               ""sheets"": [{""name"": ""s"", ""rows"": [[""1""]]}], ""max_nodes"": 3, ""ratio"": 0.5,
+               ""strict"": true, ""nothing"": null, ""scope"": ""L2_Module""}");
+
+        var response = (await server.ProcessRequestAsync(request, TestContext.Current.CancellationToken))!;
+
+        Assert.Null(response.Error);
+        var parameters = tool.LastCallRequest!.Parameters;
+
+        var kinds = Assert.IsType<IEnumerable<object?>>(parameters["edge_kinds"], exactMatch: false);
+        Assert.Equal(["imports", "calls"], kinds);
+
+        var headers = Assert.IsType<IDictionary<string, object?>>(parameters["headers"], exactMatch: false);
+        Assert.Equal("text/plain", headers["accept"]);
+        Assert.Equal(2L, headers["depth"]);
+
+        var sheets = Assert.IsType<IEnumerable<object?>>(parameters["sheets"], exactMatch: false);
+        var sheet = Assert.IsType<IDictionary<string, object?>>(Assert.Single(sheets), exactMatch: false);
+        Assert.Equal("s", sheet["name"]);
+        var rows = Assert.IsType<IEnumerable<object?>>(sheet["rows"], exactMatch: false);
+        var row = Assert.IsType<IEnumerable<object?>>(Assert.Single(rows), exactMatch: false);
+        Assert.Equal(["1"], row);
+
+        Assert.Equal(3L, parameters["max_nodes"]);
+        Assert.Equal(0.5, parameters["ratio"]);
+        Assert.Equal(true, parameters["strict"]);
+        Assert.Null(parameters["nothing"]);
+        Assert.Equal("L2_Module", parameters["scope"]);
+    }
+
+    [Fact]
+    [Trait("BR", "#402")]
+    public void ShouldPublishItems_WhenAnArrayParameterSaysWhatItHolds()
+    {
+        var schema = new ToolSchema("write", "A writer", new Dictionary<string, ParameterSchema>
+        {
+            ["kinds"] = new("array", "Edge kinds", true, ItemsType: "string"),
+            ["sheets"] = new("array", "Sheets", false, ItemsType: "object")
+            {
+                ItemProperties = new Dictionary<string, ParameterSchema>
+                {
+                    ["name"] = new("string", "Sheet name", true),
+                    ["rows"] = new("array", "Rows", false, ItemsType: "array")
+                }
+            },
+            ["loose"] = new("array", "Anything", false)
+        });
+
+        var properties = McpServerSut.ConvertToolSchemaToJsonSchema(schema)!.Value.GetProperty("properties");
+
+        Assert.Equal("string", properties.GetProperty("kinds").GetProperty("items").GetProperty("type").GetString());
+
+        var items = properties.GetProperty("sheets").GetProperty("items");
+        Assert.Equal("object", items.GetProperty("type").GetString());
+        Assert.Equal("string", items.GetProperty("properties").GetProperty("name").GetProperty("type").GetString());
+        Assert.Equal("array", items.GetProperty("properties").GetProperty("rows").GetProperty("items").GetProperty("type").GetString());
+        Assert.Equal("name", Assert.Single(items.GetProperty("required").EnumerateArray()).GetString());
+
+        Assert.False(properties.GetProperty("loose").TryGetProperty("items", out _));
+    }
 }
