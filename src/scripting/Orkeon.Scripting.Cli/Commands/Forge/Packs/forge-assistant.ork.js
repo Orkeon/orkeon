@@ -182,6 +182,13 @@ function stableHeader() {
       lines.push("there when the team runs — list the folder, then handle each file by its kind and");
       lines.push("size. Any file listed for it above is an example of what will come and will be");
       lines.push("replaced: no task, no goal and no backstory names one of them.");
+      // The examples say nothing of the sizes to come: a folder whose sample holds no large
+      // file still gets the reading rule, by size.
+      if (changing.some(function (f) { return !hasLarge(f); })) {
+        lines.push("A file to come may be too large to read whole: an agent that reads from such a");
+        lines.push("folder searches a large file first (grep when its tools offer it) and reads only the");
+        lines.push("ranges found, never the whole file page by page.");
+      }
     }
     var output = firstOutput(folders);
     if (output) {

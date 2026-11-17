@@ -423,6 +423,8 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.Contains("no task, no goal and no backstory names one of them", header, StringComparison.Ordinal);
         Assert.Contains("Files too large to read whole will come in /documents", header, StringComparison.Ordinal);
         Assert.DoesNotContain("Large files are listed below", header, StringComparison.Ordinal);
+        // The one changing folder showed a large file: the full rule above covers it, once.
+        Assert.DoesNotContain("A file to come may be too large", header, StringComparison.Ordinal);
         // The fixed folder beside it keeps today's wording.
         Assert.Contains("The user put in it: grille.md", header, StringComparison.Ordinal);
         Assert.Contains("by these names", header, StringComparison.Ordinal);
@@ -433,6 +435,39 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.Contains("\"examples\":true", body, StringComparison.Ordinal);
         Assert.DoesNotContain("NOTICES.md", body, StringComparison.Ordinal);
         Assert.DoesNotContain("README.md", body, StringComparison.Ordinal);
+    }
+
+    // #400: the examples say nothing of the sizes to come, so a changing folder whose sample
+    // holds no large file — or holds nothing — still gets the reading rule, by size.
+    [Fact]
+    public async Task ShouldStateTheLargeFileRuleBySize_WhenTheExamplesOfAChangingFolderHoldNoLargeFile()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        brief = brief! with
+        {
+            Folders =
+            [
+                new ForgeFolder { Path = "/documents", Role = "input", Purpose = "Les documents", Examples = true, Contents = ["a.md"] },
+                new ForgeFolder { Path = "/inbox", Role = "input", Purpose = "Le courrier", Examples = true },
+                new ForgeFolder { Path = "/output", Role = "output", Purpose = "Le rapport" },
+            ],
+        };
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        var header = provider.Chats[0][0].Content;
+        Assert.Contains("The contents of /documents, /inbox change from run to run", header, StringComparison.Ordinal);
+        Assert.Contains("A file to come may be too large to read whole", header, StringComparison.Ordinal);
+        Assert.Contains("never the whole file page by page", header, StringComparison.Ordinal);
+        // No large file was seen: neither of the two rules that raise maxIterations is said.
+        Assert.DoesNotContain("Files too large to read whole will come in", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("Large files are listed below", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("at least 30", header, StringComparison.Ordinal);
     }
 
     [Fact]
