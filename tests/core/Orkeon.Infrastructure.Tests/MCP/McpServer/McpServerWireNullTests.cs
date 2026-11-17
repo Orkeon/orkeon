@@ -30,6 +30,7 @@ public sealed class McpServerWireNullTests
         """{"jsonrpc":"2.0","id":8,"method":"resources/read","params":{"uri":"orkeon:///output/report.md"}}""",
         """{"jsonrpc":"2.0","id":9,"method":"resources/read","params":{"uri":"orkeon:///output/missing.md"}}""",
         """{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"failing","arguments":{}}}""",
+        """{"jsonrpc":"2.0","id":11,"method":"server/discover"}""",
         "this is not JSON",
     ];
 

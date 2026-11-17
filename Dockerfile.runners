@@ -232,9 +232,20 @@ WORKDIR /app
 # zsh: interactive shell for `ORKEON_ENTRYPOINT=shell` sessions. gosu: lets the
 # root entrypoint drop to the bind-mount owner's uid (see the dispatcher below).
 # curl: the orkeon-example preflight check + the local-llm variant's health wait.
+# git: a crew that works on the repository mounted on /workspace runs it through
+# shell_command (a status, a commit, the lookup of the project root); without it the
+# command fails and the crew sees an empty repository (#404). ca-certificates comes
+# with curl, so a fetch or a push over https works.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends zsh gosu curl \
+    && apt-get install -y --no-install-recommends zsh gosu curl git \
     && rm -rf /var/lib/apt/lists/*
+
+# The repository on /workspace belongs to whoever owns the bind mount on the host, and
+# the process is not always that user: a `--user` that differs, or a mount owned by root
+# (the entrypoint then stays `app`). git refuses such a repository ("dubious ownership")
+# unless it is declared safe. The container is the boundary, as for shell_command below:
+# every directory is declared safe, system-wide, so it holds for any uid.
+RUN git config --system --add safe.directory '*'
 
 # Command wrappers on PATH — the same command names the release archives
 # install (orkeon, orkeon-repl, …), so the interactive shell

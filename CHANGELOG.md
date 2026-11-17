@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `description` of a resource or a prompt, and the others of the MCP types. The answer to a line that could not be
   parsed keeps `"id": null`, as JSON-RPC asks. The MCP client is corrected the same way: a request or a notification
   without parameters no longer carries `"params": null`, and a `tools/call` without arguments no `"arguments": null`.
+- The container image `ghcr.io/orkeon/orkeon` had no `git` (#404). A crew that runs it through `shell_command` on the
+  repository mounted on `/workspace` got `git: not found`, and read the empty output as an empty repository. The image
+  now installs `git`, and declares every directory safe to it (`safe.directory`, system-wide): a repository whose owner
+  on the host is not the user the container runs as - a `--user` that differs, a mount owned by root - is read all the
+  same. The image sets no git identity: a commit needs `GIT_AUTHOR_*` and `GIT_COMMITTER_*` from the caller. The
+  release workflow reads a mounted repository with the image's git before it pushes the image.
 - `orkeon mcp serve` (`McpServer`) handed an array or an object of a `tools/call` to the tool as its raw JSON text (#402).
   A tool that validates its parameters refused the call (`Parameter 'edge_kinds' has invalid type. Expected: array`):
   26 of the built-in tools have an array parameter, and 11 a required one (`count_pattern`, `docx_writer`,

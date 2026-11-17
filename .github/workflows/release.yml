@@ -1093,6 +1093,13 @@ jobs:
         run: |
           printf 'exit\n' | timeout 120 docker run -i --rm -e ORKEON_ENTRYPOINT=repl \
             orkeon-smoke:repl --ui plain
+      # A crew runs git on the repository mounted on /workspace (#404): the image has the
+      # binary, and reads a repository whose owner is not the user it runs as - here the
+      # runner's checkout, read as a uid nobody owns.
+      - name: Read a mounted repository with the image's git
+        run: |
+          docker run --rm --user 4242:4242 -v "$PWD:/workspace" -w /workspace \
+            --entrypoint git orkeon-smoke:repl rev-parse --show-toplevel
       # provenance: false keeps the image as it was, unattested (publication-matrix.md): with a
       # docker-container builder the action would add attestation manifests, shown as
       # unknown/unknown platforms in the index.
