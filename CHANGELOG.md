@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ITokenBudgetTracker.RecordUsage`, `TokenBudgetTracker.RecordUsage` and `TokenBudgetTracker.EstimateCost` each gain an
   overload that takes the id of the provider that served the call (#396). The interface member has a default body that
   forwards to the provider-less one, so a tracker written before it still compiles and ignores the provider.
+- `orkeon forge`: a folder of the team can say that its contents change from run to run (#400). `examples: true` on an
+  input folder — set by the assistant from the need, or by a client in `folders.confirmed` — makes the files found in
+  it at the fill step examples of what will come: the plan prompt presents them as such, asks for tasks made for
+  whatever the folder holds when the team runs, and tells the assistant to name none of them in a task, a goal or a
+  backstory; the large-file reading rule is then said for any large file, not for one by name, and is said even when
+  none of the examples is large. Absent, nothing changes: the plan is made for the files that are there, by their
+  names. An input folder a client confirms without the property keeps the value of the proposal; `examples: true` on
+  an output folder is a `FORGE-FOLDERS-INVALID`.
 
 ### Fixed
 

@@ -598,6 +598,73 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.Null(folders[1].Directory);
     }
 
+    // ── a folder whose contents change (#400) ────────────────────────────────────
+
+    [Fact]
+    public void Examples_is_refused_on_an_output_folder_and_accepted_on_an_input()
+    {
+        Assert.Empty(ForgeFolders.Validate([Folder("/inbox", "input") with { Examples = true }, Folder("/outmd", "output") with { Examples = false }]));
+        Assert.Contains(
+            ForgeFolders.Validate([Folder("/outmd", "output") with { Examples = true }]),
+            e => e.Contains("'examples' is for an input folder", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_confirmation_that_does_not_say_keeps_the_examples_of_the_proposal_and_one_that_says_decides()
+    {
+        ForgeFolder[] proposal =
+        [
+            Folder("/inbox", "input") with { Examples = true },
+            Folder("/reference", "input"),
+            Folder("/drop", "input") with { Examples = true },
+            Folder("/moved", "input") with { Examples = true },
+            Folder("/outmd", "output"),
+        ];
+
+        var merged = ForgeFolders.WithProposedExamples(
+            [
+                Folder("/inbox", "input"),
+                Folder("/reference", "input") with { Examples = true },
+                Folder("/drop", "input") with { Examples = false },
+                Folder("/moved", "output"),
+                Folder("/renamed", "input"),
+            ],
+            proposal);
+
+        Assert.True(merged[0].Examples);
+        Assert.True(merged[1].Examples);
+        Assert.False(merged[2].Examples);
+        Assert.Null(merged[3].Examples);
+        Assert.Null(merged[4].Examples);
+        Assert.True(merged[0].HoldsExamples);
+        Assert.False((Folder("/outmd", "output") with { Examples = true }).HoldsExamples);
+    }
+
+    [Fact]
+    public void Examples_travels_on_the_wire_only_when_said()
+    {
+        var said = System.Text.Json.JsonSerializer.Serialize(Folder("/inbox", "input") with { Examples = true });
+        var unsaid = System.Text.Json.JsonSerializer.Serialize(Folder("/inbox", "input"));
+
+        Assert.Contains("\"examples\":true", said, StringComparison.Ordinal);
+        Assert.DoesNotContain("examples", unsaid, StringComparison.Ordinal);
+        Assert.True(System.Text.Json.JsonSerializer.Deserialize<ForgeFolder>(said)!.Examples);
+    }
+
+    [Fact]
+    public void The_terminal_says_which_proposed_folder_holds_examples()
+    {
+        var console = new StringWriter();
+        using var renderer = new ForgeTerminalRenderer(console);
+        new ForgeEventWriter(renderer, new FakeOrkeonClock()).Emit(
+            "folders.proposed",
+            new { folders = new[] { Folder("/inbox", "input") with { Examples = true }, Folder("/outmd", "output") } });
+
+        var text = console.ToString();
+        Assert.Contains("/inbox (input, contents change — its files are examples) — p", text, StringComparison.Ordinal);
+        Assert.Contains("/outmd (output) — p", text, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task The_terminal_accepts_the_proposal_and_prints_it()
     {

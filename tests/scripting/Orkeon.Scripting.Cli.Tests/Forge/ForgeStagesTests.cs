@@ -349,6 +349,40 @@ public sealed class ForgeStagesTests : IDisposable
         Assert.Null(folders[1].Large);
     }
 
+    // #400: a client that confirms the folders without the flag keeps what the interview said,
+    // and the fill step keeps it beside the files it found.
+    [Fact]
+    public async Task ShouldKeepTheExamplesFlagOfTheBrief_WhenTheConfirmationDoesNotSay()
+    {
+        var session = ForgeSession.Create(_workspace, "fill-examples");
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var parsed, out _));
+        var briefJson = System.Text.Json.JsonSerializer.Serialize(parsed! with
+        {
+            Folders =
+            [
+                new ForgeFolder { Path = "/inbox", Role = "input", Purpose = "whatever is dropped", Examples = true },
+                new ForgeFolder { Path = "/output", Role = "output", Purpose = "the report" },
+            ],
+        });
+        var channel = new ScriptedUserChannel
+        {
+            WhileFilling = held => File.WriteAllText(Path.Join(held.Single(f => f.Path == "/inbox").Directory!, "sample.md"), "x"),
+        }.ConfirmsFolders(
+        [
+            new ForgeFolder { Path = "/inbox", Role = "input", Purpose = "whatever is dropped" },
+            new ForgeFolder { Path = "/output", Role = "output", Purpose = "the report" },
+        ]);
+
+        await Engine(session, new BriefStage(new ScriptedAssistant().SubmitsBrief(briefJson), channel))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(Assert.Single(channel.ProposedFolders)[0].Examples);
+        var inbox = Assert.IsType<ForgeBrief>(session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)).Folders![0];
+        Assert.True(inbox.Examples);
+        Assert.Equal(["sample.md"], inbox.Contents);
+        Assert.True(ForgeFolders.Confirmed(session)![0].Examples);
+    }
+
     [Fact]
     [Trait("BR", "CH-37")]
     public async Task ShouldFillLargeFilesAndExistingFiles_ForABoundFolder()
