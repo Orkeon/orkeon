@@ -120,12 +120,15 @@ public class McpServerTests
         // Requests run at once, so the answers come in the order they finish: told apart by their content.
         using var one = JsonDocument.Parse(lines[0]);
         using var other = JsonDocument.Parse(lines[1]);
-        var (answer, failure) = one.RootElement.GetProperty("result").ValueKind == JsonValueKind.Object
+        var (answer, failure) = one.RootElement.TryGetProperty("result", out _)
             ? (one.RootElement, other.RootElement)
             : (other.RootElement, one.RootElement);
         Assert.Equal(7, answer.GetProperty("id").GetInt32());
         Assert.Equal(JsonValueKind.Object, answer.GetProperty("result").ValueKind);
         Assert.Equal(JsonRpcErrorCodes.ParseError, failure.GetProperty("error").GetProperty("code").GetInt32());
+        // Each carries the one member it has (#405): no "error" beside a result, no "result" beside an error.
+        Assert.False(answer.TryGetProperty("error", out _));
+        Assert.False(failure.TryGetProperty("result", out _));
     }
 
     [Fact]

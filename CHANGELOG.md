@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `orkeon mcp serve` wrote every member it did not carry as `null` (#405): a response held `"error": null` beside its
+  result, or `"result": null` beside its error, where JSON-RPC allows one of the two. The client of the MCP TypeScript
+  SDK - the one Claude Code and most MCP hosts use - refuses such a message, so the answer to `initialize` was dropped
+  and the connection timed out. A response now carries `result` or `error`, never both, and an optional member is
+  absent when it has no value: `nextCursor` of a list, `mimeType` and `data` of a text content, `data` of an error,
+  `description` of a resource or a prompt, and the others of the MCP types. The answer to a line that could not be
+  parsed keeps `"id": null`, as JSON-RPC asks. The MCP client is corrected the same way: a request or a notification
+  without parameters no longer carries `"params": null`, and a `tools/call` without arguments no `"arguments": null`.
 - `orkeon mcp serve` (`McpServer`) handed an array or an object of a `tools/call` to the tool as its raw JSON text (#402).
   A tool that validates its parameters refused the call (`Parameter 'edge_kinds' has invalid type. Expected: array`):
   26 of the built-in tools have an array parameter, and 11 a required one (`count_pattern`, `docx_writer`,
