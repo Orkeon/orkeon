@@ -180,6 +180,25 @@ public class RagIngestToolTests
     }
 
     [Fact]
+    [Trait("Issue", "402")]
+    public async Task CallAsync_Fails_WhenAGlobIsRootedOutsideEveryMount()
+    {
+        var pipeline = new FakeIngestionPipeline { Report = SampleReport() };
+        var tool = CreateTool(pipeline, new FakeFileSystemService().AddMount("/output"));
+
+        var response = await tool.CallAsync(new ToolCallRequest("rag_ingest",
+            new Dictionary<string, object?>
+            {
+                ["collection"] = "docs",
+                ["sources"] = new List<object?> { "/workspace/**/*.md" },
+            }), TestContext.Current.CancellationToken);
+
+        Assert.False(response.Success);
+        Assert.Contains("/workspace", response.Error, StringComparison.Ordinal);
+        Assert.Null(pipeline.LastRequest);
+    }
+
+    [Fact]
     public async Task CallAsync_ExpandsGlobs_ThroughTheVirtualFileSystem()
     {
         var fs = new FakeFileSystemService()

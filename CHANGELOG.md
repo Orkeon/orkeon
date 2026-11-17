@@ -23,6 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `orkeon mcp serve` (`McpServer`) handed an array or an object of a `tools/call` to the tool as its raw JSON text (#402).
+  A tool that validates its parameters refused the call (`Parameter 'edge_kinds' has invalid type. Expected: array`):
+  26 of the built-in tools have an array parameter, and 11 a required one (`count_pattern`, `docx_writer`,
+  `edge_list`, `edit_batch`, `email_delete`, `email_mark`, `email_move`, `local_embed_text`, `rag_ingest`,
+  `sub_graph`, `xlsx_writer`), so they could not be called from an MCP client; a tool that does not validate read the
+  text as one value. The arguments now reach the tool as an agent's tool call carries them: an array is a list, an
+  object a dictionary, a whole number a `long` (it was a `double`), any other number a `double`, and `null` is `null`
+  (it was the string `null`). `tools/list` publishes the `items` of an array parameter (their type, and their
+  properties for an array of objects), as the schema an agent's model reads does. `rag_ingest` answers a glob rooted
+  outside every mount with a tool error that names the path and the mounts, where the call ended in the JSON-RPC error
+  `-32603`, and its `sources` parameter says it holds strings.
 - The opt-in token budget priced a call without its provider (#396). `TokenBudgetTracker` looked a price up by model
   alone, so it never read a row scoped to a provider: the built-in rows of DeepSeek, Z.AI, Kimi, Qwen, Gemini, Mistral,
   Grok, MiniMax, Together, Mammouth and Ollama, and a `CustomPricings` row with a `Provider`. The cost it compared with

@@ -56,7 +56,8 @@ public class RagIngestTool : IBaseTool
             ["sources"] = new ParameterSchema(
                 "array",
                 "File paths, glob patterns or http(s) addresses to ingest (e.g. '/workspace/docs/**/*.md')",
-                Required: true),
+                Required: true,
+                ItemsType: "string"),
             ["chunking_strategy"] = new ParameterSchema(
                 "string",
                 "Optional chunking strategy name (recursive, sentence, structural, semantic); pipeline default when omitted",
@@ -116,9 +117,18 @@ public class RagIngestTool : IBaseTool
             // The glob is expanded as the agent's own tool call (#349): its file-system scope bounds
             // what it matches. The pipeline then reads the sources and writes its manifest as the
             // framework, so each source is judged against the scope here, before it runs.
+            // A glob rooted where the file system gives nothing to read is an answer the caller can
+            // act on (#402), not a fault of the tool: the refusal names the path and the mounts.
             IReadOnlyList<SourceDescriptor> sources;
-            using (Orkeon.Domain.Execution.AgentRunScope.EnterToolCall())
-                sources = await ResolveSourcesAsync(locations, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                using (Orkeon.Domain.Execution.AgentRunScope.EnterToolCall())
+                    sources = await ResolveSourcesAsync(locations, cancellationToken).ConfigureAwait(false);
+            }
+            catch (FileAccessDeniedException denied)
+            {
+                return new ToolCallResponse(false, null, denied.Message);
+            }
             if (sources.Count == 0)
                 return new ToolCallResponse(false, null, $"no source matched: {string.Join(", ", locations)}");
             // Every source but a web address is a file: a Windows-rooted, relative or backslashed spelling

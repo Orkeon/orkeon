@@ -1234,7 +1234,7 @@ declare global {
             /** Force a full reindex of the collection (required after an embedding model change) */
             reindex?: boolean;
             /** File paths, glob patterns or http(s) addresses to ingest (e.g. '/workspace/docs/**\/*.md') */
-            sources: readonly unknown[];
+            sources: readonly string[];
         }, ctx?: ExecutionContext): Promise<unknown>;
 
         /** `rag_search` - What do the ingested documents say about this? Searches the knowledge collections rag_ingest filled (documents, pages, notes) and returns an answer grounded in the top_k most relevant chunks (3), with their citations. For the code of the workspace, codebase_search, grep and file_read; rag_search knows only what was ingested. */
