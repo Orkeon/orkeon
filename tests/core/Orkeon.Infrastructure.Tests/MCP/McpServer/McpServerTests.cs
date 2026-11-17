@@ -418,7 +418,7 @@ public class McpServerTests
     }
 
     [Fact]
-    [Trait("Issue", "402")]
+    [Trait("BR", "#402")]
     public async Task ShouldHandArraysObjectsAndNullAsValues_WhenHandlingToolsCall()
     {
         var server = CreateServer();
@@ -458,7 +458,7 @@ public class McpServerTests
     }
 
     [Fact]
-    [Trait("Issue", "402")]
+    [Trait("BR", "#402")]
     public void ShouldPublishItems_WhenAnArrayParameterSaysWhatItHolds()
     {
         var schema = new ToolSchema("write", "A writer", new Dictionary<string, ParameterSchema>

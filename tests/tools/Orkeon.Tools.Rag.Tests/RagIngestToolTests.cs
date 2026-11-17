@@ -180,7 +180,7 @@ public class RagIngestToolTests
     }
 
     [Fact]
-    [Trait("Issue", "402")]
+    [Trait("BR", "#402")]
     public async Task CallAsync_Fails_WhenAGlobIsRootedOutsideEveryMount()
     {
         var pipeline = new FakeIngestionPipeline { Report = SampleReport() };
