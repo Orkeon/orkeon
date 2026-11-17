@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a relative import starts from the importing file's package. An absolute import that no folder holds still goes to
   `ext::pypi::<first segment>`. An incremental refresh re-resolves the unchanged importers of a Python
   file that joins the tree. An index built before this change holds no such edge until it is rebuilt.
+- The container image `ghcr.io/orkeon/orkeon` had no `git` (#404). A crew that runs it through `shell_command` on the
+  repository mounted on `/workspace` got `git: not found`, and read the empty output as an empty repository. The image
+  now installs `git`, and declares every directory safe to it (`safe.directory`, system-wide): a repository whose owner
+  on the host is not the user the container runs as - a `--user` that differs, a mount owned by root - is read all the
+  same. The image sets no git identity: a commit needs `GIT_AUTHOR_*` and `GIT_COMMITTER_*` from the caller. The
+  release workflow reads a mounted repository with the image's git before it pushes the image.
 - `orkeon mcp serve` (`McpServer`) handed an array or an object of a `tools/call` to the tool as its raw JSON text (#402).
   A tool that validates its parameters refused the call (`Parameter 'edge_kinds' has invalid type. Expected: array`):
   26 of the built-in tools have an array parameter, and 11 a required one (`count_pattern`, `docx_writer`,
