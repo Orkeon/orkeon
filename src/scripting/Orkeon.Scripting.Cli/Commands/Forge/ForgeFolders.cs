@@ -35,10 +35,23 @@ internal sealed record ForgeFolder
     public string? Directory { get; init; }
 
     /// <summary>
+    /// Whether what the folder holds changes from run to run — an inbox the user refills — so
+    /// that the files found in it at the fill step are examples of what will come, not the
+    /// team's permanent material (#400). An input folder only. The interview sets it from the
+    /// request, a client may set it in <c>folders.confirmed</c>; null is «not said», which a
+    /// confirmation takes from the proposal (<see cref="ForgeFolders.WithProposedExamples"/>)
+    /// and every reader takes as fixed.
+    /// </summary>
+    [JsonPropertyName("examples")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Examples { get; init; }
+
+    /// <summary>
     /// What the user put in a folder kept inside the team, read when the fill step is answered
     /// (<c>folders.filled</c>): the files and sub-folders relative to the folder, a sub-folder
     /// ending with <c>/</c>, at most <see cref="ForgeFolders.MaxContents"/> of them. Set by the
-    /// engine only; the plan prompt names them, so the tasks are designed for what is there.
+    /// engine only; the plan prompt names them, so the tasks are designed for what is there —
+    /// as examples the plan names none of, when the folder's contents change (<see cref="Examples"/>).
     /// </summary>
     [JsonPropertyName("contents")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -66,6 +79,10 @@ internal sealed record ForgeFolder
     /// <summary>Whether the team only reads this folder.</summary>
     [JsonIgnore]
     public bool IsInput => string.Equals(Role, ForgeFolders.InputRole, StringComparison.Ordinal);
+
+    /// <summary>Whether the files found in the folder are examples: an input whose contents change (<see cref="Examples"/>).</summary>
+    [JsonIgnore]
+    public bool HoldsExamples => Examples == true && IsInput;
 
     /// <summary>The folder's name — its root without the leading slash (<c>inpdf</c>).</summary>
     [JsonIgnore]
@@ -127,7 +144,7 @@ internal static class ForgeFolders
 
     /// <summary>
     /// The structural rules of a list: absolute one-segment paths the mount grammar can spell,
-    /// no reserved root, a known role, no root twice. An empty list is a valid one, and so is a
+    /// no reserved root, a known role, no root twice, <c>examples</c> on an input only. An empty list is a valid one, and so is a
     /// list with no output: a team that sends mails from what it reads writes no
     /// file, and its result is what it did — the run's own output, which the judge reads.
     /// <paramref name="where"/> prefixes each message (<c>folders</c> in a brief).
@@ -164,6 +181,9 @@ internal static class ForgeFolders
 
             if (folder.Directory is { } directory && !System.IO.Path.IsPathFullyQualified(directory))
                 errors.Add($"{label}: 'dir' must be an absolute directory.");
+
+            if (folder.Examples == true && string.Equals(folder.Role, OutputRole, StringComparison.Ordinal))
+                errors.Add($"{label}: 'examples' is for an input folder — leave it out of '{folder.Path}', which the team writes to.");
         }
 
         return errors;
@@ -270,6 +290,25 @@ internal static class ForgeFolders
         }
 
         return held;
+    }
+
+    /// <summary>
+    /// A confirmed list with what it left unsaid about <see cref="ForgeFolder.Examples"/> taken
+    /// from the proposal: an input folder the answer does not flag either way keeps the value
+    /// the proposal gave the same path. A client that does not know the property thus keeps
+    /// what the interview understood, and one that sends true or false decides (#400).
+    /// </summary>
+    public static IReadOnlyList<ForgeFolder> WithProposedExamples(
+        IReadOnlyList<ForgeFolder> answer, IReadOnlyList<ForgeFolder> proposal)
+    {
+        ArgumentNullException.ThrowIfNull(answer);
+        ArgumentNullException.ThrowIfNull(proposal);
+
+        return [.. answer.Select(folder =>
+            folder is { Examples: null, IsInput: true }
+            && proposal.FirstOrDefault(p => p.IsInput && string.Equals(p.Path, folder.Path, StringComparison.Ordinal)) is { Examples: { } proposed }
+                ? folder with { Examples = proposed }
+                : folder)];
     }
 
     /// <summary>The folder as the brief and the prompts carry it: no physical path.</summary>

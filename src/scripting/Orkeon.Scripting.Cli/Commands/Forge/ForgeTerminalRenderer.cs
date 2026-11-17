@@ -174,8 +174,10 @@ internal sealed class ForgeTerminalRenderer : TextWriter
         foreach (var folder in e.GetProperty("folders").EnumerateArray())
         {
             var purpose = Text(folder, "purpose");
+            var examples = folder.TryGetProperty("examples", out var flag) && flag.ValueKind == JsonValueKind.True;
             _console.WriteLine(
-                $"  {Text(folder, "path")} ({Text(folder, "role")})" + (purpose.Length > 0 ? $" — {purpose}" : ""));
+                $"  {Text(folder, "path")} ({Text(folder, "role")}{(examples ? ", contents change — its files are examples" : "")})"
+                + (purpose.Length > 0 ? $" — {purpose}" : ""));
         }
     }
 

@@ -192,8 +192,10 @@ internal sealed class BriefStage : IForgeStageRunner
 
             var answer = _autoConfirmFolders
                 ? proposal
-                : await _channel.ReadFoldersAsync(proposal, cancellationToken).ConfigureAwait(false)
-                  ?? throw new OperationCanceledException("The user channel closed at the folders step.");
+                : ForgeFolders.WithProposedExamples(
+                    await _channel.ReadFoldersAsync(proposal, cancellationToken).ConfigureAwait(false)
+                    ?? throw new OperationCanceledException("The user channel closed at the folders step."),
+                    proposal);
 
             var errors = FolderErrors(session, answer);
 
@@ -260,7 +262,8 @@ internal sealed class BriefStage : IForgeStageRunner
     /// the engine waits for <c>folders.filled</c> — the user dropped files or sub-folders in
     /// them, or there is nothing to drop — and only then designs the team. What each folder
     /// holds then goes into the brief (<see cref="ForgeFolder.Contents"/>, names relative to the
-    /// folder, never a physical path), so the plan is made for the files that are there;
+    /// folder, never a physical path), so the plan is made for the files that are there — or,
+    /// for a folder whose contents change (<see cref="ForgeFolder.Examples"/>), for files like them;
     /// <c>folders.filled</c> on the stream says how many entries each folder holds.
     /// </summary>
     private async Task FillFoldersAsync(

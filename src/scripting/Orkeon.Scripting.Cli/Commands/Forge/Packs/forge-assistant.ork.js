@@ -64,7 +64,12 @@ function stableHeader() {
     lines.push("  request's language ('/instructions', '/documents'), one folder per folder");
     lines.push("  described. role is 'input' when the team reads it and 'output' when it writes");
     lines.push("  to it; purpose says in a few words what it holds and how the team must use");
-    lines.push("  it, in the user's words — the user may complete it before confirming. When");
+    lines.push("  it, in the user's words — the user may complete it before confirming. Add");
+    lines.push("  examples: true to an input folder whose contents change from run to run (an");
+    lines.push("  inbox, 'whatever documents are dropped there', a number or names of files not");
+    lines.push("  known in advance): the files found in it are then examples, and the plan names");
+    lines.push("  none of them. Leave it out for fixed material (reference documents, a");
+    lines.push("  template, the one file to process) and for every output folder. When");
     lines.push("  the request names or describes any folder, list one output folder too, with a");
     lines.push("  purpose that means something for this team — when the result is not a file");
     lines.push("  (mails sent, an API called), the output folder is where the record of what was");
@@ -120,11 +125,22 @@ function stableHeader() {
     lines.push("  answer's text: a .docx deliverable needs docx_writer, a .xlsx one xlsx_writer, an image");
     lines.push("  image_generation, held by every agent that may run the task; prefer .md, .html or .csv");
     lines.push("  for any other binary format (.pdf, .pptx), which no tool here writes.");
-    if (((input.brief && input.brief.folders) || []).some(function (f) { return f.large && f.large.length > 0; })) {
+    var briefFolders = (input.brief && input.brief.folders) || [];
+    if (briefFolders.some(function (f) { return hasLarge(f) && !holdsExamples(f); })) {
       lines.push("- Large files are listed below: an agent that reads one searches first (grep when");
       lines.push("  its tools offer it) and reads only the ranges found, never the whole file page by");
       lines.push("  page; it has file_write and writes its notes deliverable as it goes; its maxIterations");
       lines.push("  is at least 30.");
+    }
+    // A folder whose contents change (#400): the rule is stated by size, for the files to come.
+    var largeToCome = briefFolders.filter(function (f) { return hasLarge(f) && holdsExamples(f); });
+    if (largeToCome.length > 0) {
+      lines.push("- Files too large to read whole will come in " + largeToCome.map(function (f) { return f.path; }).join(", ")
+        + ": an agent that reads from");
+      lines.push("  there never reads such a file whole, page by page — it searches first (grep when its");
+      lines.push("  tools offer it) and reads only the ranges found; it has file_write and writes its notes");
+      lines.push("  deliverable as it goes; its maxIterations is at least 30. Say it as a rule for any");
+      lines.push("  large file, never for one file by name.");
     }
     lines.push("- If errors are listed below, fix exactly those — change nothing else —");
     lines.push("  and submit again. Do not converse in this phase.");
@@ -143,17 +159,29 @@ function stableHeader() {
       lines.push("- " + folder.path + " — " + (folder.role === "input" ? "read-only input" : "writable output")
         + (folder.purpose ? ": " + folder.purpose : ""));
       // What the user put in a folder kept inside the team, read after the fill step.
+      var examples = holdsExamples(folder);
       if (folder.contents && folder.contents.length > 0)
-        lines.push("  The user put in it: " + folder.contents.join(", "));
-      if (folder.large && folder.large.length > 0)
-        lines.push("  Large files: " + folder.large.map(function (l) {
+        lines.push((examples ? "  Examples of what it will hold, replaced from run to run: " : "  The user put in it: ")
+          + folder.contents.join(", "));
+      if (hasLarge(folder))
+        lines.push((examples ? "  Large among these examples: " : "  Large files: ") + folder.large.map(function (l) {
           var kb = Math.round(l.bytes / 1024);
           return l.name + " (" + (kb >= 1024 ? Math.round(kb / 102.4) / 10 + " MB" : kb + " KB") + ")";
         }).join(", "));
     }
-    if (folders.some(function (f) { return f.contents && f.contents.length > 0; })) {
+    if (folders.some(function (f) { return f.contents && f.contents.length > 0 && !holdsExamples(f); })) {
       lines.push("The files and sub-folders listed are already there: design the tasks for them,");
       lines.push("by these names (a name ending with '/' is a sub-folder).");
+    }
+    // A folder whose contents change (#400): the files found in it are a sample of what
+    // will come, so the plan is made for files like them and names none.
+    var changing = folders.filter(holdsExamples);
+    if (changing.length > 0) {
+      lines.push("The contents of " + changing.map(function (f) { return f.path; }).join(", ")
+        + " change from run to run: design the tasks for whatever is");
+      lines.push("there when the team runs — list the folder, then handle each file by its kind and");
+      lines.push("size. Any file listed for it above is an example of what will come and will be");
+      lines.push("replaced: no task, no goal and no backstory names one of them.");
     }
     var output = firstOutput(folders);
     if (output) {
@@ -217,6 +245,37 @@ function stableHeader() {
   return lines.join("\n");
 }
 
+// Whether the files found in a folder are examples: an input whose contents change from run
+// to run (#400). The same reading as ForgeFolder.HoldsExamples.
+function holdsExamples(folder) {
+  return folder.examples === true && folder.role === "input";
+}
+
+function hasLarge(folder) {
+  return !!folder.large && folder.large.length > 0;
+}
+
+// The brief as the user message carries it: the example files of a folder whose contents
+// change are named once, as examples, in the folders section — never a second time here,
+// where nothing says what they are.
+function briefForPrompt(brief) {
+  if (!brief.folders || !brief.folders.some(holdsExamples))
+    return brief;
+  var copy = {};
+  for (var key in brief)
+    copy[key] = brief[key];
+  copy.folders = brief.folders.map(function (folder) {
+    if (!holdsExamples(folder))
+      return folder;
+    var kept = {};
+    for (var name in folder)
+      if (name !== "contents" && name !== "large")
+        kept[name] = folder[name];
+    return kept;
+  });
+  return copy;
+}
+
 // The first output folder of the confirmed list — the example deliverable root; null when
 // the team writes nowhere.
 function firstOutput(folders) {
@@ -243,7 +302,7 @@ function volatileBody() {
 
   if (input.brief) {
     parts.push("## The accepted brief");
-    parts.push(JSON.stringify(input.brief));
+    parts.push(JSON.stringify(briefForPrompt(input.brief)));
     parts.push("");
   }
 

@@ -388,6 +388,66 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.DoesNotContain("at least 30", header, StringComparison.Ordinal);
     }
 
+    // #400: the files of a folder whose contents change are examples — named once, as such,
+    // with the rule that the plan names none; the large-file rule is said by size.
+    [Fact]
+    public async Task ShouldPresentTheFilesOfAChangingFolderAsExamples_InTheDesignPrompt()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        brief = brief! with
+        {
+            Folders =
+            [
+                new ForgeFolder
+                {
+                    Path = "/documents", Role = "input", Purpose = "Les documents", Examples = true,
+                    Contents = ["README.md", "NOTICES.md"],
+                    Large = [new ForgeLargeFile { Name = "NOTICES.md", Bytes = 768000 }],
+                },
+                new ForgeFolder { Path = "/reference", Role = "input", Purpose = "Le modèle", Contents = ["grille.md"] },
+                new ForgeFolder { Path = "/output", Role = "output", Purpose = "Le rapport" },
+            ],
+        };
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        var header = provider.Chats[0][0].Content;
+        Assert.Contains("Examples of what it will hold, replaced from run to run: README.md, NOTICES.md", header, StringComparison.Ordinal);
+        Assert.Contains("Large among these examples: NOTICES.md (750 KB)", header, StringComparison.Ordinal);
+        Assert.Contains("The contents of /documents change from run to run", header, StringComparison.Ordinal);
+        Assert.Contains("no task, no goal and no backstory names one of them", header, StringComparison.Ordinal);
+        Assert.Contains("Files too large to read whole will come in /documents", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("Large files are listed below", header, StringComparison.Ordinal);
+        // The fixed folder beside it keeps today's wording.
+        Assert.Contains("The user put in it: grille.md", header, StringComparison.Ordinal);
+        Assert.Contains("by these names", header, StringComparison.Ordinal);
+
+        // The brief of the user message names the fixed file and none of the examples.
+        var body = string.Concat(provider.Chats[0].Skip(1).Select(m => m.Content));
+        Assert.Contains("grille.md", body, StringComparison.Ordinal);
+        Assert.Contains("\"examples\":true", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("NOTICES.md", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("README.md", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldAskTheInterviewToFlagAFolderWhoseContentsChange()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+
+        await Build(provider).NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = "A report from a folder of documents." },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains("examples: true to an input folder whose contents change from run to run", provider.Chats[0][0].Content, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// What the user put in a folder kept inside the team reaches the design prompt,
     /// by names relative to the folder, so the tasks are made for the files that are there.
