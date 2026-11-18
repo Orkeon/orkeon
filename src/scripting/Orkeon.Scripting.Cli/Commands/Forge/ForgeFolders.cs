@@ -295,8 +295,10 @@ internal static class ForgeFolders
     /// <summary>
     /// A confirmed list with what it left unsaid about <see cref="ForgeFolder.Examples"/> taken
     /// from the proposal: an input folder the answer does not flag either way keeps the value
-    /// the proposal gave the same path. A client that does not know the property thus keeps
-    /// what the interview understood, and one that sends true or false decides (#400).
+    /// the proposal gave the same path, letter case aside, as <see cref="Validate"/> compares
+    /// two paths of one list. A client that does not know the property thus keeps what the
+    /// interview understood, even when it writes the name in lowercase, and one that sends true
+    /// or false decides (#400).
     /// </summary>
     public static IReadOnlyList<ForgeFolder> WithProposedExamples(
         IReadOnlyList<ForgeFolder> answer, IReadOnlyList<ForgeFolder> proposal)
@@ -306,7 +308,7 @@ internal static class ForgeFolders
 
         return [.. answer.Select(folder =>
             folder is { Examples: null, IsInput: true }
-            && proposal.FirstOrDefault(p => p.IsInput && string.Equals(p.Path, folder.Path, StringComparison.Ordinal)) is { Examples: { } proposed }
+            && proposal.FirstOrDefault(p => p.IsInput && string.Equals(p.Path, folder.Path, StringComparison.OrdinalIgnoreCase)) is { Examples: { } proposed }
                 ? folder with { Examples = proposed }
                 : folder)];
     }

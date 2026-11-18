@@ -641,6 +641,22 @@ public sealed class ForgeFoldersTests : IDisposable
     }
 
     [Fact]
+    public void A_confirmation_that_lowercases_a_proposed_name_keeps_its_examples()
+    {
+        // Validate refuses /Inbox and /inbox in one list, so the two name one folder: a client
+        // that writes its names in lowercase (Orkeon Studio does) must not lose the flag.
+        var merged = ForgeFolders.WithProposedExamples(
+            [Folder("/inbox", "input"), Folder("/reference", "input")],
+            [Folder("/Inbox", "input") with { Examples = true }, Folder("/Reference", "input") with { Examples = false }]);
+
+        Assert.True(merged[0].Examples);
+        Assert.False(merged[1].Examples);
+        Assert.Contains(
+            ForgeFolders.Validate([Folder("/Inbox", "input"), Folder("/inbox", "input")]),
+            e => e.Contains("listed twice", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Examples_travels_on_the_wire_only_when_said()
     {
         var said = System.Text.Json.JsonSerializer.Serialize(Folder("/inbox", "input") with { Examples = true });
