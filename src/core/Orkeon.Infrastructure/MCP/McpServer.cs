@@ -544,8 +544,13 @@ public partial class McpServer
         {
             if (p.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String)
                 name = n.GetString();
-            if (p.TryGetProperty("arguments", out var a))
+            // MCP types the arguments of a prompt as an object of strings: anything else is refused, not skipped (#413).
+            if (p.TryGetProperty("arguments", out var a) && a.ValueKind != JsonValueKind.Null)
+            {
+                if (a.ValueKind != JsonValueKind.Object)
+                    return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, ArgumentsMustBeAnObject);
                 arguments = a;
+            }
         }
 
         if (string.IsNullOrEmpty(name))
@@ -687,14 +692,29 @@ public partial class McpServer
 
     private async Task<JsonRpcResponse> HandleToolsCall(JsonRpcRequest request, bool isModern, Action<JsonRpcNotification>? notify, CancellationToken ct)
     {
-        McpToolCallParams? callParams = null;
-        if (request.Params.HasValue)
+        // Read member by member (#413): a params that is no object, a name that is no string or arguments
+        // that are no object fail the CallToolRequest schema, a protocol error - never an internal one, and
+        // never a call that runs as if nothing had been given. Checked before the extension is handed its tool.
+        var callParams = new McpToolCallParams();
+        if (request.Params is { ValueKind: not (JsonValueKind.Null or JsonValueKind.Undefined) } given)
         {
-            callParams = JsonSerializer.Deserialize<McpToolCallParams>(
-                request.Params.Value.GetRawText());
+            if (given.ValueKind != JsonValueKind.Object
+                || (given.TryGetProperty("name", out var name) && name.ValueKind is not (JsonValueKind.String or JsonValueKind.Null)))
+            {
+                return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams,
+                    "Invalid params: params must be an object with a string name.");
+            }
+
+            callParams.Name = name.ValueKind == JsonValueKind.String ? name.GetString()! : "";
+            if (given.TryGetProperty("arguments", out var args) && args.ValueKind != JsonValueKind.Null)
+            {
+                if (args.ValueKind != JsonValueKind.Object)
+                    return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, ArgumentsMustBeAnObject);
+                callParams.Arguments = args;
+            }
         }
 
-        if (callParams == null || string.IsNullOrEmpty(callParams.Name))
+        if (string.IsNullOrEmpty(callParams.Name))
         {
             return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams,
                 "Missing tool name in parameters");
@@ -720,7 +740,19 @@ public partial class McpServer
 
         // The values a tool call in the OpenAI format carries (#402): an array is a list, an object
         // a dictionary, a number without a fraction or an exponent is a long when it fits one, any
-        // other a double, null is null - never the raw JSON text. Arguments that are not an object count as none.
+        // other a double, null is null - never the raw JSON text. A number beyond the range of a double is an
+        // input the tool cannot take: the call fails as a tool result that names the argument (#413), where
+        // the serializer's own message used to surface.
+        if (callParams.Arguments is { } checkedArguments && FindNonFiniteNumber(checkedArguments, "") is { } notFinite)
+        {
+            return CreateSuccessResponse(request.Id, new McpToolCallResult
+            {
+                IsError = true,
+                ResultType = "complete",
+                Content = [new() { Type = "text", Text = $"Argument '{notFinite}' is not a finite number." }]
+            });
+        }
+
         var parameters = callParams.Arguments is { ValueKind: JsonValueKind.Object } arguments
             ? Serialization.JsonElementConverter.ToDict(arguments)
             : [];
@@ -748,6 +780,41 @@ public partial class McpServer
         _ = isModern; // both eras share the same result shape for tools/call
 
         return CreateSuccessResponse(request.Id, mcpResult);
+    }
+
+    private const string ArgumentsMustBeAnObject = "Invalid params: arguments must be an object.";
+
+    /// <summary>
+    /// The path of the first number of <paramref name="element"/> that no double holds (<c>1e400</c>), as a caller
+    /// would write it - <c>x</c>, <c>x[0]</c>, <c>x.y</c> -, or null when every number is finite.
+    /// </summary>
+    private static string? FindNonFiniteNumber(JsonElement element, string path)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Number:
+                return !element.TryGetInt64(out _) && !double.IsFinite(element.GetDouble()) ? path : null;
+            case JsonValueKind.Array:
+                var index = 0;
+                foreach (var item in element.EnumerateArray())
+                {
+                    if (FindNonFiniteNumber(item, $"{path}[{index}]") is { } inArray)
+                        return inArray;
+                    index++;
+                }
+
+                return null;
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                {
+                    if (FindNonFiniteNumber(property.Value, path.Length == 0 ? property.Name : $"{path}.{property.Name}") is { } inObject)
+                        return inObject;
+                }
+
+                return null;
+            default:
+                return null;
+        }
     }
 
     /// <summary>Whether a registry tool is served: <see cref="McpServerOptions.AllowedTools"/> is empty or names it.</summary>
