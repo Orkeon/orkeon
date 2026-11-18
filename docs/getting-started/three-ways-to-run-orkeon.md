@@ -592,10 +592,14 @@ docker run -it --rm -e ORKEON_ENTRYPOINT=shell -v "$PWD:/workspace" \
 ```
 
 The image carries **git**: a crew that runs it through `shell_command` works on the
-repository mounted on `/workspace` - a status, a commit, the lookup of the project root.
-Every directory is declared safe to git inside the image (`safe.directory`), so a
-repository whose owner on the host is not the user the container runs as is read all the
-same. A commit needs an identity: pass `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`,
+repository mounted on `/workspace`. As anywhere else, `shell_command` lets a crew run only
+`git status`, `git log`, `git diff` and `git show` by default; any other git command
+(`rev-parse`, `add`, `commit`, `push`) needs `Orkeon:Tools:Shell:AllowInterpreters`, which
+is not set in the image ([Security](../architecture/security.md)). Every directory is
+declared safe to git inside the image (`safe.directory`), so a repository whose owner on
+the host is not the user the container runs as is read all the same - git then also runs
+the hooks and the configuration of that repository without checking who owns it. A commit
+needs an identity as well: pass `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`,
 `GIT_COMMITTER_NAME` and `GIT_COMMITTER_EMAIL` with `-e`, the image sets none.
 
 ---
