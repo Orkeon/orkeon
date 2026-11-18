@@ -11,7 +11,7 @@
 - **Process**: `parallel`
 - **Agents**: 4 — Structuralist Critic, Feminist Critic, Post-Colonial Critic, Comparative Synthesizer
 - **Tools**: `file_read`, `web_scrape`, `json_tool`, `file_write`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: Batch execution (guaranteed independence), output validation (structured critique format), EvaluationInput
 - **Runner**: `standard`
 

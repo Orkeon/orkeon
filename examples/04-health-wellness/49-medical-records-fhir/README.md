@@ -4,15 +4,15 @@
 
 ## Quality
 
-:lock: Securite -- Multi-format automatique, chiffrement, audit, conformite sanitaire
+:lock: Securite -- Multi-format automatique, audit, conformite sanitaire
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 3 -- Medical Document Extractor, FHIR Data Structurer, Clinical Coherence Verifier
 - **Tools**: `pdf_reader`, `json_tool`, `xml_parser`, `file_write`
-- **Memory**: `EncryptedSQLite`
-- **Key features**: IDocumentLoader + IDocumentLoaderFactory, ITextChunker, EncryptedSqliteMemoryProvider, AuditEventTypes, output validation FHIR
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: IDocumentLoader + IDocumentLoaderFactory, ITextChunker, AuditEventTypes, output validation FHIR
 - **Runner**: `standard`
 
 ## Prerequisites

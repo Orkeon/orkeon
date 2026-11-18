@@ -15,7 +15,7 @@ public class AgentCardTests
         Assert.Equal("", card.Name);
         Assert.Equal("", card.Description);
         Assert.Null(card.Url);
-        Assert.Equal("1.0.0", card.Version);
+        Assert.Equal("", card.Version); // a card that names no version has none (#418)
         Assert.Null(card.Provider);
         Assert.Null(card.Authentication);
         Assert.Empty(card.Skills);

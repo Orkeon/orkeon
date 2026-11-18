@@ -95,7 +95,7 @@ orkeon-host [--settings <file>] [--working-dir <dir>] [--mount <physical>:<virtu
 | `--allow-external-mounts` | Allows an operator `--mount` outside the working directory — also read from `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`. Nothing implies it: the crews' directories and the folders granted to the crews are entries of the daemon, readable wherever they lie, without the flag. |
 | `-h`, `--help` / `--version` | Print and exit `0`; they answer first. |
 
-A value is written `--flag value` or `--flag=value`. The host refuses with `78`, before anything starts: `--help`, `--version`, `-h` and `--allow-external-mounts` written with `=` (`orkeon-host: <flag> takes no value.`), an empty attached value, and a `--mount` or `-m` given last, without a value (`orkeon-host: --mount requires a value.`).
+A value is written `--flag value` or `--flag=value`; a short flag takes its value only as the next argument. The host refuses with `78`, before anything starts: an unknown argument (`orkeon-host: unknown argument '<arg>'; see orkeon-host --help`), `-h=x` or `-s=x` included; `--help`, `--version` and `--allow-external-mounts` written with `=` (`orkeon-host: <flag> takes no value.`); an empty attached value (`orkeon-host: <flag>= has an empty value.`); `--settings` (or `-s`) or `--working-dir` given twice; `--settings`, `-s` or `--working-dir` given last, without a value (`orkeon-host: <flag> requires a path.`, `--settings` for `-s`); and a `--mount` or `-m` given last, without a value (`orkeon-host: <flag> requires a value.`).
 
 There are no subcommands. The exit codes are the contract with the supervisor: `0` for a clean stop, `78` (EX_CONFIG) for a configuration refused at start, `1` when the chat channel died.
 

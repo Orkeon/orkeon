@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 4 — Hypothesis Formulator, Fault Injector, Impact Measurer, Results Analyst
 - **Tools**: `http_api`, `json_tool`, `file_write`
-- **Memory**: `Redis`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: HumanInputContext (approval before each injection), ObserverAgent, ICheckpointManager (rollback)
 - **Runner**: `standard`
 

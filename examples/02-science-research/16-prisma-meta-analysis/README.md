@@ -11,7 +11,7 @@
 - **Process**: `Sequential`
 - **Agents**: 4 — Bibliographe (Worker), Statisticien (Worker), Methodologiste (Worker), Synthetiseur PRISMA (Worker)
 - **Tools**: `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `MemoryType.Episodic` for traceability, `EvaluationSuite` for study quality scoring, output validation JSON (PRISMA format)
 - **Runner**: `standard`
 

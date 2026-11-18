@@ -91,9 +91,7 @@ Un document JSON par ligne sur stdin. Chaque verbe se projette sur un membre d'`
 | `reply` | `correlationId`, `payload` | Répond à une question **qu'un agent a posée à ce processus**. |
 | `subscribe` / `unsubscribe` | `topic` | Ouvre ou ferme un relais de ce topic vers `hub.message`. |
 
-Un `input.given` **sans** identifiant de corrélation répond à la plus ancienne question en attente : un humain qui tape dans un terminal n'a pas d'identifiant à citer.
-
-Un `input.given` **sans** id de corrélation répond à la plus ancienne question en attente. L'id d'une question durable est son `requestId` : `correlationId` ou `requestId` peut le porter.
+Un `input.given` **sans** identifiant de corrélation répond à la plus ancienne question en attente : un humain qui tape dans un terminal n'a pas d'identifiant à citer. L'id d'une question durable est son `requestId` : `correlationId` ou `requestId` peut le porter.
 
 **Une question qui survit au processus.** Avec `Orkeon:Checkpointing:Enabled`, une question à un humain est persistée avec la session de checkpoint du run (`PendingInput`, phase `WaitingForInput`) sous un id stable, `<TaskKey>#<n>.<q>` (`n` l'invocation de la tâche, `q` la question dans celle-ci). `Orkeon:HumanInput:Pause` dit ce que fait le run tant que personne n'a répondu : `Hold` attend, jusqu'à `HoldTimeout`, puis suspend ; `Suspend` s'arrête aussitôt. Sans valeur, un run qui a quelqu'un à interroger (un terminal, un flux qu'un client lit) attend, un run sans personne (un `orkeon run` simple) suspend ; le démon et `--events` attendent par défaut (30 minutes, sans limite). Un run suspendu finit par `run.finished` `status: "waiting_for_input"`, `exitCode: 75`, `success: false` et le `requestId` de la question : ni un succès ni un échec. Il reprend avec `orkeon run <crew> --resume <id> --input "..."` : la tâche qui a posé la question est rejouée (granularité : la tâche), pose la même question sous le même id et trouve la réponse ; le prompt montré est celui persisté la première fois, jamais recalculé, et la réponse est rapprochée par `requestId` seul. La première réponse gagne.
 

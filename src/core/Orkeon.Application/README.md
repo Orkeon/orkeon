@@ -2,7 +2,7 @@
 
 Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#.
 
-**Orkeon.Application** holds the use cases and ports of the framework: crew orchestration services, agent execution, memory abstractions (`IMemoryProvider`), A2A communication ports (`IAgentChannel`), DTOs and validation. It depends only on `Orkeon.Domain`; implementations live in `Orkeon.Infrastructure`.
+**Orkeon.Application** holds the use cases and ports of the framework: crew orchestration services, agent execution, memory services, A2A communication ports (`IAgentChannel`), DTOs and validation. It builds on `Orkeon.Domain` (where `IMemoryProvider` lives) and the analysis, RAG and protocol abstractions; implementations live in `Orkeon.Infrastructure`.
 
 ## Install
 

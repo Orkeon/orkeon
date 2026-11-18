@@ -11,7 +11,7 @@
 - **Process**: `consensual`
 - **Agents**: 4 — Question Designer, Bloom Taxonomist, Psychometrician, Clarity Reviewer
 - **Tools**: `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: Consensus voting, BenchmarkRunner (calibration), LlmJudgeEvaluator (clarity), IKnowledgeSource (Bloom taxonomy), InMemoryDataset
 - **Runner**: `standard`
 

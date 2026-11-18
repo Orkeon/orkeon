@@ -306,6 +306,6 @@ Orkeon.sln
 │   └── apps/
 │       └── Orkeon.ConsoleApp/      # REPL interactif (`orkeon-repl`)
 ├── tests/                          # 34 projets (miroirs de src + e2e, shared)
-├── examples/                       # 104 exemples embarqués (9 catégories + vitrines)
+├── examples/                       # 104 exemples numérotés en 9 catégories, plus des vitrines
 └── docs/                           # Documentation (EN + miroir docs/fr)
 ```

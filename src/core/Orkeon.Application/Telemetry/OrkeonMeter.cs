@@ -37,7 +37,7 @@ public static class OrkeonMeter
     /// <summary>The security event kind attribute: block, warn or injection.</summary>
     public const string SecurityKindAttribute = "orkeon.security.kind";
 
-    private static readonly Meter s_meter = new(Name, OrkeonActivitySources.Version);
+    private static readonly Meter s_meter = new(Name, OrkeonActivitySources.ReleaseVersion);
 
     private static readonly Histogram<double> s_duration = s_meter.CreateHistogram<double>(
         "gen_ai.client.operation.duration", "s", "Duration of a model call");

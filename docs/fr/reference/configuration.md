@@ -171,7 +171,7 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 `orkeon doctor` rapporte la même phrase en ligne `warn` de `runner-settings`, une par section, et
 sort toujours en `0`. Les sections sont celles que le catalogue des réglages marque comme lues par
 aucun binaire livré : `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:MultiModal`, `Evaluation` et `Orkeon:VectorSearch`
+`Orkeon:MultiModal` et `Orkeon:VectorSearch`
 ([sous-systèmes opt-in](./opt-in-subsystems.md)). La liste est calculée, pas écrite : une section
 qu'un binaire livré se met à lire en sort. Ne sont pas signalées : une section qu'un autre binaire
 livré lit (`Orkeon:Host` dans un fichier que lit `orkeon run`), une section de la racine
@@ -1714,10 +1714,10 @@ livré : c'est celui qui est installé sur la machine. La fenêtre est visible s
 
 Connexions client MCP (`MCP:Servers:<nom>`) et l'interrupteur `MCP:Enabled`. Aucun réglage ne
 démarre un serveur MCP : une clé que la section ne porte pas est refusée au démarrage comme toute clé inconnue. Lue par `RunnerHost` (`orkeon run`, `orkeon-host`,
-`orkeon mcp serve`) dès que `MCP:Servers` déclare au moins un serveur et que `MCP:Enabled` n'est
+`orkeon mcp serve`) et par `orkeon-repl` (`RunnerHost.RegisterMcp`) dès que `MCP:Servers` déclare au moins un serveur et que `MCP:Enabled` n'est
 pas `false` — les serveurs sont connectés avant le chargement de la crew,
-par `orkeon-host` une fois au démarrage, avant son premier message, et par
-`orkeon mcp serve` avant qu'il serve ; les hôtes bibliothèque appellent
+par `orkeon-host` une fois au démarrage, avant son premier message, par `orkeon-repl` avant
+qu'il charge ses commandes scriptées, et par `orkeon mcp serve` avant qu'il serve ; les hôtes bibliothèque appellent
 `AddOrkeonMcp(configuration)` ou la surcharge `AddOrkeonInfrastructure(configuration)` — voir
 [Intégration MCP](../architecture/mcp.md).
 
@@ -1752,7 +1752,7 @@ par `orkeon-host` une fois au démarrage, avant son premier message, et par
 
 ### `MCP:Server`
 
-La façon dont le serveur d'`orkeon mcp serve` se présente (il n'expose que des outils). Lue par
+La façon dont le serveur d'`orkeon mcp serve` se présente (des outils, plus les ressources de `/output` sous `--expose-output` et les prompts et outils de crew de `--crew`). Lue par
 `AddOrkeonMcpServer`, qu'appelle `orkeon mcp serve`.
 
 <!-- settings:MCP:Server -->
@@ -1766,7 +1766,7 @@ La façon dont le serveur d'`orkeon mcp serve` se présente (il n'expose que des
 | `MaxResourceBytes` | entier | `1048576` | Taille du plus gros fichier que resources/read rend, en octets (1 048 576 par défaut) ; un fichier plus gros est refusé. |
 | `Name` | chaîne | `"Orkeon"` | Nom du serveur annoncé à l'initialisation MCP. |
 | `ResourcesPageSize` | entier | `100` | Nombre de ressources d'une page de resources/list (100 par défaut). Au moins 1. |
-| `Version` | chaîne | `"1.0.0"` | Version du serveur annoncée à l'initialisation MCP. |
+| `Version` | chaîne | `""` | Version du serveur annoncée à l'initialisation MCP. Vide (par défaut) : la version de la release Orkeon en cours d'exécution. |
 <!-- /settings -->
 
 ### `RaggableTree`
@@ -2202,7 +2202,7 @@ est `Orkeon:Host:A2A`, [plus haut](#orkeonhost) ; voir
 |---|---|---|---|
 | `AgentDescription` | chaîne | `"Orkeon A2A Agent"` | La description de l'agent annoncée dans la carte d'agent. |
 | `AgentName` | chaîne | `"Orkeon"` | Le nom de l'agent annoncé dans la carte d'agent. |
-| `AgentVersion` | chaîne | `"1.0.0"` | La version de l'agent annoncée dans la carte d'agent. |
+| `AgentVersion` | chaîne | `""` | La version de l'agent annoncée dans la carte d'agent. Vide (par défaut) : la version de la release Orkeon en cours d'exécution. |
 | `ContactUrl` | URI | — | URL de contact du champ fournisseur de la carte d'agent. |
 | `EnableServer` | booléen | `false` | S'il faut lancer un serveur A2A qui expose les agents locaux à la soumission de tâches distantes : enregistre `IA2AServer` et un service hébergé qui le démarre avec l'hôte. |
 | `Host` | chaîne | `"http://localhost"` | L'hôte ou le préfixe du serveur HTTP A2A (p. ex. "http://localhost"). |
@@ -2366,7 +2366,8 @@ la variable lui-même. La liste est celle que porte le code — un test y tient 
 de variables de l'hôte — `PATH`, `HOME`, la locale, les dossiers temporaires, `DOTNET_ROOT`,
 `NUGET_PACKAGES`, les quatre qui donnent son identité à un commit (`GIT_AUTHOR_NAME`,
 `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL` : un nom et une adresse, qu'un
-conteneur n'a aucun `~/.gitconfig` où lire) et ce qu'il faut à Windows pour lancer un programme —, plus les trois qui nomment
+conteneur n'a aucun `~/.gitconfig` où lire, pas plus qu'une session confinée, dont le `HOME` est un dossier
+qui lui est propre sous bubblewrap, Seatbelt ou AppContainer) et ce qu'il faut à Windows pour lancer un programme —, plus les trois qui nomment
 une socket de la session de l'opérateur : `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` (le
 trousseau que lit un assistant d'identifiants comme `gh auth git-credential`) et `SSH_AUTH_SOCK`
 (l'agent ssh). Elles portent une adresse, pas un secret, mais le bus permet à une commande de

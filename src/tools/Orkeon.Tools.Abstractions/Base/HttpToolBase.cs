@@ -132,7 +132,8 @@ public abstract class HttpToolBase : ToolBase
         try
         {
             client.Timeout = HttpDefaults.DefaultHttpTimeout;
-            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpDefaults.DefaultUserAgent);
+            // TryParseAdd: the value was checked when it was built, and nothing here may throw a format error.
+            client.DefaultRequestHeaders.UserAgent.TryParseAdd(ToolUserAgent.Value);
         }
         catch (InvalidOperationException)
         {

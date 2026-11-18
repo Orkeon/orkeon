@@ -116,7 +116,7 @@ le mTLS sans ancre de confiance) fait échouer le démarrage de l'hôte. Voir
 |---|---|---|
 | `EnableServer` | `false` | Enregistre `IA2AServer` (un `HttpListener` sur `Host:Port`) et le service hébergé qui le fait tourner. |
 | `Host`, `Port` | `http://localhost`, `5002` | Le préfixe d'écoute. |
-| `AgentName`, `AgentDescription`, `AgentVersion`, `Organization`, `ContactUrl` | `Orkeon`, `Orkeon A2A Agent`, `1.0.0`, —, — | La carte d'agent. |
+| `AgentName`, `AgentDescription`, `AgentVersion`, `Organization`, `ContactUrl` | `Orkeon`, `Orkeon A2A Agent`, vide, —, — | La carte d'agent. Un `AgentVersion` vide vaut la version de la release en cours d'exécution. |
 | `TimeoutSeconds` | `30` | Timeout des requêtes du client. |
 
 `orkeon-host` prend son écoute dans `Orkeon:Host:A2A` et refuse `A2A:EnableServer`,

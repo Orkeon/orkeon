@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 3 — Game Master, Challenge Designer, Evaluator
 - **Tools**: `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: skill tree progression designed by the crew, CrewHooks (OnLevelCompleted, OnAchievementUnlocked), MemoryType.Episodic
 - **Runner**: `standard`
 

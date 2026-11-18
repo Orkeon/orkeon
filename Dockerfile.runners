@@ -233,9 +233,10 @@ WORKDIR /app
 # root entrypoint drop to the bind-mount owner's uid (see the dispatcher below).
 # curl: the orkeon-example preflight check + the local-llm variant's health wait.
 # git: a crew that works on the repository mounted on /workspace runs it through
-# shell_command (a status, a commit, the lookup of the project root); without it the
-# command fails and the crew sees an empty repository (#404). ca-certificates comes
-# with curl, so a fetch or a push over https works.
+# shell_command (a status, a log, a diff or a show by default; a commit, the lookup of
+# the project root, a fetch or a push once Orkeon:Tools:Shell:AllowInterpreters is set);
+# without it the command fails and the crew sees an empty repository (#404).
+# ca-certificates comes with curl, so a fetch or a push over https can reach its remote.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends zsh gosu curl git \
     && rm -rf /var/lib/apt/lists/*

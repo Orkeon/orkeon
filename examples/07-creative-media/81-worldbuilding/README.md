@@ -11,7 +11,7 @@
 - **Process**: `consensual`
 - **Agents**: 5 — Geographer, Historian, Sociologist, Linguist, Coherence Guardian
 - **Tools**: `json_tool`, `file_write`, `file_read`
-- **Memory**: crew memory enabled (`memory: true`)
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: IKnowledgeSource (world bible), cross-validation consensus, batch execution
 - **Runner**: `standard`
 

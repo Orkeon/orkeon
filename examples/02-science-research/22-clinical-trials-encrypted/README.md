@@ -1,18 +1,18 @@
 # 22. Monitoring d'Essais Cliniques Chiffré
 
-> Continuous monitoring of sensitive patient data. Observer Agent detects alarm signals in real time. All data is encrypted, all actions audited per NIST standards.
+> Continuous monitoring of sensitive patient data. Observer Agent detects alarm signals in real time. All actions are audited per NIST standards.
 
 ## Quality
 
-🔒 Securite — NIST audit, encrypted memory, real-time Observer Agent
+🔒 Securite — NIST audit, real-time Observer Agent
 
 ## Architecture
 
 - **Process**: `Parallel`
 - **Agents**: 4 — Observateur Monitoring Continu (Observer), Analyste Safety (Worker), Statisticien Essais (Worker), Compliance Officer (Worker)
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: `EncryptedSQLite`
-- **Key features**: `INistComplianceReporter`, `AuditEventTypes`, `LlmCallAudit`, `EncryptedSqliteMemoryProvider`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: `INistComplianceReporter`, `AuditEventTypes`, `LlmCallAudit`
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -37,6 +37,6 @@ orkeon run examples/02-science-research/22-clinical-trials-encrypted/config.yaml
 
 ## What this example demonstrates
 
-- Encrypted memory for sensitive patient data in clinical trials
+- Crew memory for patient data in clinical trials
 - Real-time Observer Agent monitoring for safety signal detection
 - NIST-compliant audit trail for full regulatory traceability

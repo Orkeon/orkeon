@@ -75,7 +75,7 @@ public static class HttpDefaults
 
     // ── User agent ─────────────────────────────────────────────────────────
 
-    /// <summary>Default User-Agent string sent by Orkeon HTTP clients.</summary>
+    /// <summary>A fixed value kept for the callers that compiled it in; the HTTP tools send the running release's version (#418).</summary>
     public const string DefaultUserAgent = Domain.Constants.Http.HttpDefaults.DefaultUserAgent;
 
     // ── Azure defaults ─────────────────────────────────────────────────────

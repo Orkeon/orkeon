@@ -60,6 +60,32 @@ Sur une connexion moderne établie, chaque requête porte son `_meta` ; un `-320
 de route déclenche **une renégociation + une nouvelle tentative** avec une révision
 supportée des deux côtés (`McpClient.SendAsync`).
 
+### Ce que le client garde du schéma d'un outil distant
+
+`McpToolAdapter` lit l'`inputSchema` d'un outil distant pour en faire le schéma montré au modèle d'un agent. De chaque
+propriété il garde le `type`, la `description`, le `default` comme la valeur JSON qu'il est (`null` n'est pas un défaut), l'`enum` (chaque
+valeur scalaire telle quelle : une chaîne, un nombre, un booléen), le `format`, les `items` d'un tableau —
+leur `type`, leur `format`, et les `properties` et `required` d'un tableau d'objets — et les
+`additionalProperties` d'un dictionnaire. Un `type` écrit comme un tableau est lu comme son seul membre autre
+que `"null"` (`["string", "null"]`, un paramètre nullable, est un `string`) ; une propriété à plusieurs
+types, ou sans aucun — `{}`, un `anyOf`, un `oneOf` ou un `$ref` seul —, n'a pas de type : le modèle peut
+donner n'importe quelle valeur JSON. Restent perdus : les `properties` d'un paramètre objet, un tableau
+imbriqué dans un tableau, l'`enum`, la `description` et le `default` des éléments d'un tableau, les
+alternatives d'`anyOf` / `oneOf`, `$ref` / `$defs`, et les bornes (`minimum`, `maximum`, `pattern`,
+`minItems`). Des éléments qui déclarent des `properties` sans `type` sont lus comme des objets.
+
+Aucun `inputSchema` ne fait échouer la connexion : une entrée de `required` ou la `description` d'une
+propriété qui n'est pas une chaîne est ignorée, un nombre qu'aucun `double` ne contient (`1e400`) est retiré
+d'un `enum` ou d'un `default`, et la liste est lue outil par outil : une entrée qui n'est pas un objet (`null`), un
+outil sans nom, ou un outil dont le `name`, la `description` ou les `annotations` ont le mauvais type JSON (un
+`name` qui est un nombre) est écarté à lui seul — les autres outils de son serveur sont enregistrés.
+L'avertissement nomme l'outil et le serveur tel que `MCP:Servers` le nomme, et il est écrit une fois pour
+cette entrée, pas à chaque lecture de la liste. Quand `tools/list_changed` apporte une telle entrée pour un
+outil qui était enregistré, l'outil quitte le registre. Un `"tools": null` ne liste aucun outil ; un `tools`
+qui n'est ni `null` ni un tableau fait encore échouer la liste, et donc la connexion. Un nom qu'un serveur
+liste deux fois est enregistré une fois, la première. `prompts/list` et `resources/list` sont encore lus page
+par page : un prompt ou une ressource du mauvais type JSON fait échouer sa liste.
+
 ### Serveur (`McpServer`) — bi-génération sur un même endpoint
 
 - Implémente `server/discover` (versions supportées, capacités, indices de fraîcheur
@@ -72,14 +98,34 @@ supportée des deux côtés (`McpClient.SendAsync`).
 - `tools/list` est renvoyé en **ordre déterministe** (tri ordinal par nom — un SHOULD de
   2026-07-28, pour des caches clients stables) avec les champs modernes
   `resultType`/`ttlMs`/`cacheScope` ; les clients legacy ignorent ces membres additifs.
-- Les notifications (sans `id`, ou `notifications/*`) ne reçoivent jamais de réponse.
+- Une notification valide — un message sans `id` — ne reçoit jamais de réponse, pas plus qu'une réponse (un
+  `result` ou un `error` sans `method`, quel que soit le reste de son enveloppe : le serveur n'envoie aucune
+  requête, il l'ignore). Une ligne qui est du
+  JSON mais pas une requête valide reçoit `-32600 Invalid Request`, y compris une notification dont
+  l'enveloppe est invalide (sa réponse porte un `id` `null`) ; `-32700` est réservé au texte qui n'est pas du JSON.
+  Sont refusés ainsi : une valeur qui n'est pas un objet (un scalaire, `null`, un tableau — le batching n'est
+  pas parlé, un lot reçoit donc une seule réponse pour toute la ligne), un `jsonrpc` absent ou différent de
+  `"2.0"`, une `method` absente, vide ou qui n'est pas une chaîne, un `id` `null` ou qui n'est ni une chaîne ni
+  un entier, un `params` qui n'est ni un objet ni un tableau (`null` vaut absence), et un `id` à côté d'une
+  méthode `notifications/*` (MCP l'interdit : le message reçoit une réponse, il n'est pas exécuté). La réponse
+  porte l'`id` quand il a pu être lu — une chaîne ou un entier —, `null` sinon. `ProcessRequestAsync` donne à
+  un hôte C# les mêmes réponses pour la requête qu'on lui remet ; un `id` `null` n'y est vu que si l'hôte l'a
+  gardé comme un `null` JSON, car un `JsonRpcRequest` désérialisé n'a alors pas d'`id`.
 - Un message ne porte jamais de membre `null` : une réponse contient `result` ou `error`, jamais
   les deux, et un membre optionnel sans valeur est absent — un client strict (les SDK MCP)
-  refuse le message sinon. Le seul `null` est l'`id` de la réponse à une ligne illisible.
-- Les `arguments` d'un `tools/call` arrivent à l'outil comme les valeurs que porte l'appel
-  d'outil d'un agent : un tableau est une liste, un objet un dictionnaire, un nombre entier un
-  `long`, tout autre nombre un `double`, `null` est `null`. `tools/list` publie les `items`
-  d'un paramètre tableau.
+  refuse le message sinon. Le seul `null` est l'`id` de la réponse à une ligne dont l'`id` n'a pas pu être lu.
+- Les `arguments` d'un `tools/call` (hors outil `run_crew_*` de `--crew`, voir plus bas) arrivent
+  à l'outil comme les valeurs que porte un appel d'outil au format OpenAI : un tableau est une
+  liste, un objet un dictionnaire, un nombre écrit sans partie décimale ni exposant est un `long`
+  s'il y tient, tout autre nombre un `double`, `null` est `null` (un appel d'outil Anthropic
+  le lit comme le texte `null`). `tools/list` publie les `items` d'un paramètre tableau.
+- `tools/call` et `prompts/get` refusent avec `-32602 Invalid params` les paramètres qui ne respectent pas le
+  schéma de la requête : un `params` qui est un tableau, un `name` qui n'est pas une chaîne, et des `arguments`
+  présents, non `null` et qui ne sont pas un objet — pour un outil du registre, pour un outil `run_crew_*`
+  comme pour un prompt ; l'outil ne s'exécute pas. Un nombre hors de la plage d'un `double` (`1e400`) est une
+  entrée que l'outil ne peut pas prendre, pas une erreur de protocole : l'appel répond `isError: true` avec
+  `Argument 'x' is not a finite number.` (`x[0]`, `x.y` quand le nombre est imbriqué, `["a.b"]` pour un nom
+  qui contient un point ou un crochet), et l'outil n'est pas appelé. Un outil `run_crew_*` et un prompt reçoivent un nombre sous forme de texte.
 - `tools/call` passe par `IToolInvocationPipeline`, le point d'invocation unique de chaque
   tour d'agent, sous l'appelant `mcp` (son identifiant et son rôle d'agent) : la
   phase outil de la garde (`ToolGuard` — remontée de chemin, cibles SSRF, injection SQL),
@@ -110,8 +156,8 @@ services.AddOrkeonMcpServer(configuration);   // le serveur, pour un hôte qui s
 de `McpServerConfig` indexé par identifiant de serveur : `Transport` `Stdio` (défaut) ou
 `Sse`, `Command`/`Args`/`Env` pour stdio, `Url` pour HTTP) et enregistre `McpToolProvider`
 en singleton. Il n'enregistre aucun serveur : c'est `AddOrkeonMcpServer` qui enregistre
-`McpServer` (+ `McpServerOptions` depuis `MCP:Server` : `Name`, `Orkeon` par défaut, `Version`, `1.0.0`
-par défaut, `MaxConcurrency` (4), `ExposeOutput` (faux), `ResourcesPageSize` (100) et
+`McpServer` (+ `McpServerOptions` depuis `MCP:Server` : `Name`, `Orkeon` par défaut, `Version`, vide
+par défaut — la version de la release en cours d'exécution —, `MaxConcurrency` (4), `ExposeOutput` (faux), `ResourcesPageSize` (100) et
 `MaxResourceBytes` (1 Mio)), lequel sert l'`IToolRegistry` du conteneur et appelle chaque
 outil par son `IToolInvocationPipeline` — `AddOrkeonInfrastructure()` et
 `AddOrkeonApplication()` enregistrent les deux. Enregistrer n'est pas servir : l'hôte lance
@@ -143,12 +189,15 @@ ressources quand `ExposeOutput` est actif (ci-dessous) ; `prompts/*` répondent
         "CallTimeout": "00:00:30"
       }
     },
-    "Server": { "Name": "Orkeon", "Version": "1.0.0" }
+    "Server": { "Name": "Orkeon" }
   }
 }
 ```
 
-Le client se présente comme `Orkeon` `1.0.0`.
+Le serveur et le client se présentent comme `Orkeon`, avec la version de la release qu'ils exécutent
+(celle qu'affiche `orkeon --version`), dans le handshake legacy (`serverInfo`, `clientInfo`) et dans
+le `_meta` des requêtes modernes et des réponses à `server/discover` et `tools/list`. `MCP:Server:Version`, quand il n'est pas vide, remplace celle
+du serveur ; rien ne remplace celle du client.
 
 **Authentification, filtre et délai par serveur.** Chaque `MCP:Servers:<id>` accepte :
 
@@ -294,7 +343,8 @@ agents:
 crew : sous `StrictTools` — le défaut des runners — une crew qui nomme l'outil d'un serveur
 qui n'a pas pu être connecté échoue au chargement avec la ligne ordinaire `unknown tool(s)`.
 `--list-tools` et `--validate` voient les outils MCP, `McpServer` ré-expose ce que contient
-le registre, et du code C# peut en résoudre un par `IToolRegistry.GetToolByNameAsync(name)`.
+le registre — tous les outils, ou ceux que nomme `orkeon mcp serve --tools` (`AllowedTools`) ; l'hôte
+d'`orkeon mcp serve` n'enregistre pas `human_input` —, et du code C# peut en résoudre un par `IToolRegistry.GetToolByNameAsync(name)`.
 Le décorateur des runs observés de `--events jsonl` enveloppe les outils enregistrés dans la
 DI ; les outils MCP arrivent dans le registre à l'exécution et ne sont pas enveloppés.
 

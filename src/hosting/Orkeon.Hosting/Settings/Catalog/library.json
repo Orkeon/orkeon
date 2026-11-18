@@ -2759,8 +2759,8 @@
       "path": "MCP:Server:Version",
       "section": "MCP:Server",
       "type": "string",
-      "default": "1.0.0",
-      "description": "Server version advertised during MCP initialization."
+      "default": "",
+      "description": "Server version advertised during MCP initialization. Empty (the default): the version of the running Orkeon release."
     },
     {
       "path": "Orkeon:MultiModal:Enabled",
@@ -3817,8 +3817,8 @@
       "path": "A2A:AgentVersion",
       "section": "A2A",
       "type": "string",
-      "default": "1.0.0",
-      "description": "The agent version advertised in the agent card."
+      "default": "",
+      "description": "The agent version advertised in the agent card. Empty (the default): the version of the running Orkeon release."
     },
     {
       "path": "A2A:ContactUrl",

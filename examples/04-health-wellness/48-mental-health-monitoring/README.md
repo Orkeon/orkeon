@@ -1,18 +1,18 @@
 # 48. Monitoring Bien-être Mental
 
-> Données ultra-sensibles protégées par trois couches: chiffrement au repos, validation humaine systématique, prévention d'injection de prompts. L'ObserverAgent déclenche les alertes.
+> Données ultra-sensibles protégées par deux couches: validation humaine systématique, prévention d'injection de prompts. L'ObserverAgent déclenche les alertes.
 
 ## Quality
 
-:lock: Securite -- Triple securite: chiffrement + validation humaine + anti-injection
+:lock: Securite -- Double securite: validation humaine + anti-injection
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 4 -- Well-being Observer, Trend Analyst, Exercise Coach, Supervising Psychologist (human at every step)
 - **Tools**: `json_tool`, `file_write`
-- **Memory**: `EncryptedSQLite`
-- **Key features**: EncryptedSqliteMemoryProvider, HumanInputContext systematic, PromptSecurityTypes, ObserverAgent
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: HumanInputContext systematic, PromptSecurityTypes, ObserverAgent
 - **Runner**: `standard`
 
 ## Prerequisites

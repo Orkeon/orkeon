@@ -183,7 +183,8 @@ interface CommandRuntimeContext {
   setTheme(name: "dark" | "light" | "none"): boolean
   clear(): void;
 
-  prompt(spec: PromptSpec): Promise<string | boolean>;
+  prompt(spec: PromptSpec): Promise<string | boolean | null>;   // null: a select dismissed (Esc)
+  readonly interactive: boolean;
   progress(spec: { total?: number; label: string }): ProgressHandle;
   table<T extends object>(rows: readonly T[], columns?: readonly (keyof T)[]): void;
 
@@ -452,7 +453,7 @@ runs in the background):
 | `cancel --ticket=<t>`      | Request cancellation of an in-flight ticket.                  |
 
 A `CommandInstanceView` carries: `ticket`, `name`, `kind` (`sync`/`async`),
-`targetAgent`, `intent`, `correlationId`, `state`, `startedAt`, `completedAt?`,
+`targetAgent`, `intent`, `correlationId`, `state`, `onMain`, `startedAt`, `completedAt?`,
 `elapsedMs`, `tokens`, `result?`, `error?`, `progress?`. Tickets read `t1`, `t2`, …; the
 200 most recent terminal entries are kept so `result`/`inspect` can read a recent ticket,
 then evicted. The four built-ins are registered only when at least one `*.cmd.ts` was

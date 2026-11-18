@@ -33,9 +33,9 @@ public class McpServerOptions
     public string Name { get; set; } = "Orkeon";
 
     /// <summary>
-    /// Server version advertised during MCP initialization.
+    /// Server version advertised during MCP initialization. Empty (the default): the version of the running Orkeon release.
     /// </summary>
-    public string Version { get; set; } = "1.0.0";
+    public string Version { get; set; } = "";
 
     /// <summary>
     /// How many requests the stdio loop runs at once; the others wait their turn. At least 1.

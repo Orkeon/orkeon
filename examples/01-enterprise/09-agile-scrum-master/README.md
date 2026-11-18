@@ -11,7 +11,7 @@
 - **Process**: `Hierarchical`
 - **Agents**: 4 — Scrum Master IA (Manager), Developpeur Backend (Worker), Developpeur Frontend (Worker), Ingenieur DevOps (Worker)
 - **Tools**: `http_api`, `json_tool`, `file_write`
-- **Memory**: `Redis`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: Semantic selection by embeddings, `AgentSkill` (A2A) for skill descriptions
 - **Runner**: `standard`
 

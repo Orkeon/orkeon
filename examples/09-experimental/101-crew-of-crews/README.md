@@ -1,6 +1,6 @@
 # 101. Crew of Crews — The Orchestra of Orchestras
 
-> The ultimate case: a meta-crew where each "agent" is itself a complete crew. The Conductor routes tasks to sub-crews via semantic embedding selection. Sub-crews communicate via A2A and share Redis memory. This example demonstrates all four framework qualities simultaneously.
+> A hierarchical crew whose five agents play the leads of a meta-crew: the Conductor routes tasks to the Research, Development, Test and Documentation leads, who share Redis memory. The sub-crews are role-played in the prompts, not separate crews.
 
 ## Quality
 
@@ -8,18 +8,18 @@
 
 ## Architecture
 
-- **Process**: `hierarchical` (meta) + variable internal process per sub-crew
-- **Agents**: 5 leads — Conductor (manager), Research Lead (5 agents), Development Lead (4 agents), Test Lead (3 agents), Documentation Lead (3 agents)
+- **Process**: `hierarchical` (`managerAgent: "conductor"`)
+- **Agents**: 5 — Conductor (manager), Research Lead, Development Lead, Test Lead, Documentation Lead
 - **Tools**: `web_scrape`, `http_api`, `json_tool`, `file_write`, `file_read`, `shell_command`, `directory_read`, `semantic_search`
-- **Memory**: `Redis` (shared inter-crew) + `SQLite` (per sub-crew)
-- **Key features**: Semantic embedding selection, A2A protocol (inter-crews), ICheckpointManager (per level), Feedback communication, CrewHooks, INistComplianceReporter, AuditEventTypes, EvaluationSuite
+- **Memory**: `Redis` (`memoryProvider: "Redis"`)
+- **Key features**: manager-routed hierarchical process (`managerAgent: "conductor"`), delegation by every lead (`allowDelegation: true`), shared Redis crew memory; checkpoints, NIST audit and sub-crew feedback are role-played in the prompts
 - **Runner**: `standard`
 
 ## Prerequisites
 
 1. .NET 10 SDK
 2. Configure `appsettings.json` with your LLM API key
-3. Redis instance running for shared inter-crew memory
+3. Redis instance running for the crew memory
 
 ## Run it
 
@@ -38,6 +38,6 @@ orkeon run examples/09-experimental/101-crew-of-crews/config.yaml \
 
 ## What this example demonstrates
 
-- Fractal crew composition where each agent encapsulates an entire crew
+- A meta-crew in one hierarchical crew: each lead's sub-crew lives in its prompt, not in the config
 - Semantic embedding-based task routing for intelligent sub-crew selection
 - Multi-level checkpointing, audit trail, and distributed memory across the crew hierarchy

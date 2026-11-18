@@ -457,6 +457,36 @@ public class ImportEdgesTests
 
     [Fact]
     [Trait("BR", "#406")]
+    public async Task ShouldReResolvePythonImporters_WhenTheModuleTheyTookForALibraryJoinsTheTree()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("app/run.py", "import helper\n"),
+            ("app/other.py", "import os\n"),
+        ]);
+        try
+        {
+            var fs = TestFixtures.CreateFs(dir);
+            var initial = await new RaggableTreeBuilder(new PythonAdapter(), fs)
+                .BuildAsync(Root, new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
+            // Before the file exists, nothing in the tree holds the name: the import is a library.
+            Assert.Equal(["ext::pypi::helper"], ImportTargets(initial.Tree.Edges, "app/run.py"));
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, "app", "helper.py"), "def f(): return 1\n", TestContext.Current.CancellationToken);
+
+            var reindexed = await new IncrementalReindexEngine(new PythonAdapter(), fs).ReindexAsync(
+                initial.Tree, Root, [$"{Root}/app/helper.py"],
+                new IndexCodebaseRequest { RootPath = Root }, CancellationToken.None);
+
+            Assert.Equal([Module("app/helper.py")], ImportTargets(reindexed.Tree.Edges, "app/run.py"));
+            Assert.Equal(ImportTargets(initial.Tree.Edges, "app/other.py"), ImportTargets(reindexed.Tree.Edges, "app/other.py"));
+            // Only the importer and the new file were parsed again.
+            Assert.Equal(2, reindexed.FilesParsed);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "#406")]
     public async Task ShouldRebuildPythonImportEdges_WhenTheImporterChanges()
     {
         var dir = await TestFixtures.WriteDirectoryAsync([

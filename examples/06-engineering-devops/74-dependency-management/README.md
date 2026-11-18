@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 4 — Dependency Scanner, Security CVE Checker, Compatibility Tester, Upgrader
 - **Tools**: `file_read`, `http_api`, `shell_command`, `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: TaskPriority (critical CVEs first), ICodeSandbox (compatibility testing), IUrlValidator, Task dependencies, LlmRateLimiter
 - **Runner**: `standard`
 

@@ -160,7 +160,7 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 `orkeon doctor` reports the same sentence as a `warn` row of `runner-settings`, one per section,
 and still exits `0`. The sections are those the settings catalogue marks as read by no shipped
 binary: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:MultiModal`, `Evaluation` and `Orkeon:VectorSearch`
+`Orkeon:MultiModal` and `Orkeon:VectorSearch`
 ([opt-in subsystems](./opt-in-subsystems.md)). The list is computed, not written: a section a
 shipped binary starts to read leaves it. Not reported: a section another shipped binary reads
 (`Orkeon:Host` in a file `orkeon run` reads), a root section Orkeon does not know, and a section
@@ -1660,10 +1660,11 @@ not do is listed in [Known limitations](limitations.md).
 
 MCP client connections (`MCP:Servers:<name>`) and the switch `MCP:Enabled`. No setting starts an
 MCP server: a key the section does not carry is refused at startup like any unknown key.
-Read by `RunnerHost` (`orkeon run`, `orkeon-host`, `orkeon mcp serve`) when `MCP:Servers` declares
+Read by `RunnerHost` (`orkeon run`, `orkeon-host`, `orkeon mcp serve`) and by `orkeon-repl`
+(`RunnerHost.RegisterMcp`) when `MCP:Servers` declares
 at least one server and `MCP:Enabled` is not `false` — the servers are connected before the crew
-loads, by `orkeon-host` once at startup, before its first message, and by
-`orkeon mcp serve` before it serves; library hosts call `AddOrkeonMcp(configuration)` or the
+loads, by `orkeon-host` once at startup, before its first message, by `orkeon-repl` before it
+loads its scripted commands, and by `orkeon mcp serve` before it serves; library hosts call `AddOrkeonMcp(configuration)` or the
 `AddOrkeonInfrastructure(configuration)` overload — see
 [MCP integration](../architecture/mcp.md).
 
@@ -1698,7 +1699,7 @@ loads, by `orkeon-host` once at startup, before its first message, and by
 
 ### `MCP:Server`
 
-How the server of `orkeon mcp serve` introduces itself (it exposes tools only). Read by
+How the server of `orkeon mcp serve` introduces itself (tools, plus the `/output` resources under `--expose-output` and the prompts and crew tools of `--crew`). Read by
 `AddOrkeonMcpServer`, which `orkeon mcp serve` calls.
 
 <!-- settings:MCP:Server -->
@@ -1712,7 +1713,7 @@ How the server of `orkeon mcp serve` introduces itself (it exposes tools only). 
 | `MaxResourceBytes` | integer | `1048576` | The largest file `resources/read` returns, in bytes; a bigger one is refused. |
 | `Name` | string | `"Orkeon"` | Server name advertised during MCP initialization. |
 | `ResourcesPageSize` | integer | `100` | How many resources one `resources/list` page carries. At least 1. |
-| `Version` | string | `"1.0.0"` | Server version advertised during MCP initialization. |
+| `Version` | string | `""` | Server version advertised during MCP initialization. Empty (the default): the version of the running Orkeon release. |
 <!-- /settings -->
 
 ### `RaggableTree`
@@ -2144,7 +2145,7 @@ listener is `Orkeon:Host:A2A`, [above](#orkeonhost); see
 |---|---|---|---|
 | `AgentDescription` | string | `"Orkeon A2A Agent"` | The agent description advertised in the agent card. |
 | `AgentName` | string | `"Orkeon"` | The agent name advertised in the agent card. |
-| `AgentVersion` | string | `"1.0.0"` | The agent version advertised in the agent card. |
+| `AgentVersion` | string | `""` | The agent version advertised in the agent card. Empty (the default): the version of the running Orkeon release. |
 | `ContactUrl` | uri | — | Contact URL for the provider field in the agent card. |
 | `EnableServer` | boolean | `false` | Whether to run an A2A server exposing local agents for remote task submission: registers `IA2AServer` and a hosted service that starts it with the host. |
 | `Host` | string | `"http://localhost"` | The host/prefix for the A2A HTTP server (e.g., "http://localhost"). |
@@ -2306,7 +2307,8 @@ variable itself. The list is the one the code carries — a test holds this tabl
 host's variables — `PATH`, `HOME`, the locale, the temporary folders, `DOTNET_ROOT`,
 `NUGET_PACKAGES`, the four that give a commit its identity (`GIT_AUTHOR_NAME`,
 `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`: a name and an address, which a
-container has no `~/.gitconfig` to read from) and what Windows needs to start a program —, plus the three that name a socket
+container has no `~/.gitconfig` to read from, nor a confined session, whose `HOME` is a folder of its own under
+bubblewrap, Seatbelt or AppContainer) and what Windows needs to start a program —, plus the three that name a socket
 of the operator's session: `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` (the keyring a credential
 helper such as `gh auth git-credential` reads) and `SSH_AUTH_SOCK` (the ssh agent). They hold an
 address, not a secret, but the bus lets a command leave a sandbox and read the keyring: a confined

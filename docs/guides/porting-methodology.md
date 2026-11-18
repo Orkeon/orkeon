@@ -26,7 +26,7 @@ Orkeon supports two approaches for defining a crew. The choice impacts the porti
 | Iterative prompt engineering | Fast — edit descriptions/backstories | Slower |
 | Custom tools with dependencies | Requires separate DI registration | Direct instantiation possible |
 | Sharing configurations | Portable YAML file | C# code to integrate |
-| Reference examples | 100+ YAML examples in `examples/` (see the generated `examples/INDEX.md`) | Builders documented in the docs |
+| Reference examples | Over 100 runnable examples in `examples/`, most of them YAML (see the generated `examples/INDEX.md`) | Builders documented in the docs |
 
 **Recommendation**: favor the **YAML-first** approach for porting. YAML lets you iterate quickly on the prompts (descriptions, backstories) without touching the code. Custom tools remain in C# and are registered via DI.
 

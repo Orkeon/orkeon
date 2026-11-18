@@ -1,6 +1,6 @@
 # 82. Curation de Newsletter Scraping
 
-> Scraping parallèle de multiples sources puis pipeline de filtrage et mise en forme. La déduplication sémantique Redis élimine les contenus similaires.
+> Scraping parallèle de multiples sources puis pipeline de filtrage et mise en forme. La déduplication sémantique par la mémoire de la crew élimine les contenus similaires.
 
 ## Quality
 
@@ -11,7 +11,7 @@
 - **Process**: `parallel`
 - **Agents**: 5 — News Collector, Blog Collector, Paper Collector, Relevance Curator, Format Editor
 - **Tools**: `web_scrape`, `http_api`, `pdf_reader`, `json_tool`, `file_write`
-- **Memory**: `Redis`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: Batch execution, vector search (deduplication), MemoryEvents, TaskPriority
 - **Runner**: `standard`
 

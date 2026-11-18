@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 4 — Observateur Patterns (Worker), Creatif Hypotheses (Worker), Critique (Worker), Planificateur Experimental (Worker)
 - **Tools**: `csv_reader`, `http_api`, `json_tool`, `file_write`
-- **Memory**: `Redis`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: sequential hand-off between specialists, a dedicated critique stage, experimental planning
 - **Runner**: `standard`
 

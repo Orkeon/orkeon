@@ -11,8 +11,8 @@
 - **Process**: `hierarchical`
 - **Agents**: 5 -- Care Coordinator (manager), Treating Physician, Specialist, Physiotherapist, Nurse
 - **Tools**: `json_tool`, `http_api`, `file_write`
-- **Memory**: `EncryptedRedis` (shared care plan)
-- **Key features**: Communication Broadcast, EncryptedRedisMemoryProvider, CrewHooks (OnPlanUpdated), AgentStatus
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: Communication Broadcast, CrewHooks (OnPlanUpdated), AgentStatus
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -39,4 +39,4 @@ orkeon run examples/04-health-wellness/51-care-coordination/config.yaml \
 
 - Guaranteed Broadcast protocol ensuring all care team members receive every update
 - Hierarchical coordination with centralized care plan management
-- Multi-disciplinary team collaboration with encrypted shared memory
+- Multi-disciplinary team collaboration with shared crew memory

@@ -388,7 +388,7 @@ type/extension de source — texte, CSV, HTML, PDF, `WebPageLoader` pour les URL
 | `CsvDocumentLoader` | `.csv` | `file` (ou aucun) |
 | `HtmlDocumentLoader` | `.html`, `.htm` | `file` (ou aucun) |
 | `PdfDocumentLoader` | `.pdf` | `file` (ou aucun) |
-| `WebPageLoader` | URLs `http://` / `https://` | `url` / `web` (ou aucun) |
+| `WebPageLoader` | URLs `http://` / `https://` | `url` (ou aucun) |
 | `InlineTextLoader` | contenu inline (enregistré par `AddOrkeonEphemeralSearch`) | `text` |
 
 Les loaders de fichiers lisent via le VFS (chemins virtuels uniquement).

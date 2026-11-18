@@ -1,8 +1,10 @@
 # Orkeon.Compliance.Vfs
 
-A Roslyn analyzer that refuses direct `System.IO` in your own code — the guard rail of
-[Orkeon](https://github.com/Orkeon/orkeon), usable in any C# project. Seven diagnostics
-(`ORKVFS001`–`ORKVFS007`), errors by default, no runtime dependency, nothing to configure.
+A Roslyn analyzer that refuses direct `System.IO` — and direct `System.Console` — in your own
+code: the guard rail of [Orkeon](https://github.com/Orkeon/orkeon), usable in any C# project.
+Eight diagnostics (`ORKVFS001`–`ORKVFS007` for direct `System.IO`, `ORKCON001` for direct
+`System.Console`), errors by default, no runtime dependency. A console sink of your own is marked
+`[SuppressConsoleCompliance]` (see below).
 
 Point of it: an AI coding agent — or a teammate in a hurry — writes `File.WriteAllText`
 where the design said "through the file-system abstraction". With this analyzer in the
@@ -32,6 +34,7 @@ Nothing else from Orkeon is required: the package depends on no Orkeon assembly.
 | `ORKVFS005` | `new FileSystemWatcher(...)` |
 | `ORKVFS006` | `new StreamReader` / `new StreamWriter` on a path string |
 | `ORKVFS007` | a nullable `IFileSystemService?` field or parameter (only meaningful when you use Orkeon's abstraction) |
+| `ORKCON001` | any use of a `System.Console` member — an application that writes to the console needs the attribute below, or the severity set lower |
 
 ## What is exempt, and how to opt out
 
@@ -53,7 +56,9 @@ Nothing else from Orkeon is required: the package depends on no Orkeon assembly.
   ```
 
   The `reason` is mandatory by design: a bare exemption is the thing this analyzer exists
-  to prevent.
+  to prevent. `ORKCON001` is opted out the same way, with an attribute named exactly
+  `Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute` (one string `reason`) on the
+  console adapter or sink.
 - **Severity.** Standard Roslyn configuration — `.editorconfig`:
 
   ```ini

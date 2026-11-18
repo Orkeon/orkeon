@@ -3,7 +3,7 @@
 > A 3-agent hierarchical crew (navigator, analyst, flow_tracer) wired to the
 > RaggableTree analysis tools, declared entirely in `crew.yaml` and run by the
 > stock `orkeon` CLI — no C# host needed. The runner registers the RaggableTree
-> subsystem and its 15 agent tools by default.
+> subsystem and its agent tools by default.
 
 ## What it does
 
@@ -22,7 +22,7 @@ needs no API key; running the crew does.
 ## Run it
 
 ```bash
-# Validate the crew offline (no LLM call): 3 agents, 12 tools resolved
+# Validate the crew offline (no LLM call): 3 agents, 13 tools resolved
 orkeon run examples/raggable-tree/crew-yaml/crew.yaml --mount .:/src:ro --validate
 
 # Run it against the codebase of your choice

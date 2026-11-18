@@ -11,7 +11,7 @@
 - **Process**: `Sequential`
 - **Agents**: 4 — Documentaliste (Worker), Formateur (Worker), Matcher Mentor (Worker), Planificateur (Worker)
 - **Tools**: `file_write`, `http_api`, `json_tool`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: `CrewConfiguration` full YAML, semantic selection by embeddings for mentor matching, `AgentConfiguration`
 - **Runner**: `standard`
 

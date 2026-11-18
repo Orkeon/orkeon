@@ -1,18 +1,19 @@
 # 37. Conformité KYC/AML Triple Sécurité
 
-> Chaque étape est auditée NIST, chaque donnée chiffrée, chaque prompt protégé contre l'injection. Le process hiérarchique strict est piloté par un Compliance Manager.
+> Chaque étape est auditée NIST, chaque prompt protégé contre l'injection. Le process hiérarchique strict est piloté par un Compliance Manager.
 
 ## Quality
 
-:lock: Securite -- Triple securite: chiffrement + audit NIST + anti-injection de prompts
+:lock: Securite -- Double securite: audit NIST + anti-injection de prompts
 
 ## Architecture
 
 - **Process**: `hierarchical`
 - **Agents**: 4 -- Compliance Manager (manager), Identity Verifier, Sanctions Screener, Country Risk Analyst
-- **Tools**: `http_api`, `pdf_reader`, `json_tool`
-- **Memory**: `EncryptedRedis`
-- **Key features**: EncryptedRedisMemoryProvider, INistComplianceReporter, AuditEventTypes, LlmCallAudit, PromptSecurityTypes (anti-injection)
+- **Tools**: `http_api`, `pdf_reader`, `json_tool`,
+  `compliance_check`, `regulatory_reporting`, `audit_trail`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: INistComplianceReporter, AuditEventTypes, LlmCallAudit, PromptSecurityTypes (anti-injection)
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites
@@ -38,5 +39,5 @@ orkeon run examples/03-finance-trading/37-kyc-aml-compliance/main.ork.ts \
 ## What this example demonstrates
 
 - Hierarchical compliance workflow with strict manager oversight
-- Triple security layer: encrypted memory, NIST audit trail, and prompt injection protection
+- Two security layers: NIST audit trail and prompt injection protection
 - Sanctions screening against multiple global watchlists (OFAC, EU, UN, PEP)

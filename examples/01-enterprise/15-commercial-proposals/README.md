@@ -11,7 +11,7 @@
 - **Process**: `Sequential`
 - **Agents**: 5 — Analyste Besoins (Worker), Architecte Solution (Worker), Redacteur Commercial (Worker), Reviewer de Proposition (Worker), Approbateur Final (Human)
 - **Tools**: `pdf_reader`, `http_api`, `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `HumanInputContext` (type: confirmation), YAML templates, output validation JSON schema per section, `TaskPriority`
 - **Runner**: `standard`
 

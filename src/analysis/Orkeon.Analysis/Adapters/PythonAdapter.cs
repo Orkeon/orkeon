@@ -228,6 +228,9 @@ public sealed class PythonAdapter : ILanguageAdapter
         return signature;
     }
 
+    // DependencyGraphBuilder does not call this for Python: DependencyGraphBuilder.Python.cs resolves an
+    // import against the files of the index (#406). It stays for the ILanguageAdapter contract: a relative
+    // import gives the path of its module, any absolute one ext::pypi::<first segment>.
     public string? ResolveImportPath(string importPath, string currentVirtualFilePath)
     {
         ArgumentException.ThrowIfNullOrEmpty(importPath);
@@ -252,7 +255,7 @@ public sealed class PythonAdapter : ILanguageAdapter
 
         // Virtual paths always use '/'; Path.GetDirectoryName / Path.Combine /
         // Path.DirectorySeparatorChar normalize to '\' on Windows and would corrupt
-        // the key used by DependencyGraphBuilder.ResolveInIndex.
+        // a virtual path.
         var normalizedCurrent = currentVirtualFilePath.Replace('\\', '/');
         var lastSlash = normalizedCurrent.LastIndexOf('/');
         var dir = lastSlash > 0 ? normalizedCurrent[..lastSlash] : string.Empty;
@@ -264,8 +267,7 @@ public sealed class PythonAdapter : ILanguageAdapter
 
         var relPath = remainder.Replace('.', '/');
         var basePath = CombineRelativePath(dir, relPath);
-        // Return the module path without disk probing — DependencyGraphBuilder.ResolveInIndex
-        // resolves against the in-memory VFS index (same approach as TypeScriptAdapter).
+        // Return the module path without disk probing: the caller looks it up in its own index.
         return NormalizePath(basePath + ".py");
     }
 

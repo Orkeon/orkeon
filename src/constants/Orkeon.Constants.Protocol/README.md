@@ -28,6 +28,8 @@ This project is not distributed as a NuGet package of its own — its assembly s
 | `RunEventErrorCodes` | The `code` of the `error` event a stopped run ends on: `crew_failed` or `crew_cancelled`. |
 | `UseCaseEventKinds` | The event kinds `orkeon usecases` exchanges with the process driving it — the search session's query and answer, the catalogue, a sheet, an export — plus `All`. |
 | `EmailEventKinds` | The event kinds `orkeon email login --events jsonl` writes for the process driving it — the device code, the authorization address, a pasted redirect that was rejected, the completion, the refusal — plus `All`. |
+| `DriveEventKinds` | The event kinds `orkeon drive login` and `orkeon drive check` write with `--events jsonl` for the process driving them, plus `All`. |
+| `RunFinishedStatuses` | The `status` values of the `run.finished` event beyond success and failure (`waiting_for_input`). |
 
 ## License
 

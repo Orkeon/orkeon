@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 4 — Source Analyzer, Key Element Extractor, Target Media Adapter, Format Specialist
 - **Tools**: `file_read`, `pdf_reader`, `json_tool`, `file_write`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: ComponentBase<TReq, TRes> (typed transformation), IDocumentLoader (multi-format), ITextChunker, output validation format cible
 - **Runner**: `standard`
 

@@ -190,8 +190,8 @@ public sealed partial class DependencyGraphBuilder
 
     /// <summary>
     /// The files the module's import edges reach: the edges <see cref="CollectImports"/> just added, from
-    /// <paramref name="start"/> on (a relative import, a Go or Rust module, a C# <c>using</c> of a namespace
-    /// reaches the files declaring the types the file names).
+    /// <paramref name="start"/> on (a relative import, a Python import of a file of the tree, a Go or Rust
+    /// module, a C# <c>using</c> of a namespace reaches the files declaring the types the file names).
     /// </summary>
     private static HashSet<string> ImportedFiles(
         List<RaggableEdge> edges, int start, RaggableNode moduleNode, Dictionary<string, RaggableNode> index)

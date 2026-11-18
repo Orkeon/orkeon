@@ -11,7 +11,7 @@
 - **Process**: `Parallel`
 - **Agents**: 4 — Collecteur API (Worker), Analyste Quantitatif (Worker), Compliance Officer (Worker), Redacteur Final (Worker)
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: `Redis`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `ICheckpointManager` + `IResumeEngine` for failure recovery, batch tool execution, `CrewHooks` (OnTaskCompleted)
 - **Runner**: `standard`
 
@@ -39,4 +39,4 @@ orkeon run examples/01-enterprise/04-financial-reports/config.yaml \
 
 - Parallel-then-sequential convergence pattern for financial data processing
 - Checkpoint-based recovery enabling resumption after API timeouts or crashes
-- Multi-agent parallel execution with shared Redis memory for intermediate state
+- Multi-agent parallel execution with shared crew memory for intermediate state

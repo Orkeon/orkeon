@@ -143,7 +143,7 @@ lisent une seule déclaration — nomme les racines que les runners livrés se r
 (le dossier de définition du crew), `/script` (le dossier d'un point d'entrée scripté),
 `/llm-logs`, `/llm-mock` et `/llm-cassette` (le fichier de `--llm-mock` et la cassette enregistrée ou
 rejouée), `/sandbox` (où les bacs à sable de code déposent ce qu'ils exécutent) et
-`/credentials` (les jetons OAuth des comptes e-mail, refusée à un montage utilisateur par toutes
+`/credentials` (les jetons OAuth des comptes e-mail et drive, refusée à un montage utilisateur par toutes
 les commandes).
 `RunnerVirtualRoots.All` est l'ensemble contre lequel un appelant refuse un `--mount` utilisateur ;
 demander l'ensemble plutôt que comparer les racines une à une est délibéré, car l'oubli de
@@ -164,7 +164,7 @@ Il compose `Host.CreateDefaultBuilder()` avec :
   l'`appsettings.json` et l'`appsettings.{Environment}.json` de la racine de contenu — le
   répertoire courant —, ni les secrets utilisateur. Puis une couche en mémoire qui
   porte les décisions de montage : les valeurs `--mount` placées par racine virtuelle, les
-  montages internes, le montage `/credentials` des jetons OAuth e-mail, et les entrées
+  montages internes, le montage `/credentials` des jetons OAuth e-mail et drive, et les entrées
   `PathSecurity:AdditionalAllowedDirectories` qui laissent le validateur de chemins atteindre les
   dossiers de ces montages (un `--mount` hors du dossier de travail seulement avec
   `AllowExternalMounts`).
@@ -344,7 +344,7 @@ rien n'est exporté.
 `Orkeon.Task`, `Orkeon.Llm`, `Orkeon.Tool`, `Orkeon.Memory`, `Orkeon.EventHub` et `Orkeon.Scripting` plus
 l'instrumentation HttpClient ; les métriques du meter `Orkeon` plus l'instrumentation runtime et
 HttpClient ; et, dès que l'export OTLP est actif, les journaux structurés (message formaté et scopes
-compris) vers le même point de terminaison. La ressource nomme le service `Orkeon`. Les noms de spans
+compris) vers le même point de terminaison. La ressource nomme le service `Orkeon` et lui donne la version de la release en cours d'exécution (`service.version`), que les sources d'activité et le compteur rapportent aussi. Les noms de spans
 et de métriques suivent les conventions GenAI d'OpenTelemetry — voir
 [Sous-systèmes opt-in](opt-in-subsystems.md).
 

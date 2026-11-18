@@ -302,15 +302,16 @@ Un runner monte pour lui-même quelques racines en montages **internes**
 (`Orkeon:FileSystem:InternalMounts`, `MountVisibility.Internal`) : `/llm-logs` (les fichiers
 d'échanges de `--llm-log`), `/sandbox` (où les sandboxes de code déposent ce qu'elles exécutent),
 `/state` (le magasin de checkpoints), `/runs` (l'historique des runs), `/llm-mock` et
-`/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) et `/credentials` (les jetons OAuth des comptes e-mail — montée seulement quand un compte OAuth
-est déclaré). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
+`/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) et `/credentials` (les jetons OAuth des comptes e-mail et drive — montée seulement quand un compte OAuth
+de l'une des deux familles est déclaré). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
 un chemin inexistant : aucun outil destiné aux agents ne peut l'atteindre ni même le nommer
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les quelques composants qui
 doivent y écrire demandent `PrivilegedFileSystemAccess` à la DI, par son nom : l'enregistreur des
-échanges, les sandboxes de code et le magasin de jetons e-mail (`FileSystemEmailTokenStore`, que
-l'hôte des runners enregistre sur `/credentials/email`). Ils passent toujours par le VFS. Le seul
+échanges, les sandboxes de code et les magasins de jetons (`FileSystemEmailTokenStore` et
+`FileSystemDriveTokenStore`, que l'hôte des runners enregistre sur `/credentials/email` et
+`/credentials/drive`). Ils passent toujours par le VFS. Le seul
 `System.IO` brut sur ce chemin est la création, par le runner, du répertoire physique
-`credentials` et de son sous-répertoire `email` (réservés au propriétaire sous Unix) avant
+`credentials` et de ses sous-répertoires `email` et `drive` (réservés au propriétaire sous Unix) avant
 qu'aucun montage n'existe — du bootstrap `Hosting/Runner*`, une portée `EXCEPTION-BOOTSTRAP` déjà
 ratifiée, pas une nouvelle catégorie. `orkeon run` refuse un montage utilisateur qui revendique
 l'une de ces racines (`EnsureReservedRootsAreFree`, `/state` et `/runs` compris) ; chaque autre

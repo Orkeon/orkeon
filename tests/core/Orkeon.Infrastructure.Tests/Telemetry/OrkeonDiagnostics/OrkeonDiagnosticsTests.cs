@@ -2,46 +2,59 @@ namespace Orkeon.Infrastructure.Tests.Telemetry;
 
 public class OrkeonDiagnosticsTests
 {
+    /// <summary>The version of the running release (#418): what every source reports, where a fixed 1.0.0 used to be.</summary>
+    private static string Release
+    {
+        get
+        {
+            var informational = System.Reflection.CustomAttributeExtensions
+                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(
+                    typeof(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics).Assembly)!.InformationalVersion;
+            var plus = informational.IndexOf('+', StringComparison.Ordinal);
+            return plus < 0 ? informational : informational[..plus];
+        }
+    }
+
     [Fact]
     public void ShouldHaveCorrectName_WhenAccessingCrewSource()
     {
         Assert.Equal("Orkeon.Crew", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.CrewSource.Name);
-        Assert.Equal("1.0.0", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.CrewSource.Version);
+        Assert.Equal(Release, global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.CrewSource.Version);
     }
 
     [Fact]
     public void ShouldHaveCorrectName_WhenAccessingAgentSource()
     {
         Assert.Equal("Orkeon.Agent", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AgentSource.Name);
-        Assert.Equal("1.0.0", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AgentSource.Version);
+        Assert.Equal(Release, global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.AgentSource.Version);
     }
 
     [Fact]
     public void ShouldHaveCorrectName_WhenAccessingTaskSource()
     {
         Assert.Equal("Orkeon.Task", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.TaskSource.Name);
-        Assert.Equal("1.0.0", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.TaskSource.Version);
+        Assert.Equal(Release, global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.TaskSource.Version);
     }
 
     [Fact]
     public void ShouldHaveCorrectName_WhenAccessingLlmSource()
     {
         Assert.Equal("Orkeon.Llm", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.LlmSource.Name);
-        Assert.Equal("1.0.0", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.LlmSource.Version);
+        Assert.Equal(Release, global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.LlmSource.Version);
     }
 
     [Fact]
     public void ShouldHaveCorrectName_WhenAccessingToolSource()
     {
         Assert.Equal("Orkeon.Tool", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.ToolSource.Name);
-        Assert.Equal("1.0.0", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.ToolSource.Version);
+        Assert.Equal(Release, global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.ToolSource.Version);
     }
 
     [Fact]
     public void ShouldHaveCorrectName_WhenAccessingMemorySource()
     {
         Assert.Equal("Orkeon.Memory", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.MemorySource.Name);
-        Assert.Equal("1.0.0", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.MemorySource.Version);
+        Assert.Equal(Release, global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.MemorySource.Version);
     }
 
     [Fact]
@@ -65,7 +78,7 @@ public class OrkeonDiagnosticsTests
     }
 
     [Fact]
-    public void ShouldBe100_WhenAccessingServiceVersion()
+    public void ShouldKeepItsFrozenValue_WhenAccessingTheServiceVersionConstant()
     {
         Assert.Equal("1.0.0", global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.ServiceVersion);
     }

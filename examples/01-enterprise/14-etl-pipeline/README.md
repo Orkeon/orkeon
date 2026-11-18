@@ -10,8 +10,8 @@
 
 - **Process**: `Sequential`
 - **Agents**: 4 — Parseur Multi-Format (Worker), Nettoyeur de Donnees (Worker), Enrichisseur API (Worker), Chargeur Base de Donnees (Worker)
-- **Tools**: `pdf_reader`, `csv_reader`, `xml_parser`, `json_tool`, `http_api`, `database_query`, `file_write`
-- **Memory**: `Redis`
+- **Tools**: `pdf_reader`, `csv_reader`, `xml_parser`, `json_tool`, `http_api`, `relational_database_query`, `file_write`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `ICheckpointManager` + `IResumeEngine`, `ComponentBase<TReq, TRes>` typed pipeline, tolerant JSON converters (BoolTolerant, IntTolerant, etc.)
 - **Runner**: `standard`
 

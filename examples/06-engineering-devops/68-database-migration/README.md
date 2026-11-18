@@ -10,8 +10,8 @@
 
 - **Process**: `sequential`
 - **Agents**: 4 — Schema Cartographer, Correspondence Mapper, Script Transformer, Integrity Validator
-- **Tools**: `database_query`, `file_read`, `file_write`, `json_tool`
-- **Memory**: `SQLite`
+- **Tools**: `relational_database_query`, `file_read`, `file_write`, `json_tool`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: ICheckpointManager + IResumeEngine + IStateStore, output validation (referential integrity)
 - **Runner**: `standard`
 

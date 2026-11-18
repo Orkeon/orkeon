@@ -86,7 +86,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddOrkeonFileSystem(context.Configuration);
 
         // 4. Suites d'outils
-        // FileSystem : FileRead, FileWrite, DirectoryRead, DirectorySearch, CountPattern
+        // FileSystem : FileRead, FileWrite, EditFile, DirectoryRead, DirectorySearch, Glob, Grep, CountPattern
         services.AddOrkeonFileSystemTools();
 
         // Data : CSV, PDF, JSON, XML, DOCX, XLSX, requêtes SQL, requêtes MongoDB, etc.

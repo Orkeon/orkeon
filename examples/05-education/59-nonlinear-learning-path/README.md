@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 4 — Gap Diagnostician, Pedagogical Architect, Resource Curator, Calendar Planner
 - **Tools**: `http_api`, `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: LLM-designed conditional branches, MemoryType.Episodic, IKnowledgeSource
 - **Runner**: `standard`
 

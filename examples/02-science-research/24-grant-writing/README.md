@@ -11,7 +11,7 @@
 - **Process**: `Sequential`
 - **Agents**: 5 — Stratege Appels (Worker), Redacteur Scientifique (Worker), Gestionnaire Budget (Worker), Reviewer Global (Worker), PI Validateur (Human)
 - **Tools**: `http_api`, `file_read`, `file_write`, `csv_reader`, `json_tool`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: `CrewConfiguration` YAML, `HumanInputContext` (type: text + confirmation), output validation per section, `TaskContext` typed
 - **Runner**: `standard`
 

@@ -7,39 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-18
+
+A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It carries no
+**[breaking]** change: the three new members are overloads that take the id of the provider (#396), and the interface
+one has a default body. #413, #414 and #416 change what the MCP server and client put on the wire; that surface is
+experimental (`ORKEXP004`), outside the commitment of 1.x, and each entry below says what a client or an installation
+sees differently. #418 changes the version the telemetry and the agent card carry and the `User-Agent` of the HTTP
+tools: no public member is added or removed, two defaults change (`A2AOptions.AgentVersion` and `AgentCard.Version`
+are empty where they were `1.0.0`), and its entry says what a collector, a peer or a site sees.
+
 ### Added
 
 - `ITokenBudgetTracker.RecordUsage`, `TokenBudgetTracker.RecordUsage` and `TokenBudgetTracker.EstimateCost` each gain an
   overload that takes the id of the provider that served the call (#396). The interface member has a default body that
   forwards to the provider-less one, so a tracker written before it still compiles and ignores the provider.
 - `orkeon forge`: a folder of the team can say that its contents change from run to run (#400). `examples: true` on an
-  input folder — set by the assistant from the need, or by a client in `folders.confirmed` — makes the files found in
-  it at the fill step examples of what will come: the plan prompt presents them as such, asks for tasks made for
-  whatever the folder holds when the team runs, and tells the assistant to name none of them in a task, a goal or a
-  backstory; the large-file reading rule is then said for any large file, not for one by name, and is said even when
-  none of the examples is large. Absent, nothing changes: the plan is made for the files that are there, by their
-  names. An input folder a client confirms without the property keeps the value of the proposal; `examples: true` on
-  an output folder is a `FORGE-FOLDERS-INVALID`.
+  input folder — set by the assistant from the need, or by a client in `folders.confirmed` — makes the files found in it
+  at the fill step examples of what will come: the plan prompt presents them as such, asks for tasks made for whatever
+  the folder holds when the team runs, and tells the assistant to name none of them in a task, a goal or a backstory,
+  and the terminal marks the folder (`contents change — its files are examples`). The large-file reading rule is then
+  said for any large file, not for one by name, and a shorter one (search first, read only the ranges found) is said
+  even when none of the examples is large. Absent, the plan is made as before: for the files that are there, by their
+  names. An input folder a client confirms without the property keeps the value the proposal gave the same `path` (a
+  renamed folder says it again); `examples: true` on an output folder is refused, a `FORGE-FOLDERS-INVALID` in a
+  confirmed list and a refused `brief_submit` in the assistant's brief.
 
 ### Fixed
 
 - `shell_command` dropped the identity of a commit (#404): the command it starts receives a fixed list of the host's
-  variables, and `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME` and `GIT_COMMITTER_EMAIL` were not on
-  it. In the container image, where git has no `~/.gitconfig`, a crew allowed to commit
-  (`Orkeon:Tools:Shell:AllowInterpreters`) stopped on `Author identity unknown` whatever the caller passed with `-e`;
-  `Orkeon:Tools:Shell:Environment:Propagate` could not carry them either, its secret filter refusing `GIT_AUTHOR_*`
-  for the `AUTH` of `AUTHOR`. The four are now on the built-in list, under every confinement backend. They hold a name
-  and an address; no other `GIT_*` variable follows (`GIT_ASKPASS`, `GIT_SSH_COMMAND`, `GIT_CONFIG_GLOBAL`). The code
+  variables, and `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME` and `GIT_COMMITTER_EMAIL` were not on it.
+  Where git reads no `~/.gitconfig` - in a container, the image of this release among them, or in a session confined by
+  bubblewrap, Seatbelt or AppContainer, whose `HOME` is a folder of its own - a crew allowed to commit
+  (`Orkeon:Tools:Shell:AllowInterpreters`) stopped on `Author identity unknown` whatever identity the caller set;
+  `Orkeon:Tools:Shell:Environment:Propagate` could not carry them either, its secret filter refusing `GIT_AUTHOR_*` for
+  the `AUTH` of `AUTHOR`. The four are now on the built-in list, under every confinement backend. They hold a name and
+  an address; no other `GIT_*` variable follows (`GIT_ASKPASS`, `GIT_SSH_COMMAND`, `GIT_CONFIG_GLOBAL`). The code
   sandbox is unchanged.
-- The code index recorded no import between the Python files of a project (#406): the module of an import is a
-  dotted name, which the index did not read, so `dependency_graph` returned the modules with no edge and
-  `package_summary` no dependency. A Python import is now read from its syntax and resolved against the files of the
-  tree: `a/b.py` or `a/b/__init__.py` under the folders Python would search - for a script its own folder then each
-  folder above it, for a file of a package the folder above its topmost package first; a name of `from a.b import c`
-  that is a submodule reaches its file, the others reach `a.b`; `import a.b` where `b` is an attribute reaches `a.py`;
-  a relative import starts from the importing file's package. An absolute import that no folder holds still goes to
-  `ext::pypi::<first segment>`. An incremental refresh re-resolves the unchanged importers of a Python
-  file that joins the tree. An index built before this change holds no such edge until it is rebuilt.
+- The code index recorded no import of a Python file (#406): the module of an import is a dotted name, which the index
+  did not read, so `dependency_graph` returned the modules with no edge and `package_summary` no dependency. A Python
+  import is now read from its syntax and resolved against the files of the tree: `a/b.py` or `a/b/__init__.py` under the
+  folders Python would search - for a script its own folder then each folder above it, for a file of a package the
+  folder above its topmost package first; a name of `from a.b import c` that is a submodule reaches its file, the others
+  reach `a.b`; `import a.b` where `b` is an attribute reaches `a.py`; a relative import starts from the importing file's
+  package. An absolute import that no folder holds goes to `ext::pypi::<first segment>`. A base class named by its short
+  name, when several files declare it, now also resolves to the one in a file a Python import reaches. An incremental
+  refresh re-resolves the unchanged importers of a Python file that joins the tree when their import had gone to
+  `ext::pypi::` with a name of the new path below the indexed root, or to the `__init__.py` of a package above it; any
+  other importer keeps its edges until it changes or the index is rebuilt. An index built before this change holds no
+  such edge until it is rebuilt.
 - `orkeon mcp serve` wrote every member it did not carry as `null` (#405): a response held `"error": null` beside its
   result, or `"result": null` beside its error, where JSON-RPC allows one of the two. The client of the MCP TypeScript
   SDK - the one Claude Code and most MCP hosts use - refuses such a message, so the answer to `initialize` was dropped
@@ -57,14 +73,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   git command (`rev-parse`, `commit`) still needs `Orkeon:Tools:Shell:AllowInterpreters`, which the image does not
   set. The release workflow runs the image's git on a mounted repository, as a user that does not own it, before it
   pushes the image.
-- `orkeon mcp serve` (`McpServer`) handed an array or an object of a `tools/call` to the tool as its raw JSON text (#402).
-  A tool that validates its parameters refused the call (`Parameter 'edge_kinds' has invalid type. Expected: array`):
-  26 of the built-in tools have an array parameter, and 11 a required one (`count_pattern`, `docx_writer`,
-  `edge_list`, `edit_batch`, `email_delete`, `email_mark`, `email_move`, `local_embed_text`, `rag_ingest`,
-  `sub_graph`, `xlsx_writer`), so they could not be called from an MCP client; a tool that does not validate read the
-  text as one value. The arguments now reach the tool as an agent's tool call carries them: an array is a list, an
-  object a dictionary, a whole number a `long` (it was a `double`), any other number a `double`, and `null` is `null`
-  (it was the string `null`). `tools/list` publishes the `items` of an array parameter (their type, and their
+- `orkeon mcp serve` (`McpServer`) handed an array or an object of a `tools/call` to the tool as its raw JSON text
+  (#402). A tool that validates its parameters refused the call
+  (`Parameter 'edge_kinds' has invalid type. Expected: array`), and one that does not read the text as one value
+  (`rag_ingest` took its `sources` for a single path): 26 of the tools the server serves have an array parameter, and 11
+  a required one (`count_pattern`, `docx_writer`, `edge_list`, `edit_batch`, `email_delete`, `email_mark`, `email_move`,
+  `local_embed_text`, `rag_ingest`, `sub_graph`, `xlsx_writer`), so they could not be called from an MCP client. The
+  arguments now reach the tool as typed values: an array is a list, an object a dictionary, a number written without a
+  fraction or an exponent that fits a `long` is a `long` (it was a `double`), any other number a `double`, and `null` is
+  `null` (it was the string `null`). `tools/list` publishes the `items` of an array parameter (their type, and their
   properties for an array of objects), as the schema an agent's model reads does. `rag_ingest` answers a glob rooted
   outside every mount with a tool error that names the path and the mounts, where the call ended in the JSON-RPC error
   `-32603`, and its `sources` parameter says it holds strings.
@@ -74,6 +91,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `MaxCostPerCrew` came from its own approximate rates instead, and an Ollama model was counted at those rates, not
   at 0. A host that passes the provider's id (`ollama`, `deepseek`, `zai`...) to the new `RecordUsage` overload now gets
   the row the pricing registry picks for that provider. A call to the provider-less overload is priced as before.
+- `orkeon mcp serve` answered a line that is no valid request with `-32700`, `-32601`, a success or nothing (#414).
+  `-32700` is now kept for text that is not JSON, and `-32600 Invalid Request` answers a value that is no object (a
+  scalar, `null`, an array: batching is not spoken, so a batch gets one answer for the whole line), a `jsonrpc` that is
+  absent or not `"2.0"`, a `method` that is absent, empty or no string, an `id` that is `null` or
+  neither a string nor an integer, and a `params` that is neither an object nor an array. A response (a `result` or an
+  `error` with no `method`) is dropped, as JSON-RPC asks: it used to be answered `-32601`. The answer carries the `id` when it could be read,
+  `null` otherwise. **A message that carries an `id` beside a `notifications/*` method is now answered** (`-32600`,
+  with its `id`): it used to be taken for a notification, obeyed and left without an answer. A C# host that calls
+  `McpServer.ProcessRequestAsync` gets the same answers.
+- `orkeon mcp serve` let bad `tools/call` parameters through (#413). `arguments` that were present and no object were
+  replaced by none, and the tool ran: they are refused with `-32602`, for a registry tool, a `run_crew_*` tool and
+  `prompts/get` alike. A `params` that is an array or a `name` that is no string answered `-32603 Internal error`: it
+  answers `-32602`. A number beyond the range of a `double` (`1e400`) failed the call with the .NET serializer's own
+  message: the call now answers `isError: true` with `Argument 'x' is not a finite number.` (`x[0]`, `x.y` when
+  nested, `["a.b"]` for a name that holds a dot or a bracket), and the tool is not called.
+- One tool of a remote MCP server could take every tool of that server away (#417). The MCP client threw on a
+  parameter whose `type` is an array (`["string", "null"]`, a nullable parameter), on an `enum` of numbers or booleans,
+  and on a `required` entry or a `description` that is no string; the connection failed with a .NET message that named
+  neither the tool nor the property. A `type` array is now read as its one member that is not `"null"`, every scalar
+  `enum` value is kept, and a tool that cannot be registered - a `null` entry of the list, a tool with no name, an
+  `inputSchema` that still cannot be read, a `name`, a `description` or `annotations` of the wrong JSON type - is set
+  aside on its own, with a warning that names the server and the tool, written once for that entry: `tools/list` is
+  read tool by tool. A tool that becomes unreadable at a `tools/list_changed` leaves the registry.
+- The MCP client kept too little of a remote tool's parameter (#415): the `items` of an array were dropped, so an
+  agent's model saw a bare `array`, and so were the `format` and the `additionalProperties` of a dictionary. They are
+  kept, with the properties of an array of objects. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was
+  read as a `string`: it now has no type, and the model may give any JSON value. A `default` is kept as the value it
+  is: a whole number stays whole (it was read as a `double`), an array or an object is no longer its JSON text, and
+  `"default": null` is no default (it was the text `null`). A number no `double` holds (`1e400`) is dropped from an
+  `enum` or a `default`, and items that declare `properties` and no `type` are read as objects.
+  [The limitations](docs/reference/limitations.md) name what a remote parameter still loses.
+- The MCP server and the MCP client introduced themselves as version `1.0.0`, whatever the release (#416), in the
+  legacy handshake (`serverInfo`, `clientInfo`) and in the `_meta` of the modern era. Both announce the version of the
+  release they run, the one `orkeon --version` prints. `MCP:Server:Version` is empty by default and still wins when it
+  is set. **An installation that copied `"Version": "1.0.0"` from `appsettings.sample.json` keeps announcing `1.0.0`:
+  remove `MCP:Server:Version` or leave it empty.**
+- Outside MCP too, Orkeon announced a fixed `1.0.0` whatever the release (#418). The OpenTelemetry resource
+  (`service.version`), the activity sources - `Orkeon.Scripting`, which reported none, included - and the meter, and
+  the agent card of the A2A server now carry the version of the release that runs, the one `orkeon --version` prints. `A2A:AgentVersion` is empty by default and still wins
+  when it is set; **an installation that copied `"AgentVersion": "1.0.0"` from `appsettings.sample.json` keeps
+  announcing `1.0.0`: remove the key or leave it empty.** **The HTTP tools send `User-Agent: Orkeon/<version>
+  (+https://github.com/Orkeon/orkeon)`** where they sent `Orkeon/1.0`: a site that filters on the exact former string
+  sees the change at every release. The public constants `OrkeonDiagnostics.ServiceVersion`,
+  `OrkeonActivitySources.Version`, `PlatformDefaults.Version` and `HttpDefaults.DefaultUserAgent` keep their value for
+  the callers that compiled them in; Orkeon no longer reads them (`DefaultUserAgent` is the fallback when a build's
+  version is no valid product token). `GitHubTool` sent a bare `User-Agent: Orkeon`: it sends the same value as the
+  other HTTP tools. An agent card read from a peer that names no `version` has an empty `AgentCard.Version`, where it
+  read `1.0.0`.
+
+### Documentation
+
+- The campaign of the drive tools against real accounts (DRIVE-07) is closed (#397, #399): its recorded pass ran on one
+  personal Google account and one personal Microsoft account; a work or school OneDrive account was not run, as
+  [the limitations](docs/reference/limitations.md) say.
 
 ## [1.2.0] - 2026-11-16
 
@@ -12436,7 +12507,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Orkeon/orkeon/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Orkeon/orkeon/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.7...v1.0.0

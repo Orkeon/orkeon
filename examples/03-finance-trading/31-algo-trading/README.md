@@ -1,17 +1,20 @@
 # 31. Trading Algorithmique Multi-Stratégies
 
-> Showcase complète du framework: 8 agents, 40+ outils spécialisés, processus hiérarchique complet. Le CIO coordonne analyse, risque, exécution et compliance en temps réel.
+> Showcase complète du framework: 8 agents, 17 outils (5 intégrés, 12 spécialisés), processus hiérarchique complet. Le CIO coordonne analyse, risque, exécution et compliance en temps réel.
 
 ## Quality
 
-:muscle: Robustesse -- Showcase maximale: 40+ outils types, validation a chaque etape
+:muscle: Robustesse -- Showcase maximale: 17 outils types, validation a chaque etape
 
 ## Architecture
 
 - **Process**: `hierarchical`
 - **Agents**: 8 -- CIO (manager), Data Orchestrator, Technical Analyst, Quant Forecaster, Risk Officer, Portfolio Manager, Trader, Compliance Officer
-- **Tools**: `http_api`, `json_tool`, `csv_reader`, `code_interpreter`, `database_query`, `file_write`
-- **Memory**: `Redis` (real-time) + `SQLite` (historical)
+- **Tools**: `http_api`, `json_tool`, `csv_reader`, `relational_database_query`, `file_write`,
+  `technical_indicators`, `market_regime_classification`, `arima_prediction`, `ensemble_prediction`,
+  `backtesting`, `var_calculation`, `cvar_calculation`, `mean_variance_optimization`,
+  `portfolio_rebalancing`, `twap_execution`, `vwap_execution`, `smart_order_routing`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: Full delegation, CrewHooks, LlmRateLimiter, EvaluationSuite, streaming
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 

@@ -11,7 +11,7 @@
 - **Process**: `parallel`
 - **Agents**: 4 — Text Transcriber, Language Simplifier, Audio Describer, Screen Reader Formatter
 - **Tools**: `file_read`, `file_write`, `json_tool`, `xml_parser`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: Batch execution parallel, output validation per format, IDocumentLoader (varied formats), ITextChunker
 - **Runner**: `standard`
 

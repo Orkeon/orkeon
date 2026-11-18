@@ -4,14 +4,15 @@
 
 ## Quality
 
-:lock: Securite -- Validation humaine conditionnelle, conformite NIST, chiffrement
+:lock: Securite -- Validation humaine conditionnelle, conformite NIST
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 5 -- Credit Data Collector, Credit Scorer, Risk Analyst, Recommender, Human Decider (conditional)
-- **Tools**: `http_api`, `csv_reader`, `json_tool`, `database_query`, `file_write`
-- **Memory**: `EncryptedSQLite`
+- **Tools**: `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write`,
+  `fundamental_data`, `factor_exposure`, `var_calculation`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: HumanInputContext (conditional: if score > threshold), INistComplianceReporter, LlmJudgeEvaluator, AuditEventTypes
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
@@ -39,4 +40,4 @@ orkeon run examples/03-finance-trading/33-credit-scoring/main.ork.ts \
 
 - Sequential credit evaluation pipeline with conditional human-in-the-loop
 - Multiple scoring models with confidence intervals and risk factor analysis
-- NIST-compliant audit trail with encrypted data storage
+- NIST-compliant audit trail

@@ -20,9 +20,9 @@ public sealed record AgentCard
     [JsonPropertyName("url")]
     public Uri? Url { get; init; }
 
-    /// <summary>Gets the version of the agent.</summary>
+    /// <summary>Gets the version of the agent; empty when the card names none.</summary>
     [JsonPropertyName("version")]
-    public string Version { get; init; } = "1.0.0";
+    public string Version { get; init; } = "";
 
     /// <summary>Gets optional provider information.</summary>
     [JsonPropertyName("provider")]

@@ -42,7 +42,7 @@ Deux boucles de graphe existent.
        - { id: fix,      task: fix }
        - { id: escalate, task: escalate }
      edges:
-       - { from: triage, to: fix,      when: { category: [bug] } }
+       - { from: triage, to: fix,      when: { triage.category: [bug] } }
        - { from: triage, to: escalate }          # sans `when` : le « sinon »
        - { from: fix,      to: END }
        - { from: escalate, to: END }

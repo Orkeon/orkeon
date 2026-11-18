@@ -10,8 +10,10 @@
 
 - **Process**: `sequential`
 - **Agents**: 4 -- Scenario Designer, Stress Test Modeler, Regulatory Reporter, Compliance Agent
-- **Tools**: `csv_reader`, `http_api`, `json_tool`, `database_query`, `file_write`
-- **Memory**: crew memory enabled (`.memory(true)`)
+- **Tools**: `csv_reader`, `http_api`, `json_tool`, `relational_database_query`, `file_write`,
+  `stress_testing`, `var_calculation`, `cvar_calculation`, `factor_exposure`,
+  `correlation_analysis`, `regulatory_reporting`, `audit_trail`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: INistComplianceReporter, AuditEventTypes, output validation
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 

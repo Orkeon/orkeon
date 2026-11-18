@@ -385,7 +385,7 @@ validation** → chunk (named strategy) → embed → upsert.
 | `CsvDocumentLoader` | `.csv` | `file` (or none) |
 | `HtmlDocumentLoader` | `.html`, `.htm` | `file` (or none) |
 | `PdfDocumentLoader` | `.pdf` | `file` (or none) |
-| `WebPageLoader` | `http://` / `https://` URLs | `url` / `web` (or none) |
+| `WebPageLoader` | `http://` / `https://` URLs | `url` (or none) |
 | `InlineTextLoader` | inline content (registered by `AddOrkeonEphemeralSearch`) | `text` |
 
 File loaders read through the VFS (virtual paths only). `WebPageLoader` fails

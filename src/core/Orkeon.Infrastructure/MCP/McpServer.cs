@@ -112,7 +112,8 @@ public partial class McpServer
 
     /// <summary>
     /// Processes a single JSON-RPC request and returns the response, or null when the
-    /// message is a notification (which must not be answered).
+    /// message is a valid notification (which must not be answered). A message that is no valid
+    /// request - a notification with an invalid envelope included - is answered <c>-32600</c>.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "JSON-RPC boundary fault barrier: any handler failure is converted into a JSON-RPC InternalError response so one bad request cannot crash the MCP server.")]
     public Task<JsonRpcResponse?> ProcessRequestAsync(
@@ -135,11 +136,13 @@ public partial class McpServer
         {
             try
             {
+                // What is no valid request is refused before anything else (#414): a host that calls
+                // ProcessRequestAsync gets the answers the stdio loop gives.
+                if (RefuseInvalidRequest(request) is { } refusal)
+                    return refusal;
+
                 // Notifications (no id) are processed silently and never answered.
-                // A JSON `"id": null` deserializes as a Null-kind element, not a C# null.
-                if (request.Id is null ||
-                    request.Id.Value.ValueKind == JsonValueKind.Null ||
-                    request.Method.StartsWith("notifications/", StringComparison.Ordinal))
+                if (IsNotification(request))
                 {
                     LogNotificationReceived(request.Method);
                     return null;
@@ -232,6 +235,13 @@ public partial class McpServer
                 var request = ParseRequest(line, outbox.Writer);
                 if (request == null) continue;
 
+                // Before the cancellation and the notifications: an id beside notifications/* is answered, not obeyed.
+                if (RefuseInvalidRequest(request) is { } refusal)
+                {
+                    outbox.Writer.TryWrite(JsonSerializer.Serialize(refusal));
+                    continue;
+                }
+
                 if (string.Equals(request.Method, CancelledMethod, StringComparison.Ordinal))
                 {
                     Cancel(inFlight, request);
@@ -307,12 +317,49 @@ public partial class McpServer
             TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
-    /// <summary>Parses one line; a line that is not JSON-RPC is answered with a parse error and yields <see langword="null"/>.</summary>
+    /// <summary>
+    /// Parses one line. Text that is not JSON is answered <c>-32700</c>; JSON that is no request object - a scalar,
+    /// <c>null</c>, an array (batching is not spoken: one answer for the whole line), an object whose <c>jsonrpc</c>
+    /// is not <c>"2.0"</c> or whose <c>method</c> is absent or no string - is answered <c>-32600</c> (#414). Both
+    /// yield <see langword="null"/>, and so does a response (a <c>result</c> or an <c>error</c> with no
+    /// <c>method</c>), which is dropped without an answer. The checks read the text: the deserialized request cannot tell an absent
+    /// member from its default.
+    /// </summary>
     private JsonRpcRequest? ParseRequest(string line, ChannelWriter<string> outbox)
     {
         try
         {
-            return JsonSerializer.Deserialize<JsonRpcRequest>(line);
+            using var document = JsonDocument.Parse(line);
+            var root = document.RootElement;
+            // A response (a `result` or an `error`, no `method`): JSON-RPC never answers one. The server sends no
+            // request, so none is expected; it is dropped.
+            if (IsResponse(root))
+            {
+                LogUnexpectedResponse();
+                return null;
+            }
+
+            // The id is sent back when it could be read, null otherwise (JSON-RPC 2.0).
+            JsonElement? id = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("id", out var given) && IsRequestId(given)
+                ? given.Clone()
+                : null;
+            if (InvalidMessageReason(root) is { } reason)
+            {
+                outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(id, JsonRpcErrorCodes.InvalidRequest, reason)));
+                return null;
+            }
+
+            try
+            {
+                return root.Deserialize<JsonRpcRequest>();
+            }
+            catch (JsonException)
+            {
+                // Valid JSON the request type refuses (a member written twice): no request, not a parse error.
+                outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(id, JsonRpcErrorCodes.InvalidRequest,
+                    "Invalid Request: the message is not a well-formed request.")));
+                return null;
+            }
         }
         catch (JsonException ex)
         {
@@ -322,6 +369,66 @@ public partial class McpServer
             return null;
         }
     }
+
+    private static bool IsResponse(JsonElement root) =>
+        root.ValueKind == JsonValueKind.Object
+        && !root.TryGetProperty("method", out _)
+        && (root.TryGetProperty("result", out _) || root.TryGetProperty("error", out _));
+
+    /// <summary>Why a JSON value is no JSON-RPC 2.0 message, read from the text; null when its envelope is one.</summary>
+    private static string? InvalidMessageReason(JsonElement root)
+    {
+        if (root.ValueKind == JsonValueKind.Array)
+            return "Invalid Request: a message must be an object (JSON-RPC batching is not supported).";
+        if (root.ValueKind != JsonValueKind.Object)
+            return "Invalid Request: a message must be an object.";
+        if (!root.TryGetProperty("jsonrpc", out var version) || version.ValueKind != JsonValueKind.String || version.GetString() != JsonRpcVersion)
+            return InvalidJsonRpcVersion;
+        if (!root.TryGetProperty("method", out var method) || method.ValueKind != JsonValueKind.String)
+            return InvalidMethod;
+        // Read here, from the text: a null id deserializes as no id at all, which is a notification.
+        if (root.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Null)
+            return InvalidId;
+        return null;
+    }
+
+    private const string JsonRpcVersion = "2.0";
+    private const string InvalidJsonRpcVersion = "Invalid Request: jsonrpc must be \"2.0\".";
+    private const string InvalidId = "Invalid Request: id must be a string or an integer.";
+    private const string InvalidMethod = "Invalid Request: method must be a non-empty string.";
+
+    /// <summary>
+    /// The <c>-32600</c> answer to a message that is no valid request, or null when it is one (#414): a
+    /// <c>jsonrpc</c> other than <c>"2.0"</c>, an empty <c>method</c>, an <c>id</c> that is <c>null</c> or neither a
+    /// string nor an integer (MCP), a <c>params</c> that is neither an object nor an array, an <c>id</c> beside a
+    /// <c>notifications/*</c> method. The answer carries the <c>id</c> when it could be read, <c>null</c> otherwise.
+    /// </summary>
+    private static JsonRpcResponse? RefuseInvalidRequest(JsonRpcRequest request)
+    {
+        var hasId = request.Id is not null;
+        var readableId = request.Id is { } id && IsRequestId(id);
+
+        string? reason;
+        if (!string.Equals(request.Jsonrpc, JsonRpcVersion, StringComparison.Ordinal))
+            reason = InvalidJsonRpcVersion;
+        else if (string.IsNullOrEmpty(request.Method))
+            reason = InvalidMethod;
+        else if (hasId && !readableId)
+            reason = InvalidId;
+        else if (request.Params is { ValueKind: not (JsonValueKind.Object or JsonValueKind.Array or JsonValueKind.Null or JsonValueKind.Undefined) })
+            reason = "Invalid Request: params must be an object or an array.";
+        else if (hasId && request.Method.StartsWith("notifications/", StringComparison.Ordinal))
+            reason = "Invalid Request: a notification must not carry an id.";
+        else
+            return null;
+
+        return CreateErrorResponse(readableId ? request.Id : null, JsonRpcErrorCodes.InvalidRequest, reason);
+    }
+
+    /// <summary>Whether an <c>id</c> is one MCP allows: a string, or a number without a fraction or an exponent.</summary>
+    private static bool IsRequestId(JsonElement id) =>
+        id.ValueKind == JsonValueKind.String
+        || (id.ValueKind == JsonValueKind.Number && id.GetRawText().AsSpan().IndexOfAny('.', 'e', 'E') < 0);
 
     /// <summary>What one request task needs: its key, its cancellation source, and the loop's shared state.</summary>
     private sealed record RequestRun(
@@ -401,10 +508,8 @@ public partial class McpServer
         }
     }
 
-    private static bool IsNotification(JsonRpcRequest request) =>
-        request.Id is null ||
-        request.Id.Value.ValueKind == JsonValueKind.Null ||
-        request.Method.StartsWith("notifications/", StringComparison.Ordinal);
+    /// <summary>A notification carries no id; what carries one beside <c>notifications/*</c>, or a <c>null</c> one, was refused before.</summary>
+    private static bool IsNotification(JsonRpcRequest request) => request.Id is null;
 
     /// <summary>
     /// <c>notifications/cancelled</c>: cancels the in-flight request <c>requestId</c> names. An id the
@@ -460,12 +565,24 @@ public partial class McpServer
     {
         string? name = null;
         JsonElement? arguments = null;
+        // The refusals of tools/call, in its words (#413).
+        if (request.Params is { ValueKind: not (JsonValueKind.Object or JsonValueKind.Null or JsonValueKind.Undefined) })
+            return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, ParamsMustNameAString);
         if (request.Params is { ValueKind: JsonValueKind.Object } p)
         {
-            if (p.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String)
+            if (p.TryGetProperty("name", out var n))
+            {
+                if (n.ValueKind is not (JsonValueKind.String or JsonValueKind.Null))
+                    return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, ParamsMustNameAString);
                 name = n.GetString();
-            if (p.TryGetProperty("arguments", out var a))
+            }
+            // MCP types the arguments of a prompt as an object of strings: anything else is refused, not skipped (#413).
+            if (p.TryGetProperty("arguments", out var a) && a.ValueKind != JsonValueKind.Null)
+            {
+                if (a.ValueKind != JsonValueKind.Object)
+                    return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, ArgumentsMustBeAnObject);
                 arguments = a;
+            }
         }
 
         if (string.IsNullOrEmpty(name))
@@ -569,7 +686,7 @@ public partial class McpServer
             ServerInfo = new McpServerInfo
             {
                 Name = _options.Name,
-                Version = _options.Version
+                Version = AnnouncedVersion
             }
         };
 
@@ -607,14 +724,28 @@ public partial class McpServer
 
     private async Task<JsonRpcResponse> HandleToolsCall(JsonRpcRequest request, bool isModern, Action<JsonRpcNotification>? notify, CancellationToken ct)
     {
-        McpToolCallParams? callParams = null;
-        if (request.Params.HasValue)
+        // Read member by member (#413): a params that is no object, a name that is no string or arguments
+        // that are no object fail the CallToolRequest schema, a protocol error - never an internal one, and
+        // never a call that runs as if nothing had been given. Checked before the extension is handed its tool.
+        var callParams = new McpToolCallParams();
+        if (request.Params is { ValueKind: not (JsonValueKind.Null or JsonValueKind.Undefined) } given)
         {
-            callParams = JsonSerializer.Deserialize<McpToolCallParams>(
-                request.Params.Value.GetRawText());
+            if (given.ValueKind != JsonValueKind.Object
+                || (given.TryGetProperty("name", out var name) && name.ValueKind is not (JsonValueKind.String or JsonValueKind.Null)))
+            {
+                return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, ParamsMustNameAString);
+            }
+
+            callParams.Name = name.ValueKind == JsonValueKind.String ? name.GetString()! : "";
+            if (given.TryGetProperty("arguments", out var args) && args.ValueKind != JsonValueKind.Null)
+            {
+                if (args.ValueKind != JsonValueKind.Object)
+                    return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, ArgumentsMustBeAnObject);
+                callParams.Arguments = args;
+            }
         }
 
-        if (callParams == null || string.IsNullOrEmpty(callParams.Name))
+        if (string.IsNullOrEmpty(callParams.Name))
         {
             return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams,
                 "Missing tool name in parameters");
@@ -638,8 +769,21 @@ public partial class McpServer
                 $"Tool not found: {callParams.Name}");
         }
 
-        // The values an agent's tool call carries (#402): an array is a list, an object a
-        // dictionary, a whole number a long, null is null - never the raw JSON text.
+        // The values a tool call in the OpenAI format carries (#402): an array is a list, an object
+        // a dictionary, a number without a fraction or an exponent is a long when it fits one, any
+        // other a double, null is null - never the raw JSON text. A number beyond the range of a double is an
+        // input the tool cannot take: the call fails as a tool result that names the argument (#413), where
+        // the serializer's own message used to surface.
+        if (callParams.Arguments is { } checkedArguments && FindNonFiniteNumber(checkedArguments, "") is { } notFinite)
+        {
+            return CreateSuccessResponse(request.Id, new McpToolCallResult
+            {
+                IsError = true,
+                ResultType = "complete",
+                Content = [new() { Type = "text", Text = $"Argument '{notFinite}' is not a finite number." }]
+            });
+        }
+
         var parameters = callParams.Arguments is { ValueKind: JsonValueKind.Object } arguments
             ? Serialization.JsonElementConverter.ToDict(arguments)
             : [];
@@ -667,6 +811,56 @@ public partial class McpServer
         _ = isModern; // both eras share the same result shape for tools/call
 
         return CreateSuccessResponse(request.Id, mcpResult);
+    }
+
+    /// <summary>
+    /// The path of a member: <c>x</c>, <c>x.y</c>, and <c>x["a.b"]</c> for a name that a dot or a bracket would make
+    /// read as a nesting.
+    /// </summary>
+    private static string Member(string path, string name)
+    {
+        if (name.Length == 0 || name.AsSpan().IndexOfAny('.', '[', ']') >= 0)
+            return $"{path}[{JsonSerializer.Serialize(name, s_readableNames)}]";
+        return path.Length == 0 ? name : $"{path}.{name}";
+    }
+
+    /// <summary>Names as the caller wrote them: no \uXXXX for a letter, a quote or an angle bracket in a message a person reads.</summary>
+    private static readonly JsonSerializerOptions s_readableNames = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    private const string ParamsMustNameAString = "Invalid params: params must be an object with a string name.";
+    private const string ArgumentsMustBeAnObject = "Invalid params: arguments must be an object.";
+
+    /// <summary>
+    /// The path of the first number of <paramref name="element"/> that no double holds (<c>1e400</c>), as a caller
+    /// would write it - <c>x</c>, <c>x[0]</c>, <c>x.y</c>, <c>["a.b"]</c> -, or null when every number is finite.
+    /// </summary>
+    private static string? FindNonFiniteNumber(JsonElement element, string path)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Number:
+                return !element.TryGetInt64(out _) && !double.IsFinite(element.GetDouble()) ? path : null;
+            case JsonValueKind.Array:
+                var index = 0;
+                foreach (var item in element.EnumerateArray())
+                {
+                    if (FindNonFiniteNumber(item, $"{path}[{index}]") is { } inArray)
+                        return inArray;
+                    index++;
+                }
+
+                return null;
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                {
+                    if (FindNonFiniteNumber(property.Value, Member(path, property.Name)) is { } inObject)
+                        return inObject;
+                }
+
+                return null;
+            default:
+                return null;
+        }
     }
 
     /// <summary>Whether a registry tool is served: <see cref="McpServerOptions.AllowedTools"/> is empty or names it.</summary>
@@ -910,9 +1104,13 @@ public partial class McpServer
     {
         return JsonSerializer.SerializeToElement(new Dictionary<string, object>
         {
-            [McpProtocol.MetaServerInfo] = new { name = _options.Name, version = _options.Version }
+            [McpProtocol.MetaServerInfo] = new { name = _options.Name, version = AnnouncedVersion }
         });
     }
+
+    /// <summary>The version the server introduces itself with: the configured one, or the release's when none is set (#416).</summary>
+    private string AnnouncedVersion =>
+        string.IsNullOrWhiteSpace(_options.Version) ? McpVersion.Current : _options.Version;
 
     /// <summary>
     /// Converts a Orkeon ToolSchema to a JSON Schema element for MCP.
@@ -993,6 +1191,9 @@ public partial class McpServer
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Failed to parse request: {Line}")]
     private partial void LogFailedToParseRequest(Exception ex, string line);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "MCP response received and dropped: the server sent no request")]
+    private partial void LogUnexpectedResponse();
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "MCP notification received: {Method}")]
     private partial void LogNotificationReceived(string method);

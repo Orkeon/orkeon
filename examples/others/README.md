@@ -33,8 +33,8 @@ Les 20 repos répartis sur deux axes : **taille** (LOC TS cœur, hors vendored /
 **Légende difficulté**
 
 - ★★★☆☆ — **abordable mais vaste** : preset `default` ou `strict`, pas d'ajustement particulier.
-- ★★★★☆ — **complexe et structuré** : preset `default`, surveiller `maxToolCallsPerRound`.
-- ★★★★★ — **cas limite** : preset `permissive`, `MaxIterations ≥ 200`, `maxToolCallsPerRound ≥ 20`, activer `useDegradedMode`.
+- ★★★★☆ — **complexe et structuré** : preset `default`.
+- ★★★★★ — **cas limite** : preset `permissive`, `MaxIterations ≥ 200`.
 
 ---
 
@@ -48,7 +48,7 @@ Les 20 repos répartis sur deux axes : **taille** (LOC TS cœur, hors vendored /
 ### `activepieces/`
 - **URL** : https://github.com/activepieces/activepieces
 - **Taille / Difficulté** : XL / ★★★★☆
-- Alternative open-source type-safe à n8n/Zapier (NX monorepo, "pieces" framework). Pipeline d'exécution `pending → executing → succeeded/failed` explicite, idéal pour tester `TaskExecutionStateMachine`.
+- Alternative open-source type-safe à n8n/Zapier (NX monorepo, "pieces" framework). Pipeline d'exécution `pending → executing → succeeded/failed` explicite, idéal pour tester une machine à états d'exécution de tâches.
 
 ### `temporal-sdk-typescript/`
 - **URL** : https://github.com/temporalio/sdk-typescript

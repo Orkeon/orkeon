@@ -5556,3 +5556,4 @@ static Orkeon.Application.Crew.DeliverableToolCheck.IsBinary(string! path) -> bo
 static Orkeon.Application.Crew.DeliverableToolCheck.WriterHeldFor(System.Collections.Generic.IEnumerable<string!>! toolNames, string! path) -> string?
 Orkeon.Application.Crew.Execution.DeliverableBaselineScope
 static Orkeon.Application.Crew.Execution.DeliverableBaselineScope.Begin() -> System.IDisposable!
+Orkeon.Application.Interfaces.Security.ITokenBudgetTracker.RecordUsage(string! crewId, string! agentRole, int promptTokens, int completionTokens, string! model, string? provider) -> Orkeon.Application.Interfaces.Security.BudgetCheckResult!

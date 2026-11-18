@@ -11,7 +11,7 @@
 - **Process**: `hierarchical`
 - **Agents**: 5 — Art Director (manager), Brief Strategist, Visual Designer, Copywriter, Media Planner
 - **Tools**: `web_scrape`, `http_api`, `json_tool`, `file_write`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: ManagerAgent delegation capabilities
 - **Runner**: `standard`
 

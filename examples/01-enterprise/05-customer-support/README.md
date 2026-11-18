@@ -11,7 +11,7 @@
 - **Process**: `Hierarchical`
 - **Agents**: 4 — Superviseur Support (Manager), Agent Triage L1 (Worker), Specialiste L2 (Worker), Manager Escalade L3 (Human)
 - **Tools**: `web_scrape`, `http_api`, `json_tool`
-- **Memory**: `Redis`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `IKnowledgeSource` for FAQ, delegation with fallback, `MemoryType.ShortTerm` + `MemoryType.Episodic`, `IContextWindowManager`
 - **Runner**: `standard`
 

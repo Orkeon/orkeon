@@ -70,7 +70,7 @@ and the [Local models guide](../../docs/guides/local-models.md).
 3. Point a runner at it explicitly:
 
    ```bash
-   ./run-example.sh <example> --settings examples/appsettings/appsettings.deepseek.local.json
+   ./examples/run-example.sh <category/example> --settings examples/appsettings/appsettings.deepseek.local.json
    ```
 
 ## Memory providers (`memoryProvider:` in a crew)

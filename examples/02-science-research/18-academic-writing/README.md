@@ -11,7 +11,7 @@
 - **Process**: `Sequential`
 - **Agents**: 4 — Planificateur Structure (Worker), Redacteur Academique (Worker), Verificateur de References (Worker), Editeur de Style (Worker)
 - **Tools**: `http_api`, `file_read`, `file_write`, `json_tool`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: Strict task dependencies, `ComponentBase<TReq, TRes>` for typed steps, output validation academic format
 - **Runner**: `standard`
 

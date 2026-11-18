@@ -10,8 +10,9 @@
 
 - **Process**: `sequential`
 - **Agents**: 4 -- Pattern Historian, Invoice Collector, Cash Flow Modeler, Stress Scenario Planner
-- **Tools**: `csv_reader`, `http_api`, `json_tool`, `database_query`, `file_write`
-- **Memory**: `SQLite` (historical predictions vs actuals)
+- **Tools**: `csv_reader`, `http_api`, `json_tool`, `relational_database_query`, `file_write`,
+  `arima_prediction`, `prophet_prediction`, `ensemble_prediction`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: MemoryType.LongTerm (auto-calibration), EvaluationScore (accuracy), IResumeEngine, BenchmarkRunner (backtesting)
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 

@@ -58,7 +58,7 @@ With nodes, the edges order the tasks, so no task carries `dependencies:` or a `
 ## Running
 
 ```bash
-dotnet run --project src/apps/Orkeon.ConsoleApp -- --config examples/09-experimental/102-graph-orchestration/config.yaml
+orkeon run examples/09-experimental/102-graph-orchestration/config.yaml
 ```
 
 **LLM profile** — this runner resolves the LLM profile from the nearest `appsettings.json`. Copy one of the ready-made profiles from [`examples/appsettings/`](../../appsettings/README.md) (drop the `.example` suffix, add your key), or pass one explicitly with `--settings`. First run? See [Run your first example](../../../docs/getting-started/run-your-first-example.md).

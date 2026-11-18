@@ -4677,3 +4677,5 @@ Orkeon.Infrastructure.Configuration.CrewFactoryOptions.WarnOnDeliverableTools.ge
 Orkeon.Infrastructure.Configuration.CrewFactoryOptions.WarnOnDeliverableTools.set -> void
 Orkeon.Infrastructure.Checkpointing.CheckpointingAgentExecutionService.FileSystem.get -> Orkeon.Domain.FileSystem.IFileSystemService?
 Orkeon.Infrastructure.Checkpointing.CheckpointingAgentExecutionService.FileSystem.init -> void
+Orkeon.Infrastructure.Security.TokenBudgetTracker.RecordUsage(string! crewId, string! agentRole, int promptTokens, int completionTokens, string! model, string? provider) -> Orkeon.Application.Interfaces.Security.BudgetCheckResult!
+static Orkeon.Infrastructure.Security.TokenBudgetTracker.EstimateCost(int promptTokens, int completionTokens, string! model, string? provider, Orkeon.Application.Interfaces.Ports.IModelPricingRegistry? registry) -> decimal

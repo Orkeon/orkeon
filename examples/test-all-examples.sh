@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test-all-examples.sh
-# Automated test runner for all 105 Orkeon examples
+# Automated test runner for the Orkeon examples
 # Uses Docker Desktop Models (ai/granite-4.0-h-tiny) via localhost:12434
 #
 # Usage:

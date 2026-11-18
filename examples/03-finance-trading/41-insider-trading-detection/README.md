@@ -4,15 +4,16 @@
 
 ## Quality
 
-:lock: Securite -- Audit exhaustif, memoire chiffree, correlation multi-source
+:lock: Securite -- Audit exhaustif, correlation multi-source
 
 ## Architecture
 
 - **Process**: `parallel`
 - **Agents**: 4 -- Transaction Observer, Event Correlator, Behavioral Analyst, Regulatory Reporter
-- **Tools**: `http_api`, `database_query`, `json_tool`, `semantic_search`, `file_write`
-- **Memory**: `EncryptedRedis`
-- **Key features**: ObserverAgent, IKnowledgeSource (regulations), AuditEventTypes, EncryptedRedisMemoryProvider, CrewHooks (OnAnomalyDetected)
+- **Tools**: `http_api`, `relational_database_query`, `json_tool`, `semantic_search`, `file_write`,
+  `pattern_recognition`, `correlation_analysis`, `regulatory_reporting`, `audit_trail`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: ObserverAgent, IKnowledgeSource (regulations), AuditEventTypes, CrewHooks (OnAnomalyDetected)
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites
@@ -39,4 +40,4 @@ orkeon run examples/03-finance-trading/41-insider-trading-detection/main.ork.ts 
 
 - Real-time transaction surveillance with ObserverAgent continuous monitoring
 - Correlation of trading anomalies with corporate events and insider access
-- Behavioral profiling with semantic vector comparison in encrypted memory
+- Behavioral profiling with semantic vector comparison in crew memory

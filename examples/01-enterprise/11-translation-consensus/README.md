@@ -11,7 +11,7 @@
 - **Process**: `Consensual`
 - **Agents**: 3 — Traducteur (Worker), Reviseur Natif (Worker), Terminologue (Worker)
 - **Tools**: `file_read`, `file_write`, `json_tool`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: Consensus voting (unanimity required), `IKnowledgeSource` for glossaries, `ITextChunker` for long documents
 - **Runner**: `standard`
 

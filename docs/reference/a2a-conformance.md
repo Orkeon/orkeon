@@ -112,7 +112,7 @@ anchor) fails the host's start. See [Opt-in subsystems](./opt-in-subsystems.md).
 |---|---|---|
 | `EnableServer` | `false` | Registers `IA2AServer` (an `HttpListener` on `Host:Port`) and the hosted service that runs it. |
 | `Host`, `Port` | `http://localhost`, `5002` | The listener prefix. |
-| `AgentName`, `AgentDescription`, `AgentVersion`, `Organization`, `ContactUrl` | `Orkeon`, `Orkeon A2A Agent`, `1.0.0`, —, — | The agent card. |
+| `AgentName`, `AgentDescription`, `AgentVersion`, `Organization`, `ContactUrl` | `Orkeon`, `Orkeon A2A Agent`, empty, —, — | The agent card. An empty `AgentVersion` is the version of the running release. |
 | `TimeoutSeconds` | `30` | Client request timeout. |
 
 `orkeon-host` takes its listener from `Orkeon:Host:A2A` and refuses
