@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `orkeon forge`: an input folder confirmed without `examples` kept the proposal's value only when its `path` was the
-  proposal's to the letter, case included (#400), while a list compares two of its paths ignoring case (`/Inbox` and
+- `orkeon forge` (#400): an input folder confirmed without `examples` kept the proposal's value only when its `path` was
+  the proposal's to the letter, case included, while a list compares two of its paths ignoring case (`/Inbox` and
   `/inbox` are one folder listed twice). A client that confirms the names in lowercase, as Orkeon Studio does, turned an
   inbox of examples into fixed material without a word. The value is now carried over to the same path, letter case
   aside.

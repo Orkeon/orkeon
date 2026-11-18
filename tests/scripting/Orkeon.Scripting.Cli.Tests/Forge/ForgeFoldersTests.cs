@@ -646,7 +646,7 @@ public sealed class ForgeFoldersTests : IDisposable
         // Validate refuses /Inbox and /inbox in one list, so the two name one folder: a client
         // that writes its names in lowercase (Orkeon Studio does) must not lose the flag.
         var merged = ForgeFolders.WithProposedExamples(
-            [Folder("/inbox", "input"), Folder("/reference", "input")],
+            [Folder("/inbox", "input"), Folder("/REFERENCE", "input")],
             [Folder("/Inbox", "input") with { Examples = true }, Folder("/Reference", "input") with { Examples = false }]);
 
         Assert.True(merged[0].Examples);
