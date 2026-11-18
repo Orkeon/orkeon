@@ -317,14 +317,6 @@ public partial class McpServer
             TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
-    /// <summary>
-    /// Parses one line. Text that is not JSON is answered <c>-32700</c>; JSON that is no request object - a scalar,
-    /// <c>null</c>, an array (batching is not spoken: one answer for the whole line), an object whose <c>jsonrpc</c>
-    /// is not <c>"2.0"</c> or whose <c>method</c> is absent or no string - is answered <c>-32600</c> (#414). Both
-    /// yield <see langword="null"/>, and so does a response (a <c>result</c> or an <c>error</c> with no
-    /// <c>method</c>), which is dropped without an answer. The checks read the text: the deserialized request cannot tell an absent
-    /// member from its default.
-    /// </summary>
     /// <summary>How deep a message may nest: the depth <see cref="JsonDocument"/> reads by default.</summary>
     private const int MaxMessageDepth = 64;
 
@@ -347,6 +339,14 @@ public partial class McpServer
         }
     }
 
+    /// <summary>
+    /// Parses one line. Text that is not JSON is answered <c>-32700</c>; JSON that is no request object - a scalar,
+    /// <c>null</c>, an array (batching is not spoken: one answer for the whole line), an object whose <c>jsonrpc</c>
+    /// is not <c>"2.0"</c> or whose <c>method</c> is absent or no string - is answered <c>-32600</c> (#414). Both
+    /// yield <see langword="null"/>, and so does a response (a <c>result</c> or an <c>error</c> with no
+    /// <c>method</c>), which is dropped without an answer. The checks read the text: the deserialized request cannot tell an absent
+    /// member from its default.
+    /// </summary>
     private JsonRpcRequest? ParseRequest(string line, ChannelWriter<string> outbox)
     {
         try

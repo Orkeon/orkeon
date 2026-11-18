@@ -97,8 +97,8 @@ public sealed record ToolSchema(
 /// <param name="Default">The optional default value.</param>
 /// <param name="Enum">Optional list of allowed values.</param>
 /// <param name="Format">Optional format hint (e.g. "date-time").</param>
-/// <param name="ItemsType">For array types, the element type.</param>
-/// <param name="ItemsFormat">For array types, the element format.</param>
+/// <param name="ItemsType">For array types, the element type; <see cref="Items"/> supersedes it when set.</param>
+/// <param name="ItemsFormat">For array types, the element format; <see cref="Items"/> supersedes it when set.</param>
 /// <param name="EnumMap">Optional enum name-to-value mapping for C# enums.</param>
 /// <param name="Example">Optional example value.</param>
 /// <param name="Values">For a dictionary, the schema of its values.</param>
@@ -262,16 +262,45 @@ public sealed record ParameterSchema(
     }
 
     /// <summary>
-    /// The JSON Schema of a dictionary value, as <see cref="ToJsonSchema"/> writes it; empty when the value
-    /// is untyped, which accepts any JSON value.
+    /// The bare JSON Schema of a dictionary value: <c>type</c> and <c>format</c> only, with <c>items: {}</c> (any
+    /// JSON value) for an array, so that no bare array goes out; empty when the value is untyped, which accepts any
+    /// JSON value. <see cref="ToJsonSchema"/> writes a dictionary's values so unless they set a member
+    /// <see cref="ToValueDocument"/> does not carry (their properties, items, alternatives, bounds or pattern, or a
+    /// closed object).
     /// </summary>
     /// <returns>The JSON Schema fragment of this value schema.</returns>
-    public Dictionary<string, object> ToValueDocument() => ToJsonSchema();
+    public Dictionary<string, object> ToValueDocument()
+    {
+        var doc = new Dictionary<string, object>();
+        if (Type != null)
+            doc["type"] = Type;
+        if (Format != null)
+            doc["format"] = Format;
+        // An array always says what it holds; the items of a dictionary's array value are not known.
+        if (Type == "array")
+            doc["items"] = new Dictionary<string, object>();
+        return doc;
+    }
+
+    /// <summary>
+    /// The schema a dictionary's values are published with: <see cref="ToValueDocument"/> - what the formatters
+    /// have always sent, the description <c>"value"</c> the schema generator gives them left out - for values that
+    /// set none of the JSON Schema members added since, <see cref="ToJsonSchema"/> for values that set one.
+    /// </summary>
+    private static Dictionary<string, object> ValuesJsonSchema(ParameterSchema values) =>
+        values.SetsJsonSchemaMembers() ? values.ToJsonSchema() : values.ToValueDocument();
+
+    /// <summary>Whether this schema sets one of the JSON Schema members <see cref="ToValueDocument"/> does not carry.</summary>
+    private bool SetsJsonSchemaMembers() =>
+        Properties != null || Items != null || AnyOf != null || !AllowsAdditionalProperties
+        || Minimum != null || Maximum != null || ExclusiveMinimum != null || ExclusiveMaximum != null
+        || MinLength != null || MaxLength != null || Pattern != null || MinItems != null || MaxItems != null;
 
     /// <summary>
     /// The JSON Schema of this parameter, as a provider's tool list and an MCP <c>tools/list</c> carry it:
     /// <c>type</c>, <c>description</c> (when not empty), <c>default</c>, <c>enum</c> (the names of
-    /// <see cref="EnumMap"/> first), <c>format</c>, the bounds, the <c>items</c> of an array - <c>{}</c>, any
+    /// <see cref="EnumMap"/> when set, else <see cref="Enum"/>), <c>format</c>, the bounds, the <c>items</c> of an
+    /// array, or of a schema that names its items (<see cref="Items"/> or <see cref="ItemsType"/>) - <c>{}</c>, any
     /// JSON value, when they are not known: no array goes out without them -, the <c>properties</c> and
     /// <c>required</c> of an object, its <c>additionalProperties</c>, and <c>anyOf</c>. <see cref="Required"/>
     /// is the parent's to publish, in its <c>required</c>.
@@ -294,7 +323,7 @@ public sealed record ParameterSchema(
             schema["format"] = Format;
         WriteBounds(schema);
 
-        if (Type == "array")
+        if (Type == "array" || Items != null || ItemsType != null)
             schema["items"] = ItemsSchema() is { } items ? items.ToJsonSchema() : new Dictionary<string, object>();
 
         if (Properties is { Count: > 0 })
@@ -305,7 +334,7 @@ public sealed record ParameterSchema(
         }
 
         if (Values != null)
-            schema["additionalProperties"] = Values.ToJsonSchema();
+            schema["additionalProperties"] = ValuesJsonSchema(Values);
         else if (!AllowsAdditionalProperties)
             schema["additionalProperties"] = false;
 
@@ -407,7 +436,7 @@ public sealed record ParameterSchema(
         if (Properties is { Count: > 0 })
             doc["properties"] = Properties.ToDictionary(p => p.Key, p => (object)p.Value.ToDocument());
         if (Values != null)
-            doc["additionalProperties"] = Values.ToValueDocument();
+            doc["additionalProperties"] = ValuesJsonSchema(Values);
         else if (!AllowsAdditionalProperties)
             doc["additionalProperties"] = false;
         if (AnyOf is { Count: > 0 })

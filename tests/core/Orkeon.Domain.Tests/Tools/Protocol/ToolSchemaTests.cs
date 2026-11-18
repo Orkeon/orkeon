@@ -906,4 +906,112 @@ public class ToolSchemaTests
         Assert.False(tool.ToInputJsonSchema().ContainsKey("additionalProperties"));
         Assert.False(tool.ToInputJsonSchema().ContainsKey("required"));
     }
+
+    private static string Json(object value) => System.Text.Json.JsonSerializer.Serialize(value);
+
+    [Fact]
+    public void ShouldWriteTypeAndFormatOnly_WhenToValueDocumentIsCalled()
+    {
+        // ToValueDocument is v1.2.0's: the members added since do not reach it.
+        var value = new ParameterSchema("string", "value", false, Default: "x", Format: "uri") { MaxLength = 4, Pattern = "^a" };
+
+        Assert.Equal("""{"type":"string","format":"uri"}""", Json(value.ToValueDocument()));
+        Assert.Equal("""{"type":"array","items":{}}""", Json(new ParameterSchema("array", "value", false).ToValueDocument()));
+        Assert.Equal("{}", Json(new ParameterSchema(null, "value", false).ToValueDocument()));
+    }
+
+    [Fact]
+    public void ShouldPublishTheBareValueSchema_WhenTheValuesSetNoAddedMember()
+    {
+        // What the v1.2.0 formatters sent for a dictionary built by the schema generator (values described "value").
+        var map = new ParameterSchema("object", "Pairs", false, Values: new ParameterSchema("integer", "value", false));
+
+        Assert.Equal("""{"type":"object","description":"Pairs","additionalProperties":{"type":"integer"}}""", Json(map.ToJsonSchema()));
+        Assert.Equal("""{"type":"integer"}""", Json(map.ToDocument()["additionalProperties"]));
+    }
+
+    [Fact]
+    public void ShouldPublishTheWholeValueSchema_WhenTheValuesSetAnAddedMember()
+    {
+        var map = new ParameterSchema("object", "Pairs", false, Values: new ParameterSchema("integer", "value", false) { Minimum = 0 });
+
+        Assert.Equal(
+            """{"type":"object","description":"Pairs","additionalProperties":{"type":"integer","description":"value","minimum":0}}""",
+            Json(map.ToJsonSchema()));
+        Assert.Equal("""{"type":"integer","description":"value","minimum":0}""", Json(map.ToDocument()["additionalProperties"]));
+    }
+
+    [Fact]
+    public void ShouldTypeTheOtherProperties_WhenValuesAndAClosedObjectAreBothSet()
+    {
+        var map = new ParameterSchema("object", "Pairs", false, Values: new ParameterSchema("string", "value", false))
+        {
+            AllowsAdditionalProperties = false,
+        };
+
+        Assert.Equal("""{"type":"string"}""", Json(map.ToJsonSchema()["additionalProperties"]));
+        Assert.Equal("""{"type":"string"}""", Json(map.ToDocument()["additionalProperties"]));
+    }
+
+    [Fact]
+    public void ShouldWriteEveryBound_WhenTheBoundsAreSet()
+    {
+        var ratio = new ParameterSchema("number", "Ratio", false) { Maximum = 5, ExclusiveMinimum = 0 };
+        var code = new ParameterSchema("string", "Code", false) { MaxLength = 8 };
+        var rows = new ParameterSchema("array", "Rows", false, ItemsType: "string") { MinItems = 1 };
+
+        Assert.Equal("""{"type":"number","description":"Ratio","maximum":5,"exclusiveMinimum":0}""", Json(ratio.ToJsonSchema()));
+        Assert.Equal("""{"type":"string","description":"Code","maxLength":8}""", Json(code.ToJsonSchema()));
+        Assert.Equal("""{"type":"array","description":"Rows","minItems":1,"items":{"type":"string"}}""", Json(rows.ToJsonSchema()));
+    }
+
+    [Fact]
+    public void ShouldWriteTheItems_WhenASchemaThatIsNoArrayNamesThem()
+    {
+        // v1.2.0's Anthropic formatter wrote the items whenever ItemsType was set, whatever the type.
+        var untyped = new ParameterSchema(null, "List", false, ItemsType: "string");
+        var described = new ParameterSchema(null, "List", false) { Items = new ParameterSchema("integer", "", false) };
+
+        Assert.Equal("""{"description":"List","items":{"type":"string"}}""", Json(untyped.ToJsonSchema()));
+        Assert.Equal("""{"description":"List","items":{"type":"integer"}}""", Json(described.ToJsonSchema()));
+        Assert.False(new ParameterSchema("string", "Text", false).ToJsonSchema().ContainsKey("items"));
+    }
+
+    [Fact]
+    public void ShouldWriteTheAddedMembers_WhenToDocumentIsCalled()
+    {
+        var grid = new ParameterSchema("array", "Grid", false)
+        {
+            Items = new ParameterSchema("integer", "Cell", false) { Minimum = 0 },
+            MinItems = 1,
+            MaxItems = 4,
+        };
+        var filter = new ParameterSchema("object", "Filter", true)
+        {
+            Properties = new Dictionary<string, ParameterSchema> { ["a"] = new("string", "A", true) { MaxLength = 3 } },
+            AllowsAdditionalProperties = false,
+        };
+        var when = new ParameterSchema(null, "When", false)
+        {
+            AnyOf = [new ParameterSchema("string", "", false, Format: "date-time"), new ParameterSchema("integer", "", false) { Maximum = 9 }],
+        };
+        var ratio = new ParameterSchema("number", "Ratio", false) { ExclusiveMinimum = 0, ExclusiveMaximum = 1 };
+        var code = new ParameterSchema("string", "Code", false) { MinLength = 2, MaxLength = 4, Pattern = "^[A-Z]*$" };
+
+        Assert.Equal(
+            """{"description":"Grid","required":false,"type":"array","minItems":1,"maxItems":4,"items":{"type":"integer","description":"Cell","minimum":0}}""",
+            Json(grid.ToDocument()));
+        Assert.Equal(
+            """{"description":"Filter","required":true,"type":"object","properties":{"a":{"description":"A","required":true,"type":"string","maxLength":3}},"additionalProperties":false}""",
+            Json(filter.ToDocument()));
+        Assert.Equal(
+            """{"description":"When","required":false,"anyOf":[{"type":"string","format":"date-time"},{"type":"integer","maximum":9}]}""",
+            Json(when.ToDocument()));
+        Assert.Equal(
+            """{"description":"Ratio","required":false,"type":"number","exclusiveMinimum":0,"exclusiveMaximum":1}""",
+            Json(ratio.ToDocument()));
+        Assert.Equal(
+            """{"description":"Code","required":false,"type":"string","minLength":2,"maxLength":4,"pattern":"^[A-Z]*$"}""",
+            Json(code.ToDocument()));
+    }
 }

@@ -351,4 +351,196 @@ public sealed class McpToolAdapterRemoteSchemaTests
             """{"type":"object","properties":{"city":{"type":"string","description":"City","minLength":1,"pattern":"^[A-Z]"},"grid":{"type":"array","items":{"type":"array","items":{"type":"integer"}}},"filter":{"type":"object","properties":{"field":{"type":"string"}},"required":["field"],"additionalProperties":false},"when":{"anyOf":[{"type":"string","format":"date-time"},{"type":"integer","minimum":0}]},"loose":{"type":"array","items":{}}},"required":["city"],"additionalProperties":false}""",
             published);
     }
+
+    // --- The review of #415 / #417 ---
+
+    private static ToolSchema ConvertWhole(string schemaJson) =>
+        McpToolAdapterSut.ConvertToToolSchema(McpToolAdapterTestsFixture.CreateDefinitionWithSchema("remote", "A remote tool", schemaJson));
+
+    /// <summary>One definition with a 16 KiB description, named by 100 properties: 200 schemas, but 1.6 MiB of text once copied at each use.</summary>
+    internal static string TextBomb(string salt = "")
+    {
+        var description = salt + new string('x', 16 * 1024);
+        var properties = string.Join(",", Enumerable.Range(0, 100).Select(i => "\"p" + i + "\":{\"$ref\":\"#/$defs/big\"}"));
+        return "{\"type\":\"object\",\"properties\":{" + properties + "},\"$defs\":{\"big\":{\"type\":\"string\",\"description\":\"" + description + "\"}}}";
+    }
+
+    [Fact]
+    public void ShouldRefuseTheSchema_WhenTheTextItCopiesExceedsTheBudget()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => Convert(TextBomb()));
+
+        Assert.Contains($"beyond {McpToolAdapterSut.MaxSchemaTextBytes} bytes of text", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldRefuseTheSchema_WhenOneDescriptionExceedsTheTextBudget()
+    {
+        var huge = new string('y', McpToolAdapterSut.MaxSchemaTextBytes + 1);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => Convert("{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"string\",\"description\":\"" + huge + "\"}}}"));
+
+        Assert.Contains("bytes of text", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldShareADefinitionReadSeveralTimes_AndStillCountItAtEachUse()
+    {
+        var shared = Convert("""
+            {"type":"object","properties":{"a":{"$ref":"#/$defs/P"},"b":{"$ref":"#/$defs/P","description":"Its own"}},
+             "$defs":{"P":{"type":"object","properties":{"x":{"type":"integer"},"y":{"type":"string"}}}}}
+            """);
+
+        // Read once: the two uses share the properties read; each keeps its own words.
+        Assert.Same(shared["a"].Properties, shared["b"].Properties);
+        Assert.Equal("Its own", shared["b"].Description);
+
+        // 50 uses of a 100-schema definition: shared in memory, but written out 50 times for the model.
+        var leaves = string.Join(",", Enumerable.Range(0, 99).Select(i => "\"f" + i + "\":{\"type\":\"integer\"}"));
+        var uses = string.Join(",", Enumerable.Range(0, 50).Select(i => "\"u" + i + "\":{\"$ref\":\"#/$defs/D\"}"));
+        var ex = Assert.Throws<InvalidOperationException>(() => Convert(
+            "{\"type\":\"object\",\"properties\":{" + uses + "},\"$defs\":{\"D\":{\"type\":\"object\",\"properties\":{" + leaves + "}}}}"));
+        Assert.Contains($"beyond {McpToolAdapterSut.MaxSchemaNodes} schemas", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("""{"anyOf":[{"type":"object","required":["a"],"properties":{"a":{"type":"string"}}},{"type":"null"}]}""")]
+    [InlineData("""{"allOf":[{"type":"object","required":["a"],"properties":{"a":{"type":"string"}}}]}""")]
+    [InlineData("""{"$ref":"#/$defs/W","$defs":{"W":{"allOf":[{"$ref":"#/$defs/I"}]},"I":{"type":"object","required":["a"],"properties":{"a":{"type":"string"}}}}}""")]
+    [InlineData("""{"type":["object","null"],"required":["a"],"properties":{"a":{"type":"string"}}}""")]
+    public void ShouldGiveTheToolItsParameters_WhenTheRootStandsForOneObject(string root)
+    {
+        var parameters = ConvertWhole(root).Parameters;
+
+        Assert.Equal("string", parameters["a"].Type);
+        Assert.True(parameters["a"].Required);
+    }
+
+    [Theory]
+    [InlineData("true")]
+    [InlineData("false")]
+    [InlineData("""[{"type":"object"}]""")]
+    [InlineData("""{"type":"string","properties":{"a":{}}}""")]
+    public void ShouldGiveNoParameter_WhenTheRootIsNoObjectSchema(string root)
+    {
+        var schema = ConvertWhole(root);
+
+        Assert.Empty(schema.Parameters);
+        Assert.True(schema.AllowsAdditionalParameters);
+    }
+
+    [Fact]
+    public void ShouldMergeTheMembersOfAnAllOf_WhenEachIsAnObject()
+    {
+        var schema = ConvertWhole("""
+            {"type":"object","properties":{"own":{"type":"boolean"}},"allOf":[
+               {"$ref":"#/$defs/A"},
+               {"type":"object","description":"Second","required":["a"],"additionalProperties":false,"properties":{"b":{"type":"integer"},"a":{"type":"number"}}}],
+             "$defs":{"A":{"type":"object","description":"First","properties":{"a":{"type":"string"}}}}}
+            """);
+
+        Assert.Equal(["a", "b", "own"], schema.Parameters.Keys.Order());
+        Assert.Equal("string", schema.Parameters["a"].Type); // the first member that names it
+        Assert.True(schema.Parameters["a"].Required);         // required by another member
+        Assert.False(schema.Parameters["b"].Required);
+        Assert.False(schema.AllowsAdditionalParameters);
+
+        var nested = Convert("""{"type":"object","properties":{"p":{"allOf":[{"type":"object","description":"First","properties":{"x":{}}},{"properties":{"y":{}}}]}}}""")["p"];
+        Assert.Equal(("object", "First"), (nested.Type, nested.Description));
+        Assert.Equal(["x", "y"], nested.Properties!.Keys.Order());
+    }
+
+    [Fact]
+    public void ShouldLeaveAnAllOfAsBefore_WhenAMemberIsNoObject()
+    {
+        var parameters = Convert("""{"type":"object","properties":{"p":{"allOf":[{"type":"object","properties":{"x":{}}},{"type":"string"}]}}}""");
+
+        Assert.Null(parameters["p"].Type);
+        Assert.Null(parameters["p"].Properties);
+    }
+
+    [Fact]
+    public void ShouldReadEveryNullSchema_AsTheNullAlternative()
+    {
+        var parameters = Convert("""
+            {"type":"object","properties":{
+              "byEnum":{"anyOf":[{"type":"string"},{"enum":[null]}]},
+              "byConst":{"oneOf":[{"type":"integer"},{"const":null}]},
+              "byTypes":{"anyOf":[{"type":"boolean"},{"type":["null"]}]}}}
+            """);
+
+        Assert.Equal(("string", null), (parameters["byEnum"].Type, parameters["byEnum"].AnyOf));
+        Assert.Equal(("integer", null), (parameters["byConst"].Type, parameters["byConst"].AnyOf));
+        Assert.Equal(("boolean", null), (parameters["byTypes"].Type, parameters["byTypes"].AnyOf));
+    }
+
+    [Fact]
+    public void ShouldReadPrefixItems_AndTheItemsThatFollowThem()
+    {
+        var parameters = Convert("""
+            {"type":"object","properties":{
+              "row":{"type":"array","prefixItems":[{"type":"string"},{"type":"boolean"}],"items":{"type":"integer"}},
+              "pair":{"type":"array","prefixItems":[{"type":"string"},{"type":"integer"}],"items":false}}}
+            """);
+
+        Assert.Equal(["string", "boolean", "integer"], parameters["row"].Items!.AnyOf!.Select(a => a.Type));
+        Assert.Equal(["string", "integer"], parameters["pair"].Items!.AnyOf!.Select(a => a.Type));
+        Assert.Equal(2, parameters["pair"].MaxItems);
+    }
+
+    [Fact]
+    public void ShouldKeepTheBoundsAndEnumBesideAReference_WhereTheTargetHasNone()
+    {
+        var parameters = Convert("""
+            {"type":"object","properties":{
+              "code":{"$ref":"#/$defs/S","maxLength":5,"minLength":9,"enum":["ab","cd"],"pattern":"^[a-z]+$","minimum":1}},
+             "$defs":{"S":{"type":"string","minLength":2}}}
+            """);
+
+        var code = parameters["code"];
+        Assert.Equal((2, 5, "^[a-z]+$", 1d), (code.MinLength, code.MaxLength, code.Pattern, code.Minimum)); // the target's own bound wins
+        Assert.Equal(["ab", "cd"], code.Enum!.Cast<string>());
+    }
+
+    [Fact]
+    public void ShouldFollowAJsonPointer_AsRfc6901WritesIt()
+    {
+        var parameters = Convert("""
+            {"type":"object","properties":{
+              "slash":{"$ref":"#/$defs/a~1b"},
+              "tilde":{"$ref":"#/$defs/c~0d"},
+              "dollar":{"$ref":"#/%24defs/plain"},
+              "empty":{"$ref":"#/"},
+              "inner":{"$ref":"#/n//m"},
+              "index":{"$ref":"#/$defs/list/1"},
+              "zero":{"$ref":"#/$defs/list/0"},
+              "leading":{"$ref":"#/$defs/list/01"},
+              "signed":{"$ref":"#/$defs/list/+1"},
+              "anchor":{"$ref":"#plain"}},
+             "":{"type":"number"},
+             "n":{"":{"m":{"type":"boolean"}}},
+             "$defs":{"a/b":{"type":"string"},"c~d":{"type":"integer"},"plain":{"type":"object","properties":{"k":{}}},
+                      "list":[{"type":"null"},{"type":"array"}]}}
+            """);
+
+        Assert.Equal("string", parameters["slash"].Type);
+        Assert.Equal("integer", parameters["tilde"].Type);
+        Assert.Equal("object", parameters["dollar"].Type);
+        Assert.Equal("number", parameters["empty"].Type);
+        Assert.Equal("boolean", parameters["inner"].Type);
+        Assert.Equal("array", parameters["index"].Type);
+        Assert.Equal("null", parameters["zero"].Type);
+        Assert.Null(parameters["leading"].Type);
+        Assert.Null(parameters["signed"].Type);
+        Assert.Null(parameters["anchor"].Type);
+    }
+
+    [Fact]
+    public void ShouldKeepTheProperties_WhenTheTypeIsANullableObject()
+    {
+        var parameters = Convert("""{"type":"object","properties":{"o":{"type":["object","null"],"properties":{"id":{"type":"integer"}},"required":["id"]}}}""");
+
+        Assert.Equal("object", parameters["o"].Type);
+        Assert.True(parameters["o"].Properties!["id"].Required);
+    }
 }

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.MCP.Auth;
@@ -316,7 +317,8 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         McpClient client,
         bool trustAnnotations,
         TimeSpan? callTimeout,
-        IMcpSignInAuthenticator? signIn)
+        IMcpSignInAuthenticator? signIn,
+        string signature)
     {
         try
         {
@@ -325,8 +327,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         catch (Exception ex)
         {
             // Once per definition: a server that keeps the same unreadable schema is not warned about at every
-            // tools/list_changed, and one that changes it is warned about again.
-            if (client.WarnOnce("schema:" + Fingerprint(definition)))
+            // tools/list_changed, and one that changes it is warned about again. The key is the digest of the
+            // definition, never the definition: a server that changes a huge one at each listing keeps nothing alive.
+            if (client.WarnOnce("schema:" + signature))
                 LogMcpToolSchemaUnreadable(definition.Name, serverId, ex.Message);
             return null;
         }
@@ -495,11 +498,12 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         {
             foreach (var toolDef in kept)
             {
-                if (TryBuildAdapter(serverId, toolDef, client, trustAnnotations, config?.CallTimeout, signIn) is not { } adapter)
+                var signature = Fingerprint(toolDef);
+                if (TryBuildAdapter(serverId, toolDef, client, trustAnnotations, config?.CallTimeout, signIn, signature) is not { } adapter)
                     continue;
                 if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
                 {
-                    clientEntry.Remember(toolDef.Name, adapter, Fingerprint(toolDef));
+                    clientEntry.Remember(toolDef.Name, adapter, signature);
                     LogRegisteredMcpTool(toolDef.Name, serverId);
                 }
                 else
@@ -595,7 +599,12 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     internal (long Notifications, long Resyncs) ToolListActivity(string serverId) =>
         _clients.TryGetValue(serverId, out var entry) ? (entry.NotificationsSeen, entry.Resyncs) : (0, 0);
 
-    private static string Fingerprint(McpToolDefinition definition) => JsonSerializer.Serialize(definition);
+    /// <summary>
+    /// The SHA-256 of a definition's JSON, in hexadecimal: what tells a changed definition from the one held, and
+    /// the key of its warning. Never the definition itself, which a server can make as large as it likes.
+    /// </summary>
+    internal static string Fingerprint(McpToolDefinition definition) =>
+        Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(definition)));
 
     /// <summary>
     /// Reads the notifications of one server as they arrive, and nothing else: a <c>tools/list_changed</c>
@@ -920,6 +929,8 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             // replacement half made), so the token is checked once, here, and the mutations below do not take it.
             ct.ThrowIfCancellationRequested();
             var apply = CancellationToken.None;
+            // The held tools this listing made unreadable: read once, they are not read again below.
+            var setAside = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var (name, held) in entry.SnapshotTools())
             {
@@ -928,19 +939,20 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                     await _toolRegistry.UnregisterToolAsync(name, apply).ConfigureAwait(false);
                     entry.Forget(name);
                 }
-                else if (held.Signature != Fingerprint(definition))
+                else if (Fingerprint(definition) is var signature && held.Signature != signature)
                 {
                     // A definition that can no longer be read leaves the registry, as it would never have entered
                     // it at the connection: the schema held is no longer the server's.
-                    if (TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn) is not { } adapter)
+                    if (TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn, signature) is not { } adapter)
                     {
                         await _toolRegistry.UnregisterToolAsync(name, apply).ConfigureAwait(false);
                         entry.Forget(name);
+                        setAside.Add(name);
                         continue;
                     }
 
                     if (await _toolRegistry.ReplaceToolAsync(held.Adapter, adapter, apply).ConfigureAwait(false))
-                        entry.Remember(name, adapter, Fingerprint(definition));
+                        entry.Remember(name, adapter, signature);
                     else
                         entry.Forget(name); // the registry no longer holds our instance: the name is registered afresh below
                 }
@@ -949,13 +961,14 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             entry.KeepRejected(current.Keys);
             foreach (var (name, definition) in current)
             {
-                if (entry.Holds(name))
+                if (entry.Holds(name) || setAside.Contains(name))
                     continue;
-                if (TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn) is not { } adapter)
+                var signature = Fingerprint(definition);
+                if (TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn, signature) is not { } adapter)
                     continue;
                 if (await _toolRegistry.RegisterToolAsync(adapter, apply).ConfigureAwait(false))
                 {
-                    entry.Remember(name, adapter, Fingerprint(definition));
+                    entry.Remember(name, adapter, signature);
                     LogRegisteredMcpTool(name, serverId);
                 }
                 else if (entry.Reject(name))

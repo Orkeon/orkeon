@@ -404,8 +404,67 @@ public sealed class McpToolListChangedTests
         await NotifyAsync(server, clock);
         await EventuallyAsync(async () => (await NamesAsync(registry)).SequenceEqual(["new", "ok"]));
 
+        // The bomb was listed and read again at the second listing, and warned about once.
+        Assert.Equal(2, server.ListCalls);
         var warning = Assert.Single(logs.Logger.Entries, e => e.EventId.Name == "mcp.tool.unreadable");
         Assert.Contains("bomb", warning.Message, StringComparison.Ordinal);
         Assert.Contains($"beyond {McpToolAdapter.MaxSchemaNodes} schemas", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldSetASchemaThatCopiesTooMuchTextAside_ReadItAtEachListing_AndWarnOncePerDefinition()
+    {
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        var server = new Server("bomb", "ok");
+        server.Schemas["bomb"] = McpToolAdapterRemoteSchemaTests.TextBomb();
+        using var logs = new Orkeon.Tests.Shared.Doubles.RecordingLoggerFactory();
+        await using var provider = new McpToolProvider(registry, logs, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
+        int Warnings() => logs.Logger.Entries.Count(e => e.EventId.Name == "mcp.tool.unreadable");
+
+        Assert.Equal(["ok"], await NamesAsync(registry));
+        var warning = Assert.Single(logs.Logger.Entries, e => e.EventId.Name == "mcp.tool.unreadable");
+        Assert.Contains($"beyond {McpToolAdapter.MaxSchemaTextBytes} bytes of text", warning.Message, StringComparison.Ordinal);
+
+        // The same bomb at the second listing: listed and read again, and not warned about again.
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 1);
+        Assert.Equal(2, server.ListCalls);
+        Assert.Equal(1, Warnings());
+        Assert.Equal(["ok"], await NamesAsync(registry));
+
+        // Another bomb under the same name: read again, and warned about once more.
+        server.Schemas["bomb"] = McpToolAdapterRemoteSchemaTests.TextBomb(salt: "changed");
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 2);
+        Assert.Equal(2, Warnings());
+        Assert.Equal(["ok"], await NamesAsync(registry));
+    }
+
+    [Fact]
+    public async Task ShouldUnregisterAHeldToolThatBecomesUnreadable_AndRegisterItAgainOnceReadable()
+    {
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        var server = new Server("a", "ok");
+        using var logs = new Orkeon.Tests.Shared.Doubles.RecordingLoggerFactory();
+        await using var provider = new McpToolProvider(registry, logs, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
+        Assert.Equal(["a", "ok"], await NamesAsync(registry));
+
+        server.Schemas["a"] = McpToolAdapterRemoteSchemaTests.TextBomb();
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 1);
+        Assert.Equal(["ok"], await NamesAsync(registry));
+        var warning = Assert.Single(logs.Logger.Entries, e => e.EventId.Name == "mcp.tool.unreadable");
+        Assert.Contains("bytes of text", warning.Message, StringComparison.Ordinal);
+
+        server.Schemas["a"] = """{"type":"object","properties":{"q":{"type":"string"}}}""";
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 2);
+        Assert.Equal(["a", "ok"], await NamesAsync(registry));
+        var tool = (await registry.GetToolByNameAsync("a", TestContext.Current.CancellationToken))!;
+        Assert.Equal("string", tool.Schema.Parameters["q"].Type);
     }
 }

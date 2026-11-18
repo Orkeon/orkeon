@@ -1,8 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Tools.Protocol;
 
 namespace Orkeon.Infrastructure.LLMs.Replay;
 
@@ -39,7 +41,7 @@ internal static partial class LlmCallKey
                 multiModal = m.MultiModalContent is null ? null : Serialize(m.MultiModalContent),
             }),
             systemMessage = config?.SystemMessage is null ? null : Normalize(config.SystemMessage),
-            tools = config?.Tools is null ? null : Serialize(config.Tools),
+            tools = config?.Tools is null ? null : SerializeTools(config.Tools),
             // Defaults weigh as nothing: a call without a configuration and one with the default
             // configuration ask the same.
             toolMode = ToolModeKey(config),
@@ -85,6 +87,103 @@ internal static partial class LlmCallKey
 
     private static string Normalize(string text) =>
         Identifier().Replace(Timestamp().Replace(CassetteRedaction.Text(text), "<time>"), "<id>");
+
+    /// <summary>
+    /// The members a tool schema gained after v1.2.0, with the value each holds when it is not set. A member that
+    /// holds it is left out of the key, so that a cassette recorded by v1.2.0 still answers a call whose tools set
+    /// none of them; a member that is set changes the key.
+    /// </summary>
+    private static readonly (string Name, bool? Default)[] AddedParameterMembers =
+    [
+        (nameof(ParameterSchema.Properties), null),
+        (nameof(ParameterSchema.Items), null),
+        (nameof(ParameterSchema.AnyOf), null),
+        (nameof(ParameterSchema.AllowsAdditionalProperties), true),
+        (nameof(ParameterSchema.Minimum), null),
+        (nameof(ParameterSchema.Maximum), null),
+        (nameof(ParameterSchema.ExclusiveMinimum), null),
+        (nameof(ParameterSchema.ExclusiveMaximum), null),
+        (nameof(ParameterSchema.MinLength), null),
+        (nameof(ParameterSchema.MaxLength), null),
+        (nameof(ParameterSchema.Pattern), null),
+        (nameof(ParameterSchema.MinItems), null),
+        (nameof(ParameterSchema.MaxItems), null),
+    ];
+
+    private static string SerializeTools(IReadOnlyList<ToolSchema> tools)
+    {
+        try
+        {
+            return Normalize(ToolsKeyJson(tools));
+        }
+        catch (NotSupportedException)
+        {
+            return Normalize(tools.ToString() ?? string.Empty);
+        }
+        catch (InvalidOperationException)
+        {
+            return Normalize(tools.ToString() ?? string.Empty);
+        }
+    }
+
+    /// <summary>
+    /// The JSON the key reads for a tool list: its serialization, without the members added after v1.2.0 that hold
+    /// their default - the very text v1.2.0 serialized for the same tools. Only the schema positions are trimmed
+    /// (a tool, its parameters, and their values, items, item properties, properties and alternatives); a default,
+    /// an example, a return type or a type definition is kept whole.
+    /// </summary>
+    internal static string ToolsKeyJson(IReadOnlyList<ToolSchema> tools)
+    {
+        var node = JsonSerializer.SerializeToNode(tools, tools.GetType());
+        if (node is JsonArray array)
+        {
+            foreach (var tool in array.OfType<JsonObject>())
+            {
+                RemoveDefault(tool, nameof(ToolSchema.AllowsAdditionalParameters), true);
+                TrimSchemas(tool[nameof(ToolSchema.Parameters)] as JsonObject);
+            }
+        }
+
+        return node?.ToJsonString() ?? "null";
+    }
+
+    private static void TrimSchemas(JsonObject? schemas)
+    {
+        if (schemas is null)
+            return;
+        foreach (var (_, schema) in schemas)
+            TrimSchema(schema as JsonObject);
+    }
+
+    private static void TrimSchema(JsonObject? schema)
+    {
+        if (schema is null)
+            return;
+        foreach (var (name, defaultValue) in AddedParameterMembers)
+            RemoveDefault(schema, name, defaultValue);
+
+        TrimSchema(schema[nameof(ParameterSchema.Values)] as JsonObject);
+        TrimSchema(schema[nameof(ParameterSchema.Items)] as JsonObject);
+        TrimSchemas(schema[nameof(ParameterSchema.ItemProperties)] as JsonObject);
+        TrimSchemas(schema[nameof(ParameterSchema.Properties)] as JsonObject);
+        if (schema[nameof(ParameterSchema.AnyOf)] is JsonArray alternatives)
+        {
+            foreach (var alternative in alternatives)
+                TrimSchema(alternative as JsonObject);
+        }
+    }
+
+    /// <summary>Removes <paramref name="name"/> when it holds <paramref name="defaultValue"/> (null, or the boolean given).</summary>
+    private static void RemoveDefault(JsonObject schema, string name, bool? defaultValue)
+    {
+        if (!schema.TryGetPropertyValue(name, out var value))
+            return;
+        var isDefault = defaultValue is { } flag
+            ? value is JsonValue boolean && boolean.TryGetValue<bool>(out var actual) && actual == flag
+            : value is null;
+        if (isDefault)
+            schema.Remove(name);
+    }
 
     private static string Serialize(object value)
     {

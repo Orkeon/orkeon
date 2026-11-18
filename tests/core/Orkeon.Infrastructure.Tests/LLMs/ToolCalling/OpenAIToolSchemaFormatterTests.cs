@@ -331,6 +331,29 @@ public class OpenAIToolSchemaFormatterTests
         Assert.Equal("string", additional["type"]);
     }
 
+    [Fact]
+    public void ShouldSendTheValueSchemaOfV120_WhenTheValuesSetNoAddedMember()
+    {
+        var schema = new ToolSchema(
+            "map",
+            "A map tool",
+            new Dictionary<string, ParameterSchema>
+            {
+                ["metadata"] = new("object", "Pairs", Required: false, Values: new ParameterSchema("string", "value", false))
+            });
+
+        var result = _formatter.FormatToolsForPayload([schema]);
+
+        var tools = (List<Dictionary<string, object>>)result["tools"];
+        var function = (Dictionary<string, object>)tools[0]["function"];
+        var parameters = (Dictionary<string, object>)function["parameters"];
+        var properties = (Dictionary<string, object>)parameters["properties"];
+        // v1.2.0 sent the values' type and format, never their description ("value", from the schema generator).
+        Assert.Equal(
+            """{"type":"object","description":"Pairs","additionalProperties":{"type":"string"}}""",
+            System.Text.Json.JsonSerializer.Serialize(properties["metadata"]));
+    }
+
     private static ToolSchema ArraysOfUnknownItems() => new(
         "arrays",
         "Arrays whose items are not known",

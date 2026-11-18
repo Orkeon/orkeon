@@ -1,5 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Diagnostics.CodeAnalysis;
 
@@ -310,8 +313,9 @@ public partial class McpClient : IAsyncDisposable
             reason = ex.Message;
         }
 
-        // Once per definition: a server that keeps a bad entry is not warned about at every listing.
-        if (WarnOnce(kind + ":" + element.GetRawText()))
+        // Once per definition: a server that keeps a bad entry is not warned about at every listing. The entry is
+        // hashed where it lies, never copied: its text can be as large as the server likes.
+        if (WarnOnce(kind + ":" + Convert.ToHexString(SHA256.HashData(JsonMarshal.GetRawUtf8Value(element)))))
         {
             if (kind == "tool")
                 LogToolDefinitionUnreadable(name ?? "(unnamed)", Label, reason);
@@ -332,14 +336,19 @@ public partial class McpClient : IAsyncDisposable
     /// <summary>How many warnings are remembered: past it the memory starts again, so a server whose bad entries change at every listing cannot grow it without end.</summary>
     private const int MaxWarned = 1024;
 
-    /// <summary>Whether <paramref name="key"/> is warned about for the first time on this connection; the provider uses it too.</summary>
+    /// <summary>
+    /// Whether <paramref name="key"/> is warned about for the first time on this connection; the provider uses it
+    /// too. What is remembered is the SHA-256 of the key, never the key: a key built from what a server sent (a
+    /// name, a definition) holds 64 characters whatever its size.
+    /// </summary>
     internal bool WarnOnce(string key)
     {
+        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)));
         lock (_warned)
         {
             if (_warned.Count >= MaxWarned)
                 _warned.Clear();
-            return _warned.Add(key);
+            return _warned.Add(digest);
         }
     }
 
