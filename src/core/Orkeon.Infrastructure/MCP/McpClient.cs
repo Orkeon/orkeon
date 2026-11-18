@@ -332,7 +332,8 @@ public partial class McpClient : IAsyncDisposable
     /// <summary>How many warnings are remembered: past it the memory starts again, so a server whose bad entries change at every listing cannot grow it without end.</summary>
     private const int MaxWarned = 1024;
 
-    private bool WarnOnce(string key)
+    /// <summary>Whether <paramref name="key"/> is warned about for the first time on this connection; the provider uses it too.</summary>
+    internal bool WarnOnce(string key)
     {
         lock (_warned)
         {
@@ -363,10 +364,17 @@ public partial class McpClient : IAsyncDisposable
         // Read prompt by prompt, as tools/list is: one prompt of the wrong JSON type does not take the others away.
         var raw = await PageEntriesAsync("prompts/list", "prompts", strict: false, ct).ConfigureAwait(false);
         var prompts = new List<McpPrompt>(raw.Count);
+        var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var element in raw)
         {
-            if (ReadEntry<McpPrompt>(element, "prompt", "name", p => !string.IsNullOrWhiteSpace(p.Name), "the prompt has no name") is { } prompt)
+            if (ReadEntry<McpPrompt>(element, "prompt", "name", p => !string.IsNullOrWhiteSpace(p.Name), "the prompt has no name") is not { } prompt)
+                continue;
+
+            // prompts/get names a prompt: a name listed twice is one prompt, the first.
+            if (names.Add(prompt.Name))
                 prompts.Add(prompt);
+            else if (WarnOnce("twice:prompts/list:" + prompt.Name))
+                LogEntryListedTwice("prompt", prompt.Name, Label);
         }
 
         return prompts;
@@ -450,10 +458,18 @@ public partial class McpClient : IAsyncDisposable
         // Read resource by resource: one that cannot be read, or that names no URI to read it by, is set aside alone.
         var raw = await PageEntriesAsync("resources/list", "resources", strict: false, ct).ConfigureAwait(false);
         var resources = new List<McpResource>(raw.Count);
+        var uris = new HashSet<string>(StringComparer.Ordinal);
         foreach (var element in raw)
         {
-            if (ReadEntry<McpResource>(element, "resource", "uri", r => !string.IsNullOrWhiteSpace(r.Uri?.OriginalString), "the resource has no URI") is { } resource)
+            if (ReadEntry<McpResource>(element, "resource", "uri", r => !string.IsNullOrWhiteSpace(r.Uri?.OriginalString), "the resource has no URI") is not { } resource)
+                continue;
+
+            // resources/read names a resource by its URI: a URI listed twice is one resource, the first.
+            var uri = resource.Uri!.OriginalString;
+            if (uris.Add(uri))
                 resources.Add(resource);
+            else if (WarnOnce("twice:resources/list:" + uri))
+                LogEntryListedTwice("resource", uri, Label);
         }
 
         return resources;
@@ -739,16 +755,16 @@ public partial class McpClient : IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Tool}' listed by MCP server '{Server}' was set aside: its definition could not be read ({Reason}). The other tools of the server are kept")]
+    [LoggerMessage(EventName = "mcp.tool.unreadable", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Tool}' listed by MCP server '{Server}' was set aside: its definition could not be read ({Reason}). The other tools of the server are kept")]
     private partial void LogToolDefinitionUnreadable(string tool, string server, string reason);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The {Kind} '{Name}' listed by MCP server '{Server}' was set aside: its definition could not be read ({Reason}). The other entries of the listing are kept")]
+    [LoggerMessage(EventName = "mcp.entry.unreadable", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The {Kind} '{Name}' listed by MCP server '{Server}' was set aside: its definition could not be read ({Reason}). The other entries of the listing are kept")]
     private partial void LogEntryUnreadable(string kind, string name, string server, string reason);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "MCP server '{Server}' lists the {Kind} '{Name}' twice: the first is kept, the other is ignored")]
+    [LoggerMessage(EventName = "mcp.entry.duplicate", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "MCP server '{Server}' lists the {Kind} '{Name}' twice: the first is kept, the other is ignored")]
     private partial void LogEntryListedTwice(string kind, string name, string server);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The {Method} answer of MCP server '{Server}' could not be read as a listing: {Reason}")]
+    [LoggerMessage(EventName = "mcp.listing.unreadable", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The {Method} answer of MCP server '{Server}' could not be read as a listing: {Reason}")]
     private partial void LogListingUnreadable(string method, string server, string reason);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "MCP client initialized with server {Name} v{Version}")]

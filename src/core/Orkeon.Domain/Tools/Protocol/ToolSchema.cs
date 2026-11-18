@@ -205,6 +205,9 @@ public sealed record ParameterSchema(
             doc["type"] = Type;
         if (Format != null)
             doc["format"] = Format;
+        // An array always says what it holds; the items of a dictionary's array value are not known.
+        if (Type == "array")
+            doc["items"] = new Dictionary<string, object>();
         return doc;
     }
 
@@ -236,6 +239,8 @@ public sealed record ParameterSchema(
         {
             var items = new Dictionary<string, object> { ["type"] = ItemsType };
             if (ItemsFormat != null) items["format"] = ItemsFormat;
+            // An array inside an array: what the inner one holds is not known, and `{}` says so.
+            if (ItemsType == "array") items["items"] = new Dictionary<string, object>();
             if (ItemProperties is { Count: > 0 })
             {
                 items["properties"] = ItemProperties.ToDictionary(p => p.Key, p => (object)p.Value.ToDocument());
@@ -243,6 +248,11 @@ public sealed record ParameterSchema(
                     items["required"] = required;
             }
             doc["items"] = items;
+        }
+        else if (Type == "array")
+        {
+            // An array always says what it holds: `{}`, any JSON value, when its item type is not known.
+            doc["items"] = new Dictionary<string, object>();
         }
         if (Values != null)
             doc["additionalProperties"] = Values.ToValueDocument();

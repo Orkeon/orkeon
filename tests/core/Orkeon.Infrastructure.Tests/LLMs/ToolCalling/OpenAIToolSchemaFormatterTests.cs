@@ -330,4 +330,28 @@ public class OpenAIToolSchemaFormatterTests
         var additional = Assert.IsType<IDictionary<string, object>>(Assert.Contains("additionalProperties", map), exactMatch: false);
         Assert.Equal("string", additional["type"]);
     }
+
+    private static ToolSchema ArraysOfUnknownItems() => new(
+        "arrays",
+        "Arrays whose items are not known",
+        new Dictionary<string, ParameterSchema>
+        {
+            ["bare"] = new("array", "Anything listed", Required: false),
+            ["rows"] = new("array", "Rows", Required: false, ItemsType: "array"),
+        });
+
+    [Fact]
+    public void ShouldPublishAnyItems_WhenAnArrayDoesNotSayWhatItHolds()
+    {
+        var result = _formatter.FormatToolsForPayload([ArraysOfUnknownItems()]);
+
+        var tools = (List<Dictionary<string, object>>)result["tools"];
+        var function = (Dictionary<string, object>)tools[0]["function"];
+        var properties = (Dictionary<string, object>)((Dictionary<string, object>)function["parameters"])["properties"];
+        var bare = Assert.IsType<Dictionary<string, object>>(properties["bare"]);
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(bare["items"]));
+        var rows = Assert.IsType<Dictionary<string, object>>(Assert.IsType<Dictionary<string, object>>(properties["rows"])["items"]);
+        Assert.Equal("array", rows["type"]);
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(rows["items"]));
+    }
 }

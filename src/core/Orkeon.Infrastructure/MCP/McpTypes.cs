@@ -516,7 +516,9 @@ public class McpToolListResult
 }
 
 /// <summary>
-/// Result of resources/list.
+/// Result of <c>resources/list</c>: one page, the wire shape kept for a host that serves or reads the listing
+/// itself. <see cref="McpClient"/> reads the listing resource by resource and does not use it; the
+/// <see cref="McpServer"/> writes the same members plus <c>size</c>, which <see cref="McpResource"/> does not carry.
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public class McpResourceListResult

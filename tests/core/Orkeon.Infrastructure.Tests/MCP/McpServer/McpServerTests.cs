@@ -400,6 +400,25 @@ public class McpServerTests
     }
 
     [Fact]
+    public void ShouldServeAnyItems_WhenAnArrayDoesNotSayWhatItHolds()
+    {
+        var schema = new ToolSchema("arrays", "Arrays whose items are not known", new Dictionary<string, ParameterSchema>
+        {
+            ["bare"] = new("array", "Anything listed", false),
+            ["rows"] = new("array", "Rows", false, ItemsType: "array"),
+        });
+
+        var properties = McpServerSut.ConvertToolSchemaToJsonSchema(schema)!.Value.GetProperty("properties");
+
+        var bare = properties.GetProperty("bare").GetProperty("items");
+        Assert.Equal(JsonValueKind.Object, bare.ValueKind);
+        Assert.Empty(bare.EnumerateObject());
+        var rows = properties.GetProperty("rows").GetProperty("items");
+        Assert.Equal("array", rows.GetProperty("type").GetString());
+        Assert.Empty(rows.GetProperty("items").EnumerateObject());
+    }
+
+    [Fact]
     [Trait("BR", "CH-01")]
     [Trait("BR", "CH-02")]
     public void ConvertToolSchema_OmitsType_WhenParameterTypeIsAbsent()
@@ -503,6 +522,7 @@ public class McpServerTests
         Assert.Equal("array", items.GetProperty("properties").GetProperty("rows").GetProperty("items").GetProperty("type").GetString());
         Assert.Equal("name", Assert.Single(items.GetProperty("required").EnumerateArray()).GetString());
 
-        Assert.False(properties.GetProperty("loose").TryGetProperty("items", out _));
+        // An array that does not say what it holds is served with `items: {}`, any JSON value, never bare.
+        Assert.Empty(properties.GetProperty("loose").GetProperty("items").EnumerateObject());
     }
 }

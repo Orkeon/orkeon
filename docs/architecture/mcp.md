@@ -68,14 +68,17 @@ property it keeps the `type`, the `description`, the `default` as the JSON value
 none - `{}`, a bare `anyOf`, `oneOf` or `$ref` -, has no type: the model may give any JSON value. Still lost:
 the `properties` of an object parameter, an array nested in an array, the `enum`, `description` and `default`
 of an array's items, the alternatives of `anyOf` / `oneOf`, `$ref` / `$defs`, and the bounds (`minimum`,
-`maximum`, `pattern`, `minItems`). Items that declare `properties` and no `type` are read as objects.
+`maximum`, `pattern`, `minItems`). Items that declare `properties` and no `type` are read as objects. An array
+whose items could not be read - no `items`, items with no single type, an array inside an array - is shown with
+`items: {}`, any JSON value: no array reaches a provider without `items`, which some refuse.
 
 No `inputSchema` makes the connection fail: a `required` entry or a `description` of a property that is no
 string is skipped, a number no `double` holds (`1e400`) is dropped from an `enum` or a `default`, and the
 listing is read tool by tool: an entry that is no object (`null`), a tool with no name, or one whose own
 `name`, `description` or `annotations` have the wrong JSON type (a `name` that is a number) is set aside on its
 own - the other tools of its server are registered. The warning names the tool and the server as `MCP:Servers`
-names it, and is written once for that entry, not at every listing. When `tools/list_changed` brings such an
+names it, and is written once for that entry, not at every listing - for an `inputSchema` that cannot be read,
+once for that definition: a server that changes it is warned about again. When `tools/list_changed` brings such an
 entry for a tool that was registered, the tool leaves the registry. A `"tools": null` lists no tool, and so does a
 `result` that is absent or `null`. A tool listing of the wrong shape - a `tools` that is neither `null` nor an
 array, a `result` that is present and no object, a `nextCursor` that is no string - is no empty listing: it
@@ -85,8 +88,15 @@ twice, on one page or two, is registered once, the first time, and warned about 
 the server's status rejects nothing; names are compared as the registry compares them, without their case.
 `prompts/list` and `resources/list` are read entry by entry too: a prompt with no name, a resource with no
 `uri`, or one whose members have the wrong JSON type is set aside alone with a warning written once, a `null`
-among a prompt's `arguments` is dropped, and a `prompts` or `resources` that is `null` lists nothing. No
-registry follows these two listings, so one of the wrong shape lists what could be read, with a warning.
+among a prompt's `arguments` is dropped, and a `prompts` or `resources` that is `null` lists nothing. A prompt
+name or a resource `uri` listed twice is kept once, the first, and warned about once (`prompts/get` and
+`resources/read` name one entry; the names are compared with their case). No registry follows these two
+listings, so one of the wrong shape lists what could be read, with a warning.
+
+The client's warnings carry an event name a log filter can match: `mcp.tool.unreadable` (a tool set aside, its
+entry or its `inputSchema`), `mcp.entry.unreadable` (a prompt or a resource set aside), `mcp.entry.duplicate`
+(a tool, a prompt or a resource listed twice), `mcp.listing.unreadable` (a `prompts/list` or `resources/list` of
+the wrong shape) and `mcp.tool.rejected` (a name another tool holds).
 
 ### Server (`McpServer`) — dual-era on one endpoint
 

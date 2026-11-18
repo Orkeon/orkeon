@@ -118,23 +118,27 @@ longer listed.
   neither the tool nor the property. A `type` array is now read as its one member that is not `"null"`, every scalar
   `enum` value is kept, and a tool that cannot be registered - a `null` entry of the list, a tool with no name, an
   `inputSchema` that still cannot be read, a `name`, a `description` or `annotations` of the wrong JSON type - is set
-  aside on its own, with a warning that names the server and the tool (written once for an entry the listing itself
-  cannot read, at each listing for an `inputSchema` that cannot be read): `tools/list` is read tool by tool. A tool that becomes unreadable at a `tools/list_changed` leaves the registry.
+  aside on its own, with a warning that names the server and the tool (`mcp.tool.unreadable`, written once for that
+  entry, and once for that definition of an `inputSchema` that cannot be read): `tools/list` is read tool by tool. A tool that becomes unreadable at a `tools/list_changed` leaves the registry.
 - The rest of what an MCP server lists is read the same way. `prompts/list` and `resources/list` were read a page at
   a time: one prompt or resource of the wrong JSON type failed the listing with a .NET message, and a `"prompts": null`
   or `"resources": null` failed it too. They are read entry by entry: a prompt with no name, a resource with no `uri`
-  or an entry of the wrong JSON type is set aside alone, with a warning written once, and `null` lists nothing; a
+  or an entry of the wrong JSON type is set aside alone, with a warning written once (`mcp.entry.unreadable`), and
+  `null` lists nothing; a prompt name or a resource `uri` listed twice is kept once, the first (`mcp.entry.duplicate`); a
   prompt's `"arguments": null` is no argument, and a `prompts` or `resources` member of the wrong shape lists what
-  could be read, with a warning. A `tools/list` answer of the wrong shape - a `tools` that is neither `null` nor an
+  could be read, with a warning (`mcp.listing.unreadable`). A `tools/list` answer of the wrong shape - a `tools` that is neither `null` nor an
   array, a `nextCursor` that is no string - still fails the listing, and so the connection: no empty listing stands
   for it, which would take the server's tools out of the registry at a `tools/list_changed`. Its message now names
   the server and the member, where it was the .NET serializer's. A name one server lists twice was logged as an
   error, a collision with an already-registered tool, and counted among the server's rejected tools, though its first
-  copy was registered: it is one tool, warned about once, the names compared without their case as the registry
+  copy was registered: it is one tool, warned about once (`mcp.entry.duplicate`), the names compared without their case as the registry
   compares them. A tool whose `"description"` is `null` has an empty description.
 - The MCP client kept too little of a remote tool's parameter (#415): the `items` of an array were dropped, so an
   agent's model saw a bare `array`, and so were the `format` and the `additionalProperties` of a dictionary. They are
-  kept, with the properties of an array of objects. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was
+  kept, with the properties of an array of objects, and an array whose items cannot be read (none, several types, an
+  array inside an array) is shown with `items: {}`, any JSON value, where a provider that wants `items` on every array
+  refused the bare one, and with it every call of the agent; the MCP server and the built-in tools' schemas do the
+  same. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was
   read as a `string`: it now has no type, and the model may give any JSON value. A `default` is kept as the value it
   is: a whole number stays whole (it was read as a `double`), an array or an object is no longer its JSON text, and
   `"default": null` is no default (it was the text `null`). A number no `double` holds (`1e400`) is dropped from an

@@ -186,4 +186,59 @@ public sealed class McpClientListingToleranceTests
         Assert.Contains(warnings, w => w.Contains("lists the tool 'dup' twice", StringComparison.Ordinal));
         Assert.Contains(warnings, w => w.Contains("lists the tool 'DUP' twice", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public async Task ShouldKeepTheFirstPromptAndResource_WhenTheServerListsOneTwice()
+    {
+        var (prompts, promptTransport, promptLog) = await ConnectAsync(
+            "prompts/list",
+            """{"prompts":[{"name":"p","description":"first"},{"name":"P"},{"name":"p","description":"second"}],"nextCursor":"2"}""",
+            """{"prompts":[{"name":"p","description":"third"}]}""");
+        await using var _ = prompts;
+        await using var __ = promptTransport;
+        var (resources, resourceTransport, resourceLog) = await ConnectAsync(
+            "resources/list",
+            """{"resources":[{"uri":"file:///a","name":"first"},{"uri":"file:///a","name":"second"},{"uri":"file:///b","name":"b"}]}""");
+        await using var ___ = resources;
+        await using var ____ = resourceTransport;
+
+        for (var listing = 0; listing < 2; listing++)
+        {
+            var listed = await prompts.ListPromptsAsync(TestContext.Current.CancellationToken);
+            // prompts/get names a prompt with its case: `P` is another prompt.
+            Assert.Equal(["p", "P"], listed.Select(p => p.Name));
+            Assert.Equal("first", listed[0].Description);
+            var read = await resources.ListResourcesAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(["first", "b"], read.Select(r => r.Name));
+        }
+
+        var promptWarning = Assert.Single(promptLog.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Equal("mcp.entry.duplicate", promptWarning.EventId.Name);
+        Assert.Contains("lists the prompt 'p' twice", promptWarning.Message, StringComparison.Ordinal);
+        var resourceWarning = Assert.Single(resourceLog.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Equal("mcp.entry.duplicate", resourceWarning.EventId.Name);
+        Assert.Contains("lists the resource 'file:///a' twice", resourceWarning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldNameEachWarningForALogFilter()
+    {
+        var (prompts, promptTransport, promptLog) = await ConnectAsync("prompts/list", """{"prompts":[{"name":5}]}""");
+        await using var _ = prompts;
+        await using var __ = promptTransport;
+        var (resources, resourceTransport, resourceLog) = await ConnectAsync("resources/list", """{"resources":"none"}""");
+        await using var ___ = resources;
+        await using var ____ = resourceTransport;
+        var (tools, toolTransport, toolLog) = await ConnectAsync("tools/list", """{"tools":[null,{"name":"ok"}]}""");
+        await using var _____ = tools;
+        await using var ______ = toolTransport;
+
+        await prompts.ListPromptsAsync(TestContext.Current.CancellationToken);
+        await resources.ListResourcesAsync(TestContext.Current.CancellationToken);
+        await tools.ListToolsAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("mcp.entry.unreadable", Assert.Single(promptLog.Entries, e => e.Level == LogLevel.Warning).EventId.Name);
+        Assert.Equal("mcp.listing.unreadable", Assert.Single(resourceLog.Entries, e => e.Level == LogLevel.Warning).EventId.Name);
+        Assert.Equal("mcp.tool.unreadable", Assert.Single(toolLog.Entries, e => e.Level == LogLevel.Warning).EventId.Name);
+    }
 }

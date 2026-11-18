@@ -281,4 +281,27 @@ public class CovToolCalling_AnthropicToolSchemaFormatterTests
         Assert.Equal(["kind", "text"], itemProperties.Keys.Order().ToArray());
         Assert.Equal(["kind"], Assert.IsType<List<string>>(items["required"]));
     }
+
+    private static ToolSchema ArraysOfUnknownItems() => new(
+        "arrays",
+        "Arrays whose items are not known",
+        new Dictionary<string, ParameterSchema>
+        {
+            ["bare"] = new("array", "Anything listed", Required: false),
+            ["rows"] = new("array", "Rows", Required: false, ItemsType: "array"),
+        });
+
+    [Fact]
+    public void ShouldPublishAnyItems_WhenAnArrayDoesNotSayWhatItHolds()
+    {
+        var payload = _formatter.FormatToolsForPayload([ArraysOfUnknownItems()], ToolCallMode.Auto);
+
+        var tool = Assert.Single(Assert.IsType<List<Dictionary<string, object>>>(payload["tools"]));
+        var properties = Assert.IsType<Dictionary<string, object>>(Assert.IsType<Dictionary<string, object>>(tool["input_schema"])["properties"]);
+        var bare = Assert.IsType<Dictionary<string, object>>(properties["bare"]);
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(bare["items"]));
+        var rows = Assert.IsType<Dictionary<string, object>>(Assert.IsType<Dictionary<string, object>>(properties["rows"])["items"]);
+        Assert.Equal("array", rows["type"]);
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(rows["items"]));
+    }
 }

@@ -109,6 +109,9 @@ internal sealed class AnthropicToolSchemaFormatter : IToolSchemaFormatter
             var items = new Dictionary<string, object> { ["type"] = param.ItemsType };
             if (param.ItemsFormat is not null)
                 items["format"] = param.ItemsFormat;
+            // An array inside an array: what the inner one holds is not known, and `{}` says so.
+            if (param.ItemsType == "array")
+                items["items"] = OpenAIToolSchemaFormatter.AnyValue();
             // An array of objects publishes its items' shape (#210): their properties and the required ones.
             if (param.ItemProperties is { Count: > 0 })
             {
@@ -117,6 +120,11 @@ internal sealed class AnthropicToolSchemaFormatter : IToolSchemaFormatter
                     items["required"] = required;
             }
             prop["items"] = items;
+        }
+        else if (param.Type == "array")
+        {
+            // An array always says what it holds: `{}`, any JSON value, when its item type is not known.
+            prop["items"] = OpenAIToolSchemaFormatter.AnyValue();
         }
 
         if (param.Values is not null)

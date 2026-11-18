@@ -81,6 +81,10 @@ internal sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
         var items = new Dictionary<string, object> { ["type"] = itemsType };
         if (param.ItemsFormat is not null)
             items["format"] = param.ItemsFormat;
+        // An array inside an array: what the inner one holds is not known, and `{}` says so (any JSON value). A
+        // provider that wants `items` on every array refuses a bare one, and with it every call of the agent.
+        if (itemsType == "array")
+            items["items"] = AnyValue();
         // An array of objects publishes its items' shape (#210): their properties and the required ones.
         if (param.ItemProperties is { Count: > 0 })
         {
@@ -91,6 +95,9 @@ internal sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
 
         return items;
     }
+
+    /// <summary>The JSON Schema that accepts any JSON value: the items of an array whose item type is not known.</summary>
+    internal static Dictionary<string, object> AnyValue() => [];
 
     private static Dictionary<string, object> FormatParameter(ParameterSchema param)
     {
@@ -117,10 +124,9 @@ internal sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
         if (param.Format is not null)
             prop["format"] = param.Format;
 
-        if (param.Type == "array" && param.ItemsType is not null)
-        {
-            prop["items"] = FormatItems(param, param.ItemsType);
-        }
+        // An array always says what it holds: its items' type when it is known, `{}` (any JSON value) otherwise.
+        if (param.Type == "array")
+            prop["items"] = param.ItemsType is not null ? FormatItems(param, param.ItemsType) : AnyValue();
 
         if (param.Values is not null)
             prop["additionalProperties"] = param.Values.ToValueDocument();

@@ -840,4 +840,20 @@ public class ToolSchemaTests
         var additional = Assert.IsType<Dictionary<string, object>>(doc["additionalProperties"]);
         Assert.Equal("string", additional["type"]);
     }
+
+    [Fact]
+    public void ShouldPublishAnyItems_WhenAnArrayDoesNotSayWhatItHolds()
+    {
+        var bare = new ParameterSchema("array", "Anything listed", false);
+        var nested = new ParameterSchema("array", "Rows", false, ItemsType: "array");
+        var dictionary = new ParameterSchema("object", "Lists by key", false, Values: new ParameterSchema("array", "value", false));
+
+        // `{}` is any JSON value: a provider that wants `items` on every array never sees a bare one.
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(bare.ToDocument()["items"]));
+        var rows = Assert.IsType<Dictionary<string, object>>(nested.ToDocument()["items"]);
+        Assert.Equal("array", rows["type"]);
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(rows["items"]));
+        var value = Assert.IsType<Dictionary<string, object>>(dictionary.ToDocument()["additionalProperties"]);
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(value["items"]));
+    }
 }

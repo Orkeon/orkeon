@@ -1176,8 +1176,12 @@ public partial class McpServer
                 paramSchema["format"] = kvp.Value.Format;
 
             // What an array holds (#402), as a model reads it in an agent's tool list.
-            if (kvp.Value.Type == "array" && kvp.Value.ItemsType != null)
-                paramSchema["items"] = LLMs.ToolCalling.OpenAIToolSchemaFormatter.FormatItems(kvp.Value, kvp.Value.ItemsType);
+            if (kvp.Value.Type == "array")
+            {
+                paramSchema["items"] = kvp.Value.ItemsType != null
+                    ? LLMs.ToolCalling.OpenAIToolSchemaFormatter.FormatItems(kvp.Value, kvp.Value.ItemsType)
+                    : LLMs.ToolCalling.OpenAIToolSchemaFormatter.AnyValue();
+            }
 
             if (kvp.Value.Values != null)
                 paramSchema["additionalProperties"] = kvp.Value.Values.ToValueDocument();

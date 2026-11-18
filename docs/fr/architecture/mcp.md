@@ -72,7 +72,10 @@ types, ou sans aucun — `{}`, un `anyOf`, un `oneOf` ou un `$ref` seul —, n'a
 donner n'importe quelle valeur JSON. Restent perdus : les `properties` d'un paramètre objet, un tableau
 imbriqué dans un tableau, l'`enum`, la `description` et le `default` des éléments d'un tableau, les
 alternatives d'`anyOf` / `oneOf`, `$ref` / `$defs`, et les bornes (`minimum`, `maximum`, `pattern`,
-`minItems`). Des éléments qui déclarent des `properties` sans `type` sont lus comme des objets.
+`minItems`). Des éléments qui déclarent des `properties` sans `type` sont lus comme des objets. Un tableau
+dont les éléments n'ont pas pu être lus — pas d'`items`, des éléments sans type unique, un tableau dans un
+tableau — est montré avec `items: {}`, n'importe quelle valeur JSON : aucun tableau n'arrive à un fournisseur
+sans `items`, que certains refusent.
 
 Aucun `inputSchema` ne fait échouer la connexion : une entrée de `required` ou la `description` d'une
 propriété qui n'est pas une chaîne est ignorée, un nombre qu'aucun `double` ne contient (`1e400`) est retiré
@@ -80,7 +83,8 @@ d'un `enum` ou d'un `default`, et la liste est lue outil par outil : une entrée
 outil sans nom, ou un outil dont le `name`, la `description` ou les `annotations` ont le mauvais type JSON (un
 `name` qui est un nombre) est écarté à lui seul — les autres outils de son serveur sont enregistrés.
 L'avertissement nomme l'outil et le serveur tel que `MCP:Servers` le nomme, et il est écrit une fois pour
-cette entrée, pas à chaque lecture de la liste. Quand `tools/list_changed` apporte une telle entrée pour un
+cette entrée, pas à chaque lecture de la liste — pour un `inputSchema` illisible, une fois pour cette
+définition : un serveur qui la change est signalé de nouveau. Quand `tools/list_changed` apporte une telle entrée pour un
 outil qui était enregistré, l'outil quitte le registre. Un `"tools": null` ne liste aucun outil, pas plus
 qu'un `result` absent ou `null`. Une liste d'outils de la mauvaise forme — un `tools` qui n'est ni `null` ni un
 tableau, un `result` présent qui n'est pas un objet, un `nextCursor` qui n'est pas une chaîne — n'est pas une
@@ -91,8 +95,16 @@ une fois : ce n'est pas une collision, et l'état du serveur ne rejette rien ; l
 registre les compare, sans leur casse. `prompts/list` et `resources/list` sont lus entrée par entrée eux
 aussi : un prompt sans nom, une ressource sans `uri`, ou une entrée dont les membres ont le mauvais type JSON
 est écartée à elle seule avec un avertissement écrit une fois, un `null` parmi les `arguments` d'un prompt est
-retiré, et un `prompts` ou un `resources` à `null` ne liste rien. Aucun registre ne suit ces deux listes : une
-liste de la mauvaise forme donne ce qui a pu être lu, avec un avertissement.
+retiré, et un `prompts` ou un `resources` à `null` ne liste rien. Un nom de prompt ou une `uri` de ressource
+listé deux fois est gardé une fois, le premier, et signalé une fois (`prompts/get` et `resources/read` nomment
+une entrée ; les noms sont comparés avec leur casse). Aucun registre ne suit ces deux listes : une liste de la
+mauvaise forme donne ce qui a pu être lu, avec un avertissement.
+
+Les avertissements du client portent un nom d'événement qu'un filtre de journal peut viser :
+`mcp.tool.unreadable` (un outil écarté, son entrée ou son `inputSchema`), `mcp.entry.unreadable` (un prompt ou
+une ressource écarté), `mcp.entry.duplicate` (un outil, un prompt ou une ressource listé deux fois),
+`mcp.listing.unreadable` (un `prompts/list` ou un `resources/list` de la mauvaise forme) et `mcp.tool.rejected`
+(un nom qu'un autre outil détient).
 
 ### Serveur (`McpServer`) — bi-génération sur un même endpoint
 

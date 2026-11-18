@@ -324,7 +324,10 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         }
         catch (Exception ex)
         {
-            LogMcpToolSchemaUnreadable(definition.Name, serverId, ex.Message);
+            // Once per definition: a server that keeps the same unreadable schema is not warned about at every
+            // tools/list_changed, and one that changes it is warned about again.
+            if (client.WarnOnce("schema:" + Fingerprint(definition)))
+                LogMcpToolSchemaUnreadable(definition.Name, serverId, ex.Message);
             return null;
         }
     }
@@ -1063,7 +1066,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "The tool '{Name}' of MCP server '{ServerId}' collides with an already-registered tool and was not registered; the registered tool keeps the name")]
     private partial void LogMcpToolNameCollision(string name, string serverId);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Name}' of MCP server '{ServerId}' was set aside: its definition could not be read ({Reason}). The other tools of the server are registered")]
+    [LoggerMessage(EventName = "mcp.tool.unreadable", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Name}' of MCP server '{ServerId}' was set aside: its definition could not be read ({Reason}). The other tools of the server are registered")]
     private partial void LogMcpToolSchemaUnreadable(string name, string serverId, string reason);
 
     [LoggerMessage(EventName = "mcp.tool.rejected", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Name}' of MCP server '{ServerId}' now collides with an already-registered tool and is ignored; the registered tool keeps the name")]
