@@ -68,24 +68,33 @@ qu'il est (`null` n'est pas un défaut), l'`enum` (chaque valeur scalaire telle 
 booléen) ou un `const` (un `enum` d'une valeur), le `format`, les bornes (`minimum`, `maximum`, `exclusiveMinimum`,
 `exclusiveMaximum` — la forme booléenne du draft 04 aussi —, `minLength`, `maxLength`, `pattern`, `minItems`,
 `maxItems`), les `items` d'un tableau — un tableau de tableaux compris —, les `properties` et le `required` d'un
-objet, ses `additionalProperties` (le schéma des valeurs d'un dictionnaire, ou `false`, à la racine aussi) et les
-alternatives d'`anyOf` et de `oneOf` (montrées comme `anyOf`). Un `$ref` local (`#/$defs/X`, `#/definitions/X`,
-tout pointeur JSON dans le document, à la racine aussi) est le schéma qu'il nomme, la `description`, le `default` et
-le `format` écrits à côté l'emportant sur ceux de la définition ; une référence à une définition déjà en cours de
-lecture (un arbre dont le nœud contient des nœuds) et une référence à un autre document acceptent n'importe quelle
-valeur JSON. Un `type` écrit comme un tableau est lu comme son seul membre autre que `"null"` (`["string", "null"]`,
-un paramètre nullable, est un `string`) ; un `anyOf` / `oneOf` dont la seule alternative hormis `{"type": "null"}`
-est X — l'`Optional[X]` de Pydantic — est X, comme un `allOf` d'un seul schéma X. Une propriété qui a des
-`properties` sans `type` est un objet. Un tuple (`items` en tableau, ou `prefixItems`) est lu comme les
-alternatives de ses positions, et `items: false` comme `maxItems`. Restent perdus : un `allOf` de plusieurs schémas,
-`not`, `if` / `then` / `else`, `patternProperties`, `uniqueItems`, `multipleOf`, `dependentRequired`, la position des
-éléments d'un tuple, et ce qui se trouve à plus de 32 niveaux de profondeur (n'importe quelle valeur JSON). Une
-propriété à plusieurs types, ou sans aucun (`{}`), n'a pas de type : le modèle peut donner n'importe quelle valeur
-JSON. Un tableau dont les éléments ne sont pas connus — pas d'`items`, des éléments sans type unique — est montré
-avec `items: {}`, n'importe quelle valeur JSON : aucun tableau n'arrive à un fournisseur sans `items`, que certains
-refusent. Un schéma dont les références s'étendent au-delà de 4096 schémas — une définition qui en nomme une autre
-deux fois, qui en nomme une autre deux fois — coûterait la mémoire de l'hôte et le contexte du modèle : l'outil est
-écarté avec un avertissement, comme ci-dessous.
+objet, ses `additionalProperties` (le schéma des valeurs d'un dictionnaire, ou `false`) et les alternatives
+d'`anyOf` et de `oneOf` (montrées comme `anyOf`). La racine est lue comme tout autre schéma : un `$ref`, un `allOf`
+ou un `anyOf` / `oneOf` nullable qui tient lieu d'un objet donne les propriétés de cet objet ; de ses
+`additionalProperties`, la racine ne garde que `false`. Un `$ref` local (`#/$defs/X`, `#/definitions/X`, tout
+pointeur JSON dans le document, `#` la racine) est le schéma qu'il nomme, la `description`, le `default` et le
+`format` écrits à côté l'emportant sur ceux de la définition, l'`enum` et les bornes écrits à côté valant là où la
+définition n'en a pas. Un `type` écrit comme un tableau est lu comme son seul membre autre que `"null"`
+(`["string", "null"]`, un paramètre nullable, est un `string`) ; un `anyOf` / `oneOf` dont la seule alternative
+hormis le schéma nul est X — l'`Optional[X]` de Pydantic — est X, comme un `allOf` d'un seul schéma X ; le schéma
+nul s'écrit `{"type": "null"}`, `{"type": ["null"]}`, `{"const": null}` ou `{"enum": [null]}`. Un `allOf` dont les
+membres sont tous des objets (leur `$ref` suivi), à côté d'un schéma qui est un objet ou ne nomme aucun type, est un
+seul objet : l'union de leurs propriétés (le premier qui en nomme une l'emporte), l'union de leurs `required`, et
+`additionalProperties: false` dès que l'un d'eux le dit. Une propriété qui a des `properties` sans `type` est un
+objet. Un tuple (`items` en tableau, ou `prefixItems` avec les `items` qui le suivent) est lu comme les alternatives
+de ses positions, et `items: false` comme `maxItems`. Restent perdus, entre autres : la position des éléments d'un
+tuple, un `allOf` dont un membre n'est pas un objet, une ancre (`#nom`) ou une référence à un autre document et une
+référence coupée sur un cycle (un arbre dont le nœud contient des nœuds), qui acceptent n'importe quelle valeur JSON,
+`not`, `if` / `then` / `else`, `patternProperties`, `uniqueItems`, `multipleOf`, `dependentRequired`,
+`additionalItems`, `title`, `minProperties` / `maxProperties`, `propertyNames`, `contains`, un membre d'`enum` qui
+est `null` ou n'est pas un scalaire, et ce qui se trouve à plus de 32 niveaux de profondeur (n'importe quelle valeur
+JSON). Une propriété à plusieurs types, ou sans aucun (`{}`), n'a pas de type : le modèle peut donner n'importe
+quelle valeur JSON. Un tableau dont les éléments ne sont pas connus — pas d'`items`, des éléments sans type unique —
+est montré avec `items: {}`, n'importe quelle valeur JSON : aucun tableau n'arrive à un fournisseur sans `items`,
+que certains refusent. Un outil dont l'`inputSchema` s'étend à plus de 4096 schémas, ou copie plus de 1 Mio de
+texte, coûterait la mémoire de l'hôte et le contexte du modèle : chaque usage d'un `$ref` est compté (une définition
+utilisée plusieurs fois compte à chaque fois, puisque le modèle la voit à chaque fois), et l'outil est écarté avec
+un avertissement écrit une fois par définition d'outil distincte, comme ci-dessous.
 
 Aucun `inputSchema` ne fait échouer la connexion : une entrée de `required` ou la `description` d'une
 propriété qui n'est pas une chaîne est ignorée, un nombre qu'aucun `double` ne contient (`1e400`) est retiré
@@ -153,7 +162,10 @@ une ressource écarté), `mcp.entry.duplicate` (un outil, un prompt ou une resso
   à l'outil comme les valeurs que porte un appel d'outil au format OpenAI : un tableau est une
   liste, un objet un dictionnaire, un nombre écrit sans partie décimale ni exposant est un `long`
   s'il y tient, tout autre nombre un `double`, `null` est `null` (un appel d'outil Anthropic
-  le lit comme le texte `null`). `tools/list` publie les `items` d'un paramètre tableau.
+  le lit comme le texte `null`). `tools/list` publie les paramètres de chaque outil par l'écrivain des
+  fournisseurs (`ToolSchema.ToInputJsonSchema`) : les `items` d'un tableau (`{}` quand ils ne sont pas connus),
+  le `format`, les bornes, les `properties` d'un objet, ses `additionalProperties`, l'`anyOf`, et les noms d'un
+  `EnumMap` comme son `enum`.
 - `tools/call` et `prompts/get` refusent avec `-32602 Invalid params` les paramètres qui ne respectent pas le
   schéma de la requête : un `params` qui est un tableau, un `name` qui n'est pas une chaîne, et des `arguments`
   présents, non `null` et qui ne sont pas un objet — pour un outil du registre, pour un outil `run_crew_*`

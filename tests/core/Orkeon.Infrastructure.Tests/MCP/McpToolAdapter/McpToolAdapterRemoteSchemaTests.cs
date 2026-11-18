@@ -543,4 +543,17 @@ public sealed class McpToolAdapterRemoteSchemaTests
         Assert.Equal("object", parameters["o"].Type);
         Assert.True(parameters["o"].Properties!["id"].Required);
     }
+
+    [Fact]
+    public void ShouldChargeTheBooleansOfAnEnum_AgainstTheTextBudget()
+    {
+        // 300 uses of a definition whose enum holds 1000 booleans: 300 000 members, about 1.5 MB once written.
+        var booleans = string.Join(",", Enumerable.Repeat("true,false", 500));
+        var properties = string.Join(",", Enumerable.Range(0, 300).Select(i => "\"p" + i + "\":{\"$ref\":\"#/$defs/Flag\"}"));
+        var schema = "{\"type\":\"object\",\"properties\":{" + properties + "},\"$defs\":{\"Flag\":{\"enum\":[" + booleans + "]}}}";
+
+        var ex = Assert.Throws<InvalidOperationException>(() => Convert(schema));
+
+        Assert.Contains($"beyond {McpToolAdapterSut.MaxSchemaTextBytes} bytes", ex.Message, StringComparison.Ordinal);
+    }
 }

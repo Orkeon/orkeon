@@ -12,12 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It carries no
 **[breaking]** change: three new members are overloads that take the id of the provider (#396), and the interface
 one has a default body; the others are init-only properties of `ParameterSchema` and `ToolSchema`, whose defaults
-leave a schema built before them as it was, and two methods that write it (#415). #413, #414 and #416 change what
-the MCP server and client put on the wire; that surface is experimental (`ORKEXP004`), outside the commitment of
-1.x, and each entry below says what a client or an installation sees differently. #418 changes the version the telemetry and the agent card carry and the `User-Agent` of the HTTP
-tools: no public member is added or removed, two defaults change (`A2AOptions.AgentVersion` and `AgentCard.Version`
-are empty where they were `1.0.0`), and its entry says what a collector, a peer or a site sees. #416 empties the
-default of `McpServerOptions.Version` the same way. #417 and the entry on listings change what the client keeps of a
+leave a schema built before them as it was, and two methods that write it (#415). #415 also changes the tool schema
+every provider and `orkeon mcp serve` send, and its entries say what a model or an MCP client sees differently.
+#413, #414 and #416 change what the MCP server and client put on the wire; that surface is experimental
+(`ORKEXP004`), outside the commitment of 1.x, and each entry below says what a client or an installation sees
+differently. #418 changes the version the telemetry and the agent card carry and the `User-Agent` of the HTTP
+tools: no public member is added or removed, one default changes (`A2AOptions.AgentVersion`, experimental, is empty
+where it was `1.0.0`; `AgentCard.Version` keeps `1.0.0`), and its entry says what a collector, a peer or a site
+sees. #416 empties the default of `McpServerOptions.Version` the same way. #417 and the entry on listings change what the client keeps of a
 server: an entry it cannot read is set aside alone, and a prompt with no name or a resource with no `uri` is no
 longer listed.
 
@@ -41,10 +43,16 @@ longer listed.
   `AnyOf`, `AllowsAdditionalProperties` (`false` writes `additionalProperties: false`), and the bounds `Minimum`,
   `Maximum`, `ExclusiveMinimum`, `ExclusiveMaximum`, `MinLength`, `MaxLength`, `Pattern`, `MinItems` and `MaxItems`;
   `ToolSchema` gains `AllowsAdditionalParameters`. `ParameterSchema.ToJsonSchema()` and `ToolSchema.ToInputJsonSchema()`
-  write the JSON Schema, and are the one writer the OpenAI-compatible and Anthropic providers and `orkeon mcp serve`
-  use: a property with an empty description no longer carries `"description": ""`, and the MCP server now publishes
-  the keys of an `EnumMap` as its `enum`, as the providers did. `ItemsType`, `ItemsFormat` and `ItemProperties` still
-  work: they are read when `Items` is not set.
+  write the JSON Schema, and are the one writer of every provider - the OpenAI and the Anthropic tool formats, Ollama's
+  included - and of `orkeon mcp serve`. A schema that sets none of the added members goes out as in v1.2.0 but for
+  this: a property with an empty description no longer carries `"description": ""`, the MCP server now publishes the
+  names of an `EnumMap` as its `enum`, as the providers did, and an array whose items are not known carries
+  `items: {}` (the #415 entry under Fixed). The value schema of a dictionary is sent as in v1.2.0 unless it sets an
+  added member, but an array value carries `items: {}`; `orkeon mcp serve` also publishes the `format` and the
+  `items` its writer left out. A replay cassette recorded with v1.2.0 is still found: the key of a call leaves out the added members
+  while they hold their defaults. `ItemsType`, `ItemsFormat` and `ItemProperties` still work: they are read when
+  `Items` is not set. `McpToolAdapter.ConvertToToolSchema` and the `McpToolAdapter` constructor (experimental) now throw
+  `InvalidOperationException` for a schema beyond the client's budgets (the #415 entry under Fixed).
 
 ### Fixed
 
@@ -145,18 +153,20 @@ longer listed.
   compares them. A tool whose `"description"` is `null` has an empty description.
 - The MCP client kept too little of a remote tool's parameter (#415): the `items` of an array were dropped, so an
   agent's model saw a bare `array`, and so were the `format` and the `additionalProperties` of a dictionary. They are
-  kept, with the properties of an array of objects, and an array whose items cannot be read (none, several types, an
-  array inside an array) is shown with `items: {}`, any JSON value, where a provider that wants `items` on every array
-  refused the bare one, and with it every call of the agent; the MCP server and the built-in tools' schemas do the
-  same. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was
-  read as a `string`: it now has no type, and the model may give any JSON value. A `default` is kept as the value it
+  kept, with the properties of an array of objects, and an array whose items cannot be read (none, several types) is
+  shown with `items: {}`, any JSON value, where a provider that wants `items` on every array refused the bare one,
+  and with it every call of the agent; the MCP server and the built-in tools' schemas do the same. A parameter with
+  no `type` (`{}`, an `anyOf` of several schemas, a `$ref` that names nothing local) was read as a `string`: it now
+  has no type, and the model may give any JSON value. A `default` is kept as the value it
   is: a whole number stays whole (it was read as a `double`), an array or an object is no longer its JSON text, and
   `"default": null` is no default (it was the text `null`). A number no `double` holds (`1e400`) is dropped from an
   `enum` or a `default`, and items that declare `properties` and no `type` are read as objects.
   The client now keeps the whole schema: the properties of an object parameter, arrays of arrays, the enum,
   description and default of items, the bounds, `additionalProperties: false`, the alternatives of `anyOf` / `oneOf`,
   a `const`, and the local `$ref` / `$defs` it resolves; a nullable `anyOf` (Pydantic's `Optional`) is read as its
-  one schema, and a schema whose references expand beyond 4096 schemas sets its tool aside with a warning.
+  one schema, and an `allOf` of objects as one object. A tool whose `inputSchema` expands to more than 4096 schemas,
+  or copies more than 1 MiB of text, each use of a `$ref` counted (a definition used many times counts each time), is
+  set aside with a warning written once per distinct tool definition.
   A tool served by `orkeon mcp serve` now publishes the `format` of its parameters, a remote tool's included.
   [The limitations](docs/reference/limitations.md) name what a remote parameter still loses.
 - The MCP server and the MCP client introduced themselves as version `1.0.0`, whatever the release (#416), in the
@@ -177,8 +187,8 @@ longer listed.
   `OrkeonActivitySources.Version`, `PlatformDefaults.Version` and `HttpDefaults.DefaultUserAgent` keep their value for
   the callers that compiled them in; Orkeon no longer reads them (`DefaultUserAgent` is the fallback when a build's
   version is no valid product token). `GitHubTool` sent a bare `User-Agent: Orkeon`: it sends the same value as the
-  other HTTP tools. An agent card read from a peer that names no `version` has an empty `AgentCard.Version`, where it
-  read `1.0.0`.
+  other HTTP tools. `AgentCard.Version` keeps its default, `1.0.0`: an agent card read from a peer that names no
+  `version` reads `1.0.0`, as before.
 
 ### Documentation
 

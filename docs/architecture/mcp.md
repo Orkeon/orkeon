@@ -65,21 +65,31 @@ no default), the `enum` (every scalar value as it is: a string, a number, a bool
 value), the `format`, the bounds (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` - the boolean form of
 draft 04 too -, `minLength`, `maxLength`, `pattern`, `minItems`, `maxItems`), the `items` of an array - an array of
 arrays included -, the `properties` and `required` of an object, its `additionalProperties` (the schema of a
-dictionary's values, or `false`, at the root too) and the alternatives of `anyOf` and `oneOf` (shown as `anyOf`). A
-local `$ref` (`#/$defs/X`, `#/definitions/X`, any JSON pointer into the document, at the root too) is the schema it
-names, with the `description`, `default` and `format` written beside it over those of the definition; a reference
-to a definition being read already (a tree whose node holds nodes) and a reference to another document accept any
-JSON value. A `type` written as an array is read as its one member that is not `"null"` (`["string", "null"]`, a
-nullable parameter, is a `string`); an `anyOf` / `oneOf` whose only alternative but `{"type": "null"}` is X -
-Pydantic's `Optional[X]` - is X, and so is an `allOf` of one schema X. A property with `properties` and no `type` is
-an object. A tuple (`items` as an array, or `prefixItems`) is read as the alternatives of its positions, and
-`items: false` as `maxItems`. Still lost: an `allOf` of several schemas, `not`, `if` / `then` / `else`,
-`patternProperties`, `uniqueItems`, `multipleOf`, `dependentRequired`, the position of a tuple's items, and what lies
-more than 32 levels deep (any JSON value). A property with several types, or with none (`{}`), has no type: the
-model may give any JSON value. An array whose items are not known - no `items`, items with no single type - is shown
-with `items: {}`, any JSON value: no array reaches a provider without `items`, which some refuse. A schema whose
-references expand beyond 4096 schemas - a definition that names another twice, which names another twice - would
-cost the host's memory and the model's context: the tool is set aside with a warning, as below.
+dictionary's values, or `false`) and the alternatives of `anyOf` and `oneOf` (shown as `anyOf`). The root is read
+like any other schema: a `$ref`, an `allOf` or a nullable `anyOf` / `oneOf` that stands for one object gives that
+object's properties; of its `additionalProperties`, the root keeps only `false`. A local `$ref` (`#/$defs/X`,
+`#/definitions/X`, any JSON pointer into the document, `#` the root) is the schema it names, with the
+`description`, `default` and `format` written beside it over those of the definition, and the `enum` and the bounds
+written beside it where the definition has none. A `type` written as an array is read as its one member that is not
+`"null"` (`["string", "null"]`, a nullable parameter, is a `string`); an `anyOf` / `oneOf` whose only alternative
+but the null schema is X - Pydantic's `Optional[X]` - is X, and so is an `allOf` of one schema X; the null schema is
+written `{"type": "null"}`, `{"type": ["null"]}`, `{"const": null}` or `{"enum": [null]}`. An `allOf` whose
+members are all objects (their `$ref` followed), beside a schema that is an object or names no type, is one object:
+the union of their properties (the first that names one wins), the union of their `required`, and
+`additionalProperties: false` when any of them says so. A property with `properties` and no `type` is an object. A
+tuple (`items` as an array, or `prefixItems` with the `items` that follow it) is read as the alternatives of its
+positions, and `items: false` as `maxItems`. Still lost, among others: the position of a tuple's items, an `allOf`
+with a member that is no object, an anchor (`#name`) or a reference to another document and a reference cut at a
+cycle (a tree whose node holds nodes), which accept any JSON value, `not`, `if` / `then` / `else`,
+`patternProperties`, `uniqueItems`, `multipleOf`, `dependentRequired`, `additionalItems`, `title`,
+`minProperties` / `maxProperties`, `propertyNames`, `contains`, an `enum` member that is `null` or no scalar, and
+what lies more than 32 levels deep (any JSON value). A property with several types, or with none (`{}`), has no
+type: the model may give any JSON value. An array whose items are not known - no `items`, items with no single
+type - is shown with `items: {}`, any JSON value: no array reaches a provider without `items`, which some refuse. A
+tool whose `inputSchema` expands to more than 4096 schemas, or copies more than 1 MiB of text, would cost the host's
+memory and the model's context: each use of a `$ref` is counted (a definition used many times counts each time, as
+the model is shown it each time), and the tool is set aside with a warning written once per distinct tool definition, as
+below.
 
 No `inputSchema` makes the connection fail: a `required` entry or a `description` of a property that is no
 string is skipped, a number no `double` holds (`1e400`) is dropped from an `enum` or a `default`, and the
@@ -141,7 +151,9 @@ the wrong shape) and `mcp.tool.rejected` (a name another tool holds).
   tool as the values a tool call in the OpenAI format carries: an array is a list, an object a
   dictionary, a number written without a fraction or an exponent is a `long` when it fits one, any
   other number a `double`, `null` is `null` (an Anthropic tool call reads it as the text `null`).
-  `tools/list` publishes the `items` of an array parameter.
+  `tools/list` publishes each tool's parameters through the providers' writer (`ToolSchema.ToInputJsonSchema`):
+  the `items` of an array (`{}` when they are not known), the `format`, the bounds, the `properties` of an object,
+  its `additionalProperties`, the `anyOf`, and the names of an `EnumMap` as its `enum`.
 - `tools/call` and `prompts/get` refuse parameters that fail the request's schema with `-32602 Invalid params`:
   a `params` that is an array, a `name` that is no string, and `arguments` that are present, not `null` and
   not an object - for a registry tool, for a `run_crew_*` tool and for a prompt alike; the tool does not run.

@@ -620,13 +620,16 @@ public class McpToolAdapter : IBaseTool
             var enumValues = new List<object>();
             foreach (var ev in listed)
             {
+                // Every member is charged, a boolean included: it is copied once per use of its schema and
+                // written to every provider, and an enum of a hundred thousand `true` costs as much as text.
+                if (ev.ValueKind != JsonValueKind.String)
+                    ChargeText(JsonMarshal.GetRawUtf8Value(ev).Length);
                 switch (ev.ValueKind)
                 {
                     case JsonValueKind.String:
                         enumValues.Add(CopyString(ev));
                         break;
                     case JsonValueKind.Number:
-                        ChargeText(JsonMarshal.GetRawUtf8Value(ev).Length);
                         if (ReadFiniteNumber(ev) is { } number)
                             enumValues.Add(number);
                         break;
