@@ -38,9 +38,9 @@ public class A2AOptions
     public string AgentDescription { get; set; } = "Orkeon A2A Agent";
 
     /// <summary>
-    /// The agent version advertised in the agent card.
+    /// The agent version advertised in the agent card. Empty (the default): the version of the running Orkeon release.
     /// </summary>
-    public string AgentVersion { get; set; } = "1.0.0";
+    public string AgentVersion { get; set; } = "";
 
     /// <summary>
     /// Organization name for the provider field in the agent card.

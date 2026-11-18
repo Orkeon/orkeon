@@ -2145,7 +2145,7 @@ listener is `Orkeon:Host:A2A`, [above](#orkeonhost); see
 |---|---|---|---|
 | `AgentDescription` | string | `"Orkeon A2A Agent"` | The agent description advertised in the agent card. |
 | `AgentName` | string | `"Orkeon"` | The agent name advertised in the agent card. |
-| `AgentVersion` | string | `"1.0.0"` | The agent version advertised in the agent card. |
+| `AgentVersion` | string | `""` | The agent version advertised in the agent card. Empty (the default): the version of the running Orkeon release. |
 | `ContactUrl` | uri | — | Contact URL for the provider field in the agent card. |
 | `EnableServer` | boolean | `false` | Whether to run an A2A server exposing local agents for remote task submission: registers `IA2AServer` and a hosted service that starts it with the host. |
 | `Host` | string | `"http://localhost"` | The host/prefix for the A2A HTTP server (e.g., "http://localhost"). |

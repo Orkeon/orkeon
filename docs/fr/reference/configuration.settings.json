@@ -483,7 +483,7 @@
     "Orkeon:Scripting:Toolchain:TypeCheckTimeout": "Temps maximal dont dispose `tsc` pour vérifier un script. Défaut : 60 s.",
     "A2A:AgentDescription": "La description de l'agent annoncée dans la carte d'agent.",
     "A2A:AgentName": "Le nom de l'agent annoncé dans la carte d'agent.",
-    "A2A:AgentVersion": "La version de l'agent annoncée dans la carte d'agent.",
+    "A2A:AgentVersion": "La version de l'agent annoncée dans la carte d'agent. Vide (par défaut) : la version de la release Orkeon en cours d'exécution.",
     "A2A:ContactUrl": "URL de contact du champ fournisseur de la carte d'agent.",
     "A2A:EnableServer": "S'il faut lancer un serveur A2A qui expose les agents locaux à la soumission de tâches distantes : enregistre `IA2AServer` et un service hébergé qui le démarre avec l'hôte.",
     "A2A:Host": "L'hôte ou le préfixe du serveur HTTP A2A (p. ex. \"http://localhost\").",

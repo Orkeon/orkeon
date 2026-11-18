@@ -17,4 +17,7 @@ public static class HttpDefaults
 
     /// <summary>Default User-Agent string sent by Orkeon HTTP clients.</summary>
     public const string DefaultUserAgent = "Orkeon/1.0 (+https://github.com/Orkeon/orkeon)";
+
+    /// <summary>The User-Agent the HTTP tools send: <c>Orkeon/&lt;version of the running release&gt;</c> (#418).</summary>
+    internal static string ReleaseUserAgent => Platform.OrkeonRelease.UserAgent;
 }

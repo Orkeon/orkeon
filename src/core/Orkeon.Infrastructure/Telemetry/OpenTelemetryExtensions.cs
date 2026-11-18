@@ -72,7 +72,7 @@ public static class OpenTelemetryExtensions
         {
             resource.AddService(
                 serviceName: OrkeonDiagnostics.ServiceName,
-                serviceVersion: OrkeonDiagnostics.ServiceVersion);
+                serviceVersion: Orkeon.Domain.Constants.Platform.OrkeonRelease.Version);
         });
 
         otelBuilder.WithTracing(tracing => ConfigureTracing(tracing, otlp));

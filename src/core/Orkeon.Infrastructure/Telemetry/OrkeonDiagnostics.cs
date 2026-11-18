@@ -18,7 +18,8 @@ public static class OrkeonDiagnostics
     public const string ServiceName = "Orkeon";
 
     /// <summary>
-    /// Service version used for OpenTelemetry resource identification.
+    /// A fixed value kept for the callers that compiled it in. The OpenTelemetry resource carries the version of the
+    /// running release, not this constant (#418).
     /// </summary>
     public const string ServiceVersion = "1.0.0";
 

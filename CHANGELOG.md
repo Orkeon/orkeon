@@ -13,7 +13,8 @@ A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it i
 **[breaking]** change: the three new members are overloads that take the id of the provider (#396), and the interface
 one has a default body. #413, #414 and #416 change what the MCP server and client put on the wire; that surface is
 experimental (`ORKEXP004`), outside the commitment of 1.x, and each entry below says what a client or an installation
-sees differently.
+sees differently. #418 changes the version the telemetry and the agent card carry and the `User-Agent` of the HTTP
+tools: no public member moves, and its entry says what a collector or a site sees.
 
 ### Added
 
@@ -121,6 +122,15 @@ sees differently.
   release they run, the one `orkeon --version` prints. `MCP:Server:Version` is empty by default and still wins when it
   is set. **An installation that copied `"Version": "1.0.0"` from `appsettings.sample.json` keeps announcing `1.0.0`:
   remove `MCP:Server:Version` or leave it empty.**
+- Outside MCP too, Orkeon announced a fixed `1.0.0` whatever the release (#418). The OpenTelemetry resource
+  (`service.version`), the activity sources and the meter, and the agent card of the A2A server now carry the version
+  of the release that runs, the one `orkeon --version` prints. `A2A:AgentVersion` is empty by default and still wins
+  when it is set; **an installation that copied `"AgentVersion": "1.0.0"` from `appsettings.sample.json` keeps
+  announcing `1.0.0`: remove the key or leave it empty.** **The HTTP tools send `User-Agent: Orkeon/<version>
+  (+https://github.com/Orkeon/orkeon)`** where they sent `Orkeon/1.0`: a site that filters on the exact former string
+  sees the change at every release. The public constants `OrkeonDiagnostics.ServiceVersion`,
+  `OrkeonActivitySources.Version`, `PlatformDefaults.Version` and `HttpDefaults.DefaultUserAgent` keep their value for
+  the callers that compiled them in; Orkeon no longer reads them.
 
 ### Documentation
 

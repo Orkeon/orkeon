@@ -21,29 +21,35 @@ namespace Orkeon.Application.Telemetry;
 /// </summary>
 public static class OrkeonActivitySources
 {
-    /// <summary>The version every source reports; the assembly's informational version once one is stamped.</summary>
+    /// <summary>
+    /// A fixed value kept for the callers that compiled it in. The sources and the meter report the version of the
+    /// running release, not this constant (#418).
+    /// </summary>
     public const string Version = "1.0.0";
 
+    /// <summary>The version every source and the meter report: the running release's.</summary>
+    internal static string ReleaseVersion => Orkeon.Domain.Constants.Platform.OrkeonRelease.Version;
+
     /// <summary>Crew-level operations (kickoff, batch, streaming).</summary>
-    public static readonly ActivitySource Crew = new("Orkeon.Crew", Version);
+    public static readonly ActivitySource Crew = new("Orkeon.Crew", ReleaseVersion);
 
     /// <summary>Agent turns: one <c>invoke_agent</c> span per task an agent works on.</summary>
-    public static readonly ActivitySource Agent = new("Orkeon.Agent", Version);
+    public static readonly ActivitySource Agent = new("Orkeon.Agent", ReleaseVersion);
 
     /// <summary>Task-level operations (planning, validation).</summary>
-    public static readonly ActivitySource Task = new("Orkeon.Task", Version);
+    public static readonly ActivitySource Task = new("Orkeon.Task", ReleaseVersion);
 
     /// <summary>Model calls: one <c>chat</c> span per request to a provider.</summary>
-    public static readonly ActivitySource Llm = new("Orkeon.Llm", Version);
+    public static readonly ActivitySource Llm = new("Orkeon.Llm", ReleaseVersion);
 
     /// <summary>Tool executions: one <c>execute_tool</c> span per call the model made.</summary>
-    public static readonly ActivitySource Tool = new("Orkeon.Tool", Version);
+    public static readonly ActivitySource Tool = new("Orkeon.Tool", ReleaseVersion);
 
     /// <summary>Memory operations (store, search, delete).</summary>
-    public static readonly ActivitySource Memory = new("Orkeon.Memory", Version);
+    public static readonly ActivitySource Memory = new("Orkeon.Memory", ReleaseVersion);
 
     /// <summary>EventHub messaging (publish, post, send, receive).</summary>
-    public static readonly ActivitySource EventHub = new("Orkeon.EventHub", Version);
+    public static readonly ActivitySource EventHub = new("Orkeon.EventHub", ReleaseVersion);
 
     /// <summary>The source of a procedural script's spans, owned by <c>Orkeon.Scripting</c>.</summary>
     private const string ScriptingName = "Orkeon.Scripting";

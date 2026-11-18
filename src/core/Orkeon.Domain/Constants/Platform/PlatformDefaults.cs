@@ -6,7 +6,10 @@ namespace Orkeon.Domain.Constants.Platform;
 /// </summary>
 public static class PlatformDefaults
 {
-    /// <summary>Current Orkeon platform version string used in API responses and tool metadata.</summary>
+    /// <summary>
+    /// A fixed value kept for the callers that compiled it in: nothing in Orkeon reads it, and it is not the version
+    /// of the running release (#418).
+    /// </summary>
     public const string Version = "1.0.0";
 
     /// <summary>Default ISO 4217 currency code used for cost calculations.</summary>

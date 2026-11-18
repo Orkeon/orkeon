@@ -2202,7 +2202,7 @@ est `Orkeon:Host:A2A`, [plus haut](#orkeonhost) ; voir
 |---|---|---|---|
 | `AgentDescription` | chaîne | `"Orkeon A2A Agent"` | La description de l'agent annoncée dans la carte d'agent. |
 | `AgentName` | chaîne | `"Orkeon"` | Le nom de l'agent annoncé dans la carte d'agent. |
-| `AgentVersion` | chaîne | `"1.0.0"` | La version de l'agent annoncée dans la carte d'agent. |
+| `AgentVersion` | chaîne | `""` | La version de l'agent annoncée dans la carte d'agent. Vide (par défaut) : la version de la release Orkeon en cours d'exécution. |
 | `ContactUrl` | URI | — | URL de contact du champ fournisseur de la carte d'agent. |
 | `EnableServer` | booléen | `false` | S'il faut lancer un serveur A2A qui expose les agents locaux à la soumission de tâches distantes : enregistre `IA2AServer` et un service hébergé qui le démarre avec l'hôte. |
 | `Host` | chaîne | `"http://localhost"` | L'hôte ou le préfixe du serveur HTTP A2A (p. ex. "http://localhost"). |

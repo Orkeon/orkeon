@@ -132,7 +132,7 @@ public abstract class HttpToolBase : ToolBase
         try
         {
             client.Timeout = HttpDefaults.DefaultHttpTimeout;
-            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpDefaults.DefaultUserAgent);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpDefaults.ReleaseUserAgent);
         }
         catch (InvalidOperationException)
         {

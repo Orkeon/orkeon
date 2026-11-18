@@ -84,7 +84,7 @@ public class A2ASecurityTests
         Assert.Equal("http://localhost", options.Host);
         Assert.Equal("Orkeon", options.AgentName);
         Assert.Equal("Orkeon A2A Agent", options.AgentDescription);
-        Assert.Equal("1.0.0", options.AgentVersion);
+        Assert.Equal("", options.AgentVersion); // empty: the version of the running release (#418)
         Assert.Null(options.Organization);
         Assert.Null(options.ContactUrl);
         Assert.Equal(30, options.TimeoutSeconds);

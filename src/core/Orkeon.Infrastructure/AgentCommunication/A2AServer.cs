@@ -397,7 +397,9 @@ public partial class A2AServer : IA2AServer, IDisposable
             Name = _options.AgentName,
             Description = _options.AgentDescription,
             Url = CardUrl(_options, context.Request.Url),
-            Version = _options.AgentVersion,
+            Version = string.IsNullOrWhiteSpace(_options.AgentVersion)
+                ? Orkeon.Domain.Constants.Platform.OrkeonRelease.Version
+                : _options.AgentVersion,
             Provider = !string.IsNullOrEmpty(_options.Organization)
                 ? new AgentProvider
                 {
