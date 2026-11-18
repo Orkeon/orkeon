@@ -1699,7 +1699,7 @@ loads its scripted commands, and by `orkeon mcp serve` before it serves; library
 
 ### `MCP:Server`
 
-How the server of `orkeon mcp serve` introduces itself (it exposes tools only). Read by
+How the server of `orkeon mcp serve` introduces itself (tools, plus the `/output` resources under `--expose-output` and the prompts and crew tools of `--crew`). Read by
 `AddOrkeonMcpServer`, which `orkeon mcp serve` calls.
 
 <!-- settings:MCP:Server -->

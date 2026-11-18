@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It carries no
 **[breaking]** change: the three new members are overloads that take the id of the provider (#396), and the interface
-one has a default body.
+one has a default body. #413, #414 and #416 change what the MCP server and client put on the wire; that surface is
+experimental (`ORKEXP004`), outside the commitment of 1.x, and each entry below says what a client or an installation
+sees differently.
 
 ### Added
 
@@ -90,8 +92,9 @@ one has a default body.
 - `orkeon mcp serve` answered a line that is no valid request with `-32700`, `-32601`, a success or nothing (#414).
   `-32700` is now kept for text that is not JSON, and `-32600 Invalid Request` answers a value that is no object (a
   scalar, `null`, an array: batching is not spoken, so a batch gets one answer for the whole line), a `jsonrpc` that is
-  absent or not `"2.0"`, a `method` that is absent, empty or no string, an `id` that is `null` or neither a string nor
-  an integer, and a `params` that is neither an object nor an array. The answer carries the `id` when it could be read,
+  absent or not `"2.0"`, a `method` that is absent, empty or no string, an `id` that is `null` or
+  neither a string nor an integer, and a `params` that is neither an object nor an array. A response (a `result` or an
+  `error` with no `method`) is dropped, as JSON-RPC asks: it used to be answered `-32601`. The answer carries the `id` when it could be read,
   `null` otherwise. **A message that carries an `id` beside a `notifications/*` method is now answered** (`-32600`,
   with its `id`): it used to be taken for a notification, obeyed and left without an answer. A C# host that calls
   `McpServer.ProcessRequestAsync` gets the same answers.
@@ -105,8 +108,10 @@ one has a default body.
   parameter whose `type` is an array (`["string", "null"]`, a nullable parameter), on an `enum` of numbers or booleans,
   and on a `required` entry or a `description` that is no string; the connection failed with a .NET message that named
   neither the tool nor the property. A `type` array is now read as its one member that is not `"null"`, every scalar
-  `enum` value is kept, and a tool whose definition still cannot be read is set aside on its own, with a warning that
-  names the server and the tool.
+  `enum` value is kept, and a tool that cannot be registered - a `null` entry of the list, a tool with no name, an
+  `inputSchema` that still cannot be read - is set aside on its own, with a warning that names the server and the tool.
+  A tool whose own `name`, `description` or `annotations` have the wrong JSON type still fails the listing of its
+  server.
 - The MCP client kept too little of a remote tool's parameter (#415): the `items` of an array were dropped, so an
   agent's model saw a bare `array`, and so were the `format` and the `additionalProperties` of a dictionary. They are
   kept, with the properties of an array of objects. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was

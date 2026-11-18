@@ -135,6 +135,16 @@ public sealed class McpServerBadCallParametersTests
     }
 
     [Theory]
+    [InlineData("[]")]
+    [InlineData("""{"name":5}""")]
+    public async Task ShouldRefuseThePromptInTheSameWords_WhenItsParamsAreNoObjectWithAStringName(string paramsJson)
+    {
+        var response = await SendAsync("prompts/get", paramsJson);
+
+        AssertInvalidParams(response, "params must be an object with a string name");
+    }
+
+    [Theory]
     [InlineData("{}")]
     [InlineData("""{"name":null}""")]
     [InlineData("""{"name":""}""")]

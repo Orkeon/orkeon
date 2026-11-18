@@ -329,6 +329,24 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         }
     }
 
+    /// <summary>
+    /// The tools of a listing the registry can hold: a <c>null</c> entry or a tool with no name is set aside, with
+    /// a warning, before the filter and the registry read a name that is not there (#417).
+    /// </summary>
+    private List<McpToolDefinition> Named(string serverId, IReadOnlyList<McpToolDefinition> listed)
+    {
+        var named = new List<McpToolDefinition>(listed.Count);
+        foreach (var definition in listed)
+        {
+            if (definition is null || string.IsNullOrWhiteSpace(definition.Name))
+                LogMcpToolSchemaUnreadable("(unnamed)", serverId, "the tool has no name");
+            else
+                named.Add(definition);
+        }
+
+        return named;
+    }
+
     private McpOAuthServices OAuthServices() => new(_httpClientFactory, _loginInteraction, _time);
 
     /// <summary>
@@ -468,7 +486,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         try
         {
             await client.ConnectAsync(guard.Token).ConfigureAwait(false);
-            tools = await client.ListToolsAsync(guard.Token).ConfigureAwait(false);
+            tools = Named(serverId, await client.ListToolsAsync(guard.Token).ConfigureAwait(false));
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested && config is not null)
         {
@@ -905,7 +923,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             using var guard = CancellationTokenSource.CreateLinkedTokenSource(ct);
             if (entry.Config is not null)
                 guard.CancelAfter(entry.Config.ConnectTimeout);
-            var listed = await entry.Client.ListToolsAsync(guard.Token).ConfigureAwait(false);
+            var listed = Named(serverId, await entry.Client.ListToolsAsync(guard.Token).ConfigureAwait(false));
             var (kept, unmatched) = McpToolFilter.Apply(listed, entry.Config?.Tools);
 
             var current = new Dictionary<string, McpToolDefinition>();
@@ -1057,7 +1075,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "The tool '{Name}' of MCP server '{ServerId}' collides with an already-registered tool and was not registered; the registered tool keeps the name")]
     private partial void LogMcpToolNameCollision(string name, string serverId);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Name}' of MCP server '{ServerId}' was set aside: its schema could not be read ({Reason}). The other tools of the server are registered")]
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Name}' of MCP server '{ServerId}' was set aside: its definition could not be read ({Reason}). The other tools of the server are registered")]
     private partial void LogMcpToolSchemaUnreadable(string name, string serverId, string reason);
 
     [LoggerMessage(EventName = "mcp.tool.rejected", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Name}' of MCP server '{ServerId}' now collides with an already-registered tool and is ignored; the registered tool keeps the name")]

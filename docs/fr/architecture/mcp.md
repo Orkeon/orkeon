@@ -62,7 +62,7 @@ supportée des deux côtés (`McpClient.SendAsync`).
 
 ### Ce que le client garde du schéma d'un outil distant
 
-`McpToolAdapter` lit l'`inputSchema` d'un outil distant vers le schéma montré au modèle d'un agent. De chaque
+`McpToolAdapter` lit l'`inputSchema` d'un outil distant pour en faire le schéma montré au modèle d'un agent. De chaque
 propriété il garde le `type`, la `description`, le `default` (un nombre lu en `double`), l'`enum` (chaque
 valeur scalaire telle quelle : une chaîne, un nombre, un booléen), le `format`, les `items` d'un tableau —
 leur `type`, leur `format`, et les `properties` et `required` d'un tableau d'objets — et les
@@ -70,12 +70,18 @@ leur `type`, leur `format`, et les `properties` et `required` d'un tableau d'obj
 que `"null"` (`["string", "null"]`, un paramètre nullable, est un `string`) ; une propriété à plusieurs
 types, ou sans aucun — `{}`, un `anyOf`, un `oneOf` ou un `$ref` seul —, n'a pas de type : le modèle peut
 donner n'importe quelle valeur JSON. Restent perdus : les `properties` d'un paramètre objet, un tableau
-imbriqué dans un tableau, les alternatives d'`anyOf` / `oneOf`, `$ref` / `$defs`, et les bornes (`minimum`,
-`maximum`, `pattern`, `minItems`).
+imbriqué dans un tableau, l'`enum`, la `description` et le `default` des éléments d'un tableau, les
+alternatives d'`anyOf` / `oneOf`, `$ref` / `$defs`, et les bornes (`minimum`, `maximum`, `pattern`,
+`minItems`). Un `default` qui est un tableau ou un objet est gardé comme son texte JSON, et des éléments qui
+déclarent des `properties` sans `type` sont lus comme des objets.
 
-Aucun schéma distant ne fait échouer la connexion : une entrée de `required` ou une `description` qui n'est
-pas une chaîne est ignorée, et un outil dont la définition reste illisible est écarté seul, avec un
-avertissement qui nomme le serveur et l'outil — les autres outils de son serveur sont enregistrés.
+Aucun `inputSchema` ne fait échouer la connexion : une entrée de `required` ou la `description` d'une
+propriété qui n'est pas une chaîne est ignorée, un nombre qu'aucun `double` ne contient (`1e400`) est retiré
+d'un `enum` ou d'un `default`, et un outil qui ne peut pas être enregistré — une entrée `null` de la liste, un
+outil sans nom, un `inputSchema` qui reste illisible — est écarté à lui seul, avec un avertissement qui nomme
+le serveur et l'outil : les autres outils de son serveur sont enregistrés. Ce qui fait encore échouer toute la
+liste, et donc la connexion, c'est un outil dont le `name`, la `description` ou les `annotations` ont le
+mauvais type JSON (un `name` qui est un nombre) : la liste est lue d'un bloc.
 
 ### Serveur (`McpServer`) — bi-génération sur un même endpoint
 
@@ -89,11 +95,13 @@ avertissement qui nomme le serveur et l'outil — les autres outils de son serve
 - `tools/list` est renvoyé en **ordre déterministe** (tri ordinal par nom — un SHOULD de
   2026-07-28, pour des caches clients stables) avec les champs modernes
   `resultType`/`ttlMs`/`cacheScope` ; les clients legacy ignorent ces membres additifs.
-- Une notification — un message sans `id` — ne reçoit jamais de réponse. Une ligne qui est du JSON mais pas
-  une requête valide reçoit `-32600 Invalid Request` ; `-32700` est réservé au texte qui n'est pas du JSON.
+- Une notification valide — un message sans `id` — ne reçoit jamais de réponse, pas plus qu'une réponse (un
+  `result` ou un `error` sans `method` : le serveur n'envoie aucune requête, il l'ignore). Une ligne qui est du
+  JSON mais pas une requête valide reçoit `-32600 Invalid Request`, y compris une notification dont
+  l'enveloppe est invalide (sa réponse porte un `id` `null`) ; `-32700` est réservé au texte qui n'est pas du JSON.
   Sont refusés ainsi : une valeur qui n'est pas un objet (un scalaire, `null`, un tableau — le batching n'est
   pas parlé, un lot reçoit donc une seule réponse pour toute la ligne), un `jsonrpc` absent ou différent de
-  `"2.0"`, un `method` absent, vide ou qui n'est pas une chaîne, un `id` `null` ou qui n'est ni une chaîne ni
+  `"2.0"`, une `method` absente, vide ou qui n'est pas une chaîne, un `id` `null` ou qui n'est ni une chaîne ni
   un entier, un `params` qui n'est ni un objet ni un tableau (`null` vaut absence), et un `id` à côté d'une
   méthode `notifications/*` (MCP l'interdit : le message reçoit une réponse, il n'est pas exécuté). La réponse
   porte l'`id` quand il a pu être lu — une chaîne ou un entier —, `null` sinon. `ProcessRequestAsync` donne à
@@ -113,7 +121,7 @@ avertissement qui nomme le serveur et l'outil — les autres outils de son serve
   comme pour un prompt ; l'outil ne s'exécute pas. Un nombre hors de la plage d'un `double` (`1e400`) est une
   entrée que l'outil ne peut pas prendre, pas une erreur de protocole : l'appel répond `isError: true` avec
   `Argument 'x' is not a finite number.` (`x[0]`, `x.y` quand le nombre est imbriqué), et l'outil n'est pas
-  appelé. Un outil `run_crew_*` et un prompt prennent un nombre comme son texte.
+  appelé. Un outil `run_crew_*` et un prompt reçoivent un nombre sous forme de texte.
 - `tools/call` passe par `IToolInvocationPipeline`, le point d'invocation unique de chaque
   tour d'agent, sous l'appelant `mcp` (son identifiant et son rôle d'agent) : la
   phase outil de la garde (`ToolGuard` — remontée de chemin, cibles SSRF, injection SQL),
@@ -183,8 +191,8 @@ ressources quand `ExposeOutput` est actif (ci-dessous) ; `prompts/*` répondent
 ```
 
 Le serveur et le client se présentent comme `Orkeon`, avec la version de la release qu'ils exécutent
-(celle qu'affiche `orkeon --version`), dans la poignée de main historique (`serverInfo`, `clientInfo`) et dans
-le `_meta` des requêtes et des réponses modernes. `MCP:Server:Version`, quand il n'est pas vide, remplace celle
+(celle qu'affiche `orkeon --version`), dans le handshake legacy (`serverInfo`, `clientInfo`) et dans
+le `_meta` des requêtes modernes et des réponses à `server/discover` et `tools/list`. `MCP:Server:Version`, quand il n'est pas vide, remplace celle
 du serveur ; rien ne remplace celle du client.
 
 **Authentification, filtre et délai par serveur.** Chaque `MCP:Servers:<id>` accepte :

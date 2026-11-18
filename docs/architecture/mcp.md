@@ -66,12 +66,18 @@ property it keeps the `type`, the `description`, the `default` (a number read as
 `additionalProperties` of a dictionary. A `type` written as an array is read as its one member that is not
 `"null"` (`["string", "null"]`, a nullable parameter, is a `string`); a property with several types, or with
 none - `{}`, a bare `anyOf`, `oneOf` or `$ref` -, has no type: the model may give any JSON value. Still lost:
-the `properties` of an object parameter, an array nested in an array, the alternatives of `anyOf` / `oneOf`,
-`$ref` / `$defs`, and the bounds (`minimum`, `maximum`, `pattern`, `minItems`).
+the `properties` of an object parameter, an array nested in an array, the `enum`, `description` and `default`
+of an array's items, the alternatives of `anyOf` / `oneOf`, `$ref` / `$defs`, and the bounds (`minimum`,
+`maximum`, `pattern`, `minItems`). A `default` that is an array or an object is kept as its JSON text, and
+items that declare `properties` and no `type` are read as objects.
 
-No remote schema makes the connection fail: a `required` entry or a `description` that is no string is
-skipped, and a tool whose definition still cannot be read is set aside on its own, with a warning that names
-the server and the tool - the other tools of its server are registered.
+No `inputSchema` makes the connection fail: a `required` entry or a `description` of a property that is no
+string is skipped, a number no `double` holds (`1e400`) is dropped from an `enum` or a `default`, and a tool
+that cannot be registered - a `null` entry of the list, a tool with no name, an `inputSchema` that still
+cannot be read - is set aside on its own, with a warning that names the server and the tool: the other tools
+of its server are registered. What still fails the whole listing, and so the connection, is a tool whose own
+`name`, `description` or `annotations` have the wrong JSON type (a `name` that is a number): the listing is
+read as a whole.
 
 ### Server (`McpServer`) — dual-era on one endpoint
 
@@ -85,8 +91,10 @@ the server and the tool - the other tools of its server are registered.
 - `tools/list` is returned in **deterministic order** (ordinal sort by name — a 2026-07-28
   SHOULD, for stable client caches) with the modern `resultType`/`ttlMs`/`cacheScope`
   fields; legacy clients ignore these additive members.
-- A notification - a message with no `id` - is never answered. A line that is JSON but no valid request is
-  answered `-32600 Invalid Request`; `-32700` is kept for text that is not JSON. Refused that way: a value that
+- A valid notification - a message with no `id` - is never answered, and neither is a response (a `result`
+  or an `error` with no `method`: the server sends no request, so it drops one). A line that is JSON but no
+  valid request is answered `-32600 Invalid Request`, a notification whose envelope is invalid included (its
+  answer carries a `null` `id`); `-32700` is kept for text that is not JSON. Refused that way: a value that
   is no object (a scalar, `null`, an array - batching is not spoken, so a batch gets one answer for the whole
   line), a `jsonrpc` that is absent or not `"2.0"`, a `method` that is absent, empty or no string, an `id` that
   is `null` or neither a string nor an integer, a `params` that is neither an object nor an array (`null`
@@ -176,7 +184,7 @@ The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itse
 
 The server and the client introduce themselves as `Orkeon`, with the version of the release they run
 (the one `orkeon --version` prints), in the legacy handshake (`serverInfo`, `clientInfo`) and in the `_meta`
-of the modern requests and answers. `MCP:Server:Version`, when it is not empty, replaces the server's;
+of the modern requests and of the `server/discover` and `tools/list` answers. `MCP:Server:Version`, when it is not empty, replaces the server's;
 nothing replaces the client's.
 
 **Per-server authentication, filter and timeout.** Each `MCP:Servers:<id>` accepts:

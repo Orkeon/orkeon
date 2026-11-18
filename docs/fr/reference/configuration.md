@@ -1752,7 +1752,7 @@ qu'il charge ses commandes scriptées, et par `orkeon mcp serve` avant qu'il ser
 
 ### `MCP:Server`
 
-La façon dont le serveur d'`orkeon mcp serve` se présente (il n'expose que des outils). Lue par
+La façon dont le serveur d'`orkeon mcp serve` se présente (des outils, plus les ressources de `/output` sous `--expose-output` et les prompts et outils de crew de `--crew`). Lue par
 `AddOrkeonMcpServer`, qu'appelle `orkeon mcp serve`.
 
 <!-- settings:MCP:Server -->

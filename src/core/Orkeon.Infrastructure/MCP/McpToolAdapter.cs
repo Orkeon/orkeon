@@ -236,7 +236,7 @@ public class McpToolAdapter : IBaseTool
             ExtractDefaultValue(paramValue),
             ExtractEnumValues(paramValue),
             Format: ReadString(paramValue, "format"),
-            ItemsType: items is { } typed ? ReadType(typed) : null,
+            ItemsType: items is { } typed ? ReadItemsType(typed) : null,
             ItemsFormat: items is { } formatted ? ReadString(formatted, "format") : null,
             Values: values)
         {
@@ -281,6 +281,19 @@ public class McpToolAdapter : IBaseTool
         return single;
     }
 
+    /// <summary>The type of an array's items; items that declare <c>properties</c> and no type are objects, so their properties are published.</summary>
+    private static string? ReadItemsType(JsonElement items) =>
+        ReadType(items) ?? (items.TryGetProperty("properties", out var properties) && properties.ValueKind == JsonValueKind.Object ? "object" : null);
+
+    /// <summary>A JSON number as a long when it is one, else a double; null when no double holds it (<c>1e400</c>), since infinity cannot be written back as JSON.</summary>
+    private static object? ReadFiniteNumber(JsonElement number)
+    {
+        if (number.TryGetInt64(out var whole))
+            return whole;
+        var value = number.GetDouble();
+        return double.IsFinite(value) ? value : null;
+    }
+
     private static string? ReadString(JsonElement schema, string member) =>
         schema.TryGetProperty(member, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString()
@@ -294,7 +307,7 @@ public class McpToolAdapter : IBaseTool
         return defaultEl.ValueKind switch
         {
             JsonValueKind.String => defaultEl.GetString(),
-            JsonValueKind.Number => defaultEl.GetDouble(),
+            JsonValueKind.Number => double.IsFinite(defaultEl.GetDouble()) ? defaultEl.GetDouble() : null,
             JsonValueKind.True => true,
             JsonValueKind.False => false,
             _ => defaultEl.GetRawText()
@@ -317,7 +330,8 @@ public class McpToolAdapter : IBaseTool
                     enumValues.Add(ev.GetString()!);
                     break;
                 case JsonValueKind.Number:
-                    enumValues.Add(ev.TryGetInt64(out var whole) ? (object)whole : ev.GetDouble());
+                    if (ReadFiniteNumber(ev) is { } number)
+                        enumValues.Add(number);
                     break;
                 case JsonValueKind.True:
                     enumValues.Add(true);

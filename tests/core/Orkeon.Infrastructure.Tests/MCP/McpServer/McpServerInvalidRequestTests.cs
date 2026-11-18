@@ -76,6 +76,26 @@ public sealed class McpServerInvalidRequestTests
         AssertRefused(answer, expectedId);
     }
 
+    /// <summary>Valid JSON whose member is written twice: the last one passes the envelope check, the request type refuses the pair.</summary>
+    [Theory]
+    [InlineData("""{"jsonrpc":"2.0","id":31,"method":5,"method":"ping"}""")]
+    [InlineData("""{"jsonrpc":"2.0","id":31,"id":32,"method":"ping"}""")]
+    public async Task ShouldNeverAnswerAParseError_WhenValidJsonWritesAMemberTwice(string line)
+    {
+        var answer = Assert.Single(await AnswersAsync(line));
+
+        Assert.NotEqual(-32700, answer.TryGetProperty("error", out var error) ? error.GetProperty("code").GetInt32() : 0);
+    }
+
+    /// <summary>JSON-RPC never answers a response; the server sends no request, so it drops one.</summary>
+    [Theory]
+    [InlineData("""{"jsonrpc":"2.0","id":46,"result":{}}""")]
+    [InlineData("""{"jsonrpc":"2.0","id":46,"error":{"code":-32601,"message":"nope"}}""")]
+    public async Task ShouldStayHushed_WhenTheLineIsAResponse(string line)
+    {
+        Assert.Empty(await AnswersAsync(line));
+    }
+
     [Theory]
     [InlineData("this is not JSON")]
     [InlineData("""{"jsonrpc":"2.0","id":1,"method":"ping" """)]

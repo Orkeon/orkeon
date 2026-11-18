@@ -72,7 +72,29 @@ public sealed class McpToolAdapterRemoteSchemaTests
         Assert.Null(parameters["odd"].Type);
     }
 
+    [Fact]
+    public void ShouldDropANumberNoDoubleHolds_WhenAnEnumOrADefaultCarriesOne()
+    {
+        // Infinity cannot be written back as JSON: the tool list an agent's model reads would fail to serialize.
+        var parameters = Convert("""{"type":"object","properties":{"n":{"type":"number","enum":[1,1e400,-1e400,2.5],"default":1e400}}}""");
+
+        Assert.Equal(new object[] { 1L, 2.5 }, parameters["n"].Enum);
+        Assert.Null(parameters["n"].Default);
+        Assert.NotNull(System.Text.Json.JsonSerializer.Serialize(parameters["n"].ToDocument()));
+    }
+
     // --- #415 ---
+
+    [Fact]
+    public void ShouldReadItemsAsObjects_WhenTheyDeclarePropertiesAndNoType()
+    {
+        var parameters = Convert("""{"type":"object","properties":{"rows":{"type":"array","items":{"properties":{"id":{"type":"integer"}},"required":["id"]}}}}""");
+
+        Assert.Equal("object", parameters["rows"].ItemsType);
+        Assert.True(parameters["rows"].ItemProperties!["id"].Required);
+        var items = Assert.IsType<Dictionary<string, object>>(parameters["rows"].ToDocument()["items"]);
+        Assert.True(items.ContainsKey("properties"));
+    }
 
     [Fact]
     public void ShouldKeepTheItems_WhenTheParameterIsAnArrayOfStrings()

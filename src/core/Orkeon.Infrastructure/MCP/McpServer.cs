@@ -329,6 +329,14 @@ public partial class McpServer
         {
             using var document = JsonDocument.Parse(line);
             var root = document.RootElement;
+            // A response (a `result` or an `error`, no `method`): JSON-RPC never answers one. The server sends no
+            // request, so none is expected; it is dropped.
+            if (IsResponse(root))
+            {
+                LogUnexpectedResponse();
+                return null;
+            }
+
             if (InvalidMessageReason(root) is { } reason)
             {
                 // The id is sent back when it could be read, null otherwise (JSON-RPC 2.0).
@@ -339,7 +347,17 @@ public partial class McpServer
                 return null;
             }
 
-            return root.Deserialize<JsonRpcRequest>();
+            try
+            {
+                return root.Deserialize<JsonRpcRequest>();
+            }
+            catch (JsonException)
+            {
+                // Valid JSON the request type refuses (a member written twice): no request, not a parse error.
+                outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(null, JsonRpcErrorCodes.InvalidRequest,
+                    "Invalid Request: the message is not a well-formed request.")));
+                return null;
+            }
         }
         catch (JsonException ex)
         {
@@ -349,6 +367,11 @@ public partial class McpServer
             return null;
         }
     }
+
+    private static bool IsResponse(JsonElement root) =>
+        root.ValueKind == JsonValueKind.Object
+        && !root.TryGetProperty("method", out _)
+        && (root.TryGetProperty("result", out _) || root.TryGetProperty("error", out _));
 
     /// <summary>Why a JSON value is no JSON-RPC 2.0 message, read from the text; null when its envelope is one.</summary>
     private static string? InvalidMessageReason(JsonElement root)
@@ -540,10 +563,17 @@ public partial class McpServer
     {
         string? name = null;
         JsonElement? arguments = null;
+        // The refusals of tools/call, in its words (#413).
+        if (request.Params is { ValueKind: not (JsonValueKind.Object or JsonValueKind.Null or JsonValueKind.Undefined) })
+            return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, ParamsMustNameAString);
         if (request.Params is { ValueKind: JsonValueKind.Object } p)
         {
-            if (p.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String)
+            if (p.TryGetProperty("name", out var n))
+            {
+                if (n.ValueKind is not (JsonValueKind.String or JsonValueKind.Null))
+                    return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, ParamsMustNameAString);
                 name = n.GetString();
+            }
             // MCP types the arguments of a prompt as an object of strings: anything else is refused, not skipped (#413).
             if (p.TryGetProperty("arguments", out var a) && a.ValueKind != JsonValueKind.Null)
             {
@@ -701,8 +731,7 @@ public partial class McpServer
             if (given.ValueKind != JsonValueKind.Object
                 || (given.TryGetProperty("name", out var name) && name.ValueKind is not (JsonValueKind.String or JsonValueKind.Null)))
             {
-                return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams,
-                    "Invalid params: params must be an object with a string name.");
+                return CreateErrorResponse(request.Id, JsonRpcErrorCodes.InvalidParams, ParamsMustNameAString);
             }
 
             callParams.Name = name.ValueKind == JsonValueKind.String ? name.GetString()! : "";
@@ -782,6 +811,7 @@ public partial class McpServer
         return CreateSuccessResponse(request.Id, mcpResult);
     }
 
+    private const string ParamsMustNameAString = "Invalid params: params must be an object with a string name.";
     private const string ArgumentsMustBeAnObject = "Invalid params: arguments must be an object.";
 
     /// <summary>
@@ -1145,6 +1175,9 @@ public partial class McpServer
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Failed to parse request: {Line}")]
     private partial void LogFailedToParseRequest(Exception ex, string line);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "MCP response received and dropped: the server sent no request")]
+    private partial void LogUnexpectedResponse();
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "MCP notification received: {Method}")]
     private partial void LogNotificationReceived(string method);

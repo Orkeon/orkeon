@@ -56,6 +56,8 @@ public sealed class McpAnnouncedVersionTests
     {
         Assert.False(string.IsNullOrWhiteSpace(Release));
         Assert.DoesNotContain('+', Release);
+        // Read another way than the code under test reads it: the assembly version comes from the same VersionPrefix.
+        Assert.StartsWith(typeof(McpServer).Assembly.GetName().Version!.ToString(3), Release, StringComparison.Ordinal);
     }
 
     [Fact]

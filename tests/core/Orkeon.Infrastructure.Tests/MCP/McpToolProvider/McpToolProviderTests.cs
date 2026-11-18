@@ -107,6 +107,27 @@ public sealed class McpToolProviderTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ShouldSetAsideTheToolAlone_WhenAnEntryIsNullOrHasNoName()
+    {
+        // Arrange - the set-aside path of #417: a null entry and a nameless tool leave the others registered
+        SetupTransportForToolDiscovery(
+        [
+            new() { Name = "search", Description = "Search things" },
+            null!,
+            new() { Name = null!, Description = "No name" },
+            new() { Name = "fetch", Description = "Fetch data" }
+        ]);
+        await using var provider = new McpToolProviderSut(_mockRegistry);
+
+        // Act
+        await provider.ConnectServerAsync("server1", _mockTransport, ct: TestContext.Current.CancellationToken);
+
+        // Assert
+        var names = (await _mockRegistry.GetAllToolsAsync(TestContext.Current.CancellationToken)).Select(t => t.Name).ToList();
+        Assert.Equal(["fetch", "search"], names.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
     public async Task ShouldRemoveClient_WhenDisconnectingServer()
     {
         // Arrange
