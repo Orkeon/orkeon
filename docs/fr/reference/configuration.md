@@ -2364,7 +2364,9 @@ la variable lui-même. La liste est celle que porte le code — un test y tient 
 
 **Transmises, pas lues.** L'outil `shell_command` remet à la commande qu'il lance une liste fixe
 de variables de l'hôte — `PATH`, `HOME`, la locale, les dossiers temporaires, `DOTNET_ROOT`,
-`NUGET_PACKAGES` et ce qu'il faut à Windows pour lancer un programme —, plus les trois qui nomment
+`NUGET_PACKAGES`, les quatre qui donnent son identité à un commit (`GIT_AUTHOR_NAME`,
+`GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL` : un nom et une adresse, qu'un
+conteneur n'a aucun `~/.gitconfig` où lire) et ce qu'il faut à Windows pour lancer un programme —, plus les trois qui nomment
 une socket de la session de l'opérateur : `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` (le
 trousseau que lit un assistant d'identifiants comme `gh auth git-credential`) et `SSH_AUTH_SOCK`
 (l'agent ssh). Elles portent une adresse, pas un secret, mais le bus permet à une commande de

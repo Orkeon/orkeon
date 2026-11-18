@@ -2304,7 +2304,9 @@ variable itself. The list is the one the code carries — a test holds this tabl
 
 **Passed on, not read.** The `shell_command` tool hands the command it starts a fixed list of the
 host's variables — `PATH`, `HOME`, the locale, the temporary folders, `DOTNET_ROOT`,
-`NUGET_PACKAGES` and what Windows needs to start a program —, plus the three that name a socket
+`NUGET_PACKAGES`, the four that give a commit its identity (`GIT_AUTHOR_NAME`,
+`GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`: a name and an address, which a
+container has no `~/.gitconfig` to read from) and what Windows needs to start a program —, plus the three that name a socket
 of the operator's session: `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` (the keyring a credential
 helper such as `gh auth git-credential` reads) and `SSH_AUTH_SOCK` (the ssh agent). They hold an
 address, not a secret, but the bus lets a command leave a sandbox and read the keyring: a confined
