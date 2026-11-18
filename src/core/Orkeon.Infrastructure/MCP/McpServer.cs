@@ -112,7 +112,8 @@ public partial class McpServer
 
     /// <summary>
     /// Processes a single JSON-RPC request and returns the response, or null when the
-    /// message is a notification (which must not be answered).
+    /// message is a valid notification (which must not be answered). A message that is no valid
+    /// request - a notification with an invalid envelope included - is answered <c>-32600</c>.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "JSON-RPC boundary fault barrier: any handler failure is converted into a JSON-RPC InternalError response so one bad request cannot crash the MCP server.")]
     public Task<JsonRpcResponse?> ProcessRequestAsync(
@@ -320,7 +321,8 @@ public partial class McpServer
     /// Parses one line. Text that is not JSON is answered <c>-32700</c>; JSON that is no request object - a scalar,
     /// <c>null</c>, an array (batching is not spoken: one answer for the whole line), an object whose <c>jsonrpc</c>
     /// is not <c>"2.0"</c> or whose <c>method</c> is absent or no string - is answered <c>-32600</c> (#414). Both
-    /// yield <see langword="null"/>. The checks read the text: the deserialized request cannot tell an absent
+    /// yield <see langword="null"/>, and so does a response (a <c>result</c> or an <c>error</c> with no
+    /// <c>method</c>), which is dropped without an answer. The checks read the text: the deserialized request cannot tell an absent
     /// member from its default.
     /// </summary>
     private JsonRpcRequest? ParseRequest(string line, ChannelWriter<string> outbox)
@@ -337,12 +339,12 @@ public partial class McpServer
                 return null;
             }
 
+            // The id is sent back when it could be read, null otherwise (JSON-RPC 2.0).
+            JsonElement? id = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("id", out var given) && IsRequestId(given)
+                ? given.Clone()
+                : null;
             if (InvalidMessageReason(root) is { } reason)
             {
-                // The id is sent back when it could be read, null otherwise (JSON-RPC 2.0).
-                JsonElement? id = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("id", out var given) && IsRequestId(given)
-                    ? given.Clone()
-                    : null;
                 outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(id, JsonRpcErrorCodes.InvalidRequest, reason)));
                 return null;
             }
@@ -354,7 +356,7 @@ public partial class McpServer
             catch (JsonException)
             {
                 // Valid JSON the request type refuses (a member written twice): no request, not a parse error.
-                outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(null, JsonRpcErrorCodes.InvalidRequest,
+                outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(id, JsonRpcErrorCodes.InvalidRequest,
                     "Invalid Request: the message is not a well-formed request.")));
                 return null;
             }
@@ -818,9 +820,12 @@ public partial class McpServer
     private static string Member(string path, string name)
     {
         if (name.Length == 0 || name.AsSpan().IndexOfAny('.', '[', ']') >= 0)
-            return $"{path}[{JsonSerializer.Serialize(name)}]";
+            return $"{path}[{JsonSerializer.Serialize(name, s_readableNames)}]";
         return path.Length == 0 ? name : $"{path}.{name}";
     }
+
+    /// <summary>Names as the caller wrote them: no \uXXXX for a letter, a quote or an angle bracket in a message a person reads.</summary>
+    private static readonly JsonSerializerOptions s_readableNames = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     private const string ParamsMustNameAString = "Invalid params: params must be an object with a string name.";
     private const string ArgumentsMustBeAnObject = "Invalid params: arguments must be an object.";

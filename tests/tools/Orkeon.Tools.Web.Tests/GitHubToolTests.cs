@@ -79,6 +79,15 @@ public sealed class GitHubToolTests : IDisposable
         Assert.Equal("test-token", _mockHandler.LastRequest.Headers.Authorization?.Parameter);
     }
 
+    /// <summary>The informational version of an assembly, build metadata removed: what the User-Agent names.</summary>
+    internal static string ReleaseOf(Type type)
+    {
+        var informational = System.Reflection.CustomAttributeExtensions
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(type.Assembly)!.InformationalVersion;
+        var plus = informational.IndexOf('+', StringComparison.Ordinal);
+        return plus < 0 ? informational : informational[..plus];
+    }
+
     [Fact]
     public async Task ListIssues_ShouldSendUserAgentHeader()
     {
@@ -87,8 +96,10 @@ public sealed class GitHubToolTests : IDisposable
         await CallToolAsync("list_issues", owner: "octocat", repo: "hello");
 
         Assert.NotNull(_mockHandler.LastRequest);
-        Assert.Contains(_mockHandler.LastRequest.Headers.UserAgent,
-            ua => ua.Product?.Name == "Orkeon");
+        // The product and the version of the running release (#418), not a bare "Orkeon".
+        var product = Assert.Single(_mockHandler.LastRequest.Headers.UserAgent, ua => ua.Product is not null).Product!;
+        Assert.Equal("Orkeon", product.Name);
+        Assert.Equal(ReleaseOf(typeof(GitHubTool)), product.Version);
     }
 
     // ── create_issue ─────────────────────────────────────────────────────

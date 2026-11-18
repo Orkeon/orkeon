@@ -200,7 +200,7 @@ public partial class McpClient : IAsyncDisposable
 
         // Each tool is read on its own (#417): one whose name, description or annotations have the wrong JSON
         // type is set aside with a warning, where reading the page as a whole lost every tool of the server.
-        var raw = await PageAllAsync("tools/list", (ToolListPage r) => (r.Tools, r.NextCursor), ct).ConfigureAwait(false);
+        var raw = await PageAllAsync("tools/list", (ToolListPage r) => (r.Tools ?? [], r.NextCursor), ct).ConfigureAwait(false);
         var tools = new List<McpToolDefinition>(raw.Count);
         foreach (var element in raw)
         {
@@ -214,8 +214,9 @@ public partial class McpClient : IAsyncDisposable
     /// <summary>One page of <c>tools/list</c>, its tools left as they came.</summary>
     private sealed class ToolListPage
     {
+        // A server that writes `"tools": null` lists no tool.
         [System.Text.Json.Serialization.JsonPropertyName("tools")]
-        public IReadOnlyList<JsonElement> Tools { get; init; } = [];
+        public IReadOnlyList<JsonElement>? Tools { get; init; }
 
         [System.Text.Json.Serialization.JsonPropertyName("nextCursor")]
         public string? NextCursor { get; init; }
@@ -227,19 +228,39 @@ public partial class McpClient : IAsyncDisposable
             && element.TryGetProperty("name", out var given) && given.ValueKind == JsonValueKind.String
                 ? given.GetString()
                 : null;
+        string reason;
         try
         {
-            if (element.ValueKind == JsonValueKind.Object && element.Deserialize<McpToolDefinition>() is { } tool)
+            if (element.ValueKind != JsonValueKind.Object)
+                reason = "the entry is not an object";
+            else if (element.Deserialize<McpToolDefinition>() is { } tool && !string.IsNullOrWhiteSpace(tool.Name))
                 return tool;
-            LogToolDefinitionUnreadable(name ?? "(unnamed)", _serverInfo?.Name, "the entry is not an object");
+            else
+                reason = "the tool has no name";
         }
         catch (JsonException ex)
         {
-            LogToolDefinitionUnreadable(name ?? "(unnamed)", _serverInfo?.Name, ex.Message);
+            reason = ex.Message;
         }
+
+        // Once per definition: a server that keeps a bad entry is not warned about at every tools/list_changed.
+        bool first;
+        lock (_setAsideTools)
+            first = _setAsideTools.Add(element.GetRawText());
+        if (first)
+            LogToolDefinitionUnreadable(name ?? "(unnamed)", ServerLabel ?? _serverInfo?.Name ?? "(unknown)", reason);
 
         return null;
     }
+
+    /// <summary>The raw text of the tool entries already set aside, so each is warned about once.</summary>
+    private readonly HashSet<string> _setAsideTools = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The name the warnings give the server: the id the operator configured it under (<c>MCP:Servers:&lt;id&gt;</c>),
+    /// set by the provider; the server's own <c>serverInfo.name</c> otherwise.
+    /// </summary>
+    internal string? ServerLabel { get; set; }
 
     /// <summary>
     /// Lists the prompts of the MCP server, following the cursor of every page.
@@ -609,7 +630,7 @@ public partial class McpClient : IAsyncDisposable
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Tool}' listed by MCP server '{Server}' was set aside: its definition could not be read ({Reason}). The other tools of the server are kept")]
-    private partial void LogToolDefinitionUnreadable(string tool, string? server, string reason);
+    private partial void LogToolDefinitionUnreadable(string tool, string server, string reason);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "MCP client initialized with server {Name} v{Version}")]
     private partial void LogMcpClientInitialized(string? name, string? version);

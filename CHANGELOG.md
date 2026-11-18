@@ -14,7 +14,8 @@ A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it i
 one has a default body. #413, #414 and #416 change what the MCP server and client put on the wire; that surface is
 experimental (`ORKEXP004`), outside the commitment of 1.x, and each entry below says what a client or an installation
 sees differently. #418 changes the version the telemetry and the agent card carry and the `User-Agent` of the HTTP
-tools: no public member moves, and its entry says what a collector or a site sees.
+tools: no public member is added or removed, two defaults change (`A2AOptions.AgentVersion` and `AgentCard.Version`
+are empty where they were `1.0.0`), and its entry says what a collector, a peer or a site sees.
 
 ### Added
 
@@ -104,18 +105,22 @@ tools: no public member moves, and its entry says what a collector or a site see
   `prompts/get` alike. A `params` that is an array or a `name` that is no string answered `-32603 Internal error`: it
   answers `-32602`. A number beyond the range of a `double` (`1e400`) failed the call with the .NET serializer's own
   message: the call now answers `isError: true` with `Argument 'x' is not a finite number.` (`x[0]`, `x.y` when
-  nested, `["a.b"]` for a name that holds a dot), and the tool is not called.
+  nested, `["a.b"]` for a name that holds a dot or a bracket), and the tool is not called.
 - One tool of a remote MCP server could take every tool of that server away (#417). The MCP client threw on a
   parameter whose `type` is an array (`["string", "null"]`, a nullable parameter), on an `enum` of numbers or booleans,
   and on a `required` entry or a `description` that is no string; the connection failed with a .NET message that named
   neither the tool nor the property. A `type` array is now read as its one member that is not `"null"`, every scalar
   `enum` value is kept, and a tool that cannot be registered - a `null` entry of the list, a tool with no name, an
   `inputSchema` that still cannot be read, a `name`, a `description` or `annotations` of the wrong JSON type - is set
-  aside on its own, with a warning that names the server and the tool: `tools/list` is read tool by tool.
+  aside on its own, with a warning that names the server and the tool, written once for that entry: `tools/list` is
+  read tool by tool. A tool that becomes unreadable at a `tools/list_changed` leaves the registry.
 - The MCP client kept too little of a remote tool's parameter (#415): the `items` of an array were dropped, so an
   agent's model saw a bare `array`, and so were the `format` and the `additionalProperties` of a dictionary. They are
   kept, with the properties of an array of objects. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was
-  read as a `string`: it now has no type, and the model may give any JSON value.
+  read as a `string`: it now has no type, and the model may give any JSON value. A `default` is kept as the value it
+  is: a whole number stays whole (it was read as a `double`), an array or an object is no longer its JSON text, and
+  `"default": null` is no default (it was the text `null`). A number no `double` holds (`1e400`) is dropped from an
+  `enum` or a `default`, and items that declare `properties` and no `type` are read as objects.
   [The limitations](docs/reference/limitations.md) name what a remote parameter still loses.
 - The MCP server and the MCP client introduced themselves as version `1.0.0`, whatever the release (#416), in the
   legacy handshake (`serverInfo`, `clientInfo`) and in the `_meta` of the modern era. Both announce the version of the
@@ -123,14 +128,17 @@ tools: no public member moves, and its entry says what a collector or a site see
   is set. **An installation that copied `"Version": "1.0.0"` from `appsettings.sample.json` keeps announcing `1.0.0`:
   remove `MCP:Server:Version` or leave it empty.**
 - Outside MCP too, Orkeon announced a fixed `1.0.0` whatever the release (#418). The OpenTelemetry resource
-  (`service.version`), the activity sources and the meter, and the agent card of the A2A server now carry the version
-  of the release that runs, the one `orkeon --version` prints. `A2A:AgentVersion` is empty by default and still wins
+  (`service.version`), the activity sources - `Orkeon.Scripting`, which reported none, included - and the meter, and
+  the agent card of the A2A server now carry the version of the release that runs, the one `orkeon --version` prints. `A2A:AgentVersion` is empty by default and still wins
   when it is set; **an installation that copied `"AgentVersion": "1.0.0"` from `appsettings.sample.json` keeps
   announcing `1.0.0`: remove the key or leave it empty.** **The HTTP tools send `User-Agent: Orkeon/<version>
   (+https://github.com/Orkeon/orkeon)`** where they sent `Orkeon/1.0`: a site that filters on the exact former string
   sees the change at every release. The public constants `OrkeonDiagnostics.ServiceVersion`,
   `OrkeonActivitySources.Version`, `PlatformDefaults.Version` and `HttpDefaults.DefaultUserAgent` keep their value for
-  the callers that compiled them in; Orkeon no longer reads them.
+  the callers that compiled them in; Orkeon no longer reads them (`DefaultUserAgent` is the fallback when a build's
+  version is no valid product token). `GitHubTool` sent a bare `User-Agent: Orkeon`: it sends the same value as the
+  other HTTP tools. An agent card read from a peer that names no `version` has an empty `AgentCard.Version`, where it
+  read `1.0.0`.
 
 ### Documentation
 

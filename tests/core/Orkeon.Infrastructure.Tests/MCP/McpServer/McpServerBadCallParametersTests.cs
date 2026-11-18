@@ -100,6 +100,9 @@ public sealed class McpServerBadCallParametersTests
     // A name with a dot is not a nesting: it is quoted.
     [InlineData("""{"a.b":[0,{"c":1e400}]}""", "[\"a.b\"][1].c")]
     [InlineData("""{"a":{"b.c":1e400}}""", "a[\"b.c\"]")]
+    // Written as the caller wrote it: no \uXXXX for a letter or an angle bracket.
+    [InlineData("""{"é.x":1e400}""", "[\"é.x\"]")]
+    [InlineData("""{"<a.b>":1e400}""", "[\"<a.b>\"]")]
     public async Task ShouldFailTheCallNamingTheArgument_WhenANumberIsNotFinite(string arguments, string expectedPath)
     {
         var response = await SendAsync("tools/call", $$"""{"name":"list_mounts","arguments":{{arguments}}}""");

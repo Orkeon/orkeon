@@ -298,7 +298,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         HttpMethod method, string url, CancellationToken ct, HttpContent? content = null)
     {
         var message = new HttpRequestMessage(method, new Uri(url)) { Content = content };
-        message.Headers.UserAgent.TryParseAdd("Orkeon");
+        message.Headers.UserAgent.TryParseAdd(ToolUserAgent.Value);
         message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
         if (!string.IsNullOrWhiteSpace(_personalAccessToken))
             message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _personalAccessToken);

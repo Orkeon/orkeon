@@ -50,6 +50,7 @@ public sealed class ReleaseVersionAnnouncedTests
         Assert.Equal(Release, OrkeonActivitySources.Llm.Version);
         Assert.Equal(Release, OrkeonActivitySources.Tool.Version);
         Assert.Equal(Release, OrkeonActivitySources.Memory.Version);
+        Assert.Equal(Release, OrkeonActivitySources.EventHub.Version);
     }
 
     [Fact]
@@ -98,11 +99,11 @@ public sealed class ReleaseVersionAnnouncedTests
     [Fact]
     public void ShouldSendTheRelease_InTheUserAgentOfTheHttpTools()
     {
-        Assert.Equal($"Orkeon/{Release} (+https://github.com/Orkeon/orkeon)", HttpDefaults.ReleaseUserAgent);
+        Assert.Equal($"Orkeon/{Release} (+https://github.com/Orkeon/orkeon)", Orkeon.Tools.Abstractions.Base.ToolUserAgent.Value);
 
         // What HttpToolBase does with it: the header parses, and names the product and its version.
         using var client = new HttpClient();
-        client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpDefaults.ReleaseUserAgent);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(Orkeon.Tools.Abstractions.Base.ToolUserAgent.Value);
         var product = client.DefaultRequestHeaders.UserAgent.First().Product;
         Assert.Equal(new ProductHeaderValue("Orkeon", Release), product);
     }

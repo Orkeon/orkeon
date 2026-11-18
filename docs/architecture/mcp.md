@@ -60,7 +60,7 @@ revision (`McpClient.SendAsync`).
 ### What the client keeps of a remote tool's schema
 
 `McpToolAdapter` reads the `inputSchema` of a remote tool into the schema an agent's model is shown. Of each
-property it keeps the `type`, the `description`, the `default` (a number read as a `double`), the `enum`
+property it keeps the `type`, the `description`, the `default` as the JSON value it is (`null` is no default), the `enum`
 (every scalar value as it is: a string, a number, a boolean), the `format`, the `items` of an array - their
 `type`, their `format`, and the `properties` and `required` of an array of objects - and the
 `additionalProperties` of a dictionary. A `type` written as an array is read as its one member that is not
@@ -68,17 +68,18 @@ property it keeps the `type`, the `description`, the `default` (a number read as
 none - `{}`, a bare `anyOf`, `oneOf` or `$ref` -, has no type: the model may give any JSON value. Still lost:
 the `properties` of an object parameter, an array nested in an array, the `enum`, `description` and `default`
 of an array's items, the alternatives of `anyOf` / `oneOf`, `$ref` / `$defs`, and the bounds (`minimum`,
-`maximum`, `pattern`, `minItems`). A `default` that is an array or an object is kept as its JSON text, and
-items that declare `properties` and no `type` are read as objects.
+`maximum`, `pattern`, `minItems`). Items that declare `properties` and no `type` are read as objects.
 
 No `inputSchema` makes the connection fail: a `required` entry or a `description` of a property that is no
-string is skipped, a number no `double` holds (`1e400`) is dropped from an `enum` or a `default`, and a tool
-that cannot be registered - a `null` entry of the list, a tool with no name, an `inputSchema` that still
-cannot be read - is set aside on its own, with a warning that names the server and the tool: the other tools
-of its server are registered. The listing is read tool by tool: an entry that is no object, or whose own
-`name`, `description` or `annotations` have the wrong JSON type (a `name` that is a number), is set aside the
-same way. When `tools/list_changed` brings a definition that can no longer be read, the tool leaves the
-registry, and the warning is written once for that definition.
+string is skipped, a number no `double` holds (`1e400`) is dropped from an `enum` or a `default`, and the
+listing is read tool by tool: an entry that is no object (`null`), a tool with no name, or one whose own
+`name`, `description` or `annotations` have the wrong JSON type (a `name` that is a number) is set aside on its
+own - the other tools of its server are registered. The warning names the tool and the server as `MCP:Servers`
+names it, and is written once for that entry, not at every listing. When `tools/list_changed` brings such an
+entry for a tool that was registered, the tool leaves the registry. A `"tools": null` lists no tool; a `tools`
+that is neither `null` nor an array still fails the listing, and so the connection. A name one server lists
+twice is registered once, the first time. `prompts/list` and `resources/list` are still read a page at a time:
+one prompt or resource of the wrong JSON type fails its listing.
 
 ### Server (`McpServer`) — dual-era on one endpoint
 
@@ -93,7 +94,7 @@ registry, and the warning is written once for that definition.
   SHOULD, for stable client caches) with the modern `resultType`/`ttlMs`/`cacheScope`
   fields; legacy clients ignore these additive members.
 - A valid notification - a message with no `id` - is never answered, and neither is a response (a `result`
-  or an `error` with no `method`: the server sends no request, so it drops one). A line that is JSON but no
+  or an `error` with no `method`, whatever the rest of its envelope: the server sends no request, so it drops one). A line that is JSON but no
   valid request is answered `-32600 Invalid Request`, a notification whose envelope is invalid included (its
   answer carries a `null` `id`); `-32700` is kept for text that is not JSON. Refused that way: a value that
   is no object (a scalar, `null`, an array - batching is not spoken, so a batch gets one answer for the whole
@@ -325,7 +326,7 @@ than `IBaseTool` to implement. The servers are connected before the crew loads, 
 `StrictTools` — the runners' default — a crew that names a tool of a server that could not
 be connected fails at load with the ordinary `unknown tool(s)` line. `--list-tools` and
 `--validate` see the MCP tools, `McpServer` re-exposes what the registry holds - every tool, or those `orkeon mcp serve --tools` names
-(`AllowedTools`), `human_input` aside -, and C#
+(`AllowedTools`); the host of `orkeon mcp serve` registers no `human_input` -, and C#
 code can resolve one with `IToolRegistry.GetToolByNameAsync(name)`. The observed-run
 decorator of `--events jsonl` wraps the tools registered in DI; MCP tools reach the
 registry at run time and are not wrapped.

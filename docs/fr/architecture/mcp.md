@@ -63,7 +63,7 @@ supportée des deux côtés (`McpClient.SendAsync`).
 ### Ce que le client garde du schéma d'un outil distant
 
 `McpToolAdapter` lit l'`inputSchema` d'un outil distant pour en faire le schéma montré au modèle d'un agent. De chaque
-propriété il garde le `type`, la `description`, le `default` (un nombre lu en `double`), l'`enum` (chaque
+propriété il garde le `type`, la `description`, le `default` comme la valeur JSON qu'il est (`null` n'est pas un défaut), l'`enum` (chaque
 valeur scalaire telle quelle : une chaîne, un nombre, un booléen), le `format`, les `items` d'un tableau —
 leur `type`, leur `format`, et les `properties` et `required` d'un tableau d'objets — et les
 `additionalProperties` d'un dictionnaire. Un `type` écrit comme un tableau est lu comme son seul membre autre
@@ -72,18 +72,19 @@ types, ou sans aucun — `{}`, un `anyOf`, un `oneOf` ou un `$ref` seul —, n'a
 donner n'importe quelle valeur JSON. Restent perdus : les `properties` d'un paramètre objet, un tableau
 imbriqué dans un tableau, l'`enum`, la `description` et le `default` des éléments d'un tableau, les
 alternatives d'`anyOf` / `oneOf`, `$ref` / `$defs`, et les bornes (`minimum`, `maximum`, `pattern`,
-`minItems`). Un `default` qui est un tableau ou un objet est gardé comme son texte JSON, et des éléments qui
-déclarent des `properties` sans `type` sont lus comme des objets.
+`minItems`). Des éléments qui déclarent des `properties` sans `type` sont lus comme des objets.
 
 Aucun `inputSchema` ne fait échouer la connexion : une entrée de `required` ou la `description` d'une
 propriété qui n'est pas une chaîne est ignorée, un nombre qu'aucun `double` ne contient (`1e400`) est retiré
-d'un `enum` ou d'un `default`, et un outil qui ne peut pas être enregistré — une entrée `null` de la liste, un
-outil sans nom, un `inputSchema` qui reste illisible — est écarté à lui seul, avec un avertissement qui nomme
-le serveur et l'outil : les autres outils de son serveur sont enregistrés. La liste est lue outil par outil :
-une entrée qui n'est pas un objet, ou dont le `name`, la `description` ou les `annotations` ont le mauvais type
-JSON (un `name` qui est un nombre), est écartée de la même façon. Quand `tools/list_changed` apporte une
-définition qui ne peut plus être lue, l'outil quitte le registre, et l'avertissement est écrit une fois pour
-cette définition.
+d'un `enum` ou d'un `default`, et la liste est lue outil par outil : une entrée qui n'est pas un objet (`null`), un
+outil sans nom, ou un outil dont le `name`, la `description` ou les `annotations` ont le mauvais type JSON (un
+`name` qui est un nombre) est écarté à lui seul — les autres outils de son serveur sont enregistrés.
+L'avertissement nomme l'outil et le serveur tel que `MCP:Servers` le nomme, et il est écrit une fois pour
+cette entrée, pas à chaque lecture de la liste. Quand `tools/list_changed` apporte une telle entrée pour un
+outil qui était enregistré, l'outil quitte le registre. Un `"tools": null` ne liste aucun outil ; un `tools`
+qui n'est ni `null` ni un tableau fait encore échouer la liste, et donc la connexion. Un nom qu'un serveur
+liste deux fois est enregistré une fois, la première. `prompts/list` et `resources/list` sont encore lus page
+par page : un prompt ou une ressource du mauvais type JSON fait échouer sa liste.
 
 ### Serveur (`McpServer`) — bi-génération sur un même endpoint
 
@@ -98,7 +99,8 @@ cette définition.
   2026-07-28, pour des caches clients stables) avec les champs modernes
   `resultType`/`ttlMs`/`cacheScope` ; les clients legacy ignorent ces membres additifs.
 - Une notification valide — un message sans `id` — ne reçoit jamais de réponse, pas plus qu'une réponse (un
-  `result` ou un `error` sans `method` : le serveur n'envoie aucune requête, il l'ignore). Une ligne qui est du
+  `result` ou un `error` sans `method`, quel que soit le reste de son enveloppe : le serveur n'envoie aucune
+  requête, il l'ignore). Une ligne qui est du
   JSON mais pas une requête valide reçoit `-32600 Invalid Request`, y compris une notification dont
   l'enveloppe est invalide (sa réponse porte un `id` `null`) ; `-32700` est réservé au texte qui n'est pas du JSON.
   Sont refusés ainsi : une valeur qui n'est pas un objet (un scalaire, `null`, un tableau — le batching n'est
@@ -341,8 +343,8 @@ agents:
 crew : sous `StrictTools` — le défaut des runners — une crew qui nomme l'outil d'un serveur
 qui n'a pas pu être connecté échoue au chargement avec la ligne ordinaire `unknown tool(s)`.
 `--list-tools` et `--validate` voient les outils MCP, `McpServer` ré-expose ce que contient
-le registre — tous les outils, ou ceux que nomme `orkeon mcp serve --tools` (`AllowedTools`), `human_input`
-mis à part —, et du code C# peut en résoudre un par `IToolRegistry.GetToolByNameAsync(name)`.
+le registre — tous les outils, ou ceux que nomme `orkeon mcp serve --tools` (`AllowedTools`) ; l'hôte
+d'`orkeon mcp serve` n'enregistre pas `human_input` —, et du code C# peut en résoudre un par `IToolRegistry.GetToolByNameAsync(name)`.
 Le décorateur des runs observés de `--events jsonl` enveloppe les outils enregistrés dans la
 DI ; les outils MCP arrivent dans le registre à l'exécution et ne sont pas enveloppés.
 

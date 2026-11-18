@@ -47,7 +47,6 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         private readonly object _state;
         private readonly Dictionary<string, RegisteredTool> _tools;
         private readonly List<string> _rejected;
-        private readonly Dictionary<string, string> _setAside = new(StringComparer.Ordinal);
         private List<string> _unmatched;
         private long _notifications;
         private long _resyncs;
@@ -228,7 +227,6 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             {
                 _tools[name] = new RegisteredTool(adapter, fingerprint);
                 _rejected.Remove(name);
-                _setAside.Remove(name);
             }
         }
 
@@ -254,24 +252,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         public void KeepRejected(IReadOnlyCollection<string> listed)
         {
             lock (_state)
-            {
                 _rejected.RemoveAll(name => !listed.Contains(name));
-                foreach (var gone in _setAside.Keys.Where(name => !listed.Contains(name)).ToList())
-                    _setAside.Remove(gone);
-            }
-        }
-
-        /// <summary>Whether this very definition of the tool was already found unreadable.</summary>
-        public bool IsSetAside(string name, string fingerprint)
-        {
-            lock (_state)
-                return _setAside.TryGetValue(name, out var known) && known == fingerprint;
-        }
-
-        public void SetAside(string name, string fingerprint)
-        {
-            lock (_state)
-                _setAside[name] = fingerprint;
         }
 
         public void SetUnmatched(IEnumerable<string> unmatched)
@@ -348,40 +329,6 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         }
     }
 
-    /// <summary>
-    /// The tools of a listing the registry can hold: a <c>null</c> entry or a tool with no name is set aside, with
-    /// a warning, before the filter and the registry read a name that is not there (#417).
-    /// </summary>
-    private List<McpToolDefinition> Named(string serverId, IReadOnlyList<McpToolDefinition> listed)
-    {
-        var named = new List<McpToolDefinition>(listed.Count);
-        foreach (var definition in listed)
-        {
-            if (definition is null || string.IsNullOrWhiteSpace(definition.Name))
-                LogMcpToolSchemaUnreadable("(unnamed)", serverId, "the tool has no name");
-            else
-                named.Add(definition);
-        }
-
-        return named;
-    }
-
-    /// <summary>
-    /// The adapter of a tool during a resynchronisation. A definition that could not be read is remembered with
-    /// its fingerprint: the same one is not read, nor warned about, again at every <c>tools/list_changed</c>.
-    /// </summary>
-    private McpToolAdapter? BuildForResync(string serverId, McpClientEntry entry, string name, McpToolDefinition definition)
-    {
-        var fingerprint = Fingerprint(definition);
-        if (entry.IsSetAside(name, fingerprint))
-            return null;
-
-        var adapter = TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn);
-        if (adapter is null)
-            entry.SetAside(name, fingerprint);
-        return adapter;
-    }
-
     private McpOAuthServices OAuthServices() => new(_httpClientFactory, _loginInteraction, _time);
 
     /// <summary>
@@ -419,7 +366,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                 _ => throw new InvalidOperationException($"Unknown transport type: {config.Transport}")
             };
 
-            var client = new McpClient(transport, _loggerFactory?.CreateLogger<McpClient>());
+            var client = new McpClient(transport, _loggerFactory?.CreateLogger<McpClient>()) { ServerLabel = serverId };
 
             try
             {
@@ -452,7 +399,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             throw new InvalidOperationException($"Server '{serverId}' is already connected.");
         (McpRequestAuthenticators.Create(serverId, config, null, OAuthServices()) as IDisposable)?.Dispose();
 
-        var client = new McpClient(transport, _loggerFactory?.CreateLogger<McpClient>());
+        var client = new McpClient(transport, _loggerFactory?.CreateLogger<McpClient>()) { ServerLabel = serverId };
         try
         {
             await ConnectAndRegisterAsync(serverId, client, transport, config.TrustAnnotations, config, ct).ConfigureAwait(false);
@@ -483,7 +430,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         if (_clients.ContainsKey(serverId))
             throw new InvalidOperationException($"Server '{serverId}' is already connected.");
 
-        var client = new McpClient(transport, _loggerFactory?.CreateLogger<McpClient>());
+        var client = new McpClient(transport, _loggerFactory?.CreateLogger<McpClient>()) { ServerLabel = serverId };
 
         try
         {
@@ -521,7 +468,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         try
         {
             await client.ConnectAsync(guard.Token).ConfigureAwait(false);
-            tools = Named(serverId, await client.ListToolsAsync(guard.Token).ConfigureAwait(false));
+            tools = await client.ListToolsAsync(guard.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested && config is not null)
         {
@@ -958,7 +905,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             using var guard = CancellationTokenSource.CreateLinkedTokenSource(ct);
             if (entry.Config is not null)
                 guard.CancelAfter(entry.Config.ConnectTimeout);
-            var listed = Named(serverId, await entry.Client.ListToolsAsync(guard.Token).ConfigureAwait(false));
+            var listed = await entry.Client.ListToolsAsync(guard.Token).ConfigureAwait(false);
             var (kept, unmatched) = McpToolFilter.Apply(listed, entry.Config?.Tools);
 
             var current = new Dictionary<string, McpToolDefinition>();
@@ -982,7 +929,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                 {
                     // A definition that can no longer be read leaves the registry, as it would never have entered
                     // it at the connection: the schema held is no longer the server's.
-                    if (BuildForResync(serverId, entry, name, definition) is not { } adapter)
+                    if (TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn) is not { } adapter)
                     {
                         await _toolRegistry.UnregisterToolAsync(name, apply).ConfigureAwait(false);
                         entry.Forget(name);
@@ -1001,7 +948,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             {
                 if (entry.Holds(name))
                     continue;
-                if (BuildForResync(serverId, entry, name, definition) is not { } adapter)
+                if (TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn) is not { } adapter)
                     continue;
                 if (await _toolRegistry.RegisterToolAsync(adapter, apply).ConfigureAwait(false))
                 {

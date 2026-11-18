@@ -344,7 +344,7 @@ rien n'est exporté.
 `Orkeon.Task`, `Orkeon.Llm`, `Orkeon.Tool`, `Orkeon.Memory`, `Orkeon.EventHub` et `Orkeon.Scripting` plus
 l'instrumentation HttpClient ; les métriques du meter `Orkeon` plus l'instrumentation runtime et
 HttpClient ; et, dès que l'export OTLP est actif, les journaux structurés (message formaté et scopes
-compris) vers le même point de terminaison. La ressource nomme le service `Orkeon`. Les noms de spans
+compris) vers le même point de terminaison. La ressource nomme le service `Orkeon` et lui donne la version de la release en cours d'exécution (`service.version`), que les sources d'activité et le compteur rapportent aussi. Les noms de spans
 et de métriques suivent les conventions GenAI d'OpenTelemetry — voir
 [Sous-systèmes opt-in](opt-in-subsystems.md).
 

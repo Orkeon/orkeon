@@ -202,7 +202,7 @@ public sealed class McpToolAdapterTests : IAsyncDisposable
         Assert.True(schema.Parameters[ParamQuery].Required);
 
         Assert.Equal("integer", schema.Parameters["limit"].Type);
-        Assert.Equal(10.0, schema.Parameters["limit"].Default);
+        Assert.Equal(10L, schema.Parameters["limit"].Default); // a whole default stays whole (#415)
         Assert.False(schema.Parameters["limit"].Required);
 
         Assert.NotNull(schema.Parameters["format"].Enum);

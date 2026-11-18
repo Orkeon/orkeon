@@ -15,9 +15,9 @@ public static class HttpDefaults
     /// <summary>Default timeout for web-scraping HTTP requests (30 s).</summary>
     public const int ScrapeTimeoutSeconds = 30;
 
-    /// <summary>Default User-Agent string sent by Orkeon HTTP clients.</summary>
+    /// <summary>
+    /// A fixed value kept for the callers that compiled it in. The HTTP tools send <c>Orkeon/&lt;version of the
+    /// running release&gt;</c>, and this constant only when that version is no valid product token (#418).
+    /// </summary>
     public const string DefaultUserAgent = "Orkeon/1.0 (+https://github.com/Orkeon/orkeon)";
-
-    /// <summary>The User-Agent the HTTP tools send: <c>Orkeon/&lt;version of the running release&gt;</c> (#418).</summary>
-    internal static string ReleaseUserAgent => Platform.OrkeonRelease.UserAgent;
 }

@@ -328,7 +328,7 @@ Without either, nothing is exported.
 `Orkeon.Tool`, `Orkeon.Memory`, `Orkeon.EventHub` and `Orkeon.Scripting` activity sources plus the HttpClient
 instrumentation; metrics from the `Orkeon` meter plus the runtime and HttpClient instrumentation; and,
 whenever OTLP export is on, the structured logs (formatted message and scopes included) to the same
-endpoint. The resource names the service `Orkeon`. The span and metric names follow the OpenTelemetry
+endpoint. The resource names the service `Orkeon` and gives it the version of the running release (`service.version`), which the activity sources and the meter report too. The span and metric names follow the OpenTelemetry
 GenAI conventions — see [Opt-in subsystems](opt-in-subsystems.md#traces-and-metrics-follow-the-opentelemetry-genai-conventions).
 
 The section also registers three health checks — `llm_provider`, `memory_provider` (which reads a key

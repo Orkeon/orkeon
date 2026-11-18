@@ -22,6 +22,23 @@ public sealed class HttpApiToolTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldSendTheReleaseInTheUserAgent_WhenAToolSendsARequest()
+    {
+        // #418: on the request a tool really sends, not on a constant.
+        _mockHandler.SetResponse(HttpStatusCode.OK, "{}");
+
+        await _tool.CallAsync(new ToolCallRequest(
+            ToolName: "http_api",
+            Parameters: new Dictionary<string, object?> { [ParamUrl] = "https://api.example.com/health" }),
+            TestContext.Current.CancellationToken);
+
+        var product = Assert.Single(_mockHandler.LastRequest!.Headers.UserAgent, ua => ua.Product is not null).Product!;
+        Assert.Equal("Orkeon", product.Name);
+        Assert.Equal(GitHubToolTests.ReleaseOf(typeof(HttpApiTool)), product.Version);
+        Assert.Contains(_mockHandler.LastRequest.Headers.UserAgent, ua => ua.Comment == "(+https://github.com/Orkeon/orkeon)");
+    }
+
+    [Fact]
     public async Task ShouldReturnResponse_WhenSendingGetRequest()
     {
         _mockHandler.SetResponse(HttpStatusCode.OK, "{\"status\":\"ok\"}");

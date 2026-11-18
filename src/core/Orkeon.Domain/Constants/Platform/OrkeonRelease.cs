@@ -3,17 +3,14 @@ using System.Reflection;
 namespace Orkeon.Domain.Constants.Platform;
 
 /// <summary>
-/// The version of the Orkeon release that is running, read at run time: what the telemetry, the agent card, the
-/// MCP handshake and the User-Agent of the HTTP tools announce (#416, #418). Every assembly of a release carries
+/// The version of the Orkeon release that is running, read at run time: what the telemetry, the agent card and
+/// the MCP handshake announce (#416, #418). Every assembly of a release carries
 /// the same informational version (<c>VersionPrefix</c> + <c>VersionSuffix</c> of <c>src/Directory.Build.props</c>).
 /// </summary>
 internal static class OrkeonRelease
 {
     /// <summary>The informational version of this assembly, build metadata (<c>+sha</c>) removed.</summary>
     public static string Version { get; } = Read();
-
-    /// <summary>The User-Agent an HTTP tool sends: <c>Orkeon/&lt;version&gt;</c> and where the project lives.</summary>
-    public static string UserAgent { get; } = $"Orkeon/{Version} (+https://github.com/Orkeon/orkeon)";
 
     private static string Read()
     {

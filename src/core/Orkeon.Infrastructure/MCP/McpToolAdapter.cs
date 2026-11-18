@@ -240,7 +240,8 @@ public class McpToolAdapter : IBaseTool
             ItemsFormat: items is { } formatted ? ReadString(formatted, "format") : null,
             Values: values)
         {
-            ItemProperties = items is { } described ? ReadItemProperties(described) : null
+            // The properties of object items only: a string item that carries `properties` publishes none.
+            ItemProperties = items is { } described && ReadItemsType(described) == "object" ? ReadItemProperties(described) : null
         };
     }
 
@@ -281,9 +282,11 @@ public class McpToolAdapter : IBaseTool
         return single;
     }
 
-    /// <summary>The type of an array's items; items that declare <c>properties</c> and no type are objects, so their properties are published.</summary>
+    /// <summary>The type of an array's items; items that declare <c>properties</c> and no <c>type</c> member are objects, so their properties are published.</summary>
     private static string? ReadItemsType(JsonElement items) =>
-        ReadType(items) ?? (items.TryGetProperty("properties", out var properties) && properties.ValueKind == JsonValueKind.Object ? "object" : null);
+        items.TryGetProperty("type", out _)
+            ? ReadType(items)
+            : items.TryGetProperty("properties", out var properties) && properties.ValueKind == JsonValueKind.Object ? "object" : null;
 
     /// <summary>A JSON number as a long when it is one, else a double; null when no double holds it (<c>1e400</c>), since infinity cannot be written back as JSON.</summary>
     private static object? ReadFiniteNumber(JsonElement number)
@@ -307,10 +310,14 @@ public class McpToolAdapter : IBaseTool
         return defaultEl.ValueKind switch
         {
             JsonValueKind.String => defaultEl.GetString(),
-            JsonValueKind.Number => double.IsFinite(defaultEl.GetDouble()) ? defaultEl.GetDouble() : null,
+            // A whole number stays one (a long), and a number no double holds is no default.
+            JsonValueKind.Number => ReadFiniteNumber(defaultEl),
             JsonValueKind.True => true,
             JsonValueKind.False => false,
-            _ => defaultEl.GetRawText()
+            // `"default": null` (what a nullable parameter often declares) is no default, never the text "null".
+            JsonValueKind.Null or JsonValueKind.Undefined => null,
+            // An array or an object is kept as the JSON value it is, never as its text.
+            _ => defaultEl.Clone()
         };
     }
 

@@ -83,6 +83,41 @@ public sealed class McpToolAdapterRemoteSchemaTests
         Assert.NotNull(System.Text.Json.JsonSerializer.Serialize(parameters["n"].ToDocument()));
     }
 
+    [Fact]
+    public void ShouldKeepADefaultAsTheValueItIs_NeverAsItsText()
+    {
+        var parameters = Convert("""
+            {"type":"object","properties":{
+              "none":{"type":["string","null"],"default":null},
+              "whole":{"type":"integer","default":9007199254740993},
+              "ratio":{"type":"number","default":0.5},
+              "list":{"type":"array","default":["a","b"]},
+              "map":{"type":"object","default":{"a":1}}}}
+            """);
+
+        Assert.Null(parameters["none"].Default);
+        Assert.Equal(9007199254740993L, parameters["whole"].Default);
+        Assert.Equal(0.5, parameters["ratio"].Default);
+        Assert.Equal("""["a","b"]""", System.Text.Json.JsonSerializer.Serialize(parameters["list"].Default));
+        Assert.Equal("""{"a":1}""", System.Text.Json.JsonSerializer.Serialize(parameters["map"].Default));
+        Assert.False(parameters["none"].ToDocument().ContainsKey("default"));
+    }
+
+    [Fact]
+    public void ShouldNotInventObjectItems_WhenTheItemsNameAnotherTypeOrSeveral()
+    {
+        var parameters = Convert("""
+            {"type":"object","properties":{
+              "mixed":{"type":"array","items":{"type":["object","string"],"properties":{"id":{"type":"integer"}}}},
+              "texts":{"type":"array","items":{"type":"string","properties":{"id":{"type":"integer"}}}}}}
+            """);
+
+        Assert.Null(parameters["mixed"].ItemsType);
+        Assert.Null(parameters["mixed"].ItemProperties);
+        Assert.Equal("string", parameters["texts"].ItemsType);
+        Assert.Null(parameters["texts"].ItemProperties);
+    }
+
     // --- #415 ---
 
     [Fact]
