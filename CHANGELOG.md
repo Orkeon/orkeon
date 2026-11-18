@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-18
+
+A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It carries no
+**[breaking]** change: the three new members are overloads that take the id of the provider (#396), and the interface
+one has a default body.
+
 ### Added
 
 - `ITokenBudgetTracker.RecordUsage`, `TokenBudgetTracker.RecordUsage` and `TokenBudgetTracker.EstimateCost` each gain an
@@ -12436,7 +12442,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Orkeon/orkeon/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Orkeon/orkeon/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.7...v1.0.0
