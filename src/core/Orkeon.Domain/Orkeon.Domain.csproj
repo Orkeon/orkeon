@@ -25,6 +25,10 @@
     <InternalsVisibleTo Include="Orkeon.Infrastructure" />
     <InternalsVisibleTo Include="Orkeon.Infrastructure.Tests" />
     <InternalsVisibleTo Include="Orkeon.Host.Tests" />
+    <!-- One source for the version every surface announces (OrkeonRelease): a consumer that mixes package
+         versions still hears one version, the Domain's. -->
+    <InternalsVisibleTo Include="Orkeon.Scripting" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2760,7 +2760,7 @@
       "section": "MCP:Server",
       "type": "string",
       "default": "",
-      "description": "Server version advertised during MCP initialization. Empty (the default): the version of the running Orkeon release."
+      "description": "Server version advertised in the handshake and in the `_meta` of the modern era. Empty or blank (the default): the version of the running Orkeon release."
     },
     {
       "path": "Orkeon:MultiModal:Enabled",

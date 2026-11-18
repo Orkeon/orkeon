@@ -330,4 +330,76 @@ public class OpenAIToolSchemaFormatterTests
         var additional = Assert.IsType<IDictionary<string, object>>(Assert.Contains("additionalProperties", map), exactMatch: false);
         Assert.Equal("string", additional["type"]);
     }
+
+    [Fact]
+    public void ShouldSendTheValueSchemaOfV120_WhenTheValuesSetNoAddedMember()
+    {
+        var schema = new ToolSchema(
+            "map",
+            "A map tool",
+            new Dictionary<string, ParameterSchema>
+            {
+                ["metadata"] = new("object", "Pairs", Required: false, Values: new ParameterSchema("string", "value", false))
+            });
+
+        var result = _formatter.FormatToolsForPayload([schema]);
+
+        var tools = (List<Dictionary<string, object>>)result["tools"];
+        var function = (Dictionary<string, object>)tools[0]["function"];
+        var parameters = (Dictionary<string, object>)function["parameters"];
+        var properties = (Dictionary<string, object>)parameters["properties"];
+        // v1.2.0 sent the values' type and format, never their description ("value", from the schema generator).
+        Assert.Equal(
+            """{"type":"object","description":"Pairs","additionalProperties":{"type":"string"}}""",
+            System.Text.Json.JsonSerializer.Serialize(properties["metadata"]));
+    }
+
+    private static ToolSchema ArraysOfUnknownItems() => new(
+        "arrays",
+        "Arrays whose items are not known",
+        new Dictionary<string, ParameterSchema>
+        {
+            ["bare"] = new("array", "Anything listed", Required: false),
+            ["rows"] = new("array", "Rows", Required: false, ItemsType: "array"),
+        });
+
+    [Fact]
+    public void ShouldPublishAnyItems_WhenAnArrayDoesNotSayWhatItHolds()
+    {
+        var result = _formatter.FormatToolsForPayload([ArraysOfUnknownItems()]);
+
+        var tools = (List<Dictionary<string, object>>)result["tools"];
+        var function = (Dictionary<string, object>)tools[0]["function"];
+        var properties = (Dictionary<string, object>)((Dictionary<string, object>)function["parameters"])["properties"];
+        var bare = Assert.IsType<Dictionary<string, object>>(properties["bare"]);
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(bare["items"]));
+        var rows = Assert.IsType<Dictionary<string, object>>(Assert.IsType<Dictionary<string, object>>(properties["rows"])["items"]);
+        Assert.Equal("array", rows["type"]);
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(rows["items"]));
+    }
+
+    [Fact]
+    public void PublishesTheNestedProperties_AndTheClosedObjects()
+    {
+        var schema = new ToolSchema("t", "d", new Dictionary<string, ParameterSchema>
+        {
+            ["filter"] = new("object", "Filter", Required: true)
+            {
+                Properties = new Dictionary<string, ParameterSchema> { ["field"] = new("string", "Field", Required: true) { MinLength = 1 } },
+                AllowsAdditionalProperties = false,
+            },
+        })
+        { AllowsAdditionalParameters = false };
+
+        var result = _formatter.FormatToolsForPayload([schema]);
+
+        var function = (Dictionary<string, object>)((List<Dictionary<string, object>>)result["tools"])[0]["function"];
+        var parameters = (Dictionary<string, object>)function["parameters"];
+        Assert.Equal(false, parameters["additionalProperties"]);
+        var filter = (Dictionary<string, object>)((Dictionary<string, object>)parameters["properties"])["filter"];
+        Assert.Equal(false, filter["additionalProperties"]);
+        Assert.Equal(["field"], Assert.IsType<List<string>>(filter["required"]));
+        var field = (Dictionary<string, object>)((Dictionary<string, object>)filter["properties"])["field"];
+        Assert.Equal(1, field["minLength"]);
+    }
 }

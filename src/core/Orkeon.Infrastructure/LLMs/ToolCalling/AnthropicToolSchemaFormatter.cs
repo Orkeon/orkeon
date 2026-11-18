@@ -52,25 +52,8 @@ internal sealed class AnthropicToolSchemaFormatter : IToolSchemaFormatter
     /// </summary>
     private static Dictionary<string, object> FormatSingleTool(ToolSchema schema)
     {
-        var properties = new Dictionary<string, object>();
-        var requiredParams = new List<string>();
-
-        foreach (var (paramName, paramSchema) in schema.Parameters)
-        {
-            properties[paramName] = FormatParameterProperty(paramSchema);
-
-            if (paramSchema.Required)
-                requiredParams.Add(paramName);
-        }
-
-        var inputSchema = new Dictionary<string, object>
-        {
-            ["type"] = "object",
-            ["properties"] = properties
-        };
-
-        if (requiredParams.Count > 0)
-            inputSchema["required"] = requiredParams;
+        // The one JSON Schema writer of the framework (ParameterSchema.ToJsonSchema).
+        var inputSchema = schema.ToInputJsonSchema();
 
         return new Dictionary<string, object>
         {
@@ -78,50 +61,5 @@ internal sealed class AnthropicToolSchemaFormatter : IToolSchemaFormatter
             ["description"] = schema.Description,
             ["input_schema"] = inputSchema
         };
-    }
-
-    /// <summary>
-    /// Maps a <see cref="ParameterSchema"/> to a JSON Schema property object.
-    /// </summary>
-    private static Dictionary<string, object> FormatParameterProperty(ParameterSchema param)
-    {
-        var prop = new Dictionary<string, object>();
-
-        if (param.Type is not null)
-            prop["type"] = param.Type;
-
-        prop["description"] = param.Description;
-
-        if (param.Default is not null)
-            prop["default"] = param.Default;
-
-        // EnumMap (C# enum name→value mapping) takes priority over flat Enum list
-        if (param.EnumMap is { Count: > 0 })
-            prop["enum"] = param.EnumMap.Keys.ToList();
-        else if (param.Enum is { Count: > 0 })
-            prop["enum"] = param.Enum;
-
-        if (param.Format is not null)
-            prop["format"] = param.Format;
-
-        if (param.ItemsType is not null)
-        {
-            var items = new Dictionary<string, object> { ["type"] = param.ItemsType };
-            if (param.ItemsFormat is not null)
-                items["format"] = param.ItemsFormat;
-            // An array of objects publishes its items' shape (#210): their properties and the required ones.
-            if (param.ItemProperties is { Count: > 0 })
-            {
-                items["properties"] = param.ItemProperties.ToDictionary(p => p.Key, p => (object)FormatParameterProperty(p.Value));
-                if (param.RequiredItemProperties() is { Count: > 0 } required)
-                    items["required"] = required;
-            }
-            prop["items"] = items;
-        }
-
-        if (param.Values is not null)
-            prop["additionalProperties"] = param.Values.ToValueDocument();
-
-        return prop;
     }
 }

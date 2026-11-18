@@ -20,9 +20,12 @@ public sealed record AgentCard
     [JsonPropertyName("url")]
     public Uri? Url { get; init; }
 
-    /// <summary>Gets the version of the agent; empty when the card names none.</summary>
+    /// <summary>
+    /// Gets the version of the agent; <c>1.0.0</c> when the card names none, as before. The A2A server does not rely on
+    /// this default: it sets the version of the running release, or the one its options name (#418).
+    /// </summary>
     [JsonPropertyName("version")]
-    public string Version { get; init; } = "";
+    public string Version { get; init; } = "1.0.0";
 
     /// <summary>Gets optional provider information.</summary>
     [JsonPropertyName("provider")]

@@ -281,4 +281,50 @@ public class CovToolCalling_AnthropicToolSchemaFormatterTests
         Assert.Equal(["kind", "text"], itemProperties.Keys.Order().ToArray());
         Assert.Equal(["kind"], Assert.IsType<List<string>>(items["required"]));
     }
+
+    private static ToolSchema ArraysOfUnknownItems() => new(
+        "arrays",
+        "Arrays whose items are not known",
+        new Dictionary<string, ParameterSchema>
+        {
+            ["bare"] = new("array", "Anything listed", Required: false),
+            ["rows"] = new("array", "Rows", Required: false, ItemsType: "array"),
+        });
+
+    [Fact]
+    public void ShouldPublishAnyItems_WhenAnArrayDoesNotSayWhatItHolds()
+    {
+        var payload = _formatter.FormatToolsForPayload([ArraysOfUnknownItems()], ToolCallMode.Auto);
+
+        var tool = Assert.Single(Assert.IsType<List<Dictionary<string, object>>>(payload["tools"]));
+        var properties = Assert.IsType<Dictionary<string, object>>(Assert.IsType<Dictionary<string, object>>(tool["input_schema"])["properties"]);
+        var bare = Assert.IsType<Dictionary<string, object>>(properties["bare"]);
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(bare["items"]));
+        var rows = Assert.IsType<Dictionary<string, object>>(Assert.IsType<Dictionary<string, object>>(properties["rows"])["items"]);
+        Assert.Equal("array", rows["type"]);
+        Assert.Empty(Assert.IsType<Dictionary<string, object>>(rows["items"]));
+    }
+
+    [Fact]
+    public void FormatParameterProperty_NestedPropertiesAndClosedObjects()
+    {
+        var schema = new ToolSchema("t", "d", new Dictionary<string, ParameterSchema>
+        {
+            ["filter"] = new("object", "Filter", Required: true)
+            {
+                Properties = new Dictionary<string, ParameterSchema> { ["field"] = new("string", "Field", Required: true) { MinLength = 1 } },
+                AllowsAdditionalProperties = false,
+            },
+        })
+        { AllowsAdditionalParameters = false };
+
+        var payload = _formatter.FormatToolsForPayload([schema], ToolCallMode.Auto);
+
+        var input = (Dictionary<string, object>)((List<Dictionary<string, object>>)payload["tools"])[0]["input_schema"];
+        Assert.Equal(false, input["additionalProperties"]);
+        var filter = (Dictionary<string, object>)((Dictionary<string, object>)input["properties"])["filter"];
+        Assert.Equal(false, filter["additionalProperties"]);
+        var field = (Dictionary<string, object>)((Dictionary<string, object>)filter["properties"])["field"];
+        Assert.Equal(1, field["minLength"]);
+    }
 }

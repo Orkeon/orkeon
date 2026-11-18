@@ -385,6 +385,40 @@ public class McpServerTests
     }
 
     [Fact]
+    public void ShouldServeTheFormat_WhenAParameterDeclaresOne()
+    {
+        var schema = new ToolSchema("dated", "A dated tool", new Dictionary<string, ParameterSchema>
+        {
+            ["when"] = new("string", "The moment", true) { Format = "date-time" },
+        });
+
+        var jsonSchema = McpServerSut.ConvertToolSchemaToJsonSchema(schema);
+
+        Assert.Equal(
+            "date-time",
+            jsonSchema!.Value.GetProperty("properties").GetProperty("when").GetProperty("format").GetString());
+    }
+
+    [Fact]
+    public void ShouldServeAnyItems_WhenAnArrayDoesNotSayWhatItHolds()
+    {
+        var schema = new ToolSchema("arrays", "Arrays whose items are not known", new Dictionary<string, ParameterSchema>
+        {
+            ["bare"] = new("array", "Anything listed", false),
+            ["rows"] = new("array", "Rows", false, ItemsType: "array"),
+        });
+
+        var properties = McpServerSut.ConvertToolSchemaToJsonSchema(schema)!.Value.GetProperty("properties");
+
+        var bare = properties.GetProperty("bare").GetProperty("items");
+        Assert.Equal(JsonValueKind.Object, bare.ValueKind);
+        Assert.Empty(bare.EnumerateObject());
+        var rows = properties.GetProperty("rows").GetProperty("items");
+        Assert.Equal("array", rows.GetProperty("type").GetString());
+        Assert.Empty(rows.GetProperty("items").EnumerateObject());
+    }
+
+    [Fact]
     [Trait("BR", "CH-01")]
     [Trait("BR", "CH-02")]
     public void ConvertToolSchema_OmitsType_WhenParameterTypeIsAbsent()
@@ -418,6 +452,44 @@ public class McpServerTests
         Assert.Equal("object", map.GetProperty("type").GetString());
         Assert.False(map.TryGetProperty("items", out _));
         Assert.Equal("string", map.GetProperty("additionalProperties").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public void ShouldPublishTheAddedSchemaMembers_WhenAToolSetsThem()
+    {
+        var schema = new ToolSchema("search", "Searches", new Dictionary<string, ParameterSchema>
+        {
+            ["count"] = new("integer", "Count", true) { Minimum = 1, Maximum = 10 },
+            ["tags"] = new("array", "Tags", false) { Items = new ParameterSchema("string", "Tag", false) { MaxLength = 5 }, MaxItems = 3 },
+            ["filter"] = new("object", "Filter", false)
+            {
+                Properties = new Dictionary<string, ParameterSchema> { ["field"] = new("string", "Field", true) { Pattern = "^[a-z]*$" } },
+                AllowsAdditionalProperties = false,
+            },
+            ["when"] = new(null, "When", false) { AnyOf = [new ParameterSchema("string", "", false, Format: "date-time"), new ParameterSchema("integer", "", false)] },
+        })
+        {
+            AllowsAdditionalParameters = false,
+        };
+
+        var jsonSchema = McpServerSut.ConvertToolSchemaToJsonSchema(schema);
+
+        Assert.NotNull(jsonSchema);
+        var root = jsonSchema!.Value;
+        Assert.False(root.GetProperty("additionalProperties").GetBoolean());
+        Assert.Equal("count", Assert.Single(root.GetProperty("required").EnumerateArray()).GetString());
+        var properties = root.GetProperty("properties");
+        var count = properties.GetProperty("count");
+        Assert.Equal(1, count.GetProperty("minimum").GetDouble());
+        Assert.Equal(10, count.GetProperty("maximum").GetDouble());
+        var tags = properties.GetProperty("tags");
+        Assert.Equal(3, tags.GetProperty("maxItems").GetInt32());
+        Assert.Equal(5, tags.GetProperty("items").GetProperty("maxLength").GetInt32());
+        var filter = properties.GetProperty("filter");
+        Assert.False(filter.GetProperty("additionalProperties").GetBoolean());
+        Assert.Equal("^[a-z]*$", filter.GetProperty("properties").GetProperty("field").GetProperty("pattern").GetString());
+        Assert.Equal("field", Assert.Single(filter.GetProperty("required").EnumerateArray()).GetString());
+        Assert.Equal(2, properties.GetProperty("when").GetProperty("anyOf").GetArrayLength());
     }
 
     [Fact]
@@ -488,6 +560,7 @@ public class McpServerTests
         Assert.Equal("array", items.GetProperty("properties").GetProperty("rows").GetProperty("items").GetProperty("type").GetString());
         Assert.Equal("name", Assert.Single(items.GetProperty("required").EnumerateArray()).GetString());
 
-        Assert.False(properties.GetProperty("loose").TryGetProperty("items", out _));
+        // An array that does not say what it holds is served with `items: {}`, any JSON value, never bare.
+        Assert.Empty(properties.GetProperty("loose").GetProperty("items").EnumerateObject());
     }
 }

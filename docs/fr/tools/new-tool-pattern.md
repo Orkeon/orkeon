@@ -107,7 +107,14 @@ en nommant le DTO et la propriété.
   `[FieldSchema]` (enum, `IsRequired`).
 
 Un `ParameterSchema` écrit à la main suit les mêmes règles : `Type` vaut `null` pour un paramètre libre,
-et `Values` porte le schéma des valeurs d'un dictionnaire (`IsMap`).
+et `Values` porte le schéma des valeurs d'un dictionnaire (`IsMap`). Il peut dire aussi le reste de JSON Schema :
+`Properties` pour les propriétés d'un paramètre objet (chacune avec son `Required`), `Items` pour le schéma entier
+des éléments d'un tableau à toute profondeur (`ItemsType`, `ItemsFormat` et `ItemProperties` sont lus quand il
+n'est pas posé), `AnyOf` pour des alternatives, les bornes (`Minimum`, `Maximum`, `ExclusiveMinimum`,
+`ExclusiveMaximum`, `MinLength`, `MaxLength`, `Pattern`, `MinItems`, `MaxItems`), et
+`AllowsAdditionalProperties = false` pour un objet fermé — `ToolSchema.AllowsAdditionalParameters = false` ferme
+de la même façon l'entrée de l'outil. Un tableau part toujours avec ses `items` : `{}`, n'importe quelle valeur
+JSON, quand rien ne dit ce qu'il contient.
 
 N'écrivez jamais `Type = "any"` pour un dictionnaire ou une valeur libre : omettez `Type` et
 laissez le type de la propriété décider. Les fournisseurs stricts (Z.AI GLM-5.3) refusent un

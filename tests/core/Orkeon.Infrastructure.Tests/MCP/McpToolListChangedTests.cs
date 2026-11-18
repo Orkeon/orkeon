@@ -18,11 +18,17 @@ public sealed class McpToolListChangedTests
         public string[] Tools { get; set; }
         public Dictionary<string, string> Descriptions { get; } = [];
 
+        /// <summary>The <c>inputSchema</c> a tool is listed with, as JSON; none when absent.</summary>
+        public Dictionary<string, string> Schemas { get; } = [];
+
         /// <summary>Awaited by a tools/list call (1-based number of the call) after it took its snapshot of the tools.</summary>
         public Func<int, CancellationToken, Task>? ListGate { get; set; }
 
         /// <summary>Makes a tools/list call (1-based number) answer a JSON-RPC error.</summary>
         public Func<int, bool>? FailList { get; set; }
+
+        /// <summary>Makes a tools/list call (1-based number) answer a result whose <c>tools</c> is no array.</summary>
+        public Func<int, bool>? MisshapeList { get; set; }
 
         public MockMcpTransport Transport { get; }
 
@@ -48,10 +54,17 @@ public sealed class McpToolListChangedTests
                         await ListGate(call, ct);
                     if (FailList?.Invoke(call) == true)
                         return new JsonRpcResponse { Id = request.Id, Error = new JsonRpcError(-32603, "list failed") };
+                    if (MisshapeList?.Invoke(call) == true)
+                        return new JsonRpcResponse { Id = request.Id, Result = JsonElement.Parse("""{"tools":"none"}""") };
                     var result = new McpToolListResult
                     {
                         Tools = snapshot
-                            .Select(n => new McpToolDefinition { Name = n, Description = Descriptions.GetValueOrDefault(n, n) })
+                            .Select(n => new McpToolDefinition
+                            {
+                                Name = n,
+                                Description = Descriptions.GetValueOrDefault(n, n),
+                                InputSchema = Schemas.TryGetValue(n, out var schema) ? JsonElement.Parse(schema) : null,
+                            })
                             .ToList(),
                     };
                     return new JsonRpcResponse { Id = request.Id, Result = JsonSerializer.SerializeToElement(result) };
@@ -230,6 +243,44 @@ public sealed class McpToolListChangedTests
         Assert.Equal(["a"], await NamesAsync(registry));
     }
 
+    /// <summary>A listing that cannot be read is no empty listing: it takes no tool away, as a failed one takes none.</summary>
+    [Fact]
+    public async Task ShouldKeepTheRegisteredTools_WhenTheRelistCannotBeRead_AndRecoverOnTheNextNotification()
+    {
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        var server = new Server("a", "b") { MisshapeList = call => call == 2 };
+        await using var provider = new McpToolProvider(registry, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
+
+        server.Tools = ["a"];
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 1);
+
+        Assert.Equal(["a", "b"], await NamesAsync(registry));
+
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 2);
+
+        Assert.Equal(["a"], await NamesAsync(registry));
+    }
+
+    [Fact]
+    public async Task ShouldFailTheConnectionNamingTheServer_WhenTheFirstListingCannotBeRead()
+    {
+        var registry = new MockToolRegistry();
+        var server = new Server("a") { MisshapeList = call => call == 1 };
+        await using var provider = new McpToolProvider(registry);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken));
+
+        Assert.Contains("MCP server 'srv'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("'tools' is no array", ex.Message, StringComparison.Ordinal);
+        Assert.Empty(provider.GetServerStatuses());
+        Assert.Empty(await NamesAsync(registry));
+    }
+
     [Fact]
     public async Task ShouldKeepWatching_WhenARelistingOutlivesConnectTimeout()
     {
@@ -336,5 +387,84 @@ public sealed class McpToolListChangedTests
         Assert.NotSame(before, after);
         Assert.Empty(gaps);
         Assert.Equal(1, registry.ReplaceToolCallCount);
+    }
+
+    [Fact]
+    public async Task ShouldSetASchemaThatExpandsBeyondTheBudgetAside_AndWarnOnceAcrossTheListings()
+    {
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        var server = new Server("bomb", "ok");
+        server.Schemas["bomb"] = McpToolAdapterRemoteSchemaTests.RefBomb();
+        using var logs = new Orkeon.Tests.Shared.Doubles.RecordingLoggerFactory();
+        await using var provider = new McpToolProvider(registry, logs, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
+
+        server.Tools = ["bomb", "ok", "new"];
+        await NotifyAsync(server, clock);
+        await EventuallyAsync(async () => (await NamesAsync(registry)).SequenceEqual(["new", "ok"]));
+
+        // The bomb was listed and read again at the second listing, and warned about once.
+        Assert.Equal(2, server.ListCalls);
+        var warning = Assert.Single(logs.Logger.Entries, e => e.EventId.Name == "mcp.tool.unreadable");
+        Assert.Contains("bomb", warning.Message, StringComparison.Ordinal);
+        Assert.Contains($"beyond {McpToolAdapter.MaxSchemaNodes} schemas", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldSetASchemaThatCopiesTooMuchTextAside_ReadItAtEachListing_AndWarnOncePerDefinition()
+    {
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        var server = new Server("bomb", "ok");
+        server.Schemas["bomb"] = McpToolAdapterRemoteSchemaTests.TextBomb();
+        using var logs = new Orkeon.Tests.Shared.Doubles.RecordingLoggerFactory();
+        await using var provider = new McpToolProvider(registry, logs, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
+        int Warnings() => logs.Logger.Entries.Count(e => e.EventId.Name == "mcp.tool.unreadable");
+
+        Assert.Equal(["ok"], await NamesAsync(registry));
+        var warning = Assert.Single(logs.Logger.Entries, e => e.EventId.Name == "mcp.tool.unreadable");
+        Assert.Contains($"beyond {McpToolAdapter.MaxSchemaTextBytes} bytes of text", warning.Message, StringComparison.Ordinal);
+
+        // The same bomb at the second listing: listed and read again, and not warned about again.
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 1);
+        Assert.Equal(2, server.ListCalls);
+        Assert.Equal(1, Warnings());
+        Assert.Equal(["ok"], await NamesAsync(registry));
+
+        // Another bomb under the same name: read again, and warned about once more.
+        server.Schemas["bomb"] = McpToolAdapterRemoteSchemaTests.TextBomb(salt: "changed");
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 2);
+        Assert.Equal(2, Warnings());
+        Assert.Equal(["ok"], await NamesAsync(registry));
+    }
+
+    [Fact]
+    public async Task ShouldUnregisterAHeldToolThatBecomesUnreadable_AndRegisterItAgainOnceReadable()
+    {
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        var server = new Server("a", "ok");
+        using var logs = new Orkeon.Tests.Shared.Doubles.RecordingLoggerFactory();
+        await using var provider = new McpToolProvider(registry, logs, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
+        Assert.Equal(["a", "ok"], await NamesAsync(registry));
+
+        server.Schemas["a"] = McpToolAdapterRemoteSchemaTests.TextBomb();
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 1);
+        Assert.Equal(["ok"], await NamesAsync(registry));
+        var warning = Assert.Single(logs.Logger.Entries, e => e.EventId.Name == "mcp.tool.unreadable");
+        Assert.Contains("bytes of text", warning.Message, StringComparison.Ordinal);
+
+        server.Schemas["a"] = """{"type":"object","properties":{"q":{"type":"string"}}}""";
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 2);
+        Assert.Equal(["a", "ok"], await NamesAsync(registry));
+        var tool = (await registry.GetToolByNameAsync("a", TestContext.Current.CancellationToken))!;
+        Assert.Equal("string", tool.Schema.Parameters["q"].Type);
     }
 }

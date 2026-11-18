@@ -3577,6 +3577,10 @@ Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.Task.get -> string!
 Orkeon.Domain.Tools.Parameters.DelegateWorkParameters.Task.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema
 Orkeon.Domain.Tools.Protocol.ParameterSchema.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ParameterSchema!
+Orkeon.Domain.Tools.Protocol.ParameterSchema.AllowsAdditionalProperties.get -> bool
+Orkeon.Domain.Tools.Protocol.ParameterSchema.AllowsAdditionalProperties.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.AnyOf.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.Protocol.ParameterSchema!>?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.AnyOf.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Deconstruct(out string? Type, out string! Description, out bool Required, out object? Default, out System.Collections.Generic.IReadOnlyList<object!>? Enum, out string? Format, out string? ItemsType, out string? ItemsFormat, out System.Collections.Generic.Dictionary<string!, int>? EnumMap, out object? Example, out Orkeon.Domain.Tools.Protocol.ParameterSchema? Values) -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Default.get -> object?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Default.init -> void
@@ -3589,21 +3593,44 @@ Orkeon.Domain.Tools.Protocol.ParameterSchema.EnumMap.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Equals(Orkeon.Domain.Tools.Protocol.ParameterSchema? other) -> bool
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Example.get -> object?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Example.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.ExclusiveMaximum.get -> double?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.ExclusiveMaximum.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.ExclusiveMinimum.get -> double?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.ExclusiveMinimum.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Format.get -> string?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Format.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.IsMap.get -> bool
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Domain.Tools.Protocol.ParameterSchema!>?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Items.get -> Orkeon.Domain.Tools.Protocol.ParameterSchema?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Items.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemsFormat.get -> string?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemsFormat.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemsType.get -> string?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemsType.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.MaxItems.get -> int?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.MaxItems.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.MaxLength.get -> int?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.MaxLength.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Maximum.get -> double?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Maximum.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.MinItems.get -> int?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.MinItems.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.MinLength.get -> int?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.MinLength.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Minimum.get -> double?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Minimum.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ParameterSchema(string? Type, string! Description, bool Required, object? Default = null, System.Collections.Generic.IReadOnlyList<object!>? Enum = null, string? Format = null, string? ItemsType = null, string? ItemsFormat = null, System.Collections.Generic.Dictionary<string!, int>? EnumMap = null, object? Example = null, Orkeon.Domain.Tools.Protocol.ParameterSchema? Values = null) -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Pattern.get -> string?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Pattern.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Properties.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Domain.Tools.Protocol.ParameterSchema!>?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.Properties.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ReadAsMap(object? value) -> object?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Required.get -> bool
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Required.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.RequiredItemProperties() -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ToDocument() -> System.Collections.Generic.Dictionary<string!, object!>!
+Orkeon.Domain.Tools.Protocol.ParameterSchema.ToJsonSchema() -> System.Collections.Generic.Dictionary<string!, object!>!
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ToValueDocument() -> System.Collections.Generic.Dictionary<string!, object!>!
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Type.get -> string?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.Type.init -> void
@@ -3652,6 +3679,8 @@ Orkeon.Domain.Tools.Protocol.ToolCallResponse.Success.init -> void
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.ToolCallResponse(bool Success, object? Result, string? Error, System.Collections.Generic.Dictionary<string!, object?>? Metadata = null) -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema
 Orkeon.Domain.Tools.Protocol.ToolSchema.<Clone>$() -> Orkeon.Domain.Tools.Protocol.ToolSchema!
+Orkeon.Domain.Tools.Protocol.ToolSchema.AllowsAdditionalParameters.get -> bool
+Orkeon.Domain.Tools.Protocol.ToolSchema.AllowsAdditionalParameters.init -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema.Deconstruct(out string! Name, out string! Description, out System.Collections.Generic.Dictionary<string!, Orkeon.Domain.Tools.Protocol.ParameterSchema!>! Parameters, out System.Collections.Generic.Dictionary<string!, object?>? Returns, out System.Collections.Generic.Dictionary<string!, object?>? Types) -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema.Description.get -> string!
 Orkeon.Domain.Tools.Protocol.ToolSchema.Description.init -> void
@@ -3664,6 +3693,7 @@ Orkeon.Domain.Tools.Protocol.ToolSchema.Parameters.init -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema.Returns.get -> System.Collections.Generic.Dictionary<string!, object?>?
 Orkeon.Domain.Tools.Protocol.ToolSchema.Returns.init -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema.ToDocument() -> System.Collections.Generic.Dictionary<string!, object!>!
+Orkeon.Domain.Tools.Protocol.ToolSchema.ToInputJsonSchema() -> System.Collections.Generic.Dictionary<string!, object!>!
 Orkeon.Domain.Tools.Protocol.ToolSchema.ToolSchema(string! Name, string! Description, System.Collections.Generic.Dictionary<string!, Orkeon.Domain.Tools.Protocol.ParameterSchema!>! Parameters, System.Collections.Generic.Dictionary<string!, object?>? Returns = null, System.Collections.Generic.Dictionary<string!, object?>? Types = null) -> void
 Orkeon.Domain.Tools.Protocol.ToolSchema.Types.get -> System.Collections.Generic.Dictionary<string!, object?>?
 Orkeon.Domain.Tools.Protocol.ToolSchema.Types.init -> void

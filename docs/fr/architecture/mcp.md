@@ -62,17 +62,39 @@ supportée des deux côtés (`McpClient.SendAsync`).
 
 ### Ce que le client garde du schéma d'un outil distant
 
-`McpToolAdapter` lit l'`inputSchema` d'un outil distant pour en faire le schéma montré au modèle d'un agent. De chaque
-propriété il garde le `type`, la `description`, le `default` comme la valeur JSON qu'il est (`null` n'est pas un défaut), l'`enum` (chaque
-valeur scalaire telle quelle : une chaîne, un nombre, un booléen), le `format`, les `items` d'un tableau —
-leur `type`, leur `format`, et les `properties` et `required` d'un tableau d'objets — et les
-`additionalProperties` d'un dictionnaire. Un `type` écrit comme un tableau est lu comme son seul membre autre
-que `"null"` (`["string", "null"]`, un paramètre nullable, est un `string`) ; une propriété à plusieurs
-types, ou sans aucun — `{}`, un `anyOf`, un `oneOf` ou un `$ref` seul —, n'a pas de type : le modèle peut
-donner n'importe quelle valeur JSON. Restent perdus : les `properties` d'un paramètre objet, un tableau
-imbriqué dans un tableau, l'`enum`, la `description` et le `default` des éléments d'un tableau, les
-alternatives d'`anyOf` / `oneOf`, `$ref` / `$defs`, et les bornes (`minimum`, `maximum`, `pattern`,
-`minItems`). Des éléments qui déclarent des `properties` sans `type` sont lus comme des objets.
+`McpToolAdapter` lit l'`inputSchema` d'un outil distant pour en faire le schéma montré au modèle d'un agent, entier
+et à toute profondeur. De chaque propriété il garde le `type`, la `description`, le `default` comme la valeur JSON
+qu'il est (`null` n'est pas un défaut), l'`enum` (chaque valeur scalaire telle quelle : une chaîne, un nombre, un
+booléen) ou un `const` (un `enum` d'une valeur), le `format`, les bornes (`minimum`, `maximum`, `exclusiveMinimum`,
+`exclusiveMaximum` — la forme booléenne du draft 04 aussi —, `minLength`, `maxLength`, `pattern`, `minItems`,
+`maxItems`), les `items` d'un tableau — un tableau de tableaux compris —, les `properties` et le `required` d'un
+objet, ses `additionalProperties` (le schéma des valeurs d'un dictionnaire, ou `false`) et les alternatives
+d'`anyOf` et de `oneOf` (montrées comme `anyOf`). La racine est lue comme tout autre schéma : un `$ref`, un `allOf`
+ou un `anyOf` / `oneOf` nullable qui tient lieu d'un objet donne les propriétés de cet objet ; de ses
+`additionalProperties`, la racine ne garde que `false`. Un `$ref` local (`#/$defs/X`, `#/definitions/X`, tout
+pointeur JSON dans le document, `#` la racine) est le schéma qu'il nomme, la `description`, le `default` et le
+`format` écrits à côté l'emportant sur ceux de la définition, l'`enum` et les bornes écrits à côté valant là où la
+définition n'en a pas. Un `type` écrit comme un tableau est lu comme son seul membre autre que `"null"`
+(`["string", "null"]`, un paramètre nullable, est un `string`) ; un `anyOf` / `oneOf` dont la seule alternative
+hormis le schéma nul est X — l'`Optional[X]` de Pydantic — est X, comme un `allOf` d'un seul schéma X ; le schéma
+nul s'écrit `{"type": "null"}`, `{"type": ["null"]}`, `{"const": null}` ou `{"enum": [null]}`. Un `allOf` dont les
+membres sont tous des objets (leur `$ref` suivi), à côté d'un schéma qui est un objet ou ne nomme aucun type, est un
+seul objet : l'union de leurs propriétés (le premier qui en nomme une l'emporte), l'union de leurs `required`, et
+`additionalProperties: false` dès que l'un d'eux le dit. Une propriété qui a des `properties` sans `type` est un
+objet. Un tuple (`items` en tableau, ou `prefixItems` avec les `items` qui le suivent) est lu comme les alternatives
+de ses positions, et `items: false` comme `maxItems`. Restent perdus, entre autres : la position des éléments d'un
+tuple, un `allOf` dont un membre n'est pas un objet, une ancre (`#nom`) ou une référence à un autre document et une
+référence coupée sur un cycle (un arbre dont le nœud contient des nœuds), qui acceptent n'importe quelle valeur JSON,
+`not`, `if` / `then` / `else`, `patternProperties`, `uniqueItems`, `multipleOf`, `dependentRequired`,
+`additionalItems`, `title`, `minProperties` / `maxProperties`, `propertyNames`, `contains`, un membre d'`enum` qui
+est `null` ou n'est pas un scalaire, et ce qui se trouve à plus de 32 niveaux de profondeur (n'importe quelle valeur
+JSON). Une propriété à plusieurs types, ou sans aucun (`{}`), n'a pas de type : le modèle peut donner n'importe
+quelle valeur JSON. Un tableau dont les éléments ne sont pas connus — pas d'`items`, des éléments sans type unique —
+est montré avec `items: {}`, n'importe quelle valeur JSON : aucun tableau n'arrive à un fournisseur sans `items`,
+que certains refusent. Un outil dont l'`inputSchema` s'étend à plus de 4096 schémas, ou copie plus de 1 Mio de
+texte, coûterait la mémoire de l'hôte et le contexte du modèle : chaque usage d'un `$ref` est compté (une définition
+utilisée plusieurs fois compte à chaque fois, puisque le modèle la voit à chaque fois), et l'outil est écarté avec
+un avertissement écrit une fois par définition d'outil distincte, comme ci-dessous.
 
 Aucun `inputSchema` ne fait échouer la connexion : une entrée de `required` ou la `description` d'une
 propriété qui n'est pas une chaîne est ignorée, un nombre qu'aucun `double` ne contient (`1e400`) est retiré
@@ -80,11 +102,28 @@ d'un `enum` ou d'un `default`, et la liste est lue outil par outil : une entrée
 outil sans nom, ou un outil dont le `name`, la `description` ou les `annotations` ont le mauvais type JSON (un
 `name` qui est un nombre) est écarté à lui seul — les autres outils de son serveur sont enregistrés.
 L'avertissement nomme l'outil et le serveur tel que `MCP:Servers` le nomme, et il est écrit une fois pour
-cette entrée, pas à chaque lecture de la liste. Quand `tools/list_changed` apporte une telle entrée pour un
-outil qui était enregistré, l'outil quitte le registre. Un `"tools": null` ne liste aucun outil ; un `tools`
-qui n'est ni `null` ni un tableau fait encore échouer la liste, et donc la connexion. Un nom qu'un serveur
-liste deux fois est enregistré une fois, la première. `prompts/list` et `resources/list` sont encore lus page
-par page : un prompt ou une ressource du mauvais type JSON fait échouer sa liste.
+cette entrée, pas à chaque lecture de la liste — pour un `inputSchema` illisible, une fois pour cette
+définition : un serveur qui la change est signalé de nouveau. Quand `tools/list_changed` apporte une telle entrée pour un
+outil qui était enregistré, l'outil quitte le registre. Un `"tools": null` ne liste aucun outil, pas plus
+qu'un `result` absent ou `null`. Une liste d'outils de la mauvaise forme — un `tools` qui n'est ni `null` ni un
+tableau, un `result` présent qui n'est pas un objet, un `nextCursor` qui n'est pas une chaîne — n'est pas une
+liste vide : elle échoue, avec un message qui nomme le serveur et le membre ; la connexion est donc signalée
+en échec, et un `tools/list_changed` qui apporte une telle réponse laisse en place les outils enregistrés. Un
+nom qu'un serveur liste deux fois, sur une page ou sur deux, est enregistré une fois, la première, et signalé
+une fois : ce n'est pas une collision, et l'état du serveur ne rejette rien ; les noms sont comparés comme le
+registre les compare, sans leur casse. `prompts/list` et `resources/list` sont lus entrée par entrée eux
+aussi : un prompt sans nom, une ressource sans `uri`, ou une entrée dont les membres ont le mauvais type JSON
+est écartée à elle seule avec un avertissement écrit une fois, un `null` parmi les `arguments` d'un prompt est
+retiré, et un `prompts` ou un `resources` à `null` ne liste rien. Un nom de prompt ou une `uri` de ressource
+listé deux fois est gardé une fois, le premier, et signalé une fois (`prompts/get` et `resources/read` nomment
+une entrée ; les noms sont comparés avec leur casse). Aucun registre ne suit ces deux listes : une liste de la
+mauvaise forme donne ce qui a pu être lu, avec un avertissement.
+
+Les avertissements du client portent un nom d'événement qu'un filtre de journal peut viser :
+`mcp.tool.unreadable` (un outil écarté, son entrée ou son `inputSchema`), `mcp.entry.unreadable` (un prompt ou
+une ressource écarté), `mcp.entry.duplicate` (un outil, un prompt ou une ressource listé deux fois),
+`mcp.listing.unreadable` (un `prompts/list` ou un `resources/list` de la mauvaise forme) et `mcp.tool.rejected`
+(un nom qu'un autre outil détient).
 
 ### Serveur (`McpServer`) — bi-génération sur un même endpoint
 
@@ -108,9 +147,14 @@ par page : un prompt ou une ressource du mauvais type JSON fait échouer sa list
   `"2.0"`, une `method` absente, vide ou qui n'est pas une chaîne, un `id` `null` ou qui n'est ni une chaîne ni
   un entier, un `params` qui n'est ni un objet ni un tableau (`null` vaut absence), et un `id` à côté d'une
   méthode `notifications/*` (MCP l'interdit : le message reçoit une réponse, il n'est pas exécuté). La réponse
-  porte l'`id` quand il a pu être lu — une chaîne ou un entier —, `null` sinon. `ProcessRequestAsync` donne à
-  un hôte C# les mêmes réponses pour la requête qu'on lui remet ; un `id` `null` n'y est vu que si l'hôte l'a
-  gardé comme un `null` JSON, car un `JsonRpcRequest` désérialisé n'a alors pas d'`id`.
+  porte l'`id` quand il a pu être lu — une chaîne ou un entier —, `null` sinon. Une ligne de JSON valide
+  imbriquée au-delà de 64 niveaux est refusée de la même façon, avec un `id` `null` : `-32700` reste réservé au
+  texte qui n'est pas du JSON.
+  `ProcessRequestAsync` donne à un hôte C# les mêmes réponses pour la requête qu'on lui remet, et seulement
+  pour ce que cette requête contient encore : un hôte qui désérialise lui-même le message en `JsonRpcRequest`
+  perd un `id` `null` (le message est pris pour une notification) et un `jsonrpc` absent (il vaut `"2.0"` par
+  défaut, le message est donc exécuté), et une réponse qu'il lui remet reçoit `-32600` là où la boucle stdio
+  l'ignore.
 - Un message ne porte jamais de membre `null` : une réponse contient `result` ou `error`, jamais
   les deux, et un membre optionnel sans valeur est absent — un client strict (les SDK MCP)
   refuse le message sinon. Le seul `null` est l'`id` de la réponse à une ligne dont l'`id` n'a pas pu être lu.
@@ -118,7 +162,10 @@ par page : un prompt ou une ressource du mauvais type JSON fait échouer sa list
   à l'outil comme les valeurs que porte un appel d'outil au format OpenAI : un tableau est une
   liste, un objet un dictionnaire, un nombre écrit sans partie décimale ni exposant est un `long`
   s'il y tient, tout autre nombre un `double`, `null` est `null` (un appel d'outil Anthropic
-  le lit comme le texte `null`). `tools/list` publie les `items` d'un paramètre tableau.
+  le lit comme le texte `null`). `tools/list` publie les paramètres de chaque outil par l'écrivain des
+  fournisseurs (`ToolSchema.ToInputJsonSchema`) : les `items` d'un tableau (`{}` quand ils ne sont pas connus),
+  le `format`, les bornes, les `properties` d'un objet, ses `additionalProperties`, l'`anyOf`, et les noms d'un
+  `EnumMap` comme son `enum`.
 - `tools/call` et `prompts/get` refusent avec `-32602 Invalid params` les paramètres qui ne respectent pas le
   schéma de la requête : un `params` qui est un tableau, un `name` qui n'est pas une chaîne, et des `arguments`
   présents, non `null` et qui ne sont pas un objet — pour un outil du registre, pour un outil `run_crew_*`
@@ -196,7 +243,7 @@ ressources quand `ExposeOutput` est actif (ci-dessous) ; `prompts/*` répondent
 
 Le serveur et le client se présentent comme `Orkeon`, avec la version de la release qu'ils exécutent
 (celle qu'affiche `orkeon --version`), dans le handshake legacy (`serverInfo`, `clientInfo`) et dans
-le `_meta` des requêtes modernes et des réponses à `server/discover` et `tools/list`. `MCP:Server:Version`, quand il n'est pas vide, remplace celle
+le `_meta` des requêtes modernes et des réponses à `server/discover` et `tools/list`. `MCP:Server:Version`, quand il n'est pas blanc, remplace celle
 du serveur ; rien ne remplace celle du client.
 
 **Authentification, filtre et délai par serveur.** Chaque `MCP:Servers:<id>` accepte :
@@ -410,7 +457,7 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
   le client IA qui a lancé `orkeon mcp serve` sur stdio ne passe pas par l'`IPermissionGate`. La raison : le client est
   l'agent de l'opérateur, qui a déjà choisi ce qu'il peut atteindre (les réglages, `--tools`, les montages) ; stdout
   porte le protocole, un `ask` n'aurait aucun canal vers un humain et tout appel à approuver serait refusé. Une crew
-  servie avec `--crew` est un autre cas : ses propres agents sont gardés comme dans `orkeon run`.
+  servie avec `--crew` est un autre cas : ses propres agents passent par la permission gate comme dans `orkeon run`.
 - **`--tools a,b,…`** ne sert que les outils nommés (séparés par des virgules) ; un nom que
   l'hôte n'a pas refuse le démarrage en le nommant. Les autres outils ne sont ni listés ni appelables, même
   ceux qu'un serveur MCP amont enregistre plus tard (`tools/list_changed`) : la liste blanche est celle du serveur
@@ -453,7 +500,7 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
   être monté, tout autre réglage que refuse l'hôte des runners — une ligne `ERROR:` le nomme),
   un nom de `--tools` que l'hôte n'a pas, un `--crew` refusé au démarrage (une crew qui ne se
   charge pas, un nom donné deux fois, un nom `run_crew_*` déjà tenu par un outil), un serveur lancé par un autre (plus bas) ; `2` une
-  erreur inattendue. Ctrl+C termine le processus.
+  erreur inattendue. Ctrl+C ou SIGTERM termine le serveur avec `0`, les crews et les serveurs amont étant libérés à la sortie.
 
 Une configuration client — le `claude_desktop_config.json` de Claude Desktop :
 
@@ -517,8 +564,8 @@ aucun réglage.
   intégré `mcp_prompt_get` (`server`, `name`, `arguments`) remet un prompt à un agent, ou liste les prompts du
   serveur quand `name` est vide ; `AddOrkeonMcp` l'enregistre. **Le texte d'un prompt est un contenu non fiable du
   serveur et un vecteur d'injection de prompt** : il arrive au modèle comme résultat d'un appel d'outil, rien de
-  plus, et un serveur peut y mettre des instructions. L'outil déclare `ToolAccess.Read` : le gardien des
-  permissions laisse donc passer l'appel sans demander, dans tous les modes. Ne connectez que des serveurs de
+  plus, et un serveur peut y mettre des instructions. L'outil déclare `ToolAccess.Read` : la permission gate
+  laisse donc passer l'appel sans demander, dans tous les modes. Ne connectez que des serveurs de
   confiance, ou gardez l'outil hors des `tools:` d'un agent qui ne doit pas lire leurs prompts.
 
 ## Limites honnêtes

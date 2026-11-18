@@ -18,12 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.0] - 2026-11-18
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It carries no
-**[breaking]** change: the three new members are overloads that take the id of the provider (#396), and the interface
-one has a default body. #413, #414 and #416 change what the MCP server and client put on the wire; that surface is
-experimental (`ORKEXP004`), outside the commitment of 1.x, and each entry below says what a client or an installation
-sees differently. #418 changes the version the telemetry and the agent card carry and the `User-Agent` of the HTTP
-tools: no public member is added or removed, two defaults change (`A2AOptions.AgentVersion` and `AgentCard.Version`
-are empty where they were `1.0.0`), and its entry says what a collector, a peer or a site sees.
+**[breaking]** change: three new members are overloads that take the id of the provider (#396), and the interface
+one has a default body; the others are init-only properties of `ParameterSchema` and `ToolSchema`, whose defaults
+leave a schema built before them as it was, and two methods that write it (#415). #415 also changes the tool schema
+every provider and `orkeon mcp serve` send, and its entries say what a model or an MCP client sees differently.
+#413, #414 and #416 change what the MCP server and client put on the wire; that surface is experimental
+(`ORKEXP004`), outside the commitment of 1.x, and each entry below says what a client or an installation sees
+differently. #418 changes the version the telemetry and the agent card carry and the `User-Agent` of the HTTP
+tools: no public member is added or removed, one default changes (`A2AOptions.AgentVersion`, experimental, is empty
+where it was `1.0.0`; `AgentCard.Version` keeps `1.0.0`), and its entry says what a collector, a peer or a site
+sees. #416 empties the default of `McpServerOptions.Version` the same way. #417 and the entry on listings change what the client keeps of a
+server: an entry it cannot read is set aside alone, and a prompt with no name or a resource with no `uri` is no
+longer listed.
 
 ### Added
 
@@ -40,6 +46,21 @@ are empty where they were `1.0.0`), and its entry says what a collector, a peer 
   names. An input folder a client confirms without the property keeps the value the proposal gave the same `path` (a
   renamed folder says it again); `examples: true` on an output folder is refused, a `FORGE-FOLDERS-INVALID` in a
   confirmed list and a refused `brief_submit` in the assistant's brief.
+- A tool's schema says all of JSON Schema a model reads (#415): `ParameterSchema` gains `Properties` (the properties
+  of an object parameter, each with its `Required`), `Items` (the schema of an array's items, at any depth),
+  `AnyOf`, `AllowsAdditionalProperties` (`false` writes `additionalProperties: false`), and the bounds `Minimum`,
+  `Maximum`, `ExclusiveMinimum`, `ExclusiveMaximum`, `MinLength`, `MaxLength`, `Pattern`, `MinItems` and `MaxItems`;
+  `ToolSchema` gains `AllowsAdditionalParameters`. `ParameterSchema.ToJsonSchema()` and `ToolSchema.ToInputJsonSchema()`
+  write the JSON Schema, and are the one writer of every provider - the OpenAI and the Anthropic tool formats, Ollama's
+  included - and of `orkeon mcp serve`. A schema that sets none of the added members goes out as in v1.2.0 but for
+  this: a property with an empty description no longer carries `"description": ""`, the MCP server now publishes the
+  names of an `EnumMap` as its `enum`, as the providers did, and an array whose items are not known carries
+  `items: {}` (the #415 entry under Fixed). The value schema of a dictionary is sent as in v1.2.0 unless it sets an
+  added member, but an array value carries `items: {}`; `orkeon mcp serve` also publishes the `format` and the
+  `items` its writer left out. A replay cassette recorded with v1.2.0 is still found: the key of a call leaves out the added members
+  while they hold their defaults. `ItemsType`, `ItemsFormat` and `ItemProperties` still work: they are read when
+  `Items` is not set. `McpToolAdapter.ConvertToToolSchema` and the `McpToolAdapter` constructor (experimental) now throw
+  `InvalidOperationException` for a schema beyond the client's budgets (the #415 entry under Fixed).
 
 ### Fixed
 
@@ -107,7 +128,10 @@ are empty where they were `1.0.0`), and its entry says what a collector, a peer 
   `error` with no `method`) is dropped, as JSON-RPC asks: it used to be answered `-32601`. The answer carries the `id` when it could be read,
   `null` otherwise. **A message that carries an `id` beside a `notifications/*` method is now answered** (`-32600`,
   with its `id`): it used to be taken for a notification, obeyed and left without an answer. A C# host that calls
-  `McpServer.ProcessRequestAsync` gets the same answers.
+  `McpServer.ProcessRequestAsync` gets the same answers for the request it is handed, except what a request it
+  deserialized itself no longer holds: a `null` `id` and an absent `jsonrpc`
+  ([the limitations](docs/reference/limitations.md)). A line of valid JSON nested deeper than 64 levels answered
+  `-32700`, as if it were no JSON: it answers `-32600`.
 - `orkeon mcp serve` let bad `tools/call` parameters through (#413). `arguments` that were present and no object were
   replaced by none, and the tool ran: they are refused with `-32602`, for a registry tool, a `run_crew_*` tool and
   `prompts/get` alike. A `params` that is an array or a `name` that is no string answered `-32603 Internal error`: it
@@ -120,15 +144,38 @@ are empty where they were `1.0.0`), and its entry says what a collector, a peer 
   neither the tool nor the property. A `type` array is now read as its one member that is not `"null"`, every scalar
   `enum` value is kept, and a tool that cannot be registered - a `null` entry of the list, a tool with no name, an
   `inputSchema` that still cannot be read, a `name`, a `description` or `annotations` of the wrong JSON type - is set
-  aside on its own, with a warning that names the server and the tool, written once for that entry: `tools/list` is
-  read tool by tool. A tool that becomes unreadable at a `tools/list_changed` leaves the registry.
+  aside on its own, with a warning that names the server and the tool (`mcp.tool.unreadable`, written once for that
+  entry, and once for that definition of an `inputSchema` that cannot be read): `tools/list` is read tool by tool. A tool that becomes unreadable at a `tools/list_changed` leaves the registry.
+- The rest of what an MCP server lists is read the same way. `prompts/list` and `resources/list` were read a page at
+  a time: one prompt or resource of the wrong JSON type failed the listing with a .NET message, and a `"prompts": null`
+  or `"resources": null` failed it too. They are read entry by entry: a prompt with no name, a resource with no `uri`
+  or an entry of the wrong JSON type is set aside alone, with a warning written once (`mcp.entry.unreadable`), and
+  `null` lists nothing; a prompt name or a resource `uri` listed twice is kept once, the first (`mcp.entry.duplicate`); a
+  prompt's `"arguments": null` is no argument, and a `prompts` or `resources` member of the wrong shape lists what
+  could be read, with a warning (`mcp.listing.unreadable`). A `tools/list` answer of the wrong shape - a `tools` that is neither `null` nor an
+  array, a `nextCursor` that is no string - still fails the listing, and so the connection: no empty listing stands
+  for it, which would take the server's tools out of the registry at a `tools/list_changed`. Its message now names
+  the server and the member, where it was the .NET serializer's. A name one server lists twice was logged as an
+  error, a collision with an already-registered tool, and counted among the server's rejected tools, though its first
+  copy was registered: it is one tool, warned about once (`mcp.entry.duplicate`), the names compared without their case as the registry
+  compares them. A tool whose `"description"` is `null` has an empty description.
 - The MCP client kept too little of a remote tool's parameter (#415): the `items` of an array were dropped, so an
   agent's model saw a bare `array`, and so were the `format` and the `additionalProperties` of a dictionary. They are
-  kept, with the properties of an array of objects. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was
-  read as a `string`: it now has no type, and the model may give any JSON value. A `default` is kept as the value it
+  kept, with the properties of an array of objects, and an array whose items cannot be read (none, several types) is
+  shown with `items: {}`, any JSON value, where a provider that wants `items` on every array refused the bare one,
+  and with it every call of the agent; the MCP server and the built-in tools' schemas do the same. A parameter with
+  no `type` (`{}`, an `anyOf` of several schemas, a `$ref` that names nothing local) was read as a `string`: it now
+  has no type, and the model may give any JSON value. A `default` is kept as the value it
   is: a whole number stays whole (it was read as a `double`), an array or an object is no longer its JSON text, and
   `"default": null` is no default (it was the text `null`). A number no `double` holds (`1e400`) is dropped from an
   `enum` or a `default`, and items that declare `properties` and no `type` are read as objects.
+  The client now keeps the whole schema: the properties of an object parameter, arrays of arrays, the enum,
+  description and default of items, the bounds, `additionalProperties: false`, the alternatives of `anyOf` / `oneOf`,
+  a `const`, and the local `$ref` / `$defs` it resolves; a nullable `anyOf` (Pydantic's `Optional`) is read as its
+  one schema, and an `allOf` of objects as one object. A tool whose `inputSchema` expands to more than 4096 schemas,
+  or copies more than 1 MiB of text, each use of a `$ref` counted (a definition used many times counts each time), is
+  set aside with a warning written once per distinct tool definition.
+  A tool served by `orkeon mcp serve` now publishes the `format` of its parameters, a remote tool's included.
   [The limitations](docs/reference/limitations.md) name what a remote parameter still loses.
 - The MCP server and the MCP client introduced themselves as version `1.0.0`, whatever the release (#416), in the
   legacy handshake (`serverInfo`, `clientInfo`) and in the `_meta` of the modern era. Both announce the version of the
@@ -137,16 +184,19 @@ are empty where they were `1.0.0`), and its entry says what a collector, a peer 
   remove `MCP:Server:Version` or leave it empty.**
 - Outside MCP too, Orkeon announced a fixed `1.0.0` whatever the release (#418). The OpenTelemetry resource
   (`service.version`), the activity sources - `Orkeon.Scripting`, which reported none, included - and the meter, and
-  the agent card of the A2A server now carry the version of the release that runs, the one `orkeon --version` prints. `A2A:AgentVersion` is empty by default and still wins
-  when it is set; **an installation that copied `"AgentVersion": "1.0.0"` from `appsettings.sample.json` keeps
+  the agent card of the A2A server now carry the version of the release that runs, the one `orkeon --version` prints.
+  They all read it from one place, the `Orkeon.Domain` assembly, the `User-Agent` and `Orkeon.Scripting` included: an
+  application that mixes Orkeon packages of two versions announces one version, not one per assembly. One
+  `HttpClient` handed to several HTTP tools carried the product once per tool in its `User-Agent`: it carries it once.
+  `A2A:AgentVersion` is empty by default and still wins when it is set; **an installation that copied `"AgentVersion": "1.0.0"` from `appsettings.sample.json` keeps
   announcing `1.0.0`: remove the key or leave it empty.** **The HTTP tools send `User-Agent: Orkeon/<version>
   (+https://github.com/Orkeon/orkeon)`** where they sent `Orkeon/1.0`: a site that filters on the exact former string
   sees the change at every release. The public constants `OrkeonDiagnostics.ServiceVersion`,
   `OrkeonActivitySources.Version`, `PlatformDefaults.Version` and `HttpDefaults.DefaultUserAgent` keep their value for
   the callers that compiled them in; Orkeon no longer reads them (`DefaultUserAgent` is the fallback when a build's
   version is no valid product token). `GitHubTool` sent a bare `User-Agent: Orkeon`: it sends the same value as the
-  other HTTP tools. An agent card read from a peer that names no `version` has an empty `AgentCard.Version`, where it
-  read `1.0.0`.
+  other HTTP tools. `AgentCard.Version` keeps its default, `1.0.0`: an agent card read from a peer that names no
+  `version` reads `1.0.0`, as before.
 
 ### Documentation
 

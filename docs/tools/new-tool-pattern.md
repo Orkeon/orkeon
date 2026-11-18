@@ -102,7 +102,13 @@ and the property.
   missing`); the TypeScript typings of the item read the same `[FieldSchema]` (enum, `IsRequired`).
 
 A `ParameterSchema` written by hand follows the same rules: `Type` is `null` for a free parameter, and
-`Values` holds the value schema of a dictionary (`IsMap`).
+`Values` holds the value schema of a dictionary (`IsMap`). It can say the rest of JSON Schema too: `Properties`
+for the properties of an object parameter (each with its `Required`), `Items` for the whole schema of an array's
+items at any depth (`ItemsType`, `ItemsFormat` and `ItemProperties` are read when it is unset), `AnyOf` for
+alternatives, the bounds (`Minimum`, `Maximum`, `ExclusiveMinimum`, `ExclusiveMaximum`, `MinLength`, `MaxLength`,
+`Pattern`, `MinItems`, `MaxItems`), and `AllowsAdditionalProperties = false` for a closed object -
+`ToolSchema.AllowsAdditionalParameters = false` closes the tool's input the same way. An array always goes out
+with `items`: `{}`, any JSON value, when nothing says what it holds.
 
 Never write `Type = "any"` for a dictionary or a free value: leave `Type` out and let the
 property type decide. Strict providers (Z.AI GLM-5.3) refuse a schema holding `"type":"any"`.

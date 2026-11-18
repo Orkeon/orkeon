@@ -317,6 +317,28 @@ public partial class McpServer
             TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
+    /// <summary>How deep a message may nest: the depth <see cref="JsonDocument"/> reads by default.</summary>
+    private const int MaxMessageDepth = 64;
+
+    /// <summary>Whether <paramref name="line"/> is valid JSON that only its depth kept from being read.</summary>
+    private static bool IsJsonNestedTooDeep(string line)
+    {
+        try
+        {
+            var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(line), new JsonReaderOptions { MaxDepth = int.MaxValue });
+            while (reader.Read())
+            {
+                // Read to the end: the reader refuses what is not JSON.
+            }
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// Parses one line. Text that is not JSON is answered <c>-32700</c>; JSON that is no request object - a scalar,
     /// <c>null</c>, an array (batching is not spoken: one answer for the whole line), an object whose <c>jsonrpc</c>
@@ -364,6 +386,14 @@ public partial class McpServer
         catch (JsonException ex)
         {
             LogFailedToParseRequest(ex, line);
+            // JSON nested deeper than the reader goes is JSON all the same: no parse error, a message that is refused.
+            if (IsJsonNestedTooDeep(line))
+            {
+                outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(null, JsonRpcErrorCodes.InvalidRequest,
+                    $"Invalid Request: the message is nested deeper than {MaxMessageDepth} levels.")));
+                return null;
+            }
+
             outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(null, JsonRpcErrorCodes.ParseError,
                 "Failed to parse JSON-RPC request")));
             return null;
@@ -1118,45 +1148,9 @@ public partial class McpServer
     public static JsonElement? ConvertToolSchemaToJsonSchema(ToolSchema schema)
     {
         ArgumentNullException.ThrowIfNull(schema);
-        var jsonSchema = new Dictionary<string, object>
-        {
-            ["type"] = "object"
-        };
-
-        var properties = new Dictionary<string, object>();
-        var required = new List<string>();
-
-        foreach (var kvp in schema.Parameters)
-        {
-            var paramSchema = new Dictionary<string, object>();
-
-            if (kvp.Value.Type != null)
-                paramSchema["type"] = kvp.Value.Type;
-
-            paramSchema["description"] = kvp.Value.Description;
-
-            if (kvp.Value.Default != null)
-                paramSchema["default"] = kvp.Value.Default;
-
-            if (kvp.Value.Enum != null && kvp.Value.Enum.Count > 0)
-                paramSchema["enum"] = kvp.Value.Enum;
-
-            // What an array holds (#402), as a model reads it in an agent's tool list.
-            if (kvp.Value.Type == "array" && kvp.Value.ItemsType != null)
-                paramSchema["items"] = LLMs.ToolCalling.OpenAIToolSchemaFormatter.FormatItems(kvp.Value, kvp.Value.ItemsType);
-
-            if (kvp.Value.Values != null)
-                paramSchema["additionalProperties"] = kvp.Value.Values.ToValueDocument();
-
-            properties[kvp.Key] = paramSchema;
-
-            if (kvp.Value.Required)
-                required.Add(kvp.Key);
-        }
-
-        jsonSchema["properties"] = properties;
-        if (required.Count > 0)
-            jsonSchema["required"] = required;
+        // What a model reads in an agent's tool list, from the same writer (ParameterSchema.ToJsonSchema): the
+        // items of an array (#402), the format, the bounds, the properties of an object, its alternatives.
+        var jsonSchema = schema.ToInputJsonSchema();
 
         var json = JsonSerializer.Serialize(jsonSchema);
         return JsonElement.Parse(json);

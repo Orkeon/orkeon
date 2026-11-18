@@ -59,27 +59,63 @@ revision (`McpClient.SendAsync`).
 
 ### What the client keeps of a remote tool's schema
 
-`McpToolAdapter` reads the `inputSchema` of a remote tool into the schema an agent's model is shown. Of each
-property it keeps the `type`, the `description`, the `default` as the JSON value it is (`null` is no default), the `enum`
-(every scalar value as it is: a string, a number, a boolean), the `format`, the `items` of an array - their
-`type`, their `format`, and the `properties` and `required` of an array of objects - and the
-`additionalProperties` of a dictionary. A `type` written as an array is read as its one member that is not
-`"null"` (`["string", "null"]`, a nullable parameter, is a `string`); a property with several types, or with
-none - `{}`, a bare `anyOf`, `oneOf` or `$ref` -, has no type: the model may give any JSON value. Still lost:
-the `properties` of an object parameter, an array nested in an array, the `enum`, `description` and `default`
-of an array's items, the alternatives of `anyOf` / `oneOf`, `$ref` / `$defs`, and the bounds (`minimum`,
-`maximum`, `pattern`, `minItems`). Items that declare `properties` and no `type` are read as objects.
+`McpToolAdapter` reads the `inputSchema` of a remote tool into the schema an agent's model is shown, whole and at
+any depth. Of each property it keeps the `type`, the `description`, the `default` as the JSON value it is (`null` is
+no default), the `enum` (every scalar value as it is: a string, a number, a boolean) or a `const` (an `enum` of one
+value), the `format`, the bounds (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` - the boolean form of
+draft 04 too -, `minLength`, `maxLength`, `pattern`, `minItems`, `maxItems`), the `items` of an array - an array of
+arrays included -, the `properties` and `required` of an object, its `additionalProperties` (the schema of a
+dictionary's values, or `false`) and the alternatives of `anyOf` and `oneOf` (shown as `anyOf`). The root is read
+like any other schema: a `$ref`, an `allOf` or a nullable `anyOf` / `oneOf` that stands for one object gives that
+object's properties; of its `additionalProperties`, the root keeps only `false`. A local `$ref` (`#/$defs/X`,
+`#/definitions/X`, any JSON pointer into the document, `#` the root) is the schema it names, with the
+`description`, `default` and `format` written beside it over those of the definition, and the `enum` and the bounds
+written beside it where the definition has none. A `type` written as an array is read as its one member that is not
+`"null"` (`["string", "null"]`, a nullable parameter, is a `string`); an `anyOf` / `oneOf` whose only alternative
+but the null schema is X - Pydantic's `Optional[X]` - is X, and so is an `allOf` of one schema X; the null schema is
+written `{"type": "null"}`, `{"type": ["null"]}`, `{"const": null}` or `{"enum": [null]}`. An `allOf` whose
+members are all objects (their `$ref` followed), beside a schema that is an object or names no type, is one object:
+the union of their properties (the first that names one wins), the union of their `required`, and
+`additionalProperties: false` when any of them says so. A property with `properties` and no `type` is an object. A
+tuple (`items` as an array, or `prefixItems` with the `items` that follow it) is read as the alternatives of its
+positions, and `items: false` as `maxItems`. Still lost, among others: the position of a tuple's items, an `allOf`
+with a member that is no object, an anchor (`#name`) or a reference to another document and a reference cut at a
+cycle (a tree whose node holds nodes), which accept any JSON value, `not`, `if` / `then` / `else`,
+`patternProperties`, `uniqueItems`, `multipleOf`, `dependentRequired`, `additionalItems`, `title`,
+`minProperties` / `maxProperties`, `propertyNames`, `contains`, an `enum` member that is `null` or no scalar, and
+what lies more than 32 levels deep (any JSON value). A property with several types, or with none (`{}`), has no
+type: the model may give any JSON value. An array whose items are not known - no `items`, items with no single
+type - is shown with `items: {}`, any JSON value: no array reaches a provider without `items`, which some refuse. A
+tool whose `inputSchema` expands to more than 4096 schemas, or copies more than 1 MiB of text, would cost the host's
+memory and the model's context: each use of a `$ref` is counted (a definition used many times counts each time, as
+the model is shown it each time), and the tool is set aside with a warning written once per distinct tool definition, as
+below.
 
 No `inputSchema` makes the connection fail: a `required` entry or a `description` of a property that is no
 string is skipped, a number no `double` holds (`1e400`) is dropped from an `enum` or a `default`, and the
 listing is read tool by tool: an entry that is no object (`null`), a tool with no name, or one whose own
 `name`, `description` or `annotations` have the wrong JSON type (a `name` that is a number) is set aside on its
 own - the other tools of its server are registered. The warning names the tool and the server as `MCP:Servers`
-names it, and is written once for that entry, not at every listing. When `tools/list_changed` brings such an
-entry for a tool that was registered, the tool leaves the registry. A `"tools": null` lists no tool; a `tools`
-that is neither `null` nor an array still fails the listing, and so the connection. A name one server lists
-twice is registered once, the first time. `prompts/list` and `resources/list` are still read a page at a time:
-one prompt or resource of the wrong JSON type fails its listing.
+names it, and is written once for that entry, not at every listing - for an `inputSchema` that cannot be read,
+once for that definition: a server that changes it is warned about again. When `tools/list_changed` brings such an
+entry for a tool that was registered, the tool leaves the registry. A `"tools": null` lists no tool, and so does a
+`result` that is absent or `null`. A tool listing of the wrong shape - a `tools` that is neither `null` nor an
+array, a `result` that is present and no object, a `nextCursor` that is no string - is no empty listing: it
+fails, with a message that names the server and the member, so the connection is reported as failed and a
+`tools/list_changed` that brings such an answer leaves the registered tools in place. A name one server lists
+twice, on one page or two, is registered once, the first time, and warned about once: it is no collision, and
+the server's status rejects nothing; names are compared as the registry compares them, without their case.
+`prompts/list` and `resources/list` are read entry by entry too: a prompt with no name, a resource with no
+`uri`, or one whose members have the wrong JSON type is set aside alone with a warning written once, a `null`
+among a prompt's `arguments` is dropped, and a `prompts` or `resources` that is `null` lists nothing. A prompt
+name or a resource `uri` listed twice is kept once, the first, and warned about once (`prompts/get` and
+`resources/read` name one entry; the names are compared with their case). No registry follows these two
+listings, so one of the wrong shape lists what could be read, with a warning.
+
+The client's warnings carry an event name a log filter can match: `mcp.tool.unreadable` (a tool set aside, its
+entry or its `inputSchema`), `mcp.entry.unreadable` (a prompt or a resource set aside), `mcp.entry.duplicate`
+(a tool, a prompt or a resource listed twice), `mcp.listing.unreadable` (a `prompts/list` or `resources/list` of
+the wrong shape) and `mcp.tool.rejected` (a name another tool holds).
 
 ### Server (`McpServer`) — dual-era on one endpoint
 
@@ -102,8 +138,12 @@ one prompt or resource of the wrong JSON type fails its listing.
   is `null` or neither a string nor an integer, a `params` that is neither an object nor an array (`null`
   counts as none), and an `id` beside a `notifications/*` method (MCP forbids it, so the message is answered,
   not obeyed). The answer carries the `id` when it could be read - a string or an integer -, `null` otherwise.
-  `ProcessRequestAsync` gives a C# host the same answers for the request it is handed; a `null` `id` is seen
-  there only when the host kept it as a JSON `null`, since a deserialized `JsonRpcRequest` holds no `id` then.
+  A line of valid JSON nested deeper than 64 levels is refused the same way, with a `null` `id`: `-32700` is
+  kept for text that is not JSON.
+  `ProcessRequestAsync` gives a C# host the same answers for the request it is handed, and only for what that
+  request still holds: a host that deserializes the message itself into a `JsonRpcRequest` loses a `null` `id`
+  (the message is taken for a notification) and an absent `jsonrpc` (it defaults to `"2.0"`, so the message is
+  obeyed), and a response it hands over is answered `-32600` where the stdio loop drops it.
 - A message never carries a `null` member: a response holds `result` or `error`, never both,
   and an optional member with no value is absent - a strict client (the MCP SDKs) refuses the
   message otherwise. The one `null` is the `id` of the answer to a line whose `id` could not be read.
@@ -111,7 +151,9 @@ one prompt or resource of the wrong JSON type fails its listing.
   tool as the values a tool call in the OpenAI format carries: an array is a list, an object a
   dictionary, a number written without a fraction or an exponent is a `long` when it fits one, any
   other number a `double`, `null` is `null` (an Anthropic tool call reads it as the text `null`).
-  `tools/list` publishes the `items` of an array parameter.
+  `tools/list` publishes each tool's parameters through the providers' writer (`ToolSchema.ToInputJsonSchema`):
+  the `items` of an array (`{}` when they are not known), the `format`, the bounds, the `properties` of an object,
+  its `additionalProperties`, the `anyOf`, and the names of an `EnumMap` as its `enum`.
 - `tools/call` and `prompts/get` refuse parameters that fail the request's schema with `-32602 Invalid params`:
   a `params` that is an array, a `name` that is no string, and `arguments` that are present, not `null` and
   not an object - for a registry tool, for a `run_crew_*` tool and for a prompt alike; the tool does not run.
@@ -186,7 +228,7 @@ The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itse
 
 The server and the client introduce themselves as `Orkeon`, with the version of the release they run
 (the one `orkeon --version` prints), in the legacy handshake (`serverInfo`, `clientInfo`) and in the `_meta`
-of the modern requests and of the `server/discover` and `tools/list` answers. `MCP:Server:Version`, when it is not empty, replaces the server's;
+of the modern requests and of the `server/discover` and `tools/list` answers. `MCP:Server:Version`, when it is not blank, replaces the server's;
 nothing replaces the client's.
 
 **Per-server authentication, filter and timeout.** Each `MCP:Servers:<id>` accepts:
@@ -430,8 +472,8 @@ stdout, one per line; closing stdin ends the server.
   setting (an unknown key, a mount the settings declare that cannot be mounted, any other
   setting the runner host refuses — one `ERROR:` line names it), a `--tools` name the host does
   not have, a `--crew` refused at start (a crew that does not load, a name given twice, a
-  `run_crew_*` name a tool already holds), a serve started by another serve (below); `2` an unexpected error. Ctrl+C ends the
-  process.
+  `run_crew_*` name a tool already holds), a serve started by another serve (below); `2` an unexpected error. Ctrl+C or SIGTERM ends
+  the serve with `0`, the crews and the upstream servers disposed on the way out.
 
 A client configuration — Claude Desktop's `claude_desktop_config.json`:
 

@@ -1746,7 +1746,7 @@ qu'il charge ses commandes scriptées, et par `orkeon mcp serve` avant qu'il ser
 | `Servers:<nom>:Tools:Allow` | liste de chaînes | `[]` |  | Noms des outils de ce serveur à enregistrer ; vide, ils le sont tous. |
 | `Servers:<nom>:Tools:Deny` | liste de chaînes | `[]` |  | Noms des outils de ce serveur jamais enregistrés ; appliqué après Tools:Allow. |
 | `Servers:<nom>:Transport` | énumération | `"Stdio"` | `Stdio`, `Sse` | Type de transport à utiliser. |
-| `Servers:<nom>:TrustAnnotations` | booléen | `false` |  | Si la permission gate prend au mot les annotations des outils de ce serveur : un outil marqué readOnlyHint devient alors une lecture, que le mode plan laisse passer. Désactivé par défaut : un serveur non fiable pourrait étiqueter en lecture seule un outil destructeur, ses outils restent donc classés par défaut comme des écritures. |
+| `Servers:<nom>:TrustAnnotations` | booléen | `false` |  | Si la permission gate prend au mot les annotations des outils de ce serveur : un outil marqué readOnlyHint devient alors une lecture, que le mode plan laisse passer. Désactivé par défaut : un serveur non fiable pourrait étiqueter en lecture seule un outil destructeur, ses outils restent donc classés en fail-closed. |
 | `Servers:<nom>:Url` | URI | — |  | URL du point d'accès pour le transport SSE. Avec des identifiants (un type Auth, ou un en-tête env:), elle doit être une adresse https absolue, http seulement sur la boucle locale, sinon le serveur est refusé à la configuration. |
 <!-- /settings -->
 
@@ -1766,7 +1766,7 @@ La façon dont le serveur d'`orkeon mcp serve` se présente (des outils, plus le
 | `MaxResourceBytes` | entier | `1048576` | Taille du plus gros fichier que resources/read rend, en octets (1 048 576 par défaut) ; un fichier plus gros est refusé. |
 | `Name` | chaîne | `"Orkeon"` | Nom du serveur annoncé à l'initialisation MCP. |
 | `ResourcesPageSize` | entier | `100` | Nombre de ressources d'une page de resources/list (100 par défaut). Au moins 1. |
-| `Version` | chaîne | `""` | Version du serveur annoncée à l'initialisation MCP. Vide (par défaut) : la version de la release Orkeon en cours d'exécution. |
+| `Version` | chaîne | `""` | Version du serveur annoncée dans le handshake et dans le `_meta` de l'ère moderne. Vide ou blanche (par défaut) : la version de la release Orkeon en cours d'exécution. |
 <!-- /settings -->
 
 ### `RaggableTree`
