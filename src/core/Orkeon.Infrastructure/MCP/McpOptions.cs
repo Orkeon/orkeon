@@ -33,7 +33,7 @@ public class McpServerOptions
     public string Name { get; set; } = "Orkeon";
 
     /// <summary>
-    /// Server version advertised during MCP initialization. Empty (the default): the version of the running Orkeon release.
+    /// Server version advertised in the handshake and in the <c>_meta</c> of the modern era. Empty or blank (the default): the version of the running Orkeon release.
     /// </summary>
     public string Version { get; set; } = "";
 

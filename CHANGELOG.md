@@ -15,7 +15,10 @@ one has a default body. #413, #414 and #416 change what the MCP server and clien
 experimental (`ORKEXP004`), outside the commitment of 1.x, and each entry below says what a client or an installation
 sees differently. #418 changes the version the telemetry and the agent card carry and the `User-Agent` of the HTTP
 tools: no public member is added or removed, two defaults change (`A2AOptions.AgentVersion` and `AgentCard.Version`
-are empty where they were `1.0.0`), and its entry says what a collector, a peer or a site sees.
+are empty where they were `1.0.0`), and its entry says what a collector, a peer or a site sees. #416 empties the
+default of `McpServerOptions.Version` the same way. #417 and the entry on listings change what the client keeps of a
+server: an entry it cannot read is set aside alone, and a prompt with no name or a resource with no `uri` is no
+longer listed.
 
 ### Added
 
@@ -99,7 +102,10 @@ are empty where they were `1.0.0`), and its entry says what a collector, a peer 
   `error` with no `method`) is dropped, as JSON-RPC asks: it used to be answered `-32601`. The answer carries the `id` when it could be read,
   `null` otherwise. **A message that carries an `id` beside a `notifications/*` method is now answered** (`-32600`,
   with its `id`): it used to be taken for a notification, obeyed and left without an answer. A C# host that calls
-  `McpServer.ProcessRequestAsync` gets the same answers.
+  `McpServer.ProcessRequestAsync` gets the same answers for the request it is handed, except what a request it
+  deserialized itself no longer holds: a `null` `id` and an absent `jsonrpc`
+  ([the limitations](docs/reference/limitations.md)). A line of valid JSON nested deeper than 64 levels answered
+  `-32700`, as if it were no JSON: it answers `-32600`.
 - `orkeon mcp serve` let bad `tools/call` parameters through (#413). `arguments` that were present and no object were
   replaced by none, and the tool ran: they are refused with `-32602`, for a registry tool, a `run_crew_*` tool and
   `prompts/get` alike. A `params` that is an array or a `name` that is no string answered `-32603 Internal error`: it
@@ -112,18 +118,20 @@ are empty where they were `1.0.0`), and its entry says what a collector, a peer 
   neither the tool nor the property. A `type` array is now read as its one member that is not `"null"`, every scalar
   `enum` value is kept, and a tool that cannot be registered - a `null` entry of the list, a tool with no name, an
   `inputSchema` that still cannot be read, a `name`, a `description` or `annotations` of the wrong JSON type - is set
-  aside on its own, with a warning that names the server and the tool, written once for that entry: `tools/list` is
-  read tool by tool. A tool that becomes unreadable at a `tools/list_changed` leaves the registry.
+  aside on its own, with a warning that names the server and the tool (written once for an entry the listing itself
+  cannot read, at each listing for an `inputSchema` that cannot be read): `tools/list` is read tool by tool. A tool that becomes unreadable at a `tools/list_changed` leaves the registry.
 - The rest of what an MCP server lists is read the same way. `prompts/list` and `resources/list` were read a page at
   a time: one prompt or resource of the wrong JSON type failed the listing with a .NET message, and a `"prompts": null`
   or `"resources": null` failed it too. They are read entry by entry: a prompt with no name, a resource with no `uri`
   or an entry of the wrong JSON type is set aside alone, with a warning written once, and `null` lists nothing; a
-  prompt's `"arguments": null` is no argument. A `tools`, `prompts` or `resources` member that is neither `null` nor
-  an array, a result that is no object, or a `nextCursor` that is no string no longer fails the listing - and, for
-  `tools`, the connection: it lists nothing (the page it has, for `nextCursor`), with a warning. **A server whose
-  `tools` is no array is now connected with no tool, where its connection failed.** A name one server lists twice was
-  logged as an error, a collision with an already-registered tool, and counted among the server's rejected tools,
-  though its first copy was registered: it is one tool, warned about once.
+  prompt's `"arguments": null` is no argument, and a `prompts` or `resources` member of the wrong shape lists what
+  could be read, with a warning. A `tools/list` answer of the wrong shape - a `tools` that is neither `null` nor an
+  array, a `nextCursor` that is no string - still fails the listing, and so the connection: no empty listing stands
+  for it, which would take the server's tools out of the registry at a `tools/list_changed`. Its message now names
+  the server and the member, where it was the .NET serializer's. A name one server lists twice was logged as an
+  error, a collision with an already-registered tool, and counted among the server's rejected tools, though its first
+  copy was registered: it is one tool, warned about once, the names compared without their case as the registry
+  compares them. A tool whose `"description"` is `null` has an empty description.
 - The MCP client kept too little of a remote tool's parameter (#415): the `items` of an array were dropped, so an
   agent's model saw a bare `array`, and so were the `format` and the `additionalProperties` of a dictionary. They are
   kept, with the properties of an array of objects. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was
@@ -131,6 +139,7 @@ are empty where they were `1.0.0`), and its entry says what a collector, a peer 
   is: a whole number stays whole (it was read as a `double`), an array or an object is no longer its JSON text, and
   `"default": null` is no default (it was the text `null`). A number no `double` holds (`1e400`) is dropped from an
   `enum` or a `default`, and items that declare `properties` and no `type` are read as objects.
+  A tool served by `orkeon mcp serve` now publishes the `format` of its parameters, a remote tool's included.
   [The limitations](docs/reference/limitations.md) name what a remote parameter still loses.
 - The MCP server and the MCP client introduced themselves as version `1.0.0`, whatever the release (#416), in the
   legacy handshake (`serverInfo`, `clientInfo`) and in the `_meta` of the modern era. Both announce the version of the
@@ -141,7 +150,8 @@ are empty where they were `1.0.0`), and its entry says what a collector, a peer 
   (`service.version`), the activity sources - `Orkeon.Scripting`, which reported none, included - and the meter, and
   the agent card of the A2A server now carry the version of the release that runs, the one `orkeon --version` prints.
   They all read it from one place, the `Orkeon.Domain` assembly, the `User-Agent` and `Orkeon.Scripting` included: an
-  application that mixes Orkeon packages of two versions announces one version, not one per assembly.
+  application that mixes Orkeon packages of two versions announces one version, not one per assembly. One
+  `HttpClient` handed to several HTTP tools carried the product once per tool in its `User-Agent`: it carries it once.
   `A2A:AgentVersion` is empty by default and still wins when it is set; **an installation that copied `"AgentVersion": "1.0.0"` from `appsettings.sample.json` keeps
   announcing `1.0.0`: remove the key or leave it empty.** **The HTTP tools send `User-Agent: Orkeon/<version>
   (+https://github.com/Orkeon/orkeon)`** where they sent `Orkeon/1.0`: a site that filters on the exact former string

@@ -8,8 +8,8 @@ namespace Orkeon.Infrastructure.Tests.MCP;
 
 /// <summary>
 /// The three listings are read entry by entry, as <c>tools/list</c> is since #417: a prompt or a resource that
-/// cannot be read is set aside alone, a list member of the wrong JSON type lists nothing, a name listed twice
-/// is one tool. Each is warned about once, and none fails the listing.
+/// cannot be read is set aside alone and a name listed twice is one tool, each warned about once. A prompt or
+/// resource listing of the wrong shape lists nothing; a tool listing of the wrong shape fails, naming the server.
 /// </summary>
 public sealed class McpClientListingToleranceTests
 {
@@ -58,7 +58,7 @@ public sealed class McpClientListingToleranceTests
     public async Task ShouldKeepTheOtherPrompts_WhenOneCannotBeRead()
     {
         var (client, transport, log) = await ConnectAsync("prompts/list", """
-            {"prompts":[{"name":"good","arguments":[{"name":"topic","required":true}]},{"name":"bad","description":5},{"name":""},null,{"name":"bare","arguments":null}]}
+            {"prompts":[{"name":"good","arguments":[{"name":"topic","required":true},null]},{"name":"bad","description":5},{"name":""},null,{"name":"bare","arguments":null}]}
             """);
         await using var _ = client;
         await using var __ = transport;
@@ -67,6 +67,7 @@ public sealed class McpClientListingToleranceTests
         {
             var prompts = await client.ListPromptsAsync(TestContext.Current.CancellationToken);
             Assert.Equal(["good", "bare"], prompts.Select(p => p.Name));
+            Assert.Equal(["topic"], prompts[0].Arguments.Select(a => a.Name)); // a null argument is none
             Assert.Empty(prompts[1].Arguments); // "arguments": null is no argument, never a null list
         }
 
@@ -80,7 +81,7 @@ public sealed class McpClientListingToleranceTests
     public async Task ShouldKeepTheOtherResources_WhenOneCannotBeRead()
     {
         var (client, transport, log) = await ConnectAsync("resources/list", """
-            {"resources":[{"uri":"file:///a","name":"a"},{"uri":7,"name":"numbered"},{"name":"nowhere"},"text",{"uri":"file:///b","name":"b"}]}
+            {"resources":[{"uri":"file:///a","name":"a"},{"uri":7,"name":"numbered"},{"name":"nowhere"},"text",{"uri":"  ","name":"blank"},{"uri":"file:///b","name":"b"}]}
             """);
         await using var _ = client;
         await using var __ = transport;
@@ -89,8 +90,10 @@ public sealed class McpClientListingToleranceTests
 
         Assert.Equal(["a", "b"], resources.Select(r => r.Name));
         var warnings = Warnings(log);
-        Assert.Equal(3, warnings.Count);
-        Assert.Single(warnings, w => w.Contains("no URI", StringComparison.Ordinal));
+        Assert.Equal(4, warnings.Count);
+        Assert.Equal(2, warnings.Count(w => w.Contains("no URI", StringComparison.Ordinal)));
+        // A resource that names no URI is named by its name.
+        Assert.Single(warnings, w => w.Contains("resource 'nowhere'", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -113,12 +116,11 @@ public sealed class McpClientListingToleranceTests
     }
 
     [Theory]
-    [InlineData("tools/list", """{"tools":"none"}""", "'tools' is no array (a string)")]
-    [InlineData("tools/list", """{"tools":{"a":{"name":"a"}}}""", "'tools' is no array (an object)")]
-    [InlineData("tools/list", "[]", "its result is no object (an array)")]
     [InlineData("prompts/list", """{"prompts":5}""", "'prompts' is no array (a number)")]
+    [InlineData("prompts/list", "[]", "its result is no object (an array)")]
     [InlineData("resources/list", """{"resources":true}""", "'resources' is no array (a boolean)")]
-    public async Task ShouldListNothingAndWarnOnce_WhenTheListingHasTheWrongShape(string method, string page, string reason)
+    [InlineData("resources/list", """{"resources":[],"nextCursor":2}""", "'nextCursor' is no string (a number)")]
+    public async Task ShouldListNothingAndWarnOnce_WhenAPromptOrResourceListingHasTheWrongShape(string method, string page, string reason)
     {
         var (client, transport, log) = await ConnectAsync(method, page);
         await using var _ = client;
@@ -126,12 +128,9 @@ public sealed class McpClientListingToleranceTests
 
         for (var listing = 0; listing < 2; listing++)
         {
-            var count = method switch
-            {
-                "tools/list" => (await client.ListToolsAsync(TestContext.Current.CancellationToken)).Count,
-                "prompts/list" => (await client.ListPromptsAsync(TestContext.Current.CancellationToken)).Count,
-                _ => (await client.ListResourcesAsync(TestContext.Current.CancellationToken)).Count,
-            };
+            var count = method == "prompts/list"
+                ? (await client.ListPromptsAsync(TestContext.Current.CancellationToken)).Count
+                : (await client.ListResourcesAsync(TestContext.Current.CancellationToken)).Count;
             Assert.Equal(0, count);
         }
 
@@ -141,18 +140,26 @@ public sealed class McpClientListingToleranceTests
         Assert.Contains(reason, warning, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task ShouldKeepThePageAndStop_WhenNextCursorIsNoString()
+    /// <summary>
+    /// The registry follows <c>tools/list</c>: a listing that cannot be told from an empty one fails, naming the
+    /// server and the member, where listing nothing would take the server's tools away.
+    /// </summary>
+    [Theory]
+    [InlineData("""{"tools":"none"}""", "'tools' is no array (a string)")]
+    [InlineData("""{"tools":{"a":{"name":"a"}}}""", "'tools' is no array (an object)")]
+    [InlineData("[]", "its result is no object (an array)")]
+    [InlineData("""{"tools":[{"name":"a"}],"nextCursor":2}""", "'nextCursor' is no string (a number)")]
+    public async Task ShouldFailNamingTheServer_WhenTheToolListingHasTheWrongShape(string page, string reason)
     {
-        var (client, transport, log) = await ConnectAsync("tools/list", """{"tools":[{"name":"a"}],"nextCursor":2}""");
-        await using var _ = client;
-        await using var __ = transport;
+        var (client, transport, _) = await ConnectAsync("tools/list", page);
+        await using var __ = client;
+        await using var ___ = transport;
 
-        var tools = await client.ListToolsAsync(TestContext.Current.CancellationToken);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.ListToolsAsync(TestContext.Current.CancellationToken));
 
-        Assert.Equal(["a"], tools.Select(t => t.Name));
-        Assert.Equal(1, transport.AllSentRequests.Count(r => r.Method == "tools/list"));
-        Assert.Contains("'nextCursor' is no string", Assert.Single(Warnings(log)), StringComparison.Ordinal);
+        Assert.Contains("tools/list answer of MCP server 'configured-id'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains(reason, ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -160,8 +167,8 @@ public sealed class McpClientListingToleranceTests
     {
         var (client, transport, log) = await ConnectAsync(
             "tools/list",
-            """{"tools":[{"name":"dup","description":"first"},{"name":"other"},{"name":"dup","description":"second"}],"nextCursor":"p2"}""",
-            """{"tools":[{"name":"dup","description":"third"}]}""");
+            """{"tools":[{"name":"dup","description":"first"},{"name":"other","description":null},{"name":"dup","description":"second"}],"nextCursor":"p2"}""",
+            """{"tools":[{"name":"DUP","description":"third"}]}""");
         await using var _ = client;
         await using var __ = transport;
 
@@ -170,9 +177,13 @@ public sealed class McpClientListingToleranceTests
             var tools = await client.ListToolsAsync(TestContext.Current.CancellationToken);
             Assert.Equal(["dup", "other"], tools.Select(t => t.Name));
             Assert.Equal("first", tools[0].Description);
+            Assert.Equal("", tools[1].Description); // "description": null is no description
         }
 
-        var warning = Assert.Single(Warnings(log)); // once for the name, not once per copy or per listing
-        Assert.Contains("lists the tool 'dup' twice", warning, StringComparison.Ordinal);
+        // Once per name as it is written, not once per copy or per listing: the registry holds `dup` and `DUP` as one name.
+        var warnings = Warnings(log);
+        Assert.Equal(2, warnings.Count);
+        Assert.Contains(warnings, w => w.Contains("lists the tool 'dup' twice", StringComparison.Ordinal));
+        Assert.Contains(warnings, w => w.Contains("lists the tool 'DUP' twice", StringComparison.Ordinal));
     }
 }

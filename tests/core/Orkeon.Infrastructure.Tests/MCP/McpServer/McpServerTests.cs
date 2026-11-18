@@ -385,6 +385,21 @@ public class McpServerTests
     }
 
     [Fact]
+    public void ShouldServeTheFormat_WhenAParameterDeclaresOne()
+    {
+        var schema = new ToolSchema("dated", "A dated tool", new Dictionary<string, ParameterSchema>
+        {
+            ["when"] = new("string", "The moment", true) { Format = "date-time" },
+        });
+
+        var jsonSchema = McpServerSut.ConvertToolSchemaToJsonSchema(schema);
+
+        Assert.Equal(
+            "date-time",
+            jsonSchema!.Value.GetProperty("properties").GetProperty("when").GetProperty("format").GetString());
+    }
+
+    [Fact]
     [Trait("BR", "CH-01")]
     [Trait("BR", "CH-02")]
     public void ConvertToolSchema_OmitsType_WhenParameterTypeIsAbsent()

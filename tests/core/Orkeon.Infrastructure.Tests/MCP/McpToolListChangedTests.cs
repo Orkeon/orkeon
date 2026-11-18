@@ -24,6 +24,9 @@ public sealed class McpToolListChangedTests
         /// <summary>Makes a tools/list call (1-based number) answer a JSON-RPC error.</summary>
         public Func<int, bool>? FailList { get; set; }
 
+        /// <summary>Makes a tools/list call (1-based number) answer a result whose <c>tools</c> is no array.</summary>
+        public Func<int, bool>? MisshapeList { get; set; }
+
         public MockMcpTransport Transport { get; }
 
         [SuppressMessage("Reliability", "CA2000", Justification = "Ownership of the transport passes to the provider, which the test disposes.")]
@@ -48,6 +51,8 @@ public sealed class McpToolListChangedTests
                         await ListGate(call, ct);
                     if (FailList?.Invoke(call) == true)
                         return new JsonRpcResponse { Id = request.Id, Error = new JsonRpcError(-32603, "list failed") };
+                    if (MisshapeList?.Invoke(call) == true)
+                        return new JsonRpcResponse { Id = request.Id, Result = JsonElement.Parse("""{"tools":"none"}""") };
                     var result = new McpToolListResult
                     {
                         Tools = snapshot
@@ -228,6 +233,44 @@ public sealed class McpToolListChangedTests
         await SettledAsync(provider, 2);
 
         Assert.Equal(["a"], await NamesAsync(registry));
+    }
+
+    /// <summary>A listing that cannot be read is no empty listing: it takes no tool away, as a failed one takes none.</summary>
+    [Fact]
+    public async Task ShouldKeepTheRegisteredTools_WhenTheRelistCannotBeRead_AndRecoverOnTheNextNotification()
+    {
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        var server = new Server("a", "b") { MisshapeList = call => call == 2 };
+        await using var provider = new McpToolProvider(registry, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
+
+        server.Tools = ["a"];
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 1);
+
+        Assert.Equal(["a", "b"], await NamesAsync(registry));
+
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 2);
+
+        Assert.Equal(["a"], await NamesAsync(registry));
+    }
+
+    [Fact]
+    public async Task ShouldFailTheConnectionNamingTheServer_WhenTheFirstListingCannotBeRead()
+    {
+        var registry = new MockToolRegistry();
+        var server = new Server("a") { MisshapeList = call => call == 1 };
+        await using var provider = new McpToolProvider(registry);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken));
+
+        Assert.Contains("MCP server 'srv'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("'tools' is no array", ex.Message, StringComparison.Ordinal);
+        Assert.Empty(provider.GetServerStatuses());
+        Assert.Empty(await NamesAsync(registry));
     }
 
     [Fact]

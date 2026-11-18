@@ -11,12 +11,10 @@ namespace Orkeon.Tools.Abstractions.Base;
 internal static class ToolUserAgent
 {
     /// <summary>The header value; the fixed <see cref="HttpDefaults.DefaultUserAgent"/> when the version is no valid product token.</summary>
-    public static string Value { get; } = Build();
+    public static string Value { get; } = Build(Orkeon.Domain.Constants.Platform.OrkeonRelease.Version);
 
-    private static string Build()
+    internal static string Build(string version)
     {
-        var version = Orkeon.Domain.Constants.Platform.OrkeonRelease.Version;
-
         // A version built with characters a product token refuses must not take every HTTP tool down.
         var candidate = $"Orkeon/{version} (+https://github.com/Orkeon/orkeon)";
         using var probe = new HttpRequestMessage();

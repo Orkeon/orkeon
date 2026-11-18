@@ -81,15 +81,18 @@ outil sans nom, ou un outil dont le `name`, la `description` ou les `annotations
 `name` qui est un nombre) est écarté à lui seul — les autres outils de son serveur sont enregistrés.
 L'avertissement nomme l'outil et le serveur tel que `MCP:Servers` le nomme, et il est écrit une fois pour
 cette entrée, pas à chaque lecture de la liste. Quand `tools/list_changed` apporte une telle entrée pour un
-outil qui était enregistré, l'outil quitte le registre. Un `"tools": null` ne liste aucun outil ; un `tools`
-qui n'est ni `null` ni un tableau, ou un résultat qui n'est pas un objet, n'en liste aucun non plus, avec un
-avertissement écrit une fois : le serveur est connecté sans outil, et un `tools/list_changed` qui apporte une
-telle réponse retire ses outils du registre. Un `nextCursor` qui n'est pas une chaîne arrête la liste à sa
-page, avec un avertissement. Un nom qu'un serveur liste deux fois, sur une page ou sur deux, est enregistré une
-fois, la première, et signalé une fois : ce n'est pas une collision, et l'état du serveur ne rejette rien.
-`prompts/list` et `resources/list` sont lus de la même façon, entrée par entrée : un prompt sans nom, une
-ressource sans `uri`, ou une entrée dont les membres ont le mauvais type JSON est écartée à elle seule, et un
-`prompts` ou un `resources` à `null` ne liste rien.
+outil qui était enregistré, l'outil quitte le registre. Un `"tools": null` ne liste aucun outil, pas plus
+qu'un `result` absent ou `null`. Une liste d'outils de la mauvaise forme — un `tools` qui n'est ni `null` ni un
+tableau, un `result` présent qui n'est pas un objet, un `nextCursor` qui n'est pas une chaîne — n'est pas une
+liste vide : elle échoue, avec un message qui nomme le serveur et le membre ; la connexion est donc signalée
+en échec, et un `tools/list_changed` qui apporte une telle réponse laisse en place les outils enregistrés. Un
+nom qu'un serveur liste deux fois, sur une page ou sur deux, est enregistré une fois, la première, et signalé
+une fois : ce n'est pas une collision, et l'état du serveur ne rejette rien ; les noms sont comparés comme le
+registre les compare, sans leur casse. `prompts/list` et `resources/list` sont lus entrée par entrée eux
+aussi : un prompt sans nom, une ressource sans `uri`, ou une entrée dont les membres ont le mauvais type JSON
+est écartée à elle seule avec un avertissement écrit une fois, un `null` parmi les `arguments` d'un prompt est
+retiré, et un `prompts` ou un `resources` à `null` ne liste rien. Aucun registre ne suit ces deux listes : une
+liste de la mauvaise forme donne ce qui a pu être lu, avec un avertissement.
 
 ### Serveur (`McpServer`) — bi-génération sur un même endpoint
 
@@ -113,9 +116,14 @@ ressource sans `uri`, ou une entrée dont les membres ont le mauvais type JSON e
   `"2.0"`, une `method` absente, vide ou qui n'est pas une chaîne, un `id` `null` ou qui n'est ni une chaîne ni
   un entier, un `params` qui n'est ni un objet ni un tableau (`null` vaut absence), et un `id` à côté d'une
   méthode `notifications/*` (MCP l'interdit : le message reçoit une réponse, il n'est pas exécuté). La réponse
-  porte l'`id` quand il a pu être lu — une chaîne ou un entier —, `null` sinon. `ProcessRequestAsync` donne à
-  un hôte C# les mêmes réponses pour la requête qu'on lui remet ; un `id` `null` n'y est vu que si l'hôte l'a
-  gardé comme un `null` JSON, car un `JsonRpcRequest` désérialisé n'a alors pas d'`id`.
+  porte l'`id` quand il a pu être lu — une chaîne ou un entier —, `null` sinon. Une ligne de JSON valide
+  imbriquée au-delà de 64 niveaux est refusée de la même façon, avec un `id` `null` : `-32700` reste réservé au
+  texte qui n'est pas du JSON.
+  `ProcessRequestAsync` donne à un hôte C# les mêmes réponses pour la requête qu'on lui remet, et seulement
+  pour ce que cette requête contient encore : un hôte qui désérialise lui-même le message en `JsonRpcRequest`
+  perd un `id` `null` (le message est pris pour une notification) et un `jsonrpc` absent (il vaut `"2.0"` par
+  défaut, le message est donc exécuté), et une réponse qu'il lui remet reçoit `-32600` là où la boucle stdio
+  l'ignore.
 - Un message ne porte jamais de membre `null` : une réponse contient `result` ou `error`, jamais
   les deux, et un membre optionnel sans valeur est absent — un client strict (les SDK MCP)
   refuse le message sinon. Le seul `null` est l'`id` de la réponse à une ligne dont l'`id` n'a pas pu être lu.
@@ -201,7 +209,7 @@ ressources quand `ExposeOutput` est actif (ci-dessous) ; `prompts/*` répondent
 
 Le serveur et le client se présentent comme `Orkeon`, avec la version de la release qu'ils exécutent
 (celle qu'affiche `orkeon --version`), dans le handshake legacy (`serverInfo`, `clientInfo`) et dans
-le `_meta` des requêtes modernes et des réponses à `server/discover` et `tools/list`. `MCP:Server:Version`, quand il n'est pas vide, remplace celle
+le `_meta` des requêtes modernes et des réponses à `server/discover` et `tools/list`. `MCP:Server:Version`, quand il n'est pas blanc, remplace celle
 du serveur ; rien ne remplace celle du client.
 
 **Authentification, filtre et délai par serveur.** Chaque `MCP:Servers:<id>` accepte :
@@ -415,7 +423,7 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
   le client IA qui a lancé `orkeon mcp serve` sur stdio ne passe pas par l'`IPermissionGate`. La raison : le client est
   l'agent de l'opérateur, qui a déjà choisi ce qu'il peut atteindre (les réglages, `--tools`, les montages) ; stdout
   porte le protocole, un `ask` n'aurait aucun canal vers un humain et tout appel à approuver serait refusé. Une crew
-  servie avec `--crew` est un autre cas : ses propres agents sont gardés comme dans `orkeon run`.
+  servie avec `--crew` est un autre cas : ses propres agents passent par la permission gate comme dans `orkeon run`.
 - **`--tools a,b,…`** ne sert que les outils nommés (séparés par des virgules) ; un nom que
   l'hôte n'a pas refuse le démarrage en le nommant. Les autres outils ne sont ni listés ni appelables, même
   ceux qu'un serveur MCP amont enregistre plus tard (`tools/list_changed`) : la liste blanche est celle du serveur
@@ -458,7 +466,7 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
   être monté, tout autre réglage que refuse l'hôte des runners — une ligne `ERROR:` le nomme),
   un nom de `--tools` que l'hôte n'a pas, un `--crew` refusé au démarrage (une crew qui ne se
   charge pas, un nom donné deux fois, un nom `run_crew_*` déjà tenu par un outil), un serveur lancé par un autre (plus bas) ; `2` une
-  erreur inattendue. Ctrl+C termine le processus.
+  erreur inattendue. Ctrl+C ou SIGTERM termine le serveur avec `0`, les crews et les serveurs amont étant libérés à la sortie.
 
 Une configuration client — le `claude_desktop_config.json` de Claude Desktop :
 
@@ -522,8 +530,8 @@ aucun réglage.
   intégré `mcp_prompt_get` (`server`, `name`, `arguments`) remet un prompt à un agent, ou liste les prompts du
   serveur quand `name` est vide ; `AddOrkeonMcp` l'enregistre. **Le texte d'un prompt est un contenu non fiable du
   serveur et un vecteur d'injection de prompt** : il arrive au modèle comme résultat d'un appel d'outil, rien de
-  plus, et un serveur peut y mettre des instructions. L'outil déclare `ToolAccess.Read` : le gardien des
-  permissions laisse donc passer l'appel sans demander, dans tous les modes. Ne connectez que des serveurs de
+  plus, et un serveur peut y mettre des instructions. L'outil déclare `ToolAccess.Read` : la permission gate
+  laisse donc passer l'appel sans demander, dans tous les modes. Ne connectez que des serveurs de
   confiance, ou gardez l'outil hors des `tools:` d'un agent qui ne doit pas lire leurs prompts.
 
 ## Limites honnêtes

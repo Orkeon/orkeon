@@ -100,6 +100,27 @@ public sealed class McpServerInvalidRequestTests
         Assert.Empty(await AnswersAsync(line));
     }
 
+    /// <summary>JSON nested deeper than the reader goes is JSON all the same: it is refused, not a parse error.</summary>
+    [Fact]
+    public async Task ShouldRefuseTheMessage_WhenItIsValidJsonNestedTooDeep()
+    {
+        var deep = new string('[', 70) + new string(']', 70);
+        var line = """{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"x","arguments":{"a":""" + deep + "}}}";
+
+        var answer = Assert.Single(await AnswersAsync(line));
+
+        AssertRefused(answer, "null");
+        Assert.Contains("64", answer.GetProperty("error").GetProperty("message").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldKeepTheParseError_WhenTheLineIsNoJsonAndNestsDeep()
+    {
+        var answer = Assert.Single(await AnswersAsync(new string('[', 70)));
+
+        Assert.Equal(-32700, answer.GetProperty("error").GetProperty("code").GetInt32());
+    }
+
     [Theory]
     [InlineData("this is not JSON")]
     [InlineData("""{"jsonrpc":"2.0","id":1,"method":"ping" """)]

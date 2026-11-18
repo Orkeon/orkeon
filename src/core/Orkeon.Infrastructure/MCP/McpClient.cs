@@ -9,7 +9,8 @@ namespace Orkeon.Infrastructure.MCP;
 /// Dual-era MCP protocol client. Detects whether the server speaks the modern,
 /// stateless lineage (2026-07-28 — per-request `_meta`, `server/discover`) or a
 /// legacy initialize-handshake revision (2025-11-25 and earlier), then exposes
-/// tools/list, tools/call, resources/list, and resources/read RPCs on either.
+/// the listings (tools/list, prompts/list, resources/list), tools/call, prompts/get, resources/read,
+/// resources/subscribe and, on the modern era, subscriptions/listen on either.
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
 public partial class McpClient : IAsyncDisposable
@@ -200,9 +201,10 @@ public partial class McpClient : IAsyncDisposable
 
         // Each tool is read on its own (#417): one whose name, description or annotations have the wrong JSON
         // type is set aside with a warning, where reading the page as a whole lost every tool of the server.
-        var raw = await PageEntriesAsync("tools/list", "tools", ct).ConfigureAwait(false);
+        var raw = await PageEntriesAsync("tools/list", "tools", strict: true, ct).ConfigureAwait(false);
         var tools = new List<McpToolDefinition>(raw.Count);
-        var names = new HashSet<string>(StringComparer.Ordinal);
+        // The registry compares names without their case: `Foo` and `foo` are one name there, and so here.
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var element in raw)
         {
             if (ReadEntry<McpToolDefinition>(element, "tool", "name", t => !string.IsNullOrWhiteSpace(t.Name), "the tool has no name") is not { } tool)
@@ -220,21 +222,28 @@ public partial class McpClient : IAsyncDisposable
 
     /// <summary>
     /// Every entry of a listing, over all its pages, left as it came: <paramref name="member"/> is read as an
-    /// array of anything. A member that is absent or <c>null</c> lists nothing; one that is neither
-    /// <c>null</c> nor an array lists nothing either, with a warning, and so does a result that is no object.
+    /// array of anything. A member that is absent or <c>null</c> lists nothing, and so does a result that is
+    /// absent or <c>null</c>. A listing of the wrong shape - a result that is no object, a member that is
+    /// neither <c>null</c> nor an array, a <c>nextCursor</c> that is no string - fails when
+    /// <paramref name="strict"/>, with a message that names the server and the member; otherwise it lists what
+    /// could be read, with a warning.
     /// </summary>
-    private Task<IReadOnlyList<JsonElement>> PageEntriesAsync(string method, string member, CancellationToken ct) =>
-        PageAllAsync(method, (JsonElement page) => ReadPage(method, member, page), ct);
+    /// <remarks>
+    /// <c>tools/list</c> is strict: the registry follows it, and a listing that cannot be told from an empty
+    /// one would take the server's tools away at a re-synchronisation, or connect it with none and no word to
+    /// the operator. Failing keeps the tools registered so far and names the server.
+    /// </remarks>
+    private Task<IReadOnlyList<JsonElement>> PageEntriesAsync(string method, string member, bool strict, CancellationToken ct) =>
+        PageAllAsync(method, (JsonElement page) => ReadPage(method, member, strict, page), ct);
 
-    private (IReadOnlyList<JsonElement> Items, string? NextCursor) ReadPage(string method, string member, JsonElement page)
+    private (IReadOnlyList<JsonElement> Items, string? NextCursor) ReadPage(string method, string member, bool strict, JsonElement page)
     {
-        if (page.ValueKind == JsonValueKind.Undefined)
+        if (page.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
             return ([], null); // no result at all
 
         if (page.ValueKind != JsonValueKind.Object)
         {
-            if (WarnOnce($"shape:{method}:result"))
-                LogListingUnreadable(method, Label, $"its result is no object ({Kind(page)})");
+            Misshapen(method, "result", strict, $"its result is no object ({Kind(page)})");
             return ([], null);
         }
 
@@ -243,8 +252,8 @@ public partial class McpClient : IAsyncDisposable
         {
             if (listed.ValueKind == JsonValueKind.Array)
                 items = [.. listed.EnumerateArray()];
-            else if (WarnOnce($"shape:{method}:{member}"))
-                LogListingUnreadable(method, Label, $"'{member}' is no array ({Kind(listed)})");
+            else
+                Misshapen(method, member, strict, $"'{member}' is no array ({Kind(listed)})");
         }
 
         string? next = null;
@@ -252,11 +261,19 @@ public partial class McpClient : IAsyncDisposable
         {
             if (cursor.ValueKind == JsonValueKind.String)
                 next = cursor.GetString();
-            else if (WarnOnce($"shape:{method}:nextCursor"))
-                LogListingUnreadable(method, Label, $"'nextCursor' is no string ({Kind(cursor)}): the pages after this one are not read");
+            else
+                Misshapen(method, "nextCursor", strict, $"'nextCursor' is no string ({Kind(cursor)}): the pages after this one cannot be read");
         }
 
         return (items, next);
+    }
+
+    private void Misshapen(string method, string what, bool strict, string reason)
+    {
+        if (strict)
+            throw new InvalidOperationException($"The {method} answer of MCP server '{Label}' could not be read as a listing: {reason}.");
+        if (WarnOnce($"shape:{method}:{what}"))
+            LogListingUnreadable(method, Label, reason);
     }
 
     private static string Kind(JsonElement element) => element.ValueKind switch
@@ -277,10 +294,7 @@ public partial class McpClient : IAsyncDisposable
     private T? ReadEntry<T>(JsonElement element, string kind, string nameMember, Func<T, bool> usable, string unusable)
         where T : class
     {
-        var name = element.ValueKind == JsonValueKind.Object
-            && element.TryGetProperty(nameMember, out var given) && given.ValueKind == JsonValueKind.String
-                ? given.GetString()
-                : null;
+        var name = StringMember(element, nameMember) ?? StringMember(element, "name");
         string reason;
         try
         {
@@ -291,7 +305,7 @@ public partial class McpClient : IAsyncDisposable
             else
                 reason = unusable;
         }
-        catch (Exception ex) when (ex is JsonException or FormatException or InvalidOperationException)
+        catch (JsonException ex)
         {
             reason = ex.Message;
         }
@@ -308,10 +322,24 @@ public partial class McpClient : IAsyncDisposable
         return null;
     }
 
+    private static string? StringMember(JsonElement element, string member) =>
+        element.ValueKind == JsonValueKind.Object
+        && element.TryGetProperty(member, out var given) && given.ValueKind == JsonValueKind.String
+        && given.GetString() is { Length: > 0 } text
+            ? text
+            : null;
+
+    /// <summary>How many warnings are remembered: past it the memory starts again, so a server whose bad entries change at every listing cannot grow it without end.</summary>
+    private const int MaxWarned = 1024;
+
     private bool WarnOnce(string key)
     {
         lock (_warned)
+        {
+            if (_warned.Count >= MaxWarned)
+                _warned.Clear();
             return _warned.Add(key);
+        }
     }
 
     private string Label => ServerLabel ?? _serverInfo?.Name ?? "(unknown)";
@@ -333,7 +361,7 @@ public partial class McpClient : IAsyncDisposable
         EnsureReady();
 
         // Read prompt by prompt, as tools/list is: one prompt of the wrong JSON type does not take the others away.
-        var raw = await PageEntriesAsync("prompts/list", "prompts", ct).ConfigureAwait(false);
+        var raw = await PageEntriesAsync("prompts/list", "prompts", strict: false, ct).ConfigureAwait(false);
         var prompts = new List<McpPrompt>(raw.Count);
         foreach (var element in raw)
         {
@@ -420,11 +448,11 @@ public partial class McpClient : IAsyncDisposable
         EnsureReady();
 
         // Read resource by resource: one that cannot be read, or that names no URI to read it by, is set aside alone.
-        var raw = await PageEntriesAsync("resources/list", "resources", ct).ConfigureAwait(false);
+        var raw = await PageEntriesAsync("resources/list", "resources", strict: false, ct).ConfigureAwait(false);
         var resources = new List<McpResource>(raw.Count);
         foreach (var element in raw)
         {
-            if (ReadEntry<McpResource>(element, "resource", "uri", r => r.Uri is not null, "the resource has no URI") is { } resource)
+            if (ReadEntry<McpResource>(element, "resource", "uri", r => !string.IsNullOrWhiteSpace(r.Uri?.OriginalString), "the resource has no URI") is { } resource)
                 resources.Add(resource);
         }
 
@@ -619,7 +647,7 @@ public partial class McpClient : IAsyncDisposable
             if (all.Count > MaxItems)
             {
                 throw new InvalidOperationException(
-                    $"{method} returned more than {MaxItems} items over {page + 1} pages: the listing is cut off rather than grow without end.");
+                    $"{method} returned more than {MaxItems} items over {page + 1} pages: the listing fails rather than grow without end.");
             }
 
             if (string.IsNullOrEmpty(next))

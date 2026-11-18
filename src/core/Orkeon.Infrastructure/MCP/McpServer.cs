@@ -325,6 +325,28 @@ public partial class McpServer
     /// <c>method</c>), which is dropped without an answer. The checks read the text: the deserialized request cannot tell an absent
     /// member from its default.
     /// </summary>
+    /// <summary>How deep a message may nest: the depth <see cref="JsonDocument"/> reads by default.</summary>
+    private const int MaxMessageDepth = 64;
+
+    /// <summary>Whether <paramref name="line"/> is valid JSON that only its depth kept from being read.</summary>
+    private static bool IsJsonNestedTooDeep(string line)
+    {
+        try
+        {
+            var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(line), new JsonReaderOptions { MaxDepth = int.MaxValue });
+            while (reader.Read())
+            {
+                // Read to the end: the reader refuses what is not JSON.
+            }
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     private JsonRpcRequest? ParseRequest(string line, ChannelWriter<string> outbox)
     {
         try
@@ -364,6 +386,14 @@ public partial class McpServer
         catch (JsonException ex)
         {
             LogFailedToParseRequest(ex, line);
+            // JSON nested deeper than the reader goes is JSON all the same: no parse error, a message that is refused.
+            if (IsJsonNestedTooDeep(line))
+            {
+                outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(null, JsonRpcErrorCodes.InvalidRequest,
+                    $"Invalid Request: the message is nested deeper than {MaxMessageDepth} levels.")));
+                return null;
+            }
+
             outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(null, JsonRpcErrorCodes.ParseError,
                 "Failed to parse JSON-RPC request")));
             return null;
@@ -1140,6 +1170,10 @@ public partial class McpServer
 
             if (kvp.Value.Enum != null && kvp.Value.Enum.Count > 0)
                 paramSchema["enum"] = kvp.Value.Enum;
+
+            // What the model's tool list says of it (`date-time`, `uri`), a remote tool's own format included.
+            if (kvp.Value.Format != null)
+                paramSchema["format"] = kvp.Value.Format;
 
             // What an array holds (#402), as a model reads it in an agent's tool list.
             if (kvp.Value.Type == "array" && kvp.Value.ItemsType != null)

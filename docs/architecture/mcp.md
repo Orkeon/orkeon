@@ -76,14 +76,17 @@ listing is read tool by tool: an entry that is no object (`null`), a tool with n
 `name`, `description` or `annotations` have the wrong JSON type (a `name` that is a number) is set aside on its
 own - the other tools of its server are registered. The warning names the tool and the server as `MCP:Servers`
 names it, and is written once for that entry, not at every listing. When `tools/list_changed` brings such an
-entry for a tool that was registered, the tool leaves the registry. A `"tools": null` lists no tool; a `tools`
-that is neither `null` nor an array, or a result that is no object, lists none either, with a warning written
-once: the server is connected with no tool, and a `tools/list_changed` that brings such an answer takes its
-tools out of the registry. A `nextCursor` that is no string ends the listing at its page, with a warning. A
-name one server lists twice, on one page or two, is registered once, the first time, and warned about once: it
-is no collision, and the server's status rejects nothing. `prompts/list` and `resources/list` are read the
-same way, entry by entry: a prompt with no name, a resource with no `uri`, or one whose members have the wrong
-JSON type is set aside alone, and a `prompts` or `resources` that is `null` lists nothing.
+entry for a tool that was registered, the tool leaves the registry. A `"tools": null` lists no tool, and so does a
+`result` that is absent or `null`. A tool listing of the wrong shape - a `tools` that is neither `null` nor an
+array, a `result` that is present and no object, a `nextCursor` that is no string - is no empty listing: it
+fails, with a message that names the server and the member, so the connection is reported as failed and a
+`tools/list_changed` that brings such an answer leaves the registered tools in place. A name one server lists
+twice, on one page or two, is registered once, the first time, and warned about once: it is no collision, and
+the server's status rejects nothing; names are compared as the registry compares them, without their case.
+`prompts/list` and `resources/list` are read entry by entry too: a prompt with no name, a resource with no
+`uri`, or one whose members have the wrong JSON type is set aside alone with a warning written once, a `null`
+among a prompt's `arguments` is dropped, and a `prompts` or `resources` that is `null` lists nothing. No
+registry follows these two listings, so one of the wrong shape lists what could be read, with a warning.
 
 ### Server (`McpServer`) — dual-era on one endpoint
 
@@ -106,8 +109,12 @@ JSON type is set aside alone, and a `prompts` or `resources` that is `null` list
   is `null` or neither a string nor an integer, a `params` that is neither an object nor an array (`null`
   counts as none), and an `id` beside a `notifications/*` method (MCP forbids it, so the message is answered,
   not obeyed). The answer carries the `id` when it could be read - a string or an integer -, `null` otherwise.
-  `ProcessRequestAsync` gives a C# host the same answers for the request it is handed; a `null` `id` is seen
-  there only when the host kept it as a JSON `null`, since a deserialized `JsonRpcRequest` holds no `id` then.
+  A line of valid JSON nested deeper than 64 levels is refused the same way, with a `null` `id`: `-32700` is
+  kept for text that is not JSON.
+  `ProcessRequestAsync` gives a C# host the same answers for the request it is handed, and only for what that
+  request still holds: a host that deserializes the message itself into a `JsonRpcRequest` loses a `null` `id`
+  (the message is taken for a notification) and an absent `jsonrpc` (it defaults to `"2.0"`, so the message is
+  obeyed), and a response it hands over is answered `-32600` where the stdio loop drops it.
 - A message never carries a `null` member: a response holds `result` or `error`, never both,
   and an optional member with no value is absent - a strict client (the MCP SDKs) refuses the
   message otherwise. The one `null` is the `id` of the answer to a line whose `id` could not be read.
@@ -190,7 +197,7 @@ The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itse
 
 The server and the client introduce themselves as `Orkeon`, with the version of the release they run
 (the one `orkeon --version` prints), in the legacy handshake (`serverInfo`, `clientInfo`) and in the `_meta`
-of the modern requests and of the `server/discover` and `tools/list` answers. `MCP:Server:Version`, when it is not empty, replaces the server's;
+of the modern requests and of the `server/discover` and `tools/list` answers. `MCP:Server:Version`, when it is not blank, replaces the server's;
 nothing replaces the client's.
 
 **Per-server authentication, filter and timeout.** Each `MCP:Servers:<id>` accepts:
@@ -434,8 +441,8 @@ stdout, one per line; closing stdin ends the server.
   setting (an unknown key, a mount the settings declare that cannot be mounted, any other
   setting the runner host refuses — one `ERROR:` line names it), a `--tools` name the host does
   not have, a `--crew` refused at start (a crew that does not load, a name given twice, a
-  `run_crew_*` name a tool already holds), a serve started by another serve (below); `2` an unexpected error. Ctrl+C ends the
-  process.
+  `run_crew_*` name a tool already holds), a serve started by another serve (below); `2` an unexpected error. Ctrl+C or SIGTERM ends
+  the serve with `0`, the crews and the upstream servers disposed on the way out.
 
 A client configuration — Claude Desktop's `claude_desktop_config.json`:
 

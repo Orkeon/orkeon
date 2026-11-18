@@ -133,7 +133,9 @@ public abstract class HttpToolBase : ToolBase
         {
             client.Timeout = HttpDefaults.DefaultHttpTimeout;
             // TryParseAdd: the value was checked when it was built, and nothing here may throw a format error.
-            client.DefaultRequestHeaders.UserAgent.TryParseAdd(ToolUserAgent.Value);
+            // Once per client: a client handed to several tools does not repeat the product.
+            if (!client.DefaultRequestHeaders.UserAgent.Any(static value => value.Product?.Name == "Orkeon"))
+                client.DefaultRequestHeaders.UserAgent.TryParseAdd(ToolUserAgent.Value);
         }
         catch (InvalidOperationException)
         {

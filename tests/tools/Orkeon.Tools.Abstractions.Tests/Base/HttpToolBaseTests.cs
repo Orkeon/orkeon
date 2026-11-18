@@ -24,6 +24,27 @@ public class HttpToolBaseTests
     }
 
     [Fact]
+    public void ShouldAnnounceTheProductOnce_WhenOneClientIsHandedToSeveralTools()
+    {
+        using var client = new HttpClient();
+        using var first = new SimpleHttpTool(client);
+        using var second = new SimpleHttpTool(client);
+
+        Assert.Single(client.DefaultRequestHeaders.UserAgent, value => value.Product?.Name == "Orkeon");
+    }
+
+    [Theory]
+    [InlineData("1.3.0", "Orkeon/1.3.0 (+https://github.com/Orkeon/orkeon)")]
+    [InlineData("2.0.0-rc.1", "Orkeon/2.0.0-rc.1 (+https://github.com/Orkeon/orkeon)")]
+    // A version no product token holds must not take every HTTP tool down: the fixed value is sent.
+    [InlineData("1.0 (broken", Orkeon.Domain.Constants.Http.HttpDefaults.DefaultUserAgent)]
+    [InlineData("", Orkeon.Domain.Constants.Http.HttpDefaults.DefaultUserAgent)]
+    public void ShouldBuildAValidUserAgent_WhateverTheVersion(string version, string expected)
+    {
+        Assert.Equal(expected, ToolUserAgent.Build(version));
+    }
+
+    [Fact]
     public void Category_ShouldDefaultToWebOperations_WhenNoContract()
     {
         using var tool = new SimpleHttpTool();
@@ -160,6 +181,7 @@ public class HttpToolBaseTests
     private sealed class SimpleHttpTool : HttpToolBase
     {
         public SimpleHttpTool() : base((HttpClient?)null) { }
+        public SimpleHttpTool(HttpClient client) : base(client) { }
         public SimpleHttpTool(IUrlValidator validator, HttpHeaderSanitizer sanitizer) : base(validator, sanitizer) { }
 
         public Task<UrlValidationResult> TestValidateUrlAsync(string url) =>

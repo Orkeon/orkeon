@@ -237,7 +237,7 @@ public class McpToolDefinition
 
     /// <summary>Gets or sets the human-readable tool description.</summary>
     [JsonPropertyName("description")]
-    public string Description { get; set; } = "";
+    public string Description { get; set => field = value ?? ""; } = ""; // a server's `"description": null` is no description
 
     /// <summary>Gets or sets the JSON Schema describing the tool's input parameters.</summary>
     [JsonPropertyName("inputSchema")]
@@ -656,7 +656,12 @@ public class McpPrompt
 
     /// <summary>Gets the arguments the prompt takes.</summary>
     [JsonPropertyName("arguments")]
-    public IReadOnlyList<McpPromptArgument> Arguments { get; init => field = value ?? []; } = [];
+    public IReadOnlyList<McpPromptArgument> Arguments
+    {
+        get;
+        // What a server wrote is untrusted: `"arguments": null` is no argument, and a `null` entry is none either.
+        init => field = value is null ? [] : [.. value.Where(argument => argument is not null)];
+    } = [];
 }
 
 /// <summary>One message of a prompt (<c>prompts/get</c>).</summary>
