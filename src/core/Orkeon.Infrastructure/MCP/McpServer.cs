@@ -135,11 +135,13 @@ public partial class McpServer
         {
             try
             {
+                // What is no valid request is refused before anything else (#414): a host that calls
+                // ProcessRequestAsync gets the answers the stdio loop gives.
+                if (RefuseInvalidRequest(request) is { } refusal)
+                    return refusal;
+
                 // Notifications (no id) are processed silently and never answered.
-                // A JSON `"id": null` deserializes as a Null-kind element, not a C# null.
-                if (request.Id is null ||
-                    request.Id.Value.ValueKind == JsonValueKind.Null ||
-                    request.Method.StartsWith("notifications/", StringComparison.Ordinal))
+                if (IsNotification(request))
                 {
                     LogNotificationReceived(request.Method);
                     return null;
@@ -232,6 +234,13 @@ public partial class McpServer
                 var request = ParseRequest(line, outbox.Writer);
                 if (request == null) continue;
 
+                // Before the cancellation and the notifications: an id beside notifications/* is answered, not obeyed.
+                if (RefuseInvalidRequest(request) is { } refusal)
+                {
+                    outbox.Writer.TryWrite(JsonSerializer.Serialize(refusal));
+                    continue;
+                }
+
                 if (string.Equals(request.Method, CancelledMethod, StringComparison.Ordinal))
                 {
                     Cancel(inFlight, request);
@@ -307,12 +316,30 @@ public partial class McpServer
             TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
-    /// <summary>Parses one line; a line that is not JSON-RPC is answered with a parse error and yields <see langword="null"/>.</summary>
+    /// <summary>
+    /// Parses one line. Text that is not JSON is answered <c>-32700</c>; JSON that is no request object - a scalar,
+    /// <c>null</c>, an array (batching is not spoken: one answer for the whole line), an object whose <c>jsonrpc</c>
+    /// is not <c>"2.0"</c> or whose <c>method</c> is absent or no string - is answered <c>-32600</c> (#414). Both
+    /// yield <see langword="null"/>. The checks read the text: the deserialized request cannot tell an absent
+    /// member from its default.
+    /// </summary>
     private JsonRpcRequest? ParseRequest(string line, ChannelWriter<string> outbox)
     {
         try
         {
-            return JsonSerializer.Deserialize<JsonRpcRequest>(line);
+            using var document = JsonDocument.Parse(line);
+            var root = document.RootElement;
+            if (InvalidMessageReason(root) is { } reason)
+            {
+                // The id is sent back when it could be read, null otherwise (JSON-RPC 2.0).
+                JsonElement? id = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("id", out var given) && IsRequestId(given)
+                    ? given.Clone()
+                    : null;
+                outbox.TryWrite(JsonSerializer.Serialize(CreateErrorResponse(id, JsonRpcErrorCodes.InvalidRequest, reason)));
+                return null;
+            }
+
+            return root.Deserialize<JsonRpcRequest>();
         }
         catch (JsonException ex)
         {
@@ -322,6 +349,61 @@ public partial class McpServer
             return null;
         }
     }
+
+    /// <summary>Why a JSON value is no JSON-RPC 2.0 message, read from the text; null when its envelope is one.</summary>
+    private static string? InvalidMessageReason(JsonElement root)
+    {
+        if (root.ValueKind == JsonValueKind.Array)
+            return "Invalid Request: a message must be an object (JSON-RPC batching is not supported).";
+        if (root.ValueKind != JsonValueKind.Object)
+            return "Invalid Request: a message must be an object.";
+        if (!root.TryGetProperty("jsonrpc", out var version) || version.ValueKind != JsonValueKind.String || version.GetString() != JsonRpcVersion)
+            return InvalidJsonRpcVersion;
+        if (!root.TryGetProperty("method", out var method) || method.ValueKind != JsonValueKind.String)
+            return InvalidMethod;
+        // Read here, from the text: a null id deserializes as no id at all, which is a notification.
+        if (root.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Null)
+            return InvalidId;
+        return null;
+    }
+
+    private const string JsonRpcVersion = "2.0";
+    private const string InvalidJsonRpcVersion = "Invalid Request: jsonrpc must be \"2.0\".";
+    private const string InvalidId = "Invalid Request: id must be a string or an integer.";
+    private const string InvalidMethod = "Invalid Request: method must be a non-empty string.";
+
+    /// <summary>
+    /// The <c>-32600</c> answer to a message that is no valid request, or null when it is one (#414): a
+    /// <c>jsonrpc</c> other than <c>"2.0"</c>, an empty <c>method</c>, an <c>id</c> that is <c>null</c> or neither a
+    /// string nor an integer (MCP), a <c>params</c> that is neither an object nor an array, an <c>id</c> beside a
+    /// <c>notifications/*</c> method. The answer carries the <c>id</c> when it could be read, <c>null</c> otherwise.
+    /// </summary>
+    private static JsonRpcResponse? RefuseInvalidRequest(JsonRpcRequest request)
+    {
+        var hasId = request.Id is not null;
+        var readableId = request.Id is { } id && IsRequestId(id);
+
+        string? reason;
+        if (!string.Equals(request.Jsonrpc, JsonRpcVersion, StringComparison.Ordinal))
+            reason = InvalidJsonRpcVersion;
+        else if (string.IsNullOrEmpty(request.Method))
+            reason = InvalidMethod;
+        else if (hasId && !readableId)
+            reason = InvalidId;
+        else if (request.Params is { ValueKind: not (JsonValueKind.Object or JsonValueKind.Array or JsonValueKind.Null or JsonValueKind.Undefined) })
+            reason = "Invalid Request: params must be an object or an array.";
+        else if (hasId && request.Method.StartsWith("notifications/", StringComparison.Ordinal))
+            reason = "Invalid Request: a notification must not carry an id.";
+        else
+            return null;
+
+        return CreateErrorResponse(readableId ? request.Id : null, JsonRpcErrorCodes.InvalidRequest, reason);
+    }
+
+    /// <summary>Whether an <c>id</c> is one MCP allows: a string, or a number without a fraction or an exponent.</summary>
+    private static bool IsRequestId(JsonElement id) =>
+        id.ValueKind == JsonValueKind.String
+        || (id.ValueKind == JsonValueKind.Number && id.GetRawText().AsSpan().IndexOfAny('.', 'e', 'E') < 0);
 
     /// <summary>What one request task needs: its key, its cancellation source, and the loop's shared state.</summary>
     private sealed record RequestRun(
@@ -401,10 +483,8 @@ public partial class McpServer
         }
     }
 
-    private static bool IsNotification(JsonRpcRequest request) =>
-        request.Id is null ||
-        request.Id.Value.ValueKind == JsonValueKind.Null ||
-        request.Method.StartsWith("notifications/", StringComparison.Ordinal);
+    /// <summary>A notification carries no id; what carries one beside <c>notifications/*</c>, or a <c>null</c> one, was refused before.</summary>
+    private static bool IsNotification(JsonRpcRequest request) => request.Id is null;
 
     /// <summary>
     /// <c>notifications/cancelled</c>: cancels the in-flight request <c>requestId</c> names. An id the
