@@ -103,15 +103,14 @@ sees differently.
   `prompts/get` alike. A `params` that is an array or a `name` that is no string answered `-32603 Internal error`: it
   answers `-32602`. A number beyond the range of a `double` (`1e400`) failed the call with the .NET serializer's own
   message: the call now answers `isError: true` with `Argument 'x' is not a finite number.` (`x[0]`, `x.y` when
-  nested), and the tool is not called.
+  nested, `["a.b"]` for a name that holds a dot), and the tool is not called.
 - One tool of a remote MCP server could take every tool of that server away (#417). The MCP client threw on a
   parameter whose `type` is an array (`["string", "null"]`, a nullable parameter), on an `enum` of numbers or booleans,
   and on a `required` entry or a `description` that is no string; the connection failed with a .NET message that named
   neither the tool nor the property. A `type` array is now read as its one member that is not `"null"`, every scalar
   `enum` value is kept, and a tool that cannot be registered - a `null` entry of the list, a tool with no name, an
-  `inputSchema` that still cannot be read - is set aside on its own, with a warning that names the server and the tool.
-  A tool whose own `name`, `description` or `annotations` have the wrong JSON type still fails the listing of its
-  server.
+  `inputSchema` that still cannot be read, a `name`, a `description` or `annotations` of the wrong JSON type - is set
+  aside on its own, with a warning that names the server and the tool: `tools/list` is read tool by tool.
 - The MCP client kept too little of a remote tool's parameter (#415): the `items` of an array were dropped, so an
   agent's model saw a bare `array`, and so were the `format` and the `additionalProperties` of a dictionary. They are
   kept, with the properties of an array of objects. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was

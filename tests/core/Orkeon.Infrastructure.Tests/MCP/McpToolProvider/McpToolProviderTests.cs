@@ -128,6 +128,45 @@ public sealed class McpToolProviderTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ShouldSetAsideTheToolAlone_WhenItsNameDescriptionOrAnnotationsHaveTheWrongType()
+    {
+        // Arrange - a listing read as a whole lost every tool of the server on one such entry
+        const string listing = """
+            {"tools":[
+              {"name":"search","description":"Search things"},
+              {"name":5,"description":"A numeric name"},
+              {"name":"odd_description","description":["not","a","string"]},
+              {"name":"odd_annotations","description":"x","annotations":{"readOnlyHint":"yes"}},
+              "not an object",
+              null,
+              {"name":"fetch","description":"Fetch data","inputSchema":{"type":"object","properties":{"url":{"type":["string","null"]}}}}
+            ]}
+            """;
+        _mockTransport.SetSendRequestFunc((req, _) => Task.FromResult(req.Method switch
+        {
+            "initialize" => new JsonRpcResponse
+            {
+                Id = req.Id,
+                Result = JsonSerializer.SerializeToElement(new McpInitializeResult
+                {
+                    ProtocolVersion = "2024-11-05",
+                    Capabilities = new McpServerCapabilities { Tools = new McpCapabilityInfo() }
+                })
+            },
+            "tools/list" => new JsonRpcResponse { Id = req.Id, Result = JsonElement.Parse(listing) },
+            _ => new JsonRpcResponse { Id = req.Id, Error = new JsonRpcError(-32601, "Not found") }
+        }));
+        await using var provider = new McpToolProviderSut(_mockRegistry);
+
+        // Act
+        await provider.ConnectServerAsync("server1", _mockTransport, ct: TestContext.Current.CancellationToken);
+
+        // Assert
+        var names = (await _mockRegistry.GetAllToolsAsync(TestContext.Current.CancellationToken)).Select(t => t.Name).ToList();
+        Assert.Equal(["fetch", "search"], names.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
     public async Task ShouldRemoveClient_WhenDisconnectingServer()
     {
         // Arrange

@@ -75,9 +75,10 @@ No `inputSchema` makes the connection fail: a `required` entry or a `description
 string is skipped, a number no `double` holds (`1e400`) is dropped from an `enum` or a `default`, and a tool
 that cannot be registered - a `null` entry of the list, a tool with no name, an `inputSchema` that still
 cannot be read - is set aside on its own, with a warning that names the server and the tool: the other tools
-of its server are registered. What still fails the whole listing, and so the connection, is a tool whose own
-`name`, `description` or `annotations` have the wrong JSON type (a `name` that is a number): the listing is
-read as a whole.
+of its server are registered. The listing is read tool by tool: an entry that is no object, or whose own
+`name`, `description` or `annotations` have the wrong JSON type (a `name` that is a number), is set aside the
+same way. When `tools/list_changed` brings a definition that can no longer be read, the tool leaves the
+registry, and the warning is written once for that definition.
 
 ### Server (`McpServer`) — dual-era on one endpoint
 
@@ -115,7 +116,7 @@ read as a whole.
   not an object - for a registry tool, for a `run_crew_*` tool and for a prompt alike; the tool does not run.
   A number beyond the range of a `double` (`1e400`) is an input the tool cannot take, not a protocol error:
   the call answers `isError: true` with `Argument 'x' is not a finite number.` (`x[0]`, `x.y` when the number
-  is nested), and the tool is not called. A `run_crew_*` tool and a prompt take a number as its text.
+  is nested, `["a.b"]` for a name that holds a dot or a bracket), and the tool is not called. A `run_crew_*` tool and a prompt take a number as its text.
 - `tools/call` goes through `IToolInvocationPipeline`, the single invocation point of every
   agent turn, under the caller `mcp` (its agent id and role): the guardian's tool
   phase (`ToolGuard` — path traversal, SSRF targets, SQL injection), the call, the one
@@ -323,7 +324,8 @@ agents:
 than `IBaseTool` to implement. The servers are connected before the crew loads, so under
 `StrictTools` — the runners' default — a crew that names a tool of a server that could not
 be connected fails at load with the ordinary `unknown tool(s)` line. `--list-tools` and
-`--validate` see the MCP tools, `McpServer` re-exposes whatever the registry holds, and C#
+`--validate` see the MCP tools, `McpServer` re-exposes what the registry holds - every tool, or those `orkeon mcp serve --tools` names
+(`AllowedTools`), `human_input` aside -, and C#
 code can resolve one with `IToolRegistry.GetToolByNameAsync(name)`. The observed-run
 decorator of `--events jsonl` wraps the tools registered in DI; MCP tools reach the
 registry at run time and are not wrapped.

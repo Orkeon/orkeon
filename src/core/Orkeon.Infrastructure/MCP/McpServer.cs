@@ -811,12 +811,23 @@ public partial class McpServer
         return CreateSuccessResponse(request.Id, mcpResult);
     }
 
+    /// <summary>
+    /// The path of a member: <c>x</c>, <c>x.y</c>, and <c>x["a.b"]</c> for a name that a dot or a bracket would make
+    /// read as a nesting.
+    /// </summary>
+    private static string Member(string path, string name)
+    {
+        if (name.Length == 0 || name.AsSpan().IndexOfAny('.', '[', ']') >= 0)
+            return $"{path}[{JsonSerializer.Serialize(name)}]";
+        return path.Length == 0 ? name : $"{path}.{name}";
+    }
+
     private const string ParamsMustNameAString = "Invalid params: params must be an object with a string name.";
     private const string ArgumentsMustBeAnObject = "Invalid params: arguments must be an object.";
 
     /// <summary>
     /// The path of the first number of <paramref name="element"/> that no double holds (<c>1e400</c>), as a caller
-    /// would write it - <c>x</c>, <c>x[0]</c>, <c>x.y</c> -, or null when every number is finite.
+    /// would write it - <c>x</c>, <c>x[0]</c>, <c>x.y</c>, <c>["a.b"]</c> -, or null when every number is finite.
     /// </summary>
     private static string? FindNonFiniteNumber(JsonElement element, string path)
     {
@@ -837,7 +848,7 @@ public partial class McpServer
             case JsonValueKind.Object:
                 foreach (var property in element.EnumerateObject())
                 {
-                    if (FindNonFiniteNumber(property.Value, path.Length == 0 ? property.Name : $"{path}.{property.Name}") is { } inObject)
+                    if (FindNonFiniteNumber(property.Value, Member(path, property.Name)) is { } inObject)
                         return inObject;
                 }
 

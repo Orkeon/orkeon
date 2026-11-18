@@ -47,6 +47,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         private readonly object _state;
         private readonly Dictionary<string, RegisteredTool> _tools;
         private readonly List<string> _rejected;
+        private readonly Dictionary<string, string> _setAside = new(StringComparer.Ordinal);
         private List<string> _unmatched;
         private long _notifications;
         private long _resyncs;
@@ -227,6 +228,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             {
                 _tools[name] = new RegisteredTool(adapter, fingerprint);
                 _rejected.Remove(name);
+                _setAside.Remove(name);
             }
         }
 
@@ -252,7 +254,24 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         public void KeepRejected(IReadOnlyCollection<string> listed)
         {
             lock (_state)
+            {
                 _rejected.RemoveAll(name => !listed.Contains(name));
+                foreach (var gone in _setAside.Keys.Where(name => !listed.Contains(name)).ToList())
+                    _setAside.Remove(gone);
+            }
+        }
+
+        /// <summary>Whether this very definition of the tool was already found unreadable.</summary>
+        public bool IsSetAside(string name, string fingerprint)
+        {
+            lock (_state)
+                return _setAside.TryGetValue(name, out var known) && known == fingerprint;
+        }
+
+        public void SetAside(string name, string fingerprint)
+        {
+            lock (_state)
+                _setAside[name] = fingerprint;
         }
 
         public void SetUnmatched(IEnumerable<string> unmatched)
@@ -345,6 +364,22 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         }
 
         return named;
+    }
+
+    /// <summary>
+    /// The adapter of a tool during a resynchronisation. A definition that could not be read is remembered with
+    /// its fingerprint: the same one is not read, nor warned about, again at every <c>tools/list_changed</c>.
+    /// </summary>
+    private McpToolAdapter? BuildForResync(string serverId, McpClientEntry entry, string name, McpToolDefinition definition)
+    {
+        var fingerprint = Fingerprint(definition);
+        if (entry.IsSetAside(name, fingerprint))
+            return null;
+
+        var adapter = TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn);
+        if (adapter is null)
+            entry.SetAside(name, fingerprint);
+        return adapter;
     }
 
     private McpOAuthServices OAuthServices() => new(_httpClientFactory, _loginInteraction, _time);
@@ -945,9 +980,15 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                 }
                 else if (held.Signature != Fingerprint(definition))
                 {
-                    // A definition that can no longer be read keeps the adapter the registry holds.
-                    if (TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn) is not { } adapter)
+                    // A definition that can no longer be read leaves the registry, as it would never have entered
+                    // it at the connection: the schema held is no longer the server's.
+                    if (BuildForResync(serverId, entry, name, definition) is not { } adapter)
+                    {
+                        await _toolRegistry.UnregisterToolAsync(name, apply).ConfigureAwait(false);
+                        entry.Forget(name);
                         continue;
+                    }
+
                     if (await _toolRegistry.ReplaceToolAsync(held.Adapter, adapter, apply).ConfigureAwait(false))
                         entry.Remember(name, adapter, Fingerprint(definition));
                     else
@@ -960,7 +1001,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             {
                 if (entry.Holds(name))
                     continue;
-                if (TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn) is not { } adapter)
+                if (BuildForResync(serverId, entry, name, definition) is not { } adapter)
                     continue;
                 if (await _toolRegistry.RegisterToolAsync(adapter, apply).ConfigureAwait(false))
                 {

@@ -79,9 +79,11 @@ Aucun `inputSchema` ne fait échouer la connexion : une entrée de `required` ou
 propriété qui n'est pas une chaîne est ignorée, un nombre qu'aucun `double` ne contient (`1e400`) est retiré
 d'un `enum` ou d'un `default`, et un outil qui ne peut pas être enregistré — une entrée `null` de la liste, un
 outil sans nom, un `inputSchema` qui reste illisible — est écarté à lui seul, avec un avertissement qui nomme
-le serveur et l'outil : les autres outils de son serveur sont enregistrés. Ce qui fait encore échouer toute la
-liste, et donc la connexion, c'est un outil dont le `name`, la `description` ou les `annotations` ont le
-mauvais type JSON (un `name` qui est un nombre) : la liste est lue d'un bloc.
+le serveur et l'outil : les autres outils de son serveur sont enregistrés. La liste est lue outil par outil :
+une entrée qui n'est pas un objet, ou dont le `name`, la `description` ou les `annotations` ont le mauvais type
+JSON (un `name` qui est un nombre), est écartée de la même façon. Quand `tools/list_changed` apporte une
+définition qui ne peut plus être lue, l'outil quitte le registre, et l'avertissement est écrit une fois pour
+cette définition.
 
 ### Serveur (`McpServer`) — bi-génération sur un même endpoint
 
@@ -120,8 +122,8 @@ mauvais type JSON (un `name` qui est un nombre) : la liste est lue d'un bloc.
   présents, non `null` et qui ne sont pas un objet — pour un outil du registre, pour un outil `run_crew_*`
   comme pour un prompt ; l'outil ne s'exécute pas. Un nombre hors de la plage d'un `double` (`1e400`) est une
   entrée que l'outil ne peut pas prendre, pas une erreur de protocole : l'appel répond `isError: true` avec
-  `Argument 'x' is not a finite number.` (`x[0]`, `x.y` quand le nombre est imbriqué), et l'outil n'est pas
-  appelé. Un outil `run_crew_*` et un prompt reçoivent un nombre sous forme de texte.
+  `Argument 'x' is not a finite number.` (`x[0]`, `x.y` quand le nombre est imbriqué, `["a.b"]` pour un nom
+  qui contient un point ou un crochet), et l'outil n'est pas appelé. Un outil `run_crew_*` et un prompt reçoivent un nombre sous forme de texte.
 - `tools/call` passe par `IToolInvocationPipeline`, le point d'invocation unique de chaque
   tour d'agent, sous l'appelant `mcp` (son identifiant et son rôle d'agent) : la
   phase outil de la garde (`ToolGuard` — remontée de chemin, cibles SSRF, injection SQL),
@@ -339,7 +341,8 @@ agents:
 crew : sous `StrictTools` — le défaut des runners — une crew qui nomme l'outil d'un serveur
 qui n'a pas pu être connecté échoue au chargement avec la ligne ordinaire `unknown tool(s)`.
 `--list-tools` et `--validate` voient les outils MCP, `McpServer` ré-expose ce que contient
-le registre, et du code C# peut en résoudre un par `IToolRegistry.GetToolByNameAsync(name)`.
+le registre — tous les outils, ou ceux que nomme `orkeon mcp serve --tools` (`AllowedTools`), `human_input`
+mis à part —, et du code C# peut en résoudre un par `IToolRegistry.GetToolByNameAsync(name)`.
 Le décorateur des runs observés de `--events jsonl` enveloppe les outils enregistrés dans la
 DI ; les outils MCP arrivent dans le registre à l'exécution et ne sont pas enveloppés.
 

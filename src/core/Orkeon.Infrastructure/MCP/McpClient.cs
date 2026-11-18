@@ -198,7 +198,47 @@ public partial class McpClient : IAsyncDisposable
     {
         EnsureReady();
 
-        return await PageAllAsync("tools/list", (McpToolListResult r) => (r.Tools, r.NextCursor), ct).ConfigureAwait(false);
+        // Each tool is read on its own (#417): one whose name, description or annotations have the wrong JSON
+        // type is set aside with a warning, where reading the page as a whole lost every tool of the server.
+        var raw = await PageAllAsync("tools/list", (ToolListPage r) => (r.Tools, r.NextCursor), ct).ConfigureAwait(false);
+        var tools = new List<McpToolDefinition>(raw.Count);
+        foreach (var element in raw)
+        {
+            if (ReadTool(element) is { } tool)
+                tools.Add(tool);
+        }
+
+        return tools;
+    }
+
+    /// <summary>One page of <c>tools/list</c>, its tools left as they came.</summary>
+    private sealed class ToolListPage
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("tools")]
+        public IReadOnlyList<JsonElement> Tools { get; init; } = [];
+
+        [System.Text.Json.Serialization.JsonPropertyName("nextCursor")]
+        public string? NextCursor { get; init; }
+    }
+
+    private McpToolDefinition? ReadTool(JsonElement element)
+    {
+        var name = element.ValueKind == JsonValueKind.Object
+            && element.TryGetProperty("name", out var given) && given.ValueKind == JsonValueKind.String
+                ? given.GetString()
+                : null;
+        try
+        {
+            if (element.ValueKind == JsonValueKind.Object && element.Deserialize<McpToolDefinition>() is { } tool)
+                return tool;
+            LogToolDefinitionUnreadable(name ?? "(unnamed)", _serverInfo?.Name, "the entry is not an object");
+        }
+        catch (JsonException ex)
+        {
+            LogToolDefinitionUnreadable(name ?? "(unnamed)", _serverInfo?.Name, ex.Message);
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -567,6 +607,9 @@ public partial class McpClient : IAsyncDisposable
         await _transport.DisposeAsync().ConfigureAwait(false);
         GC.SuppressFinalize(this);
     }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Tool}' listed by MCP server '{Server}' was set aside: its definition could not be read ({Reason}). The other tools of the server are kept")]
+    private partial void LogToolDefinitionUnreadable(string tool, string? server, string reason);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "MCP client initialized with server {Name} v{Version}")]
     private partial void LogMcpClientInitialized(string? name, string? version);

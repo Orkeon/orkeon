@@ -97,6 +97,9 @@ public sealed class McpServerBadCallParametersTests
     [InlineData("""{"x":[1,1e400]}""", "x[1]")]
     [InlineData("""{"x":{"y":-1e400}}""", "x.y")]
     [InlineData("""{"a":1,"x":[{"y":[1e400]}]}""", "x[0].y[0]")]
+    // A name with a dot is not a nesting: it is quoted.
+    [InlineData("""{"a.b":[0,{"c":1e400}]}""", "[\"a.b\"][1].c")]
+    [InlineData("""{"a":{"b.c":1e400}}""", "a[\"b.c\"]")]
     public async Task ShouldFailTheCallNamingTheArgument_WhenANumberIsNotFinite(string arguments, string expectedPath)
     {
         var response = await SendAsync("tools/call", $$"""{"name":"list_mounts","arguments":{{arguments}}}""");
