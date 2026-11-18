@@ -111,8 +111,8 @@ services.AddOrkeonMcpServer(configuration);   // le serveur, pour un hôte qui s
 de `McpServerConfig` indexé par identifiant de serveur : `Transport` `Stdio` (défaut) ou
 `Sse`, `Command`/`Args`/`Env` pour stdio, `Url` pour HTTP) et enregistre `McpToolProvider`
 en singleton. Il n'enregistre aucun serveur : c'est `AddOrkeonMcpServer` qui enregistre
-`McpServer` (+ `McpServerOptions` depuis `MCP:Server` : `Name`, `Orkeon` par défaut, `Version`, `1.0.0`
-par défaut, `MaxConcurrency` (4), `ExposeOutput` (faux), `ResourcesPageSize` (100) et
+`McpServer` (+ `McpServerOptions` depuis `MCP:Server` : `Name`, `Orkeon` par défaut, `Version`, vide
+par défaut — la version de la release en cours d'exécution —, `MaxConcurrency` (4), `ExposeOutput` (faux), `ResourcesPageSize` (100) et
 `MaxResourceBytes` (1 Mio)), lequel sert l'`IToolRegistry` du conteneur et appelle chaque
 outil par son `IToolInvocationPipeline` — `AddOrkeonInfrastructure()` et
 `AddOrkeonApplication()` enregistrent les deux. Enregistrer n'est pas servir : l'hôte lance
@@ -144,12 +144,15 @@ ressources quand `ExposeOutput` est actif (ci-dessous) ; `prompts/*` répondent
         "CallTimeout": "00:00:30"
       }
     },
-    "Server": { "Name": "Orkeon", "Version": "1.0.0" }
+    "Server": { "Name": "Orkeon" }
   }
 }
 ```
 
-Le client se présente comme `Orkeon` `1.0.0`.
+Le serveur et le client se présentent comme `Orkeon`, avec la version de la release qu'ils exécutent
+(celle qu'affiche `orkeon --version`), dans la poignée de main historique (`serverInfo`, `clientInfo`) et dans
+le `_meta` des requêtes et des réponses modernes. `MCP:Server:Version`, quand il n'est pas vide, remplace celle
+du serveur ; rien ne remplace celle du client.
 
 **Authentification, filtre et délai par serveur.** Chaque `MCP:Servers:<id>` accepte :
 

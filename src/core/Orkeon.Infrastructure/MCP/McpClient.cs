@@ -15,7 +15,7 @@ namespace Orkeon.Infrastructure.MCP;
 public partial class McpClient : IAsyncDisposable
 {
     private const string ClientName = "Orkeon";
-    private const string ClientVersion = "1.0.0";
+    private static string ClientVersion => McpVersion.Current;
 
     /// <summary>The most pages one listing follows: a server whose cursor never ends fails the listing.</summary>
     internal const int MaxPages = 100;

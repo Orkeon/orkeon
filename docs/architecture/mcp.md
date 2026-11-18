@@ -108,8 +108,8 @@ services.AddOrkeonMcpServer(configuration);   // the server, for a host that ser
 `McpServerConfig` keyed by server id: `Transport` `Stdio` (default) or `Sse`,
 `Command`/`Args`/`Env` for stdio, `Url` for HTTP) and registers `McpToolProvider` as a
 singleton. It registers no server: `AddOrkeonMcpServer` registers `McpServer` (+
-`McpServerOptions` from `MCP:Server`: `Name`, default `Orkeon`, `Version`, default
-`1.0.0`, `MaxConcurrency` (4), `ExposeOutput` (false), `ResourcesPageSize` (100) and
+`McpServerOptions` from `MCP:Server`: `Name`, default `Orkeon`, `Version`, empty by default —
+the version of the running release —, `MaxConcurrency` (4), `ExposeOutput` (false), `ResourcesPageSize` (100) and
 `MaxResourceBytes` (1 MiB)), which serves the container's `IToolRegistry` and calls every tool through its
 `IToolInvocationPipeline` — `AddOrkeonInfrastructure()` and `AddOrkeonApplication()` register
 both. Registering is not serving: the host runs `RunStdioAsync` — what `orkeon mcp serve`
@@ -139,12 +139,15 @@ The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itse
         "CallTimeout": "00:00:30"
       }
     },
-    "Server": { "Name": "Orkeon", "Version": "1.0.0" }
+    "Server": { "Name": "Orkeon" }
   }
 }
 ```
 
-The client introduces itself as `Orkeon` `1.0.0`.
+The server and the client introduce themselves as `Orkeon`, with the version of the release they run
+(the one `orkeon --version` prints), in the legacy handshake (`serverInfo`, `clientInfo`) and in the `_meta`
+of the modern requests and answers. `MCP:Server:Version`, when it is not empty, replaces the server's;
+nothing replaces the client's.
 
 **Per-server authentication, filter and timeout.** Each `MCP:Servers:<id>` accepts:
 

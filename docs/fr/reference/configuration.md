@@ -1766,7 +1766,7 @@ La façon dont le serveur d'`orkeon mcp serve` se présente (il n'expose que des
 | `MaxResourceBytes` | entier | `1048576` | Taille du plus gros fichier que resources/read rend, en octets (1 048 576 par défaut) ; un fichier plus gros est refusé. |
 | `Name` | chaîne | `"Orkeon"` | Nom du serveur annoncé à l'initialisation MCP. |
 | `ResourcesPageSize` | entier | `100` | Nombre de ressources d'une page de resources/list (100 par défaut). Au moins 1. |
-| `Version` | chaîne | `"1.0.0"` | Version du serveur annoncée à l'initialisation MCP. |
+| `Version` | chaîne | `""` | Version du serveur annoncée à l'initialisation MCP. Vide (par défaut) : la version de la release Orkeon en cours d'exécution. |
 <!-- /settings -->
 
 ### `RaggableTree`

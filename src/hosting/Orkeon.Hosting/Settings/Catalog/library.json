@@ -2759,8 +2759,8 @@
       "path": "MCP:Server:Version",
       "section": "MCP:Server",
       "type": "string",
-      "default": "1.0.0",
-      "description": "Server version advertised during MCP initialization."
+      "default": "",
+      "description": "Server version advertised during MCP initialization. Empty (the default): the version of the running Orkeon release."
     },
     {
       "path": "Orkeon:MultiModal:Enabled",

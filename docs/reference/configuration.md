@@ -1713,7 +1713,7 @@ How the server of `orkeon mcp serve` introduces itself (it exposes tools only). 
 | `MaxResourceBytes` | integer | `1048576` | The largest file `resources/read` returns, in bytes; a bigger one is refused. |
 | `Name` | string | `"Orkeon"` | Server name advertised during MCP initialization. |
 | `ResourcesPageSize` | integer | `100` | How many resources one `resources/list` page carries. At least 1. |
-| `Version` | string | `"1.0.0"` | Server version advertised during MCP initialization. |
+| `Version` | string | `""` | Server version advertised during MCP initialization. Empty (the default): the version of the running Orkeon release. |
 <!-- /settings -->
 
 ### `RaggableTree`

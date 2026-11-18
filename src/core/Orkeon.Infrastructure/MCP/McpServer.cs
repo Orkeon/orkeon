@@ -569,7 +569,7 @@ public partial class McpServer
             ServerInfo = new McpServerInfo
             {
                 Name = _options.Name,
-                Version = _options.Version
+                Version = AnnouncedVersion
             }
         };
 
@@ -911,9 +911,13 @@ public partial class McpServer
     {
         return JsonSerializer.SerializeToElement(new Dictionary<string, object>
         {
-            [McpProtocol.MetaServerInfo] = new { name = _options.Name, version = _options.Version }
+            [McpProtocol.MetaServerInfo] = new { name = _options.Name, version = AnnouncedVersion }
         });
     }
+
+    /// <summary>The version the server introduces itself with: the configured one, or the release's when none is set (#416).</summary>
+    private string AnnouncedVersion =>
+        string.IsNullOrWhiteSpace(_options.Version) ? McpVersion.Current : _options.Version;
 
     /// <summary>
     /// Converts a Orkeon ToolSchema to a JSON Schema element for MCP.
