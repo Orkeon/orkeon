@@ -638,8 +638,9 @@ public partial class McpServer
                 $"Tool not found: {callParams.Name}");
         }
 
-        // The values an agent's tool call carries (#402): an array is a list, an object a
-        // dictionary, a whole number a long, null is null - never the raw JSON text.
+        // The values a tool call in the OpenAI format carries (#402): an array is a list, an object
+        // a dictionary, a number without a fraction or an exponent is a long when it fits one, any
+        // other a double, null is null - never the raw JSON text. Arguments that are not an object count as none.
         var parameters = callParams.Arguments is { ValueKind: JsonValueKind.Object } arguments
             ? Serialization.JsonElementConverter.ToDict(arguments)
             : [];

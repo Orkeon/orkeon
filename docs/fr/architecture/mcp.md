@@ -72,14 +72,15 @@ supportée des deux côtés (`McpClient.SendAsync`).
 - `tools/list` est renvoyé en **ordre déterministe** (tri ordinal par nom — un SHOULD de
   2026-07-28, pour des caches clients stables) avec les champs modernes
   `resultType`/`ttlMs`/`cacheScope` ; les clients legacy ignorent ces membres additifs.
-- Les notifications (sans `id`, ou `notifications/*`) ne reçoivent jamais de réponse.
+- Les notifications (sans `id`, avec un `id` `null`, ou `notifications/*`) ne reçoivent jamais de réponse.
 - Un message ne porte jamais de membre `null` : une réponse contient `result` ou `error`, jamais
   les deux, et un membre optionnel sans valeur est absent — un client strict (les SDK MCP)
   refuse le message sinon. Le seul `null` est l'`id` de la réponse à une ligne illisible.
-- Les `arguments` d'un `tools/call` arrivent à l'outil comme les valeurs que porte l'appel
-  d'outil d'un agent : un tableau est une liste, un objet un dictionnaire, un nombre entier un
-  `long`, tout autre nombre un `double`, `null` est `null`. `tools/list` publie les `items`
-  d'un paramètre tableau.
+- Les `arguments` d'un `tools/call` (hors outil `run_crew_*` de `--crew`, voir plus bas) arrivent
+  à l'outil comme les valeurs que porte un appel d'outil au format OpenAI : un tableau est une
+  liste, un objet un dictionnaire, un nombre écrit sans partie décimale ni exposant est un `long`
+  s'il y tient, tout autre nombre un `double`, `null` est `null` (un appel d'outil Anthropic
+  le lit comme le texte `null`). `tools/list` publie les `items` d'un paramètre tableau.
 - `tools/call` passe par `IToolInvocationPipeline`, le point d'invocation unique de chaque
   tour d'agent, sous l'appelant `mcp` (son identifiant et son rôle d'agent) : la
   phase outil de la garde (`ToolGuard` — remontée de chemin, cibles SSRF, injection SQL),

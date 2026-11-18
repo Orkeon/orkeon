@@ -78,6 +78,77 @@ public sealed class McpServerWireNullTests
 
     [Fact]
     [Trait("BR", "#405")]
+    public async Task ShouldWriteNoNullMember_WhenServingPromptsCrewToolsProgressAndModernRequests()
+    {
+        // A prompt and an argument with no description, a prompt answer with none, a crew tool that reports
+        // progress, and requests that declare their protocol version per request (modern lineage).
+        var extension = new FakeMcpServerExtension { ProgressSteps = 2 };
+        extension.PromptList.Clear();
+        extension.PromptList.Add(new McpPrompt { Name = "greet", Arguments = [new McpPromptArgument { Name = "who" }] });
+        var registry = new MockToolRegistry();
+        registry.AddTool("search", new InlineMockBaseTool("search", "Search",
+            new Dictionary<string, ParameterSchema> { ["query"] = new("string", "The query", true) },
+            new ToolCallResponse(true, "found", null)));
+        var server = new McpServer(registry, ToolInvocationPipeline.Unguarded, new FakeRightsFileSystemService(),
+            new McpServerOptions { Name = "TestServer", Version = "1.0.0" }, null, extension);
+        const string modern = $$"""{"{{McpProtocol.MetaProtocolVersion}}":"{{McpProtocol.ModernVersion}}"}""";
+        string[] session =
+        [
+            """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}""",
+            """{"jsonrpc":"2.0","method":"notifications/initialized"}""",
+            """{"jsonrpc":"2.0","id":2,"method":"prompts/list"}""",
+            """{"jsonrpc":"2.0","id":3,"method":"prompts/get","params":{"name":"greet","arguments":{"who":"x"}}}""",
+            """{"jsonrpc":"2.0","id":4,"method":"prompts/get","params":{"name":"nope"}}""",
+            """{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"run_crew_demo","arguments":{},"_meta":{"progressToken":"tok-1"}}}""",
+            """{"jsonrpc":"2.0","id":6,"method":"tools/list","params":{"_meta":""" + modern + "}}",
+            """{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"search","arguments":{"query":"x"},"_meta":""" + modern + "}}",
+            """{"jsonrpc":"2.0","id":8,"method":"ping","params":{"_meta":""" + modern + "}}",
+        ];
+        using var reader = new StringReader(string.Join('\n', session) + "\n");
+        using var writer = new StringWriter();
+
+        await server.RunStdioAsync(reader, writer, TestContext.Current.CancellationToken);
+
+        var lines = writer.ToString()
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(line => JsonElement.Parse(line))
+            .ToList();
+        var notifications = lines.Where(l => l.TryGetProperty("method", out _)).ToList();
+        var answers = lines.Where(l => !l.TryGetProperty("method", out _)).ToList();
+        // Every request is answered, and the crew call's two steps went out as progress notifications.
+        Assert.Equal(session.Length - 1, answers.Count);
+        Assert.Equal(2, notifications.Count);
+        Assert.All(notifications, n => Assert.Equal("notifications/progress", n.GetProperty("method").GetString()));
+        foreach (var line in lines)
+        {
+            var raw = line.GetRawText();
+            if (!line.TryGetProperty("method", out _))
+            {
+                Assert.True(line.TryGetProperty("result", out _) ^ line.TryGetProperty("error", out _), raw);
+                Assert.NotEqual(JsonValueKind.Null, line.GetProperty("id").ValueKind);
+            }
+
+            foreach (var member in line.EnumerateObject())
+                Assert.Empty(NullMembers(member.Value, member.Name));
+        }
+
+        // The prompt without a description is listed, and its answer read, without a null in either.
+        var listed = Answer(answers, 2).GetProperty("result").GetProperty("prompts")[0];
+        Assert.False(listed.TryGetProperty("description", out _));
+        Assert.False(listed.GetProperty("arguments")[0].TryGetProperty("description", out _));
+        Assert.False(Answer(answers, 3).GetProperty("result").TryGetProperty("description", out _));
+        // The errors are among the lines checked: the unknown prompt, the ping the modern lineage dropped.
+        Assert.True(Answer(answers, 4).TryGetProperty("error", out _));
+        Assert.True(Answer(answers, 8).TryGetProperty("error", out _));
+        Assert.True(Answer(answers, 5).TryGetProperty("result", out _));
+        Assert.True(Answer(answers, 7).TryGetProperty("result", out _));
+    }
+
+    private static JsonElement Answer(List<JsonElement> answers, int id) =>
+        answers.Single(a => a.GetProperty("id").ValueKind == JsonValueKind.Number && a.GetProperty("id").GetInt32() == id);
+
+    [Fact]
+    [Trait("BR", "#405")]
     public void ShouldLeaveOutWhatItDoesNotCarry_WhenAClientMessageIsWritten()
     {
         var request = JsonSerializer.Serialize(new JsonRpcRequest { Method = "tools/list", Id = JsonSerializer.SerializeToElement(1) });

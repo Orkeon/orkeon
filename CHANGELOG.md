@@ -19,33 +19,39 @@ one has a default body.
   overload that takes the id of the provider that served the call (#396). The interface member has a default body that
   forwards to the provider-less one, so a tracker written before it still compiles and ignores the provider.
 - `orkeon forge`: a folder of the team can say that its contents change from run to run (#400). `examples: true` on an
-  input folder — set by the assistant from the need, or by a client in `folders.confirmed` — makes the files found in
-  it at the fill step examples of what will come: the plan prompt presents them as such, asks for tasks made for
-  whatever the folder holds when the team runs, and tells the assistant to name none of them in a task, a goal or a
-  backstory; the large-file reading rule is then said for any large file, not for one by name, and is said even when
-  none of the examples is large. Absent, nothing changes: the plan is made for the files that are there, by their
-  names. An input folder a client confirms without the property keeps the value of the proposal; `examples: true` on
-  an output folder is a `FORGE-FOLDERS-INVALID`.
+  input folder — set by the assistant from the need, or by a client in `folders.confirmed` — makes the files found in it
+  at the fill step examples of what will come: the plan prompt presents them as such, asks for tasks made for whatever
+  the folder holds when the team runs, and tells the assistant to name none of them in a task, a goal or a backstory,
+  and the terminal marks the folder (`contents change — its files are examples`). The large-file reading rule is then
+  said for any large file, not for one by name, and a shorter one (search first, read only the ranges found) is said
+  even when none of the examples is large. Absent, the plan is made as before: for the files that are there, by their
+  names. An input folder a client confirms without the property keeps the value the proposal gave the same `path` (a
+  renamed folder says it again); `examples: true` on an output folder is refused, a `FORGE-FOLDERS-INVALID` in a
+  confirmed list and a refused `brief_submit` in the assistant's brief.
 
 ### Fixed
 
 - `shell_command` dropped the identity of a commit (#404): the command it starts receives a fixed list of the host's
-  variables, and `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME` and `GIT_COMMITTER_EMAIL` were not on
-  it. In the container image, where git has no `~/.gitconfig`, a crew allowed to commit
-  (`Orkeon:Tools:Shell:AllowInterpreters`) stopped on `Author identity unknown` whatever the caller passed with `-e`;
-  `Orkeon:Tools:Shell:Environment:Propagate` could not carry them either, its secret filter refusing `GIT_AUTHOR_*`
-  for the `AUTH` of `AUTHOR`. The four are now on the built-in list, under every confinement backend. They hold a name
-  and an address; no other `GIT_*` variable follows (`GIT_ASKPASS`, `GIT_SSH_COMMAND`, `GIT_CONFIG_GLOBAL`). The code
+  variables, and `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME` and `GIT_COMMITTER_EMAIL` were not on it.
+  Where git reads no `~/.gitconfig` - in a container, the image of this release among them, or in a session confined by
+  bubblewrap, Seatbelt or AppContainer, whose `HOME` is a folder of its own - a crew allowed to commit
+  (`Orkeon:Tools:Shell:AllowInterpreters`) stopped on `Author identity unknown` whatever identity the caller set;
+  `Orkeon:Tools:Shell:Environment:Propagate` could not carry them either, its secret filter refusing `GIT_AUTHOR_*` for
+  the `AUTH` of `AUTHOR`. The four are now on the built-in list, under every confinement backend. They hold a name and
+  an address; no other `GIT_*` variable follows (`GIT_ASKPASS`, `GIT_SSH_COMMAND`, `GIT_CONFIG_GLOBAL`). The code
   sandbox is unchanged.
-- The code index recorded no import between the Python files of a project (#406): the module of an import is a
-  dotted name, which the index did not read, so `dependency_graph` returned the modules with no edge and
-  `package_summary` no dependency. A Python import is now read from its syntax and resolved against the files of the
-  tree: `a/b.py` or `a/b/__init__.py` under the folders Python would search - for a script its own folder then each
-  folder above it, for a file of a package the folder above its topmost package first; a name of `from a.b import c`
-  that is a submodule reaches its file, the others reach `a.b`; `import a.b` where `b` is an attribute reaches `a.py`;
-  a relative import starts from the importing file's package. An absolute import that no folder holds still goes to
-  `ext::pypi::<first segment>`. An incremental refresh re-resolves the unchanged importers of a Python
-  file that joins the tree. An index built before this change holds no such edge until it is rebuilt.
+- The code index recorded no import of a Python file (#406): the module of an import is a dotted name, which the index
+  did not read, so `dependency_graph` returned the modules with no edge and `package_summary` no dependency. A Python
+  import is now read from its syntax and resolved against the files of the tree: `a/b.py` or `a/b/__init__.py` under the
+  folders Python would search - for a script its own folder then each folder above it, for a file of a package the
+  folder above its topmost package first; a name of `from a.b import c` that is a submodule reaches its file, the others
+  reach `a.b`; `import a.b` where `b` is an attribute reaches `a.py`; a relative import starts from the importing file's
+  package. An absolute import that no folder holds goes to `ext::pypi::<first segment>`. A base class named by its short
+  name, when several files declare it, now also resolves to the one in a file a Python import reaches. An incremental
+  refresh re-resolves the unchanged importers of a Python file that joins the tree when their import had gone to
+  `ext::pypi::` with a name of the new path below the indexed root, or to the `__init__.py` of a package above it; any
+  other importer keeps its edges until it changes or the index is rebuilt. An index built before this change holds no
+  such edge until it is rebuilt.
 - `orkeon mcp serve` wrote every member it did not carry as `null` (#405): a response held `"error": null` beside its
   result, or `"result": null` beside its error, where JSON-RPC allows one of the two. The client of the MCP TypeScript
   SDK - the one Claude Code and most MCP hosts use - refuses such a message, so the answer to `initialize` was dropped
@@ -63,14 +69,15 @@ one has a default body.
   git command (`rev-parse`, `commit`) still needs `Orkeon:Tools:Shell:AllowInterpreters`, which the image does not
   set. The release workflow runs the image's git on a mounted repository, as a user that does not own it, before it
   pushes the image.
-- `orkeon mcp serve` (`McpServer`) handed an array or an object of a `tools/call` to the tool as its raw JSON text (#402).
-  A tool that validates its parameters refused the call (`Parameter 'edge_kinds' has invalid type. Expected: array`):
-  26 of the built-in tools have an array parameter, and 11 a required one (`count_pattern`, `docx_writer`,
-  `edge_list`, `edit_batch`, `email_delete`, `email_mark`, `email_move`, `local_embed_text`, `rag_ingest`,
-  `sub_graph`, `xlsx_writer`), so they could not be called from an MCP client; a tool that does not validate read the
-  text as one value. The arguments now reach the tool as an agent's tool call carries them: an array is a list, an
-  object a dictionary, a whole number a `long` (it was a `double`), any other number a `double`, and `null` is `null`
-  (it was the string `null`). `tools/list` publishes the `items` of an array parameter (their type, and their
+- `orkeon mcp serve` (`McpServer`) handed an array or an object of a `tools/call` to the tool as its raw JSON text
+  (#402). A tool that validates its parameters refused the call
+  (`Parameter 'edge_kinds' has invalid type. Expected: array`), and one that does not read the text as one value
+  (`rag_ingest` took its `sources` for a single path): 26 of the tools the server serves have an array parameter, and 11
+  a required one (`count_pattern`, `docx_writer`, `edge_list`, `edit_batch`, `email_delete`, `email_mark`, `email_move`,
+  `local_embed_text`, `rag_ingest`, `sub_graph`, `xlsx_writer`), so they could not be called from an MCP client. The
+  arguments now reach the tool as typed values: an array is a list, an object a dictionary, a number written without a
+  fraction or an exponent that fits a `long` is a `long` (it was a `double`), any other number a `double`, and `null` is
+  `null` (it was the string `null`). `tools/list` publishes the `items` of an array parameter (their type, and their
   properties for an array of objects), as the schema an agent's model reads does. `rag_ingest` answers a glob rooted
   outside every mount with a tool error that names the path and the mounts, where the call ended in the JSON-RPC error
   `-32603`, and its `sources` parameter says it holds strings.
@@ -80,6 +87,12 @@ one has a default body.
   `MaxCostPerCrew` came from its own approximate rates instead, and an Ollama model was counted at those rates, not
   at 0. A host that passes the provider's id (`ollama`, `deepseek`, `zai`...) to the new `RecordUsage` overload now gets
   the row the pricing registry picks for that provider. A call to the provider-less overload is priced as before.
+
+### Documentation
+
+- The campaign of the drive tools against real accounts (DRIVE-07) is closed (#397, #399): its recorded pass ran on one
+  personal Google account and one personal Microsoft account; a work or school OneDrive account was not run, as
+  [the limitations](docs/reference/limitations.md) say.
 
 ## [1.2.0] - 2026-11-16
 

@@ -69,13 +69,15 @@ revision (`McpClient.SendAsync`).
 - `tools/list` is returned in **deterministic order** (ordinal sort by name — a 2026-07-28
   SHOULD, for stable client caches) with the modern `resultType`/`ttlMs`/`cacheScope`
   fields; legacy clients ignore these additive members.
-- Notifications (no `id`, or `notifications/*`) are never answered.
+- Notifications (no `id`, a `null` `id`, or `notifications/*`) are never answered.
 - A message never carries a `null` member: a response holds `result` or `error`, never both,
   and an optional member with no value is absent - a strict client (the MCP SDKs) refuses the
   message otherwise. The one `null` is the `id` of the answer to a line that could not be parsed.
-- The `arguments` of a `tools/call` reach the tool as the values an agent's tool call carries:
-  an array is a list, an object a dictionary, a whole number a `long`, any other number a
-  `double`, `null` is `null`. `tools/list` publishes the `items` of an array parameter.
+- The `arguments` of a `tools/call` (a `run_crew_*` tool of `--crew` aside: see below) reach the
+  tool as the values a tool call in the OpenAI format carries: an array is a list, an object a
+  dictionary, a number written without a fraction or an exponent is a `long` when it fits one, any
+  other number a `double`, `null` is `null` (an Anthropic tool call reads it as the text `null`).
+  `tools/list` publishes the `items` of an array parameter.
 - `tools/call` goes through `IToolInvocationPipeline`, the single invocation point of every
   agent turn, under the caller `mcp` (its agent id and role): the guardian's tool
   phase (`ToolGuard` — path traversal, SSRF targets, SQL injection), the call, the one

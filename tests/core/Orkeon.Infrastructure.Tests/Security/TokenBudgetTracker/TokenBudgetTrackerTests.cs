@@ -228,6 +228,38 @@ public class TokenBudgetTrackerTests
 
     [Fact]
     [Trait("BR", "#396")]
+    public void ShouldPriceWithTheProviderlessRows_WhenNoRowNamesTheProvider()
+    {
+        var registry = Registry();
+        var row = registry.TryGetPricing("gpt-4o");
+        Assert.NotNull(row);
+
+        // No built-in row is scoped to openai, and none to an invented id: both read the provider-less row.
+        var openai = TokenBudgetTrackerSut.EstimateCost(1_000_000, 1_000_000, "gpt-4o", "openai", registry);
+        var unknown = TokenBudgetTrackerSut.EstimateCost(1_000_000, 1_000_000, "gpt-4o", "invented-provider-396", registry);
+        var blind = TokenBudgetTrackerSut.EstimateCost(1_000_000, 1_000_000, "gpt-4o", registry);
+
+        Assert.Equal(row.PromptPricePerMillion + row.CompletionPricePerMillion, blind);
+        Assert.Equal(blind, openai);
+        Assert.Equal(blind, unknown);
+    }
+
+    [Fact]
+    [Trait("BR", "#396")]
+    public void ShouldUseTheApproximateRates_WhenAnUnpricedModelIsPassedWithAProvider()
+    {
+        var registry = Registry();
+
+        // deepseek has rows of its own, none for this model: the tracker's approximate rates apply, as without it.
+        var scoped = TokenBudgetTrackerSut.EstimateCost(1_000_000, 500_000, "invented-model-396b", "deepseek", registry);
+        var blind = TokenBudgetTrackerSut.EstimateCost(1_000_000, 500_000, "invented-model-396b", registry);
+
+        Assert.Equal(2m, scoped);
+        Assert.Equal(blind, scoped);
+    }
+
+    [Fact]
+    [Trait("BR", "#396")]
     public void ShouldReachTheProviderOverload_WhenTheTrackerIsCalledThroughItsInterface()
     {
         var options = Options.Create(new TokenBudgetOptions { MaxTokensPerAgent = 0, MaxTokensPerCrew = 0, MaxCostPerCrew = 1m });

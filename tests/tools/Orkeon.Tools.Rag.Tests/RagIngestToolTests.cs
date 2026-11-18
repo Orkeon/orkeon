@@ -1,5 +1,9 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tools.Rag.Tests.Doubles;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
@@ -196,6 +200,35 @@ public class RagIngestToolTests
         Assert.False(response.Success);
         Assert.Contains("/workspace", response.Error, StringComparison.Ordinal);
         Assert.Null(pipeline.LastRequest);
+    }
+
+    [Fact]
+    [Trait("BR", "#402")]
+    public async Task CallAsync_NamesThePathAndTheMounts_WhenAGlobIsRootedOutsideEveryMountOfTheFileSystem()
+    {
+        var physical = Directory.CreateTempSubdirectory("orkeon-rag-ingest-").FullName;
+        try
+        {
+            using var registry = new FileSystemRegistry([new FileSystemMount(physical, "/output", FileAccessRights.ReadWrite)]);
+            var fs = new FileSystemService(registry, new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
+            var pipeline = new FakeIngestionPipeline { Report = SampleReport() };
+            var tool = new RagIngestTool(pipeline, fs);
+
+            var response = await tool.CallAsync(new ToolCallRequest("rag_ingest",
+                new Dictionary<string, object?>
+                {
+                    ["collection"] = "docs",
+                    ["sources"] = new List<object?> { "/workspace/**/*.md" },
+                }), TestContext.Current.CancellationToken);
+
+            Assert.False(response.Success);
+            Assert.Contains("/workspace", response.Error, StringComparison.Ordinal);
+            Assert.Contains("Available mounts: /output", response.Error, StringComparison.Ordinal);
+            // The mount is named by its virtual path; its physical folder never reaches the caller.
+            Assert.DoesNotContain(physical, response.Error, StringComparison.Ordinal);
+            Assert.Null(pipeline.LastRequest);
+        }
+        finally { Directory.Delete(physical, recursive: true); }
     }
 
     [Fact]
