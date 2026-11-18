@@ -1,18 +1,18 @@
 # 55. Télémédecine Augmentée Streaming
 
-> Quatre agents assistent le médecin pendant une consultation via streaming temps réel. Le médecin (HumanAgent) garde le contrôle total. La mémoire de session est chiffrée.
+> Quatre agents assistent le médecin pendant une consultation via streaming temps réel. Le médecin (HumanAgent) garde le contrôle total. La mémoire de session est celle de la crew.
 
 ## Quality
 
-:lock: Securite -- Medecin controle tout, streaming temps reel, chiffrement session
+:lock: Securite -- Medecin controle tout, streaming temps reel
 
 ## Architecture
 
 - **Process**: `parallel`
 - **Agents**: 5 -- Transcriber, Question Suggester, Prescription Preparer, EHR Updater, Consulting Physician (human with permanent control)
 - **Tools**: `json_tool`, `http_api`, `file_write`
-- **Memory**: `EncryptedRedis` (consultation session)
-- **Key features**: Streaming capabilities, HumanInputContext permanent, EncryptedRedisMemoryProvider, IContextWindowManager
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: Streaming capabilities, HumanInputContext permanent, IContextWindowManager
 - **Runner**: `standard`
 
 ## Prerequisites

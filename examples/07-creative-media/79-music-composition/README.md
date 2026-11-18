@@ -11,7 +11,7 @@
 - **Process**: `consensual`
 - **Agents**: 5 — Melodist, Harmonist, Rhythmician, Arranger, Mixer
 - **Tools**: `json_tool`, `file_write`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: Consensus voting (unanimity), Communication Feedback protocol, iteration limit, output validation (music theory)
 - **Runner**: `standard`
 

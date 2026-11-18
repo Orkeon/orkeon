@@ -10,7 +10,7 @@
 
 - **Process**: `parallel` (monitoring) then `sequential` (intervention planning)
 - **Agents**: 6 — Pump Observer, Compressor Observer, Conveyor Observer, Diagnostician, Maintenance Planner, Parts Inventory Manager
-- **Tools**: `http_api`, `csv_reader`, `json_tool`, `database_query`, `file_write`
+- **Tools**: `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write`
 - **Memory**: `SQLite` (episodic per machine)
 - **Key features**: ObserverAgent, MemoryType.Episodic per machine, ICheckpointManager, TaskPriority
 - **Runner**: `standard`

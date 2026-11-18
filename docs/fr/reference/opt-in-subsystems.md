@@ -707,5 +707,7 @@ vérifient :
   `Enabled=true` garde les événements de chaque run après sa fin, avec `Store` `jsonl` (défaut) ou `sqlite`, sous
   `./.orkeon/runs` monté en `/runs` comme montage interne ; `orkeon runs list|show|tail` les relit. Un run est enregistré avec ou sans `--events` (sans, rien n'est écrit sur stdout). `orkeon-repl` ne publie
   pas d'événements de run. Ce qui est gardé, et masqué, est dans [`orkeon runs`](./cli.md#orkeon-runs) ; le gabarit de `orkeon init` active l'historique et ajoute `.orkeon/` au `.gitignore` du dossier courant.
-- **Un hôte écrit en C#** construit un `RunEventPublisher` sur `JsonLinesFileRunEventSink` ou `SqliteRunEventSink`
-  (expérimental `ORKEXP007`, voir les [API expérimentales](./experimental-apis.md)) et relit par `IRunHistoryReader`.
+- **Un hôte écrit en C#** obtient l'historique par `RunnerHost` (`Orkeon:RunHistory:Enabled`, ou `RunHistoryByDefault`
+  de son `RunnerMountPlan`), ou écrit dans le `SqliteRunEventSink` public (expérimental `ORKEXP007`, voir les
+  [API expérimentales](./experimental-apis.md)) et relit par `IRunHistoryReader` ; `RunEventPublisher` et
+  `JsonLinesFileRunEventSink` sont internes.

@@ -10,8 +10,9 @@
 
 - **Process**: `parallel`
 - **Agents**: 5 -- Bank Extractor, ERP Extractor, CRM Extractor, Reconciliation Analyst, Discrepancy Corrector
-- **Tools**: `http_api`, `csv_reader`, `database_query`, `json_tool`, `file_write`
-- **Memory**: `Redis` (shared intermediate state)
+- **Tools**: `http_api`, `csv_reader`, `relational_database_query`, `json_tool`, `file_write`,
+  `audit_trail`, `dashboard_metrics`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: Batch tool execution, ICheckpointManager, tolerant JSON converters, output validation JSON schema
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 

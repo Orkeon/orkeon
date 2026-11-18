@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 4 -- Training Program Planner, Performance Analyst, Sports Nutritionist, Recovery Coach
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: `SQLite` (episodic athlete history)
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: MemoryType.Episodic, AgentConfiguration adaptive, TaskContext typed, EvaluationScore (performance tracking)
 - **Runner**: `standard`
 

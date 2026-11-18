@@ -4,14 +4,14 @@
 
 ## Quality
 
-🔒 Securite — Complete audit trail, NIST compliance, encrypted data at rest
+🔒 Securite — Complete audit trail, NIST compliance
 
 ## Architecture
 
 - **Process**: `Hierarchical`
 - **Agents**: 5 — Chief Analyst (Manager), Analyste Juridique (Worker), Analyste Financier (Worker), Analyste Reputation (Worker), Analyste Conformite (Worker)
 - **Tools**: `pdf_reader`, `csv_reader`, `web_scrape`, `http_api`, `json_tool`
-- **Memory**: `EncryptedSQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `INistComplianceReporter`, `AuditEventTypes` + builders, `LlmCallAudit`, `EvaluationScore` for scoring findings
 - **Runner**: `standard`
 
@@ -39,4 +39,4 @@ orkeon run examples/01-enterprise/07-due-diligence-nist/config.yaml \
 
 - Hierarchical due diligence process with specialist delegation
 - NIST-compliant audit trail ensuring full traceability of every finding
-- Encrypted data storage for confidential M&A information
+- Crew memory for confidential M&A information

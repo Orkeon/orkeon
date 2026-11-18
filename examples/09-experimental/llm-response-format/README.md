@@ -20,10 +20,10 @@ Both expect the same effective DeepSeek payload:
 
 ## Run
 
-This demo is design-only — no `Program.cs`. Wire either file into your
-standard runner (`OrkeonScriptingRunner` for the `.ork.ts`, or the YAML
-crew loader for `crew.yaml`) the same way you'd wire any other example
-crew. The point is the YAML/TS syntax and the effective payload that hits
+This demo has no `Program.cs`. Run `crew.yaml` with
+`orkeon run examples/09-experimental/llm-response-format/crew.yaml`. `crew.ork.ts`
+builds its crew without handing it to the host: to run it with `orkeon run`, end
+the script with `globalThis.crew = crewBuilder()…build();`. The point is the YAML/TS syntax and the effective payload that hits
 the wire, not a runnable trading bot.
 
 ## Caveat — the "json" keyword

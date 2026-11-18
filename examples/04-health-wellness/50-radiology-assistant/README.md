@@ -11,8 +11,8 @@
 - **Process**: `sequential`
 - **Agents**: 5 -- Image Preprocessor, ROI Analyst, Historical Comparator, Report Drafter, Supervising Radiologist (human)
 - **Tools**: `file_read`, `json_tool`, `http_api`, `file_write`
-- **Memory**: `EncryptedSQLite` (patient imaging history)
-- **Key features**: HumanInputContext (mandatory final validation), MemoryType.LongTerm (imaging history), EncryptedSqliteMemoryProvider
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: HumanInputContext (mandatory final validation), MemoryType.LongTerm (imaging history)
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -38,5 +38,5 @@ orkeon run examples/04-health-wellness/50-radiology-assistant/config.yaml \
 ## What this example demonstrates
 
 - Mandatory human radiologist sign-off preventing any auto-validated reports
-- Longitudinal comparison with encrypted patient imaging history
+- Longitudinal comparison with the patient imaging history in crew memory
 - Structured reporting following ACR standards with preliminary/final workflow

@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 3 — Narrator, Ambiance Writer, Consistency Checker
 - **Tools**: `json_tool`, `file_read`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: choice tree written by the crew, HumanInputContext (MultipleChoice), ObserverAgent (coherence), MemoryType.Episodic
 - **Runner**: `standard`
 

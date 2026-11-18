@@ -209,7 +209,7 @@ members, not through copies of the payload builder:
 
 | Seam | Default | Overridden by |
 |---|---|---|
-| `ApplyProviderSpecificOptions` | judges the thinking options and writes `response_format` from the declared capabilities | Together AI (adds `context_length_exceeded_behavior: truncate`) |
+| `ApplyProviderSpecificOptions` | judges the thinking options and writes `response_format` from the declared capabilities | Together AI (adds `context_length_exceeded_behavior: truncate`); Kimi (removes `temperature` and `top_p` on the `kimi-k3` family, with a structured warning) |
 | `WriteReasoningFields` | writes the judged thinking controls (switch, effort, budget); the default writes `thinking: {type}` and `reasoning_effort` | Qwen (`enable_thinking`, `thinking_budget`), OpenRouter (the `reasoning` request object), Together AI (`reasoning: {enabled}`), Hugging Face (`chat_template_kwargs.enable_thinking`), MiniMax (`thinking: disabled` only) |
 | `MaxTokensFieldName` | `max_tokens` | OpenAI (`max_completion_tokens`) |
 | `AlwaysEmitTopP` | `top_p` written only when set | Mistral (`top_p: 1` when nothing sets one) |

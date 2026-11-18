@@ -22,8 +22,8 @@ Several crews here declare `memoryProvider: "Redis"` or `"SQLite"`: the connecti
 that runs a crew of one agent and one task with `ICrewOrchestrationService.KickoffStreamingAsync`:
 the same run as `KickoffAsync`, whose events arrive as it goes — the task's start, the
 model's text as it is written, the task's end, then `run.finished` with the run's output.
-Run it directly with `dotnet run --project 09-experimental/streaming-demo`. It reads
-its own `appsettings.json` (Docker Model Runner by default).
+Run it from its folder (`cd 09-experimental/streaming-demo && dotnet run`): it reads the
+`appsettings.json` of the current directory, the folder's own one (Docker Model Runner by default).
 
 ## llm-response-format
 

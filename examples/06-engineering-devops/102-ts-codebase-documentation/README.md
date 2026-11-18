@@ -1,6 +1,6 @@
 # 102. Analyse de Codebase TypeScript et Plan de Migration Orkeon
 
-> Crew de 6 agents en 3 phases séquentielles qui analyse exhaustivement un codebase TypeScript, produit sa spécification fonctionnelle complète, puis génère le plan de migration vers une architecture Orkeon.
+> Crew de 7 agents — un superviseur et six spécialistes — dont l'unique tâche `orchestrate_analysis` enchaîne trois phases : analyse exhaustive d'un codebase TypeScript, spécification fonctionnelle complète, puis plan de migration vers une architecture Orkeon.
 
 ## Quality
 
@@ -9,7 +9,7 @@ Exhaustivite — Inventaire fichier par fichier, specification fonctionnelle en 
 ## Architecture
 
 - **Process**: `sequential`
-- **Agents**: 6 — Codebase Explorer, Code Analyst, Dependency Mapper, Functional Analyst, Orkeon Architect, YAML Generator
+- **Agents**: 7 — Crew Supervisor (délègue), Codebase Explorer, Code Analyst, Dependency Mapper, Functional Analyst, Orkeon Architect, YAML Generator
 - **Tools**: `directory_read`, `file_read`, `file_write`, `json_tool`
 - **Memory**: `InMemory`
 - **Key features**: 3-phase pipeline (inventory -> functional spec -> migration plan), Mermaid dependency graphs, UC/RG templates, YAML + C# generation
@@ -17,7 +17,7 @@ Exhaustivite — Inventaire fichier par fichier, specification fonctionnelle en 
 
 ## Points de montage
 
-La crew utilise deux points de montage pour separer clairement le code source de l'application analysee et les livrables generes (syntaxe Docker-style, cf. `SPEC-FILESYSTEM-SANDBOX.md` §3.1) :
+La crew utilise deux points de montage pour separer clairement le code source de l'application analysee et les livrables generes (syntaxe Docker-style, cf. la table `--mount` de [Lancer votre premier exemple](../../../docs/getting-started/run-your-first-example.md#every-flag-explained)) :
 
 | Declaration | Chemin virtuel | Droits | Role |
 |-------------|---------------|--------|------|
@@ -34,16 +34,18 @@ La crew utilise deux points de montage pour separer clairement le code source de
 ## Run
 
 ```bash
-orkeon run examples/06-engineering-devops/102-ts-codebase-documentation/config.yaml \
+orkeon run examples/06-engineering-devops/102-ts-codebase-documentation/config.yaml --allow-external-mounts \
   --mount /home/you/my-ts-project:/src:ro /home/you/analysis-output:/output:rw
 ```
 
 Windows :
 
 ```bash
-orkeon run examples/06-engineering-devops/102-ts-codebase-documentation/config.yaml \
+orkeon run examples/06-engineering-devops/102-ts-codebase-documentation/config.yaml --allow-external-mounts \
   --mount C:\Projects\my-ts-project:/src:ro C:\temp\analysis-output:/output:rw
 ```
+
+Les deux dossiers sont hors du répertoire courant : `--allow-external-mounts` (ou `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`) est requis.
 
 La CLI `orkeon` gere automatiquement : DI (Application + Infrastructure + toutes les suites d'outils), resolution du provider LLM depuis `appsettings.json`, `CrewFactory.CreateFromFileAsync()` et `KickoffAsync`.
 
@@ -75,7 +77,7 @@ La CLI `orkeon` gere automatiquement : DI (Application + Infrastructure + toutes
 
 ## ProcessType retenu
 
-**Sequential** — Les 3 phases sont strictement sequentielles : Phase 1 (inventaire) doit etre complete avant Phase 2 (spec fonctionnelle), qui doit etre complete avant Phase 3 (plan de migration). Le mode Hierarchical n'apporte pas de valeur (pas de routing dynamique). Le mode Parallel n'est pas applicable (aucune task independante).
+**Sequential**, avec une seule tâche : `orchestrate_analysis` est confiée au `supervisor` (`allowDelegation: true`), qui délègue chaque étape aux spécialistes via `delegate_work` (`wait_for_result=true`), dans l'ordre : Phase 1 (inventaire) complete avant Phase 2 (spec fonctionnelle), complete avant Phase 3 (plan de migration). Le mode Hierarchical n'apporte pas de valeur (pas de routing dynamique). Le mode Parallel n'est pas applicable (aucune task independante).
 
 ## Calibration des agents
 
@@ -89,6 +91,8 @@ La CLI `orkeon` gere automatiquement : DI (Application + Infrastructure + toutes
 | `yaml_generator` | 60 | 10 | false | 4 livrables techniques sequentiels |
 
 ## Chaine de dependances
+
+Les noeuds sont les étapes que le superviseur délègue dans l'unique tâche, pas des tâches de la config.
 
 ```mermaid
 graph TD
@@ -126,9 +130,9 @@ Legende : Vert = Phase 1 (Inventaire), Bleu = Phase 2 (Spec fonctionnelle), Oran
 
 | Nom YAML | Classe | Package | Agents utilisateurs | Suite DI |
 |----------|--------|---------|---------------------|----------|
-| `directory_read` | `DirectoryReadTool` | `Orkeon.Tools.FileSystem` | `codebase_explorer` | `AddOrkeonFileSystemTools()` |
-| `file_read` | `FileReadTool` | `Orkeon.Tools.FileSystem` | Tous les 6 agents | `AddOrkeonFileSystemTools()` |
-| `file_write` | `FileWriteTool` | `Orkeon.Tools.FileSystem` | 5 agents (sauf `codebase_explorer`) | `AddOrkeonFileSystemTools()` |
+| `directory_read` | `DirectoryReadTool` | `Orkeon.Tools.FileSystem` | `supervisor`, `codebase_explorer` | `AddOrkeonFileSystemTools()` |
+| `file_read` | `FileReadTool` | `Orkeon.Tools.FileSystem` | Les 6 spécialistes (pas `supervisor`) | `AddOrkeonFileSystemTools()` |
+| `file_write` | `FileWriteTool` | `Orkeon.Tools.FileSystem` | Les 7 agents | `AddOrkeonFileSystemTools()` |
 | `json_tool` | `JsonTool` | `Orkeon.Tools.Data` | `dependency_mapper` | `AddOrkeonDataTools()` |
 
 Aucun outil custom n'est requis pour cette crew. Les 4 outils natifs couvrent l'integralite des besoins : `file_read` lit tout fichier texte (TypeScript inclus), `directory_read` avec `recursive: true` et `pattern: "*.ts"` permet le scan exhaustif, `file_write` cree les livrables markdown/YAML/C# avec creation automatique des dossiers parents, et `json_tool` en mode `parse`/`query` structure les donnees de dependances.

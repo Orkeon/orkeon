@@ -11,7 +11,7 @@
 - **Process**: `Parallel`
 - **Agents**: 4 — Analyseur Publications (Worker), Analyseur Brevets (Worker), Analyseur Financements (Worker), Futuriste-Synthetiseur (Worker)
 - **Tools**: `http_api`, `web_scrape`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `MemoryType.LongTerm` (auto-calibration), `EvaluationScore` (accuracy tracking), `BenchmarkRunner` (backtesting)
 - **Runner**: `standard`
 

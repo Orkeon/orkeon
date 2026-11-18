@@ -1,17 +1,17 @@
 # 56. Tuteur Adaptatif — Modèle Apprenant Persistant
 
-> Le modèle de l'apprenant est persisté en SQLite et s'enrichit à chaque session. Le tuteur adapte non seulement le niveau mais aussi le style pédagogique mémorisé.
+> Le modèle de l'apprenant est gardé dans la mémoire de la crew et s'enrichit à chaque session (d'une exécution à l'autre si le `Memory:Provider` de l'hôte est durable, SQLite par exemple). Le tuteur adapte non seulement le niveau mais aussi le style pédagogique mémorisé.
 
 ## Quality
 
-✅ Fiabilite — Modele persistant multi-session, adaptation multi-dimensionnelle
+✅ Fiabilite — Modele de l'apprenant en memoire de crew (multi-session sur un `Memory:Provider` durable), adaptation multi-dimensionnelle
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 4 — Level Assessor, Adaptive Pedagogue, Motivation Coach, Examiner
 - **Tools**: `json_tool`, `file_read`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: MemoryType.LongTerm (learner profile), MemoryType.Episodic (session history), EvaluationSuite for diagnostics, IContextWindowManager
 - **Runner**: `standard`
 
@@ -37,6 +37,6 @@ orkeon run examples/05-education/56-adaptive-tutor/config.yaml \
 
 ## What this example demonstrates
 
-- Persistent learner model that enriches across sessions via long-term memory
+- Learner model that enriches across sessions via long-term crew memory, when the host's `Memory:Provider` is durable
 - Multi-dimensional adaptation (level + pedagogical style)
 - Sequential pipeline: diagnose, teach, motivate, assess

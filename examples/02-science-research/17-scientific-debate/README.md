@@ -11,7 +11,7 @@
 - **Process**: `Consensual`
 - **Agents**: 4 — Moderateur (`managerAgent:`, the arbiter — see below), Defenseur Position A (Worker), Defenseur Position B (Worker), Voix Moderee (Worker)
 - **Tools**: `web_scrape`, `http_api`, `json_tool`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: Communication `Consensus` protocol, configurable iteration limit, `IContextWindowManager`
 - **Runner**: `standard`
 

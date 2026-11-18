@@ -11,7 +11,7 @@
 - **Process**: `Sequential`
 - **Agents**: 1 — Resumeur Adaptatif (Worker)
 - **Tools**: `pdf_reader`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `MemoryType.LongTerm` (reader profile), `ITextChunker` (long documents), `IContextWindowManager`, `AgentConfiguration` dynamic
 - **Runner**: `standard`
 

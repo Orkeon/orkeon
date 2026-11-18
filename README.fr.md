@@ -153,7 +153,7 @@ L'équipe que vous forgez à partir d'une phrase est le YAML que le CLI exécute
 
 | | |
 |---|---|
-| **Windows** — CLI | `orkeon-cli-<version>-win-x64.zip` ou le `.msi` depuis les [releases](https://github.com/Orkeon/orkeon/releases), puis `install.cmd`. Autonome. |
+| **Windows** — CLI | `orkeon-cli-<version>-win-x64.zip` depuis les [releases](https://github.com/Orkeon/orkeon/releases), puis `install.cmd`, ou le `.msi`, qui met lui-même `orkeon` sur votre `PATH`. Autonome. |
 | **Debian / Ubuntu** — CLI | `sudo apt install orkeon` après avoir ajouté la [source apt signée](docs/fr/guides/install-with-apt.md). |
 | **macOS** — CLI | L'archive `osx-arm64` / `osx-x64` depuis les releases, puis `./install.sh`. |
 | **Conteneur** | `docker run -it --rm -e ORKEON_ENTRYPOINT=shell ghcr.io/orkeon/orkeon` — les exemples embarqués. |

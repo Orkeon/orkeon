@@ -11,7 +11,7 @@
 - **Process**: `Parallel`
 - **Agents**: 4 — Collecteur Amazon (Worker), Collecteur Google (Worker), Collecteur Reseaux Sociaux (Worker), Agregateur de Sentiments (Worker)
 - **Tools**: `web_scrape`, `http_api`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: crew memory enabled (`memory: true`)
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: Batch tool execution, `EvaluationScore` for sentiment scoring
 - **Runner**: `standard`
 

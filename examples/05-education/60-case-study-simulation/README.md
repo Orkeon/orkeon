@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 3 — Scenario Master, Client Persona, Competency Observer
 - **Tools**: `json_tool`, `file_write`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: HumanInputContext (Text, MultipleChoice, Confirmation), ObserverAgent (evaluation), EvaluationScore, YAML scenarios
 - **Runner**: `standard`
 

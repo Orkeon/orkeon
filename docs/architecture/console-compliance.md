@@ -30,7 +30,7 @@ of two categories, checked by `SuppressionReasonCategoryTests`:
 | Category | Meaning | Where |
 |---|---|---|
 | `CONSOLE-ADAPTER` | An implementation of a console abstraction over the process console | `SystemConsoleAdapter`, `LineEditingConsoleAdapter`, `SystemLineEditorConsole` (`Orkeon.Cli.Abstractions`), `SystemRunnerConsole` (`Orkeon.Hosting`), `SystemTerminalProbe` (`Orkeon.Cli.TerminalGui`) |
-| `CONSOLE-SINK` | The one place of an executable that hands the real streams on | `orkeon` (`Program.UseUtf8Console`), `orkeon-repl` (`Program.Main`), `orkeon-host` (`HostConsole`, `StartupFailureReporting.cs`) |
+| `CONSOLE-SINK` | The one place of an executable that hands the real streams on | `orkeon` (`Program.UseUtf8Console`), `orkeon-repl` (`Program.Main`, `Program.HandleReplayInterrupt` and its `CancelKeyRegistration`, which own Ctrl+C while a replay runs in the plain console), `orkeon-host` (`HostConsole`, `StartupFailureReporting.cs`) |
 
 Nothing else carries it: a new executable gets one sink, a new console abstraction one adapter.
 

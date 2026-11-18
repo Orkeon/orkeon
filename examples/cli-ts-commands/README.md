@@ -138,8 +138,8 @@ scripted> /review-bg examples/README.md
 
 - `/review` — **synchrone** : `runCrew(nom, input)` bloque et rend `{ ok, summary, error }`.
 - `/review-bg` — **asynchrone** : `runCrewAsync` rend un ticket tout de suite, et `completed(...)`
-  s'exécute dès que la crew se termine. Même cycle de tickets que `commands.post`, donc `/ps`, `/inspect`,
-  `/result` et `/cancel` de `dispatch.cmd.ts` fonctionnent aussi dessus.
+  s'exécute dès que la crew se termine. Même cycle de tickets que `commands.post`, donc les commandes intégrées `/ps`, `/inspect`,
+  `/result` et `/cancel` fonctionnent aussi dessus.
 
 La crew de démonstration n'appelle aucun LLM : tout ceci tourne sans clé d'API.
 

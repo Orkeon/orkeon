@@ -171,7 +171,7 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 `orkeon doctor` rapporte la même phrase en ligne `warn` de `runner-settings`, une par section, et
 sort toujours en `0`. Les sections sont celles que le catalogue des réglages marque comme lues par
 aucun binaire livré : `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:MultiModal`, `Evaluation` et `Orkeon:VectorSearch`
+`Orkeon:MultiModal` et `Orkeon:VectorSearch`
 ([sous-systèmes opt-in](./opt-in-subsystems.md)). La liste est calculée, pas écrite : une section
 qu'un binaire livré se met à lire en sort. Ne sont pas signalées : une section qu'un autre binaire
 livré lit (`Orkeon:Host` dans un fichier que lit `orkeon run`), une section de la racine
@@ -1714,10 +1714,10 @@ livré : c'est celui qui est installé sur la machine. La fenêtre est visible s
 
 Connexions client MCP (`MCP:Servers:<nom>`) et l'interrupteur `MCP:Enabled`. Aucun réglage ne
 démarre un serveur MCP : une clé que la section ne porte pas est refusée au démarrage comme toute clé inconnue. Lue par `RunnerHost` (`orkeon run`, `orkeon-host`,
-`orkeon mcp serve`) dès que `MCP:Servers` déclare au moins un serveur et que `MCP:Enabled` n'est
+`orkeon mcp serve`) et par `orkeon-repl` (`RunnerHost.RegisterMcp`) dès que `MCP:Servers` déclare au moins un serveur et que `MCP:Enabled` n'est
 pas `false` — les serveurs sont connectés avant le chargement de la crew,
-par `orkeon-host` une fois au démarrage, avant son premier message, et par
-`orkeon mcp serve` avant qu'il serve ; les hôtes bibliothèque appellent
+par `orkeon-host` une fois au démarrage, avant son premier message, par `orkeon-repl` avant
+qu'il charge ses commandes scriptées, et par `orkeon mcp serve` avant qu'il serve ; les hôtes bibliothèque appellent
 `AddOrkeonMcp(configuration)` ou la surcharge `AddOrkeonInfrastructure(configuration)` — voir
 [Intégration MCP](../architecture/mcp.md).
 

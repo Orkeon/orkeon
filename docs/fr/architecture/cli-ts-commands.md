@@ -187,7 +187,8 @@ interface CommandRuntimeContext {
   setTheme(name: "dark" | "light" | "none"): boolean
   clear(): void;
 
-  prompt(spec: PromptSpec): Promise<string | boolean>;
+  prompt(spec: PromptSpec): Promise<string | boolean | null>;   // null : un select abandonné (Échap)
+  readonly interactive: boolean;
   progress(spec: { total?: number; label: string }): ProgressHandle;
   table<T extends object>(rows: readonly T[], columns?: readonly (keyof T)[]): void;
 
@@ -458,7 +459,7 @@ pendant que le travail async tourne en arrière-plan) :
 | `cancel --ticket=<t>`      | Demande l'annulation d'un ticket en vol.                      |
 
 Une `CommandInstanceView` porte : `ticket`, `name`, `kind` (`sync`/`async`),
-`targetAgent`, `intent`, `correlationId`, `state`, `startedAt`, `completedAt?`,
+`targetAgent`, `intent`, `correlationId`, `state`, `onMain`, `startedAt`, `completedAt?`,
 `elapsedMs`, `tokens`, `result?`, `error?`, `progress?`. Les tickets s'écrivent `t1`,
 `t2`, … ; les 200 entrées terminales les plus récentes sont conservées pour que
 `result`/`inspect` puissent lire un ticket récent, puis évincées. Les quatre commandes

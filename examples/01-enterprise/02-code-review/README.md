@@ -11,7 +11,7 @@
 - **Process**: `Hierarchical`
 - **Agents**: 5 — Review Lead (Manager), Revieweur Securite (Worker), Revieweur Performance (Worker), Revieweur Tests (Worker), Revieweur Style (Worker)
 - **Tools**: `file_read`, `directory_read`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: Delegation, `EvaluationSuite` + `LlmJudgeEvaluator` for review scoring, output validation JSON schema
 - **Runner**: `standard`
 

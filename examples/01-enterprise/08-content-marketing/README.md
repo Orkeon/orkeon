@@ -11,7 +11,7 @@
 - **Process**: `Sequential`
 - **Agents**: 4 — Stratege d'Angle (Worker), Redacteur (Worker), Editeur SEO (Worker), Fact-Checker (Worker)
 - **Tools**: `web_scrape`, `file_write`, `json_tool`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: Linear task dependencies, output validation for publication format
 - **Runner**: `standard`
 

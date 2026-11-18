@@ -10,8 +10,9 @@
 
 - **Process**: `parallel`
 - **Agents**: 5 -- US Tax Specialist, EU Tax Specialist, APAC Tax Specialist, Strategy Consolidator, Senior Tax Advisor (human)
-- **Tools**: `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: crew memory enabled (`.memory(true)`)
+- **Tools**: `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`,
+  `regulatory_reporting`, `audit_trail`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: HumanInputContext, batch execution
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 

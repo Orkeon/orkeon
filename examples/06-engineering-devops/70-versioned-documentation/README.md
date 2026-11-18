@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 4 — Code Extractor, API Documenter, Architecture Diagrammer, Coherence Editor
 - **Tools**: `file_read`, `directory_read`, `github`, `json_tool`, `file_write`
-- **Memory**: crew memory enabled (`memory: true`)
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: IDocumentLoader, ITextChunker
 - **Runner**: `standard`
 

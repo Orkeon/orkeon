@@ -11,7 +11,7 @@
 - **Process**: `parallel`
 - **Agents**: 4 — Content Grader, Form Grader, Methodology Grader, Grade Consolidator
 - **Tools**: `file_read`, `json_tool`, `file_write`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: EvaluationSuite multi-criteria, LlmJudgeEvaluator (inter-grader consistency), EvaluationScore normalized, InMemoryDataset (calibration copies)
 - **Runner**: `standard`
 

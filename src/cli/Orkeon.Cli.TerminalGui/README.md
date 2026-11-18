@@ -23,9 +23,10 @@ See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/ref
 - Publishes itself as a process-wide `AmbientLoggerProvider` so child
   `IHost`s (e.g. spawned by `RunOneShotAsync` for a verify command) re-route
   their `AddSimpleConsole` writes into the same pane instead of polluting stdout.
-- Adds keyboard shortcuts via a `StatusBar` (every shortcut is bound at the
-  application level via `Shortcut.BindKeyToApplication = true` so focused
-  TextFields don't swallow them):
+- Adds keyboard shortcuts: the application-wide ones are global `Application.KeyDown`
+  handlers installed by `GlobalKeyBindings`, so focused TextFields don't swallow them;
+  `Esc Esc`, the prompt history and the tasks-list keys are handled by the focused view.
+  The `HintBarView` under the prompt recalls a few of them:
 
 | Shortcut | Action |
 |---|---|
@@ -286,7 +287,7 @@ These lifecycle lines go to the `main` screen. The recipient stays on a task tha
 ends; `@<task> finished · recipient is main` is printed, and the recipient goes back
 to `main`, only when the host forgets the recipient task, while the prompt has focus. A poll whose row provider throws writes
 nothing and leaves the rows, the list and the recipient as they were. `Esc Esc` prints `  ⎿  Interrupted · What should Orkeon do instead?`.
-With `--glyphs ascii` the glyphs `❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` become
+With `TerminalGuiOptions.Glyphs = GlyphMode.Never` (or `Auto`, the default, on an output that is not UTF-8) the glyphs `❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` become
 `> * o v x - > | * - ^ v ...`, the hint bar's `↑/↓` and the cut phrase included.
 
 ## Model witness
@@ -323,25 +324,16 @@ reached (OS clipboard, OSC 52) and each paste read from. Use
 
 ## Known limitations
 
-- **Tests crash inside xUnit (TUI-12 → TUI-18).** Terminal.Gui v2.0.1's
-  `ModuleInitializer` walks every loaded assembly's custom attributes and
-  trips on a `MemberNotNullWhenAttribute` reference in
-  `Microsoft.TestPlatform.CoreUtilities`. Layout/adapter/host tests are
-  marked `[Fact(Skip = "…TUI-12")]` until upstream patches land. In-process
-  helper tests (TtyDetector, options, log Format helpers, MoreVerbose /
-  LessVerbose, DI registration shape, UiFlagParser) do pass — currently 55
-  green, 35 skipped. End-to-end behaviour validated via standalone probes
-  during development.
-- **Static `Application` API is `[Obsolete]` in v2.1.0.** Terminal.Gui is
-  migrating to an instance-based `IApplication` model. We pin to v2.0.1
-  (TUI-18 tracks 2.1.x re-eval). The static API still works; we suppress
+- **Static `Application` API is `[Obsolete]` since v2.1.0.** Terminal.Gui is
+  migrating to an instance-based `IApplication` model; the version in use is
+  pinned in `Directory.Packages.props` (2.5.0). The static API still works; we suppress
   `CS0618` in `Orkeon.Cli.TerminalGui.csproj` and have isolated the
   dependency in `Hosting/TerminalGuiHost.cs` and `Layout/UiDispatchers.cs`
   so the migration is a localized refactor.
 - **DI lifecycle**: `TerminalGuiHost`'s constructor takes only
-  `TerminalGuiOptions`. The status bar (which depends on
-  `TerminalGuiLoggerProvider` for the F2 log-level cycle) is built and
-  attached by the LoggerProvider's DI factory after both Host and Provider
+  `TerminalGuiOptions`. The global key bindings (which depend on
+  `TerminalGuiLoggerProvider` for the F2 log-level cycle) are installed
+  by the LoggerProvider's DI factory after both Host and Provider
   exist. This breaks an otherwise cyclic dependency that made
   `Microsoft.Extensions.Hosting` exit silently with code 0 inside `.Build()`
   (TUI-14). Always register Host without explicit `TerminalGuiLoggerProvider`
@@ -352,11 +344,6 @@ reached (OS clipboard, OSC 52) and each paste read from. Use
   HttpLlmProviderBase does, so once the orchestrator decides to exit it
   cancels the live HTTP call quickly. Workaround: `Ctrl+Q`, confirmed, quits.
   Fix is a framework-level audit (out of scope for the TUI).
-- **`RunnerExecution.RunInteractiveLoopAsync` writes to `Console.*`
-  directly.** It accepts the `--ui` flag transparently but TUI mode would be
-  ineffective until that helper is refactored to use `IConsoleAdapter`.
-  ConsoleApp's `MainMenuRunner` and `QaRunner` (which inherit
-  `InteractiveRunnerBase`) are wired correctly.
 
 The three UI behaviors (auto-TUI on a terminal, forced plain via
 `--ui plain`, pipe fallback to plain) are covered by the automated suite:

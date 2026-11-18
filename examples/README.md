@@ -120,9 +120,9 @@ orkeon run examples/01-enterprise/01-research-assistant/config.yaml
 dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/01-enterprise/01-research-assistant/config.yaml
 ```
 
-`run-example.sh` also handles the **code-driven examples** (the `rag/*`,
-`raggable-tree/*`, `local-embeddings/` and `streaming-demo` showcases, which are
-C# projects rather than YAML crews): when it finds a `.csproj` instead of a
+`run-example.sh` also handles the **code-driven examples** (the C# projects of
+`rag/` and `raggable-tree/`, `local-embeddings/` and `streaming-demo`, rather than
+YAML crews): when it finds a `.csproj` instead of a
 `config.yaml`, it falls back to `dotnet run --project <that project>`.
 
 ## Automated Testing

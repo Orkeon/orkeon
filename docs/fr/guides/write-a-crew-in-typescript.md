@@ -343,7 +343,7 @@ vaut mieux connaître avant d'en être surpris :
 | `stateGraph literal must declare an edge from START` | `edges` écrit comme un tableau. C'est un objet indexé par nœud source. |
 | `stateGraph '…' has an invalid topology: … Graph has no path from START to END.` | Aucune route statique ; ajoutez-en une ou passez par une arête conditionnelle. |
 | `StateMutationOutsideWithException` | `ctx.state.x = …` au lieu de `ctx.state.with(...)`. |
-| `.concurrency must be positive` / `V1 supports .concurrency(1) only` | Le sémaphore à N détenteurs est en V1.5. |
+| `.concurrency must be positive` / `.concurrency(1) is the only value accepted` | `.concurrency(n)` avec n ≤ 0 ou n > 1 : la concurrence d'un agent est un mutex. |
 | `RecursiveAgentInvocationException` | `ctx.spawn` d'un agent portant le nom de l'appelant, ou `ctx.delegate` / `crew.runAgent` de l'agent appelant lui-même. |
 | `.llm(...) takes an LlmConfig` | Un nom de modèle ou un littéral `{ provider, model }` passé à `.llm(...)`. Écrivez `.llm(llm.model("…"))` ; le fournisseur est celui de l'hôte. |
 | `.withAutonomousTool(tool) takes what toolBuilder()…build() returns` | Un nom ou un objet simple. Les outils intégrés vont dans `.tools([...])`. |

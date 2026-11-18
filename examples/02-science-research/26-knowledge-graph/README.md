@@ -10,8 +10,8 @@
 
 - **Process**: `sequential`
 - **Agents**: 5 — Extracteur Entites (Worker), Detecteur Relations (Worker), Classificateur Taxonomique (Worker), Detecteur Contradictions (Worker), Visualisateur Graphe (Worker)
-- **Tools**: `pdf_reader`, `json_tool`, `http_api`, `file_write`
-- **Memory**: `Redis`
+- **Tools**: `pdf_reader`, `json_tool`, `file_write`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: sequential hand-off between specialists, contradiction detection, `IKnowledgeSource` (feeding)
 - **Runner**: `standard`
 

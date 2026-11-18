@@ -11,7 +11,7 @@
 - **Process**: `Sequential`
 - **Agents**: 4 — Trieur d'Emails (Worker), Extracteur d'Actions (Worker), Redacteur de Reponses (Worker), Validateur Humain (Human)
 - **Tools**: `email_parser`, `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `HumanInputContext` (type: confirmation), `TaskPriority` for triage
 - **Runner**: `standard`
 

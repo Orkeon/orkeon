@@ -1,17 +1,17 @@
 # 20. Veille Brevets avec Déduplication Sémantique
 
-> Continuous patent monitoring with Redis vector memory. Each new patent is compared semantically against existing entries via cosine similarity before addition. Zero duplicates guaranteed.
+> Continuous patent monitoring with vector crew memory. Each new patent is compared semantically against existing entries via cosine similarity before addition. Zero duplicates guaranteed.
 
 ## Quality
 
-✅ Fiabilite — Semantic vector deduplication, distributed memory, zero duplicates
+✅ Fiabilite — Semantic vector deduplication, crew memory, zero duplicates
 
 ## Architecture
 
 - **Process**: `Parallel`
 - **Agents**: 4 — Crawler EPO/USPTO (Worker), Classificateur Domaine (Worker), Analyste Paysage (Worker), Alerteur (Worker)
 - **Tools**: `http_api`, `pdf_reader`, `json_tool`, `file_write`
-- **Memory**: `Redis`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: Vector search cosine similarity, `MemoryEvents` for alert triggering, relevance scoring (0-1)
 - **Runner**: `standard`
 
@@ -37,6 +37,6 @@ orkeon run examples/02-science-research/20-patent-monitoring/config.yaml \
 
 ## What this example demonstrates
 
-- Semantic deduplication using Redis vector search with cosine similarity
-- Continuous patent monitoring with memory persistence across runs
+- Semantic deduplication by vector search in the crew memory (cosine similarity)
+- Continuous patent monitoring, with memory kept across runs on a durable `Memory:Provider`
 - Relevance-based alerting that filters noise from genuinely new findings

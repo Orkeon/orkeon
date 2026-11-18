@@ -1,18 +1,19 @@
 # 32. Détection de Fraude en Temps Réel
 
-> L'ObserverAgent surveille un flux continu de transactions. Le Pattern Agent détecte les anomalies par comparaison sémantique vectorielle avec les patterns connus en mémoire Redis chiffrée.
+> L'ObserverAgent surveille un flux continu de transactions. Le Pattern Agent détecte les anomalies par comparaison sémantique vectorielle avec les patterns connus dans la mémoire de la crew.
 
 ## Quality
 
-:lock: Securite -- Memoire chiffree, rate limiting, audit complet, detection temps reel
+:lock: Securite -- Rate limiting, audit complet, detection temps reel
 
 ## Architecture
 
 - **Process**: `parallel`
 - **Agents**: 4 -- Surveillance Observer, Pattern Detector, Investigator, Alerter
-- **Tools**: `http_api`, `json_tool`, `database_query`, `semantic_search`, `file_write`
-- **Memory**: `EncryptedRedis`
-- **Key features**: ObserverAgent, EncryptedRedisMemoryProvider, LlmRateLimiter, AuditEventTypes, vector search pattern matching
+- **Tools**: `http_api`, `json_tool`, `relational_database_query`, `semantic_search`, `file_write`,
+  `pattern_recognition`, `correlation_analysis`, `alert_management`, `audit_trail`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: ObserverAgent, LlmRateLimiter, AuditEventTypes, vector search pattern matching
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites
@@ -38,5 +39,5 @@ orkeon run examples/03-finance-trading/32-fraud-detection/main.ork.ts \
 ## What this example demonstrates
 
 - Real-time transaction monitoring with ObserverAgent continuous surveillance
-- Semantic vector matching against known fraud patterns in encrypted memory
+- Semantic vector matching against known fraud patterns in crew memory
 - Full audit trail generation for regulatory compliance (SAR-ready)

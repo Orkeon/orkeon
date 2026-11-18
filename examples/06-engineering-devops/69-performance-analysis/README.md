@@ -10,8 +10,8 @@
 
 - **Process**: `parallel`
 - **Agents**: 5 — Backend Profiler, Frontend Analyzer, Network Monitor, Database Analyst, Optimization Synthesizer
-- **Tools**: `http_api`, `database_query`, `json_tool`, `file_write`
-- **Memory**: `Redis`
+- **Tools**: `http_api`, `relational_database_query`, `json_tool`, `file_write`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: OpenTelemetry integration, LlmProviderHealthCheck, batch execution, EvaluationScore (bottleneck scoring), cost tracking
 - **Runner**: `standard`
 

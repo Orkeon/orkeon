@@ -381,7 +381,7 @@ les plafonds documentés sont ceux de la section suivante.
 |  | `gemini-3.5-flash-lite` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 (2026-10-07) |
 |  | `gemini-3.1-pro-preview` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 10/1/1 — ❌ M5 (2026-10-07) |
 | Mistral AI | `mistral-medium-2604` *(défaut)* | 262 144 | — | `temperature` 1 · outils + raisonnement + vision | `reasoning_effort` ∈ {`high`, `none`} | 12/0/0 |
-|  | `mistral-large-4` | 1 048 576 | — | `temperature` 1 · outils + raisonnement + vision | `reasoning_effort` ∈ {`high`, `none`} | 12/0/0 |
+|  | `mistral-large-4` | 1 048 576 | — | `temperature` 1 · outils + raisonnement + vision | `reasoning_effort` ∈ {`low`, `medium`, `high`} | 12/0/0 |
 |  | `mistral-small-2603` | 262 144 | — | `temperature` 0.3 · outils + raisonnement + vision | `reasoning_effort` ∈ {`high`, `none`} | 11/1/0 — ❌ M9 |
 | Qwen | `qwen3.7-plus` *(défaut)* | — | — | — | — | 12/0/0 |
 |  | `qwen3.7-flash` | — | — | — | — | 11/1/0 — ❌ M2 (2026-10-07) |
@@ -584,9 +584,14 @@ réel ; rien n'est inféré.
 Les lignes datées du 2026-11-13 viennent des modes de raisonnement de la campagne (M15 bascule
 du thinking, M16 balayage des efforts, M17 budget), qui ont envoyé chaque niveau à chaque modèle
 par défaut et candidat ; la grille complète, valeurs acceptées comprises, est dans
-[Raisonnement par modèle](llm-campaign-results.md#raisonnement-par-modèle). Orkeon juge encore ces
-valeurs par fournisseur, pas par modèle : chaque valeur refusée ci-dessus part chez le vendeur
-telle que demandée.
+[Raisonnement par modèle](llm-campaign-results.md#raisonnement-par-modèle). Orkeon juge ces
+valeurs par modèle : la table de capacités (`ModelCapabilityRegistry`) restreint la déclaration de
+chaque fournisseur, si bien que, pour un modèle de la table, une bascule d'arrêt refusée est
+retirée, un niveau refusé est abaissé à un niveau que le modèle accepte (relevé au plus bas
+quand aucun n'est en dessous) et une valeur propre au vendeur refusée (`none`, `minimal`) est
+retirée, chacun avec un avertissement structuré ; pour un modèle absent de la table, un effort que
+le fournisseur porte part tel que demandé, avec un avertissement par instance de fournisseur et
+par modèle.
 
 Chez OpenAI, les tiers GPT-5.6 et GPT-6 ne prennent des function tools sur
 `/v1/chat/completions` qu'avec `reasoning_effort: none` (`gpt-6-astra` et `gpt-6.1-sol` n'ont

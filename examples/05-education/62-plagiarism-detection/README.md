@@ -11,7 +11,7 @@
 - **Process**: `parallel`
 - **Agents**: 5 — Style Analyzer, Source Comparator, Structure Analyzer, Semantic Analyzer, Verdict Reporter
 - **Tools**: `file_read`, `web_scrape`, `http_api`, `json_tool`, `file_write`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: Batch execution parallel, EvaluationSuite (multi-criteria scoring), EvaluationScore (confidence), output validation
 - **Runner**: `standard`
 

@@ -1,18 +1,19 @@
 # 39. Robo-Advisor Profilage Interactif
 
-> Le HumanAgent collecte le profil de risque via questions interactives typées (choix multiples, numériques, confirmation). La mémoire épisodique chiffrée conserve l'historique complet de chaque client.
+> Le HumanAgent collecte le profil de risque via questions interactives typées (choix multiples, numériques, confirmation). La mémoire épisodique de la crew garde l'historique de chaque client (d'une session à l'autre si le `Memory:Provider` de l'hôte est durable).
 
 ## Quality
 
-:lock: Securite -- Interaction multi-modale, memoire chiffree par client, historique complet
+:lock: Securite -- Interaction multi-modale, memoire episodique par client, historique complet
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 4 -- Risk Profile Assessor (human input), Strategy Allocator, Portfolio Monitor, Rebalancer
-- **Tools**: `http_api`, `csv_reader`, `json_tool`, `ask_question`, `file_write`
-- **Memory**: `EncryptedSQLite` (episodic per client)
-- **Key features**: HumanInputContext (types: MultipleChoice, Numeric, Text), EncryptedSqliteMemoryProvider, MemoryType.Episodic
+- **Tools**: `http_api`, `csv_reader`, `json_tool`, `human_input`, `file_write`,
+  `mean_variance_optimization`, `risk_parity`, `portfolio_rebalancing`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: HumanInputContext (types: MultipleChoice, Numeric, Text), MemoryType.Episodic
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 
 ## Prerequisites
@@ -38,5 +39,5 @@ orkeon run examples/03-finance-trading/39-robo-advisor/main.ork.ts \
 ## What this example demonstrates
 
 - Interactive multi-modal risk profiling with typed human input questions
-- Encrypted episodic memory maintaining complete client history across sessions
+- Episodic crew memory keeping the client history across sessions on a durable `Memory:Provider`
 - Full robo-advisory pipeline from profiling through strategy design and rebalancing

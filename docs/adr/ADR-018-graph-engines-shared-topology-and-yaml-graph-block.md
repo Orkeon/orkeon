@@ -42,7 +42,7 @@ Two graph loops exist.
        - { id: fix,      task: fix }
        - { id: escalate, task: escalate }
      edges:
-       - { from: triage, to: fix,      when: { category: [bug] } }
+       - { from: triage, to: fix,      when: { triage.category: [bug] } }
        - { from: triage, to: escalate }          # no `when`: the "otherwise"
        - { from: fix,      to: END }
        - { from: escalate, to: END }

@@ -11,7 +11,7 @@
 - **Process**: `Sequential`
 - **Agents**: 4 — Planificateur Experiences (Worker), Moniteur IoT (Worker), Enregistreur Resultats (Worker), Comparateur Litterature (Worker)
 - **Tools**: `http_api`, `csv_reader`, `web_scrape`, `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `ICheckpointManager` + `IResumeEngine`, `MemoryType.Episodic`
 - **Runner**: `standard`
 

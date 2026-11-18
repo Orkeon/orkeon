@@ -10,8 +10,9 @@
 
 - **Process**: `parallel`
 - **Agents**: 5 -- ESG Data Collector, Environmental Analyst, Social Analyst, Governance Analyst, Score Integrator
-- **Tools**: `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: `SQLite` (historical scores)
+- **Tools**: `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`,
+  `alternative_data`, `dashboard_metrics`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: EvaluationSuite multi-criteria, EvaluationScore normalized, EvaluationInput structured, InMemoryDataset (benchmarks)
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 

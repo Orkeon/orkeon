@@ -11,7 +11,7 @@
 - **Process**: `Hierarchical`
 - **Agents**: 5 — CISO Virtuel (Manager), Scanner Vulnerabilites (Worker), Analyste Configuration (Worker), Auditeur Compliance (Worker), Rapporteur Securite (Worker)
 - **Tools**: `http_api`, `file_read`, `directory_read`, `json_tool`, `file_write`
-- **Memory**: `EncryptedRedis`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: `ICodeSandbox`, `ICodeSecurityAnalyzer`, `IPathValidator`, `IUrlValidator`, `PromptSecurityTypes` (anti-injection), `LlmRateLimiter`
 - **Runner**: `standard`
 

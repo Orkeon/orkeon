@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 4 — Scenario Designer, Test Executor, Results Analyzer, Optimization Recommender
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: BenchmarkRunner (reproducibility), MemoryType.LongTerm (trending), EvaluationScore (regression detection), InMemoryDataset (baseline)
 - **Runner**: `standard`
 

@@ -11,7 +11,7 @@
 - **Process**: `Consensual`
 - **Agents**: 4 — Reviewer Methodologie (Worker), Reviewer Statistiques (Worker), Reviewer Pertinence (Worker), Editeur-Synthetiseur (Worker)
 - **Tools**: `pdf_reader`, `file_read`, `json_tool`, `file_write`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: `EvaluationSuite` + `LlmJudgeEvaluator` (structured scoring), `BenchmarkRunner` (severity calibration), consensus voting, `InMemoryDataset` (reference articles)
 - **Runner**: `standard`
 

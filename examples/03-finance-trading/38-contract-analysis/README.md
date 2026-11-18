@@ -10,8 +10,9 @@
 
 - **Process**: `parallel`
 - **Agents**: 3 -- Legal Analyst, Financial Analyst, Negotiation Strategist
-- **Tools**: `pdf_reader`, `json_tool`, `csv_reader`, `file_write`
-- **Memory**: `InMemory`
+- **Tools**: `pdf_reader`, `json_tool`, `csv_reader`, `file_write`,
+  `regulatory_reporting`, `audit_trail`
+- **Memory**: none (no `.memory(true)`): the crew stores and recalls nothing
 - **Key features**: ITextChunker (large contracts), IContextWindowManager, batch execution (parallel), output validation format clauses
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 

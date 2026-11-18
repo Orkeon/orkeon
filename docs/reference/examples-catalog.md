@@ -72,7 +72,7 @@ not contiguous.
   hierarchical process — a chief analyst coordinates four specialists (legal,
   financial, reputation, compliance) — crew memory on, severity-classified findings.
 - **Algorithmic trading, multi-strategy** — `03-finance-trading/31-algo-trading/`:
-  a TypeScript crew, hierarchical: the CIO coordinates eight agents across analysis,
+  a TypeScript crew, hierarchical: the CIO coordinates seven agents across analysis,
   risk, execution and compliance, with the category's shared `_tools/` module.
 - **RAG ingestion to cited answers** — `rag/basic-ingestion/`: ingest, retrieve,
   generate with citations — then graduate to `hybrid-retrieval/` and the

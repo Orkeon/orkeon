@@ -10,8 +10,8 @@
 
 - **Process**: `sequential`
 - **Agents**: 4 — Incident Detector, Root Cause Diagnostician, Remediator, Post-Mortem Communicator
-- **Tools**: `http_api`, `database_query`, `json_tool`, `file_write`
-- **Memory**: `Redis`
+- **Tools**: `http_api`, `relational_database_query`, `json_tool`, `file_write`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: HumanInputContext (validation actions prod), streaming, CrewHooks
 - **Runner**: `standard`
 

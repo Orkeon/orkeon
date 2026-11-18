@@ -10,8 +10,9 @@
 
 - **Process**: `hierarchical`
 - **Agents**: 4 -- Pricing Arbitrator (manager), Demand Analyst, Competition Monitor, Margin Optimizer
-- **Tools**: `web_scrape`, `http_api`, `csv_reader`, `json_tool`, `file_write`
-- **Memory**: `Redis` (real-time pricing)
+- **Tools**: `web_scrape`, `http_api`, `csv_reader`, `json_tool`, `file_write`,
+  `market_regime_classification`, `alternative_data`, `dashboard_metrics`
+- **Memory**: crew memory enabled (`.memory(true)`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: Delegation with constraints, output validation (min/max price), LlmRateLimiter
 - **Runner**: `orkeon` CLI (TypeScript crew, tools from [`../_tools/`](../_tools/))
 

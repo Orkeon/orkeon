@@ -361,7 +361,7 @@ caps are the ones of the next section.
 |  | `gemini-3.5-flash-lite` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 12/0/0 (2026-10-07) |
 |  | `gemini-3.1-pro-preview` | 1 048 576 | 65 536 | `temperature` 1 (max 2) · `topP` 0.95 · `topK` 64 | — | 10/1/1 — ❌ M5 (2026-10-07) |
 | Mistral AI | `mistral-medium-2604` *(default)* | 262 144 | — | `temperature` 1 · tools + reasoning + vision | `reasoning_effort` ∈ {`high`, `none`} | 12/0/0 |
-|  | `mistral-large-4` | 1 048 576 | — | `temperature` 1 · tools + reasoning + vision | `reasoning_effort` ∈ {`high`, `none`} | 12/0/0 |
+|  | `mistral-large-4` | 1 048 576 | — | `temperature` 1 · tools + reasoning + vision | `reasoning_effort` ∈ {`low`, `medium`, `high`} | 12/0/0 |
 |  | `mistral-small-2603` | 262 144 | — | `temperature` 0.3 · tools + reasoning + vision | `reasoning_effort` ∈ {`high`, `none`} | 11/1/0 — ❌ M9 |
 | Qwen | `qwen3.7-plus` *(default)* | — | — | — | — | 12/0/0 |
 |  | `qwen3.7-flash` | — | — | — | — | 11/1/0 — ❌ M2 (2026-10-07) |
@@ -556,8 +556,12 @@ breaking the sibling model. Every row below was measured live; nothing is inferr
 The rows dated 2026-11-13 come from the reasoning modes of the campaign (M15 thinking toggle,
 M16 effort sweep, M17 budget), which sent every level to every default and candidate model; the
 full grid, accepted values included, is
-[Reasoning per model](llm-campaign-results.md#reasoning-per-model). Orkeon still judges these
-values per provider, not per model: each refused value above reaches the vendor as asked.
+[Reasoning per model](llm-campaign-results.md#reasoning-per-model). Orkeon judges these values
+per model: the capability table (`ModelCapabilityRegistry`) narrows each provider's declaration,
+so for a model the table lists a refused off switch is dropped, a refused level is lowered to one
+the model takes (raised to the lowest when none lies below), and a refused vendor value (`none`,
+`minimal`) is dropped, each with a structured warning; for a model the table does not list, an
+effort the provider carries is sent as asked, with one warning per provider instance and model.
 
 On OpenAI, the GPT-5.6 and GPT-6 tiers take function tools on `/v1/chat/completions` only with
 `reasoning_effort: none` (`gpt-6-astra` and `gpt-6.1-sol` have no `none`: tools need

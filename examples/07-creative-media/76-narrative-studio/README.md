@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 4 — Plot Writer, Dialogue Writer, Artistic Director, Coherence Editor
 - **Tools**: `file_read`, `file_write`, `json_tool`
-- **Memory**: crew memory enabled (`memory: true`)
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: creation-revision hand-off, IKnowledgeSource (project bible)
 - **Runner**: `standard`
 

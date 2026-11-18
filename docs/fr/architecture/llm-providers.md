@@ -216,7 +216,7 @@ pas par des copies du constructeur de payload :
 
 | Point d'extension | Par défaut | Surchargé par |
 |---|---|---|
-| `ApplyProviderSpecificOptions` | juge les options de réflexion et écrit `response_format` d'après les capacités déclarées | Together AI (ajoute `context_length_exceeded_behavior: truncate`) |
+| `ApplyProviderSpecificOptions` | juge les options de réflexion et écrit `response_format` d'après les capacités déclarées | Together AI (ajoute `context_length_exceeded_behavior: truncate`) ; Kimi (retire `temperature` et `top_p` sur la famille `kimi-k3`, avec un avertissement structuré) |
 | `WriteReasoningFields` | écrit les contrôles de réflexion jugés (interrupteur, effort, budget) ; par défaut `thinking: {type}` et `reasoning_effort` | Qwen (`enable_thinking`, `thinking_budget`), OpenRouter (l'objet de requête `reasoning`), Together AI (`reasoning: {enabled}`), Hugging Face (`chat_template_kwargs.enable_thinking`), MiniMax (`thinking: disabled` seulement) |
 | `MaxTokensFieldName` | `max_tokens` | OpenAI (`max_completion_tokens`) |
 | `AlwaysEmitTopP` | `top_p` écrit seulement s'il est fixé | Mistral (`top_p: 1` quand rien n'en fixe) |

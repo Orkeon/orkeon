@@ -11,7 +11,7 @@
 - **Process**: `parallel`
 - **Agents**: 5 -- Official Report Monitor, Literature Monitor, Social Monitor, Signal Detector, Risk Evaluator
 - **Tools**: `http_api`, `web_scrape`, `pdf_reader`, `json_tool`, `semantic_search`, `file_write`
-- **Memory**: `Redis` (semantic vector deduplication)
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: Batch execution, LlmRateLimiter, vector search (deduplication), MemoryEvents
 - **Runner**: `standard`
 

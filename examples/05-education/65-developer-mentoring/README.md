@@ -11,7 +11,7 @@
 - **Process**: `parallel`
 - **Agents**: 4 — Code Reviewer, Concept Pedagogue, Patterns Architect, Career Coach
 - **Tools**: `file_read`, `directory_read`, `json_tool`, `file_write`
-- **Memory**: `SQLite`
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
 - **Key features**: ICodeSandbox (live demonstration), ICodeSecurityAnalyzer, MemoryType.LongTerm (developer progression), batch execution
 - **Runner**: `standard`
 

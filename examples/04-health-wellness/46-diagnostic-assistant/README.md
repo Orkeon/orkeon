@@ -1,18 +1,18 @@
 # 46. Aide au Diagnostic -- Humain Systématique
 
-> Validation humaine à chaque étape. Aucun diagnostic n'est jamais posé de manière autonome. Données chiffrées de bout en bout. Anti-injection de prompts pour empêcher les manipulations.
+> Validation humaine à chaque étape. Aucun diagnostic n'est jamais posé de manière autonome. Anti-injection de prompts pour empêcher les manipulations.
 
 ## Quality
 
-:lock: Securite -- Humain dans la boucle systematique, zero autonomie diagnostique, chiffrement total
+:lock: Securite -- Humain dans la boucle systematique, zero autonomie diagnostique
 
 ## Architecture
 
 - **Process**: `sequential`
 - **Agents**: 4 -- Symptom Analyst, Differential Diagnosis Generator, Drug Interaction Checker, Attending Physician (human at every step)
 - **Tools**: `http_api`, `json_tool`, `pdf_reader`
-- **Memory**: `EncryptedSQLite`
-- **Key features**: HumanInputContext at every Task, EncryptedSqliteMemoryProvider, AuditEventTypes, PromptSecurityTypes, delegation disabled
+- **Memory**: crew memory enabled (`memory: true`), on the host's `Memory:Provider` (in-memory by default)
+- **Key features**: HumanInputContext at every Task, AuditEventTypes, PromptSecurityTypes, delegation disabled
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -39,4 +39,4 @@ orkeon run examples/04-health-wellness/46-diagnostic-assistant/config.yaml \
 
 - Mandatory human validation at every single processing step
 - Zero autonomous diagnostic capability -- all outputs are advisory only
-- Encrypted data storage with prompt injection protection for medical data
+- Prompt injection protection for medical data

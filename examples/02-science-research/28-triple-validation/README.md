@@ -11,7 +11,7 @@
 - **Process**: `Consensual`
 - **Agents**: 4 — Analyste Methode A (Worker), Analyste Methode B (Worker), Analyste Methode C (Worker), Arbitre (Worker)
 - **Tools**: `csv_reader`, `json_tool`, `file_write`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: Consensus voting (2/3 majority), `ICodeSandbox` (independent calculations), `EvaluationSuite` for comparison, `TaskPriority` (priority arbitration)
 - **Runner**: `standard`
 

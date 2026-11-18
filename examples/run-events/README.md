@@ -2,7 +2,7 @@
 
 `orkeon run` prints text for a person. `orkeon run --events jsonl` speaks a versioned protocol
 instead: one JSON document per line on stdout, one per line on stdin coming back. This folder
-holds a reader for it — about 90 lines of Python, no dependencies.
+holds a reader for it — about 110 lines of Python, no dependencies.
 
 The point is the size. Driving Orkeon from your own tooling should be an afternoon, not a
 project.

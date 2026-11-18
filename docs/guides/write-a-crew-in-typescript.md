@@ -332,7 +332,7 @@ knowing before you are surprised by them:
 | `stateGraph literal must declare an edge from START` | `edges` written as an array. It is an object keyed by source node. |
 | `stateGraph '…' has an invalid topology: … Graph has no path from START to END.` | No static route; add one or use a conditional edge. |
 | `StateMutationOutsideWithException` | `ctx.state.x = …` instead of `ctx.state.with(...)`. |
-| `.concurrency must be positive` / `V1 supports .concurrency(1) only` | The N-holder semaphore is V1.5. |
+| `.concurrency must be positive` / `.concurrency(1) is the only value accepted` | `.concurrency(n)` with n ≤ 0 or n > 1: an agent's concurrency is a mutex. |
 | `RecursiveAgentInvocationException` | `ctx.spawn` of an agent with the caller's own name, or `ctx.delegate` / `crew.runAgent` of the calling agent itself. |
 | `.llm(...) takes an LlmConfig` | A model name or a `{ provider, model }` literal handed to `.llm(...)`. Write `.llm(llm.model("…"))`; the provider is the host's. |
 | `.withAutonomousTool(tool) takes what toolBuilder()…build() returns` | A name or a plain object. Built-ins go in `.tools([...])`. |

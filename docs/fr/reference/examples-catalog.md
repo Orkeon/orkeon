@@ -72,7 +72,7 @@ cette catégorie. La numérotation est historique et non contiguë.
   process hiérarchique — un analyste en chef coordonne quatre spécialistes (juridique,
   financier, réputation, conformité) — mémoire du crew activée, constats classés par gravité.
 - **Trading algorithmique multi-stratégies** — `03-finance-trading/31-algo-trading/` :
-  un crew TypeScript, hiérarchique : le CIO coordonne huit agents entre analyse, risque,
+  un crew TypeScript, hiérarchique : le CIO coordonne sept agents entre analyse, risque,
   exécution et conformité, avec le module `_tools/` partagé de la catégorie.
 - **De l'ingestion RAG aux réponses citées** — `rag/basic-ingestion/` : ingérer,
   récupérer, générer avec citations — puis passer à `hybrid-retrieval/` et au

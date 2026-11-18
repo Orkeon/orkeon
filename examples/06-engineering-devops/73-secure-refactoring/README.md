@@ -11,7 +11,7 @@
 - **Process**: `sequential`
 - **Agents**: 4 — Code Smell Detector, Refactoring Architect, Sandbox Implementer, Non-Regression Tester
 - **Tools**: `file_read`, `directory_read`, `file_write`, `shell_command`, `json_tool`
-- **Memory**: `InMemory`
+- **Memory**: none (`memory: false`): the crew stores and recalls nothing
 - **Key features**: ICodeSandbox (isolated execution), ICodeSecurityAnalyzer, IPathValidator, output validation (tests pass)
 - **Runner**: `standard`
 

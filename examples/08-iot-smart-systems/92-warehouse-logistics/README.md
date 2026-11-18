@@ -10,7 +10,7 @@
 
 - **Process**: `parallel`
 - **Agents**: 4 — Order Orchestrator, AGV Route Controller, Real-Time Inventory Tracker, Quality Agent
-- **Tools**: `http_api`, `database_query`, `json_tool`, `file_write`
+- **Tools**: `http_api`, `relational_database_query`, `json_tool`, `file_write`
 - **Memory**: `Redis` (real-time state)
 - **Key features**: Batch execution, LlmRateLimiter, TaskPriority (urgent orders), AgentStatus, CrewHooks
 - **Runner**: `standard`
