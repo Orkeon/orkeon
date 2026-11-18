@@ -87,6 +87,36 @@ one has a default body.
   `MaxCostPerCrew` came from its own approximate rates instead, and an Ollama model was counted at those rates, not
   at 0. A host that passes the provider's id (`ollama`, `deepseek`, `zai`...) to the new `RecordUsage` overload now gets
   the row the pricing registry picks for that provider. A call to the provider-less overload is priced as before.
+- `orkeon mcp serve` answered a line that is no valid request with `-32700`, `-32601`, a success or nothing (#414).
+  `-32700` is now kept for text that is not JSON, and `-32600 Invalid Request` answers a value that is no object (a
+  scalar, `null`, an array: batching is not spoken, so a batch gets one answer for the whole line), a `jsonrpc` that is
+  absent or not `"2.0"`, a `method` that is absent, empty or no string, an `id` that is `null` or neither a string nor
+  an integer, and a `params` that is neither an object nor an array. The answer carries the `id` when it could be read,
+  `null` otherwise. **A message that carries an `id` beside a `notifications/*` method is now answered** (`-32600`,
+  with its `id`): it used to be taken for a notification, obeyed and left without an answer. A C# host that calls
+  `McpServer.ProcessRequestAsync` gets the same answers.
+- `orkeon mcp serve` let bad `tools/call` parameters through (#413). `arguments` that were present and no object were
+  replaced by none, and the tool ran: they are refused with `-32602`, for a registry tool, a `run_crew_*` tool and
+  `prompts/get` alike. A `params` that is an array or a `name` that is no string answered `-32603 Internal error`: it
+  answers `-32602`. A number beyond the range of a `double` (`1e400`) failed the call with the .NET serializer's own
+  message: the call now answers `isError: true` with `Argument 'x' is not a finite number.` (`x[0]`, `x.y` when
+  nested), and the tool is not called.
+- One tool of a remote MCP server could take every tool of that server away (#417). The MCP client threw on a
+  parameter whose `type` is an array (`["string", "null"]`, a nullable parameter), on an `enum` of numbers or booleans,
+  and on a `required` entry or a `description` that is no string; the connection failed with a .NET message that named
+  neither the tool nor the property. A `type` array is now read as its one member that is not `"null"`, every scalar
+  `enum` value is kept, and a tool whose definition still cannot be read is set aside on its own, with a warning that
+  names the server and the tool.
+- The MCP client kept too little of a remote tool's parameter (#415): the `items` of an array were dropped, so an
+  agent's model saw a bare `array`, and so were the `format` and the `additionalProperties` of a dictionary. They are
+  kept, with the properties of an array of objects. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was
+  read as a `string`: it now has no type, and the model may give any JSON value.
+  [The limitations](docs/reference/limitations.md) name what a remote parameter still loses.
+- The MCP server and the MCP client introduced themselves as version `1.0.0`, whatever the release (#416), in the
+  legacy handshake (`serverInfo`, `clientInfo`) and in the `_meta` of the modern era. Both announce the version of the
+  release they run, the one `orkeon --version` prints. `MCP:Server:Version` is empty by default and still wins when it
+  is set. **An installation that copied `"Version": "1.0.0"` from `appsettings.sample.json` keeps announcing `1.0.0`:
+  remove `MCP:Server:Version` or leave it empty.**
 
 ### Documentation
 

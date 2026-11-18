@@ -57,6 +57,22 @@ On an established modern connection, every request carries per-request `_meta`; 
 mid-flight `-32022` triggers **one renegotiation + retry** with a mutually supported
 revision (`McpClient.SendAsync`).
 
+### What the client keeps of a remote tool's schema
+
+`McpToolAdapter` reads the `inputSchema` of a remote tool into the schema an agent's model is shown. Of each
+property it keeps the `type`, the `description`, the `default` (a number read as a `double`), the `enum`
+(every scalar value as it is: a string, a number, a boolean), the `format`, the `items` of an array - their
+`type`, their `format`, and the `properties` and `required` of an array of objects - and the
+`additionalProperties` of a dictionary. A `type` written as an array is read as its one member that is not
+`"null"` (`["string", "null"]`, a nullable parameter, is a `string`); a property with several types, or with
+none - `{}`, a bare `anyOf`, `oneOf` or `$ref` -, has no type: the model may give any JSON value. Still lost:
+the `properties` of an object parameter, an array nested in an array, the alternatives of `anyOf` / `oneOf`,
+`$ref` / `$defs`, and the bounds (`minimum`, `maximum`, `pattern`, `minItems`).
+
+No remote schema makes the connection fail: a `required` entry or a `description` that is no string is
+skipped, and a tool whose definition still cannot be read is set aside on its own, with a warning that names
+the server and the tool - the other tools of its server are registered.
+
 ### Server (`McpServer`) — dual-era on one endpoint
 
 - Implements `server/discover` (supported versions, capabilities, `ttlMs`/`cacheScope`
@@ -69,15 +85,29 @@ revision (`McpClient.SendAsync`).
 - `tools/list` is returned in **deterministic order** (ordinal sort by name — a 2026-07-28
   SHOULD, for stable client caches) with the modern `resultType`/`ttlMs`/`cacheScope`
   fields; legacy clients ignore these additive members.
-- Notifications (no `id`, a `null` `id`, or `notifications/*`) are never answered.
+- A notification - a message with no `id` - is never answered. A line that is JSON but no valid request is
+  answered `-32600 Invalid Request`; `-32700` is kept for text that is not JSON. Refused that way: a value that
+  is no object (a scalar, `null`, an array - batching is not spoken, so a batch gets one answer for the whole
+  line), a `jsonrpc` that is absent or not `"2.0"`, a `method` that is absent, empty or no string, an `id` that
+  is `null` or neither a string nor an integer, a `params` that is neither an object nor an array (`null`
+  counts as none), and an `id` beside a `notifications/*` method (MCP forbids it, so the message is answered,
+  not obeyed). The answer carries the `id` when it could be read - a string or an integer -, `null` otherwise.
+  `ProcessRequestAsync` gives a C# host the same answers for the request it is handed; a `null` `id` is seen
+  there only when the host kept it as a JSON `null`, since a deserialized `JsonRpcRequest` holds no `id` then.
 - A message never carries a `null` member: a response holds `result` or `error`, never both,
   and an optional member with no value is absent - a strict client (the MCP SDKs) refuses the
-  message otherwise. The one `null` is the `id` of the answer to a line that could not be parsed.
+  message otherwise. The one `null` is the `id` of the answer to a line whose `id` could not be read.
 - The `arguments` of a `tools/call` (a `run_crew_*` tool of `--crew` aside: see below) reach the
   tool as the values a tool call in the OpenAI format carries: an array is a list, an object a
   dictionary, a number written without a fraction or an exponent is a `long` when it fits one, any
   other number a `double`, `null` is `null` (an Anthropic tool call reads it as the text `null`).
   `tools/list` publishes the `items` of an array parameter.
+- `tools/call` and `prompts/get` refuse parameters that fail the request's schema with `-32602 Invalid params`:
+  a `params` that is an array, a `name` that is no string, and `arguments` that are present, not `null` and
+  not an object - for a registry tool, for a `run_crew_*` tool and for a prompt alike; the tool does not run.
+  A number beyond the range of a `double` (`1e400`) is an input the tool cannot take, not a protocol error:
+  the call answers `isError: true` with `Argument 'x' is not a finite number.` (`x[0]`, `x.y` when the number
+  is nested), and the tool is not called. A `run_crew_*` tool and a prompt take a number as its text.
 - `tools/call` goes through `IToolInvocationPipeline`, the single invocation point of every
   agent turn, under the caller `mcp` (its agent id and role): the guardian's tool
   phase (`ToolGuard` — path traversal, SSRF targets, SQL injection), the call, the one

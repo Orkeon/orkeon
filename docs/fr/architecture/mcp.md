@@ -60,6 +60,23 @@ Sur une connexion moderne établie, chaque requête porte son `_meta` ; un `-320
 de route déclenche **une renégociation + une nouvelle tentative** avec une révision
 supportée des deux côtés (`McpClient.SendAsync`).
 
+### Ce que le client garde du schéma d'un outil distant
+
+`McpToolAdapter` lit l'`inputSchema` d'un outil distant vers le schéma montré au modèle d'un agent. De chaque
+propriété il garde le `type`, la `description`, le `default` (un nombre lu en `double`), l'`enum` (chaque
+valeur scalaire telle quelle : une chaîne, un nombre, un booléen), le `format`, les `items` d'un tableau —
+leur `type`, leur `format`, et les `properties` et `required` d'un tableau d'objets — et les
+`additionalProperties` d'un dictionnaire. Un `type` écrit comme un tableau est lu comme son seul membre autre
+que `"null"` (`["string", "null"]`, un paramètre nullable, est un `string`) ; une propriété à plusieurs
+types, ou sans aucun — `{}`, un `anyOf`, un `oneOf` ou un `$ref` seul —, n'a pas de type : le modèle peut
+donner n'importe quelle valeur JSON. Restent perdus : les `properties` d'un paramètre objet, un tableau
+imbriqué dans un tableau, les alternatives d'`anyOf` / `oneOf`, `$ref` / `$defs`, et les bornes (`minimum`,
+`maximum`, `pattern`, `minItems`).
+
+Aucun schéma distant ne fait échouer la connexion : une entrée de `required` ou une `description` qui n'est
+pas une chaîne est ignorée, et un outil dont la définition reste illisible est écarté seul, avec un
+avertissement qui nomme le serveur et l'outil — les autres outils de son serveur sont enregistrés.
+
 ### Serveur (`McpServer`) — bi-génération sur un même endpoint
 
 - Implémente `server/discover` (versions supportées, capacités, indices de fraîcheur
@@ -72,15 +89,31 @@ supportée des deux côtés (`McpClient.SendAsync`).
 - `tools/list` est renvoyé en **ordre déterministe** (tri ordinal par nom — un SHOULD de
   2026-07-28, pour des caches clients stables) avec les champs modernes
   `resultType`/`ttlMs`/`cacheScope` ; les clients legacy ignorent ces membres additifs.
-- Les notifications (sans `id`, avec un `id` `null`, ou `notifications/*`) ne reçoivent jamais de réponse.
+- Une notification — un message sans `id` — ne reçoit jamais de réponse. Une ligne qui est du JSON mais pas
+  une requête valide reçoit `-32600 Invalid Request` ; `-32700` est réservé au texte qui n'est pas du JSON.
+  Sont refusés ainsi : une valeur qui n'est pas un objet (un scalaire, `null`, un tableau — le batching n'est
+  pas parlé, un lot reçoit donc une seule réponse pour toute la ligne), un `jsonrpc` absent ou différent de
+  `"2.0"`, un `method` absent, vide ou qui n'est pas une chaîne, un `id` `null` ou qui n'est ni une chaîne ni
+  un entier, un `params` qui n'est ni un objet ni un tableau (`null` vaut absence), et un `id` à côté d'une
+  méthode `notifications/*` (MCP l'interdit : le message reçoit une réponse, il n'est pas exécuté). La réponse
+  porte l'`id` quand il a pu être lu — une chaîne ou un entier —, `null` sinon. `ProcessRequestAsync` donne à
+  un hôte C# les mêmes réponses pour la requête qu'on lui remet ; un `id` `null` n'y est vu que si l'hôte l'a
+  gardé comme un `null` JSON, car un `JsonRpcRequest` désérialisé n'a alors pas d'`id`.
 - Un message ne porte jamais de membre `null` : une réponse contient `result` ou `error`, jamais
   les deux, et un membre optionnel sans valeur est absent — un client strict (les SDK MCP)
-  refuse le message sinon. Le seul `null` est l'`id` de la réponse à une ligne illisible.
+  refuse le message sinon. Le seul `null` est l'`id` de la réponse à une ligne dont l'`id` n'a pas pu être lu.
 - Les `arguments` d'un `tools/call` (hors outil `run_crew_*` de `--crew`, voir plus bas) arrivent
   à l'outil comme les valeurs que porte un appel d'outil au format OpenAI : un tableau est une
   liste, un objet un dictionnaire, un nombre écrit sans partie décimale ni exposant est un `long`
   s'il y tient, tout autre nombre un `double`, `null` est `null` (un appel d'outil Anthropic
   le lit comme le texte `null`). `tools/list` publie les `items` d'un paramètre tableau.
+- `tools/call` et `prompts/get` refusent avec `-32602 Invalid params` les paramètres qui ne respectent pas le
+  schéma de la requête : un `params` qui est un tableau, un `name` qui n'est pas une chaîne, et des `arguments`
+  présents, non `null` et qui ne sont pas un objet — pour un outil du registre, pour un outil `run_crew_*`
+  comme pour un prompt ; l'outil ne s'exécute pas. Un nombre hors de la plage d'un `double` (`1e400`) est une
+  entrée que l'outil ne peut pas prendre, pas une erreur de protocole : l'appel répond `isError: true` avec
+  `Argument 'x' is not a finite number.` (`x[0]`, `x.y` quand le nombre est imbriqué), et l'outil n'est pas
+  appelé. Un outil `run_crew_*` et un prompt prennent un nombre comme son texte.
 - `tools/call` passe par `IToolInvocationPipeline`, le point d'invocation unique de chaque
   tour d'agent, sous l'appelant `mcp` (son identifiant et son rôle d'agent) : la
   phase outil de la garde (`ToolGuard` — remontée de chemin, cibles SSRF, injection SQL),
