@@ -23,6 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The code index recorded no import between the Python files of a project (#406): the module of an import is a
+  dotted name, which the index did not read, so `dependency_graph` returned the modules with no edge and
+  `package_summary` no dependency. A Python import is now read from its syntax and resolved against the files of the
+  tree: `a/b.py` or `a/b/__init__.py` under the folders Python would search - for a script its own folder then each
+  folder above it, for a file of a package the folder above its topmost package first; a name of `from a.b import c`
+  that is a submodule reaches its file, the others reach `a.b`; `import a.b` where `b` is an attribute reaches `a.py`;
+  a relative import starts from the importing file's package. An absolute import that no folder holds still goes to
+  `ext::pypi::<first segment>`. An incremental refresh re-resolves the unchanged importers of a Python
+  file that joins the tree. An index built before this change holds no such edge until it is rebuilt.
 - `orkeon mcp serve` wrote every member it did not carry as `null` (#405): a response held `"error": null` beside its
   result, or `"result": null` beside its error, where JSON-RPC allows one of the two. The client of the MCP TypeScript
   SDK - the one Claude Code and most MCP hosts use - refuses such a message, so the answer to `initialize` was dropped
