@@ -78,6 +78,35 @@ public sealed class McpToolProviderTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ShouldRegisterEveryTool_WhenOneToolHasANullableParameterAndAnIntegerEnum()
+    {
+        // Arrange - #417: one such tool used to take every tool of its server away
+        SetupTransportForToolDiscovery(
+        [
+            new() { Name = "search", Description = "Search things" },
+            new()
+            {
+                Name = "nullable",
+                Description = "A nullable parameter and an integer enum",
+                InputSchema = JsonElement.Parse("""{"type":"object","properties":{"name":{"type":["string","null"]},"level":{"enum":[1,2,3]},"on":{"enum":[true,false]}},"required":["name",5]}""")
+            },
+            new() { Name = "fetch", Description = "Fetch data" }
+        ]);
+        await using var provider = new McpToolProviderSut(_mockRegistry);
+
+        // Act
+        await provider.ConnectServerAsync("server1", _mockTransport, ct: TestContext.Current.CancellationToken);
+
+        // Assert
+        var names = (await _mockRegistry.GetAllToolsAsync(TestContext.Current.CancellationToken)).Select(t => t.Name).ToList();
+        Assert.Contains("search", names);
+        Assert.Contains("nullable", names);
+        Assert.Contains("fetch", names);
+        var nullable = await _mockRegistry.GetToolByNameAsync("nullable", TestContext.Current.CancellationToken);
+        Assert.Equal("string", nullable!.Schema.Parameters["name"].Type);
+    }
+
+    [Fact]
     public async Task ShouldRemoveClient_WhenDisconnectingServer()
     {
         // Arrange

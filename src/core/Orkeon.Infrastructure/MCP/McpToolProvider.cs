@@ -305,6 +305,30 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     private static Func<CancellationToken, ValueTask>? BeforeCallOf(IMcpSignInAuthenticator? signIn) =>
         signIn is null ? null : signIn.EnsureSignedInAsync;
 
+    /// <summary>
+    /// The adapter of one remote tool, or null when its definition cannot be read: that tool alone is set aside,
+    /// with a warning that names it, and the other tools of its server are registered (#417).
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A remote server's tool definition is untrusted input: whatever reading it throws, one tool is set aside and the server's other tools stay.")]
+    private McpToolAdapter? TryBuildAdapter(
+        string serverId,
+        McpToolDefinition definition,
+        McpClient client,
+        bool trustAnnotations,
+        TimeSpan? callTimeout,
+        IMcpSignInAuthenticator? signIn)
+    {
+        try
+        {
+            return new McpToolAdapter(definition, client, trustAnnotations, callTimeout) { BeforeCall = BeforeCallOf(signIn) };
+        }
+        catch (Exception ex)
+        {
+            LogMcpToolSchemaUnreadable(definition.Name, serverId, ex.Message);
+            return null;
+        }
+    }
+
     private McpOAuthServices OAuthServices() => new(_httpClientFactory, _loginInteraction, _time);
 
     /// <summary>
@@ -468,7 +492,8 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         {
             foreach (var toolDef in kept)
             {
-                var adapter = new McpToolAdapter(toolDef, client, trustAnnotations, config?.CallTimeout) { BeforeCall = BeforeCallOf(signIn) };
+                if (TryBuildAdapter(serverId, toolDef, client, trustAnnotations, config?.CallTimeout, signIn) is not { } adapter)
+                    continue;
                 if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
                 {
                     clientEntry.Remember(toolDef.Name, adapter, Fingerprint(toolDef));
@@ -902,7 +927,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
                 }
                 else if (held.Signature != Fingerprint(definition))
                 {
-                    var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout) { BeforeCall = BeforeCallOf(entry.SignIn) };
+                    // A definition that can no longer be read keeps the adapter the registry holds.
+                    if (TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn) is not { } adapter)
+                        continue;
                     if (await _toolRegistry.ReplaceToolAsync(held.Adapter, adapter, apply).ConfigureAwait(false))
                         entry.Remember(name, adapter, Fingerprint(definition));
                     else
@@ -915,7 +942,8 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
             {
                 if (entry.Holds(name))
                     continue;
-                var adapter = new McpToolAdapter(definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout) { BeforeCall = BeforeCallOf(entry.SignIn) };
+                if (TryBuildAdapter(serverId, definition, entry.Client, entry.TrustAnnotations, entry.Config?.CallTimeout, entry.SignIn) is not { } adapter)
+                    continue;
                 if (await _toolRegistry.RegisterToolAsync(adapter, apply).ConfigureAwait(false))
                 {
                     entry.Remember(name, adapter, Fingerprint(definition));
@@ -1028,6 +1056,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "The tool '{Name}' of MCP server '{ServerId}' collides with an already-registered tool and was not registered; the registered tool keeps the name")]
     private partial void LogMcpToolNameCollision(string name, string serverId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Name}' of MCP server '{ServerId}' was set aside: its schema could not be read ({Reason}). The other tools of the server are registered")]
+    private partial void LogMcpToolSchemaUnreadable(string name, string serverId, string reason);
 
     [LoggerMessage(EventName = "mcp.tool.rejected", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Name}' of MCP server '{ServerId}' now collides with an already-registered tool and is ignored; the registered tool keeps the name")]
     private partial void LogMcpToolRejected(string name, string serverId);

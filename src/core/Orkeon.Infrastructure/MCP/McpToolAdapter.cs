@@ -178,13 +178,15 @@ public class McpToolAdapter : IBaseTool
     private static HashSet<string> ExtractRequiredSet(JsonElement schema)
     {
         var requiredSet = new HashSet<string>();
-        if (!schema.TryGetProperty("required", out var requiredArray) ||
+        if (schema.ValueKind != JsonValueKind.Object ||
+            !schema.TryGetProperty("required", out var requiredArray) ||
             requiredArray.ValueKind != JsonValueKind.Array)
             return requiredSet;
 
+        // A remote schema is read, never trusted: an entry that is no string is skipped (#417).
         foreach (var item in requiredArray.EnumerateArray())
         {
-            if (item.GetString() is string s)
+            if (item.ValueKind == JsonValueKind.String && item.GetString() is string s)
                 requiredSet.Add(s);
         }
 
@@ -196,7 +198,8 @@ public class McpToolAdapter : IBaseTool
         JsonElement schema,
         HashSet<string> requiredSet)
     {
-        if (!schema.TryGetProperty("properties", out var properties) ||
+        if (schema.ValueKind != JsonValueKind.Object ||
+            !schema.TryGetProperty("properties", out var properties) ||
             properties.ValueKind != JsonValueKind.Object)
             return;
 
@@ -206,21 +209,82 @@ public class McpToolAdapter : IBaseTool
         }
     }
 
+    /// <summary>
+    /// One property of a remote schema. Kept: <c>type</c>, <c>description</c>, <c>default</c>, <c>enum</c>,
+    /// <c>format</c>, the <c>items</c> of an array (their type, format, and the properties of an array of objects)
+    /// and the <c>additionalProperties</c> of a dictionary (#415). A property with no single type - none at all,
+    /// a bare <c>anyOf</c> or <c>$ref</c>, a <c>type</c> array naming several - has a null type: any JSON value.
+    /// Nothing here throws on a schema it does not expect (#417).
+    /// </summary>
     private static ParameterSchema ConvertProperty(JsonElement paramValue, bool isRequired)
     {
-        var type = paramValue.TryGetProperty("type", out var typeEl)
-            ? typeEl.GetString() ?? "string"
-            : "string";
+        // A boolean schema (`true`), or anything that is no object: a parameter of any value.
+        if (paramValue.ValueKind != JsonValueKind.Object)
+            return new ParameterSchema(null, "", isRequired);
 
-        var description = paramValue.TryGetProperty("description", out var descEl)
-            ? descEl.GetString() ?? ""
-            : "";
+        var items = paramValue.TryGetProperty("items", out var itemsEl) && itemsEl.ValueKind == JsonValueKind.Object
+            ? itemsEl
+            : (JsonElement?)null;
+        var values = paramValue.TryGetProperty("additionalProperties", out var valuesEl) && valuesEl.ValueKind == JsonValueKind.Object
+            ? ConvertProperty(valuesEl, isRequired: false)
+            : null;
 
-        var defaultValue = ExtractDefaultValue(paramValue);
-        var enumValues = ExtractEnumValues(paramValue);
-
-        return new ParameterSchema(type, description, isRequired, defaultValue, enumValues);
+        return new ParameterSchema(
+            ReadType(paramValue),
+            ReadString(paramValue, "description") ?? "",
+            isRequired,
+            ExtractDefaultValue(paramValue),
+            ExtractEnumValues(paramValue),
+            Format: ReadString(paramValue, "format"),
+            ItemsType: items is { } typed ? ReadType(typed) : null,
+            ItemsFormat: items is { } formatted ? ReadString(formatted, "format") : null,
+            Values: values)
+        {
+            ItemProperties = items is { } described ? ReadItemProperties(described) : null
+        };
     }
+
+    /// <summary>The properties of the items of an array of objects, each with its own <c>required</c>; null when the items declare none.</summary>
+    private static Dictionary<string, ParameterSchema>? ReadItemProperties(JsonElement items)
+    {
+        var properties = new Dictionary<string, ParameterSchema>();
+        PopulateParameters(properties, items, ExtractRequiredSet(items));
+        return properties.Count > 0 ? properties : null;
+    }
+
+    /// <summary>
+    /// The <c>type</c> of a schema: the string itself, or the one member of a <c>type</c> array that is not
+    /// <c>"null"</c> (a nullable parameter). Null - any JSON value - when there is none or several.
+    /// </summary>
+    private static string? ReadType(JsonElement schema)
+    {
+        if (!schema.TryGetProperty("type", out var typeEl))
+            return null;
+        if (typeEl.ValueKind == JsonValueKind.String)
+            return typeEl.GetString();
+        if (typeEl.ValueKind != JsonValueKind.Array)
+            return null;
+
+        string? single = null;
+        foreach (var member in typeEl.EnumerateArray())
+        {
+            if (member.ValueKind != JsonValueKind.String)
+                return null;
+            var name = member.GetString();
+            if (name is null or "null")
+                continue;
+            if (single is not null && single != name)
+                return null;
+            single = name;
+        }
+
+        return single;
+    }
+
+    private static string? ReadString(JsonElement schema, string member) =>
+        schema.TryGetProperty(member, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
 
     private static object? ExtractDefaultValue(JsonElement paramValue)
     {
@@ -237,6 +301,7 @@ public class McpToolAdapter : IBaseTool
         };
     }
 
+    /// <summary>The scalar values of an <c>enum</c>, as they are: a string, a number (a long when it is one, else a double) or a boolean.</summary>
     private static List<object> ExtractEnumValues(JsonElement paramValue)
     {
         if (!paramValue.TryGetProperty("enum", out var enumEl) ||
@@ -246,8 +311,21 @@ public class McpToolAdapter : IBaseTool
         var enumValues = new List<object>();
         foreach (var ev in enumEl.EnumerateArray())
         {
-            if (ev.GetString() is string s)
-                enumValues.Add(s);
+            switch (ev.ValueKind)
+            {
+                case JsonValueKind.String:
+                    enumValues.Add(ev.GetString()!);
+                    break;
+                case JsonValueKind.Number:
+                    enumValues.Add(ev.TryGetInt64(out var whole) ? (object)whole : ev.GetDouble());
+                    break;
+                case JsonValueKind.True:
+                    enumValues.Add(true);
+                    break;
+                case JsonValueKind.False:
+                    enumValues.Add(false);
+                    break;
+            }
         }
         return enumValues;
     }
