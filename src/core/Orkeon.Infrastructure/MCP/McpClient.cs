@@ -200,32 +200,85 @@ public partial class McpClient : IAsyncDisposable
 
         // Each tool is read on its own (#417): one whose name, description or annotations have the wrong JSON
         // type is set aside with a warning, where reading the page as a whole lost every tool of the server.
-        var raw = await PageAllAsync("tools/list", (ToolListPage r) => (r.Tools ?? [], r.NextCursor), ct).ConfigureAwait(false);
+        var raw = await PageEntriesAsync("tools/list", "tools", ct).ConfigureAwait(false);
         var tools = new List<McpToolDefinition>(raw.Count);
+        var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var element in raw)
         {
-            if (ReadTool(element) is { } tool)
+            if (ReadEntry<McpToolDefinition>(element, "tool", "name", t => !string.IsNullOrWhiteSpace(t.Name), "the tool has no name") is not { } tool)
+                continue;
+
+            // A name the server lists twice is one tool, the first: the second is no collision with another tool.
+            if (names.Add(tool.Name))
                 tools.Add(tool);
+            else if (WarnOnce("twice:tools/list:" + tool.Name))
+                LogEntryListedTwice("tool", tool.Name, Label);
         }
 
         return tools;
     }
 
-    /// <summary>One page of <c>tools/list</c>, its tools left as they came.</summary>
-    private sealed class ToolListPage
-    {
-        // A server that writes `"tools": null` lists no tool.
-        [System.Text.Json.Serialization.JsonPropertyName("tools")]
-        public IReadOnlyList<JsonElement>? Tools { get; init; }
+    /// <summary>
+    /// Every entry of a listing, over all its pages, left as it came: <paramref name="member"/> is read as an
+    /// array of anything. A member that is absent or <c>null</c> lists nothing; one that is neither
+    /// <c>null</c> nor an array lists nothing either, with a warning, and so does a result that is no object.
+    /// </summary>
+    private Task<IReadOnlyList<JsonElement>> PageEntriesAsync(string method, string member, CancellationToken ct) =>
+        PageAllAsync(method, (JsonElement page) => ReadPage(method, member, page), ct);
 
-        [System.Text.Json.Serialization.JsonPropertyName("nextCursor")]
-        public string? NextCursor { get; init; }
+    private (IReadOnlyList<JsonElement> Items, string? NextCursor) ReadPage(string method, string member, JsonElement page)
+    {
+        if (page.ValueKind == JsonValueKind.Undefined)
+            return ([], null); // no result at all
+
+        if (page.ValueKind != JsonValueKind.Object)
+        {
+            if (WarnOnce($"shape:{method}:result"))
+                LogListingUnreadable(method, Label, $"its result is no object ({Kind(page)})");
+            return ([], null);
+        }
+
+        IReadOnlyList<JsonElement> items = [];
+        if (page.TryGetProperty(member, out var listed) && listed.ValueKind != JsonValueKind.Null)
+        {
+            if (listed.ValueKind == JsonValueKind.Array)
+                items = [.. listed.EnumerateArray()];
+            else if (WarnOnce($"shape:{method}:{member}"))
+                LogListingUnreadable(method, Label, $"'{member}' is no array ({Kind(listed)})");
+        }
+
+        string? next = null;
+        if (page.TryGetProperty("nextCursor", out var cursor) && cursor.ValueKind != JsonValueKind.Null)
+        {
+            if (cursor.ValueKind == JsonValueKind.String)
+                next = cursor.GetString();
+            else if (WarnOnce($"shape:{method}:nextCursor"))
+                LogListingUnreadable(method, Label, $"'nextCursor' is no string ({Kind(cursor)}): the pages after this one are not read");
+        }
+
+        return (items, next);
     }
 
-    private McpToolDefinition? ReadTool(JsonElement element)
+    private static string Kind(JsonElement element) => element.ValueKind switch
+    {
+        JsonValueKind.Object => "an object",
+        JsonValueKind.Array => "an array",
+        JsonValueKind.String => "a string",
+        JsonValueKind.Number => "a number",
+        JsonValueKind.True or JsonValueKind.False => "a boolean",
+        _ => "null",
+    };
+
+    /// <summary>
+    /// One entry of a listing, or <c>null</c> when it cannot be read - it is no object, a member has the wrong
+    /// JSON type, or <paramref name="usable"/> refuses it. The entry is then set aside with a warning, written
+    /// once for that entry, and the others of its listing are kept.
+    /// </summary>
+    private T? ReadEntry<T>(JsonElement element, string kind, string nameMember, Func<T, bool> usable, string unusable)
+        where T : class
     {
         var name = element.ValueKind == JsonValueKind.Object
-            && element.TryGetProperty("name", out var given) && given.ValueKind == JsonValueKind.String
+            && element.TryGetProperty(nameMember, out var given) && given.ValueKind == JsonValueKind.String
                 ? given.GetString()
                 : null;
         string reason;
@@ -233,28 +286,38 @@ public partial class McpClient : IAsyncDisposable
         {
             if (element.ValueKind != JsonValueKind.Object)
                 reason = "the entry is not an object";
-            else if (element.Deserialize<McpToolDefinition>() is { } tool && !string.IsNullOrWhiteSpace(tool.Name))
-                return tool;
+            else if (element.Deserialize<T>() is { } entry && usable(entry))
+                return entry;
             else
-                reason = "the tool has no name";
+                reason = unusable;
         }
-        catch (JsonException ex)
+        catch (Exception ex) when (ex is JsonException or FormatException or InvalidOperationException)
         {
             reason = ex.Message;
         }
 
-        // Once per definition: a server that keeps a bad entry is not warned about at every tools/list_changed.
-        bool first;
-        lock (_setAsideTools)
-            first = _setAsideTools.Add(element.GetRawText());
-        if (first)
-            LogToolDefinitionUnreadable(name ?? "(unnamed)", ServerLabel ?? _serverInfo?.Name ?? "(unknown)", reason);
+        // Once per definition: a server that keeps a bad entry is not warned about at every listing.
+        if (WarnOnce(kind + ":" + element.GetRawText()))
+        {
+            if (kind == "tool")
+                LogToolDefinitionUnreadable(name ?? "(unnamed)", Label, reason);
+            else
+                LogEntryUnreadable(kind, name ?? "(unnamed)", Label, reason);
+        }
 
         return null;
     }
 
-    /// <summary>The raw text of the tool entries already set aside, so each is warned about once.</summary>
-    private readonly HashSet<string> _setAsideTools = new(StringComparer.Ordinal);
+    private bool WarnOnce(string key)
+    {
+        lock (_warned)
+            return _warned.Add(key);
+    }
+
+    private string Label => ServerLabel ?? _serverInfo?.Name ?? "(unknown)";
+
+    /// <summary>What was already warned about - an entry set aside, a name listed twice, a listing of the wrong shape - so each is warned about once.</summary>
+    private readonly HashSet<string> _warned = new(StringComparer.Ordinal);
 
     /// <summary>
     /// The name the warnings give the server: the id the operator configured it under (<c>MCP:Servers:&lt;id&gt;</c>),
@@ -268,7 +331,17 @@ public partial class McpClient : IAsyncDisposable
     public async Task<IReadOnlyList<McpPrompt>> ListPromptsAsync(CancellationToken ct = default)
     {
         EnsureReady();
-        return await PageAllAsync("prompts/list", (McpPromptListResult r) => (r.Prompts, r.NextCursor), ct).ConfigureAwait(false);
+
+        // Read prompt by prompt, as tools/list is: one prompt of the wrong JSON type does not take the others away.
+        var raw = await PageEntriesAsync("prompts/list", "prompts", ct).ConfigureAwait(false);
+        var prompts = new List<McpPrompt>(raw.Count);
+        foreach (var element in raw)
+        {
+            if (ReadEntry<McpPrompt>(element, "prompt", "name", p => !string.IsNullOrWhiteSpace(p.Name), "the prompt has no name") is { } prompt)
+                prompts.Add(prompt);
+        }
+
+        return prompts;
     }
 
     /// <summary>
@@ -346,7 +419,16 @@ public partial class McpClient : IAsyncDisposable
     {
         EnsureReady();
 
-        return await PageAllAsync("resources/list", (McpResourceListResult r) => (r.Resources, r.NextCursor), ct).ConfigureAwait(false);
+        // Read resource by resource: one that cannot be read, or that names no URI to read it by, is set aside alone.
+        var raw = await PageEntriesAsync("resources/list", "resources", ct).ConfigureAwait(false);
+        var resources = new List<McpResource>(raw.Count);
+        foreach (var element in raw)
+        {
+            if (ReadEntry<McpResource>(element, "resource", "uri", r => r.Uri is not null, "the resource has no URI") is { } resource)
+                resources.Add(resource);
+        }
+
+        return resources;
     }
 
     /// <summary>
@@ -631,6 +713,15 @@ public partial class McpClient : IAsyncDisposable
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Tool}' listed by MCP server '{Server}' was set aside: its definition could not be read ({Reason}). The other tools of the server are kept")]
     private partial void LogToolDefinitionUnreadable(string tool, string server, string reason);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The {Kind} '{Name}' listed by MCP server '{Server}' was set aside: its definition could not be read ({Reason}). The other entries of the listing are kept")]
+    private partial void LogEntryUnreadable(string kind, string name, string server, string reason);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "MCP server '{Server}' lists the {Kind} '{Name}' twice: the first is kept, the other is ignored")]
+    private partial void LogEntryListedTwice(string kind, string name, string server);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The {Method} answer of MCP server '{Server}' could not be read as a listing: {Reason}")]
+    private partial void LogListingUnreadable(string method, string server, string reason);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "MCP client initialized with server {Name} v{Version}")]
     private partial void LogMcpClientInitialized(string? name, string? version);

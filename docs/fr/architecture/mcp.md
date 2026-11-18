@@ -82,9 +82,14 @@ outil sans nom, ou un outil dont le `name`, la `description` ou les `annotations
 L'avertissement nomme l'outil et le serveur tel que `MCP:Servers` le nomme, et il est écrit une fois pour
 cette entrée, pas à chaque lecture de la liste. Quand `tools/list_changed` apporte une telle entrée pour un
 outil qui était enregistré, l'outil quitte le registre. Un `"tools": null` ne liste aucun outil ; un `tools`
-qui n'est ni `null` ni un tableau fait encore échouer la liste, et donc la connexion. Un nom qu'un serveur
-liste deux fois est enregistré une fois, la première. `prompts/list` et `resources/list` sont encore lus page
-par page : un prompt ou une ressource du mauvais type JSON fait échouer sa liste.
+qui n'est ni `null` ni un tableau, ou un résultat qui n'est pas un objet, n'en liste aucun non plus, avec un
+avertissement écrit une fois : le serveur est connecté sans outil, et un `tools/list_changed` qui apporte une
+telle réponse retire ses outils du registre. Un `nextCursor` qui n'est pas une chaîne arrête la liste à sa
+page, avec un avertissement. Un nom qu'un serveur liste deux fois, sur une page ou sur deux, est enregistré une
+fois, la première, et signalé une fois : ce n'est pas une collision, et l'état du serveur ne rejette rien.
+`prompts/list` et `resources/list` sont lus de la même façon, entrée par entrée : un prompt sans nom, une
+ressource sans `uri`, ou une entrée dont les membres ont le mauvais type JSON est écartée à elle seule, et un
+`prompts` ou un `resources` à `null` ne liste rien.
 
 ### Serveur (`McpServer`) — bi-génération sur un même endpoint
 

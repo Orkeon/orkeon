@@ -656,7 +656,7 @@ public class McpPrompt
 
     /// <summary>Gets the arguments the prompt takes.</summary>
     [JsonPropertyName("arguments")]
-    public IReadOnlyList<McpPromptArgument> Arguments { get; init; } = [];
+    public IReadOnlyList<McpPromptArgument> Arguments { get; init => field = value ?? []; } = [];
 }
 
 /// <summary>One message of a prompt (<c>prompts/get</c>).</summary>

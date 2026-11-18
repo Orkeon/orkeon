@@ -77,9 +77,13 @@ listing is read tool by tool: an entry that is no object (`null`), a tool with n
 own - the other tools of its server are registered. The warning names the tool and the server as `MCP:Servers`
 names it, and is written once for that entry, not at every listing. When `tools/list_changed` brings such an
 entry for a tool that was registered, the tool leaves the registry. A `"tools": null` lists no tool; a `tools`
-that is neither `null` nor an array still fails the listing, and so the connection. A name one server lists
-twice is registered once, the first time. `prompts/list` and `resources/list` are still read a page at a time:
-one prompt or resource of the wrong JSON type fails its listing.
+that is neither `null` nor an array, or a result that is no object, lists none either, with a warning written
+once: the server is connected with no tool, and a `tools/list_changed` that brings such an answer takes its
+tools out of the registry. A `nextCursor` that is no string ends the listing at its page, with a warning. A
+name one server lists twice, on one page or two, is registered once, the first time, and warned about once: it
+is no collision, and the server's status rejects nothing. `prompts/list` and `resources/list` are read the
+same way, entry by entry: a prompt with no name, a resource with no `uri`, or one whose members have the wrong
+JSON type is set aside alone, and a `prompts` or `resources` that is `null` lists nothing.
 
 ### Server (`McpServer`) — dual-era on one endpoint
 

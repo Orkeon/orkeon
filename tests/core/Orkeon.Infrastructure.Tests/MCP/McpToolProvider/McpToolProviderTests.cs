@@ -263,6 +263,28 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         Assert.Empty(statuses);
     }
 
+    // A name one server lists twice is one tool: no collision is logged, and the status rejects nothing.
+
+    [Fact]
+    public async Task McpToolListedTwiceByItsServer_IsRegisteredOnce_AndIsNoCollision()
+    {
+        var registry = new Orkeon.Infrastructure.Tools.ToolRegistry([]);
+        await using var transport = McpDiscoveryTransport.Exposing("search_issues", "search_issues", "other");
+        using var logs = new RecordingLoggerFactory();
+        await using var provider = new McpToolProviderSut(registry, logs);
+
+        await provider.ConnectServerAsync("x", transport, ct: TestContext.Current.CancellationToken);
+
+        var status = Assert.Single(provider.GetServerStatuses());
+        Assert.Empty(status.RejectedToolNames);
+        Assert.IsType<McpToolAdapter>(await registry.GetToolByNameAsync("search_issues", TestContext.Current.CancellationToken));
+        Assert.IsType<McpToolAdapter>(await registry.GetToolByNameAsync("other", TestContext.Current.CancellationToken));
+        Assert.False(logs.Logger.HasEntry(e => e.Message.Contains("collides", StringComparison.Ordinal)));
+        Assert.True(logs.Logger.HasEntry(e =>
+            e.Level == Microsoft.Extensions.Logging.LogLevel.Warning
+            && e.Message.Contains("MCP server 'x' lists the tool 'search_issues' twice", StringComparison.Ordinal)));
+    }
+
     // GAP-01: an MCP tool whose name is already taken is refused, never substituted. The
     // tool that held the name stays, and the server's disconnection cannot take it away.
 

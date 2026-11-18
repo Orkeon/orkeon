@@ -114,6 +114,16 @@ are empty where they were `1.0.0`), and its entry says what a collector, a peer 
   `inputSchema` that still cannot be read, a `name`, a `description` or `annotations` of the wrong JSON type - is set
   aside on its own, with a warning that names the server and the tool, written once for that entry: `tools/list` is
   read tool by tool. A tool that becomes unreadable at a `tools/list_changed` leaves the registry.
+- The rest of what an MCP server lists is read the same way. `prompts/list` and `resources/list` were read a page at
+  a time: one prompt or resource of the wrong JSON type failed the listing with a .NET message, and a `"prompts": null`
+  or `"resources": null` failed it too. They are read entry by entry: a prompt with no name, a resource with no `uri`
+  or an entry of the wrong JSON type is set aside alone, with a warning written once, and `null` lists nothing; a
+  prompt's `"arguments": null` is no argument. A `tools`, `prompts` or `resources` member that is neither `null` nor
+  an array, a result that is no object, or a `nextCursor` that is no string no longer fails the listing - and, for
+  `tools`, the connection: it lists nothing (the page it has, for `nextCursor`), with a warning. **A server whose
+  `tools` is no array is now connected with no tool, where its connection failed.** A name one server lists twice was
+  logged as an error, a collision with an already-registered tool, and counted among the server's rejected tools,
+  though its first copy was registered: it is one tool, warned about once.
 - The MCP client kept too little of a remote tool's parameter (#415): the `items` of an array were dropped, so an
   agent's model saw a bare `array`, and so were the `format` and the `additionalProperties` of a dictionary. They are
   kept, with the properties of an array of objects. A parameter with no `type` (`{}`, a bare `anyOf` or `$ref`) was
@@ -129,8 +139,10 @@ are empty where they were `1.0.0`), and its entry says what a collector, a peer 
   remove `MCP:Server:Version` or leave it empty.**
 - Outside MCP too, Orkeon announced a fixed `1.0.0` whatever the release (#418). The OpenTelemetry resource
   (`service.version`), the activity sources - `Orkeon.Scripting`, which reported none, included - and the meter, and
-  the agent card of the A2A server now carry the version of the release that runs, the one `orkeon --version` prints. `A2A:AgentVersion` is empty by default and still wins
-  when it is set; **an installation that copied `"AgentVersion": "1.0.0"` from `appsettings.sample.json` keeps
+  the agent card of the A2A server now carry the version of the release that runs, the one `orkeon --version` prints.
+  They all read it from one place, the `Orkeon.Domain` assembly, the `User-Agent` and `Orkeon.Scripting` included: an
+  application that mixes Orkeon packages of two versions announces one version, not one per assembly.
+  `A2A:AgentVersion` is empty by default and still wins when it is set; **an installation that copied `"AgentVersion": "1.0.0"` from `appsettings.sample.json` keeps
   announcing `1.0.0`: remove the key or leave it empty.** **The HTTP tools send `User-Agent: Orkeon/<version>
   (+https://github.com/Orkeon/orkeon)`** where they sent `Orkeon/1.0`: a site that filters on the exact former string
   sees the change at every release. The public constants `OrkeonDiagnostics.ServiceVersion`,

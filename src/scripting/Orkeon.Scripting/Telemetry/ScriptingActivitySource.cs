@@ -15,19 +15,7 @@ public static class ScriptingActivitySource
     public const string Name = "Orkeon.Scripting";
 
     /// <summary>Shared source instance used across the runtime; it reports the version of the running release (#418).</summary>
-    public static readonly ActivitySource Instance = new(Name, ReleaseVersion());
-
-    /// <summary>The informational version of this assembly, build metadata removed.</summary>
-    private static string ReleaseVersion()
-    {
-        var informational = System.Reflection.CustomAttributeExtensions
-            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(ScriptingActivitySource).Assembly)
-            ?.InformationalVersion
-            ?? typeof(ScriptingActivitySource).Assembly.GetName().Version?.ToString(3)
-            ?? "0.0.0";
-        var plus = informational.IndexOf('+', StringComparison.Ordinal);
-        return plus < 0 ? informational : informational[..plus];
-    }
+    public static readonly ActivitySource Instance = new(Name, Orkeon.Domain.Constants.Platform.OrkeonRelease.Version);
 
     /// <summary>Span name for a crew run (root span).</summary>
     public const string CrewRunSpan = "crew.run";
