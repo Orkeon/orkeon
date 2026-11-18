@@ -1148,53 +1148,9 @@ public partial class McpServer
     public static JsonElement? ConvertToolSchemaToJsonSchema(ToolSchema schema)
     {
         ArgumentNullException.ThrowIfNull(schema);
-        var jsonSchema = new Dictionary<string, object>
-        {
-            ["type"] = "object"
-        };
-
-        var properties = new Dictionary<string, object>();
-        var required = new List<string>();
-
-        foreach (var kvp in schema.Parameters)
-        {
-            var paramSchema = new Dictionary<string, object>();
-
-            if (kvp.Value.Type != null)
-                paramSchema["type"] = kvp.Value.Type;
-
-            paramSchema["description"] = kvp.Value.Description;
-
-            if (kvp.Value.Default != null)
-                paramSchema["default"] = kvp.Value.Default;
-
-            if (kvp.Value.Enum != null && kvp.Value.Enum.Count > 0)
-                paramSchema["enum"] = kvp.Value.Enum;
-
-            // What the model's tool list says of it (`date-time`, `uri`), a remote tool's own format included.
-            if (kvp.Value.Format != null)
-                paramSchema["format"] = kvp.Value.Format;
-
-            // What an array holds (#402), as a model reads it in an agent's tool list.
-            if (kvp.Value.Type == "array")
-            {
-                paramSchema["items"] = kvp.Value.ItemsType != null
-                    ? LLMs.ToolCalling.OpenAIToolSchemaFormatter.FormatItems(kvp.Value, kvp.Value.ItemsType)
-                    : LLMs.ToolCalling.OpenAIToolSchemaFormatter.AnyValue();
-            }
-
-            if (kvp.Value.Values != null)
-                paramSchema["additionalProperties"] = kvp.Value.Values.ToValueDocument();
-
-            properties[kvp.Key] = paramSchema;
-
-            if (kvp.Value.Required)
-                required.Add(kvp.Key);
-        }
-
-        jsonSchema["properties"] = properties;
-        if (required.Count > 0)
-            jsonSchema["required"] = required;
+        // What a model reads in an agent's tool list, from the same writer (ParameterSchema.ToJsonSchema): the
+        // items of an array (#402), the format, the bounds, the properties of an object, its alternatives.
+        var jsonSchema = schema.ToInputJsonSchema();
 
         var json = JsonSerializer.Serialize(jsonSchema);
         return JsonElement.Parse(json);

@@ -59,18 +59,27 @@ revision (`McpClient.SendAsync`).
 
 ### What the client keeps of a remote tool's schema
 
-`McpToolAdapter` reads the `inputSchema` of a remote tool into the schema an agent's model is shown. Of each
-property it keeps the `type`, the `description`, the `default` as the JSON value it is (`null` is no default), the `enum`
-(every scalar value as it is: a string, a number, a boolean), the `format`, the `items` of an array - their
-`type`, their `format`, and the `properties` and `required` of an array of objects - and the
-`additionalProperties` of a dictionary. A `type` written as an array is read as its one member that is not
-`"null"` (`["string", "null"]`, a nullable parameter, is a `string`); a property with several types, or with
-none - `{}`, a bare `anyOf`, `oneOf` or `$ref` -, has no type: the model may give any JSON value. Still lost:
-the `properties` of an object parameter, an array nested in an array, the `enum`, `description` and `default`
-of an array's items, the alternatives of `anyOf` / `oneOf`, `$ref` / `$defs`, and the bounds (`minimum`,
-`maximum`, `pattern`, `minItems`). Items that declare `properties` and no `type` are read as objects. An array
-whose items could not be read - no `items`, items with no single type, an array inside an array - is shown with
-`items: {}`, any JSON value: no array reaches a provider without `items`, which some refuse.
+`McpToolAdapter` reads the `inputSchema` of a remote tool into the schema an agent's model is shown, whole and at
+any depth. Of each property it keeps the `type`, the `description`, the `default` as the JSON value it is (`null` is
+no default), the `enum` (every scalar value as it is: a string, a number, a boolean) or a `const` (an `enum` of one
+value), the `format`, the bounds (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` - the boolean form of
+draft 04 too -, `minLength`, `maxLength`, `pattern`, `minItems`, `maxItems`), the `items` of an array - an array of
+arrays included -, the `properties` and `required` of an object, its `additionalProperties` (the schema of a
+dictionary's values, or `false`, at the root too) and the alternatives of `anyOf` and `oneOf` (shown as `anyOf`). A
+local `$ref` (`#/$defs/X`, `#/definitions/X`, any JSON pointer into the document, at the root too) is the schema it
+names, with the `description`, `default` and `format` written beside it over those of the definition; a reference
+to a definition being read already (a tree whose node holds nodes) and a reference to another document accept any
+JSON value. A `type` written as an array is read as its one member that is not `"null"` (`["string", "null"]`, a
+nullable parameter, is a `string`); an `anyOf` / `oneOf` whose only alternative but `{"type": "null"}` is X -
+Pydantic's `Optional[X]` - is X, and so is an `allOf` of one schema X. A property with `properties` and no `type` is
+an object. A tuple (`items` as an array, or `prefixItems`) is read as the alternatives of its positions, and
+`items: false` as `maxItems`. Still lost: an `allOf` of several schemas, `not`, `if` / `then` / `else`,
+`patternProperties`, `uniqueItems`, `multipleOf`, `dependentRequired`, the position of a tuple's items, and what lies
+more than 32 levels deep (any JSON value). A property with several types, or with none (`{}`), has no type: the
+model may give any JSON value. An array whose items are not known - no `items`, items with no single type - is shown
+with `items: {}`, any JSON value: no array reaches a provider without `items`, which some refuse. A schema whose
+references expand beyond 4096 schemas - a definition that names another twice, which names another twice - would
+cost the host's memory and the model's context: the tool is set aside with a warning, as below.
 
 No `inputSchema` makes the connection fail: a `required` entry or a `description` of a property that is no
 string is skipped, a number no `double` holds (`1e400`) is dropped from an `enum` or a `default`, and the

@@ -39,23 +39,10 @@ internal sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
 
     private static Dictionary<string, object> FormatSingleTool(ToolSchema schema)
     {
-        var properties = new Dictionary<string, object>();
-        var required = new List<string>();
-
-        foreach (var (name, param) in schema.Parameters)
-        {
-            properties[name] = FormatParameter(param);
-
-            if (param.Required)
-                required.Add(name);
-        }
-
-        var parametersObject = new Dictionary<string, object>
-        {
-            ["type"] = "object",
-            ["properties"] = properties,
-            ["required"] = required
-        };
+        // The one JSON Schema writer of the framework (ParameterSchema.ToJsonSchema); `required` is always
+        // present, empty for none, as this format has always carried it.
+        var parametersObject = schema.ToInputJsonSchema();
+        parametersObject.TryAdd("required", new List<string>());
 
         var description = string.IsNullOrEmpty(schema.Description)
             ? schema.Name
@@ -73,64 +60,5 @@ internal sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
             ["type"] = "function",
             ["function"] = function
         };
-    }
-
-    /// <summary>The JSON Schema of the items of an array parameter: their type, format and, for objects, their properties.</summary>
-    internal static Dictionary<string, object> FormatItems(ParameterSchema param, string itemsType)
-    {
-        var items = new Dictionary<string, object> { ["type"] = itemsType };
-        if (param.ItemsFormat is not null)
-            items["format"] = param.ItemsFormat;
-        // An array inside an array: what the inner one holds is not known, and `{}` says so (any JSON value). A
-        // provider that wants `items` on every array refuses a bare one, and with it every call of the agent.
-        if (itemsType == "array")
-            items["items"] = AnyValue();
-        // An array of objects publishes its items' shape (#210): their properties and the required ones.
-        if (param.ItemProperties is { Count: > 0 })
-        {
-            items["properties"] = param.ItemProperties.ToDictionary(p => p.Key, p => (object)FormatParameter(p.Value));
-            if (param.RequiredItemProperties() is { Count: > 0 } required)
-                items["required"] = required;
-        }
-
-        return items;
-    }
-
-    /// <summary>The JSON Schema that accepts any JSON value: the items of an array whose item type is not known.</summary>
-    internal static Dictionary<string, object> AnyValue() => [];
-
-    private static Dictionary<string, object> FormatParameter(ParameterSchema param)
-    {
-        var prop = new Dictionary<string, object>();
-
-        if (param.Type is not null)
-            prop["type"] = param.Type;
-
-        prop["description"] = param.Description;
-
-        if (param.Default is not null)
-            prop["default"] = param.Default;
-
-        // EnumMap keys take priority over flat Enum list
-        if (param.EnumMap is { Count: > 0 })
-        {
-            prop["enum"] = param.EnumMap.Keys.ToList();
-        }
-        else if (param.Enum is { Count: > 0 })
-        {
-            prop["enum"] = param.Enum;
-        }
-
-        if (param.Format is not null)
-            prop["format"] = param.Format;
-
-        // An array always says what it holds: its items' type when it is known, `{}` (any JSON value) otherwise.
-        if (param.Type == "array")
-            prop["items"] = param.ItemsType is not null ? FormatItems(param, param.ItemsType) : AnyValue();
-
-        if (param.Values is not null)
-            prop["additionalProperties"] = param.Values.ToValueDocument();
-
-        return prop;
     }
 }

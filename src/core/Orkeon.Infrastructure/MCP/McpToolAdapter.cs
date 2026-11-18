@@ -155,24 +155,241 @@ public class McpToolAdapter : IBaseTool
     }
 
     /// <summary>
-    /// Converts an MCP tool definition (JSON Schema inputSchema) to a Orkeon ToolSchema.
+    /// How many schemas one <c>inputSchema</c> may expand to, its <c>$ref</c> followed: a definition that
+    /// names another twice, which names another twice, doubles at each step, and a server could make one
+    /// tool cost the memory of the host and the context of every model it is shown to. Beyond it the tool
+    /// is set aside, with a warning (#417).
     /// </summary>
+    internal const int MaxSchemaNodes = 4096;
+
+    /// <summary>How deep a schema is followed; deeper, a property accepts any JSON value.</summary>
+    private const int MaxSchemaDepth = 32;
+
+    /// <summary>
+    /// Converts an MCP tool definition (JSON Schema inputSchema) to a Orkeon ToolSchema: every property with
+    /// its type, description, default, enum (or <c>const</c>), format and bounds, the items of an array and the
+    /// properties of an object at any depth, the alternatives of <c>anyOf</c> / <c>oneOf</c>, a dictionary's
+    /// values, <c>additionalProperties: false</c>, and the local <c>$ref</c> resolved.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The schema expands beyond <see cref="MaxSchemaNodes"/> schemas.</exception>
     public static ToolSchema ConvertToToolSchema(McpToolDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        var parameters = new Dictionary<string, ParameterSchema>();
+        if (!definition.InputSchema.HasValue)
+            return new ToolSchema(definition.Name, definition.Description, []);
 
-        if (definition.InputSchema.HasValue)
+        var reader = new SchemaReader(definition.InputSchema.Value);
+        var root = reader.Resolve(definition.InputSchema.Value);
+        return new ToolSchema(definition.Name, definition.Description, reader.ReadProperties(root, 0) ?? [])
         {
-            var schema = definition.InputSchema.Value;
-            var requiredSet = ExtractRequiredSet(schema);
-            PopulateParameters(parameters, schema, requiredSet);
+            AllowsAdditionalParameters = !IsFalse(root, "additionalProperties"),
+        };
+    }
+
+    /// <summary>
+    /// Reads one remote schema into <see cref="ParameterSchema"/>s. Nothing here throws on a schema it does not
+    /// expect (#417): what it cannot read accepts any JSON value. Only a schema that expands beyond
+    /// <see cref="MaxSchemaNodes"/> fails.
+    /// </summary>
+    private sealed class SchemaReader(JsonElement root)
+    {
+        private readonly HashSet<string> _expanding = new(StringComparer.Ordinal);
+        private int _nodes;
+
+        /// <summary>The schema a root <c>$ref</c> names, followed; the element itself when it is no reference or names nothing.</summary>
+        public JsonElement Resolve(JsonElement schema)
+        {
+            for (var hops = 0; hops < MaxSchemaDepth && ReadString(schema, "$ref") is { } reference; hops++)
+            {
+                if (Lookup(reference) is not { } target)
+                    break;
+                schema = target;
+            }
+
+            return schema;
         }
 
-        return new ToolSchema(
-            definition.Name,
-            definition.Description,
-            parameters);
+        /// <summary>The <c>properties</c> of an object schema, each with its <c>required</c>; null when it declares none.</summary>
+        public Dictionary<string, ParameterSchema>? ReadProperties(JsonElement schema, int depth)
+        {
+            if (schema.ValueKind != JsonValueKind.Object ||
+                !schema.TryGetProperty("properties", out var properties) ||
+                properties.ValueKind != JsonValueKind.Object)
+                return null;
+
+            var required = ExtractRequiredSet(schema);
+            var result = new Dictionary<string, ParameterSchema>();
+            foreach (var property in properties.EnumerateObject())
+                result[property.Name] = Read(property.Value, required.Contains(property.Name), depth + 1);
+            return result;
+        }
+
+        private ParameterSchema Read(JsonElement schema, bool required, int depth)
+        {
+            if (++_nodes > MaxSchemaNodes)
+                throw new InvalidOperationException($"the inputSchema expands beyond {MaxSchemaNodes} schemas");
+
+            // A boolean schema (`true`), anything that is no object, or a schema too deep: any JSON value.
+            if (schema.ValueKind != JsonValueKind.Object || depth > MaxSchemaDepth)
+                return AnyValue(schema, required);
+
+            // A reference is the schema it names, with the words it carries itself; one that names nothing, or
+            // that is being expanded already (a tree whose node holds nodes), accepts any JSON value.
+            if (ReadString(schema, "$ref") is { } reference)
+            {
+                if (Lookup(reference) is not { } target || !_expanding.Add(reference))
+                    return AnyValue(schema, required);
+                try
+                {
+                    return WithOwnWords(schema, Read(target, required, depth + 1));
+                }
+                finally
+                {
+                    _expanding.Remove(reference);
+                }
+            }
+
+            // `allOf` of one schema, and the `anyOf: [X, {"type": "null"}]` of a nullable parameter: X.
+            if (SingleSchemaOf(schema) is { } single)
+                return WithOwnWords(schema, Read(single, required, depth + 1));
+
+            var items = ReadItems(schema, depth, out var maxItemsOfTuple);
+            var alternatives = NonNullAlternatives(schema);
+            var properties = ReadProperties(schema, depth);
+            var values = schema.TryGetProperty("additionalProperties", out var valuesEl) && valuesEl.ValueKind == JsonValueKind.Object
+                ? Read(valuesEl, required: false, depth + 1)
+                : null;
+            var (minimum, exclusiveMinimum) = ReadBound(schema, "minimum", "exclusiveMinimum");
+            var (maximum, exclusiveMaximum) = ReadBound(schema, "maximum", "exclusiveMaximum");
+            // A schema with `properties` and no `type` member is an object; one whose `type` names another or
+            // several publishes no properties: they would describe what it is not.
+            var type = schema.TryGetProperty("type", out _) ? ReadType(schema) : properties is not null ? "object" : null;
+
+            return new ParameterSchema(
+                type,
+                ReadString(schema, "description") ?? "",
+                required,
+                ExtractDefaultValue(schema),
+                ExtractEnumValues(schema),
+                Format: ReadString(schema, "format"),
+                ItemsType: items?.Type,
+                ItemsFormat: items?.Format,
+                Values: values)
+            {
+                Items = items,
+                // The properties of object items only: a string item that carries `properties` publishes none.
+                ItemProperties = items is { Type: "object" } ? items.Properties : null,
+                Properties = type == "object" && properties is { Count: > 0 } ? properties : null,
+                AnyOf = alternatives.Count > 0 ? [.. alternatives.Select(a => Read(a, required: false, depth + 1))] : null,
+                AllowsAdditionalProperties = !IsFalse(schema, "additionalProperties"),
+                Minimum = minimum,
+                Maximum = maximum,
+                ExclusiveMinimum = exclusiveMinimum,
+                ExclusiveMaximum = exclusiveMaximum,
+                MinLength = ReadCount(schema, "minLength"),
+                MaxLength = ReadCount(schema, "maxLength"),
+                Pattern = ReadString(schema, "pattern"),
+                MinItems = ReadCount(schema, "minItems"),
+                MaxItems = ReadCount(schema, "maxItems") ?? maxItemsOfTuple,
+            };
+        }
+
+        /// <summary>
+        /// The schema of an array's items: <c>items</c> as an object; a tuple (<c>items</c> as an array, or
+        /// <c>prefixItems</c>) as the alternatives of its positions, the position itself lost; null when they
+        /// are not known. A tuple closed by <c>items: false</c>, or <c>items: false</c> alone, bounds the count.
+        /// </summary>
+        private ParameterSchema? ReadItems(JsonElement schema, int depth, out int? maxItems)
+        {
+            maxItems = null;
+            var hasItems = schema.TryGetProperty("items", out var items);
+            var tuple = hasItems && items.ValueKind == JsonValueKind.Array
+                ? items
+                : schema.TryGetProperty("prefixItems", out var prefix) && prefix.ValueKind == JsonValueKind.Array ? prefix : (JsonElement?)null;
+
+            if (hasItems && items.ValueKind == JsonValueKind.False)
+                maxItems = tuple?.GetArrayLength() ?? 0;
+            if (hasItems && items.ValueKind == JsonValueKind.Object)
+                return Read(items, required: false, depth + 1);
+            if (tuple is not { } positions || positions.GetArrayLength() == 0)
+                return null;
+
+            var read = positions.EnumerateArray().Select(p => Read(p, required: false, depth + 1)).ToList();
+            return read.Count == 1 ? read[0] : new ParameterSchema(null, "", false) { AnyOf = read };
+        }
+
+        /// <summary>The schema a local <c>$ref</c> (<c>#</c>, <c>#/$defs/X</c>, any JSON pointer of the document) names; null for any other.</summary>
+        private JsonElement? Lookup(string reference)
+        {
+            if (!reference.StartsWith('#'))
+                return null;
+
+            var node = root;
+            foreach (var raw in reference[1..].Split('/', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var token = Uri.UnescapeDataString(raw).Replace("~1", "/", StringComparison.Ordinal).Replace("~0", "~", StringComparison.Ordinal);
+                if (node.ValueKind == JsonValueKind.Object && node.TryGetProperty(token, out var child))
+                    node = child;
+                else if (node.ValueKind == JsonValueKind.Array && int.TryParse(token, out var index) && index >= 0 && index < node.GetArrayLength())
+                    node = node[index];
+                else
+                    return null;
+            }
+
+            return node;
+        }
+    }
+
+    /// <summary>A parameter of any JSON value, with the description its schema carries.</summary>
+    private static ParameterSchema AnyValue(JsonElement schema, bool required) =>
+        new(null, schema.ValueKind == JsonValueKind.Object ? ReadString(schema, "description") ?? "" : "", required);
+
+    /// <summary>What a schema that only points at another says itself - its description, default, format - over what the other says.</summary>
+    private static ParameterSchema WithOwnWords(JsonElement schema, ParameterSchema read) => read with
+    {
+        Description = ReadString(schema, "description") ?? read.Description,
+        Default = ExtractDefaultValue(schema) ?? read.Default,
+        Format = ReadString(schema, "format") ?? read.Format,
+    };
+
+    /// <summary>
+    /// The one schema a schema stands for when it has no type nor properties of its own: the only member of
+    /// its <c>allOf</c>, or the only alternative of its <c>anyOf</c> / <c>oneOf</c> that is not
+    /// <c>{"type": "null"}</c>. Null when there is none or several.
+    /// </summary>
+    private static JsonElement? SingleSchemaOf(JsonElement schema)
+    {
+        if (schema.TryGetProperty("type", out _) || schema.TryGetProperty("properties", out _))
+            return null;
+
+        var parts = new List<JsonElement>();
+        if (schema.TryGetProperty("allOf", out var all) && all.ValueKind == JsonValueKind.Array)
+        {
+            if (all.GetArrayLength() != 1)
+                return null;
+            parts.Add(all[0]);
+        }
+
+        parts.AddRange(NonNullAlternatives(schema));
+        return parts.Count == 1 ? parts[0] : null;
+    }
+
+    /// <summary>The alternatives of <c>anyOf</c> and <c>oneOf</c> but <c>{"type": "null"}</c>: a value may be absent anyway. <c>oneOf</c> is read as <c>anyOf</c>.</summary>
+    private static List<JsonElement> NonNullAlternatives(JsonElement schema)
+    {
+        var alternatives = new List<JsonElement>();
+        foreach (var keyword in (string[])["anyOf", "oneOf"])
+        {
+            if (!schema.TryGetProperty(keyword, out var list) || list.ValueKind != JsonValueKind.Array)
+                continue;
+            foreach (var alternative in list.EnumerateArray())
+            {
+                if (ReadString(alternative, "type") != "null")
+                    alternatives.Add(alternative);
+            }
+        }
+
+        return alternatives;
     }
 
     private static HashSet<string> ExtractRequiredSet(JsonElement schema)
@@ -191,66 +408,6 @@ public class McpToolAdapter : IBaseTool
         }
 
         return requiredSet;
-    }
-
-    private static void PopulateParameters(
-        Dictionary<string, ParameterSchema> parameters,
-        JsonElement schema,
-        HashSet<string> requiredSet)
-    {
-        if (schema.ValueKind != JsonValueKind.Object ||
-            !schema.TryGetProperty("properties", out var properties) ||
-            properties.ValueKind != JsonValueKind.Object)
-            return;
-
-        foreach (var prop in properties.EnumerateObject())
-        {
-            parameters[prop.Name] = ConvertProperty(prop.Value, requiredSet.Contains(prop.Name));
-        }
-    }
-
-    /// <summary>
-    /// One property of a remote schema. Kept: <c>type</c>, <c>description</c>, <c>default</c>, <c>enum</c>,
-    /// <c>format</c>, the <c>items</c> of an array (their type, format, and the properties of an array of objects)
-    /// and the <c>additionalProperties</c> of a dictionary (#415). A property with no single type - none at all,
-    /// a bare <c>anyOf</c> or <c>$ref</c>, a <c>type</c> array naming several - has a null type: any JSON value.
-    /// Nothing here throws on a schema it does not expect (#417).
-    /// </summary>
-    private static ParameterSchema ConvertProperty(JsonElement paramValue, bool isRequired)
-    {
-        // A boolean schema (`true`), or anything that is no object: a parameter of any value.
-        if (paramValue.ValueKind != JsonValueKind.Object)
-            return new ParameterSchema(null, "", isRequired);
-
-        var items = paramValue.TryGetProperty("items", out var itemsEl) && itemsEl.ValueKind == JsonValueKind.Object
-            ? itemsEl
-            : (JsonElement?)null;
-        var values = paramValue.TryGetProperty("additionalProperties", out var valuesEl) && valuesEl.ValueKind == JsonValueKind.Object
-            ? ConvertProperty(valuesEl, isRequired: false)
-            : null;
-
-        return new ParameterSchema(
-            ReadType(paramValue),
-            ReadString(paramValue, "description") ?? "",
-            isRequired,
-            ExtractDefaultValue(paramValue),
-            ExtractEnumValues(paramValue),
-            Format: ReadString(paramValue, "format"),
-            ItemsType: items is { } typed ? ReadItemsType(typed) : null,
-            ItemsFormat: items is { } formatted ? ReadString(formatted, "format") : null,
-            Values: values)
-        {
-            // The properties of object items only: a string item that carries `properties` publishes none.
-            ItemProperties = items is { } described && ReadItemsType(described) == "object" ? ReadItemProperties(described) : null
-        };
-    }
-
-    /// <summary>The properties of the items of an array of objects, each with its own <c>required</c>; null when the items declare none.</summary>
-    private static Dictionary<string, ParameterSchema>? ReadItemProperties(JsonElement items)
-    {
-        var properties = new Dictionary<string, ParameterSchema>();
-        PopulateParameters(properties, items, ExtractRequiredSet(items));
-        return properties.Count > 0 ? properties : null;
     }
 
     /// <summary>
@@ -282,11 +439,42 @@ public class McpToolAdapter : IBaseTool
         return single;
     }
 
-    /// <summary>The type of an array's items; items that declare <c>properties</c> and no <c>type</c> member are objects, so their properties are published.</summary>
-    private static string? ReadItemsType(JsonElement items) =>
-        items.TryGetProperty("type", out _)
-            ? ReadType(items)
-            : items.TryGetProperty("properties", out var properties) && properties.ValueKind == JsonValueKind.Object ? "object" : null;
+    private static bool IsFalse(JsonElement schema, string member) =>
+        schema.ValueKind == JsonValueKind.Object &&
+        schema.TryGetProperty(member, out var value) &&
+        value.ValueKind == JsonValueKind.False;
+
+    /// <summary>A finite number member as a double; null when it is absent, no number, or no double holds it.</summary>
+    private static double? ReadNumber(JsonElement schema, string member) =>
+        schema.TryGetProperty(member, out var value) && value.ValueKind == JsonValueKind.Number &&
+        value.GetDouble() is var number && double.IsFinite(number)
+            ? number
+            : null;
+
+    /// <summary>A count (<c>minLength</c>, <c>maxItems</c>): a whole number from 0 to <see cref="int.MaxValue"/>; null for any other.</summary>
+    private static int? ReadCount(JsonElement schema, string member) =>
+        schema.TryGetProperty(member, out var value) && value.ValueKind == JsonValueKind.Number &&
+        value.TryGetInt64(out var count) && count is >= 0 and <= int.MaxValue
+            ? (int)count
+            : null;
+
+    /// <summary>
+    /// A bound and its exclusive form. The exclusive one is a number since draft 06; in draft 04 it is a
+    /// boolean that makes the bound itself exclusive.
+    /// </summary>
+    private static (double? Inclusive, double? Exclusive) ReadBound(JsonElement schema, string inclusive, string exclusive)
+    {
+        var bound = ReadNumber(schema, inclusive);
+        if (schema.TryGetProperty(exclusive, out var flag))
+        {
+            if (flag.ValueKind == JsonValueKind.Number)
+                return (bound, ReadNumber(schema, exclusive));
+            if (flag.ValueKind == JsonValueKind.True)
+                return (null, bound);
+        }
+
+        return (bound, null);
+    }
 
     /// <summary>A JSON number as a long when it is one, else a double; null when no double holds it (<c>1e400</c>), since infinity cannot be written back as JSON.</summary>
     private static object? ReadFiniteNumber(JsonElement number)
@@ -297,7 +485,9 @@ public class McpToolAdapter : IBaseTool
         return double.IsFinite(value) ? value : null;
     }
 
+    /// <summary>A string member of an object; null when it is absent, no string, or the element is no object.</summary>
     private static string? ReadString(JsonElement schema, string member) =>
+        schema.ValueKind == JsonValueKind.Object &&
         schema.TryGetProperty(member, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
@@ -321,15 +511,20 @@ public class McpToolAdapter : IBaseTool
         };
     }
 
-    /// <summary>The scalar values of an <c>enum</c>, as they are: a string, a number (a long when it is one, else a double) or a boolean.</summary>
+    /// <summary>The scalar values of an <c>enum</c> (or of a <c>const</c>), as they are: a string, a number (a long when it is one, else a double) or a boolean.</summary>
     private static List<object> ExtractEnumValues(JsonElement paramValue)
     {
-        if (!paramValue.TryGetProperty("enum", out var enumEl) ||
-            enumEl.ValueKind != JsonValueKind.Array)
+        // `const` is an enum of one value.
+        IEnumerable<JsonElement> listed;
+        if (paramValue.TryGetProperty("enum", out var enumEl) && enumEl.ValueKind == JsonValueKind.Array)
+            listed = enumEl.EnumerateArray();
+        else if (paramValue.TryGetProperty("const", out var constEl))
+            listed = [constEl];
+        else
             return [];
 
         var enumValues = new List<object>();
-        foreach (var ev in enumEl.EnumerateArray())
+        foreach (var ev in listed)
         {
             switch (ev.ValueKind)
             {

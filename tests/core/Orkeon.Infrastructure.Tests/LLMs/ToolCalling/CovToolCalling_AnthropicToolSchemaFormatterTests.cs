@@ -304,4 +304,27 @@ public class CovToolCalling_AnthropicToolSchemaFormatterTests
         Assert.Equal("array", rows["type"]);
         Assert.Empty(Assert.IsType<Dictionary<string, object>>(rows["items"]));
     }
+
+    [Fact]
+    public void FormatParameterProperty_NestedPropertiesAndClosedObjects()
+    {
+        var schema = new ToolSchema("t", "d", new Dictionary<string, ParameterSchema>
+        {
+            ["filter"] = new("object", "Filter", Required: true)
+            {
+                Properties = new Dictionary<string, ParameterSchema> { ["field"] = new("string", "Field", Required: true) { MinLength = 1 } },
+                AllowsAdditionalProperties = false,
+            },
+        })
+        { AllowsAdditionalParameters = false };
+
+        var payload = _formatter.FormatToolsForPayload([schema], ToolCallMode.Auto);
+
+        var input = (Dictionary<string, object>)((List<Dictionary<string, object>>)payload["tools"])[0]["input_schema"];
+        Assert.Equal(false, input["additionalProperties"]);
+        var filter = (Dictionary<string, object>)((Dictionary<string, object>)input["properties"])["filter"];
+        Assert.Equal(false, filter["additionalProperties"]);
+        var field = (Dictionary<string, object>)((Dictionary<string, object>)filter["properties"])["field"];
+        Assert.Equal(1, field["minLength"]);
+    }
 }

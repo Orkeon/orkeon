@@ -18,6 +18,9 @@ public sealed class McpToolListChangedTests
         public string[] Tools { get; set; }
         public Dictionary<string, string> Descriptions { get; } = [];
 
+        /// <summary>The <c>inputSchema</c> a tool is listed with, as JSON; none when absent.</summary>
+        public Dictionary<string, string> Schemas { get; } = [];
+
         /// <summary>Awaited by a tools/list call (1-based number of the call) after it took its snapshot of the tools.</summary>
         public Func<int, CancellationToken, Task>? ListGate { get; set; }
 
@@ -56,7 +59,12 @@ public sealed class McpToolListChangedTests
                     var result = new McpToolListResult
                     {
                         Tools = snapshot
-                            .Select(n => new McpToolDefinition { Name = n, Description = Descriptions.GetValueOrDefault(n, n) })
+                            .Select(n => new McpToolDefinition
+                            {
+                                Name = n,
+                                Description = Descriptions.GetValueOrDefault(n, n),
+                                InputSchema = Schemas.TryGetValue(n, out var schema) ? JsonElement.Parse(schema) : null,
+                            })
                             .ToList(),
                     };
                     return new JsonRpcResponse { Id = request.Id, Result = JsonSerializer.SerializeToElement(result) };
@@ -379,5 +387,25 @@ public sealed class McpToolListChangedTests
         Assert.NotSame(before, after);
         Assert.Empty(gaps);
         Assert.Equal(1, registry.ReplaceToolCallCount);
+    }
+
+    [Fact]
+    public async Task ShouldSetASchemaThatExpandsBeyondTheBudgetAside_AndWarnOnceAcrossTheListings()
+    {
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        var server = new Server("bomb", "ok");
+        server.Schemas["bomb"] = McpToolAdapterRemoteSchemaTests.RefBomb();
+        using var logs = new Orkeon.Tests.Shared.Doubles.RecordingLoggerFactory();
+        await using var provider = new McpToolProvider(registry, logs, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
+
+        server.Tools = ["bomb", "ok", "new"];
+        await NotifyAsync(server, clock);
+        await EventuallyAsync(async () => (await NamesAsync(registry)).SequenceEqual(["new", "ok"]));
+
+        var warning = Assert.Single(logs.Logger.Entries, e => e.EventId.Name == "mcp.tool.unreadable");
+        Assert.Contains("bomb", warning.Message, StringComparison.Ordinal);
+        Assert.Contains($"beyond {McpToolAdapter.MaxSchemaNodes} schemas", warning.Message, StringComparison.Ordinal);
     }
 }

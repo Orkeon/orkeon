@@ -10,10 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.0] - 2026-11-18
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It carries no
-**[breaking]** change: the three new members are overloads that take the id of the provider (#396), and the interface
-one has a default body. #413, #414 and #416 change what the MCP server and client put on the wire; that surface is
-experimental (`ORKEXP004`), outside the commitment of 1.x, and each entry below says what a client or an installation
-sees differently. #418 changes the version the telemetry and the agent card carry and the `User-Agent` of the HTTP
+**[breaking]** change: three new members are overloads that take the id of the provider (#396), and the interface
+one has a default body; the others are init-only properties of `ParameterSchema` and `ToolSchema`, whose defaults
+leave a schema built before them as it was, and two methods that write it (#415). #413, #414 and #416 change what
+the MCP server and client put on the wire; that surface is experimental (`ORKEXP004`), outside the commitment of
+1.x, and each entry below says what a client or an installation sees differently. #418 changes the version the telemetry and the agent card carry and the `User-Agent` of the HTTP
 tools: no public member is added or removed, two defaults change (`A2AOptions.AgentVersion` and `AgentCard.Version`
 are empty where they were `1.0.0`), and its entry says what a collector, a peer or a site sees. #416 empties the
 default of `McpServerOptions.Version` the same way. #417 and the entry on listings change what the client keeps of a
@@ -35,6 +36,15 @@ longer listed.
   names. An input folder a client confirms without the property keeps the value the proposal gave the same `path` (a
   renamed folder says it again); `examples: true` on an output folder is refused, a `FORGE-FOLDERS-INVALID` in a
   confirmed list and a refused `brief_submit` in the assistant's brief.
+- A tool's schema says all of JSON Schema a model reads (#415): `ParameterSchema` gains `Properties` (the properties
+  of an object parameter, each with its `Required`), `Items` (the schema of an array's items, at any depth),
+  `AnyOf`, `AllowsAdditionalProperties` (`false` writes `additionalProperties: false`), and the bounds `Minimum`,
+  `Maximum`, `ExclusiveMinimum`, `ExclusiveMaximum`, `MinLength`, `MaxLength`, `Pattern`, `MinItems` and `MaxItems`;
+  `ToolSchema` gains `AllowsAdditionalParameters`. `ParameterSchema.ToJsonSchema()` and `ToolSchema.ToInputJsonSchema()`
+  write the JSON Schema, and are the one writer the OpenAI-compatible and Anthropic providers and `orkeon mcp serve`
+  use: a property with an empty description no longer carries `"description": ""`, and the MCP server now publishes
+  the keys of an `EnumMap` as its `enum`, as the providers did. `ItemsType`, `ItemsFormat` and `ItemProperties` still
+  work: they are read when `Items` is not set.
 
 ### Fixed
 
@@ -143,6 +153,10 @@ longer listed.
   is: a whole number stays whole (it was read as a `double`), an array or an object is no longer its JSON text, and
   `"default": null` is no default (it was the text `null`). A number no `double` holds (`1e400`) is dropped from an
   `enum` or a `default`, and items that declare `properties` and no `type` are read as objects.
+  The client now keeps the whole schema: the properties of an object parameter, arrays of arrays, the enum,
+  description and default of items, the bounds, `additionalProperties: false`, the alternatives of `anyOf` / `oneOf`,
+  a `const`, and the local `$ref` / `$defs` it resolves; a nullable `anyOf` (Pydantic's `Optional`) is read as its
+  one schema, and a schema whose references expand beyond 4096 schemas sets its tool aside with a warning.
   A tool served by `orkeon mcp serve` now publishes the `format` of its parameters, a remote tool's included.
   [The limitations](docs/reference/limitations.md) name what a remote parameter still loses.
 - The MCP server and the MCP client introduced themselves as version `1.0.0`, whatever the release (#416), in the

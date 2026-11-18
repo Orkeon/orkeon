@@ -62,20 +62,30 @@ supportée des deux côtés (`McpClient.SendAsync`).
 
 ### Ce que le client garde du schéma d'un outil distant
 
-`McpToolAdapter` lit l'`inputSchema` d'un outil distant pour en faire le schéma montré au modèle d'un agent. De chaque
-propriété il garde le `type`, la `description`, le `default` comme la valeur JSON qu'il est (`null` n'est pas un défaut), l'`enum` (chaque
-valeur scalaire telle quelle : une chaîne, un nombre, un booléen), le `format`, les `items` d'un tableau —
-leur `type`, leur `format`, et les `properties` et `required` d'un tableau d'objets — et les
-`additionalProperties` d'un dictionnaire. Un `type` écrit comme un tableau est lu comme son seul membre autre
-que `"null"` (`["string", "null"]`, un paramètre nullable, est un `string`) ; une propriété à plusieurs
-types, ou sans aucun — `{}`, un `anyOf`, un `oneOf` ou un `$ref` seul —, n'a pas de type : le modèle peut
-donner n'importe quelle valeur JSON. Restent perdus : les `properties` d'un paramètre objet, un tableau
-imbriqué dans un tableau, l'`enum`, la `description` et le `default` des éléments d'un tableau, les
-alternatives d'`anyOf` / `oneOf`, `$ref` / `$defs`, et les bornes (`minimum`, `maximum`, `pattern`,
-`minItems`). Des éléments qui déclarent des `properties` sans `type` sont lus comme des objets. Un tableau
-dont les éléments n'ont pas pu être lus — pas d'`items`, des éléments sans type unique, un tableau dans un
-tableau — est montré avec `items: {}`, n'importe quelle valeur JSON : aucun tableau n'arrive à un fournisseur
-sans `items`, que certains refusent.
+`McpToolAdapter` lit l'`inputSchema` d'un outil distant pour en faire le schéma montré au modèle d'un agent, entier
+et à toute profondeur. De chaque propriété il garde le `type`, la `description`, le `default` comme la valeur JSON
+qu'il est (`null` n'est pas un défaut), l'`enum` (chaque valeur scalaire telle quelle : une chaîne, un nombre, un
+booléen) ou un `const` (un `enum` d'une valeur), le `format`, les bornes (`minimum`, `maximum`, `exclusiveMinimum`,
+`exclusiveMaximum` — la forme booléenne du draft 04 aussi —, `minLength`, `maxLength`, `pattern`, `minItems`,
+`maxItems`), les `items` d'un tableau — un tableau de tableaux compris —, les `properties` et le `required` d'un
+objet, ses `additionalProperties` (le schéma des valeurs d'un dictionnaire, ou `false`, à la racine aussi) et les
+alternatives d'`anyOf` et de `oneOf` (montrées comme `anyOf`). Un `$ref` local (`#/$defs/X`, `#/definitions/X`,
+tout pointeur JSON dans le document, à la racine aussi) est le schéma qu'il nomme, la `description`, le `default` et
+le `format` écrits à côté l'emportant sur ceux de la définition ; une référence à une définition déjà en cours de
+lecture (un arbre dont le nœud contient des nœuds) et une référence à un autre document acceptent n'importe quelle
+valeur JSON. Un `type` écrit comme un tableau est lu comme son seul membre autre que `"null"` (`["string", "null"]`,
+un paramètre nullable, est un `string`) ; un `anyOf` / `oneOf` dont la seule alternative hormis `{"type": "null"}`
+est X — l'`Optional[X]` de Pydantic — est X, comme un `allOf` d'un seul schéma X. Une propriété qui a des
+`properties` sans `type` est un objet. Un tuple (`items` en tableau, ou `prefixItems`) est lu comme les
+alternatives de ses positions, et `items: false` comme `maxItems`. Restent perdus : un `allOf` de plusieurs schémas,
+`not`, `if` / `then` / `else`, `patternProperties`, `uniqueItems`, `multipleOf`, `dependentRequired`, la position des
+éléments d'un tuple, et ce qui se trouve à plus de 32 niveaux de profondeur (n'importe quelle valeur JSON). Une
+propriété à plusieurs types, ou sans aucun (`{}`), n'a pas de type : le modèle peut donner n'importe quelle valeur
+JSON. Un tableau dont les éléments ne sont pas connus — pas d'`items`, des éléments sans type unique — est montré
+avec `items: {}`, n'importe quelle valeur JSON : aucun tableau n'arrive à un fournisseur sans `items`, que certains
+refusent. Un schéma dont les références s'étendent au-delà de 4096 schémas — une définition qui en nomme une autre
+deux fois, qui en nomme une autre deux fois — coûterait la mémoire de l'hôte et le contexte du modèle : l'outil est
+écarté avec un avertissement, comme ci-dessous.
 
 Aucun `inputSchema` ne fait échouer la connexion : une entrée de `required` ou la `description` d'une
 propriété qui n'est pas une chaîne est ignorée, un nombre qu'aucun `double` ne contient (`1e400`) est retiré

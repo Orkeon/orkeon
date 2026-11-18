@@ -856,4 +856,54 @@ public class ToolSchemaTests
         var value = Assert.IsType<Dictionary<string, object>>(dictionary.ToDocument()["additionalProperties"]);
         Assert.Empty(Assert.IsType<Dictionary<string, object>>(value["items"]));
     }
+
+    [Fact]
+    public void ShouldWriteTheWholeSchema_WhenAParameterCarriesNestedSchemasAndBounds()
+    {
+        var filter = new ParameterSchema("object", "Filter", true)
+        {
+            Properties = new Dictionary<string, ParameterSchema>
+            {
+                ["field"] = new("string", "", true) { MinLength = 1, Pattern = "^[a-z]*$" },
+                ["limit"] = new("integer", "Limit", false) { Minimum = 1, ExclusiveMaximum = 100 },
+            },
+            AllowsAdditionalProperties = false,
+        };
+        var grid = new ParameterSchema("array", "Grid", false) { Items = new("array", "", false) { Items = new("number", "", false) }, MaxItems = 9 };
+        var when = new ParameterSchema(null, "When", false) { AnyOf = [new("string", "", false, Format: "date-time"), new("integer", "", false)] };
+        var tool = new ToolSchema("t", "d", new Dictionary<string, ParameterSchema> { ["filter"] = filter, ["grid"] = grid, ["when"] = when })
+        {
+            AllowsAdditionalParameters = false,
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(tool.ToInputJsonSchema());
+
+        Assert.Equal(
+            """{"type":"object","properties":{"filter":{"type":"object","description":"Filter","properties":{"field":{"type":"string","minLength":1,"pattern":"^[a-z]*$"},"limit":{"type":"integer","description":"Limit","minimum":1,"exclusiveMaximum":100}},"required":["field"],"additionalProperties":false},"grid":{"type":"array","description":"Grid","maxItems":9,"items":{"type":"array","items":{"type":"number"}}},"when":{"description":"When","anyOf":[{"type":"string","format":"date-time"},{"type":"integer"}]}},"required":["filter"],"additionalProperties":false}""",
+            json);
+    }
+
+    [Fact]
+    public void ShouldKeepTheLegacyItems_WhenOnlyTheItemsTypeIsSet()
+    {
+        var rows = new ParameterSchema("array", "Rows", false, ItemsType: "object")
+        {
+            ItemProperties = new Dictionary<string, ParameterSchema> { ["id"] = new("integer", "", true) },
+        };
+
+        var items = Assert.IsType<Dictionary<string, object>>(rows.ToJsonSchema()["items"]);
+
+        Assert.Equal("object", items["type"]);
+        Assert.Equal(["id"], Assert.IsType<List<string>>(items["required"]));
+    }
+
+    [Fact]
+    public void ShouldAllowAdditionalParameters_ByDefault()
+    {
+        var tool = new ToolSchema("t", "d", new Dictionary<string, ParameterSchema> { ["a"] = new("string", "", false) });
+
+        Assert.True(tool.AllowsAdditionalParameters);
+        Assert.False(tool.ToInputJsonSchema().ContainsKey("additionalProperties"));
+        Assert.False(tool.ToInputJsonSchema().ContainsKey("required"));
+    }
 }

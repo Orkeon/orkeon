@@ -204,4 +204,151 @@ public sealed class McpToolAdapterRemoteSchemaTests
         var items = Assert.IsType<Dictionary<string, object>>(document["items"]);
         Assert.Equal("string", items["type"]);
     }
+
+    // --- The whole schema, kept for 1.3.0 ---
+
+    /// <summary>Thirteen definitions, each naming the next twice: 8192 schemas once expanded, over the budget.</summary>
+    internal static string RefBomb()
+    {
+        var defs = string.Join(",", Enumerable.Range(0, 13).Select(i =>
+            "\"d" + i + "\":{\"type\":\"object\",\"properties\":{\"a\":{\"$ref\":\"#/$defs/d" + (i + 1) +
+            "\"},\"b\":{\"$ref\":\"#/$defs/d" + (i + 1) + "\"}}}"));
+        return "{\"type\":\"object\",\"properties\":{\"x\":{\"$ref\":\"#/$defs/d0\"}},\"$defs\":{" + defs + ",\"d13\":{\"type\":\"string\"}}}";
+    }
+
+    [Fact]
+    public void ShouldKeepTheProperties_WhenAParameterIsAnObject()
+    {
+        var schema = McpToolAdapterSut.ConvertToToolSchema(McpToolAdapterTestsFixture.CreateDefinitionWithSchema("remote", "A remote tool", """
+            {"type":"object","additionalProperties":false,"properties":{
+              "filter":{"type":"object","description":"Filter","additionalProperties":false,"required":["field"],
+                "properties":{"field":{"type":"string"},"range":{"properties":{"from":{"type":"integer"}}}}}}}
+            """));
+
+        Assert.False(schema.AllowsAdditionalParameters);
+        var filter = schema.Parameters["filter"];
+        Assert.False(filter.AllowsAdditionalProperties);
+        Assert.True(filter.Properties!["field"].Required);
+        Assert.False(filter.Properties["range"].Required);
+        Assert.Equal("object", filter.Properties["range"].Type); // `properties` and no `type`: an object
+        Assert.Equal("integer", filter.Properties["range"].Properties!["from"].Type);
+    }
+
+    [Fact]
+    public void ShouldKeepTheBounds_InEitherDraft()
+    {
+        var parameters = Convert("""
+            {"type":"object","properties":{
+              "city":{"type":"string","minLength":1,"maxLength":80,"pattern":"^[A-Z]"},
+              "days":{"type":"integer","minimum":1,"maximum":10,"exclusiveMaximum":11},
+              "ratio":{"type":"number","minimum":0,"exclusiveMinimum":true},
+              "tags":{"type":"array","minItems":1,"maxItems":5,"items":{"type":"string"}},
+              "odd":{"type":"integer","minimum":"one","maxLength":-1,"minItems":1.5}}}
+            """);
+
+        Assert.Equal((1, 80, "^[A-Z]"), (parameters["city"].MinLength, parameters["city"].MaxLength, parameters["city"].Pattern));
+        Assert.Equal((1d, 10d, 11d), (parameters["days"].Minimum, parameters["days"].Maximum, parameters["days"].ExclusiveMaximum));
+        // Draft 04: `exclusiveMinimum: true` makes `minimum` itself exclusive.
+        Assert.Null(parameters["ratio"].Minimum);
+        Assert.Equal(0d, parameters["ratio"].ExclusiveMinimum);
+        Assert.Equal((1, 5), (parameters["tags"].MinItems, parameters["tags"].MaxItems));
+        // A bound of the wrong JSON type, or no count, is no bound.
+        Assert.Equal((null, null, null), (parameters["odd"].Minimum, parameters["odd"].MaxLength, parameters["odd"].MinItems));
+    }
+
+    [Fact]
+    public void ShouldKeepTheWholeItems_WhenAnArrayHoldsArraysOrDescribedValues()
+    {
+        var parameters = Convert("""
+            {"type":"object","properties":{
+              "grid":{"type":"array","items":{"type":"array","items":{"type":"integer","minimum":0}}},
+              "tags":{"type":"array","items":{"type":"string","enum":["a","b"],"description":"A tag","default":"a"}},
+              "pair":{"type":"array","items":[{"type":"string"},{"type":"integer"}]},
+              "none":{"type":"array","items":false}}}
+            """);
+
+        Assert.Equal("array", parameters["grid"].ItemsType);
+        Assert.Equal("integer", parameters["grid"].Items!.Items!.Type);
+        Assert.Equal(0d, parameters["grid"].Items!.Items!.Minimum);
+        var tag = parameters["tags"].Items!;
+        Assert.Equal(["a", "b"], tag.Enum!.Cast<string>());
+        Assert.Equal(("A tag", "a"), (tag.Description, tag.Default));
+        // A tuple is the alternatives of its positions; the position itself is lost.
+        Assert.Equal(["string", "integer"], parameters["pair"].Items!.AnyOf!.Select(a => a.Type));
+        Assert.Equal(0, parameters["none"].MaxItems);
+    }
+
+    [Fact]
+    public void ShouldKeepTheAlternatives_AndReadANullableOneAsItsSchema()
+    {
+        var parameters = Convert("""
+            {"type":"object","properties":{
+              "when":{"description":"A date or a day","anyOf":[{"type":"string","format":"date-time"},{"type":"integer"}]},
+              "pick":{"oneOf":[{"const":"a"},{"const":"b"}]},
+              "maybe":{"description":"Optional","anyOf":[{"type":"string","maxLength":3},{"type":"null"}],"default":null},
+              "wrapped":{"description":"Wrapped","allOf":[{"type":"integer","minimum":2}]}}}
+            """);
+
+        Assert.Null(parameters["when"].Type);
+        Assert.Equal("A date or a day", parameters["when"].Description);
+        Assert.Equal(["string", "integer"], parameters["when"].AnyOf!.Select(a => a.Type));
+        Assert.Equal("date-time", parameters["when"].AnyOf![0].Format);
+        Assert.Equal(["a", "b"], parameters["pick"].AnyOf!.Select(a => Assert.Single(a.Enum!)));
+        // Pydantic's Optional[str]: the string, with the property's own description.
+        Assert.Equal(("string", 3, "Optional", null), (parameters["maybe"].Type, parameters["maybe"].MaxLength, parameters["maybe"].Description, parameters["maybe"].AnyOf));
+        Assert.Equal(("integer", 2d, "Wrapped"), (parameters["wrapped"].Type, parameters["wrapped"].Minimum, parameters["wrapped"].Description));
+    }
+
+    [Fact]
+    public void ShouldResolveTheLocalReferences_AndStopAtACycle()
+    {
+        var schema = McpToolAdapterSut.ConvertToToolSchema(McpToolAdapterTestsFixture.CreateDefinitionWithSchema("remote", "A remote tool", """
+            {"$ref":"#/$defs/Input","$defs":{
+              "Input":{"type":"object","required":["owner"],"properties":{
+                "owner":{"$ref":"#/$defs/User","description":"Who owns it"},
+                "tree":{"$ref":"#/definitions/Node"},
+                "elsewhere":{"$ref":"https://example.com/schema.json","description":"Not followed"}}},
+              "User":{"type":"object","description":"A user","properties":{"login":{"type":"string"}}}},
+             "definitions":{"Node":{"type":"object","properties":{"children":{"type":"array","items":{"$ref":"#/definitions/Node"}}}}}}
+            """));
+
+        var owner = schema.Parameters["owner"];
+        Assert.True(owner.Required);
+        Assert.Equal(("object", "Who owns it"), (owner.Type, owner.Description)); // its own words over the definition's
+        Assert.Equal("string", owner.Properties!["login"].Type);
+        // A node that holds nodes: the node is read once, and the nodes it holds accept any value rather
+        // than expanding without end.
+        var children = schema.Parameters["tree"].Properties!["children"];
+        Assert.Equal("array", children.Type);
+        Assert.Null(children.Items!.Type);
+        Assert.Equal((null, "Not followed"), (schema.Parameters["elsewhere"].Type, schema.Parameters["elsewhere"].Description));
+    }
+
+    [Fact]
+    public void ShouldRefuseTheSchema_WhenItsReferencesExpandBeyondTheBudget()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => Convert(RefBomb()));
+
+        Assert.Contains($"beyond {McpToolAdapterSut.MaxSchemaNodes} schemas", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldPublishWhatItRead_AsTheJsonSchemaTheModelIsShown()
+    {
+        const string remote = """
+            {"type":"object","additionalProperties":false,"required":["city"],"properties":{
+              "city":{"type":"string","description":"City","minLength":1,"pattern":"^[A-Z]"},
+              "grid":{"type":"array","items":{"type":"array","items":{"type":"integer"}}},
+              "filter":{"type":"object","additionalProperties":false,"required":["field"],"properties":{"field":{"type":"string"}}},
+              "when":{"anyOf":[{"type":"string","format":"date-time"},{"type":"integer","minimum":0}]},
+              "loose":{"type":"array"}}}
+            """;
+
+        var published = System.Text.Json.JsonSerializer.Serialize(
+            McpToolAdapterSut.ConvertToToolSchema(McpToolAdapterTestsFixture.CreateDefinitionWithSchema("remote", "A remote tool", remote)).ToInputJsonSchema());
+
+        Assert.Equal(
+            """{"type":"object","properties":{"city":{"type":"string","description":"City","minLength":1,"pattern":"^[A-Z]"},"grid":{"type":"array","items":{"type":"array","items":{"type":"integer"}}},"filter":{"type":"object","properties":{"field":{"type":"string"}},"required":["field"],"additionalProperties":false},"when":{"anyOf":[{"type":"string","format":"date-time"},{"type":"integer","minimum":0}]},"loose":{"type":"array","items":{}}},"required":["city"],"additionalProperties":false}""",
+            published);
+    }
 }

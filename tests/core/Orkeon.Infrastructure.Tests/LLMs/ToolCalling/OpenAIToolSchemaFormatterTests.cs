@@ -354,4 +354,29 @@ public class OpenAIToolSchemaFormatterTests
         Assert.Equal("array", rows["type"]);
         Assert.Empty(Assert.IsType<Dictionary<string, object>>(rows["items"]));
     }
+
+    [Fact]
+    public void PublishesTheNestedProperties_AndTheClosedObjects()
+    {
+        var schema = new ToolSchema("t", "d", new Dictionary<string, ParameterSchema>
+        {
+            ["filter"] = new("object", "Filter", Required: true)
+            {
+                Properties = new Dictionary<string, ParameterSchema> { ["field"] = new("string", "Field", Required: true) { MinLength = 1 } },
+                AllowsAdditionalProperties = false,
+            },
+        })
+        { AllowsAdditionalParameters = false };
+
+        var result = _formatter.FormatToolsForPayload([schema]);
+
+        var function = (Dictionary<string, object>)((List<Dictionary<string, object>>)result["tools"])[0]["function"];
+        var parameters = (Dictionary<string, object>)function["parameters"];
+        Assert.Equal(false, parameters["additionalProperties"]);
+        var filter = (Dictionary<string, object>)((Dictionary<string, object>)parameters["properties"])["filter"];
+        Assert.Equal(false, filter["additionalProperties"]);
+        Assert.Equal(["field"], Assert.IsType<List<string>>(filter["required"]));
+        var field = (Dictionary<string, object>)((Dictionary<string, object>)filter["properties"])["field"];
+        Assert.Equal(1, field["minLength"]);
+    }
 }
