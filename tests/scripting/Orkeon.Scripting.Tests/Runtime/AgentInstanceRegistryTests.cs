@@ -277,6 +277,33 @@ public sealed class AgentInstanceRegistryTests
 
     [Fact]
     [Trait("BR", "CH-01")]
+    public void ShouldAcceptASend_WhenTheInstanceStartedLongerAgoThanTheDefaultWallTime()
+    {
+        // Arrange: #422, the sends of an instance were counted on a budget of their own, which carried the
+        // default five-minute wall time: past it every send was refused, whatever the instance's budget allowed.
+        // Only the instance's budget bounds a send, on its own clock: a budget of its own made at Register,
+        // even on that clock, refuses this send on WallTime.
+        var clock = new Orkeon.Tests.Shared.Timing.ManualTimeProvider();
+        var engine = new JsEngineFactory().Create();
+        var agent = (Orkeon.Scripting.Builders.JsAgent)engine
+            .Evaluate("agentBuilder().name(\"a\").role(\"R\").goal(\"G\").body(async () => \"x\").build()").ToObject()!;
+        var registry = new AgentInstanceRegistry(maxInstances: 8);
+        var budget = new Orkeon.Domain.Autonomous.AgentExecutionBudget
+            { MaxSpawnedAgents = 3, MaxWallTime = TimeSpan.FromHours(1), TimeProvider = clock };
+        using var cancellation = new CancellationTokenSource();
+        var id = registry.Register(agent, budget, cancellation);
+        registry.Finish(id, succeeded: true);
+        clock.Advance(TimeSpan.FromMinutes(10));
+
+        // Act
+        var send = registry.BeginSend(id);
+
+        // Assert: the follow-up run gets what is left of the instance's hour
+        Assert.Equal(TimeSpan.FromMinutes(50), send.Budget.MaxWallTime);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
     public async Task ShouldRejectWithTheSpawnDimensionAndTheLimit_WhenASendIsPastTheSpawnBudget()
     {
         // #422: the refusal of a send names the instance and the limit, and is typed for the script to catch.
