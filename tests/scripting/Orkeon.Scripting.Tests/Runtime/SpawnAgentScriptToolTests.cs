@@ -74,6 +74,36 @@ public sealed class SpawnAgentScriptToolTests
     }
 
     [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldFeedTheRefusalBackAndFinishTheTurn_WhenSpawnBudgetIsSpent()
+    {
+        // #422: past the spawn budget the call is refused, the model told, and the turn goes on.
+        var run = await RunAsync(".budget({ spawnedAgents: 1 })",
+            ScriptStep.Call("spawn_agent", Spawn("b")),
+            ScriptStep.Answer("B-final"),
+            ScriptStep.Call("spawn_agent", Spawn("c")),
+            ScriptStep.Answer("ROOT-final"));
+
+        Assert.Equal(2, run.Provider.ToolResults.Count);
+        Assert.Contains("B-final", run.Provider.ToolResults[0], StringComparison.Ordinal);
+        Assert.Contains("Spawn budget spent", run.Provider.ToolResults[1], StringComparison.Ordinal);
+        Assert.Equal("ROOT-final", run.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldFinishTheTurn_WhenTheLastSpawnReachesTheBudget()
+    {
+        var run = await RunAsync(".budget({ spawnedAgents: 1 })",
+            ScriptStep.Call("spawn_agent", Spawn("b")),
+            ScriptStep.Answer("B-final"),
+            ScriptStep.Answer("ROOT-final"));
+
+        Assert.Contains("B-final", Assert.Single(run.Provider.ToolResults), StringComparison.Ordinal);
+        Assert.Equal("ROOT-final", run.Output);
+    }
+
+    [Fact]
     [Trait("BR", "RT-01")]
     public async Task ShouldRefuseSpawn_WhenAgentNameUnknown()
     {

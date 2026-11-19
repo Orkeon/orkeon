@@ -288,7 +288,10 @@ refuses it. Once either is reached, `ctx.llm.act` makes one last call that may
 call no tool and resolves with `budgetExhausted: true` ([the token budget of act](../architecture/scripting.md#the-token-budget-of-act)).
 A spent dimension ends the run with `BudgetExhaustedError`,
 the error a crew's budget gives, and a child it spawns (`spawn_agent`, `ctx.spawnBackground`) derives
-its budget from the run's. An unknown key, a count that is not a whole number of 1 or more, or an
+its budget from the run's. `spawnedAgents` is the exception: past it the spawn alone is refused and the
+run carries on. `spawn_agent` returns a tool error the model reads (`Spawn budget spent (...)`), so it
+goes on with the reports it already holds; `ctx.spawnBackground` and an instance's `send` throw
+`BudgetExhaustedError` with `dimension: "spawnedAgents"`, for the script to catch. An unknown key, a count that is not a whole number of 1 or more, or an
 unreadable `wallTime` is refused when the run opens, where the procedural `crewBuilder().budget(...)` skips it.
 `charge: "crew"`, beside `budget`, counts what the run spends (tool calls, tokens, spawns; its wall
 clock runs with the caller's) against the budget of the run it is called from as well — the crew's,

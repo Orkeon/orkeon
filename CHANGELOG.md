@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A `spawn_agent` call past the spawn budget no longer ends the turn (#422).** The call is refused with
+  a tool error the model reads (`Spawn budget spent (Agent exceeded N spawned sub-agents): '<agent>' was
+  not spawned. Carry on with the results you hold.`), and the act goes on with the reports it already
+  holds. Before, the act's pre-flight gate ended the whole turn as soon as the spawn count reached
+  `spawnedAgents`, even when the last spawn had succeeded. `AgentExecutionBudget.ThrowIfExhausted()` no
+  longer checks the spawn count (`IsExhausted` still does), and `RecordSpawn()` no longer counts a spawn
+  it refuses (`CurrentSpawnedAgents` could read one past the limit). `ctx.spawnBackground` and an
+  instance's `send` still throw `BudgetExhaustedError` (`dimension: "spawnedAgents"`), with the same message.
+
 ## [1.3.0] - 2026-11-18
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It carries no

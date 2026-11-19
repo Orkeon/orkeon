@@ -30,7 +30,8 @@ declare global {
          * Bounds this run as `crewBuilder().budget(...)` bounds a crew run, with the same keys and
          * values (`wallTime` in seconds, or a duration such as `"5m"`); a spent dimension ends the
          * run with `BudgetExhaustedError`, and a child it spawns (`spawn_agent`, `ctx.spawnBackground`)
-         * derives its budget from this one. An unknown key, or a count that is not a whole number of
+         * derives its budget from this one. `spawnedAgents` aside: past it the spawn alone is refused
+         * and the run carries on. An unknown key, or a count that is not a whole number of
          * 1 or more, is refused when the run opens.
          */
         budget?: ExecutionBudget;
@@ -212,6 +213,12 @@ declare global {
          * `process("autonomous")` crew, which counts the tokens of each finished task: refused there.
          */
         readonly contextTokens?: number;
+        /**
+         * Sub-agents the run may spawn. Spending it never ends the run: a spawn past it is refused.
+         * `spawn_agent` returns a tool error the model reads, and the act goes on with the reports it
+         * holds; `ctx.spawnBackground` and an instance's `send` throw `BudgetExhaustedError`
+         * (`dimension: "spawnedAgents"`).
+         */
         readonly spawnedAgents?: number;
     }
 

@@ -57,14 +57,26 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
     /// <summary>
     /// Starts the child on the engine thread and returns its promise. Refuses an unknown agent, and a
     /// spawn past <see cref="AgentExecutionBudget.MaxDelegationDepth"/> or
-    /// <see cref="AgentExecutionBudget.MaxSpawnedAgents"/>, by throwing.
+    /// <see cref="AgentExecutionBudget.MaxSpawnedAgents"/>, by throwing: the act's tool pump hands the
+    /// refusal to the model as a failed call and the turn goes on (#422). Past the spawn count the
+    /// message tells the model the limit is reached and to carry on with what it holds.
     /// </summary>
     /// <param name="argumentsJson">The <c>spawn_agent</c> arguments.</param>
     /// <param name="spawnerMode">The permission mode of the act that spawns the child (SEC-7).</param>
     internal JsValue Start(string argumentsJson, string? spawnerMode = null)
     {
         var request = JsonSerializer.Deserialize<SpawnAgentScriptRequest>(argumentsJson, Json) ?? new SpawnAgentScriptRequest();
-        return Start(request.Agent, request.Input, inheritPermit: true, _environment.Ct, spawnerMode);
+        try
+        {
+            return Start(request.Agent, request.Input, inheritPermit: true, _environment.Ct, spawnerMode);
+        }
+        catch (BudgetExhaustedException spent) when (spent.Dimension == BudgetDimension.SpawnedAgents)
+        {
+            // The refusal may come from the budget this one is charged to: its message names the limit reached.
+            throw new BudgetExhaustedException(BudgetDimension.SpawnedAgents,
+                $"Spawn budget spent ({spent.Message.TrimEnd('.')}): '{request.Agent}' was not spawned. "
+                + "Carry on with the results you hold.");
+        }
     }
 
     /// <summary>
