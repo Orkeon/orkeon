@@ -221,8 +221,10 @@ dernier appel échoue, ou ne répond rien, l'act rejette avec `BudgetExhaustedEr
 nomme ce qu'il a compté : `Token budget exhausted: <somme> tokens sent and received over <n> calls
 (limit <limite>)`, ou sous `contextTokens` `Token budget exhausted: <n> context tokens (the growth or the
 uncached part of each prompt, plus every completion) over <n> calls (limit <limite> contextTokens)` ;
-les deux sont sur la dimension `tokens`. Les autres dimensions (appels d'outils, temps mural, profondeur de délégation,
-enfants) rejettent toujours à la garde, et `maxIterations` termine toujours par `exhausted: true`.
+les deux sont sur la dimension `tokens`. Les autres dimensions (appels d'outils, temps mural, profondeur de délégation)
+rejettent toujours à la garde, et `maxIterations` termine toujours par `exhausted: true`. Un nombre
+d'enfants épuisé n'est pas vérifié à la garde : il refuse seulement le lancement suivant, un appel
+`spawn_agent` que le modèle lit comme une erreur d'outil, et l'act continue.
 
 ## Agents enfants : `spawn_agent` et `ctx.spawnBackground`
 
@@ -260,7 +262,8 @@ réponse de l'outil `spawn_agent` ne change pas.
   résultat à cette transcription et se résout avec le texte de la réponse. Il prend un permis de la
   porte de la crew, compte comme un spawn contre `MaxSpawnedAgents` et prend le sémaphore de l'agent.
   Un `send` sur un identifiant inconnu ou évincé, sur une instance en cours, ou pendant qu'un autre
-  `send` du même identifiant s'exécute, est refusé.
+  `send` du même identifiant s'exécute, est refusé. Au-delà du nombre d'enfants, il rejette avec
+  `BudgetExhaustedError` (`dimension: "spawnedAgents"`) ; l'exécution continue.
 - **`crew.stop(id)`** annule aussitôt une instance en cours et renvoie `true` (`false` pour un
   identifiant terminé ou inconnu). Le créneau de la porte est libéré quand l'`act` s'achève, après la
   fin des appels d'outils en vol.

@@ -183,8 +183,42 @@ public class AgentExecutionBudgetTests
         var ex = Assert.Throws<BudgetExhaustedException>(run.RecordSpawn);
 
         // Assert
-        Assert.Equal("Agent exceeded 1 spawned sub-agents.", ex.Message);
+        Assert.Equal("Spawn budget spent: 1 sub-agents already spawned (limit 1 spawnedAgents).", ex.Message);
         Assert.Equal(0, run.CurrentSpawnedAgents);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public void ShouldNotThrow_WhenOnlyTheSpawnBudgetIsSpent()
+    {
+        // Arrange: #422, a spent spawn count refuses the next spawn, not the next action
+        var crew = new AgentExecutionBudget { MaxSpawnedAgents = 1 };
+        var run = new AgentExecutionBudget { MaxSpawnedAgents = 1, ChargedTo = crew };
+        run.RecordSpawn();
+
+        // Act
+        var ex = Record.Exception(run.ThrowIfExhausted);
+
+        // Assert
+        Assert.Null(ex);
+        Assert.Throws<BudgetExhaustedException>(run.RecordSpawn);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public void ShouldNotCountASpawnItRefuses()
+    {
+        // Arrange
+        var run = new AgentExecutionBudget { MaxSpawnedAgents = 2 };
+        run.RecordSpawn();
+        run.RecordSpawn();
+
+        // Act
+        var ex = Assert.Throws<BudgetExhaustedException>(run.RecordSpawn);
+
+        // Assert
+        Assert.Equal(BudgetDimension.SpawnedAgents, ex.Dimension);
+        Assert.Equal(2, run.CurrentSpawnedAgents);
     }
 
     [Fact]

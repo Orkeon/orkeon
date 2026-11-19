@@ -281,15 +281,21 @@ public sealed class AgentExecutionBudget
         BudgetDimension.Tokens,
         $"Token budget exhausted: {counted} context tokens (the growth or the uncached part of each prompt, plus every completion) over {calls} {(calls == 1 ? "call" : "calls")} (limit {MaxContextTokens} contextTokens)");
 
-    /// <summary>Records a sub-agent spawn and throws if the spawn limit is exceeded.</summary>
+    /// <summary>
+    /// Records a sub-agent spawn and throws if the spawn limit is exceeded. A refused spawn is
+    /// not counted, here or on <see cref="ChargedTo"/>.
+    /// </summary>
     /// <exception cref="BudgetExhaustedException"/>
     public void RecordSpawn()
     {
         AssertWallTime();
         if (Interlocked.Increment(ref _spawnedAgents) > MaxSpawnedAgents)
+        {
+            Interlocked.Decrement(ref _spawnedAgents);
             throw new BudgetExhaustedException(
                 BudgetDimension.SpawnedAgents,
-                $"Agent exceeded {MaxSpawnedAgents} spawned sub-agents.");
+                $"Spawn budget spent: {MaxSpawnedAgents} sub-agents already spawned (limit {MaxSpawnedAgents} spawnedAgents).");
+        }
         ChargeOrRollBack(ref _spawnedAgents, static charged => charged.RecordSpawn());
     }
 
@@ -315,7 +321,10 @@ public sealed class AgentExecutionBudget
     /// <summary>
     /// Throws when any dimension is already exhausted, identifying the exhausted
     /// dimension. Unlike the <c>Record*</c> methods this consumes nothing — it is the
-    /// pre-flight gate callers use before paying for the next action.
+    /// pre-flight gate callers use before paying for the next action. The spawn count is not
+    /// checked here (#422): a spent <see cref="MaxSpawnedAgents"/> refuses the next spawn
+    /// (<see cref="RecordSpawn"/>), never the next action, so the agent carries on with what
+    /// its children returned. <see cref="IsExhausted"/> still counts it.
     /// </summary>
     /// <exception cref="BudgetExhaustedException"/>
     public void ThrowIfExhausted()
@@ -333,10 +342,6 @@ public sealed class AgentExecutionBudget
             throw new BudgetExhaustedException(
                 BudgetDimension.DelegationDepth,
                 $"Delegation depth {_delegationDepth} exceeds max {MaxDelegationDepth}.");
-        if (_spawnedAgents >= MaxSpawnedAgents)
-            throw new BudgetExhaustedException(
-                BudgetDimension.SpawnedAgents,
-                $"Agent exceeded {MaxSpawnedAgents} spawned sub-agents.");
         ChargedTo?.ThrowIfExhausted();
     }
 

@@ -385,7 +385,7 @@ public sealed class CrewBudgetRunTests
         var outcome = await RunAAsync(engine);
 
         // Assert
-        Assert.Equal("budget: Agent exceeded 1 spawned sub-agents.", outcome);
+        Assert.Equal("budget: Spawn budget spent: 1 sub-agents already spawned (limit 1 spawnedAgents).", outcome);
     }
 
     [Fact]

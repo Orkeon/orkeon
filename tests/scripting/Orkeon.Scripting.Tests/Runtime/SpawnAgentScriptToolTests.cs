@@ -18,11 +18,14 @@ public sealed class SpawnAgentScriptToolTests
 
     private static string Spawn(string agent) => "{\"agent\":\"" + agent + "\",\"input\":\"work\"}";
 
-    private static async Task<(FakeToolCallingLlmProvider Provider, string Output)> RunAsync(string budget, params ScriptStep[] script)
+    private static Task<(FakeToolCallingLlmProvider Provider, string Output)> RunAsync(string budget, params ScriptStep[] script)
+        => RunCrewAsync(Crew(budget), script);
+
+    private static async Task<(FakeToolCallingLlmProvider Provider, string Output)> RunCrewAsync(string js, params ScriptStep[] script)
     {
         var provider = new FakeToolCallingLlmProvider(script);
         var engine = new JsEngineFactory(llmProvider: provider).Create();
-        var crew = (JsCrew)(await engine.EvaluateAsync(Crew(budget), null, TestContext.Current.CancellationToken)).ToObject()!;
+        var crew = (JsCrew)(await engine.EvaluateAsync(js, null, TestContext.Current.CancellationToken)).ToObject()!;
         var result = await crew.RunAsync(null, TestContext.Current.CancellationToken);
         return (provider, result.tasks[0].output!.ToString()!);
     }
@@ -70,6 +73,64 @@ public sealed class SpawnAgentScriptToolTests
 
         Assert.Contains("delegation depth", run.Provider.ToolResults[0], StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("D-out", run.Provider.ToolResults[0], StringComparison.Ordinal);
+        Assert.Equal("ROOT-final", run.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldFeedTheRefusalBackAndFinishTheTurn_WhenSpawnBudgetIsSpent()
+    {
+        // #422: past the spawn budget the call is refused, the model told, and the turn goes on.
+        var run = await RunAsync(".budget({ spawnedAgents: 1 })",
+            ScriptStep.Call("spawn_agent", Spawn("b")),
+            ScriptStep.Answer("B-final"),
+            ScriptStep.Call("spawn_agent", Spawn("c")),
+            ScriptStep.Answer("ROOT-final"));
+
+        Assert.Equal(2, run.Provider.ToolResults.Count);
+        Assert.Contains("B-final", run.Provider.ToolResults[0], StringComparison.Ordinal);
+        Assert.Contains("Spawn budget spent", run.Provider.ToolResults[1], StringComparison.Ordinal);
+        Assert.Equal("ROOT-final", run.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldFeedTheCrewsLimitBack_WhenTheCrewBudgetRefusesTheSpawn()
+    {
+        // #422: a run charged to the crew allows 5 spawns, the crew 1: the crew's limit refuses the second, the run goes on.
+        const string js = """
+            const mk = (n) => agentBuilder().name(n).role("R").goal("G")
+                .body(async (input, ctx) => (await ctx.llm.act(String(input ?? "go"), { permissionMode: "bypassPermissions" })).output)
+                .build();
+            const root = agentBuilder().name("root").role("R").goal("G")
+                .body(async (input, ctx) => await ctx.delegate("b", "work", { budget: { spawnedAgents: 5 }, charge: "crew" }))
+                .build();
+            crewBuilder().name("c").budget({ spawnedAgents: 1 })
+                .withAgent(root).withAgent(mk("b")).withAgent(mk("c")).withAgent(mk("d")).build();
+            """;
+        var run = await RunCrewAsync(js,
+            ScriptStep.Call("spawn_agent", Spawn("c")),
+            ScriptStep.Answer("C-final"),
+            ScriptStep.Call("spawn_agent", Spawn("d")),
+            ScriptStep.Answer("B-final"));
+
+        Assert.Equal(2, run.Provider.ToolResults.Count);
+        Assert.Contains(
+            "Spawn budget spent: 1 sub-agents already spawned (limit 1 spawnedAgents); 'd' was not spawned. Carry on with the results you hold.",
+            run.Provider.ToolResults[1], StringComparison.Ordinal);
+        Assert.Equal("B-final", run.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldFinishTheTurn_WhenTheLastSpawnReachesTheBudget()
+    {
+        var run = await RunAsync(".budget({ spawnedAgents: 1 })",
+            ScriptStep.Call("spawn_agent", Spawn("b")),
+            ScriptStep.Answer("B-final"),
+            ScriptStep.Answer("ROOT-final"));
+
+        Assert.Contains("B-final", Assert.Single(run.Provider.ToolResults), StringComparison.Ordinal);
         Assert.Equal("ROOT-final", run.Output);
     }
 

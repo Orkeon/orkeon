@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A `spawn_agent` call past the spawn budget no longer ends the turn (#422).** The call is refused with
+  a tool error the model reads (`Spawn budget spent: N sub-agents already spawned (limit N spawnedAgents);
+  '<agent>' was not spawned. Carry on with the results you hold.`, N being the limit of the budget that
+  refused, the run's or the crew's), and the act goes on with the reports it already holds. Before, the
+  act's pre-flight gate ended the whole turn as soon as the spawn count reached `spawnedAgents`, even when
+  the last spawn had succeeded.
+  - `AgentExecutionBudget.ThrowIfExhausted()` no longer checks the spawn count; `IsExhausted` still does.
+    Both are part of the experimental `ORKEXP002` surface; no signature changes.
+  - `RecordSpawn()` no longer counts a spawn it refuses: `CurrentSpawnedAgents` could read one past the limit.
+  - Its message changes from `Agent exceeded N spawned sub-agents.` to `Spawn budget spent: N sub-agents
+    already spawned (limit N spawnedAgents).`; `ctx.spawnBackground` still throws `BudgetExhaustedError`
+    (`dimension: "spawnedAgents"`) with it.
+  - `crew.send` past the spawn count rejects with `BudgetExhaustedError` naming the instance and the
+    limit, in place of `Agent exceeded 0 spawned sub-agents.`, and no longer refuses every send to an
+    instance started more than five minutes before (its allowance carried the default wall time).
+
 ## [1.3.0] - 2026-11-18
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It carries no

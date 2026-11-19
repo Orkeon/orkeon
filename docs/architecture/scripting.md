@@ -212,7 +212,9 @@ budget ran out. When that last call fails, or answers nothing, the act rejects w
 and received over <n> calls (limit <limit>)`, or under `contextTokens` `Token budget exhausted: <n> context
 tokens (the growth or the uncached part of each prompt, plus every completion) over <n> calls (limit <limit>
 contextTokens)`; both are on the `tokens` dimension. The other dimensions (tool calls, wall time, delegation
-depth, spawns) still reject at the gate, and `maxIterations` still ends with `exhausted: true`.
+depth) still reject at the gate, and `maxIterations` still ends with `exhausted: true`. A spent spawn count
+is not checked at the gate: it refuses the next spawn only, a `spawn_agent` call the model reads as a tool
+error, and the act goes on.
 
 ## Child agents: `spawn_agent` and `ctx.spawnBackground`
 
@@ -245,7 +247,8 @@ is unchanged.
   message, a fresh child budget) seeded with the instance's stored transcript, appends the result to
   that transcript and resolves to the reply text. It takes a crew gate permit, counts as a spawn
   against `MaxSpawnedAgents` and takes the per-agent semaphore. A `send` on an unknown or evicted id,
-  on a running instance, or while another `send` on the same id runs, is refused.
+  on a running instance, or while another `send` on the same id runs, is refused. Past the spawn
+  count it rejects with `BudgetExhaustedError` (`dimension: "spawnedAgents"`); the run goes on.
 - **`crew.stop(id)`** cancels a running instance at once and returns `true` (`false` for a finished
   or unknown id). The gate slot is freed when the act settles, after the tool calls in flight end.
 - **Bounds**: `crew.maxInstances(n)` (default 32) keeps at most `n` instances,
