@@ -72,10 +72,10 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
         }
         catch (BudgetExhaustedException spent) when (spent.Dimension == BudgetDimension.SpawnedAgents)
         {
-            // The refusal may come from the budget this one is charged to: its message names the limit reached.
+            // The refusal may come from the budget this one is charged to (a crew's): its message names the
+            // limit that refused. No inner exception: BackgroundAgents.FailureMessage reads the innermost one.
             throw new BudgetExhaustedException(BudgetDimension.SpawnedAgents,
-                $"Spawn budget spent ({spent.Message.TrimEnd('.')}): '{request.Agent}' was not spawned. "
-                + "Carry on with the results you hold.");
+                $"{spent.Message.TrimEnd('.')}; '{request.Agent}' was not spawned. Carry on with the results you hold.");
         }
     }
 

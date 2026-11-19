@@ -482,7 +482,7 @@ Le préfixe `_system.` est réservé : un agent ne peut pas publier sur un topic
 
 Un wait lié à l'`AgentExecutionBudget` de la crew s'arrête avec `BudgetExhaustedException` quand le budget est épuisé — distinct d'un timeout. Permet au superviseur de distinguer « pas de message en temps voulu » de « budget épuisé ».
 
-`EventHubBudgetExtensions.WaitForAsync(hub, descriptor, timeout, budget, ct)` (une surcharge prend l'intervalle de sondage) sonde `budget.IsExhausted` toutes les 25 ms, annule le wait quand il bascule, et lève `BudgetExhaustedException` sur la dimension `WallTime`. Les outils d'agent ne l'appellent pas — leurs waits sont bornés par `timeout_ms` et par l'annulation propre du run.
+`EventHubBudgetExtensions.WaitForAsync(hub, descriptor, timeout, budget, ct)` (une surcharge prend l'intervalle de sondage) sonde `budget.IsExhausted` toutes les 25 ms, annule le wait quand il bascule, et lève `BudgetExhaustedException` sur la dimension `WallTime`. `IsExhausted` compte toutes les dimensions, le nombre d'enfants compris : un budget dont `MaxSpawnedAgents` est épuisé met aussi fin au wait, signalé sur `WallTime`. Les outils d'agent ne l'appellent pas — leurs waits sont bornés par `timeout_ms` et par l'annulation propre du run.
 
 ---
 

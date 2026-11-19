@@ -118,8 +118,13 @@ internal sealed class AgentInstanceRegistry
             var entry = Find(id) ?? throw new InvalidOperationException($"No agent instance '{id}': it never started, or it was evicted.");
             if (entry.State == State.Running)
                 throw new InvalidOperationException($"Agent instance '{id}' is running: send to it once it has ended.");
-            entry.Allowance.RecordSpawn();
+            if (entry.SendsLeft <= 0)
+                throw new BudgetExhaustedException(BudgetDimension.SpawnedAgents,
+                    $"Spawn budget spent: agent instance '{id}' has run {entry.Budget.MaxSpawnedAgents} times, its first run and "
+                    + $"{Math.Max(0, entry.Budget.MaxSpawnedAgents - 1)} sends (limit {entry.Budget.MaxSpawnedAgents} spawnedAgents). "
+                    + "Carry on with the results you hold.");
             var budget = entry.Budget.CreateChildBudget();
+            entry.SendsLeft--;
             entry.State = State.Running;
             entry.Cancellation = new CancellationTokenSource();
             return new AgentInstanceSend(entry.Agent, budget, new AgentInstanceRun(this, id, entry.Transcript), entry.InheritedRoot, entry.Cancellation.Token)
@@ -179,7 +184,9 @@ internal sealed class AgentInstanceRegistry
             Agent = agent;
             Budget = budget;
             // The run that started the instance is one of the spawns its budget allows; each send takes another.
-            Allowance = new() { MaxSpawnedAgents = Math.Max(0, budget.MaxSpawnedAgents - 1) };
+            // A plain count (#422): a budget of its own here carried the default five-minute wall time,
+            // which refused every send to an instance started more than five minutes before.
+            SendsLeft = Math.Max(0, budget.MaxSpawnedAgents - 1);
             State = State.Running;
             Transcript = [];
         }
@@ -187,7 +194,8 @@ internal sealed class AgentInstanceRegistry
         internal string Id { get; }
         internal JsAgent Agent { get; }
         internal AgentExecutionBudget Budget { get; }
-        internal AgentExecutionBudget Allowance { get; }
+        /// <summary>The sends this instance may still take; read and written under the registry's lock.</summary>
+        internal int SendsLeft { get; set; }
         internal State State { get; set; }
         internal CancellationTokenSource? Cancellation { get; set; }
         internal string? InheritedRoot { get; init; }

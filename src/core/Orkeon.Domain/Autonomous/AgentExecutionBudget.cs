@@ -294,7 +294,7 @@ public sealed class AgentExecutionBudget
             Interlocked.Decrement(ref _spawnedAgents);
             throw new BudgetExhaustedException(
                 BudgetDimension.SpawnedAgents,
-                $"Agent exceeded {MaxSpawnedAgents} spawned sub-agents.");
+                $"Spawn budget spent: {MaxSpawnedAgents} sub-agents already spawned (limit {MaxSpawnedAgents} spawnedAgents).");
         }
         ChargeOrRollBack(ref _spawnedAgents, static charged => charged.RecordSpawn());
     }

@@ -308,11 +308,12 @@ n appels sur un contexte de c tokens dépense environ c plus ses complétions, p
 appel qui ne peut appeler aucun outil et se résout avec `budgetExhausted: true` ([le budget de tokens d'act](../architecture/scripting.md#le-budget-de-tokens-dact)).
 Une dimension épuisée termine l'exécution par
 `BudgetExhaustedError`, l'erreur que donne le budget d'une crew, et un enfant qu'elle lance
-(`spawn_agent`, `ctx.spawnBackground`) dérive son budget du sien. `spawnedAgents` fait exception :
-au-delà, seul le lancement est refusé et l'exécution continue. `spawn_agent` renvoie une erreur d'outil
-que le modèle lit (`Spawn budget spent (...)`), et il poursuit avec les rapports qu'il a déjà reçus ;
-`ctx.spawnBackground` et le `send` d'une instance lèvent `BudgetExhaustedError` avec
-`dimension: "spawnedAgents"`, que le script peut attraper. Une clé inconnue, un compte qui
+(`spawn_agent`, `ctx.spawnBackground`) dérive son budget du sien. Un `spawnedAgents` épuisé ne
+termine pas l'exécution à lui seul : au-delà, seul le lancement suivant est refusé. `spawn_agent` renvoie
+une erreur d'outil que le modèle lit (`Spawn budget spent: <n> sub-agents already spawned (limit <n>
+spawnedAgents); '<agent>' was not spawned. ...`), et l'act poursuit avec les rapports déjà reçus ;
+`ctx.spawnBackground` lève, et `crew.send` rejette avec, `BudgetExhaustedError`
+(`dimension: "spawnedAgents"`), qui ne termine l'exécution que si le script ne l'attrape pas. Une clé inconnue, un compte qui
 n'est pas un entier d'au moins 1 ou un `wallTime` illisible est refusé à l'ouverture de l'exécution,
 là où le `crewBuilder().budget(...)` procédural l'ignore. `charge: "crew"`, à côté de `budget`, compte ce que
 l'exécution dépense (appels d'outils, tokens, enfants ; son horloge murale court avec celle de

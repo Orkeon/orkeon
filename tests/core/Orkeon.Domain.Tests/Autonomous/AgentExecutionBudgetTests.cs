@@ -183,7 +183,7 @@ public class AgentExecutionBudgetTests
         var ex = Assert.Throws<BudgetExhaustedException>(run.RecordSpawn);
 
         // Assert
-        Assert.Equal("Agent exceeded 1 spawned sub-agents.", ex.Message);
+        Assert.Equal("Spawn budget spent: 1 sub-agents already spawned (limit 1 spawnedAgents).", ex.Message);
         Assert.Equal(0, run.CurrentSpawnedAgents);
     }
 

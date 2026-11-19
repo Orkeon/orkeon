@@ -30,8 +30,8 @@ declare global {
          * Bounds this run as `crewBuilder().budget(...)` bounds a crew run, with the same keys and
          * values (`wallTime` in seconds, or a duration such as `"5m"`); a spent dimension ends the
          * run with `BudgetExhaustedError`, and a child it spawns (`spawn_agent`, `ctx.spawnBackground`)
-         * derives its budget from this one. `spawnedAgents` aside: past it the spawn alone is refused
-         * and the run carries on. An unknown key, or a count that is not a whole number of
+         * derives its budget from this one. `spawnedAgents` aside: past it the next spawn alone is
+         * refused, not the run. An unknown key, or a count that is not a whole number of
          * 1 or more, is refused when the run opens.
          */
         budget?: ExecutionBudget;
@@ -92,7 +92,8 @@ declare global {
         instances(): { readonly id: string; readonly agent: string; readonly state: "running" | "completed" | "failed" | "stopped" }[];
         /**
          * One more bare act on the instance's agent, seeded with its kept transcript; resolves to the reply
-         * text. Refused for an unknown or evicted id, a running instance, and a spawn past the budget.
+         * text. Refused for an unknown or evicted id, a running instance, and a spawn past the budget
+         * (`BudgetExhaustedError`, `dimension: "spawnedAgents"`).
          */
         send(id: string, message: string): Promise<string>;
         /** Cancels a running instance at once; `false` when none runs under `id`. */
@@ -214,10 +215,10 @@ declare global {
          */
         readonly contextTokens?: number;
         /**
-         * Sub-agents the run may spawn. Spending it never ends the run: a spawn past it is refused.
-         * `spawn_agent` returns a tool error the model reads, and the act goes on with the reports it
-         * holds; `ctx.spawnBackground` and an instance's `send` throw `BudgetExhaustedError`
-         * (`dimension: "spawnedAgents"`).
+         * Sub-agents the run may spawn. Spending it never ends an act by itself: the next spawn alone
+         * is refused. `spawn_agent` returns a tool error the model reads, and the act goes on with the
+         * reports it holds; `ctx.spawnBackground` throws, and `crew.send` rejects with,
+         * `BudgetExhaustedError` (`dimension: "spawnedAgents"`), which ends the run only if uncaught.
          */
         readonly spawnedAgents?: number;
     }

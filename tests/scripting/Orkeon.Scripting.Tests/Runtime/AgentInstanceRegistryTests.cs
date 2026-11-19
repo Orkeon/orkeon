@@ -276,6 +276,24 @@ public sealed class AgentInstanceRegistryTests
     }
 
     [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldRejectWithTheSpawnDimensionAndTheLimit_WhenASendIsPastTheSpawnBudget()
+    {
+        // #422: the refusal of a send names the instance and the limit, and is typed for the script to catch.
+        using var doc = JsonDocument.Parse(await RunAsync(new SlowLlmProvider(), Script(
+            FinishedA + "let refused = null;"
+            + " for (let i = 0; i < 10; i++) { try { await c.send(\"a1\", \"m\" + i); }"
+            + " catch (e) { refused = { typed: e instanceof BudgetExhaustedError, dimension: e.dimension, message: e.message }; break; } }"
+            + " return JSON.stringify(refused);")));
+
+        Assert.True(doc.RootElement.GetProperty("typed").GetBoolean());
+        Assert.Equal("spawnedAgents", doc.RootElement.GetProperty("dimension").GetString());
+        Assert.Equal(
+            "Spawn budget spent: agent instance 'a1' has run 3 times, its first run and 2 sends (limit 3 spawnedAgents). Carry on with the results you hold.",
+            doc.RootElement.GetProperty("message").GetString());
+    }
+
+    [Fact]
     [Trait("BR", "RT-03")]
     public async Task ShouldKeepPreviousTranscript_WhenFollowUpFailsOrIsCancelled()
     {
