@@ -293,7 +293,7 @@ avec ses propres clés.
 | `Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
-| `ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, contre laquelle les boucles d'agent compactent une longue conversation (#432). Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens`, avec un avertissement par profil qui nomme le chiffre supposé. Jamais envoyée au fournisseur. |
+| `ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, contre laquelle les boucles d'agent compactent une longue conversation. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens`, avec un avertissement par profil qui nomme le chiffre supposé. Jamais envoyée au fournisseur. |
 | `Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
 | `MaxRateLimitWait` | durée | `"00:05:00"` | La plus longue fenêtre de limite de débit qu'un appel attend avant d'échouer : un fournisseur qui en annonce une plus longue fait échouer l'appel aussitôt avec une erreur de limite de débit. `00:00:00` n'attend rien. |
 | `MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
@@ -311,7 +311,7 @@ avec ses propres clés.
 | `Profiles:<nom>:Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Profiles:<nom>:Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `Profiles:<nom>:CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
-| `Profiles:<nom>:ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, contre laquelle les boucles d'agent compactent une longue conversation (#432). Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens`, avec un avertissement par profil qui nomme le chiffre supposé. Jamais envoyée au fournisseur. |
+| `Profiles:<nom>:ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, contre laquelle les boucles d'agent compactent une longue conversation. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens`, avec un avertissement par profil qui nomme le chiffre supposé. Jamais envoyée au fournisseur. |
 | `Profiles:<nom>:Fallback` | liste de chaînes | `[]` | Les profils vers lesquels un appel passe, dans l'ordre, quand celui-ci échoue d'une façon qu'un nouvel essai ne guérit pas : une erreur de transport, un 5xx, un 429 une fois `MaxRetries` épuisé, un délai dépassé. Une liste de noms de profils, ou une seule valeur séparée par des virgules ; `default` désigne le profil de l'hôte. Omise, un échec reste celui de l'appel. |
 | `Profiles:<nom>:FallbackBudgetSeconds` | entier | — | Le temps maximal, en secondes et compté depuis le premier appel, que la chaîne peut passer avant de cesser d'essayer le profil suivant. Il est vérifié entre deux profils et ne coupe jamais un appel en cours. Omis, la chaîne n'est bornée que par le `TimeoutSeconds` et le `MaxRetries` de chaque profil. |
 | `Profiles:<nom>:Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
@@ -732,7 +732,7 @@ sections présentes, ou aucune section et les deux clés définies, sont refusé
 
 ### `Orkeon:Decision:Route`
 
-Où est routé un agent sur `llm.profile: auto` (#434). Au début de chacune de ses tâches, System One
+Où est routé un agent sur `llm.profile: auto`. Au début de chacune de ses tâches, System One
 choisit un profil de `Ladder`, listé du moins cher au plus cher, et la tâche le garde pour tous
 ses appels ; le modèle de décision lit le rôle de l'agent et la tâche (coupée au milieu à 4 000
 caractères), jamais la conversation. Sous une probabilité de 0,6, sans réponse, ou quand le
@@ -1874,7 +1874,7 @@ Comment une crew se construit et décide, et ce qui est gardé de son exécution
 
 ### `Orkeon:Compaction`
 
-Comment les boucles d'agent gardent une longue conversation dans la fenêtre du modèle (#432).
+Comment les boucles d'agent gardent une longue conversation dans la fenêtre du modèle.
 Avant chaque appel, la boucle estime son prompt ; dès qu'il atteint `TriggerShare` de la fenêtre
 utile (la fenêtre de contexte moins le plafond de sortie de l'appel), un appel de résumé remplace
 les tours anciens, et le prompt système, la tâche et les `KeepRecentTurns` derniers tours restent
@@ -1900,8 +1900,8 @@ de préfixe automatique facture de nouveau la conversation après la coupe.
 
 ### `Orkeon:Compaction:Prune`
 
-Comment les boucles d'agent élaguent leurs anciens résultats d'outils de lecture avant de compacter
-(#434), le pendant pour les boucles YAML de l'`onContextPressure` d'un script. Éteint par défaut.
+Comment les boucles d'agent élaguent leurs anciens résultats d'outils de lecture avant de compacter,
+le pendant pour les boucles YAML de l'`onContextPressure` d'un script. Éteint par défaut.
 Dès que le prompt estimé atteint `FillShare` de la fenêtre utile (ou le seuil de compaction, le
 premier atteint), chaque résultat d'un outil de lecture (un outil dont l'accès est `read` pour
 cette entrée) hors des `KeepRecentMessages` derniers messages et plus long que deux fois
@@ -1928,7 +1928,7 @@ n'élague pas.
 
 ### `Orkeon:Skills`
 
-Comment les `skills:` d'un agent atteignent son prompt (#434). Un skill est un fichier markdown
+Comment les `skills:` d'un agent atteignent son prompt. Un skill est un fichier markdown
 lu par le système de fichiers virtuel et ajouté au prompt système de l'agent sous un titre
 `## Skills`, chaque skill coupé à `MaxSkillChars` et le bloc entier à `MaxBlockChars` ; une coupe
 est dite dans le prompt et dans le champ `cut` de `agent.skills`. Un agent avec

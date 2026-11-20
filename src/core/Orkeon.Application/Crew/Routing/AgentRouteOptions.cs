@@ -3,7 +3,7 @@ using Orkeon.Application.Interfaces.Ports;
 namespace Orkeon.Application.Crew.Routing;
 
 /// <summary>
-/// Where an agent on <c>llm.profile: auto</c> is routed (#434), bound to the <c>Orkeon:Decision:Route</c> section
+/// Where an agent on <c>llm.profile: auto</c> is routed, bound to the <c>Orkeon:Decision:Route</c> section
 /// by <c>AddOrkeonInfrastructure()</c>. At the start of each task, the decision model picks one profile of
 /// <see cref="Ladder"/>, and the task keeps it; under a probability of 0.6, without an answer or with the decision
 /// circuit off, the host's default profile stands.

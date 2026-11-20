@@ -282,7 +282,7 @@ same `budget` in `crew.runAgent`'s options) bounds that run with the keys and va
 `crewBuilder().budget(...)` (`toolCalls`, `tokens`, `contextTokens`, `wallTime` in seconds or as `"5m"`,
 `delegationDepth`, `spawnedAgents`). A key left out takes the value it has when no budget is named, the
 same for the crew's `budget(...)`: no wall clock, tool-call, token or `contextTokens` cap, depth 2 and
-3 spawns (#436), so `budget({ spawnedAgents: 10 })` caps the spawns alone. `tokens` is a running sum of the prompt and completion of every
+3 spawns, so `budget({ spawnedAgents: 10 })` caps the spawns alone. `tokens` is a running sum of the prompt and completion of every
 call, the context counted again on each. `contextTokens` counts the context once: each call's
 completion plus the uncached part of its prompt when the provider reports cache hits, else what the
 prompt grew by since the same conversation's previous call (each `ctx.llm.act` its own), so a turn of n calls on a context of c tokens spends about c plus

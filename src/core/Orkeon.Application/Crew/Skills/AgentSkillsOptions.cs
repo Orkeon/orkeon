@@ -3,7 +3,7 @@ using System.Globalization;
 namespace Orkeon.Application.Crew.Skills;
 
 /// <summary>
-/// How an agent's <c>skills:</c> reach its prompt (#434), bound to the <c>Orkeon:Skills</c> section by
+/// How an agent's <c>skills:</c> reach its prompt, bound to the <c>Orkeon:Skills</c> section by
 /// <c>AddOrkeonInfrastructure()</c>. Each skill is a markdown file read through the virtual file system and
 /// appended to the agent's system prompt under a <c>## Skills</c> heading, cut at <see cref="MaxSkillChars"/>,
 /// the whole block at <see cref="MaxBlockChars"/>. An agent with <c>skills: { auto: true }</c> has the

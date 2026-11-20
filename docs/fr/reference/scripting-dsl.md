@@ -302,7 +302,7 @@ même `budget` dans les options de `crew.runAgent`) borne cette exécution avec 
 `crewBuilder().budget(...)` (`toolCalls`, `tokens`, `contextTokens`, `wallTime` en secondes ou sous la forme `"5m"`,
 `delegationDepth`, `spawnedAgents`). Une clé omise prend la valeur qu'elle a quand aucun budget n'est
 nommé, de même pour le `budget(...)` de la crew : ni horloge, ni plafond d'appels d'outils, de tokens ou
-de `contextTokens`, profondeur 2 et 3 spawns (#436), si bien que `budget({ spawnedAgents: 10 })` ne
+de `contextTokens`, profondeur 2 et 3 spawns, si bien que `budget({ spawnedAgents: 10 })` ne
 plafonne que les spawns. `tokens` est une somme courante du prompt et de la complétion de
 chaque appel, le contexte compté de nouveau à chacun. `contextTokens` compte le contexte une fois : la
 complétion de chaque appel plus la part de son prompt que le cache n'a pas servie quand le fournisseur

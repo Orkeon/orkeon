@@ -3,7 +3,7 @@ using System.Globalization;
 namespace Orkeon.Application.Crew.Compaction;
 
 /// <summary>
-/// How the agent loops prune their older read-tool results before they compact (#434), bound to the
+/// How the agent loops prune their older read-tool results before they compact, bound to the
 /// <see cref="SectionName"/> section by <c>AddOrkeonInfrastructure()</c>. Once the estimated prompt reaches
 /// <see cref="FillShare"/> of the usable window (or the compaction trigger, whichever comes first), the decision
 /// model judges each result of a read tool older than the <see cref="KeepRecentMessages"/> last messages: keep it,

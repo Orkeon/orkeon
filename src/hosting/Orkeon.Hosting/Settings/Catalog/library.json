@@ -39,7 +39,7 @@
       "category": "models",
       "hosts": [],
       "registration": "AddOrkeonInfrastructure",
-      "description": "Where an agent on `llm.profile: auto` is routed (#434), bound to the `Orkeon:Decision:Route` section by `AddOrkeonInfrastructure()`. At the start of each task, the decision model picks one profile of `AgentRouteOptions.Ladder`, and the task keeps it; under a probability of 0.6, without an answer or with the decision circuit off, the host's default profile stands."
+      "description": "Where an agent on `llm.profile: auto` is routed, bound to the `Orkeon:Decision:Route` section by `AddOrkeonInfrastructure()`. At the start of each task, the decision model picks one profile of `AgentRouteOptions.Ladder`, and the task keeps it; under a probability of 0.6, without an answer or with the decision circuit off, the host's default profile stands."
     },
     {
       "path": "Orkeon:Kev",
@@ -401,14 +401,14 @@
       "category": "orchestration-and-persistence",
       "hosts": [],
       "registration": "AddOrkeonInfrastructure",
-      "description": "How the agent loops keep a long conversation inside the model's window (#432), bound to the `ContextCompactionOptions.SectionName` section by `AddOrkeonInfrastructure()`. Before each model call the native and the chat-client loops estimate the prompt in tokens; past `ContextCompactionOptions.TriggerShare` of the usable window (the window less the call's output cap) they replace the middle of the conversation with one summary, keeping the system prompt, the task and the `ContextCompactionOptions.KeepRecentTurns` most recent turns. The text loop keeps its own character trim."
+      "description": "How the agent loops keep a long conversation inside the model's window, bound to the `ContextCompactionOptions.SectionName` section by `AddOrkeonInfrastructure()`. Before each model call the native and the chat-client loops estimate the prompt in tokens; past `ContextCompactionOptions.TriggerShare` of the usable window (the window less the call's output cap) they replace the middle of the conversation with one summary, keeping the system prompt, the task and the `ContextCompactionOptions.KeepRecentTurns` most recent turns. The text loop keeps its own character trim."
     },
     {
       "path": "Orkeon:Compaction:Prune",
       "category": "orchestration-and-persistence",
       "hosts": [],
       "registration": "AddOrkeonInfrastructure",
-      "description": "How the agent loops prune their older read-tool results before they compact (#434), bound to the `ToolResultPruningOptions.SectionName` section by `AddOrkeonInfrastructure()`. Once the estimated prompt reaches `ToolResultPruningOptions.FillShare` of the usable window (or the compaction trigger, whichever comes first), the decision model judges each result of a read tool older than the `ToolResultPruningOptions.KeepRecentMessages` last messages: keep it, keep its first `ToolResultPruningOptions.HeadChars` characters, or drop it. It sees the call (tool, input, size, age), never the result. With the decision circuit off, nothing is pruned. Pruning rides compaction: an agent that does not compact does not prune."
+      "description": "How the agent loops prune their older read-tool results before they compact, bound to the `ToolResultPruningOptions.SectionName` section by `AddOrkeonInfrastructure()`. Once the estimated prompt reaches `ToolResultPruningOptions.FillShare` of the usable window (or the compaction trigger, whichever comes first), the decision model judges each result of a read tool older than the `ToolResultPruningOptions.KeepRecentMessages` last messages: keep it, keep its first `ToolResultPruningOptions.HeadChars` characters, or drop it. It sees the call (tool, input, size, age), never the result. With the decision circuit off, nothing is pruned. Pruning rides compaction: an agent that does not compact does not prune."
     },
     {
       "path": "Orkeon:Consensus",
@@ -448,7 +448,7 @@
       "category": "orchestration-and-persistence",
       "hosts": [],
       "registration": "AddOrkeonInfrastructure",
-      "description": "How an agent's `skills:` reach its prompt (#434), bound to the `Orkeon:Skills` section by `AddOrkeonInfrastructure()`. Each skill is a markdown file read through the virtual file system and appended to the agent's system prompt under a `## Skills` heading, cut at `AgentSkillsOptions.MaxSkillChars`, the whole block at `AgentSkillsOptions.MaxBlockChars`. An agent with `skills: { auto: true }` has the decision model pick, for each task, at most three skills of `AgentSkillsOptions.Library`."
+      "description": "How an agent's `skills:` reach its prompt, bound to the `Orkeon:Skills` section by `AddOrkeonInfrastructure()`. Each skill is a markdown file read through the virtual file system and appended to the agent's system prompt under a `## Skills` heading, cut at `AgentSkillsOptions.MaxSkillChars`, the whole block at `AgentSkillsOptions.MaxBlockChars`. An agent with `skills: { auto: true }` has the decision model pick, for each task, at most three skills of `AgentSkillsOptions.Library`."
     },
     {
       "path": "Orkeon:Cli:ConsoleStreaming",
@@ -623,7 +623,7 @@
       "path": "Llm:ContextWindowTokens",
       "section": "Llm",
       "type": "integer",
-      "description": "The model's context window in tokens, which the agent loops compact a long conversation against (#432). Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider."
+      "description": "The model's context window in tokens, which the agent loops compact a long conversation against. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider."
     },
     {
       "path": "Llm:Grammar",
@@ -737,7 +737,7 @@
       "path": "Llm:Profiles:<name>:ContextWindowTokens",
       "section": "Llm",
       "type": "integer",
-      "description": "The model's context window in tokens, which the agent loops compact a long conversation against (#432). Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider."
+      "description": "The model's context window in tokens, which the agent loops compact a long conversation against. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider."
     },
     {
       "path": "Llm:Profiles:<name>:Fallback",

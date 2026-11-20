@@ -3,7 +3,7 @@ using System.Globalization;
 namespace Orkeon.Application.Crew.Compaction;
 
 /// <summary>
-/// How the agent loops keep a long conversation inside the model's window (#432), bound to the
+/// How the agent loops keep a long conversation inside the model's window, bound to the
 /// <see cref="SectionName"/> section by <c>AddOrkeonInfrastructure()</c>. Before each model call the
 /// native and the chat-client loops estimate the prompt in tokens; past <see cref="TriggerShare"/> of
 /// the usable window (the window less the call's output cap) they replace the middle of the

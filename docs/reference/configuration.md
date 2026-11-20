@@ -275,7 +275,7 @@ the same way with its own keys.
 | `Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
-| `ContextWindowTokens` | integer | — | The model's context window in tokens, which the agent loops compact a long conversation against (#432). Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider. |
+| `ContextWindowTokens` | integer | — | The model's context window in tokens, which the agent loops compact a long conversation against. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider. |
 | `Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
 | `MaxRateLimitWait` | duration | `"00:05:00"` | The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing. |
 | `MaxRetries` | integer | `10` | How many times a call that fails on a passing error is tried again; `0` never retries. |
@@ -293,7 +293,7 @@ the same way with its own keys.
 | `Profiles:<name>:Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Profiles:<name>:Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `Profiles:<name>:CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
-| `Profiles:<name>:ContextWindowTokens` | integer | — | The model's context window in tokens, which the agent loops compact a long conversation against (#432). Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider. |
+| `Profiles:<name>:ContextWindowTokens` | integer | — | The model's context window in tokens, which the agent loops compact a long conversation against. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider. |
 | `Profiles:<name>:Fallback` | list of string | `[]` | The profiles a call moves to, in order, when this one fails in a way a retry cannot cure: a transport error, a 5xx, a 429 once `MaxRetries` is spent, a timeout. A list of profile names, or one comma-separated value; `default` names the host's own. Left out, a failure is the call's. |
 | `Profiles:<name>:FallbackBudgetSeconds` | integer | — | The longest the chain may spend before it stops trying the next profile, in seconds, counted from the first call. It is checked between two profiles and never cuts a call in flight. Left out, the chain is bounded only by each profile's own `TimeoutSeconds` and `MaxRetries`. |
 | `Profiles:<name>:Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
@@ -703,7 +703,7 @@ warned as ignored in the start log (with a hint to name it when no provider is n
 
 ### `Orkeon:Decision:Route`
 
-Where an agent on `llm.profile: auto` is routed (#434). At the start of each of its tasks, System
+Where an agent on `llm.profile: auto` is routed. At the start of each of its tasks, System
 One picks one profile of `Ladder`, listed cheapest first, and the task keeps it for every call;
 the decision model reads the agent's role and the task (cut at 4 000 characters in the middle),
 never the conversation. Under a probability of 0.6, without an answer, or when the decision
@@ -1818,7 +1818,7 @@ How a crew is built and how it decides, and what of its execution is kept.
 
 ### `Orkeon:Compaction`
 
-How the agent loops keep a long conversation inside the model's window (#432). Before each call,
+How the agent loops keep a long conversation inside the model's window. Before each call,
 the loop estimates its prompt; once it reaches `TriggerShare` of the usable window (the context
 window less the call's output cap), one summary call replaces the older turns, and the system
 prompt, the task and the last `KeepRecentTurns` turns stay as they were. The window is the
@@ -1844,7 +1844,7 @@ conversation again after the cut.
 
 ### `Orkeon:Compaction:Prune`
 
-How the agent loops prune their older read-tool results before they compact (#434), the YAML
+How the agent loops prune their older read-tool results before they compact, the YAML
 loops' counterpart of a script's `onContextPressure`. Off by default. Once the estimated prompt
 reaches `FillShare` of the usable window (or the compaction trigger, whichever comes first), each
 result of a read tool (a tool whose access is `read` for that input) outside the last
@@ -1871,7 +1871,7 @@ compact does not prune.
 
 ### `Orkeon:Skills`
 
-How an agent's `skills:` reach its prompt (#434). A skill is a markdown file read through the
+How an agent's `skills:` reach its prompt. A skill is a markdown file read through the
 virtual file system and appended to the agent's system prompt under a `## Skills` heading, each
 skill cut at `MaxSkillChars` and the whole block at `MaxBlockChars`; a cut is said in the prompt
 and in the `cut` field of `agent.skills`. An agent with `skills: [<paths>]` carries those files on
