@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tools/scripting-typecheck`, reports each duplicate on its own line as `TS2300`, `TS2451` or `TS2374`,
   so the copy was missed and every identifier of the roll-up was reported twice. The four codes are read
   now; a copy still has to open like the roll-up to stand in for it, and a stale copy is still named with
-  ``TS6200 … regenerate it with `orkeon typings` ``.
+  ``TS6200 … regenerate it with `orkeon typings` ``. Under an older tsc too, a copy that clashes on a few
+  identifiers only (reported as `TS2300`, not grouped into `TS6200`) is now recognised, and a stale one
+  named, in place of the raw duplicate lines.
 - **A `spawn_agent` call past the spawn budget no longer ends the turn (#422).** The call is refused with
   a tool error the model reads (`Spawn budget spent: N sub-agents already spawned (limit N spawnedAgents);
   '<agent>' was not spawned. Carry on with the results you hold.`, N being the limit of the budget that

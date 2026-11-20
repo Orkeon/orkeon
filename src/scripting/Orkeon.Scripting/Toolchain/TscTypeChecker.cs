@@ -196,7 +196,7 @@ public sealed partial class TscTypeChecker
 
             // #315: a module that references the project's copy of the typings (`orkeon typings`, for its
             // editor) brings that copy in beside the roll-up, and tsc reports every identifier twice
-            // (TS6200 under tsc 5; under tsc 7, #424, one TS2300, TS2451 or TS2374 per identifier). A copy
+            // (TS6200 before tsc 7; from tsc 7 on, #424, one TS2300, TS2451 or TS2374 per identifier). A copy
             // that is this build's roll-up stands in for it; a stale one is named as such.
             var copies = await TypingsCopiesAsync(output, work, rollup, ct).ConfigureAwait(false);
             var stale = copies.Where(c => !c.Current).Select(c => c.Path).ToList();
@@ -285,8 +285,8 @@ public sealed partial class TscTypeChecker
     }
 
     /// <summary>
-    /// The files outside the scratch folder that tsc found clashing with another (TS6200 under tsc 5;
-    /// TS2300, TS2451 or TS2374 under tsc 7, which reports each identifier on its own line) and that open
+    /// The files outside the scratch folder that tsc found clashing with another (TS6200 before tsc 7;
+    /// TS2300, TS2451 or TS2374 from tsc 7 on, which reports each identifier on its own line) and that open
     /// like the roll-up: copies of the Orkeon typings a module referenced. <c>Current</c> when the copy is
     /// this build's roll-up, line endings aside.
     /// </summary>

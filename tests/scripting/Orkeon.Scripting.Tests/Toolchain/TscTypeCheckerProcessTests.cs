@@ -177,12 +177,7 @@ public sealed class TscTypeCheckerProcessTests : IDisposable
     private TscTypeChecker CheckerClashingPerIdentifierWith(string file, string code)
         => CheckerWith($"if grep -q 'orkeon-typecheck-[0-9a-f]*/orkeon\\.d\\.ts\"' \"$2\"; then echo '{file}(2,14): error {code}: Duplicate identifier '\\''T1'\\''.'; echo '{file}(3,14): error {code}: Duplicate identifier '\\''T2'\\''.'; exit 2; fi\nexit 0");
 
-    private static string Rollup()
-    {
-        using var stream = typeof(TscTypeChecker).Assembly.GetManifestResourceStream("Orkeon.Scripting.Typings.orkeon.d.ts")!;
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
-    }
+    private static string Rollup() => TypingsRollup.Read();
 
     private string WriteTypingsCopy(string text)
     {

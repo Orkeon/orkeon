@@ -120,13 +120,16 @@ public sealed class ValidateTypeCheckTests : IDisposable
 
     [Fact]
     [Trait("BR", "CH-01")]
-    public async Task A_module_referencing_the_projects_typings_validates_under_the_pinned_compiler()
+    public async Task A_module_referencing_the_projects_typings_passes_the_type_check()
     {
         Assert.SkipUnless(CompilerAvailable(), "tsc is not bootstrapped (npm --prefix tools/scripting-typecheck install --prefer-offline).");
 
         var (_, err) = await ValidateWithReferencedTypingsAsync("export const label: string = \"ok\";\n");
 
+        // Past the type check, validate reaches the crew stage: this script assigns no crew.
+        Assert.Contains("did not assign globalThis.crew", err, StringComparison.Ordinal);
         Assert.DoesNotContain("type errors", err, StringComparison.Ordinal);
+        Assert.DoesNotContain("type check", err, StringComparison.Ordinal);
         Assert.DoesNotContain("TS2300", err, StringComparison.Ordinal);
         Assert.DoesNotContain("TS2451", err, StringComparison.Ordinal);
     }
