@@ -44,6 +44,9 @@ internal sealed class FakeToolCallingLlmProvider : ILlmProvider
         public static ScriptStep Fail() => new(null, null, null);
     }
 
+    /// <summary>Called with the turn's index (from 0, in call order) before each scripted turn answers.</summary>
+    public Action<int>? BeforeTurn { get; set; }
+
     /// <summary>The content of every tool-result message received, in order.</summary>
     public List<string> ToolResults { get; } = new();
 
@@ -85,6 +88,7 @@ internal sealed class FakeToolCallingLlmProvider : ILlmProvider
         if (messages.Length > 0 && messages[^1].Role == "tool") ToolResults.Add(messages[^1].Content);
         if (_script is not null)
         {
+            BeforeTurn?.Invoke(_turn);
             var step = _turn < _script.Count ? _script[_turn] : ScriptStep.Answer("script exhausted");
             _turn++;
             if (step is { ToolName: null, Text: null }) throw new InvalidOperationException("scripted provider failure");

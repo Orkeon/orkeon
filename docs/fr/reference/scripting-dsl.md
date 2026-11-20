@@ -299,7 +299,10 @@ l'exécution sans qu'on le demande :
 `ctx.delegate(agent, input, { budget: { toolCalls: 20, tokens: 50000, wallTime: 300 } })` (et le
 même `budget` dans les options de `crew.runAgent`) borne cette exécution avec les clés et valeurs de
 `crewBuilder().budget(...)` (`toolCalls`, `tokens`, `contextTokens`, `wallTime` en secondes ou sous la forme `"5m"`,
-`delegationDepth`, `spawnedAgents`). `tokens` est une somme courante du prompt et de la complétion de
+`delegationDepth`, `spawnedAgents`). Une clé omise prend la valeur d'`AgentExecutionBudget.Default`
+(15 appels d'outils, 16 000 tokens, 5 minutes, profondeur 2, 3 spawns), de même pour le `budget(...)` de
+la crew : seul un run qui ne nomme aucun budget n'a ni horloge, ni plafond d'appels d'outils ou de
+tokens. `tokens` est une somme courante du prompt et de la complétion de
 chaque appel, le contexte compté de nouveau à chacun. `contextTokens` compte le contexte une fois : la
 complétion de chaque appel plus la part de son prompt que le cache n'a pas servie quand le fournisseur
 rapporte des hits de cache, sinon ce dont le prompt a crû depuis l'appel précédent de la même conversation (chaque `ctx.llm.act` la sienne), si bien qu'un tour de

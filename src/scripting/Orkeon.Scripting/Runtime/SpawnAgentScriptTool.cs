@@ -48,8 +48,22 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
     internal SpawnAgentScriptTool(JsExecutionEnvironment environment)
     {
         _environment = environment;
-        _budget = environment.Budget ?? AgentExecutionBudget.Default;
+        _budget = environment.Budget ?? Unbudgeted(environment.Clock);
     }
+
+    /// <summary>
+    /// The allowance of a run that names no budget (#426): no wall clock, tool-call or token cap, as its
+    /// act has none, so neither a late spawn nor the child it starts stops on a limit the crew never set.
+    /// The delegation-depth and spawn-count defaults of <see cref="AgentExecutionBudget"/> stay.
+    /// </summary>
+    /// <param name="clock">The clock the budget reads; <see cref="TimeProvider.System"/> when null.</param>
+    internal static AgentExecutionBudget Unbudgeted(TimeProvider? clock = null) => new()
+    {
+        MaxWallTime = TimeSpan.MaxValue,
+        MaxToolCalls = int.MaxValue,
+        MaxTokensConsumed = int.MaxValue,
+        TimeProvider = clock ?? TimeProvider.System,
+    };
 
     /// <inheritdoc />
     public override ToolAccess Access => ToolAccess.Edit;

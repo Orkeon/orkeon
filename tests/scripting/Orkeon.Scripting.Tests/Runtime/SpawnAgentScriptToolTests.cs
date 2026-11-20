@@ -1,7 +1,9 @@
+using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Security;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Scripting.Tests.Doubles;
+using Orkeon.Tests.Shared.Timing;
 using static Orkeon.Scripting.Tests.Doubles.FakeToolCallingLlmProvider;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -262,5 +264,99 @@ public sealed class SpawnAgentScriptToolTests
             ScriptStep.Answer("root-done"));
 
         Assert.Empty(Spawned(events));
+    }
+
+    // #426: a run that names no budget gives the spawn tool, and the child it starts, no wall clock,
+    // tool-call or token cap of their own; the delegation-depth and spawn-count defaults stay.
+    private static async Task<(FakeToolCallingLlmProvider Provider, string Output, MockRunEventSink Events)> RunUnbudgetedAsync(
+        string js, ManualTimeProvider clock, Action<int>? beforeTurn, params ScriptStep[] script)
+    {
+        var events = new MockRunEventSink();
+        var provider = new FakeToolCallingLlmProvider(script) { BeforeTurn = beforeTurn };
+        var engine = new JsEngineFactory(llmProvider: provider, hostPorts: new ScriptingHostPorts { RunEvents = events }).Create();
+        var crew = (JsCrew)(await engine.EvaluateAsync(js, null, TestContext.Current.CancellationToken)).ToObject()!;
+        crew.Clock = clock;
+        var result = await crew.RunAsync(null, TestContext.Current.CancellationToken);
+        return (provider, result.tasks[0].output!.ToString()!, events);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public async Task ShouldSpawnThroughSpawnAgent_WhenNoBudgetIsNamedAndSixMinutesHavePassed()
+    {
+        var clock = new ManualTimeProvider();
+
+        // Root's first turn comes six minutes in; the child's turn two hours after that.
+        var run = await RunUnbudgetedAsync(Crew(""), clock,
+            turn => clock.Advance(turn == 0 ? TimeSpan.FromMinutes(6) : turn == 1 ? TimeSpan.FromHours(2) : TimeSpan.Zero),
+            ScriptStep.Call("spawn_agent", Spawn("b")),
+            ScriptStep.Answer("B-final"),
+            ScriptStep.Answer("ROOT-final"));
+
+        Assert.Contains("B-final", Assert.Single(run.Provider.ToolResults), StringComparison.Ordinal);
+        Assert.Equal("ROOT-final", run.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-02")]
+    public async Task ShouldSpawnInBackground_WhenNoBudgetIsNamedAndSixMinutesHavePassed()
+    {
+        var clock = new ManualTimeProvider();
+        const string js = """
+            const root = agentBuilder().name("root").role("Lead").goal("G")
+                .body(async (input, ctx) => {
+                    await ctx.llm.act("go", { permissionMode: "bypassPermissions" });
+                    ctx.spawnBackground("kid", "work");
+                    return "root-done";
+                })
+                .build();
+            const kid = agentBuilder().name("kid").role("Researcher").goal("G")
+                .body(async (input, ctx) => "kid-done")
+                .build();
+            crewBuilder().name("c").withAgent(root).withAgent(kid).build();
+            """;
+
+        var run = await RunUnbudgetedAsync(js, clock, _ => clock.Advance(TimeSpan.FromMinutes(6)), ScriptStep.Answer("thought"));
+
+        Assert.Equal("root-done", run.Output);
+        Assert.Equal("kid", Assert.Single(Spawned(run.Events)).Payload!["name"]!.GetValue<string>());
+    }
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public async Task ShouldLetTheChildPassFifteenToolCalls_WhenNoBudgetIsNamed()
+    {
+        // AgentExecutionBudget.Default allows 15 tool calls: the child's sixteenth would have ended its run.
+        const string js = """
+            const mk = (n) => agentBuilder().name(n).role("R").goal("G")
+                .body(async (input, ctx) => (await ctx.llm.act(String(input ?? "go"),
+                    { permissionMode: "bypassPermissions", maxIterations: 20 })).output)
+                .build();
+            crewBuilder().name("c").withAgent(mk("root")).withAgent(mk("b")).build();
+            """;
+        var script = new List<ScriptStep> { ScriptStep.Call("spawn_agent", Spawn("b")) };
+        for (var i = 0; i < 16; i++)
+            script.Add(ScriptStep.Call("spawn_agent", "{\"agent\":\"nope\",\"input\":\"try-" + i + "\"}"));
+        script.Add(ScriptStep.Answer("B-final"));
+        script.Add(ScriptStep.Answer("ROOT-final"));
+
+        var run = await RunUnbudgetedAsync(js, new ManualTimeProvider(), null, [.. script]);
+
+        Assert.Equal(17, run.Provider.ToolResults.Count);
+        Assert.Contains("B-final", run.Provider.ToolResults[^1], StringComparison.Ordinal);
+        Assert.Equal("ROOT-final", run.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public void ShouldKeepTheSpawnAndDepthDefaults_WhenNoBudgetIsNamed()
+    {
+        var budget = SpawnAgentScriptTool.Unbudgeted(new ManualTimeProvider());
+        var defaults = AgentExecutionBudget.Default;
+
+        Assert.Equal(defaults.MaxDelegationDepth, budget.MaxDelegationDepth);
+        for (var i = 0; i < defaults.MaxSpawnedAgents; i++) budget.RecordSpawn();
+        var refused = Assert.Throws<BudgetExhaustedException>(budget.RecordSpawn);
+        Assert.Equal(BudgetDimension.SpawnedAgents, refused.Dimension);
     }
 }
