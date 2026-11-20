@@ -290,6 +290,28 @@ public sealed class JsLlmFacadeBudgetTests
     }
 
     [Fact]
+    [Trait("BR", "CH-436")]
+    public async Task ShouldLogTheRunningSumWithNoLimit_WhenTheTokensAreUncapped()
+    {
+        // Arrange
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new RecordingTool("echo_tool");
+        var provider = ReadsThenWrapsUp(new LlmResponse { Content = "Summary.", RawResponseBody = null, TokensUsed = 30 });
+        var budget = SpawnAgentScriptTool.Unbudgeted(new ManualTimeProvider());
+        var logger = new RecordingLogger();
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget },
+            new JsLlmObservability { Logger = logger, AgentName = "reader" });
+
+        // Act
+        await facade.ActAsync(engine, "read and summarise", null);
+
+        // Assert
+        Assert.Contains(logger.Entries, e => e.Message.Contains("running sum 60 tokens over 1 call, no limit", StringComparison.Ordinal));
+        Assert.DoesNotContain(logger.Entries, e => e.Message.Contains(int.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Act_with_exceeded_wall_time_throws_before_any_llm_call()
     {
         using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);

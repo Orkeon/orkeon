@@ -1484,7 +1484,8 @@ public sealed partial class JsLlmFacade
         + "Answer now with what you have, saying briefly what you could not finish.";
 
     /// <summary>
-    /// Records the tokens of one call of the act loop and logs the running sum next to the limit. A
+    /// Records the tokens of one call of the act loop and logs the running sum next to the limit, or
+    /// says it has none (#436). A
     /// spent budget - tokens or wall time - does not throw here: the tokens are recorded whatever the
     /// budget says, the answer in hand is kept, and the gates that follow end the act. The call's share of
     /// the context counted once (#224) is read on <paramref name="session"/>, the conversation it belongs
@@ -1508,8 +1509,12 @@ public sealed partial class JsLlmFacade
             if (_logger is not null)
             {
                 var calls = _budget.CurrentTokenCalls;
-                LogActCallTokens(_logger, _agentName, tokens, _budget.CurrentTokensConsumed, _budget.MaxTokensConsumed,
-                    calls, calls == 1 ? "call" : "calls");
+                var callWord = calls == 1 ? "call" : "calls";
+                if (_budget.MaxTokensConsumed == int.MaxValue)
+                    LogActCallTokensUncapped(_logger, _agentName, tokens, _budget.CurrentTokensConsumed, calls, callWord);
+                else
+                    LogActCallTokens(_logger, _agentName, tokens, _budget.CurrentTokensConsumed, _budget.MaxTokensConsumed,
+                        calls, callWord);
                 if (_budget.MaxContextTokens != int.MaxValue)
                     LogActCallContextTokens(_logger, _agentName, _budget.CurrentContextTokens, _budget.MaxContextTokens);
             }
@@ -1599,6 +1604,13 @@ public sealed partial class JsLlmFacade
         Message = "act: agent '{Agent}' call used {Tokens} tokens, running sum {Sum}/{Limit} tokens over {Calls} {CallWord}")]
     static partial void LogActCallTokens(
         Microsoft.Extensions.Logging.ILogger logger, string agent, int tokens, int sum, int limit, int calls, string callWord);
+
+    // #436: a running sum with no cap is logged without one, never as "/2147483647".
+    [Microsoft.Extensions.Logging.LoggerMessage(
+        EventId = 7, Level = Microsoft.Extensions.Logging.LogLevel.Information,
+        Message = "act: agent '{Agent}' call used {Tokens} tokens, running sum {Sum} tokens over {Calls} {CallWord}, no limit")]
+    static partial void LogActCallTokensUncapped(
+        Microsoft.Extensions.Logging.ILogger logger, string agent, int tokens, int sum, int calls, string callWord);
 
     [Microsoft.Extensions.Logging.LoggerMessage(
         EventId = 5, Level = Microsoft.Extensions.Logging.LogLevel.Information,

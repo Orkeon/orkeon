@@ -193,7 +193,8 @@ complétion (le total du fournisseur). Chaque appel renvoie tout le contexte, si
 compté de nouveau à chaque appel : un tour de n appels dont le contexte croît régulièrement le paie
 environ n fois, et le chiffre ne borne ni la taille de la conversation ni ce qu'un fournisseur facture
 avec son cache. Chaque appel journalise la somme courante à côté de la limite (`act: agent '<nom>' call
-used <n> tokens, running sum <somme>/<limite> tokens over <n> calls`, Information).
+used <n> tokens, running sum <somme>/<limite> tokens over <n> calls`, Information), ou, sans plafond de
+tokens, le dit (`running sum <somme> tokens over <n> calls, no limit`).
 
 `budget({ contextTokens })` compte le contexte une fois (#224) : chaque appel ajoute sa complétion plus,
 quand le fournisseur rapporte des hits de cache (`cacheHitTokens`), la part de son prompt que le cache n'a
@@ -235,8 +236,9 @@ d'enfants épuisé n'est pas vérifié à la garde : il refuse seulement le lanc
   (profondeur 2, 3 spawns, comptés par run d'agent : chaque tentative et chaque hook) et ne fixe ni
   horloge, ni plafond d'appels d'outils ou de tokens, comme son act n'en fixe aucun : un spawn tardif
   n'est pas refusé faute de temps, et son enfant n'y est pas tenu. Un `budget({...})` qui omet une
-  dimension la prend d'`AgentExecutionBudget.Default` (15 appels d'outils, 16 000 tokens, 5 minutes),
-  pour ses `act` comme pour ses spawns ([clés de `budget`](../reference/scripting-dsl.md)).
+  dimension lui donne cette même valeur (#436), pour ses `act` comme pour ses spawns : nommer
+  `spawnedAgents` ou `delegationDepth` seul n'ajoute ni horloge, ni plafond d'appels d'outils ou de
+  tokens ([clés de `budget`](../reference/scripting-dsl.md)).
   Un refus (profondeur ou budget de spawn épuisé, agent inconnu) est un résultat d'outil en échec que
   le modèle lit, jamais une exception.
   Les `act` de l'enfant tournent sous le plus strict de leur propre `permissionMode` et de celui de

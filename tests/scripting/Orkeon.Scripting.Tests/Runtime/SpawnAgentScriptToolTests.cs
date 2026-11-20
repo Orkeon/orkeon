@@ -298,6 +298,25 @@ public sealed class SpawnAgentScriptToolTests
     }
 
     [Fact]
+    [Trait("BR", "CH-436")]
+    public async Task ShouldSpawnThroughSpawnAgent_WhenTheBudgetNamesOnlySpawnsAndSixMinutesHavePassed()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+
+        // Act: root's first turn comes six minutes in; the child's turn two hours after that.
+        var run = await RunUnbudgetedAsync(Crew(".budget({ spawnedAgents: 10 })"), clock,
+            turn => clock.Advance(turn == 0 ? TimeSpan.FromMinutes(6) : turn == 1 ? TimeSpan.FromHours(2) : TimeSpan.Zero),
+            ScriptStep.Call("spawn_agent", Spawn("b")),
+            ScriptStep.Answer("B-final"),
+            ScriptStep.Answer("ROOT-final"));
+
+        // Assert
+        Assert.Contains("B-final", Assert.Single(run.Provider.ToolResults), StringComparison.Ordinal);
+        Assert.Equal("ROOT-final", run.Output);
+    }
+
+    [Fact]
     [Trait("BR", "RT-02")]
     public async Task ShouldSpawnInBackground_WhenNoBudgetIsNamedAndSixMinutesHavePassed()
     {

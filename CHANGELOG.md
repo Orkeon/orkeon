@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — a script budget that names one dimension no longer caps the others **[breaking]** (#436)
+
+**Before**: `crewBuilder().budget({...})` and the `budget` option of `ctx.delegate` / `crew.runAgent` filled every
+dimension they left out from `AgentExecutionBudget.Default`, so `budget({ spawnedAgents: 10 })` or
+`{ delegationDepth: 3 }` gave the acts and the spawn tool a five-minute wall clock (a long act was refused with
+`Wall time exceeded`), 15 tool calls and 16,000 tokens the author never set. **Now**: a dimension left out takes the
+value it has when no budget is named (#426): no wall clock, tool-call, token or `contextTokens` cap; the
+delegation-depth and spawn-count defaults (depth 2, 3 spawns) stay. The declarative `CrewBudget` already left the
+tokens and the wall time uncapped, and is unchanged. An act whose run has no token cap logs its running sum without
+a limit, `running sum <sum> tokens over <n> calls, no limit`, in place of `<sum>/2147483647`. **What to do**: a
+script that relied on the implicit caps names them, for instance
+`budget({ spawnedAgents: 10, toolCalls: 15, tokens: 16000, wallTime: "5m" })`.
+
 ### Fixed
 
 - **`spawn_agent` and `ctx.spawnBackground` are no longer refused five minutes into a run that names no
@@ -16,8 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that clock, a few seconds, plus a cap of 15 tool calls and 16,000 tokens. The tool's allowance now sets
   no wall clock, tool-call or token cap, as the act sets none, so its child gets none either; the
   delegation-depth and spawn-count defaults (depth 2, 3 spawns, per agent run) stay. A crew that names
-  a budget is unchanged: a dimension its `budget({...})` leaves out still takes the value of
-  `AgentExecutionBudget.Default`, five minutes of wall time included, now stated in the scripting reference.
+  a budget kept `AgentExecutionBudget.Default` for the dimensions its `budget({...})` left out, until #436.
 - **`--validate` finds the project's copy of the typings under TypeScript 7 (#424).** A module that
   references `.orkeon/orkeon.d.ts` (`orkeon typings`) brings that copy in beside the embedded roll-up;
   the checker recognised it from tsc's `TS6200` only. TypeScript 7, the compiler a checkout pins in

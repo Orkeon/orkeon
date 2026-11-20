@@ -89,7 +89,78 @@ public sealed class JsBudgetBridgeTests
         });
         Assert.NotNull(mixed);
         Assert.Equal(3, mixed.MaxToolCalls);
-        Assert.Equal(Orkeon.Domain.Autonomous.AgentExecutionBudget.Default.MaxWallTime, mixed.MaxWallTime);
+        Assert.Equal(TimeSpan.MaxValue, mixed.MaxWallTime);
+    }
+
+    // #436: a dimension left out takes the value it has when no budget is named.
+
+    [Theory]
+    [Trait("BR", "CH-436")]
+    [InlineData("spawnedAgents")]
+    [InlineData("delegationDepth")]
+    public void FromSpec_naming_one_structural_limit_sets_no_wall_clock_tool_call_or_token_cap(string key)
+    {
+        // Arrange
+        var spec = new Dictionary<string, object?> { [key] = 3d };
+
+        // Act
+        var budget = JsBudgetBridge.FromSpec(spec);
+
+        // Assert
+        Assert.NotNull(budget);
+        Assert.Equal(TimeSpan.MaxValue, budget.MaxWallTime);
+        Assert.Equal(int.MaxValue, budget.MaxToolCalls);
+        Assert.Equal(int.MaxValue, budget.MaxTokensConsumed);
+        Assert.Equal(int.MaxValue, budget.MaxContextTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-436")]
+    public void FromSpec_keeps_the_depth_and_spawn_defaults_for_the_dimensions_it_leaves_out()
+    {
+        // Arrange
+        var spec = new Dictionary<string, object?> { ["toolCalls"] = 40d };
+        var defaults = Orkeon.Domain.Autonomous.AgentExecutionBudget.Default;
+
+        // Act
+        var budget = JsBudgetBridge.FromSpec(spec);
+
+        // Assert
+        Assert.NotNull(budget);
+        Assert.Equal(defaults.MaxDelegationDepth, budget.MaxDelegationDepth);
+        Assert.Equal(defaults.MaxSpawnedAgents, budget.MaxSpawnedAgents);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-436")]
+    public void FromSpec_reads_the_given_clock_when_it_charges_no_budget()
+    {
+        // Arrange
+        var clock = new Orkeon.Tests.Shared.Timing.ManualTimeProvider();
+
+        // Act
+        var budget = JsBudgetBridge.FromSpec(new Dictionary<string, object?> { ["spawnedAgents"] = 10d }, clock: clock);
+
+        // Assert
+        Assert.NotNull(budget);
+        Assert.Same(clock, budget.TimeProvider);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-436")]
+    public void FromRunOption_naming_tool_calls_alone_sets_no_wall_clock_or_token_cap()
+    {
+        // Arrange
+        using var engine = new Orkeon.Scripting.JsEngineFactory().Create();
+
+        // Act
+        var budget = JsBudgetBridge.FromRunOption(Js(engine, "{ toolCalls: 3 }"), chargedTo: null);
+
+        // Assert
+        Assert.NotNull(budget);
+        Assert.Equal(3, budget.MaxToolCalls);
+        Assert.Equal(TimeSpan.MaxValue, budget.MaxWallTime);
+        Assert.Equal(int.MaxValue, budget.MaxTokensConsumed);
     }
 
     // #189: the budget option of crew.runAgent / ctx.delegate.

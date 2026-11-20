@@ -19,12 +19,17 @@ internal static class JsBudgetBridge
     /// completion), <c>contextTokens</c> (the context counted once, #224: <see cref="AgentExecutionBudget.MaxContextTokens"/>),
     /// <c>delegationDepth</c>, <c>spawnedAgents</c> (integers) and <c>wallTime</c> (number = seconds, string =
     /// duration with unit <c>ms|s|m|h</c>). Invalid values are ignored — a script must
-    /// never crash at build time because of a malformed budget field. With
-    /// <paramref name="chargedTo"/>, the budget also charges that one (#189) and reads its clock. A spec
-    /// that sets <c>contextTokens</c> without <c>tokens</c> leaves the running sum uncapped: the default
-    /// sum would otherwise cut the run short of the context it asked for.
+    /// never crash at build time because of a malformed budget field. A dimension the spec leaves out
+    /// takes the value it has when no budget is named (#436, <see cref="SpawnAgentScriptTool.Unbudgeted"/>):
+    /// no wall clock, tool-call, token or context cap; the delegation-depth and spawn-count defaults of
+    /// <see cref="AgentExecutionBudget"/> stay. With <paramref name="chargedTo"/>, the budget also charges
+    /// that one (#189) and reads its clock; without it, the budget reads <paramref name="clock"/>.
     /// </summary>
-    internal static AgentExecutionBudget? FromSpec(IReadOnlyDictionary<string, object?>? spec, AgentExecutionBudget? chargedTo = null)
+    /// <param name="spec">The <c>budget({...})</c> spec.</param>
+    /// <param name="chargedTo">The budget this one also charges, or null.</param>
+    /// <param name="clock">The clock read when <paramref name="chargedTo"/> is null; <see cref="TimeProvider.System"/> when null.</param>
+    internal static AgentExecutionBudget? FromSpec(
+        IReadOnlyDictionary<string, object?>? spec, AgentExecutionBudget? chargedTo = null, TimeProvider? clock = null)
     {
         if (spec is null || spec.Count == 0) return null;
 
@@ -39,16 +44,16 @@ internal static class JsBudgetBridge
             spawnedAgents is null && wallTime is null)
             return null;
 
-        var defaults = AgentExecutionBudget.Default;
+        var unset = SpawnAgentScriptTool.Unbudgeted();
         return new AgentExecutionBudget
         {
-            MaxToolCalls = toolCalls ?? defaults.MaxToolCalls,
-            MaxTokensConsumed = tokens ?? (contextTokens is null ? defaults.MaxTokensConsumed : int.MaxValue),
-            MaxContextTokens = contextTokens ?? defaults.MaxContextTokens,
-            MaxDelegationDepth = delegationDepth ?? defaults.MaxDelegationDepth,
-            MaxSpawnedAgents = spawnedAgents ?? defaults.MaxSpawnedAgents,
-            MaxWallTime = wallTime ?? defaults.MaxWallTime,
-            TimeProvider = chargedTo?.TimeProvider ?? TimeProvider.System,
+            MaxToolCalls = toolCalls ?? unset.MaxToolCalls,
+            MaxTokensConsumed = tokens ?? unset.MaxTokensConsumed,
+            MaxContextTokens = contextTokens ?? unset.MaxContextTokens,
+            MaxDelegationDepth = delegationDepth ?? unset.MaxDelegationDepth,
+            MaxSpawnedAgents = spawnedAgents ?? unset.MaxSpawnedAgents,
+            MaxWallTime = wallTime ?? unset.MaxWallTime,
+            TimeProvider = chargedTo?.TimeProvider ?? clock ?? TimeProvider.System,
             ChargedTo = chargedTo,
         };
     }
