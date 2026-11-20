@@ -220,8 +220,11 @@ error, and the act goes on.
 
 - **`spawn_agent`** is a model-callable tool, always offered in `act`. It runs a named crew agent as a
   child (`{ "agent", "input" }`) and returns its output. The child runs under a child budget
-  (delegation depth + 1); a refusal (depth or spawn budget exhausted, unknown agent) is a failed tool
-  result the model reads, never an exception. The child's acts run under the stricter of their own
+  (delegation depth + 1). A run that names no budget keeps the delegation-depth and spawn-count
+  defaults of `AgentExecutionBudget` (depth 2, 3 spawns) and sets no wall clock, tool-call or token cap,
+  as its act sets none: a late spawn is not refused on time, and its child is not held to one. A
+  refusal (depth or spawn budget exhausted, unknown agent) is a failed tool result the model reads,
+  never an exception. The child's acts run under the stricter of their own
   `permissionMode` and the spawner's act (plan, dontAsk > default > acceptEdits > bypassPermissions), as
   a crew delegation does; under plan or dontAsk the spawn itself, an edit, is refused. What a spawned
   run starts with `ctx.spawnBackground`, and a later `crew.send` to it, keep that floor. The run is

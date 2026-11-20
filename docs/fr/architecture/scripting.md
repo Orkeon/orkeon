@@ -230,8 +230,12 @@ d'enfants épuisé n'est pas vérifié à la garde : il refuse seulement le lanc
 
 - **`spawn_agent`** est un outil appelable par le modèle, toujours proposé dans `act`. Il exécute un
   agent nommé de la crew comme enfant (`{ "agent", "input" }`) et renvoie sa sortie. L'enfant tourne
-  sous un budget enfant (profondeur de délégation + 1) ; un refus (profondeur ou budget de spawn
-  épuisé, agent inconnu) est un résultat d'outil en échec que le modèle lit, jamais une exception.
+  sous un budget enfant (profondeur de délégation + 1). Un run qui ne nomme aucun budget garde les
+  valeurs par défaut d'`AgentExecutionBudget` pour la profondeur de délégation et le nombre de spawns
+  (profondeur 2, 3 spawns) et ne fixe ni horloge, ni plafond d'appels d'outils ou de tokens, comme son
+  act n'en fixe aucun : un spawn tardif n'est pas refusé faute de temps, et son enfant n'y est pas tenu.
+  Un refus (profondeur ou budget de spawn épuisé, agent inconnu) est un résultat d'outil en échec que
+  le modèle lit, jamais une exception.
   Les `act` de l'enfant tournent sous le plus strict de leur propre `permissionMode` et de celui de
   l'`act` qui l'a lancé (plan, dontAsk > default > acceptEdits > bypassPermissions), comme une
   délégation de crew ; sous plan ou dontAsk le lancement lui-même, une écriture, est refusé. Ce qu'un

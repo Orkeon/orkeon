@@ -1,7 +1,9 @@
+using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Security;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Scripting.Tests.Doubles;
+using Orkeon.Tests.Shared.Timing;
 using static Orkeon.Scripting.Tests.Doubles.FakeToolCallingLlmProvider;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -262,5 +264,50 @@ public sealed class SpawnAgentScriptToolTests
             ScriptStep.Answer("root-done"));
 
         Assert.Empty(Spawned(events));
+    }
+
+    // #426: a run that names no budget gives the spawn tool no wall clock, tool-call or token cap of its own.
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public void ShouldRecordTheSpawn_WhenNoBudgetIsNamedAndFiveMinutesHavePassed()
+    {
+        var clock = new ManualTimeProvider();
+        var budget = SpawnAgentScriptTool.Unbudgeted(clock);
+
+        clock.Advance(TimeSpan.FromMinutes(6));
+
+        Assert.Null(Record.Exception(budget.RecordSpawn));
+        Assert.Equal(1, budget.CurrentSpawnedAgents);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public void ShouldGiveTheChildNoWallClockNorCaps_WhenNoBudgetIsNamed()
+    {
+        var clock = new ManualTimeProvider();
+        var budget = SpawnAgentScriptTool.Unbudgeted(clock);
+        clock.Advance(TimeSpan.FromMinutes(6));
+        budget.RecordSpawn();
+
+        var child = budget.CreateChildBudget();
+        clock.Advance(TimeSpan.FromHours(2));
+
+        Assert.Null(Record.Exception(child.AssertWallTime));
+        Assert.Null(Record.Exception(() => child.RecordTokens(100_000)));
+        for (var i = 0; i < 100; i++) child.RecordToolCall();
+        Assert.False(child.IsExhausted);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public void ShouldKeepTheSpawnAndDepthDefaults_WhenNoBudgetIsNamed()
+    {
+        var budget = SpawnAgentScriptTool.Unbudgeted(new ManualTimeProvider());
+        var defaults = AgentExecutionBudget.Default;
+
+        Assert.Equal(defaults.MaxDelegationDepth, budget.MaxDelegationDepth);
+        for (var i = 0; i < defaults.MaxSpawnedAgents; i++) budget.RecordSpawn();
+        var refused = Assert.Throws<BudgetExhaustedException>(budget.RecordSpawn);
+        Assert.Equal(BudgetDimension.SpawnedAgents, refused.Dimension);
     }
 }

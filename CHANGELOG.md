@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`spawn_agent` and `ctx.spawnBackground` are no longer refused five minutes into a run that names no
+  budget (#426).** Without `.budget(...)` the act runs with no wall clock, but the spawn tool took
+  `AgentExecutionBudget.Default`, built with each agent's context: every spawn made more than five minutes
+  after it was refused with `Wall time exceeded`, and a child spawned just before got what was left of
+  that clock, a few seconds, plus a cap of 15 tool calls and 16,000 tokens. The tool's allowance now sets
+  no wall clock, tool-call or token cap, as the act sets none, so its child gets none either; the
+  delegation-depth and spawn-count defaults (depth 2, 3 spawns) stay. A crew that names a budget is
+  unchanged.
 - **`--validate` finds the project's copy of the typings under TypeScript 7 (#424).** A module that
   references `.orkeon/orkeon.d.ts` (`orkeon typings`) brings that copy in beside the embedded roll-up;
   the checker recognised it from tsc's `TS6200` only. TypeScript 7, the compiler a checkout pins in
