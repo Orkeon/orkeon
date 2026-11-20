@@ -1707,7 +1707,7 @@ livré : c'est celui qui est installé sur la machine. La fenêtre est visible s
 | `Profile` | chaîne | — |  | Profil avec lequel un navigateur démarre quand l'agent n'en nomme aucun : `disposable` (par défaut, un dossier neuf supprimé à la fermeture du navigateur), le nom d'un profil du Firefox installé sur l'hôte (`profiles.ini`), ou le chemin d'un dossier de profil. Un profil nommé est utilisé sur place, avec ses cookies et ses sessions, et jamais supprimé ; un profil qu'un autre Firefox tient ouvert est refusé. |
 | `ProfileRoot` | chaîne | — |  | Dossier sous lequel chaque navigateur reçoit son propre dossier de profil, supprimé à la fermeture du navigateur. Non renseigné : `~/snap/firefox/common/orkeon/profiles` quand Firefox est un snap (un snap ne lit pas le dossier temporaire du système), sinon `orkeon-firefox` sous le dossier temporaire du système. |
 | `SharedInstance` | booléen | `false` |  | `true` partage un navigateur par profil entre les exécutions d'agents de l'hôte : chaque exécution y pilote ses propres onglets, et le navigateur se ferme quand la dernière exécution le quitte, sauf si `Lifetime` vaut `Host`. Par défaut, chaque exécution a son propre navigateur. |
-| `StartupTimeoutSeconds` | entier | `30` |  | Secondes laissées à Firefox pour démarrer et ouvrir son protocole distant. |
+| `StartupTimeoutSeconds` | entier | `30` |  | Secondes laissées à Firefox pour démarrer : pour ouvrir son protocole distant, puis à nouveau pour répondre à sa session, ce qu'il fait une fois sa première fenêtre chargée. |
 <!-- /settings -->
 
 ### `MCP`

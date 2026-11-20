@@ -217,7 +217,9 @@ qu'un hôte tué avec ses navigateurs a laissé derrière lui.
 `MaxTextLength`. Quand Firefox est un snap, la racine de profil par défaut est
 `~/snap/firefox/common/orkeon/profiles` : un snap ne lit pas le dossier temporaire du système.
 
-Un navigateur qui a ouvert son protocole distant mais laisse la première commande, `session.new`,
-sans réponse pendant `CommandTimeoutSeconds` est tué, son profil supprimé s'il est jetable, et
-redémarré une fois, avec un avertissement dans le journal ; un second silence fait échouer le
-démarrage avec une erreur qui dit que Firefox a été redémarré.
+Firefox annonce son protocole distant tôt dans son démarrage et ne répond à la première commande,
+`session.new`, qu'une fois sa première fenêtre chargée : cette réponse est la seconde moitié du
+démarrage, et attend à nouveau `StartupTimeoutSeconds`, non `CommandTimeoutSeconds`. Un navigateur qui
+la laisse sans réponse aussi longtemps est tué, son profil supprimé s'il est jetable, et redémarré une
+fois, avec un avertissement dans le journal ; un second silence fait échouer le démarrage avec une
+erreur qui dit que Firefox a été redémarré. Sur une machine chargée, augmentez `StartupTimeoutSeconds`.

@@ -1653,7 +1653,7 @@ not do is listed in [Known limitations](limitations.md).
 | `Profile` | string | — |  | The profile a browser starts with when the agent names none: `disposable` (the default, a fresh folder removed when the browser closes), the name of a profile of the Firefox installed on the host (`profiles.ini`), or the path of a profile folder. A named profile is used in place, with its cookies and sessions, and never removed; a profile another Firefox holds open is refused. |
 | `ProfileRoot` | string | — |  | Folder under which each browser gets its own profile folder, removed when the browser closes. Not set: `~/snap/firefox/common/orkeon/profiles` when Firefox is a snap (a snap cannot read the system's temp folder), else `orkeon-firefox` under the system's temp folder. |
 | `SharedInstance` | boolean | `false` |  | `true` shares one browser per profile between the agent runs of the host: each run drives tabs of its own in it, and the browser closes when the last run leaves it, unless `Lifetime` is `Host`. The default gives each run a browser of its own. |
-| `StartupTimeoutSeconds` | integer | `30` |  | Seconds Firefox is given to start and open its remote protocol. |
+| `StartupTimeoutSeconds` | integer | `30` |  | Seconds Firefox is given to start: to open its remote protocol, then again to answer its session, which it does once its first window has loaded. |
 <!-- /settings -->
 
 ### `MCP`

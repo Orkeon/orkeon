@@ -3172,7 +3172,7 @@
       "section": "Orkeon:Tools:Firefox",
       "type": "integer",
       "default": 30,
-      "description": "Seconds Firefox is given to start and open its remote protocol."
+      "description": "Seconds Firefox is given to start: to open its remote protocol, then again to answer its session, which it does once its first window has loaded."
     },
     {
       "path": "Orkeon:Tools:GitHub:Token",

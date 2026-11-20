@@ -22,6 +22,12 @@ script that relied on the implicit caps names them, for instance
 
 ### Fixed
 
+- **The `firefox` tool no longer fails to start on a loaded machine whose `StartupTimeoutSeconds` covers the
+  start (#437).** Firefox announces its remote protocol early and answers `session.new` only once its first
+  window has loaded; that wait was bounded by `CommandTimeoutSeconds` (30 s), not by the start's timeout, so a
+  slow start that the announcement survived failed on the session, twice in a row since the retry of #335
+  started Firefox cold again. `session.new` now waits `StartupTimeoutSeconds`, and the error and the warning
+  name it.
 - **`spawn_agent` and `ctx.spawnBackground` are no longer refused five minutes into a run that names no
   budget (#426).** Without `.budget(...)` the act runs with no wall clock, but the spawn tool took
   `AgentExecutionBudget.Default`, built with each agent's context: every spawn made more than five minutes

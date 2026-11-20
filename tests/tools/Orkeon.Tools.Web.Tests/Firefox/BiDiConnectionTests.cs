@@ -176,6 +176,23 @@ public class BiDiConnectionTests
     }
 
     [Fact]
+    public async Task Should_WaitTheTimeoutTheCallerNames_When_ACommandGivesItsOwn()
+    {
+        var clock = new ManualTimeProvider();
+        await using var transport = new FakeBiDiTransport { AutoAnswer = false };
+        await using var connection = new BiDiConnection(transport, TimeSpan.FromSeconds(30), clock: clock);
+
+        var pending = connection.SendAsync("session.new", null, TimeSpan.FromSeconds(120), Ct);
+        await NextCommandAsync(transport, 1);
+        await Polling.WaitUntilAsync(() => clock.PendingTimers == 1);
+        clock.Advance(TimeSpan.FromSeconds(30));
+
+        // Past the connection's own 30 s, the command still waits the rest of its 120.
+        Assert.Equal([TimeSpan.FromSeconds(90)], clock.DueIns);
+        Assert.False(pending.IsCompleted);
+    }
+
+    [Fact]
     public async Task Should_DisposeTheTransport_AndEndThePendingCommands_When_Disposed()
     {
         await using var transport = new FakeBiDiTransport { AutoAnswer = false };
