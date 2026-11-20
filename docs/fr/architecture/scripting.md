@@ -232,8 +232,11 @@ d'enfants épuisé n'est pas vérifié à la garde : il refuse seulement le lanc
   agent nommé de la crew comme enfant (`{ "agent", "input" }`) et renvoie sa sortie. L'enfant tourne
   sous un budget enfant (profondeur de délégation + 1). Un run qui ne nomme aucun budget garde les
   valeurs par défaut d'`AgentExecutionBudget` pour la profondeur de délégation et le nombre de spawns
-  (profondeur 2, 3 spawns) et ne fixe ni horloge, ni plafond d'appels d'outils ou de tokens, comme son
-  act n'en fixe aucun : un spawn tardif n'est pas refusé faute de temps, et son enfant n'y est pas tenu.
+  (profondeur 2, 3 spawns, comptés par run d'agent : chaque tentative et chaque hook) et ne fixe ni
+  horloge, ni plafond d'appels d'outils ou de tokens, comme son act n'en fixe aucun : un spawn tardif
+  n'est pas refusé faute de temps, et son enfant n'y est pas tenu. Un `budget({...})` qui omet une
+  dimension la prend d'`AgentExecutionBudget.Default` (15 appels d'outils, 16 000 tokens, 5 minutes),
+  pour ses `act` comme pour ses spawns ([clés de `budget`](../reference/scripting-dsl.md)).
   Un refus (profondeur ou budget de spawn épuisé, agent inconnu) est un résultat d'outil en échec que
   le modèle lit, jamais une exception.
   Les `act` de l'enfant tournent sous le plus strict de leur propre `permissionMode` et de celui de

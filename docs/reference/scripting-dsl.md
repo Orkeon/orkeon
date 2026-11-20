@@ -279,7 +279,9 @@ under its semaphore and its `onError` policy. Neither gives the run a budget unl
 `ctx.delegate(agent, input, { budget: { toolCalls: 20, tokens: 50000, wallTime: 300 } })` (and the
 same `budget` in `crew.runAgent`'s options) bounds that run with the keys and values of
 `crewBuilder().budget(...)` (`toolCalls`, `tokens`, `contextTokens`, `wallTime` in seconds or as `"5m"`,
-`delegationDepth`, `spawnedAgents`). `tokens` is a running sum of the prompt and completion of every
+`delegationDepth`, `spawnedAgents`). A key left out takes the value of `AgentExecutionBudget.Default`
+(15 tool calls, 16,000 tokens, 5 minutes, depth 2, 3 spawns), the same for the crew's `budget(...)`:
+only a run that names no budget at all has no wall clock, tool-call or token cap. `tokens` is a running sum of the prompt and completion of every
 call, the context counted again on each. `contextTokens` counts the context once: each call's
 completion plus the uncached part of its prompt when the provider reports cache hits, else what the
 prompt grew by since the same conversation's previous call (each `ctx.llm.act` its own), so a turn of n calls on a context of c tokens spends about c plus

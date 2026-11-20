@@ -108,6 +108,9 @@ public sealed partial class JsCrew
     }
 
     internal JsAgentChannel Channel => _channel;
+
+    /// <summary>The clock handed to every environment this crew builds (<see cref="JsExecutionEnvironment.Clock"/>); a test sets a manual one.</summary>
+    internal TimeProvider Clock { get; set; } = TimeProvider.System;
     internal JsMemoryScope CrewMemory => _crewMemory;
 
     /// <summary>
@@ -129,6 +132,7 @@ public sealed partial class JsCrew
         LlmProvider = agent.Builder.LlmConfig?.ProfileProvider ?? _llmProvider,
         BuiltInTools = _builtInTools,
         Budget = budget,
+        Clock = Clock,
         Permit = permit,
         Instance = instance,
         PermissionGate = _permissionGate,

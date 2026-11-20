@@ -48,7 +48,7 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
     internal SpawnAgentScriptTool(JsExecutionEnvironment environment)
     {
         _environment = environment;
-        _budget = environment.Budget ?? Unbudgeted();
+        _budget = environment.Budget ?? Unbudgeted(environment.Clock);
     }
 
     /// <summary>
