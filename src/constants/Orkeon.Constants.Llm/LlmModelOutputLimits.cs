@@ -146,31 +146,8 @@ public static class LlmModelOutputLimits
         if (Lookup(id) is { } known)
             return known;
 
-        var slash = id.LastIndexOf('/');
-        return slash >= 0 && slash < id.Length - 1 ? Lookup(id[(slash + 1)..]) : null;
+        return ModelIdTable.AfterVendorSlash(id) is { } bare ? Lookup(bare) : null;
     }
 
-    private static int? Lookup(string id)
-    {
-        if (Documented.TryGetValue(id, out var exact))
-            return exact;
-
-        int? best = null;
-        var bestLength = 0;
-        foreach (var (key, value) in Documented)
-        {
-            if (key.Length <= bestLength || key.Length >= id.Length)
-                continue;
-            if (!id.StartsWith(key, StringComparison.OrdinalIgnoreCase) || !IsSeparator(id[key.Length]))
-                continue;
-
-            best = value;
-            bestLength = key.Length;
-        }
-
-        return best;
-    }
-
-    // A family prefix only claims an id at a boundary: a date, a size or a routing suffix.
-    private static bool IsSeparator(char c) => c is '-' or ':' or '@' or '_';
+    private static int? Lookup(string id) => ModelIdTable.Lookup(Documented, id);
 }

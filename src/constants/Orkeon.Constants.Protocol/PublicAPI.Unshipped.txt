@@ -18,3 +18,4 @@ Orkeon.Constants.Protocol.DecisionSources
 const Orkeon.Constants.Protocol.DecisionSources.Fallback = "fallback" -> string!
 const Orkeon.Constants.Protocol.DecisionSources.Model = "model" -> string!
 const Orkeon.Constants.Protocol.DecisionSources.Relay = "relay" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.AgentCompacted = "agent.compacted" -> string!

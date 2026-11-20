@@ -145,6 +145,7 @@ public static class SettingsCategories
             ["Orkeon:MultiModal"] = Tools,
             ["Plugins"] = Tools,
 
+            ["Orkeon:Compaction"] = OrchestrationAndPersistence,
             ["Orkeon:CrewFactory"] = OrchestrationAndPersistence,
             ["Orkeon:Consensus"] = OrchestrationAndPersistence,
             ["Orkeon:ExecutionState"] = OrchestrationAndPersistence,

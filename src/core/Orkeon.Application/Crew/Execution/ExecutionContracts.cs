@@ -55,7 +55,8 @@ internal sealed record ToolCallDispatchContext(
     List<Domain.Tools.ToolUsage> ToolsUsed,
     DomainAgent Agent,
     CrewTask Task,
-    int Iteration);
+    int Iteration,
+    Compaction.ContextCompactor? Compactor = null);
 
 /// <summary>
 /// Groups the conversation state needed during function call processing.

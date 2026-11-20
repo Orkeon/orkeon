@@ -178,19 +178,19 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 103 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 105 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 110 |
-| [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 28 |
+| [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 32 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 530 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+81 sections, 536 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -275,6 +275,7 @@ the same way with its own keys.
 | `Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
+| `ContextWindowTokens` | integer | — | The model's context window in tokens, which the agent loops compact a long conversation against (#432). Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider. |
 | `Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
 | `MaxRateLimitWait` | duration | `"00:05:00"` | The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing. |
 | `MaxRetries` | integer | `10` | How many times a call that fails on a passing error is tried again; `0` never retries. |
@@ -292,6 +293,7 @@ the same way with its own keys.
 | `Profiles:<name>:Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Profiles:<name>:Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `Profiles:<name>:CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
+| `Profiles:<name>:ContextWindowTokens` | integer | — | The model's context window in tokens, which the agent loops compact a long conversation against (#432). Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider. |
 | `Profiles:<name>:Fallback` | list of string | `[]` | The profiles a call moves to, in order, when this one fails in a way a retry cannot cure: a transport error, a 5xx, a 429 once `MaxRetries` is spent, a timeout. A list of profile names, or one comma-separated value; `default` names the host's own. Left out, a failure is the call's. |
 | `Profiles:<name>:FallbackBudgetSeconds` | integer | — | The longest the chain may spend before it stops trying the next profile, in seconds, counted from the first call. It is checked between two profiles and never cuts a call in flight. Left out, the chain is bounded only by each profile's own `TimeoutSeconds` and `MaxRetries`. |
 | `Profiles:<name>:Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
@@ -1791,6 +1793,32 @@ host calls `AddOrkeonPlugins(fileSystem, configuration)` — see [Plugins](../ar
 ## Orchestration and persistence
 
 How a crew is built and how it decides, and what of its execution is kept.
+
+### `Orkeon:Compaction`
+
+How the agent loops keep a long conversation inside the model's window (#432). Before each call,
+the loop estimates its prompt; once it reaches `TriggerShare` of the usable window (the context
+window less the call's output cap), one summary call replaces the older turns, and the system
+prompt, the task and the last `KeepRecentTurns` turns stay as they were. The window is the
+profile's `ContextWindowTokens`, else the model's documented one, else
+`Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed.
+Three failed compactions in a row bring the 40-message trim back for the rest of the run, and each
+compaction emits `agent.compacted` on the run's event stream. An agent overrides `Enabled` and
+`TriggerShare` with its YAML `compaction:` key; a `.ork.ts` crew follows these settings. The
+text-protocol loop keeps its trim. A provider with explicit cache breakpoints (Anthropic) keeps
+its cached system prompt and tools; a provider with an automatic prefix cache bills the
+conversation again after the cut.
+
+<!-- settings:Orkeon:Compaction -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Enabled` | boolean | `true` | Whether the loops compact their conversation. True by default: a long loop pays one summary call instead of losing its middle to the 40-message trim. False brings that trim back, as an agent's `compaction: { enabled: false }` does for that agent alone. |
+| `KeepRecentTurns` | integer | `6` | How many of the most recent turns a compaction keeps verbatim, a turn being one assistant message with its tool results (a tool call is never parted from its result). 6 by default; 0 summarises every turn. |
+| `Profile` | string | — | The LLM profile that writes the summary, or none for the agent's own model and profile. The summary's tokens are charged to the task either way. |
+| `TriggerShare` | number | `0.75` | The share of the usable window (the context window less the call's output cap) the estimated prompt reaches for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's `compaction: { triggerShare }` overrides it. |
+<!-- /settings -->
 
 ### `Orkeon:CrewFactory`
 

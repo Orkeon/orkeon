@@ -71,14 +71,39 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
     private ChatClientAgentLoop ChatLoop =>
         _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher,
-            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink, _verboseLogger, ToolCallDlp));
+            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink, _verboseLogger, ToolCallDlp,
+                CompactionServices?.For(Interfaces.Ports.LlmProfiles.Default, _fullProvider?.BaseConfig)));
 
     private LegacyTextAgentLoop LegacyLoop =>
         _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools, _verboseLogger);
 
     private NativeToolCallingAgentLoop NativeLoop =>
         _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools,
-            new NativeToolCallingAgentLoop.NativeToolCallingLoopOptions(_verboseLogger, ToolLimits));
+            new NativeToolCallingAgentLoop.NativeToolCallingLoopOptions(_verboseLogger, ToolLimits,
+                CompactionServices?.For(Interfaces.Ports.LlmProfiles.Default, _fullProvider?.BaseConfig)));
+
+    /// <summary>
+    /// What the loops compact with (#432), or null when <see cref="CompactionOptions"/> or
+    /// <see cref="ContextWindows"/> is unset — an orchestrator built by hand —: the loops then trim
+    /// their conversation to the last 40 messages, as they did before compaction.
+    /// </summary>
+    private Compaction.ContextCompactionServices? CompactionServices =>
+        CompactionOptions is null || ContextWindows is null
+            ? null
+            : _compactionServices ??= new Compaction.ContextCompactionServices
+            {
+                Options = CompactionOptions,
+                Windows = ContextWindows,
+                Logger = _logger,
+                TokenCounter = TokenCounter,
+                Observer = CompactionObserver,
+                Stages = ContextPressureStages,
+                SummaryProvider = () => string.IsNullOrWhiteSpace(CompactionOptions.Profile) || LlmProfiles is null
+                    ? null
+                    : LlmProfiles.Resolve(CompactionOptions.Profile).Provider,
+            };
+
+    private Compaction.ContextCompactionServices? _compactionServices;
 
     /// <summary>
     /// One agent loop per host profile an agent or a task of this scope named (GAP-17): the
@@ -199,6 +224,28 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// <c>AddOrkeonApplication</c>; null — an orchestrator built by hand — injects none.
     /// </summary>
     public Orkeon.Application.Memory.CrewMemoryProviderRegistry? MemoryRegistry { get; set; }
+
+    /// <summary>
+    /// How the native and the chat-client loops compact a long conversation (<c>Orkeon:Compaction</c>,
+    /// #432). Set by <c>AddOrkeonApplication</c> with <see cref="ContextWindows"/>; null — an
+    /// orchestrator built by hand — keeps the 40-message trim. Read when the loops are first built.
+    /// </summary>
+    public Compaction.ContextCompactionOptions? CompactionOptions { get; set; }
+
+    /// <summary>The context window a loop compacts against (#432); null keeps the 40-message trim.</summary>
+    public IContextWindowResolver? ContextWindows { get; set; }
+
+    /// <summary>The counter that estimates a conversation's prompt (#432); null estimates four characters a token.</summary>
+    public Domain.SharedKernel.ITokenCounter? TokenCounter { get; set; }
+
+    /// <summary>Told of every compaction (<c>agent.compacted</c>, #432); null logs it alone.</summary>
+    public IAgentCompactionObserver? CompactionObserver { get; set; }
+
+    /// <summary>
+    /// The stages that relieve a conversation before compaction does (#432, the seam of #434), in
+    /// order; empty by default. Each runs before every model call of a loop that compacts.
+    /// </summary>
+    public IReadOnlyList<Compaction.IContextPressureStage> ContextPressureStages { get; set; } = [];
 
     /// <summary>
     /// Initializes a new instance of <see cref="ExecutionOrchestrator"/>.
@@ -969,7 +1016,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             new LlmCallGate(_logger, profile.BasicProvider, TimeProvider, AgentRequestsPerMinute, _verboseLogger),
             OptionsComposer,
             ToolDispatcher,
-            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink, _verboseLogger));
+            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink, _verboseLogger,
+                Compaction: CompactionServices?.For(profile.Name, profile.Provider.BaseConfig)));
 
     /// <summary>
     /// Why <paramref name="task"/> cannot run on <paramref name="provider"/>, or null (GAP-34): the

@@ -336,6 +336,9 @@ public partial class YamlCrewExporter
             Verbose = agent.Verbose ? true : null,
             Llm = MapLlmConfig(agent.LlmConfig),
             Guardrails = MapGuardrails(agent.Guardrails),
+            Compaction = agent.Compaction is { } compaction
+                ? new CompactionYamlConfig { Enabled = compaction.Enabled, TriggerShare = compaction.TriggerShare }
+                : null,
             Knowledge = MapKnowledge(agent.KnowledgeAttachments),
         };
     }

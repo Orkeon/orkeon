@@ -193,6 +193,12 @@ public static class ServiceCollectionExtensions
             // provider; every other one stays on the default resolved above.
             orchestrator.LlmProfiles = sp.GetService<Interfaces.Ports.ILlmProfileRegistry>();
             orchestrator.MemoryRegistry = sp.GetService<Memory.CrewMemoryProviderRegistry>();
+            // The conversation's compaction (#432): the settings and the window together, or the trim alone.
+            orchestrator.CompactionOptions = sp.GetService<IOptions<Crew.Compaction.ContextCompactionOptions>>()?.Value;
+            orchestrator.ContextWindows = sp.GetService<IContextWindowResolver>();
+            orchestrator.TokenCounter = sp.GetService<Domain.SharedKernel.ITokenCounter>();
+            orchestrator.CompactionObserver = sp.GetService<IAgentCompactionObserver>();
+            orchestrator.ContextPressureStages = sp.GetServices<Crew.Compaction.IContextPressureStage>().ToList();
 
             // GAP-32 — a host that renders the model's text as it arrives (orkeon run --stream, the
             // REPL's console) gets every agent turn streamed to it, not only ctx.llm.* calls.

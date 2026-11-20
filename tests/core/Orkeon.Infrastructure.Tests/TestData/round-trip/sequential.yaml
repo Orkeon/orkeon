@@ -117,6 +117,9 @@ agents:
     guardrails:
       header: "HOUSE RULES:"
       rules: [Write in plain English., Keep it to one page.]
+    compaction:
+      enabled: false
+      triggerShare: 0.6
 
 tasks:
   collect:

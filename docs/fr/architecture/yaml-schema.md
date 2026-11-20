@@ -109,6 +109,9 @@ agents:
       rules: [string]     # Règles globales numérotées
       toolRules:          # Règles rendues seulement quand l'agent possède l'outil ; un nom d'outil ignore la casse, et un outil écrit sous deux clés fait échouer le chargement
         <tool_name>: [string]
+    compaction:           # Remplace Orkeon:Compaction pour cet agent (optionnel) ; une clé mal orthographiée fait échouer le chargement
+      enabled: bool       # défaut : Orkeon:Compaction:Enabled (true) ; false garde la coupe à 40 messages
+      triggerShare: float # (0, 1], la part de la fenêtre utile qui déclenche un résumé ; défaut : Orkeon:Compaction:TriggerShare (0,75)
     knowledge:            # Collections de connaissance (RAG) attachées à l'agent (optionnel) ; une clé inconnue d'une entrée est refusée, une valeur mal formée reste un warning
       - string            # Forme courte : nom de collection avec options par défaut
       - collection: string       # Forme longue (clé requise)

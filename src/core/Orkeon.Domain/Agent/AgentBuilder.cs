@@ -24,6 +24,7 @@ public sealed class AgentBuilder
     private string? _workingRoot;
     private IReadOnlyList<FileSystem.FileSystemScopeEntry> _fileSystemScope = [];
     private bool _announceMounts = true;
+    private AgentCompaction? _compaction;
     private Security.PermissionMode? _permissionMode;
     private TimeSpan? _maxExecutionTime;
     private string? _systemTemplate;
@@ -262,6 +263,20 @@ public sealed class AgentBuilder
     }
 
     /// <summary>
+    /// What the agent overrides of the host's conversation compaction (#432): whether its loops
+    /// compact, and at which share of the window. Null, or a field left null, follows <c>Orkeon:Compaction</c>.
+    /// </summary>
+    /// <param name="compaction">The override; null overrides nothing.</param>
+    /// <exception cref="ArgumentOutOfRangeException">The trigger share is not above 0 and at most 1.</exception>
+    public AgentBuilder Compaction(AgentCompaction? compaction)
+    {
+        if (AgentCompaction.TriggerShareProblem(compaction?.TriggerShare, "compaction.triggerShare") is { } problem)
+            throw new ArgumentOutOfRangeException(nameof(compaction), problem);
+        _compaction = compaction;
+        return this;
+    }
+
+    /// <summary>
     /// Attaches a knowledge (RAG) collection to the agent with default retrieval options.
     /// Cumulative: call once per collection to attach several collections.
     /// </summary>
@@ -442,6 +457,7 @@ public sealed class AgentBuilder
         agent.WorkingRoot = _workingRoot;
         agent.FileSystemScope = _fileSystemScope;
         agent.AnnounceMounts = _announceMounts;
+        agent.Compaction = _compaction;
         agent.PermissionMode = _permissionMode;
         return agent;
     }

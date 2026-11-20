@@ -46,6 +46,7 @@ public static class SettingsSections
         "Orkeon:Cli:Tui",
         "Orkeon:CodeSandbox",
         "Orkeon:CognitiveMemory",
+        "Orkeon:Compaction",
         "Orkeon:Consensus",
         "Orkeon:CostTracking",
         "Orkeon:CrewFactory",

@@ -142,6 +142,14 @@ internal class LlmProfileShape
     public int? MaxTokens { get; set; }
 
     /// <summary>
+    /// The model's context window in tokens, which the agent loops compact a long conversation against
+    /// (#432). Left out, the loops read the documented window of the model, else
+    /// <c>Orkeon:Cli:Session:ContextWindowTokens</c>, with one warning per profile naming the figure assumed.
+    /// Never sent to the provider.
+    /// </summary>
+    public int? ContextWindowTokens { get; set; }
+
+    /// <summary>
     /// How long one call may take, in seconds. Too short at its default for a model that thinks
     /// before it answers: write 600 for one, or turn its thinking off.
     /// </summary>

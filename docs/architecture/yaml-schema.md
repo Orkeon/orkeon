@@ -107,6 +107,9 @@ agents:
       rules: [string]     # Global numbered rules
       toolRules:          # Rules rendered only when the agent has the tool; a tool name ignores case, and one written under two keys fails the load
         <tool_name>: [string]
+    compaction:           # Overrides Orkeon:Compaction for this agent (optional); a misspelled key fails the load
+      enabled: bool       # default: Orkeon:Compaction:Enabled (true); false keeps the 40-message trim
+      triggerShare: float # (0, 1], the share of the usable window that triggers a summary; default: Orkeon:Compaction:TriggerShare (0.75)
     knowledge:            # Knowledge (RAG) collections attached to the agent (optional); an unknown key of an entry is refused, a malformed value stays a warning
       - string            # Short form: collection name with default options
       - collection: string       # Long form (required key)

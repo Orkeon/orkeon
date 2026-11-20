@@ -87,3 +87,114 @@ Orkeon.Application.Crew.Execution.DecisionCircuitOverride
 Orkeon.Application.Crew.Execution.DecisionCircuitOverride.Circuit.get -> Orkeon.Application.Crew.Execution.DecisionCircuit?
 Orkeon.Application.Crew.Execution.DecisionCircuitOverride.Circuit.set -> void
 Orkeon.Application.Crew.Execution.DecisionCircuitOverride.DecisionCircuitOverride() -> void
+Orkeon.Application.Crew.Compaction.ContextCompactionOptions
+Orkeon.Application.Crew.Compaction.ContextCompactionOptions.ContextCompactionOptions() -> void
+Orkeon.Application.Crew.Compaction.ContextCompactionOptions.Enabled.get -> bool
+Orkeon.Application.Crew.Compaction.ContextCompactionOptions.Enabled.set -> void
+Orkeon.Application.Crew.Compaction.ContextCompactionOptions.KeepRecentTurns.get -> int
+Orkeon.Application.Crew.Compaction.ContextCompactionOptions.KeepRecentTurns.set -> void
+Orkeon.Application.Crew.Compaction.ContextCompactionOptions.Profile.get -> string?
+Orkeon.Application.Crew.Compaction.ContextCompactionOptions.Profile.set -> void
+Orkeon.Application.Crew.Compaction.ContextCompactionOptions.TriggerShare.get -> double
+Orkeon.Application.Crew.Compaction.ContextCompactionOptions.TriggerShare.set -> void
+Orkeon.Application.Crew.Compaction.ContextPressure
+Orkeon.Application.Crew.Compaction.ContextPressure.<Clone>$() -> Orkeon.Application.Crew.Compaction.ContextPressure!
+Orkeon.Application.Crew.Compaction.ContextPressure.AgentRole.get -> string!
+Orkeon.Application.Crew.Compaction.ContextPressure.AgentRole.init -> void
+Orkeon.Application.Crew.Compaction.ContextPressure.BudgetTokens.get -> int
+Orkeon.Application.Crew.Compaction.ContextPressure.ContextPressure() -> void
+Orkeon.Application.Crew.Compaction.ContextPressure.Equals(Orkeon.Application.Crew.Compaction.ContextPressure? other) -> bool
+Orkeon.Application.Crew.Compaction.ContextPressure.EstimatedTokens.get -> int
+Orkeon.Application.Crew.Compaction.ContextPressure.EstimatedTokens.init -> void
+Orkeon.Application.Crew.Compaction.ContextPressure.FillShare.get -> double
+Orkeon.Application.Crew.Compaction.ContextPressure.ReservedOutputTokens.get -> int
+Orkeon.Application.Crew.Compaction.ContextPressure.ReservedOutputTokens.init -> void
+Orkeon.Application.Crew.Compaction.ContextPressure.TaskId.get -> string!
+Orkeon.Application.Crew.Compaction.ContextPressure.TaskId.init -> void
+Orkeon.Application.Crew.Compaction.ContextPressure.TriggerTokens.get -> int
+Orkeon.Application.Crew.Compaction.ContextPressure.TriggerTokens.init -> void
+Orkeon.Application.Crew.Compaction.ContextPressure.Window.get -> Orkeon.Application.Crew.Compaction.ContextWindow!
+Orkeon.Application.Crew.Compaction.ContextPressure.Window.init -> void
+Orkeon.Application.Crew.Compaction.ContextWindow
+Orkeon.Application.Crew.Compaction.ContextWindow.<Clone>$() -> Orkeon.Application.Crew.Compaction.ContextWindow!
+Orkeon.Application.Crew.Compaction.ContextWindow.ContextWindow(int Tokens, string! Source) -> void
+Orkeon.Application.Crew.Compaction.ContextWindow.Deconstruct(out int Tokens, out string! Source) -> void
+Orkeon.Application.Crew.Compaction.ContextWindow.Equals(Orkeon.Application.Crew.Compaction.ContextWindow? other) -> bool
+Orkeon.Application.Crew.Compaction.ContextWindow.Source.get -> string!
+Orkeon.Application.Crew.Compaction.ContextWindow.Source.init -> void
+Orkeon.Application.Crew.Compaction.ContextWindow.Tokens.get -> int
+Orkeon.Application.Crew.Compaction.ContextWindow.Tokens.init -> void
+Orkeon.Application.Crew.Compaction.ContextWindowSources
+Orkeon.Application.Crew.Compaction.ConversationView
+Orkeon.Application.Crew.Compaction.IContextPressureStage
+Orkeon.Application.Crew.Compaction.IContextPressureStage.RelieveAsync(Orkeon.Application.Crew.Compaction.ContextPressure! pressure, Orkeon.Application.Crew.Compaction.ConversationView! conversation, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<bool>
+Orkeon.Application.Crew.ExecutionOrchestrator.CompactionObserver.get -> Orkeon.Application.Interfaces.Ports.IAgentCompactionObserver?
+Orkeon.Application.Crew.ExecutionOrchestrator.CompactionObserver.set -> void
+Orkeon.Application.Crew.ExecutionOrchestrator.CompactionOptions.get -> Orkeon.Application.Crew.Compaction.ContextCompactionOptions?
+Orkeon.Application.Crew.ExecutionOrchestrator.CompactionOptions.set -> void
+Orkeon.Application.Crew.ExecutionOrchestrator.ContextPressureStages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Crew.Compaction.IContextPressureStage!>!
+Orkeon.Application.Crew.ExecutionOrchestrator.ContextPressureStages.set -> void
+Orkeon.Application.Crew.ExecutionOrchestrator.ContextWindows.get -> Orkeon.Application.Interfaces.Ports.IContextWindowResolver?
+Orkeon.Application.Crew.ExecutionOrchestrator.ContextWindows.set -> void
+Orkeon.Application.Crew.ExecutionOrchestrator.TokenCounter.get -> Orkeon.Domain.SharedKernel.ITokenCounter?
+Orkeon.Application.Crew.ExecutionOrchestrator.TokenCounter.set -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.<Clone>$() -> Orkeon.Application.Interfaces.Ports.AgentCompactionNotice!
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.AgentCompactionNotice() -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.AgentRole.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.AgentRole.init -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.Equals(Orkeon.Application.Interfaces.Ports.AgentCompactionNotice? other) -> bool
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.KeptMessages.get -> int
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.KeptMessages.init -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.Outcome.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.Outcome.init -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.SummaryTokens.get -> int
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.SummaryTokens.init -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.TaskId.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.TaskId.init -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.TokensAfter.get -> int
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.TokensAfter.init -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.TokensBefore.get -> int
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.TokensBefore.init -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.Window.get -> int
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.Window.init -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.WindowSource.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.WindowSource.init -> void
+Orkeon.Application.Interfaces.Ports.AgentCompactionOutcomes
+Orkeon.Application.Interfaces.Ports.IAgentCompactionObserver
+Orkeon.Application.Interfaces.Ports.IAgentCompactionObserver.Compacted(Orkeon.Application.Interfaces.Ports.AgentCompactionNotice! notice) -> void
+Orkeon.Application.Interfaces.Ports.IContextWindowResolver
+Orkeon.Application.Interfaces.Ports.IContextWindowResolver.Resolve(string! profile, string? model, int? profileWindowTokens) -> Orkeon.Application.Crew.Compaction.ContextWindow!
+abstract Orkeon.Application.Crew.Compaction.ConversationView.Count.get -> int
+abstract Orkeon.Application.Crew.Compaction.ConversationView.ReplaceToolResult(int index, string! text) -> bool
+abstract Orkeon.Application.Crew.Compaction.ConversationView.RoleAt(int index) -> string!
+abstract Orkeon.Application.Crew.Compaction.ConversationView.TextAt(int index) -> string!
+const Orkeon.Application.Crew.Compaction.ContextCompactionOptions.DefaultKeepRecentTurns = 6 -> int
+const Orkeon.Application.Crew.Compaction.ContextCompactionOptions.DefaultTriggerShare = 0.75 -> double
+const Orkeon.Application.Crew.Compaction.ContextCompactionOptions.SectionName = "Orkeon:Compaction" -> string!
+const Orkeon.Application.Crew.Compaction.ContextWindowSources.Profile = "profile" -> string!
+const Orkeon.Application.Crew.Compaction.ContextWindowSources.Settings = "settings" -> string!
+const Orkeon.Application.Crew.Compaction.ContextWindowSources.Table = "table" -> string!
+const Orkeon.Application.Crew.Compaction.ConversationView.AssistantRole = "assistant" -> string!
+const Orkeon.Application.Crew.Compaction.ConversationView.SystemRole = "system" -> string!
+const Orkeon.Application.Crew.Compaction.ConversationView.ToolRole = "tool" -> string!
+const Orkeon.Application.Crew.Compaction.ConversationView.UserRole = "user" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentCompactionOutcomes.Compacted = "compacted" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentCompactionOutcomes.Failed = "failed" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentCompactionOutcomes.Reverted = "reverted" -> string!
+override Orkeon.Application.Crew.Compaction.ContextPressure.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.Compaction.ContextPressure.GetHashCode() -> int
+override Orkeon.Application.Crew.Compaction.ContextPressure.ToString() -> string!
+override Orkeon.Application.Crew.Compaction.ContextWindow.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.Compaction.ContextWindow.GetHashCode() -> int
+override Orkeon.Application.Crew.Compaction.ContextWindow.ToString() -> string!
+override Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.ToString() -> string!
+static Orkeon.Application.Crew.Compaction.ContextCompactionOptions.Problems(Orkeon.Application.Crew.Compaction.ContextCompactionOptions! options) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Application.Crew.Compaction.ContextPressure.operator !=(Orkeon.Application.Crew.Compaction.ContextPressure? left, Orkeon.Application.Crew.Compaction.ContextPressure? right) -> bool
+static Orkeon.Application.Crew.Compaction.ContextPressure.operator ==(Orkeon.Application.Crew.Compaction.ContextPressure? left, Orkeon.Application.Crew.Compaction.ContextPressure? right) -> bool
+static Orkeon.Application.Crew.Compaction.ContextWindow.operator !=(Orkeon.Application.Crew.Compaction.ContextWindow? left, Orkeon.Application.Crew.Compaction.ContextWindow? right) -> bool
+static Orkeon.Application.Crew.Compaction.ContextWindow.operator ==(Orkeon.Application.Crew.Compaction.ContextWindow? left, Orkeon.Application.Crew.Compaction.ContextWindow? right) -> bool
+static Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.operator !=(Orkeon.Application.Interfaces.Ports.AgentCompactionNotice? left, Orkeon.Application.Interfaces.Ports.AgentCompactionNotice? right) -> bool
+static Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.operator ==(Orkeon.Application.Interfaces.Ports.AgentCompactionNotice? left, Orkeon.Application.Interfaces.Ports.AgentCompactionNotice? right) -> bool

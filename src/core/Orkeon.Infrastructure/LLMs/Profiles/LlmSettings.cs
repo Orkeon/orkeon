@@ -14,7 +14,7 @@ namespace Orkeon.Infrastructure.LLMs.Profiles;
 /// Reads the host's LLM settings: the <c>Llm</c> section — the default profile — and its named
 /// profiles under <c>Llm:Profiles:&lt;name&gt;</c>, each of the same shape (GAP-17). One reader
 /// for both, so a profile accepts exactly the keys the default section does: <c>BaseUrl</c>,
-/// <c>ApiKey</c>, <c>ApiKeyEnvVar</c>, <c>Model</c>, <c>Temperature</c>, <c>MaxTokens</c>,
+/// <c>ApiKey</c>, <c>ApiKeyEnvVar</c>, <c>Model</c>, <c>Temperature</c>, <c>MaxTokens</c>, <c>ContextWindowTokens</c>,
 /// <c>TimeoutSeconds</c>, <c>StreamIdleSeconds</c>, <c>MaxRetries</c>, <c>MaxRateLimitWait</c>, <c>CallMode</c>,
 /// <c>Thinking:{Enabled,Effort}</c> and <c>Grammar</c>.
 /// A key left out sets nothing: no <c>Temperature</c> sends none, and the model applies its own
@@ -306,6 +306,8 @@ public static class LlmSettings
             Temperature = ReadDouble(section, "Temperature", strict),
             // Absent = not pinned: the provider sends the model's documented maximum (LLM-10).
             MaxTokens = ReadInt(section, "MaxTokens", strict),
+            // Absent = the model's documented window, else Orkeon:Cli:Session:ContextWindowTokens (#432).
+            ContextWindowTokens = ReadInt(section, "ContextWindowTokens", strict),
             // Absent = not pinned: the provider runs on LlmDefaults.DefaultTimeoutSeconds (30 s).
             TimeoutSeconds = ReadInt(section, "TimeoutSeconds", strict),
             // Absent = not bounded: only TimeoutSeconds bounds a streamed call (LLM-12).

@@ -189,19 +189,19 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 103 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 105 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 110 |
-| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 28 |
+| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 32 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 530 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+81 sections, 536 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -293,6 +293,7 @@ avec ses propres clés.
 | `Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
+| `ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, contre laquelle les boucles d'agent compactent une longue conversation (#432). Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens`, avec un avertissement par profil qui nomme le chiffre supposé. Jamais envoyée au fournisseur. |
 | `Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
 | `MaxRateLimitWait` | durée | `"00:05:00"` | La plus longue fenêtre de limite de débit qu'un appel attend avant d'échouer : un fournisseur qui en annonce une plus longue fait échouer l'appel aussitôt avec une erreur de limite de débit. `00:00:00` n'attend rien. |
 | `MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
@@ -310,6 +311,7 @@ avec ses propres clés.
 | `Profiles:<nom>:Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Profiles:<nom>:Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `Profiles:<nom>:CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
+| `Profiles:<nom>:ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, contre laquelle les boucles d'agent compactent une longue conversation (#432). Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens`, avec un avertissement par profil qui nomme le chiffre supposé. Jamais envoyée au fournisseur. |
 | `Profiles:<nom>:Fallback` | liste de chaînes | `[]` | Les profils vers lesquels un appel passe, dans l'ordre, quand celui-ci échoue d'une façon qu'un nouvel essai ne guérit pas : une erreur de transport, un 5xx, un 429 une fois `MaxRetries` épuisé, un délai dépassé. Une liste de noms de profils, ou une seule valeur séparée par des virgules ; `default` désigne le profil de l'hôte. Omise, un échec reste celui de l'appel. |
 | `Profiles:<nom>:FallbackBudgetSeconds` | entier | — | Le temps maximal, en secondes et compté depuis le premier appel, que la chaîne peut passer avant de cesser d'essayer le profil suivant. Il est vérifié entre deux profils et ne coupe jamais un appel en cours. Omis, la chaîne n'est bornée que par le `TimeoutSeconds` et le `MaxRetries` de chaque profil. |
 | `Profiles:<nom>:Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
@@ -1845,6 +1847,32 @@ présente ; un autre hôte appelle `AddOrkeonPlugins(fileSystem, configuration)`
 ## Orchestration et persistance
 
 Comment une crew se construit et décide, et ce qui est gardé de son exécution.
+
+### `Orkeon:Compaction`
+
+Comment les boucles d'agent gardent une longue conversation dans la fenêtre du modèle (#432).
+Avant chaque appel, la boucle estime son prompt ; dès qu'il atteint `TriggerShare` de la fenêtre
+utile (la fenêtre de contexte moins le plafond de sortie de l'appel), un appel de résumé remplace
+les tours anciens, et le prompt système, la tâche et les `KeepRecentTurns` derniers tours restent
+tels quels. La fenêtre est le `ContextWindowTokens` du profil, sinon celle que documente le
+modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens`, avec un avertissement par profil qui
+nomme le chiffre supposé. Trois compactions ratées de suite ramènent la coupe à 40 messages pour
+le reste du run, et chaque compaction émet `agent.compacted` sur le flux d'événements du run. Un
+agent remplace `Enabled` et `TriggerShare` par sa clé YAML `compaction:` ; une crew `.ork.ts` suit
+ces réglages. La boucle à protocole texte garde sa coupe. Un fournisseur aux points de cache
+explicites (Anthropic) garde son prompt système et ses outils en cache ; un fournisseur au cache
+de préfixe automatique facture de nouveau la conversation après la coupe.
+
+<!-- settings:Orkeon:Compaction -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Enabled` | booléen | `true` | Si les boucles compactent leur conversation. Vrai par défaut : une longue boucle paie un appel de résumé au lieu de perdre son milieu dans la coupe à 40 messages. Faux ramène cette coupe, comme le fait `compaction: { enabled: false }` d'un agent pour cet agent seul. |
+| `KeepRecentTurns` | entier | `6` | Combien des tours les plus récents une compaction garde mot pour mot, un tour étant un message de l'assistant avec ses résultats d'outil (un appel d'outil n'est jamais séparé de son résultat). 6 par défaut ; 0 résume tous les tours. |
+| `Profile` | chaîne | — | Le profil LLM qui écrit le résumé, ou aucun pour le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
+| `TriggerShare` | nombre | `0.75` | La part de la fenêtre utile (la fenêtre de contexte moins le plafond de sortie de l'appel) que le prompt estimé atteint pour que la boucle compacte, au-dessus de 0 et au plus 1. 0,75 par défaut ; `compaction: { triggerShare }` d'un agent la remplace. |
+<!-- /settings -->
 
 ### `Orkeon:CrewFactory`
 

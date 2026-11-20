@@ -72,3 +72,23 @@ static Orkeon.Domain.Task.ValueObjects.SystemOneUses.operator ==(Orkeon.Domain.T
 static Orkeon.Domain.Task.DecisionTaskRules.CheckMode(Orkeon.Domain.Crew.CrewDecisionMode mode, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! process, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!>! tasks, Orkeon.Domain.Task.ValueObjects.SystemOneUses! uses, System.Collections.Generic.IReadOnlyCollection<string!>? agentKeys = null) -> Orkeon.Domain.Task.ValueObjects.DecisionModeFindings!
 Orkeon.Domain.FileSystem.TeamLauncherSpec.DecisionNote.get -> string?
 Orkeon.Domain.FileSystem.TeamLauncherSpec.DecisionNote.init -> void
+Orkeon.Domain.Agent.Agent.Compaction.get -> Orkeon.Domain.Agent.AgentCompaction?
+Orkeon.Domain.Agent.AgentBuilder.Compaction(Orkeon.Domain.Agent.AgentCompaction? compaction) -> Orkeon.Domain.Agent.AgentBuilder!
+Orkeon.Domain.Agent.AgentCompaction
+Orkeon.Domain.Agent.AgentCompaction.AgentCompaction() -> void
+Orkeon.Domain.Agent.AgentCompaction.Enabled.get -> bool?
+Orkeon.Domain.Agent.AgentCompaction.Enabled.init -> void
+Orkeon.Domain.Agent.AgentCompaction.TriggerShare.get -> double?
+Orkeon.Domain.Agent.AgentCompaction.TriggerShare.init -> void
+static Orkeon.Domain.Agent.AgentCompaction.TriggerShareProblem(double? triggerShare, string! where) -> string?
+Orkeon.Domain.Configuration.AgentConfiguration.Compaction.get -> Orkeon.Domain.Agent.AgentCompaction?
+Orkeon.Domain.Configuration.AgentConfiguration.Compaction.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ContextWindowTokens.get -> int?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ContextWindowTokens.init -> void
+Orkeon.Domain.Agent.AgentCompaction.<Clone>$() -> Orkeon.Domain.Agent.AgentCompaction!
+Orkeon.Domain.Agent.AgentCompaction.Equals(Orkeon.Domain.Agent.AgentCompaction? other) -> bool
+override Orkeon.Domain.Agent.AgentCompaction.Equals(object? obj) -> bool
+override Orkeon.Domain.Agent.AgentCompaction.GetHashCode() -> int
+override Orkeon.Domain.Agent.AgentCompaction.ToString() -> string!
+static Orkeon.Domain.Agent.AgentCompaction.operator !=(Orkeon.Domain.Agent.AgentCompaction? left, Orkeon.Domain.Agent.AgentCompaction? right) -> bool
+static Orkeon.Domain.Agent.AgentCompaction.operator ==(Orkeon.Domain.Agent.AgentCompaction? left, Orkeon.Domain.Agent.AgentCompaction? right) -> bool

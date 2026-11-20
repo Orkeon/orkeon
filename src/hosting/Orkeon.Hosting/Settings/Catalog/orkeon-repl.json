@@ -16,6 +16,7 @@
     "Orkeon:Cli:Tui",
     "Orkeon:CodeSandbox",
     "Orkeon:CodeSandbox:Docker",
+    "Orkeon:Compaction",
     "Orkeon:Consensus",
     "Orkeon:CostTracking",
     "Orkeon:CrewMemory",

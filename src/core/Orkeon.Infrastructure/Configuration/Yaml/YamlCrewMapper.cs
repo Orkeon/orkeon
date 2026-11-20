@@ -292,11 +292,27 @@ public sealed partial class YamlCrewMapper
                 Verbose = kvp.Value.Verbose ?? false,
                 LlmConfig = MapAgentLlm(effectiveLlm),
                 Guardrails = MapGuardrails($"Agent '{kvp.Key}'", kvp.Value.Guardrails),
+                Compaction = MapCompaction(kvp.Key, kvp.Value.Compaction),
                 KnowledgeAttachments = MapKnowledge(kvp.Key, kvp.Value.Knowledge),
             });
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// The agent's <c>compaction:</c> override (#432), or null when it declares none; a trigger share
+    /// that is not above 0 and at most 1 refuses the load, naming the agent.
+    /// </summary>
+    private static Orkeon.Domain.Agent.AgentCompaction? MapCompaction(string agentKey, CompactionYamlConfig? compaction)
+    {
+        if (compaction is null)
+            return null;
+
+        if (Orkeon.Domain.Agent.AgentCompaction.TriggerShareProblem(compaction.TriggerShare, $"Agent '{agentKey}' compaction.triggerShare") is { } problem)
+            throw new InvalidOperationException(problem);
+
+        return new Orkeon.Domain.Agent.AgentCompaction { Enabled = compaction.Enabled, TriggerShare = compaction.TriggerShare };
     }
 
     /// <summary>

@@ -1,1 +1,3 @@
 #nullable enable
+Orkeon.Constants.Llm.LlmModelContextWindows
+static Orkeon.Constants.Llm.LlmModelContextWindows.ContextWindowTokens(string? model) -> int?

@@ -390,6 +390,13 @@
       "description": "The `Orkeon:Checkpointing` section: whether a host checkpoints its runs and in which store."
     },
     {
+      "path": "Orkeon:Compaction",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "How the agent loops keep a long conversation inside the model's window (#432), bound to the `ContextCompactionOptions.SectionName` section by `AddOrkeonInfrastructure()`. Before each model call the native and the chat-client loops estimate the prompt in tokens; past `ContextCompactionOptions.TriggerShare` of the usable window (the window less the call's output cap) they replace the middle of the conversation with one summary, keeping the system prompt, the task and the `ContextCompactionOptions.KeepRecentTurns` most recent turns. The text loop keeps its own character trim."
+    },
+    {
       "path": "Orkeon:Consensus",
       "category": "orchestration-and-persistence",
       "hosts": [],
@@ -592,6 +599,12 @@
       "description": "How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming."
     },
     {
+      "path": "Llm:ContextWindowTokens",
+      "section": "Llm",
+      "type": "integer",
+      "description": "The model's context window in tokens, which the agent loops compact a long conversation against (#432). Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider."
+    },
+    {
       "path": "Llm:Grammar",
       "section": "Llm",
       "type": "boolean",
@@ -698,6 +711,12 @@
       "type": "string",
       "default": "Auto",
       "description": "How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming."
+    },
+    {
+      "path": "Llm:Profiles:<name>:ContextWindowTokens",
+      "section": "Llm",
+      "type": "integer",
+      "description": "The model's context window in tokens, which the agent loops compact a long conversation against (#432). Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider."
     },
     {
       "path": "Llm:Profiles:<name>:Fallback",
@@ -3410,6 +3429,33 @@
         "Postgres"
       ],
       "description": "The store (default: `Memory`)."
+    },
+    {
+      "path": "Orkeon:Compaction:Enabled",
+      "section": "Orkeon:Compaction",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the loops compact their conversation. True by default: a long loop pays one summary call instead of losing its middle to the 40-message trim. False brings that trim back, as an agent's `compaction: { enabled: false }` does for that agent alone."
+    },
+    {
+      "path": "Orkeon:Compaction:KeepRecentTurns",
+      "section": "Orkeon:Compaction",
+      "type": "integer",
+      "default": 6,
+      "description": "How many of the most recent turns a compaction keeps verbatim, a turn being one assistant message with its tool results (a tool call is never parted from its result). 6 by default; 0 summarises every turn."
+    },
+    {
+      "path": "Orkeon:Compaction:Profile",
+      "section": "Orkeon:Compaction",
+      "type": "string",
+      "description": "The LLM profile that writes the summary, or none for the agent's own model and profile. The summary's tokens are charged to the task either way."
+    },
+    {
+      "path": "Orkeon:Compaction:TriggerShare",
+      "section": "Orkeon:Compaction",
+      "type": "number",
+      "default": 0.75,
+      "description": "The share of the usable window (the context window less the call's output cap) the estimated prompt reaches for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's `compaction: { triggerShare }` overrides it."
     },
     {
       "path": "Orkeon:Consensus:EnableDiscussion",

@@ -56,6 +56,11 @@ public class AgentYamlConfig
     /// <summary>Gets or sets the guardrails configuration.</summary>
     public GuardrailsYamlConfig? Guardrails { get; set; }
     /// <summary>
+    /// Gets or sets what the agent overrides of the host's conversation compaction (<c>compaction:</c>, #432):
+    /// <c>enabled</c> and <c>triggerShare</c> (or <c>trigger_share</c>); unset, <c>Orkeon:Compaction</c> decides.
+    /// </summary>
+    public CompactionYamlConfig? Compaction { get; set; }
+    /// <summary>
     /// Gets or sets the knowledge (RAG) collections attached to the agent. Two forms are
     /// accepted per item: the short form (a plain collection-name string) and the long form
     /// (a mapping with <c>collection</c>, <c>top_k</c>, <c>min_score</c>, <c>profile</c>,
@@ -63,6 +68,15 @@ public class AgentYamlConfig
     /// normalizes both forms into <see cref="Orkeon.Domain.Knowledge.KnowledgeAttachment"/>.
     /// </summary>
     public Collection<object>? Knowledge { get; set; }
+}
+
+/// <summary>YAML model of an agent's <c>compaction:</c> block (#432): each key left out follows <c>Orkeon:Compaction</c>.</summary>
+public class CompactionYamlConfig
+{
+    /// <summary>Gets or sets whether the agent's loops compact their conversation.</summary>
+    public bool? Enabled { get; set; }
+    /// <summary>Gets or sets the share of the usable window at which they compact, above 0 and at most 1.</summary>
+    public double? TriggerShare { get; set; }
 }
 
 /// <summary>

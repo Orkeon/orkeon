@@ -246,6 +246,14 @@ public static class InfrastructureExtensions
         // where every host composes its memory, from the container's configuration.
         services.AddOrkeonSettings<CrewMemoryOptions>(CrewMemoryOptions.SectionName);
 
+        // How the agent loops keep a long conversation inside the model's window (#432), and the
+        // window itself: the profile's, the model's documented one, else the session's figure.
+        services.AddOrkeonSettings<Application.Crew.Compaction.ContextCompactionOptions>(Application.Crew.Compaction.ContextCompactionOptions.SectionName)
+            .ValidateSettings((options, _) => Application.Crew.Compaction.ContextCompactionOptions.Problems(options));
+        services.TryAddSingleton<Application.Interfaces.Ports.IContextWindowResolver>(sp => new LLMs.Context.ContextWindowResolver(
+            sp.GetService<IOptions<Session.CliSessionOptions>>()?.Value.ContextWindowTokens,
+            sp.GetRequiredService<ILogger<LLMs.Context.ContextWindowResolver>>()));
+
         // Memory:Provider names the TYPE of the application-wide provider, judged at start against the
         // types the factory serves, with what the named provider needs from its own section (GAP-40):
         // an unknown type, or LanceDB without its endpoint, used to run on the volatile provider.

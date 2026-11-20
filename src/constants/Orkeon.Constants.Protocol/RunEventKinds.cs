@@ -103,6 +103,15 @@ public static class RunEventKinds
     public const string RunDecision = "run.decision";
 
     /// <summary>
+    /// An agent loop compacted its conversation, failed to, or reverted to the 40-message trim (#432):
+    /// <c>taskId</c>, <c>agentRole</c>, <c>outcome</c> (<c>compacted</c>, <c>failed</c>, <c>reverted</c>),
+    /// <c>tokensBefore</c>, <c>tokensAfter</c>, <c>window</c>, <c>windowSource</c> (<c>profile</c>,
+    /// <c>table</c>, <c>settings</c>), <c>keptMessages</c>, <c>summaryTokens</c>. Additive: a consumer that
+    /// does not know the kind ignores it.
+    /// </summary>
+    public const string AgentCompacted = "agent.compacted";
+
+    /// <summary>
     /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
     /// as an event that silently never arrives.
     /// </summary>
@@ -111,6 +120,6 @@ public static class RunEventKinds
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
         AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback, GraphNodeEntered,
-        RunDecision,
+        RunDecision, AgentCompacted,
     ];
 }

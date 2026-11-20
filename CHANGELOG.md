@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — agent loops compact a long conversation against the model's window (#432)
+
+The native tool-calling loop and the chat-client loop now estimate their prompt before each call and, once it reaches
+`Orkeon:Compaction:TriggerShare` (0.75) of the usable window (the context window less the call's output cap, at most
+half the window), replace the older turns with one summary call; the system prompt, the task and the last
+`KeepRecentTurns` (6) turns stay verbatim, and a tool call is never parted from its result. The window is the profile's
+new `Llm:ContextWindowTokens` (`Llm:Profiles:<name>:ContextWindowTokens`), else the model's documented window, else
+`Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. `Orkeon:Compaction:Profile`
+names a profile for the summary; its tokens are charged to the task (the native loop's task `tokens` were 0 and now
+carry them). Three failures in a row bring the 40-message trim back for the rest of the task. Each attempt emits
+`agent.compacted`. An agent overrides `enabled` and `triggerShare` with a YAML `compaction:` block; a `.ork.ts` crew
+follows the global settings. `IContextPressureStage` runs registered stages on the same measure before compaction.
+**Compatibility**: `Orkeon:Compaction:Enabled` is `true` by default, so a long run that was trimmed at 40 messages now
+pays a summary call instead; `false` restores the exact trim. An engine at 1.3.0 refuses a crew that writes
+`compaction:`. `IContextWindowManager` and `OpenAIContextWindowManager` are obsolete. The text-protocol loop keeps its
+trim. A provider with explicit cache breakpoints (Anthropic) keeps its cached system prompt and tools; one with an
+automatic prefix cache bills the conversation again after each compaction.
+
 ### Added — `orkeon forge --no-decision`: the forge's own System One advice, and a switch to turn it off (#435)
 
 With a decision model configured and on, the forge now asks System One for advice while it designs a crew: the
