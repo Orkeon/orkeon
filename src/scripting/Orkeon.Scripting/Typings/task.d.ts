@@ -125,6 +125,12 @@ declare global {
         longContext?: boolean;
         /** Question name to the answer (a string, anything else is refused at load) given when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled=false`, no model). */
         fallback?: Record<string, string>;
+        /**
+         * The relay of an `optional` crew (`crewBuilder().decision({ mode: 'optional' })`): the crew agent, by its
+         * name, that answers the questions when the decision circuit is off. Required on every decision task of an
+         * `optional` crew, refused in a crew with no mode or `none`, unused by a `required` crew.
+         */
+        without?: { agent: string; instructions?: string };
     }
 
     /** One question: a choice among described options, a score per label, or a yes/no ("noul") test. */

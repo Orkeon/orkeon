@@ -1,1 +1,72 @@
 #nullable enable
+Orkeon.Domain.Configuration.CrewConfiguration.DecisionMode.get -> Orkeon.Domain.Crew.CrewDecisionMode
+Orkeon.Domain.Configuration.CrewConfiguration.DecisionMode.init -> void
+Orkeon.Domain.Configuration.CrewConfiguration.SystemOneUses(System.Func<string!, bool>? isDecisionProfile = null) -> Orkeon.Domain.Task.ValueObjects.SystemOneUses!
+Orkeon.Domain.Crew.Crew.DecisionMode.get -> Orkeon.Domain.Crew.CrewDecisionMode
+Orkeon.Domain.Crew.CrewBuilder.DecisionMode(Orkeon.Domain.Crew.CrewDecisionMode mode) -> Orkeon.Domain.Crew.CrewBuilder!
+Orkeon.Domain.Crew.CrewCreateOptions.DecisionMode.get -> Orkeon.Domain.Crew.CrewDecisionMode
+Orkeon.Domain.Crew.CrewCreateOptions.DecisionMode.init -> void
+Orkeon.Domain.Crew.CrewDecisionMode
+Orkeon.Domain.Crew.CrewDecisionMode.None = 1 -> Orkeon.Domain.Crew.CrewDecisionMode
+Orkeon.Domain.Crew.CrewDecisionMode.Optional = 2 -> Orkeon.Domain.Crew.CrewDecisionMode
+Orkeon.Domain.Crew.CrewDecisionMode.Required = 3 -> Orkeon.Domain.Crew.CrewDecisionMode
+Orkeon.Domain.Crew.CrewDecisionMode.Unspecified = 0 -> Orkeon.Domain.Crew.CrewDecisionMode
+Orkeon.Domain.Task.ValueObjects.DecisionModeFindings
+Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.DecisionModeFindings!
+Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.DecisionModeFindings(System.Collections.Generic.IReadOnlyList<string!>! Refusals, System.Collections.Generic.IReadOnlyList<string!>! Warnings) -> void
+Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.Deconstruct(out System.Collections.Generic.IReadOnlyList<string!>! Refusals, out System.Collections.Generic.IReadOnlyList<string!>! Warnings) -> void
+Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.Equals(Orkeon.Domain.Task.ValueObjects.DecisionModeFindings? other) -> bool
+Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.Refusals.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.Refusals.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.Warnings.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionProfileUse
+Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.DecisionProfileUse!
+Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.DecisionProfileUse(string! Holder, string! Profile) -> void
+Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.Deconstruct(out string! Holder, out string! Profile) -> void
+Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.Equals(Orkeon.Domain.Task.ValueObjects.DecisionProfileUse? other) -> bool
+Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.Holder.get -> string!
+Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.Holder.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.Profile.get -> string!
+Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.Profile.init -> void
+Orkeon.Domain.Task.ValueObjects.DecisionRelay
+Orkeon.Domain.Task.ValueObjects.DecisionRelay.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.DecisionRelay!
+Orkeon.Domain.Task.ValueObjects.DecisionRelay.Agent.get -> string!
+Orkeon.Domain.Task.ValueObjects.DecisionRelay.DecisionRelay(string! agent, string? instructions = null) -> void
+Orkeon.Domain.Task.ValueObjects.DecisionRelay.Equals(Orkeon.Domain.Task.ValueObjects.DecisionRelay? other) -> bool
+Orkeon.Domain.Task.ValueObjects.DecisionRelay.Instructions.get -> string?
+Orkeon.Domain.Task.ValueObjects.SystemOneUses
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.SystemOneUses!
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.DecideToolHolders.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.DecideToolHolders.init -> void
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.DecisionProfiles.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionProfileUse!>?
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.DecisionProfiles.init -> void
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.Deconstruct(out System.Collections.Generic.IReadOnlyList<string!>! DecideToolHolders, out System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionProfileUse!>? DecisionProfiles) -> void
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.Equals(Orkeon.Domain.Task.ValueObjects.SystemOneUses? other) -> bool
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.SystemOneUses(System.Collections.Generic.IReadOnlyList<string!>! DecideToolHolders, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionProfileUse!>? DecisionProfiles) -> void
+Orkeon.Domain.Task.ValueObjects.TaskDecision.WithRelay(Orkeon.Domain.Task.ValueObjects.DecisionRelay! relay) -> Orkeon.Domain.Task.ValueObjects.TaskDecision!
+Orkeon.Domain.Task.ValueObjects.TaskDecision.Without.get -> Orkeon.Domain.Task.ValueObjects.DecisionRelay?
+const Orkeon.Domain.Task.ValueObjects.SystemOneUses.DecideToolName = "system_one_decide" -> string!
+override Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.ToString() -> string!
+override Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.ToString() -> string!
+override Orkeon.Domain.Task.ValueObjects.DecisionRelay.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.DecisionRelay.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.DecisionRelay.ToString() -> string!
+override Orkeon.Domain.Task.ValueObjects.SystemOneUses.Equals(object? obj) -> bool
+override Orkeon.Domain.Task.ValueObjects.SystemOneUses.GetHashCode() -> int
+override Orkeon.Domain.Task.ValueObjects.SystemOneUses.ToString() -> string!
+static Orkeon.Domain.Task.DecisionTaskRules.CheckFallbacks(Orkeon.Domain.Crew.CrewDecisionMode mode, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!>! tasks) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.operator !=(Orkeon.Domain.Task.ValueObjects.DecisionModeFindings? left, Orkeon.Domain.Task.ValueObjects.DecisionModeFindings? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionModeFindings.operator ==(Orkeon.Domain.Task.ValueObjects.DecisionModeFindings? left, Orkeon.Domain.Task.ValueObjects.DecisionModeFindings? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.operator !=(Orkeon.Domain.Task.ValueObjects.DecisionProfileUse? left, Orkeon.Domain.Task.ValueObjects.DecisionProfileUse? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionProfileUse.operator ==(Orkeon.Domain.Task.ValueObjects.DecisionProfileUse? left, Orkeon.Domain.Task.ValueObjects.DecisionProfileUse? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionRelay.operator !=(Orkeon.Domain.Task.ValueObjects.DecisionRelay? left, Orkeon.Domain.Task.ValueObjects.DecisionRelay? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.DecisionRelay.operator ==(Orkeon.Domain.Task.ValueObjects.DecisionRelay? left, Orkeon.Domain.Task.ValueObjects.DecisionRelay? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.SystemOneUses.Unknown.get -> Orkeon.Domain.Task.ValueObjects.SystemOneUses!
+static Orkeon.Domain.Task.ValueObjects.SystemOneUses.operator !=(Orkeon.Domain.Task.ValueObjects.SystemOneUses? left, Orkeon.Domain.Task.ValueObjects.SystemOneUses? right) -> bool
+static Orkeon.Domain.Task.ValueObjects.SystemOneUses.operator ==(Orkeon.Domain.Task.ValueObjects.SystemOneUses? left, Orkeon.Domain.Task.ValueObjects.SystemOneUses? right) -> bool
+static Orkeon.Domain.Task.DecisionTaskRules.CheckMode(Orkeon.Domain.Crew.CrewDecisionMode mode, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! process, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!>! tasks, Orkeon.Domain.Task.ValueObjects.SystemOneUses! uses, System.Collections.Generic.IReadOnlyCollection<string!>? agentKeys = null) -> Orkeon.Domain.Task.ValueObjects.DecisionModeFindings!

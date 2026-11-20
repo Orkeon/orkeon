@@ -371,6 +371,36 @@ dégrade le dit en un avertissement :
 | Juge LLM (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuse de démarrer, en nommant la cause ; `Open` retire le juge du pipeline, avec un avertissement, et les autres gardiens restent. |
 | Reranker `decision` | Laisse passer les passages dans leur ordre de récupération, comme `none`, avec un avertissement. |
 
+#### Le mode de décision d'une crew
+
+Une crew dit ce qu'elle attend de System One dans un bloc `decision:` au niveau de la crew : en YAML
+`decision: { mode: required }`, dans un script `crewBuilder().decision({ mode: "required" })`, en C#
+`CrewBuilder.DecisionMode(...)`. Sans ce bloc, la crew se comporte comme ci-dessus et le moteur annonce le mode
+`unspecified`. Les mêmes règles s'appliquent au chargement aux crews YAML, `.ork.ts` et C# :
+
+| | `none` | `optional` | `required` |
+| --- | --- | --- | --- |
+| Tâche de décision | Refusée. | Au moins une, donc refusée sous un processus qui n'exécute aucune tâche de décision. | Permise. |
+| Relais `without:` | Refusé. | Exigé sur chaque tâche de décision ; il tient lieu de la règle repli-ou-otherwise. | Un avertissement : jamais utilisé. |
+| `fallback` | s.o. | Refusé : jamais utilisé. | Un avertissement : jamais utilisé ; la règle repli-ou-otherwise ne s'applique pas. |
+| `system_one_decide` dans `tools:` | Refusé. | Refusé. | Permis. |
+| Profil de décision (`llm.profile`, `llm_override.profile`) | Refusé. | Permis ; circuit coupé, ses étapes se dégradent comme dans le tableau ci-dessus. | Permis. |
+
+Une crew sans mode ne peut pas déclarer de relais `without:` : le chargement demande `decision.mode: optional`. Un
+relais nomme un agent de la crew (`without: { agent, instructions }`, `instructions` facultatif), et un agent que la
+crew ne déclare pas est refusé au chargement. Une crew `required` qui ne demande rien à System One (aucune tâche de
+décision, aucun `system_one_decide`, aucun profil de décision) se charge avec un avertissement.
+
+Avec `mode: required` et le circuit coupé, quelle qu'en soit la cause, le run est **refusé avant sa première tâche**,
+dans chaque processus et chaque hôte : `crew 'x' requires System One (decision.mode: required) and the decision
+circuit is off: --no-decision`. L'erreur porte le code `decision_unavailable`, et `orkeon run` sort en `69`
+(`EX_UNAVAILABLE`). Une crew `required` qui liste `system_one_decide` se charge quand même, l'outil retenu avec un
+avertissement, pour rencontrer ce refus plutôt qu'un outil inconnu. Avec `mode: optional` et le circuit coupé, chaque
+tâche de décision reçoit la réponse de son relais `without:`. Cette version déclare le relais et le vérifie au
+chargement, mais ne l'exécute pas encore : une telle tâche échoue en nommant son relais. `--validate` signale le refus
+qu'un run rencontrerait par une ligne `WARNING:` et sort en `0` ([le CLI](../reference/cli.md#orkeon-run)), et un run
+émet un événement `run.decision` avec le mode, le circuit et sa cause ([le bus d'événements](./run-event-bus.md)).
+
 ### Les limites de Jev et le contexte long
 
 Jev prend 64 000 jetons par requête, 32 000 par question, et 262 000 en contexte long. Un choice compte

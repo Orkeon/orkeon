@@ -63,6 +63,18 @@ chains with "last answer" defaults; fixes to guarded profiles; reranker batching
 surfaces; box questions and images. A retry or fallback when a request fails is not planned: the
 fallback exists only for a circuit that is off.
 
+## Amendment — a crew's decision mode (#429)
+
+With the circuit off a decision task answers from its fallback, which suits a crew that can run without System One
+and misleads one that cannot. A crew now declares which it is, in a crew-level `decision: { mode }`: `none` (it
+never asks System One), `optional` (each decision task names a `without:` relay, an agent of the crew that answers
+with the circuit off, in place of a fallback) or `required` (a run with the circuit off is refused before its first
+task, exit `69`, code `decision_unavailable`). A crew with no mode keeps the fallback semantics above. The rules live
+in `DecisionTaskRules` beside the existing ones, so YAML, `.ork.ts` and C# crews meet the same checks; the refusal
+sits in the orchestrator, before memory and planning, so every process and every host enforces it. The relay itself
+is declared and checked at load here and run by a later change (#430). See
+[Decision models](../architecture/decision-models.md#a-crews-decision-mode).
+
 ## Alternatives considered
 
 - **An agent that classifies and writes the route**: rejected. It spends an LLM call on a

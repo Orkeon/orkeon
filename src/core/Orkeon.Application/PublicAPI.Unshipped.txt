@@ -8,3 +8,29 @@ Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings = 1 -> Orkeon.Ap
 Orkeon.Application.Crew.Execution.DecisionCircuitCause.Switch = 0 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
 static Orkeon.Application.Crew.Execution.DecisionCircuit.Of(System.IServiceProvider! services) -> Orkeon.Application.Crew.Execution.DecisionCircuit!
 static Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause cause) -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.Circuit.get -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+Orkeon.Application.Crew.Execution.DecisionUnavailableException
+Orkeon.Application.Crew.Execution.DecisionUnavailableException.Cause.get -> Orkeon.Application.Crew.Execution.DecisionCircuitCause?
+Orkeon.Application.Crew.Execution.DecisionUnavailableException.CrewName.get -> string!
+Orkeon.Application.Crew.Execution.DecisionUnavailableException.DecisionUnavailableException() -> void
+Orkeon.Application.Crew.Execution.DecisionUnavailableException.DecisionUnavailableException(string! crewName, Orkeon.Application.Crew.Execution.DecisionCircuit! circuit) -> void
+Orkeon.Application.Crew.Execution.DecisionUnavailableException.DecisionUnavailableException(string! message, System.Exception! innerException) -> void
+Orkeon.Application.Crew.ICrewExecutionHook.OnRunDecisionAsync(Orkeon.Application.Crew.RunDecisionNotice! notice, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Application.Crew.RunDecisionNotice
+Orkeon.Application.Crew.RunDecisionNotice.<Clone>$() -> Orkeon.Application.Crew.RunDecisionNotice!
+Orkeon.Application.Crew.RunDecisionNotice.Circuit.get -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+Orkeon.Application.Crew.RunDecisionNotice.Circuit.init -> void
+Orkeon.Application.Crew.RunDecisionNotice.Deconstruct(out Orkeon.Domain.Crew.CrewDecisionMode Mode, out Orkeon.Application.Crew.Execution.DecisionCircuit! Circuit) -> void
+Orkeon.Application.Crew.RunDecisionNotice.Equals(Orkeon.Application.Crew.RunDecisionNotice? other) -> bool
+Orkeon.Application.Crew.RunDecisionNotice.Mode.get -> Orkeon.Domain.Crew.CrewDecisionMode
+Orkeon.Application.Crew.RunDecisionNotice.Mode.init -> void
+Orkeon.Application.Crew.RunDecisionNotice.RunDecisionNotice(Orkeon.Domain.Crew.CrewDecisionMode Mode, Orkeon.Application.Crew.Execution.DecisionCircuit! Circuit) -> void
+Orkeon.Application.Interfaces.Services.CrewOutput.ErrorCode.get -> string?
+Orkeon.Application.Interfaces.Services.CrewOutput.ErrorCode.init -> void
+override Orkeon.Application.Crew.RunDecisionNotice.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.RunDecisionNotice.GetHashCode() -> int
+override Orkeon.Application.Crew.RunDecisionNotice.ToString() -> string!
+static Orkeon.Application.Crew.Execution.DecisionUnavailableException.Refusing(Orkeon.Domain.Crew.Crew! crew, Orkeon.Application.Crew.Execution.DecisionCircuit? circuit) -> Orkeon.Application.Crew.Execution.DecisionUnavailableException?
+static Orkeon.Application.Crew.RunDecisionNotice.operator !=(Orkeon.Application.Crew.RunDecisionNotice? left, Orkeon.Application.Crew.RunDecisionNotice? right) -> bool
+static Orkeon.Application.Crew.RunDecisionNotice.operator ==(Orkeon.Application.Crew.RunDecisionNotice? left, Orkeon.Application.Crew.RunDecisionNotice? right) -> bool
+Orkeon.Application.Crew.Execution.DecisionUnavailableException.DecisionUnavailableException(string! message) -> void

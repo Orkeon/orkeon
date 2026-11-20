@@ -172,6 +172,13 @@ declare global {
          */
         maxRpm(value: number): this;
         /**
+         * YAML parity `decision: { mode }` — whether the crew needs System One. `none` never asks it (no decision
+         * task, no `system_one_decide`, no decision profile); `optional` runs with it or without it, each decision
+         * task declaring a `without` relay; `required` is refused before its first task when the decision circuit
+         * is off (`--no-decision`, `Orkeon:Decision:Enabled=false`, no model). Left out, the crew behaves as before.
+         */
+        decision(spec: { mode: "none" | "optional" | "required" }): this;
+        /**
          * The most children (`ctx.spawnBackground`, the `spawn_agent` tool) the crew runs at once.
          * Default 4; must be 1 or more.
          */

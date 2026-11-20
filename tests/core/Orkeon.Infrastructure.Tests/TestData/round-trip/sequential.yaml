@@ -17,6 +17,9 @@ memoryProvider: Sqlite
 planning: true
 # The crew's own model requests per minute, its agents and its manager together (GAP-38).
 maxRpm: 120
+# The crew needs System One (#429): a run with the decision circuit off is refused before its first task.
+decision:
+  mode: required
 
 # The crew's default, merged field by field under each agent's own llm: — researcher completes it,
 # writer takes it whole. The export writes the merged block under each agent.
@@ -190,6 +193,10 @@ tasks:
         category: price
         urgency: low
         escalate: "no"
+      # Unused by a required crew (a load warning), kept so the round trip proves the export writes it.
+      without:
+        agent: researcher
+        instructions: Read the collected changes first.
 
   followup:
     description: Follow up on the change.

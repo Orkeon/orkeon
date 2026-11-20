@@ -6,6 +6,7 @@ using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Configuration;
+using Orkeon.Domain.Crew;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.EventHub;
 using Orkeon.Domain.Knowledge;
@@ -57,8 +58,8 @@ public sealed partial class YamlCrewMapper
         var managerAgentId = ResolveManagerAgentId(settings.ManagerAgent, agentNameMap);
         var mappedTasks = tasks != null ? MapTasks(tasks, agentNameMap) : [];
         CheckDecisionRules(process, mappedTasks);
-
-        return new CrewConfiguration
+        var decisionMode = ParseDecisionMode(settings.Name, settings.Decision);
+        var configuration = new CrewConfiguration
         {
             Name = settings.Name ?? string.Empty,
             Goal = settings.Goal ?? string.Empty,
@@ -76,7 +77,47 @@ public sealed partial class YamlCrewMapper
             Rag = MapRag(settings.Rag),
             Links = MapLinks(settings.Name ?? string.Empty, settings.Links),
             Mounts = MapMounts(settings.Name ?? string.Empty, settings.Mounts),
+            DecisionMode = decisionMode,
         };
+        CheckDecisionMode(configuration, agents?.Keys.ToList() ?? []);
+        return configuration;
+    }
+
+    /// <summary>
+    /// The crew-level <c>decision.mode</c> (#429): absent block, <see cref="CrewDecisionMode.Unspecified"/>; a
+    /// block without a mode, or an unknown value, fails the load.
+    /// </summary>
+    internal static CrewDecisionMode ParseDecisionMode(string? crewName, CrewDecisionYamlConfig? decision)
+    {
+        if (decision is null)
+            return CrewDecisionMode.Unspecified;
+        var mode = decision.Mode?.Trim();
+        return mode?.ToUpperInvariant() switch
+        {
+            "NONE" => CrewDecisionMode.None,
+            "OPTIONAL" => CrewDecisionMode.Optional,
+            "REQUIRED" => CrewDecisionMode.Required,
+            null or "" => throw new InvalidOperationException(
+                $"Crew '{crewName}' decision: the block names a mode, decision.mode: none, optional or required."),
+            _ => throw new InvalidOperationException(
+                $"Crew '{crewName}' decision.mode: '{mode}' is not a mode; expected none, optional or required."),
+        };
+    }
+
+    /// <summary>
+    /// The rules of the crew's <c>decision.mode</c> a loader can check (#429): the decision profiles are the
+    /// host's, so the crew factory checks those.
+    /// </summary>
+    private static void CheckDecisionMode(CrewConfiguration configuration, IReadOnlyCollection<string> agentKeys)
+    {
+        var findings = DecisionTaskRules.CheckMode(
+            configuration.DecisionMode,
+            configuration.Process,
+            configuration.DecisionDeclarations(),
+            configuration.SystemOneUses(),
+            agentKeys);
+        if (findings.Refusals.Count > 0)
+            throw new InvalidOperationException("Invalid decision.mode declaration: " + string.Join(" ", findings.Refusals));
     }
 
     /// <summary>The <c>budget:</c> block as the crew's budget (#218); the validator refuses a limit of zero or less.</summary>
@@ -416,12 +457,20 @@ public sealed partial class YamlCrewMapper
         var questions = (decision.Questions ?? []).Select(q => MapQuestion(taskKey, q.Key, q.Value)).ToList();
         try
         {
-            return TaskDecision.Create(
+            var created = TaskDecision.Create(
                 questions, decision.MinConfidence, decision.State?.ToList(), decision.LongContext ?? false, decision.Fallback);
+            return decision.Without is { } relay
+                ? created.WithRelay(new DecisionRelay(relay.Agent ?? string.Empty, relay.Instructions))
+                : created;
         }
         catch (ArgumentException ex)
         {
-            var part = ex.ParamName == "fallback" ? "decision.fallback" : "decision";
+            var part = ex.ParamName switch
+            {
+                "fallback" => "decision.fallback",
+                "agent" => "decision.without",
+                _ => "decision",
+            };
             throw new InvalidOperationException($"Task '{taskKey}' {part}: {ex.Message}", ex);
         }
     }
@@ -1176,6 +1225,9 @@ public sealed record CrewMappingSettings
 
     /// <summary>What one autonomous run may spend (<c>crew.budget</c>, #218); null for the defaults.</summary>
     public CrewBudgetYamlConfig? Budget { get; init; }
+
+    /// <summary>Whether the crew needs System One (<c>crew.decision</c>, #429); null when the crew declares none.</summary>
+    public CrewDecisionYamlConfig? Decision { get; init; }
 
     /// <summary>
     /// Key of the crew's manager agent (<c>crew.managerAgent</c>): Hierarchical and Consensual only,

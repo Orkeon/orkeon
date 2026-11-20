@@ -254,6 +254,7 @@ internal sealed partial class CrewRunner : ICrewRunner
             {
                 recording.Succeeded = output.Succeeded;
                 recording.WaitingForInput = output.PendingInput is not null;
+                recording.DecisionUnavailable = output.ErrorCode == Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable;
             }
 
             return ResultOf(output, run, hosted.Name);

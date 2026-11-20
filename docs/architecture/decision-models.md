@@ -359,6 +359,36 @@ both hold, the switch is named. Each consumer that degrades says so in one warni
 | LLM judge (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuses to start, naming the cause; `Open` leaves the judge out of the pipeline, with one warning, and the other guards stay. |
 | `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
 
+#### A crew's decision mode
+
+A crew says what it needs from System One in a crew-level `decision:` block: in YAML `decision: { mode: required }`,
+in a script `crewBuilder().decision({ mode: "required" })`, in C# `CrewBuilder.DecisionMode(...)`. Without the block
+the crew behaves as above, and the engine reports its mode as `unspecified`. The same rules apply at load to YAML,
+`.ork.ts` and C# crews:
+
+| | `none` | `optional` | `required` |
+| --- | --- | --- | --- |
+| Decision task | Refused. | At least one, so refused under a process that runs no decision task. | Allowed. |
+| `without:` relay | Refused. | Required on every decision task; it stands in for the fallback-or-otherwise rule. | A warning: never used. |
+| `fallback` | n/a | Refused: never used. | A warning: never used; the fallback-or-otherwise rule does not apply. |
+| `system_one_decide` in `tools:` | Refused. | Refused. | Allowed. |
+| Decision profile (`llm.profile`, `llm_override.profile`) | Refused. | Allowed; with the circuit off its stages degrade as in the table above. | Allowed. |
+
+A crew with no mode may not declare a `without:` relay: the load asks for `decision.mode: optional`. A relay names an
+agent of the crew (`without: { agent, instructions }`, `instructions` optional), and an agent the crew does not
+declare is refused at load. A `required` crew that asks System One nothing (no decision task, no `system_one_decide`,
+no decision profile) loads with a warning.
+
+With `mode: required` and the circuit off, whatever the cause, the run is **refused before its first task**, in every
+process and every host: `crew 'x' requires System One (decision.mode: required) and the decision circuit is off:
+--no-decision`. The error carries the code `decision_unavailable`, and `orkeon run` exits `69` (`EX_UNAVAILABLE`). A
+`required` crew that lists `system_one_decide` still loads, the tool withheld with a warning, so that it meets this
+refusal rather than an unknown tool. With `mode: optional` and the circuit off, each decision task is answered by its
+`without:` relay. This release declares the relay and checks it at load, but does not run it yet: such a task fails,
+naming its relay. `--validate` reports the refusal a run would meet as a `WARNING:` line and exits `0`
+([the CLI](../reference/cli.md#orkeon-run)), and a run emits one `run.decision` event with the mode, the circuit and its
+cause ([the run event bus](./run-event-bus.md)).
+
 ### Jev's limits and long context
 
 Jev takes 64,000 tokens per request, 32,000 per question, and 262,000 in long context. A choice holds

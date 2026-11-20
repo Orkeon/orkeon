@@ -190,6 +190,13 @@ public sealed record CrewOutput(
     public string? Error { get; init; }
 
     /// <summary>
+    /// Gets the code of the failure when it has one of its own - <c>decision_unavailable</c> (a crew with
+    /// <c>decision.mode: required</c> refused with the decision circuit off, #429), a value of
+    /// <c>RunEventErrorCodes</c> -; null otherwise, and on success.
+    /// </summary>
+    public string? ErrorCode { get; init; }
+
+    /// <summary>
     /// Gets the identifier of the run that produced this output, its <see cref="Orkeon.Application.Interfaces.Services.ExecutionId"/>
     /// in string form: the id a failed run is resumed by. Null when the run never got an identity.
     /// </summary>

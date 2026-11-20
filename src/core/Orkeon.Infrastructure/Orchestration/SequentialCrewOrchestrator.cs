@@ -38,6 +38,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly ILogger<SequentialCrewOrchestrator> _logger;
     private readonly ICrewExecutionStateManager _stateManager;
     private readonly IProcessStrategyFactory _processStrategyFactory;
+    private readonly Orkeon.Application.Crew.Execution.DecisionCircuit? _decisionCircuit;
     private readonly IAgentRepository? _agentRepository;
     private readonly ICheckpointManager? _checkpointManager;
     private readonly IResumeEngine? _resumeEngine;
@@ -94,7 +95,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         TimeProvider? timeProvider = null,
         IRunScope? runScope = null,
         IResumeEngine? resumeEngine = null,
-        Orkeon.Application.Interfaces.Ports.ICostBudgetManager? budget = null)
+        Orkeon.Application.Interfaces.Ports.ICostBudgetManager? budget = null,
+        Orkeon.Application.Crew.Execution.DecisionCircuit? decisionCircuit = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -123,6 +125,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _runScope = runScope;
         _resumeEngine = resumeEngine;
         _budget = budget;
+        _decisionCircuit = decisionCircuit;
     }
 
     /// <summary>
@@ -291,7 +294,13 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     TaskOutputs: [],
                     Duration: stopwatch.Elapsed,
                     TokensUsed: null) // failed before telemetry could be collected
-                { Succeeded = false, Error = ex.Message };
+                {
+                    Succeeded = false,
+                    Error = ex.Message,
+                    ErrorCode = ex is Orkeon.Application.Crew.Execution.DecisionUnavailableException
+                        ? Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable
+                        : null,
+                };
 
                 await FailCheckpointSessionAsync(sessionId, ex).ConfigureAwait(false);
             }
@@ -419,7 +428,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         if (end.Reported)
         {
             if (!end.FailureReported)
-                CrewStreamScope.Write(CrewHookDispatcher.FailureEvent(status, output.Error));
+                CrewStreamScope.Write(CrewHookDispatcher.FailureEvent(status, output.Error, cause));
             return;
         }
 
@@ -481,6 +490,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         var ended = false;
         try
         {
+            // Every process says the crew's decision mode and the run's circuit once, then refuses a crew that
+            // requires System One with the circuit off, before anything is asked of a model (#429).
+            await RefuseWithoutSystemOneAsync(crew, cancellationToken).ConfigureAwait(false);
+
             // A crew that remembers is refused before anything is asked of a model when its memory
             // cannot work: no embedder, a refused key, an unreachable store, a vector of the wrong
             // dimension (GAP-30). During the run, a memory that fails is only a warning.
@@ -525,6 +538,22 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             crew.FailExecution(RunFailureReason(crew, innerEx.Message), innerEx);
             throw;
         }
+    }
+
+    /// <summary>
+    /// The <c>run.decision</c> notice, then the refusal of a <c>decision.mode: required</c> crew when the decision
+    /// circuit is off (#429): a <see cref="Orkeon.Application.Crew.Execution.DecisionUnavailableException"/>, which
+    /// fails the run with the <c>decision_unavailable</c> code. Without a registered circuit, nothing.
+    /// </summary>
+    private async System.Threading.Tasks.Task RefuseWithoutSystemOneAsync(Orkeon.Domain.Crew.Crew crew, CancellationToken cancellationToken)
+    {
+        if (_decisionCircuit is null)
+            return;
+        await new CrewHookDispatcher(_executionHook, _logger)
+            .RunDecisionAsync(new RunDecisionNotice(crew.DecisionMode, _decisionCircuit), cancellationToken)
+            .ConfigureAwait(false);
+        if (Orkeon.Application.Crew.Execution.DecisionUnavailableException.Refusing(crew, _decisionCircuit) is { } refusal)
+            throw refusal;
     }
 
     /// <summary>

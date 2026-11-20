@@ -144,7 +144,7 @@ internal sealed partial class CrewHookDispatcher
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         CrewRunEnding.Record(failed: true);
-        CrewStreamScope.Write(FailureEvent(snapshot.Status, snapshot.FailureReason ?? cause?.Message));
+        CrewStreamScope.Write(FailureEvent(snapshot.Status, snapshot.FailureReason ?? cause?.Message, cause));
 
         if (_hook is null) return;
         try
@@ -158,16 +158,39 @@ internal sealed partial class CrewHookDispatcher
     }
 
     /// <summary>
-    /// The <c>error</c> a stopped run ends on, before <c>run.finished</c>: <c>crew_cancelled</c> or
+    /// The <c>error</c> a stopped run ends on, before <c>run.finished</c>: <c>crew_cancelled</c>,
+    /// <c>decision_unavailable</c> (a required crew refused with the decision circuit off, #429) or
     /// <c>crew_failed</c>, with the run's reason — the code the wire carries (<c>--events</c>).
     /// </summary>
-    internal static CrewExecutionEvent FailureEvent(CrewHookStatus status, string? reason) =>
+    internal static CrewExecutionEvent FailureEvent(CrewHookStatus status, string? reason, Exception? cause = null) =>
         new()
         {
             Kind = RunEventKinds.Error,
-            Code = status == CrewHookStatus.Canceled ? RunEventErrorCodes.CrewCancelled : RunEventErrorCodes.CrewFailed,
+            Code = FailureCode(status, cause),
             Message = reason ?? string.Empty,
         };
+
+    /// <summary>The code of a stopped run's <c>error</c>: the cancellation first, then the refusal of #429, then a plain failure.</summary>
+    internal static string FailureCode(CrewHookStatus status, Exception? cause) =>
+        status == CrewHookStatus.Canceled ? RunEventErrorCodes.CrewCancelled
+        : cause is Orkeon.Application.Crew.Execution.DecisionUnavailableException ? RunEventErrorCodes.DecisionUnavailable
+        : RunEventErrorCodes.CrewFailed;
+
+    /// <summary>Tells the hook the crew's decision mode and the run's circuit, before the first task (#429).</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: an observer never changes the run.")]
+    internal async Task RunDecisionAsync(RunDecisionNotice notice, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(notice);
+        if (_hook is null) return;
+        try
+        {
+            await _hook.OnRunDecisionAsync(notice, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogRunDecisionFailed(ex);
+        }
+    }
 
     /// <summary>The start snapshot every mode reports the same way, stamped now.</summary>
     internal static TaskStartSnapshot Started(string taskId, string agentRole) =>
@@ -206,4 +229,7 @@ internal sealed partial class CrewHookDispatcher
 
     [LoggerMessage(EventId = 9403, Level = LogLevel.Warning, Message = "ICrewExecutionHook.OnCrewFailedAsync threw; ignored.")]
     private partial void LogCrewFailedFailed(Exception ex);
+
+    [LoggerMessage(EventId = 9405, Level = LogLevel.Warning, Message = "ICrewExecutionHook.OnRunDecisionAsync threw; ignored.")]
+    private partial void LogRunDecisionFailed(Exception ex);
 }

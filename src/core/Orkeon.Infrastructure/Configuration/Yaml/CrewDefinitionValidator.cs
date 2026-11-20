@@ -191,6 +191,11 @@ public static class CrewDefinitionValidator
         }
 
         errors.AddRange(DecisionTaskRules.Check(config.Process, config.DecisionDeclarations()));
+        var agentKeys = config.Agents is { } agents && agents.All(a => a.Key is not null)
+            ? agents.Select(a => a.Key!).ToList()
+            : null;
+        errors.AddRange(DecisionTaskRules.CheckMode(
+            config.DecisionMode, config.Process, config.DecisionDeclarations(), config.SystemOneUses(), agentKeys).Refusals);
 
         if (HasCircularDependencies(config.Tasks))
             errors.Add("Circular task dependencies detected.");

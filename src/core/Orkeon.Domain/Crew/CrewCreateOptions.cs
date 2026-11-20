@@ -56,6 +56,9 @@ public sealed class CrewCreateOptions
     /// </summary>
     public CrewBudget? Budget { get; init; }
 
+    /// <summary>Whether the crew needs System One (<see cref="Crew.DecisionMode"/>, #429); unspecified by default.</summary>
+    public CrewDecisionMode DecisionMode { get; init; }
+
     /// <summary>
     /// Optional provider the crew's manager runs on (C# <c>WithManagerLlm</c>): read by the
     /// Hierarchical and Autonomous processes only — <see cref="Crew.Create(CrewCreateOptions)"/>

@@ -68,6 +68,19 @@ correctifs des profils gardés ; regroupement du reranker et surfaces doctor ; q
 images. Une nouvelle tentative ou un repli quand une requête échoue n'est pas prévu : le repli
 n'existe que pour un circuit coupé.
 
+## Amendement — le mode de décision d'une crew (#429)
+
+Circuit coupé, une tâche de décision répond par son repli, ce qui convient à une crew capable de tourner sans System
+One et trompe celle qui ne l'est pas. Une crew déclare désormais laquelle elle est, dans un `decision: { mode }` au
+niveau de la crew : `none` (elle ne demande jamais rien à System One), `optional` (chaque tâche de décision nomme un
+relais `without:`, un agent de la crew qui répond circuit coupé, à la place d'un repli) ou `required` (un run circuit
+coupé est refusé avant sa première tâche, sortie `69`, code `decision_unavailable`). Une crew sans mode garde la
+sémantique de repli ci-dessus. Les règles vivent dans `DecisionTaskRules` à côté des autres, si bien que les crews
+YAML, `.ork.ts` et C# passent les mêmes vérifications ; le refus se tient dans l'orchestrateur, avant la mémoire et la
+planification, si bien que chaque processus et chaque hôte l'applique. Le relais lui-même est déclaré et vérifié au
+chargement ici, et exécuté par un changement ultérieur (#430). Voir
+[Modèles de décision](../architecture/decision-models.md#le-mode-de-décision-dune-crew).
+
 ## Alternatives écartées
 
 - **Un agent qui classe et écrit l'aiguillage** : écarté. Il dépense un appel au LLM pour un

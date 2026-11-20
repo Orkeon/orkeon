@@ -315,6 +315,29 @@ message, in the form `Task '<key>' <part> …` where the part is `decision`,
 With the decision circuit off, the run is also refused before its first task when a decision task has
 neither a `fallback` nor an `otherwise` task.
 
+### A crew's decision mode
+
+```yaml
+decision:
+  mode: optional          # none | optional | required
+tasks:
+  triage:
+    description: Sort the ticket
+    expectedOutput: The route
+    decision:
+      questions:
+        route: { choice: { bug: a defect, other: anything else } }
+      without:            # optional crews only: who answers when the circuit is off
+        agent: analyst    # an agent of the crew
+        instructions: Read the summary first.
+```
+
+The crew-level `decision:` block says what the crew needs from System One. It is read from `crew.yaml` and from the
+`config.yaml` of a split crew; the block names a `mode`, `none`, `optional` or `required`, and any other value is
+refused at load. A decision task's `without:` names the agent that answers it when the circuit is off. The rules each
+mode applies at load and at run are in [Decision models](./decision-models.md#a-crews-decision-mode). An engine older
+than this release refuses the crew-level `decision:` key.
+
 ## Guardrails configuration
 
 Guardrails are operational rules rendered into the executing agent's **system prompt**. They can be

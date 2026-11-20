@@ -50,6 +50,12 @@ internal sealed class HostRunRecording
     public bool WaitingForInput { get; set; }
 
     /// <summary>
+    /// Records that the run was refused before its first task: its crew requires System One and the decision
+    /// circuit is off (#429), exit 69.
+    /// </summary>
+    public bool DecisionUnavailable { get; set; }
+
+    /// <summary>
     /// The task-event observer in front of <paramref name="inner"/> when the run is recorded, else <paramref name="inner"/>
     /// itself: the run's own hook keeps receiving every callback either way.
     /// </summary>
@@ -114,6 +120,8 @@ internal sealed class HostRunRecording
             return Orkeon.Constants.Cli.RunExitCodes.WaitingForInput;
         if (success)
             return 0;
+        if (DecisionUnavailable)
+            return Orkeon.Constants.Cli.RunExitCodes.DecisionUnavailable;
         return cancelled() ? CancelledExitCode : 1;
     }
 

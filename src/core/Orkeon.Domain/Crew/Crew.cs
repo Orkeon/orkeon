@@ -104,6 +104,13 @@ public sealed class Crew : AggregateRoot<CrewId>
     public CrewBudget Budget { get; private set; } = CrewBudget.Unset;
 
     /// <summary>
+    /// Gets whether the crew needs System One (YAML <c>decision: { mode: ... }</c>, <c>crewBuilder().decision({ mode })</c>,
+    /// <c>CrewBuilder.DecisionMode</c>, #429): a <see cref="CrewDecisionMode.Required"/> crew is refused before its first
+    /// task when the decision circuit is off. <see cref="CrewDecisionMode.Unspecified"/> when the crew declares none.
+    /// </summary>
+    public CrewDecisionMode DecisionMode { get; private set; }
+
+    /// <summary>
     /// Gets the provider the crew's manager runs on (C# <c>WithManagerLlm</c>, CrewAI's
     /// <c>manager_llm</c>): the hierarchical manager assigns and reviews on it, and the autonomous
     /// one hands the tasks out on it, in place of the manager agent's <c>llm:</c> profile or the
@@ -228,6 +235,7 @@ public sealed class Crew : AggregateRoot<CrewId>
             Status = CrewStatus.Idle,
             MaxRpm = options.MaxRpm,
             Budget = options.Budget ?? CrewBudget.Unset,
+            DecisionMode = options.DecisionMode,
             ManagerLlm = options.ManagerLlm,
             ManagerAgentId = options.ManagerAgentId,
             PlanningLlm = options.PlanningLlm,

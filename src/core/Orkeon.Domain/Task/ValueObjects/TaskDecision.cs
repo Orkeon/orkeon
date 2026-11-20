@@ -38,6 +38,21 @@ public sealed class TaskDecision
     /// <summary>Gets whether an explicit fallback is declared.</summary>
     public bool HasExplicitFallback => Fallback.Count > 0;
 
+    /// <summary>
+    /// Gets the <c>without:</c> relay that answers the task when an <c>optional</c> crew runs with the decision
+    /// circuit off (#429, #430); null when the task declares none.
+    /// </summary>
+    public DecisionRelay? Without { get; private init; }
+
+    /// <summary>Returns this decision with the <c>without:</c> relay <paramref name="relay"/>.</summary>
+    /// <param name="relay">The relay.</param>
+    /// <returns>A new decision; this one is unchanged.</returns>
+    public TaskDecision WithRelay(DecisionRelay relay)
+    {
+        ArgumentNullException.ThrowIfNull(relay);
+        return new TaskDecision(Questions, ConfidenceFloor, StateFrom, LongContext, Fallback) { Without = relay };
+    }
+
     /// <summary>Creates a decision.</summary>
     public static TaskDecision Create(
         IReadOnlyList<DecisionQuestionSpec> questions,
@@ -79,11 +94,12 @@ public sealed class TaskDecision
         && LongContext == other.LongContext
         && Questions.SequenceEqual(other.Questions)
         && StateFrom.SequenceEqual(other.StateFrom)
-        && ContentEquality.Same(Fallback, other.Fallback);
+        && ContentEquality.Same(Fallback, other.Fallback)
+        && Equals(Without, other.Without);
 
     /// <inheritdoc />
     public override int GetHashCode() =>
-        HashCode.Combine(ConfidenceFloor, LongContext, ContentEquality.Hash(Questions), ContentEquality.Hash(StateFrom), ContentEquality.Hash(Fallback));
+        HashCode.Combine(ConfidenceFloor, LongContext, ContentEquality.Hash(Questions), ContentEquality.Hash(StateFrom), ContentEquality.Hash(Fallback), Without);
 
     /// <summary>Gets a question by name.</summary>
     public DecisionQuestionSpec? Question(string name) => Questions.FirstOrDefault(q => q.Name == name);

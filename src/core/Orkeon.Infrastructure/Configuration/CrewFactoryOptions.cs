@@ -44,4 +44,11 @@ public sealed class CrewFactoryOptions
     /// otherwise.
     /// </summary>
     public Action<string>? OnWithheldTool { get; set; }
+
+    /// <summary>
+    /// Receives each warning of the crew's <c>decision.mode</c> rules (#429) - a fallback or a <c>without:</c>
+    /// relay a <c>required</c> crew never uses, a <c>required</c> crew that asks System One nothing -; null by
+    /// default, which logs them. <c>orkeon run --validate</c> prints each as a <c>WARNING:</c> line.
+    /// </summary>
+    public Action<string>? OnDecisionWarning { get; set; }
 }

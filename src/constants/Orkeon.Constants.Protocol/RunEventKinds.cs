@@ -96,6 +96,13 @@ public static class RunEventKinds
     public const string GraphNodeEntered = "graph.node.entered";
 
     /// <summary>
+    /// Once per run, after the crew loads and before its first <see cref="TaskStarted"/>: the crew's
+    /// <c>mode</c> (<see cref="RunDecisionModes"/>), the decision <c>circuit</c>
+    /// (<see cref="DecisionCircuitStates"/>) and, off, its <c>cause</c> (<see cref="DecisionCircuitCauses"/>), #429.
+    /// </summary>
+    public const string RunDecision = "run.decision";
+
+    /// <summary>
     /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
     /// as an event that silently never arrives.
     /// </summary>
@@ -104,5 +111,6 @@ public static class RunEventKinds
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
         AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback, GraphNodeEntered,
+        RunDecision,
     ];
 }

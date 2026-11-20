@@ -35,6 +35,12 @@ public sealed class DecisionTaskRunner
     /// <summary>Gets a value indicating whether the decision model is asked.</summary>
     public bool IsEnabled => _circuit.Enabled && _model is not null;
 
+    /// <summary>
+    /// Gets the circuit this runner applies: the one it was given, off by
+    /// <see cref="DecisionCircuitCause.NoProvider"/> when it was on and no decision model is configured.
+    /// </summary>
+    public DecisionCircuit Circuit => _circuit.Enabled && _model is null ? DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider) : _circuit;
+
     /// <summary>Runs a decision task.</summary>
     /// <param name="task">The decision task.</param>
     /// <param name="inputs">The outputs of the tasks it depends on, labelled by task name.</param>
@@ -49,6 +55,11 @@ public sealed class DecisionTaskRunner
         ArgumentNullException.ThrowIfNull(inputs);
         var decision = task.Decision ?? throw new ArgumentException("The task is not a decision task.", nameof(task));
         var started = Stopwatch.GetTimestamp();
+
+        // An optional crew's decision task, with the circuit off, is answered by its without: relay (#429). The
+        // relay itself is #430's: until it is plugged in here, the task fails and says why.
+        if (!IsEnabled && decision.Without is { } relay)
+            return RelayNotAvailable(task, relay, started);
 
         if (!IsEnabled)
             return Succeeded(decision.FallbackOutcome(), started);
@@ -147,6 +158,14 @@ public sealed class DecisionTaskRunner
         ScoreQuestionSpec => "score",
         _ => "noul",
     };
+
+    private TaskResult RelayNotAvailable(CrewTask task, DecisionRelay relay, long started)
+    {
+        var reason = $"Decision task '{task.Key ?? task.Description.Value}' is answered by its without: relay (agent '{relay.Agent}') " +
+            $"when {Circuit.OffReason}, and this engine does not run the relay yet.";
+        LogFailed(_logger, reason, null);
+        return new TaskResult(false, string.Empty, null, [], Stopwatch.GetElapsedTime(started), reason);
+    }
 
     private static TaskResult Succeeded(DecisionOutcome outcome, long started, int inputTokens = 0, int outputTokens = 0) =>
         new(true, outcome.ToCompactJson(), null, [], Stopwatch.GetElapsedTime(started), null, inputTokens + outputTokens)

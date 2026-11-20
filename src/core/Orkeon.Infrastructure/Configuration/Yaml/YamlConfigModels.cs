@@ -129,6 +129,27 @@ public class DecisionYamlConfig
     public bool? LongContext { get; set; }
     /// <summary>Gets or sets the fallback answers by question.</summary>
     public Dictionary<string, string>? Fallback { get; set; }
+    /// <summary>
+    /// Gets or sets the <c>without:</c> relay: the crew agent that answers the questions when an <c>optional</c>
+    /// crew runs with the decision circuit off (#429, #430).
+    /// </summary>
+    public DecisionRelayYamlConfig? Without { get; set; }
+}
+
+/// <summary>YAML model for the <c>without:</c> relay of a decision task (#429, #430).</summary>
+public class DecisionRelayYamlConfig
+{
+    /// <summary>Gets or sets the key of the crew agent that answers.</summary>
+    public string? Agent { get; set; }
+    /// <summary>Gets or sets what is added to the questions.</summary>
+    public string? Instructions { get; set; }
+}
+
+/// <summary>YAML model for the crew-level <c>decision:</c> block (#429).</summary>
+public class CrewDecisionYamlConfig
+{
+    /// <summary>Gets or sets whether the crew needs System One: <c>none</c>, <c>optional</c> or <c>required</c>.</summary>
+    public string? Mode { get; set; }
 }
 
 /// <summary>YAML model for one question of a decision.</summary>
@@ -418,6 +439,11 @@ public class CrewYamlConfig
     /// </summary>
     public CrewBudgetYamlConfig? Budget { get; set; }
     /// <summary>
+    /// Gets or sets whether the crew needs System One (<c>decision: { mode: none | optional | required }</c>, #429);
+    /// unset, the crew keeps the behaviour it had before the key existed.
+    /// </summary>
+    public CrewDecisionYamlConfig? Decision { get; set; }
+    /// <summary>
     /// Gets or sets the key of the crew's manager agent (<c>managerAgent:</c>): the hierarchical
     /// manager — required there — or the consensual crew's arbiter of the <c>ManagerDecision</c>
     /// fallback. The four other processes have none, and a key that names no agent fails the load
@@ -492,6 +518,8 @@ public class CrewSettingsYamlConfig
     public int? MaxRpm { get; set; }
     /// <summary>Gets or sets what one autonomous run may spend - see <see cref="CrewYamlConfig.Budget"/>.</summary>
     public CrewBudgetYamlConfig? Budget { get; set; }
+    /// <summary>Gets or sets whether the crew needs System One - see <see cref="CrewYamlConfig.Decision"/>.</summary>
+    public CrewDecisionYamlConfig? Decision { get; set; }
     /// <summary>
     /// Gets or sets the key of the crew's manager agent (<c>managerAgent:</c>): Hierarchical (required)
     /// and Consensual (the <c>ManagerDecision</c> arbiter) only — see <see cref="CrewYamlConfig.ManagerAgent"/>.

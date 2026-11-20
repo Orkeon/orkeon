@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a crew declares what it needs from System One: `decision: { mode }` (#429)
+
+A crew-level `decision: { mode: none | optional | required }` (YAML, also in the `config.yaml` of a split crew;
+`crewBuilder().decision({ mode })` in a script; `CrewBuilder.DecisionMode` in C#) says whether the crew runs without
+the decision model. `none` refuses decision tasks, `system_one_decide` and decision profiles at load. `optional` asks
+every decision task for a `without: { agent, instructions }` relay, an agent of the crew, and refuses a `fallback` and
+`system_one_decide`; the relay is declared and checked at load in this release, and a decision task that reaches it
+fails naming it until the relay runs (#430). `required` refuses the run before its first task when the decision
+circuit is off, whatever the cause: `crew 'x' requires System One (decision.mode: required) and the decision circuit
+is off: --no-decision`, error code `decision_unavailable`, exit `69` (`EX_UNAVAILABLE`), in every process and every
+host; a `required` crew that lists `system_one_decide` loads with the tool withheld so that it meets this refusal. A
+run emits one new `run.decision` event (`mode`, `circuit`, `cause`), and `--validate` reports the refusal a run would
+meet as a `WARNING:` line, exit `0`. A crew with no mode behaves as before. **Compatibility**: an engine before this
+release refuses the crew-level `decision:` key and a task's `without:`; `69` is a new exit code of `orkeon run` and
+`orkeon-host`, `decision_unavailable` a new error code and `run.decision` a new kind (`v` stays `2`); the
+`--validate` success line now ends with `, decision=<mode>)`, and a procedural script's with
+`(procedural script: bundled, not run, decision=unknown)`. See
+[Decision models](docs/architecture/decision-models.md#a-crews-decision-mode).
+
 ### Changed — a script budget that names one dimension no longer caps the others **[breaking]** (#436)
 
 **Before**: `crewBuilder().budget({...})` and the `budget` option of `ctx.delegate` / `crew.runAgent` filled every

@@ -64,6 +64,40 @@ public sealed record CrewConfiguration
     /// </summary>
     public IReadOnlyList<Orkeon.Domain.FileSystem.MountReference>? Mounts { get; init; }
 
+    /// <summary>
+    /// Gets whether the crew needs System One (<c>decision: { mode: ... }</c> at crew level, #429);
+    /// <see cref="Orkeon.Domain.Crew.CrewDecisionMode.Unspecified"/> when the crew declares none.
+    /// </summary>
+    public Orkeon.Domain.Crew.CrewDecisionMode DecisionMode { get; init; }
+
+    /// <summary>
+    /// Lists what the crew asks System One besides its decision tasks (#429): every agent and task that lists
+    /// <c>system_one_decide</c>, and, when <paramref name="isDecisionProfile"/> is given, every one that names a
+    /// decision profile through <c>llm.profile</c> or <c>llm_override.profile</c>.
+    /// </summary>
+    /// <param name="isDecisionProfile">Whether a profile name is a decision profile of the host; null when unknown.</param>
+    /// <returns>The uses, holders named <c>agent 'x'</c> or <c>task 'y'</c>.</returns>
+    public Orkeon.Domain.Task.ValueObjects.SystemOneUses SystemOneUses(Func<string, bool>? isDecisionProfile = null)
+    {
+        static bool Decides(IReadOnlyList<string> tools) =>
+            tools.Any(t => string.Equals(t, Orkeon.Domain.Task.ValueObjects.SystemOneUses.DecideToolName, StringComparison.OrdinalIgnoreCase));
+
+        var holders = Agents.Where(a => Decides(a.Tools)).Select(a => $"agent '{a.Key ?? a.Role}'")
+            .Concat(Tasks.Where(t => Decides(t.Tools)).Select(t => $"task '{t.Key ?? t.Description}'"))
+            .ToList();
+        if (isDecisionProfile is null)
+            return new Orkeon.Domain.Task.ValueObjects.SystemOneUses(holders, null);
+
+        var profiles = Agents
+            .Where(a => a.LlmConfig?.Profile is { Length: > 0 } p && isDecisionProfile(p.Trim()))
+            .Select(a => new Orkeon.Domain.Task.ValueObjects.DecisionProfileUse($"agent '{a.Key ?? a.Role}'", a.LlmConfig!.Profile!.Trim()))
+            .Concat(Tasks
+                .Where(t => t.LlmOverride?.Profile is { Length: > 0 } p && isDecisionProfile(p.Trim()))
+                .Select(t => new Orkeon.Domain.Task.ValueObjects.DecisionProfileUse($"task '{t.Key ?? t.Description}'", t.LlmOverride!.Profile!.Trim())))
+            .ToList();
+        return new Orkeon.Domain.Task.ValueObjects.SystemOneUses(holders, profiles);
+    }
+
     /// <summary>Lists what each task declares about decisions.</summary>
     public IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration> DecisionDeclarations() =>
         Tasks.Select(t => new Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration(

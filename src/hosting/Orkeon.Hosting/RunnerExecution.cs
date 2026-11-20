@@ -1077,6 +1077,11 @@ public static partial class RunnerExecution
         PrintCrewOutput(output, opts.MachineReadableStdout ? console.ErrorOutput : console.Output);
         if (!output.Succeeded)
         {
+            // A crew that requires System One, refused with the decision circuit off, ran nothing to take up
+            // again: 69, the refusal as the last stderr line (#429).
+            if (output.ErrorCode == Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable)
+                return (Orkeon.Constants.Cli.RunExitCodes.DecisionUnavailable, output.Error ?? output.FinalOutput);
+
             // A run that left a checkpoint session can be taken up again: say by what id.
             if (output.ExecutionId is { Length: > 0 } runId && CheckpointingEnabled(host))
             {

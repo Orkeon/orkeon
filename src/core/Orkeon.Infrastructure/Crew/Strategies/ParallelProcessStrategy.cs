@@ -162,7 +162,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             throw new InvalidOperationException("No agents available for parallel execution");
 
         // Once, before any task: a decision task that could not answer fails the run at its door.
-        var faults = DecisionPreflight.Check(tasks, _decisionRunner);
+        var faults = DecisionPreflight.Check(tasks, _decisionRunner, crew.DecisionMode);
         if (faults.Count > 0)
             return await DecisionPreflight.FailAtEntryAsync(_hooks, crew.Id.ToString(), startedAt, string.Join(' ', faults)).ConfigureAwait(false);
 

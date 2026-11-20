@@ -36,6 +36,8 @@ public partial class CrewFactory : ICrewFactory
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
     private readonly Orkeon.Application.Crew.Execution.DecisionCircuit? _decisionCircuit;
     private readonly Action<string>? _onWithheldTool;
+    private readonly Action<string>? _onDecisionWarning;
+    private readonly IReadOnlyCollection<string>? _decisionProfiles;
 
     /// <summary>Initializes a new instance of <see cref="CrewFactory"/>.</summary>
     /// <param name="loader">The crew definition loader.</param>
@@ -68,6 +70,11 @@ public partial class CrewFactory : ICrewFactory
     /// <c>system_one_decide</c> is told the tool is withheld and why, rather than that it is unknown
     /// (#433). Null reports it as any missing tool.
     /// </param>
+    /// <param name="decisionProfiles">
+    /// The host's decision profiles (<c>Orkeon:Decision:Profiles</c>): a crew with <c>decision.mode: none</c>
+    /// naming one is refused, and a <c>required</c> one naming none, with no decision task and no
+    /// <c>system_one_decide</c>, is warned that it asks System One nothing (#429). Null leaves both rules aside.
+    /// </param>
 #pragma warning disable S107 // DI-composed factory: one optional collaborator per opt-in subsystem
     public CrewFactory(
         ICrewDefinitionLoader loader,
@@ -80,7 +87,8 @@ public partial class CrewFactory : ICrewFactory
         Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? ragBootstrapper = null,
         ICrewLinkRegistry? linkRegistry = null,
         Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null,
-        Orkeon.Application.Crew.Execution.DecisionCircuit? decisionCircuit = null)
+        Orkeon.Application.Crew.Execution.DecisionCircuit? decisionCircuit = null,
+        IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionProfilesOptions>? decisionProfiles = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(loader);
@@ -103,6 +111,8 @@ public partial class CrewFactory : ICrewFactory
         _llmProfiles = llmProfiles;
         _decisionCircuit = decisionCircuit;
         _onWithheldTool = options?.Value.OnWithheldTool;
+        _onDecisionWarning = options?.Value.OnDecisionWarning;
+        _decisionProfiles = decisionProfiles?.Value.Profiles.Keys.ToList();
     }
 
     /// <inheritdoc />
@@ -120,14 +130,18 @@ public partial class CrewFactory : ICrewFactory
     {
         ValidateConfiguration(config);
         ValidateLlmProfiles(config);
+        ValidateDecisionMode(config);
 
         await PrepareRagCollectionsAsync(config, ct).ConfigureAwait(false);
         WarnOnKnowledgeWithoutSubsystem(config);
 
         LogCreatingCrewWithAgentsAnd(config.Name, config.Agents.Count, config.Tasks.Count);
 
-        var agentMap = await CreateAgentsAsync(config.Agents, config.Rag?.DefaultProfile, ct).ConfigureAwait(false);
-        var taskMap = await CreateTasksAsync(config.Tasks, agentMap, ct).ConfigureAwait(false);
+        // A required crew with the circuit off loads, and its run is refused before the first task with the
+        // typed error (#429): a withheld system_one_decide must not fail the load first.
+        var refuseWithheld = config.DecisionMode != Orkeon.Domain.Crew.CrewDecisionMode.Required;
+        var agentMap = await CreateAgentsAsync(config.Agents, config.Rag?.DefaultProfile, refuseWithheld, ct).ConfigureAwait(false);
+        var taskMap = await CreateTasksAsync(config.Tasks, agentMap, refuseWithheld, ct).ConfigureAwait(false);
 
         SetupTaskDependencies(config.Tasks, taskMap);
         AddTaskContextData(config.Tasks, taskMap);
@@ -259,6 +273,32 @@ public partial class CrewFactory : ICrewFactory
                 _llmProfiles, task.LlmOverride?.Profile, $"Crew '{config.Name}': task '{Shorten(task.Description)}'");
     }
 
+    /// <summary>
+    /// The rules of the crew's <c>decision.mode</c> with what only the host knows, its decision profiles (#429):
+    /// a refusal fails the load, a warning goes to <see cref="CrewFactoryOptions.OnDecisionWarning"/> when set,
+    /// to the log otherwise.
+    /// </summary>
+    private void ValidateDecisionMode(CrewConfiguration config)
+    {
+        var profiles = _decisionProfiles;
+        var findings = Orkeon.Domain.Task.DecisionTaskRules.CheckMode(
+            config.DecisionMode,
+            config.Process,
+            config.DecisionDeclarations(),
+            config.SystemOneUses(profiles is null ? null : p => profiles.Contains(p, StringComparer.OrdinalIgnoreCase)));
+        if (findings.Refusals.Count > 0)
+            throw new InvalidOperationException(
+                $"Crew '{config.Name}': invalid decision.mode declaration: {string.Join(" ", findings.Refusals)}");
+
+        foreach (var warning in findings.Warnings)
+        {
+            if (_onDecisionWarning is not null)
+                _onDecisionWarning(warning);
+            else
+                LogCrewDefinitionWarning(warning);
+        }
+    }
+
     private static string Shorten(string text) => text.Length <= 60 ? text : string.Concat(text.AsSpan(0, 57), "...");
 
     private void ValidateConfiguration(CrewConfiguration config)
@@ -281,16 +321,17 @@ public partial class CrewFactory : ICrewFactory
     /// The crew's <c>rag.defaults.profile</c>: copied onto every knowledge attachment that
     /// names no profile of its own (GAP-02). <c>null</c> leaves those to the host default.
     /// </param>
+    /// <param name="refuseWithheld">Whether a withheld tool fails a strict load (#429: not for a required crew).</param>
     /// <param name="ct">Cancellation token.</param>
     private async Task<Dictionary<string, DomainAgent>> CreateAgentsAsync(
-        IReadOnlyList<AgentConfiguration> agentConfigs, string? defaultKnowledgeProfile, CancellationToken ct)
+        IReadOnlyList<AgentConfiguration> agentConfigs, string? defaultKnowledgeProfile, bool refuseWithheld, CancellationToken ct)
     {
         var agentMap = new Dictionary<string, DomainAgent>();
 
         foreach (var agentConfig in agentConfigs)
         {
             ct.ThrowIfCancellationRequested();
-            var resolvedTools = await ResolveToolsAsync(agentConfig.Tools, ct).ConfigureAwait(false);
+            var resolvedTools = await ResolveToolsAsync(agentConfig.Tools, refuseWithheld, ct).ConfigureAwait(false);
 
             var agent = BuildAgent(agentConfig, resolvedTools, defaultKnowledgeProfile);
 
@@ -377,7 +418,7 @@ public partial class CrewFactory : ICrewFactory
     /// belt for that task only (GAP-07).
     /// </summary>
     private async Task<Dictionary<string, CrewTask>> CreateTasksAsync(
-        IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, DomainAgent> agentMap, CancellationToken ct)
+        IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, DomainAgent> agentMap, bool refuseWithheld, CancellationToken ct)
     {
         var created = new Dictionary<string, CrewTask>();
         var idByName = new Dictionary<string, TaskId>(StringComparer.Ordinal);
@@ -386,7 +427,7 @@ public partial class CrewFactory : ICrewFactory
         foreach (var taskConfig in taskConfigs.Where(t => t.Decision is not null).Concat(taskConfigs.Where(t => t.Decision is null)))
         {
             ct.ThrowIfCancellationRequested();
-            var resolvedTools = await ResolveToolsAsync(taskConfig.Tools, ct).ConfigureAwait(false);
+            var resolvedTools = await ResolveToolsAsync(taskConfig.Tools, refuseWithheld, ct).ConfigureAwait(false);
 
             var task = BuildTask(taskConfig, resolvedTools, idByName, agentMap);
 
@@ -501,6 +542,10 @@ public partial class CrewFactory : ICrewFactory
         if (config.Budget is not null)
             builder.Budget(config.Budget);
 
+        // Whether the crew needs System One: a required crew is refused before its first task when the
+        // decision circuit is off (#429).
+        builder.DecisionMode(config.DecisionMode);
+
         // The graph config is a crew-definition setting that must survive to execution time —
         // the GraphProcessStrategy reads it off the domain crew (P2-O-01).
         if (config.GraphConfig is not null)
@@ -560,7 +605,7 @@ public partial class CrewFactory : ICrewFactory
     }
 
     private async Task<List<IBaseTool>> ResolveToolsAsync(
-        IReadOnlyList<string> toolNames, CancellationToken ct)
+        IReadOnlyList<string> toolNames, bool refuseWithheld, CancellationToken ct)
     {
         var tools = new List<IBaseTool>();
         if (toolNames == null || toolNames.Count == 0)
@@ -575,7 +620,7 @@ public partial class CrewFactory : ICrewFactory
                 var message = $"tool '{toolName}' withheld: {reason}";
                 if (_onWithheldTool is not null)
                     _onWithheldTool(message);
-                else if (_strictTools)
+                else if (_strictTools && refuseWithheld)
                     (withheld ??= []).Add(message);
                 else
                     LogToolWithheld(toolName, reason);

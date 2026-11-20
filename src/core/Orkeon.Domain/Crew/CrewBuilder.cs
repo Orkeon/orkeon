@@ -23,6 +23,7 @@ public sealed class CrewBuilder
     private bool _planning;
     private int? _maxRpm;
     private CrewBudget? _budget;
+    private CrewDecisionMode _decisionMode;
     private ILlmProvider? _managerLlm;
     private AgentId? _managerAgentId;
     private DomainAgent? _managerAgent;
@@ -201,6 +202,22 @@ public sealed class CrewBuilder
     }
 
     /// <summary>
+    /// Sets whether the crew needs System One (#429): <see cref="CrewDecisionMode.None"/> never asks it,
+    /// <see cref="CrewDecisionMode.Optional"/> runs with it or without it (each decision task declares a
+    /// <c>without:</c> relay), <see cref="CrewDecisionMode.Required"/> is refused before its first task when the
+    /// decision circuit is off. <see cref="Build"/> applies the load rules of
+    /// <see cref="Task.DecisionTaskRules.CheckMode"/> to the tasks and agents it was given. Not called, the mode is
+    /// <see cref="CrewDecisionMode.Unspecified"/>.
+    /// </summary>
+    public CrewBuilder DecisionMode(CrewDecisionMode mode)
+    {
+        if (!Enum.IsDefined(mode))
+            throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown decision mode.");
+        _decisionMode = mode;
+        return this;
+    }
+
+    /// <summary>
     /// Enables or disables the crew's memory: with it on, a run stores the result of each task and
     /// recalls the crew's memories before each task (GAP-30). Off by default.
     /// </summary>
@@ -352,6 +369,27 @@ public sealed class CrewBuilder
     }
 
     /// <summary>
+    /// The rules of <see cref="Task.DecisionTaskRules.CheckMode"/> over the tasks and agents given as objects: a
+    /// task added by id only is not seen, and the decision profiles are the host's, checked by the crew factory.
+    /// </summary>
+    private void EnsureDecisionModeRules()
+    {
+        static bool Decides(IReadOnlyList<Tools.IBaseTool> tools) =>
+            tools.Any(t => string.Equals(t.Name, Task.ValueObjects.SystemOneUses.DecideToolName, StringComparison.OrdinalIgnoreCase));
+
+        var declarations = _tasks
+            .Select(t => new Task.ValueObjects.DecisionTaskDeclaration(t.Key ?? t.Description.Value, t.Decision, t.Condition, t.AssignedAgent is not null))
+            .ToList();
+        var holders = _agents.Where(a => Decides(a.Tools)).Select(a => $"agent '{a.Role.Value}'")
+            .Concat(_tasks.Where(t => Decides(t.Tools)).Select(t => $"task '{t.Key ?? t.Description.Value}'"))
+            .ToList();
+        var findings = Task.DecisionTaskRules.CheckMode(
+            _decisionMode, _processType, declarations, new Task.ValueObjects.SystemOneUses(holders, null));
+        if (findings.Refusals.Count > 0)
+            throw new BuilderValidationException("Crew", string.Join(" ", findings.Refusals));
+    }
+
+    /// <summary>
     /// Builds and returns a new <see cref="Crew"/> instance.
     /// </summary>
     /// <exception cref="BuilderValidationException">
@@ -386,6 +424,9 @@ public sealed class CrewBuilder
         EnsureAsyncExecutionAccepted();
         EnsureManagerAccepted();
 
+        // 4d. The decision mode's load rules, over the tasks and agents the builder holds (#429).
+        EnsureDecisionModeRules();
+
         // 5. Create the crew
         var crew = Crew.Create(new CrewCreateOptions
         {
@@ -396,6 +437,7 @@ public sealed class CrewBuilder
             Planning = _planning,
             MaxRpm = _maxRpm,
             Budget = _budget,
+            DecisionMode = _decisionMode,
             ManagerLlm = _managerLlm,
             ManagerAgentId = _managerAgentId,
             PlanningLlm = _planningLlm,

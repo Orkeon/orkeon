@@ -131,7 +131,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 throw new InvalidOperationException("No agents available for sequential execution");
 
             // Once, before any task: a decision task that could not answer fails the run at its door.
-            var faults = DecisionPreflight.Check(crewTasks, _decisionRunner);
+            var faults = DecisionPreflight.Check(crewTasks, _decisionRunner, crew.DecisionMode);
             if (faults.Count > 0)
                 return await DecisionPreflight.FailAtEntryAsync(_hooks, crew.Id.Value.ToString(), startedAt, string.Join(' ', faults)).ConfigureAwait(false);
 

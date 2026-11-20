@@ -322,6 +322,30 @@ dans tous les messages, sous la forme `Task '<clé>' <partie> …` où la partie
 Avec le circuit de décision coupé, l'exécution est aussi refusée avant sa première tâche quand une
 tâche de décision n'a ni `fallback` ni tâche `otherwise`.
 
+### Le mode de décision d'une crew
+
+```yaml
+decision:
+  mode: optional          # none | optional | required
+tasks:
+  triage:
+    description: Sort the ticket
+    expectedOutput: The route
+    decision:
+      questions:
+        route: { choice: { bug: a defect, other: anything else } }
+      without:            # crews optional seulement : qui répond quand le circuit est coupé
+        agent: analyst    # un agent de la crew
+        instructions: Read the summary first.
+```
+
+Le bloc `decision:` au niveau de la crew dit ce qu'elle attend de System One. Il est lu dans `crew.yaml` et dans le
+`config.yaml` d'une crew découpée ; le bloc nomme un `mode`, `none`, `optional` ou `required`, et toute autre valeur
+est refusée au chargement. Le `without:` d'une tâche de décision nomme l'agent qui y répond quand le circuit est coupé.
+Les règles que chaque mode applique au chargement et au run sont dans
+[Modèles de décision](./decision-models.md#le-mode-de-décision-dune-crew). Un moteur antérieur à cette version refuse
+la clé `decision:` au niveau de la crew.
+
 ## Configuration Guardrails
 
 Les guardrails sont des règles opérationnelles rendues dans le **system prompt** de l'agent exécutant.
