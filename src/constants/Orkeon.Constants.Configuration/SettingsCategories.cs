@@ -147,6 +147,7 @@ public static class SettingsCategories
             ["Plugins"] = Tools,
 
             ["Orkeon:Compaction"] = OrchestrationAndPersistence,
+            ["Orkeon:Compaction:Prune"] = OrchestrationAndPersistence,
             ["Orkeon:Skills"] = OrchestrationAndPersistence,
             ["Orkeon:CrewFactory"] = OrchestrationAndPersistence,
             ["Orkeon:Consensus"] = OrchestrationAndPersistence,

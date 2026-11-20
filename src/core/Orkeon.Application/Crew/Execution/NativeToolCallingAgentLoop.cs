@@ -92,7 +92,7 @@ internal sealed class NativeToolCallingAgentLoop
         // The conversation's compaction (#432): null when it is off, and the loop trims as it always has.
         var compactor = _compaction?.Begin(agent, task.Id, config, maxOutputTokens: null,
             Compaction.ContextCompaction.OverProvider(_fullProvider, config, _llmGate, agent), _llmGate);
-        var view = compactor is null ? null : new Compaction.LlmConversationView(messages);
+        var view = compactor is null ? null : new Compaction.LlmConversationView(messages, Compaction.ReadToolChecks.Over(availableTools.Values));
         // The native loop reports no token of its turns; a summary's are the task's (#432).
         int Spent() => compactor?.SpentTokens ?? 0;
 
@@ -139,6 +139,9 @@ internal sealed class NativeToolCallingAgentLoop
             }
 
             AppendAssistantToolCallMessage(messages, response, doc.RootElement);
+            // The pruning stage reads each result's call from the view (#434).
+            foreach (var call in parsedCalls)
+                view?.NoteToolCall(call.Id, call.ToolName, call.Arguments);
 
             // Execute each tool call
             ExecutionLog.LogLegacyToolCallsDetected(turnLogger, agent.Role, iteration + 1, parsedCalls.Count);

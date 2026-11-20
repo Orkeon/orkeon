@@ -17,6 +17,7 @@
     "Orkeon:CodeSandbox",
     "Orkeon:CodeSandbox:Docker",
     "Orkeon:Compaction",
+    "Orkeon:Compaction:Prune",
     "Orkeon:Consensus",
     "Orkeon:CostTracking",
     "Orkeon:CrewMemory",

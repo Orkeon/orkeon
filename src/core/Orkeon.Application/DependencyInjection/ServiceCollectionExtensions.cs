@@ -60,6 +60,16 @@ public static class ServiceCollectionExtensions
             sp,
             sp.GetService<IOptions<Crew.Routing.AgentRouteOptions>>()?.Value ?? new Crew.Routing.AgentRouteOptions(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Routing.AgentProfileRouter>>()));
+        // The pruning of older read-tool results before compaction (#434), first of the pressure stages. Scoped: it
+        // follows the run scope's decision circuit (#431), and the circuit-off warning is said once per scope. Its
+        // settings are bound by AddOrkeonInfrastructure; without them, the defaults (off).
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<Crew.Compaction.IContextPressureStage, Crew.Compaction.ToolResultPruningStage>(
+            sp => new Crew.Compaction.ToolResultPruningStage(
+                sp,
+                sp.GetService<IOptions<Crew.Compaction.ToolResultPruningOptions>>()?.Value ?? new Crew.Compaction.ToolResultPruningOptions(),
+                sp.GetService<Crew.Execution.DecisionCircuitOverride>()?.Circuit,
+                sp.GetService<IAgentPruneObserver>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Compaction.ToolResultPruningStage>>())));
         services.AddScoped<ICallbackOrchestrator, CallbackOrchestrator>();
         services.AddScoped<IMemoryCoordinator, MemoryCoordinator>();
 

@@ -372,6 +372,7 @@ dégrade le dit en un avertissement :
 | Reranker `decision` | Laisse passer les passages dans leur ordre de récupération, comme `none`, avec un avertissement. |
 | Skills d'un agent (`skills: { auto: true }`) | L'agent porte sa liste `fallback`, sinon aucun skill, et la tâche s'exécute ; `agent.skills` indique `mode: fallback` avec la cause en `reason`. Un avertissement par hôte. |
 | Routage d'un agent (`llm.profile: auto`) | La tâche tourne sur le profil par défaut de l'hôte, sans appel de décision ; `agent.route` indique `reason: circuit-off`. Un avertissement par hôte. |
+| Élagage des résultats d'outils (`Orkeon:Compaction:Prune`) | Rien n'est élagué et aucun appel de décision n'est fait ; la boucle compacte comme elle le ferait sans lui, et aucun `agent.pruned` n'est écrit. Un avertissement par portée de run. |
 
 #### Le mode de décision d'une crew
 
@@ -502,6 +503,13 @@ seule, jamais de lui-même.
   la tâche ; en dessous, sans réponse, ou circuit coupé, c'est le profil par défaut de l'hôte, et `agent.route` dit
   pourquoi ([`Orkeon:Decision:Route`](../reference/configuration.md#orkeondecisionroute)). C'est un choix par tâche,
   pas l'étape `route` d'un profil de décision, qui choisit un profil à chaque appel.
+- **Élagage des résultats d'outils** — dès que l'estimation d'une boucle atteint `Orkeon:Compaction:Prune:FillShare`
+  de la fenêtre utile, avant la compaction, elle pose deux `noul` par ancien résultat d'outil de lecture,
+  `needed_n` et `whole_n`, huit résultats par requête ; l'état est le texte de la tâche coupé à 2 000 caractères et
+  une ligne par appel (outil, entrée coupée à 200 caractères, taille du résultat, âge en tours du modèle), jamais le
+  résultat lui-même. Inutile retire le résultat, utile mais pas en entier en garde les `HeadChars` premiers
+  caractères, utile en entier le garde, à une probabilité de 0,5. Une requête ratée laisse ses résultats tels quels ;
+  circuit coupé, rien n'est demandé ([`Orkeon:Compaction:Prune`](../reference/configuration.md#orkeoncompactionprune)).
 - **Reranker RAG** — `rerank.kind: decision` pose un `noul` par passage dans
   une seule requête, les passages coupés à 4 000 caractères, et les classe par probabilité. Circuit
   coupé, il garde l'ordre de récupération.

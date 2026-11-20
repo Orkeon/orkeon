@@ -440,6 +440,23 @@ public sealed class UnknownCrewYamlKeysTests : IDisposable
         Assert.Equal(0.6, compaction.TriggerShare);
     }
 
+    // #434: an agent turns the pruning of its read-tool results on or off over the host's setting.
+    [Theory]
+    [Trait("BR", "CH-434")]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    public async Task ShouldReadThePruneKey_WhenAnAgentsCompactionBlockSetsIt(string value, bool expected)
+    {
+        // Arrange
+        Write("crew.yaml", Crew(agent: $"    compaction:\n      prune: {value}"));
+
+        // Act
+        var crew = await NewLoader().LoadFromFileAsync(VirtualRoot + "/crew.yaml", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(expected, Assert.Single(crew.Agents).Compaction?.Prune);
+    }
+
     [Fact]
     [Trait("BR", "CH-432")]
     public async Task ShouldRefuseTheCrew_WhenACompactionKeyIsMisspelled()

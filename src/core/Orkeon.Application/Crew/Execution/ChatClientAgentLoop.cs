@@ -168,7 +168,7 @@ internal sealed class ChatClientAgentLoop
                 ContextWindowTokens = agent.LlmConfig?.ContextWindowTokens,
             },
             options.MaxOutputTokens, SummaryOverOwnClient(agent, options), _llmGate);
-        var view = compactor is null ? null : new Compaction.ChatConversationView(messages);
+        var view = compactor is null ? null : new Compaction.ChatConversationView(messages, Compaction.ReadToolChecks.Over(availableTools));
 
         bool budgetNoteInjected = false;
         for (int iteration = 0; iteration < maxIter; iteration++)

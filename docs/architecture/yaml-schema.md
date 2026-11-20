@@ -111,6 +111,7 @@ agents:
     compaction:           # Overrides Orkeon:Compaction for this agent (optional); a misspelled key fails the load
       enabled: bool       # default: Orkeon:Compaction:Enabled (true); false keeps the 40-message trim
       triggerShare: float # (0, 1], the share of the usable window that triggers a summary; default: Orkeon:Compaction:TriggerShare (0.75)
+      prune: bool         # Whether System One prunes this agent's older read-tool results before compacting; default: Orkeon:Compaction:Prune:Enabled (false); circuit off → nothing pruned
     skills: [string]      # Markdown files (virtual paths) appended to the system prompt under '## Skills' on every task (optional); each cut at Orkeon:Skills:MaxSkillChars, the block at MaxBlockChars
     # skills:             # Or the pick form: System One picks at most 3 skills of Orkeon:Skills:Library per task, reading one line per skill
     #   auto: true        # required in the map form; false reads the fallback as a fixed list

@@ -130,6 +130,15 @@ public static class RunEventKinds
     public const string AgentRoute = "agent.route";
 
     /// <summary>
+    /// A loop's older read-tool results were judged for pruning before a model call (#434): <c>taskId</c>,
+    /// <c>agentRole</c>, <c>estimatedTokens</c> and <c>thresholdTokens</c> (the measure and the estimate from which
+    /// results are judged), <c>offered</c>, <c>judged</c>, <c>kept</c>, <c>cut</c>, <c>dropped</c> and
+    /// <c>freedTokens</c>. Never written with the decision circuit off. Additive: a consumer that does not know the
+    /// kind ignores it.
+    /// </summary>
+    public const string AgentPruned = "agent.pruned";
+
+    /// <summary>
     /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
     /// as an event that silently never arrives.
     /// </summary>
@@ -138,6 +147,6 @@ public static class RunEventKinds
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
         AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback, GraphNodeEntered,
-        RunDecision, AgentCompacted, AgentSkills, AgentRoute,
+        RunDecision, AgentCompacted, AgentSkills, AgentRoute, AgentPruned,
     ];
 }

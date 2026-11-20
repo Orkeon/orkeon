@@ -17,6 +17,13 @@ public sealed record AgentCompaction
     /// </summary>
     public double? TriggerShare { get; init; }
 
+    /// <summary>
+    /// Whether the agent's loops prune their older read-tool results before they compact (#434), the decision
+    /// model judging each one; null follows <c>Orkeon:Compaction:Prune:Enabled</c>. Pruning rides compaction:
+    /// with <see cref="Enabled"/> false, nothing is pruned either.
+    /// </summary>
+    public bool? Prune { get; init; }
+
     /// <summary>What is wrong with <paramref name="triggerShare"/> as a trigger share, or null when it is one.</summary>
     /// <param name="triggerShare">The share to judge; null is accepted (it follows the host).</param>
     /// <param name="where">Who declares it, for the message (<c>Agent 'writer' compaction.triggerShare</c>).</param>

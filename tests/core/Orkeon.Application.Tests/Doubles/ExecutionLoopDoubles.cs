@@ -199,6 +199,9 @@ internal sealed class SpyTool : IBaseTool
 
     public List<DomainToolCallRequest> Calls { get; } = [];
 
+    /// <summary>What the tool declares it does; unspecified by default.</summary>
+    public ToolAccess Access { get; init; } = ToolAccess.Unspecified;
+
     /// <summary>Runs inside <see cref="CallAsync"/>, before it answers: what a tool does to the run around it.</summary>
     public Action? OnCall { get; set; }
 

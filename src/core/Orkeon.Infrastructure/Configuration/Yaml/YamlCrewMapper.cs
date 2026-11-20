@@ -369,7 +369,7 @@ public sealed partial class YamlCrewMapper
     }
 
     /// <summary>
-    /// The agent's <c>compaction:</c> override (#432), or null when it declares none; a trigger share
+    /// The agent's <c>compaction:</c> override (#432, its <c>prune</c> #434), or null when it declares none; a trigger share
     /// that is not above 0 and at most 1 refuses the load, naming the agent.
     /// </summary>
     private static Orkeon.Domain.Agent.AgentCompaction? MapCompaction(string agentKey, CompactionYamlConfig? compaction)
@@ -380,7 +380,7 @@ public sealed partial class YamlCrewMapper
         if (Orkeon.Domain.Agent.AgentCompaction.TriggerShareProblem(compaction.TriggerShare, $"Agent '{agentKey}' compaction.triggerShare") is { } problem)
             throw new InvalidOperationException(problem);
 
-        return new Orkeon.Domain.Agent.AgentCompaction { Enabled = compaction.Enabled, TriggerShare = compaction.TriggerShare };
+        return new Orkeon.Domain.Agent.AgentCompaction { Enabled = compaction.Enabled, TriggerShare = compaction.TriggerShare, Prune = compaction.Prune };
     }
 
     /// <summary>

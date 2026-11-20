@@ -34,5 +34,7 @@ Orkeon.Infrastructure.Configuration.CompactionYamlConfig.Enabled.get -> bool?
 Orkeon.Infrastructure.Configuration.CompactionYamlConfig.Enabled.set -> void
 Orkeon.Infrastructure.Configuration.CompactionYamlConfig.TriggerShare.get -> double?
 Orkeon.Infrastructure.Configuration.CompactionYamlConfig.TriggerShare.set -> void
+Orkeon.Infrastructure.Configuration.CompactionYamlConfig.Prune.get -> bool?
+Orkeon.Infrastructure.Configuration.CompactionYamlConfig.Prune.set -> void
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.Skills.get -> object?
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.Skills.set -> void

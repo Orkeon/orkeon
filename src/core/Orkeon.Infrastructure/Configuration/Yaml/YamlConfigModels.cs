@@ -57,7 +57,7 @@ public class AgentYamlConfig
     public GuardrailsYamlConfig? Guardrails { get; set; }
     /// <summary>
     /// Gets or sets what the agent overrides of the host's conversation compaction (<c>compaction:</c>, #432):
-    /// <c>enabled</c> and <c>triggerShare</c> (or <c>trigger_share</c>); unset, <c>Orkeon:Compaction</c> decides.
+    /// <c>enabled</c>, <c>triggerShare</c> (or <c>trigger_share</c>) and <c>prune</c> (#434); unset, <c>Orkeon:Compaction</c> decides.
     /// </summary>
     public CompactionYamlConfig? Compaction { get; set; }
     /// <summary>
@@ -83,6 +83,8 @@ public class CompactionYamlConfig
     public bool? Enabled { get; set; }
     /// <summary>Gets or sets the share of the usable window at which they compact, above 0 and at most 1.</summary>
     public double? TriggerShare { get; set; }
+    /// <summary>Gets or sets whether the loops prune their older read-tool results before they compact (#434).</summary>
+    public bool? Prune { get; set; }
 }
 
 /// <summary>

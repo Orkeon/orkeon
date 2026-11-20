@@ -349,7 +349,7 @@ public partial class YamlCrewExporter
             Llm = MapLlmConfig(agent.LlmConfig),
             Guardrails = MapGuardrails(agent.Guardrails),
             Compaction = agent.Compaction is { } compaction
-                ? new CompactionYamlConfig { Enabled = compaction.Enabled, TriggerShare = compaction.TriggerShare }
+                ? new CompactionYamlConfig { Enabled = compaction.Enabled, TriggerShare = compaction.TriggerShare, Prune = compaction.Prune }
                 : null,
             Skills = MapSkills(agent.Skills),
             Knowledge = MapKnowledge(agent.KnowledgeAttachments),

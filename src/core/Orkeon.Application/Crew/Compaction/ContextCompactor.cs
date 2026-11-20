@@ -24,6 +24,7 @@ internal sealed record ContextCompactorSetup
     internal required int KeepRecentTurns { get; init; }
     internal required string TaskId { get; init; }
     internal required string AgentRole { get; init; }
+    internal Domain.Agent.AgentCompaction? AgentCompaction { get; init; }
     internal ITokenCounter? TokenCounter { get; init; }
     internal IReadOnlyList<IContextPressureStage> Stages { get; init; } = [];
     internal IAgentCompactionObserver? Observer { get; init; }
@@ -208,6 +209,7 @@ internal sealed class ContextCompactor
     {
         TaskId = _setup.TaskId,
         AgentRole = _setup.AgentRole,
+        AgentCompaction = _setup.AgentCompaction,
         EstimatedTokens = estimate,
         Window = _setup.Window,
         ReservedOutputTokens = _setup.ReservedOutputTokens,

@@ -47,6 +47,7 @@ public static class SettingsSections
         "Orkeon:CodeSandbox",
         "Orkeon:CognitiveMemory",
         "Orkeon:Compaction",
+        "Orkeon:Compaction:Prune",
         "Orkeon:Consensus",
         "Orkeon:CostTracking",
         "Orkeon:CrewFactory",

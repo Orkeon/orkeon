@@ -1,16 +1,38 @@
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Orkeon.Domain.Constants.Llm;
 using LlmMessage = Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage;
 
 namespace Orkeon.Application.Crew.Compaction;
 
+/// <summary>Whether the tool <c>name</c> only reads for <c>arguments</c>; false for a tool the loop does not know.</summary>
+internal delegate bool ReadToolCheck(string name, IReadOnlyDictionary<string, object?> arguments);
+
+/// <summary>The <see cref="ReadToolCheck"/> of a loop's tools.</summary>
+internal static class ReadToolChecks
+{
+    /// <summary>A tool of <paramref name="tools"/> whose access for the call's input is <see cref="Domain.Tools.ToolAccess.Read"/>.</summary>
+    internal static ReadToolCheck Over(IEnumerable<Domain.Tools.IBaseTool> tools)
+    {
+        var byName = new Dictionary<string, Domain.Tools.IBaseTool>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tool in tools)
+            byName.TryAdd(tool.Name, tool);
+        return (name, arguments) => byName.TryGetValue(name, out var tool) && tool.AccessFor(arguments) == Domain.Tools.ToolAccess.Read;
+    }
+}
+
 /// <summary>The chat-client loop's conversation (<see cref="ChatMessage"/>) as a <see cref="ConversationView"/>.</summary>
 internal sealed class ChatConversationView : ConversationView
 {
     private readonly List<ChatMessage> _messages;
+    private readonly ReadToolCheck _isRead;
 
-    internal ChatConversationView(List<ChatMessage> messages) => _messages = messages;
+    internal ChatConversationView(List<ChatMessage> messages, ReadToolCheck? isRead = null)
+    {
+        _messages = messages;
+        _isRead = isRead ?? NoReadTool;
+    }
 
     public override int Count => _messages.Count;
 
@@ -44,6 +66,31 @@ internal sealed class ChatConversationView : ConversationView
         return text.ToString();
     }
 
+    public override ConversationToolCall? ToolCallAt(int index)
+    {
+        if (_messages[index].Role != ChatRole.Tool
+            || _messages[index].Contents.OfType<FunctionResultContent>().FirstOrDefault()?.CallId is not { } callId)
+            return null;
+
+        // The call sits in an assistant message before its result.
+        for (var i = index - 1; i >= 0; i--)
+        {
+            if (_messages[i].Contents.OfType<FunctionCallContent>().FirstOrDefault(c => c.CallId == callId) is not { } call)
+                continue;
+            var arguments = call.Arguments is null
+                ? new Dictionary<string, object?>()
+                : new Dictionary<string, object?>(call.Arguments);
+            return new ConversationToolCall
+            {
+                CallId = callId,
+                ToolName = call.Name,
+                Input = JsonSerializer.Serialize(arguments),
+                IsRead = _isRead(call.Name, arguments),
+            };
+        }
+        return null;
+    }
+
     public override bool ReplaceToolResult(int index, string text)
     {
         var message = _messages[index];
@@ -64,14 +111,40 @@ internal sealed class ChatConversationView : ConversationView
     }
 
     private static StringBuilder Separate(StringBuilder text) => text.Length == 0 ? text : text.Append('\n');
+
+    internal static bool NoReadTool(string name, IReadOnlyDictionary<string, object?> arguments) => false;
 }
 
 /// <summary>The native loop's conversation (<see cref="LlmMessage"/>) as a <see cref="ConversationView"/>.</summary>
 internal sealed class LlmConversationView : ConversationView
 {
     private readonly List<LlmMessage> _messages;
+    private readonly ReadToolCheck _isRead;
 
-    internal LlmConversationView(List<LlmMessage> messages) => _messages = messages;
+    // The calls the loop ran, by id: a raw tool-call block is in a provider's own shape, the loop's parse is not.
+    private readonly Dictionary<string, ConversationToolCall> _calls = new(StringComparer.Ordinal);
+
+    internal LlmConversationView(List<LlmMessage> messages, ReadToolCheck? isRead = null)
+    {
+        _messages = messages;
+        _isRead = isRead ?? ChatConversationView.NoReadTool;
+    }
+
+    /// <summary>Notes a call the loop ran, so <see cref="ToolCallAt"/> finds it from its result's id.</summary>
+    internal void NoteToolCall(string callId, string toolName, IReadOnlyDictionary<string, object?> arguments) =>
+        _calls[callId] = new ConversationToolCall
+        {
+            CallId = callId,
+            ToolName = toolName,
+            Input = JsonSerializer.Serialize(arguments),
+            IsRead = _isRead(toolName, arguments),
+        };
+
+    public override ConversationToolCall? ToolCallAt(int index) =>
+        LlmRoles.IsTool(_messages[index].Role) && _messages[index].ToolCallId is { } callId
+            && _calls.TryGetValue(callId, out var call)
+            ? call
+            : null;
 
     public override int Count => _messages.Count;
 

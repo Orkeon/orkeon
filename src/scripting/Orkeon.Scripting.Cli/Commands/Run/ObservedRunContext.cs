@@ -185,6 +185,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         services.AddSingleton<IAgentCompactionObserver>(_ => new RunEventsCompactionObserver(_events));
         services.AddSingleton<IAgentSkillsObserver>(_ => new RunEventsSkillsObserver(_events));
         services.AddSingleton<IAgentRouteObserver>(_ => new RunEventsRouteObserver(_events));
+        services.AddSingleton<IAgentPruneObserver>(_ => new RunEventsPruneObserver(_events));
 
         // The delta sink only under --stream (GAP-32): a registered sink makes the agent loop and
         // ctx.llm.* stream every turn to it, and without --stream every delta would be dropped —

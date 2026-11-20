@@ -1,14 +1,19 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
+using System.Collections.Immutable;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Crew.Compaction;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Decision.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Services.Security;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
+using Orkeon.Domain.Tools;
 using Orkeon.Domain.Task.ValueObjects;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Application.Tests.Crew.Compaction;
@@ -34,9 +39,10 @@ public sealed class ChatLoopCompactionTests
 
     private static async System.Threading.Tasks.Task<Run> RunAsync(
         int toolTurns, int resultChars, ContextWindow? window, ContextCompactionOptions? options = null,
-        AgentCompaction? agentCompaction = null, bool summaryFails = false, IReadOnlyList<IContextPressureStage>? stages = null)
+        AgentCompaction? agentCompaction = null, bool summaryFails = false, IReadOnlyList<IContextPressureStage>? stages = null,
+        ToolAccess access = ToolAccess.Unspecified)
     {
-        var tool = new SpyTool(ToolName, result: new string('x', resultChars));
+        var tool = new SpyTool(ToolName, result: new string('x', resultChars)) { Access = access };
         // The double holds nothing to release, and the test reads its records after the run.
 #pragma warning disable CA2000
         var client = new FakeCompactionChatClient { ToolName = ToolName, ToolTurns = toolTurns, SummaryFails = summaryFails };
@@ -191,5 +197,31 @@ public sealed class ChatLoopCompactionTests
         Assert.Empty(run.Client.SummaryRequests);
         Assert.Empty(run.Observer.Notices);
         Assert.Contains(run.Client.AgentRequests[^1], m => m.Contents.OfType<FunctionResultContent>().Any(r => Equals(r.Result, "pruned")));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldDropTheOldReadResultsInsteadOfCompacting_WhenThePruningStageRunsFirst()
+    {
+        // Arrange: the same run compacts once without the stage; the decision model drops every result it is offered.
+        var model = new FakeDecisionModel
+        {
+            Respond = request => new DecisionResponse
+            {
+                Model = "fake",
+                Answers = request.Questions.Keys.ToImmutableDictionary(k => k, _ => (DecisionAnswer)new NoulAnswer { Noul = 0.1 }),
+            },
+        };
+        var services = new ServiceCollection().AddSingleton<IDecisionModel>(model).BuildServiceProvider();
+        var stage = new ToolResultPruningStage(services, new ToolResultPruningOptions { Enabled = true }, null, null, new RecordingLogger());
+
+        // Act
+        var run = await RunAsync(6, resultChars: 4_000, MidWindow, stages: [stage], access: ToolAccess.Read);
+
+        // Assert
+        Assert.Empty(run.Client.SummaryRequests);
+        Assert.NotEmpty(model.Requests);
+        Assert.Contains(run.Client.AgentRequests[^1], m => m.Role == ChatRole.Tool
+            && m.Contents.OfType<FunctionResultContent>().Single().Result?.ToString()?.StartsWith("[pruned to save context: the result of read_page", StringComparison.Ordinal) == true);
     }
 }

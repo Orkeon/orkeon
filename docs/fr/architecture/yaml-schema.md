@@ -113,6 +113,7 @@ agents:
     compaction:           # Remplace Orkeon:Compaction pour cet agent (optionnel) ; une clé mal orthographiée fait échouer le chargement
       enabled: bool       # défaut : Orkeon:Compaction:Enabled (true) ; false garde la coupe à 40 messages
       triggerShare: float # (0, 1], la part de la fenêtre utile qui déclenche un résumé ; défaut : Orkeon:Compaction:TriggerShare (0,75)
+      prune: bool         # Si System One élague les anciens résultats d'outils de lecture de cet agent avant de compacter ; défaut : Orkeon:Compaction:Prune:Enabled (false) ; circuit coupé → rien n'est élagué
     skills: [string]      # Fichiers markdown (chemins virtuels) ajoutés au prompt système sous '## Skills' à chaque tâche (optionnel) ; chacun coupé à Orkeon:Skills:MaxSkillChars, le bloc à MaxBlockChars
     # skills:             # Ou la forme de choix : System One choisit au plus 3 skills de Orkeon:Skills:Library par tâche, en lisant une ligne par skill
     #   auto: true        # requis dans la forme map ; false lit le fallback comme une liste fixe

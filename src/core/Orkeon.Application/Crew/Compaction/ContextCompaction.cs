@@ -73,6 +73,7 @@ internal sealed class ContextCompaction
             KeepRecentTurns = options.KeepRecentTurns,
             TaskId = taskId.ToString() ?? string.Empty,
             AgentRole = agent.Role.ToString(),
+            AgentCompaction = agent.Compaction,
             TokenCounter = _services.TokenCounter,
             Stages = _services.Stages,
             Observer = _services.Observer,

@@ -250,6 +250,9 @@ public static class InfrastructureExtensions
         // window itself: the profile's, the model's documented one, else the session's figure.
         services.AddOrkeonSettings<Application.Crew.Compaction.ContextCompactionOptions>(Application.Crew.Compaction.ContextCompactionOptions.SectionName)
             .ValidateSettings((options, _) => Application.Crew.Compaction.ContextCompactionOptions.Problems(options));
+        // The pruning of older read-tool results before compaction (#434): off unless the host turns it on.
+        services.AddOrkeonSettings<Application.Crew.Compaction.ToolResultPruningOptions>(Application.Crew.Compaction.ToolResultPruningOptions.SectionName)
+            .ValidateSettings((options, _) => Application.Crew.Compaction.ToolResultPruningOptions.Problems(options));
         // How an agent's skills: reach its prompt (#434): the library an auto pick reads, the caps.
         services.AddOrkeonSettings<Application.Crew.Skills.AgentSkillsOptions>(Application.Crew.Skills.AgentSkillsOptions.SectionName)
             .ValidateSettings((options, _) => Application.Crew.Skills.AgentSkillsOptions.Problems(options));

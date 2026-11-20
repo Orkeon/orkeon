@@ -120,6 +120,7 @@ agents:
     compaction:
       enabled: false
       triggerShare: 0.6
+      prune: true
     skills:
       auto: true
       fallback:

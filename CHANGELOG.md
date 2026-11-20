@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — System One prunes a loop's older read-tool results before it compacts (#434)
+
+With `Orkeon:Compaction:Prune:Enabled` (off by default) or an agent's `compaction: { prune: true }`, once a native or
+chat-client loop's estimate reaches `Orkeon:Compaction:Prune:FillShare` (0.4) of the usable window, or the compaction
+trigger if that comes first, the decision model judges each result of a read tool outside the last
+`KeepRecentMessages` (6) messages and longer than twice `HeadChars` (300): keep it, keep its first 300 characters, or
+drop it, leaving a line that says how to get it back. It reads the task and each call (tool, input, size, age),
+never the result: two yes/no questions per call, eight calls to a request, 24 at most at a time. A kept result is
+judged again eight model turns later. Each pruning emits `agent.pruned`. With the decision circuit off nothing is
+pruned and no decision call is made, with one warning and no error; an agent that does not compact does not prune.
+**Compatibility**: `compaction.prune` is a new agent key, refused by a 1.3.0 loader; `Orkeon:Compaction:Prune` is
+a new settings section and `agent.pruned` a new run event kind; `ConversationView` gains `ToolCallAt` (the call a
+tool result answers) and `ContextPressure` the agent's `AgentCompaction`, for a custom `IContextPressureStage`.
+
 ### Added — `llm.profile: auto`: System One picks an agent's profile for each task (#434)
 
 An agent (or a task's `llm_override`) on `llm.profile: auto` has System One pick, at the start of each task, one

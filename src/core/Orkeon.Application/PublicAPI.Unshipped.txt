@@ -281,3 +281,69 @@ override Orkeon.Application.Interfaces.Ports.AgentRouteNotice.GetHashCode() -> i
 override Orkeon.Application.Interfaces.Ports.AgentRouteNotice.ToString() -> string!
 static Orkeon.Application.Interfaces.Ports.AgentRouteNotice.operator !=(Orkeon.Application.Interfaces.Ports.AgentRouteNotice? left, Orkeon.Application.Interfaces.Ports.AgentRouteNotice? right) -> bool
 static Orkeon.Application.Interfaces.Ports.AgentRouteNotice.operator ==(Orkeon.Application.Interfaces.Ports.AgentRouteNotice? left, Orkeon.Application.Interfaces.Ports.AgentRouteNotice? right) -> bool
+Orkeon.Application.Crew.Compaction.ContextPressure.AgentCompaction.get -> Orkeon.Domain.Agent.AgentCompaction?
+Orkeon.Application.Crew.Compaction.ContextPressure.AgentCompaction.init -> void
+Orkeon.Application.Crew.Compaction.ConversationToolCall
+Orkeon.Application.Crew.Compaction.ConversationToolCall.<Clone>$() -> Orkeon.Application.Crew.Compaction.ConversationToolCall!
+Orkeon.Application.Crew.Compaction.ConversationToolCall.CallId.get -> string!
+Orkeon.Application.Crew.Compaction.ConversationToolCall.CallId.init -> void
+Orkeon.Application.Crew.Compaction.ConversationToolCall.ConversationToolCall() -> void
+Orkeon.Application.Crew.Compaction.ConversationToolCall.Equals(Orkeon.Application.Crew.Compaction.ConversationToolCall? other) -> bool
+Orkeon.Application.Crew.Compaction.ConversationToolCall.Input.get -> string!
+Orkeon.Application.Crew.Compaction.ConversationToolCall.Input.init -> void
+Orkeon.Application.Crew.Compaction.ConversationToolCall.IsRead.get -> bool
+Orkeon.Application.Crew.Compaction.ConversationToolCall.IsRead.init -> void
+Orkeon.Application.Crew.Compaction.ConversationToolCall.ToolName.get -> string!
+Orkeon.Application.Crew.Compaction.ConversationToolCall.ToolName.init -> void
+Orkeon.Application.Crew.Compaction.ToolResultPruningOptions
+Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.Enabled.get -> bool
+Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.Enabled.set -> void
+Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.FillShare.get -> double
+Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.FillShare.set -> void
+Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.HeadChars.get -> int
+Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.HeadChars.set -> void
+Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.KeepRecentMessages.get -> int
+Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.KeepRecentMessages.set -> void
+Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.ToolResultPruningOptions() -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.<Clone>$() -> Orkeon.Application.Interfaces.Ports.AgentPruneNotice!
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.AgentPruneNotice() -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.AgentRole.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.AgentRole.init -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Cut.get -> int
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Cut.init -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Dropped.get -> int
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Dropped.init -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Equals(Orkeon.Application.Interfaces.Ports.AgentPruneNotice? other) -> bool
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.EstimatedTokens.get -> int
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.EstimatedTokens.init -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.FreedTokens.get -> int
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.FreedTokens.init -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Judged.get -> int
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Judged.init -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Kept.get -> int
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Kept.init -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Offered.get -> int
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Offered.init -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.TaskId.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.TaskId.init -> void
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.ThresholdTokens.get -> int
+Orkeon.Application.Interfaces.Ports.AgentPruneNotice.ThresholdTokens.init -> void
+Orkeon.Application.Interfaces.Ports.IAgentPruneObserver
+Orkeon.Application.Interfaces.Ports.IAgentPruneObserver.Pruned(Orkeon.Application.Interfaces.Ports.AgentPruneNotice! notice) -> void
+abstract Orkeon.Application.Crew.Compaction.ConversationView.ToolCallAt(int index) -> Orkeon.Application.Crew.Compaction.ConversationToolCall?
+const Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.DefaultFillShare = 0.4 -> double
+const Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.DefaultHeadChars = 300 -> int
+const Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.DefaultKeepRecentMessages = 6 -> int
+const Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.SectionName = "Orkeon:Compaction:Prune" -> string!
+override Orkeon.Application.Crew.Compaction.ConversationToolCall.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.Compaction.ConversationToolCall.GetHashCode() -> int
+override Orkeon.Application.Crew.Compaction.ConversationToolCall.ToString() -> string!
+override Orkeon.Application.Interfaces.Ports.AgentPruneNotice.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.AgentPruneNotice.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.AgentPruneNotice.ToString() -> string!
+static Orkeon.Application.Crew.Compaction.ConversationToolCall.operator !=(Orkeon.Application.Crew.Compaction.ConversationToolCall? left, Orkeon.Application.Crew.Compaction.ConversationToolCall? right) -> bool
+static Orkeon.Application.Crew.Compaction.ConversationToolCall.operator ==(Orkeon.Application.Crew.Compaction.ConversationToolCall? left, Orkeon.Application.Crew.Compaction.ConversationToolCall? right) -> bool
+static Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.Problems(Orkeon.Application.Crew.Compaction.ToolResultPruningOptions! options) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Application.Interfaces.Ports.AgentPruneNotice.operator !=(Orkeon.Application.Interfaces.Ports.AgentPruneNotice? left, Orkeon.Application.Interfaces.Ports.AgentPruneNotice? right) -> bool
+static Orkeon.Application.Interfaces.Ports.AgentPruneNotice.operator ==(Orkeon.Application.Interfaces.Ports.AgentPruneNotice? left, Orkeon.Application.Interfaces.Ports.AgentPruneNotice? right) -> bool

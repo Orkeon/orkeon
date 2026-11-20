@@ -404,6 +404,13 @@
       "description": "How the agent loops keep a long conversation inside the model's window (#432), bound to the `ContextCompactionOptions.SectionName` section by `AddOrkeonInfrastructure()`. Before each model call the native and the chat-client loops estimate the prompt in tokens; past `ContextCompactionOptions.TriggerShare` of the usable window (the window less the call's output cap) they replace the middle of the conversation with one summary, keeping the system prompt, the task and the `ContextCompactionOptions.KeepRecentTurns` most recent turns. The text loop keeps its own character trim."
     },
     {
+      "path": "Orkeon:Compaction:Prune",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "How the agent loops prune their older read-tool results before they compact (#434), bound to the `ToolResultPruningOptions.SectionName` section by `AddOrkeonInfrastructure()`. Once the estimated prompt reaches `ToolResultPruningOptions.FillShare` of the usable window (or the compaction trigger, whichever comes first), the decision model judges each result of a read tool older than the `ToolResultPruningOptions.KeepRecentMessages` last messages: keep it, keep its first `ToolResultPruningOptions.HeadChars` characters, or drop it. It sees the call (tool, input, size, age), never the result. With the decision circuit off, nothing is pruned. Pruning rides compaction: an agent that does not compact does not prune."
+    },
+    {
       "path": "Orkeon:Consensus",
       "category": "orchestration-and-persistence",
       "hosts": [],
@@ -3477,6 +3484,34 @@
       "type": "number",
       "default": 0.75,
       "description": "The share of the usable window (the context window less the call's output cap) the estimated prompt reaches for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's `compaction: { triggerShare }` overrides it."
+    },
+    {
+      "path": "Orkeon:Compaction:Prune:Enabled",
+      "section": "Orkeon:Compaction:Prune",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the loops prune. False by default: each judgement is a request to the decision model. An agent's `compaction: { prune }` overrides it."
+    },
+    {
+      "path": "Orkeon:Compaction:Prune:FillShare",
+      "section": "Orkeon:Compaction:Prune",
+      "type": "number",
+      "default": 0.4,
+      "description": "The share of the usable window (the context window less the call's output cap) the estimated prompt reaches for the results to be judged, above 0 and at most 1. 0.4 by default, under the compaction trigger, so a loop prunes before it compacts."
+    },
+    {
+      "path": "Orkeon:Compaction:Prune:HeadChars",
+      "section": "Orkeon:Compaction:Prune",
+      "type": "integer",
+      "default": 300,
+      "description": "The characters a `head` verdict keeps of a result, 1 or more. 300 by default; a result of twice that or less is never offered, since cutting it frees nothing."
+    },
+    {
+      "path": "Orkeon:Compaction:Prune:KeepRecentMessages",
+      "section": "Orkeon:Compaction:Prune",
+      "type": "integer",
+      "default": 6,
+      "description": "How many of the last messages have their results never offered. 6 by default."
     },
     {
       "path": "Orkeon:Consensus:EnableDiscussion",

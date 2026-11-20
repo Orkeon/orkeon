@@ -360,6 +360,7 @@ both hold, the switch is named. Each consumer that degrades says so in one warni
 | `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
 | Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` with the cause as `reason`. One warning per host. |
 | Agent routing (`llm.profile: auto`) | The task runs on the host's default profile, with no decision call; `agent.route` reports `reason: circuit-off`. One warning per host. |
+| Tool-result pruning (`Orkeon:Compaction:Prune`) | Nothing is pruned and no decision call is made; the loop compacts as it would without it, and no `agent.pruned` is written. One warning per run scope. |
 
 #### A crew's decision mode
 
@@ -487,6 +488,13 @@ never on its own.
   without an answer, or with the circuit off, the host's default profile does, and `agent.route` says why
   ([`Orkeon:Decision:Route`](../reference/configuration.md#orkeondecisionroute)). This is one pick per task, not the
   `route` stage of a decision profile, which picks a profile for each call.
+- **Tool-result pruning** — once a loop's estimate reaches `Orkeon:Compaction:Prune:FillShare` of the usable window,
+  before compaction, it asks two `noul` per older read-tool result, `needed_n` and `whole_n`, eight results to a
+  request; the state is the task's text cut at 2,000 characters and one line per call (tool, input cut at 200
+  characters, result size, age in model turns), never the result itself. Not needed drops the result, needed but not
+  whole keeps its first `HeadChars` characters, needed whole keeps it, at a probability of 0.5. A failed request
+  leaves its results as they are; with the circuit off nothing is asked
+  ([`Orkeon:Compaction:Prune`](../reference/configuration.md#orkeoncompactionprune)).
 - **RAG reranker** — `rerank.kind: decision` asks one `noul` per passage in a
   single request, passages cut at 4,000 characters, and orders them by probability. With the circuit
   off, it keeps the retrieval order.

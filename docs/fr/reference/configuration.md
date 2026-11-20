@@ -196,12 +196,12 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 110 |
-| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 35 |
+| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-83 sections, 540 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+84 sections, 544 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1896,6 +1896,34 @@ de préfixe automatique facture de nouveau la conversation après la coupe.
 | `KeepRecentTurns` | entier | `6` | Combien des tours les plus récents une compaction garde mot pour mot, un tour étant un message de l'assistant avec ses résultats d'outil (un appel d'outil n'est jamais séparé de son résultat). 6 par défaut ; 0 résume tous les tours. |
 | `Profile` | chaîne | — | Le profil LLM qui écrit le résumé, ou aucun pour le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
 | `TriggerShare` | nombre | `0.75` | La part de la fenêtre utile (la fenêtre de contexte moins le plafond de sortie de l'appel) que le prompt estimé atteint pour que la boucle compacte, au-dessus de 0 et au plus 1. 0,75 par défaut ; `compaction: { triggerShare }` d'un agent la remplace. |
+<!-- /settings -->
+
+### `Orkeon:Compaction:Prune`
+
+Comment les boucles d'agent élaguent leurs anciens résultats d'outils de lecture avant de compacter
+(#434), le pendant pour les boucles YAML de l'`onContextPressure` d'un script. Éteint par défaut.
+Dès que le prompt estimé atteint `FillShare` de la fenêtre utile (ou le seuil de compaction, le
+premier atteint), chaque résultat d'un outil de lecture (un outil dont l'accès est `read` pour
+cette entrée) hors des `KeepRecentMessages` derniers messages et plus long que deux fois
+`HeadChars` est proposé au modèle de décision, jusqu'à 24 à la fois, huit par requête. Il lit la
+tâche et chaque appel - outil, entrée, taille et âge en tours du modèle -, jamais le résultat, et
+répond à deux questions oui/non par appel : encore utile, et utile en entier. Inutile retire le
+résultat, utile en partie en garde les `HeadChars` premiers caractères, utile en entier le garde ;
+un résultat élagué laisse une ligne qui dit comment le retrouver, et son appel reste. Un résultat
+gardé est jugé de nouveau après huit tours du modèle de plus. Chaque élagage émet `agent.pruned`.
+Circuit de décision coupé, rien n'est élagué : un avertissement, aucun appel de décision, aucune
+erreur. Un agent remplace `Enabled` par `compaction: { prune }` ; un agent qui ne compacte pas
+n'élague pas.
+
+<!-- settings:Orkeon:Compaction:Prune -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Enabled` | booléen | `false` | Si les boucles élaguent. Faux par défaut : chaque jugement est une requête au modèle de décision. `compaction: { prune }` d'un agent le remplace. |
+| `FillShare` | nombre | `0.4` | La part de la fenêtre utile (la fenêtre de contexte moins le plafond de sortie de l'appel) que le prompt estimé atteint pour que les résultats soient jugés, au-dessus de 0 et au plus 1. 0,4 par défaut, sous le seuil de compaction, si bien qu'une boucle élague avant de compacter. |
+| `HeadChars` | entier | `300` | Les caractères qu'un verdict `head` garde d'un résultat, 1 ou plus. 300 par défaut ; un résultat de deux fois cela ou moins n'est jamais proposé, puisque le couper ne libère rien. |
+| `KeepRecentMessages` | entier | `6` | Combien des derniers messages n'ont jamais leurs résultats proposés. 6 par défaut. |
 <!-- /settings -->
 
 ### `Orkeon:Skills`

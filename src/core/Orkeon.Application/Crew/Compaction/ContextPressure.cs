@@ -13,6 +13,12 @@ public sealed record ContextPressure
     /// <summary>The agent's role.</summary>
     public required string AgentRole { get; init; }
 
+    /// <summary>
+    /// What the agent overrides of the host's compaction (its <c>compaction:</c> block), null when nothing: a
+    /// stage reads its own key there (<c>prune</c>, #434).
+    /// </summary>
+    public Domain.Agent.AgentCompaction? AgentCompaction { get; init; }
+
     /// <summary>The estimated prompt of the next call, in tokens.</summary>
     public required int EstimatedTokens { get; init; }
 

@@ -80,6 +80,8 @@ Orkeon.Domain.Agent.AgentCompaction.Enabled.get -> bool?
 Orkeon.Domain.Agent.AgentCompaction.Enabled.init -> void
 Orkeon.Domain.Agent.AgentCompaction.TriggerShare.get -> double?
 Orkeon.Domain.Agent.AgentCompaction.TriggerShare.init -> void
+Orkeon.Domain.Agent.AgentCompaction.Prune.get -> bool?
+Orkeon.Domain.Agent.AgentCompaction.Prune.init -> void
 static Orkeon.Domain.Agent.AgentCompaction.TriggerShareProblem(double? triggerShare, string! where) -> string?
 Orkeon.Domain.Configuration.AgentConfiguration.Compaction.get -> Orkeon.Domain.Agent.AgentCompaction?
 Orkeon.Domain.Configuration.AgentConfiguration.Compaction.init -> void
