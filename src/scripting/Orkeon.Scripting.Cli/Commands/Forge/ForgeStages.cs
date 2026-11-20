@@ -28,6 +28,7 @@ internal sealed class BriefStage : IForgeStageRunner
     private readonly string? _initialNeed;
     private readonly bool _autoConfirmFolders;
     private readonly Orkeon.Domain.Tools.Security.IPathValidator? _trialPathValidator;
+    private readonly ForgeSystemOne _systemOne;
 
     /// <summary>
     /// Builds the stage; <paramref name="initialNeed"/> is the need typed on the command line,
@@ -36,14 +37,18 @@ internal sealed class BriefStage : IForgeStageRunner
     /// validator of the engine host, passed when this run tries the team in the same process
     /// (no <c>--dry</c>): a confirmed input folder bound to a directory it refuses is refused at
     /// the confirmation (GAP-27) — mounted for the trial, it would be refused on every read.
+    /// <paramref name="systemOne"/> is the forge's own circuit (#435): on, it rates the brief's coverage of the
+    /// request for the user; null asks nothing.
     /// </summary>
     public BriefStage(
         IForgeAssistant assistant,
         IForgeUserChannel channel,
         string? initialNeed = null,
         bool autoConfirmFolders = false,
-        Orkeon.Domain.Tools.Security.IPathValidator? trialPathValidator = null)
+        Orkeon.Domain.Tools.Security.IPathValidator? trialPathValidator = null,
+        ForgeSystemOne? systemOne = null)
     {
+        _systemOne = systemOne ?? ForgeSystemOne.None;
         _assistant = assistant ?? throw new ArgumentNullException(nameof(assistant));
         _channel = channel ?? throw new ArgumentNullException(nameof(channel));
         _initialNeed = initialNeed;
@@ -129,8 +134,23 @@ internal sealed class BriefStage : IForgeStageRunner
             return outcome;
 
         var brief = session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)!;
+
+        // System One's reading of the brief (#435): for the user only, it never reopens the interview.
+        var advice = await _systemOne.RateCoverageAsync(events, brief, RequestOf(session), cancellationToken).ConfigureAwait(false);
         await ConfirmFoldersAsync(session, events, brief, cancellationToken).ConfigureAwait(false);
-        return outcome;
+        return advice.TotalTokens > 0 ? outcome with { Usage = outcome.Usage.Plus(advice) } : outcome;
+    }
+
+    /// <summary>The need as the user stated it: the need typed on the command line, then every answer of the interview.</summary>
+    private List<string> RequestOf(ForgeSession session)
+    {
+        var request = session.LoadTranscript()
+            .Where(static turn => string.Equals(turn.Role, "user", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(turn.Text))
+            .Select(static turn => turn.Text!)
+            .ToList();
+        if (_initialNeed is { Length: > 0 } need && (request.Count == 0 || !string.Equals(request[0], need, StringComparison.Ordinal)))
+            request.Insert(0, need);
+        return request;
     }
 
     /// <summary>
@@ -364,10 +384,17 @@ internal sealed class BlueprintStage : IForgeStageRunner
     public const int MaxSubmissionAttempts = 3;
 
     private readonly IForgeAssistant _assistant;
+    private readonly ForgeSystemOne _systemOne;
 
-    /// <summary>Builds the stage over the assistant seam.</summary>
-    public BlueprintStage(IForgeAssistant assistant) =>
+    /// <summary>
+    /// Builds the stage over the assistant seam. <paramref name="systemOne"/> is the forge's own circuit (#435): on,
+    /// it suggests a process to the assistant before its turns; null asks nothing.
+    /// </summary>
+    public BlueprintStage(IForgeAssistant assistant, ForgeSystemOne? systemOne = null)
+    {
         _assistant = assistant ?? throw new ArgumentNullException(nameof(assistant));
+        _systemOne = systemOne ?? ForgeSystemOne.None;
+    }
 
     /// <inheritdoc />
     public ForgeState Stage => ForgeState.Blueprint;
@@ -390,7 +417,10 @@ internal sealed class BlueprintStage : IForgeStageRunner
         var previous = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
         var errors = session.TryLoadArtifact<ForgeRepairState>(ForgeSession.RepairFileName)?.Errors;
 
-        var usage = default(ForgeUsageSnapshot);
+        // System One's suggestion of a process (#435), asked once before the turns: the assistant reads it as a
+        // suggestion, and its own crew.process stands.
+        var (processHint, usage) = await _systemOne.SuggestProcessAsync(events, brief, session.Document.CrewDecision, cancellationToken)
+            .ConfigureAwait(false);
         for (var attempt = 1; attempt <= MaxSubmissionAttempts; attempt++)
         {
             // Same live meter as the interview: this phase has no user to answer, so its
@@ -403,6 +433,7 @@ internal sealed class BlueprintStage : IForgeStageRunner
                     Brief = brief,
                     PreviousBlueprint = previous,
                     Errors = errors,
+                    ProcessHint = processHint,
                 },
                 partial => ForgeCost.Emit(events, session.Document.Budget, charged.Plus(partial)),
                 cancellationToken).ConfigureAwait(false);

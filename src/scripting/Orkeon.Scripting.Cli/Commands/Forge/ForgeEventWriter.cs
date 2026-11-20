@@ -16,6 +16,12 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
     {
     }
 
+    /// <summary>
+    /// The forge's own decision circuit (#435) that <c>session.started</c> names; null for a command that designs
+    /// nothing, whose line then carries no <c>forgeCircuit</c>.
+    /// </summary>
+    public ForgeSystemOne? SystemOne { get; set; }
+
     /// <summary>Opening event of a run of the engine.</summary>
     public void SessionStarted(ForgeSession session, bool resumed)
     {
@@ -31,6 +37,9 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
             format = session.Document.Format,
             // The decision mode of the crew being designed (#431).
             crewDecision = session.Document.CrewDecision ?? ForgeCrewDecision.None,
+            // The forge's own System One circuit (#435), next to the crew's mode and orthogonal to it.
+            forgeCircuit = SystemOne?.CircuitName,
+            forgeCircuitCause = SystemOne?.Cause,
             // The use case the session is composed from: what a client reopening the
             // session shows again. Absent for a session started from nothing.
             reference = session.Document.Reference,

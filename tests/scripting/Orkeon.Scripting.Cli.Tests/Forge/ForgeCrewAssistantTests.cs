@@ -343,6 +343,38 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.Contains(rule, provider.Chats[0][0].Content, StringComparison.Ordinal);
     }
 
+    /// <summary>#435: System One's process suggestion reaches the design prompt as a suggestion, never as a rule.</summary>
+    [Fact]
+    public async Task The_design_prompt_names_the_process_hint_as_a_suggestion()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief, ProcessHint = new ForgeProcessHint("parallel", 0.9) },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains("Suggestion only: a decision model rates 'parallel'", provider.Chats[0][0].Content, StringComparison.Ordinal);
+    }
+
+    /// <summary>#435: without a suggestion, the design prompt says nothing of System One's process advice.</summary>
+    [Fact]
+    public async Task The_design_prompt_has_no_suggestion_without_a_process_hint()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain("Suggestion only", provider.Chats[0][0].Content, StringComparison.Ordinal);
+    }
+
     private async Task<string> PlanHeaderWith(IReadOnlyList<ForgeLargeFile>? large)
     {
         var provider = new ScriptedLlmProvider().Answers("(no submission)");

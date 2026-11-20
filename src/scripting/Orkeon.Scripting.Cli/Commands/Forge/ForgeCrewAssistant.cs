@@ -301,6 +301,8 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             submitTool = isBrief ? "brief_submit" : "blueprint_submit",
             // The decision mode of the crew (#431): what the plan may hold, for the blueprint phase only.
             crewDecision = isBrief ? null : ForgeCrewDecision.Normalize(_session.Document.CrewDecision),
+            // System One's suggestion of a process (#435): present only when the forge asked and p reached 0.6.
+            processHint = request.ProcessHint is { } hint ? new { process = hint.Process, p = hint.P } : null,
         }, InputsOptions);
     }
 

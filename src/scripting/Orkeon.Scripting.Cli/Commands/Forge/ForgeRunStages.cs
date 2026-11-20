@@ -139,17 +139,20 @@ internal sealed class TestStage : IForgeStageRunner
     private readonly IForgeTestBench _bench;
     private readonly ForgeRunObserver _observer;
     private readonly DecisionCircuit? _hostCircuit;
+    private readonly ForgeSystemOne _systemOne;
 
     /// <summary>
     /// Builds the stage over the bench seam; the observer supplies the capped-task count. <paramref name="hostCircuit"/>
     /// is the engine host's decision circuit (#431), which picks the passes of an <c>optional</c> crew's trial; null
-    /// when unknown, read as on.
+    /// when unknown, read as on. <paramref name="systemOne"/> is the forge's own circuit (#435), which only estimates
+    /// the trial for the user before it starts and never changes the trial's circuit; null asks nothing.
     /// </summary>
-    public TestStage(IForgeTestBench bench, ForgeRunObserver observer, DecisionCircuit? hostCircuit = null)
+    public TestStage(IForgeTestBench bench, ForgeRunObserver observer, DecisionCircuit? hostCircuit = null, ForgeSystemOne? systemOne = null)
     {
         _bench = bench ?? throw new ArgumentNullException(nameof(bench));
         _observer = observer ?? throw new ArgumentNullException(nameof(observer));
         _hostCircuit = hostCircuit;
+        _systemOne = systemOne ?? ForgeSystemOne.None;
     }
 
     /// <inheritdoc />
@@ -169,7 +172,13 @@ internal sealed class TestStage : IForgeStageRunner
         var plans = PlanPasses(session, events);
         var split = plans.Count > 1;
         var passes = new List<(ForgeTestRun Run, ForgeTestPass Pass)>();
-        var usage = default(ForgeUsageSnapshot);
+
+        // System One's estimate of the trial (#435), before run.started: for the user, it never skips a pass.
+        var usage = await _systemOne.EstimateTrialAsync(
+            events,
+            session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName),
+            session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName),
+            cancellationToken).ConfigureAwait(false);
 
         for (var index = 0; index < plans.Count; index++)
         {
@@ -419,10 +428,17 @@ internal sealed class TestStage : IForgeStageRunner
 internal sealed class DiagnoseStage : IForgeStageRunner
 {
     private readonly IForgeJudge _judge;
+    private readonly ForgeSystemOne _systemOne;
 
-    /// <summary>Builds the stage over the judge seam.</summary>
-    public DiagnoseStage(IForgeJudge judge) =>
+    /// <summary>
+    /// Builds the stage over the judge seam. <paramref name="systemOne"/> is the forge's own circuit (#435): on, it
+    /// reads the output against each acceptance criterion after the judge, for the user only; null asks nothing.
+    /// </summary>
+    public DiagnoseStage(IForgeJudge judge, ForgeSystemOne? systemOne = null)
+    {
         _judge = judge ?? throw new ArgumentNullException(nameof(judge));
+        _systemOne = systemOne ?? ForgeSystemOne.None;
+    }
 
     /// <inheritdoc />
     public ForgeState Stage => ForgeState.Diagnose;
@@ -462,6 +478,11 @@ internal sealed class DiagnoseStage : IForgeStageRunner
         session.SaveArtifact(ForgeSession.VerdictFileName, verdict);
 
         EmitVerdictReady(events, verdict, run);
+
+        // System One's reading of each criterion (#435), after the judge: for the user only, never in verdict.json,
+        // so the arbitration and --auto read the judge's verdict alone.
+        if (run.Success && !string.IsNullOrWhiteSpace(run.Output))
+            usage = usage.Plus(await _systemOne.ReadCriteriaAsync(events, brief, run.Output, cancellationToken).ConfigureAwait(false));
 
         return new ForgeStageOutcome { Trigger = ForgeTrigger.Diagnosed, Usage = usage };
     }

@@ -136,6 +136,12 @@ function stableHeader() {
         lines.push("  system_one_decide, when the catalogue lists it).");
       }
     }
+    // System One's advice on the process (#435): present only when the forge asked and p >= 0.6.
+    if (input.processHint && input.processHint.process) {
+      lines.push("- Suggestion only: a decision model rates '" + input.processHint.process + "' as the process that fits");
+      lines.push("  this brief (p = " + input.processHint.p + "). Weigh it, then choose crew.process yourself:");
+      lines.push("  it is advice, never a rule, and the rationale stays yours.");
+    }
     lines.push("- Hand-offs: a file one task writes for another is that task's deliverable, and");
     lines.push("  the task that reads it lists the writer in dependencies; a task names no other");
     lines.push("  file of the deliverable folders, except files already present. A folder is fine when a");

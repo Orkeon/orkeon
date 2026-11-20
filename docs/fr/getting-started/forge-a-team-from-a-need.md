@@ -101,6 +101,30 @@ en `required` quand son plan porte une tâche de décision ou `system_one_decide
 `reopen` le relit dans le bloc `decision:` de l'équipe. Quand le budget s'épuise après le premier passage, la session
 s'arrête là et sa reprise ne lance que le second.
 
+## Les avis de System One
+
+Quand un modèle de décision est configuré et actif, la forge lui demande des avis pendant qu'elle conçoit l'équipe —
+à distinguer des décisions de l'équipe elle-même, ci-dessus. Quatre questions, chacune répondue par une ligne au
+terminal et un événement `systemone.answered` :
+
+```text
+◇ System One advises (brief, coverage): coverage: score 2.0 (confidence 0.90)
+◇ System One advises (blueprint, process): process: sequential (confidence 0.82)
+◇ System One advises (test, estimate): estimate: yes (p 0.74)
+◇ System One advises (diagnose, criteria): A1: yes (p 0.91)
+```
+
+- **coverage**, une fois le brief soumis : couvre-t-il la demande telle que vous l'avez formulée (`misses`,
+  `partial`, `covers`) ? Pour vous seul : le brief reste tel que l'assistant l'a écrit.
+- **process**, avant le plan : quel processus convient au brief, parmi ceux que permet le mode de décision de
+  l'équipe. À une probabilité de 0,6 ou plus, l'assistant le reçoit comme une suggestion ; son propre choix tient.
+- **estimate**, avant l'essai : l'équipe le mènera-t-elle à bien en satisfaisant ses critères ?
+- **criteria**, après le juge : une lecture par critère d'acceptation. Jamais écrite dans `verdict.json`.
+
+Rien de cela ne change le verdict, `passing`, l'arbitrage ni `--auto` ; les jetons comptent contre le budget et
+apparaissent sous `systemOneTokens`. `--no-decision` éteint ces avis pour une exécution, sans toucher l'essai d'une
+équipe `optional` ou `required`, qui garde le circuit de décision de l'hôte.
+
 ## L'adopter
 
 ```bash
@@ -125,6 +149,7 @@ Lancez-la par son propre script — `~/solutions/veille-fournisseur/run.sh`. Un 
 
 | Option | S'applique à | Effet |
 |---|---|---|
+| `--no-decision` | une nouvelle session, `forge resume` | La forge ne demande rien à System One pour ses propres avis (ci-dessus) ; l'essai de l'équipe ne change pas. |
 | `--read <dir>` | une nouvelle session, `forge resume` | Le dossier que l'essai lit derrière le premier dossier d'entrée relié à aucun dossier réel (`/workspace` par défaut), à la place du répertoire de travail — pour pointer un essai sur les documents que l'équipe doit lire ; les sessions restent sous le répertoire de travail. |
 | `--reference <id>` | une nouvelle session | Compose l'équipe à partir d'un cas d'usage du catalogue (`orkeon usecases list`) : la structure de sa crew sert de modèle à l'assistant, et la session, `forge.json` et `FORGE.md` l'enregistrent. |
 | `--lang <code>` | une nouvelle session, `forge resume` | La langue dans laquelle l'assistant converse et nomme l'équipe (`fr`, `en`, `es`, `de`, `zh` ; l'anglais par défaut) — jusqu'à ce que vous écriviez dans une autre langue ou le demandiez. |

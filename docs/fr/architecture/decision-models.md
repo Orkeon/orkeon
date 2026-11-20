@@ -493,6 +493,17 @@ seule, jamais de lui-même.
 - **Tool** — `system_one_decide` permet à un agent de poser des questions `choice`, `score` et
   `noul` ([Inventaire des outils](../tools/inventory.md)) ; `box` est refusé. Circuit coupé, il est
   retenu.
+- **La forge** — `orkeon forge` demande à System One ses propres avis pendant qu'elle conçoit une équipe : un
+  `score` de la couverture de la demande par le brief, un `choice` de processus (transmis à l'assistant sous
+  `processHint` à une probabilité de 0,6 ou plus, parmi les processus que permet le mode de décision de l'équipe),
+  une estimation `noul` avant l'essai et un `noul` par critère d'acceptation après le juge. Chaque réponse est un
+  avis et ne déplace jamais le brief, le plan, le verdict ni l'arbitrage ; chaque appel est un événement
+  `systemone.answered`, ses jetons sont imputés au budget de la session (`systemOneTokens` dans `cost.updated`), et un
+  appel en échec donne un avertissement `FORGE-SYSTEMONE-FAILED`. Ces appels sont ceux de la forge, séparés de ceux
+  de l'essai : `--no-decision` (annoncé dans `session.started` par `forgeCircuit: off`, `forgeCircuitCause: switch`,
+  comme `settings` et `no-provider`) les éteint sans toucher le circuit de l'hôte du moteur, que suit l'essai d'une
+  équipe `optional` ou `required` ([la CLI](../reference/cli.md#orkeon-forge)). L'assistant et le juge ne nomment
+  aucun profil de décision.
 
 ## Limites
 

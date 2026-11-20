@@ -478,6 +478,16 @@ never on its own.
   off, it keeps the retrieval order.
 - **Tool** — `system_one_decide` lets an agent ask `choice`, `score` and `noul` questions
   ([Tool inventory](../tools/inventory.md)); `box` is refused. With the circuit off, it is withheld.
+- **The forge** — `orkeon forge` asks System One for its own advice while it designs a crew: a `score` of the
+  brief's coverage of the request, a `choice` of process (passed to the assistant as `processHint` at a probability
+  of 0.6 or more, among the processes the crew's decision mode allows), a `noul` estimate before the trial and one
+  `noul` per acceptance criterion after the judge. Every answer is advice and never moves the brief, the blueprint,
+  the verdict or the arbitration; each call is one `systemone.answered` event, its tokens are charged to the
+  session's budget (`systemOneTokens` on `cost.updated`), and a failed call is one `FORGE-SYSTEMONE-FAILED` warning.
+  These calls are the forge's own and are split from the trial's: `--no-decision` (announced on `session.started`
+  as `forgeCircuit: off`, `forgeCircuitCause: switch`, like `settings` and `no-provider`) turns them off without
+  touching the engine host's circuit, which the trial of an `optional` or `required` crew follows
+  ([the CLI](../reference/cli.md#orkeon-forge)). The assistant and the judge name no decision profile.
 
 ## Limits
 

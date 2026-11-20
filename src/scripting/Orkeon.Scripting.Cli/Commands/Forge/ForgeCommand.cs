@@ -100,6 +100,12 @@ internal sealed record ForgeCommandOptions
     /// </summary>
     public string? CrewDecision { get; init; }
 
+    /// <summary>
+    /// <c>--no-decision</c> (#435): the forge asks System One nothing for its own work. Never stored: each process
+    /// decides for itself, and the crew's trial keeps the engine host's circuit (<see cref="CrewDecision"/>).
+    /// </summary>
+    public bool NoDecision { get; init; }
+
     /// <summary><c>--events jsonl</c>: protocol on stdout, answers on stdin.</summary>
     public bool Events { get; init; }
 
@@ -350,6 +356,7 @@ internal sealed record ForgeCommandOptions
         "--edit" => options with { Edit = true },
         "--adopt" => options with { Adopt = true },
         "--check" => options with { Check = true },
+        "--no-decision" => options with { NoDecision = true },
         _ => null,
     };
 
@@ -430,6 +437,8 @@ internal sealed record ForgeCommandOptions
             "--read only applies to a new session or to `forge resume`."),
         ((o, _) => LanguageOutsideACycle(o),
             "--lang only applies to a new session or to `forge resume`."),
+        ((o, _) => o.NoDecision && (o.PromoteSlug is not null || o.List),
+            "--no-decision only applies to a new session or to `forge resume`."),
         ((o, _) => ReferenceOutsideANewSession(o),
             "--reference only applies to a new session: a session keeps the reference it was created with."),
         ((o, needWords) => o.ReopenDirectory is not null && ShapesACycleOrNeed(o, needWords),
@@ -468,7 +477,7 @@ internal sealed record ForgeCommandOptions
     /// <summary>Whether <c>rephrase</c> was given an option other than <c>--events</c> and <c>--settings</c>.</summary>
     private static bool RephraseWithOptions(ForgeCommandOptions o) =>
         o.Rephrase
-        && (o.Format is not null || o.CrewDecision is not null || o.Auto || o.Dry || o.PackDirectory is not null
+        && (o.Format is not null || o.CrewDecision is not null || o.NoDecision || o.Auto || o.Dry || o.PackDirectory is not null
             || o.MaxIterations is not null || o.MaxTokens is not null || o.MaxSeconds is not null
             || o.ReadDirectory is not null || o.Reference is not null || o.Edit || o.Adopt);
 
@@ -486,7 +495,7 @@ internal sealed record ForgeCommandOptions
 
     /// <summary>Whether any option that shapes a cycle was passed.</summary>
     private static bool ShapesACycle(ForgeCommandOptions o) =>
-        o.Format is not null || o.CrewDecision is not null || o.Auto || o.Dry || o.PackDirectory is not null
+        o.Format is not null || o.CrewDecision is not null || o.NoDecision || o.Auto || o.Dry || o.PackDirectory is not null
         || o.SettingsPath is not null || o.MaxIterations is not null
         || o.MaxTokens is not null || o.MaxSeconds is not null;
 
@@ -772,6 +781,11 @@ internal static class ForgeCommand
         if (await RefuseUnavailableDecisionAsync(console, events, session, hostCircuit, options).ConfigureAwait(false) is { } refusal)
             return refusal;
 
+        // The forge's own System One circuit (#435), resolved once for this process and never stored: --no-decision
+        // turns it off without touching the host, so the trial above keeps hostCircuit whatever the switch says.
+        var systemOne = ForgeSystemOne.Resolve(options.NoDecision, host.Services);
+        events.SystemOne = systemOne;
+
         var packPath = ForgePack.Ensure(session.Directory, options.PackDirectory);
         var assistant = new ForgeCrewAssistant(host.Services, session, packPath, reference: reference, language: options.Language);
 
@@ -804,14 +818,14 @@ internal static class ForgeCommand
             session,
             events,
             [
-                BriefStageOf(assistant, channel, options, resumed, host),
-                new BlueprintStage(assistant),
+                BriefStageOf(assistant, channel, options, resumed, host, systemOne),
+                new BlueprintStage(assistant, systemOne),
                 new RenderStage(),
                 new ValidateStage(knownTools),
                 new TestStage(new ForgeCrewTestBench(host.Services, workspace: workspace, readRoot: readRoot,
                     mailAuthor: new ForgeTrialMailAuthor(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>())),
-                    observer, hostCircuit),
-                new DiagnoseStage(new LlmForgeJudge(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>())),
+                    observer, hostCircuit, systemOne),
+                new DiagnoseStage(new LlmForgeJudge(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>()), systemOne),
                 // A resume that lands AT the arbitration (a reopen, or an interruption
                 // there) re-announces the stored verdict before asking again.
                 new VerdictStage(options.Auto, channel, knownTools,
@@ -927,14 +941,15 @@ internal static class ForgeCommand
     /// does).
     /// </summary>
     private static BriefStage BriefStageOf(
-        ForgeCrewAssistant assistant, IForgeUserChannel channel, ForgeCommandOptions options, bool resumed, Microsoft.Extensions.Hosting.IHost host)
+        ForgeCrewAssistant assistant, IForgeUserChannel channel, ForgeCommandOptions options, bool resumed,
+        Microsoft.Extensions.Hosting.IHost host, ForgeSystemOne systemOne)
     {
         var trialPathValidator = options.Dry
             ? null
             : host.Services.GetRequiredService<Orkeon.Domain.Tools.Security.IPathValidator>();
         return new BriefStage(
             assistant, channel, resumed ? null : options.Need,
-            autoConfirmFolders: options.Auto, trialPathValidator: trialPathValidator);
+            autoConfirmFolders: options.Auto, trialPathValidator: trialPathValidator, systemOne: systemOne);
     }
 
     /// <summary>

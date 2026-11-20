@@ -238,6 +238,12 @@ internal readonly record struct ForgeUsageSnapshot(
     /// <summary>Both directions together — the one number the budget meters.</summary>
     public long TotalTokens => PromptTokens + CompletionTokens;
 
+    /// <summary>
+    /// How much of the sum the forge's own System One calls spent (#435): already counted in both directions,
+    /// shown apart so a client can tell the decision model's share.
+    /// </summary>
+    public long SystemOneTokens { get; init; }
+
     /// <summary>Whether any part of this was approximated rather than reported.</summary>
     public bool HasEstimate => EstimatedTokens > 0;
 
@@ -245,13 +251,19 @@ internal readonly record struct ForgeUsageSnapshot(
     public ForgeUsageSnapshot Since(ForgeUsageSnapshot before) => new(
         PromptTokens - before.PromptTokens,
         CompletionTokens - before.CompletionTokens,
-        EstimatedTokens - before.EstimatedTokens);
+        EstimatedTokens - before.EstimatedTokens)
+    {
+        SystemOneTokens = SystemOneTokens - before.SystemOneTokens,
+    };
 
     /// <summary>This reading plus <paramref name="other"/> — a stage accumulating its turns.</summary>
     public ForgeUsageSnapshot Plus(ForgeUsageSnapshot other) => new(
         PromptTokens + other.PromptTokens,
         CompletionTokens + other.CompletionTokens,
-        EstimatedTokens + other.EstimatedTokens);
+        EstimatedTokens + other.EstimatedTokens)
+    {
+        SystemOneTokens = SystemOneTokens + other.SystemOneTokens,
+    };
 }
 
 /// <summary>

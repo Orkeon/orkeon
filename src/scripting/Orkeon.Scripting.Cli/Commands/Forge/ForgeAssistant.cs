@@ -30,6 +30,12 @@ internal sealed record ForgeAssistantRequest
     /// prompt carries them untranslated (SPEC §8.4).
     /// </summary>
     public IReadOnlyList<string>? Errors { get; init; }
+
+    /// <summary>
+    /// System One's suggestion of a process (#435, Blueprint phase), when the forge asked and the answer reached the
+    /// threshold; the assistant reads it as a suggestion only.
+    /// </summary>
+    public ForgeProcessHint? ProcessHint { get; init; }
 }
 
 /// <summary>

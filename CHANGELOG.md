@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `orkeon forge --no-decision`: the forge's own System One advice, and a switch to turn it off (#435)
+
+With a decision model configured and on, the forge now asks System One for advice while it designs a crew: the
+brief's coverage of the request (`score`), the process that fits the brief (`choice`, passed to the assistant as
+`processHint` at p ≥ 0.6 and only among the processes `--crew-decision` allows), an estimate before the trial
+(`noul`) and one reading per acceptance criterion after the judge (`noul`). The advice never changes `brief.json`,
+the blueprint, `verdict.json`, `passing`, the arbitration or `--auto`. Each call is a new `systemone.answered` event
+(`stage`, `use`, `questions`, `answers`, `model`, `inputTokens`, `outputTokens`, `durationMs`); its tokens are
+charged to the budget and count against `--max-tokens`, and `cost.updated` gains `systemOneTokens`. A failed call is
+one `FORGE-SYSTEMONE-FAILED` warning and the cycle goes on. `session.started` gains `forgeCircuit` (`on`|`off`) and
+`forgeCircuitCause` (`switch`, `settings`, `no-provider`). `--no-decision`, on a new session or a resume and never
+stored, turns the advice off without touching the trial of the crew, which keeps the engine host's circuit.
+
 ### Added — `orkeon forge --crew-decision none|optional|required` designs a crew that decides (#431)
 
 The forge now designs crews that use System One through the crew-level `decision: { mode }` and the `without:`

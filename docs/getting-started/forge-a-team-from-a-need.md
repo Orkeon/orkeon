@@ -98,6 +98,30 @@ The promoted team records it in `forge.json`, and `FORGE.md` and the launcher st
 the crew's `decision:` block. When the budget runs out after the first pass, the session stops there and its resume
 runs the second pass only.
 
+## System One's advice
+
+When a decision model is configured and on, the forge asks it for advice while it designs the team — distinct from
+the crew's own decisions above. Four questions, each answered as one line in the terminal and one
+`systemone.answered` event:
+
+```text
+◇ System One advises (brief, coverage): coverage: score 2.0 (confidence 0.90)
+◇ System One advises (blueprint, process): process: sequential (confidence 0.82)
+◇ System One advises (test, estimate): estimate: yes (p 0.74)
+◇ System One advises (diagnose, criteria): A1: yes (p 0.91)
+```
+
+- **coverage**, once the brief is submitted: does it cover the request as you stated it (`misses`, `partial`,
+  `covers`)? For you only: the brief stays as the assistant wrote it.
+- **process**, before the plan: which process fits the brief, among those the crew's decision mode allows. At a
+  probability of 0.6 or more the assistant receives it as a suggestion; its own choice stands.
+- **estimate**, before the try: will the team complete it and meet its criteria?
+- **criteria**, after the judge: one reading per acceptance criterion. Never written into `verdict.json`.
+
+None of it changes the verdict, `passing`, the arbitration or `--auto`; the tokens count against the budget and
+appear as `systemOneTokens`. `--no-decision` turns this advice off for one run, without touching the trial of an
+`optional` or `required` crew, which keeps the decision circuit of the host.
+
 ## Adopt it
 
 ```bash
@@ -122,6 +146,7 @@ Run it with its own launcher — `~/solutions/supplier-watch/run.sh`. A bare `or
 
 | Option | Applies to | What it does |
 |---|---|---|
+| `--no-decision` | a new session, `forge resume` | The forge asks System One nothing for its own advice (below); the crew's own trial is unchanged. |
 | `--read <dir>` | a new session, `forge resume` | The folder the trial reads behind the first input folder no real folder was bound to (`/workspace` by default), in place of the working directory — point a trial at the documents the team is meant to read; the sessions stay under the working directory. |
 | `--reference <id>` | a new session | Composes the team from a use case of the catalogue (`orkeon usecases list`): its crew's structure is the assistant's model, and the session, `forge.json` and `FORGE.md` record it. |
 | `--lang <code>` | a new session, `forge resume` | The language the assistant converses in and names the team in (`fr`, `en`, `es`, `de`, `zh`; English by default) — until you write in another language or ask for one. |
