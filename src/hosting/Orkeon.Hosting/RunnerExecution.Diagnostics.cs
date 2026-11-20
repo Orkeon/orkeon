@@ -26,7 +26,9 @@ public static partial class RunnerExecution
     /// probing the LLM endpoint or running any kickoff. Prints
     /// <c>VALIDATION OK: &lt;config&gt; (agents=N, tasks=M, tools resolved=K)</c> to stdout on
     /// success (exit 0); on any load failure prints <c>VALIDATION FAILED: &lt;config&gt;</c> plus
-    /// the error to stderr and returns exit 1.
+    /// the error to stderr and returns exit 1. A tool the host withholds (<c>system_one_decide</c> with
+    /// the decision circuit off, #433) is not a load failure: it is a <c>WARNING:</c> line on stderr,
+    /// left out of the tools resolved.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Validation fault barrier: any crew-load failure (unknown tool, malformed YAML, adapter error) is reported as a validation failure with exit code 1 rather than crashing the runner.")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
@@ -44,6 +46,9 @@ public static partial class RunnerExecution
             // Validation must never touch the RAG index: loading the crew skips the
             // ingestion of rag:-declared collections (CrewFactoryOptions). The factory's
             // deliverable warning is off too: the WARNING: lines below say each finding once.
+            // A tool the host withholds (system_one_decide with the decision circuit off, #433) is a
+            // WARNING: line, not a load failure, and is not counted among the tools resolved.
+            var withheld = new List<string>();
             void ConfigureValidationServices(HostBuilderContext context, IServiceCollection services)
             {
                 configureServices?.Invoke(context, services);
@@ -51,6 +56,11 @@ public static partial class RunnerExecution
                 {
                     o.PrepareRagCollections = false;
                     o.WarnOnDeliverableTools = false;
+                    o.OnWithheldTool = message =>
+                    {
+                        lock (withheld)
+                            withheld.Add(message);
+                    };
                 });
             }
 
@@ -120,6 +130,11 @@ public static partial class RunnerExecution
                     tasks, agents, crew.ProcessType, crew.ManagerAgentId);
                 foreach (var finding in findings)
                     await console.ErrorOutput.WriteLineAsync($"WARNING: {finding.Message}").ConfigureAwait(false);
+                string[] withheldTools;
+                lock (withheld)
+                    withheldTools = [.. withheld.Distinct(StringComparer.Ordinal)];
+                foreach (var message in withheldTools)
+                    await console.ErrorOutput.WriteLineAsync($"WARNING: {message}").ConfigureAwait(false);
 
                 await console.Output.WriteLineAsync(
                     $"VALIDATION OK: {configPath} (agents={crew.Agents.Count}, tasks={crew.Tasks.Count}, tools resolved={toolsResolved})").ConfigureAwait(false);

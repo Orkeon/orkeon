@@ -34,4 +34,14 @@ public sealed class CrewFactoryOptions
     /// turns it off: it prints the same findings as its own <c>WARNING:</c> lines, once each.
     /// </summary>
     public bool WarnOnDeliverableTools { get; set; } = true;
+
+    /// <summary>
+    /// Receives, as one sentence (<c>tool 'system_one_decide' withheld: the decision circuit is off:
+    /// --no-decision</c>), each tool a crew names that the host withholds (#433); null by default. When
+    /// set, a withheld tool is left out of the agent and the load goes on, whatever
+    /// <see cref="StrictTools"/> says: <c>orkeon run --validate</c> prints each as a <c>WARNING:</c> line.
+    /// Left null, a withheld tool fails a strict load with that sentence, and is logged and skipped
+    /// otherwise.
+    /// </summary>
+    public Action<string>? OnWithheldTool { get; set; }
 }

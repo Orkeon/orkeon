@@ -1071,7 +1071,8 @@ Le pipeline de requête, étape par étape :
   définie : `default`) ; `rag_eval` l'utilise pour un dataset qui ne nomme pas de collection et
   n'apporte pas de corpus.
 - **`Retrieval`** — les bornes de l'étape de retrieval ; **`Retrieval:Mmr`** — MMR opt-in.
-- **`Rerank`** — choix et profondeur du reranker.
+- **`Rerank`** — choix et profondeur du reranker. `Kind: decision` suit le circuit de décision : coupé, il garde
+  l'ordre de récupération, avec un avertissement ([Modèles de décision](../architecture/decision-models.md#chaque-consommateur-suit-le-circuit)).
 - **`Context`** — assemblage du contexte (ordre `edges` anti-Lost-in-the-Middle).
 - **`Groundedness`** — le hook de groundedness.
 - **`Generation`** — l'étape de génération citée.
@@ -1318,6 +1319,9 @@ sortie d'une tâche (`Phases`), un risque à `BlockThreshold` ou au-dessus bloqu
 répond pas `FailMode` tranche : `Closed` (défaut) refuse, `Open` laisse passer le texte ; les deux auditent
 `guardian.judge.unavailable`. Tant que la phase de sortie est gardée, le streaming d'une tâche attend le jugement. Il demande un modèle de décision (`AddOrkeonDecisionProvider`) ; activé
 sans lui, l'hôte refuse de démarrer.
+Le juge suit le circuit de décision (`--no-decision`, `Orkeon:Decision:Enabled=false`, aucun fournisseur) : coupé,
+`FailMode: Closed` refuse de démarrer en nommant la cause, et `Open` retire le juge avec un avertissement
+([Modèles de décision](../architecture/decision-models.md#chaque-consommateur-suit-le-circuit)).
 
 <!-- settings:Orkeon:Guardian -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Application.Configuration;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Tools;
@@ -53,7 +54,12 @@ public static class DecisionProviderServiceCollectionExtensions
         services.TryAddSingleton(provider);
         services.TryAddSingleton<SystemOneDecisionModel>();
         services.TryAddSingleton<IDecisionModel>(sp => sp.GetRequiredService<SystemOneDecisionModel>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, SystemOneDecideTool>());
+        // system_one_decide follows the decision circuit (#433): off, the tool is withheld - it resolves
+        // to null in the tool collection, skipped like a dropped plugin tool - and a crew that lists it
+        // is told why by the crew factory.
+        services.TryAddSingleton<SystemOneDecideTool>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, SystemOneDecideTool>(
+            sp => DecisionCircuit.Of(sp).Enabled ? sp.GetRequiredService<SystemOneDecideTool>() : null!));
         return services;
     }
 }

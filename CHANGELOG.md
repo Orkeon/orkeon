@@ -20,6 +20,23 @@ a limit, `running sum <sum> tokens over <n> calls, no limit`, in place of `<sum>
 script that relied on the implicit caps names them, for instance
 `budget({ spawnedAgents: 10, toolCalls: 15, tokens: 16000, wallTime: "5m" })`.
 
+### Changed — with the decision circuit off, no consumer asks the decision model **[breaking]** (#433)
+
+**Before**: `--no-decision`, `Orkeon:Decision:Enabled=false` or a host with no decision provider stopped the
+decision tasks only: the `system_one_decide` tool, the stages of a decision profile, the LLM judge
+(`Orkeon:Guardian:Llm`) and the `decision` reranker kept calling the model, or failed on its absence (a decision
+profile could not be built without one). **Now**: the circuit off makes no `IDecisionModel` call, whatever the cause,
+and each consumer that degrades says so in one warning naming the cause
+(`the decision circuit is off: --no-decision`, `...: Orkeon:Decision:Enabled=false`,
+`...: no decision provider resolved`): `system_one_decide` is withheld, so a crew that lists it fails to load naming
+the tool and the cause (a `WARNING:` line under `--validate`, exit 0); a decision profile is built without the model,
+its calls going to the `route`'s `fallback`, else to its `target`, with no escalation, and a `guard` lets them on
+except in a `failClosed` profile, which blocks them; the LLM judge refuses to start under `FailMode: Closed` and is
+left out under `Open`; the `decision` reranker keeps the retrieval order. **What to do**: a crew that lists
+`system_one_decide` and must run with the circuit off drops the tool from its agents; a host that runs the LLM judge
+with the circuit off sets `Orkeon:Guardian:Llm:FailMode` to `Open` or turns the judge off. See
+[Decision models](docs/architecture/decision-models.md#every-consumer-follows-the-circuit).
+
 ### Fixed
 
 - **The `firefox` tool no longer fails to start on a loaded machine whose `StartupTimeoutSeconds` covers the

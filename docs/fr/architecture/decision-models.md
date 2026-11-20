@@ -355,6 +355,22 @@ Circuit coupé, chaque tâche de décision répond par son **repli**, sans requ�
   (`Decision task 'triage' has neither a fallback nor an otherwise task.`).
 - Une crew sans tâche de décision tourne de la même façon quel que soit le circuit.
 
+#### Chaque consommateur suit le circuit
+
+Circuit coupé, l'exécution ne fait **aucun** appel à `IDecisionModel`, quelle qu'en soit la cause. La
+cause est nommée dans chaque message, sous la forme `the decision circuit is off: <cause>`, la cause
+étant `--no-decision`, `Orkeon:Decision:Enabled=false` ou `no decision provider resolved` ; quand
+l'option et le réglage valent tous deux, c'est l'option qui est nommée. Chaque consommateur qui se
+dégrade le dit en un avertissement :
+
+| Consommateur | Circuit coupé |
+| --- | --- |
+| Tâche de décision | Répond par son repli, comme ci-dessus. |
+| Outil `system_one_decide` | Retenu : une crew qui le liste échoue au chargement, en nommant l'outil et la cause (`tool 'system_one_decide' withheld: the decision circuit is off: --no-decision`). Sous `--validate`, c'est une ligne `WARNING:`, l'outil n'est pas compté dans `tools resolved` et le code de sortie reste 0. |
+| Profil de décision | Construit sans le modèle : ses appels vont au `fallback` de la `route`, sinon à la `target` ; un `verify` n'escalade jamais ; un `guard` laisse passer l'appel, sauf dans un profil `failClosed`, où chaque appel est bloqué. Un avertissement à la première résolution du profil. |
+| Juge LLM (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuse de démarrer, en nommant la cause ; `Open` retire le juge du pipeline, avec un avertissement, et les autres gardiens restent. |
+| Reranker `decision` | Laisse passer les passages dans leur ordre de récupération, comme `none`, avec un avertissement. |
+
 ### Les limites de Jev et le contexte long
 
 Jev prend 64 000 jetons par requête, 32 000 par question, et 262 000 en contexte long. Un choice compte
@@ -383,10 +399,14 @@ seule, jamais de lui-même.
   retardé jusqu'à ce que la sortie soit autorisée, et une sortie bloquée n'est jamais streamée. La phase
   `Output` ne couvre que les tâches de crew ; un `ctx.llm.act` scripté traverse la phase `Input` et sa
   réponse n'est pas jugée.
+  Circuit de décision coupé, un juge `Closed` refuse de démarrer et un juge `Open` est retiré
+  ([Chaque consommateur suit le circuit](#chaque-consommateur-suit-le-circuit)).
 - **Reranker RAG** — `rerank.kind: decision` pose un `noul` par passage dans
-  une seule requête, les passages coupés à 4 000 caractères, et les classe par probabilité.
+  une seule requête, les passages coupés à 4 000 caractères, et les classe par probabilité. Circuit
+  coupé, il garde l'ordre de récupération.
 - **Tool** — `system_one_decide` permet à un agent de poser des questions `choice`, `score` et
-  `noul` ([Inventaire des outils](../tools/inventory.md)) ; `box` est refusé.
+  `noul` ([Inventaire des outils](../tools/inventory.md)) ; `box` est refusé. Circuit coupé, il est
+  retenu.
 
 ## Limites
 

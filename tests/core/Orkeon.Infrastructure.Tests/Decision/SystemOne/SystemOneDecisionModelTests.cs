@@ -511,8 +511,8 @@ public class SystemOneDecisionModelTests
         services.AddOrkeonDecisionProvider(configuration, DecisionProviderDescriptor.TypeSafe);
         services.AddOrkeonDecisionProvider(configuration, DecisionProviderDescriptor.TypeSafe);
 
-        var tool = Assert.Single(services, d => d.ServiceType == typeof(Orkeon.Domain.Tools.IBaseTool)
-            && d.ImplementationType == typeof(Orkeon.Infrastructure.Tools.SystemOneDecideTool));
+        // The tool is offered through a factory that follows the decision circuit (#433).
+        var tool = Assert.Single(services, d => d.ServiceType == typeof(Orkeon.Domain.Tools.IBaseTool));
         Assert.Equal(ServiceLifetime.Singleton, tool.Lifetime);
         Assert.Single(services, d => d.ServiceType == typeof(IDecisionModel));
     }

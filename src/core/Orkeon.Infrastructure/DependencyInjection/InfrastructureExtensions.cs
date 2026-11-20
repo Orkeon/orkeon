@@ -872,17 +872,30 @@ public static class InfrastructureExtensions
 
             pipeline.AddGuard(GuardPhase.Input, sp.GetRequiredService<InputGuard>());
             // The LLM judge, beside the built-in guards: the decision model judges the input and the
-            // output of a task (Orkeon:Guardian:Llm, off by default). Enabled without a decision model
-            // is a refusal to start: a judge that cannot judge must not leave the phase unguarded.
+            // output of a task (Orkeon:Guardian:Llm, off by default). It follows the decision circuit
+            // (#433): off, a fail-closed judge refuses to start - a judge that cannot judge must not
+            // leave the phase unguarded - and a fail-open one is left out with one warning.
             if (options.Llm.Enabled)
             {
-                var model = sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>()
-                    ?? throw new InvalidOperationException(
-                        $"{GuardianLlmOptions.SectionName}:Enabled is true but no decision model is registered: " +
-                        "call AddOrkeonDecisionProvider, or turn the LLM judge off.");
-                var judge = new LlmJudgeGuard(model, Options.Create(options.Llm), sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), auditLogger);
-                foreach (var phase in new[] { GuardPhase.Input, GuardPhase.Output }.Where(options.Llm.Judges))
-                    pipeline.AddGuard(phase, judge);
+                var circuit = Orkeon.Application.Crew.Execution.DecisionCircuit.Of(sp);
+                if (circuit.Enabled)
+                {
+                    var model = sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IDecisionModel>();
+                    var judge = new LlmJudgeGuard(model, Options.Create(options.Llm), sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), auditLogger);
+                    foreach (var phase in new[] { GuardPhase.Input, GuardPhase.Output }.Where(options.Llm.Judges))
+                        pipeline.AddGuard(phase, judge);
+                }
+                else if (options.Llm.FailMode == GuardianJudgeFailMode.Closed)
+                {
+                    throw new InvalidOperationException(
+                        $"{GuardianLlmOptions.SectionName}:Enabled is true with FailMode Closed but {circuit.OffReason}: " +
+                        "a fail-closed judge cannot judge. Turn the circuit on (a decision provider, Orkeon:Decision:Enabled, no --no-decision), " +
+                        $"set {GuardianLlmOptions.SectionName}:FailMode to Open, or turn the LLM judge off.");
+                }
+                else
+                {
+                    DecisionCircuitLog.JudgeLeftOut(sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), circuit.OffReason!);
+                }
             }
             pipeline.AddGuard(GuardPhase.ToolExecution, sp.GetRequiredService<ToolGuard>());
             pipeline.AddGuard(GuardPhase.Delegation, sp.GetRequiredService<DelegationGuard>());
@@ -891,13 +904,17 @@ public static class InfrastructureExtensions
         });
         services.TryAddSingleton<IGuardianPipeline>(sp => sp.GetRequiredService<GuardianPipeline>());
 
-        // The decision circuit: on when a decision model is registered and Orkeon:Decision:Enabled allows it.
+        // The decision circuit: on when Orkeon:Decision:Enabled allows it and a decision model is
+        // registered; off, it carries its cause - the settings before the missing provider. The
+        // --no-decision switch registers its own circuit after this one, and wins.
         services.AddOrkeonSettings<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>(Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.SectionName);
         services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionCircuit>(sp =>
         {
-            var enabled = sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is not null
-                && (sp.GetRequiredService<IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>>().Value.Enabled);
-            return new Orkeon.Application.Crew.Execution.DecisionCircuit(enabled);
+            if (!sp.GetRequiredService<IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>>().Value.Enabled)
+                return Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings);
+            return sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is null
+                ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider)
+                : Orkeon.Application.Crew.Execution.DecisionCircuit.On;
         });
         services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(sp => new Orkeon.Application.Crew.Execution.DecisionTaskRunner(
             sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>(),

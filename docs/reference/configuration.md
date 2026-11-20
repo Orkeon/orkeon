@@ -1035,7 +1035,8 @@ The query pipeline, stage by stage:
 - **`Collection`** — the collection `rag_search` queries when the agent names none (unset:
   `default`); `rag_eval` uses it for a dataset that names no collection and brings no corpus.
 - **`Retrieval`** — the bounds of the retrieval stage; **`Retrieval:Mmr`** — opt-in MMR.
-- **`Rerank`** — reranker selection and depth.
+- **`Rerank`** — reranker selection and depth. `Kind: decision` follows the decision circuit: off, it keeps the
+  retrieval order, with one warning ([Decision models](../architecture/decision-models.md#every-consumer-follows-the-circuit)).
 - **`Context`** — context assembly (anti-Lost-in-the-Middle `edges` ordering).
 - **`Groundedness`** — the groundedness hook.
 - **`Generation`** — the cited generation stage.
@@ -1277,6 +1278,9 @@ output of a task (`Phases`), a risk at or over `BlockThreshold` blocks, and when
 `FailMode` decides: `Closed` (default) refuses, `Open` lets the text in; both audit
 `guardian.judge.unavailable`. While the output phase is guarded a task's streaming waits for the judgement. It needs a decision model (`AddOrkeonDecisionProvider`); enabled without
 one, the host refuses to start.
+The judge follows the decision circuit (`--no-decision`, `Orkeon:Decision:Enabled=false`, no provider): off,
+`FailMode: Closed` refuses to start naming the cause, and `Open` leaves the judge out with one warning
+([Decision models](../architecture/decision-models.md#every-consumer-follows-the-circuit)).
 
 <!-- settings:Orkeon:Guardian -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.

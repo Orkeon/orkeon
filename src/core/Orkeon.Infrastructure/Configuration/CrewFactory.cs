@@ -34,6 +34,8 @@ public partial class CrewFactory : ICrewFactory
     private readonly Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? _ragBootstrapper;
     private readonly ICrewLinkRegistry? _linkRegistry;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
+    private readonly Orkeon.Application.Crew.Execution.DecisionCircuit? _decisionCircuit;
+    private readonly Action<string>? _onWithheldTool;
 
     /// <summary>Initializes a new instance of <see cref="CrewFactory"/>.</summary>
     /// <param name="loader">The crew definition loader.</param>
@@ -61,6 +63,11 @@ public partial class CrewFactory : ICrewFactory
     /// task naming a profile the host does not offer fails the load with the list of known ones
     /// (GAP-17). Null offers the default profile alone.
     /// </param>
+    /// <param name="decisionCircuit">
+    /// The host's decision circuit (registered by <c>AddOrkeonInfrastructure</c>): off, a crew naming
+    /// <c>system_one_decide</c> is told the tool is withheld and why, rather than that it is unknown
+    /// (#433). Null reports it as any missing tool.
+    /// </param>
 #pragma warning disable S107 // DI-composed factory: one optional collaborator per opt-in subsystem
     public CrewFactory(
         ICrewDefinitionLoader loader,
@@ -72,7 +79,8 @@ public partial class CrewFactory : ICrewFactory
         IOptions<CrewFactoryOptions>? options = null,
         Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? ragBootstrapper = null,
         ICrewLinkRegistry? linkRegistry = null,
-        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null)
+        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null,
+        Orkeon.Application.Crew.Execution.DecisionCircuit? decisionCircuit = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(loader);
@@ -93,6 +101,8 @@ public partial class CrewFactory : ICrewFactory
         _ragBootstrapper = ragBootstrapper;
         _linkRegistry = linkRegistry;
         _llmProfiles = llmProfiles;
+        _decisionCircuit = decisionCircuit;
+        _onWithheldTool = options?.Value.OnWithheldTool;
     }
 
     /// <inheritdoc />
@@ -557,8 +567,21 @@ public partial class CrewFactory : ICrewFactory
             return tools;
 
         List<string>? missing = null;
+        List<string>? withheld = null;
         foreach (var toolName in toolNames)
         {
+            if (WithheldReason(toolName) is { } reason)
+            {
+                var message = $"tool '{toolName}' withheld: {reason}";
+                if (_onWithheldTool is not null)
+                    _onWithheldTool(message);
+                else if (_strictTools)
+                    (withheld ??= []).Add(message);
+                else
+                    LogToolWithheld(toolName, reason);
+                continue;
+            }
+
             var tool = await _toolRegistry.GetToolByNameAsync(toolName, ct).ConfigureAwait(false);
             if (tool is not null)
             {
@@ -573,11 +596,23 @@ public partial class CrewFactory : ICrewFactory
             }
         }
 
+        if (withheld is { Count: > 0 })
+            throw new InvalidOperationException($"Crew configuration references {string.Join("; ", withheld)}.");
         if (_strictTools && missing is { Count: > 0 })
             throw await BuildMissingToolsExceptionAsync(missing, ct).ConfigureAwait(false);
 
         return tools;
     }
+
+    /// <summary>
+    /// Why the host withholds a tool a crew names, or null when it offers it: <c>system_one_decide</c>
+    /// with the decision circuit off (#433), whatever the cause - the switch, the settings, no provider.
+    /// </summary>
+    private string? WithheldReason(string toolName) =>
+        _decisionCircuit is { Enabled: false } circuit
+        && string.Equals(toolName, Orkeon.Infrastructure.Tools.SystemOneDecideTool.ToolName, StringComparison.OrdinalIgnoreCase)
+            ? circuit.OffReason
+            : null;
 
     private async Task<InvalidOperationException> BuildMissingToolsExceptionAsync(IReadOnlyList<string> missing, CancellationToken ct)
     {
@@ -607,5 +642,8 @@ public partial class CrewFactory : ICrewFactory
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Tool '{ToolName}' not found in registry; skipping.")]
     private partial void LogToolNotFoundInRegistry(object toolName);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Tool '{ToolName}' withheld: {Reason}; skipping.")]
+    private partial void LogToolWithheld(string toolName, string reason);
 
 }

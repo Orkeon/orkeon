@@ -69,6 +69,10 @@ public sealed class SystemOneDecideResponse
                   "a choice with its probabilities, a score on a scale, or the probability of a yes.")]
 public sealed class SystemOneDecideTool : ToolBase<SystemOneDecideRequest, SystemOneDecideResponse>
 {
+    /// <summary>The tool's name.</summary>
+    /// <remarks>The contract names the tool by the same literal, which the documentation checks read.</remarks>
+    public const string ToolName = "system_one_decide";
+
     private static readonly JsonSerializerOptions s_questions = new();
 
     private readonly IDecisionModel _model;

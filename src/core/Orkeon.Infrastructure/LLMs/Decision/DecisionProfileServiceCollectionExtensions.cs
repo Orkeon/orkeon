@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Configuration;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
@@ -27,8 +28,10 @@ public static class DecisionProfileServiceCollectionExtensions
     /// Registers each decision profile as an LLM profile a crew can name. The section is read and
     /// checked now: an unknown stage kind, a missing target or route, a threshold out of [0, 1], or
     /// a decision profile that names another decision profile fails the host build with the key to
-    /// fix. Whether a named profile exists is checked when the decision profile is first used, and
-    /// so is the <see cref="IDecisionModel"/> (<c>AddOrkeonDecisionProvider</c>).
+    /// fix. Whether a named profile exists is checked when the decision profile is first used. The
+    /// <see cref="IDecisionModel"/> (<c>AddOrkeonDecisionProvider</c>) is asked only while the decision
+    /// circuit is on (<see cref="DecisionCircuit.Of(IServiceProvider)"/>); off, the profile is built
+    /// without it and takes no decision (#433).
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The host configuration.</param>
@@ -196,9 +199,6 @@ public static class DecisionProfileServiceCollectionExtensions
     {
         var path = $"{DecisionProfilesOptions.SectionName}:Profiles:{name}";
         var registry = services.GetRequiredService<ILlmProfileRegistry>();
-        var model = services.GetService<IDecisionModel>()
-            ?? throw new InvalidOperationException(
-                $"{path}: no decision model is registered; name a provider in Orkeon:Decision:Provider (or fill the Orkeon:TypeSafe, Orkeon:Liquid or Orkeon:Kev section), or call AddOrkeonDecisionProvider.");
         var loggerFactory = services.GetService<ILoggerFactory>() ?? NullLoggerFactory.Instance;
 
         ILlmProvider Resolve(string profileName) =>
@@ -206,6 +206,11 @@ public static class DecisionProfileServiceCollectionExtensions
                 ? registry.Resolve(profileName).Provider
                 : throw new InvalidOperationException($"{path}: the profile '{profileName}' is not defined.");
 
+        var circuit = DecisionCircuit.Of(services);
+        if (!circuit.Enabled)
+            return BuildWithoutDecisions(name, profile, circuit.OffReason!, Resolve, loggerFactory, services.GetService<IAuditLogger>());
+
+        var model = services.GetRequiredService<IDecisionModel>();
         var request = new List<IDecisionStage>();
         var response = new List<IDecisionStage>();
         for (var i = 0; i < profile.Stages.Count; i++)
@@ -219,6 +224,60 @@ public static class DecisionProfileServiceCollectionExtensions
             profile.FailClosed,
             loggerFactory.CreateLogger<DecisionLlmProvider>(),
             services.GetService<IAuditLogger>());
+    }
+
+    /// <summary>
+    /// The profile with the decision circuit off (#433): no stage asks the model. A route acts as an
+    /// answer under its floor - its fallback when it declares one, else the profile so far - a verify
+    /// never escalates, and a guard lets the call go on, unless the profile is fail-closed: a guard
+    /// that cannot judge then blocks every call, as a failing stage would. Every profile the stages
+    /// name is still checked, so a profile that is wrong with the circuit on is wrong with it off.
+    /// One warning says it, when the profile is first resolved.
+    /// </summary>
+    private static DecisionLlmProvider BuildWithoutDecisions(
+        string name,
+        DecisionProfileOptions profile,
+        string reason,
+        Func<string, ILlmProvider> resolve,
+        ILoggerFactory loggerFactory,
+        IAuditLogger? audit)
+    {
+        var to = profile.Target.Trim();
+        var guarded = false;
+        foreach (var stage in profile.Stages)
+        {
+            switch (KindOf(stage.Kind))
+            {
+                case RouteKind:
+                    foreach (var route in stage.Routes.Keys)
+                        resolve(route);
+                    if (!string.IsNullOrWhiteSpace(stage.Fallback))
+                        to = stage.Fallback.Trim();
+                    break;
+                case GuardKind:
+                    guarded = true;
+                    break;
+                case VerifyKind:
+                    resolve(stage.EscalateTo!.Trim());
+                    break;
+            }
+        }
+
+        var target = resolve(profile.Target.Trim());
+        var provider = string.Equals(to, profile.Target.Trim(), StringComparison.OrdinalIgnoreCase) ? target : resolve(to);
+        var logger = loggerFactory.CreateLogger<DecisionLlmProvider>();
+        IDecisionStage[] request = [];
+        if (guarded && profile.FailClosed)
+        {
+            request = [new CircuitOffGuardStage(reason)];
+            Orkeon.Infrastructure.Decision.DecisionCircuitLog.ProfileBlocksEveryCall(logger, name, reason);
+        }
+        else
+        {
+            Orkeon.Infrastructure.Decision.DecisionCircuitLog.ProfilePassesThrough(logger, name, reason, to);
+        }
+
+        return new DecisionLlmProvider(name, provider, new DecisionStages(request, []), resolve, profile.FailClosed, logger, audit);
     }
 
     /// <summary>Marks a service collection the profiles were added to.</summary>

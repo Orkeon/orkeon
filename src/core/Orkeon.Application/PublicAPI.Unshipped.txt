@@ -1,1 +1,10 @@
 #nullable enable
+Orkeon.Application.Crew.Execution.DecisionCircuit.Cause.get -> Orkeon.Application.Crew.Execution.DecisionCircuitCause?
+Orkeon.Application.Crew.Execution.DecisionCircuit.Cause.init -> void
+Orkeon.Application.Crew.Execution.DecisionCircuit.OffReason.get -> string?
+Orkeon.Application.Crew.Execution.DecisionCircuitCause
+Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider = 2 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
+Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings = 1 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
+Orkeon.Application.Crew.Execution.DecisionCircuitCause.Switch = 0 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
+static Orkeon.Application.Crew.Execution.DecisionCircuit.Of(System.IServiceProvider! services) -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+static Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause cause) -> Orkeon.Application.Crew.Execution.DecisionCircuit!

@@ -111,7 +111,10 @@ internal sealed class RunCommandOptions : CliOptions
         /// <summary>Switches the decision circuit off for this run, whatever the configuration says.</summary>
         [Option("no-decision", Required = false, Default = false,
             HelpText = "Switch the decision circuit off for this run, even when Orkeon:Decision:Enabled is true: "
-                       + "decision tasks answer from their fallback.")]
+                       + "no call reaches the decision model. Decision tasks answer from their fallback, system_one_decide "
+                       + "is withheld, decision profiles route to their fallback without escalation, a fail-closed LLM "
+                       + "judge refuses to start and a fail-open one is left out, the decision reranker keeps the "
+                       + "retrieval order. See docs/architecture/decision-models.md.")]
         public bool NoDecision { get; set; }
 
         /// <summary>Verbosity level 0-2 (aligned with YAML runner).</summary>

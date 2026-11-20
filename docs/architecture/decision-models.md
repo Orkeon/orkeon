@@ -344,6 +344,21 @@ marked **defaulted** (`defaulted` in the task's event; the question name `defaul
   (`Decision task 'triage' has neither a fallback nor an otherwise task.`).
 - A crew without a decision task runs the same whatever the circuit.
 
+#### Every consumer follows the circuit
+
+With the circuit off, the run makes **no** `IDecisionModel` call, whatever the cause. The cause is
+named in every message, as `the decision circuit is off: <cause>`, the cause being `--no-decision`,
+`Orkeon:Decision:Enabled=false` or `no decision provider resolved`; when the switch and the setting
+both hold, the switch is named. Each consumer that degrades says so in one warning:
+
+| Consumer | Circuit off |
+| --- | --- |
+| Decision task | Answers by its fallback, as above. |
+| `system_one_decide` tool | Withheld: a crew that lists it fails to load, naming the tool and the cause (`tool 'system_one_decide' withheld: the decision circuit is off: --no-decision`). Under `--validate` it is a `WARNING:` line, the tool is not counted in `tools resolved`, and the exit stays 0. |
+| Decision profile | Built without the model: its calls go to the `route`'s `fallback`, else to the `target`; a `verify` never escalates; a `guard` lets the call go on, except in a `failClosed` profile, where every call is blocked. One warning when the profile is first resolved. |
+| LLM judge (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuses to start, naming the cause; `Open` leaves the judge out of the pipeline, with one warning, and the other guards stay. |
+| `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
+
 ### Jev's limits and long context
 
 Jev takes 64,000 tokens per request, 32,000 per question, and 262,000 in long context. A choice holds
@@ -372,10 +387,13 @@ never on its own.
   until the judgement: streaming is delayed until the output is allowed, and a blocked output is
   never streamed. The `Output` phase covers crew tasks only; a scripted `ctx.llm.act` crosses the
   `Input` phase and its answer is not judged.
+  With the decision circuit off, a `Closed` judge refuses to start and an `Open` one is left out
+  ([Every consumer follows the circuit](#every-consumer-follows-the-circuit)).
 - **RAG reranker** — `rerank.kind: decision` asks one `noul` per passage in a
-  single request, passages cut at 4,000 characters, and orders them by probability.
+  single request, passages cut at 4,000 characters, and orders them by probability. With the circuit
+  off, it keeps the retrieval order.
 - **Tool** — `system_one_decide` lets an agent ask `choice`, `score` and `noul` questions
-  ([Tool inventory](../tools/inventory.md)); `box` is refused.
+  ([Tool inventory](../tools/inventory.md)); `box` is refused. With the circuit off, it is withheld.
 
 ## Limits
 

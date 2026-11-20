@@ -81,21 +81,6 @@ public class DecisionProfileRegistrationTests
         Assert.Contains("'strong' is not defined", ex.ToString(), StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task ShouldAskForTheDecisionModel_WhenNoneIsRegistered()
-    {
-        var services = new ServiceCollection()
-            .AddLogging()
-            .AddOrkeonLlmProfile("cheap", _ => new StubLlmProvider())
-            .AddOrkeonLlmProfile("strong", _ => new StubLlmProvider())
-            .AddOrkeonDecisionProfiles(Configuration(Triage));
-        await using var container = services.BuildServiceProvider();
-
-        var ex = Assert.ThrowsAny<Exception>(() => container.GetRequiredService<ILlmProfileRegistry>().Resolve("triage").Provider);
-
-        Assert.Contains("AddOrkeonDecisionProvider", ex.ToString(), StringComparison.Ordinal);
-    }
-
     [Theory]
     [InlineData("triage:Stages:0:Kind", "summarise", "is not a stage")]
     [InlineData("triage:Target", "other", "is a decision profile")]

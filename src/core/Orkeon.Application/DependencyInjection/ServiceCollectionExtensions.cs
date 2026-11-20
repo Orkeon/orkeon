@@ -153,7 +153,9 @@ public static class ServiceCollectionExtensions
             ExecutionOrchestrator orchestrator;
             if (chatClient != null)
             {
-                var tools = sp.GetServices<Domain.Tools.IBaseTool>();
+                // A tool the container withholds resolves to null (a dropped plugin tool, system_one_decide
+                // with the decision circuit off): skipped.
+                var tools = sp.GetServices<Domain.Tools.IBaseTool>().OfType<Domain.Tools.IBaseTool>().ToList();
                 var validationPipeline = sp.GetService<IOutputValidationPipeline>();
                 var parserFactory = sp.GetService<IOutputParserFactory>();
                 // The full constructor — native tool calling, deliverables — whenever output validation

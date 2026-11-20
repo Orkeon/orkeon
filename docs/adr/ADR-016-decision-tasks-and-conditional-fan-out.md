@@ -45,6 +45,8 @@ the next task had to parse.
 
    > Amendment 2026-10-31: the decision model behind a decision task may be TypeSafe, Liquid or Kev; the task, its circuit and its fallback do not change.
 
+   > Amendment 2026-11-20 (#433), on point 5: the circuit covers every consumer of the decision model, not the decision tasks alone. Off, whatever the cause (the switch, the setting, no provider), the run makes no `IDecisionModel` call: `system_one_decide` is withheld, a decision profile takes no decision (its `route` falls back, its `verify` never escalates, its `guard` lets the call on unless the profile is fail-closed), the LLM judge refuses to start when fail-closed and is left out when fail-open, and the `decision` reranker keeps the retrieval order. Every consumer reads the circuit through `DecisionCircuit.Of`, which names the cause (`DecisionCircuitCause`), and says it in one warning. See [Decision models](../architecture/decision-models.md#every-consumer-follows-the-circuit).
+
 ## Consequences
 
 - A decision task costs one request per evaluation; the only repeats are the adapter's retries on
