@@ -70,6 +70,16 @@ jobs:
       # above removes the runner's own npm (/usr/local/lib/node_modules), so Node is set up here.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4
         with: { node-version: '22' }
+      # The Slow ValidateTypeCheckTests (orkeon run --validate, #315, #424) SKIP when the
+      # compiler tools/scripting-typecheck pins is not bootstrapped, which made a green night
+      # that never ran them. The probe fails the job instead, and checks the pinned version.
+      - name: Bootstrap the scripting type checker and check its version
+        run: |
+          npm --prefix tools/scripting-typecheck ci --no-audit --no-fund
+          pinned="$(node -p "require('./tools/scripting-typecheck/package.json').dependencies.typescript")"
+          actual="$(tools/scripting-typecheck/node_modules/.bin/tsc -v)"
+          echo "$actual"
+          [ "$actual" = "Version $pinned" ] || { echo "expected tsc $pinned"; exit 1; }
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           # The restore fills packages/ (RestorePackagesPath, Directory.Build.props), not
