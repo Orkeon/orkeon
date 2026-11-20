@@ -359,6 +359,7 @@ both hold, the switch is named. Each consumer that degrades says so in one warni
 | LLM judge (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuses to start, naming the cause; `Open` leaves the judge out of the pipeline, with one warning, and the other guards stay. |
 | `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
 | Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` with the cause as `reason`. One warning per host. |
+| Agent routing (`llm.profile: auto`) | The task runs on the host's default profile, with no decision call; `agent.route` reports `reason: circuit-off`. One warning per host. |
 
 #### A crew's decision mode
 
@@ -479,6 +480,13 @@ never on its own.
   the task's text cut at 2,000 characters, and no skill body is sent. Every option at a probability of 0.3 or more
   is kept, the three most likely at most; `none` keeps no skill. With the circuit off, or when the call fails, the
   agent carries its `fallback` list ([`Orkeon:Skills`](../reference/configuration.md#orkeonskills)).
+- **Agent routing** — an agent with `llm.profile: auto` asks one `choice` at the start of each task, `profile`,
+  whose options are the rungs of `Orkeon:Decision:Route:Ladder`, cheapest first, each with what it is for (the
+  cheapest, a middle one, the most capable); the state is the agent's role and the task's text cut at 4,000
+  characters in the middle. The rung picked at a probability of 0.6 or more runs every call of the task; under it,
+  without an answer, or with the circuit off, the host's default profile does, and `agent.route` says why
+  ([`Orkeon:Decision:Route`](../reference/configuration.md#orkeondecisionroute)). This is one pick per task, not the
+  `route` stage of a decision profile, which picks a profile for each call.
 - **RAG reranker** — `rerank.kind: decision` asks one `noul` per passage in a
   single request, passages cut at 4,000 characters, and orders them by probability. With the circuit
   off, it keeps the retrieval order.

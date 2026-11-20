@@ -69,6 +69,8 @@ public static class DecisionProfileServiceCollectionExtensions
         foreach (var (name, profile) in options.Profiles)
         {
             var path = $"{DecisionProfilesOptions.SectionName}:Profiles:{name}";
+            if (LlmProfiles.IsAuto(name))
+                throw new InvalidOperationException(LlmProfiles.AutoReservedMessage(path));
             Named(options, path + ":Target", profile.Target, required: true);
             if (profile.Stages.Count == 0)
                 throw new InvalidOperationException($"{path}:Stages: a decision profile needs at least one stage.");

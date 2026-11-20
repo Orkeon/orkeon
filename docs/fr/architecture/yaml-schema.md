@@ -86,6 +86,7 @@ agents:
     verbose: bool         # default: false — logs détaillés pour cet agent (appels d'outils, résultats, réponses du modèle, en Information, catégorie Orkeon.Verbose)
     llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) : le fournisseur de cet agent ; "default" = la section Llm
+      # profile: auto     # Réservé : System One choisit, au début de chaque tâche, un profil de Orkeon:Decision:Route:Ladder (du moins cher au plus cher), que la tâche garde ; sous 0,6, sans réponse ou circuit coupé → le profil par défaut. Sans échelle, ou decision.mode: none → le chargement échoue
       model: string       # Identifiant du modèle LLM — omis → le modèle propre du profil
       temperature: float  # Envoyée quelle que soit sa valeur — omise = celle du profil, sinon rien n'est envoyé et le modèle applique la sienne
       maxTokens: int      # Plafond de tokens en sortie, positif — omis = le maximum documenté du modèle ; 0 ou moins fait échouer le chargement

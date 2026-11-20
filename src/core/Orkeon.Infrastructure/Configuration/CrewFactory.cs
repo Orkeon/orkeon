@@ -38,6 +38,7 @@ public partial class CrewFactory : ICrewFactory
     private readonly Action<string>? _onWithheldTool;
     private readonly Action<string>? _onDecisionWarning;
     private readonly IReadOnlyCollection<string>? _decisionProfiles;
+    private readonly System.Collections.Immutable.ImmutableList<string> _routeLadder;
 
     /// <summary>Initializes a new instance of <see cref="CrewFactory"/>.</summary>
     /// <param name="loader">The crew definition loader.</param>
@@ -75,6 +76,11 @@ public partial class CrewFactory : ICrewFactory
     /// naming one is refused, and a <c>required</c> one naming none, with no decision task and no
     /// <c>system_one_decide</c>, is warned that it asks System One nothing (#429). Null leaves both rules aside.
     /// </param>
+    /// <param name="route">
+    /// The ladder an agent on <c>llm.profile: auto</c> is routed among (<c>Orkeon:Decision:Route:Ladder</c>, #434):
+    /// a crew naming <c>auto</c> fails its load when the host declares no ladder or the ladder names a profile the
+    /// host does not offer. Null declares none.
+    /// </param>
 #pragma warning disable S107 // DI-composed factory: one optional collaborator per opt-in subsystem
     public CrewFactory(
         ICrewDefinitionLoader loader,
@@ -88,7 +94,8 @@ public partial class CrewFactory : ICrewFactory
         ICrewLinkRegistry? linkRegistry = null,
         Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null,
         Orkeon.Application.Crew.Execution.DecisionCircuit? decisionCircuit = null,
-        IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionProfilesOptions>? decisionProfiles = null)
+        IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionProfilesOptions>? decisionProfiles = null,
+        IOptions<Orkeon.Application.Crew.Routing.AgentRouteOptions>? route = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(loader);
@@ -113,6 +120,7 @@ public partial class CrewFactory : ICrewFactory
         _onWithheldTool = options?.Value.OnWithheldTool;
         _onDecisionWarning = options?.Value.OnDecisionWarning;
         _decisionProfiles = decisionProfiles?.Value.Profiles.Keys.ToList();
+        _routeLadder = [.. route?.Value.Ladder ?? []];
     }
 
     /// <inheritdoc />
@@ -269,12 +277,34 @@ public partial class CrewFactory : ICrewFactory
     private void ValidateLlmProfiles(CrewConfiguration config)
     {
         foreach (var agent in config.Agents)
-            Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(
-                _llmProfiles, agent.LlmConfig?.Profile, $"Crew '{config.Name}': agent '{agent.Role}'");
+            EnsureProfile(agent.LlmConfig?.Profile, $"Crew '{config.Name}': agent '{agent.Role}'");
 
         foreach (var task in config.Tasks)
+            EnsureProfile(task.LlmOverride?.Profile, $"Crew '{config.Name}': task '{Shorten(task.Description)}'");
+    }
+
+    /// <summary>
+    /// A profile the host offers, or <c>auto</c> (#434) on a host whose ladder holds profiles it offers, each of
+    /// them checked as if the crew named it.
+    /// </summary>
+    private void EnsureProfile(string? profile, string where)
+    {
+        if (!Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(profile))
+        {
+            Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(_llmProfiles, profile, where);
+            return;
+        }
+
+        if (_routeLadder.Count == 0)
+            throw new InvalidOperationException(
+                $"{where} names the LLM profile '{Orkeon.Application.Interfaces.Ports.LlmProfiles.Auto}', and this host declares no " +
+                $"{Orkeon.Application.Interfaces.Ports.LlmProfiles.RouteLadderKey}: list there the profiles System One may pick, " +
+                "cheapest first, or name a profile.");
+
+        foreach (var rung in _routeLadder)
             Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(
-                _llmProfiles, task.LlmOverride?.Profile, $"Crew '{config.Name}': task '{Shorten(task.Description)}'");
+                _llmProfiles, rung, $"{where} names '{Orkeon.Application.Interfaces.Ports.LlmProfiles.Auto}', and " +
+                Orkeon.Application.Interfaces.Ports.LlmProfiles.RouteLadderKey);
     }
 
     /// <summary>
@@ -289,7 +319,9 @@ public partial class CrewFactory : ICrewFactory
             config.DecisionMode,
             config.Process,
             config.DecisionDeclarations(),
-            config.SystemOneUses(profiles is null ? null : p => profiles.Contains(p, StringComparer.OrdinalIgnoreCase)));
+            // An agent on llm.profile: auto asks System One for its profile, as a decision profile does (#434).
+            config.SystemOneUses(profiles is null ? null : p => profiles.Contains(p, StringComparer.OrdinalIgnoreCase)
+                || Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(p)));
         if (findings.Refusals.Count > 0)
             throw new InvalidOperationException(
                 $"Crew '{config.Name}': invalid decision.mode declaration: {string.Join(" ", findings.Refusals)}");

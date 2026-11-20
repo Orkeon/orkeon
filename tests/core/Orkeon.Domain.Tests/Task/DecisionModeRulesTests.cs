@@ -70,6 +70,22 @@ public sealed class DecisionModeRulesTests
     }
 
     [Fact]
+    [Trait("BR", "CH-434")]
+    public void ShouldRefuseTheAutoProfileSayingSystemOnePicksIt_WhenTheModeIsNone()
+    {
+        // Arrange
+        var uses = new SystemOneUses([], [new DecisionProfileUse("agent 'coder'", "auto")]);
+
+        // Act
+        var findings = DecisionTaskRules.CheckMode(CrewDecisionMode.None, ProcessType.Sequential, [PlainTask("code")], uses);
+
+        // Assert
+        Assert.Equal(
+            ["Agent 'coder' names the profile 'auto', which System One picks and a crew with decision.mode: none refuses."],
+            findings.Refusals);
+    }
+
+    [Fact]
     [Trait("BR", "CH-429")]
     public void ShouldAcceptTheCrew_WhenEveryDecisionTaskOfAnOptionalCrewHasARelay()
     {

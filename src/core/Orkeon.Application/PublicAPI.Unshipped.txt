@@ -240,3 +240,44 @@ Orkeon.Application.Interfaces.Ports.AgentSkillsModes
 const Orkeon.Application.Interfaces.Ports.AgentSkillsModes.Auto = "auto" -> string!
 const Orkeon.Application.Interfaces.Ports.AgentSkillsModes.Fallback = "fallback" -> string!
 const Orkeon.Application.Interfaces.Ports.AgentSkillsModes.List = "list" -> string!
+Orkeon.Application.Crew.Routing.AgentRouteOptions
+Orkeon.Application.Crew.Routing.AgentRouteOptions.AgentRouteOptions() -> void
+Orkeon.Application.Crew.Routing.AgentRouteOptions.Ladder.get -> System.Collections.Generic.IList<string!>!
+Orkeon.Application.Crew.Routing.AgentRouteOptions.Ladder.init -> void
+const Orkeon.Application.Crew.Routing.AgentRouteOptions.SectionName = "Orkeon:Decision:Route" -> string!
+static Orkeon.Application.Crew.Routing.AgentRouteOptions.Problems(Orkeon.Application.Crew.Routing.AgentRouteOptions! options) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Application.Interfaces.Ports.IAgentRouteObserver
+Orkeon.Application.Interfaces.Ports.IAgentRouteObserver.ProfileRouted(Orkeon.Application.Interfaces.Ports.AgentRouteNotice! notice) -> void
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.AgentRole.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.AgentRole.init -> void
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Ladder.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Ladder.init -> void
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Picked.get -> string?
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Picked.init -> void
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Probability.get -> double?
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Probability.init -> void
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Profile.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Profile.init -> void
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Reason.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Reason.init -> void
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.TaskId.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.TaskId.init -> void
+Orkeon.Application.Interfaces.Ports.AgentRouteReasons
+const Orkeon.Application.Interfaces.Ports.AgentRouteReasons.CircuitOff = "circuit-off" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentRouteReasons.LowConfidence = "low-confidence" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentRouteReasons.Model = "model" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentRouteReasons.NoAnswer = "no-answer" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentRouteReasons.NoLadder = "no-ladder" -> string!
+const Orkeon.Application.Interfaces.Ports.LlmProfiles.Auto = "auto" -> string!
+const Orkeon.Application.Interfaces.Ports.LlmProfiles.RouteLadderKey = "Orkeon:Decision:Route:Ladder" -> string!
+static Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(string? name) -> bool
+static Orkeon.Application.Interfaces.Ports.LlmProfiles.AutoReservedMessage(string! key) -> string!
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.AgentRouteNotice() -> void
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.<Clone>$() -> Orkeon.Application.Interfaces.Ports.AgentRouteNotice!
+Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Equals(Orkeon.Application.Interfaces.Ports.AgentRouteNotice? other) -> bool
+override Orkeon.Application.Interfaces.Ports.AgentRouteNotice.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.AgentRouteNotice.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.AgentRouteNotice.ToString() -> string!
+static Orkeon.Application.Interfaces.Ports.AgentRouteNotice.operator !=(Orkeon.Application.Interfaces.Ports.AgentRouteNotice? left, Orkeon.Application.Interfaces.Ports.AgentRouteNotice? right) -> bool
+static Orkeon.Application.Interfaces.Ports.AgentRouteNotice.operator ==(Orkeon.Application.Interfaces.Ports.AgentRouteNotice? left, Orkeon.Application.Interfaces.Ports.AgentRouteNotice? right) -> bool

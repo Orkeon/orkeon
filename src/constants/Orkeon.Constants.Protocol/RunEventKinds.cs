@@ -121,6 +121,15 @@ public static class RunEventKinds
     public const string AgentSkills = "agent.skills";
 
     /// <summary>
+    /// The profile a task of an agent on <c>llm.profile: auto</c> runs on (#434), once per task, at its start:
+    /// <c>taskId</c>, <c>agentRole</c>, <c>profile</c> (a rung of the ladder, or <c>default</c>), <c>reason</c>
+    /// (<c>model</c>, <c>low-confidence</c>, <c>no-answer</c>, <c>circuit-off</c>, <c>no-ladder</c>),
+    /// <c>picked</c> and <c>probability</c> (the model's pick and its probability, null when it picked no rung) and
+    /// <c>ladder</c>. Additive: a consumer that does not know the kind ignores it.
+    /// </summary>
+    public const string AgentRoute = "agent.route";
+
+    /// <summary>
     /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
     /// as an event that silently never arrives.
     /// </summary>
@@ -129,6 +138,6 @@ public static class RunEventKinds
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
         AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback, GraphNodeEntered,
-        RunDecision, AgentCompacted, AgentSkills,
+        RunDecision, AgentCompacted, AgentSkills, AgentRoute,
     ];
 }

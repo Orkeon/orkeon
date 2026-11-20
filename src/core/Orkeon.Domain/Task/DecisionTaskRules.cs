@@ -96,8 +96,9 @@ public static class DecisionTaskRules
 
                 refusals.AddRange(uses.DecideToolHolders.Select(h =>
                     $"{Capitalized(h)} lists {SystemOneUses.DecideToolName}, which a crew with decision.mode: none refuses."));
-                refusals.AddRange(profiles.Select(p =>
-                    $"{Capitalized(p.Holder)} names the decision profile '{p.Profile}', which a crew with decision.mode: none refuses."));
+                refusals.AddRange(profiles.Select(p => string.Equals(p.Profile, Orkeon.Constants.Llm.LlmProfileNames.Auto, StringComparison.OrdinalIgnoreCase)
+                    ? $"{Capitalized(p.Holder)} names the profile '{p.Profile}', which System One picks and a crew with decision.mode: none refuses."
+                    : $"{Capitalized(p.Holder)} names the decision profile '{p.Profile}', which a crew with decision.mode: none refuses."));
                 break;
 
             case CrewDecisionMode.Optional:

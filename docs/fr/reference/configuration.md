@@ -189,7 +189,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 105 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 106 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -201,7 +201,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-82 sections, 539 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+83 sections, 540 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -728,6 +728,30 @@ sections présentes, ou aucune section et les deux clés définies, sont refusé
 | `Profiles:<nom>:Stages:<i>:WarnThreshold` | nombre | `0.3` | La probabilité à partir de laquelle une étape `guard` journalise un avertissement. |
 | `Profiles:<nom>:Target` | chaîne | `""` | Le profil où va un appel qu'aucune étape ne route ; `default` est la section `Llm`. |
 | `Provider` | chaîne | — | Le fournisseur de décision actif : `typesafe`, `liquid` ou `kev` ; vide, il se déduit des sections et des clés. |
+<!-- /settings -->
+
+### `Orkeon:Decision:Route`
+
+Où est routé un agent sur `llm.profile: auto` (#434). Au début de chacune de ses tâches, System One
+choisit un profil de `Ladder`, listé du moins cher au plus cher, et la tâche le garde pour tous
+ses appels ; le modèle de décision lit le rôle de l'agent et la tâche (coupée au milieu à 4 000
+caractères), jamais la conversation. Sous une probabilité de 0,6, sans réponse, ou quand le
+circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enabled: false`, aucun
+fournisseur de décision), le profil par défaut de l'hôte s'applique, avec un avertissement et
+sans erreur : un circuit coupé ne fait aucun appel de décision. Chaque tâche routée émet
+`agent.route` sur le flux d'événements du run. Un échelon nomme un profil de `Llm:Profiles` ou
+de `Orkeon:Decision:Profiles` (`default` compris) ; une crew qui nomme `auto` sur un hôte sans
+échelle, ou avec un échelon que l'hôte n'offre pas, échoue à son chargement. `auto` est un nom de
+profil réservé : `Llm:Profiles:auto` et `Orkeon:Decision:Profiles:auto` sont refusés au
+démarrage. Ce n'est pas l'étape `route` d'un profil de décision, qui choisit un profil à chaque
+appel.
+
+<!-- settings:Orkeon:Decision:Route -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Ladder` | liste de chaînes | `[]` | Les profils entre lesquels un agent `auto` est routé, du moins cher au plus cher : deux noms ou plus de `Llm:Profiles` ou `Orkeon:Decision:Profiles` (`default` compris), chacun une fois. Vide par défaut : une crew qui nomme `auto` sur un hôte sans échelle échoue à son chargement. |
 <!-- /settings -->
 
 ## Débit et budgets

@@ -109,6 +109,8 @@ public sealed partial class LlmProfileRegistry : ILlmProfileRegistry
             if (LlmProfiles.IsDefault(registration.Name))
                 throw new InvalidOperationException(
                     $"'{LlmProfiles.Default}' is the reserved name of the host's default profile; a profile cannot take it.");
+            if (LlmProfiles.IsAuto(registration.Name))
+                throw new InvalidOperationException(LlmProfiles.AutoReservedMessage($"The LLM profile '{registration.Name}'"));
             if (!all.TryAdd(registration.Name, registration))
                 throw new InvalidOperationException($"Two LLM profiles are named '{registration.Name}'.");
             order.Add(registration.Name);

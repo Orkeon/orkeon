@@ -54,6 +54,12 @@ public static class ServiceCollectionExtensions
                 sp.GetService<IOptions<Crew.Skills.AgentSkillsOptions>>()?.Value ?? new Crew.Skills.AgentSkillsOptions(),
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Skills.AgentSkillsResolver>>())
             : null!);
+        // One router per host, so the circuit-off warning of an auto agent is said once (#434). Its ladder is
+        // bound by AddOrkeonInfrastructure; without it, none, and an auto task runs on the default profile.
+        services.TryAddSingleton(sp => new Crew.Routing.AgentProfileRouter(
+            sp,
+            sp.GetService<IOptions<Crew.Routing.AgentRouteOptions>>()?.Value ?? new Crew.Routing.AgentRouteOptions(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Routing.AgentProfileRouter>>()));
         services.AddScoped<ICallbackOrchestrator, CallbackOrchestrator>();
         services.AddScoped<IMemoryCoordinator, MemoryCoordinator>();
 
@@ -211,6 +217,10 @@ public static class ServiceCollectionExtensions
             // An agent's skills (#434): read through the VFS, an auto pick asked of the decision model.
             orchestrator.SkillsResolver = sp.GetService<Crew.Skills.AgentSkillsResolver>();
             orchestrator.SkillsObserver = sp.GetService<IAgentSkillsObserver>();
+            // An agent on llm.profile: auto (#434): System One picks the profile of each of its tasks.
+            orchestrator.ProfileRouter = sp.GetService<Crew.Routing.AgentProfileRouter>();
+            orchestrator.RouteObserver = sp.GetService<IAgentRouteObserver>();
+            orchestrator.ScopeCircuit = sp.GetService<Crew.Execution.DecisionCircuitOverride>()?.Circuit;
 
             // GAP-32 — a host that renders the model's text as it arrives (orkeon run --stream, the
             // REPL's console) gets every agent turn streamed to it, not only ctx.llm.* calls.

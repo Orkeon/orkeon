@@ -117,4 +117,18 @@ public class DecisionProfileRegistrationTests
         await using var container = services.BuildServiceProvider();
         Assert.NotNull(container.GetRequiredService<ILlmProfileRegistry>().Resolve("triage").Provider);
     }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public void ShouldFailTheBuildNamingTheKeyToRename_WhenADecisionProfileIsNamedAuto()
+    {
+        // Arrange
+        var values = Triage.Select(v => ("auto" + v.Item1["triage".Length..], v.Item2)).ToArray();
+
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddOrkeonDecisionProfiles(Configuration(values)));
+
+        // Assert
+        Assert.StartsWith("Orkeon:Decision:Profiles:auto: 'auto' is a reserved profile name", ex.Message, StringComparison.Ordinal);
+    }
 }

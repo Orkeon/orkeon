@@ -371,6 +371,7 @@ dégrade le dit en un avertissement :
 | Juge LLM (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuse de démarrer, en nommant la cause ; `Open` retire le juge du pipeline, avec un avertissement, et les autres gardiens restent. |
 | Reranker `decision` | Laisse passer les passages dans leur ordre de récupération, comme `none`, avec un avertissement. |
 | Skills d'un agent (`skills: { auto: true }`) | L'agent porte sa liste `fallback`, sinon aucun skill, et la tâche s'exécute ; `agent.skills` indique `mode: fallback` avec la cause en `reason`. Un avertissement par hôte. |
+| Routage d'un agent (`llm.profile: auto`) | La tâche tourne sur le profil par défaut de l'hôte, sans appel de décision ; `agent.route` indique `reason: circuit-off`. Un avertissement par hôte. |
 
 #### Le mode de décision d'une crew
 
@@ -494,6 +495,13 @@ seule, jamais de lui-même.
   option à une probabilité de 0,3 ou plus est gardée, les trois plus probables au plus ; `none` ne garde aucun
   skill. Circuit coupé, ou quand l'appel échoue, l'agent porte sa liste `fallback`
   ([`Orkeon:Skills`](../reference/configuration.md#orkeonskills)).
+- **Routage d'un agent** — un agent avec `llm.profile: auto` pose un `choice` au début de chaque tâche, `profile`,
+  dont les options sont les échelons de `Orkeon:Decision:Route:Ladder`, du moins cher au plus cher, chacun avec ce à
+  quoi il sert (le moins cher, un intermédiaire, le plus capable) ; l'état est le rôle de l'agent et le texte de la
+  tâche coupé au milieu à 4 000 caractères. L'échelon choisi à une probabilité de 0,6 ou plus sert tous les appels de
+  la tâche ; en dessous, sans réponse, ou circuit coupé, c'est le profil par défaut de l'hôte, et `agent.route` dit
+  pourquoi ([`Orkeon:Decision:Route`](../reference/configuration.md#orkeondecisionroute)). C'est un choix par tâche,
+  pas l'étape `route` d'un profil de décision, qui choisit un profil à chaque appel.
 - **Reranker RAG** — `rerank.kind: decision` pose un `noul` par passage dans
   une seule requête, les passages coupés à 4 000 caractères, et les classe par probabilité. Circuit
   coupé, il garde l'ordre de récupération.

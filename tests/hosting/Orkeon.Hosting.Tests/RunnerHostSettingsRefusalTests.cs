@@ -122,6 +122,7 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "CrewMemoryOptions", "Orkeon:CrewMemory:RecallLimit", "all", "Orkeon:CrewMemory:RecallLimit" },
         { "ContextCompactionOptions", "Orkeon:Compaction:TriggerShare", "1.5", "Orkeon:Compaction:TriggerShare" },
         { "AgentSkillsOptions", "Orkeon:Skills:Library", "skills", "Orkeon:Skills:Library" },
+        { "AgentRouteOptions", "Orkeon:Decision:Route:Ladder:0", "auto", "Orkeon:Decision:Route:Ladder" },
         { "MemorySectionOptions", "Memory:Provider", "redsi", "Memory:Provider" },
         { "EmbeddingOptions", "Orkeon:Embeddings:Dimension", "big", "Orkeon:Embeddings:Dimension" },
         { "EmbeddingCacheOptions", "Orkeon:EmbeddingCache:SlidingExpirationMinutes", "an hour", "Orkeon:EmbeddingCache:SlidingExpirationMinutes" },

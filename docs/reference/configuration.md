@@ -178,7 +178,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 105 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 106 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -190,7 +190,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-82 sections, 539 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+83 sections, 540 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -699,6 +699,28 @@ warned as ignored in the start log (with a hint to name it when no provider is n
 | `Profiles:<name>:Stages:<i>:WarnThreshold` | number | `0.3` | The probability at or over which a `guard` logs a warning. |
 | `Profiles:<name>:Target` | string | `""` | The profile a call goes to when no stage routes it; `default` is the `Llm` section. |
 | `Provider` | string | — | The decision provider: `typesafe`, `liquid` or `kev`; empty deduces it. |
+<!-- /settings -->
+
+### `Orkeon:Decision:Route`
+
+Where an agent on `llm.profile: auto` is routed (#434). At the start of each of its tasks, System
+One picks one profile of `Ladder`, listed cheapest first, and the task keeps it for every call;
+the decision model reads the agent's role and the task (cut at 4 000 characters in the middle),
+never the conversation. Under a probability of 0.6, without an answer, or when the decision
+circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`, no decision provider), the
+host's default profile stands, with one warning and no error: an off circuit makes no decision
+call. Each routed task emits `agent.route` on the run's event stream. A rung names a profile of
+`Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included); a crew naming `auto` on a host
+without a ladder, or with a rung the host does not offer, fails its load. `auto` is a reserved
+profile name: `Llm:Profiles:auto` and `Orkeon:Decision:Profiles:auto` are refused at start. This
+is not the `route` stage of a decision profile, which picks a profile for each call.
+
+<!-- settings:Orkeon:Decision:Route -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Ladder` | list of string | `[]` | The profiles an `auto` agent is routed among, cheapest first: two or more names of `Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included), each once. Empty by default: a crew naming `auto` on a host without a ladder fails its load. |
 <!-- /settings -->
 
 ## Rate and budgets

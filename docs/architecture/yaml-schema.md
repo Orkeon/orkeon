@@ -84,6 +84,7 @@ agents:
     verbose: bool         # default: false — detailed logs for this agent (tool calls, tool results, model responses, at Information, category Orkeon.Verbose)
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
       profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section
+      # profile: auto     # Reserved: System One picks, at each task's start, one profile of Orkeon:Decision:Route:Ladder (cheapest first) and the task keeps it; under 0.6, no answer or circuit off → the default profile. No ladder, or decision.mode: none → the load fails
       model: string       # LLM model id — omitted → the profile's own model
       temperature: float  # Sent whatever its value — omitted = the profile's, else none is sent and the model applies its own
       maxTokens: int      # Output token pin, positive — omitted = the model's documented maximum; 0 or less fails the load

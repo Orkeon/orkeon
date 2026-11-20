@@ -256,6 +256,22 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     internal IAgentSkillsObserver? SkillsObserver { get; set; }
 
     /// <summary>
+    /// Picks the profile of each task of an agent on <c>llm.profile: auto</c> (#434); null, such a task runs on
+    /// the default profile.
+    /// </summary>
+    internal Routing.AgentProfileRouter? ProfileRouter { get; set; }
+
+    /// <summary>Told which profile each task of an <c>auto</c> agent runs on (<c>agent.route</c>, #434); null logs it alone.</summary>
+    internal IAgentRouteObserver? RouteObserver { get; set; }
+
+    /// <summary>The circuit of this orchestrator's run scope when it is not the container's (#431); null follows the container's.</summary>
+    internal Execution.DecisionCircuit? ScopeCircuit { get; set; }
+
+    // The profile each task of an auto agent was routed to, by task: picked at the task's first attempt, kept by
+    // its retries and revisions in this scope (#434).
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _routedProfiles = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// Initializes a new instance of <see cref="ExecutionOrchestrator"/>.
     /// </summary>
     public ExecutionOrchestrator(
@@ -597,7 +613,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // What the task runs on — the profile its llm_override names, else its agent's own
                 // provider or profile, else the default (GAP-17, GAP-34) —, for its turns and its
                 // correction round alike.
-                var llm = LlmFor(agent, task);
+                var llm = await LlmForAsync(agent, task, context, taskToken).ConfigureAwait(false);
                 var toolbelt = TaskToolbelt.Compose(agent, task, _registeredTools, MemoryRegistry?.IsMemoryEnabled(context.CrewId) == true);
 
                 // A provider that runs its own tools — a Microsoft Agent Framework agent — never calls
@@ -994,20 +1010,47 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// <summary>
     /// What <paramref name="task"/> runs on (GAP-17, GAP-34): the profile its <c>llm_override</c>
     /// names — <c>default</c> included —, else its agent's own provider (<c>Agent.Llm</c>), else its
-    /// agent's profile, else the host's default.
+    /// agent's profile, else the host's default. A profile of <c>auto</c> is the one System One picks for the
+    /// task (#434).
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// The profile is not one <see cref="LlmProfiles"/> offers — the crew load checks it first; this is
     /// the guard for a crew built by hand —, or the agent carries its own provider and no registry
     /// can build its client.
     /// </exception>
-    private TaskLlm LlmFor(DomainAgent agent, CrewTask task)
+    private async System.Threading.Tasks.Task<TaskLlm> LlmForAsync(
+        DomainAgent agent, CrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
     {
         var taskProfile = task.LlmOverride?.Profile;
         if (string.IsNullOrWhiteSpace(taskProfile) && agent.Llm is { } own)
             return OwnProviderLlm(agent, own);
 
-        return ProfileLlm(agent, string.IsNullOrWhiteSpace(taskProfile) ? agent.LlmConfig?.Profile : taskProfile);
+        var profile = string.IsNullOrWhiteSpace(taskProfile) ? agent.LlmConfig?.Profile : taskProfile;
+        if (Interfaces.Ports.LlmProfiles.IsAuto(profile))
+            profile = await RoutedProfileAsync(agent, task, context, cancellationToken).ConfigureAwait(false);
+        return ProfileLlm(agent, profile);
+    }
+
+    /// <summary>
+    /// The profile System One picks for <paramref name="task"/> of an agent on <c>llm.profile: auto</c> (#434), once:
+    /// a later attempt of the same task in this scope keeps it, and the observer is told at the first. Without a
+    /// router, the default profile.
+    /// </summary>
+    private async System.Threading.Tasks.Task<string> RoutedProfileAsync(
+        DomainAgent agent, CrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
+    {
+        var taskId = task.Id.ToString();
+        if (_routedProfiles.TryGetValue(taskId, out var kept))
+            return kept;
+        if (ProfileRouter is null)
+            return _routedProfiles.GetOrAdd(taskId, Interfaces.Ports.LlmProfiles.Default);
+
+        var notice = await ProfileRouter.RouteAsync(
+            agent, taskId, AgentPromptComposer.BuildKnowledgeQueryText(task, context), ScopeCircuit, cancellationToken).ConfigureAwait(false);
+        if (!_routedProfiles.TryAdd(taskId, notice.Profile))
+            return _routedProfiles[taskId];
+        RouteObserver?.ProfileRouted(notice);
+        return notice.Profile;
     }
 
     /// <summary>The loop and provider of the host profile <paramref name="profile"/> — the default's for none.</summary>

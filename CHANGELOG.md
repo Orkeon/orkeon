@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `llm.profile: auto`: System One picks an agent's profile for each task (#434)
+
+An agent (or a task's `llm_override`) on `llm.profile: auto` has System One pick, at the start of each task, one
+profile of `Orkeon:Decision:Route:Ladder`, listed cheapest first (two or more profiles of `Llm:Profiles` or
+`Orkeon:Decision:Profiles`, `default` included); the task keeps it for every call. The decision model reads the
+agent's role and the task, cut at 4000 characters. Under a probability of 0.6, without an answer, or with the
+decision circuit off, the host's default profile stands, with one warning and no error; an off circuit makes no
+decision call. Each such task emits `agent.route` (`profile`, `reason`, `picked`, `probability`, `ladder`). A crew
+naming `auto` on a host without a ladder, or with a rung the host does not offer, fails its load, as does `auto` in a
+crew with `decision.mode: none`; a manager or a decision relay on `auto` runs on the default profile. This is one pick
+per task, apart from the per-call `route` stage of a decision profile. **Compatibility**: `auto` is now a reserved
+profile name: a host whose settings declare `Llm:Profiles:auto` or `Orkeon:Decision:Profiles:auto` (or that registers
+a profile named `auto` in C#) is refused at start, the message naming the key; rename that profile, and every crew
+that names it.
+
 ### Added — agent skills: a fixed list of playbooks, or System One's pick of at most three (#434)
 
 A YAML agent takes `skills:`, a list of markdown files read through the virtual file system, or

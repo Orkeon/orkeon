@@ -102,6 +102,8 @@ public static class LlmSettings
                 throw new InvalidOperationException(
                     $"{section.Path}: '{LlmProfiles.Default}' is the reserved name of the default profile, " +
                     $"which is the {ConfigurationKeys.LlmSection} section itself. Rename the profile.");
+            if (LlmProfiles.IsAuto(section.Key))
+                throw new InvalidOperationException(LlmProfiles.AutoReservedMessage(section.Path));
 
             profiles.Add((section.Key, Read(section, strict: true, environment) with { Profile = section.Key }));
         }

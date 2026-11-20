@@ -195,9 +195,23 @@ internal sealed class CrewRunEntryPoint : IDisposable
         {
             var profile = agent.LlmConfig?.Profile;
             var named = string.IsNullOrWhiteSpace(profile) || LlmProfiles.IsDefault(profile) ? LlmProfiles.Default : profile.Trim();
-            var provider = agent.Llm ?? registry.Resolve(named).Provider;
-            if (!IsMock(provider))
-                offenders.Add($"agent '{agent.Role.Value}' (profile '{(agent.Llm is null ? named : "its own provider")}', provider '{MeteredLlmProvider.Unwrap(provider).Name}')");
+            if (agent.Llm is { } own)
+            {
+                if (!IsMock(own))
+                    offenders.Add($"agent '{agent.Role.Value}' (profile 'its own provider', provider '{MeteredLlmProvider.Unwrap(own).Name}')");
+                continue;
+            }
+
+            // An agent on auto may run on the default or on any rung of the ladder (#434): each must be the mock.
+            var candidates = LlmProfiles.IsAuto(named)
+                ? [LlmProfiles.Default, .. services.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Application.Crew.Routing.AgentRouteOptions>>()?.Value.Ladder ?? []]
+                : new[] { named };
+            foreach (var candidate in candidates)
+            {
+                var provider = registry.Resolve(candidate).Provider;
+                if (!IsMock(provider))
+                    offenders.Add($"agent '{agent.Role.Value}' (profile '{candidate}', provider '{MeteredLlmProvider.Unwrap(provider).Name}')");
+            }
         }
 
         if (crew.ManagerLlm is { } manager && !IsMock(manager))

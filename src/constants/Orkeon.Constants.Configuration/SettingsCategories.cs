@@ -98,6 +98,7 @@ public static class SettingsCategories
             ["Orkeon:Liquid"] = Models,
             ["Orkeon:Kev"] = Models,
             ["Orkeon:Decision"] = Models,
+            ["Orkeon:Decision:Route"] = Models,
 
             ["RateLimiting"] = RateAndBudgets,
             ["ToolRateLimiting"] = RateAndBudgets,

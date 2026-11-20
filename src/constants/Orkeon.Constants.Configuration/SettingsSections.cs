@@ -52,6 +52,7 @@ public static class SettingsSections
         "Orkeon:CrewFactory",
         "Orkeon:CrewMemory",
         "Orkeon:Decision",
+        "Orkeon:Decision:Route",
         "Orkeon:Dlp",
         "Orkeon:EmbeddingCache",
         "Orkeon:Embeddings",

@@ -253,6 +253,9 @@ public static class InfrastructureExtensions
         // How an agent's skills: reach its prompt (#434): the library an auto pick reads, the caps.
         services.AddOrkeonSettings<Application.Crew.Skills.AgentSkillsOptions>(Application.Crew.Skills.AgentSkillsOptions.SectionName)
             .ValidateSettings((options, _) => Application.Crew.Skills.AgentSkillsOptions.Problems(options));
+        // The ladder an agent on llm.profile: auto is routed among (#434); its names are checked at a crew's load.
+        services.AddOrkeonSettings<Application.Crew.Routing.AgentRouteOptions>(Application.Crew.Routing.AgentRouteOptions.SectionName)
+            .ValidateSettings((options, _) => Application.Crew.Routing.AgentRouteOptions.Problems(options));
         services.TryAddSingleton<Application.Interfaces.Ports.IContextWindowResolver>(sp => new LLMs.Context.ContextWindowResolver(
             sp.GetService<IOptions<Session.CliSessionOptions>>()?.Value.ContextWindowTokens,
             sp.GetRequiredService<ILogger<LLMs.Context.ContextWindowResolver>>()));

@@ -34,6 +34,7 @@
     "Orkeon:Decision:Profiles:<name>:Stages:<i>:Steps": "Les réponses que juge une étape `verify` : `final` (le défaut) laisse passer une réponse qui appelle des outils comme une étape de boucle d'agent, `all` la juge aussi.",
     "Orkeon:Decision:Profiles:<name>:Stages:<i>:WarnThreshold": "La probabilité à partir de laquelle une étape `guard` journalise un avertissement.",
     "Orkeon:Decision:Profiles:<name>:Target": "Le profil où va un appel qu'aucune étape ne route ; `default` est la section `Llm`.",
+    "Orkeon:Decision:Route:Ladder": "Les profils entre lesquels un agent `auto` est routé, du moins cher au plus cher : deux noms ou plus de `Llm:Profiles` ou `Orkeon:Decision:Profiles` (`default` compris), chacun une fois. Vide par défaut : une crew qui nomme `auto` sur un hôte sans échelle échoue à son chargement.",
     "Orkeon:TypeSafe:ApiKey": "La clé d'API. Déconseillée dans un fichier de réglages : laissez-la vide et posez la variable que nomme `ApiKeyEnvVar`.",
     "Orkeon:TypeSafe:ApiKeyEnvVar": "La variable d'environnement lue quand `ApiKey` est vide.",
     "Orkeon:TypeSafe:BaseUrl": "La racine de l'API ; `/systemone` s'y ajoute.",

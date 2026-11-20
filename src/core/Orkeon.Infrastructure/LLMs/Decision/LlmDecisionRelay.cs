@@ -69,7 +69,8 @@ internal sealed class LlmDecisionRelay : IDecisionRelay
         if (agent.Llm is { } own)
             return _profiles.ForProvider(own);
 
-        var named = agent.LlmConfig?.Profile;
+        // A relay agent on llm.profile: auto answers a decision, not a task: the default profile (#434).
+        var named = LlmProfiles.IsAuto(agent.LlmConfig?.Profile) ? null : agent.LlmConfig?.Profile;
         if (!LlmProfiles.IsDefault(named))
             LlmProfiles.EnsureKnown(_profiles, named, $"The relay agent '{agent.Role.Value}'");
         return _profiles.Resolve(LlmProfiles.IsDefault(named) ? null : named);
