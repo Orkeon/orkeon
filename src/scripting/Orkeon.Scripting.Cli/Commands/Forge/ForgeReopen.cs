@@ -58,6 +58,10 @@ internal sealed record ForgeTeamRecord
     [JsonPropertyName("format")]
     public string? Format { get; init; }
 
+    /// <summary>The crew's decision mode (#431): <c>none</c>, <c>optional</c> or <c>required</c>; null in an older record.</summary>
+    [JsonPropertyName("crewDecision")]
+    public string? CrewDecision { get; init; }
+
     /// <summary>When the folder was promoted (UTC, ISO-8601).</summary>
     [JsonPropertyName("promotedAt")]
     public string? PromotedAt { get; init; }
@@ -100,6 +104,7 @@ internal sealed record ForgeTeamRecord
             Slug = session.Document.Slug,
             Title = session.Document.Title,
             Format = session.Document.Format,
+            CrewDecision = session.Document.CrewDecision,
             PromotedAt = now.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             Brief = brief,
             Reference = session.Document.Reference,
@@ -215,10 +220,21 @@ internal static class ForgeTeamReader
     /// fixes the files. Never an exception for a malformed file.
     /// </summary>
     public static bool TryRead(
-        string crewDirectory, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string> existingPaths)
+        string crewDirectory, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string> existingPaths) =>
+        TryRead(crewDirectory, out blueprint, out errors, existingPaths, out _);
+
+    /// <summary>
+    /// <see cref="TryRead(string, out ForgeBlueprint?, out IReadOnlyList{string}, IReadOnlyCollection{string})"/>, with
+    /// the crew's decision mode (#431): the one its <c>decision:</c> block declares, else the one its plan implies
+    /// (<see cref="ForgeCrewDecision.Derive"/>).
+    /// </summary>
+    public static bool TryRead(
+        string crewDirectory, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string> existingPaths,
+        out string crewDecision)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(crewDirectory);
         blueprint = null;
+        crewDecision = ForgeCrewDecision.None;
 
         if (!Directory.Exists(crewDirectory))
         {
@@ -315,6 +331,8 @@ internal static class ForgeTeamReader
                 Dependencies = pair.Value.Dependencies is { Count: > 0 } deps ? [.. deps] : null,
                 Deliverable = pair.Value.Deliverable?.Path,
                 Tools = pair.Value.Tools is { Count: > 0 } taskTools ? [.. taskTools] : null,
+                Decision = pair.Value.Decision is { } decision ? ForgeBlueprintDecisions.FromYaml(decision) : null,
+                When = pair.Value.When is { Count: > 0 } when ? ForgeBlueprintDecisions.FromYaml(when) : null,
             }).ToList(),
             Manager = crew.ManagerAgent,
             Rationale = "Plan read back from the team's crew files: what they describe, not what an assistant proposed.",
@@ -322,7 +340,11 @@ internal static class ForgeTeamReader
 
         // A crew promoted before the hand-off rule still reopens: the rule is enforced at the next validation. The binary
         // deliverable rule is not skipped: the error names the file to fix (#392).
-        var structural = candidate.Validate(existingPaths, enforceHandOffs: false);
+        // The crew's decision mode (#431): the one its settings declare, else the one its plan implies.
+        crewDecision = crew.Decision?.Mode is { } declared && ForgeCrewDecision.IsKnown(declared)
+            ? ForgeCrewDecision.Normalize(declared)
+            : ForgeCrewDecision.Derive(candidate);
+        var structural = candidate.Validate(existingPaths, enforceHandOffs: false, crewDecision: crewDecision);
         if (structural.Count > 0)
         {
             errors = [.. structural.Select(error => $"{OriginOf(error, fileOf, Path.GetFileName(settingsPath))}: {error}")];
@@ -421,7 +443,7 @@ internal static class ForgeSessionRebuilder
 
         var crewDirectory = Path.Combine(teamDirectory, ForgeYamlRenderer.CrewDirectoryName);
         var record = ForgeTeamRecord.TryRead(teamDirectory);
-        if (!ForgeTeamReader.TryRead(crewDirectory, out var blueprint, out var errors, ForgeFolders.ExistingPaths(record?.Brief?.Folders)))
+        if (!ForgeTeamReader.TryRead(crewDirectory, out var blueprint, out var errors, ForgeFolders.ExistingPaths(record?.Brief?.Folders), out var crewDecision))
         {
             throw new InvalidOperationException(
                 $"'{teamDirectory}' holds no crew the forge can read back into a plan:"
@@ -438,7 +460,8 @@ internal static class ForgeSessionRebuilder
             workspace,
             requestedSlug: !isCopy && record?.Slug is { Length: > 0 } slug ? slug : folderName,
             format: ForgeSession.FormatYaml,
-            now: now);
+            now: now,
+            crewDecision: crewDecision);
 
         // Verbatim, not re-rendered: a hand edit in the folder is what the team runs today,
         // and the trial must try that. The first amendment re-renders from the plan — and

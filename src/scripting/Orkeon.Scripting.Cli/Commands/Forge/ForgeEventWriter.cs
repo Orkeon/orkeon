@@ -29,6 +29,8 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
             id = session.Document.Id,
             dir = session.Directory,
             format = session.Document.Format,
+            // The decision mode of the crew being designed (#431).
+            crewDecision = session.Document.CrewDecision ?? ForgeCrewDecision.None,
             // The use case the session is composed from: what a client reopening the
             // session shows again. Absent for a session started from nothing.
             reference = session.Document.Reference,

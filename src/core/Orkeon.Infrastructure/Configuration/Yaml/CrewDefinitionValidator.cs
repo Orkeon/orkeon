@@ -211,7 +211,8 @@ public static class CrewDefinitionValidator
         if (string.IsNullOrWhiteSpace(task.Description))
             errors.Add($"Task '{name}' must have a description.");
 
-        if (string.IsNullOrWhiteSpace(task.ExpectedOutput))
+        // A decision task runs no agent and writes nothing: its result is the answers it routes on (#431).
+        if (task.Decision is null && string.IsNullOrWhiteSpace(task.ExpectedOutput))
             errors.Add($"Task '{name}' must have an expected output.");
 
         if (task.AssignedAgentId != null && !agentIds.Contains(task.AssignedAgentId))

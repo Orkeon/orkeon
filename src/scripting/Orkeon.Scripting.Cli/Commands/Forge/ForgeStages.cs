@@ -410,7 +410,7 @@ internal sealed class BlueprintStage : IForgeStageRunner
 
             if (reply.BlueprintJson is { } json)
             {
-                if (ForgeBlueprint.TryParse(json, out var blueprint, out var blueprintErrors, ForgeFolders.ExistingPaths(brief.Folders)))
+                if (ForgeBlueprint.TryParse(json, out var blueprint, out var blueprintErrors, ForgeFolders.ExistingPaths(brief.Folders), session.Document.CrewDecision))
                 {
                     session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint);
                     events.Emit("blueprint.ready", new { blueprint, iteration = session.Document.Iteration });
@@ -468,9 +468,24 @@ internal sealed class RenderStage : IForgeStageRunner
 
         // One blueprint, two deterministic renders (SPEC §3.2) — the session's format
         // picks which one; nothing about the cycle changes around it.
-        var written = ForgeSession.IsScriptFormat(session.Document.Format)
-            ? ForgeScriptRenderer.Render(blueprint, session.Directory)
-            : ForgeYamlRenderer.Render(ForgeBlueprintCompiler.Compile(blueprint, ForgeFolders.Of(session)), session.Directory);
+        var crewDecision = session.Document.CrewDecision;
+        IReadOnlyList<string> written;
+        try
+        {
+            written = ForgeSession.IsScriptFormat(session.Document.Format)
+                ? ForgeScriptRenderer.Render(blueprint, session.Directory, crewDecision)
+                : ForgeYamlRenderer.Render(ForgeBlueprintCompiler.Compile(blueprint, ForgeFolders.Of(session), crewDecision), session.Directory);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            // A plan saved before its mode's rules (a legacy session's): the engine refuses it, named.
+            return Task.FromResult(new ForgeStageOutcome
+            {
+                Trigger = ForgeTrigger.Fail,
+                FailureCode = ForgeErrorCodes.BlueprintInvalid,
+                Detail = ex.Message,
+            });
+        }
 
         foreach (var path in written)
         {
@@ -517,7 +532,7 @@ internal sealed class ValidateStage : IForgeStageRunner
         }
 
         var folders = ForgeFolders.Of(session);
-        var compilation = ForgeBlueprintCompiler.Compile(blueprint, folders);
+        var compilation = ForgeBlueprintCompiler.Compile(blueprint, folders, session.Document.CrewDecision);
         var verdict = ForgeBlueprintCompiler.Validate(compilation, _knownTools, folders);
         var attempt = session.Document.RepairAttempts + 1;
 

@@ -25,6 +25,26 @@ internal sealed record ForgeFinding
     /// <summary>Where in the output the finding shows.</summary>
     [JsonPropertyName("evidence")]
     public string? Evidence { get; init; }
+
+    /// <summary>The decision circuit of the pass the finding is about (#431), in an <c>optional</c> crew's trial.</summary>
+    [JsonPropertyName("circuit")]
+    public string? Circuit { get; init; }
+}
+
+/// <summary>The verdict of one pass of a trial (#431): its circuit, whether it passed, its score.</summary>
+internal sealed record ForgeVerdictPass
+{
+    /// <summary><c>on</c> or <c>off</c>.</summary>
+    [JsonPropertyName("circuit")]
+    public string? Circuit { get; init; }
+
+    /// <summary>Whether the pass alone conforms.</summary>
+    [JsonPropertyName("passing")]
+    public bool Passing { get; init; }
+
+    /// <summary>The pass's score.</summary>
+    [JsonPropertyName("score")]
+    public double Score { get; init; }
 }
 
 /// <summary>One concrete fix proposal the refine cycle can act on.</summary>
@@ -75,6 +95,13 @@ internal sealed record ForgeVerdict
     /// <summary><see cref="JudgeLlm"/> or <see cref="JudgeDeterministic"/>.</summary>
     [JsonPropertyName("judge")]
     public string Judge { get; init; } = JudgeDeterministic;
+
+    /// <summary>
+    /// The verdict of each pass of the trial (#431); the top level combines them: passing only when every pass
+    /// passes, the lowest score. Null for a verdict written before the passes existed.
+    /// </summary>
+    [JsonPropertyName("passes")]
+    public IReadOnlyList<ForgeVerdictPass>? Passes { get; init; }
 
     /// <summary>The conformity threshold (SPEC §10).</summary>
     public const double PassingThreshold = 0.7;

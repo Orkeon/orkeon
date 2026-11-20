@@ -185,7 +185,11 @@ public static class InfrastructureExtensions
         services.AddScoped<Domain.SharedKernel.Events.IDomainEventDispatcher, DomainEventDispatcher>();
 
         // Orchestration services (moved from Application — R16)
-        services.AddScoped<SequentialCrewOrchestrator>();
+        // A scope whose DecisionCircuitOverride holds a circuit runs with it (#431): the notice, the refusal of a
+        // required crew and the resume check read the scope's circuit, not the container's.
+        services.AddScoped<SequentialCrewOrchestrator>(sp => ScopedCircuit(sp) is { } circuit
+            ? ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp, circuit)
+            : ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp));
         services.AddScoped<ICrewOrchestrationService>(sp => sp.GetRequiredService<SequentialCrewOrchestrator>());
         services.AddSingleton<ICrewExecutionStateManager, ScopedCrewExecutionStateManager>();
 
@@ -469,7 +473,13 @@ public static class InfrastructureExtensions
             sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IMemoryScope>(),
             sp.GetService<Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher>())
         {
-            DecisionRunner = sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(),
+            DecisionRunner = ScopedCircuit(sp) is { } circuit
+                ? new Orkeon.Application.Crew.Execution.DecisionTaskRunner(
+                    sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>(),
+                    sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionRelay>(),
+                    circuit,
+                    sp.GetRequiredService<ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner>>())
+                : sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(),
         });
 
         // Add Process Strategies
@@ -719,7 +729,9 @@ public static class InfrastructureExtensions
         // "Orkeon:CrewFactory:StrictTools" key and defaults it to true for runners).
         services.AddOptions<Orkeon.Infrastructure.Configuration.CrewFactoryOptions>();
         services.TryAddSingleton<ICrewDefinitionLoader, YamlCrewDefinitionLoader>();
-        services.TryAddScoped<ICrewFactory, CrewFactory>();
+        services.TryAddScoped<ICrewFactory>(sp => ScopedCircuit(sp) is { } circuit
+            ? ActivatorUtilities.CreateInstance<CrewFactory>(sp, circuit)
+            : ActivatorUtilities.CreateInstance<CrewFactory>(sp));
         services.TryAddSingleton<YamlCrewExporter>();
 
         return services;
@@ -916,6 +928,8 @@ public static class InfrastructureExtensions
                 ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider)
                 : Orkeon.Application.Crew.Execution.DecisionCircuit.On;
         });
+        // The circuit of one run scope, set by a host that runs the same crew with and without System One (#431).
+        services.TryAddScoped<Orkeon.Application.Crew.Execution.DecisionCircuitOverride>();
         // The without: relay of an optional crew's decision tasks (#430): the relay agent's own provider or profile.
         services.TryAddSingleton<Orkeon.Application.Interfaces.Ports.IDecisionRelay>(sp =>
             new Orkeon.Infrastructure.LLMs.Decision.LlmDecisionRelay(sp.GetService<ILlmProfileRegistry>()));
@@ -927,4 +941,11 @@ public static class InfrastructureExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// The circuit a scope's <see cref="Orkeon.Application.Crew.Execution.DecisionCircuitOverride"/> holds, null when
+    /// none is set (#431): the scoped run services take it in place of the container's circuit.
+    /// </summary>
+    private static Orkeon.Application.Crew.Execution.DecisionCircuit? ScopedCircuit(IServiceProvider services) =>
+        services.GetService<Orkeon.Application.Crew.Execution.DecisionCircuitOverride>()?.Circuit;
 }

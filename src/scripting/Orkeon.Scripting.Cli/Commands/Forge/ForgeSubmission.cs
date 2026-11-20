@@ -36,6 +36,9 @@ internal sealed class ForgeSubmissionBox
     /// <summary>The files the brief's folders already hold; the assistant sets it before each turn.</summary>
     public IReadOnlyCollection<string> ExistingPaths { get; set; } = [];
 
+    /// <summary>The decision mode of the crew being designed (#431): what a submitted plan may declare.</summary>
+    public string? CrewDecision { get; set; }
+
     /// <summary>Empties the box; the assistant wrapper calls this before every turn.</summary>
     public void Reset()
     {
@@ -202,7 +205,7 @@ internal sealed class BlueprintSubmitTool : ForgeSubmitToolBase
         {
             ["crew"] = new("object", "{name, goal, process, verbose, memory}.", Required: true),
             ["agents"] = new("array", "{key, role, goal, backstory, tools, allowDelegation, maxIterations}.", Required: true),
-            ["tasks"] = new("array", "{key, description, expectedOutput, agent, dependencies, deliverable}.", Required: true),
+            ["tasks"] = new("array", "{key, description, expectedOutput, agent, dependencies, deliverable, decision, when}.", Required: true),
             ["manager"] = new("string", "Manager agent key, hierarchical or consensual crews only.", Required: false),
             ["rationale"] = new("string", "Why this shape of team, in plain words.", Required: false),
         });
@@ -210,7 +213,7 @@ internal sealed class BlueprintSubmitTool : ForgeSubmitToolBase
     /// <inheritdoc />
     private protected override string Submit(string json)
     {
-        if (!ForgeBlueprint.TryParse(json, out _, out var errors, Box.ExistingPaths))
+        if (!ForgeBlueprint.TryParse(json, out _, out var errors, Box.ExistingPaths, Box.CrewDecision))
             return "REJECTED — fix these and call blueprint_submit again: " + string.Join(" ", errors);
 
         Box.OfferBlueprint(json);

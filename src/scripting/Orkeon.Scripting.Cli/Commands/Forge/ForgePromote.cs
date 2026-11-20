@@ -306,6 +306,7 @@ internal static class ForgePromoter
             TeamName = teamName,
             TeamDirectory = destination,
             IsScript = ForgeSession.IsScriptFormat(session.Document.Format),
+            DecisionNote = ForgeCrewDecision.Statement(session.Document.CrewDecision),
             Segments = RunArguments(session, brief, settingsReference, settingsIsRelative, writeMounts),
         };
         WritePosixLauncher(destination, launchers);
@@ -1007,6 +1008,13 @@ internal static class ForgePromoter
                 $"`./{PosixLauncherName}` (Linux/macOS) or `{WindowsLauncherName}` (Windows) — adapt the sample inputs inside.")
             + bareCommand
             + language.Pick(" Un client qui pilote le CLI reconnaît ce dossier.", " A client that drives the CLI recognizes the folder."));
+
+        // The crew's decision mode (#431): whether a run needs System One, and which way an optional one goes.
+        if (ForgeCrewDecision.StatementIn(session.Document.CrewDecision, language.IsFrench) is { } decision)
+        {
+            card.AppendLine();
+            card.AppendLine(decision);
+        }
     }
 
     /// <summary>Where the mounts land, so the folder explains itself.</summary>

@@ -83,3 +83,7 @@ static Orkeon.Application.Decision.DTOs.DecisionRelayRequest.operator ==(Orkeon.
 static Orkeon.Application.Decision.DTOs.DecisionRelayRequest.operator !=(Orkeon.Application.Decision.DTOs.DecisionRelayRequest? left, Orkeon.Application.Decision.DTOs.DecisionRelayRequest? right) -> bool
 static Orkeon.Application.Decision.DTOs.DecisionRelayResponse.operator ==(Orkeon.Application.Decision.DTOs.DecisionRelayResponse? left, Orkeon.Application.Decision.DTOs.DecisionRelayResponse? right) -> bool
 static Orkeon.Application.Decision.DTOs.DecisionRelayResponse.operator !=(Orkeon.Application.Decision.DTOs.DecisionRelayResponse? left, Orkeon.Application.Decision.DTOs.DecisionRelayResponse? right) -> bool
+Orkeon.Application.Crew.Execution.DecisionCircuitOverride
+Orkeon.Application.Crew.Execution.DecisionCircuitOverride.Circuit.get -> Orkeon.Application.Crew.Execution.DecisionCircuit?
+Orkeon.Application.Crew.Execution.DecisionCircuitOverride.Circuit.set -> void
+Orkeon.Application.Crew.Execution.DecisionCircuitOverride.DecisionCircuitOverride() -> void

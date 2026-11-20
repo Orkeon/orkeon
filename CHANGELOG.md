@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `orkeon forge --crew-decision none|optional|required` designs a crew that decides (#431)
+
+The forge now designs crews that use System One through the crew-level `decision: { mode }` and the `without:`
+relay, instead of leaving decisions out. The default is `none`: no decision task, no `when:`, no
+`system_one_decide` and no `decision:` block, which is what every forged crew was until now. `optional` and
+`required` let the plan hold decision tasks (`decision.questions`, no agent, no expected output, no deliverable) and
+`when:` conditions; `optional` requires a `without:` relay on each and refuses `system_one_decide`, `required` offers
+`system_one_decide` when the decision circuit is on. The mode is recorded in `session.json` as `crewDecision` and on
+`session.started`, a resume with another value is refused (exit 1), and the assistant's prompt states the mode's
+rules. A session written before the option resumes as `required` when its plan holds a decision task or
+`system_one_decide`, else `none`, with the warning `FORGE-DECISION-MODE-DERIVED`. An `optional` crew's trial runs
+twice, with System One then through the relays: `runs/<n>/on/` and `runs/<n>/off/` each hold a pass (output, run
+file, folders), `runs/<n>/run.json`, `last-run.json` and `verdict.ready` gain `passes[]`, the verdict passes when
+every pass passes and keeps the lowest score, and findings carry `circuit`. Without a decision model only the relay
+pass runs, with `FORGE-DECISION-PASS-SKIPPED` (and its `cause`) and the info finding `F-PASS-ON-SKIPPED`. A budget
+used up by the first pass ends the session with `FORGE-BUDGET-EXHAUSTED`, and the resume runs the second pass only.
+A `required` crew's trial with the circuit off is refused with `FORGE-DECISION-UNAVAILABLE` (exit 1); `--dry` only
+warns and `--adopt` is not refused. `forge.json` records `crewDecision`, `FORGE.md` and the launcher state the mode,
+and `reopen` reads `decision`, `when` and `without` back with the crew's mode. The shared crew validator no longer
+asks a decision task for an expected output. See
+[Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md#a-crew-that-decides).
+
 ### Added — the `without:` relay answers an `optional` crew's decisions with the circuit off (#430)
 
 With the decision circuit off, a decision task of a `decision.mode: optional` crew is now answered by its `without:`

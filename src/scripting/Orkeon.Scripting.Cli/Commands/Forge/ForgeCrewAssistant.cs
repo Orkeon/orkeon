@@ -117,7 +117,8 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         _readTools = [.. ReadToolAllowlist.Where(name => tools.Any(t => t.Name == name))];
         // What the designed team may use (SPEC §7.3): the sandbox catalogue with
         // descriptions — a closed list the blueprint prompt shows and validation enforces.
-        _crewTools = ForgeSandbox.SelectCrewTools(tools);
+        _crewTools = ForgeSandbox.SelectCrewTools(
+            tools, session.Document.CrewDecision, Orkeon.Application.Crew.Execution.DecisionCircuit.Of(services));
 
         // The reference's structure, cut down to that very catalogue: read
         // once, since neither the crew file nor the catalogue changes during a session.
@@ -201,6 +202,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
 
         _box.Reset();
         _box.ExistingPaths = ForgeFolders.ExistingPaths(request.Brief?.Folders);
+        _box.CrewDecision = _session.Document.CrewDecision;
         var before = _tally.Snapshot;
 
         // Every model call — and every streamed chunk — reports the turn's running total.
@@ -297,6 +299,8 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
                     outline = _referenceOutline,
                 },
             submitTool = isBrief ? "brief_submit" : "blueprint_submit",
+            // The decision mode of the crew (#431): what the plan may hold, for the blueprint phase only.
+            crewDecision = isBrief ? null : ForgeCrewDecision.Normalize(_session.Document.CrewDecision),
         }, InputsOptions);
     }
 

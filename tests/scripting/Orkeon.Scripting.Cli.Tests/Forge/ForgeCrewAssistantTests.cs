@@ -324,6 +324,25 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.Contains("email_send", section, StringComparison.Ordinal);
     }
 
+    /// <summary>#431: the design prompt states what the session's crew decision mode lets the plan hold.</summary>
+    [Theory]
+    [InlineData("none", "this crew asks System One nothing")]
+    [InlineData("optional", "Every decision task names its relay")]
+    [InlineData("required", "The crew needs System One")]
+    public async Task The_design_prompt_states_the_rules_of_the_crew_decision_mode(string mode, string rule)
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider, session: ForgeSession.Create(_workspace, "tri-" + mode, crewDecision: mode));
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains(rule, provider.Chats[0][0].Content, StringComparison.Ordinal);
+    }
+
     private async Task<string> PlanHeaderWith(IReadOnlyList<ForgeLargeFile>? large)
     {
         var provider = new ScriptedLlmProvider().Answers("(no submission)");

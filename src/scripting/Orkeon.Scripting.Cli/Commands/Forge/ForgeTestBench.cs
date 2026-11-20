@@ -65,6 +65,60 @@ internal sealed record ForgeTestRun
     /// <summary>Why the trial mailbox holds the sample alone, when drawing failed.</summary>
     [JsonPropertyName("mailSeedNote")]
     public string MailSeedNote { get; init; } = "";
+
+    /// <summary>The decision circuit of a single-pass trial (<c>on</c>, <c>off</c>); null when the host's was not known.</summary>
+    [JsonPropertyName("circuit")]
+    public string? Circuit { get; init; }
+
+    /// <summary>
+    /// The passes of the trial, in the order they ran (#431): one, or two for an <c>optional</c> crew (on, then off).
+    /// The top-level figures are their sums; <see cref="Success"/> holds when every pass succeeded.
+    /// </summary>
+    [JsonPropertyName("passes")]
+    public IReadOnlyList<ForgeTestPass>? Passes { get; init; }
+}
+
+/// <summary>One pass of a trial (#431): the crew run once, under one decision circuit.</summary>
+internal sealed record ForgeTestPass
+{
+    /// <summary><c>on</c> or <c>off</c>; null when the host's circuit was not known.</summary>
+    [JsonPropertyName("circuit")]
+    public string? Circuit { get; init; }
+
+    /// <summary>Why the circuit was off (<c>switch</c>, <c>settings</c>, <c>no-provider</c>); null when on.</summary>
+    [JsonPropertyName("cause")]
+    public string? Cause { get; init; }
+
+    [JsonPropertyName("success")]
+    public bool Success { get; init; }
+
+    /// <summary>The pass's <c>output.md</c>, relative to the session.</summary>
+    [JsonPropertyName("outputPath")]
+    public string? OutputPath { get; init; }
+
+    [JsonPropertyName("error")]
+    public string? Error { get; init; }
+
+    [JsonPropertyName("durationMs")]
+    public long DurationMs { get; init; }
+
+    [JsonPropertyName("tokens")]
+    public long? Tokens { get; init; }
+
+    [JsonPropertyName("promptTokens")]
+    public long? PromptTokens { get; init; }
+
+    [JsonPropertyName("completionTokens")]
+    public long? CompletionTokens { get; init; }
+
+    [JsonPropertyName("cacheHitTokens")]
+    public long? CacheHitTokens { get; init; }
+
+    [JsonPropertyName("cacheMissTokens")]
+    public long? CacheMissTokens { get; init; }
+
+    [JsonPropertyName("mailActions")]
+    public System.Collections.Immutable.ImmutableList<ForgeMailAction> MailActions { get; init; } = [];
 }
 
 /// <summary>
@@ -76,6 +130,14 @@ internal interface IForgeTestBench
 {
     /// <summary>Runs the session's rendered crew on the brief's sample input.</summary>
     Task<ForgeTestRun> ExecuteAsync(ForgeSession session, int runNumber, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Runs the crew once under <paramref name="circuit"/> (#431), the host's when null: the trial of an
+    /// <c>optional</c> crew runs it twice, on then off. A bench that knows no circuit runs the host's.
+    /// </summary>
+    Task<ForgeTestRun> ExecuteAsync(
+        ForgeSession session, int runNumber, Orkeon.Application.Crew.Execution.DecisionCircuit? circuit, CancellationToken cancellationToken) =>
+        ExecuteAsync(session, runNumber, cancellationToken);
 }
 
 /// <summary>
@@ -125,8 +187,12 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
     }
 
     /// <inheritdoc />
+    public Task<ForgeTestRun> ExecuteAsync(ForgeSession session, int runNumber, CancellationToken cancellationToken) =>
+        ExecuteAsync(session, runNumber, circuit: null, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<ForgeTestRun> ExecuteAsync(
-        ForgeSession session, int runNumber, CancellationToken cancellationToken)
+        ForgeSession session, int runNumber, Orkeon.Application.Crew.Execution.DecisionCircuit? circuit, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(session);
 
@@ -140,6 +206,9 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
         // trial's crew for the life of the session, and a host validating scopes refused them.
         var scope = _services.CreateAsyncScope();
         await using var _ = scope.ConfigureAwait(false);
+        // The pass's circuit (#431), set before the factory and the orchestrator are resolved: they read it.
+        if (circuit is not null && scope.ServiceProvider.GetService<Orkeon.Application.Crew.Execution.DecisionCircuitOverride>() is { } scoped)
+            scoped.Circuit = circuit;
         var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();
         var orchestration = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
 

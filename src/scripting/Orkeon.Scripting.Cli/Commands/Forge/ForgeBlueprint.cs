@@ -107,6 +107,76 @@ internal sealed record ForgeBlueprintTask
     /// </summary>
     [JsonPropertyName("tools")]
     public IReadOnlyList<string>? Tools { get; init; }
+
+    /// <summary>
+    /// Makes the task a decision task (#431): the questions System One answers, which later tasks branch on with
+    /// <see cref="When"/>. A decision task runs no agent: it has no agent, no expected output, no deliverable, no tools.
+    /// </summary>
+    [JsonPropertyName("decision")]
+    public ForgeBlueprintDecision? Decision { get; init; }
+
+    /// <summary>
+    /// Runs the task only when a decision task answered as asked: <c>{"triage.category": ["bug"]}</c>,
+    /// <c>{"triage.urgency": "&gt;= 0.7"}</c>, or <c>{"triage": "otherwise"}</c> (the crew file's <c>when:</c>).
+    /// </summary>
+    [JsonPropertyName("when")]
+    public IReadOnlyDictionary<string, JsonElement>? When { get; init; }
+}
+
+/// <summary>The decision block of a plan's task, the crew file's <c>decision:</c> (#431).</summary>
+internal sealed record ForgeBlueprintDecision
+{
+    /// <summary>Question name to its spec: one of <c>choice</c>, <c>score</c>, <c>noul</c>.</summary>
+    [JsonPropertyName("questions")]
+    public IReadOnlyDictionary<string, ForgeBlueprintQuestion>? Questions { get; init; }
+
+    /// <summary>The confidence an option clause needs to hold (default 0.5).</summary>
+    [JsonPropertyName("minConfidence")]
+    public double? MinConfidence { get; init; }
+
+    /// <summary>The tasks whose output is the decision's state (default: each dependency that ran).</summary>
+    [JsonPropertyName("state")]
+    public IReadOnlyList<string>? State { get; init; }
+
+    /// <summary>Question name to the answer given when the circuit is off, outside an optional crew.</summary>
+    [JsonPropertyName("fallback")]
+    public IReadOnlyDictionary<string, string>? Fallback { get; init; }
+
+    /// <summary>The relay of an optional crew: the agent that answers when the circuit is off.</summary>
+    [JsonPropertyName("without")]
+    public ForgeBlueprintRelay? Without { get; init; }
+}
+
+/// <summary>One question of a decision: a choice among described options, a score per label, or a yes/no test.</summary>
+internal sealed record ForgeBlueprintQuestion
+{
+    /// <summary>Option to its description.</summary>
+    [JsonPropertyName("choice")]
+    public IReadOnlyDictionary<string, string>? Choice { get; init; }
+
+    /// <summary>The labels scored.</summary>
+    [JsonPropertyName("score")]
+    public IReadOnlyList<string>? Score { get; init; }
+
+    /// <summary>The yes/no statement tested.</summary>
+    [JsonPropertyName("noul")]
+    public string? Noul { get; init; }
+
+    /// <summary>What the model is told to weigh.</summary>
+    [JsonPropertyName("instructions")]
+    public string? Instructions { get; init; }
+}
+
+/// <summary>The <c>without:</c> relay of a decision task: an agent of the crew, with optional instructions.</summary>
+internal sealed record ForgeBlueprintRelay
+{
+    /// <summary>The key of the agent that answers the questions when the circuit is off.</summary>
+    [JsonPropertyName("agent")]
+    public string? Agent { get; init; }
+
+    /// <summary>What the relay is told on top of the questions.</summary>
+    [JsonPropertyName("instructions")]
+    public string? Instructions { get; init; }
 }
 
 /// <summary>
@@ -150,7 +220,9 @@ internal sealed record ForgeBlueprint
     };
 
     /// <summary>Parses a submitted blueprint; errors, never exceptions.</summary>
-    public static bool TryParse(string json, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string> existingPaths)
+    public static bool TryParse(
+        string json, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string> existingPaths,
+        string? crewDecision = null)
     {
         blueprint = null;
 
@@ -170,7 +242,7 @@ internal sealed record ForgeBlueprint
             return false;
         }
 
-        errors = blueprint.Validate(existingPaths);
+        errors = blueprint.Validate(existingPaths, crewDecision: crewDecision);
         return errors.Count == 0;
     }
 
@@ -189,7 +261,7 @@ internal sealed record ForgeBlueprint
     }
 
     /// <summary>The structural rules a blueprint must satisfy before compilation.</summary>
-    public IReadOnlyList<string> Validate(IReadOnlyCollection<string> existingPaths, bool enforceHandOffs = true)
+    public IReadOnlyList<string> Validate(IReadOnlyCollection<string> existingPaths, bool enforceHandOffs = true, string? crewDecision = null)
     {
         var errors = new List<string>();
 
@@ -203,6 +275,9 @@ internal sealed record ForgeBlueprint
         // Never skipped, a reopen included: a binary deliverable its agent cannot write runs into a file written as text,
         // or none, while a hand-off only concerns what a prompt names (#392).
         ValidateBinaryDeliverables(errors);
+
+        // The crew's decision mode (#431), last: the engine's own load rules only run over a plan that compiles.
+        ForgeBlueprintDecisions.Validate(this, ForgeCrewDecision.Normalize(crewDecision), errors);
 
         return errors;
     }
@@ -519,6 +594,11 @@ internal sealed record ForgeBlueprint
     {
         if (string.IsNullOrWhiteSpace(task.Description))
             errors.Add($"tasks[{index}] ('{task.Key}'): 'description' is required.");
+
+        // A decision task runs no agent: its own rules are the mode's (ForgeBlueprintDecisions).
+        if (task.Decision is not null)
+            return;
+
         if (string.IsNullOrWhiteSpace(task.ExpectedOutput))
             errors.Add($"tasks[{index}] ('{task.Key}'): 'expectedOutput' is required.");
         if (string.IsNullOrWhiteSpace(task.Agent))

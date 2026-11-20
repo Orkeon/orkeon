@@ -117,6 +117,21 @@ internal sealed class ForgeBudget
         return null;
     }
 
+    /// <summary>
+    /// The dimension that <paramref name="pending"/> tokens and <paramref name="pendingSeconds"/> seconds, not charged
+    /// yet, would exhaust: what a trial checks between its passes (#431), before it starts the next one.
+    /// </summary>
+    public ForgeBudgetDimension? ExhaustedDimensionAfter(ForgeUsageSnapshot pending, long pendingSeconds)
+    {
+        if (MaxTokens > 0 && ConsumedTokens + pending.TotalTokens >= MaxTokens)
+            return ForgeBudgetDimension.Tokens;
+
+        if (MaxWallSeconds > 0 && ConsumedWallSeconds + pendingSeconds >= MaxWallSeconds)
+            return ForgeBudgetDimension.WallTime;
+
+        return null;
+    }
+
     /// <summary>The compact form the protocol's <c>cost.updated</c> and <c>session.started</c> carry.</summary>
     public object ToEventPayload() => new
     {

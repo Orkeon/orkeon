@@ -70,3 +70,5 @@ static Orkeon.Domain.Task.ValueObjects.SystemOneUses.Unknown.get -> Orkeon.Domai
 static Orkeon.Domain.Task.ValueObjects.SystemOneUses.operator !=(Orkeon.Domain.Task.ValueObjects.SystemOneUses? left, Orkeon.Domain.Task.ValueObjects.SystemOneUses? right) -> bool
 static Orkeon.Domain.Task.ValueObjects.SystemOneUses.operator ==(Orkeon.Domain.Task.ValueObjects.SystemOneUses? left, Orkeon.Domain.Task.ValueObjects.SystemOneUses? right) -> bool
 static Orkeon.Domain.Task.DecisionTaskRules.CheckMode(Orkeon.Domain.Crew.CrewDecisionMode mode, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! process, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!>! tasks, Orkeon.Domain.Task.ValueObjects.SystemOneUses! uses, System.Collections.Generic.IReadOnlyCollection<string!>? agentKeys = null) -> Orkeon.Domain.Task.ValueObjects.DecisionModeFindings!
+Orkeon.Domain.FileSystem.TeamLauncherSpec.DecisionNote.get -> string?
+Orkeon.Domain.FileSystem.TeamLauncherSpec.DecisionNote.init -> void

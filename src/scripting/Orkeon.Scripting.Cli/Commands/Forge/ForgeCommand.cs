@@ -4,6 +4,7 @@ using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
@@ -93,6 +94,12 @@ internal sealed record ForgeCommandOptions
     /// <summary><c>--format yaml|script</c>; null when not passed (yaml for a new session).</summary>
     public string? Format { get; init; }
 
+    /// <summary>
+    /// <c>--crew-decision none|optional|required</c> (#431): the decision mode of the crew the session designs;
+    /// null when not passed (none for a new session).
+    /// </summary>
+    public string? CrewDecision { get; init; }
+
     /// <summary><c>--events jsonl</c>: protocol on stdout, answers on stdin.</summary>
     public bool Events { get; init; }
 
@@ -170,6 +177,7 @@ internal sealed record ForgeCommandOptions
         ["--name"] = "--name needs the team's name.",
         ["--schedule"] = "--schedule needs a value: daily@HH:mm or hourly.",
         ["--format"] = "--format needs a value: yaml or script.",
+        ["--crew-decision"] = "--crew-decision needs a value: none, optional or required.",
         ["--max-iterations"] = "--max-iterations needs a positive integer.",
         ["--max-tokens"] = "--max-tokens needs a non-negative integer (0 = unlimited).",
         ["--max-seconds"] = "--max-seconds needs a non-negative integer (0 = unlimited).",
@@ -356,6 +364,7 @@ internal sealed record ForgeCommandOptions
         "--name" => WithTeamName(options, value, invalid),
         "--schedule" => WithSchedule(options, value),
         "--format" => options with { Format = value },
+        "--crew-decision" => options with { CrewDecision = value },
         "--max-iterations" => WithMaxIterations(options, value, invalid),
         "--max-tokens" => WithMaxTokens(options, value, invalid),
         "--max-seconds" => WithMaxSeconds(options, value, invalid),
@@ -459,7 +468,7 @@ internal sealed record ForgeCommandOptions
     /// <summary>Whether <c>rephrase</c> was given an option other than <c>--events</c> and <c>--settings</c>.</summary>
     private static bool RephraseWithOptions(ForgeCommandOptions o) =>
         o.Rephrase
-        && (o.Format is not null || o.Auto || o.Dry || o.PackDirectory is not null
+        && (o.Format is not null || o.CrewDecision is not null || o.Auto || o.Dry || o.PackDirectory is not null
             || o.MaxIterations is not null || o.MaxTokens is not null || o.MaxSeconds is not null
             || o.ReadDirectory is not null || o.Reference is not null || o.Edit || o.Adopt);
 
@@ -477,7 +486,7 @@ internal sealed record ForgeCommandOptions
 
     /// <summary>Whether any option that shapes a cycle was passed.</summary>
     private static bool ShapesACycle(ForgeCommandOptions o) =>
-        o.Format is not null || o.Auto || o.Dry || o.PackDirectory is not null
+        o.Format is not null || o.CrewDecision is not null || o.Auto || o.Dry || o.PackDirectory is not null
         || o.SettingsPath is not null || o.MaxIterations is not null
         || o.MaxTokens is not null || o.MaxSeconds is not null;
 
@@ -590,7 +599,41 @@ internal static class ForgeCommand
             return ExitError;
         }
 
+        if (options.CrewDecision is { } requestedMode && !ForgeCrewDecision.IsKnown(requestedMode))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon forge: unknown crew decision mode '{requestedMode}' — use none, optional or required.")
+                .ConfigureAwait(false);
+            return ExitError;
+        }
+
         return await RunOrAdoptAsync(console, workspace, options).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// <c>FORGE-DECISION-UNAVAILABLE</c> (#431): a <c>required</c> crew's trial with the host's decision circuit off
+    /// (<c>Orkeon:Decision:Enabled=false</c>, no decision model) is refused on stderr, and with <c>--events</c> on the
+    /// stream too, exit 1; <c>--dry</c>, which stops before the trial, only warns. Null when the cycle may go on.
+    /// </summary>
+    private static async Task<int?> RefuseUnavailableDecisionAsync(
+        IRunnerConsole console, ForgeEventWriter events, ForgeSession session, DecisionCircuit hostCircuit, ForgeCommandOptions options)
+    {
+        if (session.Document.CrewDecision != ForgeCrewDecision.Required || hostCircuit.Enabled)
+            return null;
+
+        var cause = ForgeCrewDecision.CauseName(hostCircuit);
+        var message = $"The crew's decision mode is 'required' and {hostCircuit.OffReason}: "
+            + "configure a decision model, or set Orkeon:Decision:Enabled=true, before its trial.";
+        if (options.Dry)
+        {
+            events.Warning(ForgeCrewDecision.UnavailableCode, message);
+            return null;
+        }
+
+        if (options.Events)
+            events.Emit("error", new { code = ForgeCrewDecision.UnavailableCode, message, recoverable = false, cause });
+        await console.ErrorOutput.WriteLineAsync($"orkeon forge: {message} ({ForgeCrewDecision.UnavailableCode})").ConfigureAwait(false);
+        return ExitError;
     }
 
     private static bool IsKnownFormat(string format) =>
@@ -703,6 +746,12 @@ internal static class ForgeCommand
         var events = new ForgeEventWriter(renderer ?? console.Output);
         foreach (var warning in mountWarnings)
             events.Warning(ForgeErrorCodes.MountAmbiguous, warning);
+        if (session.CrewDecisionDerived)
+        {
+            events.Warning(
+                ForgeCrewDecision.DerivedWarning,
+                $"Session '{session.Document.Slug}' predates --crew-decision: its plan makes it '{session.Document.CrewDecision}', now recorded.");
+        }
 
         using var host = BuildEngineHost(console, settingsPath, mountPlan, box, tally, observer);
 
@@ -717,12 +766,18 @@ internal static class ForgeCommand
             return ExitError;
         }
 
+        // A required crew cannot be tried without System One (#431): refused before the interview, while a dry run,
+        // which stops before the trial, is only warned.
+        var hostCircuit = DecisionCircuit.Of(host.Services);
+        if (await RefuseUnavailableDecisionAsync(console, events, session, hostCircuit, options).ConfigureAwait(false) is { } refusal)
+            return refusal;
+
         var packPath = ForgePack.Ensure(session.Directory, options.PackDirectory);
         var assistant = new ForgeCrewAssistant(host.Services, session, packPath, reference: reference, language: options.Language);
 
         // The sandbox catalogue: what the blueprint prompt shows is exactly what the
         // validation enforces (SPEC §9.1) — one list, two consumers.
-        var knownTools = ForgeSandbox.SelectCrewTools(host.Services.GetServices<IBaseTool>())
+        var knownTools = ForgeSandbox.SelectCrewTools(host.Services.GetServices<IBaseTool>(), session.Document.CrewDecision, hostCircuit)
             .Select(tool => tool.Name)
             .ToHashSet(StringComparer.Ordinal);
 
@@ -755,7 +810,7 @@ internal static class ForgeCommand
                 new ValidateStage(knownTools),
                 new TestStage(new ForgeCrewTestBench(host.Services, workspace: workspace, readRoot: readRoot,
                     mailAuthor: new ForgeTrialMailAuthor(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>())),
-                    observer),
+                    observer, hostCircuit),
                 new DiagnoseStage(new LlmForgeJudge(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>())),
                 // A resume that lands AT the arbitration (a reopen, or an interruption
                 // there) re-announces the stored verdict before asking again.
@@ -1067,6 +1122,19 @@ internal static class ForgeCommand
             return (null, ExitError);
         }
 
+        // The crew's decision mode is a fact of its plan, as its format is (#431): a session older than the
+        // option gets the one its plan implies, then a resume cannot change it.
+        session.EnsureCrewDecision(DateTimeOffset.UtcNow);
+        if (options.CrewDecision is { } requestedMode
+            && ForgeCrewDecision.Normalize(requestedMode) != session.Document.CrewDecision)
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon forge: session '{slug}' was created with --crew-decision {session.Document.CrewDecision}"
+                + " — the decision mode of a session cannot change on resume.")
+                .ConfigureAwait(false);
+            return (null, ExitError);
+        }
+
         if (ForgeSession.IsScriptFormat(session.Document.Format) && !EsbuildAvailable(workspace, options))
         {
             await console.ErrorOutput.WriteLineAsync(
@@ -1103,6 +1171,7 @@ internal static class ForgeCommand
             workspace,
             options.Need,
             format: format,
+            crewDecision: ForgeCrewDecision.Normalize(options.CrewDecision),
             budget: new ForgeBudget
             {
                 MaxIterations = options.MaxIterations ?? ForgeBudget.DefaultMaxIterations,
@@ -1136,7 +1205,7 @@ internal static class ForgeCommand
 
         var json = await channel.ReadBlueprintAsync(CancellationToken.None).ConfigureAwait(false)
             ?? throw new OperationCanceledException("The user channel closed while sending the edited blueprint.");
-        if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events, ForgeFolders.ExistingPaths(session), ForgeFolders.Of(session)) is not { } edited)
+        if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events, ForgeFolders.ExistingPaths(session), ForgeFolders.Of(session), session.Document.CrewDecision) is not { } edited)
         {
             // The session has not moved: it waits at the same pause, resumable again.
             events.SessionFinished("paused", ExitError);

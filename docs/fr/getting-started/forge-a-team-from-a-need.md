@@ -54,6 +54,7 @@ Chaque cycle vit sous `.orkeon/forge/<slug>/` dans votre répertoire de travail 
 ├── blueprint.json        le plan d'équipe (source unique des deux rendus)
 ├── repair.json           les erreurs de validation qu'une réparation doit corriger, tant qu'elle est en attente
 ├── crew/                 la crew rendue — ce qui tourne vraiment
+├── runs/<n>/on|off/      les deux passages de l'essai d'une équipe `optional`, un par circuit de décision
 ├── runs/<n>/             chaque essai : sortie, métriques, verdict, livrables (folders/<nom>/)
 ├── transcript.jsonl      la conversation
 └── history.jsonl         chaque transition d'état
@@ -76,6 +77,29 @@ La même pause accepte une seconde réponse : `resume --adopt` garde l'équipe t
 L'assistant n'écrit jamais ni YAML ni TypeScript — il produit un plan validé par schéma, et un renderer déterministe en dérive les fichiers. `--format yaml` (défaut) rend le layout YAML par entité ; `--format script` rend un `crew.ork.ts` éditable — l'équivalent scripté de la même crew, un point de départ pour vos propres retouches, pas de la logique conditionnelle. Le chemin script exige esbuild ; sans lui, une nouvelle session retombe sur YAML et le dit (`FORGE-ESBUILD-MISSING`).
 
 Les deux rendus convergent vers le même validateur, et l'essai charge la crew **depuis les fichiers rendus** — ce qui est écrit est ce qui tourne.
+
+## Une équipe qui décide
+
+`--crew-decision` fixe, pour toute la session, ce que l'équipe conçue demande à System One, le modèle de décision :
+
+- `none` (défaut) : aucune tâche de décision, aucun `when:`, aucun `system_one_decide`, et aucun bloc `decision:`
+  dans l'équipe.
+- `optional` : le plan peut aiguiller son travail par des tâches de décision — une clé, une description et
+  `decision.questions`, sans agent ni résultat attendu — et des tâches conditionnées par `when:`. Chaque tâche de
+  décision nomme son relais, `without: { agent }`, l'agent qui répond quand aucun modèle de décision ne tourne ; il
+  peut n'exécuter aucune tâche. L'essai tourne deux fois, avec System One puis par les relais, sous `runs/<n>/on/` et
+  `runs/<n>/off/` : il réussit quand les deux passages réussissent, son score est le plus bas et chaque constat nomme
+  son `circuit`. Sans modèle de décision seul le passage par les relais tourne, avec l'avertissement
+  `FORGE-DECISION-PASS-SKIPPED` et le constat `F-PASS-ON-SKIPPED`.
+- `required` : l'équipe a besoin de System One ; `system_one_decide` est proposé quand le circuit de décision est
+  ouvert. Son essai circuit coupé est refusé (`FORGE-DECISION-UNAVAILABLE`) ; `--dry` le signale seulement, `--adopt`
+  ne demande aucun essai.
+
+Le mode est enregistré dans `session.json` et ne change pas à la reprise. Une session antérieure à l'option reprend
+en `required` quand son plan porte une tâche de décision ou `system_one_decide`, en `none` sinon, avec
+`FORGE-DECISION-MODE-DERIVED`. L'équipe promue l'enregistre dans `forge.json`, `FORGE.md` et le lanceur l'énoncent ;
+`reopen` le relit dans le bloc `decision:` de l'équipe. Quand le budget s'épuise après le premier passage, la session
+s'arrête là et sa reprise ne lance que le second.
 
 ## L'adopter
 

@@ -55,6 +55,7 @@ Each cycle lives under `.orkeon/forge/<slug>/` in your working directory:
 ├── repair.json           the validation errors a repair must address, while one is pending
 ├── crew/                 the rendered crew — what actually runs
 ├── runs/<n>/             each try: output, metrics, verdict, deliverables (folders/<name>/)
+├── runs/<n>/on|off/      the two passes of an `optional` crew's try, one per decision circuit
 ├── transcript.jsonl      the conversation
 └── history.jsonl         every state transition
 ```
@@ -76,6 +77,26 @@ The same pause takes a second answer: `resume --adopt` keeps the team as generat
 The assistant never writes YAML or TypeScript — it produces one schema-validated plan, and a deterministic renderer derives the files. `--format yaml` (default) renders the per-entity YAML layout; `--format script` renders an editable `crew.ork.ts` — the scripted equivalent of the same crew, a starting point for your own edits, not conditional logic. The script path needs esbuild; without it, a new session falls back to YAML and says so (`FORGE-ESBUILD-MISSING`).
 
 Both renders converge on the same validator, and the try loads the crew **from the rendered files** — what was written is what runs.
+
+## A crew that decides
+
+`--crew-decision` sets what the designed crew asks of System One, the decision model, for the whole session:
+
+- `none` (default): no decision task, no `when:`, no `system_one_decide`, and no `decision:` block in the crew.
+- `optional`: the plan may route its work with decision tasks — a key, a description and `decision.questions`, no
+  agent and no expected output — and tasks gated by `when:`. Each decision task names its relay, `without: { agent }`,
+  the agent that answers when no decision model runs; it may run no task of its own. The try runs twice, with
+  System One then through the relays, under `runs/<n>/on/` and `runs/<n>/off/`: it passes when both passes pass, its
+  score is the lower one and each finding names its `circuit`. Without a decision model only the relay pass runs,
+  with the warning `FORGE-DECISION-PASS-SKIPPED` and the finding `F-PASS-ON-SKIPPED`.
+- `required`: the crew needs System One; `system_one_decide` is offered when the decision circuit is on. Its try with
+  the circuit off is refused (`FORGE-DECISION-UNAVAILABLE`); `--dry` only warns, `--adopt` asks for no try.
+
+The mode is recorded in `session.json` and cannot change on resume. A session older than the option resumes as
+`required` when its plan holds a decision task or `system_one_decide`, else `none`, with `FORGE-DECISION-MODE-DERIVED`.
+The promoted team records it in `forge.json`, and `FORGE.md` and the launcher state it; `reopen` reads it back from
+the crew's `decision:` block. When the budget runs out after the first pass, the session stops there and its resume
+runs the second pass only.
 
 ## Adopt it
 
