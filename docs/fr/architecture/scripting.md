@@ -479,15 +479,17 @@ exécution), puis une ligne par erreur, `<chemin virtuel>:ligne:col TSxxxx messa
 (`2` avant une exécution). Les chemins sont ceux du VFS (`/script/main.ork.ts`,
 `/script/lib/helper.ts`) : le compilateur est un processus externe qui lit et imprime des chemins
 physiques, il travaille donc sur une copie de travail dont les chemins sont remappés avant tout
-affichage. La copie (du script et de chaque module local qu'il importe) blanchit les deux formes du pragma (`tsc` rejette la forme référence avec TS1084
-puis saute sa passe sémantique) sans déplacer une ligne, et les imports relatifs d'un script se
+affichage. La copie (du script et de chaque module local qu'il importe) blanchit les lignes
+`/// <reference orkeon-script=… />` et `/// <reference path=… />` (`tsc` rejette les premières avec
+TS1084 puis saute sa passe sémantique) sans déplacer une ligne, et les imports relatifs d'un script se
 résolvent toujours. Le dossier de travail est écrit par le framework lui-même, hors du VFS, puis
 supprimé.
 
 Un module peut garder `/// <reference path="…/.orkeon/orkeon.d.ts" />` pour son éditeur : cette
 copie, écrite par `orkeon typings`, serait sinon vérifiée à côté du roll-up embarqué et chaque
-identifiant serait signalé deux fois (TS6200). Une copie identique au roll-up de ce build (fins de
-ligne mises à part) le remplace ; une copie qui diffère échoue avec une ligne sur la copie,
+identifiant serait signalé deux fois (TS6200 avant tsc 7 ; à partir de tsc 7, un TS2300, TS2451 ou
+TS2374 par identifiant). Une copie identique au roll-up de ce build (fins de ligne mises à part) le
+remplace ; une copie qui diffère échoue avec une ligne sur la copie,
 ``TS6200 this copy of the Orkeon typings is not the one this build ships …: regenerate it with
 `orkeon typings` ``.
 

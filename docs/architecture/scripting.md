@@ -454,16 +454,18 @@ A type error prints `VALIDATION FAILED: type errors` (`ERROR: type errors` befor
 line per error, `<virtual path>:line:col TSxxxx message`, and exits `1` (`2` before a run). The
 paths are the VFS's (`/script/main.ork.ts`, `/script/lib/helper.ts`); the compiler is an external
 process that reads and prints physical paths, so it works on a scratch copy whose paths are mapped
-back before anything is shown. The copy (of the script and of every local module it imports) blanks the two pragma forms (`tsc` rejects the reference
-form with TS1084 and then skips its semantic pass) without moving a line, and a script's relative
+back before anything is shown. The copy (of the script and of every local module it imports) blanks
+the `/// <reference orkeon-script=… />` and `/// <reference path=… />` lines (`tsc` rejects the
+former with TS1084 and then skips its semantic pass) without moving a line, and a script's relative
 imports still resolve. The scratch folder is written by the framework itself, outside the VFS, and
 deleted afterwards.
 
 A module may keep `/// <reference path="…/.orkeon/orkeon.d.ts" />` for its editor: that copy, written
 by `orkeon typings`, would otherwise be checked beside the embedded roll-up and report every
-identifier twice (TS6200). A copy identical to this build's roll-up (line endings aside) stands in
-for it; a copy that differs fails with one line on the copy, ``TS6200 this copy of the Orkeon typings
-is not the one this build ships …: regenerate it with `orkeon typings` ``.
+identifier twice (TS6200 before tsc 7; from tsc 7 on, one TS2300, TS2451 or TS2374 per identifier).
+A copy identical to this build's roll-up (line endings aside) stands in for it; a copy that differs
+fails with one line on the copy, ``TS6200 this copy of the Orkeon typings is not the one this build
+ships …: regenerate it with `orkeon typings` ``.
 
 `tsc` is looked up like esbuild: `Orkeon:Scripting:Toolchain:TscPath` (the only candidate when set),
 then `tools/scripting-typecheck/node_modules/.bin/` of a checkout (bootstrap it with

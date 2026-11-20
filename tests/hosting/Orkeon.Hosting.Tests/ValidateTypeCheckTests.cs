@@ -100,4 +100,50 @@ public sealed class ValidateTypeCheckTests : IDisposable
 
         Assert.DoesNotContain("type errors", err, StringComparison.Ordinal);
     }
+
+    private static string Rollup()
+    {
+        using var stream = typeof(TscTypeChecker).Assembly.GetManifestResourceStream("Orkeon.Scripting.Typings.orkeon.d.ts")!;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    // #424: the compiler a checkout pins (TypeScript 7) reports each duplicate identifier on its own line.
+    private Task<(int Exit, string Err)> ValidateWithReferencedTypingsAsync(string module)
+    {
+        Directory.CreateDirectory(Path.Combine(_dir, ".orkeon"));
+        return ValidateAsync(
+            "/// <reference orkeon-script=\"1.0\" />\nimport { label } from \"./lib/infra.ts\";\nconst s: string = label;\n",
+            (".orkeon/orkeon.d.ts", Rollup()),
+            ("lib/infra.ts", "/// <reference path=\"../.orkeon/orkeon.d.ts\" />\n" + module));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task A_module_referencing_the_projects_typings_passes_the_type_check()
+    {
+        Assert.SkipUnless(CompilerAvailable(), "tsc is not bootstrapped (npm --prefix tools/scripting-typecheck install --prefer-offline).");
+
+        var (_, err) = await ValidateWithReferencedTypingsAsync("export const label: string = \"ok\";\n");
+
+        // Past the type check, validate reaches the crew stage: this script assigns no crew.
+        Assert.Contains("did not assign globalThis.crew", err, StringComparison.Ordinal);
+        Assert.DoesNotContain("type errors", err, StringComparison.Ordinal);
+        Assert.DoesNotContain("type check", err, StringComparison.Ordinal);
+        Assert.DoesNotContain("TS2300", err, StringComparison.Ordinal);
+        Assert.DoesNotContain("TS2451", err, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task A_type_error_in_a_module_referencing_the_projects_typings_is_still_reported()
+    {
+        Assert.SkipUnless(CompilerAvailable(), "tsc is not bootstrapped (npm --prefix tools/scripting-typecheck install --prefer-offline).");
+
+        var (exit, err) = await ValidateWithReferencedTypingsAsync("export const label: string = 42;\n");
+
+        Assert.Equal(1, exit);
+        Assert.Contains("/script/lib/infra.ts:2:14 TS2322", err, StringComparison.Ordinal);
+        Assert.DoesNotContain("TS2300", err, StringComparison.Ordinal);
+    }
 }
