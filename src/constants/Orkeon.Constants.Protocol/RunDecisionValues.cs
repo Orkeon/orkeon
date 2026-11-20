@@ -41,3 +41,19 @@ public static class DecisionCircuitCauses
     /// <summary>No decision provider resolved.</summary>
     public const string NoProvider = "no-provider";
 }
+
+/// <summary>
+/// The <c>decisionSource</c> of a <see cref="RunEventKinds.TaskCompleted"/> event (#430): what answered a decision
+/// task that was asked, whether it succeeded or failed. Absent on any other task and on a skipped decision task.
+/// </summary>
+public static class DecisionSources
+{
+    /// <summary>The decision model (System One), with the circuit on.</summary>
+    public const string Model = "model";
+
+    /// <summary>The task's <c>without:</c> relay agent, in an <c>optional</c> crew with the circuit off.</summary>
+    public const string Relay = "relay";
+
+    /// <summary>The task's <c>fallback</c>, in a crew with no mode and the circuit off.</summary>
+    public const string Fallback = "fallback";
+}

@@ -164,8 +164,9 @@ tasks:
       state: [string]        # Clés des tâches dont le modèle juge la sortie ; défaut : les sorties des dépendances qui ont tourné
       longContext: bool      # défaut : false — demande le contexte long du modèle
       fallback: {<question>: string}  # Réponses utilisées sans requête quand le circuit de décision est coupé
+      without: {agent: string, instructions: string}  # decision.mode optional seulement : l'agent qui répond quand le circuit est coupé
     when:                 # Ne lance la tâche que si une tâche de décision a répondu comme écrit (une seule tâche de décision par when:)
-      <task>.<question>: [string] | ">= 0.7"  # Une liste d'options (choice), ou un seuil : une probabilité (oui/non) ou une position de niveau (score)
+      <task>.<question>: [string] | ">= 0.7"  # Une liste d'options (choice, ou [yes] / [no] sur un oui/non), ou un seuil : une probabilité (oui/non) ou une position de niveau (score)
       <task>.<question>.<option>: ">= 0.25"   # La probabilité d'une option d'un choice
       <task>: otherwise                       # Seule : vaut quand aucune condition sœur sur cette tâche ne vaut
 ```
@@ -273,6 +274,10 @@ tasks:
   option d'un choice, un niveau d'un score, `yes` ou `no` d'un oui/non (mettez `"no"` entre guillemets,
   que YAML lit comme un booléen). Une question sans réponse de repli ne sélectionne aucune option. Voir
   [le repli](./decision-models.md#le-circuit-de-décision-et-le-repli).
+- `without` (une crew en `decision.mode: optional` seulement) nomme l'agent qui répond aux questions quand le
+  circuit est coupé, `agent` une clé des `agents:` de la crew et `instructions` un texte facultatif ajouté aux
+  questions. L'agent ne donne que des probabilités, vérifiées et lues comme la réponse du modèle : voir
+  [le relais](./decision-models.md#le-relais-without).
 - Une tâche de décision exige toujours une `description` et un `expectedOutput` comme toute tâche, et
   la crew exige toujours un agent, même si aucune tâche ne l'utilise.
 
@@ -283,6 +288,7 @@ Plusieurs clauses s'écrivent dans un même bloc et **doivent toutes valoir**. L
 | Clause | Vaut quand |
 |---|---|
 | `<task>.<question>: [a, b]` | La question est un choice, l'option choisie est dans la liste et la confiance est au moins égale à `minConfidence`. |
+| `<task>.<question>: [yes]` | La question est un oui/non, sa réponse choisie (`yes` quand sa probabilité vaut 0,5 ou plus) est celle de la liste (`[no]` et `["no"]` se lisent pareil) et la confiance est au moins égale à `minConfidence`. |
 | `<task>.<question>: ">= 0.7"` | La question est un oui/non (sa probabilité d'un oui, dans [0, 1]) ou un score (le score pondéré du modèle sur les positions des niveaux, de 0 à n-1) et la comparaison vaut. Le seuil de confiance ne s'applique pas. |
 | `<task>.<question>.<option>: ">= 0.25"` | La probabilité de cette option d'un choice satisfait la comparaison, même si l'option n'est pas la choisie. Le seuil de confiance ne s'applique pas. |
 | `<task>: otherwise` | Aucune condition sœur sur cette tâche de décision ne vaut, y compris quand la confiance est sous le seuil. |
@@ -317,6 +323,8 @@ dans tous les messages, sous la forme `Task '<clé>' <partie> …` où la partie
   décision, un `otherwise` sans condition sœur sur cette tâche de décision ;
 - une clause d'option avec une liste (`triage.category.bug: [bug]`), qui n'accepte qu'une chaîne de
   seuil ;
+- une liste d'options sur une question de score, en nommant la question : un score n'a pas de niveau choisi et
+  prend un seuil ; une liste d'options sur une question oui/non autre que `yes` et `no` ;
 - une décision ou un `when:` dans un processus autre que les trois ci-dessus.
 
 Avec le circuit de décision coupé, l'exécution est aussi refusée avant sa première tâche quand une

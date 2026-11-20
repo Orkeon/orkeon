@@ -916,8 +916,12 @@ public static class InfrastructureExtensions
                 ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider)
                 : Orkeon.Application.Crew.Execution.DecisionCircuit.On;
         });
+        // The without: relay of an optional crew's decision tasks (#430): the relay agent's own provider or profile.
+        services.TryAddSingleton<Orkeon.Application.Interfaces.Ports.IDecisionRelay>(sp =>
+            new Orkeon.Infrastructure.LLMs.Decision.LlmDecisionRelay(sp.GetService<ILlmProfileRegistry>()));
         services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(sp => new Orkeon.Application.Crew.Execution.DecisionTaskRunner(
             sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>(),
+            sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionRelay>(),
             sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionCircuit>(),
             sp.GetRequiredService<ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner>>()));
 

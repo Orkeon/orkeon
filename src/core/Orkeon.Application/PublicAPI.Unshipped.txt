@@ -34,3 +34,52 @@ static Orkeon.Application.Crew.Execution.DecisionUnavailableException.Refusing(O
 static Orkeon.Application.Crew.RunDecisionNotice.operator !=(Orkeon.Application.Crew.RunDecisionNotice? left, Orkeon.Application.Crew.RunDecisionNotice? right) -> bool
 static Orkeon.Application.Crew.RunDecisionNotice.operator ==(Orkeon.Application.Crew.RunDecisionNotice? left, Orkeon.Application.Crew.RunDecisionNotice? right) -> bool
 Orkeon.Application.Crew.Execution.DecisionUnavailableException.DecisionUnavailableException(string! message) -> void
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Relay = "relay" -> string!
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.DecisionTaskRunner(Orkeon.Application.Interfaces.Ports.IDecisionModel? model, Orkeon.Application.Interfaces.Ports.IDecisionRelay? relay, Orkeon.Application.Crew.Execution.DecisionCircuit! circuit, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner!>! logger) -> void
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.RunAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<(string! TaskName, string! Output)>! inputs, Orkeon.Domain.Agent.Agent? relayAgent, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult!>!
+Orkeon.Application.Crew.TaskExecutionSnapshot.DecisionSource.get -> string?
+Orkeon.Application.Crew.TaskExecutionSnapshot.DecisionSource.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionRelayRequest!
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.Agent.get -> Orkeon.Domain.Agent.Agent!
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.Agent.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.DecisionRelayRequest() -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.Equals(Orkeon.Application.Decision.DTOs.DecisionRelayRequest? other) -> bool
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.Prompt.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.Prompt.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.PromptWithSchema.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.PromptWithSchema.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.Schema.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.Schema.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.SystemPrompt.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.SystemPrompt.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.TaskId.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionRelayRequest.TaskId.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.<Clone>$() -> Orkeon.Application.Decision.DTOs.DecisionRelayResponse!
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.DecisionRelayResponse() -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.Equals(Orkeon.Application.Decision.DTOs.DecisionRelayResponse? other) -> bool
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.InputTokens.get -> int
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.InputTokens.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.OutputTokens.get -> int
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.OutputTokens.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.SchemaInPrompt.get -> bool
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.SchemaInPrompt.init -> void
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.Text.get -> string!
+Orkeon.Application.Decision.DTOs.DecisionRelayResponse.Text.init -> void
+Orkeon.Application.Interfaces.Ports.IDecisionRelay
+Orkeon.Application.Interfaces.Ports.IDecisionRelay.AskAsync(Orkeon.Application.Decision.DTOs.DecisionRelayRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DTOs.DecisionRelayResponse!>!
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DecisionSource.get -> string?
+Orkeon.Application.Interfaces.Services.CrewExecutionEvent.DecisionSource.init -> void
+Orkeon.Application.Interfaces.Services.TaskResult.DecisionSource.get -> string?
+Orkeon.Application.Interfaces.Services.TaskResult.DecisionSource.init -> void
+override Orkeon.Application.Decision.DTOs.DecisionRelayRequest.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.DecisionRelayRequest.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.DecisionRelayRequest.ToString() -> string!
+override Orkeon.Application.Decision.DTOs.DecisionRelayResponse.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DTOs.DecisionRelayResponse.GetHashCode() -> int
+override Orkeon.Application.Decision.DTOs.DecisionRelayResponse.ToString() -> string!
+static Orkeon.Application.Decision.DTOs.DecisionRelayRequest.operator ==(Orkeon.Application.Decision.DTOs.DecisionRelayRequest? left, Orkeon.Application.Decision.DTOs.DecisionRelayRequest? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionRelayRequest.operator !=(Orkeon.Application.Decision.DTOs.DecisionRelayRequest? left, Orkeon.Application.Decision.DTOs.DecisionRelayRequest? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionRelayResponse.operator ==(Orkeon.Application.Decision.DTOs.DecisionRelayResponse? left, Orkeon.Application.Decision.DTOs.DecisionRelayResponse? right) -> bool
+static Orkeon.Application.Decision.DTOs.DecisionRelayResponse.operator !=(Orkeon.Application.Decision.DTOs.DecisionRelayResponse? left, Orkeon.Application.Decision.DTOs.DecisionRelayResponse? right) -> bool

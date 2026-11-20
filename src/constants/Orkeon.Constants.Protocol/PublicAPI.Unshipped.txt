@@ -14,3 +14,7 @@ const Orkeon.Constants.Protocol.RunDecisionModes.Unknown = "unknown" -> string!
 const Orkeon.Constants.Protocol.RunDecisionModes.Unspecified = "unspecified" -> string!
 const Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable = "decision_unavailable" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.RunDecision = "run.decision" -> string!
+Orkeon.Constants.Protocol.DecisionSources
+const Orkeon.Constants.Protocol.DecisionSources.Fallback = "fallback" -> string!
+const Orkeon.Constants.Protocol.DecisionSources.Model = "model" -> string!
+const Orkeon.Constants.Protocol.DecisionSources.Relay = "relay" -> string!

@@ -288,6 +288,9 @@ public sealed record CrewExecutionEvent
     /// <summary><c>task.completed</c>: the task is a decision task.</summary>
     public bool IsDecision { get; init; }
 
+    /// <summary><c>task.completed</c>: what answered a decision task that was asked (<c>model</c>, <c>relay</c> or <c>fallback</c>); null otherwise.</summary>
+    public string? DecisionSource { get; init; }
+
     /// <summary><c>task.completed</c>: the decision answers as compact JSON; null unless <see cref="IsDecision"/>.</summary>
     public string? DecisionAnswers { get; init; }
 

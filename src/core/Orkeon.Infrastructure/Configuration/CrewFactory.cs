@@ -141,7 +141,11 @@ public partial class CrewFactory : ICrewFactory
         // typed error (#429): a withheld system_one_decide must not fail the load first.
         var refuseWithheld = config.DecisionMode != Orkeon.Domain.Crew.CrewDecisionMode.Required;
         var agentMap = await CreateAgentsAsync(config.Agents, config.Rag?.DefaultProfile, refuseWithheld, ct).ConfigureAwait(false);
-        var taskMap = await CreateTasksAsync(config.Tasks, agentMap, refuseWithheld, ct).ConfigureAwait(false);
+        // A without: relay names its agent by key (#430): resolved here to the agent built for that key.
+        var agentIdByKey = config.Agents
+            .Where(a => a.Key is not null && agentMap.ContainsKey(a.Id))
+            .ToDictionary(a => a.Key!, a => agentMap[a.Id].Id, StringComparer.Ordinal);
+        var taskMap = await CreateTasksAsync(config.Tasks, agentMap, agentIdByKey, refuseWithheld, ct).ConfigureAwait(false);
 
         SetupTaskDependencies(config.Tasks, taskMap);
         AddTaskContextData(config.Tasks, taskMap);
@@ -418,7 +422,8 @@ public partial class CrewFactory : ICrewFactory
     /// belt for that task only (GAP-07).
     /// </summary>
     private async Task<Dictionary<string, CrewTask>> CreateTasksAsync(
-        IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, DomainAgent> agentMap, bool refuseWithheld, CancellationToken ct)
+        IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, DomainAgent> agentMap,
+        IReadOnlyDictionary<string, AgentId> agentIdByKey, bool refuseWithheld, CancellationToken ct)
     {
         var created = new Dictionary<string, CrewTask>();
         var idByName = new Dictionary<string, TaskId>(StringComparer.Ordinal);
@@ -429,7 +434,7 @@ public partial class CrewFactory : ICrewFactory
             ct.ThrowIfCancellationRequested();
             var resolvedTools = await ResolveToolsAsync(taskConfig.Tools, refuseWithheld, ct).ConfigureAwait(false);
 
-            var task = BuildTask(taskConfig, resolvedTools, idByName, agentMap);
+            var task = BuildTask(taskConfig, resolvedTools, idByName, agentMap, agentIdByKey);
 
             created[taskConfig.Id] = task;
             if (taskConfig.Decision is not null)
@@ -447,7 +452,8 @@ public partial class CrewFactory : ICrewFactory
 
     private static CrewTask BuildTask(
         TaskConfiguration taskConfig, IReadOnlyList<IBaseTool> resolvedTools,
-        Dictionary<string, TaskId> idByName, Dictionary<string, DomainAgent> agentMap)
+        Dictionary<string, TaskId> idByName, Dictionary<string, DomainAgent> agentMap,
+        IReadOnlyDictionary<string, AgentId> agentIdByKey)
     {
         var builder = new CrewTaskBuilder()
             .Description(TaskDescription.From(taskConfig.Description))
@@ -458,8 +464,13 @@ public partial class CrewFactory : ICrewFactory
             .WithTools(resolvedTools)
             .WithKey(taskConfig.Key);
 
-        if (taskConfig.Decision is not null)
-            builder.WithDecision(taskConfig.Decision);
+        if (taskConfig.Decision is { } decision)
+        {
+            // The relay's agent, by the id of the agent its key names; a key no agent has was refused at load.
+            builder.WithDecision(decision.Without is { } relay && agentIdByKey.TryGetValue(relay.Agent, out var relayAgentId)
+                ? decision.WithRelay(relay.ResolvedTo(relayAgentId))
+                : decision);
+        }
 
         if (taskConfig.Condition is not null)
         {

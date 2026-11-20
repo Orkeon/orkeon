@@ -98,6 +98,12 @@ public sealed record TaskExecutionSnapshot
     /// <summary>True when the task is a decision task.</summary>
     public bool IsDecision { get; init; }
 
+    /// <summary>
+    /// What answered a decision task that was asked (<c>DecisionSources</c>: <c>model</c>, <c>relay</c> or
+    /// <c>fallback</c>), on a failed one too (#430); null on any other task and on a skipped decision task.
+    /// </summary>
+    public string? DecisionSource { get; init; }
+
     /// <summary>The decision answers as compact JSON — null unless <see cref="IsDecision"/>.</summary>
     public string? DecisionAnswers { get; init; }
 

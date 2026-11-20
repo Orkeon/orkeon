@@ -384,10 +384,64 @@ process and every host: `crew 'x' requires System One (decision.mode: required) 
 --no-decision`. The error carries the code `decision_unavailable`, and `orkeon run` exits `69` (`EX_UNAVAILABLE`). A
 `required` crew that lists `system_one_decide` still loads, the tool withheld with a warning, so that it meets this
 refusal rather than an unknown tool. With `mode: optional` and the circuit off, each decision task is answered by its
-`without:` relay. This release declares the relay and checks it at load, but does not run it yet: such a task fails,
-naming its relay. `--validate` reports the refusal a run would meet as a `WARNING:` line and exits `0`
+`without:` relay ([below](#the-without-relay)). `--validate` reports the refusal a run would meet as a `WARNING:` line and exits `0`
 ([the CLI](../reference/cli.md#orkeon-run)), and a run emits one `run.decision` event with the mode, the circuit and its
 cause ([the run event bus](./run-event-bus.md)).
+
+#### Circuit off, by mode
+
+| Mode | Circuit off |
+| --- | --- |
+| no mode (`unspecified`) | Each decision task answers by its fallback, marked `defaulted`, as above; a resumed run behaves as before this mode existed. |
+| `none` | Nothing changes: the crew has no decision task. |
+| `optional` | Each decision task is answered by its `without:` relay; no fallback is used, and `defaulted` stays `false`. |
+| `required` | The run is refused before its first task, with `decision_unavailable`. |
+
+#### The `without:` relay
+
+The relay is one LLM call made with the relay agent's provider: its own `llm` block, else its `llm.profile`, else the
+default profile. The call sends the agent's prompt (role, goal, backstory), the questions, the state the task reads,
+as JSON, and `without.instructions`; it has no tool, no memory and no history. The agent reports **probabilities
+only**, as one JSON object with one key per question:
+
+- a `choice`: an object giving every option a probability;
+- a `score`: an object giving every level, keyed by its position from `"0"`, a probability;
+- a `noul`: a number, the probability that the statement is true.
+
+The schema of that object is generated from the questions. A provider that declares `json_schema` receives it as
+its response format; any other receives it in the prompt, and its answer (a fenced block included) is read and
+checked the same way.
+
+- **Checks.** The answer is JSON that parses, every question is present, every value is in [0, 1], and each
+  distribution sums to 1 within a tolerance of **0.05**; it is then normalised.
+- **Derivation.** The rest is derived exactly as from the model's answer: a `choice` takes the most probable option
+  as `chosen`, with that probability as its confidence; a `noul` is `yes` when p >= 0.5, with a confidence of
+  max(p, 1 - p); a `score` is the weighted position, the sum of i * p(i) with the first level counted 0, the scale
+  thresholds read, with the largest p(i) as its confidence and no `chosen`.
+- **One more try.** An answer that fails a check is asked once more, with the reason it was refused. This is the
+  relay's own retry, not the task's `retry:` (which decision tasks refuse). A second refusal fails the task with
+  the reason; so does an error of the call. No fallback is ever used.
+- **Reported.** The task's `task.completed` carries `decisionSource: relay` and `defaulted: false`; its
+  `model` is `relay:<role>`. The relay's prompt and completion tokens count on the task and in the run's totals,
+  and its `cost.updated` names the operation `relay` with the relay agent's role as `agentId`.
+- **`longContext`** is a request option of System One and the relay ignores it: a state larger than the relay
+  model's window fails the task as any LLM call over its window does.
+
+**Calibration.** The probabilities an LLM states for itself are not calibrated, and they cluster high.
+`minConfidence` gates only option clauses: a threshold clause such as `triage.urgent: ">= 0.7"` reads the raw
+probability and ignores it, so behind a relay it mostly passes. An `optional` crew therefore prefers option clauses,
+`triage.route: [bug]` on a choice and `triage.urgent: [yes]` on a yes-no question, which `minConfidence` gates. A
+`score` has no chosen level: it takes thresholds only, and `minConfidence` does not apply to it.
+
+#### Decisions on resume
+
+A decision task's answer is recorded in the run's checkpoint with its source (`model`, `relay` or `fallback`), in
+every process: a resumed Sequential, Parallel or Graph run replays it without a new request and reports the stored
+`decisionSource`. The checkpoint thus shows the circuit the run was started with: on when a decision came from the
+model, off when one came from the relay or the fallback. An `optional` crew resumed under the other circuit is
+refused, with `decision_unavailable`, naming both circuits: its decisions left would otherwise come from the other
+source. A run that recorded no decision yet resumes under either circuit, and a crew with no mode keeps the resume
+behaviour it had.
 
 ### Jev's limits and long context
 

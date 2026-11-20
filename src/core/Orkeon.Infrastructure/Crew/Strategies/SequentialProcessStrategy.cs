@@ -81,7 +81,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
         _lifecycle = dependencies.LifecycleFor(logger);
         _decisionRunner = dependencies.DecisionRunner;
-        _decisions = _decisionRunner is null ? null : new DecisionDispatch(_decisionRunner);
+        _decisions = _decisionRunner is null ? null : new DecisionDispatch(_decisionRunner, _executionService);
     }
 
     /// <inheritdoc />
@@ -219,7 +219,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                     .ConfigureAwait(false);
 
             // The round-robin cursor moves only for a task an agent ran: a skipped task keeps its turn for the next.
-            if (await DispatchTaskAsync(run, position, task, agent, crewTasks, cancellationToken).ConfigureAwait(false))
+            if (await DispatchTaskAsync(run, position, task, agent, agents, crewTasks, cancellationToken).ConfigureAwait(false))
                 agentIndex++;
         }
     }
@@ -249,7 +249,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     /// </summary>
     private async System.Threading.Tasks.Task<bool> DispatchTaskAsync(
         SequentialRun run, int position, Orkeon.Domain.Task.CrewTask task, DomainAgent? agent,
-        IReadOnlyList<Orkeon.Domain.Task.CrewTask> crewTasks, CancellationToken cancellationToken)
+        IReadOnlyList<DomainAgent> agents, IReadOnlyList<Orkeon.Domain.Task.CrewTask> crewTasks, CancellationToken cancellationToken)
     {
         await JoinDependenciesAsync(run, task).ConfigureAwait(false);
 
@@ -267,7 +267,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
         if (agent is null)
         {
-            await RunDecisionTaskAsync(run, position, task, crewTasks, cancellationToken).ConfigureAwait(false);
+            await RunDecisionTaskAsync(run, position, task, crewTasks, agents, cancellationToken).ConfigureAwait(false);
             return false;
         }
 
@@ -278,10 +278,13 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         return true;
     }
 
-    /// <summary>A decision task answered by the decision runner while the run waits: no agent, no memory; the tokens the decision model reports are tallied.</summary>
+    /// <summary>
+    /// A decision task answered by the decision runner while the run waits: no agent of its own, no memory; the
+    /// tokens the decision model or the relay agent (#430) reports are tallied.
+    /// </summary>
     private async System.Threading.Tasks.Task RunDecisionTaskAsync(
         SequentialRun run, int position, Orkeon.Domain.Task.CrewTask task,
-        IReadOnlyList<Orkeon.Domain.Task.CrewTask> crewTasks, CancellationToken cancellationToken)
+        IReadOnlyList<Orkeon.Domain.Task.CrewTask> crewTasks, IReadOnlyList<DomainAgent> agents, CancellationToken cancellationToken)
     {
         if (_decisions is null)
             throw new InvalidOperationException($"Task {task.Id} is a decision task and the strategy has no decision runner.");
@@ -292,7 +295,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         await run.Outcome.RecordStartWithoutAgentAsync(task, []).ConfigureAwait(false);
 
         var result = await _decisions
-            .RunAsync(task, crewTasks, run.ContextNow().PreviousOutputs, cancellationToken)
+            .RunAsync(task, crewTasks, agents, run.ContextNow().PreviousOutputs, cancellationToken)
             .ConfigureAwait(false);
 
         LogTaskCompletedSuccess(task.Id, result.Success);
@@ -318,6 +321,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             Duration = result.ExecutionTime,
             CompletedAt = DateTimeOffset.UtcNow,
             Defaulted = result.Decision?.IsDefaulted ?? false,
+            DecisionSource = result.DecisionSource,
             TokensUsed = result.TokensUsed,
             EndedOnIterationCap = result.EndedOnIterationCap,
         }, domainOutput, isDecisionTask: true)).ConfigureAwait(false);

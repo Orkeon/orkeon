@@ -81,10 +81,25 @@ planification, si bien que chaque processus et chaque hôte l'applique. Le relai
 chargement ici, et exécuté par un changement ultérieur (#430). Voir
 [Modèles de décision](../architecture/decision-models.md#le-mode-de-décision-dune-crew).
 
+## Amendement — le relais `without:` (#430)
+
+Ceci amende le §5 : circuit coupé, une tâche de décision d'une crew `optional` ne répond pas par un repli mais par
+son relais `without:`. Le relais fait un appel LLM avec le fournisseur de l'agent relais, sans outil ni historique,
+et l'agent ne donne que des probabilités, dans un objet JSON dont le schéma est généré depuis les questions. Le
+moteur les vérifie comme il vérifie la réponse du modèle (chaque question, des valeurs dans [0, 1], des
+distributions qui somment à 1 à 0,05 près), redemande une fois quand elles échouent, et dérive `chosen`, le score et
+la confiance selon les mêmes règles que la voie du modèle ; un second refus fait échouer la tâche, et aucun repli
+n'est utilisé. `task.completed` dit qui a répondu (`decisionSource: model | relay | fallback`), le checkpoint
+l'enregistre pour que chaque processus rejoue une décision à la reprise, et une crew `optional` reprise sous l'autre
+circuit est refusée. Voir [Modèles de décision](../architecture/decision-models.md#le-relais-without).
+
 ## Alternatives écartées
 
 - **Un agent qui classe et écrit l'aiguillage** : écarté. Il dépense un appel au LLM pour un
-  jugement et rend un texte que la tâche suivante doit analyser.
+  jugement et rend un texte que la tâche suivante doit analyser. Le relais `without:` (#430) n'est pas cet agent :
+  c'est un appel LLM contraint par un schéma à des probabilités, vérifié comme la réponse du modèle et lu par les
+  mêmes conditions, et seulement un second mode qu'une crew `optional` déclare pour un circuit coupé. Rien n'extrait
+  un aiguillage de son texte.
 - **Une condition qui fait échouer la tâche quand elle est fausse** : écarté. Une branche non prise
   est le cas attendu, et un échec déclencherait les nouvelles tentatives et la gestion d'erreur de
   l'équipage.

@@ -17,6 +17,12 @@ public static class LlmUsageOperations
     /// </summary>
     public const string Decision = "decision";
 
+    /// <summary>
+    /// The <c>without:</c> relay agent of a decision task answering its questions in place of the decision model,
+    /// in an <c>optional</c> crew run with the decision circuit off (#430): an LLM call, not a System One one.
+    /// </summary>
+    public const string Relay = "relay";
+
     /// <summary>The hierarchical manager assigning a task or reviewing its output.</summary>
     public const string Manager = "manager";
 

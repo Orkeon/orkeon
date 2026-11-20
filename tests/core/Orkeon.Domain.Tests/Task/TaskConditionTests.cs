@@ -238,4 +238,55 @@ public class TaskConditionTests
         Assert.Equal("a", Assert.Single(clause.Options));
         Assert.Single(condition.Clauses);
     }
+
+    private static DecisionOutcome Legal(string chosen, double confidence) =>
+        Outcome(("legal", new DecisionAnswerValue { Chosen = chosen, Confidence = confidence, Probability = chosen == "yes" ? confidence : 1 - confidence }));
+
+    [Theory]
+    [InlineData("yes", "yes", 0.8, true)]
+    [InlineData("no", "no", 0.7, true)]
+    [InlineData("yes", "no", 0.9, false)]
+    [InlineData("yes", "yes", 0.49, false)]
+    [Trait("BR", "CH-430")]
+    public void ShouldHoldOnTheChosenYesOrNoAtTheFloor_WhenAYesNoClauseListsIt(string listed, string chosen, double confidence, bool holds)
+    {
+        // Arrange
+        var condition = TaskCondition.Create("decide", [ConditionClause.OneOf(Decision, "legal", [listed])]);
+
+        // Act
+        var held = condition.Holds(Legal(chosen, confidence), Decision);
+
+        // Assert
+        Assert.Equal(holds, held);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldRefuseAnOptionListNamingTheQuestion_WhenItReadsAScore()
+    {
+        // Arrange
+        string[] options = ["high"];
+
+        // Act
+        var ex = Record.Exception(() => ConditionClause.OneOf(Decision, "urgency", options));
+
+        // Assert
+        Assert.Equal(
+            "Question 'urgency' is a score: it has no chosen level and takes a threshold such as \">= 1.5\", not an option list. (Parameter 'question')",
+            Assert.IsType<ArgumentException>(ex).Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldRefuseAnOptionOtherThanYesOrNo_WhenTheClauseReadsAYesNo()
+    {
+        // Arrange
+        string[] options = ["maybe"];
+
+        // Act
+        var ex = Record.Exception(() => ConditionClause.OneOf(Decision, "legal", options));
+
+        // Assert
+        Assert.IsType<ArgumentException>(ex);
+    }
 }

@@ -200,6 +200,36 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             call.Run.TaskAttempts[task.TaskId.Value.ToString()] = stored.RetryCount + 1;
     }
 
+    /// <summary>
+    /// The decision circuit a run was started with, as its checkpoint shows it (#430): on when a recorded decision
+    /// was answered by the model, off when one was answered by the relay or the fallback; null when it recorded
+    /// no decision, or only checkpoints written before the source was kept.
+    /// </summary>
+    /// <param name="completedOutputs">The stored outputs of the run, by checkpoint key.</param>
+    internal static bool? RecordedDecisionCircuit(IReadOnlyDictionary<string, string?> completedOutputs)
+    {
+        ArgumentNullException.ThrowIfNull(completedOutputs);
+        foreach (var output in completedOutputs.Values)
+        {
+            if (output is null)
+                continue;
+            string? source;
+            try
+            {
+                source = JsonSerializer.Deserialize<StoredResult>(output, Json)?.DecisionSource;
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            if (source is not null)
+                return source == Orkeon.Constants.Protocol.DecisionSources.Model;
+        }
+
+        return null;
+    }
+
     private StoredResult? Lookup(RunScope run, RunState state, string key, string fingerprint, ICrewTask task)
     {
         if (state.Stale || run.Resume is not { } plan || !plan.CompletedOutputs.TryGetValue(key, out var output) || output is null)
@@ -392,6 +422,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         // The outcome of a decision task, which a route reads: kept so that a resumed run replays it.
         public Orkeon.Domain.Task.ValueObjects.DecisionOutcome? Decision { get; init; }
 
+        // What answered the decision task (#430): model or relay, which a resumed run reports again and from
+        // which it reads the circuit the run was started with; a checkpoint written before replays null.
+        public string? DecisionSource { get; init; }
+
         // Whether the answer came from the tool-free retry after the iteration cap (#388): a resumed run reports it again.
         public bool EndedOnIterationCap { get; init; }
 
@@ -418,6 +452,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             RetryCount = result.RetryCount,
             EndedAt = result.EndedAt,
             Decision = result.Decision,
+            DecisionSource = result.DecisionSource,
             EndedOnIterationCap = result.EndedOnIterationCap,
             DeliverableMissing = result.DeliverableMissing,
             DeliverablePath = result.DeliverablePath,
@@ -456,6 +491,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             RetryCount = RetryCount,
             EndedAt = EndedAt,
             Decision = Decision,
+            DecisionSource = DecisionSource,
             EndedOnIterationCap = EndedOnIterationCap,
             DeliverableMissing = DeliverableMissing,
             DeliverablePath = DeliverablePath,

@@ -75,9 +75,24 @@ sits in the orchestrator, before memory and planning, so every process and every
 is declared and checked at load here and run by a later change (#430). See
 [Decision models](../architecture/decision-models.md#a-crews-decision-mode).
 
+## Amendment — the `without:` relay (#430)
+
+This amends §5: with the circuit off, a decision task of an `optional` crew is not answered by a fallback but by its
+`without:` relay. The relay makes one LLM call on the relay agent's provider, with no tool and no history, and the
+agent reports probabilities only, in a JSON object whose schema is generated from the questions. The engine checks
+them as it checks the model's answer (every question, values in [0, 1], distributions summing to 1 within 0.05),
+asks once more when they fail, and derives `chosen`, the score and the confidence by the same rules as the model
+path; a second refusal fails the task, and no fallback is used. `task.completed` says which answered
+(`decisionSource: model | relay | fallback`), the checkpoint records it so that every process replays a decision on
+resume, and an `optional` crew resumed under the other circuit is refused. See
+[Decision models](../architecture/decision-models.md#the-without-relay).
+
 ## Alternatives considered
 
 - **An agent that classifies and writes the route**: rejected. It spends an LLM call on a
-  judgement and returns text the next task has to parse.
+  judgement and returns text the next task has to parse. The `without:` relay (#430) is not that agent: it is
+  an LLM call constrained by a schema to probabilities, checked like the model's answer and read by the same
+  conditions, and it is only a second mode an `optional` crew declares for a circuit that is off. Nothing parses
+  a route out of its text.
 - **A condition that fails the task when false**: rejected. A branch not taken is the expected
   case, and a failure would trigger the crew's retries and error handling.

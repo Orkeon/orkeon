@@ -219,7 +219,7 @@ public sealed class GraphConditionTests : IDisposable
             .ToList();
         var dispatch = new DecisionDispatch(new DecisionTaskRunner(_model, DecisionCircuit.On, NullLogger<DecisionTaskRunner>.Instance));
 
-        await dispatch.RunAsync(decide, [prep, decide], attempts, TestContext.Current.CancellationToken);
+        await dispatch.RunAsync(decide, [prep, decide], [], attempts, TestContext.Current.CancellationToken);
 
         var state = Assert.Single(_model.Requests).State.ToJsonString();
         Assert.Contains("attempt-3", state, StringComparison.Ordinal);

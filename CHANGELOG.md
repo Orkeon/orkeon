@@ -7,14 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the `without:` relay answers an `optional` crew's decisions with the circuit off (#430)
+
+With the decision circuit off, a decision task of a `decision.mode: optional` crew is now answered by its `without:`
+relay instead of failing: one LLM call on the relay agent's provider (its `llm` block, else its `llm.profile`, else
+the default profile), with its role, goal and backstory, the questions, the state and `without.instructions`, and no
+tool. The agent gives probabilities only, in a JSON object whose schema is generated from the questions: sent as
+`json_schema` to a provider that declares it, in the prompt otherwise. The engine checks the answer (valid JSON,
+every question, values in [0, 1], distributions summing to 1 within 0.05, then normalised), asks once more with the
+reason when it fails, then fails the task, never falling back. It derives the rest as from the decision model: argmax
+and its probability for a `choice`, `yes` when p >= 0.5 and max(p, 1 - p) for a `noul`, the weighted position from 0
+with no `chosen` for a `score`. `task.completed` gains `decisionSource` (`model`, `relay` or `fallback`) on every
+decision task asked, before `deliverableMissing`; `defaulted` stays `true` for the fallback only. The relay's tokens
+count on the task and in the run's totals in Sequential, Parallel and Graph, and its `cost.updated` carries the new
+operation `relay` with the relay agent's role as `agentId`. Sequential and Parallel now replay a decision from the
+checkpoint on resume, as Graph did, with its stored source, and an `optional` crew resumed under the other circuit is
+refused with `decision_unavailable`, naming both circuits. A `when:` takes `[yes]` / `[no]` on a yes-no question,
+gated by `minConfidence`; an option list on a score question is refused at load, naming the question. See
+[Decision models](docs/architecture/decision-models.md#the-without-relay).
+
 ### Added — a crew declares what it needs from System One: `decision: { mode }` (#429)
 
 A crew-level `decision: { mode: none | optional | required }` (YAML, also in the `config.yaml` of a split crew;
 `crewBuilder().decision({ mode })` in a script; `CrewBuilder.DecisionMode` in C#) says whether the crew runs without
 the decision model. `none` refuses decision tasks, `system_one_decide` and decision profiles at load. `optional` asks
 every decision task for a `without: { agent, instructions }` relay, an agent of the crew, and refuses a `fallback` and
-`system_one_decide`; the relay is declared and checked at load in this release, and a decision task that reaches it
-fails naming it until the relay runs (#430). `required` refuses the run before its first task when the decision
+`system_one_decide`; the relay answers with the circuit off (see the entry above, #430). `required` refuses the run before its first task when the decision
 circuit is off, whatever the cause: `crew 'x' requires System One (decision.mode: required) and the decision circuit
 is off: --no-decision`, error code `decision_unavailable`, exit `69` (`EX_UNAVAILABLE`), in every process and every
 host; a `required` crew that lists `system_one_decide` loads with the tool withheld so that it meets this refusal. A

@@ -254,7 +254,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 // so it flows through strategies, agents and tools alike.
                 var domainOutput = await RunWithCrewIdentityAsync(
                     crew.Id,
-                    () => ExecuteAndCompleteAsync(crew, processStrategy, input, cancellationToken))
+                    () => ExecuteAndCompleteAsync(crew, processStrategy, input, resumePlan, cancellationToken))
                     .ConfigureAwait(false);
 
                 // A run that stopped on a question to a human ends here, waiting for its answer (FWK-23): its session
@@ -480,6 +480,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         Orkeon.Domain.Crew.Crew crew,
         IProcessStrategy processStrategy,
         CrewInput input,
+        ResumePlan? resume,
         CancellationToken cancellationToken)
     {
         // Every LLM call of the run is metered for this crew, whichever part of the run makes
@@ -492,7 +493,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         {
             // Every process says the crew's decision mode and the run's circuit once, then refuses a crew that
             // requires System One with the circuit off, before anything is asked of a model (#429).
-            await RefuseWithoutSystemOneAsync(crew, cancellationToken).ConfigureAwait(false);
+            await RefuseWithoutSystemOneAsync(crew, resume, cancellationToken).ConfigureAwait(false);
 
             // A crew that remembers is refused before anything is asked of a model when its memory
             // cannot work: no embedder, a refused key, an unreachable store, a vector of the wrong
@@ -543,9 +544,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     /// <summary>
     /// The <c>run.decision</c> notice, then the refusal of a <c>decision.mode: required</c> crew when the decision
     /// circuit is off (#429): a <see cref="Orkeon.Application.Crew.Execution.DecisionUnavailableException"/>, which
-    /// fails the run with the <c>decision_unavailable</c> code. Without a registered circuit, nothing.
+    /// fails the run with the <c>decision_unavailable</c> code. Then (#430) the refusal of a <c>decision.mode:
+    /// optional</c> crew resumed under the other circuit than it was started with: its recorded decisions came
+    /// from the model or from the relay, and the decisions left would come from the other. Without a registered
+    /// circuit, nothing.
     /// </summary>
-    private async System.Threading.Tasks.Task RefuseWithoutSystemOneAsync(Orkeon.Domain.Crew.Crew crew, CancellationToken cancellationToken)
+    private async System.Threading.Tasks.Task RefuseWithoutSystemOneAsync(Orkeon.Domain.Crew.Crew crew, ResumePlan? resume, CancellationToken cancellationToken)
     {
         if (_decisionCircuit is null)
             return;
@@ -554,7 +558,24 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             .ConfigureAwait(false);
         if (Orkeon.Application.Crew.Execution.DecisionUnavailableException.Refusing(crew, _decisionCircuit) is { } refusal)
             throw refusal;
+
+        if (crew.DecisionMode == Orkeon.Domain.Crew.CrewDecisionMode.Optional
+            && resume is not null
+            && Checkpointing.CheckpointingAgentExecutionService.RecordedDecisionCircuit(resume.CompletedOutputs) is { } startedOn
+            && startedOn != _decisionCircuit.Enabled)
+        {
+            throw new Orkeon.Application.Crew.Execution.DecisionUnavailableException(
+                ResumeMismatchMessage(crew.Name ?? crew.Id.ToString(), startedOn, _decisionCircuit));
+        }
     }
+
+    /// <summary>The refusal of an optional crew resumed under the other circuit (#430): both circuits, named.</summary>
+    internal static string ResumeMismatchMessage(string crewName, bool startedOn, Orkeon.Application.Crew.Execution.DecisionCircuit now) =>
+        startedOn
+            ? $"crew '{crewName}' (decision.mode: optional) was started with the decision circuit on, its decisions answered by the decision model, " +
+              $"and is resumed with {now.OffReason}: resume it with the circuit on, or start a new run"
+            : $"crew '{crewName}' (decision.mode: optional) was started with the decision circuit off, its decisions answered by their without: relay, " +
+              "and is resumed with the circuit on: resume it with the circuit off (--no-decision), or start a new run";
 
     /// <summary>
     /// The tasks a successful run completed, each counted once by its final outcome: a graph keeps

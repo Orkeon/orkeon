@@ -24,4 +24,24 @@ public sealed record DecisionRelay
 
     /// <summary>Gets the instructions added to the questions, or null.</summary>
     public string? Instructions { get; }
+
+    /// <summary>
+    /// Gets the id of the crew agent <see cref="Agent"/> names, once the crew factory resolved it (#430); null
+    /// for a relay read from a definition, which names its agent by key only.
+    /// </summary>
+    internal Orkeon.Domain.Common.AgentId? AgentId { get; private init; }
+
+    /// <summary>The same relay, resolved to the crew agent <paramref name="agentId"/>.</summary>
+    /// <param name="agentId">The id of the agent the key names.</param>
+    /// <returns>The resolved relay.</returns>
+    internal DecisionRelay ResolvedTo(Orkeon.Domain.Common.AgentId agentId) => this with { AgentId = agentId };
+
+    /// <summary>Two relays are equal when they name the same agent with the same instructions, resolved or not.</summary>
+    /// <param name="other">The other relay.</param>
+    /// <returns>True when they are equal.</returns>
+    public bool Equals(DecisionRelay? other) =>
+        other is not null && Agent == other.Agent && Instructions == other.Instructions;
+
+    /// <inheritdoc />
+    public override int GetHashCode() => HashCode.Combine(Agent, Instructions);
 }

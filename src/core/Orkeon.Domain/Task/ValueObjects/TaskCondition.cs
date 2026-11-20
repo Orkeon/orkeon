@@ -48,17 +48,36 @@ public sealed class ConditionClause
 
     private bool IsThreshold { get; }
 
-    /// <summary>Creates an option clause.</summary>
+    /// <summary>
+    /// Creates an option clause: options of a choice, or <c>yes</c> / <c>no</c> of a yes-no question (#430). A
+    /// score has no chosen level, so it takes thresholds only.
+    /// </summary>
     public static ConditionClause OneOf(TaskDecision decision, string question, IReadOnlyList<string> options)
     {
         ArgumentNullException.ThrowIfNull(decision);
         ArgumentNullException.ThrowIfNull(options);
-        var choice = decision.Question(question) as ChoiceQuestionSpec
-            ?? throw new ArgumentException($"'{question}' is not a choice question of the decision.", nameof(question));
-        if (options.Count == 0 || options.Any(o => !choice.Options.ContainsKey(o)))
+        var spec = decision.Question(question)
+            ?? throw new ArgumentException($"'{question}' is not a question of the decision.", nameof(question));
+        if (spec is ScoreQuestionSpec)
+            throw new ArgumentException(ScoreOptionListMessage(question), nameof(question));
+        if (options.Count == 0 || options.Any(o => !OptionsOf(spec).Contains(o)))
             throw new ArgumentException($"The listed options are not all options of question '{question}'.", nameof(options));
         return new ConditionClause(question, options.ToImmutableList(), null, default, 0, false);
     }
+
+    /// <summary>The refusal of an option list on the score question <paramref name="question"/>.</summary>
+    internal static string ScoreOptionListMessage(string question) =>
+        $"Question '{question}' is a score: it has no chosen level and takes a threshold such as \">= 1.5\", not an option list.";
+
+    /// <summary>The options an option clause may list on <paramref name="question"/>: a choice's, or yes and no.</summary>
+    internal static IReadOnlyCollection<string> OptionsOf(DecisionQuestionSpec question) => question switch
+    {
+        ChoiceQuestionSpec choice => [.. choice.Options.Keys],
+        YesNoQuestionSpec => YesNo,
+        _ => [],
+    };
+
+    private static readonly string[] YesNo = ["yes", "no"];
 
     /// <summary>Creates a threshold clause.</summary>
     public static ConditionClause Threshold(TaskDecision decision, string question, string? option, ConditionComparison comparison, double value)

@@ -396,10 +396,66 @@ dans chaque processus et chaque hôte : `crew 'x' requires System One (decision.
 circuit is off: --no-decision`. L'erreur porte le code `decision_unavailable`, et `orkeon run` sort en `69`
 (`EX_UNAVAILABLE`). Une crew `required` qui liste `system_one_decide` se charge quand même, l'outil retenu avec un
 avertissement, pour rencontrer ce refus plutôt qu'un outil inconnu. Avec `mode: optional` et le circuit coupé, chaque
-tâche de décision reçoit la réponse de son relais `without:`. Cette version déclare le relais et le vérifie au
-chargement, mais ne l'exécute pas encore : une telle tâche échoue en nommant son relais. `--validate` signale le refus
+tâche de décision reçoit la réponse de son relais `without:` ([plus bas](#le-relais-without)). `--validate` signale le refus
 qu'un run rencontrerait par une ligne `WARNING:` et sort en `0` ([le CLI](../reference/cli.md#orkeon-run)), et un run
 émet un événement `run.decision` avec le mode, le circuit et sa cause ([le bus d'événements](./run-event-bus.md)).
+
+#### Circuit coupé, selon le mode
+
+| Mode | Circuit coupé |
+| --- | --- |
+| sans mode (`unspecified`) | Chaque tâche de décision répond par son repli, marquée `defaulted`, comme ci-dessus ; un run repris se comporte comme avant l'existence du mode. |
+| `none` | Rien ne change : la crew n'a pas de tâche de décision. |
+| `optional` | Chaque tâche de décision reçoit la réponse de son relais `without:` ; aucun repli n'est utilisé, et `defaulted` reste `false`. |
+| `required` | Le run est refusé avant sa première tâche, avec `decision_unavailable`. |
+
+#### Le relais `without:`
+
+Le relais est un appel LLM fait avec le fournisseur de l'agent relais : son propre bloc `llm`, sinon son
+`llm.profile`, sinon le profil par défaut. L'appel envoie le prompt de l'agent (rôle, objectif, histoire), les
+questions, l'état que lit la tâche, en JSON, et `without.instructions` ; il n'a ni outil, ni mémoire, ni historique.
+L'agent ne donne **que des probabilités**, en un objet JSON qui a une clé par question :
+
+- un `choice` : un objet qui donne une probabilité à chaque option ;
+- un `score` : un objet qui donne une probabilité à chaque niveau, indexé par sa position depuis `"0"` ;
+- un `noul` : un nombre, la probabilité que l'énoncé soit vrai.
+
+Le schéma de cet objet est généré depuis les questions. Un fournisseur qui déclare `json_schema` le reçoit comme
+format de réponse ; tout autre le reçoit dans le prompt, et sa réponse (un bloc clôturé compris) est lue et vérifiée
+de la même façon.
+
+- **Vérifications.** La réponse est un JSON qui se lit, chaque question est présente, chaque valeur est dans [0, 1],
+  et chaque distribution somme à 1 à une tolérance de **0,05** près ; elle est ensuite normalisée.
+- **Dérivation.** Le reste se dérive exactement comme depuis la réponse du modèle : un `choice` prend l'option la
+  plus probable comme `chosen`, avec cette probabilité pour confiance ; un `noul` vaut `yes` quand p >= 0,5, avec une
+  confiance de max(p, 1 - p) ; un `score` est la position pondérée, la somme des i * p(i) où le premier niveau
+  compte 0, l'échelle que lisent les seuils, avec le plus grand p(i) pour confiance et sans `chosen`.
+- **Un essai de plus.** Une réponse qui échoue à une vérification est redemandée une fois, avec la raison de son
+  refus. C'est le nouvel essai propre au relais, pas le `retry:` de la tâche (que les tâches de décision refusent).
+  Un second refus fait échouer la tâche avec la raison ; une erreur de l'appel aussi. Aucun repli n'est jamais
+  utilisé.
+- **Rapporté.** Le `task.completed` de la tâche porte `decisionSource: relay` et `defaulted: false` ; son `model`
+  est `relay:<rôle>`. Les jetons de prompt et de complétion du relais comptent sur la tâche et dans les totaux du
+  run, et son `cost.updated` nomme l'opération `relay` avec le rôle de l'agent relais pour `agentId`.
+- **`longContext`** est une option de requête de System One et le relais l'ignore : un état plus grand que la
+  fenêtre du modèle du relais fait échouer la tâche comme tout appel LLM qui dépasse sa fenêtre.
+
+**Calibration.** Les probabilités qu'un LLM donne de lui-même ne sont pas calibrées, et elles se massent vers le
+haut. `minConfidence` ne filtre que les clauses d'option : une clause de seuil comme `triage.urgent: ">= 0.7"` lit la
+probabilité brute et l'ignore, si bien que derrière un relais elle passe le plus souvent. Une crew `optional`
+préfère donc les clauses d'option, `triage.route: [bug]` sur un choice et `triage.urgent: [yes]` sur une question
+oui-non, que `minConfidence` filtre. Un `score` n'a pas de niveau choisi : il ne prend que des seuils, et
+`minConfidence` ne s'y applique pas.
+
+#### Les décisions à la reprise
+
+La réponse d'une tâche de décision est enregistrée dans le checkpoint du run avec sa source (`model`, `relay` ou
+`fallback`), dans chaque process : un run Sequential, Parallel ou Graph repris la rejoue sans nouvelle requête et
+rapporte le `decisionSource` enregistré. Le checkpoint montre ainsi le circuit avec lequel le run a démarré : allumé
+quand une décision vient du modèle, coupé quand une vient du relais ou du repli. Une crew `optional` reprise sous
+l'autre circuit est refusée, avec `decision_unavailable`, en nommant les deux circuits : les décisions restantes
+viendraient sinon de l'autre source. Un run qui n'a encore enregistré aucune décision reprend sous l'un ou l'autre
+circuit, et une crew sans mode garde le comportement de reprise qu'elle avait.
 
 ### Les limites de Jev et le contexte long
 

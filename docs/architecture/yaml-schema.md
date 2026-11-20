@@ -162,8 +162,9 @@ tasks:
       state: [string]        # Keys of the tasks whose output the model judges; default: the outputs of the dependencies that ran
       longContext: bool      # default: false — asks for the model's long context
       fallback: {<question>: string}  # Answers used without a request when the decision circuit is off
+      without: {agent: string, instructions: string}  # decision.mode optional only: the agent that answers when the circuit is off
     when:                 # Runs the task only when a decision task answered as written (one decision task per when:)
-      <task>.<question>: [string] | ">= 0.7"  # An option list (choice), or a threshold: a probability (yes-no) or a level position (score)
+      <task>.<question>: [string] | ">= 0.7"  # An option list (choice, or [yes] / [no] on a yes-no), or a threshold: a probability (yes-no) or a level position (score)
       <task>.<question>.<option>: ">= 0.25"   # The probability of one option of a choice
       <task>: otherwise                       # Alone: holds when no sibling condition on that task holds
 ```
@@ -267,6 +268,10 @@ tasks:
   choice, a level of a score, `yes` or `no` of a yes-no (quote `"no"`, which YAML reads as a
   boolean). A question without a fallback answer selects no option. See
   [the fallback](./decision-models.md#the-decision-circuit-and-the-fallback).
+- `without` (a crew with `decision.mode: optional` only) names the agent that answers the questions when the
+  circuit is off, `agent` a key of the crew's `agents:` and `instructions` an optional text added to the questions.
+  The agent gives probabilities only, checked and read as the model's answer: see
+  [the relay](./decision-models.md#the-without-relay).
 - A decision task still needs a `description` and an `expectedOutput` like any task, and the crew
   still needs one agent, even when no task uses it.
 
@@ -277,6 +282,7 @@ written in one block and **all must hold**. The grammar:
 | Clause | Holds when |
 |---|---|
 | `<task>.<question>: [a, b]` | The question is a choice, the chosen option is one of the list and the confidence is at or above `minConfidence`. |
+| `<task>.<question>: [yes]` | The question is a yes-no, its chosen answer (`yes` when its probability is 0.5 or more) is the one listed (`[no]` and `["no"]` read the same) and the confidence is at or above `minConfidence`. |
 | `<task>.<question>: ">= 0.7"` | The question is a yes-no (its probability of a yes, in [0, 1]) or a score (the model's weighted score on the positions of the levels, 0 to n-1) and the comparison holds. The floor does not apply. |
 | `<task>.<question>.<option>: ">= 0.25"` | The probability of that option of a choice satisfies the comparison, even when the option is not the chosen one. The floor does not apply. |
 | `<task>: otherwise` | No sibling condition on that decision task holds, including when the confidence is under the floor. |
@@ -310,6 +316,8 @@ message, in the form `Task '<key>' <part> …` where the part is `decision`,
   `otherwise` with no sibling condition on that decision task;
 - an option clause with a list on an option (`triage.category.bug: [bug]`), which takes a threshold
   string only;
+- an option list on a score question, naming the question: a score has no chosen level and takes a threshold;
+  an option list on a yes-no question other than `yes` and `no`;
 - a decision or a `when:` in a process other than the three above.
 
 With the decision circuit off, the run is also refused before its first task when a decision task has

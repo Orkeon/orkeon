@@ -9,7 +9,7 @@ namespace Orkeon.Application.Tests.Crew;
 
 /// <summary>
 /// #429: what a run does with the crew's <c>decision.mode</c> when the decision circuit is off - a required
-/// crew refused with a typed error, an optional crew's decision task left to the relay #430 plugs in.
+/// crew refused with a typed error, an optional crew's decision task left to its relay (#430).
 /// </summary>
 public sealed class DecisionModeRunTests
 {
@@ -91,7 +91,8 @@ public sealed class DecisionModeRunTests
 
     [Fact]
     [Trait("BR", "CH-429")]
-    public async System.Threading.Tasks.Task ShouldFailTheTaskAndNameTheRelay_WhenTheCircuitIsOffAndTheTaskHasARelay()
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldFailTheTaskAndNameTheRelay_WhenTheCircuitIsOffAndTheHostHasNoRelay()
     {
         // Arrange
         var runner = new DecisionTaskRunner(new FakeDecisionModel(), DecisionCircuit.Off, NullLogger<DecisionTaskRunner>.Instance);
@@ -104,7 +105,7 @@ public sealed class DecisionModeRunTests
         Assert.False(result.Success);
         Assert.Equal(
             "Decision task 'triage' is answered by its without: relay (agent 'analyst') when the decision circuit is off: --no-decision, " +
-            "and this engine does not run the relay yet.",
+            "and this host registers no decision relay.",
             result.Error);
     }
 }

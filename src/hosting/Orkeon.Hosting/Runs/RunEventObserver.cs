@@ -224,6 +224,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                 isDecision = snapshot.IsDecision,
                 decision = snapshot.DecisionAnswers,
                 endedOnIterationCap = snapshot.EndedOnIterationCap,
+                decisionSource = snapshot.DecisionSource,
                 deliverableMissing = snapshot.DeliverableMissing,
             });
 
