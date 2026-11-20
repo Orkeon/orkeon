@@ -430,6 +430,13 @@
       "description": "The `Orkeon:RunHistory` section: whether the events of a run are kept after it ended, and where."
     },
     {
+      "path": "Orkeon:Skills",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "How an agent's `skills:` reach its prompt (#434), bound to the `Orkeon:Skills` section by `AddOrkeonInfrastructure()`. Each skill is a markdown file read through the virtual file system and appended to the agent's system prompt under a `## Skills` heading, cut at `AgentSkillsOptions.MaxSkillChars`, the whole block at `AgentSkillsOptions.MaxBlockChars`. An agent with `skills: { auto: true }` has the decision model pick, for each task, at most three skills of `AgentSkillsOptions.Library`."
+    },
+    {
       "path": "Orkeon:Cli:ConsoleStreaming",
       "category": "scripts-and-console",
       "hosts": [],
@@ -3613,6 +3620,27 @@
         "Sqlite"
       ],
       "description": "The store: `jsonl` (default) or `sqlite`."
+    },
+    {
+      "path": "Orkeon:Skills:Library",
+      "section": "Orkeon:Skills",
+      "type": "string",
+      "default": "/workspace/.orkeon/skills",
+      "description": "The virtual folder an `auto` agent's skills are picked from, one `<name>.md` file per skill (sub-folders are not read). `/workspace/.orkeon/skills` by default."
+    },
+    {
+      "path": "Orkeon:Skills:MaxBlockChars",
+      "section": "Orkeon:Skills",
+      "type": "integer",
+      "default": 12000,
+      "description": "The characters the whole skills block carries, every skill's text included; a skill past it is cut to what remains, or left out. 12000 by default, three skills at their cap."
+    },
+    {
+      "path": "Orkeon:Skills:MaxSkillChars",
+      "section": "Orkeon:Skills",
+      "type": "integer",
+      "default": 4000,
+      "description": "The characters of one skill the prompt carries; the rest is cut, and the cut is said in the prompt and in `agent.skills`. 4000 by default."
     },
     {
       "path": "Orkeon:Cli:ConsoleStreaming:Enabled",

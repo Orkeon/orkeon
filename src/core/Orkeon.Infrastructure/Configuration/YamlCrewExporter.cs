@@ -121,6 +121,18 @@ public partial class YamlCrewExporter
         Dictionary<string, AgentYamlConfig> Agents,
         Dictionary<string, TaskYamlConfig> Tasks);
 
+    // An agent's skills: (#434) as the mapper reads them back, a list or the map of a pick.
+    private static object? MapSkills(Orkeon.Domain.Agent.AgentSkills? skills) => skills switch
+    {
+        null => null,
+        { Auto: true } => new Dictionary<string, object>
+        {
+            ["auto"] = true,
+            ["fallback"] = new Collection<string>([.. skills.Fallback]),
+        },
+        _ => new Collection<string>([.. skills.Paths]),
+    };
+
     private static CrewDocument MapCrewDocument(CrewConfiguration config)
     {
         var names = EntryNames.For(config);
@@ -339,6 +351,7 @@ public partial class YamlCrewExporter
             Compaction = agent.Compaction is { } compaction
                 ? new CompactionYamlConfig { Enabled = compaction.Enabled, TriggerShare = compaction.TriggerShare }
                 : null,
+            Skills = MapSkills(agent.Skills),
             Knowledge = MapKnowledge(agent.KnowledgeAttachments),
         };
     }

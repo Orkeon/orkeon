@@ -160,6 +160,8 @@ public sealed record AgentConfiguration
     public GuardrailsConfig? Guardrails { get; init; }
     /// <summary>What the agent overrides of the host's conversation compaction (<c>compaction:</c>, #432); null follows the host.</summary>
     public Orkeon.Domain.Agent.AgentCompaction? Compaction { get; init; }
+    /// <summary>The skills the agent's prompt carries (<c>skills:</c>, #434); null when it declares none.</summary>
+    public Orkeon.Domain.Agent.AgentSkills? Skills { get; init; }
     /// <summary>
     /// Gets the knowledge (RAG) collections attached to this agent (<c>knowledge:</c> block,
     /// short or long form). Empty when the agent declares none.

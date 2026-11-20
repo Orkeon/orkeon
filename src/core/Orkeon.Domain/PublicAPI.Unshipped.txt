@@ -92,3 +92,22 @@ override Orkeon.Domain.Agent.AgentCompaction.GetHashCode() -> int
 override Orkeon.Domain.Agent.AgentCompaction.ToString() -> string!
 static Orkeon.Domain.Agent.AgentCompaction.operator !=(Orkeon.Domain.Agent.AgentCompaction? left, Orkeon.Domain.Agent.AgentCompaction? right) -> bool
 static Orkeon.Domain.Agent.AgentCompaction.operator ==(Orkeon.Domain.Agent.AgentCompaction? left, Orkeon.Domain.Agent.AgentCompaction? right) -> bool
+Orkeon.Domain.Agent.Agent.Skills.get -> Orkeon.Domain.Agent.AgentSkills?
+Orkeon.Domain.Agent.AgentBuilder.Skills(Orkeon.Domain.Agent.AgentSkills? skills) -> Orkeon.Domain.Agent.AgentBuilder!
+Orkeon.Domain.Agent.AgentSkills
+Orkeon.Domain.Agent.AgentSkills.AgentSkills() -> void
+Orkeon.Domain.Agent.AgentSkills.Auto.get -> bool
+Orkeon.Domain.Agent.AgentSkills.Auto.init -> void
+Orkeon.Domain.Agent.AgentSkills.Fallback.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Agent.AgentSkills.Fallback.init -> void
+Orkeon.Domain.Agent.AgentSkills.Paths.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Agent.AgentSkills.Paths.init -> void
+Orkeon.Domain.Agent.AgentSkills.<Clone>$() -> Orkeon.Domain.Agent.AgentSkills!
+Orkeon.Domain.Agent.AgentSkills.Equals(Orkeon.Domain.Agent.AgentSkills? other) -> bool
+override Orkeon.Domain.Agent.AgentSkills.Equals(object? obj) -> bool
+override Orkeon.Domain.Agent.AgentSkills.GetHashCode() -> int
+override Orkeon.Domain.Agent.AgentSkills.ToString() -> string!
+static Orkeon.Domain.Agent.AgentSkills.operator !=(Orkeon.Domain.Agent.AgentSkills? left, Orkeon.Domain.Agent.AgentSkills? right) -> bool
+static Orkeon.Domain.Agent.AgentSkills.operator ==(Orkeon.Domain.Agent.AgentSkills? left, Orkeon.Domain.Agent.AgentSkills? right) -> bool
+Orkeon.Domain.Configuration.AgentConfiguration.Skills.get -> Orkeon.Domain.Agent.AgentSkills?
+Orkeon.Domain.Configuration.AgentConfiguration.Skills.init -> void

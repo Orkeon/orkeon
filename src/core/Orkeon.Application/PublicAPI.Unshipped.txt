@@ -198,3 +198,45 @@ static Orkeon.Application.Crew.Compaction.ContextWindow.operator !=(Orkeon.Appli
 static Orkeon.Application.Crew.Compaction.ContextWindow.operator ==(Orkeon.Application.Crew.Compaction.ContextWindow? left, Orkeon.Application.Crew.Compaction.ContextWindow? right) -> bool
 static Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.operator !=(Orkeon.Application.Interfaces.Ports.AgentCompactionNotice? left, Orkeon.Application.Interfaces.Ports.AgentCompactionNotice? right) -> bool
 static Orkeon.Application.Interfaces.Ports.AgentCompactionNotice.operator ==(Orkeon.Application.Interfaces.Ports.AgentCompactionNotice? left, Orkeon.Application.Interfaces.Ports.AgentCompactionNotice? right) -> bool
+Orkeon.Application.Crew.Skills.AgentSkillsOptions
+Orkeon.Application.Crew.Skills.AgentSkillsOptions.AgentSkillsOptions() -> void
+Orkeon.Application.Crew.Skills.AgentSkillsOptions.Library.get -> string!
+Orkeon.Application.Crew.Skills.AgentSkillsOptions.Library.set -> void
+Orkeon.Application.Crew.Skills.AgentSkillsOptions.MaxBlockChars.get -> int
+Orkeon.Application.Crew.Skills.AgentSkillsOptions.MaxBlockChars.set -> void
+Orkeon.Application.Crew.Skills.AgentSkillsOptions.MaxSkillChars.get -> int
+Orkeon.Application.Crew.Skills.AgentSkillsOptions.MaxSkillChars.set -> void
+const Orkeon.Application.Crew.Skills.AgentSkillsOptions.DefaultLibrary = "/workspace/.orkeon/skills" -> string!
+const Orkeon.Application.Crew.Skills.AgentSkillsOptions.DefaultMaxBlockChars = 12000 -> int
+const Orkeon.Application.Crew.Skills.AgentSkillsOptions.DefaultMaxSkillChars = 4000 -> int
+const Orkeon.Application.Crew.Skills.AgentSkillsOptions.SectionName = "Orkeon:Skills" -> string!
+static Orkeon.Application.Crew.Skills.AgentSkillsOptions.Problems(Orkeon.Application.Crew.Skills.AgentSkillsOptions! options) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Application.Interfaces.Ports.IAgentSkillsObserver
+Orkeon.Application.Interfaces.Ports.IAgentSkillsObserver.SkillsChosen(Orkeon.Application.Interfaces.Ports.AgentSkillsNotice! notice) -> void
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.AgentSkillsNotice() -> void
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.AgentRole.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.AgentRole.init -> void
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Cut.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Cut.init -> void
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Mode.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Mode.init -> void
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Offered.get -> int
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Offered.init -> void
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Reason.get -> string?
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Reason.init -> void
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Skills.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Skills.init -> void
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.TaskId.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.TaskId.init -> void
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.<Clone>$() -> Orkeon.Application.Interfaces.Ports.AgentSkillsNotice!
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Equals(Orkeon.Application.Interfaces.Ports.AgentSkillsNotice? other) -> bool
+override Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.ToString() -> string!
+static Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.operator !=(Orkeon.Application.Interfaces.Ports.AgentSkillsNotice? left, Orkeon.Application.Interfaces.Ports.AgentSkillsNotice? right) -> bool
+static Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.operator ==(Orkeon.Application.Interfaces.Ports.AgentSkillsNotice? left, Orkeon.Application.Interfaces.Ports.AgentSkillsNotice? right) -> bool
+Orkeon.Application.Interfaces.Ports.AgentSkillsModes
+const Orkeon.Application.Interfaces.Ports.AgentSkillsModes.Auto = "auto" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentSkillsModes.Fallback = "fallback" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentSkillsModes.List = "list" -> string!

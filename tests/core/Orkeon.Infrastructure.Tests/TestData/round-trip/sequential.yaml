@@ -120,6 +120,10 @@ agents:
     compaction:
       enabled: false
       triggerShare: 0.6
+    skills:
+      auto: true
+      fallback:
+        - /workspace/.orkeon/skills/report.md
 
 tasks:
   collect:

@@ -358,6 +358,7 @@ both hold, the switch is named. Each consumer that degrades says so in one warni
 | Decision profile | Built without the model: its calls go to the `route`'s `fallback`, else to the `target`; a `verify` never escalates; a `guard` lets the call go on, except in a `failClosed` profile, where every call is blocked. One warning when the profile is first resolved. |
 | LLM judge (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuses to start, naming the cause; `Open` leaves the judge out of the pipeline, with one warning, and the other guards stay. |
 | `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
+| Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` with the cause as `reason`. One warning per host. |
 
 #### A crew's decision mode
 
@@ -473,6 +474,11 @@ never on its own.
   `Input` phase and its answer is not judged.
   With the decision circuit off, a `Closed` judge refuses to start and an `Open` one is left out
   ([Every consumer follows the circuit](#every-consumer-follows-the-circuit)).
+- **Agent skills** — an agent with `skills: { auto: true }` asks one `choice` per task, `skill`, whose options
+  are one line per markdown file of `Orkeon:Skills:Library` (at most 24, named `s1`…`sN`) plus `none`; the state is
+  the task's text cut at 2,000 characters, and no skill body is sent. Every option at a probability of 0.3 or more
+  is kept, the three most likely at most; `none` keeps no skill. With the circuit off, or when the call fails, the
+  agent carries its `fallback` list ([`Orkeon:Skills`](../reference/configuration.md#orkeonskills)).
 - **RAG reranker** — `rerank.kind: decision` asks one `noul` per passage in a
   single request, passages cut at 4,000 characters, and orders them by probability. With the circuit
   off, it keeps the retrieval order.

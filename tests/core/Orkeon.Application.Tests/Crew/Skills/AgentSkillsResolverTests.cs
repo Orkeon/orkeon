@@ -1,0 +1,319 @@
+using System.Collections.Immutable;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Crew.Skills;
+using Orkeon.Application.Decision;
+using Orkeon.Application.Decision.DTOs;
+using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Tests.Doubles;
+using Orkeon.Domain.Agent;
+using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.FileSystem;
+using DomainAgent = Orkeon.Domain.Agent.Agent;
+
+namespace Orkeon.Application.Tests.Crew.Skills;
+
+/// <summary>The skills block of a task's prompt, a fixed list or the decision model's pick (#434).</summary>
+public sealed class AgentSkillsResolverTests
+{
+    private const string Library = AgentSkillsOptions.DefaultLibrary;
+    private const string Request = "Review the pull request for security issues.";
+
+    private readonly FakeFileSystemService _files = new FakeFileSystemService().AddMount("/workspace");
+    private readonly FakeDecisionModel _model = new();
+    private readonly RecordingLogger _logger = new();
+
+    private AgentSkillsResolver Resolver(DecisionCircuit? circuit = null, bool withModel = true, AgentSkillsOptions? options = null)
+    {
+        var services = new ServiceCollection();
+        if (withModel)
+            services.AddSingleton<IDecisionModel>(_model);
+        if (circuit is not null)
+            services.AddSingleton(circuit);
+        return new AgentSkillsResolver(_files, services.BuildServiceProvider(), options ?? new AgentSkillsOptions(), _logger);
+    }
+
+    private static DomainAgent Agent(AgentSkills? skills) =>
+        new AgentBuilder().Role("Reviewer").Goal("Review code").Skills(skills).Build();
+
+    private static AgentSkills Auto(params string[] fallback) => new() { Auto = true, Fallback = fallback };
+
+    private void AddLibrary(int count)
+    {
+        for (var i = 1; i <= count; i++)
+            _files.AddFile($"{Library}/skill-{i}.md", $"---\nname: skill {i}\ndescription: what skill {i} is for\n---\nBODY OF SKILL {i}");
+    }
+
+    private void Answer(string choice, params (string Option, double Share)[] shares) =>
+        _model.Respond = _ => new DecisionResponse
+        {
+            Model = "fake",
+            Answers = ImmutableDictionary<string, DecisionAnswer>.Empty.Add(AgentSkillsResolver.QuestionName, new ChoiceAnswer
+            {
+                Choice = choice,
+                Confidence = 0.9,
+                Probabilities = shares.ToImmutableDictionary(s => s.Option, s => s.Share),
+            }),
+        };
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldCarryEveryListedSkillInOrder_WhenTheAgentListsSkills()
+    {
+        // Arrange
+        _files.AddFile("/workspace/skills/review.md", "Check the inputs.").AddFile("/workspace/skills/tests.md", "Run the tests.");
+        var agent = Agent(new AgentSkills { Paths = ["/workspace/skills/review.md", "/workspace/skills/tests.md"] });
+
+        // Act
+        var resolution = await Resolver().ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.StartsWith("## Skills", resolution.Block, StringComparison.Ordinal);
+        Assert.True(resolution.Block.IndexOf("Check the inputs.", StringComparison.Ordinal) < resolution.Block.IndexOf("Run the tests.", StringComparison.Ordinal));
+        Assert.Equal(AgentSkillsModes.List, resolution.Notice.Mode);
+        Assert.Equal(["/workspace/skills/review.md", "/workspace/skills/tests.md"], resolution.Notice.Skills);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldReturnNothing_WhenTheAgentDeclaresNoSkill()
+    {
+        // Arrange
+        var agent = Agent(null);
+
+        // Act
+        var resolution = await Resolver().ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Null(resolution);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldCutASkillAtItsCap_WhenItIsLongerThanMaxSkillChars()
+    {
+        // Arrange
+        _files.AddFile("/workspace/skills/long.md", new string('a', 50) + new string('b', 50));
+        var agent = Agent(new AgentSkills { Paths = ["/workspace/skills/long.md"] });
+
+        // Act
+        var resolution = await Resolver(options: new AgentSkillsOptions { MaxSkillChars = 50 })
+            .ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.Contains(new string('a', 50), resolution.Block, StringComparison.Ordinal);
+        Assert.DoesNotContain(new string('a', 50) + "b", resolution.Block, StringComparison.Ordinal);
+        Assert.Contains("[skill cut: 50 of 100 characters shown]", resolution.Block, StringComparison.Ordinal);
+        Assert.Equal(["/workspace/skills/long.md"], resolution.Notice.Cut);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldLeaveOutASkill_WhenTheBlockCapIsSpent()
+    {
+        // Arrange
+        _files.AddFile("/workspace/skills/one.md", new string('x', 40)).AddFile("/workspace/skills/two.md", "second skill");
+        var agent = Agent(new AgentSkills { Paths = ["/workspace/skills/one.md", "/workspace/skills/two.md"] });
+
+        // Act
+        var resolution = await Resolver(options: new AgentSkillsOptions { MaxBlockChars = 40 })
+            .ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.DoesNotContain("second skill", resolution.Block, StringComparison.Ordinal);
+        Assert.Equal(["/workspace/skills/one.md"], resolution.Notice.Skills);
+        Assert.Equal(["/workspace/skills/two.md"], resolution.Notice.Cut);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldLeaveOutAMissingSkillWithAWarning_WhenItsFileCannotBeRead()
+    {
+        // Arrange
+        _files.AddFile("/workspace/skills/review.md", "Check the inputs.");
+        var agent = Agent(new AgentSkills { Paths = ["/workspace/skills/gone.md", "/workspace/skills/review.md"] });
+
+        // Act
+        var resolution = await Resolver().ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.Equal(["/workspace/skills/review.md"], resolution.Notice.Skills);
+        Assert.Equal(["/workspace/skills/gone.md"], resolution.Notice.Cut);
+        Assert.Contains(_logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("/workspace/skills/gone.md", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldOfferOneLinePerSkillAndNeverABody_WhenAnAutoAgentAsks()
+    {
+        // Arrange
+        AddLibrary(2);
+        Answer(AgentSkillsResolver.NoSkillOption, ("none", 1.0));
+
+        // Act
+        await Resolver().ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        var request = Assert.Single(_model.Requests);
+        var question = Assert.IsType<ChoiceQuestion>(request.Questions[AgentSkillsResolver.QuestionName]);
+        Assert.Equal("skill 1: what skill 1 is for", question.Criteria["s1"]!.GetValue<string>());
+        Assert.Equal("skill 2: what skill 2 is for", question.Criteria["s2"]!.GetValue<string>());
+        Assert.True(question.Criteria.ContainsKey(AgentSkillsResolver.NoSkillOption));
+        Assert.DoesNotContain("BODY OF SKILL", request.State.ToJsonString() + question.Criteria.Values.Select(v => v!.ToJsonString()).Aggregate(string.Concat), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldPickAtMostThreeSkillsByShare_WhenTheModelAnswers()
+    {
+        // Arrange
+        AddLibrary(5);
+        Answer("s4", ("s1", 0.05), ("s2", 0.3), ("s3", 0.31), ("s4", 0.34), ("s5", 0.0));
+
+        // Act
+        var resolution = await Resolver().ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.Equal(AgentSkillsModes.Auto, resolution.Notice.Mode);
+        Assert.Equal([$"{Library}/skill-4.md", $"{Library}/skill-3.md", $"{Library}/skill-2.md"], resolution.Notice.Skills);
+        Assert.Equal(5, resolution.Notice.Offered);
+        Assert.Contains("BODY OF SKILL 4", resolution.Block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldCarryNoSkill_WhenTheModelAnswersThatNoneFits()
+    {
+        // Arrange
+        AddLibrary(2);
+        Answer(AgentSkillsResolver.NoSkillOption, ("s1", 0.4), ("none", 0.6));
+
+        // Act
+        var resolution = await Resolver().ResolveAsync(Agent(Auto("/workspace/skills/fallback.md")), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.Equal(AgentSkillsModes.Auto, resolution.Notice.Mode);
+        Assert.Empty(resolution.Notice.Skills);
+        Assert.Equal(string.Empty, resolution.Block);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-434")]
+    [InlineData(DecisionCircuitCause.Switch)]
+    [InlineData(DecisionCircuitCause.Settings)]
+    public async System.Threading.Tasks.Task ShouldMakeNoDecisionModelCallAndUseTheFallback_WhenTheCircuitIsOff(DecisionCircuitCause cause)
+    {
+        // Arrange
+        AddLibrary(2);
+        _files.AddFile("/workspace/skills/review.md", "Check the inputs.");
+        var circuit = DecisionCircuit.OffBy(cause);
+
+        // Act
+        var resolution = await Resolver(circuit).ResolveAsync(
+            Agent(Auto("/workspace/skills/review.md")), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_model.Requests);
+        Assert.NotNull(resolution);
+        Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
+        Assert.Equal(["/workspace/skills/review.md"], resolution.Notice.Skills);
+        Assert.Equal(circuit.OffReason, resolution.Notice.Reason);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldCarryNoSkillWithoutError_WhenTheCircuitIsOffAndTheAgentHasNoFallback()
+    {
+        // Arrange
+        AddLibrary(2);
+
+        // Act
+        var resolution = await Resolver(DecisionCircuit.Off).ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_model.Requests);
+        Assert.NotNull(resolution);
+        Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
+        Assert.Empty(resolution.Notice.Skills);
+        Assert.Equal(string.Empty, resolution.Block);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldUseTheFallback_WhenNoDecisionProviderIsRegistered()
+    {
+        // Arrange
+        AddLibrary(1);
+        _files.AddFile("/workspace/skills/review.md", "Check the inputs.");
+
+        // Act
+        var resolution = await Resolver(withModel: false).ResolveAsync(
+            Agent(Auto("/workspace/skills/review.md")), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
+        Assert.Equal(DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider).OffReason, resolution.Notice.Reason);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldWarnOnce_WhenTheCircuitIsOffForSeveralTasks()
+    {
+        // Arrange
+        var resolver = Resolver(DecisionCircuit.Off);
+        await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Act
+        await resolver.ResolveAsync(Agent(Auto()), "t2", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        var warning = Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains(DecisionCircuit.Off.OffReason!, warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldUseTheFallback_WhenTheDecisionModelFails()
+    {
+        // Arrange
+        AddLibrary(2);
+        _files.AddFile("/workspace/skills/review.md", "Check the inputs.");
+        _model.Failure = new DecisionModelException("provider down");
+
+        // Act
+        var resolution = await Resolver().ResolveAsync(
+            Agent(Auto("/workspace/skills/review.md")), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
+        Assert.Equal(["/workspace/skills/review.md"], resolution.Notice.Skills);
+        Assert.Contains("provider down", resolution.Notice.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldMakeNoCallAndUseTheFallback_WhenTheLibraryHoldsNoSkill()
+    {
+        // Arrange
+        _files.AddFile("/workspace/skills/review.md", "Check the inputs.");
+
+        // Act
+        var resolution = await Resolver().ResolveAsync(
+            Agent(Auto("/workspace/skills/review.md")), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_model.Requests);
+        Assert.NotNull(resolution);
+        Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
+        Assert.Contains(Library, resolution.Notice.Reason, StringComparison.Ordinal);
+    }
+}

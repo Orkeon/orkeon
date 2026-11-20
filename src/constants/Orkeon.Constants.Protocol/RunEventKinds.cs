@@ -112,6 +112,15 @@ public static class RunEventKinds
     public const string AgentCompacted = "agent.compacted";
 
     /// <summary>
+    /// The skills a task's prompt carries (#434), once per task of an agent that declares <c>skills:</c>:
+    /// <c>taskId</c>, <c>agentRole</c>, <c>mode</c> (<c>list</c>, <c>auto</c>, <c>fallback</c>), <c>skills</c>
+    /// (the virtual paths carried), <c>offered</c> (the skills offered to the decision model), <c>cut</c> (the
+    /// skills cut by a cap or left out) and <c>reason</c> (why the fallback stands, else null). Additive: a
+    /// consumer that does not know the kind ignores it.
+    /// </summary>
+    public const string AgentSkills = "agent.skills";
+
+    /// <summary>
     /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
     /// as an event that silently never arrives.
     /// </summary>
@@ -120,6 +129,6 @@ public static class RunEventKinds
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
         AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback, GraphNodeEntered,
-        RunDecision, AgentCompacted,
+        RunDecision, AgentCompacted, AgentSkills,
     ];
 }

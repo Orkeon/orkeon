@@ -248,6 +248,14 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     public IReadOnlyList<Compaction.IContextPressureStage> ContextPressureStages { get; set; } = [];
 
     /// <summary>
+    /// Reads the skills an agent's prompt carries (<c>skills:</c>, #434); null, an agent's skills are ignored.
+    /// </summary>
+    internal Skills.AgentSkillsResolver? SkillsResolver { get; set; }
+
+    /// <summary>Told which skills each task's prompt carries (<c>agent.skills</c>, #434); null logs it alone.</summary>
+    internal IAgentSkillsObserver? SkillsObserver { get; set; }
+
+    /// <summary>
     /// Initializes a new instance of <see cref="ExecutionOrchestrator"/>.
     /// </summary>
     public ExecutionOrchestrator(
@@ -608,6 +616,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                     agent, task, toolbelt,
                     _toolCallingStrategy?.SupportsNativeToolCalling == true,
                     _fileSystem);
+                // The agent's skills (#434): a fixed list, or the decision model's pick for this task.
+                systemPrompt = await AppendSkillsAsync(agent, task, context, systemPrompt, taskToken).ConfigureAwait(false);
                 var knowledgeContext = await ResolveKnowledgeContextAsync(
                     agent, task, context, taskToken).ConfigureAwait(false);
                 // The task's plan, when the crew plans (GAP-31): the run's scope holds it, so it
@@ -870,6 +880,32 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             CrewId = context.CrewId.ToString(),
             Content = output,
         }, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Appends the agent's skills block (#434) to <paramref name="systemPrompt"/>, and tells the observer what
+    /// was chosen. The prompt is unchanged when no resolver is wired, the agent declares no skill or none is
+    /// carried (an auto pick of none, a fallback left empty).
+    /// </summary>
+    private async System.Threading.Tasks.Task<string> AppendSkillsAsync(
+        DomainAgent agent,
+        CrewTask task,
+        SimpleExecutionContext context,
+        string systemPrompt,
+        CancellationToken cancellationToken)
+    {
+        if (SkillsResolver is null || agent.Skills is null)
+            return systemPrompt;
+
+        var resolution = await SkillsResolver.ResolveAsync(
+            agent, task.Id.ToString(), AgentPromptComposer.BuildKnowledgeQueryText(task, context), cancellationToken).ConfigureAwait(false);
+        if (resolution is null)
+            return systemPrompt;
+
+        SkillsObserver?.SkillsChosen(resolution.Notice);
+        return resolution.Block.Length == 0
+            ? systemPrompt
+            : systemPrompt + Environment.NewLine + resolution.Block + Environment.NewLine;
     }
 
     /// <summary>

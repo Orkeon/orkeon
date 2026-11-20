@@ -25,6 +25,7 @@ public sealed class AgentBuilder
     private IReadOnlyList<FileSystem.FileSystemScopeEntry> _fileSystemScope = [];
     private bool _announceMounts = true;
     private AgentCompaction? _compaction;
+    private AgentSkills? _skills;
     private Security.PermissionMode? _permissionMode;
     private TimeSpan? _maxExecutionTime;
     private string? _systemTemplate;
@@ -277,6 +278,20 @@ public sealed class AgentBuilder
     }
 
     /// <summary>
+    /// The skills the agent's prompt carries (#434): a fixed list of virtual paths, or a pick of the decision
+    /// model with its fallback list. Null declares none.
+    /// </summary>
+    /// <param name="skills">The skills; null declares none.</param>
+    /// <exception cref="ArgumentException">A path is blank.</exception>
+    public AgentBuilder Skills(AgentSkills? skills)
+    {
+        if (skills is not null && skills.Paths.Concat(skills.Fallback).Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException("A skill path is blank: write the virtual path of a markdown file.", nameof(skills));
+        _skills = skills;
+        return this;
+    }
+
+    /// <summary>
     /// Attaches a knowledge (RAG) collection to the agent with default retrieval options.
     /// Cumulative: call once per collection to attach several collections.
     /// </summary>
@@ -458,6 +473,7 @@ public sealed class AgentBuilder
         agent.FileSystemScope = _fileSystemScope;
         agent.AnnounceMounts = _announceMounts;
         agent.Compaction = _compaction;
+        agent.Skills = _skills;
         agent.PermissionMode = _permissionMode;
         return agent;
     }

@@ -250,6 +250,9 @@ public static class InfrastructureExtensions
         // window itself: the profile's, the model's documented one, else the session's figure.
         services.AddOrkeonSettings<Application.Crew.Compaction.ContextCompactionOptions>(Application.Crew.Compaction.ContextCompactionOptions.SectionName)
             .ValidateSettings((options, _) => Application.Crew.Compaction.ContextCompactionOptions.Problems(options));
+        // How an agent's skills: reach its prompt (#434): the library an auto pick reads, the caps.
+        services.AddOrkeonSettings<Application.Crew.Skills.AgentSkillsOptions>(Application.Crew.Skills.AgentSkillsOptions.SectionName)
+            .ValidateSettings((options, _) => Application.Crew.Skills.AgentSkillsOptions.Problems(options));
         services.TryAddSingleton<Application.Interfaces.Ports.IContextWindowResolver>(sp => new LLMs.Context.ContextWindowResolver(
             sp.GetService<IOptions<Session.CliSessionOptions>>()?.Value.ContextWindowTokens,
             sp.GetRequiredService<ILogger<LLMs.Context.ContextWindowResolver>>()));

@@ -51,6 +51,7 @@
     "Orkeon:Scripting:Limits",
     "Orkeon:Scripting:Toolchain",
     "Orkeon:Security:PermissionGate",
+    "Orkeon:Skills",
     "Orkeon:Sqlite",
     "Orkeon:TokenCounter",
     "Orkeon:Tools:Drive",

@@ -370,6 +370,7 @@ dégrade le dit en un avertissement :
 | Profil de décision | Construit sans le modèle : ses appels vont au `fallback` de la `route`, sinon à la `target` ; un `verify` n'escalade jamais ; un `guard` laisse passer l'appel, sauf dans un profil `failClosed`, où chaque appel est bloqué. Un avertissement à la première résolution du profil. |
 | Juge LLM (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuse de démarrer, en nommant la cause ; `Open` retire le juge du pipeline, avec un avertissement, et les autres gardiens restent. |
 | Reranker `decision` | Laisse passer les passages dans leur ordre de récupération, comme `none`, avec un avertissement. |
+| Skills d'un agent (`skills: { auto: true }`) | L'agent porte sa liste `fallback`, sinon aucun skill, et la tâche s'exécute ; `agent.skills` indique `mode: fallback` avec la cause en `reason`. Un avertissement par hôte. |
 
 #### Le mode de décision d'une crew
 
@@ -487,6 +488,12 @@ seule, jamais de lui-même.
   réponse n'est pas jugée.
   Circuit de décision coupé, un juge `Closed` refuse de démarrer et un juge `Open` est retiré
   ([Chaque consommateur suit le circuit](#chaque-consommateur-suit-le-circuit)).
+- **Skills d'un agent** — un agent avec `skills: { auto: true }` pose un `choice` par tâche, `skill`, dont les
+  options sont une ligne par fichier markdown de `Orkeon:Skills:Library` (24 au plus, nommées `s1`…`sN`) plus
+  `none` ; l'état est le texte de la tâche coupé à 2 000 caractères, et aucun corps de skill n'est envoyé. Chaque
+  option à une probabilité de 0,3 ou plus est gardée, les trois plus probables au plus ; `none` ne garde aucun
+  skill. Circuit coupé, ou quand l'appel échoue, l'agent porte sa liste `fallback`
+  ([`Orkeon:Skills`](../reference/configuration.md#orkeonskills)).
 - **Reranker RAG** — `rerank.kind: decision` pose un `noul` par passage dans
   une seule requête, les passages coupés à 4 000 caractères, et les classe par probabilité. Circuit
   coupé, il garde l'ordre de récupération.

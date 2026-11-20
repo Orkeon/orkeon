@@ -196,12 +196,12 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 110 |
-| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 32 |
+| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 35 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-81 sections, 536 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+82 sections, 539 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1872,6 +1872,32 @@ de préfixe automatique facture de nouveau la conversation après la coupe.
 | `KeepRecentTurns` | entier | `6` | Combien des tours les plus récents une compaction garde mot pour mot, un tour étant un message de l'assistant avec ses résultats d'outil (un appel d'outil n'est jamais séparé de son résultat). 6 par défaut ; 0 résume tous les tours. |
 | `Profile` | chaîne | — | Le profil LLM qui écrit le résumé, ou aucun pour le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
 | `TriggerShare` | nombre | `0.75` | La part de la fenêtre utile (la fenêtre de contexte moins le plafond de sortie de l'appel) que le prompt estimé atteint pour que la boucle compacte, au-dessus de 0 et au plus 1. 0,75 par défaut ; `compaction: { triggerShare }` d'un agent la remplace. |
+<!-- /settings -->
+
+### `Orkeon:Skills`
+
+Comment les `skills:` d'un agent atteignent son prompt (#434). Un skill est un fichier markdown
+lu par le système de fichiers virtuel et ajouté au prompt système de l'agent sous un titre
+`## Skills`, chaque skill coupé à `MaxSkillChars` et le bloc entier à `MaxBlockChars` ; une coupe
+est dite dans le prompt et dans le champ `cut` de `agent.skills`. Un agent avec
+`skills: [<chemins>]` porte ces fichiers à chaque tâche. Un agent avec
+`skills: { auto: true, fallback: [<chemins>] }` fait choisir à System One, pour chaque tâche, au
+plus trois skills de `Library` : le modèle de décision lit une ligne par skill (le `name` et la
+`description` de son front matter, sinon son premier titre et sa première ligne), jamais un corps.
+Quand le circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enabled: false`, aucun
+fournisseur de décision), quand la bibliothèque ne contient aucun skill ou que le modèle de
+décision échoue, l'agent porte sa liste `fallback`, sinon aucun skill, avec un avertissement et
+sans erreur. Chaque tâche d'un agent qui déclare des skills émet `agent.skills` sur le flux
+d'événements du run. Une crew `.ork.ts` n'a pas de skills.
+
+<!-- settings:Orkeon:Skills -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Library` | chaîne | `"/workspace/.orkeon/skills"` | Le dossier virtuel où sont choisis les skills d'un agent `auto`, un fichier `<nom>.md` par skill (les sous-dossiers ne sont pas lus). `/workspace/.orkeon/skills` par défaut. |
+| `MaxBlockChars` | entier | `12000` | Les caractères que porte le bloc de skills entier, texte de chaque skill compris ; un skill au-delà est coupé à ce qui reste, ou laissé de côté. 12000 par défaut, trois skills à leur plafond. |
+| `MaxSkillChars` | entier | `4000` | Les caractères d'un skill que porte le prompt ; le reste est coupé, et la coupe est dite dans le prompt et dans `agent.skills`. 4000 par défaut. |
 <!-- /settings -->
 
 ### `Orkeon:CrewFactory`

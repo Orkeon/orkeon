@@ -45,6 +45,15 @@ public static class ServiceCollectionExtensions
         services.RegisterDeliverableResolvers();
         services.RegisterToolInvocationPipeline();
         services.RegisterExecutionOrchestrator();
+        // One resolver per host, so the circuit-off warning of an auto agent is said once (#434). Its
+        // settings are bound by AddOrkeonInfrastructure; without them, the defaults.
+        services.TryAddSingleton(sp => sp.GetService<Domain.FileSystem.IFileSystemService>() is { } fileSystem
+            ? new Crew.Skills.AgentSkillsResolver(
+                fileSystem,
+                sp,
+                sp.GetService<IOptions<Crew.Skills.AgentSkillsOptions>>()?.Value ?? new Crew.Skills.AgentSkillsOptions(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Skills.AgentSkillsResolver>>())
+            : null!);
         services.AddScoped<ICallbackOrchestrator, CallbackOrchestrator>();
         services.AddScoped<IMemoryCoordinator, MemoryCoordinator>();
 
@@ -199,6 +208,9 @@ public static class ServiceCollectionExtensions
             orchestrator.TokenCounter = sp.GetService<Domain.SharedKernel.ITokenCounter>();
             orchestrator.CompactionObserver = sp.GetService<IAgentCompactionObserver>();
             orchestrator.ContextPressureStages = sp.GetServices<Crew.Compaction.IContextPressureStage>().ToList();
+            // An agent's skills (#434): read through the VFS, an auto pick asked of the decision model.
+            orchestrator.SkillsResolver = sp.GetService<Crew.Skills.AgentSkillsResolver>();
+            orchestrator.SkillsObserver = sp.GetService<IAgentSkillsObserver>();
 
             // GAP-32 — a host that renders the model's text as it arrives (orkeon run --stream, the
             // REPL's console) gets every agent turn streamed to it, not only ctx.llm.* calls.

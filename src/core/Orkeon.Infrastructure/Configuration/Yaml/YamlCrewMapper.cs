@@ -293,11 +293,79 @@ public sealed partial class YamlCrewMapper
                 LlmConfig = MapAgentLlm(effectiveLlm),
                 Guardrails = MapGuardrails($"Agent '{kvp.Key}'", kvp.Value.Guardrails),
                 Compaction = MapCompaction(kvp.Key, kvp.Value.Compaction),
+                Skills = MapSkills(kvp.Key, kvp.Value.Skills),
                 KnowledgeAttachments = MapKnowledge(kvp.Key, kvp.Value.Knowledge),
             });
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// The agent's <c>skills:</c> (#434), or null when it declares none: a list of virtual paths, or a map with
+    /// <c>auto</c> and an optional <c>fallback</c> list. Strict: another shape, a blank path, an unknown key or an
+    /// <c>auto</c> that is no boolean refuses the load, naming the agent. <c>auto: false</c> reads the fallback
+    /// list as a fixed one. Whether each file exists is the run's to tell: a missing one is left out with a warning.
+    /// </summary>
+    private static Orkeon.Domain.Agent.AgentSkills? MapSkills(string agentKey, object? written)
+    {
+        switch (written)
+        {
+            case null:
+                return null;
+            case IList<object> list:
+                return new Orkeon.Domain.Agent.AgentSkills { Paths = SkillPaths(agentKey, "skills", list) };
+            case IDictionary<object, object> map:
+                bool? auto = null;
+                IReadOnlyList<string> fallback = [];
+                foreach (var (key, value) in map)
+                {
+                    switch (key?.ToString())
+                    {
+                        case "auto":
+                            auto = bool.TryParse(value?.ToString(), out var on)
+                                ? on
+                                : throw new InvalidOperationException(
+                                    $"Agent '{agentKey}' skills.auto: '{value}' is not true or false.");
+                            break;
+                        case "fallback":
+                            fallback = value is IList<object> paths
+                                ? SkillPaths(agentKey, "skills.fallback", paths)
+                                : value is null
+                                    ? []
+                                    : throw new InvalidOperationException(
+                                        $"Agent '{agentKey}' skills.fallback: expected a list of virtual paths; got '{DescribeYamlValue(value)}'.");
+                            break;
+                        default:
+                            throw new InvalidOperationException(
+                                $"Agent '{agentKey}' skills: unknown key '{key}'; the map form has auto and fallback.");
+                    }
+                }
+                return auto switch
+                {
+                    true => new Orkeon.Domain.Agent.AgentSkills { Auto = true, Fallback = fallback },
+                    false => new Orkeon.Domain.Agent.AgentSkills { Paths = fallback },
+                    null => throw new InvalidOperationException(
+                        $"Agent '{agentKey}' skills: the map form needs 'auto: true'; for a fixed list, write the paths as a list: 'skills: [/workspace/skills/review.md]'."),
+                };
+            default:
+                throw new InvalidOperationException(
+                    $"Agent '{agentKey}' skills: expected a list of virtual paths or a map with auto and fallback; got '{DescribeYamlValue(written)}'. " +
+                    "Write each path as an item: '- /workspace/skills/review.md'.");
+        }
+    }
+
+    private static List<string> SkillPaths(string agentKey, string key, IList<object> items)
+    {
+        var paths = new List<string>(items.Count);
+        foreach (var item in items)
+        {
+            if (item is not string path || string.IsNullOrWhiteSpace(path))
+                throw new InvalidOperationException(
+                    $"Agent '{agentKey}' {key}: each item is the virtual path of a markdown file; got '{(item is null ? "null" : DescribeYamlValue(item))}'.");
+            paths.Add(path.Trim());
+        }
+        return paths;
     }
 
     /// <summary>

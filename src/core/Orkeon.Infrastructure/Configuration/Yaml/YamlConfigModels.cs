@@ -61,6 +61,12 @@ public class AgentYamlConfig
     /// </summary>
     public CompactionYamlConfig? Compaction { get; set; }
     /// <summary>
+    /// Gets or sets the skills the agent's prompt carries (<c>skills:</c>, #434): a list of virtual paths of
+    /// markdown files, or a map <c>{ auto: true, fallback: [paths] }</c> for a pick of the decision model. Read
+    /// as a raw value so a value of another shape is refused naming the agent (<see cref="YamlCrewMapper"/>).
+    /// </summary>
+    public object? Skills { get; set; }
+    /// <summary>
     /// Gets or sets the knowledge (RAG) collections attached to the agent. Two forms are
     /// accepted per item: the short form (a plain collection-name string) and the long form
     /// (a mapping with <c>collection</c>, <c>top_k</c>, <c>min_score</c>, <c>profile</c>,

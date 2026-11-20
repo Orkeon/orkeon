@@ -468,4 +468,21 @@ public sealed class UnknownCrewYamlKeysTests : IDisposable
         // Assert
         Assert.Contains("Agent 'researcher' compaction.triggerShare is '1.5'", message);
     }
+
+    // #434: an agent's skills, in both shapes, are keys Orkeon reads.
+    [Theory]
+    [Trait("BR", "CH-434")]
+    [InlineData("    skills:\n      - /workspace/skills/review.md")]
+    [InlineData("    skills:\n      auto: true\n      fallback:\n        - /workspace/skills/review.md")]
+    public async Task ShouldAcceptTheSkillsKey_WhenAnAgentDeclaresSkills(string lines)
+    {
+        // Arrange
+        Write("crew.yaml", Crew(agent: lines));
+
+        // Act
+        var crew = await NewLoader().LoadFromFileAsync(VirtualRoot + "/crew.yaml", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(Assert.Single(crew.Agents).Skills);
+    }
 }

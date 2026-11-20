@@ -41,6 +41,7 @@
     "Orkeon:Scripting:AgentInstances",
     "Orkeon:Scripting:AgentMemory",
     "Orkeon:Security:PermissionGate",
+    "Orkeon:Skills",
     "Orkeon:Sqlite",
     "Orkeon:TokenCounter",
     "Orkeon:Tools:Drive",

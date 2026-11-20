@@ -76,6 +76,7 @@ public static class SettingsSections
         "Orkeon:Scripting:Toolchain",
         "Orkeon:Security",
         "Orkeon:Security:PermissionGate",
+        "Orkeon:Skills",
         "Orkeon:Sqlite",
         "Orkeon:TokenCounter",
         "Orkeon:TypeSafe",

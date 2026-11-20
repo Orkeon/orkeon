@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — agent skills: a fixed list of playbooks, or System One's pick of at most three (#434)
+
+A YAML agent takes `skills:`, a list of markdown files read through the virtual file system, or
+`{ auto: true, fallback: [...] }`. The skills are appended to the agent's system prompt under `## Skills`, each cut at
+`Orkeon:Skills:MaxSkillChars` (4000) and the block at `Orkeon:Skills:MaxBlockChars` (12000), the cut said in the prompt.
+With `auto`, each task asks the decision model one `choice` among the `.md` files of `Orkeon:Skills:Library`
+(`/workspace/.orkeon/skills`), reading one line per skill (its front-matter `name` and `description`, else its first
+heading and line) and never a body; the options at a probability of 0.3 or more are kept, three at most. With the
+decision circuit off, an empty library or a failed call, the agent carries its `fallback`, else no skill, with one
+warning and no error. Each task of an agent that declares skills emits `agent.skills` (`mode`, `skills`, `offered`,
+`cut`, `reason`). **Compatibility**: an engine at 1.3.0 refuses a crew that writes `skills:`; an unknown key of the map
+form, a non-boolean `auto` or a map without `auto` now fails the load. The `Orkeon:Skills` section and the event are
+new; a `.ork.ts` crew has no skills.
+
 ### Added — agent loops compact a long conversation against the model's window (#432)
 
 The native tool-calling loop and the chat-client loop now estimate their prompt before each call and, once it reaches
