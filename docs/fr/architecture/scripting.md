@@ -486,7 +486,7 @@ supprimé.
 
 Un module peut garder `/// <reference path="…/.orkeon/orkeon.d.ts" />` pour son éditeur : cette
 copie, écrite par `orkeon typings`, serait sinon vérifiée à côté du roll-up embarqué et chaque
-identifiant serait signalé deux fois (TS6200). Une copie identique au roll-up de ce build (fins de
+identifiant serait signalé deux fois (TS6200 sous tsc 5 ; sous tsc 7, un TS2300, TS2451 ou TS2374 par identifiant). Une copie identique au roll-up de ce build (fins de
 ligne mises à part) le remplace ; une copie qui diffère échoue avec une ligne sur la copie,
 ``TS6200 this copy of the Orkeon typings is not the one this build ships …: regenerate it with
 `orkeon typings` ``.

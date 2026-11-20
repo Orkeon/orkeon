@@ -173,6 +173,10 @@ public sealed class TscTypeCheckerProcessTests : IDisposable
     private TscTypeChecker CheckerClashingWith(string file)
         => CheckerWith($"if grep -q 'orkeon-typecheck-[0-9a-f]*/orkeon\\.d\\.ts\"' \"$2\"; then echo '{file}(13,1): error TS6200: Definitions conflict.'; exit 2; fi\nexit 0");
 
+    // #424: TypeScript 7 no longer groups the clash into TS6200; it writes one line per identifier.
+    private TscTypeChecker CheckerClashingPerIdentifierWith(string file, string code)
+        => CheckerWith($"if grep -q 'orkeon-typecheck-[0-9a-f]*/orkeon\\.d\\.ts\"' \"$2\"; then echo '{file}(2,14): error {code}: Duplicate identifier '\\''T1'\\''.'; echo '{file}(3,14): error {code}: Duplicate identifier '\\''T2'\\''.'; exit 2; fi\nexit 0");
+
     private static string Rollup()
     {
         using var stream = typeof(TscTypeChecker).Assembly.GetManifestResourceStream("Orkeon.Scripting.Typings.orkeon.d.ts")!;
@@ -210,6 +214,52 @@ public sealed class TscTypeCheckerProcessTests : IDisposable
         var d = Assert.Single(diagnostics);
         Assert.Equal("/script/.orkeon/orkeon.d.ts", d.Path);
         Assert.Contains("orkeon typings", d.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-01")]
+    [InlineData("TS2300")]
+    [InlineData("TS2451")]
+    [InlineData("TS2374")]
+    public async Task A_referenced_copy_of_this_builds_typings_stands_in_for_the_rollup_under_typescript_7(string code)
+    {
+        var checker = CheckerClashingPerIdentifierWith(WriteTypingsCopy(Rollup()), code);
+
+        var diagnostics = await checker.CheckAsync(_script, "/script/main.ork.ts", TestContext.Current.CancellationToken);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-01")]
+    [InlineData("TS2300")]
+    [InlineData("TS2451")]
+    [InlineData("TS2374")]
+    public async Task A_referenced_stale_copy_of_the_typings_is_named_once_under_typescript_7(string code)
+    {
+        var rollup = Rollup();
+        var header = rollup[..rollup.IndexOf('\n', StringComparison.Ordinal)];
+        var checker = CheckerClashingPerIdentifierWith(WriteTypingsCopy(header + "\ndeclare const stale: number;\n"), code);
+
+        var diagnostics = await checker.CheckAsync(_script, "/script/main.ork.ts", TestContext.Current.CancellationToken);
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("/script/.orkeon/orkeon.d.ts", d.Path);
+        Assert.Contains("orkeon typings", d.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task A_duplicate_identifier_in_a_file_that_is_not_the_typings_is_reported_as_tsc_wrote_it()
+    {
+        var other = Path.Combine(_dir, "globals.d.ts");
+        await File.WriteAllTextAsync(other, "declare const T1: string;\n", TestContext.Current.CancellationToken);
+        var checker = CheckerClashingPerIdentifierWith(other, "TS2300");
+
+        var diagnostics = await checker.CheckAsync(_script, "/script/main.ork.ts", TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, diagnostics.Count);
+        Assert.Equal("/script/globals.d.ts:2:14 TS2300 Duplicate identifier 'T1'.", diagnostics[0].ToString());
     }
 
     [Fact]

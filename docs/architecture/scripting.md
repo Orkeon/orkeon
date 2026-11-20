@@ -461,7 +461,7 @@ deleted afterwards.
 
 A module may keep `/// <reference path="…/.orkeon/orkeon.d.ts" />` for its editor: that copy, written
 by `orkeon typings`, would otherwise be checked beside the embedded roll-up and report every
-identifier twice (TS6200). A copy identical to this build's roll-up (line endings aside) stands in
+identifier twice (TS6200 under tsc 5; under tsc 7, one TS2300, TS2451 or TS2374 per identifier). A copy identical to this build's roll-up (line endings aside) stands in
 for it; a copy that differs fails with one line on the copy, ``TS6200 this copy of the Orkeon typings
 is not the one this build ships …: regenerate it with `orkeon typings` ``.
 
