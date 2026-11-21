@@ -33,6 +33,7 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
     private readonly LlmProviderToChatClientAdapter _largeClient;
     private readonly FakeDecisionModel _model = new();
     private readonly FakeAgentRouteObserver _observer = new();
+    private readonly StubOutputValidationPipeline _validation = new();
 
     public ExecutionOrchestratorEffortTests()
     {
@@ -52,7 +53,8 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
     {
         var services = new ServiceCollection().AddSingleton<IDecisionModel>(_model).AddSingleton(circuit).BuildServiceProvider();
         return new ExecutionOrchestrator(
-            NullLogger<ExecutionOrchestrator>.Instance, new LlmProviderAdapter(_default), _defaultClient, [], new FakeFileSystemService())
+            NullLogger<ExecutionOrchestrator>.Instance, new LlmProviderAdapter(_default), _defaultClient, [],
+            _validation, new StubOutputParserFactory(), new FakeFileSystemService())
         {
             LlmProfiles = new StubLlmProfileRegistry(("small", _small, _smallClient), ("large", _large, _largeClient)),
             ProfileRouter = new AgentProfileRouter(
@@ -210,8 +212,7 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
         var agent = AutoEffortAgent();
         var task = Task();
         FailNextAttempt();
-        var failed = await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
-        Assert.False(failed.Success);
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
 
         // Act
         await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
@@ -281,5 +282,84 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
         Assert.True(sent?.Enabled);
         Assert.Equal("medium", sent?.Effort);
         Assert.Equal(LlmThinkingConfig.Off, _observer.EffortNotices[^1].Previous);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldRaiseTheLevelForTheNextRoundAndTellTheObserver_WhenTheOutputFailedItsGuardrail()
+    {
+        // Arrange
+        Answer((AgentProfileRouter.EffortQuestionName, "low", 0.9));
+        _validation.RejectFirst = 1;
+        var task = new CrewTaskBuilder().Description("Design the cache layer.").ExpectedOutput("A design.")
+            .OutputJson(JsonSchema.From("{\"type\":\"object\"}")).Build();
+
+        // Act
+        await Orchestrator(DecisionCircuit.On).ExecuteTaskCoreAsync(AutoEffortAgent(), task, Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Single(_model.Requests);
+        Assert.Equal(["low", "medium"], _small.ReceivedConfigs.Select(c => c?.Thinking?.Effort));
+        var raised = _observer.EffortNotices[^1];
+        Assert.Equal(AgentEffortReasons.Raised, raised.Reason);
+        Assert.Equal("low", raised.Previous);
+        Assert.Equal("medium", raised.Level);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldRaiseOncePerFailedRound_WhenTheOutputFailsItsGuardrailTwice()
+    {
+        // Arrange
+        Answer((AgentProfileRouter.EffortQuestionName, "low", 0.9));
+        _validation.RejectFirst = 2;
+        var task = new CrewTaskBuilder().Description("Design the cache layer.").ExpectedOutput("A design.")
+            .OutputJson(JsonSchema.From("{\"type\":\"object\"}")).Build();
+        var orchestrator = Orchestrator(DecisionCircuit.On);
+        orchestrator.MaxOutputRetries = 2;
+
+        // Act
+        await orchestrator.ExecuteTaskCoreAsync(AutoEffortAgent(), task, Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(["low", "medium", "high"], _small.ReceivedConfigs.Select(c => c?.Thinking?.Effort));
+        Assert.Equal(2, _observer.EffortNotices.Count(n => n.Reason == AgentEffortReasons.Raised));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldRaiseTheLevel_WhenTheAttemptBeforeThrew()
+    {
+        // Arrange
+        Answer((AgentProfileRouter.EffortQuestionName, "low", 0.9));
+        var orchestrator = Orchestrator(DecisionCircuit.On);
+        var agent = AutoEffortAgent();
+        var task = Task();
+        _small.Throws = new InvalidOperationException("The provider is down.");
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+        _small.Throws = null;
+
+        // Act
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal("medium", _small.ReceivedConfigs[^1]?.Thinking?.Effort);
+        Assert.Equal(AgentEffortReasons.Raised, _observer.EffortNotices[^1].Reason);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldAskNothingAndKeepThinkingOff_WhenTheAgentWritesThinkingOffUnderEffortAuto()
+    {
+        // Arrange
+        Answer((AgentProfileRouter.EffortQuestionName, "high", 0.9));
+        var agent = Agent("small", new LlmThinkingConfig { Enabled = false, AutoEffort = LlmAutoEffort.Any });
+
+        // Act
+        await Orchestrator(DecisionCircuit.On).ExecuteTaskCoreAsync(agent, Task(), Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_model.Requests);
+        Assert.Equal(new LlmThinkingConfig { Enabled = false }, Assert.Single(_small.ReceivedConfigs)?.Thinking);
     }
 }

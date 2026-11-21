@@ -15,17 +15,32 @@ namespace Orkeon.Application.Crew.Execution;
 /// </remarks>
 internal static class TaskThinkingScope
 {
-    private static readonly AsyncLocal<Settled?> Ambient = new();
+    private static readonly AsyncLocal<ITaskThinking?> Ambient = new();
 
     /// <summary>Opens the scope of one execution of a task; disposing the handle restores the enclosing one.</summary>
     /// <param name="thinking">The thinking the task's calls run on in place of a config with <c>auto</c>; null for the provider's own.</param>
     /// <returns>The handle that restores the enclosing scope.</returns>
-    internal static IDisposable Begin(LlmThinkingConfig? thinking)
+    internal static IDisposable Begin(LlmThinkingConfig? thinking) => Begin(new Fixed(thinking));
+
+    /// <summary>
+    /// Opens the scope of one execution of a task on a thinking that may be raised while it runs; disposing the handle
+    /// restores the enclosing one.
+    /// </summary>
+    /// <param name="thinking">The task's thinking, read at each call.</param>
+    /// <returns>The handle that restores the enclosing scope.</returns>
+    internal static IDisposable Begin(ITaskThinking thinking)
     {
+        ArgumentNullException.ThrowIfNull(thinking);
         var enclosing = Ambient.Value;
-        Ambient.Value = new Settled(thinking);
+        Ambient.Value = thinking;
         return new Scope(enclosing);
     }
+
+    /// <summary>
+    /// Tells the scope's task that a round of its output failed its guardrail and the agent is asked again (#439): the
+    /// thinking goes one step up for the next round, inside the allowed levels. Nothing outside a scope.
+    /// </summary>
+    internal static void RaiseAfterFailedRound() => Ambient.Value?.RaiseAfterFailedRound();
 
     /// <summary>
     /// <paramref name="config"/> with its thinking settled: the scope's in place of a thinking that leaves something to
@@ -36,9 +51,12 @@ internal static class TaskThinkingScope
     internal static LlmConfig Apply(LlmConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        if (config.Thinking is not { HasAuto: true } thinking)
+        if (config.Thinking is not { } thinking || thinking is { HasAuto: false, AutoEffort: null })
             return config;
-        return config with { Thinking = Ambient.Value is { } settled ? settled.Thinking : thinking.Settle(null, null) };
+        // An effort: auto under enabled: false leaves nothing to System One: thinking stays off, the marker dropped.
+        if (!thinking.HasAuto)
+            return config with { Thinking = thinking.Settle(null, null) };
+        return config with { Thinking = Ambient.Value is { } settled ? settled.Current : thinking.Settle(null, null) };
     }
 
     /// <summary>The merge of <paramref name="taskOverride"/> over <paramref name="baseConfig"/>, its thinking settled.</summary>
@@ -48,10 +66,28 @@ internal static class TaskThinkingScope
     internal static LlmConfig Resolve(LlmConfig baseConfig, LlmConfigOverride? taskOverride) =>
         Apply(LlmConfigResolver.Resolve(baseConfig, taskOverride));
 
-    private sealed record Settled(LlmThinkingConfig? Thinking);
+    private sealed record Fixed(LlmThinkingConfig? Thinking) : ITaskThinking
+    {
+        public LlmThinkingConfig? Current => Thinking;
 
-    private sealed class Scope(Settled? enclosing) : IDisposable
+        public void RaiseAfterFailedRound()
+        {
+            // A fixed thinking is never raised.
+        }
+    }
+
+    private sealed class Scope(ITaskThinking? enclosing) : IDisposable
     {
         public void Dispose() => Ambient.Value = enclosing;
     }
+}
+
+/// <summary>The thinking a task's calls run on while it leaves something to System One (#439), raised as it fails.</summary>
+internal interface ITaskThinking
+{
+    /// <summary>Gets the thinking the next call runs on; null for the provider's own.</summary>
+    LlmThinkingConfig? Current { get; }
+
+    /// <summary>A round of the task's output failed its guardrail: the next one runs a step higher, when one is left.</summary>
+    void RaiseAfterFailedRound();
 }

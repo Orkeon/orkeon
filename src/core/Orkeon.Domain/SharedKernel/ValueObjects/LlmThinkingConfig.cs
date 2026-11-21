@@ -101,8 +101,12 @@ public sealed record LlmThinkingConfig
     /// </summary>
     public const string On = "on";
 
-    /// <summary>Gets whether something of this config is left to System One (<see cref="AutoEffort"/>, <see cref="AutoEnabled"/>).</summary>
-    public bool HasAuto => AutoEffort is not null || AutoEnabled;
+    /// <summary>
+    /// Gets whether something of this config is left to System One (<see cref="AutoEffort"/>, <see cref="AutoEnabled"/>).
+    /// A config whose thinking is written off (<c>enabled: false</c>) leaves nothing to it, even under an <c>effort: auto</c>
+    /// it inherits from its crew: no decision call is spent on an agent that does not think (#439).
+    /// </summary>
+    public bool HasAuto => AutoEnabled || (AutoEffort is not null && Enabled != false);
 
     /// <summary>
     /// The answers System One picks among for a task on this config (#439), cheapest first: <see cref="Off"/> on
@@ -133,7 +137,8 @@ public sealed record LlmThinkingConfig
     /// fields as written; without one (a pick under the floor, no answer, the circuit off), the thinking the agent
     /// would have had without <c>auto</c> - <paramref name="standing"/>'s enabled switch and effort, this config's own
     /// written switch, effort and budget first. Null when nothing is left to send: the provider's own thinking applies.
-    /// A config with nothing left to System One is returned as is.
+    /// The budget of the config, else the standing one, is kept in every case but <see cref="Off"/>. A config with
+    /// nothing left to System One is returned as is, an <c>effort: auto</c> it holds under <c>enabled: false</c> dropped.
     /// </summary>
     /// <param name="level">The answer picked, one of <see cref="Levels"/>, <see cref="Off"/> or <see cref="On"/>; null when none was.</param>
     /// <param name="standing">The thinking that stands without <c>auto</c>: the next config down the chain (the agent's under a task's, else the profile's); null for the provider's own.</param>
@@ -141,7 +146,7 @@ public sealed record LlmThinkingConfig
     public LlmThinkingConfig? Settle(string? level, LlmThinkingConfig? standing)
     {
         if (!HasAuto)
-            return this;
+            return AutoEffort is null ? this : this with { AutoEffort = null };
 
         var standingEffort = standing is { AutoEffort: null } ? standing.Effort : null;
         switch (level)
@@ -149,9 +154,18 @@ public sealed record LlmThinkingConfig
             case Off:
                 return new LlmThinkingConfig { Enabled = false };
             case On:
-                return this with { AutoEnabled = false, AutoEffort = null, Enabled = true, Effort = AutoEffort is null ? Effort ?? standingEffort : standingEffort };
+                return this with
+                {
+                    AutoEnabled = false, AutoEffort = null, Enabled = true,
+                    Effort = AutoEffort is null ? Effort ?? standingEffort : standingEffort,
+                    BudgetTokens = BudgetTokens ?? standing?.BudgetTokens,
+                };
             case not null:
-                return this with { AutoEnabled = false, AutoEffort = null, Enabled = AutoEnabled ? true : Enabled, Effort = ValidateEffort(level) };
+                return this with
+                {
+                    AutoEnabled = false, AutoEffort = null, Enabled = AutoEnabled ? true : Enabled, Effort = ValidateEffort(level),
+                    BudgetTokens = BudgetTokens ?? standing?.BudgetTokens,
+                };
         }
 
         var settled = new LlmThinkingConfig

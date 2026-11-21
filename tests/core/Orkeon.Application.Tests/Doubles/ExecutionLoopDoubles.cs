@@ -50,6 +50,9 @@ internal sealed class ScriptedFullLlmProvider : ILlmProvider
 
     public List<LlmConfig?> ReceivedConfigs { get; } = [];
 
+    /// <summary>What every call throws while it is set; null by default, the calls then answer.</summary>
+    public Exception? Throws { get; set; }
+
     public void Enqueue(LlmResponse response) => _responses.Enqueue(response);
 
     public void EnqueueText(string content) =>
@@ -98,6 +101,8 @@ internal sealed class ScriptedFullLlmProvider : ILlmProvider
         cancellationToken.ThrowIfCancellationRequested();
         ReceivedTurns.Add(messages);
         ReceivedConfigs.Add(config);
+        if (Throws is { } exception)
+            throw exception;
 
         return System.Threading.Tasks.Task.FromResult(_responses.Count > 0
             ? _responses.Dequeue()

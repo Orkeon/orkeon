@@ -75,4 +75,32 @@ public sealed class LlmThinkingConfigSettleTests
         // Assert
         Assert.True(isAuto);
     }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldKeepTheStandingBudget_WhenSystemOnePickedALevel()
+    {
+        // Arrange
+        var standing = new LlmThinkingConfig { Effort = "low", BudgetTokens = 4000 };
+
+        // Act
+        var settled = Auto.Settle("high", standing);
+
+        // Assert
+        Assert.Equal(new LlmThinkingConfig { Enabled = true, Effort = "high", BudgetTokens = 4000 }, settled);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldKeepThinkingOffAndDropTheMarker_WhenTheConfigWritesThinkingOffUnderEffortAuto()
+    {
+        // Arrange
+        var off = new LlmThinkingConfig { Enabled = false, AutoEffort = LlmAutoEffort.Any };
+
+        // Act
+        var settled = off.Settle("high", new LlmThinkingConfig { Effort = "low" });
+
+        // Assert
+        Assert.Equal(new LlmThinkingConfig { Enabled = false }, settled);
+    }
 }

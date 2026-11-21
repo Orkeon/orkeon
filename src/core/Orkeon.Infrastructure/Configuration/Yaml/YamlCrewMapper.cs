@@ -747,11 +747,22 @@ public sealed partial class YamlCrewMapper
         var text = written is IDictionary<object, object> or IList<object> ? null : written!.ToString()?.Trim();
         if (LlmAutoEffort.IsAuto(text))
             return (null, true);
-        if (bool.TryParse(text, out var on))
+        if (YamlBoolean(text) is { } on)
             return (on, false);
         throw new InvalidOperationException(
             $"{where}.enabled: '{DescribeYamlValue(written!)}' is not true, false or auto (System One switches thinking off for a trivial task).");
     }
+
+    /// <summary>
+    /// The spellings of a boolean the YAML reader took for <c>thinking.enabled</c> before it could also be <c>auto</c>
+    /// (#439): <c>true</c>, <c>yes</c>, <c>y</c>, <c>on</c> and <c>false</c>, <c>no</c>, <c>n</c>, <c>off</c>, in any case.
+    /// </summary>
+    private static bool? YamlBoolean(string? text) => text?.ToUpperInvariant() switch
+    {
+        "TRUE" or "YES" or "Y" or "ON" => true,
+        "FALSE" or "NO" or "N" or "OFF" => false,
+        _ => null,
+    };
 
     /// <summary>
     /// <c>thinking.effort</c>: a level, <c>auto</c>, or the map <c>{ auto: true, min, max }</c> of a bounded pick (#439).

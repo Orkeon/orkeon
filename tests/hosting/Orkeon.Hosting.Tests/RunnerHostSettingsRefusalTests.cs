@@ -68,6 +68,17 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-439")]
+    public void A_host_profile_whose_thinking_effort_is_auto_is_refused_at_its_start_naming_the_key()
+    {
+        // Act: auto is a crew's word, the level System One picks per task, never a host profile's effort.
+        var error = Refusal("""{ "RaggableTree": { "Enabled": false }, "Llm": { "Profiles": { "x": { "BaseUrl": "http://localhost:11434", "Thinking": { "Effort": "auto" } } } } }""");
+
+        // Assert
+        Assert.Contains("Llm:Profiles:x:Thinking:Effort is 'auto', which only a crew writes", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_settings_file_that_is_not_JSON_is_refused_naming_the_file_and_the_line()
     {
         var error = Refusal("""

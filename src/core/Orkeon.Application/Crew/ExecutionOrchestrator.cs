@@ -596,7 +596,18 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         // The execution's own end, on the clock the executions use, read before anything after it.
         async System.Threading.Tasks.Task<TaskResult> ExecuteTaskStampedAsync()
         {
-            var result = await ExecuteTaskCoreInnerAsync().ConfigureAwait(false);
+            TaskResult result;
+            try
+            {
+                result = await ExecuteTaskCoreInnerAsync().ConfigureAwait(false);
+            }
+            catch when (!cancellationToken.IsCancellationRequested)
+            {
+                // An attempt that throws is a failed one its retry runs a step higher; a cancellation is not (#439).
+                keptThinking?.NoteAttempt(true);
+                throw;
+            }
+
             var endedAt = TimeProvider.GetUtcNow();
             keptThinking?.NoteAttempt(FailedForRaise(result));
             return result with { EndedAt = endedAt };
@@ -634,7 +645,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 var llm = await LlmForAsync(agent, task, context, taskToken).ConfigureAwait(false);
                 // The thinking settled at the task's start when its effort is left to System One (#439): every call of
                 // this execution - its turns, its correction round - runs on it.
-                using var thinkingScope = llm.Thinking is { } settled ? Execution.TaskThinkingScope.Begin(settled.Thinking) : null;
+                // A task that leaves nothing to System One opens a scope too, so that its correction rounds never raise
+                // the level of a task it runs inside (a delegated sub-task).
+                using var thinkingScope = llm.Kept is { } kept
+                    ? Execution.TaskThinkingScope.Begin(new RaisingThinking(this, agent.Role.Value, task.Id.ToString(), kept))
+                    : Execution.TaskThinkingScope.Begin(llm.Thinking?.Thinking);
                 keptThinking = llm.Kept;
                 var toolbelt = TaskToolbelt.Compose(agent, task, _registeredTools, MemoryRegistry?.IsMemoryEnabled(context.CrewId) == true);
 
@@ -1048,7 +1063,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// <summary>
     /// The thinking a task of an agent keeps across its attempts when its config leaves something to System One
     /// (#439): the answer picked at its first attempt, raised one step among <paramref name="options"/> when an attempt
-    /// failed (a failed result the run would retry), never lowered.
+    /// failed (a failed result the run would retry, or a thrown error) and when a round of its output failed its
+    /// guardrail (the output validation), never lowered.
     /// </summary>
     /// <param name="thinking">The task's thinking as written, its override merged, with something left to System One.</param>
     /// <param name="standing">The thinking that stands without <c>auto</c>.</param>
@@ -1096,14 +1112,29 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 if (!_failed)
                     return null;
                 _failed = false;
-                var above = Domain.SharedKernel.ValueObjects.LlmThinkingConfig.Above(
-                    Domain.SharedKernel.ValueObjects.LlmThinkingConfig.AnswerOf(_settled, options), options);
-                if (above is null)
-                    return null;
-                var previous = LevelOf(_settled);
-                _settled = thinking.Settle(above, standing);
-                return (previous, LevelOf(_settled));
+                return RaiseLocked();
             }
+        }
+
+        /// <summary>
+        /// The level one step up among the answers offered, kept from then on (#439): after a round of the output that
+        /// failed its guardrail, or a failed attempt. Null at the top, or when the level is the provider's own.
+        /// </summary>
+        public (string? Previous, string? Raised)? Raise()
+        {
+            lock (_gate)
+                return RaiseLocked();
+        }
+
+        private (string? Previous, string? Raised)? RaiseLocked()
+        {
+            var above = Domain.SharedKernel.ValueObjects.LlmThinkingConfig.Above(
+                Domain.SharedKernel.ValueObjects.LlmThinkingConfig.AnswerOf(_settled, options), options);
+            if (above is null)
+                return null;
+            var previous = LevelOf(_settled);
+            _settled = thinking.Settle(above, standing);
+            return (previous, LevelOf(_settled));
         }
     }
 
@@ -1208,20 +1239,40 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
         // The level is kept, except after a failed attempt: one step up, with no decision call (#439).
         if (routed.Thinking is { } kept && kept.RaiseAfterFailure() is { } raise)
-        {
-            Routing.AgentRouteLog.EffortRaised(_logger, agent.Role.Value, taskId, raise.Previous ?? "(the provider's own)", raise.Raised ?? "(the provider's own)");
-            RouteObserver?.EffortPicked(new AgentEffortNotice
-            {
-                TaskId = taskId,
-                AgentRole = agent.Role.Value,
-                Level = raise.Raised,
-                Previous = raise.Previous,
-                Reason = AgentEffortReasons.Raised,
-                Levels = kept.Options,
-            });
-        }
+            TellRaised(agent.Role.Value, taskId, kept, raise);
 
         return routed;
+    }
+
+    /// <summary>Logs a raise of a task's thinking and tells the observer, <c>agent.effort</c> with <c>reason: raised</c> (#439).</summary>
+    private void TellRaised(string agentRole, string taskId, KeptThinking kept, (string? Previous, string? Raised) raise)
+    {
+        Routing.AgentRouteLog.EffortRaised(_logger, agentRole, taskId, raise.Previous ?? "(the provider's own)", raise.Raised ?? "(the provider's own)");
+        RouteObserver?.EffortPicked(new AgentEffortNotice
+        {
+            TaskId = taskId,
+            AgentRole = agentRole,
+            Level = raise.Raised,
+            Previous = raise.Previous,
+            Reason = AgentEffortReasons.Raised,
+            Levels = kept.Options,
+        });
+    }
+
+    /// <summary>
+    /// The thinking one execution of a task runs on when it leaves something to System One (#439): the kept one, read at
+    /// each call, raised a step when a round of the output fails its guardrail.
+    /// </summary>
+    private sealed class RaisingThinking(ExecutionOrchestrator orchestrator, string agentRole, string taskId, KeptThinking kept)
+        : Execution.ITaskThinking
+    {
+        public Domain.SharedKernel.ValueObjects.LlmThinkingConfig? Current => kept.Current.Thinking;
+
+        public void RaiseAfterFailedRound()
+        {
+            if (kept.Raise() is { } raise)
+                orchestrator.TellRaised(agentRole, taskId, kept, raise);
+        }
     }
 
     /// <summary>

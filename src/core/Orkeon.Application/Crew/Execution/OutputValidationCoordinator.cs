@@ -110,6 +110,8 @@ internal sealed class OutputValidationCoordinator
             }
 
             LogRetryAttempt(request.Task, retry, pipelineResult, maxOutputRetries);
+            // The output failed its guardrail: the next round thinks a step higher when the effort is System One's (#439).
+            TaskThinkingScope.RaiseAfterFailedRound();
             var correctionContext = new CorrectionExecutionContext(
                 request.Agent, request.Task, request.SystemPrompt, request.ToolsUsed,
                 request.ChatLoop ?? _chatLoop);

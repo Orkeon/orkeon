@@ -88,8 +88,8 @@ public sealed record CrewConfiguration
             .ToList();
         var skillsAuto = Agents.Where(a => a.Skills is { Auto: true }).Select(a => $"agent '{a.Key ?? a.Role}'").ToList();
         var prune = Agents.Where(a => a.Compaction is { Prune: true }).Select(a => $"agent '{a.Key ?? a.Role}'").ToList();
-        var effortAuto = Agents.Where(a => a.LlmConfig?.Thinking is { AutoEffort: not null }).Select(a => $"agent '{a.Key ?? a.Role}'")
-            .Concat(Tasks.Where(t => t.LlmOverride?.Thinking is { AutoEffort: not null }).Select(t => $"task '{t.Key ?? t.Description}'"))
+        var effortAuto = Agents.Where(a => a.LlmConfig?.Thinking is { AutoEffort: not null, HasAuto: true }).Select(a => $"agent '{a.Key ?? a.Role}'")
+            .Concat(Tasks.Where(t => t.LlmOverride?.Thinking is { AutoEffort: not null, HasAuto: true }).Select(t => $"task '{t.Key ?? t.Description}'"))
             .ToList();
         var enabledAuto = Agents.Where(a => a.LlmConfig?.Thinking is { AutoEnabled: true }).Select(a => $"agent '{a.Key ?? a.Role}'")
             .Concat(Tasks.Where(t => t.LlmOverride?.Thinking is { AutoEnabled: true }).Select(t => $"task '{t.Key ?? t.Description}'"))

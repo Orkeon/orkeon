@@ -134,4 +134,56 @@ tasks:
         Assert.Contains(expected, yaml, StringComparison.Ordinal);
         Assert.Equal(config.Agents.Single().LlmConfig!.Thinking, reloaded.Agents.Single().LlmConfig!.Thinking);
     }
+
+    [Theory]
+    [Trait("BR", "CH-439")]
+    [InlineData("yes", true)]
+    [InlineData("on", true)]
+    [InlineData("y", true)]
+    [InlineData("True", true)]
+    [InlineData("'YES'", true)]
+    [InlineData("no", false)]
+    [InlineData("off", false)]
+    [InlineData("n", false)]
+    [InlineData("FALSE", false)]
+    public async System.Threading.Tasks.Task ShouldLoadTheSwitchAsBefore_WhenTheAgentWritesAYamlBooleanSpelling(string written, bool expected)
+    {
+        // Act
+        var config = await Loader().LoadFromStringAsync(Crew($"{{ enabled: {written} }}"), Ct);
+
+        // Assert
+        Assert.Equal(new LlmThinkingConfig { Enabled = expected }, config.Agents.Single().LlmConfig!.Thinking);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldLeaveNothingToSystemOne_WhenTheAgentSwitchesThinkingOffUnderACrewLevelEffortAuto()
+    {
+        // Arrange
+        const string yaml = """
+name: c
+goal: g
+llm:
+  thinking: { effort: auto }
+agents:
+  a:
+    role: R
+    goal: G
+    llm:
+      thinking: { enabled: false }
+tasks:
+  t:
+    description: D
+    expectedOutput: O
+    agent: a
+""";
+
+        // Act
+        var config = await Loader().LoadFromStringAsync(yaml, Ct);
+
+        // Assert
+        var thinking = config.Agents.Single().LlmConfig!.Thinking!;
+        Assert.False(thinking.HasAuto);
+        Assert.False(thinking.Enabled);
+    }
 }

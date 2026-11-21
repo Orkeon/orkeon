@@ -61,4 +61,30 @@ public sealed class AgentEffortAutoTests
         Assert.Null(provider.LastConfig);
         Assert.Contains("not for one call", output.output?.ToString(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async Task ShouldSendTheProfilesLevelWithNoMarker_WhenAnAgentOnEffortAutoMakesACtxLlmCall()
+    {
+        // Arrange
+        var provider = new StubLlmProvider
+        {
+            BaseConfig = LlmConfig.Create("boot-model") with { Thinking = new LlmThinkingConfig { Effort = "high", BudgetTokens = 4000 } },
+        };
+        provider.RespondWith(new LlmResponse { Content = "ok" });
+        var engine = new JsEngineFactory(builtInTools: [], llmProvider: provider).Create();
+        var js = """
+            const a = agentBuilder().name("a").role("R").goal("G").effort("auto")
+                .body(async (input, ctx) => { await ctx.llm.complete("hi"); return "sent"; })
+                .build();
+            crewBuilder().name("c").withAgent(a).build();
+            """;
+        var crew = (JsCrew)(await engine.EvaluateAsync(js, null, Ct)).ToObject()!;
+
+        // Act
+        await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
+
+        // Assert
+        Assert.Equal(new LlmThinkingConfig { Enabled = true, Effort = "high", BudgetTokens = 4000 }, provider.LastConfig?.Thinking);
+    }
 }
