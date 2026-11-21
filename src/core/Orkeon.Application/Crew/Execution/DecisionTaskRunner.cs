@@ -240,7 +240,8 @@ public sealed class DecisionTaskRunner
     {
         // A question the model left unanswered, or answered with another kind, fails the task
         // (BR-06): an empty answer would let the otherwise task run on nothing.
-        var answers = new Dictionary<string, DecisionAnswerValue>();
+        // In the order the questions were declared: the order of the decision JSON (#430).
+        var answers = new OrderedDictionary<string, DecisionAnswerValue>(StringComparer.Ordinal);
         foreach (var question in decision.Questions)
         {
             if (!response.Answers.TryGetValue(question.Name, out var answer))
@@ -254,10 +255,15 @@ public sealed class DecisionTaskRunner
     private static DecisionAnswerValue ToValue(DecisionQuestionSpec question, DecisionAnswer answer) => (question, answer) switch
     {
         (ChoiceQuestionSpec choice, ChoiceAnswer c) when choice.Options.ContainsKey(c.Choice) =>
-            new DecisionAnswerValue { Chosen = c.Choice, Confidence = c.Confidence, Probabilities = c.Probabilities },
+            new DecisionAnswerValue { Chosen = c.Choice, Confidence = c.Confidence, Probabilities = InOrder(c.Probabilities, choice.Options.Keys) },
         (ChoiceQuestionSpec, ChoiceAnswer c) => throw new DecisionModelException(
             $"The decision model answered question '{question.Name}' with '{c.Choice}', which is not one of its options.", null, isTransient: false),
-        (ScoreQuestionSpec, ScoreAnswer s) => new DecisionAnswerValue { Score = s.Score, Confidence = s.Confidence, Probabilities = s.Probabilities },
+        (ScoreQuestionSpec score, ScoreAnswer s) => new DecisionAnswerValue
+        {
+            Score = s.Score,
+            Confidence = s.Confidence,
+            Probabilities = InOrder(s.Probabilities, Enumerable.Range(0, score.Levels.Count).Select(i => i.ToString(System.Globalization.CultureInfo.InvariantCulture))),
+        },
         (YesNoQuestionSpec, NoulAnswer n) => new DecisionAnswerValue
         {
             Chosen = n.Noul >= 0.5 ? "yes" : "no",
@@ -267,6 +273,26 @@ public sealed class DecisionTaskRunner
         _ => throw new DecisionModelException(
             $"The decision model answered question '{question.Name}' with a {KindOf(answer)} answer, not a {KindOf(question)} one.", null, isTransient: false),
     };
+
+    /// <summary>
+    /// The probabilities in the question's order (#430): a choice's options as declared, a score's levels lowest
+    /// first, then any other name the model gave in ordinal order. The model's map enumerates in its hash order,
+    /// which changes from one process to the next, and the outcome is what the task's decision JSON and its
+    /// checkpoint record.
+    /// </summary>
+    private static OrderedDictionary<string, double> InOrder(ImmutableDictionary<string, double> probabilities, IEnumerable<string> declared)
+    {
+        var ordered = new OrderedDictionary<string, double>(StringComparer.Ordinal);
+        foreach (var name in declared)
+        {
+            if (probabilities.TryGetValue(name, out var probability))
+                ordered[name] = probability;
+        }
+
+        foreach (var (name, probability) in probabilities.Where(p => !ordered.ContainsKey(p.Key)).OrderBy(p => p.Key, StringComparer.Ordinal))
+            ordered[name] = probability;
+        return ordered;
+    }
 
     private static string KindOf(DecisionAnswer answer) => answer switch
     {
