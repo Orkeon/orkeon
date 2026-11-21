@@ -185,6 +185,8 @@ internal sealed class TestStage : IForgeStageRunner
                 events,
                 session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName),
                 session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName),
+                session.Document.Budget,
+                default,
                 cancellationToken).ConfigureAwait(false);
 
         for (var index = 0; index < plans.Count; index++)
@@ -512,7 +514,7 @@ internal sealed class DiagnoseStage : IForgeStageRunner
         foreach (var (view, circuit) in views)
         {
             if (view.Success && !string.IsNullOrWhiteSpace(view.Output))
-                usage = usage.Plus(await _systemOne.ReadCriteriaAsync(events, brief, view.Output, circuit, cancellationToken).ConfigureAwait(false));
+                usage = usage.Plus(await _systemOne.ReadCriteriaAsync(events, brief, view.Output, circuit, session.Document.Budget, usage, cancellationToken).ConfigureAwait(false));
         }
 
         return new ForgeStageOutcome { Trigger = ForgeTrigger.Diagnosed, Usage = usage };

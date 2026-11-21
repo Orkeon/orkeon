@@ -136,7 +136,7 @@ internal sealed class BriefStage : IForgeStageRunner
         var brief = session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)!;
 
         // System One's reading of the brief (#435): for the user only, it never reopens the interview.
-        var advice = await _systemOne.RateCoverageAsync(events, brief, RequestOf(session), cancellationToken).ConfigureAwait(false);
+        var advice = await _systemOne.RateCoverageAsync(events, brief, RequestOf(session), session.Document.Budget, outcome.Usage, cancellationToken).ConfigureAwait(false);
         await ConfirmFoldersAsync(session, events, brief, cancellationToken).ConfigureAwait(false);
         return advice.TotalTokens > 0 ? outcome with { Usage = outcome.Usage.Plus(advice) } : outcome;
     }
@@ -419,7 +419,7 @@ internal sealed class BlueprintStage : IForgeStageRunner
 
         // System One's suggestion of a process (#435), asked once before the turns: the assistant reads it as a
         // suggestion, and its own crew.process stands.
-        var (processHint, usage) = await _systemOne.SuggestProcessAsync(events, brief, session.Document.CrewDecision, cancellationToken)
+        var (processHint, usage) = await _systemOne.SuggestProcessAsync(events, brief, session.Document.CrewDecision, session.Document.Budget, default, cancellationToken)
             .ConfigureAwait(false);
         for (var attempt = 1; attempt <= MaxSubmissionAttempts; attempt++)
         {

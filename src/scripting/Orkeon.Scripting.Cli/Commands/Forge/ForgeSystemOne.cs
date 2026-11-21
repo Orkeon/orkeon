@@ -22,6 +22,9 @@ internal sealed class ForgeSystemOne
     /// <summary>The warning a failed call emits; the stage carries on as if the circuit were off for that call.</summary>
     public const string FailedWarning = "FORGE-SYSTEMONE-FAILED";
 
+    /// <summary>The warning of an advice call not made because the session's budget (tokens, wall time) is spent.</summary>
+    public const string SkippedWarning = "FORGE-SYSTEMONE-SKIPPED";
+
     /// <summary>The event kind of one answered call.</summary>
     public const string AnsweredKind = "systemone.answered";
 
@@ -118,10 +121,10 @@ internal sealed class ForgeSystemOne
     /// <see cref="ProcessHintThreshold"/>; null otherwise, or when the circuit is off or the call failed.
     /// </summary>
     public async Task<(ForgeProcessHint? Hint, ForgeUsageSnapshot Usage)> SuggestProcessAsync(
-        ForgeEventWriter events, ForgeBrief brief, string? crewDecision, CancellationToken cancellationToken)
+        ForgeEventWriter events, ForgeBrief brief, string? crewDecision, ForgeBudget? budget, ForgeUsageSnapshot pending, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(brief);
-        if (!Enabled)
+        if (!Enabled || OverBudget(events, ForgeState.Blueprint, UseProcess, budget, pending))
             return (null, default);
 
         var processes = ProcessesFor(crewDecision);
@@ -148,10 +151,10 @@ internal sealed class ForgeSystemOne
 
     /// <summary>The brief stage's question: does the brief cover the need as the user stated it. Advice for the user only.</summary>
     public async Task<ForgeUsageSnapshot> RateCoverageAsync(
-        ForgeEventWriter events, ForgeBrief brief, IReadOnlyList<string> request, CancellationToken cancellationToken)
+        ForgeEventWriter events, ForgeBrief brief, IReadOnlyList<string> request, ForgeBudget? budget, ForgeUsageSnapshot pending, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(brief);
-        if (!Enabled)
+        if (!Enabled || OverBudget(events, ForgeState.Brief, UseCoverage, budget, pending))
             return default;
 
         var question = new ScoreQuestion
@@ -167,9 +170,9 @@ internal sealed class ForgeSystemOne
 
     /// <summary>The test stage's question, before the trial: will the crew complete it and meet the criteria. Advice for the user only.</summary>
     public async Task<ForgeUsageSnapshot> EstimateTrialAsync(
-        ForgeEventWriter events, ForgeBrief? brief, ForgeBlueprint? blueprint, CancellationToken cancellationToken)
+        ForgeEventWriter events, ForgeBrief? brief, ForgeBlueprint? blueprint, ForgeBudget? budget, ForgeUsageSnapshot pending, CancellationToken cancellationToken)
     {
-        if (!Enabled)
+        if (!Enabled || OverBudget(events, ForgeState.Test, UseEstimate, budget, pending))
             return default;
 
         var question = new NoulQuestion
@@ -188,7 +191,7 @@ internal sealed class ForgeSystemOne
     /// line; null names none. Advice for the user only: never written into <c>verdict.json</c>.
     /// </summary>
     public async Task<ForgeUsageSnapshot> ReadCriteriaAsync(
-        ForgeEventWriter events, ForgeBrief brief, string output, string? circuit, CancellationToken cancellationToken)
+        ForgeEventWriter events, ForgeBrief brief, string output, string? circuit, ForgeBudget? budget, ForgeUsageSnapshot pending, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(brief);
         if (!Enabled)
@@ -198,6 +201,10 @@ internal sealed class ForgeSystemOne
         var criteria = brief.Acceptance ?? [];
         for (var index = 0; index < criteria.Count; index++)
         {
+            // The budget is checked before each call, the calls of this reading included: once spent, the rest is not asked.
+            if (OverBudget(events, ForgeState.Diagnose, UseCriteria, budget, pending.Plus(usage)))
+                break;
+
             var criterion = criteria[index];
             var name = criterion.Id is { Length: > 0 } id ? id : $"A{index + 1}";
             var question = new NoulQuestion
@@ -215,8 +222,24 @@ internal sealed class ForgeSystemOne
     }
 
     /// <summary>
-    /// One call: the answer and its <c>systemone.answered</c> line, or, on a <see cref="DecisionModelException"/>,
-    /// one <see cref="FailedWarning"/> and no answer. The tokens are the stage's to charge: input as prompt, output
+    /// Whether <paramref name="budget"/> is spent once <paramref name="pending"/>, the stage's tokens not charged yet, is
+    /// counted (<c>--max-tokens</c>, <c>--max-seconds</c>): then the call is not made, and one <see cref="SkippedWarning"/>
+    /// says so. The budget is a hard bound, and advice is what gives way to it. A null budget is never spent.
+    /// </summary>
+    private static bool OverBudget(ForgeEventWriter events, ForgeState stage, string use, ForgeBudget? budget, ForgeUsageSnapshot pending)
+    {
+        if (budget?.ExhaustedDimensionAfter(pending, 0) is not { } dimension)
+            return false;
+
+        events.Warning(SkippedWarning,
+            $"System One was not asked the {use} question of the {ForgeEventWriter.Spell(stage)} stage: the session's {ForgeEngine.Spell(dimension)} budget is spent.");
+        return true;
+    }
+
+    /// <summary>
+    /// One call: the answer and its <c>systemone.answered</c> line, or, on any failure but a cancellation of
+    /// <paramref name="cancellationToken"/> (a rate limit the retry policy refused included), one
+    /// <see cref="FailedWarning"/> and no answer. The tokens are the stage's to charge: input as prompt, output
     /// as completion, all of them System One's. <paramref name="circuit"/>, when given, names the trial pass the
     /// call reads on its line.
     /// </summary>
@@ -236,11 +259,13 @@ internal sealed class ForgeSystemOne
         {
             response = await _model!.DecideAsync(request, cancellationToken).ConfigureAwait(false);
         }
-        catch (DecisionModelException ex)
+#pragma warning disable CA1031 // advice barrier: any failure of the call, a rate limit the retry policy refused included, is one warning
+        catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
             events.Warning(FailedWarning, $"System One could not answer the {use} question of the {stage} stage ({ex.Message}): the stage carries on without its advice.");
             return (null, default);
         }
+#pragma warning restore CA1031
 
         var input = response.Usage.InputTokens ?? 0;
         var output = response.Usage.OutputTokens ?? 0;

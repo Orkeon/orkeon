@@ -646,6 +646,77 @@ public sealed class ForgeSystemOneTests : IDisposable
         Assert.Equal(nameof(ForgeState.Ready), cycle.Session.Document.State);
     }
 
+    [Fact]
+    [Trait("BR", "CH-435")]
+    public async Task A_rate_limited_decision_model_gives_one_warning_per_call_and_lets_the_cycle_complete()
+    {
+        // Arrange: the retry policy's own refusal of a long announced wait, which is no DecisionModelException.
+        var model = new StubDecisionModel { Failure = new Orkeon.Domain.Exceptions.LlmRateLimitException("daily quota", TimeSpan.FromHours(1)) };
+
+        // Act
+        var cycle = await RunAsync("rate-limited", ForgeSystemOne.On(model), auto: true);
+
+        // Assert
+        Assert.Equal(nameof(ForgeState.Ready), cycle.Session.Document.State);
+        Assert.NotEmpty(model.Requests);
+        Assert.Equal(
+            model.Requests.Count,
+            cycle.Events("warning").Count(w => w.GetProperty("code").GetString() == ForgeSystemOne.FailedWarning));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-435")]
+    public async Task A_cancellation_the_forge_did_not_ask_for_is_a_failed_call()
+    {
+        // Arrange: a cancellation of the model's own (a timeout), while the forge's token is not cancelled.
+        var model = new StubDecisionModel { Failure = new OperationCanceledException("the model timed out") };
+
+        // Act
+        var cycle = await RunAsync("model-cancelled", ForgeSystemOne.On(model), auto: true);
+
+        // Assert
+        Assert.Equal(nameof(ForgeState.Ready), cycle.Session.Document.State);
+        Assert.Contains(cycle.Events("warning"), w => w.GetProperty("code").GetString() == ForgeSystemOne.FailedWarning);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-435")]
+    public async Task A_cancellation_of_the_forge_still_cancels_an_advice_call()
+    {
+        // Arrange
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var systemOne = ForgeSystemOne.On(new StubDecisionModel { Hang = true });
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        using var output = new StringWriter();
+        var pending = systemOne.RateCoverageAsync(new ForgeEventWriter(output), brief!, [Need], null, default, cancellation.Token);
+
+        // Act
+        await cancellation.CancelAsync();
+
+        // Assert
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+        Assert.DoesNotContain(ForgeSystemOne.FailedWarning, output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-435")]
+    public async Task No_criterion_is_read_once_the_judge_spent_the_token_budget()
+    {
+        // Arrange: the judge's tokens alone use up --max-tokens.
+        var model = new StubDecisionModel();
+        var judge = new FakeJudge { TokensPerCall = 10_000 }.Approves();
+
+        // Act
+        var cycle = await RunAsync("criteria-over-budget", ForgeSystemOne.On(model), judge: judge, budget: new ForgeBudget { MaxTokens = 5_000 });
+
+        // Assert
+        var uses = cycle.Events(ForgeSystemOne.AnsweredKind).Select(e => e.GetProperty("use").GetString()).ToList();
+        Assert.Contains(ForgeSystemOne.UseEstimate, uses);
+        Assert.DoesNotContain(ForgeSystemOne.UseCriteria, uses);
+        Assert.Single(cycle.Events("warning"), w => w.GetProperty("code").GetString() == ForgeSystemOne.SkippedWarning);
+        Assert.Equal(ForgeEngineOutcome.BudgetExhausted, cycle.Result.Outcome);
+    }
+
     // --- the crew's own circuit (#431 AC11, #433) ------------------------------------------------
 
     [Fact]

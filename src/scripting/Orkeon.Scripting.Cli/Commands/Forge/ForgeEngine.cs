@@ -275,7 +275,7 @@ internal sealed class ForgeEngine
         return null;
     }
 
-    private static string Spell(ForgeBudgetDimension dimension) => dimension switch
+    internal static string Spell(ForgeBudgetDimension dimension) => dimension switch
     {
         ForgeBudgetDimension.Iterations => "iteration",
         ForgeBudgetDimension.Tokens => "token",
