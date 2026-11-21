@@ -337,24 +337,34 @@ tools of a run on another machine, usually the user's desktop for a run in a con
 own:
 
 - **The token.** Both sides read it from the environment variable `TokenEnvVar` names (`ORKEON_BRIDGE_TOKEN`), never
-  from a settings file. Every request carries it as `Authorization: Bearer`; the bridge compares the SHA-256 of both
-  in fixed time and answers 401 otherwise.
+  from a settings file, trimmed; a token shorter than 16 characters refuses the start. Every request carries it as
+  `Authorization: Bearer`; the bridge compares the SHA-256 of both in fixed time, answers 401 otherwise and logs the
+  refusal without the token.
 - **The listener.** `orkeon bridge serve` listens on loopback by default; any other host requires https, so that the
-  token never travels in clear off the machine (under Windows only: elsewhere an https prefix is refused at start). A
+  token never travels in clear off the machine (under Windows only: elsewhere an https prefix is refused at start).
+  Over http the caller's `Address` may name only loopback or Docker Desktop's `host.docker.internal`; an address with a
+  user and a password, or the host name `loopback` (which a resolver may answer with any address), is refused, and the
+  caller follows no redirect, which would carry a call's arguments and files to an address no setting named. A
   request carrying an `Origin` header is refused, since a page open in the user's own browser can post to loopback; a
   body over `Orkeon:Bridge:MaxRequestBytes` (32 MiB) is refused before it is read. Only the five endpoints under
   `/orkeon-bridge/v1/` answer: `GET tools`, `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`.
 - **Both sides select.** A tool runs on the bridge only when the bridge's `Orkeon:Bridge:Allow` and the caller's
-  `Orkeon:Tools:Bridge:Allow` both select it, `Deny` winning on each side. `*` never selects a tool that acts on the
-  workspace (files, shell, code index); naming one bridges it, with a warning on each side. A coworker delegation tool
-  is never bridged. A name that is no tool of the side's registry refuses the start.
+  `Orkeon:Tools:Bridge:Allow` both select it, `Deny` winning on each side. `*` selects only Orkeon's bridgeable
+  tools: never a tool that acts on the workspace (files, shell, `code_interpreter`, `list_mounts`, code index), an MCP
+  tool or a tool whose class declares no `[ToolContract]`; naming one of those bridges it, with a warning on each side.
+  A coworker delegation tool, and a tool of the caller's own run marked `[ToolContract(StaysWithCaller = true)]`
+  (human input, memory, session, budget, sub-agents, decision model, progress, event hub, RAG stores), is never
+  bridged: naming one refuses the start. A name that is no tool of the side's registry refuses the start too.
 - **The caller judges, the bridge runs.** The caller's permission gate, guardian, truncation and result sanitizer
   judge each call and its result, by the local tool's schema and access class; a contract hash that differs between
   the sides refuses the start. The truncation always applies to a bridged result: the caller never takes the
   bridge's word that a result is already bounded, and reads an answer under `Orkeon:Tools:Bridge:MaxResponseBytes`
   (32 MiB), a larger one failing the call. A tool list that names a tool twice, or a heartbeat window outside 1 s
   to 10 min, refuses the start. The bridge applies none of them: it runs the tool raw, with its own tool settings and
-  its own URL policy, and records each call in its audit under the caller `bridge`.
+  its own URL policy, and records each call in its audit under the caller `bridge`, a tool that throws as a failure.
+  Every host that runs tools for a caller (`orkeon run`, `validate`, `--list-tools`, `mcp serve`, scripts, `eval`,
+  `orkeon-repl`, `orkeon-host`) connects the bridge or refuses to start; the host of `orkeon bridge serve` never
+  connects to one.
 - **Files.** A call carries the caller's agent-facing mounts and the files its arguments name, at most
   `Orkeon:Tools:Bridge:MaxFileBytes` (16 MiB) in all, and the bridge's `Orkeon:Bridge:MaxFileBytes` (16 MiB) bounds
   both what it accepts and what it sends back. On the bridge they live in a scratch folder per call, inside a parent
@@ -363,12 +373,17 @@ own:
   removed after it. A symbolic link the tool made there is never followed when the files are read back. A call
   without mounts of a tool that uses files runs over an empty scratch, never over the bridge's own mounts, unless the
   tool acts on the workspace and was named. What comes back is written by the caller through its own virtual file
-  system, under its run's mounts and rights, and only when the call is an `Edit` or `Execute` one and its arguments
-  named the path or a folder above it: any other file is refused with a warning, the result kept; a path outside a
-  writable mount is refused there.
+  system, under its run's mounts and rights, and only when the call is an `Edit` or `Execute` one that succeeded and
+  a path-like argument (a parameter of format `path`, or whose name is or ends in a path word: `path`, `file`, `dir`,
+  `folder`, `output`, `target`...) named the path or a folder above it; the working directory, a mount's root, `/` or
+  a folder above one of them names nothing. Any other file is refused with a warning, the result kept; a path outside
+  a writable mount is refused there.
 - **Lifetime.** A caller's run is one scope on the bridge, ended by `POST end-run`; a caller silent past
-  `Orkeon:Bridge:HeartbeatWindow` (30 s) loses its scopes, and their browsers, at once. Stopping the bridge cancels
-  the calls in flight and ends every scope.
+  `Orkeon:Bridge:HeartbeatWindow` (30 s) loses its scopes, and their browsers, within 1.25 times the window. Stopping
+  the bridge cancels the calls in flight and ends every scope.
+- **One caller per bridge.** The caller id a request carries is the caller's own word, with no session behind it: any
+  holder of the token can end or call into another caller's runs. A bridge is meant for one caller; two callers that
+  must not reach each other's runs need two bridges, each with its own token.
 
 ### LLM keys: the settings file names the variable
 

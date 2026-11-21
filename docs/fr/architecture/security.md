@@ -365,27 +365,39 @@ outils intégrés d'une exécution sur une autre machine, d'ordinaire le bureau 
 conteneur. Chaque côté se défend pour lui-même :
 
 - **Le jeton.** Les deux côtés le lisent dans la variable d'environnement que nomme `TokenEnvVar`
-  (`ORKEON_BRIDGE_TOKEN`), jamais dans un fichier de réglages. Chaque requête le porte en `Authorization: Bearer` ; le
-  pont compare le SHA-256 des deux en temps constant et répond 401 sinon.
+  (`ORKEON_BRIDGE_TOKEN`), jamais dans un fichier de réglages, rogné ; un jeton de moins de 16 caractères refuse le
+  démarrage. Chaque requête le porte en `Authorization: Bearer` ; le pont compare le SHA-256 des deux en temps
+  constant, répond 401 sinon et journalise le refus sans le jeton.
 - **L'écouteur.** `orkeon bridge serve` écoute en boucle locale par défaut ; tout autre hôte exige https, pour que le
   jeton ne voyage jamais en clair hors de la machine (sous Windows seulement : ailleurs, un préfixe https est refusé
-  au démarrage). Une requête portant un en-tête `Origin` est refusée, car une page ouverte dans le navigateur de
+  au démarrage). En http, l'`Address` de l'appelant ne peut nommer que la boucle locale ou le `host.docker.internal`
+  de Docker Desktop ; une adresse portant un utilisateur et un mot de passe, ou le nom d'hôte `loopback` (qu'un
+  résolveur peut résoudre en n'importe quelle adresse), est refusée, et l'appelant ne suit aucune redirection, qui
+  porterait les arguments et les fichiers d'un appel vers une adresse qu'aucun réglage n'a nommée. Une requête
+  portant un en-tête `Origin` est refusée, car une page ouverte dans le navigateur de
   l'utilisateur peut poster vers la boucle locale ; un corps au-delà de `Orkeon:Bridge:MaxRequestBytes` (32 Mio) est
   refusé avant d'être lu. Seuls répondent les cinq points d'accès sous `/orkeon-bridge/v1/` : `GET tools`,
   `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`.
 - **Les deux côtés sélectionnent.** Un outil ne s'exécute sur le pont que si l'`Orkeon:Bridge:Allow` du pont et
   l'`Orkeon:Tools:Bridge:Allow` de l'appelant le sélectionnent tous deux, `Deny` l'emportant de chaque côté. `*` ne
-  sélectionne jamais un outil qui agit sur l'espace de travail (fichiers, shell, index de code) ; en nommer un le
-  ponte, avec un avertissement de chaque côté. Un outil de délégation à un coéquipier n'est jamais ponté. Un nom qui
-  n'est aucun outil du registre d'un côté refuse le démarrage.
+  sélectionne que les outils pontables d'Orkeon : jamais un outil qui agit sur l'espace de travail (fichiers, shell,
+  `code_interpreter`, `list_mounts`, index de code), un outil MCP ou un outil dont la classe ne déclare aucun
+  `[ToolContract]` ; en nommer un le ponte, avec un avertissement de chaque côté. Un outil de délégation à un
+  coéquipier, et un outil de l'exécution de l'appelant marqué `[ToolContract(StaysWithCaller = true)]` (saisie
+  humaine, mémoire, session, budget, sous-agents, modèle de décision, progression, bus d'événements, magasins RAG),
+  n'est jamais ponté : en nommer un refuse le démarrage. Un nom qui n'est aucun outil du registre d'un côté refuse
+  aussi le démarrage.
 - **L'appelant juge, le pont exécute.** La porte de permissions, le gardien, la troncature et l'assainisseur de
   résultats de l'appelant jugent chaque appel et son résultat, selon le schéma et la classe d'accès de l'outil local ;
   une empreinte de contrat qui diffère entre les côtés refuse le démarrage. La troncature s'applique toujours à un
   résultat ponté : l'appelant ne croit jamais le pont sur parole quand il dit un résultat déjà borné, et lit une
   réponse sous `Orkeon:Tools:Bridge:MaxResponseBytes` (32 Mio), une réponse plus grosse faisant échouer l'appel. Une
-  liste d'outils qui nomme un outil deux fois, ou une fenêtre de battement hors de 1 s à 10 min, refuse le démarrage. Le pont n'en applique aucun : il exécute
-  l'outil brut, avec ses propres réglages d'outil et sa propre politique d'URL, et consigne chaque appel dans son
-  audit sous l'appelant `bridge`.
+  liste d'outils qui nomme un outil deux fois, ou une fenêtre de battement hors de 1 s à 10 min, refuse le
+  démarrage. Le pont n'en applique aucun : il exécute l'outil brut, avec ses propres réglages d'outil et sa propre
+  politique d'URL, et consigne chaque appel dans son audit sous l'appelant `bridge`, un outil qui lève une exception
+  comme un échec. Chaque hôte qui exécute des outils pour un appelant (`orkeon run`, `validate`, `--list-tools`,
+  `mcp serve`, les scripts, `eval`, `orkeon-repl`, `orkeon-host`) se connecte au pont ou refuse de démarrer ; l'hôte
+  de `orkeon bridge serve` ne se connecte jamais à un pont.
 - **Les fichiers.** Un appel porte les montages de l'appelant visibles des agents et les fichiers que nomment ses
   arguments, au plus `Orkeon:Tools:Bridge:MaxFileBytes` (16 Mio) au total, et le `Orkeon:Bridge:MaxFileBytes` du pont (16 Mio)
   borne à la fois ce qu'il accepte et ce qu'il renvoie. Sur le pont, ils vivent dans un dossier temporaire par
@@ -395,12 +407,18 @@ conteneur. Chaque côté se défend pour lui-même :
   fichiers sont relus. Un appel sans montages d'un outil qui utilise des fichiers s'exécute sur un dossier vide,
   jamais sur les montages du pont lui-même, sauf pour un outil qui agit sur l'espace de travail et qui a été nommé.
   Ce qui revient est écrit par l'appelant par son propre système de fichiers virtuel, sous les montages et les
-  droits de son exécution, et seulement quand l'appel est de classe `Edit` ou `Execute` et que ses arguments ont
-  nommé le chemin ou un dossier au-dessus : tout autre fichier est refusé avec un avertissement, le résultat gardé ;
-  un chemin hors d'un montage inscriptible y est refusé.
+  droits de son exécution, et seulement quand l'appel est de classe `Edit` ou `Execute`, a réussi, et qu'un argument
+  de chemin (un paramètre de format `path`, ou dont le nom est ou finit par un mot de chemin : `path`, `file`, `dir`,
+  `folder`, `output`, `target`...) a nommé le chemin ou un dossier au-dessus ; le répertoire de travail, la racine
+  d'un montage, `/` ou un dossier au-dessus de l'un d'eux ne nomment rien. Tout autre fichier est refusé avec un
+  avertissement, le résultat gardé ; un chemin hors d'un montage inscriptible y est refusé.
 - **La durée de vie.** Une exécution de l'appelant est une portée sur le pont, terminée par `POST end-run` ; un
-  appelant silencieux au-delà de `Orkeon:Bridge:HeartbeatWindow` (30 s) perd ses portées, et leurs navigateurs,
-  aussitôt. Arrêter le pont annule les appels en cours et termine chaque portée.
+  appelant silencieux au-delà de `Orkeon:Bridge:HeartbeatWindow` (30 s) perd ses portées, et leurs navigateurs, en
+  au plus 1,25 fois la fenêtre. Arrêter le pont annule les appels en cours et termine chaque portée.
+- **Un appelant par pont.** L'identifiant d'appelant que porte une requête est la parole de l'appelant, sans session
+  derrière : tout détenteur du jeton peut terminer les exécutions d'un autre appelant ou y appeler des outils. Un pont
+  est fait pour un seul appelant ; deux appelants qui ne doivent pas atteindre les exécutions l'un de l'autre
+  demandent deux ponts, chacun avec son jeton.
 
 ### Clés LLM : le fichier de réglages nomme la variable
 

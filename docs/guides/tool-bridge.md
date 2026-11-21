@@ -60,8 +60,9 @@ versions of it). Once started, a call the bridge cannot answer fails with the re
 a bridged tool never falls back to running in the container. A section `Orkeon:Tools:Firefox` left in the container
 is reported once and not read.
 
-`orkeon run`, `validate`, the `.ork.ts` scripts, `eval` and `orkeon-host` all connect the same way; `orkeon-host`
-exits 78 on a refusal.
+`orkeon run`, `validate`, `--list-tools`, `orkeon mcp serve`, the `.ork.ts` scripts, `eval`, `orkeon-repl` and
+`orkeon-host` all connect the same way; `orkeon-host` exits 78 on a refusal. `orkeon bridge serve` itself never connects
+to a bridge, whatever its settings say.
 
 ## 3. Reaching the bridge from the container
 
@@ -102,30 +103,50 @@ travels in clear off the machine.
   netsh http add sslcert ipport=192.168.1.20:7410 certhash=<thumbprint> appid={<any GUID>}
   ```
 
-  Without the reservation the start fails, and the message names the command.
+  Without the reservation the start fails, and the message names the command. The container must trust that
+  certificate (its authority added to the image's trust store): the caller refuses a certificate it cannot verify.
 
 ## 4. What travels, and for how long
 
 - **One run on the caller is one run on the bridge.** The bridge keeps one scope per caller run, so "one browser per
   run" means what it means locally. The caller ends that scope (`POST end-run`) when its own run ends, and beats
-  (`POST heartbeat`) every third of `Orkeon:Bridge:HeartbeatWindow` (30 s) while it has runs in flight. A caller
-  silent past the window loses its runs on the bridge, and their browsers, at once: a caller that comes back starts
-  new ones.
+  (`POST heartbeat`) every third of `Orkeon:Bridge:HeartbeatWindow` (30 s, between 1 s and 10 min) while it has
+  runs in flight. A caller silent past the window loses its runs on the bridge, and their browsers, within at most
+  1.25 times the window (the bridge checks every quarter of it): a caller that comes back starts new ones.
 - **A path stays the caller's.** A `screenshot` to `/output/page.png` lands in the caller's `/output` mount. A call of
   a tool that uses files carries the caller's mounts and the files its arguments name; the bridge presents them at
   the same virtual paths in a scratch folder for the length of the call, sends back what the tool wrote, then removes
-  the folder. The caller writes those files through its own file system, under the rights of its run.
+  the folder. The caller writes those files through its own file system, under the rights of its run, and only those a
+  path-like argument of the call named (a parameter of format `path`; else one named `path`, `file`, `filename`,
+  `filepath`, `dir`, `directory`, `folder`, one of their plurals, `output`, `destination`, `dest` or `target`, or whose
+  last word, split on `_`, `-` and case changes, is one of the first seven or a plural, as `save_to_path`), at that
+  path or under that folder, for a call classed `Edit` or `Execute` that succeeded. A text typed into a page never
+  names a path, and the working directory, a mount's root, `/` or a folder above one of them never opens a whole tree. Any other file is refused with a warning.
   `Orkeon:Tools:Bridge:MaxFileBytes` and `Orkeon:Bridge:MaxFileBytes` (16 MiB each) bound each direction.
-- **What `*` never selects.** `"Allow": ["*"]` selects every tool, on either side, except those that act on the
-  workspace (files, shell, code index): bridged, they would act on your machine while the workspace is in the
-  container. Naming one bridges it, and each side logs a warning. A coworker delegation tool is never bridged.
+- **What `*` never selects.** `"Allow": ["*"]` selects, on either side, only Orkeon's own tools that are safe on
+  another machine (`firefox`, `web_search`, `github`...). It never selects:
+  - a tool that acts on the workspace (files, shell, `code_interpreter`, `list_mounts`, code index): bridged, it would
+    act on your machine while the workspace is in the container;
+  - a tool of an MCP server, or a tool whose class declares no `[ToolContract]` (a plugin's, a script's): what it
+    reaches on the other machine is not known;
+  - a tool of the caller's own run (`human_input`, `memory_*`, `session_*`, `token_budget`, `spawn_agent`,
+    `system_one_decide`, `progress_report`, the event hub, the RAG stores), marked
+    `[ToolContract(StaysWithCaller = true)]`: on the bridge it would act on the bridge's state, not the run's;
+  - a coworker delegation tool.
+
+  Naming a tool of the first two kinds bridges it, and each side logs a warning. Naming a tool of the caller's run or
+  a delegation tool refuses the start.
 
 ## 5. When it does not start
 
 | Message (abridged) | What to do |
 | --- | --- |
 | `reads its token from the environment variable ORKEON_BRIDGE_TOKEN, which is not set` | export the token where that side starts |
+| `the token in the environment variable … is shorter than 16 characters` | use a long random value (`openssl rand -hex 32`) |
 | `the tool bridge at … refused the token` | give both sides the same token |
 | `Orkeon:Tools:Bridge:Allow names 'x', which the tool bridge at … does not serve` | add `x` to the bridge's `Allow`, or remove it from the caller's |
+| `the contract of 'x' differs between this Orkeon and the tool bridge` | run the same Orkeon version on both sides |
+| `Allow names 'x', a tool of the caller's own run` | remove `x`: it stays with the caller |
 | `names a host other than loopback over http: such an address requires https` | use loopback (`--network host`) or https |
+| `asks for https, which the tool bridge serves under Windows only` | keep the prefix on loopback over http and use `--network host`, or put a TLS terminator in front |
 | `could not listen on …` | another process holds the port, or, under Windows, the prefix has no URL reservation |

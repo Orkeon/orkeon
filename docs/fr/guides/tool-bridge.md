@@ -62,8 +62,9 @@ versions différentes). Une fois démarré, un appel auquel le pont ne peut rép
 suivant réessaie ; un outil ponté ne se rabat jamais sur une exécution dans le conteneur. Une section
 `Orkeon:Tools:Firefox` laissée dans le conteneur est signalée une fois et n'est pas lue.
 
-`orkeon run`, `validate`, les scripts `.ork.ts`, `eval` et `orkeon-host` se connectent tous de la même façon ;
-`orkeon-host` sort avec 78 sur un refus.
+`orkeon run`, `validate`, `--list-tools`, `orkeon mcp serve`, les scripts `.ork.ts`, `eval`, `orkeon-repl` et
+`orkeon-host` se connectent tous de la même façon ; `orkeon-host` sort avec 78 sur un refus. `orkeon bridge serve`
+lui-même ne se connecte jamais à un pont, quoi que disent ses réglages.
 
 ## 3. Atteindre le pont depuis le conteneur
 
@@ -105,33 +106,55 @@ ne voyage jamais en clair hors de la machine.
   netsh http add sslcert ipport=192.168.1.20:7410 certhash=<empreinte> appid={<un GUID quelconque>}
   ```
 
-  Sans la réservation, le démarrage échoue, et le message nomme la commande.
+  Sans la réservation, le démarrage échoue, et le message nomme la commande. Le conteneur doit faire confiance à ce
+  certificat (son autorité ajoutée au magasin de confiance de l'image) : l'appelant refuse un certificat qu'il ne peut
+  vérifier.
 
 ## 4. Ce qui voyage, et pour combien de temps
 
 - **Une exécution de l'appelant est une exécution sur le pont.** Le pont garde une portée par exécution de
   l'appelant, si bien qu'« un navigateur par exécution » signifie ce qu'il signifie en local. L'appelant termine
   cette portée (`POST end-run`) quand sa propre exécution se termine, et bat (`POST heartbeat`) tous les tiers de
-  `Orkeon:Bridge:HeartbeatWindow` (30 s) tant qu'il a des exécutions en cours. Un appelant silencieux au-delà de la
-  fenêtre perd ses exécutions sur le pont, et leurs navigateurs, aussitôt : un appelant qui revient en ouvre de
-  nouvelles.
+  `Orkeon:Bridge:HeartbeatWindow` (30 s, entre 1 s et 10 min) tant qu'il a des exécutions en cours. Un appelant
+  silencieux au-delà de la fenêtre perd ses exécutions sur le pont, et leurs navigateurs, en au plus 1,25 fois la
+  fenêtre (le pont vérifie tous les quarts de fenêtre) : un appelant qui revient en ouvre de nouvelles.
 - **Un chemin reste celui de l'appelant.** Un `screenshot` vers `/output/page.png` arrive dans le montage `/output` de
   l'appelant. Un appel d'un outil qui utilise des fichiers porte les montages de l'appelant et les fichiers que
   nomment ses arguments ; le pont les présente aux mêmes chemins virtuels dans un dossier temporaire le temps de
   l'appel, renvoie ce que l'outil a écrit, puis supprime le dossier. L'appelant écrit ces fichiers par son propre
-  système de fichiers, sous les droits de son exécution. `Orkeon:Tools:Bridge:MaxFileBytes` et
+  système de fichiers, sous les droits de son exécution, et seulement ceux qu'a nommés un argument de chemin de l'appel
+  (un paramètre de format `path` ; sinon un paramètre nommé `path`, `file`, `filename`, `filepath`, `dir`, `directory`,
+  `folder`, l'un de leurs pluriels, `output`, `destination`, `dest` ou `target`, ou dont le dernier mot, coupé sur `_`,
+  `-` et les changements de casse, est l'un des sept premiers ou un pluriel, comme `save_to_path`), à ce chemin ou sous
+  ce dossier, pour un appel classé `Edit` ou `Execute` qui a réussi. Un texte saisi dans une page ne nomme jamais un
+  chemin, et le répertoire de travail, la racine d'un montage, `/` ou un dossier au-dessus de l'un d'eux n'ouvrent
+  jamais tout un arbre. Tout autre fichier est refusé avec un avertissement.
+  `Orkeon:Tools:Bridge:MaxFileBytes` et
   `Orkeon:Bridge:MaxFileBytes` (16 Mio chacun) bornent chaque sens.
-- **Ce que `*` ne sélectionne jamais.** `"Allow": ["*"]` sélectionne tous les outils, d'un côté comme de l'autre,
-  sauf ceux qui agissent sur l'espace de travail (fichiers, shell, index de code) : pontés, ils agiraient sur votre
-  machine alors que l'espace de travail est dans le conteneur. En nommer un le ponte, et chaque côté journalise un
-  avertissement. Un outil de délégation à un coéquipier n'est jamais ponté.
+- **Ce que `*` ne sélectionne jamais.** `"Allow": ["*"]` ne sélectionne, d'un côté comme de l'autre, que les outils
+  d'Orkeon sûrs sur une autre machine (`firefox`, `web_search`, `github`...). Il ne sélectionne jamais :
+  - un outil qui agit sur l'espace de travail (fichiers, shell, `code_interpreter`, `list_mounts`, index de code) :
+    ponté, il agirait sur votre machine alors que l'espace de travail est dans le conteneur ;
+  - un outil d'un serveur MCP, ou un outil dont la classe ne déclare aucun `[ToolContract]` (celui d'un plugin, d'un
+    script) : ce qu'il atteint sur l'autre machine n'est pas connu ;
+  - un outil de l'exécution de l'appelant (`human_input`, `memory_*`, `session_*`, `token_budget`, `spawn_agent`,
+    `system_one_decide`, `progress_report`, le bus d'événements, les magasins RAG), marqué
+    `[ToolContract(StaysWithCaller = true)]` : sur le pont, il agirait sur l'état du pont, non sur celui de l'exécution ;
+  - un outil de délégation à un coéquipier.
+
+  Nommer un outil des deux premières sortes le ponte, et chaque côté journalise un avertissement. Nommer un outil de
+  l'exécution de l'appelant ou un outil de délégation refuse le démarrage.
 
 ## 5. Quand il ne démarre pas
 
 | Message (abrégé) | Que faire |
 | --- | --- |
 | `reads its token from the environment variable ORKEON_BRIDGE_TOKEN, which is not set` | exporter le jeton là où ce côté démarre |
+| `the token in the environment variable … is shorter than 16 characters` | prendre une longue valeur aléatoire (`openssl rand -hex 32`) |
 | `the tool bridge at … refused the token` | donner le même jeton aux deux côtés |
 | `Orkeon:Tools:Bridge:Allow names 'x', which the tool bridge at … does not serve` | ajouter `x` à l'`Allow` du pont, ou le retirer de celui de l'appelant |
+| `the contract of 'x' differs between this Orkeon and the tool bridge` | exécuter la même version d'Orkeon des deux côtés |
+| `Allow names 'x', a tool of the caller's own run` | retirer `x` : il reste chez l'appelant |
 | `names a host other than loopback over http: such an address requires https` | utiliser la boucle locale (`--network host`) ou https |
+| `asks for https, which the tool bridge serves under Windows only` | garder le préfixe en boucle locale en http et utiliser `--network host`, ou placer un terminateur TLS devant |
 | `could not listen on …` | un autre processus tient le port, ou, sous Windows, le préfixe n'a pas de réservation d'URL |
