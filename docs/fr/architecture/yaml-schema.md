@@ -176,7 +176,7 @@ tasks:
       fallback: {<question>: string}  # Réponses utilisées sans requête quand le circuit de décision est coupé
       without: {agent: string, instructions: string}  # decision.mode optional seulement : l'agent qui répond quand le circuit est coupé
     when:                 # Ne lance la tâche que si une tâche de décision a répondu comme écrit (une seule tâche de décision par when:)
-      <task>.<question>: [string] | ">= 0.7"  # Une liste d'options (choice, ou [yes] / [no] sur un oui/non), ou un seuil : une probabilité (oui/non) ou une position de niveau (score)
+      <task>.<question>: [string] | ">= 0.7"  # Une liste d'options (choice, ou [yes] / ["no"] sur un oui/non), ou un seuil : une probabilité (oui/non) ou une position de niveau (score)
       <task>.<question>.<option>: ">= 0.25"   # La probabilité d'une option d'un choice
       <task>: otherwise                       # Seule : vaut quand aucune condition sœur sur cette tâche ne vaut
 ```
@@ -298,7 +298,7 @@ Plusieurs clauses s'écrivent dans un même bloc et **doivent toutes valoir**. L
 | Clause | Vaut quand |
 |---|---|
 | `<task>.<question>: [a, b]` | La question est un choice, l'option choisie est dans la liste et la confiance est au moins égale à `minConfidence`. |
-| `<task>.<question>: [yes]` | La question est un oui/non, sa réponse choisie (`yes` quand sa probabilité vaut 0,5 ou plus) est celle de la liste (`[no]` et `["no"]` se lisent pareil) et la confiance est au moins égale à `minConfidence`. |
+| `<task>.<question>: [yes]` | La question est un oui/non, sa réponse choisie (`yes` quand sa probabilité vaut 0,5 ou plus) est celle de la liste (écrivez `["no"]` : un `[no]` sans guillemets est refusé au chargement avec l'invitation à le mettre entre guillemets, YAML le lisant comme un booléen) et la confiance est au moins égale à `minConfidence`. |
 | `<task>.<question>: ">= 0.7"` | La question est un oui/non (sa probabilité d'un oui, dans [0, 1]) ou un score (le score pondéré du modèle sur les positions des niveaux, de 0 à n-1) et la comparaison vaut. Le seuil de confiance ne s'applique pas. |
 | `<task>.<question>.<option>: ">= 0.25"` | La probabilité de cette option d'un choice satisfait la comparaison, même si l'option n'est pas la choisie. Le seuil de confiance ne s'applique pas. |
 | `<task>: otherwise` | Aucune condition sœur sur cette tâche de décision ne vaut, y compris quand la confiance est sous le seuil. |

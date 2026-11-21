@@ -200,4 +200,31 @@ tasks:
         Assert.Equal(expectedRequests, model.Requests.Count);
         Assert.Equal(0, executionService.ExecuteTaskCallCount);
     }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldRefuseTheConfiguration_WhenItsRelayNamesAnAgentTheCrewDoesNotHave()
+    {
+        // Arrange: a configuration handed straight to the factory, its relay renamed after the loader checked it.
+        var yaml = CrewYaml
+            .Replace("process: sequential\n", "process: sequential\ndecision:\n  mode: optional\n", StringComparison.Ordinal)
+            .Replace("      fallback:\n        category: bug\n", "      without:\n        agent: writer\n", StringComparison.Ordinal);
+        var loader = new YamlCrewDefinitionLoader(
+            new YamlDotNetSerializer(), new FakeFileSystemService(), NullLogger<YamlCrewDefinitionLoader>.Instance);
+        var loaded = await loader.LoadFromStringAsync(yaml, Ct);
+        var config = loaded with
+        {
+            Tasks = [.. loaded.Tasks.Select(t => t.Decision is { } d ? t with { Decision = d.WithRelay(new DecisionRelay("ghost")) } : t)],
+        };
+        var unitOfWork = new NullUnitOfWork();
+        var factory = new CrewFactory(
+            loader, new MockToolRegistry(), NullLogger<CrewFactory>.Instance,
+            new InMemoryCrewRepository(unitOfWork), new InMemoryAgentRepository(unitOfWork), new InMemoryTaskRepository(unitOfWork));
+
+        // Act
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => factory.CreateFromConfigAsync(config, Ct));
+
+        // Assert
+        Assert.Contains("Task 'triage' without.agent 'ghost' is not an agent of the crew", ex.Message, StringComparison.Ordinal);
+    }
 }

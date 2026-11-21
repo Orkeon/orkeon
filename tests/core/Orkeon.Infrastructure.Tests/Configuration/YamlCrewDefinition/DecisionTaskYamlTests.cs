@@ -94,7 +94,6 @@ tasks:
     [Theory]
     [InlineData("[yes]", "yes")]
     [InlineData("[\"no\"]", "no")]
-    [InlineData("[no]", "no")]
     [Trait("BR", "CH-430")]
     public async Task ShouldMapAYesOrNoOptionClause_WhenWhenListsItOnAYesNoQuestion(string list, string option)
     {
@@ -152,6 +151,23 @@ tasks:
 
         var intake = config.Tasks.Single(t => t.Key == "intake");
         Assert.Contains(intake.Id, config.Tasks.Single(t => t.Key == "triage").Dependencies);
+    }
+
+    [Theory]
+    [InlineData("[no]")]
+    [InlineData("[yes, no]")]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldRefuseYamlWithTheQuotingHint_WhenAnOptionClauseListsAnUnquotedNo(string list)
+    {
+        // Arrange
+        var yaml = CrewYaml.Replace("      triage.category: [billing, bug]\n", $"      triage.refund_requested: {list}\n", StringComparison.Ordinal);
+        var loader = new YamlCrewDefinitionLoader(new YamlDotNetSerializer(), new FakeFileSystemService(), NullLogger<YamlCrewDefinitionLoader>.Instance);
+
+        // Act
+        var ex = await Assert.ThrowsAnyAsync<Exception>(() => loader.LoadFromStringAsync(yaml, Ct));
+
+        // Assert
+        Assert.Contains("'tasks[refund].when[triage.refund_requested]' lists an unquoted no, which YAML reads as a boolean: quote it, \"no\".", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

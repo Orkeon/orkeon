@@ -195,6 +195,20 @@ public sealed class DecisionRelayRunnerTests
 
     [Fact]
     [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldAskOnceMoreThenFailWithTheRelaySource_WhenReadingTheAnswerThrowsAnotherException()
+    {
+        // Arrange: a key given twice is read by JsonObject, which throws an ArgumentException, not a FormatException.
+        _relay.Answers = ["""{"route":{"bug":0.7,"other":0.3},"route":{"bug":0.7,"other":0.3}}"""];
+
+        // Act
+        var result = await RunOffAsync(Decision(Route()));
+
+        // Assert
+        Assert.Equal((false, 2, DecisionSources.Relay), (result.Success, _relay.Requests.Count, result.DecisionSource));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
     public async System.Threading.Tasks.Task ShouldFailWithTheRelaySourceAndNoFallback_WhenTheRelayThrows()
     {
         // Arrange

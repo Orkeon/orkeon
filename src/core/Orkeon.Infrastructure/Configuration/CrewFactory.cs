@@ -356,7 +356,8 @@ public partial class CrewFactory : ICrewFactory
             config.DecisionMode,
             config.Process,
             config.DecisionDeclarations(),
-            uses);
+            uses,
+            RelayNames(config));
         if (findings.Refusals.Count > 0)
             throw new InvalidOperationException(
                 $"Crew '{config.Name}': {Orkeon.Domain.Task.DecisionTaskRules.ModeRefusal(findings.Refusals)}");
@@ -369,6 +370,11 @@ public partial class CrewFactory : ICrewFactory
                 LogCrewDefinitionWarning(warning);
         }
     }
+
+    // The names a without.agent may give (#430), as the loader checks them: an agent's key, or the role of an
+    // agent without one, which a crew built in code is matched on at run time.
+    private static List<string> RelayNames(CrewConfiguration config) =>
+        [.. config.Agents.Select(a => a.Key ?? a.Role).Distinct(StringComparer.Ordinal)];
 
     private static string Shorten(string text) => text.Length <= 60 ? text : string.Concat(text.AsSpan(0, 57), "...");
 

@@ -174,7 +174,7 @@ tasks:
       fallback: {<question>: string}  # Answers used without a request when the decision circuit is off
       without: {agent: string, instructions: string}  # decision.mode optional only: the agent that answers when the circuit is off
     when:                 # Runs the task only when a decision task answered as written (one decision task per when:)
-      <task>.<question>: [string] | ">= 0.7"  # An option list (choice, or [yes] / [no] on a yes-no), or a threshold: a probability (yes-no) or a level position (score)
+      <task>.<question>: [string] | ">= 0.7"  # An option list (choice, or [yes] / ["no"] on a yes-no), or a threshold: a probability (yes-no) or a level position (score)
       <task>.<question>.<option>: ">= 0.25"   # The probability of one option of a choice
       <task>: otherwise                       # Alone: holds when no sibling condition on that task holds
 ```
@@ -292,7 +292,7 @@ written in one block and **all must hold**. The grammar:
 | Clause | Holds when |
 |---|---|
 | `<task>.<question>: [a, b]` | The question is a choice, the chosen option is one of the list and the confidence is at or above `minConfidence`. |
-| `<task>.<question>: [yes]` | The question is a yes-no, its chosen answer (`yes` when its probability is 0.5 or more) is the one listed (`[no]` and `["no"]` read the same) and the confidence is at or above `minConfidence`. |
+| `<task>.<question>: [yes]` | The question is a yes-no, its chosen answer (`yes` when its probability is 0.5 or more) is the one listed (write `["no"]`: an unquoted `[no]` is refused at load with the hint to quote it, as YAML reads it as a boolean) and the confidence is at or above `minConfidence`. |
 | `<task>.<question>: ">= 0.7"` | The question is a yes-no (its probability of a yes, in [0, 1]) or a score (the model's weighted score on the positions of the levels, 0 to n-1) and the comparison holds. The floor does not apply. |
 | `<task>.<question>.<option>: ">= 0.25"` | The probability of that option of a choice satisfies the comparison, even when the option is not the chosen one. The floor does not apply. |
 | `<task>: otherwise` | No sibling condition on that decision task holds, including when the confidence is under the floor. |

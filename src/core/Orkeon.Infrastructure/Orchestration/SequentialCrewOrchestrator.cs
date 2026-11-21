@@ -581,17 +581,19 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         await new CrewHookDispatcher(_executionHook, _logger)
             .RunDecisionAsync(new RunDecisionNotice(crew.DecisionMode, _decisionCircuit), cancellationToken)
             .ConfigureAwait(false);
-        if (Orkeon.Application.Crew.Execution.DecisionUnavailableException.Refusing(crew, _decisionCircuit) is { } refusal)
+
+        // The circuit the decision runner applies, which is off when no decision model is registered: a required
+        // crew is refused on it, and an optional crew's resume is compared with it.
+        var runnerCircuit = _decisionCircuit.Enabled && !HasDecisionModel
+            ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider)
+            : _decisionCircuit;
+        if (Orkeon.Application.Crew.Execution.DecisionUnavailableException.Refusing(crew, runnerCircuit) is { } refusal)
             throw refusal;
 
         if (crew.DecisionMode != Orkeon.Domain.Crew.CrewDecisionMode.Optional || resume is null)
             return;
 
-        // The circuit the decision runner applies, which is off when no decision model is registered; and only
-        // the recorded decisions this crew could replay.
-        var runnerCircuit = _decisionCircuit.Enabled && !HasDecisionModel
-            ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider)
-            : _decisionCircuit;
+        // Only the recorded decisions this crew could replay.
         var decisionTaskKeys = _taskRepository is null
             ? null
             : (await _taskRepository.GetByIdsAsync(crew.Tasks, cancellationToken).ConfigureAwait(false))

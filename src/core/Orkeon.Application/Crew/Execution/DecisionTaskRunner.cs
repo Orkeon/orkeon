@@ -190,7 +190,9 @@ public sealed class DecisionTaskRunner
                 var response = DecisionRelayProtocol.Parse(answer.Text, decision, DecisionRelayProtocol.ModelOf(agent));
                 return Succeeded(ToOutcome(decision, response), started, DecisionSources.Relay, inputTokens, outputTokens);
             }
-            catch (FormatException ex)
+            // Any fault of reading the answer is a refused answer, asked again then failed with the relay source: a
+            // key given twice throws an ArgumentException from JsonObject, not a FormatException.
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 refusal = ex.Message;
                 if (attempt == 1)
