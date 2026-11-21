@@ -42,7 +42,12 @@ namespace Orkeon.Infrastructure.Serialization
             //
             // OmitNull, never OmitDefaults: `verbose: false` and `memory: false` are explicit
             // choices, distinguishable downstream from "unset", and OmitDefaults would eat them.
+            //
+            // A string YAML would read as another type is quoted (#429): the option `no` of a `when:` list, `yes`,
+            // `null`, `1.0`. A plain `no` reads as a boolean in YAML 1.1, and the crew loader refuses it, so an
+            // exported crew must quote it to load again. YamlDotNet asks for this option before any other.
             _serializer = new SerializerBuilder()
+                .WithQuotingNecessaryStrings(quoteYaml1_1Strings: true)
                 .WithNamingConvention(CamelCaseNamingConvention.Instance)
                 .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
                 .Build();
