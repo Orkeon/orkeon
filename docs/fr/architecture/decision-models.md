@@ -429,7 +429,9 @@ qu'un run rencontrerait par une ligne `WARNING:` et sort en `0` ([le CLI](../ref
 #### Le relais `without:`
 
 Le relais est un appel LLM fait avec le fournisseur de l'agent relais : son propre bloc `llm`, sinon son
-`llm.profile`, sinon le profil par défaut. L'appel envoie le prompt de l'agent (rôle, objectif, histoire), les
+`llm.profile`, sinon le profil par défaut. L'échantillonnage, les pénalités et les séquences d'arrêt du bloc
+accompagnent l'appel : une séquence d'arrêt qui peut terminer l'objet JSON (`}`, une ligne vide) coupe la réponse,
+qui est alors refusée. L'appel envoie le prompt de l'agent (rôle, objectif, histoire), les
 questions, l'état que lit la tâche, en JSON, et `without.instructions` ; il n'a ni outil, ni mémoire, ni historique.
 L'agent ne donne **que des probabilités**, en un objet JSON qui a une clé par question :
 
@@ -471,8 +473,10 @@ La réponse d'une tâche de décision est enregistrée dans le checkpoint du run
 rapporte le `decisionSource` enregistré. Le checkpoint montre ainsi le circuit avec lequel le run a démarré : allumé
 quand une décision vient du modèle, coupé quand une vient du relais ou du repli. Une crew `optional` reprise sous
 l'autre circuit est refusée, avec `decision_unavailable`, en nommant les deux circuits : les décisions restantes
-viendraient sinon de l'autre source. Un run qui n'a encore enregistré aucune décision reprend sous l'un ou l'autre
-circuit, et une crew sans mode garde le comportement de reprise qu'elle avait.
+viendraient sinon de l'autre source. Seules comptent les décisions des tâches que la crew déclare encore comme
+tâches de décision, par leur clé (une tâche dont la définition a changé sous la même clé compte encore), et elles
+sont comparées au circuit du run qui reprend : coupé quand son exécuteur n'a pas de modèle de décision. Un run qui
+n'a encore enregistré aucune décision reprend sous l'un ou l'autre circuit, et une crew sans mode garde le comportement de reprise qu'elle avait.
 
 ### Les limites de Jev et le contexte long
 

@@ -89,7 +89,10 @@ internal sealed class ContextCompactor
     /// A call was made over <paramref name="conversation"/> as it stands, and the provider counted
     /// <paramref name="promptTokens"/> prompt tokens (null when it reported no usage). What that count
     /// holds beyond the messages is kept as the prompt's overhead (never below 0), which every later
-    /// recount adds; a call with no usage keeps the overhead last measured.
+    /// recount adds; a call with no usage keeps the overhead last measured. The overhead also holds the
+    /// drift between the provider's tokenizer and the estimate of the messages: right after a summary, a
+    /// recount adds the drift measured on the long conversation to the short one, so the estimate can
+    /// stay high until the next call's count corrects it.
     /// </summary>
     internal void Observe(int? promptTokens, ConversationView conversation)
     {
@@ -137,7 +140,10 @@ internal sealed class ContextCompactor
         // The recent turns are all there is: nothing failed, and a later turn gives the cut its room.
         var cut = CutIndex(conversation);
         if (cut <= 2)
+        {
+            CompactionLog.LogNothingToCut(_setup.Logger, _setup.AgentRole, _setup.TaskId, before, TriggerTokens);
             return 0;
+        }
 
         var summary = await _summarize(CompactionPrompts.Instructions,
             CompactionPrompts.Transcript(conversation.TextAt(1), Transcript(conversation, 2, cut)), cancellationToken).ConfigureAwait(false);

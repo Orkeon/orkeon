@@ -740,7 +740,7 @@ sur la tâche, un votant, a le sien) ; le modèle de décision lit le rôle de l
 réponse, quand l'appel échoue ou quand le circuit de décision est coupé (`--no-decision`,
 `Orkeon:Decision:Enabled: false`, aucun fournisseur de décision), le profil par défaut de l'hôte
 s'applique, sans erreur : un circuit coupé ne fait aucun appel de décision. Un avertissement est
-journalisé une fois quand le circuit est coupé, et quand l'appel échoue ; une probabilité basse
+journalisé une fois quand le circuit est coupé ou que `Ladder` manque, et quand l'appel échoue ; une probabilité basse
 ou une réponse manquante n'est journalisée qu'en information. Chaque choix émet `agent.route` sur
 le flux d'événements du run, une fois par tâche et par agent d'un run. Le
 `llm_override: { profile: auto }` d'une tâche est routé de la même façon. Un manager ou un relais
@@ -1912,7 +1912,7 @@ de préfixe automatique facture de nouveau la conversation après la coupe.
 |---|---|---|---|
 | `Enabled` | booléen | `true` | Si les boucles compactent leur conversation. Vrai par défaut : une longue boucle paie un appel de résumé au lieu de perdre son milieu dans la coupe à 40 messages. Faux ramène cette coupe, comme le fait `compaction: { enabled: false }` d'un agent pour cet agent seul. |
 | `KeepRecentTurns` | entier | `6` | Combien des tours les plus récents une compaction garde mot pour mot, un tour étant un message de l'assistant avec ses résultats d'outil (un appel d'outil n'est jamais séparé de son résultat). 6 par défaut ; 0 résume tous les tours. |
-| `Profile` | chaîne | — | Le profil LLM qui écrit le résumé : `default` ou un profil de `Llm:Profiles` ; un nom que l'hôte ne définit pas, ou `auto`, refuse le démarrage. Omis, le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
+| `Profile` | chaîne | — | Le profil LLM qui écrit le résumé : `default` ou un profil de `Llm:Profiles` ; un nom que l'hôte ne propose pas (absent de `Llm:Profiles`, ou que `Orkeon:Host:LlmProfiles` écarte), ou `auto`, refuse le démarrage. Omis, le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
 | `TriggerShare` | nombre | `0.75` | La part de la fenêtre utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum documenté du modèle, sinon 4096, au plus la moitié de la fenêtre) que le prompt estimé atteint pour que la boucle compacte, au-dessus de 0 et au plus 1. 0,75 par défaut ; `compaction: { triggerShare }` d'un agent la remplace. |
 <!-- /settings -->
 
@@ -1973,7 +1973,7 @@ d'un run. Une crew `.ork.ts` n'a pas de skills.
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `Library` | chaîne | `"/workspace/.orkeon/skills"` | Le dossier virtuel où sont choisis les skills d'un agent `auto`, un fichier `<nom>.md` par skill (les sous-dossiers ne sont pas lus) ; un chemin relatif est refusé au démarrage. `/workspace/.orkeon/skills` par défaut. |
-| `MaxBlockChars` | entier | `12000` | Les caractères que porte le bloc de skills entier, son titre, la ligne de titre de chaque skill et les notes de coupe compris ; un skill au-delà est coupé à ce qui reste, ce que dit le prompt, ou laissé de côté, ce que dit le seul `cut` de `agent.skills`. 0 ou moins est refusé au démarrage. 12000 par défaut. |
+| `MaxBlockChars` | entier | `12000` | Les caractères que porte le bloc de skills entier, son titre, la ligne de titre de chaque skill et les notes de coupe compris, si bien qu'avec les défauts trois skills d'un `MaxSkillChars` plein ne tiennent pas tous et que le troisième est coupé ; un skill au-delà est coupé à ce qui reste, ce que dit le prompt, ou laissé de côté, ce que dit le seul `cut` de `agent.skills`. 0 ou moins est refusé au démarrage. 12000 par défaut. |
 | `MaxSkillChars` | entier | `4000` | Les caractères d'un skill que porte le prompt ; le reste est coupé, et la coupe est dite dans le prompt et dans le `cut` de `agent.skills`. 0 ou moins est refusé au démarrage. 4000 par défaut. |
 <!-- /settings -->
 

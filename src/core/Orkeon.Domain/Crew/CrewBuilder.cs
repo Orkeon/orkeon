@@ -398,7 +398,7 @@ public sealed class CrewBuilder
             .ToList();
         var findings = Task.DecisionTaskRules.CheckMode(_decisionMode, _processType, declarations, uses, agentKeys);
         if (findings.Refusals.Count > 0)
-            throw new BuilderValidationException("Crew", string.Join(" ", findings.Refusals));
+            throw new BuilderValidationException("Crew", Task.DecisionTaskRules.ModeRefusal(findings.Refusals));
     }
 
     /// <summary>

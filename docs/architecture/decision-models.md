@@ -415,7 +415,8 @@ cause ([the run event bus](./run-event-bus.md)).
 #### The `without:` relay
 
 The relay is one LLM call made with the relay agent's provider: its own `llm` block, else its `llm.profile`, else the
-default profile. The call sends the agent's prompt (role, goal, backstory), the questions, the state the task reads,
+default profile. The block's sampling, penalties and stop sequences go with the call: a stop sequence that can end
+the JSON object (`}`, a blank line) cuts the answer, which is then refused. The call sends the agent's prompt (role, goal, backstory), the questions, the state the task reads,
 as JSON, and `without.instructions`; it has no tool, no memory and no history. The agent reports **probabilities
 only**, as one JSON object with one key per question:
 
@@ -455,8 +456,10 @@ every process: a resumed Sequential, Parallel or Graph run replays it without a 
 `decisionSource`. The checkpoint thus shows the circuit the run was started with: on when a decision came from the
 model, off when one came from the relay or the fallback. An `optional` crew resumed under the other circuit is
 refused, with `decision_unavailable`, naming both circuits: its decisions left would otherwise come from the other
-source. A run that recorded no decision yet resumes under either circuit, and a crew with no mode keeps the resume
-behaviour it had.
+source. Only the decisions of the tasks the crew still declares as decision tasks count, by their key (one whose
+definition changed under the same key still counts), and they are compared with the circuit of the run that
+resumes: off when its runner has no decision model. A run that recorded no decision yet resumes under either
+circuit, and a crew with no mode keeps the resume behaviour it had.
 
 ### Jev's limits and long context
 

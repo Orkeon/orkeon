@@ -335,12 +335,15 @@ internal sealed class TestStage : IForgeStageRunner
             MailActions = run.MailActions,
         };
         run = run with { Circuit = circuit, Passes = [passRecord] };
-        if (passCount > 1)
-            session.SaveArtifact(Path.GetRelativePath(session.Directory, Path.Combine(passDirectory, "run.json")), run);
 
         // The run's output folders are snapshotted into the pass directory and cleared, so
         // deliverables never leak from one pass, or one cycle, into the next one's diagnosis.
         SnapshotOutputs(session, passDirectory);
+
+        // The pass's run.json comes last: a resume keeps a pass that has one as finished (#431), so a stop before
+        // the snapshot leaves none, and the pass runs again.
+        if (passCount > 1)
+            session.SaveArtifact(Path.GetRelativePath(session.Directory, Path.Combine(passDirectory, "run.json")), run);
 
         // W-08: the closing event carries what the trial itself cost — distinct from the
         // session-cumulative cost.updated, which folds in assistant and judge usage.

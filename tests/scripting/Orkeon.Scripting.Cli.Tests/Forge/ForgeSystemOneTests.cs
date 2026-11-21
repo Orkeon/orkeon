@@ -533,6 +533,27 @@ public sealed class ForgeSystemOneTests : IDisposable
         Assert.DoesNotContain(resumed.Events(ForgeSystemOne.AnsweredKind), e => e.GetProperty("use").GetString() == "estimate");
     }
 
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_resume_after_a_budget_stop_between_passes_asks_no_second_estimate_when_the_host_has_lost_its_model()
+    {
+        // Arrange
+        var model = new StubDecisionModel();
+        var stopped = await RunAsync("budget", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new CircuitRecordingTestBench { Tokens = 50_000 },
+            budget: new ForgeBudget { MaxTokens = 40_000 }, host: DecisionCircuit.On);
+        stopped.Session.Document.Budget = new ForgeBudget { MaxTokens = 1_000_000, ConsumedTokens = stopped.Session.Document.Budget.ConsumedTokens };
+        stopped.Session.SetStatus(ForgeSessionStatus.Active);
+
+        // Act
+        var resumed = await RunAsync("budget", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
+            bench: new CircuitRecordingTestBench(), judge: new FakeJudge().Approves().Approves(),
+            host: DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider), session: stopped.Session);
+
+        // Assert
+        Assert.DoesNotContain(resumed.Events(ForgeSystemOne.AnsweredKind), e => e.GetProperty("use").GetString() == "estimate");
+    }
+
     // --- the forge's own calls name no decision profile ------------------------------------------
 
     [Fact]

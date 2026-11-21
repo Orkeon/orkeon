@@ -3476,7 +3476,7 @@
       "path": "Orkeon:Compaction:Profile",
       "section": "Orkeon:Compaction",
       "type": "string",
-      "description": "The LLM profile that writes the summary: `default` or a profile of `Llm:Profiles`; a name the host does not define, or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way."
+      "description": "The LLM profile that writes the summary: `default` or a profile of `Llm:Profiles`; a name the host does not offer (one `Llm:Profiles` lacks, or one `Orkeon:Host:LlmProfiles` leaves out), or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way."
     },
     {
       "path": "Orkeon:Compaction:TriggerShare",
@@ -3682,7 +3682,7 @@
       "section": "Orkeon:Skills",
       "type": "integer",
       "default": 12000,
-      "description": "The characters the whole skills block carries, its heading, each skill's title line and cut notes included; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. 0 or less is refused at start. 12000 by default."
+      "description": "The characters the whole skills block carries, its heading, each skill's title line and cut notes included, so that with the defaults three skills of a full `MaxSkillChars` do not all fit and the third is cut; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. 0 or less is refused at start. 12000 by default."
     },
     {
       "path": "Orkeon:Skills:MaxSkillChars",

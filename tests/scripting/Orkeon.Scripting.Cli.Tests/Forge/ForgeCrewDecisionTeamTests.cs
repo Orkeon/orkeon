@@ -181,6 +181,22 @@ public sealed class ForgeCrewDecisionTeamTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_reopened_team_without_a_mode_is_warned_of_its_derived_mode_once()
+    {
+        // Arrange
+        PromotedTeamWithoutItsSession(ForgeCrewDecision.Required, declaresMode: false);
+        using var console = new TestConsole();
+
+        // Act
+        await ForgeCommand.DispatchAsync(console, ["reopen", Destination, "--events", "jsonl"], _workspace);
+
+        // Assert
+        Assert.Single(Events(console.Stdout), e => e.GetProperty("kind").GetString() == "warning"
+            && e.GetProperty("code").GetString() == ForgeCrewDecision.DerivedWarning);
+    }
+
+    [Fact]
     public async Task A_reopened_team_that_declares_its_mode_is_not_warned()
     {
         PromotedTeamWithoutItsSession(ForgeCrewDecision.Required, declaresMode: true);

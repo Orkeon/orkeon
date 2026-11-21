@@ -204,6 +204,8 @@ Firefox announces its remote protocol early in its start and answers the first c
 and waits `StartupTimeoutSeconds` again, not `CommandTimeoutSeconds`. A browser that leaves it without
 an answer that long is killed, its profile removed when disposable, and started again once, with a
 warning in the log; a second silence fails the start with an error that says Firefox was started
-again. A start that hangs therefore fails after at most 2 attempts × 2 × `StartupTimeoutSeconds`
-(the announcement, then the session): about 2 minutes with the default of 30 s. The session wait does not
-follow `CommandTimeoutSeconds`, even when it is the larger. On a loaded machine, raise `StartupTimeoutSeconds`.
+again. A start that hangs on the announcement or on the session therefore fails after at most 2 attempts ×
+2 × `StartupTimeoutSeconds`: about 2 minutes with the default of 30 s. The session wait does not
+follow `CommandTimeoutSeconds`, even when it is the larger. The bound leaves out the rest of the start: the
+connection to the announced address has no timeout of its own, and the two commands that follow the session
+(`browsingContext.getTree`, `session.subscribe`) each wait `CommandTimeoutSeconds`, with no restart. On a loaded machine, raise `StartupTimeoutSeconds`.

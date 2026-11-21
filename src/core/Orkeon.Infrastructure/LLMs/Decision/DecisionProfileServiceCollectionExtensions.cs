@@ -214,11 +214,12 @@ public static class DecisionProfileServiceCollectionExtensions
         if (!circuit.Enabled)
             return BuildWithoutDecisions(name, profile, circuit.OffReason!, Resolve, loggerFactory, services.GetService<IAuditLogger>());
 
-        DecisionLlmProvider? off = null;
+        // One twin per cause: a run off by --no-decision and another off by the settings each block in their own words.
+        var offByReason = new System.Collections.Concurrent.ConcurrentDictionary<string, Lazy<DecisionLlmProvider>>(StringComparer.Ordinal);
         DecisionLlmProvider? WhenCircuitOff() =>
             DecisionCircuit.Of(services) is { Enabled: false } now
-                ? LazyInitializer.EnsureInitialized(
-                    ref off, () => BuildWithoutDecisions(name, profile, now.OffReason!, Resolve, loggerFactory, services.GetService<IAuditLogger>()))
+                ? offByReason.GetOrAdd(now.OffReason!, reason => new Lazy<DecisionLlmProvider>(
+                    () => BuildWithoutDecisions(name, profile, reason, Resolve, loggerFactory, services.GetService<IAuditLogger>()))).Value
                 : null;
 
         var model = services.GetRequiredService<IDecisionModel>();

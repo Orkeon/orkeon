@@ -710,7 +710,7 @@ its own picked); the decision model reads the agent's role and the task (cut at 
 in the middle), never the conversation. Under a probability of 0.6, without an answer, when the
 call fails or when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`,
 no decision provider), the host's default profile stands, with no error: an off circuit makes no
-decision call. A warning is logged once when the circuit is off, and when the call fails; a low
+decision call. A warning is logged once when the circuit is off or `Ladder` is missing, and when the call fails; a low
 probability or a missing answer is logged as information only. Each pick emits `agent.route` on
 the run's event stream, once per task and agent of a run. A task's `llm_override: { profile: auto }`
 is routed the same way. A manager or a decision relay (`without.agent`) on `auto` with no task
@@ -1854,7 +1854,7 @@ conversation again after the cut.
 |---|---|---|---|
 | `Enabled` | boolean | `true` | Whether the loops compact their conversation. True by default: a long loop pays one summary call instead of losing its middle to the 40-message trim. False brings that trim back, as an agent's `compaction: { enabled: false }` does for that agent alone. |
 | `KeepRecentTurns` | integer | `6` | How many of the most recent turns a compaction keeps verbatim, a turn being one assistant message with its tool results (a tool call is never parted from its result). 6 by default; 0 summarises every turn. |
-| `Profile` | string | — | The LLM profile that writes the summary: `default` or a profile of `Llm:Profiles`; a name the host does not define, or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way. |
+| `Profile` | string | — | The LLM profile that writes the summary: `default` or a profile of `Llm:Profiles`; a name the host does not offer (one `Llm:Profiles` lacks, or one `Orkeon:Host:LlmProfiles` leaves out), or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way. |
 | `TriggerShare` | number | `0.75` | The share of the usable window (the context window less the output reserve: the call's cap, else the model's documented maximum, else 4096, at most half the window) the estimated prompt reaches for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's `compaction: { triggerShare }` overrides it. |
 <!-- /settings -->
 
@@ -1910,7 +1910,7 @@ event stream once per task and agent of a run. A `.ork.ts` crew has no skills.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `Library` | string | `"/workspace/.orkeon/skills"` | The virtual folder an `auto` agent's skills are picked from, one `<name>.md` file per skill (sub-folders are not read); a relative path is refused at start. `/workspace/.orkeon/skills` by default. |
-| `MaxBlockChars` | integer | `12000` | The characters the whole skills block carries, its heading, each skill's title line and cut notes included; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. 0 or less is refused at start. 12000 by default. |
+| `MaxBlockChars` | integer | `12000` | The characters the whole skills block carries, its heading, each skill's title line and cut notes included, so that with the defaults three skills of a full `MaxSkillChars` do not all fit and the third is cut; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. 0 or less is refused at start. 12000 by default. |
 | `MaxSkillChars` | integer | `4000` | The characters of one skill the prompt carries; the rest is cut, and the cut is said in the prompt and in the `cut` of `agent.skills`. 0 or less is refused at start. 4000 by default. |
 <!-- /settings -->
 

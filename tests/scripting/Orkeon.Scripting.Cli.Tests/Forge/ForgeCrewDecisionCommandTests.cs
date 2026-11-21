@@ -165,6 +165,20 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-431")]
+    public void The_crew_decision_option_is_refused_by_list()
+    {
+        // Arrange
+        string[] args = ["list", "--crew-decision", "optional"];
+
+        // Act
+        var options = ForgeCommandOptions.Parse(args);
+
+        // Assert
+        Assert.Equal("list takes no argument.", options.Error);
+    }
+
+    [Fact]
     public async Task A_new_required_session_is_refused_before_its_interview_without_system_one()
     {
         var settings = WriteSettings();

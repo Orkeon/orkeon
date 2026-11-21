@@ -45,7 +45,8 @@ public sealed class ContextCompactionOptions
 
     /// <summary>
     /// The LLM profile that writes the summary: <c>default</c> or a profile of <c>Llm:Profiles</c>; a
-    /// name the host does not define, or <c>auto</c>, refuses the start. Left out, the agent's own model
+    /// name the host does not offer (one <c>Llm:Profiles</c> lacks, or one <c>Orkeon:Host:LlmProfiles</c>
+    /// leaves out), or <c>auto</c>, refuses the start. Left out, the agent's own model
     /// and profile. The summary's tokens are charged to the task either way.
     /// </summary>
     public string? Profile { get; set; }

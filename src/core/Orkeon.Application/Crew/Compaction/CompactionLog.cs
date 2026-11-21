@@ -9,6 +9,10 @@ internal static partial class CompactionLog
         Message = "Agent {AgentRole} task={TaskId}: conversation compacted, {Replaced} messages replaced by a summary ({TokensBefore} -> {TokensAfter} tokens of a {Window}-token window)")]
     internal static partial void LogCompacted(ILogger logger, string agentRole, string taskId, int replaced, int tokensBefore, int tokensAfter, int window);
 
+    [LoggerMessage(Level = LogLevel.Debug,
+        Message = "Agent {AgentRole} task={TaskId}: {Tokens} estimated tokens reach the {Trigger}-token trigger, and the recent turns are all the conversation holds: nothing to compact before a later turn")]
+    internal static partial void LogNothingToCut(ILogger logger, string agentRole, string taskId, int tokens, int trigger);
+
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Agent {AgentRole} task={TaskId}: compaction failed ({Failures} in a row): {Reason}")]
     internal static partial void LogFailed(ILogger logger, string agentRole, string taskId, int failures, string reason);

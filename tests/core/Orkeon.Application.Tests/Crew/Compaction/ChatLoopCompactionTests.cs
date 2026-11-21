@@ -33,7 +33,7 @@ public sealed class ChatLoopCompactionTests
     private static readonly ContextWindow MidWindow = new(10_000, ContextWindowSources.Table);
     private static readonly ContextWindow LargeWindow = new(1_000_000, ContextWindowSources.Profile);
 
-    private sealed record Run(AgentLoopResult Result, FakeCompactionChatClient Client, FakeCompactionObserver Observer);
+    private sealed record Run(AgentLoopResult Result, FakeCompactionChatClient Client, FakeCompactionObserver Observer, SpyExecutionLogger Logger);
 
     private static DomainAgent Agent(SpyTool tool, int maxIterations, AgentCompaction? compaction = null) =>
         new AgentBuilder().Role("Reader").Goal("Read the pages").MaxIterations(maxIterations)
@@ -71,7 +71,7 @@ public sealed class ChatLoopCompactionTests
 
         var result = await loop.ExecuteAsync(Agent(tool, toolTurns + 4, agentCompaction), task, "sys", "user", [],
             TestContext.Current.CancellationToken);
-        return new Run(result, client, observer);
+        return new Run(result, client, observer, logger);
     }
 
     private static string? CallIdOf(ChatMessage message) =>
@@ -260,6 +260,21 @@ public sealed class ChatLoopCompactionTests
         Assert.Equal(AgentExitReason.Completed, run.Result.ExitReason);
         Assert.Empty(run.Client.SummaryRequests);
         Assert.Empty(run.Observer.Notices);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldLeaveADebugLine_WhenTheRecentTurnsAreAllThereIsToKeep()
+    {
+        // Arrange: every call is over the 750-token trigger, and five turns never pass the six kept.
+        var options = new ContextCompactionOptions { KeepRecentTurns = 6 };
+
+        // Act
+        var run = await RunAsync(toolTurns: 5, resultChars: 4_000, SmallWindow, options);
+
+        // Assert
+        Assert.Contains(run.Logger.Messages, m => m.StartsWith("[Debug] ", StringComparison.Ordinal)
+            && m.Contains("nothing to compact before a later turn", StringComparison.Ordinal));
     }
 
     [Fact]

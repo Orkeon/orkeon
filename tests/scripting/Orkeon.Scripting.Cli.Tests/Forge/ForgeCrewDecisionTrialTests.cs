@@ -332,6 +332,50 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_resume_after_a_budget_stop_without_a_decision_model_warns_of_no_skipped_pass()
+    {
+        // Arrange
+        var judge = new FakeJudge().Approves().Approves();
+
+        // Act
+        await ResumeAfterABudgetStopAsync(HostOff, judge);
+
+        // Assert
+        Assert.DoesNotContain(Events(), e => e.GetProperty("kind").GetString() == "warning"
+            && e.GetProperty("code").GetString() == ForgeCrewDecision.PassSkippedWarning);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_pass_whose_snapshot_fails_leaves_no_run_file_a_resume_would_keep()
+    {
+        // Arrange: the pass writes a deliverable under /output, and a file takes the place of its snapshot.
+        var bench = new CircuitRecordingTestBench
+        {
+            DuringRun = session =>
+            {
+                var output = new ForgeFolder { Path = "/output", Role = ForgeFolders.OutputRole, Purpose = "p" };
+                session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList { Folders = [output] });
+                var written = ForgeFolders.SessionFolder(session, output);
+                Directory.CreateDirectory(written);
+                File.WriteAllText(Path.Combine(written, "report.md"), "the report");
+                var passDirectory = Path.Combine(session.Directory, TestStage.RunsDirectoryName, "1", "on");
+                Directory.CreateDirectory(passDirectory);
+                File.WriteAllText(Path.Combine(passDirectory, ForgeFolders.SessionDirectoryName), "in the way");
+            },
+        };
+        var session = ForgeSession.Create(_workspace, "tri", crewDecision: ForgeCrewDecision.Optional);
+
+        // Act
+        await Record.ExceptionAsync(() => Engine(session, bench, new FakeJudge().Approves().Approves(), DecisionCircuit.On)
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken));
+
+        // Assert
+        Assert.False(File.Exists(Path.Combine(session.Directory, TestStage.RunsDirectoryName, "1", "on", "run.json")));
+    }
+
+    [Fact]
     public async Task A_required_trial_runs_one_pass_on_the_hosts_circuit()
     {
         var bench = new CircuitRecordingTestBench();

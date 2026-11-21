@@ -331,6 +331,34 @@ public sealed class DecisionCircuitConsumersTests
 
     [Fact]
     [Trait("BR", "CH-433")]
+    public async Task ShouldNameTheCauseOfEachOffRun_WhenAFailClosedProfileBlocksTwoRunsOffForDifferentCauses()
+    {
+        // Arrange
+        var settings = Judge("Open");
+        settings["Orkeon:Decision:Profiles:p:Target"] = "cheap";
+        settings["Orkeon:Decision:Profiles:p:FailClosed"] = "true";
+        settings["Orkeon:Decision:Profiles:p:Stages:0:Kind"] = "guard";
+        settings["Orkeon:Decision:Profiles:p:Stages:0:Risks:secret"] = "The text leaks a secret";
+        var services = Services(settings, Answering());
+        services
+            .AddOrkeonLlmProfile("cheap", _ => new StubLlmProvider { Name = "cheap" }.RespondToChatWith(new LlmResponse { Content = "ok" }))
+            .AddOrkeonDecisionProfiles(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+        using var container = services.BuildServiceProvider();
+        var provider = container.GetRequiredService<ILlmProfileRegistry>().Resolve("p").Provider;
+        var ct = TestContext.Current.CancellationToken;
+        using (DecisionCircuitScope.Begin(DecisionCircuit.OffBy(DecisionCircuitCause.Switch)))
+            await provider.ChatAsync([LlmMessage.User("hello")], cancellationToken: ct);
+        using var second = DecisionCircuitScope.Begin(DecisionCircuit.OffBy(DecisionCircuitCause.Settings));
+
+        // Act
+        var response = await provider.ChatAsync([LlmMessage.User("hello")], cancellationToken: ct);
+
+        // Assert
+        Assert.Contains(DecisionCircuit.OffBy(DecisionCircuitCause.Settings).OffReason!, response.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
     public async Task ShouldBlockWithoutAskingTheModel_WhenAFailClosedJudgeRunsInARunWhoseScopeIsOff()
     {
         // Arrange

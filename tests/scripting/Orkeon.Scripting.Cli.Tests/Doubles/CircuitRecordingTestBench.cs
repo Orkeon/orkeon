@@ -24,6 +24,9 @@ internal sealed class CircuitRecordingTestBench : IForgeTestBench
     /// <summary>The trial observer each pass reports its model call and its task to; null reports nothing.</summary>
     public ForgeRunObserver? Observer { get; init; }
 
+    /// <summary>What each pass does to the session while it runs (a deliverable written, say); null does nothing.</summary>
+    public Action<ForgeSession>? DuringRun { get; init; }
+
     /// <inheritdoc />
     public Task<ForgeTestRun> ExecuteAsync(ForgeSession session, int runNumber, CancellationToken cancellationToken) =>
         ExecuteAsync(session, runNumber, null, cancellationToken);
@@ -33,6 +36,7 @@ internal sealed class CircuitRecordingTestBench : IForgeTestBench
         ForgeSession session, int runNumber, DecisionCircuit? circuit, CancellationToken cancellationToken)
     {
         Circuits.Add(circuit);
+        DuringRun?.Invoke(session);
         if (Observer is { } observer)
         {
             var callId = $"call-{Circuits.Count}";

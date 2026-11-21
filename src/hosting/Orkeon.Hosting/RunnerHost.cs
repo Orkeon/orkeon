@@ -379,8 +379,9 @@ public static partial class RunnerHost
     /// of every declared section (the binder, its rules, the names they hold), the section names
     /// under <c>Orkeon:</c> and the groups, the keys of every section the host reads, and
     /// <c>Orkeon:Rag:LlmProfile</c> against the profiles the host offers (GAP-19). Empty when the
-    /// host may start. Reads options and builds the named factories only: no store, provider, model
-    /// or connection is created.
+    /// host may start. Reads options and builds the named factories only: no store, provider or
+    /// connection is created; a fail-closed LLM judge builds the decision model to read the circuit,
+    /// which opens nothing.
     /// </summary>
     /// <param name="services">The built container.</param>
     internal static IReadOnlyList<string> ValidateSettings(IServiceProvider services)
@@ -427,7 +428,18 @@ public static partial class RunnerHost
 
         if (guardian is not { Enabled: true, Llm: { Enabled: true, FailMode: Orkeon.Infrastructure.Decision.GuardianJudgeFailMode.Closed } })
             return null;
-        var circuit = Orkeon.Application.Crew.Execution.DecisionCircuit.OfHost(services);
+        Orkeon.Application.Crew.Execution.DecisionCircuit circuit;
+        try
+        {
+            circuit = Orkeon.Application.Crew.Execution.DecisionCircuit.OfHost(services);
+        }
+        catch (Exception ex) when (ex is Microsoft.Extensions.Options.OptionsValidationException or InvalidOperationException)
+        {
+            // The circuit reads Orkeon:Decision and builds the decision model from its provider's section: a value
+            // either refuses is said by its own key, above, and the judge waits for the circuit it can read.
+            return null;
+        }
+
         return circuit.Enabled ? null : Orkeon.Infrastructure.Decision.GuardianLlmOptions.CircuitRefusal(circuit.OffReason!);
     }
 

@@ -63,7 +63,8 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
 La CLI émet le résultat du script en JSON sur stdout ; les codes de sortie suivent la
 convention habituelle (`0` ok, `1` erreur de script, `2` erreur runtime, `130` annulé ;
 `75` quand un run de crew s'arrête sur une question humaine durable ; `69` quand une crew est refusée
-parce qu'elle a besoin de System One et que le circuit de décision est coupé, voir [la référence CLI](../reference/cli.md)).
+parce qu'elle a besoin de System One et que le circuit de décision est coupé, ou qu'une crew `optional` est reprise
+sous l'autre circuit que celui de ses décisions enregistrées, voir [la référence CLI](../reference/cli.md)).
 
 Le même verbe `run` accepte aussi un **crew YAML** — la cible sélectionne
 la voie (`.yaml`/`.yml` **ou un dossier portant une crew multi-fichiers** → le runner de

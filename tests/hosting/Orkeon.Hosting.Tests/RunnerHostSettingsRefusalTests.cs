@@ -398,4 +398,34 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         // Assert
         Assert.NotNull(host);
     }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public void ShouldListTheProviderKeyInsteadOfThrowing_WhenAFailClosedJudgeMeetsADecisionProviderItRefuses()
+    {
+        // Arrange
+        var settings = Settings(
+            """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Guardian": { "Llm": { "Enabled": true, "FailMode": "Closed" } }, "Decision": { "Provider": "kev" }, "Kev": { "TimeoutSeconds": 0 } } }""");
+
+        // Act
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(settings, new RunnerMountPlan()));
+
+        // Assert
+        Assert.Contains("Orkeon:Kev:TimeoutSeconds", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public void ShouldStart_WhenTheCompactionProfileIsOneTheHostDefines()
+    {
+        // Arrange
+        var settings = Settings(
+            """{ "RaggableTree": { "Enabled": false }, "Llm": { "Profiles": { "summariser": { "BaseUrl": "http://localhost:11434", "Model": "qwen3" } } }, "Orkeon": { "Compaction": { "Profile": "summariser" } } }""");
+
+        // Act
+        using var host = RunnerHost.Build(settings, Mounted());
+
+        // Assert
+        Assert.NotNull(host);
+    }
 }

@@ -342,7 +342,8 @@ public partial class CrewFactory : ICrewFactory
         // not a manager or a relay with no task of its own: it runs on the default profile.
         var uses = config.SystemOneUses(profiles is null ? null : p => profiles.Contains(p, StringComparer.OrdinalIgnoreCase)
             || Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(p));
-        var unrouted = config.Agents.Where(a => UnroutedAgents(config).Contains(a.Id))
+        var unroutedIds = UnroutedAgents(config);
+        var unrouted = config.Agents.Where(a => unroutedIds.Contains(a.Id))
             .Select(a => $"agent '{a.Key ?? a.Role}'").ToHashSet(StringComparer.Ordinal);
         if (uses.DecisionProfiles is { } named && unrouted.Count > 0)
             uses = uses with

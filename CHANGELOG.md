@@ -44,8 +44,8 @@ repeated rung, is refused at start; `auto` becoming a reserved profile name is u
 A YAML agent takes `skills:`, a list of markdown files read through the virtual file system, or
 `{ auto: true, fallback: [...] }`. The skills are appended to the agent's system prompt under `## Skills`, each cut at
 `Orkeon:Skills:MaxSkillChars` (4000) and the block, its heading and each skill's title line included, at
-`Orkeon:Skills:MaxBlockChars` (12000): a skill cut short is said in the prompt and in the event's `cut`, a skill left
-out (no room left, a file that cannot be read) in `cut` alone.
+`Orkeon:Skills:MaxBlockChars` (12000; with these defaults, a third skill of a full 4000 is cut): a skill cut short is
+said in the prompt and in the event's `cut`, a skill left out (no room left, a file that cannot be read) in `cut` alone.
 With `auto`, each task asks the decision model one `choice` among the `.md` files of `Orkeon:Skills:Library`
 (`/workspace/.orkeon/skills`), reading one line per skill (its front-matter `name` and `description`, else its first
 heading and line) and never a body; the options at a probability of 0.3 or more are kept, three at most. With the
@@ -55,7 +55,8 @@ skill, with one warning and no error. The choice holds for every attempt of the 
 of a run: a fallback's `reason` is `circuit-off`, `empty-library` or `pick-failed`, and `detail` says it in a
 sentence. **Compatibility**: an engine at 1.3.0 refuses a crew that writes `skills:`; an unknown key of the map
 form, a non-boolean `auto` or a map without `auto` now fails the load. The `Orkeon:Skills` section and the event are
-new; a `.ork.ts` crew has no skills.
+new; a `.ork.ts` crew has no skills. New public members: `TaskPickScope` (`Begin`), `AgentSkillsNotice.Detail` and
+`AgentSkillsReasons`.
 
 ### Added — agent loops compact a long conversation against the model's window (#432)
 
@@ -68,8 +69,9 @@ replace the older turns with one summary call, which reads the task too; the sys
 profile's new `Llm:ContextWindowTokens` (`Llm:Profiles:<name>:ContextWindowTokens`, above zero: zero or less refuses
 the start), else the model's documented window, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per
 profile naming the figure assumed. `Orkeon:Compaction:Profile` names a profile for the summary (a name the host does
-not define, or `auto`, refuses the start); its tokens are charged to the task, in its prompt/completion split too
-(the native loop's task `tokens` were 0 and now carry them). Three failures in a row bring the 40-message trim back,
+not offer, one `Llm:Profiles` lacks or one `Orkeon:Host:LlmProfiles` leaves out, or `auto`, refuses the start); its
+tokens are charged to the task, in the chat-client loop's prompt/completion split too (the native loop reports no
+split; its task `tokens` were 0 and now carry them). Three failures in a row bring the 40-message trim back,
 and stop the pruning, for the rest of the task attempt; a call whose turns are all recent ones waits for a later turn
 and counts as no failure. Under `orkeon run`, each attempt emits `agent.compacted`. An agent overrides `enabled` and
 `triggerShare` with a YAML `compaction:` block; a `.ork.ts` crew follows the global settings. `IContextPressureStage`
@@ -123,7 +125,7 @@ asks a decision task for an expected output. See
 
 With the decision circuit off, a decision task of a `decision.mode: optional` crew is now answered by its `without:`
 relay instead of failing: one LLM call on the relay agent's provider (its `llm` block, else its `llm.profile`, else
-the default profile, with the block's sampling, penalties and stop sequences), with its role, goal and backstory, the questions, the state and `without.instructions`, and no
+the default profile, with the block's sampling, penalties and stop sequences; a stop sequence that can end the JSON object, `}` or a blank line, cuts the answer, which is then refused), with its role, goal and backstory, the questions, the state and `without.instructions`, and no
 tool. The agent gives probabilities only, in a JSON object whose schema is generated from the questions: sent as
 `json_schema` to a provider that declares it, in the prompt otherwise. The engine checks the answer (valid JSON,
 every question and no other key, no unknown option, values in [0, 1], distributions summing to 1 within 0.05, then
@@ -136,7 +138,8 @@ count on the task and in the run's totals in Sequential, Parallel and Graph, and
 operation `relay` with the relay agent's role as `agentId`. Sequential and Parallel now replay a decision from the
 checkpoint on resume, as Graph did, with its stored source, and an `optional` crew resumed under the other circuit is
 refused with `decision_unavailable` and exit `69`, naming both circuits; only the decisions of tasks the crew still
-declares count. A `when:` takes `[yes]` / `[no]` on a yes-no question,
+declares count, by their key (one whose definition changed under the same key still counts), compared with the
+circuit of the run that resumes. `DecisionTaskRunner.SourceOf` is a new public member. A `when:` takes `[yes]` / `[no]` on a yes-no question,
 gated by `minConfidence`; an option list on a score question is refused at load, naming the question. See
 [Decision models](docs/architecture/decision-models.md#the-without-relay).
 
@@ -157,7 +160,9 @@ meet as a `WARNING:` line, exit `0`. A crew with no mode behaves as before. **Co
 release refuses the crew-level `decision:` key and a task's `without:`; `69` is a new exit code of `orkeon run` and
 `orkeon-host`, `decision_unavailable` a new error code and `run.decision` a new kind (`v` stays `2`); the
 `--validate` success line now ends with `, decision=<mode>)`, and a procedural script's with
-`(procedural script: bundled, not run, decision=unknown)`. See
+`(procedural script: bundled, not run, decision=unknown)`. New public members: `DecisionTaskRules.ModeRefusal`
+(the refusal's one spelling, in YAML, a script, the crew factory and `CrewBuilder`) and `SystemOneUses.SkillsAutoHolders`
+and `PruneHolders`. See
 [Decision models](docs/architecture/decision-models.md#a-crews-decision-mode).
 
 ### Changed — `auto` is a reserved LLM profile name **[breaking]** (#434)
@@ -209,7 +214,8 @@ settings) and is left out under `Open`; the `decision` reranker keeps the retrie
 `skills: { auto: true }` carries its `fallback` skills, `llm.profile: auto` runs on the default profile and tool-result
 pruning prunes nothing. The circuit is read at each call: a run whose scope switches it off (`DecisionCircuitOverride`,
 as the forge sets for a trial) is off for the consumers built once per host as well, a fail-closed judge then blocking
-and a fail-open one passing. **What to do**: a crew that lists
+and a fail-open one passing. New public members: `DecisionCircuit.OfHost`, `DecisionCircuit.Of(services, scopeCircuit)`,
+`DecisionCircuitScope` (`Begin`, `Current`) and `GuardianLlmOptions.CircuitRefusal`. **What to do**: a crew that lists
 `system_one_decide` and must run with the circuit off drops the tool from its agents; a host that runs the LLM judge
 with the circuit off sets `Orkeon:Guardian:Llm:FailMode` to `Open` or turns the judge off. See
 [Decision models](docs/architecture/decision-models.md#every-consumer-follows-the-circuit).
@@ -223,7 +229,8 @@ with the circuit off sets `Orkeon:Guardian:Llm:FailMode` to `Open` or turns the 
   started Firefox cold again. `session.new` now waits `StartupTimeoutSeconds`, and the error and the warning
   name it. The session wait no longer follows `CommandTimeoutSeconds`: a `CommandTimeoutSeconds` raised above
   `StartupTimeoutSeconds` no longer lengthens it, so raise `StartupTimeoutSeconds` instead. A start that hangs
-  fails after at most 2 attempts × 2 × `StartupTimeoutSeconds` (the announcement, then the session).
+  fails on the announcement or the session after at most 2 attempts × 2 × `StartupTimeoutSeconds`; the connection
+and the two commands after the session are outside that bound.
 - **`spawn_agent` and `ctx.spawnBackground` are no longer refused five minutes into a run that names no
   budget (#426).** Without `.budget(...)` the act runs with no wall clock, but the spawn tool took
   `AgentExecutionBudget.Default`, built with each agent's context: every spawn made more than five minutes

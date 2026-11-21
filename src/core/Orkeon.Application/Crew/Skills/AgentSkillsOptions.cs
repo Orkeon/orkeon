@@ -38,7 +38,8 @@ public sealed class AgentSkillsOptions
 
     /// <summary>
     /// The characters the whole skills block carries, its heading, each skill's title line and cut notes
-    /// included; a skill past it is cut to what remains, said in the prompt, or left out, said in the <c>cut</c>
+    /// included, so that with the defaults three skills of a full <c>MaxSkillChars</c> do not all fit and the
+    /// third is cut; a skill past it is cut to what remains, said in the prompt, or left out, said in the <c>cut</c>
     /// of <c>agent.skills</c> alone. 0 or less is refused at start. 12000 by default.
     /// </summary>
     public int MaxBlockChars { get; set; } = DefaultMaxBlockChars;

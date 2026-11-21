@@ -64,6 +64,27 @@ public sealed class TaskPickScopeTests
 
     [Fact]
     [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldHandTheOnePickToASecondCaller_WhenTheFirstIsCancelledWhileBothWait()
+    {
+        // Arrange
+        using var run = TaskPickScope.Begin();
+        var pending = new System.Threading.Tasks.TaskCompletionSource<string>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancelled = new CancellationTokenSource();
+        var first = TaskPickScope.Current!.OnceAsync("route", "t1", "a1", _ => pending.Task, cancelled.Token);
+        var second = TaskPickScope.Current!.OnceAsync("route", "t1", "a1", PickAsync, TestContext.Current.CancellationToken);
+        await cancelled.CancelAsync();
+        await Record.ExceptionAsync(() => first);
+
+        // Act
+        pending.SetResult("the pick");
+        var picked = await second;
+
+        // Assert
+        Assert.Equal(("the pick", 0), (picked, _picks));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
     public async System.Threading.Tasks.Task ShouldPickAgain_WhenTheFirstPickFailed()
     {
         // Arrange

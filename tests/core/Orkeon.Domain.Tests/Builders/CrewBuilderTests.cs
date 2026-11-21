@@ -383,6 +383,24 @@ public class CrewBuilderTests
     }
 
     [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldOpenTheRefusalWithTheSharedPrefix_WhenTheDecisionModeIsBroken()
+    {
+        // Arrange
+        var builder = new CrewBuilder()
+            .Goal("Triage the tickets")
+            .DecisionMode(CrewDecisionMode.Optional)
+            .WithAgent(CreateAgent("Analyst"))
+            .WithTask(t => t.Description("Route the ticket").ExpectedOutput("A route").WithKey("triage").WithDecision(RelayedDecision("Reviewer")));
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains(Orkeon.Domain.Task.DecisionTaskRules.ModeRefusal(["Task 'triage'"]), ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     [Trait("BR", "CH-430")]
     public void ShouldAcceptTheCrew_WhenTheRelayNamesTheRoleOfOneOfItsAgents()
     {
