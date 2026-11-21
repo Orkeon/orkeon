@@ -655,5 +655,81 @@ public sealed class McpCrewToolTests : IDisposable
         Assert.Equal(1, gated.Cancelled);
     }
 
+    // A crew of three tasks whose agent has System One pick its skills from a library of one skill, with a decision
+    // model that fails every pick (#434): the warning is said once per call, the detail kept on each agent.skills.
+    private const string SkillsAutoCrew = """
+        name: "Skilled Picker"
+        goal: "Write about a topic"
+        process: "sequential"
+        agents:
+          worker:
+            role: "Worker"
+            goal: "Work"
+            backstory: "A minimal test agent."
+            maxIter: 1
+            skills:
+              auto: true
+        tasks:
+          part1:
+            description: "Write part 1 about {topic}."
+            expectedOutput: "A part."
+            agent: "worker"
+          part2:
+            description: "Write part 2 about {topic}."
+            expectedOutput: "A part."
+            agent: "worker"
+          part3:
+            description: "Write part 3 about {topic}."
+            expectedOutput: "A part."
+            agent: "worker"
+        """;
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWarnOfAFailedSkillsPickOncePerCall_WhenTwoCallsRunACrewOfThreeTasks()
+    {
+        // Arrange
+        const string fault = "the decision model is down";
+        // The crew's folder is the host's one mount (/crew): the library sits beside the crew file.
+        Directory.CreateDirectory(Path.Combine(_root, "picker", "skills"));
+        await File.WriteAllTextAsync(Path.Combine(_root, "picker", "skills", "style.md"), "Style: write plainly.\n", Ct);
+        const string settings = """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "RunHistory": { "Enabled": true }, "Skills": { "Library": "/crew/skills" } } }""";
+        using var logs = new CapturingLoggerProvider();
+        var model = new FakeDecisionModel { Fault = fault };
+        using var host = await OpenCrewAsync("picker", SkillsAutoCrew, settings, services =>
+        {
+            services.AddOrkeonLlmProvider(_ => new CountingLlmProvider());
+            services.AddSingleton<IDecisionModel>(model);
+            services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(logs);
+        });
+        int PickFailedWarnings() => logs.Entries.Count(e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning
+            && e.Message.Contains("could not pick its skills", StringComparison.Ordinal));
+
+        // Act
+        var first = await host.CallToolAsync("run_crew_skilled_picker", Args(new { topic = "bees" }), new RecordingProgress(), Ct);
+        var afterFirst = PickFailedWarnings();
+        var second = await host.CallToolAsync("run_crew_skilled_picker", Args(new { topic = "wasps" }), new RecordingProgress(), Ct);
+
+        // Assert: three failed picks in each call, one warning in each, the detail on every task's agent.skills.
+        Assert.False(first.IsError, JsonSerializer.Serialize(first));
+        Assert.False(second.IsError, JsonSerializer.Serialize(second));
+        Assert.Equal(6, model.Requests);
+        Assert.Equal(1, afterFirst);
+        Assert.Equal(2, PickFailedWarnings());
+        var reader = Assert.Single(host.Hosts).Services.GetRequiredService<IRunHistoryReader>();
+        var runs = await reader.ListAsync(new RunQuery(), Ct);
+        Assert.Equal(2, runs.Count);
+        foreach (var run in runs)
+        {
+            var skills = (await reader.ReadEventsAsync(run.RunId, 1, Ct)).Where(e => e.Kind == RunEventKinds.AgentSkills).ToList();
+            Assert.Equal(3, skills.Count);
+            Assert.All(skills, e =>
+            {
+                Assert.Equal(AgentSkillsReasons.PickFailed, e.Payload?["reason"]?.GetValue<string>());
+                Assert.Contains(fault, e.Payload?["detail"]?.GetValue<string>(), StringComparison.Ordinal);
+            });
+        }
+    }
+
     private static readonly TimeSpan HangGuard = TimeSpan.FromMinutes(2);
 }

@@ -6,7 +6,8 @@ namespace Orkeon.Hosting.Tests.Doubles;
 
 /// <summary>
 /// An <see cref="IDecisionModel"/> that answers each request, in turn, with the next choice of
-/// <see cref="Choices"/> (the last one again once they run out) on every question, and counts the requests.
+/// <see cref="Choices"/> (the last one again once they run out) on every question, and counts the requests; with a
+/// <see cref="Fault"/>, fails every request with it instead.
 /// </summary>
 public sealed class FakeDecisionModel : IDecisionModel
 {
@@ -14,6 +15,9 @@ public sealed class FakeDecisionModel : IDecisionModel
 
     /// <summary>The choices answered, one per request, in order.</summary>
     public IReadOnlyList<string> Choices { get; init; } = [];
+
+    /// <summary>When set, the message every request fails with (<see cref="InvalidOperationException"/>).</summary>
+    public string? Fault { get; init; }
 
     /// <summary>How many requests were received.</summary>
     public int Requests => Volatile.Read(ref _requests);
@@ -25,6 +29,8 @@ public sealed class FakeDecisionModel : IDecisionModel
     public Task<DecisionResponse> DecideAsync(DecisionRequest request, CancellationToken cancellationToken = default)
     {
         var index = Interlocked.Increment(ref _requests) - 1;
+        if (Fault is { } fault)
+            return Task.FromException<DecisionResponse>(new InvalidOperationException(fault));
         var choice = Choices[Math.Min(index, Choices.Count - 1)];
         return Task.FromResult(new DecisionResponse
         {

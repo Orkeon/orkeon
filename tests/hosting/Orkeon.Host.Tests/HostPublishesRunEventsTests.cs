@@ -304,4 +304,82 @@ public sealed class HostPublishesRunEventsTests : IDisposable
         Assert.Equal(("Helper", summary.RunId), (pruned.Payload?["agentRole"]?.GetValue<string>(), pruned.CorrelationId));
         Assert.Equal(Enumerable.Range(1, events.Count), events.Select(e => e.Seq));
     }
+
+    // The crew's agent has System One pick its skills, over three tasks, from a library of one skill beside the crew
+    // file (the crews' mount, /crews), and the decision model fails every pick (#434).
+    private void WriteSkillsAutoCrew()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "crews", "skills"));
+        File.WriteAllText(Path.Combine(_root, "crews", "skills", "style.md"), "Style: write plainly.\n");
+        File.WriteAllText(CrewPath, """
+            name: support
+            goal: Answer three questions offline
+            process: sequential
+            agents:
+              helper:
+                role: Helper
+                goal: Help
+                backstory: A minimal test agent.
+                maxIter: 1
+                skills:
+                  auto: true
+            tasks:
+              first:
+                description: Answer the first question.
+                expected_output: An answer.
+                agent: helper
+              second:
+                description: Answer the second question.
+                expected_output: An answer.
+                agent: helper
+              third:
+                description: Answer the third question.
+                expected_output: An answer.
+                agent: helper
+            """);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWarnOfAFailedSkillsPickOncePerRun_WhenTheDaemonRunsACrewOfThreeTasksTwice()
+    {
+        // Arrange
+        WriteSkillsAutoCrew();
+        var model = new StubFailingDecisionModel();
+        using var logs = new RecordingLoggerProvider();
+        using var host = Build(new HeldLlmProvider("the answer"), configure: services =>
+        {
+            services.AddSingleton<Orkeon.Application.Interfaces.Ports.IDecisionModel>(model);
+            services.PostConfigure<Orkeon.Application.Crew.Skills.AgentSkillsOptions>(o => o.Library = "/crews/skills");
+            services.AddSingleton<ILoggerProvider>(logs);
+        });
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+        int PickFailedWarnings() => logs.Logger.Entries.Count(e => e.Level == LogLevel.Warning
+            && e.Message.Contains("could not pick its skills", StringComparison.Ordinal));
+
+        // Act
+        var first = await runner.RunAsync("support", "What changed?", "test");
+        var afterFirst = PickFailedWarnings();
+        var second = await runner.RunAsync("support", "What else?", "test");
+
+        // Assert: three failed picks in each run, one warning in each, the detail on every task's agent.skills.
+        Assert.Equal(HostedRunOutcome.Completed, first.Outcome);
+        Assert.Equal(HostedRunOutcome.Completed, second.Outcome);
+        Assert.Equal(6, model.Requests);
+        Assert.Equal(1, afterFirst);
+        Assert.Equal(2, PickFailedWarnings());
+        var reader = host.Services.GetRequiredService<IRunHistoryReader>();
+        var runs = await reader.ListAsync(new RunQuery(), Ct);
+        Assert.Equal(2, runs.Count);
+        foreach (var run in runs)
+        {
+            var skills = (await reader.ReadEventsAsync(run.RunId, 1, Ct)).Where(e => e.Kind == RunEventKinds.AgentSkills).ToList();
+            Assert.Equal(3, skills.Count);
+            Assert.All(skills, e =>
+            {
+                Assert.Equal(Orkeon.Application.Interfaces.Ports.AgentSkillsReasons.PickFailed, e.Payload?["reason"]?.GetValue<string>());
+                Assert.Contains(model.Fault, e.Payload?["detail"]?.GetValue<string>(), StringComparison.Ordinal);
+            });
+        }
+    }
 }

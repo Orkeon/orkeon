@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Hosting.Tests.Doubles;
@@ -306,6 +307,86 @@ public sealed class CrewRunEntryPointTests
             Assert.Contains("'ghost'", message, StringComparison.Ordinal);
             Assert.Contains("Moved", message, StringComparison.Ordinal);
             Assert.Empty(service.Calls);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { /* best-effort */ }
+        }
+    }
+
+    private const string SkillsPickFault = "the decision model is down";
+
+    /// <summary>
+    /// A crew of three tasks whose agent has System One pick its skills from a library of one skill, run by the real
+    /// agent loop on the mock model.
+    /// </summary>
+    private static string WriteSkillsAutoCrew(string root)
+    {
+        Directory.CreateDirectory(Path.Combine(root, "skills"));
+        File.WriteAllText(Path.Combine(root, "skills", "style.md"), "Style: write plainly.\n");
+        File.WriteAllText(Path.Combine(root, "appsettings.json"), """
+            { "RaggableTree": { "Enabled": false },
+              "Orkeon": { "Skills": { "Library": "/crew/skills" } },
+              "Llm": { "Provider": "mock", "Responses": "/crew/answers.jsonl" } }
+            """);
+        File.WriteAllText(Path.Combine(root, "answers.jsonl"), "{\"match\":\"\",\"content\":\"ok\"}\n");
+        var path = Path.Combine(root, "crew.yaml");
+        File.WriteAllText(path, "name: skilled-crew\ngoal: Write three parts\nprocess: sequential\nagents:\n"
+            + "  worker:\n    role: Worker\n    goal: Work\n    maxIter: 1\n    skills:\n      auto: true\n"
+            + "tasks:\n"
+            + string.Concat(Enumerable.Range(1, 3).Select(i => $"  part{i}:\n    description: Write part {i}.\n    expected_output: Done.\n    agent: worker\n")));
+        return path;
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWarnOfAFailedSkillsPickOncePerRun_WhenOneHostRunsACrewOfThreeTasksTwice()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-skills-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            // Arrange
+            using var logs = new CapturingLoggerProvider();
+            var model = new FakeDecisionModel { Fault = SkillsPickFault };
+            var observer = new FakeAgentSkillsObserver();
+            var opts = new Options
+            {
+                ConfigPath = WriteSkillsAutoCrew(root), AllowExternalMounts = true, WorkingDirectory = root, RunnerConsole = new FakeRunnerConsole(),
+            };
+            Assert.True(CrewRunEntryPoint.TryOpen(
+                opts,
+                "Orkeon.Hosting.Tests",
+                (_, services) =>
+                {
+                    services.AddSingleton<Orkeon.Application.Interfaces.Ports.IDecisionModel>(model);
+                    services.AddSingleton<Orkeon.Application.Interfaces.Ports.IAgentSkillsObserver>(observer);
+                },
+                out var opened,
+                out var code,
+                (_, logging) => logging.AddProvider(logs)), $"TryOpen refused with exit {code}");
+            using var entry = opened!;
+            int PickFailedWarnings() => logs.Entries.Count(e => e.Level == LogLevel.Warning
+                && e.Message.Contains("could not pick its skills", StringComparison.Ordinal));
+
+            // Act
+            var first = await entry.RunAsync(EmptyInput, resume: null, TestContext.Current.CancellationToken);
+            var afterFirst = PickFailedWarnings();
+            var noticesOfFirst = observer.Notices.Count;
+            var second = await entry.RunAsync(EmptyInput, resume: null, TestContext.Current.CancellationToken);
+
+            // Assert: three failed picks in each run, one warning in each, the detail on every task's agent.skills.
+            Assert.True(first.Output?.Succeeded, first.Output?.Error ?? first.LoadError?.Message);
+            Assert.True(second.Output?.Succeeded, second.Output?.Error ?? second.LoadError?.Message);
+            Assert.Equal(6, model.Requests);
+            Assert.Equal(1, afterFirst);
+            Assert.Equal(2, PickFailedWarnings());
+            Assert.Equal(3, noticesOfFirst);
+            Assert.Equal(6, observer.Notices.Count);
+            Assert.All(observer.Notices, n =>
+            {
+                Assert.Equal(Orkeon.Application.Interfaces.Ports.AgentSkillsReasons.PickFailed, n.Reason);
+                Assert.Contains(SkillsPickFault, n.Detail, StringComparison.Ordinal);
+            });
         }
         finally
         {
