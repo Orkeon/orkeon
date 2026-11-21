@@ -124,6 +124,14 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         var problems = _options.Problems().ToList();
         if (problems.Count > 0)
             throw new RunnerSettingsException(string.Join(" ", problems));
+        // HttpListener serves https through HTTP.sys alone: elsewhere it accepts the prefix and then fails every
+        // handshake, so the bridge would say it listens while no caller can reach it.
+        if (!OperatingSystem.IsWindows()
+            && Uri.TryCreate(_options.Prefix, UriKind.Absolute, out var prefixUri) && prefixUri.Scheme == Uri.UriSchemeHttps)
+            throw new RunnerSettingsException(
+                $"{ToolBridgeServerOptions.SectionName}:Prefix '{_options.Prefix}' asks for https, which the tool bridge serves under Windows only: "
+                + "keep the prefix on loopback over http and reach it from a container sharing the host's network (docker run --network host), "
+                + "or put a TLS terminator in front of it.");
         var token = _readEnvironment(_options.TokenEnvVar);
         if (string.IsNullOrEmpty(token))
             throw new RunnerSettingsException(
@@ -141,7 +149,19 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
 
         var listener = new HttpListener();
         listener.Prefixes.Add(_options.Prefix);
-        listener.Start();
+        try
+        {
+            listener.Start();
+        }
+        catch (HttpListenerException ex)
+        {
+            listener.Abort();
+            throw new RunnerSettingsException(
+                $"the tool bridge could not listen on '{_options.Prefix}' ({ToolBridgeServerOptions.SectionName}:Prefix): {ex.Message}. "
+                + "Another process holds the port, or, under Windows, a prefix other than localhost is not reserved for this account "
+                + $"(netsh http add urlacl url={_options.Prefix} user=<account>).", ex);
+        }
+
         _listener = listener;
         _runs = new ToolBridgeRuns(_options.HeartbeatWindow, _time, _logger);
         _loop = ListenAsync(listener);
@@ -165,6 +185,7 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         if (_runs is { } runs)
             await runs.DisposeAsync().ConfigureAwait(false);
         _runs = null;
+        ToolBridgeScratch.RemoveParent();
         // Abort, never Close after Stop: Close binds the port again for an instant on Linux and macOS.
         listener.Abort();
         _listener = null;

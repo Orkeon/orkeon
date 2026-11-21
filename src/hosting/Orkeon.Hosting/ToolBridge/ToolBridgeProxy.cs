@@ -181,7 +181,7 @@ internal sealed class ToolBridgeProxy : IBaseTool, IToolWrapper
     }
 
     /// <summary>
-    /// The caller's files the arguments name: each string argument, at any depth, that is an existing file this run may
+    /// The caller's files the arguments name: each string argument, at any depth, that is a virtual path under a mount and an existing file this run may
     /// read. Null when they exceed the size limit.
     /// </summary>
     [SuppressMessage("Design", "CA1031",
@@ -195,7 +195,8 @@ internal sealed class ToolBridgeProxy : IBaseTool, IToolWrapper
         using var _ = AgentRunScope.EnterToolCall();
         foreach (var candidate in Strings(arguments.Values))
         {
-            if (candidate.Length > MaxPathLength || candidate.Contains("://", StringComparison.Ordinal) || candidate.Any(char.IsControl))
+            if (candidate.Length > MaxPathLength || candidate.Contains("://", StringComparison.Ordinal) || candidate.Any(char.IsControl)
+                || !UnderAMount(candidate))
                 continue;
             byte[]? content;
             string path;
@@ -228,6 +229,13 @@ internal sealed class ToolBridgeProxy : IBaseTool, IToolWrapper
 
         return files.ToImmutable();
     }
+
+    // Whether candidate is a virtual path under a mount of the caller: a word such as an action name, or a relative
+    // path, is not asked of the file system, whose refusal would log a warning for each.
+    private bool UnderAMount(string candidate) =>
+        candidate.StartsWith('/') && _fileSystem.GetAvailableMounts().Any(mount =>
+            string.Equals(candidate, mount.VirtualPath, StringComparison.Ordinal)
+            || candidate.StartsWith(mount.VirtualPath.TrimEnd('/') + "/", StringComparison.Ordinal));
 
     private static IEnumerable<string> Strings(IEnumerable<object?> values)
     {

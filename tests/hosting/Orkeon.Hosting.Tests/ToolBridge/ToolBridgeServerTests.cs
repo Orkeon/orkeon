@@ -147,4 +147,37 @@ public sealed class ToolBridgeServerTests
         // Assert
         Assert.Contains("ORKEON_TEST_BRIDGE_UNSET", refusal.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task ShouldRefuseToStartWithThePrefix_WhenAnotherListenerHoldsIt()
+    {
+        // Arrange
+        var (first, address) = await BridgeLoopback.StartServerAsync([new FakeBridgeTool("firefox")], ["*"]);
+        await using var _ = first;
+        var options = new ToolBridgeServerOptions { Prefix = address.ToString() };
+        options.Allow.Add("*");
+        await using var second = new ToolBridgeServer(new ToolRegistry([new FakeBridgeTool("firefox")]), options, BridgeLoopback.Environment, null, NullLogger.Instance);
+
+        // Act
+        var refusal = await Assert.ThrowsAsync<RunnerSettingsException>(() => second.StartAsync(TestContext.Current.CancellationToken));
+
+        // Assert
+        Assert.Contains(address.ToString(), refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAnHttpsPrefix_WhenThePlatformIsNotWindows()
+    {
+        // Arrange
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "HTTP.sys serves https under Windows.");
+        var options = new ToolBridgeServerOptions { Prefix = "https://127.0.0.1:7412/" };
+        options.Allow.Add("*");
+        await using var server = new ToolBridgeServer(new ToolRegistry([new FakeBridgeTool("firefox")]), options, BridgeLoopback.Environment, null, NullLogger.Instance);
+
+        // Act
+        var refusal = await Assert.ThrowsAsync<RunnerSettingsException>(() => server.StartAsync(TestContext.Current.CancellationToken));
+
+        // Assert
+        Assert.Contains("Windows only", refusal.Message, StringComparison.Ordinal);
+    }
 }

@@ -8,7 +8,7 @@ namespace Orkeon.Scripting;
 /// catalogue <c>ctx.llm.act</c> picks from: the host's container tools, then the tools its
 /// <see cref="IToolRegistry"/> holds besides them (an MCP server's, connected after the container was
 /// built), each name once, the first holder keeping it. A registry tool that wraps a container tool of the same name
-/// (a tool bridge proxy) stands in its place. It is read again at each enumeration, so a
+/// (a tool bridge proxy), or another instance of its type when the container builds it anew, stands in its place. It is read again at each enumeration, so a
 /// tool registered after the catalogue was made reaches the next engine built from it.
 /// </summary>
 /// <remarks>
@@ -54,13 +54,14 @@ public sealed class ScriptToolCatalogue : IEnumerable<IBaseTool>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    // Whether outer is a wrapper around inner, through at most 16 wrappers.
+    // Whether outer is a wrapper around inner, through at most 16 wrappers: inner itself, or, for a tool the
+    // container builds anew at each resolution (firefox is transient), another instance of its type at the bottom.
     private static bool Wraps(IBaseTool outer, IBaseTool inner)
     {
         var current = outer;
         for (var depth = 0; depth < 16 && current is IToolWrapper { Inner: { } next }; depth++)
         {
-            if (ReferenceEquals(next, inner))
+            if (ReferenceEquals(next, inner) || (next is not IToolWrapper && next.GetType() == inner.GetType()))
                 return true;
             current = next;
         }

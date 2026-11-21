@@ -250,6 +250,22 @@ internal static class ToolBridgeStartup
     }
 
     /// <summary>
+    /// What the host of <c>orkeon bridge serve</c> adds: the folder of the calls' scratches
+    /// (<see cref="ToolBridgeScratch.Parent"/>) among the directories its path validator allows, as the sandbox's
+    /// session folder is.
+    /// </summary>
+    /// <param name="services">The host's services.</param>
+    public static void RegisterServing(IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddOptions<Orkeon.Infrastructure.Configuration.PathSecurityOptions>().Configure(options =>
+        {
+            if (!options.AdditionalAllowedDirectories.Contains(ToolBridgeScratch.Parent))
+                options.AdditionalAllowedDirectories.Add(ToolBridgeScratch.Parent);
+        });
+    }
+
+    /// <summary>
     /// Declares both sections of the bridge, binds them and judges them at start, and registers the caller's link when
     /// <c>Orkeon:Tools:Bridge</c> names an address.
     /// </summary>

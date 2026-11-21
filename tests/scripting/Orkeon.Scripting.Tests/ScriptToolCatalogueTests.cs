@@ -78,4 +78,18 @@ public sealed class ScriptToolCatalogueTests
         // Assert
         Assert.Same(container, Assert.IsType<StubWrapperTool>(held).Inner);
     }
+
+    [Fact]
+    public async Task ShouldHoldTheRegistrysWrapper_WhenItWrapsAnotherInstanceOfATransientContainerTool()
+    {
+        // Arrange
+        var registry = Registry();
+        await registry.RegisterToolAsync(new StubWrapperTool(new StubBaseTool("firefox")), TestContext.Current.CancellationToken);
+
+        // Act
+        var held = Assert.Single(new ScriptToolCatalogue([new StubBaseTool("firefox")], registry));
+
+        // Assert
+        Assert.IsType<StubWrapperTool>(held);
+    }
 }

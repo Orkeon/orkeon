@@ -189,4 +189,53 @@ public sealed class ToolBridgeFileTests : IDisposable
         // Assert
         Assert.Equal("é\n", await _callerFiles.TryReadAllTextAsync("/output/note.txt", Ct));
     }
+
+    [Fact]
+    public async Task ShouldNotAskTheFileSystem_WhenAStringArgumentIsUnderNoMount()
+    {
+        // Arrange
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service);
+        var (server, link, bridged) = await BridgeAsync(remote);
+        await using var _ = server;
+        using var __ = link;
+
+        // Act
+        await bridged.CallAsync(Call("read_from", "/elsewhere/page.txt"), Ct);
+
+        // Assert
+        Assert.DoesNotContain("read", _callerFiles.Validated);
+        Assert.DoesNotContain("/elsewhere/page.txt", _callerFiles.Validated);
+    }
+
+    [Fact]
+    public void ShouldAllowTheScratchFolder_WhenTheServingHostIsComposed()
+    {
+        // Arrange
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+
+        // Act
+        ToolBridgeStartup.RegisterServing(services);
+
+        // Assert
+        using var provider = Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(services);
+        var options = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.PathSecurityOptions>>(provider).Value;
+        Assert.Contains(ToolBridgeScratch.Parent, options.AdditionalAllowedDirectories);
+    }
+
+    [Fact]
+    public async Task ShouldMakeTheScratchUnderTheAllowedFolder_WhenACallCarriesTheCallersMounts()
+    {
+        // Arrange
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service) { Written = [1] };
+        var (server, link, bridged) = await BridgeAsync(remote);
+        await using var _ = server;
+        using var __ = link;
+
+        // Act
+        await bridged.CallAsync(Call("save_to", "/output/shot.png"), Ct);
+
+        // Assert
+        Assert.StartsWith(ToolBridgeScratch.Parent + Path.DirectorySeparatorChar, Assert.Single(remote.WrittenAt), StringComparison.Ordinal);
+    }
 }

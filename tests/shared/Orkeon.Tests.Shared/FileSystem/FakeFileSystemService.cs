@@ -40,9 +40,13 @@ public sealed class FakeFileSystemService : IFileSystemService
         return this;
     }
 
+    /// <summary>Every path <see cref="ResolveAndValidate"/> was asked, in order.</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<string> Validated { get; } = new();
+
     public PathValidationResult ResolveAndValidate(string virtualPath, FileAccessRights requiredRight)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
+        Validated.Enqueue(virtualPath);
 
         if (!IsUnderMount(virtualPath))
             return PathValidationResult.Denied($"No mount for virtual path '{virtualPath}'.");

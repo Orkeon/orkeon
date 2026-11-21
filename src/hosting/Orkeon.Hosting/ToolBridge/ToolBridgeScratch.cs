@@ -29,6 +29,33 @@ internal sealed class ToolBridgeScratch : IDisposable
     }
 
     /// <summary>
+    /// The folder every scratch of this process is made in, under the temporary directory. The bridge's path validator
+    /// must allow it, as it allows the sandbox's session folder: <see cref="ToolBridgeStartup.RegisterServing"/> adds it
+    /// to <c>PathSecurity:AdditionalAllowedDirectories</c>; without it a tool that writes through the file system (the
+    /// screenshot of <c>firefox</c>) is refused with "Path is outside the allowed workspace directory".
+    /// </summary>
+    public static string Parent { get; } =
+        Path.Combine(Path.GetTempPath(), "orkeon-bridge-" + Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    /// <summary>Removes <see cref="Parent"/> once no scratch is left in it; nothing when it is absent or still holds one.</summary>
+    public static void RemoveParent()
+    {
+        try
+        {
+            if (Directory.Exists(Parent) && !Directory.EnumerateFileSystemEntries(Parent).Any())
+                Directory.Delete(Parent);
+        }
+        catch (IOException)
+        {
+            // A scratch created meanwhile: the folder is left to the system.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Same.
+        }
+    }
+
+    /// <summary>
     /// Builds the scratch of <paramref name="call"/>, places its files and enters its mounts for the calling flow.
     /// </summary>
     /// <param name="call">The call, with its mounts.</param>
@@ -41,7 +68,10 @@ internal sealed class ToolBridgeScratch : IDisposable
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(boot);
-        var root = Directory.CreateTempSubdirectory("orkeon-bridge-").FullName;
+        var folder = Path.Combine(Parent, Guid.NewGuid().ToString("N"));
+        var root = (OperatingSystem.IsWindows()
+            ? Directory.CreateDirectory(folder)
+            : Directory.CreateDirectory(folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute)).FullName;
         var handedOver = false;
         try
         {
