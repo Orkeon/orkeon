@@ -49,7 +49,7 @@ public sealed class HostPublishesRunEventsTests : IDisposable
 
     private string CrewPath => Path.Combine(_root, "crews", "support.yaml");
 
-    private IHost Build(HeldLlmProvider llm, bool? history = null, bool ladder = false)
+    private IHost Build(HeldLlmProvider llm, bool? history = null, bool ladder = false, Action<IServiceCollection>? configure = null)
     {
         var root = new Dictionary<string, object?>
         {
@@ -86,6 +86,7 @@ public sealed class HostPublishesRunEventsTests : IDisposable
                 services.AddOrkeonLlmProvider(_ => llm);
                 if (ladder)
                     services.AddOrkeonLlmProfile("small", _ => llm, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Create("model-of-small"));
+                configure?.Invoke(services);
             },
             configureBuilder: builder => builder.UseDefaultServiceProvider(options =>
             {
@@ -275,5 +276,32 @@ public sealed class HostPublishesRunEventsTests : IDisposable
         var events = await reader.ReadEventsAsync(summary.RunId, 1, Ct);
         var route = Assert.Single(events, e => e.Kind == RunEventKinds.AgentRoute);
         Assert.Equal(("Helper", summary.RunId), (route.Payload?["agentRole"]?.GetValue<string>(), route.CorrelationId));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWriteTheCompactionAndPruningEventsInTheRunHistory_WhenAHostedAgentLoopTellsThem()
+    {
+        // Arrange: the run's agent tells the host's compaction and pruning observers what the agent loop tells them.
+        using var host = Build(new HeldLlmProvider("unused"), configure: services =>
+            services.AddScoped<Orkeon.Application.Interfaces.Services.IAgentExecutionService>(sp => new FakeObservingAgentExecutionService(
+                sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IAgentCompactionObserver>(),
+                sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IAgentPruneObserver>())));
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+
+        // Act
+        var result = await runner.RunAsync("support", "What changed?", "test");
+
+        // Assert
+        Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
+        var reader = host.Services.GetRequiredService<IRunHistoryReader>();
+        var summary = Assert.Single(await reader.ListAsync(new RunQuery(), Ct));
+        var events = await reader.ReadEventsAsync(summary.RunId, 1, Ct);
+        var compacted = Assert.Single(events, e => e.Kind == RunEventKinds.AgentCompacted);
+        var pruned = Assert.Single(events, e => e.Kind == RunEventKinds.AgentPruned);
+        Assert.Equal(("Helper", summary.RunId), (compacted.Payload?["agentRole"]?.GetValue<string>(), compacted.CorrelationId));
+        Assert.Equal(("Helper", summary.RunId), (pruned.Payload?["agentRole"]?.GetValue<string>(), pruned.CorrelationId));
+        Assert.Equal(Enumerable.Range(1, events.Count), events.Select(e => e.Seq));
     }
 }

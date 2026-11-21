@@ -25,6 +25,7 @@ public class DecisionCircuitOverrideRegistrationTests
     }
 
     [Fact]
+    [Trait("BR", "CH-431")]
     public void A_scope_whose_override_is_off_gives_the_strategies_a_runner_with_the_circuit_off()
     {
         using var provider = Provider();
@@ -37,6 +38,7 @@ public class DecisionCircuitOverrideRegistrationTests
     }
 
     [Fact]
+    [Trait("BR", "CH-431")]
     public void A_scope_without_an_override_keeps_the_hosts_runner()
     {
         using var provider = Provider();
@@ -48,6 +50,7 @@ public class DecisionCircuitOverrideRegistrationTests
     }
 
     [Fact]
+    [Trait("BR", "CH-431")]
     public void A_scope_whose_override_is_on_leaves_the_runner_off_when_the_host_is_off()
     {
         var services = new ServiceCollection()
@@ -66,6 +69,7 @@ public class DecisionCircuitOverrideRegistrationTests
     }
 
     [Fact]
+    [Trait("BR", "CH-431")]
     public void A_scope_whose_override_is_off_gives_the_crew_orchestrator_the_circuit_it_enters_for_the_run()
     {
         using var provider = Provider();
