@@ -578,10 +578,11 @@ public sealed class AgentSkillsResolverTests
     [Trait("BR", "CH-434")]
     public async System.Threading.Tasks.Task ShouldStopWithTheCancellationAndNoFallback_WhenTheTaskIsCancelled()
     {
-        // Arrange
+        // Arrange: the task is cancelled while the decision model is asked, as a provider call that honours the token.
         AddLibrary(2);
+        _files.AddFile("/workspace/skills/review.md", "Check the inputs.");
         using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
+        _model.OnDecide = _ => cancellation.Cancel();
         _model.Failure = new OperationCanceledException(cancellation.Token);
         var resolver = Resolver();
 
@@ -589,7 +590,9 @@ public sealed class AgentSkillsResolverTests
         var exception = await Record.ExceptionAsync(() => resolver.ResolveAsync(Agent(Auto("/workspace/skills/review.md")), "t1", Request, cancellation.Token));
 
         // Assert
+        Assert.Single(_model.Requests);
         Assert.IsType<OperationCanceledException>(exception, exactMatch: false);
+        Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Warning);
     }
 
     [Fact]
@@ -624,5 +627,102 @@ public sealed class AgentSkillsResolverTests
 
         // Assert
         Assert.Equal(2, _logger.Entries.Count(e => e.Level == LogLevel.Warning && e.Message.Contains(Library, StringComparison.Ordinal)));
+    }
+
+    public static TheoryData<string> FailedPicks => ["a failed call", "no usable choice"];
+
+    [Theory]
+    [Trait("BR", "CH-434")]
+    [MemberData(nameof(FailedPicks))]
+    public async System.Threading.Tasks.Task ShouldWarnOncePerRunAndTellEachTask_WhenThePickFailsForSeveralTasks(string failure)
+    {
+        // Arrange
+        AddLibrary(2);
+        if (failure == "a failed call")
+            _model.Failure = new DecisionModelException("provider down");
+        else
+            Answer("s42", ("s42", 1.0));
+        var resolver = Resolver();
+        var notices = new List<AgentSkillsNotice>();
+        using (SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified))
+        {
+            notices.Add((await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken))!.Notice);
+            notices.Add((await resolver.ResolveAsync(Agent(Auto()), "t2", Request, TestContext.Current.CancellationToken))!.Notice);
+        }
+        using var next = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified);
+
+        // Act
+        notices.Add((await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken))!.Notice);
+
+        // Assert: one warning in each run, and every task's notice says why.
+        Assert.Equal(3, _model.Requests.Count);
+        Assert.Equal(2, _logger.Entries.Count(e => e.Level == LogLevel.Warning));
+        Assert.All(notices, n =>
+        {
+            Assert.Equal(AgentSkillsReasons.PickFailed, n.Reason);
+            Assert.False(string.IsNullOrEmpty(n.Detail));
+        });
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldUseTheFallbackWithoutACallOrAWarning_WhenTheCrewAsksSystemOneNothing()
+    {
+        // Arrange
+        AddLibrary(2);
+        _files.AddFile("/workspace/skills/review.md", "Check the inputs.");
+        Answer("s1", ("s1", 1.0));
+        using var run = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.None);
+
+        // Act
+        var resolution = await Resolver(DecisionCircuit.On).ResolveAsync(
+            Agent(Auto("/workspace/skills/review.md")), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_model.Requests);
+        Assert.NotNull(resolution);
+        Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
+        Assert.Equal(AgentSkillsReasons.DecisionNone, resolution.Notice.Reason);
+        Assert.Equal(["/workspace/skills/review.md"], resolution.Notice.Skills);
+        Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldReadNoFurtherThanTheCapAndItsTrail_WhenWhiteSpaceRunsOnPastTheCap()
+    {
+        // Arrange: a skill of 50 characters at its cap, then 100,000 spaces and more text.
+        var reads = new FakeCountingReadFileSystemService(new FakeFileSystemService().AddMount("/workspace")
+            .AddFile("/workspace/skills/spaced.md", new string('a', 50) + new string(' ', 100_000) + "tail"));
+        var resolver = new AgentSkillsResolver(reads, new ServiceCollection().BuildServiceProvider(),
+            new AgentSkillsOptions { MaxSkillChars = 50 }, _logger);
+        var agent = Agent(new AgentSkills { Paths = ["/workspace/skills/spaced.md"] });
+
+        // Act
+        var resolution = await resolver.ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert: white space that runs on past the trail is taken for more text, and the skill is said cut.
+        Assert.NotNull(resolution);
+        Assert.Contains(new string('a', 50), resolution.Block, StringComparison.Ordinal);
+        Assert.Equal(["/workspace/skills/spaced.md"], resolution.Notice.Cut);
+        Assert.True(reads.BytesRead < 10_000, $"read {reads.BytesRead} bytes of a 100,054-byte skill");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldCarryASkill_WhenTheBlockCapIsTheLeastAccepted()
+    {
+        // Arrange
+        _files.AddFile($"{Library}/review.md", new string('r', 1_000));
+        var agent = Agent(new AgentSkills { Paths = [$"{Library}/review.md"] });
+
+        // Act
+        var resolution = await Resolver(options: new AgentSkillsOptions { MaxBlockChars = AgentSkillsOptions.MinBlockChars })
+            .ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.Equal([$"{Library}/review.md"], resolution.Notice.Skills);
+        Assert.True(resolution.Block.Length <= AgentSkillsOptions.MinBlockChars);
     }
 }

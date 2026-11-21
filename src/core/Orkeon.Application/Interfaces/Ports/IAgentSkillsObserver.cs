@@ -58,6 +58,9 @@ public static class AgentSkillsReasons
 
     /// <summary>The decision model's call failed, or its answer held no usable choice.</summary>
     public const string PickFailed = "pick-failed";
+
+    /// <summary>The crew runs with <c>decision.mode: none</c> and asks System One nothing: no call is made.</summary>
+    public const string DecisionNone = "decision-none";
 }
 
 /// <summary>The <c>mode</c> of <c>agent.skills</c>.</summary>

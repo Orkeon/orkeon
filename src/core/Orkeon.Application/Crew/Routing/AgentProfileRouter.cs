@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Decision.DTOs;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Crew;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
 namespace Orkeon.Application.Crew.Routing;
@@ -13,7 +14,8 @@ namespace Orkeon.Application.Crew.Routing;
 /// The profile of a task of an agent on <c>llm.profile: auto</c> (#434): at the task's start, the decision model
 /// picks one rung of the ladder (<see cref="AgentRouteOptions.Ladder"/>, cheapest first), and the task keeps it.
 /// Under a probability of <see cref="MinProbability"/>, without an answer, with the decision circuit off (one
-/// warning per run, no call) or without a ladder, the host's <c>default</c> profile stands, never the agent's own. Nothing here fails a task. Unlike the
+/// warning per run, no call), in a crew on <c>decision.mode: none</c> (no call, no warning) or without a ladder, the
+/// host's <c>default</c> profile stands, never the agent's own. Nothing here fails a task. Unlike the
 /// <c>route</c> stage of a decision profile, which routes each call on its last message, this picks once per task.
 /// </summary>
 internal sealed class AgentProfileRouter
@@ -78,6 +80,10 @@ internal sealed class AgentProfileRouter
     private async System.Threading.Tasks.Task<AgentRouteNotice> PickAsync(
         string role, string request, DecisionCircuit? scopeCircuit, CancellationToken cancellationToken)
     {
+        // A crew on decision.mode: none asks System One nothing (#429), as its pruning does: no call, no warning.
+        if (SystemOneRunScope.Current?.Mode == CrewDecisionMode.None)
+            return Standing(AgentRouteReasons.DecisionNone);
+
         if (_ladder.Count == 0)
         {
             if (RunWarnings.Of(_warnings).First("route.no-ladder"))

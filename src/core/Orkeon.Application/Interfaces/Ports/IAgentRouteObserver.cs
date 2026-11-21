@@ -55,4 +55,10 @@ public static class AgentRouteReasons
 
     /// <summary>The host declares no ladder (a crew built by hand, never loaded): the default profile stands.</summary>
     public const string NoLadder = "no-ladder";
+
+    /// <summary>
+    /// The crew runs with <c>decision.mode: none</c> and asks System One nothing: no call is made, no warning is
+    /// logged, and the default profile stands.
+    /// </summary>
+    public const string DecisionNone = "decision-none";
 }

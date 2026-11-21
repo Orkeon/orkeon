@@ -296,4 +296,41 @@ public sealed class AgentProfileRouterTests
         // Assert
         Assert.Equal(2, _logger.Entries.Count(e => e.Level == LogLevel.Warning));
     }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldStandOnTheDefaultProfileWithoutACallOrAWarning_WhenTheCrewAsksSystemOneNothing()
+    {
+        // Arrange
+        Answer("large", 0.99, ("large", 0.99));
+        var router = Router(DecisionCircuit.On);
+        using var run = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.None);
+
+        // Act
+        var notice = await router.RouteAsync(Agent(), "t1", Request, null, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_model.Requests);
+        Assert.Equal(LlmProfiles.Default, notice.Profile);
+        Assert.Equal(AgentRouteReasons.DecisionNone, notice.Reason);
+        Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldStandOnTheDefaultProfileWithoutACall_WhenTheCrewAsksSystemOneNothingAndTheHostHasNoLadder()
+    {
+        // Arrange
+        var router = new AgentProfileRouter(
+            new ServiceCollection().AddSingleton<IDecisionModel>(_model).BuildServiceProvider(), new AgentRouteOptions(), _logger);
+        using var run = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.None);
+
+        // Act
+        var notice = await router.RouteAsync(Agent(), "t1", Request, null, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_model.Requests);
+        Assert.Equal(AgentRouteReasons.DecisionNone, notice.Reason);
+        Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Warning);
+    }
 }

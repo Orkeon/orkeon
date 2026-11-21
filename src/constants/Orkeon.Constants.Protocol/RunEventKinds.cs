@@ -123,7 +123,7 @@ public static class RunEventKinds
     /// <summary>
     /// The profile a task of an agent on <c>llm.profile: auto</c> runs on (#434), once per task, at its start:
     /// <c>taskId</c>, <c>agentRole</c>, <c>profile</c> (a rung of the ladder, or <c>default</c>), <c>reason</c>
-    /// (<c>model</c>, <c>low-confidence</c>, <c>no-answer</c>, <c>circuit-off</c>, <c>no-ladder</c>),
+    /// (<c>model</c>, <c>low-confidence</c>, <c>no-answer</c>, <c>circuit-off</c>, <c>no-ladder</c>, <c>decision-none</c>),
     /// <c>picked</c> and <c>probability</c> (the model's pick and its probability, null when it picked no rung) and
     /// <c>ladder</c>. Additive: a consumer that does not know the kind ignores it.
     /// </summary>

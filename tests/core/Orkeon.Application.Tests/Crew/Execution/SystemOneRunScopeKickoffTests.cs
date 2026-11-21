@@ -58,15 +58,24 @@ public sealed class SystemOneRunScopeKickoffTests
         return services.BuildServiceProvider();
     }
 
-    /// <summary>Saves a crew of one agent and one task in a scope of <paramref name="host"/>, then runs it there.</summary>
-    private static async System.Threading.Tasks.Task<CrewOutput> RunAsync(IServiceProvider host, DomainAgent agent, CrewDecisionMode mode)
+    /// <summary>
+    /// Saves a crew of one agent and <paramref name="tasks"/> tasks of it in a scope of <paramref name="host"/>, then
+    /// runs it there.
+    /// </summary>
+    private static async System.Threading.Tasks.Task<CrewOutput> RunAsync(IServiceProvider host, DomainAgent agent, CrewDecisionMode mode, int tasks = 1)
     {
         await using var scope = host.CreateAsyncScope();
         var services = scope.ServiceProvider;
-        var task = new CrewTaskBuilder().Description("Review the notes").ExpectedOutput("A review").AssignTo(agent).Build();
-        var crew = new CrewBuilder().Goal("Review the notes").Sequential().WithAgent(agent).WithTask(task).DecisionMode(mode).Build();
+        var builder = new CrewBuilder().Goal("Review the notes").Sequential().WithAgent(agent).DecisionMode(mode);
         await services.GetRequiredService<IAgentRepository>().AddAsync(agent, Ct);
-        await services.GetRequiredService<ITaskRepository>().AddAsync(task, Ct);
+        for (var i = 1; i <= tasks; i++)
+        {
+            var task = new CrewTaskBuilder().Description($"Review the notes, part {i}").ExpectedOutput("A review").AssignTo(agent).Build();
+            builder.WithTask(task);
+            await services.GetRequiredService<ITaskRepository>().AddAsync(task, Ct);
+        }
+
+        var crew = builder.Build();
         await services.GetRequiredService<ICrewRepository>().AddAsync(crew, Ct);
         return await services.GetRequiredService<ICrewOrchestrationService>()
             .KickoffAsync(crew.Id, new CrewInput("review", new Dictionary<string, object>()), Ct);
@@ -85,12 +94,14 @@ public sealed class SystemOneRunScopeKickoffTests
         // Arrange
         var lines = new ConcurrentQueue<CategoryLogLine>();
         await using var host = Host(lines);
-        await RunAsync(host, Reviewer(), CrewDecisionMode.Unspecified);
+        var first = await RunAsync(host, Reviewer(), CrewDecisionMode.Unspecified, tasks: 3);
 
         // Act
-        await RunAsync(host, Reviewer(), CrewDecisionMode.Unspecified);
+        var second = await RunAsync(host, Reviewer(), CrewDecisionMode.Unspecified, tasks: 3);
 
-        // Assert
+        // Assert: six picks over two runs, one warning in each run.
+        Assert.Equal(3, first.TaskOutputs.Count);
+        Assert.Equal(3, second.TaskOutputs.Count);
         Assert.Equal(2, lines.Count(l => l.Level == LogLevel.Warning
             && l.Category.EndsWith(nameof(AgentSkillsResolver), StringComparison.Ordinal)
             && l.Message.StartsWith("Agent skills with auto take no pick", StringComparison.Ordinal)));

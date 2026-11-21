@@ -220,6 +220,7 @@ Orkeon.Application.Crew.Skills.AgentSkillsOptions.MaxSkillChars.set -> void
 const Orkeon.Application.Crew.Skills.AgentSkillsOptions.DefaultLibrary = "/workspace/.orkeon/skills" -> string!
 const Orkeon.Application.Crew.Skills.AgentSkillsOptions.DefaultMaxBlockChars = 12000 -> int
 const Orkeon.Application.Crew.Skills.AgentSkillsOptions.DefaultMaxSkillChars = 4000 -> int
+const Orkeon.Application.Crew.Skills.AgentSkillsOptions.MinBlockChars = 500 -> int
 const Orkeon.Application.Crew.Skills.AgentSkillsOptions.SectionName = "Orkeon:Skills" -> string!
 static Orkeon.Application.Crew.Skills.AgentSkillsOptions.Problems(Orkeon.Application.Crew.Skills.AgentSkillsOptions! options) -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Application.Interfaces.Ports.IAgentSkillsObserver
@@ -257,6 +258,7 @@ Orkeon.Application.Interfaces.Ports.AgentSkillsReasons
 const Orkeon.Application.Interfaces.Ports.AgentSkillsReasons.CircuitOff = "circuit-off" -> string!
 const Orkeon.Application.Interfaces.Ports.AgentSkillsReasons.EmptyLibrary = "empty-library" -> string!
 const Orkeon.Application.Interfaces.Ports.AgentSkillsReasons.PickFailed = "pick-failed" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentSkillsReasons.DecisionNone = "decision-none" -> string!
 Orkeon.Application.Crew.Routing.AgentRouteOptions
 Orkeon.Application.Crew.Routing.AgentRouteOptions.AgentRouteOptions() -> void
 Orkeon.Application.Crew.Routing.AgentRouteOptions.Ladder.get -> System.Collections.Generic.IList<string!>!
@@ -286,6 +288,7 @@ const Orkeon.Application.Interfaces.Ports.AgentRouteReasons.LowConfidence = "low
 const Orkeon.Application.Interfaces.Ports.AgentRouteReasons.Model = "model" -> string!
 const Orkeon.Application.Interfaces.Ports.AgentRouteReasons.NoAnswer = "no-answer" -> string!
 const Orkeon.Application.Interfaces.Ports.AgentRouteReasons.NoLadder = "no-ladder" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentRouteReasons.DecisionNone = "decision-none" -> string!
 const Orkeon.Application.Interfaces.Ports.LlmProfiles.Auto = "auto" -> string!
 const Orkeon.Application.Interfaces.Ports.LlmProfiles.RouteLadderKey = "Orkeon:Decision:Route:Ladder" -> string!
 static Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(string? name) -> bool

@@ -3682,7 +3682,7 @@
       "section": "Orkeon:Skills",
       "type": "integer",
       "default": 12000,
-      "description": "The characters the whole skills block carries, its heading, each skill's title line and cut notes included, so that with the defaults three skills of a full `MaxSkillChars` do not all fit and the third is cut; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. 0 or less is refused at start. 12000 by default."
+      "description": "The characters the whole skills block carries, its heading, each skill's title line and cut notes included, so that with the defaults three skills of a full `MaxSkillChars` do not all fit and the third is cut; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. Less than `500`, which cannot hold the block's heading and a skill, is refused at start. 12000 by default."
     },
     {
       "path": "Orkeon:Skills:MaxSkillChars",

@@ -24,6 +24,13 @@ public sealed class AgentSkillsOptions
     public const int DefaultMaxBlockChars = 12_000;
 
     /// <summary>
+    /// The least <see cref="MaxBlockChars"/> accepted, in characters: 500. The block's heading and intro take
+    /// about 160 of them, and a skill's title line and the note of a cut text about 100 more, so a smaller block
+    /// leaves every skill out.
+    /// </summary>
+    public const int MinBlockChars = 500;
+
+    /// <summary>
     /// The virtual folder an <c>auto</c> agent's skills are picked from, one <c>&lt;name&gt;.md</c> file per
     /// skill (sub-folders are not read); a relative path is refused at start. <c>/workspace/.orkeon/skills</c> by
     /// default.
@@ -40,7 +47,8 @@ public sealed class AgentSkillsOptions
     /// The characters the whole skills block carries, its heading, each skill's title line and cut notes
     /// included, so that with the defaults three skills of a full <c>MaxSkillChars</c> do not all fit and the
     /// third is cut; a skill past it is cut to what remains, said in the prompt, or left out, said in the <c>cut</c>
-    /// of <c>agent.skills</c> alone. 0 or less is refused at start. 12000 by default.
+    /// of <c>agent.skills</c> alone. Less than <see cref="MinBlockChars"/>, which cannot hold the block's heading
+    /// and a skill, is refused at start. 12000 by default.
     /// </summary>
     public int MaxBlockChars { get; set; } = DefaultMaxBlockChars;
 
@@ -54,8 +62,11 @@ public sealed class AgentSkillsOptions
             problems.Add($"{SectionName}:Library is '{options.Library}', which is not a virtual folder: write an absolute virtual path, such as {DefaultLibrary}.");
         if (options.MaxSkillChars <= 0)
             problems.Add(Positive("MaxSkillChars", options.MaxSkillChars, DefaultMaxSkillChars));
-        if (options.MaxBlockChars <= 0)
-            problems.Add(Positive("MaxBlockChars", options.MaxBlockChars, DefaultMaxBlockChars));
+        if (options.MaxBlockChars < MinBlockChars)
+            problems.Add(
+                $"{SectionName}:MaxBlockChars is '{options.MaxBlockChars.ToString(CultureInfo.InvariantCulture)}', which cannot hold the block's " +
+                $"heading and a skill: write {MinBlockChars.ToString(CultureInfo.InvariantCulture)} or more, such as " +
+                $"{DefaultMaxBlockChars.ToString(CultureInfo.InvariantCulture)}.");
         return problems;
     }
 

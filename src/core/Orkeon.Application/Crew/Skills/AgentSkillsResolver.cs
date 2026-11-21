@@ -15,8 +15,9 @@ namespace Orkeon.Application.Crew.Skills;
 /// <summary>
 /// The skills block of a task's system prompt (#434). A fixed list is read as written. An <c>auto</c> agent
 /// has the decision model pick, from the one-line card of each skill of the library (never a body), at most
-/// <see cref="MaxPicks"/> skills; with the decision circuit off (one warning per run), a failed call or an empty or
-/// unreadable library (one warning per run), its fallback list stands, and with no fallback the prompt carries no skill.
+/// <see cref="MaxPicks"/> skills; with the decision circuit off, a failed call or an answer with no usable choice, or an
+/// empty or unreadable library (one warning per run for each), or in a crew on <c>decision.mode: none</c> (no call, no
+/// warning), its fallback list stands, and with no fallback the prompt carries no skill.
 /// Nothing here fails a task: a skill that cannot be read is left out with a warning. The block, its heading and
 /// each skill's title line included, stays within <see cref="AgentSkillsOptions.MaxBlockChars"/>.
 /// </summary>
@@ -45,6 +46,15 @@ internal sealed class AgentSkillsResolver
 
     /// <inheritdoc cref="QuestionName"/>
     internal const string NoSkillOption = "none";
+
+    /// <summary>
+    /// What is read past a skill's cap at most, in characters, to tell a file that ends in white space from one
+    /// that goes on: white space that runs on further is taken for more text, and the skill is said cut.
+    /// </summary>
+    internal const int TrailChars = 256;
+
+    // A failed pick is warned of once per run, its detail on each task's agent.skills.
+    private const string PickFailedWarning = "skills.pick-failed";
 
     private readonly IFileSystemService _fileSystem;
     private readonly IServiceProvider _services;
@@ -117,6 +127,11 @@ internal sealed class AgentSkillsResolver
     private async System.Threading.Tasks.Task<Choice> PickAsync(
         DomainAgent agent, Domain.Agent.AgentSkills skills, string request, DecisionCircuit? scopeCircuit, CancellationToken cancellationToken)
     {
+        // A crew on decision.mode: none asks System One nothing (#429): the load refuses auto there, and an agent
+        // that escapes the rule (a manager given as an object) still makes no call.
+        if (SystemOneRunScope.Current?.Mode == Domain.Crew.CrewDecisionMode.None)
+            return Fallback(skills, AgentSkillsReasons.DecisionNone, SkillsPrompts.DecisionNone);
+
         var circuit = DecisionCircuit.Of(_services, scopeCircuit);
         var model = circuit.Enabled ? _services.GetService<IDecisionModel>() : null;
         if (model is null)
@@ -145,14 +160,16 @@ internal sealed class AgentSkillsResolver
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            AgentSkillsLog.PickFailed(_logger, agent.Role.Value, ex.Message);
+            if (RunWarnings.Of(_warnings).First(PickFailedWarning))
+                AgentSkillsLog.PickFailed(_logger, agent.Role.Value, ex.Message);
             return Fallback(skills, AgentSkillsReasons.PickFailed, $"the decision model failed: {ex.Message}");
         }
 
         // An answer that says nothing usable is no pick: the fallback stands, as when the call fails.
         if (Picks(response, cards) is not { } picks)
         {
-            AgentSkillsLog.PickFailed(_logger, agent.Role.Value, SkillsPrompts.NoUsableChoice);
+            if (RunWarnings.Of(_warnings).First(PickFailedWarning))
+                AgentSkillsLog.PickFailed(_logger, agent.Role.Value, SkillsPrompts.NoUsableChoice);
             return Fallback(skills, AgentSkillsReasons.PickFailed, $"the decision model's answer: {SkillsPrompts.NoUsableChoice}");
         }
 
@@ -261,8 +278,8 @@ internal sealed class AgentSkillsResolver
 
     /// <summary>
     /// A skill's text, its leading white space skipped, read through the file system no further than
-    /// <paramref name="cap"/> characters and one more: that one says the file goes on (white space aside). Null
-    /// when the file cannot be read.
+    /// <paramref name="cap"/> characters and <see cref="TrailChars"/> more: what follows the cap says whether the file
+    /// goes on, white space aside, and white space past the trail counts as more text. Null when the file cannot be read.
     /// </summary>
     private async System.Threading.Tasks.Task<(string Text, bool Longer)?> ReadSkillAsync(string path, int cap, CancellationToken cancellationToken)
     {
@@ -289,7 +306,8 @@ internal sealed class AgentSkillsResolver
                 // Past the cap, never inside a surrogate pair: the file is longer unless all that follows is white space.
                 var whole = text.ToString();
                 var keep = TextCut.HeadLength(whole, cap);
-                var longer = !whole.AsSpan(keep).IsWhiteSpace() || await RestIsTextAsync(reader, buffer, cancellationToken).ConfigureAwait(false);
+                var longer = !whole.AsSpan(keep).IsWhiteSpace()
+                    || await TrailIsTextAsync(reader, TrailChars - (whole.Length - keep) - 1, cancellationToken).ConfigureAwait(false);
                 return longer ? (whole[..keep], true) : (whole[..keep].TrimEnd(), false);
             }
         }
@@ -299,16 +317,23 @@ internal sealed class AgentSkillsResolver
         }
     }
 
-    // Whether what is left to read holds anything but white space, read a buffer at a time and stopped at the first.
-    private static async System.Threading.Tasks.Task<bool> RestIsTextAsync(StreamReader reader, char[] buffer, CancellationToken cancellationToken)
+    // Whether the next room characters, and the one after them, hold anything but white space: read no further (the
+    // last one peeked), stopped at the first character that is not white space. White space up to there that is not
+    // the end of the file counts as more text.
+    private static async System.Threading.Tasks.Task<bool> TrailIsTextAsync(StreamReader reader, int room, CancellationToken cancellationToken)
     {
+        var buffer = new char[Math.Max(room, 1)];
+        var left = room;
         int read;
-        while ((read = await reader.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false)) > 0)
+        while (left > 0 && (read = await reader.ReadAsync(buffer.AsMemory(0, left), cancellationToken).ConfigureAwait(false)) > 0)
         {
             if (!buffer.AsSpan(0, read).IsWhiteSpace())
                 return true;
+            left -= read;
         }
-        return false;
+
+        // The trail is all white space: the file ends there, or goes on past what is read.
+        return left <= 0 && reader.Peek() >= 0;
     }
 
     // The block: each skill under its name and path, cut at MaxSkillChars and at what remains of MaxBlockChars,

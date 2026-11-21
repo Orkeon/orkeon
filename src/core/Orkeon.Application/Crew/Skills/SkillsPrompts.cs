@@ -25,6 +25,9 @@ internal static class SkillsPrompts
     internal static string CutNote(int shown) =>
         FormattableString.Invariant($"[skill cut: the first {shown} characters shown]");
 
+    /// <summary>Why a crew on <c>decision.mode: none</c> takes no pick: the fallback stands.</summary>
+    internal const string DecisionNone = "the crew runs with decision.mode: none and asks System One nothing";
+
     /// <summary>Why an answer of the decision model picks nothing: the fallback stands.</summary>
     internal const string NoUsableChoice = "its answer held no usable choice";
 }
