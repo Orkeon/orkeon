@@ -372,6 +372,27 @@ public sealed class ChatLoopCompactionTests
 
     [Fact]
     [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldBoundTheTranscriptByTheSummaryProfilesWindow_WhenItIsSmallerThanTheAgents()
+    {
+        // Arrange: the summary profile declares 2,000 tokens, 1,000 of them its output; three turns of 1,000 tokens are summarised.
+        var summariser = new ScriptedFullLlmProvider { BaseConfig = LlmConfig.OnProfile("summariser") with { ContextWindowTokens = 2_000 } };
+        summariser.Enqueue(new LlmResponse { Content = "The agent read three pages.", TokensUsed = 70 });
+        var options = new ContextCompactionOptions { KeepRecentTurns = 2, Profile = "summariser" };
+
+        // Act
+        var run = await RunAsync(6, resultChars: 4_000, MidWindow, options, summaryProvider: summariser);
+
+        // Assert: the summary call fits the 1,000 input tokens, and still names every turn it summarises.
+        var request = Assert.Single(summariser.ReceivedTurns);
+        var promptTokens = request.Sum(m => 4 + ((m.Content.Length + 3) / 4));
+        Assert.True(promptTokens <= 1_000, $"the summary call fits the summary profile's window, it held {promptTokens} tokens");
+        Assert.Equal(3, request[1].Content.Split("[assistant] call read_page").Length - 1);
+        Assert.Equal(3, request[1].Content.Split("[tool] xxx").Length - 1);
+        Assert.Equal(AgentCompactionOutcomes.Compacted, Assert.Single(run.Observer.Notices).Outcome);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
     public async System.Threading.Tasks.Task ShouldKeepTheSummaryAndReportItFailed_WhenTheConversationIsStillOverTheTriggerAfterIt()
     {
         // Arrange: a summary of 20,000 characters, about 5,000 tokens, against the 4,428 trigger.

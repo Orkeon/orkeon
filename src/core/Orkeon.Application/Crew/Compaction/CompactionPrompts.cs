@@ -16,6 +16,9 @@ internal static class CompactionPrompts
         $"[Context compacted: {replacedMessages} earlier messages replaced by this summary. The original task " +
         $"and the most recent turns follow unchanged.]\n{summary}";
 
+    /// <summary>What ends a message of the transcript cut to fit the summary profile's window.</summary>
+    internal const string TranscriptCut = " [...cut to fit the summary model's window]";
+
     /// <summary>Whether <paramref name="text"/> is a summary <see cref="SummaryMessage"/> wrote.</summary>
     internal static bool IsSummary(string? text) =>
         text?.StartsWith("[Context compacted: ", StringComparison.Ordinal) == true;

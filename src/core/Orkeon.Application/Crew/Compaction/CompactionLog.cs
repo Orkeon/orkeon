@@ -13,6 +13,10 @@ internal static partial class CompactionLog
         Message = "Agent {AgentRole} task={TaskId}: {Tokens} estimated tokens reach the {Trigger}-token trigger, and the recent turns are all the conversation holds: nothing to compact before a later turn")]
     internal static partial void LogNothingToCut(ILogger logger, string agentRole, string taskId, int tokens, int trigger);
 
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Agent {AgentRole} task={TaskId}: the transcript to summarise holds {Tokens} tokens, over the {Limit} the summary profile's window takes: each of its messages is cut to fit")]
+    internal static partial void LogTranscriptBounded(ILogger logger, string agentRole, string taskId, int tokens, int limit);
+
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Agent {AgentRole} task={TaskId}: compaction failed ({Failures} in a row): {Reason}")]
     internal static partial void LogFailed(ILogger logger, string agentRole, string taskId, int failures, string reason);

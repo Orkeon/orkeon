@@ -43,6 +43,9 @@ internal sealed class ScriptedFullLlmProvider : ILlmProvider
 
     public string Name => "scripted-full";
 
+    /// <summary>The configuration the provider was built with: its model and window, null by default.</summary>
+    public LlmConfig? BaseConfig { get; init; }
+
     public List<LlmMessage[]> ReceivedTurns { get; } = [];
 
     public List<LlmConfig?> ReceivedConfigs { get; } = [];

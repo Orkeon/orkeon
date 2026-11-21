@@ -69,9 +69,11 @@ internal sealed class ContextCompaction
         var onProfileModel = string.Equals(model, _baseConfig?.Model, StringComparison.OrdinalIgnoreCase);
         var window = _services.Windows.Resolve(_profile, model,
             callConfig?.ContextWindowTokens ?? (onProfileModel ? _baseConfig?.ContextWindowTokens : null));
+        var other = _services.SummaryProvider();
         var setup = new ContextCompactorSetup
         {
             Window = window,
+            SummaryInputTokens = other is null ? null : SummaryInputTokens(other.BaseConfig),
             ReservedOutputTokens = ReservedOutput(maxOutputTokens ?? callConfig?.MaxTokens ?? _baseConfig?.MaxTokens, model, window.Tokens),
             TriggerShare = agent.Compaction?.TriggerShare ?? options.TriggerShare,
             KeepRecentTurns = options.KeepRecentTurns,
@@ -83,7 +85,7 @@ internal sealed class ContextCompaction
             Observer = _services.Observer,
             Logger = _services.Logger,
         };
-        var summaryCall = _services.SummaryProvider() is { } other
+        var summaryCall = other is not null
             ? OverProvider(other, LlmConfig.OnProfile(options.Profile), gate, agent)
             : ownModel;
         return new ContextCompactor(setup, summaryCall);
@@ -99,6 +101,19 @@ internal sealed class ContextCompaction
         SystemOneRunScope.Current?.Mode == CrewDecisionMode.None && own?.Prune is null
             ? (own ?? new AgentCompaction()) with { Prune = false }
             : own;
+
+    /// <summary>
+    /// The prompt a summary call on <c>Orkeon:Compaction:Profile</c> can take: that profile's window (its own
+    /// <c>ContextWindowTokens</c>, else its model's documented one) less its output reserve; null when neither is known,
+    /// and the transcript is then sent unbounded.
+    /// </summary>
+    internal static int? SummaryInputTokens(LlmConfig? summaryConfig)
+    {
+        var window = summaryConfig?.ContextWindowTokens is > 0
+            ? summaryConfig.ContextWindowTokens
+            : LlmModelContextWindows.ContextWindowTokens(summaryConfig?.Model);
+        return window is { } tokens ? tokens - ReservedOutput(summaryConfig?.MaxTokens, summaryConfig?.Model, tokens) : null;
+    }
 
     /// <summary>
     /// The tokens held back for the call's output: its cap, else the model's documented maximum, else

@@ -22,6 +22,12 @@ internal delegate System.Threading.Tasks.Task<CompactionSummary> SummaryCall(
 internal sealed record ContextCompactorSetup
 {
     internal required ContextWindow Window { get; init; }
+
+    /// <summary>
+    /// The prompt the summary call can take when it runs on another profile whose window is known; null when the
+    /// summary runs on the agent's own model, whose window the trigger already bounds the transcript by.
+    /// </summary>
+    internal int? SummaryInputTokens { get; init; }
     internal required int ReservedOutputTokens { get; init; }
     internal required double TriggerShare { get; init; }
     internal required int KeepRecentTurns { get; init; }
@@ -151,9 +157,8 @@ internal sealed class ContextCompactor
             return 0;
         }
 
-        var transcript = Transcript(conversation, 2, cut);
-        var summary = await _summarize(CompactionPrompts.Instructions,
-            CompactionPrompts.Transcript(conversation.TextAt(1), transcript), cancellationToken).ConfigureAwait(false);
+        var transcript = BoundedTranscript(conversation, cut);
+        var summary = await _summarize(CompactionPrompts.Instructions, transcript, cancellationToken).ConfigureAwait(false);
         SpentTokens += summary.TokensUsed;
         SpentPromptTokens += summary.PromptTokens;
         SpentCompletionTokens += summary.CompletionTokens;
@@ -254,13 +259,60 @@ internal sealed class ContextCompactor
         return count;
     }
 
-    private static string Transcript(ConversationView conversation, int start, int end)
+    /// <summary>
+    /// The user message of the summary call over the messages from 2 to <paramref name="cut"/>: whole, unless the summary
+    /// profile's window (<see cref="ContextCompactorSetup.SummaryInputTokens"/>) is smaller than the call. Each message is
+    /// then cut to one length, the shortest ones kept whole, so the call fits that window and still names every turn.
+    /// </summary>
+    private string BoundedTranscript(ConversationView conversation, int cut)
+    {
+        var task = conversation.TextAt(1);
+        var whole = CompactionPrompts.Transcript(task, Transcript(conversation, 2, cut, int.MaxValue));
+        var room = _setup.SummaryInputTokens - CountText(CompactionPrompts.Instructions) - (2 * MessageOverheadTokens);
+        var tokens = CountText(whole);
+        if (room is not { } limit || limit <= 0 || tokens <= limit)
+            return whole;
+
+        var lengths = new List<int>();
+        for (var i = 2; i < cut; i++)
+        {
+            if (conversation.RoleAt(i) != ConversationView.SystemRole)
+                lengths.Add(conversation.TextAt(i).Length);
+        }
+        // The characters the room holds at the ratio the whole message shows, less what the cut messages' markers and
+        // the rest of the message (the task, the role labels) take.
+        var chars = (long)whole.Length * limit / tokens;
+        var texts = chars - (whole.Length - lengths.Sum()) - ((long)lengths.Count * CompactionPrompts.TranscriptCut.Length);
+        var bounded = CompactionPrompts.Transcript(task, Transcript(conversation, 2, cut, MessageCap(lengths, Math.Max(0, texts))));
+        CompactionLog.LogTranscriptBounded(_setup.Logger, _setup.AgentRole, _setup.TaskId, tokens, limit);
+        return bounded;
+    }
+
+    // The one length every message is cut to so the lengths sum to `budget` at most, the shortest ones kept whole.
+    private static int MessageCap(List<int> lengths, long budget)
+    {
+        lengths.Sort();
+        var left = budget;
+        for (var i = 0; i < lengths.Count; i++)
+        {
+            var share = left / (lengths.Count - i);
+            if (lengths[i] > share)
+                return (int)share;
+            left -= lengths[i];
+        }
+        return int.MaxValue;
+    }
+
+    private static string Transcript(ConversationView conversation, int start, int end, int cap)
     {
         var text = new StringBuilder();
         for (var i = start; i < end; i++)
         {
             if (conversation.RoleAt(i) != ConversationView.SystemRole)
-                text.Append('[').Append(conversation.RoleAt(i)).Append("] ").Append(conversation.TextAt(i)).Append("\n\n");
+            {
+                text.Append('[').Append(conversation.RoleAt(i)).Append("] ")
+                    .Append(Execution.TextCut.Head(conversation.TextAt(i), cap, CompactionPrompts.TranscriptCut)).Append("\n\n");
+            }
         }
         return text.ToString();
     }
@@ -269,12 +321,11 @@ internal sealed class ContextCompactor
     {
         var total = 0;
         for (var i = from; i < (to ?? conversation.Count); i++)
-        {
-            var text = conversation.TextAt(i);
-            total += MessageOverheadTokens + (_setup.TokenCounter?.CountTokens(text) ?? (text.Length + 3) / 4);
-        }
+            total += MessageOverheadTokens + CountText(conversation.TextAt(i));
         return total;
     }
+
+    private int CountText(string text) => _setup.TokenCounter?.CountTokens(text) ?? (text.Length + 3) / 4;
 
     // The whole conversation counted again, with the overhead the provider's last count showed.
     private int Recount(ConversationView conversation) => Count(conversation, 0) + _overheadTokens;
