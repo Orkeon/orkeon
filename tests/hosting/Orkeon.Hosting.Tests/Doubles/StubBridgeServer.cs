@@ -31,6 +31,9 @@ public sealed class StubBridgeServer : IAsyncDisposable
     /// <summary>The paths requested, in order.</summary>
     public ConcurrentQueue<string> Requested { get; } = new();
 
+    /// <summary>When set, every request is answered 307 towards the same path under this address.</summary>
+    public Uri? RedirectTo { get; set; }
+
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
@@ -57,6 +60,14 @@ public sealed class StubBridgeServer : IAsyncDisposable
             var context = await _listener.GetContextAsync();
             var path = context.Request.Url?.AbsolutePath ?? "";
             Requested.Enqueue(path);
+            if (RedirectTo is { } target)
+            {
+                context.Response.StatusCode = 307;
+                context.Response.RedirectLocation = new Uri(target, path.TrimStart('/')).ToString();
+                context.Response.Close();
+                continue;
+            }
+
             var segment = path.TrimEnd('/').Split('/')[^1];
             var bytes = Encoding.UTF8.GetBytes(Bodies.GetValueOrDefault(segment, "{}"));
             context.Response.StatusCode = 200;

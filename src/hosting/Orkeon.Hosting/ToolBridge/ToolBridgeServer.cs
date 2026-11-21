@@ -56,6 +56,11 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
     private ImmutableDictionary<string, (IBaseTool Tool, string Hash)> _served =
         ImmutableDictionary<string, (IBaseTool Tool, string Hash)>.Empty.WithComparers(StringComparer.OrdinalIgnoreCase);
     private byte[]? _tokenHash;
+    private long _refusedTokens;
+    private long _lastRefusalLog;
+
+    /// <summary>The shortest interval between two log lines of requests refused for their token.</summary>
+    internal static readonly TimeSpan RefusalLogInterval = TimeSpan.FromSeconds(10);
     private HttpListener? _listener;
     private System.Threading.Tasks.Task? _loop;
     private ToolBridgeRuns? _runs;
@@ -132,10 +137,8 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
                 $"{ToolBridgeServerOptions.SectionName}:Prefix '{_options.Prefix}' asks for https, which the tool bridge serves under Windows only: "
                 + "keep the prefix on loopback over http and reach it from a container sharing the host's network (docker run --network host), "
                 + "or put a TLS terminator in front of it.");
-        var token = _readEnvironment(_options.TokenEnvVar);
-        if (string.IsNullOrEmpty(token))
-            throw new RunnerSettingsException(
-                $"the tool bridge reads its token from the environment variable {_options.TokenEnvVar}, which is not set.");
+        var token = ToolBridgeProtocol.ReadToken(_readEnvironment(_options.TokenEnvVar), _options.TokenEnvVar, out var tokenProblem)
+            ?? throw new RunnerSettingsException($"the tool bridge refuses the start: {tokenProblem}");
         _tokenHash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
 
         var tools = await _registry.GetAllToolsAsync(cancellationToken).ConfigureAwait(false);
@@ -251,7 +254,10 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         if (!string.IsNullOrEmpty(request.Headers["Origin"]))
             return Refuse(HttpStatusCode.Forbidden, "a request carrying an Origin header is refused: the tool bridge serves no browser page.");
         if (!HoldsToken(request.Headers["Authorization"]))
+        {
+            NoteRefusedToken(request);
             return Refuse(HttpStatusCode.Unauthorized, "the token is missing or refused.");
+        }
         var path = request.Url?.AbsolutePath ?? "";
         if (!path.StartsWith(ToolBridgeProtocol.BasePath, StringComparison.Ordinal))
             return Refuse(HttpStatusCode.NotFound, $"no endpoint at '{path}': the tool bridge serves {ToolBridgeProtocol.BasePath}.");
@@ -306,6 +312,8 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         return (HttpStatusCode.OK, new Dictionary<string, object?>());
     }
 
+    [SuppressMessage("Design", "CA1031",
+        Justification = "A tool may throw anything; the call is answered and audited as a failure, never left unrecorded.")]
     private async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)> CallAsync(byte[] body)
     {
         if (Parse<BridgeCallRequest>(body) is not { } call || string.IsNullOrWhiteSpace(call.CallId) || string.IsNullOrWhiteSpace(call.Tool)
@@ -326,6 +334,13 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         try
         {
             answer = await RunAsync(served.Tool, call, cancellation.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // A tool that throws is a failed call, audited as one; its message may name a physical path, so only its
+            // type crosses to the caller.
+            LogCallFailed(_logger, served.Tool.Name, ex.GetType().Name);
+            answer = Failure($"the tool '{served.Tool.Name}' failed on the tool bridge ({ex.GetType().Name}).");
         }
         finally
         {
@@ -472,6 +487,23 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         };
     }
 
+    /// <summary>
+    /// Logs a request refused for its token, at most once per <see cref="RefusalLogInterval"/>, with the number refused
+    /// since the last line; the token presented is never logged.
+    /// </summary>
+    private void NoteRefusedToken(HttpListenerRequest request)
+    {
+        var count = Interlocked.Increment(ref _refusedTokens);
+        var now = _time.GetUtcNow().UtcTicks;
+        var last = Interlocked.Read(ref _lastRefusalLog);
+        if (last != 0 && now - last < RefusalLogInterval.Ticks)
+            return;
+        if (Interlocked.CompareExchange(ref _lastRefusalLog, now, last) != last)
+            return;
+        Interlocked.Exchange(ref _refusedTokens, 0);
+        LogTokenRefused(_logger, request.RemoteEndPoint?.Address.ToString() ?? "(unknown)", count);
+    }
+
     private bool HoldsToken(string? authorization)
     {
         if (_tokenHash is null || authorization is null)
@@ -542,4 +574,11 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
 
     [LoggerMessage(EventId = 4, Level = LogLevel.Warning, Message = "Tool bridge audit of {Tool} failed: {Error}")]
     private static partial void LogAuditFailed(ILogger logger, string tool, string error);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Warning, Message = "Tool bridge call of {Tool} failed: {Error}")]
+    private static partial void LogCallFailed(ILogger logger, string tool, string error);
+
+    [LoggerMessage(EventId = 6, Level = LogLevel.Warning,
+        Message = "Tool bridge refused {Count} request(s) for a missing or wrong token, the last from {Remote}")]
+    private static partial void LogTokenRefused(ILogger logger, string remote, long count);
 }

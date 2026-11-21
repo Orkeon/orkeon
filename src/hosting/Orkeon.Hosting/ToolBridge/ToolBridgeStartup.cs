@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -104,9 +105,8 @@ internal sealed partial class ToolBridgeLink : IDisposable
         var problems = _options.Problems().ToList();
         if (problems.Count > 0)
             throw Refusal(string.Join(" ", problems));
-        var token = _readEnvironment(_options.TokenEnvVar);
-        if (string.IsNullOrEmpty(token))
-            throw Refusal($"it reads its token from the environment variable {_options.TokenEnvVar}, which is not set.");
+        var token = ToolBridgeProtocol.ReadToken(_readEnvironment(_options.TokenEnvVar), _options.TokenEnvVar, out var tokenProblem)
+            ?? throw Refusal(tokenProblem!);
 
         var local = await registry.GetAllToolsAsync(cancellationToken).ConfigureAwait(false);
         var selection = ToolBridgeSelection.Resolve(Section, local, [.. _options.Allow], [.. _options.Deny]);
@@ -255,9 +255,12 @@ internal sealed partial class ToolBridgeLink : IDisposable
     private static partial void LogBridged(ILogger logger, string address, string tools);
 }
 
+/// <summary>The mark of the host of <c>orkeon bridge serve</c> (#445): a serving host never connects to a bridge.</summary>
+internal sealed class ToolBridgeServing;
+
 /// <summary>
 /// The shared start-up step of every caller of the tool bridge (#445): <c>orkeon run</c>, <c>validate</c>,
-/// <c>--list-tools</c> and the other CLI paths call <see cref="ConnectAsync(IServiceProvider, CancellationToken)"/>
+/// <c>--list-tools</c>, <c>orkeon mcp serve</c>, the REPL and the other CLI paths call <see cref="ConnectAsync(IServiceProvider, CancellationToken)"/>
 /// right after the MCP servers connect, <c>orkeon-host</c> through its hosted service. A host without the link
 /// registered (no <c>Orkeon:Tools:Bridge</c>) is left as it is.
 /// </summary>
@@ -270,7 +273,8 @@ internal static class ToolBridgeStartup
     public static System.Threading.Tasks.Task ConnectAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(services);
-        if (services.GetService<ToolBridgeLink>() is not { } link)
+        // The host of orkeon bridge serve runs its tools for a caller: it never dials a bridge itself.
+        if (services.GetService<ToolBridgeLink>() is not { } link || services.GetService<ToolBridgeServing>() is not null)
             return System.Threading.Tasks.Task.CompletedTask;
         var loggerFactory = services.GetService<ILoggerFactory>() ?? NullLoggerFactory.Instance;
         return link.ConnectAsync(
@@ -285,12 +289,14 @@ internal static class ToolBridgeStartup
     /// <summary>
     /// What the host of <c>orkeon bridge serve</c> adds: the folder of the calls' scratches
     /// (<see cref="ToolBridgeScratch.Parent"/>) among the directories its path validator allows, as the sandbox's
-    /// session folder is.
+    /// session folder is, and the mark that keeps <see cref="ConnectAsync(IServiceProvider, CancellationToken)"/> from
+    /// dialing a bridge of its own.
     /// </summary>
     /// <param name="services">The host's services.</param>
     public static void RegisterServing(IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.TryAddSingleton<ToolBridgeServing>();
         services.AddOptions<Orkeon.Infrastructure.Configuration.PathSecurityOptions>().Configure(options =>
         {
             if (!options.AdditionalAllowedDirectories.Contains(ToolBridgeScratch.Parent))

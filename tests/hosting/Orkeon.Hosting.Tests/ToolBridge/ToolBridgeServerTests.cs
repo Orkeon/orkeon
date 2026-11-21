@@ -7,7 +7,9 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Security;
 using Orkeon.Hosting.Tests.Doubles;
 using Orkeon.Hosting.ToolBridge;
+using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Tools;
+using Orkeon.Tests.Shared.Doubles;
 using ToolCallResponse = Orkeon.Domain.Tools.Protocol.ToolCallResponse;
 
 namespace Orkeon.Hosting.Tests.ToolBridge;
@@ -292,5 +294,116 @@ public sealed class ToolBridgeServerTests
         {
             Directory.Delete(folder, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task ShouldAuditAFailureWithACleanError_WhenTheToolThrows()
+    {
+        // Arrange
+        var tool = new FakeBridgeTool("firefox") { Throws = new IOException("/home/someone/secret/profile is locked") };
+        var audit = new FakeAuditLogger();
+        var (server, address) = await BridgeLoopback.StartServerAsync([tool], ["*"], audit);
+        await using var _ = server;
+        using var client = Client(address);
+        using var body = Json("""{"call_id":"c1","tool":"firefox","arguments":{"action":"read"}}""");
+
+        // Act
+        using var response = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, body, TestContext.Current.CancellationToken);
+
+        // Assert
+        var answer = await response.Content.ReadFromJsonAsync<BridgeCallResponse>(ToolBridgeProtocol.JsonOptions, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(answer!.Success);
+        Assert.Contains("IOException", answer.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("/home/someone", answer.Error, StringComparison.Ordinal);
+        Assert.Equal(AuditOutcome.Failure, Assert.Single(audit.Events).Outcome);
+    }
+
+    [Fact]
+    public async Task ShouldLogTheRefusalWithoutTheToken_WhenARequestCarriesAWrongToken()
+    {
+        // Arrange
+        var logger = new RecordingLogger();
+        var (server, address) = await BridgeLoopback.StartServerAsync([new FakeBridgeTool("firefox")], ["*"], logger: logger);
+        await using var _ = server;
+        using var client = Client(address, "a-wrong-token-that-must-not-show");
+
+        // Act
+        using var response = await client.GetAsync(ToolBridgeProtocol.ToolsEndpoint, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var refusal = Assert.Single(logger.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+        Assert.DoesNotContain("a-wrong-token", refusal.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(BridgeLoopback.Token, refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldAcceptTheToken_WhenItsVariableHoldsItBetweenBlanks()
+    {
+        // Arrange
+        var (server, address) = await BridgeLoopback.StartServerAsync(
+            [new FakeBridgeTool("firefox")], ["*"], environment: name => name == ToolBridgeProtocol.DefaultTokenEnvVar ? $"  {BridgeLoopback.Token}\n" : null);
+        await using var _ = server;
+        using var client = Client(address);
+
+        // Act
+        using var response = await client.GetAsync(ToolBridgeProtocol.ToolsEndpoint, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseToStart_WhenTheTokenIsShorterThanTheMinimum()
+    {
+        // Arrange
+        var options = new ToolBridgeServerOptions();
+        options.Allow.Add("*");
+        await using var server = new ToolBridgeServer(new ToolRegistry([]), options, _ => "short", null, NullLogger.Instance);
+
+        // Act
+        var refusal = await Assert.ThrowsAsync<RunnerSettingsException>(() => server.StartAsync(TestContext.Current.CancellationToken));
+
+        // Assert
+        Assert.Contains("shorter than 16", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("memory_store")]
+    [InlineData("caller_tool")]
+    public async Task ShouldRefuseToStart_WhenAllowNamesAToolThatStaysWithTheCaller(string name)
+    {
+        // Arrange
+        var options = new ToolBridgeServerOptions();
+        options.Allow.Add(name);
+        await using var server = new ToolBridgeServer(
+            new ToolRegistry([new FakeCallerBridgeTool(name)]), options, BridgeLoopback.Environment, null, NullLogger.Instance);
+
+        // Act
+        var refusal = await Assert.ThrowsAsync<RunnerSettingsException>(() => server.StartAsync(TestContext.Current.CancellationToken));
+
+        // Assert
+        Assert.Contains($"'{name}'", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldServeOnlyTheBridgeableTools_WhenAllowIsTheLoneStar()
+    {
+        // Arrange
+        IBaseTool[] tools =
+        [
+            new FakeBridgeTool("firefox"), new FakeCallerBridgeTool("memory_store"), new FakeUnmarkedBridgeTool("plugin_tool"),
+            StubMcpTransport.Tool("mcp_tool"), new FakeWorkspaceBridgeTool(),
+        ];
+        var (server, address) = await BridgeLoopback.StartServerAsync(tools, ["*"]);
+        await using var _ = server;
+        using var client = Client(address);
+
+        // Act
+        var list = await client.GetFromJsonAsync<BridgeToolListResponse>(ToolBridgeProtocol.ToolsEndpoint, ToolBridgeProtocol.JsonOptions, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(["firefox"], list!.Tools.Select(t => t.Name));
     }
 }

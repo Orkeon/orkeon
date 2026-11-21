@@ -75,7 +75,13 @@ internal sealed class ToolBridgeClient : IDisposable
         ArgumentOutOfRangeException.ThrowIfGreaterThan(maxResponseBytes, int.MaxValue);
         Address = address;
         _maxResponseBytes = maxResponseBytes;
-        _http = new HttpClient(new SocketsHttpHandler { ConnectTimeout = connectTimeout, UseProxy = false }, disposeHandler: true)
+        _http = new HttpClient(new SocketsHttpHandler
+        {
+            ConnectTimeout = connectTimeout,
+            UseProxy = false,
+            // A redirect would carry the call's arguments and files to an address the settings never named.
+            AllowAutoRedirect = false,
+        }, disposeHandler: true)
         {
             BaseAddress = new Uri(address, ToolBridgeProtocol.BasePath),
             Timeout = Timeout.InfiniteTimeSpan,

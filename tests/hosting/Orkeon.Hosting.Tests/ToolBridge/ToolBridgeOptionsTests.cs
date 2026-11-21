@@ -143,4 +143,61 @@ public sealed class ToolBridgeOptionsTests
         // Assert
         Assert.Contains("HeartbeatWindow", Assert.Single(problems), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ShouldRefuseTheAddressWithoutEchoingIt_WhenItNamesAUserAndAPassword()
+    {
+        // Arrange
+        var options = new ToolBridgeClientOptions { Address = "https://someone:hunter2@bridge.example:7410/" };
+
+        // Act
+        var problem = Assert.Single(options.Problems().ToList());
+
+        // Assert
+        Assert.Contains("user and a password", problem, StringComparison.Ordinal);
+        Assert.DoesNotContain("hunter2", problem, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("http://loopback:7410/")]
+    [InlineData("http://localhost.example:7410/")]
+    public void ShouldRequireHttps_WhenTheHostIsANameThatIsNotLocalhost(string address)
+    {
+        // Arrange
+        var options = new ToolBridgeClientOptions { Address = address };
+
+        // Act
+        var problems = options.Problems().ToList();
+
+        // Assert
+        Assert.Contains("requires https", Assert.Single(problems), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("http://[::1]:7410/")]
+    [InlineData("http://127.0.0.2:7410/")]
+    public void ShouldAcceptTheAddress_WhenItIsALoopbackLiteral(string address)
+    {
+        // Arrange
+        var options = new ToolBridgeClientOptions { Address = address };
+
+        // Act
+        var problems = options.Problems().ToList();
+
+        // Assert
+        Assert.Empty(problems);
+    }
+
+    [Fact]
+    public void ShouldDefaultThePrefixToTheLoopbackOfThePlatform_WhenNoneIsSet()
+    {
+        // Arrange
+        var options = new ToolBridgeServerOptions();
+
+        // Act
+        var prefix = options.Prefix;
+
+        // Assert
+        Assert.Equal(OperatingSystem.IsWindows() ? "http://localhost:7410/" : "http://127.0.0.1:7410/", prefix);
+    }
 }

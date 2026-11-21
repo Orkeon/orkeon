@@ -43,6 +43,36 @@ internal static class ToolBridgeProtocol
     /// <summary>The default environment variable both sides read the token from.</summary>
     public const string DefaultTokenEnvVar = "ORKEON_BRIDGE_TOKEN";
 
+    /// <summary>The shortest token either side accepts, in characters, once trimmed.</summary>
+    public const int MinTokenLength = 16;
+
+    /// <summary>
+    /// The token read from <paramref name="variable"/>, trimmed as the bridge trims the one a request presents, or the
+    /// reason it cannot be used: unset, or shorter than <see cref="MinTokenLength"/>. The token is never in the reason.
+    /// </summary>
+    /// <param name="value">The variable's value, null when unset.</param>
+    /// <param name="variable">The variable's name, for the reason.</param>
+    /// <param name="problem">The reason the token is refused; null when it is accepted.</param>
+    /// <returns>The trimmed token, or null when it is refused.</returns>
+    public static string? ReadToken(string? value, string variable, out string? problem)
+    {
+        var token = value?.Trim();
+        if (string.IsNullOrEmpty(token))
+        {
+            problem = $"it reads its token from the environment variable {variable}, which is not set.";
+            return null;
+        }
+
+        if (token.Length < MinTokenLength)
+        {
+            problem = $"the token in the environment variable {variable} is shorter than {MinTokenLength} characters: use a long random value (openssl rand -hex 32).";
+            return null;
+        }
+
+        problem = null;
+        return token;
+    }
+
     /// <summary>The serializer settings of every body, both ways.</summary>
     public static JsonSerializerOptions JsonOptions { get; } = new()
     {

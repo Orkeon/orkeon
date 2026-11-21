@@ -25,9 +25,10 @@ namespace Orkeon.Hosting.ToolBridge;
 /// system, and does not act on the workspace, gets the caller's mounts presented on the bridge: the caller's files its
 /// string arguments name are sent with the call, and the files it wrote there come back and are written here, through
 /// this caller's file system and under the checks of its run. A file comes back only at a path, or under a directory,
-/// the call's arguments named, and only for a call the gate classed as a write (<see cref="ToolAccess.Edit"/> or
-/// <see cref="ToolAccess.Execute"/>): any other file of the answer is refused with a warning, and the call still returns
-/// its result.
+/// that an argument of a path-like parameter named (<see cref="ToolBridgePathArguments"/>), only for a call the gate
+/// classed as a write (<see cref="ToolAccess.Edit"/> or <see cref="ToolAccess.Execute"/>), and only for a call that
+/// succeeded: any other file of the answer is refused with a warning, and the call still returns its result. A path
+/// that is the working directory, a mount's root, <c>/</c> or a folder above one of them grants nothing.
 /// </para>
 /// <para>
 /// The bridge's word that a result is already bounded is never taken: the caller's pipeline applies its one truncation
@@ -124,7 +125,7 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
             }
 
             var answer = await _client.CallAsync(call, cancellationToken).ConfigureAwait(false);
-            if (await WriteBackAsync(answer.Files, arguments, cancellationToken).ConfigureAwait(false) is { } refusal)
+            if (await WriteBackAsync(answer.Files, arguments, answer.Success, cancellationToken).ConfigureAwait(false) is { } refusal)
                 return Failure($"{Name} ran on the tool bridge, but {refusal}");
             return FromWire(answer);
         }
@@ -273,14 +274,14 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
     /// <summary>
     /// Writes the files the tool wrote on the bridge through the caller's file system, under the checks of its run; the
     /// reason of the first refusal, or null when every file asked for was written. A file at a path the arguments did
-    /// not name, or returned for a call the gate classed as a read, is left out with a warning.
+    /// not name, or returned for a call the gate classed as a read or for a call that failed, is left out with a warning.
     /// </summary>
     private async System.Threading.Tasks.Task<string?> WriteBackAsync(
-        ImmutableList<BridgeFile>? files, IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+        ImmutableList<BridgeFile>? files, IReadOnlyDictionary<string, object?> arguments, bool succeeded, CancellationToken cancellationToken)
     {
         if (files is not { Count: > 0 })
             return null;
-        var asked = AskedFiles(files, arguments);
+        var asked = AskedFiles(files, arguments, succeeded);
         if (asked.Count == 0)
             return null;
         if (asked.Sum(f => (long)f.Content.Length) > _maxFileBytes)
@@ -306,19 +307,20 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
 
     /// <summary>
     /// The files of the answer this caller writes, at their normalised virtual paths: those of a tool that carries files,
-    /// on a call of a write class, at a path or under a directory a string argument named. Each other file is logged
-    /// and left out.
+    /// on a call of a write class that succeeded, at a path or under a directory an argument of a path-like parameter
+    /// named. Each other file is logged and left out.
     /// </summary>
-    private List<BridgeFile> AskedFiles(ImmutableList<BridgeFile> files, IReadOnlyDictionary<string, object?> arguments)
+    private List<BridgeFile> AskedFiles(ImmutableList<BridgeFile> files, IReadOnlyDictionary<string, object?> arguments, bool succeeded)
     {
         var access = Inner.AccessFor(arguments);
         var writes = access is ToolAccess.Edit or ToolAccess.Execute;
-        var named = writes && _carriesFiles ? NamedPaths(arguments) : [];
+        var named = writes && succeeded && _carriesFiles ? NamedPaths(arguments) : [];
         var asked = new List<BridgeFile>();
         foreach (var file in files)
         {
             var path = file?.Path is { } raw ? VirtualPaths.Normalize(raw, "/") : null;
             var reason = !_carriesFiles ? "this tool carries no files"
+                : !succeeded ? "the call failed"
                 : !writes ? $"the call was classed {access}, not a write"
                 : path is null || !named.Any(n => VirtualPaths.IsAtOrUnder(path, n)) ? "no argument of the call names that path"
                 : null;
@@ -331,17 +333,27 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
         return asked;
     }
 
-    /// <summary>The paths the string arguments name, absolute or relative to the caller's working directory, normalised.</summary>
+    /// <summary>
+    /// The paths the arguments of path-like parameters name (<see cref="ToolBridgePathArguments"/>), absolute or relative
+    /// to the caller's working directory, normalised. A path that is the working directory, a mount's root, <c>/</c>, or
+    /// a folder above any of them names nothing: it would open a whole tree to the bridge's answer.
+    /// </summary>
     private HashSet<string> NamedPaths(IReadOnlyDictionary<string, object?> arguments)
     {
         var named = new HashSet<string>(StringComparer.Ordinal);
-        var working = _fileSystem.WorkingDirectory ?? "/";
-        foreach (var candidate in Strings(arguments.Values))
+        var working = _fileSystem.WorkingDirectory is { Length: > 0 } wd ? VirtualPaths.Normalize(wd, "/") ?? "/" : "/";
+        var roots = _fileSystem.GetAvailableMounts()
+            .Select(m => VirtualPaths.Normalize(m.VirtualPath, "/"))
+            .OfType<string>()
+            .Append(working)
+            .ToList();
+        foreach (var candidate in ToolBridgePathArguments.Of(arguments, Inner.Schema))
         {
             if (candidate.Length == 0 || candidate.Length > MaxPathLength || candidate.Contains("://", StringComparison.Ordinal) || candidate.Any(char.IsControl))
                 continue;
-            if (VirtualPaths.Normalize(candidate, working) is { } path && path != "/")
-                named.Add(path);
+            if (VirtualPaths.Normalize(candidate, working) is not { } path || roots.Any(root => VirtualPaths.IsAtOrUnder(root, path)))
+                continue;
+            named.Add(path);
         }
 
         return named;
@@ -389,6 +401,111 @@ internal sealed class ToolBridgeRunLease : IAsyncDisposable
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync() => await _client.EndRunAsync(_runId).ConfigureAwait(false);
+}
+
+/// <summary>
+/// The arguments of a bridged call that may open the write-back of a file (#445): the strings, at any depth, of a
+/// parameter that names a path. A parameter names a path when the tool's schema gives it, or the items of its list, the
+/// format <c>path</c>; otherwise by its name, split into words on <c>_</c>, <c>-</c> and case changes: the whole name is
+/// one of <see cref="WholeNames"/>, or its last word is one of <see cref="LastWords"/> (<c>save_to_path</c>,
+/// <c>output_file</c>, <c>target_dir</c>). Any other argument, a text typed into a page or a query, never names a path.
+/// </summary>
+internal static class ToolBridgePathArguments
+{
+    /// <summary>The names that are a path-like parameter as a whole.</summary>
+    public static readonly ImmutableHashSet<string> WholeNames = ImmutableHashSet.Create(StringComparer.Ordinal,
+        "path", "paths", "file", "files", "filename", "filenames", "filepath", "dir", "dirs", "directory", "directories",
+        "folder", "folders", "output", "destination", "dest", "target");
+
+    /// <summary>The last words that make a parameter's name path-like.</summary>
+    public static readonly ImmutableHashSet<string> LastWords = ImmutableHashSet.Create(StringComparer.Ordinal,
+        "path", "paths", "file", "files", "filename", "filenames", "filepath", "dir", "dirs", "directory", "directories",
+        "folder", "folders");
+
+    /// <summary>Whether the parameter <paramref name="name"/> names a path.</summary>
+    /// <param name="name">The parameter's name.</param>
+    /// <param name="schema">Its schema; none when null.</param>
+    /// <returns>True for a path-like parameter.</returns>
+    public static bool IsPathLike(string name, Orkeon.Domain.Tools.Protocol.ParameterSchema? schema)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        if (schema is not null && (IsPathFormat(schema.Format) || IsPathFormat(schema.ItemsFormat)))
+            return true;
+        var words = Words(name);
+        return words.Count > 0 && (WholeNames.Contains(string.Concat(words)) || WholeNames.Contains(string.Join('_', words)) || LastWords.Contains(words[^1]));
+    }
+
+    /// <summary>The strings the path-like parameters of <paramref name="arguments"/> hold, at any depth.</summary>
+    /// <param name="arguments">The call's arguments.</param>
+    /// <param name="schema">The tool's schema, read for the formats of its parameters.</param>
+    /// <returns>Each string, in order.</returns>
+    public static IEnumerable<string> Of(IReadOnlyDictionary<string, object?> arguments, ToolSchema? schema)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        foreach (var (name, value) in arguments)
+        {
+            var parameter = schema?.Parameters is { } parameters && parameters.TryGetValue(name, out var found) ? found : null;
+            foreach (var text in Strings(value, IsPathLike(name, parameter)))
+                yield return text;
+        }
+    }
+
+    private static IEnumerable<string> Strings(object? value, bool pathLike)
+    {
+        switch (value)
+        {
+            case string text when pathLike:
+                yield return text;
+                break;
+            case IReadOnlyDictionary<string, object?> map:
+                foreach (var (name, inner) in map)
+                {
+                    foreach (var text in Strings(inner, IsPathLike(name, null)))
+                        yield return text;
+                }
+
+                break;
+            case System.Collections.IEnumerable list when value is not string:
+                foreach (var item in list)
+                {
+                    foreach (var text in Strings(item, pathLike))
+                        yield return text;
+                }
+
+                break;
+        }
+    }
+
+    private static bool IsPathFormat(string? format) => string.Equals(format, "path", StringComparison.OrdinalIgnoreCase);
+
+    private static List<string> Words(string name)
+    {
+        var words = new List<string>();
+        var current = new System.Text.StringBuilder();
+        for (var i = 0; i < name.Length; i++)
+        {
+            var c = name[i];
+            if (c is '_' or '-' or '.' or ' ')
+            {
+                Flush();
+                continue;
+            }
+
+            if (char.IsUpper(c) && current.Length > 0 && !char.IsUpper(name[i - 1]))
+                Flush();
+            current.Append(char.ToLowerInvariant(c));
+        }
+
+        Flush();
+        return words;
+
+        void Flush()
+        {
+            if (current.Length > 0)
+                words.Add(current.ToString());
+            current.Clear();
+        }
+    }
 }
 
 /// <summary>The virtual paths of a bridged call, as the caller compares them (#445).</summary>

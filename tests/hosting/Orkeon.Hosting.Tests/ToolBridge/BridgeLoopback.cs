@@ -23,7 +23,8 @@ internal static class BridgeLoopback
     /// <summary>Starts a server over <paramref name="tools"/>, serving <paramref name="allow"/>.</summary>
     public static async Task<(ToolBridgeServer Server, Uri Address)> StartServerAsync(
         IEnumerable<IBaseTool> tools, string[] allow, FakeAuditLogger? audit = null, long? maxRequestBytes = null, int? port = null,
-        BridgeFileSystem? files = null, TimeProvider? time = null, Action<ToolBridgeServerOptions>? configure = null)
+        BridgeFileSystem? files = null, TimeProvider? time = null, Action<ToolBridgeServerOptions>? configure = null,
+        Microsoft.Extensions.Logging.ILogger? logger = null, Func<string, string?>? environment = null)
     {
         var registry = new ToolRegistry(tools);
         ToolBridgeServer Create(int p)
@@ -34,7 +35,7 @@ internal static class BridgeLoopback
             if (maxRequestBytes is { } max)
                 options.MaxRequestBytes = max;
             configure?.Invoke(options);
-            return new ToolBridgeServer(registry, options, Environment, audit, NullLogger.Instance, files?.Scope, files?.Boot, time);
+            return new ToolBridgeServer(registry, options, environment ?? Environment, audit, logger ?? NullLogger.Instance, files?.Scope, files?.Boot, time);
         }
 
         var ct = TestContext.Current.CancellationToken;

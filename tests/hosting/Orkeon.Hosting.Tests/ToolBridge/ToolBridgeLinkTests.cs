@@ -78,7 +78,7 @@ public sealed class ToolBridgeLinkTests
 
         // Act
         var refusal = await Assert.ThrowsAsync<RunnerSettingsException>(
-            () => BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(address, "firefox"), token: "wrong"));
+            () => BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(address, "firefox"), token: "a-wrong-but-long-token"));
 
         // Assert
         Assert.Contains("refused the token", refusal.Message, StringComparison.Ordinal);
@@ -325,5 +325,87 @@ public sealed class ToolBridgeLinkTests
 
         // Assert
         Assert.Equal("Orkeon:Tools:Firefox", section);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheStartWithoutFollowing_WhenTheAddressAnswersARedirect()
+    {
+        // Arrange
+        var (server, address) = await BridgeLoopback.StartServerAsync([new FakeBridgeTool("firefox")], ["*"]);
+        await using var _ = server;
+        await using var redirecting = new StubBridgeServer { RedirectTo = address };
+        var registry = new ToolRegistry([new FakeBridgeTool("firefox")]);
+
+        // Act
+        await Assert.ThrowsAsync<RunnerSettingsException>(
+            () => BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(redirecting.Address, "firefox")));
+
+        // Assert
+        Assert.Single(redirecting.Requested);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheStart_WhenTheCallersTokenIsShorterThanTheMinimum()
+    {
+        // Arrange
+        await using var bridge = new StubBridgeServer();
+        var registry = new ToolRegistry([new FakeBridgeTool("firefox")]);
+
+        // Act
+        var refusal = await Assert.ThrowsAsync<RunnerSettingsException>(
+            () => BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(bridge.Address, "firefox"), token: "  short  "));
+
+        // Assert
+        Assert.Contains("shorter than 16", refusal.Message, StringComparison.Ordinal);
+        Assert.Empty(bridge.Requested);
+    }
+
+    [Fact]
+    public async Task ShouldSendTheTrimmedToken_WhenTheCallersVariableHoldsItBetweenBlanks()
+    {
+        // Arrange
+        var (server, address) = await BridgeLoopback.StartServerAsync([new FakeBridgeTool("firefox")], ["*"]);
+        await using var _ = server;
+        var registry = new ToolRegistry([new FakeBridgeTool("firefox")]);
+
+        // Act
+        using var link = await BridgeLoopback.ConnectAsync(
+            registry, BridgeLoopback.ClientOptions(address, "firefox"), token: $" {BridgeLoopback.Token}\r\n");
+
+        // Assert
+        Assert.Equal(["firefox"], link.BridgedTools);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheStart_WhenTheCallerNamesAToolOfItsOwnRun()
+    {
+        // Arrange
+        await using var bridge = new StubBridgeServer();
+        var registry = new ToolRegistry([new FakeCallerBridgeTool("memory_store")]);
+
+        // Act
+        var refusal = await Assert.ThrowsAsync<RunnerSettingsException>(
+            () => BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(bridge.Address, "memory_store")));
+
+        // Assert
+        Assert.Contains("'memory_store'", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldKeepTheCallersOwnMcpAndRunTools_WhenTheCallerAllowsTheLoneStar()
+    {
+        // Arrange
+        // The bridge serves a tool of each name; the caller's own kinds still stay home.
+        var (server, address) = await BridgeLoopback.StartServerAsync(
+            [new FakeBridgeTool("firefox"), new FakeBridgeTool("mcp_tool"), new FakeBridgeTool("plugin_tool")], ["*"]);
+        await using var _ = server;
+        var registry = new ToolRegistry(
+            [new FakeBridgeTool("firefox"), StubMcpTransport.Tool("mcp_tool"), new FakeCallerBridgeTool("memory_store"), new FakeUnmarkedBridgeTool("plugin_tool")]);
+
+        // Act
+        using var link = await BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(address, "*"));
+
+        // Assert
+        Assert.Equal(["firefox"], link.BridgedTools);
     }
 }

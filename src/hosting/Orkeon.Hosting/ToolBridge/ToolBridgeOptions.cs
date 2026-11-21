@@ -175,6 +175,8 @@ internal static class ToolBridgeAddress
         if (string.IsNullOrWhiteSpace(value) || !Uri.TryCreate(value, UriKind.Absolute, out var uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
             return $"{key} '{value}' is not an absolute http or https address.";
+        if (uri.UserInfo.Length > 0)
+            return $"{key} names a user and a password before its host: the token travels in its environment variable, never in the address.";
         if (!value.EndsWith('/'))
             return $"{key} '{value}' must end with '/'.";
         if (uri.Scheme != Uri.UriSchemeHttps && !IsLoopback(uri) && !(allowDockerHost && IsDockerHost(uri)))
@@ -182,13 +184,35 @@ internal static class ToolBridgeAddress
         return null;
     }
 
-    /// <summary>Whether <paramref name="uri"/> names this machine alone.</summary>
+    /// <summary>
+    /// Whether <paramref name="uri"/> names this machine alone: a loopback IP literal, or the name <c>localhost</c>.
+    /// <see cref="Uri.IsLoopback"/> also takes the name <c>loopback</c>, which a resolver may answer with any address,
+    /// so it is not relied on.
+    /// </summary>
     /// <param name="uri">The address.</param>
     /// <returns>True for <c>localhost</c> and the loopback addresses.</returns>
     public static bool IsLoopback(Uri uri)
     {
         ArgumentNullException.ThrowIfNull(uri);
-        return uri.IsLoopback;
+        if (uri.HostNameType is UriHostNameType.IPv4 or UriHostNameType.IPv6)
+            return System.Net.IPAddress.TryParse(uri.IdnHost, out var address) && System.Net.IPAddress.IsLoopback(address);
+        // Uri reports the name loopback as localhost: the host is read as written.
+        return string.Equals(HostAsWritten(uri), "localhost", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string HostAsWritten(Uri uri)
+    {
+        var text = uri.OriginalString;
+        var start = text.IndexOf("://", StringComparison.Ordinal);
+        if (start < 0)
+            return uri.IdnHost;
+        start += 3;
+        var authorityEnd = text.IndexOfAny(['/', '?', '#'], start);
+        var at = text.IndexOf('@', start);
+        if (at >= 0 && (authorityEnd < 0 || at < authorityEnd))
+            start = at + 1;
+        var end = text.IndexOfAny([':', '/', '?', '#'], start);
+        return end < 0 ? text[start..] : text[start..end];
     }
 
     /// <summary>Whether <paramref name="uri"/> names <see cref="DockerHost"/>.</summary>

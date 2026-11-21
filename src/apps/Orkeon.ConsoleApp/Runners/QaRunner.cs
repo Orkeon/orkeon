@@ -49,6 +49,9 @@ internal sealed class QaRunner : InteractiveRunnerBase
 
     protected override async Task OnStartAsync(CancellationToken ct)
     {
+        // The crew's tools run where Orkeon:Tools:Bridge says (#445): never half-bridged, so the link connects, or
+        // refuses the start, before the first question.
+        await Orkeon.Hosting.ToolBridge.ToolBridgeStartup.ConnectAsync(Services, ct).ConfigureAwait(false);
         var configPath = _input.GetOptionalString(
             "Path to crew config.yaml (or Enter for built-in Q&A crew): ");
 
