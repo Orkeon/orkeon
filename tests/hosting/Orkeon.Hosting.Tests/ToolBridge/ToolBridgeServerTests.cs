@@ -541,11 +541,11 @@ public sealed class ToolBridgeServerTests
         await stream.WriteAsync(Encoding.ASCII.GetBytes(head), TestContext.Current.CancellationToken);
         var read = stream.ReadAsync(new byte[1024], TestContext.Current.CancellationToken).AsTask();
 
-        // Act
+        // Act - the timeout aborts the connection before the server logs it, so the wait is on both.
         await Orkeon.Tests.Shared.Timing.Polling.WaitUntilAsync(() =>
         {
             clock.Advance(TimeSpan.FromSeconds(5));
-            return read.IsCompleted;
+            return read.IsCompleted && logger.HasEntry(e => e.EventId.Id == 7);
         });
 
         // Assert
