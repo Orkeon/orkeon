@@ -9,6 +9,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Security;
 using Orkeon.Domain.Tools;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
@@ -27,6 +28,12 @@ namespace Orkeon.Hosting.ToolBridge;
 /// is read once, at start, from the environment variable the options name, and compared in fixed time.
 /// </para>
 /// <para>
+/// A call of a caller's run runs in the bridge's scope of that run (<see cref="ToolBridgeRuns"/>), ended by the
+/// caller's <c>POST end-run</c> or by a missed heartbeat window. A call that carries the caller's mounts runs over a
+/// scratch folder presented at those virtual paths (<see cref="ToolBridgeScratch"/>), and its answer carries what the
+/// tool wrote there.
+/// </para>
+/// <para>
 /// <c>orkeon bridge serve</c> builds one over the host's registry, calls <see cref="StartAsync"/>, reports
 /// <see cref="Prefix"/>, <see cref="ServedTools"/> and <see cref="Warnings"/>, and waits; <see cref="StopAsync"/>
 /// cancels the calls in flight and waits for them.
@@ -40,6 +47,9 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
     private readonly Func<string, string?> _readEnvironment;
     private readonly IAuditLogger? _audit;
     private readonly ILogger _logger;
+    private readonly IFileSystemScope? _fileScope;
+    private readonly FileSystemRegistry? _bootMounts;
+    private readonly TimeProvider _time;
     private readonly CancellationTokenSource _stopping = new();
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _calls = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<System.Threading.Tasks.Task, byte> _inFlight = new();
@@ -48,6 +58,7 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
     private byte[]? _tokenHash;
     private HttpListener? _listener;
     private System.Threading.Tasks.Task? _loop;
+    private ToolBridgeRuns? _runs;
 
     /// <summary>Builds a server over <paramref name="registry"/>; nothing listens before <see cref="StartAsync"/>.</summary>
     /// <param name="registry">The registry whose tools are served.</param>
@@ -55,12 +66,21 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
     /// <param name="readEnvironment">Reads an environment variable; the process environment when null.</param>
     /// <param name="audit">The audit each call is recorded in; none when null.</param>
     /// <param name="logger">The server's logger.</param>
+    /// <param name="fileScope">
+    /// The ambient scope the bridge's file system reads, entered over the scratch of a call that carries the caller's
+    /// mounts; without it (or <paramref name="bootMounts"/>) such a call fails.
+    /// </param>
+    /// <param name="bootMounts">The bridge's own mounts, whose internal ones a call's scratch carries forward.</param>
+    /// <param name="timeProvider">The clock of the heartbeat window; the system's when null.</param>
     public ToolBridgeServer(
         IToolRegistry registry,
         ToolBridgeServerOptions options,
         Func<string, string?>? readEnvironment = null,
         IAuditLogger? audit = null,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        IFileSystemScope? fileScope = null,
+        FileSystemRegistry? bootMounts = null,
+        TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(options);
@@ -69,6 +89,9 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         _readEnvironment = readEnvironment ?? Environment.GetEnvironmentVariable;
         _audit = audit;
         _logger = logger ?? NullLogger.Instance;
+        _fileScope = fileScope;
+        _bootMounts = bootMounts;
+        _time = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>The prefix the server listens on.</summary>
@@ -79,6 +102,11 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
 
     /// <summary>One sentence per tool that acts on the workspace and is served because the settings name it.</summary>
     public ImmutableList<string> Warnings { get; private set; } = [];
+
+    /// <summary>The number of runs the bridge holds for the caller <paramref name="callerId"/>.</summary>
+    /// <param name="callerId">The id the caller's link sends.</param>
+    /// <returns>Zero for a caller without runs, or before <see cref="StartAsync"/>.</returns>
+    public int RunsOf(string callerId) => _runs?.RunsOf(callerId) ?? 0;
 
     /// <summary>Whether the listener is running.</summary>
     public bool IsRunning => _listener is { IsListening: true };
@@ -115,6 +143,7 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         listener.Prefixes.Add(_options.Prefix);
         listener.Start();
         _listener = listener;
+        _runs = new ToolBridgeRuns(_options.HeartbeatWindow, _time, _logger);
         _loop = ListenAsync(listener);
         LogServing(_logger, _options.Prefix, ServedTools.Count == 0 ? "(none)" : string.Join(", ", ServedTools));
         foreach (var warning in Warnings)
@@ -133,6 +162,9 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         if (_loop is { } loop)
             await loop.ConfigureAwait(false);
         await System.Threading.Tasks.Task.WhenAll(_inFlight.Keys).ConfigureAwait(false);
+        if (_runs is { } runs)
+            await runs.DisposeAsync().ConfigureAwait(false);
+        _runs = null;
         // Abort, never Close after Stop: Close binds the port again for an instant on Linux and macOS.
         listener.Abort();
         _listener = null;
@@ -205,7 +237,7 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
 
         if (request.HttpMethod == "GET" && endpoint == ToolBridgeProtocol.ToolsEndpoint)
             return (HttpStatusCode.OK, ListTools());
-        if (request.HttpMethod != "POST" || (endpoint != ToolBridgeProtocol.CallEndpoint && endpoint != ToolBridgeProtocol.CancelEndpoint))
+        if (request.HttpMethod != "POST" || !s_postEndpoints.Contains(endpoint))
             return Refuse(HttpStatusCode.NotFound, $"no endpoint {request.HttpMethod} '{endpoint}'.");
         if (!IsJson(request.ContentType))
             return Refuse(HttpStatusCode.UnsupportedMediaType, "a POST of the tool bridge carries application/json.");
@@ -215,15 +247,42 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         if (body is null)
             return TooLarge();
 
-        return endpoint == ToolBridgeProtocol.CallEndpoint
-            ? await CallAsync(body).ConfigureAwait(false)
-            : Cancel(body);
+        return endpoint switch
+        {
+            ToolBridgeProtocol.CallEndpoint => await CallAsync(body).ConfigureAwait(false),
+            ToolBridgeProtocol.CancelEndpoint => Cancel(body),
+            ToolBridgeProtocol.EndRunEndpoint => await EndRunAsync(body).ConfigureAwait(false),
+            _ => Heartbeat(body),
+        };
     }
+
+    private static readonly HashSet<string> s_postEndpoints = new(StringComparer.Ordinal)
+    {
+        ToolBridgeProtocol.CallEndpoint, ToolBridgeProtocol.CancelEndpoint, ToolBridgeProtocol.EndRunEndpoint, ToolBridgeProtocol.HeartbeatEndpoint,
+    };
 
     private BridgeToolListResponse ListTools() => new()
     {
         Tools = [.. ServedTools.Select(name => new BridgeServedTool { Name = name, ContractHash = _served[name].Hash })],
+        HeartbeatWindowMs = (long)_options.HeartbeatWindow.TotalMilliseconds,
     };
+
+    private async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)> EndRunAsync(byte[] body)
+    {
+        if (Parse<BridgeRunRequest>(body) is not { } run || string.IsNullOrWhiteSpace(run.CallerId) || string.IsNullOrWhiteSpace(run.RunId))
+            return Refuse(HttpStatusCode.BadRequest, "the body of the end of a run names a caller_id and a run_id.");
+        if (_runs is { } runs)
+            await runs.EndAsync(run.CallerId, run.RunId).ConfigureAwait(false);
+        return (HttpStatusCode.OK, new Dictionary<string, object?>());
+    }
+
+    private (HttpStatusCode Status, object Body) Heartbeat(byte[] body)
+    {
+        if (Parse<BridgeHeartbeatRequest>(body) is not { } beat || string.IsNullOrWhiteSpace(beat.CallerId))
+            return Refuse(HttpStatusCode.BadRequest, "the body of a heartbeat names a caller_id.");
+        _runs?.Touch(beat.CallerId);
+        return (HttpStatusCode.OK, new Dictionary<string, object?>());
+    }
 
     private async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)> CallAsync(byte[] body)
     {
@@ -236,26 +295,71 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         if (!_calls.TryAdd(call.CallId, cancellation))
             return Refuse(HttpStatusCode.Conflict, $"a call '{call.CallId}' is already in flight.");
         var watch = Stopwatch.StartNew();
-        ProtocolToolCallResponse response;
+        BridgeCallResponse answer;
         try
         {
-            var arguments = ToolBridgeProtocol.ToPlainObject(call.Arguments);
-            response = await served.Tool.CallAsync(new ProtocolToolCallRequest(served.Tool.Name, arguments, call.Context), cancellation.Token)
-                .ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-        {
-            response = new ProtocolToolCallResponse(false, null, "Operation cancelled", new Dictionary<string, object?> { ["cancelled"] = true });
+            answer = await RunAsync(served.Tool, call, cancellation.Token).ConfigureAwait(false);
         }
         finally
         {
             _calls.TryRemove(call.CallId, out _);
         }
 
-        await AuditAsync(call.CallId, served.Tool.Name, response.Success ? AuditOutcome.Success : AuditOutcome.Failure, watch.ElapsedMilliseconds)
+        await AuditAsync(call.CallId, served.Tool.Name, answer.Success ? AuditOutcome.Success : AuditOutcome.Failure, watch.ElapsedMilliseconds)
             .ConfigureAwait(false);
-        return (HttpStatusCode.OK, ToWire(response));
+        return (HttpStatusCode.OK, answer);
     }
+
+    /// <summary>
+    /// Runs the call in the bridge's scope of the caller's run, over the scratch of the caller's mounts when it carries
+    /// them, and answers with the tool's raw response and the files it wrote.
+    /// </summary>
+    private async System.Threading.Tasks.Task<BridgeCallResponse> RunAsync(IBaseTool tool, BridgeCallRequest call, CancellationToken cancellationToken)
+    {
+        if (call.CallerId is { Length: > 0 } callerId)
+            _runs?.Touch(callerId);
+        var run = call is { CallerId: { Length: > 0 } caller, RunId: { Length: > 0 } runId } && _runs is { } runs
+            ? runs.ScopeOf(caller, runId)
+            : null;
+        if (call.Mounts is not null && (_fileScope is null || _bootMounts is null))
+            return Failure("the tool bridge has no file system to present the caller's mounts on.");
+        if (call.Files is { } sent && sent.Sum(f => (long)f.Content.Length) > _options.MaxFileBytes)
+            return Failure($"the files the call sends exceed {ToolBridgeServerOptions.SectionName}:MaxFileBytes ({ToolBridgeProtocol.Describe(_options.MaxFileBytes)}).");
+
+        using var entered = run?.Enter();
+        ToolBridgeScratch? scratch = null;
+        try
+        {
+            if (call.Mounts is not null)
+                scratch = ToolBridgeScratch.Enter(call, _fileScope!, _bootMounts!);
+            ProtocolToolCallResponse response;
+            try
+            {
+                var arguments = ToolBridgeProtocol.ToPlainObject(call.Arguments);
+                response = await tool.CallAsync(new ProtocolToolCallRequest(tool.Name, arguments, call.Context), cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                response = new ProtocolToolCallResponse(false, null, "Operation cancelled", new Dictionary<string, object?> { ["cancelled"] = true });
+            }
+
+            var answer = ToWire(response);
+            if (scratch is null)
+                return answer;
+            var written = await scratch.WrittenAsync(_options.MaxFileBytes, CancellationToken.None).ConfigureAwait(false);
+            return written.Count == 0 ? answer : answer with { Files = written };
+        }
+        catch (ToolBridgeFileException ex)
+        {
+            return Failure(ex.Message);
+        }
+        finally
+        {
+            scratch?.Dispose();
+        }
+    }
+
+    private static BridgeCallResponse Failure(string reason) => new() { Success = false, Error = reason };
 
     private (HttpStatusCode Status, object Body) Cancel(byte[] body)
     {

@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
 using Orkeon.Domain.Attributes;
+using Orkeon.Domain.Execution;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
+using Orkeon.Tests.Shared.Doubles;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 using ToolCallResponse = Orkeon.Domain.Tools.Protocol.ToolCallResponse;
 using ToolSchema = Orkeon.Domain.Tools.Protocol.ToolSchema;
@@ -11,6 +14,8 @@ namespace Orkeon.Hosting.Tests.Doubles;
 /// <summary>
 /// A tool on either side of the tool bridge (#445): an <c>action</c> parameter whose values carry their own access
 /// class, a response it returns as given, the calls it received, and a mode that waits for the call's cancellation.
+/// Each call records the agent run it ran in and puts one resource in that run's scope, as the browser of
+/// <c>firefox</c> does.
 /// </summary>
 public class FakeBridgeTool : IBaseTool
 {
@@ -54,6 +59,15 @@ public class FakeBridgeTool : IBaseTool
     /// <summary>The calls received, in order.</summary>
     public ConcurrentQueue<ToolCallRequest> Calls { get; } = new();
 
+    /// <summary>The agent run each call ran in, in order; null for a call outside any run.</summary>
+    public ConcurrentQueue<AgentRunScope?> Runs { get; } = new();
+
+    /// <summary>The resource each run got at its first call, in order: its disposal is the end of that run.</summary>
+    public ConcurrentQueue<FakeAsyncDisposable> RunResources { get; } = new();
+
+    /// <inheritdoc />
+    public bool UsesFileSystem { get; init; }
+
     /// <summary>Completes when a call that waits for its cancellation has started.</summary>
     public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -67,9 +81,17 @@ public class FakeBridgeTool : IBaseTool
         : Access;
 
     /// <inheritdoc />
-    public async Task<ToolCallResponse> CallAsync(ToolCallRequest request, CancellationToken cancellationToken = default)
+    public virtual async Task<ToolCallResponse> CallAsync(ToolCallRequest request, CancellationToken cancellationToken = default)
     {
         Calls.Enqueue(request);
+        var run = AgentRunScope.Current;
+        Runs.Enqueue(run);
+        run?.GetOrAdd(this, () =>
+        {
+            var resource = new FakeAsyncDisposable { Name = run.RunId };
+            RunResources.Enqueue(resource);
+            return resource;
+        });
         if (!WaitsForCancellation)
             return Response;
         Started.TrySetResult();
@@ -101,5 +123,54 @@ public sealed class FakeWorkspaceBridgeTool : FakeBridgeTool
     /// <summary>Builds the tool, named <c>workspace_tool</c>.</summary>
     public FakeWorkspaceBridgeTool() : base("workspace_tool")
     {
+    }
+}
+
+/// <summary>
+/// A tool of the bridge that uses the file system: <c>save_to</c> writes <see cref="Written"/> there, <c>read_from</c>
+/// reads the text there, both through the file system it was given, before the response of <see cref="FakeBridgeTool"/>.
+/// </summary>
+public sealed class FakeFileBridgeTool : FakeBridgeTool
+{
+    private readonly IFileSystemService _fileSystem;
+
+    /// <summary>Builds the tool under <paramref name="name"/> over <paramref name="fileSystem"/>.</summary>
+    public FakeFileBridgeTool(string name, IFileSystemService fileSystem) : base(name)
+    {
+        _fileSystem = fileSystem;
+        UsesFileSystem = true;
+        Schema = new ToolSchema(name, "a fake tool of the bridge that writes and reads files", new Dictionary<string, ParameterSchema>
+        {
+            ["action"] = new("string", "what to do", Required: true, Enum: [.. Actions]),
+            ["save_to"] = new("string", "where to write", Required: false),
+            ["read_from"] = new("string", "what to read", Required: false),
+        });
+    }
+
+    /// <summary>The bytes <c>save_to</c> writes.</summary>
+    public byte[] Written { get; set; } = [1, 2, 3];
+
+    /// <summary>The physical paths <c>save_to</c> resolved to, in order.</summary>
+    public ConcurrentQueue<string> WrittenAt { get; } = new();
+
+    /// <summary>The texts <c>read_from</c> read, in order; null for a file it did not find.</summary>
+    public ConcurrentQueue<string?> Read { get; } = new();
+
+    /// <inheritdoc />
+    public override async Task<ToolCallResponse> CallAsync(ToolCallRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Parameters?.GetValueOrDefault("save_to") is string target)
+        {
+            var check = _fileSystem.ResolveAndValidate(target, FileAccessRights.Write);
+            if (!check.IsAllowed)
+                return new ToolCallResponse(false, null, check.DenialReason);
+            WrittenAt.Enqueue(check.ResolvedPath!);
+            await _fileSystem.WriteAllBytesAsync(target, Written, cancellationToken);
+        }
+
+        if (request.Parameters?.GetValueOrDefault("read_from") is string source)
+            Read.Enqueue(await _fileSystem.TryReadAllTextAsync(source, cancellationToken));
+        return await base.CallAsync(request, cancellationToken);
     }
 }

@@ -26,6 +26,11 @@ internal sealed class ToolBridgeClientOptions
     /// <summary>How long the connection to the bridge may take before a call fails; a call itself has no limit.</summary>
     public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(10);
 
+    /// <summary>
+    /// The largest total, in bytes, of the files of one call: those a call sends to the bridge, and those it brings back.
+    /// </summary>
+    public long MaxFileBytes { get; set; } = ToolBridgeServerOptions.DefaultMaxFileBytes;
+
     /// <summary>Whether the caller bridges anything: an address and at least one tool allowed.</summary>
     public bool IsEnabled => !string.IsNullOrWhiteSpace(Address) && Allow.Count > 0;
 
@@ -39,6 +44,8 @@ internal sealed class ToolBridgeClientOptions
             yield return $"{SectionName}:TokenEnvVar names no environment variable.";
         if (ConnectTimeout <= TimeSpan.Zero)
             yield return $"{SectionName}:ConnectTimeout must be positive.";
+        if (MaxFileBytes <= 0)
+            yield return $"{SectionName}:MaxFileBytes must be positive.";
         foreach (var problem in ToolBridgeSelection.SyntaxProblems(SectionName, Allow, Deny))
             yield return problem;
     }
@@ -55,6 +62,9 @@ internal sealed class ToolBridgeServerOptions
 
     /// <summary>The default largest body of a request: 32 MiB.</summary>
     public const long DefaultMaxRequestBytes = 32L * 1024 * 1024;
+
+    /// <summary>The default largest total of the files of one call, each way: 16 MiB.</summary>
+    public const long DefaultMaxFileBytes = 16L * 1024 * 1024;
 
     /// <summary>
     /// The listener's prefix. Loopback by default; any other host requires <c>https</c>.
@@ -73,6 +83,18 @@ internal sealed class ToolBridgeServerOptions
     /// <summary>The largest body a request may carry, in bytes; a larger one is refused before it is read.</summary>
     public long MaxRequestBytes { get; set; } = DefaultMaxRequestBytes;
 
+    /// <summary>
+    /// The largest total, in bytes, of the files of one call: those a caller sends, and those the tool wrote that go
+    /// back.
+    /// </summary>
+    public long MaxFileBytes { get; set; } = DefaultMaxFileBytes;
+
+    /// <summary>
+    /// How long the bridge waits for a sign of a caller that has runs on it (a heartbeat or a request) before it ends
+    /// those runs, and their browsers, at once.
+    /// </summary>
+    public TimeSpan HeartbeatWindow { get; set; } = TimeSpan.FromSeconds(30);
+
     /// <summary>The problems of these options, judged at start.</summary>
     /// <returns>One sentence per problem; none when they are sound.</returns>
     public IEnumerable<string> Problems()
@@ -83,6 +105,10 @@ internal sealed class ToolBridgeServerOptions
             yield return $"{SectionName}:TokenEnvVar names no environment variable.";
         if (MaxRequestBytes <= 0)
             yield return $"{SectionName}:MaxRequestBytes must be positive.";
+        if (MaxFileBytes <= 0)
+            yield return $"{SectionName}:MaxFileBytes must be positive.";
+        if (HeartbeatWindow <= TimeSpan.Zero)
+            yield return $"{SectionName}:HeartbeatWindow must be positive.";
         foreach (var problem in ToolBridgeSelection.SyntaxProblems(SectionName, Allow, Deny))
             yield return problem;
     }

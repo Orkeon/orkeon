@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 
 namespace Orkeon.Hosting.ToolBridge;
@@ -21,18 +22,30 @@ internal sealed partial class ToolBridgeLink : IDisposable
 {
     private readonly ToolBridgeClientOptions _options;
     private readonly Func<string, string?> _readEnvironment;
+    private readonly IFileSystemService _fileSystem;
+    private readonly TimeProvider? _timeProvider;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private ToolBridgeClient? _client;
 
     /// <summary>Builds the link; nothing is asked of the bridge before <see cref="ConnectAsync"/>.</summary>
     /// <param name="options">The section <c>Orkeon:Tools:Bridge</c>.</param>
+    /// <param name="fileSystem">The caller's file system, through which the files of a bridged call cross.</param>
     /// <param name="readEnvironment">Reads an environment variable; the process environment when null.</param>
-    public ToolBridgeLink(ToolBridgeClientOptions options, Func<string, string?>? readEnvironment = null)
+    /// <param name="timeProvider">The clock of the heartbeat; the system's when null.</param>
+    public ToolBridgeLink(
+        ToolBridgeClientOptions options, IFileSystemService fileSystem, Func<string, string?>? readEnvironment = null,
+        TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(fileSystem);
         _options = options;
         _readEnvironment = readEnvironment ?? Environment.GetEnvironmentVariable;
+        _fileSystem = fileSystem;
+        _timeProvider = timeProvider;
     }
+
+    /// <summary>The client of the bridge, once connected with something bridged; null otherwise.</summary>
+    internal ToolBridgeClient? Client => _client;
 
     /// <summary>The names of the tools bridged; empty before <see cref="ConnectAsync"/> or when nothing is.</summary>
     public ImmutableList<string> BridgedTools { get; private set; } = [];
@@ -104,7 +117,7 @@ internal sealed partial class ToolBridgeLink : IDisposable
         foreach (var warning in selection.Warnings)
             RunnerOperatorLog.Warn(operatorLogger, warning);
 
-        var client = new ToolBridgeClient(new Uri(_options.Address!), token, _options.ConnectTimeout);
+        var client = new ToolBridgeClient(new Uri(_options.Address!), token, _options.ConnectTimeout, _timeProvider);
         BridgeToolListResponse served;
         try
         {
@@ -116,6 +129,8 @@ internal sealed partial class ToolBridgeLink : IDisposable
             throw Refusal(ex.Message);
         }
 
+        if (served.HeartbeatWindowMs is > 0 and var window)
+            client.HeartbeatWindow = TimeSpan.FromMilliseconds(window);
         var hashes = served.Tools.ToDictionary(t => t.Name, t => t.ContractHash, StringComparer.OrdinalIgnoreCase);
         var named = new HashSet<string>(_options.Allow.Where(a => a != ToolBridgeSelection.All), StringComparer.OrdinalIgnoreCase);
         var refusals = new List<string>();
@@ -143,7 +158,7 @@ internal sealed partial class ToolBridgeLink : IDisposable
 
         foreach (var tool in bridged)
         {
-            var proxy = new ToolBridgeProxy(tool, client);
+            var proxy = new ToolBridgeProxy(tool, client, _fileSystem, _options.MaxFileBytes);
             var replacement = decorator?.Decorate(proxy) ?? proxy;
             if (!await registry.ReplaceToolAsync(tool, replacement, cancellationToken).ConfigureAwait(false))
             {
@@ -254,6 +269,7 @@ internal static class ToolBridgeStartup
             .ValidateSettings((options, _) => options.Problems());
         if (string.IsNullOrWhiteSpace(configuration[$"{ToolBridgeClientOptions.SectionName}:Address"]))
             return;
-        services.AddSingleton(sp => new ToolBridgeLink(sp.GetRequiredService<IOptions<ToolBridgeClientOptions>>().Value));
+        services.AddSingleton(sp => new ToolBridgeLink(
+            sp.GetRequiredService<IOptions<ToolBridgeClientOptions>>().Value, sp.GetRequiredService<IFileSystemService>()));
     }
 }

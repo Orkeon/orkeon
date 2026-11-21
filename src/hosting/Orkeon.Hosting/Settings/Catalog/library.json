@@ -2850,6 +2850,20 @@
       "description": "The tools never served, by name; a name here wins over `Allow`."
     },
     {
+      "path": "Orkeon:Bridge:HeartbeatWindow",
+      "section": "Orkeon:Bridge",
+      "type": "duration",
+      "default": "00:00:30",
+      "description": "How long the bridge waits for a sign of a caller that has runs on it (a heartbeat or a request) before it ends those runs, and their browsers, at once."
+    },
+    {
+      "path": "Orkeon:Bridge:MaxFileBytes",
+      "section": "Orkeon:Bridge",
+      "type": "integer",
+      "default": 16777216,
+      "description": "The largest total, in bytes, of the files of one call: those a caller sends, and those the tool wrote that go back."
+    },
+    {
       "path": "Orkeon:Bridge:MaxRequestBytes",
       "section": "Orkeon:Bridge",
       "type": "integer",
@@ -2931,6 +2945,13 @@
       "type": "list of string",
       "default": [],
       "description": "The tools never bridged, by name; a name here wins over `Allow`."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:MaxFileBytes",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "integer",
+      "default": 16777216,
+      "description": "The largest total, in bytes, of the files of one call: those a call sends to the bridge, and those it brings back."
     },
     {
       "path": "Orkeon:Tools:Bridge:TokenEnvVar",
