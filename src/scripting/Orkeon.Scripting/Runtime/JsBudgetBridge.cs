@@ -18,8 +18,10 @@ internal static class JsBudgetBridge
     /// Recognized keys: <c>toolCalls</c>, <c>tokens</c> (the running sum of every call's prompt and
     /// completion), <c>contextTokens</c> (the context counted once, #224: <see cref="AgentExecutionBudget.MaxContextTokens"/>),
     /// <c>delegationDepth</c>, <c>spawnedAgents</c> (integers) and <c>wallTime</c> (number = seconds, string =
-    /// duration with unit <c>ms|s|m|h</c>). Invalid values are ignored — a script must
-    /// never crash at build time because of a malformed budget field. A dimension the spec leaves out
+    /// duration with unit <c>ms|s|m|h</c>). A limit it cannot read - zero, a negative or fractional count, a
+    /// wall time that is no duration such as <c>"5 min"</c> - is refused with an <see cref="InvalidScriptException"/>
+    /// when the run starts, as the run option is: since a left-out dimension is uncapped, a skipped one would
+    /// be too. An unknown key is ignored. A dimension the spec leaves out
     /// takes the value it has when no budget is named (#436, <see cref="SpawnAgentScriptTool.Unbudgeted"/>):
     /// no wall clock, tool-call, token or context cap; the delegation-depth and spawn-count defaults of
     /// <see cref="AgentExecutionBudget"/> stay. With <paramref name="chargedTo"/>, the budget also charges
@@ -32,6 +34,12 @@ internal static class JsBudgetBridge
         IReadOnlyDictionary<string, object?>? spec, AgentExecutionBudget? chargedTo = null, TimeProvider? clock = null)
     {
         if (spec is null || spec.Count == 0) return null;
+
+        foreach (var key in Dimensions)
+        {
+            if (spec.TryGetValue(key, out var raw) && raw is not null && !IsValidLimit(key, raw))
+                throw Refusal(SpecWhere, key, raw);
+        }
 
         int? toolCalls = TryReadInt(spec, "toolCalls");
         int? tokens = TryReadInt(spec, "tokens");
@@ -103,6 +111,8 @@ internal static class JsBudgetBridge
 
     private const string Where = "crew.runAgent / ctx.delegate options:";
 
+    private const string SpecWhere = "crewBuilder().budget({...}):";
+
     /// <summary>
     /// The <c>budget</c> option of <c>crew.runAgent</c> and <c>ctx.delegate</c> (#189): the keys and
     /// values of <c>crewBuilder().budget({...})</c>, read by <see cref="FromSpec"/>, but checked first. A
@@ -127,14 +137,17 @@ internal static class JsBudgetBridge
                     $"{Where} budget.{key} is not a budget dimension; expected one of {string.Join(", ", Dimensions)}.");
             if (raw is not null && IsValidLimit(key, raw))
                 continue;
-            if (key == "wallTime")
-                throw new InvalidScriptException(
-                    $"{Where} budget.wallTime must be a positive number of seconds or a duration such as \"90s\" or \"5m\"; got {Show(raw)}.");
-            throw new InvalidScriptException($"{Where} budget.{key} must be a whole number of 1 or more; got {Show(raw)}.");
+            throw Refusal(Where, key, raw);
         }
 
         return FromSpec(fields.ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal), chargedTo, clock);
     }
+
+    /// <summary>The refusal of the limit <paramref name="raw"/> of <paramref name="key"/>, named after <paramref name="where"/>.</summary>
+    private static InvalidScriptException Refusal(string where, string key, object? raw) => key == "wallTime"
+        ? new InvalidScriptException(
+            $"{where} budget.wallTime must be a positive number of seconds or a duration such as \"90s\" or \"5m\"; got {Show(raw)}.")
+        : new InvalidScriptException($"{where} budget.{key} must be a whole number of 1 or more; got {Show(raw)}.");
 
     /// <summary>
     /// Whether <paramref name="raw"/> is a valid limit for <paramref name="key"/>: a whole number of 1 or

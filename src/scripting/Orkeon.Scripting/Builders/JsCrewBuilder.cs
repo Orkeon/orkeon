@@ -162,7 +162,8 @@ internal sealed partial class JsCrewBuilder
     /// YAML parity <c>decision: { mode: none | optional | required }</c> (#429): whether the crew needs System One.
     /// <c>none</c> never asks it, <c>optional</c> runs with it or without it (each decision task declares a
     /// <c>without</c> relay), <c>required</c> is refused before its first task when the decision circuit is off.
-    /// Left out, the crew keeps the behaviour it had before the key existed.
+    /// Left out, the crew keeps the behaviour it had before the key existed. Declarative shape only: the procedural
+    /// <c>await crew.run()</c> never reads the mode (the engine knows no decision circuit), and does not warn.
     /// </summary>
     public JsCrewBuilder decision(JsValue spec) => Guarded(() =>
     {

@@ -148,8 +148,10 @@ declare global {
          * refuse it, and so is a limit that is not 1 or more (zero, a negative or fractional count,
          * an unreadable `wallTime`). A key left out takes its default: no token cap, no wall time,
          * 50 tool calls (tasks handed out), 4 delegations, 10 spawns.
-         * Procedural shape: bounds `await crew.run()`. A key left out takes the value it has when no
-         * budget is named: no wall clock, tool-call, token or `contextTokens` cap, depth 2 and 3 spawns.
+         * Procedural shape: bounds `await crew.run()`, which is refused, before its first agent, for a limit
+         * that is not 1 or more (as the `budget` option of `crew.runAgent` is). A key left out takes the value
+         * it has when no budget is named: no wall clock, tool-call, token or `contextTokens` cap, depth 2 and
+         * 3 spawns.
          */
         budget(opts: ExecutionBudget): this;
         verbose(value?: boolean): this;
@@ -178,6 +180,7 @@ declare global {
          * task, no `system_one_decide`, no decision profile); `optional` runs with it or without it, each decision
          * task declaring a `without` relay; `required` is refused before its first task when the decision circuit
          * is off (`--no-decision`, `Orkeon:Decision:Enabled=false`, no model). Left out, the crew behaves as before.
+         * Declarative shape only: the procedural `await crew.run()` neither applies nor warns about the mode.
          */
         decision(spec: { mode: "none" | "optional" | "required" }): this;
         /**

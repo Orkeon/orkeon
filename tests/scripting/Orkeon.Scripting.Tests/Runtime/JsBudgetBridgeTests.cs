@@ -67,29 +67,25 @@ public sealed class JsBudgetBridgeTests
         Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), budget.MaxWallTime);
     }
 
-    [Fact]
-    public void FromSpec_invalid_values_fall_back_to_defaults_without_throwing()
+    // A procedural crew's budget is read when its run starts: an unreadable limit is refused, as the run option and the
+    // declarative crew refuse it, never read as "uncapped" (#436 made a left-out dimension uncapped).
+    [Theory]
+    [Trait("BR", "CH-436")]
+    [InlineData("toolCalls", "not-a-number", "budget.toolCalls must be a whole number of 1 or more; got \"not-a-number\".")]
+    [InlineData("tokens", -5d, "budget.tokens must be a whole number of 1 or more; got -5.")]
+    [InlineData("contextTokens", 2.5d, "budget.contextTokens must be a whole number of 1 or more; got 2.5.")]
+    [InlineData("wallTime", "5 min", "budget.wallTime must be a positive number of seconds or a duration such as \"90s\" or \"5m\"; got \"5 min\".")]
+    [InlineData("wallTime", 0d, "budget.wallTime must be a positive number of seconds or a duration such as \"90s\" or \"5m\"; got 0.")]
+    public void FromSpec_refuses_a_limit_it_cannot_read(string key, object value, string expected)
     {
-        var spec = new Dictionary<string, object?>
-        {
-            ["toolCalls"] = "not-a-number",
-            ["tokens"] = -5d,
-            ["wallTime"] = "yesterday",
-        };
+        // Arrange
+        var spec = new Dictionary<string, object?> { ["toolCalls"] = 20d, [key] = value };
 
-        // Every value is invalid → no recognized dimension parsed → null (no enforcement),
-        // and crucially no exception at crew build time.
-        Assert.Null(JsBudgetBridge.FromSpec(spec));
+        // Act
+        var ex = Assert.Throws<Orkeon.Scripting.Exceptions.InvalidScriptException>(() => JsBudgetBridge.FromSpec(spec));
 
-        // Mixed valid/invalid: valid keys apply, invalid ones keep their defaults.
-        var mixed = JsBudgetBridge.FromSpec(new Dictionary<string, object?>
-        {
-            ["toolCalls"] = 3d,
-            ["wallTime"] = "yesterday",
-        });
-        Assert.NotNull(mixed);
-        Assert.Equal(3, mixed.MaxToolCalls);
-        Assert.Equal(TimeSpan.MaxValue, mixed.MaxWallTime);
+        // Assert
+        Assert.Equal("crewBuilder().budget({...}): " + expected, ex.Message);
     }
 
     // #436: a dimension left out takes the value it has when no budget is named.
