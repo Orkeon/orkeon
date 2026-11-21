@@ -4,7 +4,7 @@
 
 # ADR-019 — A tool bridge: some tools of a run execute on another machine, over a protocol of its own
 
-**Status**: Accepted — being implemented · **Date**: 2026-11-21
+**Status**: Accepted · **Date**: 2026-11-21
 · **Scope**: `Orkeon.Domain` (`Attributes/ToolContractAttribute.cs`, `Tools/ToolContracts.cs`), `Orkeon.Hosting` (`ToolBridge/`), `Orkeon.Host` (`ToolBridgeConnectionService.cs`), `Orkeon.Scripting` (`ScriptToolCatalogue.cs`). Issue #445.
 
 ## Context
@@ -20,9 +20,10 @@ tools, which both sides know.
 
 1. **A protocol of its own, JSON over HTTP, not MCP.** Version 1 sits under `/orkeon-bridge/v1/`: `GET tools` (the
    tools served, each with a contract hash), `POST call` (one call: an id, the tool, its arguments, its context; the
-   tool's raw response back) and `POST cancel` (the cancellation of a call in flight). Every request carries the token
-   as `Authorization: Bearer`. A later version adds fields and endpoints beside these (the run a call belongs to, the
-   end of a run, a heartbeat, the files of a call); a field a side does not know is ignored.
+   tool's raw response back), `POST cancel` (the cancellation of a call in flight), `POST end-run` (the end of a
+   caller's run) and `POST heartbeat` (a caller with live runs is still there). Every request carries the token as
+   `Authorization: Bearer`. A later version adds fields and endpoints beside these; a field a side does not know is
+   ignored.
 2. **Both sides select.** The caller's section `Orkeon:Tools:Bridge` (`Address`, `TokenEnvVar`, `Allow`, `Deny`) and the
    server's `Orkeon:Bridge` (`Prefix`, `TokenEnvVar`, `Allow`, `Deny`, `MaxRequestBytes`) apply one rule: no `Allow`
    selects nothing, the lone `*` selects every tool, `Deny` wins, only names and the lone `*` are accepted, and a name
@@ -48,6 +49,18 @@ tools, which both sides know.
 8. **The server is guarded.** It listens on loopback by default; any other host requires https. The token comes from
    the environment variable `TokenEnvVar` names, never from a file, and is compared in fixed time. A request carrying an
    `Origin` header is refused, as is a body over `MaxRequestBytes`.
+9. **A caller's run is a run on the bridge.** A call carries the caller's id and the id of its agent run; the bridge
+   keeps one `AgentRunScope` per caller run and runs every call of that run in it, so "one browser per run" means what
+   it means locally. The caller ends that scope with `POST end-run` when its own scope ends, and beats every third of
+   `Orkeon:Bridge:HeartbeatWindow` (30 s) while it has live runs; a caller silent past the window loses its runs, and
+   their browsers, at once. A call outside any run carries no run id.
+10. **A path stays the caller's.** A call of a tool that uses the file system (and does not act on the workspace)
+    carries the caller's agent-facing mounts and the files its string arguments name. The bridge presents them in a
+    scratch folder at the caller's virtual paths for the length of the call (a folder its path validator allows, as it
+    allows the sandbox's), sends back what the tool wrote there, and removes it; the caller writes those files through
+    its own file system, under the rights of its run. `MaxFileBytes` (16 MiB) bounds each direction.
+11. **The bridge is a command.** `orkeon bridge serve` builds the host `orkeon mcp serve` builds and serves until
+    Ctrl+C or SIGTERM; no setting starts it, and `orkeon-host` is a caller only.
 
 ## Consequences
 
@@ -58,5 +71,6 @@ tools, which both sides know.
   longer applies.
 - A result the bridge returns travels as JSON: a typed result reaches the caller's pipeline as its JSON rendering rather
   than its `ToString()`.
-- Not settled here, left to the passes that follow: the run a call belongs to and the resources of its scope, the
-  heartbeat, the transfer of the files a tool reads or writes, the `orkeon bridge serve` command and its documentation.
+- A connection lost in mid-run ends the run on the bridge within the window, without a grace delay: a caller that
+  comes back starts new scopes, and its browser pages are gone.
+- How to put both sides in place is the guide [Orkeon in a container, the browser on the desktop](../guides/tool-bridge.md).

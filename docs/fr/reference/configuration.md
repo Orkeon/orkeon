@@ -1793,7 +1793,11 @@ Lue au démarrage d'une exécution, après les connexions MCP, quand `Address` e
 que `Allow` choisit s'exécutent sur la machine du pont au lieu de la machine locale : leur nom, leur
 schéma et leur accès restent ceux du registre local, seul l'appel traverse. Le démarrage est refusé
 quand le pont est injoignable, refuse le jeton, ne sert pas un outil nommé ou en sert un dont le
-contrat diffère. La décision est consignée dans l'[ADR-019](../adr/ADR-019-tool-bridge.md).
+contrat diffère. Tant que des exécutions sont en cours, l'appelant bat tous les tiers du
+`HeartbeatWindow` du pont, et termine la portée de chaque exécution sur le pont quand l'exécution se
+termine. Comment mettre les deux côtés en place : le guide
+[Orkeon dans un conteneur, le navigateur sur le bureau](../guides/tool-bridge.md) ; la décision est
+consignée dans l'[ADR-019](../adr/ADR-019-tool-bridge.md).
 
 <!-- settings:Orkeon:Tools:Bridge -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1810,9 +1814,12 @@ contrat diffère. La décision est consignée dans l'[ADR-019](../adr/ADR-019-to
 
 ### `Orkeon:Bridge`
 
-Lue par le serveur du pont, le côté qui sert les outils de son registre à une autre machine. Le jeton
-se lit dans la variable que nomme `TokenEnvVar` ; une requête qui porte un en-tête `Origin` ou un
-mauvais jeton est refusée. La décision est consignée dans l'[ADR-019](../adr/ADR-019-tool-bridge.md).
+Lue par `orkeon bridge serve`, le côté qui sert les outils de son registre à une autre machine ;
+aucun réglage ne démarre un pont. Le jeton se lit dans la variable que nomme `TokenEnvVar` ; une
+requête qui porte un en-tête `Origin` ou un mauvais jeton est refusée. Un `Prefix` en https n'est servi
+que sous Windows, après une réservation d'URL (`netsh http add urlacl`) et la liaison d'un certificat ;
+ailleurs, il est refusé au démarrage. Le guide : [Orkeon dans un conteneur, le navigateur sur le
+bureau](../guides/tool-bridge.md) ; la décision est consignée dans l'[ADR-019](../adr/ADR-019-tool-bridge.md).
 
 <!-- settings:Orkeon:Bridge -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

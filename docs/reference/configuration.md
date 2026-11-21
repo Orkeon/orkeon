@@ -1731,8 +1731,11 @@ not do is listed in [Known limitations](limitations.md).
 Read at the start of a run, after the MCP connections, when `Address` is set. The tools `Allow`
 selects run on the machine of the bridge instead of the local one: their name, schema and access stay
 those of the local registry, and only the call crosses. The start is refused when the bridge cannot
-be reached, refuses the token, does not serve a tool named or serves one whose contract differs. The
-decision is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
+be reached, refuses the token, does not serve a tool named or serves one whose contract differs. While
+runs are in flight the caller beats every third of the bridge's `HeartbeatWindow`, and ends each run's
+scope on the bridge when the run ends. How to set both sides up: the guide
+[Orkeon in a container, the browser on the desktop](../guides/tool-bridge.md); the decision is recorded
+in [ADR-019](../adr/ADR-019-tool-bridge.md).
 
 <!-- settings:Orkeon:Tools:Bridge -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1749,9 +1752,12 @@ decision is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
 
 ### `Orkeon:Bridge`
 
-Read by the bridge server, the side that serves its registry's tools to another machine. The token is
-read from the variable `TokenEnvVar` names; a request with an `Origin` header or a wrong token is
-refused. The decision is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
+Read by `orkeon bridge serve`, the side that serves its registry's tools to another machine; no
+setting starts a bridge. The token is read from the variable `TokenEnvVar` names; a request with an
+`Origin` header or a wrong token is refused. An https `Prefix` is served under Windows only, after a
+URL reservation (`netsh http add urlacl`) and a certificate binding; elsewhere it is refused at start.
+The guide: [Orkeon in a container, the browser on the desktop](../guides/tool-bridge.md); the decision
+is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
 
 <!-- settings:Orkeon:Bridge -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.

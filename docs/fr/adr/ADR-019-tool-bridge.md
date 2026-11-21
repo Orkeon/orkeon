@@ -4,7 +4,7 @@
 
 # ADR-019 — Un pont d'outils : certains outils d'une exécution tournent sur une autre machine, par un protocole propre
 
-**Statut** : Accepté — en cours de mise en œuvre · **Date** : 2026-11-21
+**Statut** : Accepté · **Date** : 2026-11-21
 · **Périmètre** : `Orkeon.Domain` (`Attributes/ToolContractAttribute.cs`, `Tools/ToolContracts.cs`), `Orkeon.Hosting` (`ToolBridge/`), `Orkeon.Host` (`ToolBridgeConnectionService.cs`), `Orkeon.Scripting` (`ScriptToolCatalogue.cs`). Issue #445.
 
 ## Contexte
@@ -21,10 +21,10 @@ les deux côtés connaissent.
 
 1. **Un protocole propre, JSON sur HTTP, pas MCP.** La version 1 se tient sous `/orkeon-bridge/v1/` : `GET tools` (les
    outils servis, chacun avec une empreinte de contrat), `POST call` (un appel : un identifiant, l'outil, ses
-   arguments, son contexte ; la réponse brute de l'outil en retour) et `POST cancel` (l'annulation d'un appel en
-   cours). Chaque requête porte le jeton en `Authorization: Bearer`. Une version ultérieure ajoute des champs et des
-   points d'accès à côté de ceux-ci (l'exécution à laquelle un appel appartient, la fin d'une exécution, un battement
-   de cœur, les fichiers d'un appel) ; un champ qu'un côté ne connaît pas est ignoré.
+   arguments, son contexte ; la réponse brute de l'outil en retour), `POST cancel` (l'annulation d'un appel en
+   cours), `POST end-run` (la fin d'une exécution de l'appelant) et `POST heartbeat` (un appelant qui a des exécutions
+   en cours est toujours là). Chaque requête porte le jeton en `Authorization: Bearer`. Une version ultérieure ajoute
+   des champs et des points d'accès à côté de ceux-ci ; un champ qu'un côté ne connaît pas est ignoré.
 2. **Les deux côtés sélectionnent.** La section de l'appelant `Orkeon:Tools:Bridge` (`Address`, `TokenEnvVar`, `Allow`,
    `Deny`) et celle du serveur `Orkeon:Bridge` (`Prefix`, `TokenEnvVar`, `Allow`, `Deny`, `MaxRequestBytes`) appliquent
    une seule règle : sans `Allow` rien n'est sélectionné, le `*` seul sélectionne tous les outils, `Deny` l'emporte,
@@ -53,6 +53,21 @@ les deux côtés connaissent.
 8. **Le serveur est gardé.** Il écoute en boucle locale par défaut ; tout autre hôte exige https. Le jeton vient de la
    variable d'environnement que nomme `TokenEnvVar`, jamais d'un fichier, et se compare en temps constant. Une requête
    qui porte un en-tête `Origin` est refusée, comme un corps au-delà de `MaxRequestBytes`.
+9. **Une exécution de l'appelant est une exécution sur le pont.** Un appel porte l'identifiant de l'appelant et celui
+   de son exécution d'agent ; le pont garde un `AgentRunScope` par exécution de l'appelant et y exécute chaque appel de
+   cette exécution, si bien qu'« un navigateur par exécution » signifie ce qu'il signifie en local. L'appelant termine
+   cette portée par `POST end-run` quand sa propre portée se termine, et bat tous les tiers de
+   `Orkeon:Bridge:HeartbeatWindow` (30 s) tant qu'il a des exécutions en cours ; un appelant silencieux au-delà de la
+   fenêtre perd ses exécutions, et leurs navigateurs, aussitôt. Un appel hors de toute exécution ne porte pas
+   d'identifiant d'exécution.
+10. **Un chemin reste celui de l'appelant.** Un appel d'un outil qui utilise le système de fichiers (et n'agit pas sur
+    l'espace de travail) porte les montages de l'appelant visibles des agents et les fichiers que nomment ses
+    arguments texte. Le pont les présente dans un dossier temporaire aux chemins virtuels de l'appelant le temps de
+    l'appel (un dossier que son validateur de chemins autorise, comme il autorise celui du bac à sable), renvoie ce
+    que l'outil y a écrit, puis le supprime ; l'appelant écrit ces fichiers par son propre système de fichiers, sous
+    les droits de son exécution. `MaxFileBytes` (16 Mio) borne chaque sens.
+11. **Le pont est une commande.** `orkeon bridge serve` construit l'hôte que construit `orkeon mcp serve` et sert
+    jusqu'à Ctrl+C ou SIGTERM ; aucun réglage ne le démarre, et `orkeon-host` n'est qu'un appelant.
 
 ## Conséquences
 
@@ -64,6 +79,6 @@ les deux côtés connaissent.
   (`Orkeon:Tools:<Outil>`) et qui ne s'applique plus.
 - Un résultat que renvoie le pont voyage en JSON : un résultat typé atteint le pipeline de l'appelant sous son rendu JSON
   plutôt que son `ToString()`.
-- Non tranché ici, laissé aux passes qui suivent : l'exécution à laquelle appartient un appel et les ressources de sa
-  portée, le battement de cœur, le transfert des fichiers qu'un outil lit ou écrit, la commande `orkeon bridge serve` et
-  sa documentation.
+- Une connexion perdue en cours d'exécution termine l'exécution sur le pont dans la fenêtre, sans délai de grâce : un
+  appelant qui revient ouvre de nouvelles portées, et les pages de son navigateur ont disparu.
+- Comment mettre les deux côtés en place : le guide [Orkeon dans un conteneur, le navigateur sur le bureau](../guides/tool-bridge.md).

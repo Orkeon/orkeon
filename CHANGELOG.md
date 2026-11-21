@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a tool bridge: some tools of a run execute on another machine, `orkeon bridge serve` (#445)
+
+An Orkeon in a container can drive what lives on the user's machine, the browser first: `orkeon bridge serve`, run on
+that machine, serves the built-in tools its `Orkeon:Bridge:Allow` selects over JSON on HTTP (`/orkeon-bridge/v1/`:
+`GET tools`, `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`), and the caller's `Orkeon:Tools:Bridge`
+(`Address`, `Allow`, `Deny`) sends the calls of the tools it selects there. A tool is bridged when both sides select
+it; `*` selects every tool but those that act on the workspace (files, shell, code index), which a new
+`[ToolContract(ActsOnWorkspace = true)]` marks and which are bridged only when named, with a warning. The caller's
+gate, guardian, truncation and sanitizer judge every call by the local tool's schema and access; the bridge runs it
+raw, with its own tool settings and URL policy, and audits it under the caller `bridge`. The caller (`orkeon run`,
+`validate`, `.ork.ts` scripts, `eval`, `orkeon-repl`, and `orkeon-host`, which exits 78) refuses to start when the
+bridge cannot be reached, refuses the token, does not serve a tool named, or serves one whose contract hash differs; a
+call the bridge cannot answer fails, never runs locally. A caller run is one scope on the bridge (one browser per run),
+ended with the run or after `Orkeon:Bridge:HeartbeatWindow` (30 s) without a heartbeat; a tool's files travel at the
+caller's virtual paths, bounded by `Orkeon:Bridge:MaxFileBytes` and `Orkeon:Tools:Bridge:MaxFileBytes` (16 MiB), so a
+`screenshot` to `/output/page.png` lands in the caller's `/output`. The token comes from `ORKEON_BRIDGE_TOKEN` (or the
+variable `TokenEnvVar` names) and is compared in fixed time; the bridge listens on loopback (`127.0.0.1:7410`,
+`localhost:7410` under Windows), refuses a request with an `Origin` header or a body over `MaxRequestBytes`, and
+requires https on another host, which it serves under Windows only (a URL reservation, `netsh http add urlacl`, which
+the start failure names). From a Linux engine the container reaches it with `--network host`; Docker Desktop's
+`host.docker.internal` is not accepted yet. The guide: [Orkeon in a container, the browser on the
+desktop](docs/guides/tool-bridge.md); the decision: [ADR-019](docs/adr/ADR-019-tool-bridge.md).
+
+**Also**: a `.ork.ts` script's `tools.firefox` now runs the registry's wrapper of a transient container tool (the
+bridge's proxy, the permission gate) instead of a new bare instance.
+
 ### Added — `thinking: { effort: auto }`: System One picks a task's thinking level (#439)
 
 An agent or a task (`llm_override`) that writes `thinking: { effort: auto }` lets the decision model pick, at the start
