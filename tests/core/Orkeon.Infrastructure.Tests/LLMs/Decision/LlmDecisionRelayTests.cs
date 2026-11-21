@@ -168,4 +168,43 @@ public sealed class LlmDecisionRelayTests : IDisposable
         var options = _client.LastGetResponseOptions!;
         Assert.Equal(("END", 0.5f, 0.25f), (string.Join(",", options.StopSequences ?? []), options.FrequencyPenalty, options.PresencePenalty));
     }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldPassTheThinkingAndTheCacheOfTheAgent_WhenAskingTheRelay()
+    {
+        // Arrange
+        _client.SetGetResponseResult(Answer);
+        var thinking = new LlmThinkingConfig { Enabled = false };
+        var cache = new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" };
+        var agent = Analyst(b => b.WithLlmConfig(LlmConfig.Create("analyst-1") with { Thinking = thinking, Cache = cache }));
+
+        // Act
+        await AskAsync(agent);
+
+        // Assert: forwarded as an agent's own call forwards them (ChatOptionsComposer).
+        var sent = _client.LastGetResponseOptions!.AdditionalProperties;
+        Assert.NotNull(sent);
+        Assert.Equal(
+            ((object?)thinking, (object?)cache, (object?)"1h"),
+            (sent.GetValueOrDefault(LlmChatOptionsKeys.Thinking), sent.GetValueOrDefault(LlmChatOptionsKeys.Cache), sent.GetValueOrDefault(LlmChatOptionsKeys.CacheTtl)));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldKeepTheSchemaBesideTheThinking_WhenTheProviderDeclaresJsonSchema()
+    {
+        // Arrange
+        _provider.Capabilities = WithJsonSchema;
+        _client.SetGetResponseResult(Answer);
+        var agent = Analyst(b => b.WithLlmConfig(LlmConfig.Create("analyst-1") with { Thinking = new LlmThinkingConfig { Enabled = true } }));
+
+        // Act
+        await AskAsync(agent);
+
+        // Assert
+        var sent = _client.LastGetResponseOptions!.AdditionalProperties;
+        Assert.NotNull(sent);
+        Assert.Equal((true, true), (sent.ContainsKey(LlmChatOptionsKeys.Thinking), sent.ContainsKey(LlmChatOptionsKeys.StructuredOutput)));
+    }
 }

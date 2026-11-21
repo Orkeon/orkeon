@@ -38,7 +38,8 @@ internal sealed class LlmDecisionRelay : IDecisionRelay
         if (native)
         {
             options.AdditionalProperties ??= [];
-            // Not strict: OpenAI's strict mode refuses the numeric bounds the schema states.
+            // Not strict: the runner checks every answer against the questions and asks once more on a fault, so
+            // the call needs no vendor's strict-mode rules.
             options.AdditionalProperties[LlmChatOptionsKeys.StructuredOutput] =
                 LlmResponseFormat.JsonSchema(SchemaName, request.Schema, strict: false);
         }
@@ -99,6 +100,24 @@ internal sealed class LlmDecisionRelay : IDecisionRelay
             options.PresencePenalty = (float)llm.PresencePenalty;
         if (llm.StopSequences is { Count: > 0 } stopSequences)
             options.StopSequences = [.. stopSequences];
+
+        // Thinking and prompt caching travel as an agent's own call sends them (ChatOptionsComposer): the
+        // provider honours them or warns that it cannot. The llm block's response_format is not sent: the relay
+        // answers its own JSON schema.
+        if (llm.Thinking is not null)
+        {
+            options.AdditionalProperties ??= [];
+            options.AdditionalProperties[LlmChatOptionsKeys.Thinking] = llm.Thinking;
+        }
+
+        if (llm.Cache is not null)
+        {
+            options.AdditionalProperties ??= [];
+            options.AdditionalProperties[LlmChatOptionsKeys.Cache] = llm.Cache;
+            if (!string.IsNullOrWhiteSpace(llm.Cache.Ttl))
+                options.AdditionalProperties[LlmChatOptionsKeys.CacheTtl] = llm.Cache.Ttl;
+        }
+
         return options;
     }
 }
