@@ -74,6 +74,24 @@ public sealed record LlmAutoEffort
         return [.. hostLevels.Where(level => Rank(level) >= low && Rank(level) <= high)];
     }
 
+    /// <summary>
+    /// <paramref name="level"/> brought inside <see cref="Min"/> and <see cref="Max"/> (#439): <see cref="Min"/> when it
+    /// lies below, <see cref="Max"/> when it lies above, else itself. A value that is no level (null, the provider's own,
+    /// or a vendor's own such as <c>"none"</c>) is returned unchanged.
+    /// </summary>
+    /// <param name="level">A level, as a fallback stands at.</param>
+    /// <returns>The level inside the bounds.</returns>
+    public string? Clamp(string? level)
+    {
+        if (level is null || Rank(level) < 0)
+            return level;
+        if (Min is not null && Rank(level) < Rank(Min))
+            return Min;
+        if (Max is not null && Rank(level) > Rank(Max))
+            return Max;
+        return level;
+    }
+
     /// <summary>The bounds as a crew writes them (<c>min: low, max: high</c>); empty when the pick is not bounded.</summary>
     /// <returns>The bounds, comma-separated.</returns>
     public string DescribeBounds() =>

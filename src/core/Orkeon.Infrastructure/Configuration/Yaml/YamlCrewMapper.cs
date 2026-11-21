@@ -205,6 +205,7 @@ public sealed partial class YamlCrewMapper
     private static string DescribeYamlValue(object value) => value switch
     {
         IDictionary<object, object> map => "{ " + string.Join(", ", map.Keys) + " }",
+        IList<object> list => "[" + string.Join(", ", list.Select(item => item is null ? "null" : DescribeYamlValue(item))) + "]",
         _ => value.ToString() ?? string.Empty,
     };
 
@@ -266,6 +267,8 @@ public sealed partial class YamlCrewMapper
     {
         nameToId = [];
         var result = new List<AgentConfiguration>();
+        // The crew's own llm.thinking is read once on its own (#439): a malformed one is the crew's, not its first agent's.
+        MapThinking("Crew llm.thinking", crewDefaultLlm?.Thinking);
 
         foreach (var kvp in agents)
         {
@@ -783,14 +786,12 @@ public sealed partial class YamlCrewMapper
         var text = written!.ToString()!.Trim();
         if (LlmAutoEffort.IsAuto(text))
             return (null, LlmAutoEffort.Any);
-        try
-        {
-            return (LlmThinkingConfig.ValidateEffort(text), null);
-        }
-        catch (ArgumentException ex)
-        {
-            throw new InvalidOperationException($"{where}.effort: {ex.Message}", ex);
-        }
+        // A level in any case, as auto is (#439): 'effort: High' is 'high'.
+        return LlmThinkingConfig.ParseEffort(text) is { } level
+            ? (level, null)
+            : throw new InvalidOperationException(
+                $"{where}.effort: '{text}' is not a thinking level: write one of {string.Join(", ", LlmThinkingConfig.Levels)}, " +
+                $"'{LlmAutoEffort.Name}' (System One picks the level), or {{ auto: true, min, max }} (a pick between two levels).");
     }
 
     private static LlmAutoEffort MapBoundedEffort(string where, IDictionary<object, object> map)
@@ -800,17 +801,17 @@ public sealed partial class YamlCrewMapper
         string? max = null;
         foreach (var (key, value) in map)
         {
-            switch (key?.ToString())
+            // Keys and booleans as enabled: reads them (#439): any case, yes/no/on/off.
+            switch (key?.ToString()?.Trim().ToUpperInvariant())
             {
-                case "auto":
-                    auto = bool.TryParse(value?.ToString(), out var on)
-                        ? on
-                        : throw new InvalidOperationException($"{where}.effort.auto: '{value}' is not true or false.");
+                case "AUTO":
+                    auto = YamlBoolean(value?.ToString()?.Trim())
+                        ?? throw new InvalidOperationException($"{where}.effort.auto: '{value}' is not true or false.");
                     break;
-                case "min":
+                case "MIN":
                     min = BoundLevel(where, "min", value);
                     break;
-                case "max":
+                case "MAX":
                     max = BoundLevel(where, "max", value);
                     break;
                 default:
@@ -834,11 +835,10 @@ public sealed partial class YamlCrewMapper
 
     private static string BoundLevel(string where, string bound, object? value)
     {
-        var text = value?.ToString()?.Trim();
-        return text is not null && LlmThinkingConfig.Levels.Contains(text, StringComparer.Ordinal)
-            ? text
+        return LlmThinkingConfig.ParseEffort(value?.ToString()) is { } level
+            ? level
             : throw new InvalidOperationException(
-                $"{where}.effort.{bound}: '{value}' is not a thinking level: write one of {string.Join(", ", LlmThinkingConfig.Levels)} (lower case).");
+                $"{where}.effort.{bound}: '{value}' is not a thinking level: write one of {string.Join(", ", LlmThinkingConfig.Levels)}.");
     }
 
     /// <summary>

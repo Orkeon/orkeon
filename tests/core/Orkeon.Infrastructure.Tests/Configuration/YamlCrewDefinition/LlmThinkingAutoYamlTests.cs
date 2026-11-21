@@ -186,4 +186,67 @@ tasks:
         Assert.False(thinking.HasAuto);
         Assert.False(thinking.Enabled);
     }
+
+    [Theory]
+    [Trait("BR", "CH-439")]
+    [InlineData("{ effort: High }")]
+    [InlineData("{ effort: { Auto: YES, MIN: Low, Max: HIGH } }")]
+    [InlineData("{ effort: { auto: on, min: low, max: high } }")]
+    public async System.Threading.Tasks.Task ShouldReadLevelsKeysAndBooleansInAnyCase_WhenTheThinkingIsWrittenSo(string thinking)
+    {
+        // Act
+        var config = await Loader().LoadFromStringAsync(Crew(thinking), Ct);
+
+        // Assert: as auto and enabled: are read.
+        var loaded = config.Agents.Single().LlmConfig!.Thinking!;
+        if (loaded.AutoEffort is { } auto)
+            Assert.Equal(LlmAutoEffort.Bounded("low", "high"), auto);
+        else
+            Assert.Equal("high", loaded.Effort);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-439")]
+    [InlineData("{ enabled: [true] }", "enabled: '[true]' is not true, false or auto")]
+    [InlineData("{ effort: 5 }", "'auto' (System One picks the level), or { auto: true, min, max }")]
+    public async System.Threading.Tasks.Task ShouldQuoteTheValueAndNameEveryForm_WhenTheThinkingIsMalformed(string thinking, string expected)
+    {
+        // Act
+        var error = await Record.ExceptionAsync(() => Loader().LoadFromStringAsync(Crew(thinking), Ct));
+
+        // Assert
+        Assert.NotNull(error);
+        Assert.Contains(expected, error.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Collections", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldBlameTheCrew_WhenTheCrewLevelThinkingIsMalformed()
+    {
+        // Arrange
+        const string yaml = """
+name: c
+goal: g
+llm:
+  thinking: { effort: huge }
+agents:
+  a:
+    role: R
+    goal: G
+tasks:
+  t:
+    description: D
+    expectedOutput: O
+    agent: a
+""";
+
+        // Act
+        var error = await Record.ExceptionAsync(() => Loader().LoadFromStringAsync(yaml, Ct));
+
+        // Assert
+        Assert.NotNull(error);
+        Assert.Contains("Crew llm.thinking.effort: 'huge'", error.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("Agent 'a'", error.ToString(), StringComparison.Ordinal);
+    }
 }

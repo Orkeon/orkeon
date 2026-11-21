@@ -754,7 +754,14 @@ with its own floor of 0.6. Under that floor, without an answer, with the decisio
 provider's own), with no error, as for `llm.profile: auto`: a warning is logged once per run when the circuit is off
 (outside a run, once per host), and at each failed call; a low probability or a missing answer is logged as
 information only, the `agent.effort` event saying why. An agent that writes `enabled: false` under a crew's
-`effort: auto` leaves nothing to System One: no call, thinking stays off. A crew on `decision: { mode: none }` naming `effort: auto` fails its
+or a task's `effort: auto`, or whose profile's `Llm:Thinking:Enabled` is `false`, leaves nothing to System One: no call,
+thinking stays off; only `enabled: auto` lets the pick switch it on. Without a pick, a written level outside `min` and
+`max` is brought to the nearest bound; the provider's own level (none written) is left as is and never raised, since a
+step from the lowest level could lower it. An orchestrator with no profile router (a host wired by hand) runs every
+`auto` on the effort without it and warns once per run. A crew built in C# (`AgentBuilder.ThinkingEffortAuto`) meets
+the load checks below at each task's start instead: the task fails before any call. The `system_one`
+decision relay of a decision task runs on the effort the profile carries, with no pick. Levels, `auto`, the booleans and the map keys
+are read in any case in YAML and in `.ork.ts`. A crew on `decision: { mode: none }` naming `effort: auto` fails its
 load, as does one whose profile runs a model that does not think. `auto` in a host profile (`Llm:Thinking:Effort`)
 is refused at start: it is a crew's word. Each pick and each raise is a run event, `agent.effort`.
 

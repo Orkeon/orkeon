@@ -9,6 +9,7 @@ using Orkeon.Application.Decision.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Tests.Doubles;
+using Orkeon.Application.Tests.TestDoubles;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -32,6 +33,10 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
     private readonly LlmProviderToChatClientAdapter _defaultClient;
     private readonly LlmProviderToChatClientAdapter _smallClient;
     private readonly LlmProviderToChatClientAdapter _largeClient;
+#pragma warning disable ORKEXP005 // The reasoning capabilities are experimental; a model that does not think is refused (#439).
+    private readonly ScriptedFullLlmProvider _flat = new() { Reasoning = new LlmReasoningCapabilities("flat-1", true, ThinkingSupport.None, []) };
+#pragma warning restore ORKEXP005
+    private readonly LlmProviderToChatClientAdapter _flatClient;
     private readonly FakeDecisionModel _model = new();
     private readonly FakeAgentRouteObserver _observer = new();
     private readonly StubOutputValidationPipeline _validation = new();
@@ -41,6 +46,7 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
         _defaultClient = new LlmProviderToChatClientAdapter(_default);
         _smallClient = new LlmProviderToChatClientAdapter(_small);
         _largeClient = new LlmProviderToChatClientAdapter(_large);
+        _flatClient = new LlmProviderToChatClientAdapter(_flat);
     }
 
     public void Dispose()
@@ -48,6 +54,7 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
         _defaultClient.Dispose();
         _smallClient.Dispose();
         _largeClient.Dispose();
+        _flatClient.Dispose();
     }
 
     private ExecutionOrchestrator Orchestrator(DecisionCircuit circuit)
@@ -57,7 +64,7 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
             NullLogger<ExecutionOrchestrator>.Instance, new LlmProviderAdapter(_default), _defaultClient, [],
             _validation, new StubOutputParserFactory(), new FakeFileSystemService())
         {
-            LlmProfiles = new StubLlmProfileRegistry(("small", _small, _smallClient), ("large", _large, _largeClient)),
+            LlmProfiles = new StubLlmProfileRegistry(("small", _small, _smallClient), ("large", _large, _largeClient), ("flat", _flat, _flatClient)),
             ProfileRouter = new AgentProfileRouter(
                 services, new AgentRouteOptions { Ladder = ["small", "large"] }, new AgentEffortOptions(), NullLogger.Instance),
             RouteObserver = _observer,
@@ -399,5 +406,78 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
         // Assert
         Assert.Empty(_model.Requests);
         Assert.Equal(new LlmThinkingConfig { Enabled = false }, Assert.Single(_small.ReceivedConfigs)?.Thinking);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldAskNothingAndKeepThinkingOff_WhenTheTaskLeavesTheEffortToSystemOneOverAnAgentWithThinkingOff()
+    {
+        // Arrange
+        Answer((AgentProfileRouter.EffortQuestionName, "high", 0.9));
+        var task = new CrewTaskBuilder().Description("Design the cache layer.").ExpectedOutput("A design.")
+            .WithLlmOverride(new LlmConfigOverride { Thinking = new LlmThinkingConfig { AutoEffort = LlmAutoEffort.Any } })
+            .Build();
+
+        // Act
+        await Orchestrator(DecisionCircuit.On).ExecuteTaskCoreAsync(
+            Agent("small", new LlmThinkingConfig { Enabled = false }), task, Context(), TestContext.Current.CancellationToken);
+
+        // Assert: only enabled: auto lets System One switch on a thinking written off.
+        Assert.Empty(_model.Requests);
+        Assert.Equal(new LlmThinkingConfig { Enabled = false }, Assert.Single(_small.ReceivedConfigs)?.Thinking);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldFailTheTaskBeforeAnyCall_WhenACrewBuiltInCSharpBoundsThePickOutsideTheHostsLevels()
+    {
+        // Arrange
+        var agent = new AgentBuilder().Role("Coder").Goal("Change code").WithLlmConfig(LlmConfig.OnProfile("small"))
+            .ThinkingEffortAuto(min: "xhigh").Build();
+
+        // Act
+        var result = await Orchestrator(DecisionCircuit.On).ExecuteTaskCoreAsync(agent, Task(), Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Contains("keep none of the levels the host offers (low, medium, high", result.Error, StringComparison.Ordinal);
+        Assert.Empty(_model.Requests);
+        Assert.Empty(_small.ReceivedConfigs);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldFailTheTaskBeforeAnyCall_WhenACrewBuiltInCSharpLeavesTheEffortOfAModelThatDoesNotThink()
+    {
+        // Act
+        var result = await Orchestrator(DecisionCircuit.On).ExecuteTaskCoreAsync(AutoEffortAgent("flat"), Task(), Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Contains("does not think (thinking support None)", result.Error, StringComparison.Ordinal);
+        Assert.Empty(_model.Requests);
+        Assert.Empty(_flat.ReceivedConfigs);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldWarnOnceAndSendTheProfilesLevel_WhenTheOrchestratorHasNoRouter()
+    {
+        // Arrange
+        var logger = new TestLogger<ExecutionOrchestrator>();
+        var orchestrator = new ExecutionOrchestrator(
+            logger, new LlmProviderAdapter(_default), _defaultClient, [], _validation, new StubOutputParserFactory(), new FakeFileSystemService())
+        {
+            LlmProfiles = new StubLlmProfileRegistry(("small", _small, _smallClient)),
+        };
+
+        // Act
+        await orchestrator.ExecuteTaskCoreAsync(AutoEffortAgent(), Task(), Context(), TestContext.Current.CancellationToken);
+        await orchestrator.ExecuteTaskCoreAsync(AutoEffortAgent(), Task(), Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(["low", "low"], _small.ReceivedConfigs.Select(c => c?.Thinking?.Effort));
+        Assert.Single(logger.LogEntries, e => e.LogLevel == Microsoft.Extensions.Logging.LogLevel.Warning
+            && e.Message.Contains("no profile router", StringComparison.Ordinal));
     }
 }

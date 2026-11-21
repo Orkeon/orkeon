@@ -20,6 +20,12 @@ partent d'une configuration qui ne nomme aucun modèle (`LlmConfig.OnProfile()`)
 alors sur le modèle de l'hôte, quel que soit son vendeur. Pour épingler un modèle, partez de
 `LlmConfig.Create(modèle)` ; pour tourner sur l'un des [profils nommés](#un-fournisseur-par-agent-profils)
 de l'hôte, de `LlmConfig.OnProfile("claude")`.
+`ThinkingEffortAuto(min, max)` laisse le niveau de réflexion à System One au début de chaque tâche, comme
+`thinking: { effort: auto }` en YAML (bornes facultatives), et `ThinkingEnabledAuto()` le laisse couper la réflexion
+pour une tâche triviale, comme `enabled: auto` ; `ThinkingEffortAuto()` après `Thinking(false)` lève une exception,
+sauf si `ThinkingEnabledAuto()` vient avant. Des bornes qui ne gardent aucun niveau de l'hôte, ou un modèle qui ne
+réfléchit pas, font échouer la tâche à son début
+([`Orkeon:Decision:Effort`](../reference/configuration.md#orkeondecisioneffort)).
 Un plafond de tokens (`max_tokens`, `MaxTokens`) est un entier positif ; omettez-le pour garder le plafond hérité. Le chargement YAML, `LlmConfig.with` dans les scripts, `Agent.Create` et `SetLlmOverride` refusent une valeur de 0 ou moins.
 
 ## Configuration YAML

@@ -194,4 +194,20 @@ public sealed class JsLlmReasoningTests : IDisposable
 
         Assert.Equal("true|InvalidOperationException|table unreadable", caught);
     }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldSayTheLevelIsSystemOnesPick_WhenTheConfigurationIsOnEffortAuto()
+    {
+        Assert.Equal("auto||auto|glm-5.3", Eval($"const r = llm.default_.with({{ effort: 'auto' }}).reasoning; {Show("r")}"));
+        Assert.Equal("glm-5.3|effortOnly", Eval("const c = llm.default_.with({ effort: 'auto' }).capabilities; [c.model, c.thinking].join('|')"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldReadTheLevelInAnyCase_WhenTheConfigurationWritesIt()
+    {
+        Assert.Equal("high|high||glm-5.3", Eval($"const r = llm.default_.with({{ effort: 'High' }}).reasoning; {Show("r")}"));
+        Assert.Equal("auto||auto|glm-5.3", Eval($"const r = llm.default_.with({{ effort: 'AUTO' }}).reasoning; {Show("r")}"));
+    }
 }

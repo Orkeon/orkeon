@@ -46,6 +46,19 @@ public sealed record LlmThinkingConfig
     }
 
     /// <summary>
+    /// The level <paramref name="effort"/> names as a crew writes it (YAML, <c>.ork.ts</c>, #439): one of
+    /// <see cref="Levels"/>, whatever its case and surrounding blanks, given in lower case; null when it names none.
+    /// <see cref="ValidateEffort"/>, the C# contract, stays case-sensitive.
+    /// </summary>
+    /// <param name="effort">An effort as written.</param>
+    /// <returns>The level in lower case, or null.</returns>
+    public static string? ParseEffort(string? effort)
+    {
+        var written = effort?.Trim();
+        return written is null ? null : Array.Find(s_levels, level => string.Equals(level, written, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
     /// The level a provider whose field knows <paramref name="known"/> sends for <paramref name="asked"/>:
     /// the level itself when known, else the highest known level below it (the lowest known one when none
     /// is). The provider that lowers a level reports it (LLM-02): an option is never silently changed.
@@ -109,6 +122,18 @@ public sealed record LlmThinkingConfig
     public bool HasAuto => AutoEnabled || (AutoEffort is not null && Enabled != false);
 
     /// <summary>
+    /// Whether <paramref name="standing"/> keeps this config's thinking off whatever System One picks (#439): the
+    /// thinking below it is written off (<c>enabled: false</c> on the agent under a task's <c>effort: auto</c>, or on the
+    /// profile), and this config neither switches it on (<c>enabled: true</c>) nor leaves the switch to System One
+    /// (<c>enabled: auto</c>). Only <c>enabled: auto</c> lets a pick switch on a thinking written off; no decision call
+    /// is spent on one held off.
+    /// </summary>
+    /// <param name="standing">The thinking that stands without <c>auto</c>.</param>
+    /// <returns>True when the thinking stays off.</returns>
+    public bool IsHeldOffBy(LlmThinkingConfig? standing) =>
+        HasAuto && !AutoEnabled && Enabled is null && standing is { Enabled: false };
+
+    /// <summary>
     /// The answers System One picks among for a task on this config (#439), cheapest first: <see cref="Off"/> on
     /// <c>enabled: auto</c>, then the levels <see cref="AutoEffort"/> allows among <paramref name="hostLevels"/>, else the
     /// written <see cref="Effort"/>, else <see cref="On"/> on <c>enabled: auto</c>. Empty when nothing is left to
@@ -139,6 +164,8 @@ public sealed record LlmThinkingConfig
     /// written switch, effort and budget first. Null when nothing is left to send: the provider's own thinking applies.
     /// The budget of the config, else the standing one, is kept in every case but <see cref="Off"/>. A config with
     /// nothing left to System One is returned as is, an <c>effort: auto</c> it holds under <c>enabled: false</c> dropped.
+    /// A thinking <paramref name="standing"/> holds off (<see cref="IsHeldOffBy"/>) stays off: the pick is ignored. Without
+    /// a pick, a standing level outside the bounds of <see cref="AutoEffort"/> is clamped into them (<see cref="LlmAutoEffort.Clamp"/>).
     /// </summary>
     /// <param name="level">The answer picked, one of <see cref="Levels"/>, <see cref="Off"/> or <see cref="On"/>; null when none was.</param>
     /// <param name="standing">The thinking that stands without <c>auto</c>: the next config down the chain (the agent's under a task's, else the profile's); null for the provider's own.</param>
@@ -149,6 +176,9 @@ public sealed record LlmThinkingConfig
             return AutoEffort is null ? this : this with { AutoEffort = null };
 
         var standingEffort = standing is { AutoEffort: null } ? standing.Effort : null;
+        // Thinking written off below stays off: only enabled: auto lets System One switch it on.
+        if (IsHeldOffBy(standing))
+            level = null;
         switch (level)
         {
             case Off:
@@ -171,7 +201,7 @@ public sealed record LlmThinkingConfig
         var settled = new LlmThinkingConfig
         {
             Enabled = AutoEnabled ? standing?.Enabled : Enabled ?? standing?.Enabled,
-            Effort = AutoEffort is null && Effort is not null ? Effort : standingEffort,
+            Effort = AutoEffort is null && Effort is not null ? Effort : AutoEffort?.Clamp(standingEffort) ?? standingEffort,
             BudgetTokens = BudgetTokens ?? standing?.BudgetTokens,
         };
         return settled is { Enabled: null, Effort: null, BudgetTokens: null } ? null : settled;
@@ -198,7 +228,9 @@ public sealed record LlmThinkingConfig
     /// <summary>
     /// The answer one step above <paramref name="current"/> among <paramref name="options"/>, cheapest first (#439):
     /// the next one when <paramref name="current"/> is offered, else the first offered above it. Null at the top, and
-    /// when <paramref name="current"/> is unknown (null): the raise of a failed attempt then keeps the level.
+    /// when <paramref name="current"/> is unknown (null): the raise of a failed attempt then keeps the level. The level
+    /// of a task that runs on the provider's own effort (no pick, nothing written down the chain) is unknown: a raise
+    /// to the lowest level offered could lower it, so it is never raised.
     /// </summary>
     /// <param name="current">The answer the task stands at (<see cref="AnswerOf"/>).</param>
     /// <param name="options">The answers offered, cheapest first.</param>

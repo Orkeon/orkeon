@@ -47,4 +47,30 @@ public sealed class AgentBuilderEffortTests
         // Assert
         Assert.Equal(new LlmThinkingConfig { AutoEnabled = true, Effort = "high" }, agent.LlmConfig!.Thinking);
     }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldRefuseTheEffortAuto_WhenTheAgentsThinkingIsSwitchedOff()
+    {
+        // Arrange
+        var builder = new AgentBuilder().Role("Coder").Goal("Change code").Thinking(false);
+
+        // Act
+        var error = Record.Exception(() => builder.ThinkingEffortAuto());
+
+        // Assert
+        var refused = Assert.IsType<InvalidOperationException>(error);
+        Assert.Contains("ThinkingEnabledAuto()", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldLeaveTheEffortToSystemOne_WhenTheSwitchIsLeftToItFirst()
+    {
+        // Act
+        var agent = new AgentBuilder().Role("Coder").Goal("Change code").Thinking(false).ThinkingEnabledAuto().ThinkingEffortAuto().Build();
+
+        // Assert
+        Assert.Equal(new LlmThinkingConfig { AutoEnabled = true, AutoEffort = LlmAutoEffort.Any }, agent.LlmConfig!.Thinking);
+    }
 }

@@ -66,7 +66,9 @@ keeping it on its retries; with `llm.profile: auto` too, the profile and the lev
 map form `effort: { auto: true, min, max }` bounds the pick: a single level left is sent with no call, none left fails
 the load naming the agent or the task and the key. `enabled: auto` lets System One switch thinking off for a trivial
 task (its options are `off` and the written level, `off` and `on` when no level is written, and `off` and every allowed
-level with `effort: auto` too); under `enabled: false` nothing is left to it. A correction round
+level with `effort: auto` too); under `enabled: false` (the agent's own under a task's `effort: auto`, or its profile's)
+nothing is left to it, with no call. Without a pick, a written level outside the bounds is brought to the nearest one;
+the provider's own level is never raised. A correction round
 after an output that failed its validation (`output_json`), once per failed round, and an attempt after a failed one (a
 failed result or a thrown error, not a cancellation, a guardian refusal, an exhausted budget or a timeout) run one step higher,
 with no call; a written level is never raised, and a decision profile's `verify` does not raise it (it escalates the
@@ -79,7 +81,11 @@ model that does not think; `auto`
 in a host profile's `Llm:Thinking:Effort` is refused at start. In `.ork.ts`: `agentBuilder().effort("auto")`,
 `llm.profile(name, { effort: "auto" })`, `.with({ effort: "auto" })` and the new `taskBuilder().withEffort(level |
 "auto")`; a single `ctx.llm` call takes a level only, and on an `effort("auto")` agent runs with its profile's effort. In C#: `AgentBuilder.ThinkingEffortAuto(min, max)` and
-`ThinkingEnabledAuto()`. The YAML model's
+`ThinkingEnabledAuto()` (`ThinkingEffortAuto()` after `Thinking(false)` throws); a C# crew meets the bounds and
+non-thinking-model checks at each task's start, and an orchestrator with no profile router warns once per run.
+Levels, `auto`, the booleans and the map keys are read in any case in YAML and `.ork.ts`; an `effort: "auto"`
+configuration's `reasoning` reports `asked` and `notice` `"auto"`. The new public members are
+`LlmThinkingConfig.ParseEffort`, `LlmThinkingConfig.IsHeldOffBy` and `LlmAutoEffort.Clamp`. The YAML model's
 `ThinkingYamlConfig.Effort` and `Enabled` change type: see the **[breaking]** entry below.
 
 ### Added — System One prunes a loop's older read-tool results before it compacts (#434)

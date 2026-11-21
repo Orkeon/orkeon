@@ -788,8 +788,15 @@ décision coupé ou avec `--no-decision`, l'effort que l'agent aurait eu sans `a
 son profil, sinon celui du fournisseur), sans erreur, comme pour `llm.profile: auto` : un avertissement est journalisé
 une fois par run quand le circuit est coupé (hors run, une fois par hôte), et à chaque appel en échec ; une probabilité
 basse ou une réponse absente n'est journalisée qu'en information, l'événement `agent.effort` disant pourquoi. Un agent
-qui écrit `enabled: false` sous un `effort: auto` de la crew ne laisse rien à System One : aucun appel, la réflexion
-reste coupée. Une crew en `decision: { mode: none }` qui
+qui écrit `enabled: false` sous un `effort: auto` de la crew ou d'une tâche, ou dont le `Llm:Thinking:Enabled` du
+profil vaut `false`, ne laisse rien à System One : aucun appel, la réflexion reste coupée ; seul `enabled: auto` laisse
+le choix l'allumer. Sans choix, un niveau écrit hors de `min` et `max` est ramené à la borne la plus proche ; le niveau
+propre du fournisseur (aucun écrit) est laissé tel quel et jamais relevé, un pas depuis le plus bas pouvant l'abaisser.
+Un orchestrateur sans routeur de profils (un hôte câblé à la main) fait tourner chaque `auto` sur l'effort sans lui et
+avertit une fois par run. Une crew bâtie en C# (`AgentBuilder.ThinkingEffortAuto`) rencontre les contrôles de
+chargement ci-dessous au début de chaque tâche : la tâche échoue avant tout appel. Le relais de décision `system_one`
+d'une tâche de décision tourne sur l'effort que porte le profil, sans choix. Les niveaux, `auto`, les booléens et les
+clés de map se lisent en toute casse en YAML et en `.ork.ts`. Une crew en `decision: { mode: none }` qui
 nomme `effort: auto` échoue à son chargement, comme celle dont le profil fait tourner un modèle qui ne réfléchit
 pas. `auto` dans un profil d'hôte (`Llm:Thinking:Effort`) est refusé au démarrage : c'est un mot de crew. Chaque
 choix et chaque relèvement est un événement de run, `agent.effort`.

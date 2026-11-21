@@ -15,8 +15,19 @@ public sealed class JsLlmReasoning
     public string asked { get; }
     public string? sent { get; }
 
-    /// <summary><c>lowered</c>, <c>dropped</c> or <c>unchecked</c>; null when the effort is sent as asked on a model the table knows.</summary>
+    /// <summary>
+    /// <c>lowered</c>, <c>dropped</c> or <c>unchecked</c>; <c>auto</c> when the effort is System One's pick (#439); null when
+    /// the effort is sent as asked on a model the table knows.
+    /// </summary>
     public string? notice { get; }
+
+    private JsLlmReasoning(string model, string? sent)
+    {
+        this.model = model;
+        asked = LlmAutoEffort.Name;
+        this.sent = sent;
+        notice = LlmAutoEffort.Name;
+    }
 
     private JsLlmReasoning(LlmEffortReport report)
     {
@@ -34,6 +45,20 @@ public sealed class JsLlmReasoning
 
     /// <summary>The script's view of <paramref name="report"/>; null when the call asks for no effort or the provider cannot tell.</summary>
     internal static JsLlmReasoning? From(LlmEffortReport? report) => report is null ? null : new JsLlmReasoning(report);
+
+    /// <summary>
+    /// The script's view of a configuration on <c>effort: "auto"</c> (#439): <c>asked</c> and <c>notice</c> are
+    /// <c>auto</c>, <c>sent</c> what <paramref name="provider"/> sends for <paramref name="settled"/>, the configuration
+    /// with no pick. Null when there is no provider.
+    /// </summary>
+    internal static JsLlmReasoning? Auto(Orkeon.Domain.SharedKernel.ILlmProvider? provider, LlmConfig settled)
+    {
+        if (provider is null)
+            return null;
+        var report = provider.ReportEffort(settled);
+        var model = report?.Model ?? settled.Model ?? provider.BaseConfig?.Model ?? string.Empty;
+        return new JsLlmReasoning(model, report?.Sent);
+    }
 }
 
 /// <summary>What a provider and one of its models take for reasoning (#359): <c>capabilities</c> on <c>LlmConfig</c>.</summary>

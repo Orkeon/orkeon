@@ -211,7 +211,9 @@ It also carries `reasoning`, and so do the results of `act` and `chat` and the o
 asked, sent, notice }`, the effort asked (by the call's `effort`, `agentBuilder().effort`, `.with({ effort })` or the
 host's `Llm:Thinking:Effort`), the effort sent (`null` when none goes out) and `notice`, `"lowered"`, `"dropped"`,
 `"unchecked"` (a model the table does not know) or `null` when it went as asked; `reasoning` is `null` when no effort
-is asked. Inside an agent, `ctx.llm` calls run on the agent's provider, model and effort, which no `LlmConfig` the
+is asked. On a configuration with `effort: "auto"`, `asked` and `notice` are `"auto"` (the level is System One's pick at
+each task's start) and `sent` is what a call with no pick sends, its profile's effort; `capabilities` judges the model
+whatever the effort. A level and `"auto"` are read in any case (`"High"` is `high`), as in YAML. Inside an agent, `ctx.llm` calls run on the agent's provider, model and effort, which no `LlmConfig` the
 script holds carries: `ctx.llm.reasoning(opts)` and `ctx.llm.capabilities(opts)` answer for the call those options
 name, judged as that call is (the options' `effort` and `llm: { profile, model }` included), and place no call; that
 is the report `complete` and `extract` cannot carry, since they return the text or the object alone. Both are `null`

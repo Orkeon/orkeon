@@ -223,6 +223,9 @@ fournisseur s'appliquent alors sans vérification). Il porte aussi `reasoning`, 
 l'appel, `agentBuilder().effort`, `.with({ effort })` ou le `Llm:Thinking:Effort` de l'hôte), l'effort envoyé
 (`null` quand aucun ne part) et `notice`, `"lowered"`, `"dropped"`, `"unchecked"` (un modèle que la table ne connaît
 pas) ou `null` quand il est parti tel que demandé ; `reasoning` vaut `null` quand aucun effort n'est demandé.
+Sur une configuration en `effort: "auto"`, `asked` et `notice` valent `"auto"` (le niveau est le choix de System One au
+début de chaque tâche) et `sent` est ce qu'envoie un appel sans choix, l'effort de son profil ; `capabilities` juge le
+modèle quel que soit l'effort. Un niveau et `"auto"` se lisent en toute casse (`"High"` vaut `high`), comme en YAML.
 Dans un agent, les appels de `ctx.llm` partent sur le fournisseur, le modèle et l'effort de l'agent, qu'aucun
 `LlmConfig` détenu par le script ne porte : `ctx.llm.reasoning(opts)` et `ctx.llm.capabilities(opts)` répondent pour
 l'appel que ces options désignent, jugé comme cet appel l'est (l'`effort` et le `llm: { profile, model }` des options

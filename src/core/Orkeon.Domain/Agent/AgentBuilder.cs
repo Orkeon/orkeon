@@ -208,17 +208,24 @@ public sealed class AgentBuilder
     /// of each task, the decision model picks one of the levels the host allows (<c>Orkeon:Decision:Effort:Levels</c>),
     /// inside <paramref name="min"/> and <paramref name="max"/> when given (<c>effort: { auto: true, min, max }</c>),
     /// and the task keeps it; without a pick, the effort the agent would have had stands (its profile's, else the
-    /// provider's own). Keeps the thinking switch already set. A crew on <c>decision.mode: none</c> refuses it, and a
-    /// load refuses bounds that leave none of the host's levels.
+    /// provider's own). Keeps the thinking switch already set; on an agent whose thinking is switched off
+    /// (<c>Thinking(false)</c>), there is no level to pick and the call is refused: switch it on, or call
+    /// <see cref="ThinkingEnabledAuto"/> first. A crew on <c>decision.mode: none</c> refuses it, and bounds that leave
+    /// none of the host's levels fail the task at its start (a YAML crew at its load).
     /// Sugar over <see cref="WithLlmConfig"/>; on an agent without a config it names no model, like <see cref="Thinking"/>.
     /// </summary>
     /// <param name="min">The lowest level the pick may give, one of <see cref="LlmThinkingConfig.Levels"/>; null for none.</param>
     /// <param name="max">The highest level the pick may give, one of <see cref="LlmThinkingConfig.Levels"/>; null for none.</param>
     /// <exception cref="ArgumentException">A bound is not a level, or <paramref name="min"/> is above <paramref name="max"/>.</exception>
+    /// <exception cref="InvalidOperationException">The agent's thinking is switched off (<c>Thinking(false)</c>).</exception>
     public AgentBuilder ThinkingEffortAuto(string? min = null, string? max = null)
     {
         var auto = LlmAutoEffort.Bounded(min, max);
         var config = _llmConfig ?? LlmConfig.OnProfile();
+        if (config.Thinking is { Enabled: false })
+            throw new InvalidOperationException(
+                "ThinkingEffortAuto: this agent's thinking is switched off (Thinking(false)), so System One has no level to pick. " +
+                "Switch it on (Thinking(true)), or let System One switch it too (ThinkingEnabledAuto()) before ThinkingEffortAuto().");
         _llmConfig = config with
         {
             Thinking = (config.Thinking ?? new LlmThinkingConfig()) with { Effort = null, AutoEffort = auto },

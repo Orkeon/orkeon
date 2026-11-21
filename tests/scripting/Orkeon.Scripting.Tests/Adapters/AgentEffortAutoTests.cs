@@ -149,4 +149,18 @@ public sealed class AgentEffortAutoTests
         // Assert
         Assert.Equal(new LlmThinkingConfig { Enabled = false }, provider.LastConfig?.Thinking);
     }
+
+    [Theory]
+    [Trait("BR", "CH-439")]
+    [InlineData("Auto", "auto")]
+    [InlineData("HIGH", "high")]
+    [InlineData(" medium ", "medium")]
+    public void ShouldReadTheEffortInAnyCase_WhenTheScriptWritesIt(string written, string expected)
+    {
+        // Act
+        var level = JsLlmConfig.RequireEffortOrAuto(written);
+
+        // Assert: as YAML reads it.
+        Assert.Equal(expected, level);
+    }
 }

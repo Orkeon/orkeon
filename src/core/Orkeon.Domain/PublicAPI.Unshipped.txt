@@ -160,3 +160,6 @@ Orkeon.Domain.Tools.ToolContracts
 static Orkeon.Domain.Tools.ToolContracts.ActsOnWorkspace(Orkeon.Domain.Tools.IBaseTool! tool) -> bool
 static Orkeon.Domain.Tools.ToolContracts.ContractOf(Orkeon.Domain.Tools.IBaseTool! tool) -> Orkeon.Domain.Attributes.ToolContractAttribute?
 static Orkeon.Domain.Tools.ToolContracts.StaysWithCaller(Orkeon.Domain.Tools.IBaseTool! tool) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.Clamp(string? level) -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.IsHeldOffBy(Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig? standing) -> bool
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.ParseEffort(string? effort) -> string?

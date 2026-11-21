@@ -81,4 +81,20 @@ public sealed class LlmAutoEffortTests
         // Assert
         Assert.Equal("min: low, max: high", described);
     }
+
+    [Theory]
+    [Trait("BR", "CH-439")]
+    [InlineData("low", "medium")]
+    [InlineData("medium", "medium")]
+    [InlineData("xhigh", "high")]
+    [InlineData("none", "none")]
+    [InlineData(null, null)]
+    public void ShouldBringALevelInsideTheBounds_WhenItLiesOutside(string? level, string? expected)
+    {
+        // Act
+        var clamped = LlmAutoEffort.Bounded("medium", "high").Clamp(level);
+
+        // Assert
+        Assert.Equal(expected, clamped);
+    }
 }

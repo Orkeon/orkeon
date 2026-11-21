@@ -19,6 +19,11 @@ and `MaxOutputTokens(n)` merges into them and, on an agent that has none, starts
 that names no model (`LlmConfig.OnProfile()`) — the agent then runs on the host's model, whatever vendor
 the host runs. To pin a model, start from `LlmConfig.Create(model)`; to run on one of the host's
 [named profiles](#one-provider-per-agent-profiles), from `LlmConfig.OnProfile("claude")`.
+`ThinkingEffortAuto(min, max)` leaves the thinking level to System One at each task's start, as YAML's
+`thinking: { effort: auto }` (bounds optional), and `ThinkingEnabledAuto()` lets it switch thinking off for a
+trivial task, as `enabled: auto`; `ThinkingEffortAuto()` after `Thinking(false)` throws, unless `ThinkingEnabledAuto()`
+comes first. Bounds that keep none of the host's levels, or a model that does not think, fail the task at its start
+([`Orkeon:Decision:Effort`](../reference/configuration.md#orkeondecisioneffort)).
 A token cap (`max_tokens`, `MaxTokens`) is a positive integer; omit it to keep the inherited cap. YAML loading, `LlmConfig.with` in scripts, `Agent.Create` and `SetLlmOverride` refuse a value of 0 or less.
 
 ## YAML configuration

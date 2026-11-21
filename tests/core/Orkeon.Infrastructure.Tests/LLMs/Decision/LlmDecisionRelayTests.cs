@@ -191,6 +191,23 @@ public sealed class LlmDecisionRelayTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldSendTheProfilesEffort_WhenTheRelayAgentLeavesItsEffortToSystemOne()
+    {
+        // Arrange
+        _client.SetGetResponseResult(Answer);
+        _provider.BaseConfig = LlmConfig.OnProfile() with { Thinking = new LlmThinkingConfig { Effort = "medium" } };
+        var agent = Analyst(b => b.ThinkingEffortAuto());
+
+        // Act
+        await AskAsync(agent);
+
+        // Assert: a relay call is no task, so no pick: the profile's effort, never the marker.
+        var sent = Assert.IsType<LlmThinkingConfig>(_client.LastGetResponseOptions!.AdditionalProperties?.GetValueOrDefault(LlmChatOptionsKeys.Thinking));
+        Assert.Equal(new LlmThinkingConfig { Effort = "medium" }, sent);
+    }
+
+    [Fact]
     [Trait("BR", "CH-430")]
     public async System.Threading.Tasks.Task ShouldKeepTheSchemaBesideTheThinking_WhenTheProviderDeclaresJsonSchema()
     {

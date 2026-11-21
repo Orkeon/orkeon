@@ -103,4 +103,83 @@ public sealed class LlmThinkingConfigSettleTests
         // Assert
         Assert.Equal(new LlmThinkingConfig { Enabled = false }, settled);
     }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldKeepThinkingOffAndIgnoreThePick_WhenTheStandingThinkingIsWrittenOff()
+    {
+        // Arrange
+        var auto = new LlmThinkingConfig { AutoEffort = LlmAutoEffort.Any };
+        var standing = new LlmThinkingConfig { Enabled = false };
+
+        // Act
+        var settled = auto.Settle("high", standing);
+
+        // Assert
+        Assert.True(auto.IsHeldOffBy(standing));
+        Assert.Equal(new LlmThinkingConfig { Enabled = false }, settled);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldLetThePickSwitchThinkingOn_WhenTheConfigWritesEnabledAutoOverAThinkingWrittenOff()
+    {
+        // Arrange
+        var auto = new LlmThinkingConfig { AutoEnabled = true, AutoEffort = LlmAutoEffort.Any };
+        var standing = new LlmThinkingConfig { Enabled = false };
+
+        // Act
+        var settled = auto.Settle("high", standing);
+
+        // Assert
+        Assert.False(auto.IsHeldOffBy(standing));
+        Assert.Equal(new LlmThinkingConfig { Enabled = true, Effort = "high" }, settled);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-439")]
+    [InlineData("low", "medium")]
+    [InlineData("max", "high")]
+    [InlineData("medium", "medium")]
+    public void ShouldClampTheStandingLevelIntoTheBounds_WhenSystemOnePickedNone(string standingLevel, string expected)
+    {
+        // Arrange
+        var auto = new LlmThinkingConfig { AutoEffort = LlmAutoEffort.Bounded("medium", "high") };
+
+        // Act
+        var settled = auto.Settle(null, new LlmThinkingConfig { Effort = standingLevel });
+
+        // Assert
+        Assert.Equal(expected, settled?.Effort);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldLeaveTheProviderItsOwn_WhenNothingStandsUnderABoundedPick()
+    {
+        // Arrange
+        var auto = new LlmThinkingConfig { AutoEffort = LlmAutoEffort.Bounded("medium", null) };
+
+        // Act
+        var settled = auto.Settle(null, null);
+
+        // Assert: the provider's own level is unknown, and no bound is forced on it.
+        Assert.Null(settled);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-439")]
+    [InlineData("High", "high")]
+    [InlineData(" XHIGH ", "xhigh")]
+    [InlineData("auto", null)]
+    [InlineData("huge", null)]
+    [InlineData(null, null)]
+    public void ShouldReadALevelInAnyCase_WhenACrewWritesIt(string? written, string? expected)
+    {
+        // Act
+        var level = LlmThinkingConfig.ParseEffort(written);
+
+        // Assert
+        Assert.Equal(expected, level);
+    }
 }
