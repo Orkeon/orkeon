@@ -17,7 +17,7 @@ public sealed class ToolBridgeScratchTests
     {
         CallId = "c1",
         Tool = "firefox",
-        Arguments = JsonDocument.Parse("{}").RootElement.Clone(),
+        Arguments = JsonElement.Parse("{}"),
         Mounts = [new BridgeMount { Path = "/output", Writable = true }],
         Files = [.. files],
     };
