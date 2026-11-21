@@ -230,11 +230,22 @@ internal static class ForgeTeamReader
     /// </summary>
     public static bool TryRead(
         string crewDirectory, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string> existingPaths,
-        out string crewDecision)
+        out string crewDecision) =>
+        TryRead(crewDirectory, out blueprint, out errors, existingPaths, out crewDecision, out _);
+
+    /// <summary>
+    /// <see cref="TryRead(string, out ForgeBlueprint?, out IReadOnlyList{string}, IReadOnlyCollection{string}, out string)"/>,
+    /// with whether the mode was derived (#431): true when the crew declares no mode and its plan makes it
+    /// <see cref="ForgeCrewDecision.Required"/>, so the next render writes <c>mode: required</c>.
+    /// </summary>
+    public static bool TryRead(
+        string crewDirectory, out ForgeBlueprint? blueprint, out IReadOnlyList<string> errors, IReadOnlyCollection<string> existingPaths,
+        out string crewDecision, out bool crewDecisionDerived)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(crewDirectory);
         blueprint = null;
         crewDecision = ForgeCrewDecision.None;
+        crewDecisionDerived = false;
 
         if (!Directory.Exists(crewDirectory))
         {
@@ -341,8 +352,9 @@ internal static class ForgeTeamReader
         // A crew promoted before the hand-off rule still reopens: the rule is enforced at the next validation. The binary
         // deliverable rule is not skipped: the error names the file to fix (#392).
         // The crew's decision mode (#431): the one its settings declare, else the one its plan implies.
-        crewDecision = crew.Decision?.Mode is { } declared && ForgeCrewDecision.IsKnown(declared)
-            ? ForgeCrewDecision.Normalize(declared)
+        var declaresMode = crew.Decision?.Mode is { } declared && ForgeCrewDecision.IsKnown(declared);
+        crewDecision = declaresMode
+            ? ForgeCrewDecision.Normalize(crew.Decision!.Mode)
             : ForgeCrewDecision.Derive(candidate);
         var structural = candidate.Validate(existingPaths, enforceHandOffs: false, crewDecision: crewDecision);
         if (structural.Count > 0)
@@ -352,6 +364,7 @@ internal static class ForgeTeamReader
         }
 
         blueprint = candidate;
+        crewDecisionDerived = !declaresMode && crewDecision == ForgeCrewDecision.Required;
         errors = [];
         return true;
     }
@@ -410,8 +423,11 @@ internal enum ForgeBriefSource
     Derived,
 }
 
-/// <summary>What a rebuild produced.</summary>
-internal sealed record ForgeRebuildResult(ForgeSession Session, ForgeBriefSource BriefSource);
+/// <summary>
+/// What a rebuild produced: the session, where its brief came from, and whether its crew decision mode was derived from the plan
+/// because the crew declares none (#431).
+/// </summary>
+internal sealed record ForgeRebuildResult(ForgeSession Session, ForgeBriefSource BriefSource, bool CrewDecisionDerived = false);
 
 /// <summary>
 /// Rebuilds a forge session from a promoted team folder (FORGE-09): the plan read back from
@@ -443,7 +459,7 @@ internal static class ForgeSessionRebuilder
 
         var crewDirectory = Path.Combine(teamDirectory, ForgeYamlRenderer.CrewDirectoryName);
         var record = ForgeTeamRecord.TryRead(teamDirectory);
-        if (!ForgeTeamReader.TryRead(crewDirectory, out var blueprint, out var errors, ForgeFolders.ExistingPaths(record?.Brief?.Folders), out var crewDecision))
+        if (!ForgeTeamReader.TryRead(crewDirectory, out var blueprint, out var errors, ForgeFolders.ExistingPaths(record?.Brief?.Folders), out var crewDecision, out var crewDecisionDerived))
         {
             throw new InvalidOperationException(
                 $"'{teamDirectory}' holds no crew the forge can read back into a plan:"
@@ -498,7 +514,7 @@ internal static class ForgeSessionRebuilder
             throw;
         }
 
-        return new ForgeRebuildResult(session, briefSource);
+        return new ForgeRebuildResult(session, briefSource, crewDecisionDerived);
     }
 
     private static void DeleteQuietly(string directory)

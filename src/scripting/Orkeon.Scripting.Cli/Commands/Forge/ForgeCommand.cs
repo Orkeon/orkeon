@@ -439,6 +439,8 @@ internal sealed record ForgeCommandOptions
             "--lang only applies to a new session or to `forge resume`."),
         ((o, _) => o.NoDecision && (o.PromoteSlug is not null || o.List),
             "--no-decision only applies to a new session or to `forge resume`."),
+        ((o, _) => o.CrewDecision is not null && (o.PromoteSlug is not null || o.List),
+            "--crew-decision only applies to a new session or to `forge resume`."),
         ((o, _) => ReferenceOutsideANewSession(o),
             "--reference only applies to a new session: a session keeps the reference it was created with."),
         ((o, needWords) => o.ReopenDirectory is not null && ShapesACycleOrNeed(o, needWords),
@@ -786,14 +788,14 @@ internal static class ForgeCommand
         var systemOne = ForgeSystemOne.Resolve(options.NoDecision, host.Services);
         events.SystemOne = systemOne;
 
-        var packPath = ForgePack.Ensure(session.Directory, options.PackDirectory);
-        var assistant = new ForgeCrewAssistant(host.Services, session, packPath, reference: reference, language: options.Language);
-
-        // The sandbox catalogue: what the blueprint prompt shows is exactly what the
+        // The sandbox catalogue, built once: what the blueprint prompt shows is exactly what the
         // validation enforces (SPEC §9.1) — one list, two consumers.
-        var knownTools = ForgeSandbox.SelectCrewTools(host.Services.GetServices<IBaseTool>(), session.Document.CrewDecision, hostCircuit)
-            .Select(tool => tool.Name)
-            .ToHashSet(StringComparer.Ordinal);
+        var crewTools = ForgeSandbox.SelectCrewTools(host.Services.GetServices<IBaseTool>(), session.Document.CrewDecision, hostCircuit);
+        var knownTools = crewTools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
+
+        var packPath = ForgePack.Ensure(session.Directory, options.PackDirectory);
+        var assistant = new ForgeCrewAssistant(
+            host.Services, session, packPath, reference: reference, language: options.Language, crewTools: crewTools);
 
         observer.Attach(events, withCalls: options.Events);
         IForgeUserChannel channel = options.Events
@@ -1353,6 +1355,14 @@ internal static class ForgeCommand
         var session = rebuilt.Session;
         var recorded = rebuilt.BriefSource == ForgeBriefSource.Recorded;
         events.SessionStarted(session, resumed: false);
+        if (rebuilt.CrewDecisionDerived)
+        {
+            events.Warning(
+                ForgeCrewDecision.DerivedWarning,
+                $"The crew of '{teamDirectory}' declares no decision mode: its plan makes it '{session.Document.CrewDecision}',"
+                + $" and the next render writes mode: {session.Document.CrewDecision}.");
+        }
+
         events.Emit("team.reopened", new
         {
             slug = session.Document.Slug,

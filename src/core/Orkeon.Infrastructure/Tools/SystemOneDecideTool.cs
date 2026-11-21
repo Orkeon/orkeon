@@ -70,8 +70,11 @@ public sealed class SystemOneDecideResponse
 public sealed class SystemOneDecideTool : ToolBase<SystemOneDecideRequest, SystemOneDecideResponse>
 {
     /// <summary>The tool's name.</summary>
-    /// <remarks>The contract names the tool by the same literal, which the documentation checks read.</remarks>
-    public const string ToolName = "system_one_decide";
+    /// <remarks>
+    /// The domain's <see cref="Orkeon.Domain.Task.ValueObjects.SystemOneUses.DecideToolName"/>; the contract above names
+    /// the tool by the same literal, which the documentation checks read.
+    /// </remarks>
+    public const string ToolName = Orkeon.Domain.Task.ValueObjects.SystemOneUses.DecideToolName;
 
     private static readonly JsonSerializerOptions s_questions = new();
 

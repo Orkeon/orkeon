@@ -74,9 +74,10 @@ public sealed class ForgeSystemOneTests : IDisposable
         ForgeBudget? budget = null,
         string crewDecision = ForgeCrewDecision.None,
         string blueprint = ForgeDocuments.ValidBlueprint,
-        DecisionCircuit? host = null)
+        DecisionCircuit? host = null,
+        ForgeSession? session = null)
     {
-        var session = ForgeSession.Create(Path.Combine(_workspace, name), "veille", budget: budget, crewDecision: crewDecision);
+        session ??= ForgeSession.Create(Path.Combine(_workspace, name), "veille", budget: budget, crewDecision: crewDecision);
         var assistant = new ScriptedAssistant().SubmitsBrief(ForgeDocuments.ValidBrief).SubmitsBlueprint(blueprint);
         var channel = auto ? new ScriptedUserChannel() : new ScriptedUserChannel().Decides("accept");
         var output = new StringWriter();
@@ -499,6 +500,37 @@ public sealed class ForgeSystemOneTests : IDisposable
             blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new DecidingTestBench(model), host: DecisionCircuit.Of(services));
 
         Assert.Equal(["urgent"], model.Requests.SelectMany(r => r.Questions.Keys));
+    }
+
+    [Fact]
+    public async Task An_off_forge_still_tries_an_optional_crew_twice()
+    {
+        var model = new StubDecisionModel();
+        var services = new ServiceCollection().AddSingleton<IDecisionModel>(model).BuildServiceProvider();
+        var bench = new CircuitRecordingTestBench();
+
+        await RunAsync("optional", ForgeSystemOne.Resolve(noDecision: true, services), crewDecision: ForgeCrewDecision.Optional,
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: bench, judge: new FakeJudge().Approves().Approves(),
+            host: DecisionCircuit.Of(services));
+
+        Assert.Equal(["on", "off"], bench.Circuits.Select(c => ForgeCrewDecision.CircuitName(c!)));
+    }
+
+    [Fact]
+    public async Task A_resume_after_a_budget_stop_between_passes_asks_no_second_estimate()
+    {
+        var model = new StubDecisionModel();
+        var stopped = await RunAsync("budget", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new CircuitRecordingTestBench { Tokens = 50_000 },
+            budget: new ForgeBudget { MaxTokens = 40_000 }, host: DecisionCircuit.On);
+        stopped.Session.Document.Budget = new ForgeBudget { MaxTokens = 1_000_000, ConsumedTokens = stopped.Session.Document.Budget.ConsumedTokens };
+        stopped.Session.SetStatus(ForgeSessionStatus.Active);
+
+        var resumed = await RunAsync("budget", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
+            bench: new CircuitRecordingTestBench(), judge: new FakeJudge().Approves().Approves(), host: DecisionCircuit.On,
+            session: stopped.Session);
+
+        Assert.DoesNotContain(resumed.Events(ForgeSystemOne.AnsweredKind), e => e.GetProperty("use").GetString() == "estimate");
     }
 
     // --- the forge's own calls name no decision profile ------------------------------------------

@@ -66,7 +66,7 @@ internal sealed class ForgeSystemOne
     public string? Cause { get; }
 
     /// <summary>The spelling of the circuit in <c>session.started</c>: <c>on</c> or <c>off</c>.</summary>
-    public string CircuitName => Enabled ? "on" : "off";
+    public string CircuitName => Enabled ? Orkeon.Constants.Protocol.DecisionCircuitStates.On : Orkeon.Constants.Protocol.DecisionCircuitStates.Off;
 
     /// <summary>An on circuit over <paramref name="model"/>.</summary>
     public static ForgeSystemOne On(IDecisionModel model) =>

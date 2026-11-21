@@ -92,8 +92,8 @@ internal sealed record ForgeTestPass
     [JsonPropertyName("success")]
     public bool Success { get; init; }
 
-    /// <summary>The pass's <c>output.md</c>, relative to the session.</summary>
-    [JsonPropertyName("outputPath")]
+    /// <summary>The pass's <c>output.md</c>, relative to the session (<c>output</c> on the wire, as #431 names it).</summary>
+    [JsonPropertyName("output")]
     public string? OutputPath { get; init; }
 
     [JsonPropertyName("error")]

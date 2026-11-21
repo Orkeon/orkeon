@@ -28,6 +28,15 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
         return path;
     }
 
+    /// <summary>A settings file whose Llm section satisfies the host gate, with the decision circuit off by the settings.</summary>
+    private string WriteSettingsWithTheCircuitOff()
+    {
+        Directory.CreateDirectory(_workspace);
+        var path = Path.Combine(_workspace, "settings-off.json");
+        File.WriteAllText(path, """{ "Llm": { "Model": "never-called", "BaseUrl": "http://127.0.0.1:9" }, "Orkeon": { "Decision": { "Enabled": false } } }""");
+        return path;
+    }
+
     /// <summary>A session parked at the dry pause with the triage plan, in <paramref name="mode"/>.</summary>
     private ForgeSession SessionAtDryPause(string? mode)
     {
@@ -128,6 +137,31 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
             .Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal(ForgeCrewDecision.UnavailableCode, error.GetProperty("code").GetString());
         Assert.Equal("no-provider", error.GetProperty("cause").GetString());
+    }
+
+    [Fact]
+    public async Task A_required_crew_refusal_names_the_settings_when_they_turn_the_circuit_off()
+    {
+        var settings = WriteSettingsWithTheCircuitOff();
+        SessionAtDryPause(ForgeCrewDecision.Required);
+        using var console = new TestConsole();
+
+        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--events", "jsonl", "--settings", settings], _workspace);
+
+        var error = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonElement.Parse(line))
+            .Single(e => e.GetProperty("kind").GetString() == "error");
+        Assert.Equal((ForgeCrewDecision.UnavailableCode, "settings"), (error.GetProperty("code").GetString(), error.GetProperty("cause").GetString()));
+    }
+
+    [Fact]
+    public void The_crew_decision_option_is_refused_by_promote()
+    {
+        string[] args = ["promote", "tri", "--to", "/teams/tri", "--crew-decision", "optional"];
+
+        var options = ForgeCommandOptions.Parse(args);
+
+        Assert.Equal("--crew-decision only applies to a new session or to `forge resume`.", options.Error);
     }
 
     [Fact]

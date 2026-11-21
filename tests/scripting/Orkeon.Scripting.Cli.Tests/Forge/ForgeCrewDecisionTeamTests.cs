@@ -7,6 +7,7 @@ namespace Orkeon.Scripting.Cli.Tests.Forge;
 /// The crew decision mode beyond the session (#431): a promoted team records it in <c>forge.json</c> and states it
 /// in <c>FORGE.md</c> and its launcher, and a reopened team gets its decisions, conditions, relays and mode back.
 /// </summary>
+[Collection(CliCollection.Name)]
 public sealed class ForgeCrewDecisionTeamTests : IDisposable
 {
     private static readonly DateTimeOffset Now = new(2026, 9, 20, 10, 0, 0, TimeSpan.Zero);
@@ -53,10 +54,38 @@ public sealed class ForgeCrewDecisionTeamTests : IDisposable
         return session;
     }
 
-    private void Promote(string mode) =>
+    private ForgeSession Promote(string mode)
+    {
+        var session = ReadySession(mode);
         ForgePromoter.Promote(
-            ReadySession(mode), Destination, schedule: null, settingsPath: null, copySettings: false,
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
             ForgePromotePlatform.Linux, Now);
+        return session;
+    }
+
+    /// <summary>Removes the crew-level <c>decision:</c> block from the crew under <paramref name="crew"/>.</summary>
+    private static void StripDecisionBlock(string crew)
+    {
+        var config = Path.Combine(crew, "config.yaml");
+        File.WriteAllLines(config, File.ReadAllLines(config).Where(line => !line.StartsWith("decision", StringComparison.Ordinal) && !line.StartsWith("  mode", StringComparison.Ordinal)));
+    }
+
+    /// <summary>
+    /// A promoted team in <paramref name="mode"/> whose session is gone, so a reopen rebuilds one from the folder;
+    /// <paramref name="declaresMode"/> false strips its <c>decision:</c> block first.
+    /// </summary>
+    private void PromotedTeamWithoutItsSession(string mode, bool declaresMode)
+    {
+        var session = Promote(mode);
+        Directory.Delete(session.Directory, recursive: true);
+        if (!declaresMode)
+            StripDecisionBlock(Path.Combine(Destination, ForgeYamlRenderer.CrewDirectoryName));
+    }
+
+    private static IReadOnlyList<JsonElement> Events(string stdout) =>
+    [
+        .. stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => JsonElement.Parse(line)),
+    ];
 
     [Fact]
     public async Task A_promoted_team_records_its_mode_in_forge_json()
@@ -104,8 +133,9 @@ public sealed class ForgeCrewDecisionTeamTests : IDisposable
     {
         var crew = RenderTriage(ForgeCrewDecision.Optional);
 
-        Assert.True(ForgeTeamReader.TryRead(crew, out _, out var errors, [], out var mode), string.Join("; ", errors));
+        var read = ForgeTeamReader.TryRead(crew, out _, out var errors, [], out var mode);
 
+        Assert.True(read, string.Join("; ", errors));
         Assert.Equal(ForgeCrewDecision.Optional, mode);
     }
 
@@ -114,8 +144,9 @@ public sealed class ForgeCrewDecisionTeamTests : IDisposable
     {
         var crew = RenderTriage(ForgeCrewDecision.Optional);
 
-        Assert.True(ForgeTeamReader.TryRead(crew, out var blueprint, out var errors, [], out _), string.Join("; ", errors));
+        var read = ForgeTeamReader.TryRead(crew, out var blueprint, out var errors, [], out _);
 
+        Assert.True(read, string.Join("; ", errors));
         var triage = blueprint!.Tasks!.Single(t => t.Key == "triage");
         Assert.Equal("relais", triage.Decision!.Without!.Agent);
         Assert.Equal(["bug", "feature"], triage.Decision.Questions!["category"].Choice!.Keys.Order(StringComparer.Ordinal));
@@ -126,12 +157,38 @@ public sealed class ForgeCrewDecisionTeamTests : IDisposable
     public void A_reopened_team_without_a_mode_derives_it_from_its_decision_tasks()
     {
         var crew = RenderTriage(ForgeCrewDecision.Required);
-        var config = Path.Combine(crew, "config.yaml");
-        File.WriteAllLines(config, File.ReadAllLines(config).Where(line => !line.StartsWith("decision", StringComparison.Ordinal) && !line.StartsWith("  mode", StringComparison.Ordinal)));
+        StripDecisionBlock(crew);
 
-        Assert.True(ForgeTeamReader.TryRead(crew, out _, out var errors, [], out var mode), string.Join("; ", errors));
+        var read = ForgeTeamReader.TryRead(crew, out _, out var errors, [], out var mode);
 
+        Assert.True(read, string.Join("; ", errors));
         Assert.Equal(ForgeCrewDecision.Required, mode);
+    }
+
+    [Fact]
+    public async Task A_reopened_team_without_a_mode_is_warned_after_session_started_that_its_plan_makes_it_required()
+    {
+        PromotedTeamWithoutItsSession(ForgeCrewDecision.Required, declaresMode: false);
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["reopen", Destination, "--events", "jsonl"], _workspace);
+
+        Assert.Equal(0, exitCode);
+        var events = Events(console.Stdout);
+        Assert.Equal(["session.started", "warning"], events.Take(2).Select(e => e.GetProperty("kind").GetString()));
+        Assert.Equal(ForgeCrewDecision.DerivedWarning, events[1].GetProperty("code").GetString());
+        Assert.Contains("mode: required", events[1].GetProperty("message").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_reopened_team_that_declares_its_mode_is_not_warned()
+    {
+        PromotedTeamWithoutItsSession(ForgeCrewDecision.Required, declaresMode: true);
+        using var console = new TestConsole();
+
+        await ForgeCommand.DispatchAsync(console, ["reopen", Destination, "--events", "jsonl"], _workspace);
+
+        Assert.DoesNotContain(ForgeCrewDecision.DerivedWarning, console.Stdout, StringComparison.Ordinal);
     }
 
     [Fact]

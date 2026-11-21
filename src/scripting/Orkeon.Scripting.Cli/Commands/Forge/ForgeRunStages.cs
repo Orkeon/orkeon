@@ -3,6 +3,7 @@ using System.Globalization;
 using Orkeon.Application.Crew;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Constants.Protocol;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Cli.Commands.Run;
 
@@ -169,28 +170,32 @@ internal sealed class TestStage : IForgeStageRunner
         var runDirectory = Path.Combine(session.Directory, RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture));
         Directory.CreateDirectory(runDirectory);
 
-        var plans = PlanPasses(session, events);
+        var plans = PlanPasses(session, events, runDirectory);
         var split = plans.Count > 1;
         var passes = new List<(ForgeTestRun Run, ForgeTestPass Pass)>();
+        var kept = split
+            ? [.. plans.Select(plan => KeptPass(session, PassDirectory(runDirectory, plan)))]
+            : new List<(ForgeTestRun Run, ForgeTestPass Pass)?> { null };
 
-        // System One's estimate of the trial (#435), before run.started: for the user, it never skips a pass.
-        var usage = await _systemOne.EstimateTrialAsync(
-            events,
-            session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName),
-            session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName),
-            cancellationToken).ConfigureAwait(false);
+        // System One's estimate of the trial (#435), before run.started: for the user, it never skips a pass. A resume
+        // that keeps a pass already ran (#431) was estimated before that pass, and is not asked or charged again.
+        var usage = kept.Any(static pass => pass is not null)
+            ? default
+            : await _systemOne.EstimateTrialAsync(
+                events,
+                session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName),
+                session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName),
+                cancellationToken).ConfigureAwait(false);
 
         for (var index = 0; index < plans.Count; index++)
         {
             var plan = plans[index];
-            var circuitName = plan.Shown is { } shown ? ForgeCrewDecision.CircuitName(shown) : null;
-            var passDirectory = split ? Path.Combine(runDirectory, circuitName!) : runDirectory;
+            var passDirectory = split ? PassDirectory(runDirectory, plan) : runDirectory;
 
             // A resume after a budget stop between passes (#431): the pass that ran is kept, never run again.
-            if (split && session.TryLoadArtifact<ForgeTestRun>(Path.GetRelativePath(session.Directory, Path.Combine(passDirectory, "run.json"))) is { } kept
-                && kept.Passes is [{ } keptPass])
+            if (kept[index] is { } keptPass)
             {
-                passes.Add((kept, keptPass));
+                passes.Add(keptPass);
                 continue;
             }
 
@@ -223,17 +228,33 @@ internal sealed class TestStage : IForgeStageRunner
         };
     }
 
+    /// <summary>The folder of one pass of a two-pass trial: <c>runs/&lt;n&gt;/on</c> or <c>runs/&lt;n&gt;/off</c>.</summary>
+    private static string PassDirectory(string runDirectory, PassPlan plan) =>
+        Path.Combine(runDirectory, ForgeCrewDecision.CircuitName(plan.Shown ?? DecisionCircuit.On));
+
+    /// <summary>The pass a budget stop left in <paramref name="passDirectory"/> (#431); null when none ran there.</summary>
+    private static (ForgeTestRun Run, ForgeTestPass Pass)? KeptPass(ForgeSession session, string passDirectory) =>
+        session.TryLoadArtifact<ForgeTestRun>(Path.GetRelativePath(session.Directory, Path.Combine(passDirectory, "run.json"))) is { } kept
+        && kept.Passes is [{ } keptPass]
+            ? (kept, keptPass)
+            : null;
+
     /// <summary>
     /// The passes of this trial (#431): on then off for an <c>optional</c> crew, off alone, warned, when the host's
-    /// circuit is off; one pass on the host's circuit otherwise.
+    /// circuit is off; one pass on the host's circuit otherwise. A resume whose on pass ran before a budget stop keeps
+    /// both passes even when the host's circuit is off since: the on pass is kept, and the off pass runs.
     /// </summary>
-    private List<PassPlan> PlanPasses(ForgeSession session, ForgeEventWriter events)
+    private List<PassPlan> PlanPasses(ForgeSession session, ForgeEventWriter events, string runDirectory)
     {
         if (ForgeCrewDecision.Normalize(session.Document.CrewDecision) != ForgeCrewDecision.Optional)
             return [new PassPlan(null, _hostCircuit)];
 
         var host = _hostCircuit ?? DecisionCircuit.On;
         var circuits = ForgeCrewDecision.PassesOf(ForgeCrewDecision.Optional, host);
+        var on = new PassPlan(DecisionCircuit.On, DecisionCircuit.On);
+        if (!host.Enabled && KeptPass(session, PassDirectory(runDirectory, on)) is not null)
+            return [on, new PassPlan(host, host)];
+
         if (!host.Enabled)
         {
             events.Emit("warning", new
@@ -544,7 +565,7 @@ internal sealed class DiagnoseStage : IForgeStageRunner
         var findings = judged
             .SelectMany(j => j.Verdict.Findings.Select(f => optional ? f with { Circuit = j.Circuit } : f))
             .ToList();
-        if (optional && judged.Count == 1 && run.Passes is [{ Circuit: "off" } offPass])
+        if (optional && judged.Count == 1 && run.Passes is [{ Circuit: DecisionCircuitStates.Off } offPass])
         {
             findings.Add(new ForgeFinding
             {
@@ -552,7 +573,7 @@ internal sealed class DiagnoseStage : IForgeStageRunner
                 Severity = "info",
                 Statement = "The trial ran without System One only: the crew's run with a decision model was not tried.",
                 Evidence = offPass.Cause,
-                Circuit = "off",
+                Circuit = DecisionCircuitStates.Off,
             });
         }
 
@@ -581,24 +602,21 @@ internal sealed class DiagnoseStage : IForgeStageRunner
             completionTokens = run?.CompletionTokens,
             cacheHitTokens = run?.CacheHitTokens,
             cacheMissTokens = run?.CacheMissTokens,
-            // Each pass's verdict and figures (#431); the top level above holds their sums.
-            passes = verdict.Passes?.Select(pass => new
-            {
-                circuit = pass.Circuit,
-                passing = pass.Passing,
-                score = pass.Score,
-                metrics = run?.Passes?.FirstOrDefault(p => p.Circuit == pass.Circuit) is { } ran
-                    ? new
-                    {
-                        durationMs = ran.DurationMs,
-                        tokens = ran.Tokens,
-                        promptTokens = ran.PromptTokens,
-                        completionTokens = ran.CompletionTokens,
-                        cacheHitTokens = ran.CacheHitTokens,
-                        cacheMissTokens = ran.CacheMissTokens,
-                    }
-                    : null,
-            }),
+            // Each pass's verdict and its six figures, flat beside it (#431); the top level above holds their sums.
+            passes = verdict.Passes?
+                .Select(pass => (Verdict: pass, Ran: run?.Passes?.FirstOrDefault(p => p.Circuit == pass.Circuit)))
+                .Select(static pass => new
+                {
+                    circuit = pass.Verdict.Circuit,
+                    passing = pass.Verdict.Passing,
+                    score = pass.Verdict.Score,
+                    durationMs = pass.Ran?.DurationMs,
+                    tokens = pass.Ran?.Tokens,
+                    promptTokens = pass.Ran?.PromptTokens,
+                    completionTokens = pass.Ran?.CompletionTokens,
+                    cacheHitTokens = pass.Ran?.CacheHitTokens,
+                    cacheMissTokens = pass.Ran?.CacheMissTokens,
+                }),
         });
     }
 

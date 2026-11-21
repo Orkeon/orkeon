@@ -89,8 +89,9 @@ Both renders converge on the same validator, and the try loads the crew **from t
   System One then through the relays, under `runs/<n>/on/` and `runs/<n>/off/`: it passes when both passes pass, its
   score is the lower one and each finding names its `circuit`. Without a decision model only the relay pass runs,
   with the warning `FORGE-DECISION-PASS-SKIPPED` and the finding `F-PASS-ON-SKIPPED`.
-- `required`: the crew needs System One; `system_one_decide` is offered when the decision circuit is on. Its try with
-  the circuit off is refused (`FORGE-DECISION-UNAVAILABLE`); `--dry` only warns, `--adopt` asks for no try.
+- `required`: the crew needs System One; `system_one_decide` is offered when the decision circuit is on. With the
+  circuit off the session is refused before its interview (`FORGE-DECISION-UNAVAILABLE`, exit 1); the session is
+  kept and resumes once a decision model is configured. `--dry` only warns, `--adopt` asks for no try.
 
 The mode is recorded in `session.json` and cannot change on resume. A session older than the option resumes as
 `required` when its plan holds a decision task or `system_one_decide`, else `none`, with `FORGE-DECISION-MODE-DERIVED`.

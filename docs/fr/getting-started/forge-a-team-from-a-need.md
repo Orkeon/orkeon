@@ -92,8 +92,9 @@ Les deux rendus convergent vers le même validateur, et l'essai charge la crew *
   son `circuit`. Sans modèle de décision seul le passage par les relais tourne, avec l'avertissement
   `FORGE-DECISION-PASS-SKIPPED` et le constat `F-PASS-ON-SKIPPED`.
 - `required` : l'équipe a besoin de System One ; `system_one_decide` est proposé quand le circuit de décision est
-  ouvert. Son essai circuit coupé est refusé (`FORGE-DECISION-UNAVAILABLE`) ; `--dry` le signale seulement, `--adopt`
-  ne demande aucun essai.
+  ouvert. Circuit coupé, la session est refusée avant son entretien (`FORGE-DECISION-UNAVAILABLE`, sortie 1) ; la
+  session est gardée et reprend une fois un modèle de décision configuré. `--dry` le signale seulement, `--adopt` ne
+  demande aucun essai.
 
 Le mode est enregistré dans `session.json` et ne change pas à la reprise. Une session antérieure à l'option reprend
 en `required` quand son plan porte une tâche de décision ou `system_one_decide`, en `none` sinon, avec

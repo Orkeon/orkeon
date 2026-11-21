@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Execution;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Services;
@@ -51,6 +52,48 @@ public sealed class ForgeCrewTestBenchScopeTests : IDisposable
 
         Assert.True(first.Success, first.Error);
         Assert.True(second.Success, second.Error);
+    }
+
+    [Fact]
+    public async Task A_trial_pass_sets_its_circuit_on_its_scope_before_the_factory_reads_it()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ICrewDefinitionLoader>(new StubCrewDefinitionLoader());
+        services.AddSingleton<CircuitLog>();
+        services.AddScoped<TrialScope>();
+        services.AddScoped<DecisionCircuitOverride>();
+        services.AddScoped<ICrewFactory, CircuitReadingCrewFactory>();
+        services.AddScoped<ICrewOrchestrationService, FakeScopedOrchestrator>();
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        var session = ForgeSession.Create(_workspace, "scoped-circuit");
+        var bench = new ForgeCrewTestBench(provider);
+
+        await bench.ExecuteAsync(session, 1, DecisionCircuit.OffBy(DecisionCircuitCause.Switch), TestContext.Current.CancellationToken);
+
+        var seen = Assert.Single(provider.GetRequiredService<CircuitLog>().Seen);
+        Assert.Equal((false, DecisionCircuitCause.Switch), (seen!.Enabled, seen.Cause));
+    }
+
+    /// <summary>The circuits the factories of every scope read from their scope's override.</summary>
+    private sealed class CircuitLog
+    {
+        public List<DecisionCircuit?> Seen { get; } = [];
+    }
+
+    /// <summary>Records the circuit its scope's override holds when it creates the crew, then creates it as the fake above.</summary>
+    private sealed class CircuitReadingCrewFactory(TrialScope scope, DecisionCircuitOverride circuit, CircuitLog log) : ICrewFactory
+    {
+        public Task<CrewAggregate> CreateFromConfigAsync(CrewConfiguration config, CancellationToken ct = default)
+        {
+            log.Seen.Add(circuit.Circuit);
+            return new FakeCrewFactory(scope).CreateFromConfigAsync(config, ct);
+        }
+
+        public Task<CrewAggregate> CreateFromFileAsync(string yamlFilePath, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+
+        public Task<CrewAggregate> CreateFromDirectoryAsync(string directoryPath, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     /// <summary>What one scope saw: the crew its factory created.</summary>

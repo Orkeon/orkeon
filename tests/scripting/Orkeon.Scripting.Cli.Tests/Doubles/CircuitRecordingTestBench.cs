@@ -1,11 +1,14 @@
+using Orkeon.Application.Crew;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Cli.Commands.Forge;
 
 namespace Orkeon.Scripting.Cli.Tests.Doubles;
 
 /// <summary>
 /// A trial bench that records the decision circuit of each pass it is asked to run (#431) and answers every pass
-/// with the same successful run.
+/// with the same successful run. With an <see cref="Observer"/>, each pass also reports one model call and one
+/// completed task to it, as a crew run would.
 /// </summary>
 internal sealed class CircuitRecordingTestBench : IForgeTestBench
 {
@@ -18,22 +21,42 @@ internal sealed class CircuitRecordingTestBench : IForgeTestBench
     /// <summary>The duration each pass reports, in milliseconds.</summary>
     public long DurationMs { get; init; } = 40;
 
+    /// <summary>The trial observer each pass reports its model call and its task to; null reports nothing.</summary>
+    public ForgeRunObserver? Observer { get; init; }
+
     /// <inheritdoc />
     public Task<ForgeTestRun> ExecuteAsync(ForgeSession session, int runNumber, CancellationToken cancellationToken) =>
         ExecuteAsync(session, runNumber, null, cancellationToken);
 
     /// <inheritdoc />
-    public Task<ForgeTestRun> ExecuteAsync(
+    public async Task<ForgeTestRun> ExecuteAsync(
         ForgeSession session, int runNumber, DecisionCircuit? circuit, CancellationToken cancellationToken)
     {
         Circuits.Add(circuit);
-        return Task.FromResult(new ForgeTestRun
+        if (Observer is { } observer)
+        {
+            var callId = $"call-{Circuits.Count}";
+            observer.Started(callId, LlmCallMode.Buffer, 10);
+            observer.Finished(callId, LlmCallMode.Buffer, fellBack: false, promptTokens: 10, completionTokens: 5);
+            await observer.OnTaskCompletedAsync(
+                new TaskExecutionSnapshot
+                {
+                    TaskId = "correction",
+                    AgentRole = "Correcteur",
+                    Success = true,
+                    Duration = TimeSpan.FromMilliseconds(DurationMs),
+                    CompletedAt = DateTimeOffset.UnixEpoch,
+                },
+                cancellationToken);
+        }
+
+        return new ForgeTestRun
         {
             Success = true,
             Output = circuit is { Enabled: false } ? "Tri par le relais." : "Tri par System One.",
             TaskCount = 3,
             DurationMs = DurationMs,
             Tokens = Tokens,
-        });
+        };
     }
 }

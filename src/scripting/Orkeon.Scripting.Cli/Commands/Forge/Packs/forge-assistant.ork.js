@@ -118,14 +118,17 @@ function stableHeader() {
     } else {
       lines.push("- Decisions (this crew is '" + crewDecision + "'): a decision task routes the work. Use one");
       lines.push("  where the next step depends on a judgement over what came before (a category, an");
-      lines.push("  urgency, a yes/no), never for work an agent writes. A decision task has a key, a");
-      lines.push("  description and `decision`, and NO agent, expectedOutput, deliverable or tools:");
+      lines.push("  urgency, a yes/no, the probability that something holds), never for work an agent");
+      lines.push("  writes. A decision task has a key, a description and `decision`, and NO agent,");
+      lines.push("  expectedOutput, deliverable or tools:");
       lines.push("  `decision: {questions: {category: {choice: {bug: \"a defect\", feature: \"a request\"}}}}`;");
       lines.push("  a question is `choice` (option -> what it means), `score` (labels) or `noul` (a yes/no");
       lines.push("  statement), with optional `instructions`. Its dependencies are what it reads.");
       lines.push("- A task gated by a decision has `when`: `{\"triage.category\": [\"bug\"]}` runs it when");
       lines.push("  the option holds, `{\"triage.urgency\": \">= 0.7\"}` on a threshold, and");
       lines.push("  `{\"triage\": \"otherwise\"}` when no other gated task matched.");
+      lines.push("- A crew with a decision task runs 'sequential', 'parallel' or 'graph': no other");
+      lines.push("  process runs decision tasks.");
       if (crewDecision === "optional") {
         lines.push("- Every decision task names its relay: `without: {agent: \"<agent key>\"}`, the agent that");
         lines.push("  answers the questions when no decision model runs. The relay may run no task. No");

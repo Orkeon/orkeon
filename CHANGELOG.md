@@ -90,15 +90,19 @@ relay, instead of leaving decisions out. The default is `none`: no decision task
 `when:` conditions; `optional` requires a `without:` relay on each and refuses `system_one_decide`, `required` offers
 `system_one_decide` when the decision circuit is on. The mode is recorded in `session.json` as `crewDecision` and on
 `session.started`, a resume with another value is refused (exit 1), and the assistant's prompt states the mode's
-rules. A session written before the option resumes as `required` when its plan holds a decision task or
-`system_one_decide`, else `none`, with the warning `FORGE-DECISION-MODE-DERIVED`. An `optional` crew's trial runs
+rules; `promote` and `list` refuse it. A session written before the option resumes as `required` when its plan
+holds a decision task or `system_one_decide`, else `none`, with the warning `FORGE-DECISION-MODE-DERIVED`; `reopen`
+of a team whose crew declares no mode gives the same warning, after `session.started`, when its plan makes it
+`required`. An `optional` crew's trial runs
 twice, with System One then through the relays: `runs/<n>/on/` and `runs/<n>/off/` each hold a pass (output, run
-file, folders), `runs/<n>/run.json`, `last-run.json` and `verdict.ready` gain `passes[]`, the verdict passes when
-every pass passes and keeps the lowest score, and findings carry `circuit`. Without a decision model only the relay
+file, folders), `runs/<n>/run.json`, `last-run.json` and `verdict.ready` gain `passes[]` (a pass of the run files
+names its file as `output`, a pass of `verdict.ready` carries its figures flat), the verdict passes when every pass
+passes and keeps the lowest score, and findings carry `circuit`. Without a decision model only the relay
 pass runs, with `FORGE-DECISION-PASS-SKIPPED` (and its `cause`) and the info finding `F-PASS-ON-SKIPPED`. A budget
-used up by the first pass ends the session with `FORGE-BUDGET-EXHAUSTED`, and the resume runs the second pass only.
-A `required` crew's trial with the circuit off is refused with `FORGE-DECISION-UNAVAILABLE` (exit 1); `--dry` only
-warns and `--adopt` is not refused. `forge.json` records `crewDecision`, `FORGE.md` and the launcher state the mode,
+used up by the first pass ends the session with `FORGE-BUDGET-EXHAUSTED`, and the resume keeps that pass, runs the
+second only, even without a decision model, and asks no second estimate. A `required` session with the circuit off is
+refused before its interview with `FORGE-DECISION-UNAVAILABLE` (exit 1, its `cause` on the `error` event); the
+session is kept and resumes once a decision model is configured; `--dry` only warns and `--adopt` is not refused. `forge.json` records `crewDecision`, `FORGE.md` and the launcher state the mode,
 and `reopen` reads `decision`, `when` and `without` back with the crew's mode. The shared crew validator no longer
 asks a decision task for an expected output. See
 [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md#a-crew-that-decides).

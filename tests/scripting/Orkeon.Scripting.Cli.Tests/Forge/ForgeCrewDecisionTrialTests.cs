@@ -25,21 +25,23 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
 
     private static readonly IReadOnlyCollection<string> KnownTools = ForgeDocuments.KnownTools;
 
-    private ForgeEngine Engine(ForgeSession session, IForgeTestBench bench, FakeJudge judge, DecisionCircuit host)
+    private ForgeEngine Engine(ForgeSession session, IForgeTestBench bench, FakeJudge judge, DecisionCircuit host, ForgeRunObserver? observer = null)
     {
+        var events = new ForgeEventWriter(_output, new FakeOrkeonClock());
+        observer?.Attach(events, withCalls: true);
         var assistant = new ScriptedAssistant()
             .SubmitsBrief(ForgeDocuments.ValidBrief)
             .SubmitsBlueprint(ForgeCrewDecisionPlanTests.TriageBlueprint);
         var channel = new ScriptedUserChannel().Decides("accept");
         return new(
             session,
-            new ForgeEventWriter(_output, new FakeOrkeonClock()),
+            events,
             [
                 new BriefStage(assistant, channel, null),
                 new BlueprintStage(assistant),
                 new RenderStage(),
                 new ValidateStage(KnownTools),
-                new TestStage(bench, new ForgeRunObserver(), host),
+                new TestStage(bench, observer ?? new ForgeRunObserver(), host),
                 new DiagnoseStage(judge),
                 new VerdictStage(false, channel, KnownTools),
             ],
@@ -57,12 +59,58 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
 
     private static readonly DecisionCircuit HostOff = DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider);
 
-    private async Task<ForgeSession> TryOptionalAsync(IForgeTestBench bench, FakeJudge judge, DecisionCircuit host, ForgeBudget? budget = null)
+    private async Task<ForgeSession> TryOptionalAsync(
+        IForgeTestBench bench, FakeJudge judge, DecisionCircuit host, ForgeBudget? budget = null, ForgeRunObserver? observer = null)
     {
         var session = ForgeSession.Create(_workspace, "tri", budget: budget, crewDecision: ForgeCrewDecision.Optional);
-        await Engine(session, bench, judge, host).RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await Engine(session, bench, judge, host, observer).RunAsync(cancellationToken: TestContext.Current.CancellationToken);
         return session;
     }
+
+    /// <summary>An optional trial whose bench reports a model call and a task per pass, both passes approved.</summary>
+    private async Task<ForgeSession> TryObservedOptionalAsync()
+    {
+        var observer = new ForgeRunObserver();
+        return await TryOptionalAsync(
+            new CircuitRecordingTestBench { Observer = observer }, new FakeJudge().Approves().Approves(), DecisionCircuit.On,
+            observer: observer);
+    }
+
+    /// <summary>The trial lines of pass <paramref name="pass"/> (1-based): from its run.started to its run.finished.</summary>
+    private IReadOnlyList<JsonElement> PassLines(int pass)
+    {
+        var events = Events();
+        var starts = events.Select((e, i) => (e, i)).Where(p => p.e.GetProperty("kind").GetString() == "run.started").Select(p => p.i).ToList();
+        var start = starts[pass - 1];
+        var end = events.Select((e, i) => (e, i)).First(p => p.i > start && p.e.GetProperty("kind").GetString() == "run.finished").i;
+        return [.. events.Skip(start).Take(end - start + 1)];
+    }
+
+    /// <summary>The kinds of <paramref name="lines"/>, the <c>llm.call.*</c> ones folded into one, sorted.</summary>
+    private static IEnumerable<string> KindsOf(IReadOnlyList<JsonElement> lines) =>
+        lines.Select(static l => l.GetProperty("kind").GetString()!)
+            .Select(static k => k.StartsWith("llm.call.", StringComparison.Ordinal) ? "llm.call" : k)
+            .Distinct()
+            .Order(StringComparer.Ordinal);
+
+    private static string? Text(JsonElement line, string property) =>
+        line.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+    /// <summary>An optional trial stopped by its budget after its on pass, then resumed on <paramref name="host"/>.</summary>
+    private async Task<(ForgeSession Session, CircuitRecordingTestBench Resumed)> ResumeAfterABudgetStopAsync(DecisionCircuit host, FakeJudge judge)
+    {
+        var first = new CircuitRecordingTestBench { Tokens = 1_500 };
+        var session = await TryOptionalAsync(first, new FakeJudge(), DecisionCircuit.On, new ForgeBudget { MaxTokens = 1_000 });
+        session.Document.Budget = new ForgeBudget { MaxTokens = 100_000, ConsumedTokens = session.Document.Budget.ConsumedTokens };
+        session.SetStatus(ForgeSessionStatus.Active);
+        _output.GetStringBuilder().Clear();
+        var resumed = new CircuitRecordingTestBench();
+        await Engine(session, resumed, judge, host).RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+        return (session, resumed);
+    }
+
+    private static JsonElement ReadJson(ForgeSession session, string relative) =>
+        JsonElement.Parse(File.ReadAllText(Path.Combine(session.Directory, relative)));
 
     [Fact]
     public async Task An_optional_trial_runs_with_system_one_then_through_the_relays()
@@ -180,6 +228,107 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
             .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(["off"], resumed.Circuits.Select(c => ForgeCrewDecision.CircuitName(c!)));
+    }
+
+    // --- the trial lines (#431) ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Every_line_of_the_off_pass_carries_the_off_circuit_and_its_cause()
+    {
+        await TryObservedOptionalAsync();
+
+        var lines = PassLines(2);
+        Assert.Equal(["llm.call", "run.finished", "run.started", "task.completed"], KindsOf(lines));
+        Assert.All(lines, line => Assert.Equal(("off", "switch"), (Text(line, "circuit"), Text(line, "cause"))));
+    }
+
+    [Fact]
+    public async Task Every_line_of_the_on_pass_carries_the_on_circuit_and_no_cause()
+    {
+        await TryObservedOptionalAsync();
+
+        var lines = PassLines(1);
+        Assert.Equal(["llm.call", "run.finished", "run.started", "task.completed"], KindsOf(lines));
+        Assert.All(lines, line => Assert.Equal(("on", (string?)null), (Text(line, "circuit"), Text(line, "cause"))));
+    }
+
+    [Fact]
+    public async Task Run_started_numbers_each_pass_of_an_optional_trial()
+    {
+        await TryOptionalAsync(new CircuitRecordingTestBench(), new FakeJudge().Approves().Approves(), DecisionCircuit.On);
+
+        var started = Events().Where(e => e.GetProperty("kind").GetString() == "run.started")
+            .Select(e => (e.GetProperty("passes").GetInt32(), e.GetProperty("pass").GetInt32()));
+        Assert.Equal([(2, 1), (2, 2)], started);
+    }
+
+    // --- the run files (#431) --------------------------------------------------------------------
+
+    [Fact]
+    public async Task Last_run_json_lists_both_passes_of_an_optional_trial()
+    {
+        var session = await TryOptionalAsync(new CircuitRecordingTestBench(), new FakeJudge().Approves().Approves(), DecisionCircuit.On);
+
+        var lastRun = ReadJson(session, TestStage.LastRunFileName);
+
+        Assert.Equal(["on", "off"], lastRun.GetProperty("passes").EnumerateArray().Select(p => p.GetProperty("circuit").GetString()));
+    }
+
+    [Fact]
+    public async Task A_pass_of_the_run_file_names_its_output_file_under_output()
+    {
+        var session = await TryOptionalAsync(new CircuitRecordingTestBench(), new FakeJudge().Approves().Approves(), DecisionCircuit.On);
+
+        var run = ReadJson(session, Path.Combine(TestStage.RunsDirectoryName, "1", "run.json"));
+        Assert.Equal(["runs/1/on/output.md", "runs/1/off/output.md"], run.GetProperty("passes").EnumerateArray().Select(p => p.GetProperty("output").GetString()));
+    }
+
+    [Fact]
+    public async Task A_pass_of_verdict_ready_carries_its_figures_flat()
+    {
+        await TryOptionalAsync(new CircuitRecordingTestBench { Tokens = 700, DurationMs = 90 }, new FakeJudge().Approves().Approves(), DecisionCircuit.On);
+
+        var pass = Event("verdict.ready").GetProperty("passes")[0];
+        Assert.Equal((700L, 90L), (pass.GetProperty("tokens").GetInt64(), pass.GetProperty("durationMs").GetInt64()));
+    }
+
+    [Fact]
+    public async Task An_optional_trial_with_the_circuit_off_by_the_settings_warns_with_the_settings_cause()
+    {
+        await TryOptionalAsync(new CircuitRecordingTestBench(), new FakeJudge().Approves(), DecisionCircuit.OffBy(DecisionCircuitCause.Settings));
+
+        var warning = Events().Single(e => e.GetProperty("kind").GetString() == "warning"
+            && e.GetProperty("code").GetString() == ForgeCrewDecision.PassSkippedWarning);
+        Assert.Equal("settings", warning.GetProperty("cause").GetString());
+    }
+
+    // --- a resume once the decision model is gone (#431) -----------------------------------------
+
+    [Fact]
+    public async Task A_resume_after_a_budget_stop_without_a_decision_model_runs_the_off_pass_only()
+    {
+        var (_, resumed) = await ResumeAfterABudgetStopAsync(HostOff, new FakeJudge().Approves().Approves());
+
+        var circuits = resumed.Circuits.Select(c => ForgeCrewDecision.CircuitName(c!));
+        Assert.Equal(["off"], circuits);
+    }
+
+    [Fact]
+    public async Task A_resume_after_a_budget_stop_without_a_decision_model_keeps_the_on_pass_in_its_run()
+    {
+        var (session, _) = await ResumeAfterABudgetStopAsync(HostOff, new FakeJudge().Approves().Approves());
+
+        var run = ReadJson(session, Path.Combine(TestStage.RunsDirectoryName, "1", "run.json"));
+        Assert.Equal([("on", null), ("off", "no-provider")], run.GetProperty("passes").EnumerateArray().Select(p => (Text(p, "circuit"), Text(p, "cause"))));
+    }
+
+    [Fact]
+    public async Task A_resume_after_a_budget_stop_without_a_decision_model_reports_no_skipped_on_pass()
+    {
+        await ResumeAfterABudgetStopAsync(HostOff, new FakeJudge().Approves().Approves());
+
+        var findings = Event("verdict.ready").GetProperty("findings").EnumerateArray().Select(f => f.GetProperty("id").GetString());
+        Assert.DoesNotContain(ForgeCrewDecision.PassOnSkippedFinding, findings);
     }
 
     [Fact]

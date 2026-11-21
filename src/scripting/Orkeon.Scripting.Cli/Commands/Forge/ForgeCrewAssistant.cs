@@ -94,7 +94,9 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
     /// Builds the assistant over the engine host's services. The pack must already be
     /// materialized (<see cref="ForgePack.Ensure"/>) and the session directory mounted at
     /// <paramref name="sessionVirtualRoot"/>. <paramref name="reference"/> is the use case the
-    /// composition starts from, when there is one.
+    /// composition starts from, when there is one. <paramref name="crewTools"/> is the sandbox catalogue the caller
+    /// built once for the session (<see cref="ForgeSandbox.SelectCrewTools"/>), which its validation also enforces;
+    /// null builds it here from the host's tools and decision circuit.
     /// </summary>
     public ForgeCrewAssistant(
         IServiceProvider services,
@@ -102,7 +104,8 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         string packPhysicalPath,
         string sessionVirtualRoot = "/forge",
         ForgeReference? reference = null,
-        string? language = null)
+        string? language = null,
+        IReadOnlyList<ForgeToolInfo>? crewTools = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         _session = session ?? throw new ArgumentNullException(nameof(session));
@@ -117,7 +120,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         _readTools = [.. ReadToolAllowlist.Where(name => tools.Any(t => t.Name == name))];
         // What the designed team may use (SPEC §7.3): the sandbox catalogue with
         // descriptions — a closed list the blueprint prompt shows and validation enforces.
-        _crewTools = ForgeSandbox.SelectCrewTools(
+        _crewTools = crewTools ?? ForgeSandbox.SelectCrewTools(
             tools, session.Document.CrewDecision, Orkeon.Application.Crew.Execution.DecisionCircuit.Of(services));
 
         // The reference's structure, cut down to that very catalogue: read

@@ -1,4 +1,5 @@
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Constants.Protocol;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Infrastructure.Configuration;
 
@@ -12,18 +13,21 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 internal static class ForgeCrewDecision
 {
     /// <summary>No decision task, no <c>system_one_decide</c>, no <c>decision:</c> block: the default.</summary>
-    public const string None = "none";
+    public const string None = RunDecisionModes.None;
 
     /// <summary>Decision tasks, each with a <c>without:</c> relay; the crew runs with System One or without it.</summary>
-    public const string Optional = "optional";
+    public const string Optional = RunDecisionModes.Optional;
 
     /// <summary>The crew needs System One: a run with the circuit off is refused.</summary>
-    public const string Required = "required";
+    public const string Required = RunDecisionModes.Required;
 
     /// <summary>The modes, in the order the help lists them.</summary>
     public static readonly IReadOnlyList<string> All = [None, Optional, Required];
 
-    /// <summary>The warning a legacy session's resume emits when it derives the mode from its plan.</summary>
+    /// <summary>
+    /// The warning a legacy session's resume, or the reopen of a crew that declares no mode, emits when it derives
+    /// the mode from its plan.
+    /// </summary>
     public const string DerivedWarning = "FORGE-DECISION-MODE-DERIVED";
 
     /// <summary>The warning an optional trial emits when its on pass cannot run.</summary>
@@ -88,14 +92,15 @@ internal static class ForgeCrewDecision
     };
 
     /// <summary>The spelling of a circuit in the stream and the run files: <c>on</c> or <c>off</c>.</summary>
-    public static string CircuitName(DecisionCircuit circuit) => circuit.Enabled ? "on" : "off";
+    public static string CircuitName(DecisionCircuit circuit) =>
+        circuit.Enabled ? DecisionCircuitStates.On : DecisionCircuitStates.Off;
 
     /// <summary>The cause of an off circuit as the stream spells it (<c>switch</c>, <c>settings</c>, <c>no-provider</c>).</summary>
     public static string? CauseName(DecisionCircuit circuit) => circuit.Cause switch
     {
-        DecisionCircuitCause.Switch => "switch",
-        DecisionCircuitCause.Settings => "settings",
-        DecisionCircuitCause.NoProvider => "no-provider",
+        DecisionCircuitCause.Switch => DecisionCircuitCauses.Switch,
+        DecisionCircuitCause.Settings => DecisionCircuitCauses.Settings,
+        DecisionCircuitCause.NoProvider => DecisionCircuitCauses.NoProvider,
         _ => null,
     };
 
