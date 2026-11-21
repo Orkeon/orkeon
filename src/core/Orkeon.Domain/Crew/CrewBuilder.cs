@@ -380,8 +380,8 @@ public sealed class CrewBuilder
             tools.Any(t => string.Equals(t.Name, Task.ValueObjects.SystemOneUses.DecideToolName, StringComparison.OrdinalIgnoreCase));
 
         // The manager given as an object is one of the crew's agents for these rules, as YAML and .ork.ts keep it.
-        var agents = _managerAgent is { } manager && _agents.All(a => a.Id != manager.Id)
-            ? (List<DomainAgent>)[.. _agents, manager]
+        List<DomainAgent> agents = _managerAgent is { } manager && _agents.All(a => a.Id != manager.Id)
+            ? [.. _agents, manager]
             : _agents;
         var declarations = _tasks
             .Select(t => new Task.ValueObjects.DecisionTaskDeclaration(t.Key ?? t.Description.Value, t.Decision, t.Condition, t.AssignedAgent is not null))

@@ -161,7 +161,7 @@ internal static class ForgeBlueprintDecisions
             .Where(static kind => kind.Item2)
             .Select(static kind => kind.Item1)
             .ToList();
-        if (kinds.Count == 0)
+        if (spec is null || kinds.Count == 0)
         {
             errors.Add($"{where} declares no kind: give it exactly one of 'choice' (option to what it means), 'score' (labels) or 'noul' (a yes/no statement).");
             return;
@@ -169,7 +169,7 @@ internal static class ForgeBlueprintDecisions
 
         if (kinds.Count > 1)
             errors.Add($"{where} declares more than one kind ({string.Join(", ", kinds)}): a question has exactly one.");
-        foreach (var (option, description) in spec!.Choice ?? new Dictionary<string, string>())
+        foreach (var (option, description) in spec.Choice ?? new Dictionary<string, string>())
         {
             if (description is null)
                 errors.Add($"{where}: option '{option}' has no description: say what it means.");

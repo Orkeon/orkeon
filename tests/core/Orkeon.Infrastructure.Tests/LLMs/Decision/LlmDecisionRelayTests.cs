@@ -185,9 +185,9 @@ public sealed class LlmDecisionRelayTests : IDisposable
         // Assert: forwarded as an agent's own call forwards them (ChatOptionsComposer).
         var sent = _client.LastGetResponseOptions!.AdditionalProperties;
         Assert.NotNull(sent);
-        Assert.Equal(
-            ((object?)thinking, (object?)cache, (object?)"1h"),
-            (sent.GetValueOrDefault(LlmChatOptionsKeys.Thinking), sent.GetValueOrDefault(LlmChatOptionsKeys.Cache), sent.GetValueOrDefault(LlmChatOptionsKeys.CacheTtl)));
+        Assert.Equal(thinking, sent.GetValueOrDefault(LlmChatOptionsKeys.Thinking));
+        Assert.Equal(cache, sent.GetValueOrDefault(LlmChatOptionsKeys.Cache));
+        Assert.Equal("1h", sent.GetValueOrDefault(LlmChatOptionsKeys.CacheTtl));
     }
 
     [Fact]

@@ -222,7 +222,7 @@ internal sealed class CrewRunEntryPoint : IDisposable
             {
                 var provider = registry.Resolve(candidate).Provider;
                 if (!IsMock(provider))
-                    offenders.Add($"task '{task.Key ?? task.Description.Value}' (profile '{candidate}', provider '{MeteredLlmProvider.Unwrap(provider).Name}')");
+                    offenders.Add($"task '{(task.Key is { } key ? key : task.Description.Value)}' (profile '{candidate}', provider '{MeteredLlmProvider.Unwrap(provider).Name}')");
             }
         }
 
