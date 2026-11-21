@@ -11,6 +11,8 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Services.Security;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
+using Orkeon.Domain.SharedKernel;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Tests.Shared.Doubles;
@@ -40,12 +42,12 @@ public sealed class ChatLoopCompactionTests
     private static async System.Threading.Tasks.Task<Run> RunAsync(
         int toolTurns, int resultChars, ContextWindow? window, ContextCompactionOptions? options = null,
         AgentCompaction? agentCompaction = null, bool summaryFails = false, IReadOnlyList<IContextPressureStage>? stages = null,
-        ToolAccess access = ToolAccess.Unspecified)
+        ToolAccess access = ToolAccess.Unspecified, FakeCompactionChatClient? chatClient = null, ILlmProvider? summaryProvider = null)
     {
         var tool = new SpyTool(ToolName, result: new string('x', resultChars)) { Access = access };
         // The double holds nothing to release, and the test reads its records after the run.
 #pragma warning disable CA2000
-        var client = new FakeCompactionChatClient { ToolName = ToolName, ToolTurns = toolTurns, SummaryFails = summaryFails };
+        var client = chatClient ?? new FakeCompactionChatClient { ToolName = ToolName, ToolTurns = toolTurns, SummaryFails = summaryFails };
 #pragma warning restore CA2000
         var observer = new FakeCompactionObserver();
         var logger = new SpyExecutionLogger();
@@ -58,6 +60,7 @@ public sealed class ChatLoopCompactionTests
                 Logger = logger,
                 Observer = observer,
                 Stages = stages ?? [],
+                SummaryProvider = () => summaryProvider,
             }.For(LlmProfiles.Default, baseConfig: null);
         var loop = new ChatClientAgentLoop(
             logger, client, new LlmCallGate(logger, new ScriptedBasicLlmProvider()),
@@ -223,5 +226,150 @@ public sealed class ChatLoopCompactionTests
         Assert.NotEmpty(model.Requests);
         Assert.Contains(run.Client.AgentRequests[^1], m => m.Role == ChatRole.Tool
             && m.Contents.OfType<FunctionResultContent>().Single().Result?.ToString()?.StartsWith("[pruned to save context: the result of read_page", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldChargeTheSummaryTokensOnce_WhenTheCallAfterACompactionFails()
+    {
+        // Arrange: the sixth agent call, the first after the compaction, fails; the summary cost 50 tokens.
+#pragma warning disable CA2000
+        var client = new FakeCompactionChatClient { ToolName = ToolName, ToolTurns = 6, FailAtTurn = 6 };
+#pragma warning restore CA2000
+
+        // Act
+        var run = await RunAsync(6, resultChars: 4_000, MidWindow, chatClient: client);
+
+        // Assert
+        Assert.Equal(AgentExitReason.LlmCallFailed, run.Result.ExitReason);
+        Assert.Single(run.Client.SummaryRequests);
+        Assert.Equal(50, run.Result.TokensUsed);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldNeitherCountAFailureNorSaySo_WhenTheRecentTurnsAreAllThereIsToKeep()
+    {
+        // Arrange: every call is over the 750-token trigger, and five turns never pass the six kept.
+        var options = new ContextCompactionOptions { KeepRecentTurns = 6 };
+
+        // Act
+        var run = await RunAsync(toolTurns: 5, resultChars: 4_000, SmallWindow, options);
+
+        // Assert
+        Assert.Equal(AgentExitReason.Completed, run.Result.ExitReason);
+        Assert.Empty(run.Client.SummaryRequests);
+        Assert.Empty(run.Observer.Notices);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldKeepTheReportedOverheadInTheEstimate_WhenAPruningFreesLessThanIt()
+    {
+        // Arrange: the provider counts 760 prompt tokens a call (tools and framing, mostly), over the 750 trigger;
+        // the stage prunes every result, which frees about 100 counted tokens a turn.
+#pragma warning disable CA2000
+        var client = new FakeCompactionChatClient { ToolName = ToolName, ToolTurns = 8, ReportedPromptTokens = 760 };
+#pragma warning restore CA2000
+        var stage = new FakeContextPressureStage { FromShare = 0.5 };
+
+        // Act
+        var run = await RunAsync(8, resultChars: 400, SmallWindow, stages: [stage], chatClient: client);
+
+        // Assert
+        Assert.NotEmpty(run.Client.SummaryRequests);
+        var first = run.Observer.Notices[0];
+        Assert.True(first.TokensBefore >= 750, $"the estimate after the pruning keeps the overhead, it was {first.TokensBefore}");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldHandTheTaskToTheSummariser_WhenTheLoopCompacts()
+    {
+        // Arrange: the task is the conversation's second message, "user".
+        var toolTurns = 6;
+
+        // Act
+        var run = await RunAsync(toolTurns, resultChars: 4_000, MidWindow);
+
+        // Assert
+        var transcript = Assert.Single(run.Client.SummaryRequests)[1].Text;
+        Assert.StartsWith("The agent's task, which stays in its conversation:\nuser\n\nConversation to summarise:", transcript, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldCountTheSummaryInThePromptAndCompletionSplit_WhenTheLoopCompacts()
+    {
+        // Arrange: the agent's turns report no usage; the summary splits its 50 tokens into 30 and 20.
+#pragma warning disable CA2000
+        var client = new FakeCompactionChatClient
+        {
+            ToolName = ToolName, ToolTurns = 6, SummaryPromptTokens = 30, SummaryCompletionTokens = 20,
+        };
+#pragma warning restore CA2000
+
+        // Act
+        var run = await RunAsync(6, resultChars: 4_000, MidWindow, chatClient: client);
+
+        // Assert
+        Assert.Equal(50, run.Result.TokensUsed);
+        Assert.Equal(30, run.Result.PromptTokens);
+        Assert.Equal(20, run.Result.CompletionTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldCompact_WhenThePromptTokensTheProviderReportsAloneReachTheTrigger()
+    {
+        // Arrange: results of 20 characters count far under the 750 trigger; the provider reports 800 a call.
+#pragma warning disable CA2000
+        var client = new FakeCompactionChatClient { ToolName = ToolName, ToolTurns = 6, ReportedPromptTokens = 800 };
+#pragma warning restore CA2000
+
+        // Act
+        var run = await RunAsync(6, resultChars: 20, SmallWindow, chatClient: client);
+
+        // Assert
+        Assert.NotEmpty(run.Client.SummaryRequests);
+        Assert.True(run.Observer.Notices[0].TokensBefore >= 800, $"the estimate starts from the reported count, it was {run.Observer.Notices[0].TokensBefore}");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldWriteTheSummaryOverTheNamedProfile_WhenCompactionNamesOne()
+    {
+        // Arrange: Orkeon:Compaction:Profile names another profile, whose provider answers in 70 tokens.
+        var summariser = new ScriptedFullLlmProvider();
+        summariser.Enqueue(new LlmResponse { Content = "The agent read five pages.", TokensUsed = 70 });
+        var options = new ContextCompactionOptions { KeepRecentTurns = 2, Profile = "summariser" };
+
+        // Act
+        var run = await RunAsync(6, resultChars: 4_000, MidWindow, options, summaryProvider: summariser);
+
+        // Assert
+        Assert.Empty(run.Client.SummaryRequests);
+        Assert.Equal(CompactionPrompts.Instructions, Assert.Single(summariser.ReceivedTurns)[0].Content);
+        Assert.Equal("summariser", Assert.Single(summariser.ReceivedConfigs)?.Profile);
+        Assert.Equal(70, run.Result.TokensUsed);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldKeepTheSummaryAndReportItFailed_WhenTheConversationIsStillOverTheTriggerAfterIt()
+    {
+        // Arrange: a summary of 20,000 characters, about 5,000 tokens, against the 4,428 trigger.
+#pragma warning disable CA2000
+        var client = new FakeCompactionChatClient { ToolName = ToolName, ToolTurns = 6, SummaryText = new string('s', 20_000) };
+#pragma warning restore CA2000
+
+        // Act
+        var run = await RunAsync(6, resultChars: 4_000, MidWindow, chatClient: client);
+
+        // Assert
+        var notice = run.Observer.Notices[0];
+        Assert.Equal(AgentCompactionOutcomes.Failed, notice.Outcome);
+        Assert.True(notice.TokensAfter >= 4_428, $"tokensAfter shows the conversation still over the trigger, it was {notice.TokensAfter}");
+        Assert.StartsWith("[Context compacted: 6 earlier messages", run.Client.AgentRequests[5][2].Text, StringComparison.Ordinal);
     }
 }

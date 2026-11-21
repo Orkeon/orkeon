@@ -6,7 +6,7 @@ namespace Orkeon.Application.Crew.Compaction;
 /// How the agent loops keep a long conversation inside the model's window, bound to the
 /// <see cref="SectionName"/> section by <c>AddOrkeonInfrastructure()</c>. Before each model call the
 /// native and the chat-client loops estimate the prompt in tokens; past <see cref="TriggerShare"/> of
-/// the usable window (the window less the call's output cap) they replace the middle of the
+/// the usable window (the window less the output reserve) they replace the middle of the
 /// conversation with one summary, keeping the system prompt, the task and the
 /// <see cref="KeepRecentTurns"/> most recent turns. The text loop keeps its own character trim.
 /// </summary>
@@ -29,8 +29,9 @@ public sealed class ContextCompactionOptions
     public bool Enabled { get; set; } = true;
 
     /// <summary>
-    /// The share of the usable window (the context window less the call's output cap) the estimated
-    /// prompt reaches for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's
+    /// The share of the usable window (the context window less the output reserve: the call's cap, else
+    /// the model's documented maximum, else 4096, at most half the window) the estimated prompt reaches
+    /// for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's
     /// <c>compaction: { triggerShare }</c> overrides it.
     /// </summary>
     public double TriggerShare { get; set; } = DefaultTriggerShare;
@@ -43,8 +44,9 @@ public sealed class ContextCompactionOptions
     public int KeepRecentTurns { get; set; } = DefaultKeepRecentTurns;
 
     /// <summary>
-    /// The LLM profile that writes the summary, or none for the agent's own model and profile. The
-    /// summary's tokens are charged to the task either way.
+    /// The LLM profile that writes the summary: <c>default</c> or a profile of <c>Llm:Profiles</c>; a
+    /// name the host does not define, or <c>auto</c>, refuses the start. Left out, the agent's own model
+    /// and profile. The summary's tokens are charged to the task either way.
     /// </summary>
     public string? Profile { get; set; }
 

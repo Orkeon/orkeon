@@ -107,7 +107,7 @@ internal sealed class NativeToolCallingAgentLoop
             await _llmGate.WaitTurnAsync(agent, cancellationToken).ConfigureAwait(false);
             var response = await _fullProvider.ChatAsync(
                 messages.ToArray(), config, cancellationToken).ConfigureAwait(false);
-            compactor?.Observe(response.PromptTokens, messages.Count);
+            compactor?.Observe(response.PromptTokens, view!);
 
             sw.Stop();
             var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);

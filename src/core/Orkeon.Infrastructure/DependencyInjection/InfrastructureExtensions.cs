@@ -257,7 +257,10 @@ public static class InfrastructureExtensions
         // How the agent loops keep a long conversation inside the model's window (#432), and the
         // window itself: the profile's, the model's documented one, else the session's figure.
         services.AddOrkeonSettings<Application.Crew.Compaction.ContextCompactionOptions>(Application.Crew.Compaction.ContextCompactionOptions.SectionName)
-            .ValidateSettings((options, _) => Application.Crew.Compaction.ContextCompactionOptions.Problems(options));
+            .ValidateSettings((options, provider) =>
+                CompactionProfileProblem(options.Profile, provider) is { } profile
+                    ? [.. Application.Crew.Compaction.ContextCompactionOptions.Problems(options), profile]
+                    : Application.Crew.Compaction.ContextCompactionOptions.Problems(options));
         // The pruning of older read-tool results before compaction (#434): off unless the host turns it on.
         services.AddOrkeonSettings<Application.Crew.Compaction.ToolResultPruningOptions>(Application.Crew.Compaction.ToolResultPruningOptions.SectionName)
             .ValidateSettings((options, _) => Application.Crew.Compaction.ToolResultPruningOptions.Problems(options));
@@ -284,6 +287,25 @@ public static class InfrastructureExtensions
                 .GetProvider(sp.GetRequiredService<IOptions<Memory.MemorySectionOptions>>().Value.Provider ?? string.Empty));
 
         return services;
+    }
+
+    /// <summary>
+    /// What is wrong with <c>Orkeon:Compaction:Profile</c> (#432): a name the host does not define, or
+    /// <c>auto</c>, which picks a profile per task and writes no summary; null when it is left out or known.
+    /// A host without a profile registry offers the default alone.
+    /// </summary>
+    private static string? CompactionProfileProblem(string? profile, IServiceProvider services)
+    {
+        const string key = Application.Crew.Compaction.ContextCompactionOptions.SectionName + ":Profile";
+        if (LlmProfiles.IsDefault(profile))
+            return null;
+        var name = profile!.Trim();
+        if (LlmProfiles.IsAuto(name))
+            return $"{key} is '{LlmProfiles.Auto}', which picks a profile per task and cannot write a summary: name a profile of Llm:Profiles, or leave the key out for the agent's own.";
+        var registry = services.GetService<ILlmProfileRegistry>();
+        return registry is not null && registry.IsKnown(name)
+            ? null
+            : LlmProfiles.UnknownMessage(name, key, registry?.Names ?? []);
     }
 
     private static IServiceCollection AddOrkeonSerializationAndEmbeddings(this IServiceCollection services)

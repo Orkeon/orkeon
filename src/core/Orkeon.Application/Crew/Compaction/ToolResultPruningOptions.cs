@@ -32,8 +32,8 @@ public sealed class ToolResultPruningOptions
     public bool Enabled { get; set; }
 
     /// <summary>
-    /// The share of the usable window (the context window less the call's output cap) the estimated prompt reaches
-    /// for the results to be judged, above 0 and at most 1. 0.4 by default, under the compaction trigger, so a loop
+    /// The share of the usable window (the context window less the output reserve: the call's cap, else the model's
+    /// documented maximum, else 4096, at most half the window) the estimated prompt reaches for the results to be judged, above 0 and at most 1. 0.4 by default, under the compaction trigger, so a loop
     /// prunes before it compacts.
     /// </summary>
     public double FillShare { get; set; } = DefaultFillShare;

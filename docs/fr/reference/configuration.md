@@ -293,7 +293,7 @@ avec ses propres clés.
 | `Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
-| `ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, contre laquelle les boucles d'agent compactent une longue conversation. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens`, avec un avertissement par profil qui nomme le chiffre supposé. Jamais envoyée au fournisseur. |
+| `ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, au-dessus de zéro, contre laquelle les boucles d'agent compactent une longue conversation ; zéro ou moins refuse le démarrage. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens` (200000 par défaut), avec un avertissement par profil qui nomme le chiffre supposé : donnez-la pour un modèle plus petit que la table ne connaît pas, sinon les boucles ne compactent ni ne coupent avant que sa fenêtre soit pleine. Jamais envoyée au fournisseur. |
 | `Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
 | `MaxRateLimitWait` | durée | `"00:05:00"` | La plus longue fenêtre de limite de débit qu'un appel attend avant d'échouer : un fournisseur qui en annonce une plus longue fait échouer l'appel aussitôt avec une erreur de limite de débit. `00:00:00` n'attend rien. |
 | `MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
@@ -311,7 +311,7 @@ avec ses propres clés.
 | `Profiles:<nom>:Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Profiles:<nom>:Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `Profiles:<nom>:CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
-| `Profiles:<nom>:ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, contre laquelle les boucles d'agent compactent une longue conversation. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens`, avec un avertissement par profil qui nomme le chiffre supposé. Jamais envoyée au fournisseur. |
+| `Profiles:<nom>:ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, au-dessus de zéro, contre laquelle les boucles d'agent compactent une longue conversation ; zéro ou moins refuse le démarrage. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens` (200000 par défaut), avec un avertissement par profil qui nomme le chiffre supposé : donnez-la pour un modèle plus petit que la table ne connaît pas, sinon les boucles ne compactent ni ne coupent avant que sa fenêtre soit pleine. Jamais envoyée au fournisseur. |
 | `Profiles:<nom>:Fallback` | liste de chaînes | `[]` | Les profils vers lesquels un appel passe, dans l'ordre, quand celui-ci échoue d'une façon qu'un nouvel essai ne guérit pas : une erreur de transport, un 5xx, un 429 une fois `MaxRetries` épuisé, un délai dépassé. Une liste de noms de profils, ou une seule valeur séparée par des virgules ; `default` désigne le profil de l'hôte. Omise, un échec reste celui de l'appel. |
 | `Profiles:<nom>:FallbackBudgetSeconds` | entier | — | Le temps maximal, en secondes et compté depuis le premier appel, que la chaîne peut passer avant de cesser d'essayer le profil suivant. Il est vérifié entre deux profils et ne coupe jamais un appel en cours. Omis, la chaîne n'est bornée que par le `TimeoutSeconds` et le `MaxRetries` de chaque profil. |
 | `Profiles:<nom>:Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
@@ -1875,14 +1875,24 @@ Comment une crew se construit et décide, et ce qui est gardé de son exécution
 ### `Orkeon:Compaction`
 
 Comment les boucles d'agent gardent une longue conversation dans la fenêtre du modèle.
-Avant chaque appel, la boucle estime son prompt ; dès qu'il atteint `TriggerShare` de la fenêtre
-utile (la fenêtre de contexte moins le plafond de sortie de l'appel), un appel de résumé remplace
-les tours anciens, et le prompt système, la tâche et les `KeepRecentTurns` derniers tours restent
-tels quels. La fenêtre est le `ContextWindowTokens` du profil, sinon celle que documente le
-modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens`, avec un avertissement par profil qui
-nomme le chiffre supposé. Trois compactions ratées de suite ramènent la coupe à 40 messages pour
-le reste du run, et chaque compaction émet `agent.compacted` sur le flux d'événements du run. Un
-agent remplace `Enabled` et `TriggerShare` par sa clé YAML `compaction:` ; une crew `.ork.ts` suit
+Avant chaque appel, la boucle estime son prompt : les tokens de prompt que le fournisseur a
+comptés au dernier appel plus un compte des messages ajoutés depuis ; ce que ce compte tenait
+au-delà des messages (les définitions d'outils, l'habillage) reste dans l'estimation quand la
+conversation est comptée de nouveau. Dès que l'estimation atteint `TriggerShare` de la fenêtre
+utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum
+documenté du modèle, sinon 4096, au plus la moitié de la fenêtre), un appel de résumé, qui lit
+aussi la tâche, remplace les tours anciens, et le prompt système, la tâche et les
+`KeepRecentTurns` derniers tours restent tels quels. Un appel au-delà du seuil dont tous les tours
+sont récents attend un tour plus tard, et ne compte pas comme un échec. La fenêtre est le
+`ContextWindowTokens` du profil, sinon celle que documente le modèle, sinon
+[`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession), avec un avertissement par profil qui
+nomme le chiffre supposé. Ce chiffre surestime un modèle plus petit que la table ne connaît pas :
+compaction active, sa boucle ne compacte ni ne coupe avant que la vraie fenêtre soit pleine ;
+donnez donc `ContextWindowTokens` au profil de ce modèle. Trois compactions ratées de suite
+ramènent la coupe à 40 messages pour le reste de la tentative de la tâche (une tâche relancée
+compacte de nouveau), et l'élagage ci-dessous s'arrête avec elles. Sous `orkeon run`, chaque
+compaction émet `agent.compacted` sur le flux d'événements du run ; les autres hôtes n'écrivent
+pas cet événement. Un agent remplace `Enabled` et `TriggerShare` par sa clé YAML `compaction:` ; une crew `.ork.ts` suit
 ces réglages. La boucle à protocole texte garde sa coupe. Un fournisseur aux points de cache
 explicites (Anthropic) garde son prompt système et ses outils en cache ; un fournisseur au cache
 de préfixe automatique facture de nouveau la conversation après la coupe.
@@ -1894,8 +1904,8 @@ de préfixe automatique facture de nouveau la conversation après la coupe.
 |---|---|---|---|
 | `Enabled` | booléen | `true` | Si les boucles compactent leur conversation. Vrai par défaut : une longue boucle paie un appel de résumé au lieu de perdre son milieu dans la coupe à 40 messages. Faux ramène cette coupe, comme le fait `compaction: { enabled: false }` d'un agent pour cet agent seul. |
 | `KeepRecentTurns` | entier | `6` | Combien des tours les plus récents une compaction garde mot pour mot, un tour étant un message de l'assistant avec ses résultats d'outil (un appel d'outil n'est jamais séparé de son résultat). 6 par défaut ; 0 résume tous les tours. |
-| `Profile` | chaîne | — | Le profil LLM qui écrit le résumé, ou aucun pour le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
-| `TriggerShare` | nombre | `0.75` | La part de la fenêtre utile (la fenêtre de contexte moins le plafond de sortie de l'appel) que le prompt estimé atteint pour que la boucle compacte, au-dessus de 0 et au plus 1. 0,75 par défaut ; `compaction: { triggerShare }` d'un agent la remplace. |
+| `Profile` | chaîne | — | Le profil LLM qui écrit le résumé : `default` ou un profil de `Llm:Profiles` ; un nom que l'hôte ne définit pas, ou `auto`, refuse le démarrage. Omis, le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
+| `TriggerShare` | nombre | `0.75` | La part de la fenêtre utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum documenté du modèle, sinon 4096, au plus la moitié de la fenêtre) que le prompt estimé atteint pour que la boucle compacte, au-dessus de 0 et au plus 1. 0,75 par défaut ; `compaction: { triggerShare }` d'un agent la remplace. |
 <!-- /settings -->
 
 ### `Orkeon:Compaction:Prune`
@@ -1910,9 +1920,11 @@ tâche et chaque appel - outil, entrée, taille et âge en tours du modèle -, j
 répond à deux questions oui/non par appel : encore utile, et utile en entier. Inutile retire le
 résultat, utile en partie en garde les `HeadChars` premiers caractères, utile en entier le garde ;
 un résultat élagué laisse une ligne qui dit comment le retrouver, et son appel reste. Un résultat
-gardé est jugé de nouveau après huit tours du modèle de plus. Chaque élagage émet `agent.pruned`.
-Circuit de décision coupé, rien n'est élagué : un avertissement, aucun appel de décision, aucune
-erreur. Un agent remplace `Enabled` par `compaction: { prune }` ; un agent qui ne compacte pas
+gardé est jugé de nouveau après huit tours du modèle de plus. Chaque élagage émet `agent.pruned`
+sous `orkeon run` (les autres hôtes n'écrivent pas cet événement). Circuit de décision coupé, rien
+n'est élagué : un avertissement, aucun appel de décision, aucune erreur. Une fois le disjoncteur de
+la compaction ouvert (trois échecs de suite), la boucle n'élague plus pour le reste de la tentative
+de la tâche. Un agent remplace `Enabled` par `compaction: { prune }` ; un agent qui ne compacte pas
 n'élague pas.
 
 <!-- settings:Orkeon:Compaction:Prune -->
@@ -1921,7 +1933,7 @@ n'élague pas.
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `Enabled` | booléen | `false` | Si les boucles élaguent. Faux par défaut : chaque jugement est une requête au modèle de décision. `compaction: { prune }` d'un agent le remplace. |
-| `FillShare` | nombre | `0.4` | La part de la fenêtre utile (la fenêtre de contexte moins le plafond de sortie de l'appel) que le prompt estimé atteint pour que les résultats soient jugés, au-dessus de 0 et au plus 1. 0,4 par défaut, sous le seuil de compaction, si bien qu'une boucle élague avant de compacter. |
+| `FillShare` | nombre | `0.4` | La part de la fenêtre utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum documenté du modèle, sinon 4096, au plus la moitié de la fenêtre) que le prompt estimé atteint pour que les résultats soient jugés, au-dessus de 0 et au plus 1. 0,4 par défaut, sous le seuil de compaction, si bien qu'une boucle élague avant de compacter. |
 | `HeadChars` | entier | `300` | Les caractères qu'un verdict `head` garde d'un résultat, 1 ou plus. 300 par défaut ; un résultat de deux fois cela ou moins n'est jamais proposé, puisque le couper ne libère rien. |
 | `KeepRecentMessages` | entier | `6` | Combien des derniers messages n'ont jamais leurs résultats proposés. 6 par défaut. |
 <!-- /settings -->

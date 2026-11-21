@@ -15,7 +15,7 @@ trigger if that comes first, the decision model judges each result of a read too
 `KeepRecentMessages` (6) messages and longer than twice `HeadChars` (300): keep it, keep its first 300 characters, or
 drop it, leaving a line that says how to get it back. It reads the task and each call (tool, input, size, age),
 never the result: two yes/no questions per call, eight calls to a request, 24 at most at a time. A kept result is
-judged again eight model turns later. Each pruning emits `agent.pruned`. With the decision circuit off nothing is
+judged again eight model turns later. Under `orkeon run`, each pruning emits `agent.pruned`. With the decision circuit off nothing is
 pruned and no decision call is made, with one warning and no error; an agent that does not compact does not prune.
 **Compatibility**: `compaction.prune` is a new agent key, refused by a 1.3.0 loader; `Orkeon:Compaction:Prune` is
 a new settings section and `agent.pruned` a new run event kind; `ConversationView` gains `ToolCallAt` (the call a
@@ -28,7 +28,7 @@ profile of `Orkeon:Decision:Route:Ladder`, listed cheapest first (two or more pr
 `Orkeon:Decision:Profiles`, `default` included); the task keeps it for every call. The decision model reads the
 agent's role and the task, cut at 4000 characters. Under a probability of 0.6, without an answer, or with the
 decision circuit off, the host's default profile stands, with one warning and no error; an off circuit makes no
-decision call. Each such task emits `agent.route` (`profile`, `reason`, `picked`, `probability`, `ladder`). A crew
+decision call. Under `orkeon run`, each such task emits `agent.route` (`profile`, `reason`, `picked`, `probability`, `ladder`). A crew
 naming `auto` on a host without a ladder, or with a rung the host does not offer, fails its load, as does `auto` in a
 crew with `decision.mode: none`; a manager or a decision relay on `auto` runs on the default profile. This is one pick
 per task, apart from the per-call `route` stage of a decision profile. **Compatibility**: `auto` is now a reserved
@@ -45,28 +45,33 @@ With `auto`, each task asks the decision model one `choice` among the `.md` file
 (`/workspace/.orkeon/skills`), reading one line per skill (its front-matter `name` and `description`, else its first
 heading and line) and never a body; the options at a probability of 0.3 or more are kept, three at most. With the
 decision circuit off, an empty library or a failed call, the agent carries its `fallback`, else no skill, with one
-warning and no error. Each task of an agent that declares skills emits `agent.skills` (`mode`, `skills`, `offered`,
+warning and no error. Under `orkeon run`, each task of an agent that declares skills emits `agent.skills` (`mode`, `skills`, `offered`,
 `cut`, `reason`). **Compatibility**: an engine at 1.3.0 refuses a crew that writes `skills:`; an unknown key of the map
 form, a non-boolean `auto` or a map without `auto` now fails the load. The `Orkeon:Skills` section and the event are
 new; a `.ork.ts` crew has no skills.
 
 ### Added — agent loops compact a long conversation against the model's window (#432)
 
-The native tool-calling loop and the chat-client loop now estimate their prompt before each call and, once it reaches
-`Orkeon:Compaction:TriggerShare` (0.75) of the usable window (the context window less the call's output cap, at most
-half the window), replace the older turns with one summary call; the system prompt, the task and the last
-`KeepRecentTurns` (6) turns stay verbatim, and a tool call is never parted from its result. The window is the profile's
-new `Llm:ContextWindowTokens` (`Llm:Profiles:<name>:ContextWindowTokens`), else the model's documented window, else
-`Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. `Orkeon:Compaction:Profile`
-names a profile for the summary; its tokens are charged to the task (the native loop's task `tokens` were 0 and now
-carry them). Three failures in a row bring the 40-message trim back for the rest of the task. Each attempt emits
-`agent.compacted`. An agent overrides `enabled` and `triggerShare` with a YAML `compaction:` block; a `.ork.ts` crew
-follows the global settings. `IContextPressureStage` runs registered stages on the same measure before compaction.
-**Compatibility**: `Orkeon:Compaction:Enabled` is `true` by default, so a long run that was trimmed at 40 messages now
-pays a summary call instead; `false` restores the exact trim. An engine at 1.3.0 refuses a crew that writes
-`compaction:`. `IContextWindowManager` and `OpenAIContextWindowManager` are obsolete. The text-protocol loop keeps its
-trim. A provider with explicit cache breakpoints (Anthropic) keeps its cached system prompt and tools; one with an
-automatic prefix cache bills the conversation again after each compaction.
+The native tool-calling loop and the chat-client loop now estimate their prompt before each call (the provider's last
+count plus the messages since; what that count held beyond the messages stays in the estimate when the conversation is
+counted again) and, once it reaches `Orkeon:Compaction:TriggerShare` (0.75) of the usable window (the context window
+less the output reserve: the call's cap, else the model's documented maximum, else 4096, at most half the window),
+replace the older turns with one summary call, which reads the task too; the system prompt, the task and the last
+`KeepRecentTurns` (6) turns stay verbatim, and a tool call is never parted from its result. The window is the
+profile's new `Llm:ContextWindowTokens` (`Llm:Profiles:<name>:ContextWindowTokens`, above zero: zero or less refuses
+the start), else the model's documented window, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per
+profile naming the figure assumed. `Orkeon:Compaction:Profile` names a profile for the summary (a name the host does
+not define, or `auto`, refuses the start); its tokens are charged to the task, in its prompt/completion split too
+(the native loop's task `tokens` were 0 and now carry them). Three failures in a row bring the 40-message trim back,
+and stop the pruning, for the rest of the task attempt; a call whose turns are all recent ones waits for a later turn
+and counts as no failure. Under `orkeon run`, each attempt emits `agent.compacted`. An agent overrides `enabled` and
+`triggerShare` with a YAML `compaction:` block; a `.ork.ts` crew follows the global settings. `IContextPressureStage`
+runs registered stages on the same measure before compaction.
+**Compatibility**: compaction is on by default, a breaking change described under *Changed* below. An engine at 1.3.0
+refuses a crew that writes `compaction:`. `IContextWindowManager` and `OpenAIContextWindowManager` are obsolete, to be
+removed in a future major version. The text-protocol loop keeps its trim. A provider with explicit cache breakpoints
+(Anthropic) keeps its cached system prompt and tools; one with an automatic prefix cache bills the conversation again
+after each compaction.
 
 ### Added — `orkeon forge --no-decision`: the forge's own System One advice, and a switch to turn it off (#435)
 
@@ -147,6 +152,16 @@ release refuses the crew-level `decision:` key and a task's `without:`; `69` is 
 `--validate` success line now ends with `, decision=<mode>)`, and a procedural script's with
 `(procedural script: bundled, not run, decision=unknown)`. See
 [Decision models](docs/architecture/decision-models.md#a-crews-decision-mode).
+
+### Changed — the agent loops compact a long conversation by default **[breaking]** (#432)
+
+**Before**: the native tool-calling and chat-client loops trimmed a conversation past 40 messages, whatever its size in
+tokens. **Now**: `Orkeon:Compaction:Enabled` is `true` by default, so a long run pays a summary call where it was
+trimmed, and a conversation of more than 40 messages under the trigger keeps them all. A model the table does not
+document, on a profile with no `ContextWindowTokens`, is measured against `Orkeon:Cli:Session:ContextWindowTokens`
+(200000 by default): for a smaller model, the loop neither compacts nor trims before its real window is full.
+**What to do**: set `Llm:ContextWindowTokens` (or the profile's) to the window of a model the table does not know;
+`Orkeon:Compaction:Enabled=false`, or an agent's `compaction: { enabled: false }`, restores the exact trim.
 
 ### Changed — a script budget that names one dimension no longer caps the others **[breaking]** (#436)
 

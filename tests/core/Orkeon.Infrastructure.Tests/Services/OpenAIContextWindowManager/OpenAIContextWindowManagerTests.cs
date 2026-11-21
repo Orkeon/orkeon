@@ -1,4 +1,4 @@
-#pragma warning disable CS0618 // OpenAIContextWindowManager is obsolete (#432) and removed in the next release, its tests with it.
+#pragma warning disable CS0618 // OpenAIContextWindowManager is obsolete (#432) and removed in a future major version, its tests with it.
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Microsoft.Extensions.Logging;

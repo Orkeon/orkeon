@@ -154,6 +154,24 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
     /// <summary>The host of the theory: one mount, so the file system — and its sections — is registered.</summary>
     private RunnerMountPlan Mounted() => new() { CliMounts = [$"{_root}:/workspace:ro"], AllowExternalMounts = true };
 
+    public static TheoryData<string> CompactionProfilesNoHostOffers => ["summariser", "auto"];
+
+    [Theory]
+    [Trait("BR", "CH-432")]
+    [MemberData(nameof(CompactionProfilesNoHostOffers))]
+    public void A_compaction_profile_the_host_does_not_define_or_auto_is_refused_at_its_start(string profile)
+    {
+        // Arrange
+        var settings = OneSetting("Orkeon:Compaction:Profile", profile);
+
+        // Act
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(settings, Mounted()));
+
+        // Assert
+        Assert.Contains($"Orkeon:Compaction:Profile", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"'{profile}'", error.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [MemberData(nameof(LateSections))]
     public void Every_section_the_host_reads_is_judged_at_its_start(string optionsType, string key, string value, string named)

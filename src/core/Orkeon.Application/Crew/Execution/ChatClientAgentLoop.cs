@@ -151,15 +151,6 @@ internal sealed class ChatClientAgentLoop
         // Circuit breaker state: detect repeated identical tool call errors
         var cbState = new CircuitBreakerState();
 
-        // Every exit carries the prompt/completion and cache split accumulated so far.
-        AgentLoopResult WithTokenSplit(AgentLoopResult result) => result with
-        {
-            PromptTokens = promptTokensTotal,
-            CompletionTokens = completionTokensTotal,
-            CacheHitTokens = cacheHitTotal,
-            CacheMissTokens = cacheMissTotal,
-        };
-
         // The conversation's compaction (#432): null when it is off, and the loop trims as it always has.
         var compactor = _compaction?.Begin(agent, task.Id,
             Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile() with
@@ -169,6 +160,16 @@ internal sealed class ChatClientAgentLoop
             },
             options.MaxOutputTokens, SummaryOverOwnClient(agent, options), _llmGate);
         var view = compactor is null ? null : new Compaction.ChatConversationView(messages, Compaction.ReadToolChecks.Over(availableTools));
+
+        // Every exit carries the prompt/completion and cache split accumulated so far.
+        // The summary calls of a compaction count on both sides too (#432).
+        AgentLoopResult WithTokenSplit(AgentLoopResult result) => result with
+        {
+            PromptTokens = promptTokensTotal + (compactor?.SpentPromptTokens ?? 0),
+            CompletionTokens = completionTokensTotal + (compactor?.SpentCompletionTokens ?? 0),
+            CacheHitTokens = cacheHitTotal,
+            CacheMissTokens = cacheMissTotal,
+        };
 
         bool budgetNoteInjected = false;
         for (int iteration = 0; iteration < maxIter; iteration++)
@@ -197,9 +198,9 @@ internal sealed class ChatClientAgentLoop
             var (chatResponse, failedCall) = await CallChatClientAsync(
                 agent, task.Id, messages, options, iteration, totalTokensUsed, cancellationToken).ConfigureAwait(false);
             if (failedCall is not null)
-                return WithTokenSplit(failedCall with { TokensUsed = failedCall.TokensUsed + (compactor?.SpentTokens ?? 0) });
+                return WithTokenSplit(failedCall);
             iterSw.Stop();
-            compactor?.Observe((int?)chatResponse!.Usage?.InputTokenCount, messages.Count);
+            compactor?.Observe((int?)chatResponse!.Usage?.InputTokenCount, view!);
 
             totalTokensUsed += (int)(chatResponse!.Usage?.TotalTokenCount ?? 0);
             promptTokensTotal += (int)(chatResponse.Usage?.InputTokenCount ?? 0);
@@ -271,7 +272,8 @@ internal sealed class ChatClientAgentLoop
                     [new ChatMessage(ChatRole.System, instructions), new ChatMessage(ChatRole.User, transcript)],
                     new ChatOptions { ModelId = taskOptions.ModelId, MaxOutputTokens = taskOptions.MaxOutputTokens },
                     cancellationToken).ConfigureAwait(false);
-                return new Compaction.CompactionSummary(response.Text, (int)(response.Usage?.TotalTokenCount ?? 0), null);
+                return new Compaction.CompactionSummary(response.Text, (int)(response.Usage?.TotalTokenCount ?? 0), null,
+                    (int)(response.Usage?.InputTokenCount ?? 0), (int)(response.Usage?.OutputTokenCount ?? 0));
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {

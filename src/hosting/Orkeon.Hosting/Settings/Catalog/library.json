@@ -401,7 +401,7 @@
       "category": "orchestration-and-persistence",
       "hosts": [],
       "registration": "AddOrkeonInfrastructure",
-      "description": "How the agent loops keep a long conversation inside the model's window, bound to the `ContextCompactionOptions.SectionName` section by `AddOrkeonInfrastructure()`. Before each model call the native and the chat-client loops estimate the prompt in tokens; past `ContextCompactionOptions.TriggerShare` of the usable window (the window less the call's output cap) they replace the middle of the conversation with one summary, keeping the system prompt, the task and the `ContextCompactionOptions.KeepRecentTurns` most recent turns. The text loop keeps its own character trim."
+      "description": "How the agent loops keep a long conversation inside the model's window, bound to the `ContextCompactionOptions.SectionName` section by `AddOrkeonInfrastructure()`. Before each model call the native and the chat-client loops estimate the prompt in tokens; past `ContextCompactionOptions.TriggerShare` of the usable window (the window less the output reserve) they replace the middle of the conversation with one summary, keeping the system prompt, the task and the `ContextCompactionOptions.KeepRecentTurns` most recent turns. The text loop keeps its own character trim."
     },
     {
       "path": "Orkeon:Compaction:Prune",
@@ -623,7 +623,7 @@
       "path": "Llm:ContextWindowTokens",
       "section": "Llm",
       "type": "integer",
-      "description": "The model's context window in tokens, which the agent loops compact a long conversation against. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider."
+      "description": "The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know, or the loops neither compact nor trim before its window is full. Never sent to the provider."
     },
     {
       "path": "Llm:Grammar",
@@ -737,7 +737,7 @@
       "path": "Llm:Profiles:<name>:ContextWindowTokens",
       "section": "Llm",
       "type": "integer",
-      "description": "The model's context window in tokens, which the agent loops compact a long conversation against. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per profile naming the figure assumed. Never sent to the provider."
+      "description": "The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know, or the loops neither compact nor trim before its window is full. Never sent to the provider."
     },
     {
       "path": "Llm:Profiles:<name>:Fallback",
@@ -3476,14 +3476,14 @@
       "path": "Orkeon:Compaction:Profile",
       "section": "Orkeon:Compaction",
       "type": "string",
-      "description": "The LLM profile that writes the summary, or none for the agent's own model and profile. The summary's tokens are charged to the task either way."
+      "description": "The LLM profile that writes the summary: `default` or a profile of `Llm:Profiles`; a name the host does not define, or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way."
     },
     {
       "path": "Orkeon:Compaction:TriggerShare",
       "section": "Orkeon:Compaction",
       "type": "number",
       "default": 0.75,
-      "description": "The share of the usable window (the context window less the call's output cap) the estimated prompt reaches for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's `compaction: { triggerShare }` overrides it."
+      "description": "The share of the usable window (the context window less the output reserve: the call's cap, else the model's documented maximum, else 4096, at most half the window) the estimated prompt reaches for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's `compaction: { triggerShare }` overrides it."
     },
     {
       "path": "Orkeon:Compaction:Prune:Enabled",
@@ -3497,7 +3497,7 @@
       "section": "Orkeon:Compaction:Prune",
       "type": "number",
       "default": 0.4,
-      "description": "The share of the usable window (the context window less the call's output cap) the estimated prompt reaches for the results to be judged, above 0 and at most 1. 0.4 by default, under the compaction trigger, so a loop prunes before it compacts."
+      "description": "The share of the usable window (the context window less the output reserve: the call's cap, else the model's documented maximum, else 4096, at most half the window) the estimated prompt reaches for the results to be judged, above 0 and at most 1. 0.4 by default, under the compaction trigger, so a loop prunes before it compacts."
     },
     {
       "path": "Orkeon:Compaction:Prune:HeadChars",

@@ -9,6 +9,7 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Services.Security;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
+using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Tools;
@@ -20,6 +21,49 @@ namespace Orkeon.Application.Tests.Crew.Compaction;
 public sealed class NativeLoopCompactionTests
 {
     private const string ToolName = "read_page";
+
+    // 2,000 tokens: 1,000 held for the output, a trigger at 750.
+    private static readonly ContextWindow SmallWindow = new(2_000, ContextWindowSources.Table);
+
+    private sealed record NativeRun(ScriptedFullLlmProvider Provider, FakeCompactionObserver Observer);
+
+    /// <summary>25 reads of 100 tokens each, then an answer, on <paramref name="options"/>; no compaction at all when null.</summary>
+    private static async System.Threading.Tasks.Task<NativeRun> RunTwentyFiveReadsAsync(
+        ContextCompactionOptions? options, ILlmProvider? summaryProvider = null)
+    {
+        var logger = new SpyExecutionLogger();
+        var provider = new ScriptedFullLlmProvider();
+        for (var turn = 1; turn <= 25; turn++)
+            provider.EnqueueOpenAiToolCall($"call-{turn}", ToolName, "{}");
+        provider.EnqueueText("done");
+        var observer = new FakeCompactionObserver();
+        var compaction = options is null
+            ? null
+            : new ContextCompactionServices
+            {
+                Options = options,
+                Windows = new FakeContextWindowResolver(SmallWindow),
+                Logger = logger,
+                Observer = observer,
+                Stages = [],
+                SummaryProvider = () => summaryProvider,
+            }.For(LlmProfiles.Default, baseConfig: null);
+        var tool = new SpyTool(ToolName, result: new string('x', 400));
+        var loop = new NativeToolCallingAgentLoop(logger, provider,
+            new FakeToolCallingStrategy(new OpenAiShapedToolCallParser()), [tool],
+            new LlmCallGate(logger, new ScriptedBasicLlmProvider()), ToolInvocationPipeline.Unguarded,
+            new NativeToolCallingAgentLoop.NativeToolCallingLoopOptions(Compaction: compaction));
+        DomainAgent agent = new AgentBuilder().Role("Reader").Goal("Read the pages").MaxIterations(30).WithTool(tool).Build();
+        var task = DomainTask.Create(TaskDescription.From("Read every page"), ExpectedOutput.From("A digest"));
+        await loop.ExecuteAsync(
+            new ExecutionInvocationContext(agent, task, "sys", "user", Context: null, ToolsUsed: [],
+                Stopwatch: System.Diagnostics.Stopwatch.StartNew()),
+            TestContext.Current.CancellationToken);
+        return new NativeRun(provider, observer);
+    }
+
+    private static List<string> Render(IEnumerable<LlmMessage[]> turns) =>
+        [.. turns.Select(t => string.Join("|", t.Select(m => $"{m.Role}:{m.Content}:{m.ToolCallId}")))];
 
     [Fact]
     [Trait("BR", "CH-432")]
@@ -111,5 +155,48 @@ public sealed class NativeLoopCompactionTests
         // Assert
         Assert.Contains(provider.ReceivedTurns[^1], m => m.ToolCallId == "call-1"
             && m.Content.StartsWith("[pruned to save context: the result of read_page {\"page\":", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldReproduceTodaysTrimExactly_WhenCompactionIsDisabled()
+    {
+        // Arrange: the same run without any compaction is today's behaviour.
+        var today = await RunTwentyFiveReadsAsync(options: null);
+
+        // Act
+        var disabled = await RunTwentyFiveReadsAsync(new ContextCompactionOptions { Enabled = false, KeepRecentTurns = 2 });
+
+        // Assert
+        Assert.Equal(Render(today.Provider.ReceivedTurns), Render(disabled.Provider.ReceivedTurns));
+        Assert.Empty(disabled.Observer.Notices);
+        Assert.StartsWith("[Context trimmed", disabled.Provider.ReceivedTurns[^1][2].Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldRevertToTheTrimAndSaySo_WhenThreeSummariesFailInARow()
+    {
+        // Arrange: the summary profile fails every call it is asked.
+        var summariser = new ScriptedFullLlmProvider();
+        for (var call = 0; call < 3; call++)
+        {
+            summariser.Enqueue(new LlmResponse
+            {
+                Content = string.Empty,
+                Metadata = new Dictionary<string, object> { [LlmResponseMetadataKeys.Error] = "summary endpoint down" },
+            });
+        }
+
+        // Act
+        var run = await RunTwentyFiveReadsAsync(
+            new ContextCompactionOptions { KeepRecentTurns = 2, Profile = "summariser" }, summariser);
+
+        // Assert
+        Assert.Equal(
+            [AgentCompactionOutcomes.Failed, AgentCompactionOutcomes.Failed, AgentCompactionOutcomes.Reverted],
+            run.Observer.Notices.Select(n => n.Outcome));
+        Assert.Equal(3, summariser.ReceivedTurns.Count);
+        Assert.StartsWith("[Context trimmed", run.Provider.ReceivedTurns[^1][2].Content, StringComparison.Ordinal);
     }
 }

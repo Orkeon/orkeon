@@ -309,7 +309,7 @@ public static class LlmSettings
             // Absent = not pinned: the provider sends the model's documented maximum (LLM-10).
             MaxTokens = ReadInt(section, "MaxTokens", strict),
             // Absent = the model's documented window, else Orkeon:Cli:Session:ContextWindowTokens (#432).
-            ContextWindowTokens = ReadInt(section, "ContextWindowTokens", strict),
+            ContextWindowTokens = ReadWindow(section, strict),
             // Absent = not pinned: the provider runs on LlmDefaults.DefaultTimeoutSeconds (30 s).
             TimeoutSeconds = ReadInt(section, "TimeoutSeconds", strict),
             // Absent = not bounded: only TimeoutSeconds bounds a streamed call (LLM-12).
@@ -487,6 +487,19 @@ public static class LlmSettings
         if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
             return value;
         return strict ? throw NotANumber(section, key, raw) : null;
+    }
+
+    // A window of zero or less would leave the loops no room: refused like an unreadable number (#432).
+    private static int? ReadWindow(IConfigurationSection section, bool strict)
+    {
+        const string key = "ContextWindowTokens";
+        var tokens = ReadInt(section, key, strict);
+        if (tokens is not <= 0)
+            return tokens;
+        return strict
+            ? throw new InvalidOperationException(
+                $"{section.Path}:{key}: {tokens.Value.ToString(CultureInfo.InvariantCulture)} is not a number of tokens above zero. Leave the key out for the model's documented window.")
+            : null;
     }
 
     private static TimeSpan? ReadTimeSpan(IConfigurationSection section, string key, bool strict)

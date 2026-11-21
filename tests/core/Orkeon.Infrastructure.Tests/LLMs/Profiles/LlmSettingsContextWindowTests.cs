@@ -30,4 +30,45 @@ public sealed class LlmSettingsContextWindowTests
         Assert.Equal(32_000, profiles["a"]);
         Assert.Null(profiles["b"]);
     }
+
+    public static TheoryData<string> WindowsAtOrUnderZero => ["0", "-1"];
+
+    [Theory]
+    [Trait("BR", "CH-432")]
+    [MemberData(nameof(WindowsAtOrUnderZero))]
+    public void ShouldRefuseTheDefault_WhenItsWindowIsZeroOrLess(string tokens)
+    {
+        // Arrange
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Llm:Model"] = "m", ["Llm:ContextWindowTokens"] = tokens })
+            .Build();
+
+        // Act
+        var error = Assert.Throws<InvalidOperationException>(() => LlmSettings.ReadDefault(config));
+
+        // Assert
+        Assert.StartsWith("Llm:ContextWindowTokens:", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-432")]
+    [MemberData(nameof(WindowsAtOrUnderZero))]
+    public void ShouldRefuseAProfile_WhenItsWindowIsZeroOrLess(string tokens)
+    {
+        // Arrange
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Llm:Model"] = "m",
+                ["Llm:Profiles:a:Model"] = "m",
+                ["Llm:Profiles:a:ContextWindowTokens"] = tokens,
+            })
+            .Build();
+
+        // Act
+        var error = Assert.Throws<InvalidOperationException>(() => LlmSettings.ReadProfiles(config).ToList());
+
+        // Assert
+        Assert.StartsWith("Llm:Profiles:a:ContextWindowTokens:", error.Message, StringComparison.Ordinal);
+    }
 }

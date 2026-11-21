@@ -113,7 +113,8 @@ internal sealed class ContextCompaction
                     [LlmMessage.System(instructions), LlmMessage.User(transcript)],
                     config with { Tools = null, ResponseFormat = null },
                     cancellationToken).ConfigureAwait(false);
-                return new CompactionSummary(response.Content, response.TokensUsed, response.Error);
+                return new CompactionSummary(response.Content, response.TokensUsed, response.Error,
+                    response.PromptTokens ?? 0, response.CompletionTokens ?? 0);
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {

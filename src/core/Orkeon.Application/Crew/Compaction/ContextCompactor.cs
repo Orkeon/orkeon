@@ -9,7 +9,10 @@ namespace Orkeon.Application.Crew.Compaction;
 /// <param name="Text">The summary; null or blank when the model answered nothing.</param>
 /// <param name="TokensUsed">The tokens the call used, charged to the task.</param>
 /// <param name="Error">Why the call failed, or null.</param>
-internal readonly record struct CompactionSummary(string? Text, int TokensUsed, string? Error);
+/// <param name="PromptTokens">The prompt side of <paramref name="TokensUsed"/>, 0 when the provider split nothing.</param>
+/// <param name="CompletionTokens">The completion side of <paramref name="TokensUsed"/>, 0 when the provider split nothing.</param>
+internal readonly record struct CompactionSummary(
+    string? Text, int TokensUsed, string? Error, int PromptTokens = 0, int CompletionTokens = 0);
 
 /// <summary>Writes the summary of <paramref name="transcript"/> under <paramref name="instructions"/>, with no tool.</summary>
 internal delegate System.Threading.Tasks.Task<CompactionSummary> SummaryCall(
@@ -37,7 +40,8 @@ internal sealed record ContextCompactorSetup
 /// tokens plus a count of the messages added since, or a count of the whole conversation when no
 /// usage is known), runs the pressure stages, and past the trigger replaces the middle of the
 /// conversation with one summary. After each call the loop reports the prompt tokens the provider
-/// counted (<see cref="Observe"/>). Three failures in a row open the breaker: the loop then trims
+/// counted (<see cref="Observe"/>): what they hold beyond the messages (the tool definitions, the
+/// framing) is kept as the overhead every recount of the messages adds. Three failures in a row open the breaker: the loop then trims
 /// its conversation as it did before compaction (<see cref="ReplacesTrim"/> turns false).
 /// </summary>
 internal sealed class ContextCompactor
@@ -52,6 +56,7 @@ internal sealed class ContextCompactor
     private readonly SummaryCall _summarize;
     private int? _lastPromptTokens;
     private int _messagesAtLastCall;
+    private int _overheadTokens;
     private int _consecutiveFailures;
     private bool _reverted;
 
@@ -74,21 +79,31 @@ internal sealed class ContextCompactor
     /// <summary>The tokens the summary calls used so far, charged to the task.</summary>
     internal int SpentTokens { get; private set; }
 
+    /// <summary>The prompt side of <see cref="SpentTokens"/>, as the providers split it.</summary>
+    internal int SpentPromptTokens { get; private set; }
+
+    /// <summary>The completion side of <see cref="SpentTokens"/>, as the providers split it.</summary>
+    internal int SpentCompletionTokens { get; private set; }
+
     /// <summary>
-    /// A call was made over the first <paramref name="messagesSent"/> messages, and the provider counted
-    /// <paramref name="promptTokens"/> prompt tokens (null when it reported no usage).
+    /// A call was made over <paramref name="conversation"/> as it stands, and the provider counted
+    /// <paramref name="promptTokens"/> prompt tokens (null when it reported no usage). What that count
+    /// holds beyond the messages is kept as the prompt's overhead (never below 0), which every later
+    /// recount adds; a call with no usage keeps the overhead last measured.
     /// </summary>
-    internal void Observe(int? promptTokens, int messagesSent)
+    internal void Observe(int? promptTokens, ConversationView conversation)
     {
         _lastPromptTokens = promptTokens is > 0 ? promptTokens : null;
-        _messagesAtLastCall = messagesSent;
+        _messagesAtLastCall = conversation.Count;
+        if (_lastPromptTokens is { } reported)
+            _overheadTokens = Math.Max(0, reported - Count(conversation, 0));
     }
 
     /// <summary>The estimated prompt of a call over <paramref name="conversation"/> as it stands.</summary>
     internal int Estimate(ConversationView conversation)
     {
         if (_lastPromptTokens is not { } reported || _messagesAtLastCall > conversation.Count)
-            return Count(conversation, 0);
+            return Recount(conversation);
         return reported + Count(conversation, _messagesAtLastCall);
     }
 
@@ -107,7 +122,7 @@ internal sealed class ContextCompactor
             if (await stage.RelieveAsync(Pressure(estimate), conversation, cancellationToken).ConfigureAwait(false))
             {
                 Rewritten();
-                estimate = Count(conversation, 0);
+                estimate = Recount(conversation);
             }
         }
 
@@ -119,13 +134,16 @@ internal sealed class ContextCompactor
 
     private async System.Threading.Tasks.Task<int> CompactAsync(ConversationView conversation, int before, CancellationToken cancellationToken)
     {
+        // The recent turns are all there is: nothing failed, and a later turn gives the cut its room.
         var cut = CutIndex(conversation);
         if (cut <= 2)
-            return Failed(before, before, conversation.Count, 0, "the recent turns are all that is left to keep");
+            return 0;
 
         var summary = await _summarize(CompactionPrompts.Instructions,
-            CompactionPrompts.Transcript(Transcript(conversation, 2, cut)), cancellationToken).ConfigureAwait(false);
+            CompactionPrompts.Transcript(conversation.TextAt(1), Transcript(conversation, 2, cut)), cancellationToken).ConfigureAwait(false);
         SpentTokens += summary.TokensUsed;
+        SpentPromptTokens += summary.PromptTokens;
+        SpentCompletionTokens += summary.CompletionTokens;
 
         if (summary.Error is { } error)
             return summary.TokensUsed + Failed(before, before, conversation.Count, summary.TokensUsed, $"the summary call failed: {error}");
@@ -135,7 +153,7 @@ internal sealed class ContextCompactor
         var replaced = cut - 2;
         conversation.ReplaceRange(2, replaced, CompactionPrompts.SummaryMessage(replaced, summary.Text.Trim()));
         Rewritten();
-        var after = Count(conversation, 0);
+        var after = Recount(conversation);
         var kept = conversation.Count - 1;
 
         if (after >= TriggerTokens)
@@ -202,6 +220,9 @@ internal sealed class ContextCompactor
         }
         return total;
     }
+
+    // The whole conversation counted again, with the overhead the provider's last count showed.
+    private int Recount(ConversationView conversation) => Count(conversation, 0) + _overheadTokens;
 
     private void Rewritten() => _lastPromptTokens = null;
 
