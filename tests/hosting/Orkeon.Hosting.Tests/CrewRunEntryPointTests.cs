@@ -229,4 +229,87 @@ public sealed class CrewRunEntryPointTests
             try { Directory.Delete(root, recursive: true); } catch (IOException) { /* best-effort */ }
         }
     }
+
+    private const string OverrideSettings = """
+        { "RaggableTree": { "Enabled": false },
+          "Orkeon": { "Decision": { "Route": { "Ladder": [ "default", "{rung}" ] } } },
+          "Llm": { "Provider": "mock", "Responses": "/crew/answers.jsonl",
+                   "Profiles": { "real": { "BaseUrl": "https://api.anthropic.com/v1", "ApiKey": "sk-test", "Model": "claude-sonnet-5" },
+                                 "local": { "Provider": "mock", "Responses": "/crew/answers.jsonl" } } } }
+        """;
+
+    /// <summary>A crew whose agent runs on the default (the mock) and whose task overrides it with <paramref name="profile"/>.</summary>
+    private static string WriteOverrideCrew(string root, string profile, string rung, bool decisionNone)
+    {
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "appsettings.json"), OverrideSettings.Replace("{rung}", rung, StringComparison.Ordinal));
+        File.WriteAllText(Path.Combine(root, "answers.jsonl"), "{\"match\":\"\",\"content\":\"ok\"}\n");
+        var path = Path.Combine(root, "crew.yaml");
+        File.WriteAllText(path, "name: override-crew\ngoal: Check the overrides\nprocess: sequential\n"
+            + (decisionNone ? "decision:\n  mode: none\n" : string.Empty)
+            + "agents:\n  worker:\n    role: Worker\n    goal: Work\n    maxIter: 1\n"
+            + "tasks:\n  plain:\n    description: Plain.\n    expected_output: Done.\n    agent: worker\n"
+            + "  moved:\n    description: Moved.\n    expected_output: Done.\n    agent: worker\n"
+            + "    llm_override:\n      profile: " + profile + "\n");
+        return path;
+    }
+
+    [Theory]
+    [InlineData("real", "local", false, "Refused")]
+    [InlineData("local", "local", false, "Completed")]
+    [InlineData("default", "real", false, "Completed")]
+    [InlineData("auto", "real", false, "Refused")]
+    [InlineData("auto", "local", false, "Completed")]
+    [InlineData("auto", "real", true, "LoadFailed")]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldCheckTheProfileATaskOverrideRunsOn_WhenAnOfflineRunChecksItsProfiles(
+        string profile, string rung, bool decisionNone, string expected)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-offline-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var service = new FakeAgentExecutionService();
+            using var entry = OpenOffline(WriteOverrideCrew(root, profile, rung, decisionNone), service);
+
+            var result = await entry.RunAsync(EmptyInput, resume: null, TestContext.Current.CancellationToken, offline: true);
+
+            Assert.True(expected == result.Outcome.ToString(), $"{result.Outcome}: {result.Refusal} {result.LoadError?.Message}");
+            if (expected == "Refused")
+            {
+                Assert.Contains("task 'moved' (profile 'real'", result.Refusal, StringComparison.Ordinal);
+                Assert.DoesNotContain("plain", result.Refusal, StringComparison.Ordinal);
+                Assert.DoesNotContain("agent 'Worker'", result.Refusal, StringComparison.Ordinal);
+                Assert.Empty(service.Calls);
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { /* best-effort */ }
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldFailCleanlyNamingTheTask_WhenAnOfflineRunsTaskOverrideNamesAnUnknownProfile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-offline-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var service = new FakeAgentExecutionService();
+            using var entry = OpenOffline(WriteOverrideCrew(root, "ghost", "local", decisionNone: false), service);
+
+            var result = await entry.RunAsync(EmptyInput, resume: null, TestContext.Current.CancellationToken, offline: true);
+
+            Assert.True(result.Outcome is CrewRunOutcome.LoadFailed or CrewRunOutcome.Refused, $"{result.Outcome}");
+            var message = result.Refusal ?? result.LoadError?.Message;
+            Assert.NotNull(message);
+            Assert.Contains("'ghost'", message, StringComparison.Ordinal);
+            Assert.Contains("Moved", message, StringComparison.Ordinal);
+            Assert.Empty(service.Calls);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { /* best-effort */ }
+        }
+    }
 }

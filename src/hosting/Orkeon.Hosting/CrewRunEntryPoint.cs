@@ -180,7 +180,8 @@ internal sealed class CrewRunEntryPoint : IDisposable
 
     /// <summary>
     /// What an offline run refuses: an agent (or the manager) whose model is not the mock provider, whether it
-    /// answers through its own profile, its own provider or the host default. Null when every one is on the mock.
+    /// answers through its own profile, its own provider or the host default, or a task whose <c>llm_override</c>
+    /// moves it to a profile that is not the mock. Null when every one is on the mock.
     /// </summary>
     private static async Task<string?> OfflineRefusalAsync(IServiceProvider services, Domain.Crew.Crew crew, CancellationToken ct)
     {
@@ -213,6 +214,18 @@ internal sealed class CrewRunEntryPoint : IDisposable
             }
         }
 
+        // A task's llm_override.profile replaces the profile of whichever agent runs it, its own provider included;
+        // an override on auto runs on the rung System One picks for the task, the default or a rung of the ladder.
+        foreach (var task in tasks)
+        {
+            foreach (var candidate in OverrideProfilesOf(crew, task, ladder))
+            {
+                var provider = registry.Resolve(candidate).Provider;
+                if (!IsMock(provider))
+                    offenders.Add($"task '{task.Key ?? task.Description.Value}' (profile '{candidate}', provider '{MeteredLlmProvider.Unwrap(provider).Name}')");
+            }
+        }
+
         if (crew.ManagerLlm is { } manager && !IsMock(manager))
             offenders.Add($"the manager (provider '{MeteredLlmProvider.Unwrap(manager).Name}')");
 
@@ -220,6 +233,28 @@ internal sealed class CrewRunEntryPoint : IDisposable
             ? null
             : "an offline run needs every model on the mock provider, and " + string.Join("; ", offenders)
                 + " would call a real one: point the profile at the mock (--llm-mock <file> turns every profile into the mock) or drop --offline.";
+    }
+
+    /// <summary>
+    /// The host profiles the <c>llm_override.profile</c> of <paramref name="task"/> runs it on, none without one: the
+    /// default and the ladder's rungs for <c>auto</c> (the default alone in a <c>decision.mode: none</c> crew, which
+    /// the crew load refuses anyway), else the profile named.
+    /// </summary>
+    private static IEnumerable<string> OverrideProfilesOf(Domain.Crew.Crew crew, Orkeon.Domain.Task.CrewTask task, IEnumerable<string> ladder)
+    {
+        var profile = task.LlmOverride?.Profile;
+        if (string.IsNullOrWhiteSpace(profile))
+            return [];
+        if (LlmProfiles.IsDefault(profile))
+            return [LlmProfiles.Default];
+        if (!LlmProfiles.IsAuto(profile))
+            return [profile.Trim()];
+        if (crew.DecisionMode == Orkeon.Domain.Crew.CrewDecisionMode.None)
+            return [LlmProfiles.Default];
+
+        return new[] { LlmProfiles.Default }
+            .Concat(ladder.Select(rung => rung.Trim()).Where(rung => rung.Length > 0 && !LlmProfiles.IsDefault(rung)))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
     }
 
     private static bool IsMock(Orkeon.Domain.SharedKernel.ILlmProvider provider) =>
