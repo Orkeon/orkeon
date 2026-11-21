@@ -2229,7 +2229,7 @@ public sealed partial class JsLlmFacade
 
         var effort = options.Get("effort");
         if (effort.IsString())
-            config = (config ?? Inherited()) with { Thinking = JsLlmConfig.ThinkingAt(effort.AsString()) };
+            config = (config ?? Inherited()) with { Thinking = JsLlmConfig.CallThinkingAt(effort.AsString()) };
 
         var cache = options.Get("cache");
         if (!cache.IsUndefined())

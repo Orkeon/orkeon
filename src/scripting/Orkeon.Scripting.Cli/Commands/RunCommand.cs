@@ -117,7 +117,8 @@ internal sealed class RunCommandOptions : CliOptions
                        + "is withheld, decision profiles route to their fallback without escalation, a fail-closed LLM "
                        + "judge refuses to start and a fail-open one is left out, the decision reranker keeps the "
                        + "retrieval order, an agent with skills auto carries its fallback skills, llm.profile: auto runs on "
-                       + "the host's default profile and tool-result pruning prunes nothing. See docs/architecture/decision-models.md.")]
+                       + "the host's default profile, thinking effort: auto and enabled: auto run with the thinking the agent "
+                       + "would have had without auto, and tool-result pruning prunes nothing. See docs/architecture/decision-models.md.")]
         public bool NoDecision { get; set; }
 
         /// <summary>Verbosity level 0-2 (aligned with YAML runner).</summary>

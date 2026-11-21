@@ -418,3 +418,6 @@ static Orkeon.Application.Crew.Routing.AgentEffortOptions.DefaultLevels.get -> S
 static Orkeon.Application.Crew.Routing.AgentEffortOptions.Problems(Orkeon.Application.Crew.Routing.AgentEffortOptions! options) -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Application.Interfaces.Ports.AgentEffortNotice.operator !=(Orkeon.Application.Interfaces.Ports.AgentEffortNotice? left, Orkeon.Application.Interfaces.Ports.AgentEffortNotice? right) -> bool
 static Orkeon.Application.Interfaces.Ports.AgentEffortNotice.operator ==(Orkeon.Application.Interfaces.Ports.AgentEffortNotice? left, Orkeon.Application.Interfaces.Ports.AgentEffortNotice? right) -> bool
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Previous.get -> string?
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Previous.init -> void
+const Orkeon.Application.Interfaces.Ports.AgentEffortReasons.Raised = "raised" -> string!

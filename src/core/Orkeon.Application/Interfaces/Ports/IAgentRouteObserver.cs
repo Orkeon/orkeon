@@ -13,7 +13,10 @@ public interface IAgentRouteObserver
     /// <param name="notice">What was chosen, and why.</param>
     void ProfileRouted(AgentRouteNotice notice);
 
-    /// <summary>The thinking level of a task was chosen, once per task and agent, at the task's start (#439).</summary>
+    /// <summary>
+    /// The thinking level of a task was chosen, once per task and agent, at the task's start, or raised after a failed
+    /// attempt (#439).
+    /// </summary>
     /// <param name="notice">What was chosen, and why.</param>
     void EffortPicked(AgentEffortNotice notice)
     {
@@ -31,13 +34,20 @@ public sealed record AgentEffortNotice
     public required string AgentRole { get; init; }
 
     /// <summary>
-    /// The level the task's calls ask for: the one picked, else the one that stands without <c>auto</c> (the
-    /// agent's or its profile's); null when none stands and the provider's own applies.
+    /// The level the task's calls ask for: the one picked (<c>off</c> when System One switched thinking off), else the
+    /// one that stands without <c>auto</c> (the agent's or its profile's); null when none stands and the provider's own
+    /// applies.
     /// </summary>
     public string? Level { get; init; }
 
     /// <summary>One of <see cref="AgentEffortReasons"/>.</summary>
     public required string Reason { get; init; }
+
+    /// <summary>
+    /// The level the task ran with before a raise (<see cref="AgentEffortReasons.Raised"/>), <c>off</c> when thinking was
+    /// off; null for a pick.
+    /// </summary>
+    public string? Previous { get; init; }
 
     /// <summary>The level the decision model picked, when it answered with one; null otherwise.</summary>
     public string? Picked { get; init; }
@@ -72,6 +82,12 @@ public static class AgentEffortReasons
 
     /// <summary>One level is allowed: the task runs with it, and no call is made.</summary>
     public const string SingleLevel = "single-level";
+
+    /// <summary>
+    /// The previous attempt of the task failed: the level it keeps goes one step up among the levels offered (from
+    /// <c>off</c> to the first level), with no decision call.
+    /// </summary>
+    public const string Raised = "raised";
 }
 
 /// <summary>The profile a task of an <c>auto</c> agent runs on (#434): the fields of <c>agent.route</c>.</summary>

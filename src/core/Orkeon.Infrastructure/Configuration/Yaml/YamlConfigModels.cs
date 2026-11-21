@@ -354,10 +354,19 @@ public class CacheYamlConfig
 /// </summary>
 public class ThinkingYamlConfig
 {
-    /// <summary>Gets or sets whether thinking mode is enabled (default: provider-managed).</summary>
-    public bool? Enabled { get; set; }
-    /// <summary>Gets or sets the reasoning effort hint ("low" | "medium" | "high" | "xhigh" | "max"; a provider sends the nearest level its field knows).</summary>
-    public string? Effort { get; set; }
+    /// <summary>
+    /// Gets or sets whether thinking mode is enabled (default: provider-managed): <c>true</c>, <c>false</c>, or
+    /// <c>auto</c>, which lets System One switch it off for a task (#439). Read as a raw value so another one is refused
+    /// naming the agent or the task (<see cref="YamlCrewMapper"/>).
+    /// </summary>
+    public object? Enabled { get; set; }
+    /// <summary>
+    /// Gets or sets the reasoning effort hint: a level ("low" | "medium" | "high" | "xhigh" | "max"; a provider sends
+    /// the nearest level its field knows), <c>auto</c> for System One's pick among the host's levels (#439), or a map
+    /// <c>{ auto: true, min, max }</c> for that pick bounded. Read as a raw value so another shape is refused naming the
+    /// agent or the task (<see cref="YamlCrewMapper"/>).
+    /// </summary>
+    public object? Effort { get; set; }
     /// <summary>
     /// Gets or sets a hard token budget for the reasoning pass. Only Qwen's DashScope API
     /// accepts one; other providers report the option rather than dropping it.

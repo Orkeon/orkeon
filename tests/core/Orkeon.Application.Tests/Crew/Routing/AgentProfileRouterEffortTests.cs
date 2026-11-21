@@ -214,4 +214,36 @@ public sealed class AgentProfileRouterEffortTests
         Assert.Equal(AgentRouteReasons.NoLadder, route.Profile!.Reason);
         Assert.Equal("medium", route.Effort!.Level);
     }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldOfferOffBesideTheWrittenLevel_WhenTheSwitchIsLeftToSystemOne()
+    {
+        // Arrange
+        var router = Router();
+        var thinking = new LlmThinkingConfig { AutoEnabled = true, Effort = "high" };
+
+        // Act
+        await router.RouteAsync(Agent(), "t1", Request, false, thinking, null, TestContext.Current.CancellationToken);
+
+        // Assert
+        var question = Assert.IsType<ChoiceQuestion>(Assert.Single(Assert.Single(_model.Requests).Questions).Value);
+        Assert.Equal(EffortPrompts.Off, question.Criteria[LlmThinkingConfig.Off]!.GetValue<string>());
+        Assert.Equal(EffortPrompts.Only, question.Criteria["high"]!.GetValue<string>());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldOfferOnlyTheLevelsInsideTheBounds_WhenThePickIsBounded()
+    {
+        // Arrange
+        var router = Router();
+
+        // Act
+        await router.RouteAsync(Agent(), "t1", Request, false, LlmAutoEffort.Bounded("medium", null), null, TestContext.Current.CancellationToken);
+
+        // Assert
+        var question = Assert.IsType<ChoiceQuestion>(Assert.Single(Assert.Single(_model.Requests).Questions).Value);
+        Assert.Equal(["high", "medium"], question.Criteria.Keys.Order(StringComparer.Ordinal));
+    }
 }

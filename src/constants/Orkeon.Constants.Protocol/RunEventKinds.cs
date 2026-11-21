@@ -130,11 +130,13 @@ public static class RunEventKinds
     public const string AgentRoute = "agent.route";
 
     /// <summary>
-    /// The thinking level a task on <c>thinking: { effort: auto }</c> runs with (#439), once per task and agent, at its
-    /// start: <c>taskId</c>, <c>agentRole</c>, <c>level</c> (the level sent, null when the provider's own stands),
-    /// <c>reason</c> (<c>model</c>, <c>low-confidence</c>, <c>no-answer</c>, <c>circuit-off</c>, <c>decision-none</c>,
-    /// <c>single-level</c>), <c>picked</c> and <c>probability</c> (the model's pick and its probability, null when it
-    /// picked no level) and <c>levels</c> (the levels offered). Additive: a consumer that does not know the kind ignores it.
+    /// The thinking level a task on <c>thinking: { effort: auto }</c> or <c>{ enabled: auto }</c> runs with (#439), once
+    /// per task and agent at its start, and again when a failed attempt raises it: <c>taskId</c>, <c>agentRole</c>,
+    /// <c>level</c> (the level sent, <c>off</c> when thinking is switched off, null when the provider's own stands),
+    /// <c>previous</c> (the level before a raise, null for a pick), <c>reason</c> (<c>model</c>, <c>low-confidence</c>,
+    /// <c>no-answer</c>, <c>circuit-off</c>, <c>decision-none</c>, <c>single-level</c>, <c>raised</c>), <c>picked</c> and
+    /// <c>probability</c> (the model's pick and its probability, null when it picked no level) and <c>levels</c> (the
+    /// answers offered). Additive: a consumer that does not know the kind ignores it.
     /// </summary>
     public const string AgentEffort = "agent.effort";
 

@@ -135,7 +135,7 @@ public sealed class AgentBuilderTests
 
     [Theory]
     [Trait("BR", "CH-364")]
-    [InlineData("""agentBuilder().effort("bogus")""", "effort must be low|medium|high|xhigh|max, not 'bogus'")]
+    [InlineData("""agentBuilder().effort("bogus")""", "effort must be low|medium|high|xhigh|max|auto, not 'bogus'")]
     [InlineData("""agentBuilder().onCommand(42)""", ".onCommand(handler) requires a function.")]
     [InlineData("""agentBuilder().onCommand("", () => 1)""", "requires a non-empty intent")]
     [InlineData("""agentBuilder().withAutonomousTool("file_read")""", "toolBuilder()")]

@@ -85,6 +85,13 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
             Answers = answers.ToImmutableDictionary(a => a.Question, a => (DecisionAnswer)Choice(a.Choice, a.Probability)),
         };
 
+    /// <summary>The next attempt ends with an empty answer, its retry included: a failed result.</summary>
+    private void FailNextAttempt()
+    {
+        _small.EnqueueText(string.Empty);
+        _small.EnqueueText(string.Empty);
+    }
+
     private static string? SentEffort(ScriptedFullLlmProvider provider) => Assert.Single(provider.ReceivedConfigs)?.Thinking?.Effort;
 
     [Fact]
@@ -191,5 +198,88 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
         // Assert
         Assert.Single(_model.Requests);
         Assert.Equal(["high", "high"], _small.ReceivedConfigs.Select(c => c?.Thinking?.Effort));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldRaiseTheLevelOneStepAndTellTheObserver_WhenTheAttemptBeforeFailed()
+    {
+        // Arrange
+        Answer((AgentProfileRouter.EffortQuestionName, "low", 0.9));
+        var orchestrator = Orchestrator(DecisionCircuit.On);
+        var agent = AutoEffortAgent();
+        var task = Task();
+        FailNextAttempt();
+        var failed = await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+        Assert.False(failed.Success);
+
+        // Act
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Single(_model.Requests);
+        Assert.Equal("medium", _small.ReceivedConfigs[^1]?.Thinking?.Effort);
+        var raised = _observer.EffortNotices[^1];
+        Assert.Equal(AgentEffortReasons.Raised, raised.Reason);
+        Assert.Equal("low", raised.Previous);
+        Assert.Equal("medium", raised.Level);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldKeepTheTopLevelWithNoRaise_WhenTheAttemptBeforeFailedAtTheHighestLevel()
+    {
+        // Arrange
+        Answer((AgentProfileRouter.EffortQuestionName, "high", 0.9));
+        var orchestrator = Orchestrator(DecisionCircuit.On);
+        var agent = AutoEffortAgent();
+        var task = Task();
+        FailNextAttempt();
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+
+        // Act
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal("high", _small.ReceivedConfigs[^1]?.Thinking?.Effort);
+        Assert.DoesNotContain(_observer.EffortNotices, n => n.Reason == AgentEffortReasons.Raised);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldSwitchThinkingOff_WhenSystemOnePicksOffForAnAgentOnEnabledAuto()
+    {
+        // Arrange
+        Answer((AgentProfileRouter.EffortQuestionName, LlmThinkingConfig.Off, 0.9));
+        var agent = Agent("small", new LlmThinkingConfig { AutoEnabled = true, Effort = "medium" });
+
+        // Act
+        await Orchestrator(DecisionCircuit.On).ExecuteTaskCoreAsync(agent, Task(), Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.False(Assert.Single(_small.ReceivedConfigs)?.Thinking?.Enabled);
+        Assert.Equal(LlmThinkingConfig.Off, Assert.Single(_observer.EffortNotices).Level);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async System.Threading.Tasks.Task ShouldSwitchThinkingBackOnAtTheWrittenLevel_WhenAnAttemptWithThinkingOffFailed()
+    {
+        // Arrange
+        Answer((AgentProfileRouter.EffortQuestionName, LlmThinkingConfig.Off, 0.9));
+        var orchestrator = Orchestrator(DecisionCircuit.On);
+        var agent = Agent("small", new LlmThinkingConfig { AutoEnabled = true, Effort = "medium" });
+        var task = Task();
+        FailNextAttempt();
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+
+        // Act
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        var sent = _small.ReceivedConfigs[^1]?.Thinking;
+        Assert.True(sent?.Enabled);
+        Assert.Equal("medium", sent?.Effort);
+        Assert.Equal(LlmThinkingConfig.Off, _observer.EffortNotices[^1].Previous);
     }
 }

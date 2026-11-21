@@ -47,9 +47,10 @@ declare global {
          * `medium`, `high` and `max` for Z.ai; all five for Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI,
          * Hugging Face, MiniMax and Mammouth AI) sends the highest it knows below the one asked, and warns. The model's
          * entry in the capability table narrows the levels further (GLM-5.3 takes `low`, `high` and `max` only).
-         * Applies to the agent's `ctx.llm` calls too, unless a call sets its own.
+         * Applies to the agent's `ctx.llm` calls too, unless a call sets its own. `"auto"` (#439) leaves the level to
+         * System One, picked at each task's start among the host's levels.
          */
-        effort(level: EffortLevel): this;
+        effort(level: AgentEffort): this;
         /**
          * YAML parity `cache:` — asks the provider's prompt cache to keep the system prompt and/or the
          * tool definitions. Only a provider whose cache is explicit (Anthropic) needs it; the others cache

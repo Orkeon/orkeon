@@ -79,4 +79,29 @@ public sealed class RunEventsRouteObserverTests : IDisposable
         Assert.Equal(0.8, json.GetProperty("probability").GetDouble());
         Assert.Equal(["low", "medium", "high"], json.GetProperty("levels").EnumerateArray().Select(e => e.GetString()));
     }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldWriteTheLevelBeforeTheRaise_WhenAFailedAttemptRaisesTheLevel()
+    {
+        // Arrange
+        var observer = new RunEventsRouteObserver(new OrkeonEventWriter(_output, new FakeOrkeonClock()));
+        var notice = new AgentEffortNotice
+        {
+            TaskId = "task-1",
+            AgentRole = "Coder",
+            Level = "medium",
+            Previous = "low",
+            Reason = AgentEffortReasons.Raised,
+            Levels = ["low", "medium", "high"],
+        };
+
+        // Act
+        observer.EffortPicked(notice);
+
+        // Assert
+        var json = JsonElement.Parse(Assert.Single(_output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries)));
+        Assert.Equal("low", json.GetProperty("previous").GetString());
+        Assert.Equal("raised", json.GetProperty("reason").GetString());
+    }
 }

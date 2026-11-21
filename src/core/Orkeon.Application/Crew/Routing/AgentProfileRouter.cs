@@ -102,13 +102,33 @@ internal sealed class AgentProfileRouter
     /// <param name="scopeCircuit">The circuit of the run's scope when it is not the container's; null follows the container's.</param>
     /// <param name="cancellationToken">Cancels the decision call.</param>
     /// <returns>The profile notice when the profile was asked, the effort pick when the effort was.</returns>
-    public async System.Threading.Tasks.Task<TaskRoute> RouteAsync(
+    public System.Threading.Tasks.Task<TaskRoute> RouteAsync(
         DomainAgent agent, string taskId, string request, bool routeProfile, LlmAutoEffort? effort,
+        DecisionCircuit? scopeCircuit, CancellationToken cancellationToken) =>
+        RouteAsync(agent, taskId, request, routeProfile, effort is null ? null : new LlmThinkingConfig { AutoEffort = effort },
+            scopeCircuit, cancellationToken);
+
+    /// <summary>
+    /// What System One picks for task <paramref name="taskId"/> of <paramref name="agent"/>: its profile when
+    /// <paramref name="routeProfile"/>, the answer of what <paramref name="thinking"/> leaves to it when it leaves
+    /// something (#439) - a level on <c>effort: auto</c>, with <c>off</c> on <c>enabled: auto</c> -, both in one decision
+    /// call when both are asked.
+    /// </summary>
+    /// <param name="agent">The agent.</param>
+    /// <param name="taskId">The task, for the notices.</param>
+    /// <param name="request">The task as the decision model reads it (cut at <see cref="RequestChars"/>).</param>
+    /// <param name="routeProfile">Whether the agent is on <c>llm.profile: auto</c>.</param>
+    /// <param name="thinking">The task's thinking, its override merged; null, or one that leaves nothing to System One, asks no effort.</param>
+    /// <param name="scopeCircuit">The circuit of the run's scope when it is not the container's; null follows the container's.</param>
+    /// <param name="cancellationToken">Cancels the decision call.</param>
+    /// <returns>The profile notice when the profile was asked, the effort pick when the effort was.</returns>
+    public async System.Threading.Tasks.Task<TaskRoute> RouteAsync(
+        DomainAgent agent, string taskId, string request, bool routeProfile, LlmThinkingConfig? thinking,
         DecisionCircuit? scopeCircuit, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(agent);
         var role = agent.Role.Value;
-        var levels = effort is null ? null : ImmutableList.CreateRange(effort.Allowed(_effortLevels));
+        var levels = thinking is { HasAuto: true } ? ImmutableList.CreateRange(thinking.AutoOptions(_effortLevels)) : null;
         var route = await PickAsync(role, request, routeProfile, levels, scopeCircuit, cancellationToken).ConfigureAwait(false);
         var profile = route.Profile is { } picked ? picked with { TaskId = taskId, AgentRole = role } : null;
         if (profile is not null)
@@ -121,7 +141,7 @@ internal sealed class AgentProfileRouter
     private async System.Threading.Tasks.Task<TaskRoute> PickAsync(
         string role, string request, bool routeProfile, ImmutableList<string>? levels, DecisionCircuit? scopeCircuit, CancellationToken cancellationToken)
     {
-        // One level allowed is no choice (#439): that level, with no call; none left, the effort without auto.
+        // One answer offered is no choice (#439): that answer, with no call; none left, the effort without auto.
         var askEffort = levels is { Count: > 1 };
         EffortPick? fixedEffort = null;
         if (levels is not null && !askEffort)
@@ -251,11 +271,38 @@ internal sealed class AgentProfileRouter
         if (ladder is not null)
             questions[QuestionName] = Choice(RoutePrompts.QuestionInstructions, ladder, RoutePrompts.Lowest, RoutePrompts.Middle, RoutePrompts.Highest);
         if (levels is not null)
-            questions[EffortQuestionName] = Choice(EffortPrompts.QuestionInstructions, levels, EffortPrompts.Lowest, EffortPrompts.Middle, EffortPrompts.Highest);
+            questions[EffortQuestionName] = EffortChoice(levels);
         return new DecisionRequest
         {
             State = JsonValue.Create(RoutePrompts.State(role, MiddleCut(request.Trim(), RequestChars)))!,
             Questions = questions.ToImmutable(),
+        };
+    }
+
+    /// <summary>
+    /// The thinking question (#439): <c>off</c> and <c>on</c> described for what they are, each level by its place among
+    /// the levels offered, cheapest first.
+    /// </summary>
+    private static ChoiceQuestion EffortChoice(IReadOnlyList<string> options)
+    {
+        var levels = options.Where(o => o is not LlmThinkingConfig.Off and not LlmThinkingConfig.On).ToList();
+        var criteria = ImmutableDictionary.CreateBuilder<string, JsonNode?>(StringComparer.Ordinal);
+        foreach (var option in options)
+        {
+            var place = levels.IndexOf(option);
+            criteria[option] = JsonValue.Create(option switch
+            {
+                LlmThinkingConfig.Off => EffortPrompts.Off,
+                LlmThinkingConfig.On => EffortPrompts.On,
+                _ when levels.Count == 1 => EffortPrompts.Only,
+                _ => place == 0 ? EffortPrompts.Lowest : place == levels.Count - 1 ? EffortPrompts.Highest : EffortPrompts.Middle,
+            });
+        }
+
+        return new ChoiceQuestion
+        {
+            Instructions = JsonValue.Create(EffortPrompts.QuestionInstructions),
+            Criteria = criteria.ToImmutable(),
         };
     }
 

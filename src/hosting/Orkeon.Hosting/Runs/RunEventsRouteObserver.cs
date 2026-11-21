@@ -39,6 +39,7 @@ internal sealed class RunEventsRouteObserver : IAgentRouteObserver
             taskId = notice.TaskId,
             agentRole = notice.AgentRole,
             level = notice.Level,
+            previous = notice.Previous,
             reason = notice.Reason,
             picked = notice.Picked,
             probability = notice.Probability,

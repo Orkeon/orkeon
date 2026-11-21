@@ -86,6 +86,8 @@ public sealed class LlmProfileAutoEffortTests
             agent: coder
         """;
 
+    private static string BoundedCrew(string bounds) => Crew().Replace("effort: auto", $"effort: {{ auto: true, {bounds} }}", StringComparison.Ordinal);
+
     private void Answer(string level, double probability) =>
         _model.Respond = _ => new DecisionResponse
         {
@@ -207,5 +209,35 @@ public sealed class LlmProfileAutoEffortTests
 
         // Assert
         Assert.Contains("every profile System One may pick (small, large, default)", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async Task ShouldRefuseTheLoadNamingTheBoundsAndTheKey_WhenTheyKeepNoneOfTheHostLevels()
+    {
+        // Arrange
+        await using var container = Container();
+
+        // Act
+        var error = await LoadFailureAsync(container, BoundedCrew("min: xhigh"));
+
+        // Assert
+        Assert.Contains("agent 'coder' declares thinking: { effort: { auto: true, min: xhigh } }", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Decision:Effort:Levels", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async Task ShouldSendTheOnlyLevelWithNoDecisionCall_WhenTheBoundsKeepOneHostLevel()
+    {
+        // Arrange
+        Answer("low", 0.9);
+        await using var container = Container();
+
+        // Act
+        await RunAsync(container, BoundedCrew("min: high"));
+
+        // Assert
+        Assert.Equal("high", _small.LastChatConfig?.Thinking?.Effort);
     }
 }
