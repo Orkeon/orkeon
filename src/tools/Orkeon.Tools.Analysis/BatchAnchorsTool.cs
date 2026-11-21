@@ -9,6 +9,7 @@ using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("batch_anchors", ActsOnWorkspace = true)]
 public sealed class BatchAnchorsTool : ToolBase<BatchAnchorsRequest, BatchAnchorsResponse>
 {
     private readonly IRaggableStore _store;

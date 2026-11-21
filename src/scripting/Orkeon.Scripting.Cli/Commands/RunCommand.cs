@@ -951,6 +951,8 @@ internal static partial class RunCommand
         // The declared MCP servers, connected as for a crew: their tools reach the script through
         // the registry, in the tools namespace, an agent's .tools([...]) and act.
         await McpStartup.ConnectConfiguredServersAsync(host, linkCts.Token).ConfigureAwait(false);
+        // The tool bridge (#445): the tools it runs replace their local instances before the script sees them.
+        await Orkeon.Hosting.ToolBridge.ToolBridgeStartup.ConnectAsync(host.Services, linkCts.Token).ConfigureAwait(false);
         var tools = new Orkeon.Scripting.ScriptToolCatalogue(
             host.Services.GetServices<IBaseTool>(), host.Services.GetService<IToolRegistry>()).ToList();
         // LLM provider is optional — scripts that never call ctx.llm work without one. The host's

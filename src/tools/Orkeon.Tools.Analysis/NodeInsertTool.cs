@@ -30,6 +30,7 @@ public sealed record NodeInsertResponse
     [JsonPropertyName("new_hash")] public required string NewHash { get; init; }
 }
 
+[ToolContract("node_insert", ActsOnWorkspace = true)]
 public sealed class NodeInsertTool : FileToolBase<NodeInsertRequest, NodeInsertResponse>
 {
     private readonly StructuralEditEngine _engine;

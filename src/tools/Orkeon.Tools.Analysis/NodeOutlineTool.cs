@@ -33,6 +33,7 @@ public sealed record NodeOutlineResponse
     public required ImmutableList<NodeOutlineEntryDto> Members { get; init; }
 }
 
+[ToolContract("node_outline", ActsOnWorkspace = true)]
 public sealed class NodeOutlineTool : ToolBase<NodeOutlineRequest, NodeOutlineResponse>
 {
     private readonly IFileSystemService _fs;

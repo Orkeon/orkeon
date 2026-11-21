@@ -92,6 +92,7 @@ public static partial class RunnerExecution
                 // Same order as a kickoff: the MCP tools exist before the crew
                 // resolves its own, so --validate judges the crew a run would actually get.
                 await McpStartup.ConnectConfiguredServersAsync(host, cts.Token).ConfigureAwait(false);
+                await ToolBridge.ToolBridgeStartup.ConnectAsync(host.Services, cts.Token).ConfigureAwait(false);
 
                 // The types of a .ork.ts, before it loads: esbuild strips them, so a wrong one only
                 // showed at run time (FWK-12).

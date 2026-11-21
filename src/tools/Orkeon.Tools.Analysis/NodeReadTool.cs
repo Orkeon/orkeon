@@ -34,6 +34,7 @@ public sealed record NodeReadResponse
     [JsonPropertyName("sha256")] public required string Sha256 { get; init; }
 }
 
+[ToolContract("node_read", ActsOnWorkspace = true)]
 public sealed class NodeReadTool : ToolBase<NodeReadRequest, NodeReadResponse>
 {
     private readonly IFileSystemService _fs;

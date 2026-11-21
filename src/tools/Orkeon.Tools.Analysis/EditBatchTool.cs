@@ -64,6 +64,7 @@ public sealed record EditBatchResponse
     [JsonPropertyName("validation")] public required string Validation { get; init; }
 }
 
+[ToolContract("edit_batch", ActsOnWorkspace = true)]
 public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResponse>
 {
     private readonly TreeSitterParserPool _pool;

@@ -123,6 +123,8 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "CrewExecutionStatePersistenceOptions", "Orkeon:ExecutionState:Persistence:Enabled", "yes please", "Orkeon:ExecutionState:Persistence:Enabled" },
         { "CostTrackingOptions", "Orkeon:CostTracking:Enabled", "on", "Orkeon:CostTracking:Enabled" },
         { "TokenCounterOptions", "Orkeon:TokenCounter:CharsPerToken", "four", "Orkeon:TokenCounter:CharsPerToken" },
+        { "ToolBridgeClientOptions", "Orkeon:Tools:Bridge:ConnectTimeout", "ten seconds", "Orkeon:Tools:Bridge:ConnectTimeout" },
+        { "ToolBridgeServerOptions", "Orkeon:Bridge:MaxRequestBytes", "plenty", "Orkeon:Bridge:MaxRequestBytes" },
         { "ConsensualProcessOptions", "Orkeon:Consensus:MaxVotingRounds", "three", "Orkeon:Consensus:MaxVotingRounds" },
         { "SandboxOptions", "Orkeon:CodeSandbox:TimeoutSeconds", "1m", "Orkeon:CodeSandbox:TimeoutSeconds" },
         { "DockerSandboxOptions", "Orkeon:CodeSandbox:Docker:PullImageOnStartup", "daily", "Orkeon:CodeSandbox:Docker:PullImageOnStartup" },

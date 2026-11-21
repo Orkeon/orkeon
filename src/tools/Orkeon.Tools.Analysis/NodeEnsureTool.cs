@@ -43,6 +43,7 @@ public sealed record NodeEnsureResponse
     [JsonPropertyName("new_hash")] public required string NewHash { get; init; }
 }
 
+[ToolContract("node_ensure", ActsOnWorkspace = true)]
 public sealed class NodeEnsureTool : FileToolBase<NodeEnsureRequest, NodeEnsureResponse>
 {
     private readonly StructuralEditEngine _engine;

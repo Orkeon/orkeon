@@ -200,7 +200,7 @@ public sealed class HostA2AConfigurationTests
         services.AddHostLifetimeServices();
 
         Assert.Equal(
-            [typeof(McpConnectionService), typeof(HostA2AService), typeof(Orkeon.Host.Api.HostApiServer), typeof(Gateway.ChatChannelService), typeof(CrewHostService)],
+            [typeof(McpConnectionService), typeof(ToolBridgeConnectionService), typeof(HostA2AService), typeof(Orkeon.Host.Api.HostApiServer), typeof(Gateway.ChatChannelService), typeof(CrewHostService)],
             services.Where(d => d.ServiceType == typeof(IHostedService)).Select(d => d.ImplementationType));
     }
 

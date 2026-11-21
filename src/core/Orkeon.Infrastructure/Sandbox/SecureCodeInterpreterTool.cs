@@ -7,6 +7,7 @@ using Base_ToolBase = Orkeon.Tools.Abstractions.Base.ToolBase;
 using ValidationResult = Orkeon.Tools.Abstractions.Base.ValidationResult;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 using ProtocolToolCallResponse = Orkeon.Domain.Tools.Protocol.ToolCallResponse;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Infrastructure.Sandbox;
 
@@ -14,6 +15,7 @@ namespace Orkeon.Infrastructure.Sandbox;
 /// A tool that securely executes C# code in an isolated sandbox.
 /// Performs static security analysis before execution.
 /// </summary>
+[ToolContract("code_interpreter", ActsOnWorkspace = true)]
 public class SecureCodeInterpreterTool : Base_ToolBase
 {
     private readonly ICodeSandbox _sandbox;

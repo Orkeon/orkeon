@@ -38,6 +38,7 @@ public sealed record NodeReplaceResponse
     [JsonPropertyName("new_hash")] public required string NewHash { get; init; }
 }
 
+[ToolContract("node_replace", ActsOnWorkspace = true)]
 public sealed class NodeReplaceTool : FileToolBase<NodeReplaceRequest, NodeReplaceResponse>
 {
     private readonly StructuralEditEngine _engine;

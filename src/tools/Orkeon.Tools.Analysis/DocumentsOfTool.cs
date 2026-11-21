@@ -9,6 +9,7 @@ using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("documents_of", ActsOnWorkspace = true)]
 public sealed class DocumentsOfTool : ToolBase<DocumentsOfRequest, DocumentsOfResponse>
 {
     private readonly IRaggableStore _store;

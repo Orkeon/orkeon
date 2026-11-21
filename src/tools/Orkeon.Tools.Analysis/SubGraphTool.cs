@@ -7,9 +7,11 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Analysis.Internal;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("sub_graph", ActsOnWorkspace = true)]
 public sealed class SubGraphTool : ToolBase<SubGraphRequest, SubGraphResponse>
 {
     private readonly IRaggableStore _store;

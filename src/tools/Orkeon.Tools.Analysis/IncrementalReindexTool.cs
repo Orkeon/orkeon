@@ -6,9 +6,11 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("incremental_reindex", ActsOnWorkspace = true)]
 public sealed class IncrementalReindexTool : ToolBase<IncrementalReindexRequest, IndexCodebaseResponse>
 {
     private readonly IndexFreshnessService _freshness;

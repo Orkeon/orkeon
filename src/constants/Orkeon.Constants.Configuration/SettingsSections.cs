@@ -35,6 +35,7 @@ public static class SettingsSections
     /// <summary>Every section a container may hold, by its full path.</summary>
     public static IReadOnlyList<string> Known { get; } =
     [
+        "Orkeon:Bridge",
         "Orkeon:Checkpointing",
         "Orkeon:ChromaDb",
         "Orkeon:Cli",
@@ -86,6 +87,7 @@ public static class SettingsSections
         "Orkeon:Liquid",
         "Orkeon:Kev",
         "Orkeon:Tools",
+        "Orkeon:Tools:Bridge",
         "Orkeon:Tools:Drive",
         "Orkeon:Tools:Email",
         "Orkeon:Tools:Firefox",

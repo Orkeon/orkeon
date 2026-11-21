@@ -111,7 +111,7 @@ public sealed class CountPatternResponse
 /// Deterministic regex-occurrence counter.
 /// Designed for verification tasks where the LLM must NOT estimate counts.
 /// </summary>
-[ToolContract("count_pattern",
+[ToolContract("count_pattern", ActsOnWorkspace = true,
     Name = "count_pattern",
     Description = "How many times does each pattern occur in this file? Counts the matches of each regex over the whole file, independently and exactly, for a check that must not rest on an estimate; distinct counts the unique matched strings instead. One file per call; to count over a tree, grep with output_mode \"count\".")]
 public partial class CountPatternTool : FileToolBase<CountPatternRequest, CountPatternResponse>

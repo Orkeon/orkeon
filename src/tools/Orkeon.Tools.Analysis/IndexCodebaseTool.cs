@@ -7,9 +7,11 @@ using Orkeon.Analysis.Core;
 using Orkeon.Analysis.Core.Cache;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("index_codebase", ActsOnWorkspace = true)]
 public sealed class IndexCodebaseTool : ToolBase<IndexCodebaseRequest, IndexCodebaseResponse>
 {
     private readonly InMemoryRaggableStore _store;

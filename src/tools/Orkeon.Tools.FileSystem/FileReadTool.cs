@@ -101,6 +101,7 @@ public sealed class FileReadResponse
 /// Tool for reading content from files.
 /// Supports text files, JSON, XML, and common document formats.
 /// </summary>
+[ToolContract("file_read", ActsOnWorkspace = true)]
 public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadResponse>
 {
     private readonly IRaggableStore? _raggableStore;

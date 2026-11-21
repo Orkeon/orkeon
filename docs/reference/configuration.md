@@ -184,13 +184,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 110 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 120 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-85 sections, 545 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+87 sections, 555 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -434,7 +434,7 @@ covers is not the one read, so it is not judged. The settings judged, from
 | Settings | Correction stated |
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<name>:ApiKey`, `Orkeon:Embeddings:ApiKey` | write `"ApiKeyEnvVar": "<NAME>"` instead |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
 | `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority`; `Orkeon:Tools:GitHub:Token` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
 | `MCP:Servers:<id>:Env:<name>` | remove the entry: the server inherits the environment Orkeon runs in, set the variable there |
 | `Secrets:<name>` | remove the entry and set `ORKEON_<name>`, which the secret chain reads first |
@@ -1720,6 +1720,44 @@ not do is listed in [Known limitations](limitations.md).
 | `StartupTimeoutSeconds` | integer | `30` |  | Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`. |
 <!-- /settings -->
 
+### `Orkeon:Tools:Bridge`
+
+Read at the start of a run, after the MCP connections, when `Address` is set. The tools `Allow`
+selects run on the machine of the bridge instead of the local one: their name, schema and access stay
+those of the local registry, and only the call crosses. The start is refused when the bridge cannot
+be reached, refuses the token, does not serve a tool named or serves one whose contract differs. The
+decision is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
+
+<!-- settings:Orkeon:Tools:Bridge -->
+**Read by**: `orkeon`, `orkeon-host`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Address` | string | — | The bridge's base address (`https://host:7410/`); unset, nothing is bridged. |
+| `Allow` | list of string | `[]` | The tools to bridge, by name, or the lone `*` for every tool the bridge serves. |
+| `ConnectTimeout` | duration | `"00:00:10"` | How long the connection to the bridge may take before a call fails; a call itself has no limit. |
+| `Deny` | list of string | `[]` | The tools never bridged, by name; a name here wins over `Allow`. |
+| `TokenEnvVar` | string | `"ORKEON_BRIDGE_TOKEN"` | The environment variable that holds the token; never the token itself. |
+<!-- /settings -->
+
+### `Orkeon:Bridge`
+
+Read by the bridge server, the side that serves its registry's tools to another machine. The token is
+read from the variable `TokenEnvVar` names; a request with an `Origin` header or a wrong token is
+refused. The decision is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
+
+<!-- settings:Orkeon:Bridge -->
+**Read by**: `orkeon`, `orkeon-host`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Allow` | list of string | `[]` | The tools served, by name, or the lone `*` for every tool of the registry. |
+| `Deny` | list of string | `[]` | The tools never served, by name; a name here wins over `Allow`. |
+| `MaxRequestBytes` | integer | `33554432` | The largest body a request may carry, in bytes; a larger one is refused before it is read. |
+| `Prefix` | string | `"http://127.0.0.1:7410/"` | The listener's prefix. Loopback by default; any other host requires `https`. |
+| `TokenEnvVar` | string | `"ORKEON_BRIDGE_TOKEN"` | The environment variable that holds the token; never the token itself. |
+<!-- /settings -->
+
 ### `MCP`
 
 MCP client connections (`MCP:Servers:<name>`) and the switch `MCP:Enabled`. No setting starts an
@@ -2526,6 +2564,8 @@ value: the secret stays out of the file. `orkeon settings <key>` describes each.
 | `Orkeon:Embeddings:ApiKeyEnvVar` | The API key of the `mistral`, `azure-openai` or `gemini` embedding provider, read when no `Orkeon:Embeddings:ApiKey` is set. | The process environment. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | The key of the web search the corrective RAG falls back to; empty, no key is sent. | The process environment. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | The bot token of the Discord channel; the key names `ORKEON_DISCORD_TOKEN` when nothing sets it. | The process environment. |
+| `Orkeon:Tools:Bridge:TokenEnvVar` | The token the run sends to the tool bridge; the key names `ORKEON_BRIDGE_TOKEN` when nothing sets it. | The process environment. |
+| `Orkeon:Bridge:TokenEnvVar` | The token the tool bridge server expects from its callers; the key names `ORKEON_BRIDGE_TOKEN` when nothing sets it. | The process environment. |
 
 The conventional variable of each provider — `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, … — is a
 name to write in `ApiKeyEnvVar`:

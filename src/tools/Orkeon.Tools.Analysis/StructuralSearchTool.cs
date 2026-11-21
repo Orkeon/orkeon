@@ -49,6 +49,7 @@ public sealed record StructuralSearchResponse
     [JsonPropertyName("matches")] public required ImmutableList<StructuralMatchDto> Matches { get; init; }
 }
 
+[ToolContract("structural_search", ActsOnWorkspace = true)]
 public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, StructuralSearchResponse>
 {
     private readonly IFileSystemService _fs;

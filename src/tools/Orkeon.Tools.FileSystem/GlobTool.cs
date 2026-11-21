@@ -48,6 +48,7 @@ public sealed record GlobResponse : IBoundedToolResponse
 }
 
 /// <summary>Expands a wildcard pattern under a directory.</summary>
+[ToolContract("glob", ActsOnWorkspace = true)]
 public sealed class GlobTool : FileToolBase<GlobRequest, GlobResponse>
 {
     /// <inheritdoc />

@@ -5,9 +5,11 @@ using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("complexity_report", ActsOnWorkspace = true)]
 public sealed class ComplexityReportTool : ToolBase<ComplexityReportRequest, ComplexityReportResponse>
 {
     private const int DistributionSamples = 500;

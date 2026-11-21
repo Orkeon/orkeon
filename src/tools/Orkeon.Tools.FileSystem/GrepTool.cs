@@ -143,6 +143,7 @@ public sealed record GrepResponse : IBoundedToolResponse
 }
 
 /// <summary>Searches the lines of text files under a directory with a bounded regex.</summary>
+[ToolContract("grep", ActsOnWorkspace = true)]
 public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
 {
     /// <summary>Marker appended to a hit line cut at 500 characters.</summary>

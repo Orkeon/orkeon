@@ -335,11 +335,23 @@
       "description": "Configuration for the Orkeon MCP server."
     },
     {
+      "path": "Orkeon:Bridge",
+      "category": "tools",
+      "hosts": [],
+      "description": "The serving side of the tool bridge, section `Orkeon:Bridge`: the tools `orkeon bridge serve` runs for a caller on another machine. Nothing is served while `Allow` is empty."
+    },
+    {
       "path": "Orkeon:MultiModal",
       "category": "tools",
       "hosts": [],
       "registration": "AddOrkeonMultiModal",
       "description": "Configuration options for multi-modal content support."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge",
+      "category": "tools",
+      "hosts": [],
+      "description": "The caller's side of the tool bridge, section `Orkeon:Tools:Bridge`: the tools of this Orkeon that run on another machine. Nothing is bridged while `Address` is unset or `Allow` is empty."
     },
     {
       "path": "Orkeon:Tools:Drive",
@@ -2824,6 +2836,41 @@
       "description": "Server version advertised in the handshake and in the `_meta` of the modern era. Empty or blank (the default): the version of the running Orkeon release."
     },
     {
+      "path": "Orkeon:Bridge:Allow",
+      "section": "Orkeon:Bridge",
+      "type": "list of string",
+      "default": [],
+      "description": "The tools served, by name, or the lone `*` for every tool of the registry."
+    },
+    {
+      "path": "Orkeon:Bridge:Deny",
+      "section": "Orkeon:Bridge",
+      "type": "list of string",
+      "default": [],
+      "description": "The tools never served, by name; a name here wins over `Allow`."
+    },
+    {
+      "path": "Orkeon:Bridge:MaxRequestBytes",
+      "section": "Orkeon:Bridge",
+      "type": "integer",
+      "default": 33554432,
+      "description": "The largest body a request may carry, in bytes; a larger one is refused before it is read."
+    },
+    {
+      "path": "Orkeon:Bridge:Prefix",
+      "section": "Orkeon:Bridge",
+      "type": "string",
+      "default": "http://127.0.0.1:7410/",
+      "description": "The listener's prefix. Loopback by default; any other host requires `https`."
+    },
+    {
+      "path": "Orkeon:Bridge:TokenEnvVar",
+      "section": "Orkeon:Bridge",
+      "type": "string",
+      "default": "ORKEON_BRIDGE_TOKEN",
+      "description": "The environment variable that holds the token; never the token itself."
+    },
+    {
       "path": "Orkeon:MultiModal:Enabled",
       "section": "Orkeon:MultiModal",
       "type": "boolean",
@@ -2857,6 +2904,40 @@
       "type": "list of string",
       "default": ["image/png", "image/jpeg", "image/gif", "image/webp"],
       "description": "List of supported image MIME types."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:Address",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "string",
+      "description": "The bridge's base address (`https://host:7410/`); unset, nothing is bridged."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:Allow",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "list of string",
+      "default": [],
+      "description": "The tools to bridge, by name, or the lone `*` for every tool the bridge serves."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:ConnectTimeout",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "duration",
+      "default": "00:00:10",
+      "description": "How long the connection to the bridge may take before a call fails; a call itself has no limit."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:Deny",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "list of string",
+      "default": [],
+      "description": "The tools never bridged, by name; a name here wins over `Allow`."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:TokenEnvVar",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "string",
+      "default": "ORKEON_BRIDGE_TOKEN",
+      "description": "The environment variable that holds the token; never the token itself."
     },
     {
       "path": "Orkeon:Tools:Drive:Accounts:<name>:Auth:ClientId",

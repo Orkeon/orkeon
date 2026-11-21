@@ -1803,6 +1803,10 @@ public static partial class RunnerHost
         // by McpStartup before the crew loads, since the runners never start the host.
         RegisterMcp(context, services);
 
+        // The tool bridge (#445): both sections judged at start; the link, when Orkeon:Tools:Bridge names an
+        // address, connected by ToolBridgeStartup right after the MCP servers.
+        ToolBridge.ToolBridgeStartup.Register(services, context.Configuration);
+
         // The decision models (ADR-015, ADR-016): TypeSafe when the settings configure it, and the
         // decision profiles of Orkeon:Decision:Profiles.
         RegisterDecisionModels(context, services);

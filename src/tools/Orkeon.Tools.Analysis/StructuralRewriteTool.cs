@@ -51,6 +51,7 @@ public sealed record StructuralRewriteResponse
     [JsonPropertyName("files")] public required ImmutableList<StructuralRewriteFileDto> Files { get; init; }
 }
 
+[ToolContract("structural_rewrite", ActsOnWorkspace = true)]
 public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteRequest, StructuralRewriteResponse>
 {
     private readonly TreeSitterParserPool _pool;

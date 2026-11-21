@@ -152,3 +152,7 @@ Orkeon.Domain.Task.ValueObjects.SystemOneUses.EffortAutoHolders.get -> System.Co
 Orkeon.Domain.Task.ValueObjects.SystemOneUses.EffortAutoHolders.init -> void
 Orkeon.Domain.Task.ValueObjects.SystemOneUses.EnabledAutoHolders.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.Task.ValueObjects.SystemOneUses.EnabledAutoHolders.init -> void
+Orkeon.Domain.Attributes.ToolContractAttribute.ActsOnWorkspace.get -> bool
+Orkeon.Domain.Attributes.ToolContractAttribute.ActsOnWorkspace.set -> void
+Orkeon.Domain.Tools.ToolContracts
+static Orkeon.Domain.Tools.ToolContracts.ActsOnWorkspace(Orkeon.Domain.Tools.IBaseTool! tool) -> bool
