@@ -7,6 +7,7 @@ using Orkeon.Application.Decision.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
+using Orkeon.Infrastructure.Decision.SystemOne;
 using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Infrastructure.Tools;
@@ -162,7 +163,7 @@ public sealed class SystemOneDecideTool : ToolBase<SystemOneDecideRequest, Syste
             {
                 Success = true,
                 Model = response.Model,
-                Answers = JsonSerializer.SerializeToNode(response.Answers),
+                Answers = DecisionJsonOrder.Answers(response.Answers),
             };
         }
         catch (DecisionModelException ex)

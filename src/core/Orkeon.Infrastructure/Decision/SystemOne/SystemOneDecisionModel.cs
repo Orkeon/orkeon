@@ -96,7 +96,7 @@ public sealed partial class SystemOneDecisionModel : IDecisionModel
             throw new DecisionModelException($"Invalid decision request: {validation.GetErrorMessage()}", null, isTransient: false);
 
         var sent = request with { Model = string.IsNullOrWhiteSpace(request.Model) ? _options.Model : request.Model };
-        var body = JsonSerializer.Serialize(sent);
+        var body = DecisionJsonOrder.Request(sent).ToJsonString();
         var response = await SendAsync(
             body,
             message =>
