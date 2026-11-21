@@ -18,7 +18,8 @@ namespace Orkeon.Rag.Tests.Reranking;
 /// </summary>
 public sealed class DecisionRerankerCircuitTests
 {
-    private static readonly ScoredChunk[] Passages = [Passage(0, 0.9), Passage(1, 0.8), Passage(2, 0.7)];
+    // Retrieval order is not score order: a reranker that sorted by score would give chunk-1, chunk-2, chunk-0.
+    private static readonly ScoredChunk[] Passages = [Passage(0, 0.7), Passage(1, 0.9), Passage(2, 0.8)];
 
     private static ScoredChunk Passage(int index, double score) => new()
     {
@@ -76,7 +77,8 @@ public sealed class DecisionRerankerCircuitTests
         // Act
         var result = await reranker.RerankAsync("what is X?", Passages, topN: 3, TestContext.Current.CancellationToken);
 
-        // Assert
+        // Assert: no decision reranker is built, so no row asks a model, the one without a model included.
+        Assert.IsNotType<DecisionModelReranker>(reranker);
         Assert.Equal(["chunk-0", "chunk-1", "chunk-2"], result.Select(r => r.Chunk.Id));
         Assert.Empty(host.Model.Requests);
     }

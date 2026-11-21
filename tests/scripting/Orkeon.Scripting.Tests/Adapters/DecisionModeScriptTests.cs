@@ -56,6 +56,7 @@ public sealed class DecisionModeScriptTests
         var config = JsCrewConfigurationAdapter.ToConfiguration(crew);
 
         // Assert
+        Assert.Equal(CrewDecisionMode.Optional, config.DecisionMode);
         Assert.Equal(new DecisionRelay("analyst", "Read the summary first."), config.Tasks.Single(t => t.Key == "triage").Decision!.Without);
     }
 

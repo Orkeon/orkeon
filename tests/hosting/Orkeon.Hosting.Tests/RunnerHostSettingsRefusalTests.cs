@@ -54,6 +54,19 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         Assert.Contains("Orkeon:CrewFactory:StrictTools", error.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("auto")]
+    [InlineData("Auto")]
+    [Trait("BR", "CH-434")]
+    public void A_host_profile_named_auto_is_refused_at_its_start_naming_the_key(string name)
+    {
+        // Act: auto is the name System One routes on, never a profile of the host.
+        var error = Refusal($$"""{ "RaggableTree": { "Enabled": false }, "Llm": { "Profiles": { "{{name}}": { "BaseUrl": "http://localhost:11434" } } } }""");
+
+        // Assert
+        Assert.Contains($"Llm:Profiles:{name}", error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_settings_file_that_is_not_JSON_is_refused_naming_the_file_and_the_line()
     {
