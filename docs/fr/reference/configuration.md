@@ -744,7 +744,8 @@ sur la tâche, un votant, a le sien) ; le modèle de décision lit le rôle de l
 réponse, quand l'appel échoue ou quand le circuit de décision est coupé (`--no-decision`,
 `Orkeon:Decision:Enabled: false`, aucun fournisseur de décision), le profil `default` de l'hôte
 (la section `Llm`) s'applique, jamais celui de l'agent, sans erreur : un circuit coupé ne fait aucun
-appel de décision. Un avertissement est journalisé une fois par run quand le circuit est coupé ou que
+appel de décision. Dans une crew en `decision.mode: none`, le profil `default` s'applique aussi, sans
+appel ni avertissement (`reason: decision-none`). Un avertissement est journalisé une fois par run quand le circuit est coupé ou que
 `Ladder` manque (hors d'un run, une fois par hôte), et à chaque appel en échec ; une probabilité basse
 ou une réponse manquante n'est journalisée qu'en information. Chaque choix émet `agent.route` sur
 le flux d'événements du run, une fois par tâche et par agent d'un run. Le
@@ -1896,20 +1897,27 @@ conversation est comptée de nouveau. Dès que l'estimation atteint `TriggerShar
 utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum
 documenté du modèle, sinon 4096, au plus la moitié de la fenêtre), un appel de résumé, qui lit
 aussi la tâche, remplace les tours anciens, et le prompt système, la tâche et les
-`KeepRecentTurns` derniers tours restent tels quels. Un tour est une réponse de l'assistant, en un
+`KeepRecentTurns` derniers tours restent tels quels. Quand `Profile` nomme un profil dont la fenêtre
+est connue (son `ContextWindowTokens`, sinon la fenêtre documentée de son modèle) et que l'appel de
+résumé ne tiendrait pas dans cette fenêtre moins sa réserve de sortie, chaque message de la
+transcription est coupé à une même longueur, les plus courts gardés entiers, et une ligne
+d'information le dit. Un tour est une réponse de l'assistant, en un
 message ou plusieurs, avec ses résultats d'outils : un appel n'est jamais gardé sans son résultat.
 Un message système parmi les tours anciens (le pilotage du budget souple) reste, juste après le
-résumé. Quand les `KeepRecentTurns` tours sont tout ce qu'il y a, moins sont gardés : le plus grand
+résumé. Quand les `KeepRecentTurns` tours sont tout ce qu'il y a, ou dépassent seuls le seuil, moins sont gardés : le plus grand
 nombre dont les messages passent sous le seuil, sinon le dernier tour seul ; un appel au-delà du
 seuil avec un seul tour attend un tour plus tard, et ne compte pas comme un échec. La fenêtre est le
-`ContextWindowTokens` du profil, sinon celle que documente le modèle, sinon
+`ContextWindowTokens` du profil pour le modèle propre du profil (un agent dont `llm.model` nomme un
+autre modèle lit la fenêtre documentée de ce modèle, sinon le chiffre supposé), sinon celle que
+documente le modèle, sinon
 [`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession) (200000 par défaut), avec un
 avertissement par profil qui nomme le chiffre supposé. La table des fenêtres documentées
 (`LlmModelContextWindows`) connaît quatre modèles : `kimi-k3` (1000000 tokens), `kimi-k2.6`,
 `mistral-medium-2604` et `mistral-medium-3-5` (256000 chacun). Un identifiant de modèle en prend un
 exactement, sinon le plus long par lequel il commence suivi de `-`, `:`, `@` ou `_`, sinon par sa
 partie après une barre oblique de vendeur, sans tenir compte de la casse ; tout autre modèle
-compacte contre le chiffre supposé. Ce chiffre peut surestimer un modèle plus petit : sur lui, la boucle garde la coupe à 40 messages à côté de la compaction ; donnez
+compacte contre le chiffre supposé. Ce chiffre peut surestimer un modèle plus petit : sur lui, la boucle garde la coupe à 40 messages à côté de la compaction (la coupe garde le résumé d'une
+compaction juste après la tâche) ; donnez
 `ContextWindowTokens` au profil de ce modèle pour compacter contre sa vraie fenêtre seule. Trois compactions ratées de suite
 ramènent la coupe à 40 messages pour le reste de la tentative de la tâche (une tâche relancée
 compacte de nouveau), et l'élagage ci-dessous s'arrête avec elles. Chaque
@@ -1925,7 +1933,7 @@ de préfixe automatique facture de nouveau la conversation après la coupe.
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `Enabled` | booléen | `true` | Si les boucles compactent leur conversation. Vrai par défaut : une longue boucle paie un appel de résumé au lieu de perdre son milieu dans la coupe à 40 messages. Faux ramène cette coupe, comme le fait `compaction: { enabled: false }` d'un agent pour cet agent seul. |
-| `KeepRecentTurns` | entier | `6` | Combien des tours les plus récents une compaction garde mot pour mot, un tour étant une réponse de l'assistant, en un message ou plusieurs, avec ses résultats d'outil (un appel d'outil n'est jamais séparé de son résultat). 6 par défaut ; 0 résume tous les tours. |
+| `KeepRecentTurns` | entier | `6` | Combien des tours les plus récents une compaction garde mot pour mot, un tour étant une réponse de l'assistant, en un message ou plusieurs, avec ses résultats d'outil (un appel d'outil n'est jamais séparé de son résultat). Moins sont gardés quand ils sont tout ce que tient la conversation ou dépassent seuls le seuil. 6 par défaut ; 0 résume tous les tours. |
 | `Profile` | chaîne | — | Le profil LLM qui écrit le résumé : `default`, un profil de `Llm:Profiles` ou un profil de décision de `Orkeon:Decision:Profiles` ; un nom que l'hôte ne propose pas (qu'aucune des deux sections ne définit, ou que `Orkeon:Host:LlmProfiles` écarte), ou `auto`, refuse le démarrage. Omis, le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
 | `TriggerShare` | nombre | `0.75` | La part de la fenêtre utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum documenté du modèle, sinon 4096, au plus la moitié de la fenêtre) que le prompt estimé atteint pour que la boucle compacte, au-dessus de 0 et au plus 1. 0,75 par défaut ; `compaction: { triggerShare }` d'un agent la remplace. |
 <!-- /settings -->
@@ -1936,8 +1944,8 @@ Comment les boucles d'agent élaguent leurs anciens résultats d'outils de lectu
 le pendant pour les boucles YAML de l'`onContextPressure` d'un script. Éteint par défaut.
 Dès que le prompt estimé atteint `FillShare` de la fenêtre utile (ou le seuil de compaction, le
 premier atteint), chaque résultat d'un outil de lecture (un outil dont l'accès est `read` pour
-cette entrée) hors des `KeepRecentMessages` derniers messages et plus long que deux fois
-`HeadChars` est proposé au modèle de décision, jusqu'à 24 à la fois, huit par requête. Il lit la
+cette entrée) hors des `KeepRecentMessages` derniers messages, d'un tour auquel le modèle a répondu depuis, et plus
+long que deux fois `HeadChars` est proposé au modèle de décision, jusqu'à 24 à la fois, huit par requête. Il lit la
 tâche et chaque appel - outil, entrée, taille et âge en tours du modèle -, jamais le résultat, et
 répond à deux questions oui/non par appel : encore utile, et utile en entier. Inutile retire le
 résultat, utile en partie en garde les `HeadChars` premiers caractères, utile en entier le garde ;
@@ -1968,7 +1976,11 @@ Comment les `skills:` d'un agent atteignent son prompt. Un skill est un fichier 
 lu par le système de fichiers virtuel et ajouté au prompt système de l'agent sous un titre
 `## Skills`, chaque skill coupé à `MaxSkillChars` et le bloc entier, son titre et la ligne de
 titre de chaque skill compris, à `MaxBlockChars` ; un fichier de skill n'est pas lu au-delà de
-`MaxSkillChars`. Un skill coupé est dit dans le prompt et dans le
+`MaxSkillChars` caractères et 256 de plus : passé le plafond, les blancs sont lus pour distinguer un
+fichier qui finit là d'un fichier qui continue, et des blancs qui se prolongent au-delà de ces 256
+caractères comptent comme du texte en plus, le skill étant alors dit coupé. Un `MaxBlockChars` sous
+500 (`AgentSkillsOptions.MinBlockChars`) est refusé au démarrage, le message nommant le minimum : un
+bloc plus petit ne peut tenir son titre et un skill. Un skill coupé est dit dans le prompt et dans le
 champ `cut` de `agent.skills` ; un skill laissé de côté (plus de place dans le bloc, un fichier
 illisible) est dit dans ce seul champ `cut`. Un agent avec `skills: [<chemins>]` porte ces
 fichiers à chaque tâche. Un agent avec
@@ -1983,7 +1995,9 @@ Quand le circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enab
 fournisseur de décision), quand la bibliothèque ne contient aucun skill ou ne peut être lue, ou
 quand le modèle de décision échoue ou ne répond aucun choix utilisable (`reason: pick-failed`),
 l'agent porte sa liste `fallback`, sinon aucun skill, avec un
-avertissement par run et sans erreur. Le choix vaut pour chaque tentative de la tâche par cet agent dans
+avertissement par run pour chaque cause (hors d'un run, une fois par hôte) et sans erreur ; dans une
+crew en `decision.mode: none`, sa liste `fallback` s'applique aussi, sans appel de décision ni
+avertissement (`reason: decision-none`). Le choix vaut pour chaque tentative de la tâche par cet agent dans
 le run, et émet `agent.skills` sur le flux d'événements du run une fois par tâche et par agent
 d'un run. Une crew `.ork.ts` n'a pas de skills.
 
@@ -1993,7 +2007,7 @@ d'un run. Une crew `.ork.ts` n'a pas de skills.
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `Library` | chaîne | `"/workspace/.orkeon/skills"` | Le dossier virtuel où sont choisis les skills d'un agent `auto`, un fichier `<nom>.md` par skill (les sous-dossiers ne sont pas lus) ; un chemin relatif est refusé au démarrage. `/workspace/.orkeon/skills` par défaut. |
-| `MaxBlockChars` | entier | `12000` | Les caractères que porte le bloc de skills entier, son titre, la ligne de titre de chaque skill et les notes de coupe compris, si bien qu'avec les défauts trois skills d'un `MaxSkillChars` plein ne tiennent pas tous et que le troisième est coupé ; un skill au-delà est coupé à ce qui reste, ce que dit le prompt, ou laissé de côté, ce que dit le seul `cut` de `agent.skills`. 0 ou moins est refusé au démarrage. 12000 par défaut. |
+| `MaxBlockChars` | entier | `12000` | Les caractères que porte le bloc de skills entier, son titre, la ligne de titre de chaque skill et les notes de coupe compris, si bien qu'avec les défauts trois skills d'un `MaxSkillChars` plein ne tiennent pas tous et que le troisième est coupé ; un skill au-delà est coupé à ce qui reste, ce que dit le prompt, ou laissé de côté, ce que dit le seul `cut` de `agent.skills`. Moins de `500`, qui ne peut tenir le titre du bloc et un skill, est refusé au démarrage. 12000 par défaut. |
 | `MaxSkillChars` | entier | `4000` | Les caractères d'un skill que porte le prompt ; le reste est coupé, et la coupe est dite dans le prompt et dans le `cut` de `agent.skills`. 0 ou moins est refusé au démarrage. 4000 par défaut. |
 <!-- /settings -->
 

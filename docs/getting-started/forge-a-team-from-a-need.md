@@ -84,7 +84,8 @@ Both renders converge on the same validator, and the try loads the crew **from t
 
 - `none` (default): no decision task, no `when:`, no `system_one_decide`, and no `decision:` block in the crew.
 - `optional`: the plan may route its work with decision tasks — a key, a description and `decision.questions`, no
-  agent and no expected output — and tasks gated by `when:`. Each decision task names its relay, `without: { agent }`,
+  agent and no expected output — and tasks gated by `when:`. Each question is one `choice`, `score` or `noul`;
+  `instructions` go on a `choice` or a `score` question, a `noul` question reads none, its statement says it all. Each decision task names its relay, `without: { agent }`,
   the agent that answers when no decision model runs; it may run no task of its own. The try runs twice, with
   System One then through the relays, under `runs/<n>/on/` and `runs/<n>/off/`: it passes when both passes pass, its
   score is the lower one and each finding names its `circuit`. Without a decision model only the relay pass runs,
@@ -97,7 +98,8 @@ The mode is recorded in `session.json` and cannot change on resume. A session ol
 `required` when its plan holds a decision task or `system_one_decide`, else `none`, with `FORGE-DECISION-MODE-DERIVED`.
 The promoted team records it in `forge.json`, and `FORGE.md` and the launcher state it; `reopen` reads it back from
 the crew's `decision:` block. When the budget runs out after the first pass, the session stops there and its resume
-runs the second pass only.
+runs the second pass only; a `resume --edit` there starts a new iteration whose trial runs both passes, and is refused
+when no iteration is left.
 
 ## System One's advice
 
@@ -122,7 +124,9 @@ the crew's own decisions above. Four questions, each answered as one line in the
   written into `verdict.json`.
 
 None of it changes the verdict, `passing`, the arbitration or `--auto`; the tokens count against the budget and
-appear as `systemOneTokens`. `--no-decision` turns this advice off for one run, without touching the trial of an
+appear as `systemOneTokens`. A failed call is one `FORGE-SYSTEMONE-FAILED` warning, and a call the token or time
+budget no longer covers is not made (`FORGE-SYSTEMONE-SKIPPED`): the stage carries on without that advice.
+`--no-decision` turns this advice off for one run, without touching the trial of an
 `optional` or `required` crew, which keeps the decision circuit of the host.
 
 ## Adopt it
@@ -149,7 +153,7 @@ Run it with its own launcher — `~/solutions/supplier-watch/run.sh`. A bare `or
 
 | Option | Applies to | What it does |
 |---|---|---|
-| `--no-decision` | a new session, `forge resume` | The forge asks System One nothing for its own advice (below); the crew's own trial is unchanged. |
+| `--no-decision` | a new session, `forge resume` but `--adopt` | The forge asks System One nothing for its own advice (below); the crew's own trial is unchanged. |
 | `--read <dir>` | a new session, `forge resume` | The folder the trial reads behind the first input folder no real folder was bound to (`/workspace` by default), in place of the working directory — point a trial at the documents the team is meant to read; the sessions stay under the working directory. |
 | `--reference <id>` | a new session | Composes the team from a use case of the catalogue (`orkeon usecases list`): its crew's structure is the assistant's model, and the session, `forge.json` and `FORGE.md` record it. |
 | `--lang <code>` | a new session, `forge resume` | The language the assistant converses in and names the team in (`fr`, `en`, `es`, `de`, `zh`; English by default) — until you write in another language or ask for one. |

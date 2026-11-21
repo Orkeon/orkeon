@@ -40,7 +40,7 @@ decision: {mode}          # mode : "none" | "optional" | "required" (insensible 
 
 llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAMP sous le llm: propre de chaque agent (même forme que agents.<id>.llm)
   profile: string         # Profil LLM de l'hôte (Llm:Profiles:<nom>) pour tous les agents — inconnu → le chargement échoue en listant les profils de l'hôte
-  model: string
+  model: string           # Refusé quand il atteint un agent sur profile: auto (le chargement échoue en nommant l'agent)
   max_tokens: int         # Positif ; omis = le plafond hérité, 0 ou moins fait échouer le chargement en nommant la crew
   temperature: float
 
@@ -87,8 +87,8 @@ agents:
     verbose: bool         # default: false — logs détaillés pour cet agent (appels d'outils, résultats, réponses du modèle, en Information, catégorie Orkeon.Verbose)
     llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) : le fournisseur de cet agent ; "default" = la section Llm
-      # profile: auto     # Réservé : System One choisit, au début de chaque tâche, un profil de Orkeon:Decision:Route:Ladder (du moins cher au plus cher), que la tâche garde ; sous 0,6, sans réponse ou circuit coupé → le profil par défaut. Sans échelle, ou decision.mode: none → le chargement échoue
-      model: string       # Identifiant du modèle LLM — omis → le modèle propre du profil
+      # profile: auto     # Réservé : System One choisit, au début de chaque tâche, un profil de Orkeon:Decision:Route:Ladder (du moins cher au plus cher), que la tâche garde ; sous 0,6, sans réponse ou circuit coupé → le profil par défaut. Sans échelle, un model: à côté (ici ou venu du llm: de la crew), ou decision.mode: none → le chargement échoue
+      model: string       # Identifiant du modèle LLM — omis → le modèle propre du profil ; refusé à côté de profile: auto, où tourne le modèle propre de l'échelon choisi
       temperature: float  # Envoyée quelle que soit sa valeur — omise = celle du profil, sinon rien n'est envoyé et le modèle applique la sienne
       maxTokens: int      # Plafond de tokens en sortie, positif — omis = le maximum documenté du modèle ; 0 ou moins fait échouer le chargement
       topP: float         # Nucleus sampling, envoyé quelle que soit sa valeur — omis = celui du profil, sinon rien n'est envoyé (Mistral écrit 1)
@@ -671,7 +671,9 @@ camelCase, et une clé que rien ne fixe n'est pas écrite du tout.
   configuration : un `preset:` de guardrails revient sous la forme du `header`, des `rules` et des
   `toolRules` qu'il a apportés, le `llm:` de crew sous la forme du bloc que chaque agent en a reçu, sous
   chaque agent, et les `anchors:` sous la forme du texte qu'elles remplaçaient. Un attachement de
-  connaissance qui ne nomme que sa collection est écrit en forme courte, tout autre en forme longue.
+  connaissance qui ne nomme que sa collection est écrit en forme courte, tout autre en forme longue. Une
+  chaîne que YAML lirait comme un autre type (`no`, `yes`, `on`, `null`, `1.0`) est écrite entre guillemets, si
+  bien qu'une liste `when:` qui contient l'option `no` se charge à nouveau.
 - **Une source relative suit le fichier.** Une source de `rag:` est écrite telle quelle : `./data/faq.md`
   se lit donc par rapport au dossier d'où le fichier exporté est chargé (voir
   [Configuration Knowledge & RAG](#configuration-knowledge--rag)) — exportez à côté des données, ou

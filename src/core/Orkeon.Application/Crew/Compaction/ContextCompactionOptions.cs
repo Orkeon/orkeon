@@ -38,16 +38,17 @@ public sealed class ContextCompactionOptions
 
     /// <summary>
     /// How many of the most recent turns a compaction keeps verbatim, a turn being one assistant
-    /// message with its tool results (a tool call is never parted from its result). 6 by default;
-    /// 0 summarises every turn.
+    /// response, in one message or several, with its tool results (a tool call is never parted from its
+    /// result). Fewer are kept when they are all the conversation holds or alone pass the trigger. 6 by
+    /// default; 0 summarises every turn.
     /// </summary>
     public int KeepRecentTurns { get; set; } = DefaultKeepRecentTurns;
 
     /// <summary>
-    /// The LLM profile that writes the summary: <c>default</c> or a profile of <c>Llm:Profiles</c>; a
-    /// name the host does not offer (one <c>Llm:Profiles</c> lacks, or one <c>Orkeon:Host:LlmProfiles</c>
-    /// leaves out), or <c>auto</c>, refuses the start. Left out, the agent's own model
-    /// and profile. The summary's tokens are charged to the task either way.
+    /// The LLM profile that writes the summary: <c>default</c>, a profile of <c>Llm:Profiles</c> or a
+    /// decision profile of <c>Orkeon:Decision:Profiles</c>; a name the host does not offer (one neither
+    /// section defines, or one <c>Orkeon:Host:LlmProfiles</c> leaves out), or <c>auto</c>, refuses the start.
+    /// Left out, the agent's own model and profile. The summary's tokens are charged to the task either way.
     /// </summary>
     public string? Profile { get; set; }
 

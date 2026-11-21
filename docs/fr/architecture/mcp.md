@@ -430,7 +430,10 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
     `description` et `expectedOutput` des tâches (comparés sans tenir compte de la casse, dans l'ordre de première
     apparition) et aucune autre propriété. Un nombre ou un booléen est lu comme son texte ; un objet, un tableau ou
     `null` est refusé, de même qu'un argument inconnu ou manquant (`-32602`, noms listés). Le résultat est la sortie
-    finale de la crew ; une crew qui échoue est un résultat `isError`, pas une erreur JSON-RPC.
+    finale de la crew ; une crew qui échoue est un résultat `isError`, pas une erreur JSON-RPC : il répond que la crew a échoué et que le
+    détail est dans le journal du serveur, sauf pour une crew refusée faute de System One (`decision.mode: required`
+    avec le circuit de décision coupé), qui répond le texte même du refus, nommant la crew et le réglage qui a coupé
+    le circuit.
   - **Progression** : quand l'appel porte `_meta.progressToken`, le serveur envoie une `notifications/progress` par tâche
     terminée (`progress` de 1 à `total`, le nombre de tâches, avec un `message`) avant la réponse ; sans jeton rien
     n'est envoyé. `notifications/cancelled` annule le run.
@@ -443,11 +446,12 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
     son propre état de tâches, et un `notifications/cancelled` du client annule la crew en cours : ses agents voient le
     jeton et l'appel n'est pas répondu.
   - **Le run est enregistré comme tout run de l'hôte.** Avec `Orkeon:RunHistory:Enabled` activé dans les réglages de la
-    crew, chaque appel est un run de l'historique : `run.started`, les événements de tâche, les `agent.compacted`,
+    crew, chaque appel est un run de l'historique : `run.started`, `run.decision`, les événements de tâche, les `agent.compacted`,
     `agent.skills`, `agent.route` et `agent.pruned` des boucles d'agent, `run.finished`, sous son
     propre identifiant de run (celui des checkpoints), lu avec `orkeon runs`. Historique éteint, rien n'est écrit. `run.finished` porte `success`, `exitCode`,
     `durationMs`, `cappedTasks` et `missingDeliverables`, et aucun champ de tokens (voir [le bus d'événements de
-    run](./run-event-bus.md)). Les
+    run](./run-event-bus.md)) ; son `exitCode` vaut `69` pour une crew refusée faute de System One, comme sous
+    `orkeon run` et `orkeon-host`. Les
     événements ne portent pas de compte de tokens : l'usage du modèle n'est pas attribué par appel.
   - **Il n'y a pas de mode hors ligne.** L'hôte du serveur lit les vrais réglages et une crew appelle les modèles
     qu'ils déclarent ; le fournisseur mock ne s'atteint qu'en pointant les profils vers lui.

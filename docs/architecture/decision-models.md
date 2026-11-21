@@ -367,7 +367,8 @@ forge stream's `run.started`, `task.completed` and `llm.call.*` lines. Each cons
 The circuit is read at each call, not once per host. A run whose scope switches it off (its
 `DecisionCircuitOverride`, as the forge sets for a trial, entered for the run as `DecisionCircuitScope`) is off
 for every consumer above, those built once per host included: there a fail-closed judge blocks each text it
-would judge and a fail-open one lets it through, with one warning, and a decision profile routes as if built
+would judge and a fail-open one lets it through, with one warning, each verdict audited as
+`guardian.judge.unavailable` with the fail mode in its description, and a decision profile routes as if built
 without the model; a decision task is answered by its relay or its fallback, and `system_one_decide`, offered
 because the host's circuit is on, answers a tool error naming the cause without asking the model. A scope never
 switches on a circuit the host has off.
@@ -377,7 +378,7 @@ switches on a circuit the host has off.
 A crew says what it needs from System One in a crew-level `decision:` block: in YAML `decision: { mode: required }`,
 in a script `crewBuilder().decision({ mode: "required" })`, in C# `CrewBuilder.DecisionMode(...)`. Without the block
 the crew behaves as above, and the engine reports its mode as `unspecified`. The same rules apply at load to YAML,
-`.ork.ts` and C# crews:
+declarative `.ork.ts` and C# crews:
 
 | | `none` | `optional` | `required` |
 | --- | --- | --- | --- |
@@ -394,20 +395,26 @@ A crew with no mode may not declare a `without:` relay: the load asks for `decis
 agent of the crew (`without: { agent, instructions }`, `instructions` optional), and an agent the crew does not
 declare is refused at load. A `required` crew that asks System One nothing (no decision task, no `system_one_decide`,
 no decision profile, no `llm.profile: auto`, no `skills: { auto: true }`, no `compaction: { prune: true }`) loads with a
-warning. A crew built in C# meets these rules at `CrewBuilder.Build()`, with three differences: its relay names an
-agent by its role (a crew factory resolves a YAML or `.ork.ts` key to the agent); its decision profiles are not
-checked there, since only the crew factory knows the host's profiles, and neither is `llm.profile: auto`, so a `none`
-crew with an agent on `LlmConfig.OnProfile("auto")` is not refused; and the rules' warnings are dropped, only their
-refusals fail the build.
+warning. A crew built in C# meets these rules at `CrewBuilder.Build()`, a manager given as an object
+(`.Hierarchical(manager)`, `.WithManager(manager)`) included, and `llm.profile: auto` is checked there too (an agent on
+`LlmConfig.OnProfile("auto")`, a task's `LlmConfigOverride.Profile`; a manager or a relay with no task of its own
+stays accepted, as in YAML), with three differences: its relay names an agent by its role (a crew factory resolves a
+YAML or `.ork.ts` key to the agent); its decision profiles are not checked there, since only the crew factory knows
+the host's profiles (`Orkeon:Decision:Profiles`); and the rules' warnings are dropped, only their refusals fail the
+build.
 
-With `mode: required` and the circuit off, whatever the cause, the run is **refused before its first task**, in every
-process and every host: `crew 'x' requires System One (decision.mode: required) and the decision circuit is off:
---no-decision`. The error carries the code `decision_unavailable`, and `orkeon run` exits `69` (`EX_UNAVAILABLE`). A
+With `mode: required` and the circuit off, whatever the cause, a crew run by the orchestrator (YAML, C#, a declarative
+`.ork.ts` crew) is **refused before its first task**, in every process and every host: `crew 'x' requires System One
+(decision.mode: required) and the decision circuit is off: --no-decision`. The error carries the code
+`decision_unavailable`; `orkeon run` exits `69` (`EX_UNAVAILABLE`), and `orkeon-host` and `orkeon mcp serve --crew`
+record exit `69` on the run's `run.finished`. A procedural `.ork.ts` crew (`await crew.run()`) neither applies the
+mode nor warns about it. A
 `required` crew that lists `system_one_decide` still loads, the tool withheld with a warning, so that it meets this
 refusal rather than an unknown tool. With `mode: optional` and the circuit off, each decision task is answered by its
 `without:` relay ([below](#the-without-relay)). `--validate` reports the refusal a run would meet as a `WARNING:` line and exits `0`
-([the CLI](../reference/cli.md#orkeon-run)), and a run emits one `run.decision` event with the mode, the circuit and its
-cause ([the run event bus](./run-event-bus.md)).
+([the CLI](../reference/cli.md#orkeon-run)), and a run emits one `run.decision` event with the mode, the circuit the run
+follows and its cause: `off` with the cause `no-provider` on a host whose circuit is on but that has no decision model,
+as the refusal says ([the run event bus](./run-event-bus.md)).
 
 #### Circuit off, by mode
 
@@ -421,8 +428,9 @@ cause ([the run event bus](./run-event-bus.md)).
 #### The `without:` relay
 
 The relay is one LLM call made with the relay agent's provider: its own `llm` block, else its `llm.profile`, else the
-default profile. The block's sampling, penalties and stop sequences go with the call: a stop sequence that can end
-the JSON object (`}`, a blank line) cuts the answer, which is then refused. The call sends the agent's prompt (role, goal, backstory), the questions, the state the task reads,
+default profile. The block's sampling, penalties, stop sequences, thinking and cache go with the call, as on the
+agent's own calls; its `response_format` does not, the relay asking for its own JSON object. A stop sequence that can end
+the JSON object (`}`, a blank line) cuts the answer, which is then refused. The call sends the agent's prompt (role, goal, backstory), the questions (a choice's options in their declared order), the state the task reads,
 as JSON, and `without.instructions`; it has no tool, no memory and no history. The agent reports **probabilities
 only**, as one JSON object with one key per question:
 
@@ -438,7 +446,9 @@ checked the same way.
   probability to every option or level and to none that was not offered, every value is in [0, 1], and each
   distribution sums to 1 within a tolerance of **0.05**; it is then normalised.
 - **Derivation.** The rest is derived exactly as from the model's answer: a `choice` takes the most probable option
-  as `chosen`, with that probability as its confidence; a `noul` is `yes` when p >= 0.5, with a confidence of
+  as `chosen` (on a tie, the option declared first; options given in C# as an `ImmutableDictionary`, whose order
+  changes from one process to the next, are kept in the ordinal order of their names), with that probability as its
+  confidence; a `noul` is `yes` when p >= 0.5, with a confidence of
   max(p, 1 - p); a `score` is the weighted position, the sum of i * p(i) with the first level counted 0, the scale
   thresholds read, with the largest p(i) as its confidence and no `chosen`.
 - **One more try.** An answer that fails a check is asked once more, with the reason it was refused. This is the
@@ -472,7 +482,9 @@ before any task's fingerprint is compared), and they are compared with the circu
 circuit, and a crew with no mode is never refused for its circuit: its recorded decisions are replayed, a
 `defaulted` fallback included, even when the run resumes with System One back. A decision is replayed only while its task is
 unchanged: its questions, fallback and relay count in the task's checkpoint fingerprint, beside its description and
-dependencies, so a decision task edited since the run is decided again, and the tasks after it run again.
+dependencies, so a decision task edited since the run is decided again, and the tasks after it run again. The
+fingerprint reads a choice's options and the fallback by their content, not their order: reordering them alone does
+not decide the task again, though it changes which option wins a tie the next time it is decided.
 
 ### Jev's limits and long context
 
@@ -508,13 +520,18 @@ never on its own.
   are one line per markdown file of `Orkeon:Skills:Library` (at most 24, named `s1`…`sN`) plus `none`; the state is
   the task's text cut at 2,000 characters, and no skill body is sent. Every option at a probability of 0.3 or more
   is kept, the three most likely at most; `none` keeps no skill. With the circuit off, or when the call fails, the
-  agent carries its `fallback` list ([`Orkeon:Skills`](../reference/configuration.md#orkeonskills)).
+  agent carries its `fallback` list ([`Orkeon:Skills`](../reference/configuration.md#orkeonskills)); in a crew on
+  `decision.mode: none` it carries it with no call and no warning, `agent.skills` giving `mode: fallback` and
+  `reason: decision-none`.
 - **Agent routing** — an agent with `llm.profile: auto` asks one `choice` at the start of each task, `profile`,
   whose options are the rungs of `Orkeon:Decision:Route:Ladder`, cheapest first, each with what it is for (the
   cheapest, a middle one, the most capable); the state is the agent's role and the task's text cut at 4,000
-  characters in the middle. The rung picked at a probability of 0.6 or more runs every call of the task; under it,
-  without an answer, or with the circuit off, the host's default profile does, and `agent.route` says why
-  ([`Orkeon:Decision:Route`](../reference/configuration.md#orkeondecisionroute)). This is one pick per task, not the
+  characters in the middle. The rung picked at a probability of 0.6 or more runs every call of the task, on that
+  rung's own model: a `model:` beside `profile: auto`, in the agent's `llm:` block or the crew's, is refused at load,
+  as `AgentBuilder.Build()` refuses `LlmConfig { Profile = "auto", Model = ... }`. Under 0.6, without an answer, or
+  with the circuit off, the host's default profile runs, and `agent.route` says why
+  ([`Orkeon:Decision:Route`](../reference/configuration.md#orkeondecisionroute)); in a crew on `decision.mode: none`
+  it runs with no call and no warning, `agent.route` giving `reason: decision-none`. This is one pick per task, not the
   `route` stage of a decision profile, which picks a profile for each call.
 - **Tool-result pruning** — once a loop's estimate reaches the smaller of `Orkeon:Compaction:Prune:FillShare` of the
   usable window and the compaction trigger, before compaction, it asks two `noul` per older read-tool result,

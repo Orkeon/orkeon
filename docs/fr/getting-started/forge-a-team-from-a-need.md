@@ -85,7 +85,9 @@ Les deux rendus convergent vers le même validateur, et l'essai charge la crew *
 - `none` (défaut) : aucune tâche de décision, aucun `when:`, aucun `system_one_decide`, et aucun bloc `decision:`
   dans l'équipe.
 - `optional` : le plan peut aiguiller son travail par des tâches de décision — une clé, une description et
-  `decision.questions`, sans agent ni résultat attendu — et des tâches conditionnées par `when:`. Chaque tâche de
+  `decision.questions`, sans agent ni résultat attendu — et des tâches conditionnées par `when:`. Chaque question est
+  un `choice`, un `score` ou un `noul` ; les `instructions` vont sur une question `choice` ou `score`, une question
+  `noul` n'en lit aucune, son énoncé dit tout. Chaque tâche de
   décision nomme son relais, `without: { agent }`, l'agent qui répond quand aucun modèle de décision ne tourne ; il
   peut n'exécuter aucune tâche. L'essai tourne deux fois, avec System One puis par les relais, sous `runs/<n>/on/` et
   `runs/<n>/off/` : il réussit quand les deux passages réussissent, son score est le plus bas et chaque constat nomme
@@ -100,7 +102,8 @@ Le mode est enregistré dans `session.json` et ne change pas à la reprise. Une 
 en `required` quand son plan porte une tâche de décision ou `system_one_decide`, en `none` sinon, avec
 `FORGE-DECISION-MODE-DERIVED`. L'équipe promue l'enregistre dans `forge.json`, `FORGE.md` et le lanceur l'énoncent ;
 `reopen` le relit dans le bloc `decision:` de l'équipe. Quand le budget s'épuise après le premier passage, la session
-s'arrête là et sa reprise ne lance que le second.
+s'arrête là et sa reprise ne lance que le second ; un `resume --edit` à cet endroit ouvre une nouvelle itération dont
+l'essai lance les deux passages, et il est refusé quand il ne reste aucune itération.
 
 ## Les avis de System One
 
@@ -125,7 +128,9 @@ terminal et un événement `systemone.answered` :
   Jamais écrite dans `verdict.json`.
 
 Rien de cela ne change le verdict, `passing`, l'arbitrage ni `--auto` ; les jetons comptent contre le budget et
-apparaissent sous `systemOneTokens`. `--no-decision` éteint ces avis pour une exécution, sans toucher l'essai d'une
+apparaissent sous `systemOneTokens`. Un appel en échec donne un avertissement `FORGE-SYSTEMONE-FAILED`, et un appel
+que le budget de jetons ou de durée ne couvre plus n'est pas fait (`FORGE-SYSTEMONE-SKIPPED`) : l'étape continue sans
+cet avis. `--no-decision` éteint ces avis pour une exécution, sans toucher l'essai d'une
 équipe `optional` ou `required`, qui garde le circuit de décision de l'hôte.
 
 ## L'adopter
@@ -152,7 +157,7 @@ Lancez-la par son propre script — `~/solutions/veille-fournisseur/run.sh`. Un 
 
 | Option | S'applique à | Effet |
 |---|---|---|
-| `--no-decision` | une nouvelle session, `forge resume` | La forge ne demande rien à System One pour ses propres avis (ci-dessus) ; l'essai de l'équipe ne change pas. |
+| `--no-decision` | une nouvelle session, `forge resume` sauf `--adopt` | La forge ne demande rien à System One pour ses propres avis (ci-dessus) ; l'essai de l'équipe ne change pas. |
 | `--read <dir>` | une nouvelle session, `forge resume` | Le dossier que l'essai lit derrière le premier dossier d'entrée relié à aucun dossier réel (`/workspace` par défaut), à la place du répertoire de travail — pour pointer un essai sur les documents que l'équipe doit lire ; les sessions restent sous le répertoire de travail. |
 | `--reference <id>` | une nouvelle session | Compose l'équipe à partir d'un cas d'usage du catalogue (`orkeon usecases list`) : la structure de sa crew sert de modèle à l'assistant, et la session, `forge.json` et `FORGE.md` l'enregistrent. |
 | `--lang <code>` | une nouvelle session, `forge resume` | La langue dans laquelle l'assistant converse et nomme l'équipe (`fr`, `en`, `es`, `de`, `zh` ; l'anglais par défaut) — jusqu'à ce que vous écriviez dans une autre langue ou le demandiez. |

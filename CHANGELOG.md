@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 With `Orkeon:Compaction:Prune:Enabled` (off by default) or an agent's `compaction: { prune: true }`, once a native or
 chat-client loop's estimate reaches `Orkeon:Compaction:Prune:FillShare` (0.4) of the usable window, or the compaction
 trigger if that comes first, the decision model judges each result of a read tool outside the last
-`KeepRecentMessages` (6) messages and longer than twice `HeadChars` (300): keep it, keep its first 300 characters, or
+`KeepRecentMessages` (6) messages, of a turn the model has answered since (a result of the turn it has not answered
+yet is never offered, however many that turn holds) and longer than twice `HeadChars` (300): keep it, keep its first 300 characters, or
 drop it, leaving a line that says how to get it back, the call's whole input in it. It reads the task and each call
 (tool, input, size, age), never the result: two yes/no questions per call, eight calls to a request, 24 at most at a
 time. A kept result, or one the decision model failed to judge, is judged again eight model turns later. Under
@@ -35,10 +36,19 @@ when the call fails. Under
 `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` (their run history), each pick emits `agent.route` (`profile`, `reason`, `picked`, `probability`, `ladder`), once per task
 and agent of a run. A crew naming `auto` on a host without a ladder, or with a rung the host does not offer, fails
 its load, as does `auto` in a crew with `decision.mode: none`; a manager or a decision relay on `auto` with no task
-of its own runs on the default profile and is left out of those checks. In a `.ork.ts` crew, routing works at task
+of its own runs on the default profile and is left out of those checks. `CrewBuilder` refuses `auto` in a `none`
+crew too, on an agent (`LlmConfig.OnProfile("auto")`) or a task's `LlmConfigOverride.Profile`; only the host's
+decision profiles are left to the crew factory. An agent on `auto` that reaches a `none` run all the same runs on
+`default` with no decision call and no warning, `agent.route` giving `reason: decision-none`. A model named beside
+`auto` (`llm: { profile: auto, model: X }`, or a crew-level `llm: { model: X }` that reaches an agent on `auto`) fails
+the load, naming the agent and the model, and `AgentBuilder.Build()` refuses it too: the model of the rung System One
+picks runs. `--offline` checks, for an agent on `auto`, the `default` profile and the ladder's rungs only where System
+One routes it: a manager or a relay with no task of its own, and every agent of a `none` crew, run on `default`
+alone, so a rung no longer refuses them. In a `.ork.ts` crew, routing works at task
 level only: `task.withProfile("auto")` is routed, `llm.profile("auto")` throws. This is one pick per task, apart from
 the per-call `route` stage of a decision profile. **Compatibility**: a ladder of one rung, or with a blank, `auto` or
-repeated rung, is refused at start; `auto` becoming a reserved profile name is under Changed below.
+repeated rung, is refused at start; `auto` becoming a reserved profile name is under Changed below. New public members:
+`AgentRoutes.ProfilesOf` and `AgentRouteReasons.DecisionNone`.
 
 ### Added — agent skills: a fixed list of playbooks, or System One's pick of at most three (#434)
 
@@ -51,32 +61,42 @@ With `auto`, each task asks the decision model one `choice` among the `.md` file
 (`/workspace/.orkeon/skills`), reading one line per skill (its front-matter `name` and `description`, else its first
 heading and line) and never a body; the options at a probability of 0.3 or more are kept, three at most. With the
 decision circuit off, an empty or unreadable library, a failed call or an answer that names no offered skill (a
-deliberate `none` aside), the agent carries its `fallback`, else no skill; a skill file is read no further than its
-cap, and a cut one ends with `[skill cut: the first N characters shown]`, with one warning per run and no error. The choice holds for every attempt of the task by that agent in the run. Under
+deliberate `none` aside), the agent carries its `fallback`, else no skill, with one warning per run for each cause (a
+failed pick's detail on each task's `agent.skills`) and no error; in a `none` crew (an agent on `auto` that reaches
+such a run, a manager given as an object) the fallback stands with no call and no warning. A skill file is read no
+further than `MaxSkillChars` characters and 256 more: past the cap, white space is read on to tell a file that ends
+there from one that goes on, and white space that runs on past those 256 characters counts as more text, the skill
+then said cut; a cut one ends with `[skill cut: the first N characters shown]`. `MaxBlockChars` under 500
+(`AgentSkillsOptions.MinBlockChars`), which cannot hold the block's heading and a skill, is refused at start, the
+message naming the minimum. The choice holds for every attempt of the task by that agent in the run. Under
 `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` (their run history), it emits `agent.skills` (`mode`, `skills`, `offered`, `cut`, `reason`, `detail`) once per task and agent
-of a run: a fallback's `reason` is `circuit-off`, `empty-library` or `pick-failed`, and `detail` says it in a
-sentence. **Compatibility**: an engine at 1.3.0 refuses a crew that writes `skills:`; an unknown key of the map
+of a run: a fallback's `reason` is `circuit-off`, `empty-library`, `pick-failed` or `decision-none`, and `detail`
+says it in a sentence. **Compatibility**: an engine at 1.3.0 refuses a crew that writes `skills:`; an unknown key of the map
 form, a non-boolean `auto`, `auto: false` (a fixed list is written as a list) or a map without `auto` now fails the
 load. The `Orkeon:Skills` section and the event are
-new; a `.ork.ts` crew has no skills. New public members: `TaskPickScope` (`Begin`), `SystemOneRunScope` (`Begin`), `AgentSkillsNotice.Detail` and
-`AgentSkillsReasons`.
+new; a `.ork.ts` crew has no skills. New public members: `TaskPickScope` (`Begin`), `SystemOneRunScope` (`Begin`), `AgentSkillsNotice.Detail`,
+`AgentSkillsReasons` and `AgentSkillsOptions.MinBlockChars`.
 
 ### Added — agent loops compact a long conversation against the model's window (#432)
 
-The native tool-calling loop and the chat-client loop now estimate their prompt before each call (the provider's last
-count plus the messages since; what that count held beyond the messages stays in the estimate when the conversation is
-counted again) and, once it reaches `Orkeon:Compaction:TriggerShare` (0.75) of the usable window (the context window
+The native tool-calling loop and the chat-client loop now estimate their prompt before each call, the chat-client
+loop's last tool-free call at the iteration cap included (the provider's last count plus the messages since; the
+conversation is counted again once a stage, a summary or the 40-message trim rewrote it, and what that count held
+beyond the messages stays in the estimate) and, once it reaches `Orkeon:Compaction:TriggerShare` (0.75) of the usable window (the context window
 less the output reserve: the call's cap, else the model's documented maximum, else 4096, at most half the window),
 replace the older turns with one summary call, which reads the task too; the system prompt, the task and the last
 `KeepRecentTurns` (6) turns stay verbatim, and a tool call is never parted from its result. The window is the
 profile's new `Llm:ContextWindowTokens` (`Llm:Profiles:<name>:ContextWindowTokens`, above zero: zero or less refuses
-the start), else the model's documented window, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per
+the start) for the profile's own model (an agent whose `llm.model` names another model reads that model's), else the
+model's documented window, else `Orkeon:Cli:Session:ContextWindowTokens`, with one warning per
 profile naming the figure assumed. `Orkeon:Compaction:Profile` names a profile for the summary (a name the host does
-not offer, one `Llm:Profiles` lacks or one `Orkeon:Host:LlmProfiles` leaves out, or `auto`, refuses the start); its
+not offer, one `Llm:Profiles` lacks or one `Orkeon:Host:LlmProfiles` leaves out, or `auto`, refuses the start); when
+its window is known (its `ContextWindowTokens`, else its model's documented one) and the transcript would not fit it,
+the transcript's longest messages are cut to one length so the call fits, with one information line; its
 tokens are charged to the task, in the chat-client loop's prompt/completion split too (the native loop reports no
 split; its task `tokens` were 0 and now carry them). Three failures in a row bring the 40-message trim back,
-and stop the pruning, for the rest of the task attempt; a call whose turns are all recent ones waits for a later turn
-and counts as no failure. Under `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew`
+and stop the pruning, for the rest of the task attempt; a call with one turn alone waits for a later turn and counts as no failure;
+when the recent turns kept are all there is, or alone pass the trigger, fewer are kept, down to the last turn. Under `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew`
 (their run history), each attempt emits `agent.compacted`. An agent overrides `enabled` and
 `triggerShare` with a YAML `compaction:` block; a `.ork.ts` crew follows the global settings. `IContextPressureStage`
 runs registered stages on the same measure before compaction.
@@ -93,11 +113,16 @@ brief's coverage of the request (`score`), the process that fits the brief (`cho
 `processHint` at p ≥ 0.6 and only among the processes `--crew-decision` allows), an estimate before the trial
 (`noul`) and one reading per acceptance criterion after the judge (`noul`), for each trial pass that succeeded,
 against that pass's output, an `optional` crew's lines naming the pass's `circuit`. The advice never changes `brief.json`,
-the blueprint, `verdict.json`, `passing`, the arbitration or `--auto`. Each call is a new `systemone.answered` event
+`verdict.json`, `passing`, the arbitration or `--auto`; the process hint goes into the assistant's blueprint prompt,
+so it may steer the plan, but the assistant's own `crew.process` stands. Each call is a new `systemone.answered` event
 (`stage`, `use`, `questions`, `answers`, `model`, `inputTokens`, `outputTokens`, `durationMs`); its tokens are
-charged to the budget and count against `--max-tokens`, and `cost.updated` gains `systemOneTokens`. A failed call is
-one `FORGE-SYSTEMONE-FAILED` warning and the cycle goes on. `session.started` gains `forgeCircuit` (`on`|`off`) and
-`forgeCircuitCause` (`switch`, `settings`, `no-provider`). `--no-decision`, on a new session or a resume and never
+charged to the budget and count against `--max-tokens`, and `cost.updated` gains `systemOneTokens`. A failed call, whatever
+the failure (a rate limit whose announced wait exceeds `Llm:MaxRateLimitWait`, a timeout included; Ctrl+C still
+interrupts it), is one `FORGE-SYSTEMONE-FAILED` warning and the stage carries on. Each call first checks the
+session's `--max-tokens` and `--max-seconds`, the stage's tokens not charged yet included, and is not made once the
+budget is spent: one `FORGE-SYSTEMONE-SKIPPED` warning per call not made (a criteria reading stops at its first), and
+the cycle then stops on `FORGE-BUDGET-EXHAUSTED`. `session.started` gains `forgeCircuit` (`on`|`off`) and
+`forgeCircuitCause` (`switch`, `settings`, `no-provider`). `--no-decision`, on a new session or a resume (`--adopt`, which asks System One nothing, refuses it, exit 1) and never
 stored, turns the advice off without touching the trial of the crew, which keeps the engine host's circuit.
 
 ### Added — `orkeon forge --crew-decision none|optional|required` designs a crew that decides (#431)
@@ -113,19 +138,24 @@ rules; `promote` and `list` refuse it. A session written before the option resum
 holds a decision task or `system_one_decide`, else `none`, with the warning `FORGE-DECISION-MODE-DERIVED`; `reopen`
 of a team whose crew declares no mode gives the same warning, after `session.started`, when its plan makes it
 `required`. An `optional` crew's trial runs
-twice, with System One then through the relays, the relay pass off by its own cause `trial` (on `run.decision`,
-the pass's lines and its record): `runs/<n>/on/` and `runs/<n>/off/` each hold a pass (output, run
+twice, with System One then through the relays, the relay pass off by its own cause `trial` (on the forge's own
+`run.started` of that pass, its lines and its record; a trial writes no `run.decision`): `runs/<n>/on/` and `runs/<n>/off/` each hold a pass (output, run
 file, folders), `runs/<n>/run.json`, `last-run.json` and `verdict.ready` gain `passes[]` (a pass of the run files
 names its file as `output`, a pass of `verdict.ready` carries its figures flat), the verdict passes when every pass
 passes and keeps the lowest score, and findings carry `circuit`. Without a decision model only the relay
 pass runs, with `FORGE-DECISION-PASS-SKIPPED` (and its `cause`) and the info finding `F-PASS-ON-SKIPPED`. A budget
 used up by the first pass ends the session with `FORGE-BUDGET-EXHAUSTED`, and the resume keeps that pass, runs the
-second only, even without a decision model, and asks no second estimate. A `required` session with the circuit off is
+second only, even without a decision model, and asks no second estimate; a `resume --edit` there starts a new iteration, whose trial runs both passes under
+`runs/<n+1>/`, and is refused (`FORGE-BUDGET-EXHAUSTED`, exit 1, nothing saved) when no iteration is left. A `required` session with the circuit off is
 refused before its interview with `FORGE-DECISION-UNAVAILABLE` (exit 1, its `cause` on the `error` event, written after `session.started` and followed by `session.finished`, so
 the terminal also prints `● <slug>` and `■ <status> (exit 1)`); a new session so refused is deleted, a refused resume keeps its session, which resumes once a decision model is configured; `--dry` only warns and `--adopt` is not refused. A resume, `--adopt` included, with a `--crew-decision` other than the
 session's is refused before anything is saved; a session from before this version gets the mode its plan implies,
-with `FORGE-DECISION-MODE-DERIVED` after `session.started`. `forge.json` records `crewDecision`, `FORGE.md` and the launcher state the mode,
-and `reopen` reads `decision`, `when` and `without` back with the crew's mode. The shared crew validator no longer
+with `FORGE-DECISION-MODE-DERIVED` after `session.started`, which names that mode (a `reopen` included). `forge.json` records `crewDecision`, `FORGE.md` and the launcher state the mode,
+and `reopen` reads `decision`, `when` and `without` back with the crew's mode. A plan renders the same `when` in YAML and in `.ork.ts` (a
+number or a boolean names the option of that text: `[1]` is the option `"1"`), and a plan the two loaders would read
+differently, or not at all, is refused when submitted and repaired by the assistant: an option with no description,
+an empty `score` label or `noul` statement, a `fallback` or `state` entry that is null, a question of no kind or of
+more than one, and `instructions` on a `noul` question, which reads none. The shared crew validator no longer
 asks a decision task for an expected output. See
 [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md#a-crew-that-decides).
 
@@ -133,13 +163,14 @@ asks a decision task for an expected output. See
 
 With the decision circuit off, a decision task of a `decision.mode: optional` crew is now answered by its `without:`
 relay instead of failing: one LLM call on the relay agent's provider (its `llm` block, else its `llm.profile`, else
-the default profile, with the block's sampling, penalties and stop sequences; a stop sequence that can end the JSON object, `}` or a blank line, cuts the answer, which is then refused), with its role, goal and backstory, the questions, the state and `without.instructions`, and no
+the default profile, with the block's sampling, penalties, stop sequences, `thinking` and `cache` (with its `ttl`), as on
+the agent's own calls, and not its `response_format`, the relay asking for its own JSON object; a stop sequence that can end the JSON object, `}` or a blank line, cuts the answer, which is then refused), with its role, goal and backstory, the questions (a choice's options in their declared order), the state and `without.instructions`, and no
 tool. The agent gives probabilities only, in a JSON object whose schema is generated from the questions: sent as
 `json_schema` to a provider that declares it, in the prompt otherwise. The engine checks the answer (valid JSON,
 every question and no other key, no unknown option, values in [0, 1], distributions summing to 1 within 0.05, then
 normalised), asks once more with the
 reason when it fails, then fails the task, never falling back. It derives the rest as from the decision model: argmax
-and its probability for a `choice`, `yes` when p >= 0.5 and max(p, 1 - p) for a `noul`, the weighted position from 0
+(on a tie, the option declared first) and its probability for a `choice`, `yes` when p >= 0.5 and max(p, 1 - p) for a `noul`, the weighted position from 0
 with no `chosen` for a `score`. `task.completed` gains `decisionSource` (`model`, `relay` or `fallback`) on every
 decision task asked, before `deliverableMissing`; `defaulted` stays `true` for the fallback only. The relay's tokens
 count on the task and in the run's totals in Sequential, Parallel and Graph, and its `cost.updated` carries the new
@@ -151,10 +182,15 @@ refused with an error code of its own, `decision_circuit_mismatch`, and exit `1`
 declares count, by their key (one whose definition changed under the same key still counts, though it would be decided
 again: the check is made at kickoff, before any task's fingerprint is compared), compared with the circuit of the run
 that resumes. A decision is replayed only while its task is unchanged: its questions, fallback and
-relay now count in the task's checkpoint fingerprint, so a decision task edited since the run is decided again, with
+relay now count in the task's checkpoint fingerprint (a choice's options and the fallback by their content, not their
+order), so a decision task edited since the run is decided again, with
 the tasks after it. A checkpoint written before this version lacks that part: on resume, its first recorded decision
-task is decided again once, and every task after it runs again. `DecisionTaskRunner.SourceOf` is a new public member. A `when:` takes `[yes]` / `["no"]` on a yes-no question,
-gated by `minConfidence`; an unquoted `no` (which YAML reads as a boolean) is refused at load with a hint to quote it; an option list on a score question is refused at load, naming the question. See
+task is decided again once, and every task after it runs again. A choice keeps its options in the order they were declared (YAML,
+`.ork.ts`, a C# `Dictionary`), the same in every process; options given as an `ImmutableDictionary`, whose order
+changes from one process to the next, are kept in the ordinal order of their names. `ChoiceQuestionSpec.Options`
+returns them in that order, and `orkeon export` writes them so. `DecisionTaskRunner.SourceOf` is a new public member. A `when:` takes `[yes]` / `["no"]` on a yes-no question,
+gated by `minConfidence`; an unquoted `no` (which YAML reads as a boolean) is refused at load with a hint to quote it
+(**[breaking]**, see Changed below), and the YAML writer now quotes it; an option list on a score question is refused at load, naming the question. See
 [Decision models](docs/architecture/decision-models.md#the-without-relay).
 
 ### Added — a crew declares what it needs from System One: `decision: { mode }` (#429)
@@ -171,11 +207,19 @@ every decision task for a `without: { agent, instructions }` relay, an agent of 
 `system_one_decide`; the relay answers with the circuit off (see the entry above, #430). `required` refuses the run before its first task when the decision
 circuit is off, whatever the cause: `crew 'x' requires System One (decision.mode: required) and the decision circuit
 is off: --no-decision`, error code `decision_unavailable`, exit `69` (`EX_UNAVAILABLE`), in every process and every
-host; a `required` crew that lists `system_one_decide` loads with the tool withheld so that it meets this refusal. A
-run emits one new `run.decision` event (`mode`, `circuit`, `cause`), and `--validate` reports the refusal a run would
-meet as a `WARNING:` line, exit `0`. A crew with no mode behaves as before. **Compatibility**: an engine before this
+host (`orkeon mcp serve --crew` included: the call's `run.finished` records `69` and the tool result is the refusal's
+own text) for a crew the orchestrator runs, YAML, C# or a declarative `.ork.ts` crew; a procedural `.ork.ts`
+`await crew.run()` neither applies nor warns about the mode; a `required` crew that lists `system_one_decide` loads with the tool withheld so that it meets this refusal. A
+run emits one new `run.decision` event (`mode`, `circuit`, `cause`), under `orkeon run`, `orkeon-host` and
+`orkeon mcp serve --crew`: the circuit the run follows, `off` with the cause `no-provider` on a host whose circuit is
+on but that resolves no decision model, and `--validate` reports the refusal a run would
+meet as a `WARNING:` line, exit `0`. `CrewBuilder` applies the rules to a manager given as an object
+(`.Hierarchical(manager)`, `.WithManager(manager)`), and a `CrewConfiguration` handed straight to `ICrewFactory` is
+refused for its mode in the same spelling (`Crew '<name>': Invalid decision.mode declaration: ...`). The YAML writer
+quotes every string YAML would read as another type (`"no"`, `"yes"`, `"1.0"`), in every export and every forged
+crew, so an exported `when:` list holding `no` loads again. A crew with no mode behaves as before. **Compatibility**: an engine before this
 release refuses the crew-level `decision:` key and a task's `without:`; `69` is a new exit code of `orkeon run` and
-`orkeon-host`, `decision_unavailable` and `decision_circuit_mismatch` new error codes and `run.decision` a new kind (`v` stays `2`); the
+`orkeon-host` (and of a call's `run.finished` under `orkeon mcp serve --crew`), `decision_unavailable` and `decision_circuit_mismatch` new error codes and `run.decision` a new kind (`v` stays `2`); the
 `--validate` success line now ends with `, decision=<mode>)`, and a procedural script's with
 `(procedural script: bundled, not run, decision=unknown)`. New public members: `DecisionTaskRules.ModeRefusal`
 (the refusal's one spelling, in YAML, a script, the crew factory and `CrewBuilder`) and `SystemOneUses.SkillsAutoHolders`
@@ -195,10 +239,11 @@ start, the message naming the key. **Migration**: rename that profile, and every
 tokens. **Now**: `Orkeon:Compaction:Enabled` is `true` by default, so a long run pays a summary call where it was
 trimmed, and a conversation of more than 40 messages under the trigger keeps them all. A model the table does not
 document, on a profile with no `ContextWindowTokens`, is measured against `Orkeon:Cli:Session:ContextWindowTokens`
-(200000 by default); since that window is only assumed, the loop keeps the 40-message trim beside compaction, so a
-smaller model is still trimmed as before. Compaction also keeps a mid-run system message (the soft-budget notice) after
+(200000 by default); since that window is only assumed, the loop keeps the 40-message trim beside compaction (the trim keeps a
+compaction's summary right after the task), so a smaller model is still trimmed as before. Compaction also keeps a mid-run system message (the soft-budget notice) after
 its summary, never splits a tool call from its result when a response carries several assistant messages, and, when
-every turn is recent, keeps as many of them as fit under the trigger (at least the last one).
+every turn is recent or the recent ones alone pass the trigger, keeps as many of them as fit under it (at least the
+last one).
 **What to do**: set `Llm:ContextWindowTokens` (or the profile's) to the window of a model the table does not know;
 `Orkeon:Compaction:Enabled=false`, or an agent's `compaction: { enabled: false }`, restores the exact trim.
 
@@ -216,6 +261,22 @@ spawned after its parent spent tokens, since a child budget keeps a dimension no
 A `budget` run option with no `charge` reads the crew's clock, as the crew's budget does. **What to do**: a
 script that relied on the implicit caps names them, for instance
 `budget({ spawnedAgents: 10, toolCalls: 15, tokens: 16000, wallTime: "5m" })`.
+
+### Changed — a procedural crew's budget refuses a limit it cannot read **[breaking]** (#436)
+
+**Before**: `crewBuilder().budget({...})` on a procedural crew skipped a limit it could not read (zero, a negative or
+fractional count, a count given as a string such as `"20"`, a `wallTime` that is no duration such as `"5 min"`), and
+since a left-out dimension is uncapped, the run went on with no cap on it at all. **Now**: `await crew.run()` refuses
+it when it starts, before its first agent, with an `InvalidScriptError` shaped like the `budget` option's
+(`crewBuilder().budget({...}): budget.wallTime must be a positive number of seconds or a duration such as "90s" or
+"5m"; got "5 min".`). An unknown key is still ignored. **Migration**: write each limit as a whole number of 1 or more,
+`wallTime` in seconds or as `"90s"` / `"5m"`, or leave the key out.
+
+### Changed — a `when:` list refuses an unquoted `no` **[breaking]** (#430)
+
+**Before**: `when: { <question>: [no] }` on a yes-no question loaded, the deserializer reading the plain `no` as the
+option `no`. **Now**: YAML reads a plain `no` as a boolean, so the crew loader refuses it, naming the entry, with the
+hint to quote it; the YAML writer (`orkeon export`, the forge) quotes it. **Migration**: quote it, `["no"]`.
 
 ### Changed — with the decision circuit off, no consumer asks the decision model **[breaking]** (#433)
 
@@ -235,7 +296,9 @@ settings) and is left out under `Open`; the `decision` reranker keeps the retrie
 pruning prunes nothing. The circuit is read at each call: a run whose scope switches it off (`DecisionCircuitOverride`,
 as the forge sets for a trial) is off for the consumers built once per host as well, a fail-closed judge then blocking
 and a fail-open one passing; so are the decision tasks, answered by their relay or their fallback, and
-`system_one_decide`, which then answers a tool error naming the cause. New public members: `DecisionCircuit.OfHost`, `DecisionCircuit.Of(services, scopeCircuit)`,
+`system_one_decide`, which then answers a tool error naming the cause. With the circuit off the LLM judge writes its
+`guardian.judge.unavailable` audit record, as on a model failure: a fail-closed judge for each text it blocks, a
+fail-open one for each text it lets in. New public members: `DecisionCircuit.OfHost`, `DecisionCircuit.Of(services, scopeCircuit)`,
 `DecisionCircuitScope` (`Begin`, `Current`) and `GuardianLlmOptions.CircuitRefusal`. **What to do**: a crew that lists
 `system_one_decide` and must run with the circuit off drops the tool from its agents; a host that runs the LLM judge
 with the circuit off sets `Orkeon:Guardian:Llm:FailMode` to `Open` or turns the judge off. See

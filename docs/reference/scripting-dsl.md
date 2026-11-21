@@ -298,7 +298,9 @@ spawn alone is refused. `spawn_agent` returns a tool error the model reads (`Spa
 sub-agents already spawned (limit <n> spawnedAgents); '<agent>' was not spawned. ...`), so the act goes on
 with the reports it already holds; `ctx.spawnBackground` throws, and `crew.send` rejects with,
 `BudgetExhaustedError` (`dimension: "spawnedAgents"`), which ends the run only if the script does not catch it. An unknown key, a count that is not a whole number of 1 or more, or an
-unreadable `wallTime` is refused when the run opens, where the procedural `crewBuilder().budget(...)` skips it.
+unreadable `wallTime` is refused when the run opens. A procedural crew's `crewBuilder().budget(...)` refuses the same
+counts and `wallTime` (a count given as a string such as `"20"` among them) with an `InvalidScriptError` when
+`await crew.run()` starts, before its first agent, and ignores an unknown key.
 `charge: "crew"`, beside `budget`, counts what the run spends (tool calls, tokens, spawns; its wall
 clock runs with the caller's) against the budget of the run it is called from as well — the crew's,
 from an agent body of `crew.run` — so runs started at once never spend more than the crew allows.

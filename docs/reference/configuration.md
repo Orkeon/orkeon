@@ -714,7 +714,8 @@ its own picked); the decision model reads the agent's role and the task (cut at 
 in the middle), never the conversation. Under a probability of 0.6, without an answer, when the
 call fails or when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`,
 no decision provider), the host's `default` profile (the `Llm` section) stands, never the agent's own, with no
-error: an off circuit makes no decision call. A warning is logged once per run when the circuit is off or `Ladder`
+error: an off circuit makes no decision call. In a crew with `decision.mode: none`, the `default` profile stands
+too, with no call and no warning (`reason: decision-none`). A warning is logged once per run when the circuit is off or `Ladder`
 is missing (outside a run, once per host), and at each failed call; a low
 probability or a missing answer is logged as information only. Each pick emits `agent.route` on
 the run's event stream, once per task and agent of a run. A task's `llm_override: { profile: auto }`
@@ -1693,7 +1694,7 @@ not do is listed in [Known limitations](limitations.md).
 | `Profile` | string | — |  | The profile a browser starts with when the agent names none: `disposable` (the default, a fresh folder removed when the browser closes), the name of a profile of the Firefox installed on the host (`profiles.ini`), or the path of a profile folder. A named profile is used in place, with its cookies and sessions, and never removed; a profile another Firefox holds open is refused. |
 | `ProfileRoot` | string | — |  | Folder under which each browser gets its own profile folder, removed when the browser closes. Not set: `~/snap/firefox/common/orkeon/profiles` when Firefox is a snap (a snap cannot read the system's temp folder), else `orkeon-firefox` under the system's temp folder. |
 | `SharedInstance` | boolean | `false` |  | `true` shares one browser per profile between the agent runs of the host: each run drives tabs of its own in it, and the browser closes when the last run leaves it, unless `Lifetime` is `Host`. The default gives each run a browser of its own. |
-| `StartupTimeoutSeconds` | integer | `30` |  | Seconds Firefox is given to start: to open its remote protocol, then again to answer its session, which it does once its first window has loaded. |
+| `StartupTimeoutSeconds` | integer | `30` |  | Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`. |
 <!-- /settings -->
 
 ### `MCP`
@@ -1837,13 +1838,17 @@ definitions, the framing) stays in the estimate when the conversation is counted
 estimate reaches `TriggerShare` of the usable window (the context window less the output reserve:
 the call's cap, else the model's documented maximum, else 4096, at most half the window), one
 summary call, which reads the task too, replaces the older turns, and the system prompt, the task
-and the last `KeepRecentTurns` turns stay as they were. A turn is an assistant response, in one
+and the last `KeepRecentTurns` turns stay as they were. When `Profile` names a profile whose window is known
+(its `ContextWindowTokens`, else its model's documented one) and the summary call would not fit that window less
+its output reserve, each message of the transcript is cut to one length, the shortest ones kept whole, and one
+information line says so. A turn is an assistant response, in one
 message or several, with its tool results: a call is never kept apart from its result. A system
 message among the older turns (the soft-budget steering) stays, right after the summary. When the
-`KeepRecentTurns` turns are all there is, fewer are kept: the most whose messages come under the
-trigger, else the last turn alone; a call over the trigger with one turn alone waits for a later
+`KeepRecentTurns` turns are all there is, or alone come over the trigger, fewer are kept: the most
+whose messages come under the trigger, else the last turn alone; a call over the trigger with one turn alone waits for a later
 turn, and counts as no failure. The window is the profile's
-`ContextWindowTokens`, else the model's documented one, else
+`ContextWindowTokens` for the profile's own model (an agent whose `llm.model` names another model
+reads that model's documented window, else the assumed figure), else the model's documented one, else
 [`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession) (200000 by default), with one warning
 per profile naming the figure assumed. The table of documented windows (`LlmModelContextWindows`)
 knows four models: `kimi-k3` (1000000 tokens), `kimi-k2.6`, `mistral-medium-2604` and
@@ -1851,7 +1856,8 @@ knows four models: `kimi-k3` (1000000 tokens), `kimi-k2.6`, `mistral-medium-2604
 it starts with followed by `-`, `:`, `@` or `_`, else by its part after a vendor slash, ignoring
 case; every other model compacts against the assumed figure. That figure may overstate a smaller
 model, so on it
-the loop keeps the 40-message trim beside compaction; set `ContextWindowTokens` on that model's
+the loop keeps the 40-message trim beside compaction (the trim keeps a compaction's summary right
+after the task); set `ContextWindowTokens` on that model's
 profile to compact against its real window alone. Three failed compactions in a row bring the 40-message trim back for the
 rest of the task attempt (a retried task compacts again), and the pruning below stops with them.
 Each compaction emits `agent.compacted` on the run's event stream and in its history, under
@@ -1867,8 +1873,8 @@ conversation again after the cut.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `Enabled` | boolean | `true` | Whether the loops compact their conversation. True by default: a long loop pays one summary call instead of losing its middle to the 40-message trim. False brings that trim back, as an agent's `compaction: { enabled: false }` does for that agent alone. |
-| `KeepRecentTurns` | integer | `6` | How many of the most recent turns a compaction keeps verbatim, a turn being one assistant message with its tool results (a tool call is never parted from its result). 6 by default; 0 summarises every turn. |
-| `Profile` | string | — | The LLM profile that writes the summary: `default` or a profile of `Llm:Profiles`; a name the host does not offer (one `Llm:Profiles` lacks, or one `Orkeon:Host:LlmProfiles` leaves out), or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way. |
+| `KeepRecentTurns` | integer | `6` | How many of the most recent turns a compaction keeps verbatim, a turn being one assistant response, in one message or several, with its tool results (a tool call is never parted from its result). Fewer are kept when they are all the conversation holds or alone pass the trigger. 6 by default; 0 summarises every turn. |
+| `Profile` | string | — | The LLM profile that writes the summary: `default`, a profile of `Llm:Profiles` or a decision profile of `Orkeon:Decision:Profiles`; a name the host does not offer (one neither section defines, or one `Orkeon:Host:LlmProfiles` leaves out), or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way. |
 | `TriggerShare` | number | `0.75` | The share of the usable window (the context window less the output reserve: the call's cap, else the model's documented maximum, else 4096, at most half the window) the estimated prompt reaches for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's `compaction: { triggerShare }` overrides it. |
 <!-- /settings -->
 
@@ -1878,7 +1884,8 @@ How the agent loops prune their older read-tool results before they compact, the
 loops' counterpart of a script's `onContextPressure`. Off by default. Once the estimated prompt
 reaches `FillShare` of the usable window (or the compaction trigger, whichever comes first), each
 result of a read tool (a tool whose access is `read` for that input) outside the last
-`KeepRecentMessages` messages and longer than twice `HeadChars` is offered to the decision model,
+`KeepRecentMessages` messages, of a turn the model has answered since, and longer than twice
+`HeadChars` is offered to the decision model,
 up to 24 at a time, eight to a request. It reads the task and each call - tool, input, size and
 age in model turns - never the result, and answers two yes/no questions per call: still needed,
 and needed whole. Not needed drops the result, needed in part keeps its first `HeadChars`
@@ -1908,7 +1915,11 @@ overrides `Enabled` with `compaction: { prune }`; an agent that does not compact
 How an agent's `skills:` reach its prompt. A skill is a markdown file read through the
 virtual file system and appended to the agent's system prompt under a `## Skills` heading, each
 skill cut at `MaxSkillChars` and the whole block, its heading and each skill's title line
-included, at `MaxBlockChars`; a skill file is read no further than `MaxSkillChars`. A skill cut
+included, at `MaxBlockChars`; a skill file is read no further than `MaxSkillChars` characters and 256 more:
+past the cap, white space is read on to tell a file that ends there from one that goes on, and white
+space that runs on past those 256 characters counts as more text, the skill then said cut.
+`MaxBlockChars` under 500 (`AgentSkillsOptions.MinBlockChars`) is refused at start, the message naming
+the minimum: a smaller block cannot hold its heading and a skill. A skill cut
 short is said in the prompt and in the `cut` field of
 `agent.skills`; a skill left out (no room left in the block, a file that cannot be read) is said
 in that `cut` field alone. An agent with `skills: [<paths>]` carries those files on every task. An agent with `skills: { auto: true, fallback: [<paths>] }` has System One pick, for
@@ -1919,7 +1930,9 @@ The question is one choice, so the skills that fit split the model's probability
 picked when its share reaches 0.3, the largest share first. When the
 decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`, no decision
 provider), when the library holds no skill or cannot be read, or when the decision model fails or
-answers no usable choice (`reason: pick-failed`), the agent carries its `fallback` list, else no skill, with one warning per run and no error. The choice holds
+answers no usable choice (`reason: pick-failed`), the agent carries its `fallback` list, else no skill, with one warning per run for each cause (outside a run,
+once per host) and no error; in a crew with `decision.mode: none`, its `fallback` list stands too, with no
+decision call and no warning (`reason: decision-none`). The choice holds
 for every attempt of the task by that agent in the run, and emits `agent.skills` on the run's
 event stream once per task and agent of a run. A `.ork.ts` crew has no skills.
 
@@ -1929,7 +1942,7 @@ event stream once per task and agent of a run. A `.ork.ts` crew has no skills.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `Library` | string | `"/workspace/.orkeon/skills"` | The virtual folder an `auto` agent's skills are picked from, one `<name>.md` file per skill (sub-folders are not read); a relative path is refused at start. `/workspace/.orkeon/skills` by default. |
-| `MaxBlockChars` | integer | `12000` | The characters the whole skills block carries, its heading, each skill's title line and cut notes included, so that with the defaults three skills of a full `MaxSkillChars` do not all fit and the third is cut; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. 0 or less is refused at start. 12000 by default. |
+| `MaxBlockChars` | integer | `12000` | The characters the whole skills block carries, its heading, each skill's title line and cut notes included, so that with the defaults three skills of a full `MaxSkillChars` do not all fit and the third is cut; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. Less than `500`, which cannot hold the block's heading and a skill, is refused at start. 12000 by default. |
 | `MaxSkillChars` | integer | `4000` | The characters of one skill the prompt carries; the rest is cut, and the cut is said in the prompt and in the `cut` of `agent.skills`. 0 or less is refused at start. 4000 by default. |
 <!-- /settings -->
 

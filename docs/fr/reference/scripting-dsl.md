@@ -319,8 +319,10 @@ une erreur d'outil que le modèle lit (`Spawn budget spent: <n> sub-agents alrea
 spawnedAgents); '<agent>' was not spawned. ...`), et l'act poursuit avec les rapports déjà reçus ;
 `ctx.spawnBackground` lève, et `crew.send` rejette avec, `BudgetExhaustedError`
 (`dimension: "spawnedAgents"`), qui ne termine l'exécution que si le script ne l'attrape pas. Une clé inconnue, un compte qui
-n'est pas un entier d'au moins 1 ou un `wallTime` illisible est refusé à l'ouverture de l'exécution,
-là où le `crewBuilder().budget(...)` procédural l'ignore. `charge: "crew"`, à côté de `budget`, compte ce que
+n'est pas un entier d'au moins 1 ou un `wallTime` illisible est refusé à l'ouverture de l'exécution. Le
+`crewBuilder().budget(...)` d'une crew procédurale refuse les mêmes comptes et `wallTime` (un compte donné en chaîne
+comme `"20"` parmi eux) par une `InvalidScriptError` au démarrage de `await crew.run()`, avant son premier agent, et
+ignore une clé inconnue. `charge: "crew"`, à côté de `budget`, compte ce que
 l'exécution dépense (appels d'outils, tokens, enfants ; son horloge murale court avec celle de
 l'appelant) aussi sur le budget de l'exécution d'où elle est appelée — celui de la crew, depuis un
 `body` d'agent de `crew.run` — si bien que des exécutions lancées ensemble ne dépensent jamais plus

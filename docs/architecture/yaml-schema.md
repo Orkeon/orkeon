@@ -38,7 +38,7 @@ decision: {mode}          # mode: "none" | "optional" | "required" (case-insensi
 
 llm:                      # Crew-default LLM, merged FIELD BY FIELD under each agent's own llm: (same shape as agents.<id>.llm)
   profile: string         # Host LLM profile (Llm:Profiles:<name>) for every agent — unknown → the load fails, listing the host's profiles
-  model: string
+  model: string           # Refused when it reaches an agent on profile: auto (the load fails, naming the agent)
   max_tokens: int         # Positive; omitted = the inherited cap, 0 or less fails the load naming the crew
   temperature: float
 
@@ -85,8 +85,8 @@ agents:
     verbose: bool         # default: false — detailed logs for this agent (tool calls, tool results, model responses, at Information, category Orkeon.Verbose)
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
       profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section
-      # profile: auto     # Reserved: System One picks, at each task's start, one profile of Orkeon:Decision:Route:Ladder (cheapest first) and the task keeps it; under 0.6, no answer or circuit off → the default profile. No ladder, or decision.mode: none → the load fails
-      model: string       # LLM model id — omitted → the profile's own model
+      # profile: auto     # Reserved: System One picks, at each task's start, one profile of Orkeon:Decision:Route:Ladder (cheapest first) and the task keeps it; under 0.6, no answer or circuit off → the default profile. No ladder, a model: beside it (here or from the crew's llm:), or decision.mode: none → the load fails
+      model: string       # LLM model id — omitted → the profile's own model; refused beside profile: auto, where the picked rung's own model runs
       temperature: float  # Sent whatever its value — omitted = the profile's, else none is sent and the model applies its own
       maxTokens: int      # Output token pin, positive — omitted = the model's documented maximum; 0 or less fails the load
       topP: float         # Nucleus sampling, sent whatever its value — omitted = the profile's, else none is sent (Mistral writes 1)
@@ -646,7 +646,8 @@ and a key nothing sets is not written at all.
   carries: a guardrails `preset:` comes back as the `header`, `rules` and `toolRules` it brought, the
   crew's `llm:` as the block each agent got from it, under each agent, and `anchors:` as the text they
   stood for. A knowledge attachment that only names its collection is written in the short form, any
-  other in the long form.
+  other in the long form. A string YAML would read as another type (`no`, `yes`, `on`, `null`, `1.0`) is
+  written quoted, so a `when:` list holding the option `no` loads again.
 - **A relative source follows the file.** A `rag:` source is written as it was, so `./data/faq.md` is
   read against the folder the exported file is loaded from (see
   [Knowledge & RAG configuration](#knowledge--rag-configuration)): export next to the data, or write

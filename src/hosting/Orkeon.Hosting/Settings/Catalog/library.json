@@ -3219,7 +3219,7 @@
       "section": "Orkeon:Tools:Firefox",
       "type": "integer",
       "default": 30,
-      "description": "Seconds Firefox is given to start: to open its remote protocol, then again to answer its session, which it does once its first window has loaded."
+      "description": "Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`."
     },
     {
       "path": "Orkeon:Tools:GitHub:Token",
@@ -3470,13 +3470,13 @@
       "section": "Orkeon:Compaction",
       "type": "integer",
       "default": 6,
-      "description": "How many of the most recent turns a compaction keeps verbatim, a turn being one assistant message with its tool results (a tool call is never parted from its result). 6 by default; 0 summarises every turn."
+      "description": "How many of the most recent turns a compaction keeps verbatim, a turn being one assistant response, in one message or several, with its tool results (a tool call is never parted from its result). Fewer are kept when they are all the conversation holds or alone pass the trigger. 6 by default; 0 summarises every turn."
     },
     {
       "path": "Orkeon:Compaction:Profile",
       "section": "Orkeon:Compaction",
       "type": "string",
-      "description": "The LLM profile that writes the summary: `default` or a profile of `Llm:Profiles`; a name the host does not offer (one `Llm:Profiles` lacks, or one `Orkeon:Host:LlmProfiles` leaves out), or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way."
+      "description": "The LLM profile that writes the summary: `default`, a profile of `Llm:Profiles` or a decision profile of `Orkeon:Decision:Profiles`; a name the host does not offer (one neither section defines, or one `Orkeon:Host:LlmProfiles` leaves out), or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way."
     },
     {
       "path": "Orkeon:Compaction:TriggerShare",
