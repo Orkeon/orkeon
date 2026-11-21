@@ -77,4 +77,21 @@ public sealed class ExecutionOrchestratorSkillsTests
         Assert.DoesNotContain("## Skills", Assert.Single(_llm.ReceivedPrompts), StringComparison.Ordinal);
         Assert.Equal(AgentSkillsModes.Fallback, Assert.Single(_observer.Notices).Mode);
     }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public async System.Threading.Tasks.Task ShouldMakeNoDecisionCall_WhenTheRunScopesCircuitIsOffAndTheContainersIsOn()
+    {
+        // Arrange
+        _files.AddFile($"{AgentSkillsOptions.DefaultLibrary}/review.md", "---\nname: review\n---\nBody.");
+        var agent = new AgentBuilder().Role("Reviewer").Goal("Review code").Skills(new AgentSkills { Auto = true }).Build();
+        var orchestrator = Orchestrator(DecisionCircuit.On);
+        orchestrator.ScopeCircuit = DecisionCircuit.Off;
+
+        // Act
+        await orchestrator.ExecuteTaskCoreAsync(agent, Task(), Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_model.Requests);
+    }
 }

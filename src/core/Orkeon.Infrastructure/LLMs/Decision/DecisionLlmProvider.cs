@@ -99,6 +99,17 @@ public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmPro
         _audit = audit;
     }
 
+    /// <summary>
+    /// The profile as it runs with the decision circuit off, read at each call (#433, #431): a profile built once
+    /// per host with the circuit on still asks no model in a run whose scope is off, and its calls take the path
+    /// of the profile built off. Null, or returning null, the stages run. What the provider says of itself - its
+    /// name, its capabilities - stays the profile's as it was built.
+    /// </summary>
+    internal Func<DecisionLlmProvider?>? WhenCircuitOff { get; init; }
+
+    // The provider a call runs through: the profile built off when the circuit is off now, else this one.
+    private DecisionLlmProvider Current => WhenCircuitOff?.Invoke() ?? this;
+
     /// <inheritdoc />
     public string Name => _target.Name;
 
@@ -122,12 +133,16 @@ public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmPro
 
     /// <inheritdoc />
     public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
-        RunAsync([LlmMessage.User(prompt)], (provider, ct) => provider.GenerateAsync(prompt, config, ct), cancellationToken);
+        Current is var current && current != this
+            ? current.GenerateAsync(prompt, config, cancellationToken)
+            : RunAsync([LlmMessage.User(prompt)], (provider, ct) => provider.GenerateAsync(prompt, config, ct), cancellationToken);
 
     /// <inheritdoc />
     public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(messages);
+        if (Current is var current && current != this)
+            return current.ChatAsync(messages, config, cancellationToken);
         return RunAsync(messages, (provider, ct) => provider.ChatAsync(messages, config, ct), cancellationToken);
     }
 
@@ -137,6 +152,13 @@ public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmPro
         LlmConfig? config = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        if (Current is var current && current != this)
+        {
+            await foreach (var chunk in current.GenerateStreamingAsync(prompt, config, cancellationToken).ConfigureAwait(false))
+                yield return chunk;
+            yield break;
+        }
+
         LlmMessage[] messages = [LlmMessage.User(prompt)];
         if (_responseStages.Count == 0)
         {
@@ -170,6 +192,13 @@ public sealed partial class DecisionLlmProvider : ILlmProvider, IStreamingLlmPro
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(messages);
+        if (Current is var current && current != this)
+        {
+            await foreach (var ev in current.ChatStreamingAsync(messages, config, cancellationToken).ConfigureAwait(false))
+                yield return ev;
+            yield break;
+        }
+
         if (_responseStages.Count == 0)
         {
             var (provider, blocked) = await BeforeAsync(messages, cancellationToken).ConfigureAwait(false);

@@ -366,13 +366,20 @@ dégrade le dit en un avertissement :
 | Consommateur | Circuit coupé |
 | --- | --- |
 | Tâche de décision | Répond par son repli, comme ci-dessus. |
-| Outil `system_one_decide` | Retenu : une crew qui le liste échoue au chargement, en nommant l'outil et la cause (`tool 'system_one_decide' withheld: the decision circuit is off: --no-decision`). Sous `--validate`, c'est une ligne `WARNING:`, l'outil n'est pas compté dans `tools resolved` et le code de sortie reste 0. |
+| Outil `system_one_decide` | Retenu : une crew qui le liste échoue au chargement sous `StrictTools` (le défaut des runners), en nommant l'outil et la cause (`tool 'system_one_decide' withheld: the decision circuit is off: --no-decision`) ; une crew `required` rencontre à la place le refus de son mode ; sinon il est ignoré avec un avertissement. Sous `--validate`, c'est une ligne `WARNING:`, l'outil n'est pas compté dans `tools resolved` et le code de sortie reste 0. |
 | Profil de décision | Construit sans le modèle : ses appels vont au `fallback` de la `route`, sinon à la `target` ; un `verify` n'escalade jamais ; un `guard` laisse passer l'appel, sauf dans un profil `failClosed`, où chaque appel est bloqué. Un avertissement à la première résolution du profil. |
-| Juge LLM (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuse de démarrer, en nommant la cause ; `Open` retire le juge du pipeline, avec un avertissement, et les autres gardiens restent. |
+| Juge LLM (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuse de démarrer, en nommant la cause (l'hôte runner le vérifie avec ses réglages) ; `Open` retire le juge du pipeline, avec un avertissement, et les autres gardiens restent. |
 | Reranker `decision` | Laisse passer les passages dans leur ordre de récupération, comme `none`, avec un avertissement. |
 | Skills d'un agent (`skills: { auto: true }`) | L'agent porte sa liste `fallback`, sinon aucun skill, et la tâche s'exécute ; `agent.skills` indique `mode: fallback` avec la cause en `reason`. Un avertissement par hôte. |
 | Routage d'un agent (`llm.profile: auto`) | La tâche tourne sur le profil par défaut de l'hôte, sans appel de décision ; `agent.route` indique `reason: circuit-off`. Un avertissement par hôte. |
 | Élagage des résultats d'outils (`Orkeon:Compaction:Prune`) | Rien n'est élagué et aucun appel de décision n'est fait ; la boucle compacte comme elle le ferait sans lui, et aucun `agent.pruned` n'est écrit. Un avertissement par portée de run. |
+
+Le circuit est lu à chaque appel, pas une fois par hôte. Un run dont la portée le coupe (son
+`DecisionCircuitOverride`, comme la forge le règle pour un essai, ouvert pour le run en `DecisionCircuitScope`)
+est coupé pour chaque consommateur ci-dessus, y compris ceux construits une fois par hôte : un juge fail-closed
+y bloque chaque texte qu'il jugerait et un juge fail-open le laisse passer, avec un avertissement, et un profil
+de décision route comme s'il était construit sans le modèle. Une portée ne rallume jamais un circuit que l'hôte
+a coupé.
 
 #### Le mode de décision d'une crew
 

@@ -86,7 +86,7 @@ internal sealed class AgentProfileRouter
             return Standing(AgentRouteReasons.NoLadder);
         }
 
-        var circuit = scopeCircuit is { Enabled: false } ? scopeCircuit : DecisionCircuit.Of(_services);
+        var circuit = DecisionCircuit.Of(_services, scopeCircuit);
         var model = circuit.Enabled ? _services.GetService<IDecisionModel>() : null;
         if (model is null)
         {

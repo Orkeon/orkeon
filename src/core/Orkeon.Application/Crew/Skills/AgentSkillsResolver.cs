@@ -72,15 +72,28 @@ internal sealed class AgentSkillsResolver
     /// <param name="taskId">The task, for the notice.</param>
     /// <param name="request">The task as the decision model reads it (cut at <see cref="RequestChars"/>).</param>
     /// <param name="cancellationToken">Cancels the reads and the decision call.</param>
+    public System.Threading.Tasks.Task<AgentSkillsResolution?> ResolveAsync(
+        DomainAgent agent, string taskId, string request, CancellationToken cancellationToken) =>
+        ResolveAsync(agent, taskId, request, scopeCircuit: null, cancellationToken);
+
+    /// <summary>The skills block of the task, and what was chosen; null when the agent declares no skill.</summary>
+    /// <param name="agent">The agent.</param>
+    /// <param name="taskId">The task, for the notice.</param>
+    /// <param name="request">The task as the decision model reads it (cut at <see cref="RequestChars"/>).</param>
+    /// <param name="scopeCircuit">
+    /// The circuit of the run's scope when it is not the container's (<see cref="DecisionCircuitOverride"/>, #431);
+    /// null follows the container's.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the reads and the decision call.</param>
     public async System.Threading.Tasks.Task<AgentSkillsResolution?> ResolveAsync(
-        DomainAgent agent, string taskId, string request, CancellationToken cancellationToken)
+        DomainAgent agent, string taskId, string request, DecisionCircuit? scopeCircuit, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(agent);
         if (agent.Skills is not { } skills)
             return null;
 
         var choice = skills.Auto
-            ? await PickAsync(agent, skills, request, cancellationToken).ConfigureAwait(false)
+            ? await PickAsync(agent, skills, request, scopeCircuit, cancellationToken).ConfigureAwait(false)
             : new Choice(AgentSkillsModes.List, skills.Paths, 0, null);
         var (block, kept, cut) = await ComposeAsync(agent, choice, cancellationToken).ConfigureAwait(false);
         var notice = new AgentSkillsNotice
@@ -100,9 +113,9 @@ internal sealed class AgentSkillsResolver
     private sealed record Choice(string Mode, IReadOnlyList<string> Paths, int Offered, string? Reason);
 
     private async System.Threading.Tasks.Task<Choice> PickAsync(
-        DomainAgent agent, Domain.Agent.AgentSkills skills, string request, CancellationToken cancellationToken)
+        DomainAgent agent, Domain.Agent.AgentSkills skills, string request, DecisionCircuit? scopeCircuit, CancellationToken cancellationToken)
     {
-        var circuit = DecisionCircuit.Of(_services);
+        var circuit = DecisionCircuit.Of(_services, scopeCircuit);
         var model = circuit.Enabled ? _services.GetService<IDecisionModel>() : null;
         if (model is null)
         {

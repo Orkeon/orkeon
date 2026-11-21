@@ -161,11 +161,16 @@ decision tasks only: the `system_one_decide` tool, the stages of a decision prof
 profile could not be built without one). **Now**: the circuit off makes no `IDecisionModel` call, whatever the cause,
 and each consumer that degrades says so in one warning naming the cause
 (`the decision circuit is off: --no-decision`, `...: Orkeon:Decision:Enabled=false`,
-`...: no decision provider resolved`): `system_one_decide` is withheld, so a crew that lists it fails to load naming
-the tool and the cause (a `WARNING:` line under `--validate`, exit 0); a decision profile is built without the model,
+`...: no decision provider resolved`): `system_one_decide` is withheld, so a crew that lists it fails to load under
+`StrictTools` (the runners' default), naming the tool and the cause; a `required` crew meets the mode refusal instead;
+otherwise it is skipped with a warning (a `WARNING:` line under `--validate`, exit 0); a decision profile is built without the model,
 its calls going to the `route`'s `fallback`, else to its `target`, with no escalation, and a `guard` lets them on
-except in a `failClosed` profile, which blocks them; the LLM judge refuses to start under `FailMode: Closed` and is
-left out under `Open`; the `decision` reranker keeps the retrieval order. **What to do**: a crew that lists
+except in a `failClosed` profile, which blocks them; the LLM judge refuses to start under `FailMode: Closed` (the runner host checks it with its
+settings) and is left out under `Open`; the `decision` reranker keeps the retrieval order; an agent with
+`skills: { auto: true }` carries its `fallback` skills, `llm.profile: auto` runs on the default profile and tool-result
+pruning prunes nothing. The circuit is read at each call: a run whose scope switches it off (`DecisionCircuitOverride`,
+as the forge sets for a trial) is off for the consumers built once per host as well, a fail-closed judge then blocking
+and a fail-open one passing. **What to do**: a crew that lists
 `system_one_decide` and must run with the circuit off drops the tool from its agents; a host that runs the LLM judge
 with the circuit off sets `Orkeon:Guardian:Llm:FailMode` to `Open` or turns the judge off. See
 [Decision models](docs/architecture/decision-models.md#every-consumer-follows-the-circuit).

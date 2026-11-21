@@ -187,9 +187,15 @@ public static class InfrastructureExtensions
         // Orchestration services (moved from Application — R16)
         // A scope whose DecisionCircuitOverride holds a circuit runs with it (#431): the notice, the refusal of a
         // required crew and the resume check read the scope's circuit, not the container's.
-        services.AddScoped<SequentialCrewOrchestrator>(sp => ScopedCircuit(sp) is { } circuit
-            ? ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp, circuit)
-            : ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp));
+        // The run enters that circuit (DecisionCircuitScope), so what is built once per host follows it too.
+        services.AddScoped<SequentialCrewOrchestrator>(sp =>
+        {
+            if (ScopedCircuit(sp) is not { } circuit)
+                return ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp);
+            var orchestrator = ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp, circuit);
+            orchestrator.RunScopeCircuit = circuit;
+            return orchestrator;
+        });
         services.AddScoped<ICrewOrchestrationService>(sp => sp.GetRequiredService<SequentialCrewOrchestrator>());
         services.AddSingleton<ICrewExecutionStateManager, ScopedCrewExecutionStateManager>();
 
@@ -902,24 +908,26 @@ public static class InfrastructureExtensions
             pipeline.AddGuard(GuardPhase.Input, sp.GetRequiredService<InputGuard>());
             // The LLM judge, beside the built-in guards: the decision model judges the input and the
             // output of a task (Orkeon:Guardian:Llm, off by default). It follows the decision circuit
-            // (#433): off, a fail-closed judge refuses to start - a judge that cannot judge must not
-            // leave the phase unguarded - and a fail-open one is left out with one warning.
+            // (#433): off in the host, a fail-closed judge refuses to start - a judge that cannot judge must
+            // not leave the phase unguarded - and a fail-open one is left out with one warning. Built once
+            // per host, the judge reads the circuit again at each check, so a run whose scope is off
+            // (DecisionCircuitScope, #431) asks no model: a fail-closed judge blocks, a fail-open one passes.
             if (options.Llm.Enabled)
             {
-                var circuit = Orkeon.Application.Crew.Execution.DecisionCircuit.Of(sp);
+                var circuit = Orkeon.Application.Crew.Execution.DecisionCircuit.OfHost(sp);
                 if (circuit.Enabled)
                 {
                     var model = sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IDecisionModel>();
-                    var judge = new LlmJudgeGuard(model, Options.Create(options.Llm), sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), auditLogger);
+                    var judge = new LlmJudgeGuard(model, Options.Create(options.Llm), sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), auditLogger)
+                    {
+                        Circuit = () => Orkeon.Application.Crew.Execution.DecisionCircuit.Of(sp),
+                    };
                     foreach (var phase in new[] { GuardPhase.Input, GuardPhase.Output }.Where(options.Llm.Judges))
                         pipeline.AddGuard(phase, judge);
                 }
                 else if (options.Llm.FailMode == GuardianJudgeFailMode.Closed)
                 {
-                    throw new InvalidOperationException(
-                        $"{GuardianLlmOptions.SectionName}:Enabled is true with FailMode Closed but {circuit.OffReason}: " +
-                        "a fail-closed judge cannot judge. Turn the circuit on (a decision provider, Orkeon:Decision:Enabled, no --no-decision), " +
-                        $"set {GuardianLlmOptions.SectionName}:FailMode to Open, or turn the LLM judge off.");
+                    throw new InvalidOperationException(GuardianLlmOptions.CircuitRefusal(circuit.OffReason!));
                 }
                 else
                 {
@@ -961,8 +969,11 @@ public static class InfrastructureExtensions
 
     /// <summary>
     /// The circuit a scope's <see cref="Orkeon.Application.Crew.Execution.DecisionCircuitOverride"/> holds, null when
-    /// none is set (#431): the scoped run services take it in place of the container's circuit.
+    /// none is set (#431), as <see cref="Orkeon.Application.Crew.Execution.DecisionCircuit.Of(IServiceProvider, Orkeon.Application.Crew.Execution.DecisionCircuit?)"/>
+    /// reads it - an off container stays off: the scoped run services take it in place of the container's circuit.
     /// </summary>
     private static Orkeon.Application.Crew.Execution.DecisionCircuit? ScopedCircuit(IServiceProvider services) =>
-        services.GetService<Orkeon.Application.Crew.Execution.DecisionCircuitOverride>()?.Circuit;
+        services.GetService<Orkeon.Application.Crew.Execution.DecisionCircuitOverride>()?.Circuit is { } circuit
+            ? Orkeon.Application.Crew.Execution.DecisionCircuit.Of(services, circuit)
+            : null;
 }

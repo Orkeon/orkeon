@@ -1344,7 +1344,7 @@ La sous-section `Llm` ajoute un juge LLM, coupé par défaut : le modèle de dé
 sortie d'une tâche (`Phases`), un risque à `BlockThreshold` ou au-dessus bloque, et quand le modèle ne
 répond pas `FailMode` tranche : `Closed` (défaut) refuse, `Open` laisse passer le texte ; les deux auditent
 `guardian.judge.unavailable`. Tant que la phase de sortie est gardée, le streaming d'une tâche attend le jugement. Il demande un modèle de décision (`AddOrkeonDecisionProvider`) ; activé
-sans lui, l'hôte refuse de démarrer.
+en `FailMode: Closed` et sans lui, l'hôte refuse de démarrer.
 Le juge suit le circuit de décision (`--no-decision`, `Orkeon:Decision:Enabled=false`, aucun fournisseur) : coupé,
 `FailMode: Closed` refuse de démarrer en nommant la cause, et `Open` retire le juge avec un avertissement
 ([Modèles de décision](../architecture/decision-models.md#chaque-consommateur-suit-le-circuit)).

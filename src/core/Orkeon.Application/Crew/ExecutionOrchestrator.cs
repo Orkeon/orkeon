@@ -603,6 +603,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 agentId: agent.Role.Value,
                 taskId: task.Id.ToString());
 
+            // The run scope's circuit (#431), when it is not the container's: what this task asks of the decision
+            // model through a service built once per host - the judge, a decision profile, the decision reranker -
+            // follows it, as the scoped services do.
+            using var circuitScope = Execution.DecisionCircuitScope.Begin(ScopeCircuit);
+
             // The agent's time limit (CH-01): opened before anything waits — the maxRpm turn
             // included — so every wait counts inside it; the one place a task runs in the six modes.
             using var deadline = BeginDeadline(agent, cancellationToken);
@@ -914,7 +919,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             return systemPrompt;
 
         var resolution = await SkillsResolver.ResolveAsync(
-            agent, task.Id.ToString(), AgentPromptComposer.BuildKnowledgeQueryText(task, context), cancellationToken).ConfigureAwait(false);
+            agent, task.Id.ToString(), AgentPromptComposer.BuildKnowledgeQueryText(task, context), ScopeCircuit, cancellationToken).ConfigureAwait(false);
         if (resolution is null)
             return systemPrompt;
 

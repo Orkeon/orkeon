@@ -30,7 +30,7 @@ public static class DecisionProfileServiceCollectionExtensions
     /// a decision profile that names another decision profile fails the host build with the key to
     /// fix. Whether a named profile exists is checked when the decision profile is first used. The
     /// <see cref="IDecisionModel"/> (<c>AddOrkeonDecisionProvider</c>) is asked only while the decision
-    /// circuit is on (<see cref="DecisionCircuit.Of(IServiceProvider)"/>); off, the profile is built
+    /// circuit is on (<see cref="DecisionCircuit.Of(IServiceProvider)"/>, read at each call); off, the profile is built
     /// without it and takes no decision (#433).
     /// </summary>
     /// <param name="services">The service collection.</param>
@@ -208,9 +208,18 @@ public static class DecisionProfileServiceCollectionExtensions
                 ? registry.Resolve(profileName).Provider
                 : throw new InvalidOperationException($"{path}: the profile '{profileName}' is not defined.");
 
-        var circuit = DecisionCircuit.Of(services);
+        // Built once per host, with the host's circuit; on, the profile reads the circuit again at each call, so a
+        // run whose scope is off (DecisionCircuitScope, #431) takes the path of the profile built off.
+        var circuit = DecisionCircuit.OfHost(services);
         if (!circuit.Enabled)
             return BuildWithoutDecisions(name, profile, circuit.OffReason!, Resolve, loggerFactory, services.GetService<IAuditLogger>());
+
+        DecisionLlmProvider? off = null;
+        DecisionLlmProvider? WhenCircuitOff() =>
+            DecisionCircuit.Of(services) is { Enabled: false } now
+                ? LazyInitializer.EnsureInitialized(
+                    ref off, () => BuildWithoutDecisions(name, profile, now.OffReason!, Resolve, loggerFactory, services.GetService<IAuditLogger>()))
+                : null;
 
         var model = services.GetRequiredService<IDecisionModel>();
         var request = new List<IDecisionStage>();
@@ -225,7 +234,10 @@ public static class DecisionProfileServiceCollectionExtensions
             Resolve,
             profile.FailClosed,
             loggerFactory.CreateLogger<DecisionLlmProvider>(),
-            services.GetService<IAuditLogger>());
+            services.GetService<IAuditLogger>())
+        {
+            WhenCircuitOff = WhenCircuitOff,
+        };
     }
 
     /// <summary>

@@ -354,13 +354,19 @@ both hold, the switch is named. Each consumer that degrades says so in one warni
 | Consumer | Circuit off |
 | --- | --- |
 | Decision task | Answers by its fallback, as above. |
-| `system_one_decide` tool | Withheld: a crew that lists it fails to load, naming the tool and the cause (`tool 'system_one_decide' withheld: the decision circuit is off: --no-decision`). Under `--validate` it is a `WARNING:` line, the tool is not counted in `tools resolved`, and the exit stays 0. |
+| `system_one_decide` tool | Withheld: a crew that lists it fails to load under `StrictTools` (the runners' default), naming the tool and the cause (`tool 'system_one_decide' withheld: the decision circuit is off: --no-decision`); a `required` crew meets the mode refusal instead; otherwise it is skipped with a warning. Under `--validate` it is a `WARNING:` line, the tool is not counted in `tools resolved`, and the exit stays 0. |
 | Decision profile | Built without the model: its calls go to the `route`'s `fallback`, else to the `target`; a `verify` never escalates; a `guard` lets the call go on, except in a `failClosed` profile, where every call is blocked. One warning when the profile is first resolved. |
-| LLM judge (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuses to start, naming the cause; `Open` leaves the judge out of the pipeline, with one warning, and the other guards stay. |
+| LLM judge (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuses to start, naming the cause (the runner host checks it with its settings); `Open` leaves the judge out of the pipeline, with one warning, and the other guards stay. |
 | `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
 | Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` with the cause as `reason`. One warning per host. |
 | Agent routing (`llm.profile: auto`) | The task runs on the host's default profile, with no decision call; `agent.route` reports `reason: circuit-off`. One warning per host. |
 | Tool-result pruning (`Orkeon:Compaction:Prune`) | Nothing is pruned and no decision call is made; the loop compacts as it would without it, and no `agent.pruned` is written. One warning per run scope. |
+
+The circuit is read at each call, not once per host. A run whose scope switches it off (its
+`DecisionCircuitOverride`, as the forge sets for a trial, entered for the run as `DecisionCircuitScope`) is off
+for every consumer above, those built once per host included: there a fail-closed judge blocks each text it
+would judge and a fail-open one lets it through, with one warning, and a decision profile routes as if built
+without the model. A scope never switches on a circuit the host has off.
 
 #### A crew's decision mode
 

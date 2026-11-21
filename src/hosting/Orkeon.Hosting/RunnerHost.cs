@@ -399,7 +399,36 @@ public static partial class RunnerHost
             refusals.Add(ex.Message);
         }
 
+        // A fail-closed LLM judge the decision circuit leaves unable to judge (#433): refused here, in the guardian
+        // pipeline's own words, so the start and --validate say it before a crew is built.
+        if (JudgeRefusal(services) is { } judge)
+            refusals.Add(judge);
+
         return refusals;
+    }
+
+    /// <summary>
+    /// The refusal of <c>Orkeon:Guardian:Llm</c> enabled with <c>FailMode: Closed</c> under an off decision circuit
+    /// (<c>--no-decision</c>, <c>Orkeon:Decision:Enabled=false</c>, no decision provider); null otherwise, or when the
+    /// guardian section is itself refused (its own refusal says so).
+    /// </summary>
+    private static string? JudgeRefusal(IServiceProvider services)
+    {
+        Orkeon.Infrastructure.Configuration.GuardianOptions? guardian;
+        try
+        {
+            guardian = services.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.GuardianOptions>>()?.Value;
+        }
+        catch (Exception ex) when (ex is Microsoft.Extensions.Options.OptionsValidationException or InvalidOperationException)
+        {
+            // The section's value is refused by its own key, above.
+            return null;
+        }
+
+        if (guardian is not { Enabled: true, Llm: { Enabled: true, FailMode: Orkeon.Infrastructure.Decision.GuardianJudgeFailMode.Closed } })
+            return null;
+        var circuit = Orkeon.Application.Crew.Execution.DecisionCircuit.OfHost(services);
+        return circuit.Enabled ? null : Orkeon.Infrastructure.Decision.GuardianLlmOptions.CircuitRefusal(circuit.OffReason!);
     }
 
     /// <summary>

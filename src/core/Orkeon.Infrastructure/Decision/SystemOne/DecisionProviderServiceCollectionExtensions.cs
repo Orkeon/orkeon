@@ -59,7 +59,7 @@ public static class DecisionProviderServiceCollectionExtensions
         // is told why by the crew factory.
         services.TryAddSingleton<SystemOneDecideTool>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, SystemOneDecideTool>(
-            sp => DecisionCircuit.Of(sp).Enabled ? sp.GetRequiredService<SystemOneDecideTool>() : null!));
+            sp => DecisionCircuit.OfHost(sp).Enabled ? sp.GetRequiredService<SystemOneDecideTool>() : null!));
         return services;
     }
 }

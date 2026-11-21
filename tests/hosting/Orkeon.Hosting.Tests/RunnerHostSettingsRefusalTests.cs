@@ -334,4 +334,50 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
 
         Assert.Contains("Orkeon:TypeSafe:Guard is not a setting", error.Message, StringComparison.Ordinal);
     }
+
+    private const string FailClosedJudge =
+        """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Guardian": { "Llm": { "Enabled": true, "FailMode": "Closed" } }, "Decision": { "Enabled": false } } }""";
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public void ShouldRefuseTheStartNamingTheSwitch_WhenAFailClosedJudgeMeetsNoDecision()
+    {
+        // Arrange
+        var settings = Settings(FailClosedJudge);
+
+        // Act
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(
+            settings, new RunnerMountPlan(), configureServices: (_, services) => services.AddSingleton(Orkeon.Application.Crew.Execution.DecisionCircuit.Off)));
+
+        // Assert
+        Assert.Contains("Orkeon:Guardian:Llm:Enabled is true with FailMode Closed but the decision circuit is off: --no-decision", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public void ShouldRefuseTheStartNamingTheSettings_WhenAFailClosedJudgeMeetsDecisionDisabled()
+    {
+        // Arrange
+        var settings = Settings(FailClosedJudge);
+
+        // Act
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(settings, new RunnerMountPlan()));
+
+        // Assert
+        Assert.Contains("Orkeon:Guardian:Llm:Enabled is true with FailMode Closed but the decision circuit is off: Orkeon:Decision:Enabled=false", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public void ShouldStart_WhenAFailOpenJudgeMeetsDecisionDisabled()
+    {
+        // Arrange
+        var settings = Settings(FailClosedJudge.Replace("\"Closed\"", "\"Open\"", StringComparison.Ordinal));
+
+        // Act
+        using var host = RunnerHost.Build(settings, new RunnerMountPlan());
+
+        // Assert
+        Assert.NotNull(host);
+    }
 }

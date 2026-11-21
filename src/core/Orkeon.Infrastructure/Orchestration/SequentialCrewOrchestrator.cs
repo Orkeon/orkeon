@@ -129,6 +129,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     }
 
     /// <summary>
+    /// The circuit of this orchestrator's run scope when it is not the container's (<c>DecisionCircuitOverride</c>,
+    /// #431), entered for each run (<c>DecisionCircuitScope</c>); null leaves the run on the container's.
+    /// </summary>
+    internal Orkeon.Application.Crew.Execution.DecisionCircuit? RunScopeCircuit { get; set; }
+
+    /// <summary>
     /// Runs the crew and returns its output. Never throws: a failed run — a task that did not
     /// succeed, an exception, a cancellation — is a <see cref="CrewOutput"/> whose
     /// <see cref="CrewOutput.Succeeded"/> is false and whose <see cref="CrewOutput.Error"/> says why.
@@ -487,6 +493,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         // it — the planner, the manager, an agent, a tool. The narrower scopes
         // opened below say what the work was; this one says whose run it is.
         using var usageScope = Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(crewId: crew.Id.ToString());
+        // The run scope's circuit (#431), when it is not the container's: every part of the run - the planner,
+        // the manager, an agent, a tool - asks the decision model through it, the services built once per host
+        // included.
+        using var circuitScope = Orkeon.Application.Crew.Execution.DecisionCircuitScope.Begin(RunScopeCircuit);
 
         var ended = false;
         try

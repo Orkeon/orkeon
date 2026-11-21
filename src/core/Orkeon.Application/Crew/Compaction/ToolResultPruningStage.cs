@@ -98,7 +98,7 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
         if (pressure.EstimatedTokens < threshold)
             return false;
 
-        var circuit = _scopeCircuit is { Enabled: false } ? _scopeCircuit : DecisionCircuit.Of(_services);
+        var circuit = DecisionCircuit.Of(_services, _scopeCircuit);
         var model = circuit.Enabled ? _services.GetService<IDecisionModel>() : null;
         if (model is null)
         {

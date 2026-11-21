@@ -316,4 +316,37 @@ public sealed class AgentSkillsResolverTests
         Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
         Assert.Contains(Library, resolution.Notice.Reason, StringComparison.Ordinal);
     }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public async System.Threading.Tasks.Task ShouldMakeNoDecisionModelCall_WhenTheRunScopesCircuitIsOffAndTheContainersIsOn()
+    {
+        // Arrange
+        AddLibrary(2);
+        var resolver = Resolver(DecisionCircuit.On);
+
+        // Act
+        var resolution = await resolver.ResolveAsync(
+            Agent(Auto()), "t1", Request, DecisionCircuit.Off, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_model.Requests);
+        Assert.Equal(DecisionCircuit.Off.OffReason, resolution!.Notice.Reason);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public async System.Threading.Tasks.Task ShouldMakeNoDecisionModelCall_WhenTheRunInProgressIsOffAndTheContainersIsOn()
+    {
+        // Arrange
+        AddLibrary(2);
+        var resolver = Resolver(DecisionCircuit.On);
+        using var run = DecisionCircuitScope.Begin(DecisionCircuit.Off);
+
+        // Act
+        await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_model.Requests);
+    }
 }

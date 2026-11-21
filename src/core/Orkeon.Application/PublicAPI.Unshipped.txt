@@ -8,6 +8,11 @@ Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings = 1 -> Orkeon.Ap
 Orkeon.Application.Crew.Execution.DecisionCircuitCause.Switch = 0 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
 static Orkeon.Application.Crew.Execution.DecisionCircuit.Of(System.IServiceProvider! services) -> Orkeon.Application.Crew.Execution.DecisionCircuit!
 static Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause cause) -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+static Orkeon.Application.Crew.Execution.DecisionCircuit.Of(System.IServiceProvider! services, Orkeon.Application.Crew.Execution.DecisionCircuit? scopeCircuit) -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+static Orkeon.Application.Crew.Execution.DecisionCircuit.OfHost(System.IServiceProvider! services) -> Orkeon.Application.Crew.Execution.DecisionCircuit!
+Orkeon.Application.Crew.Execution.DecisionCircuitScope
+static Orkeon.Application.Crew.Execution.DecisionCircuitScope.Begin(Orkeon.Application.Crew.Execution.DecisionCircuit? circuit) -> System.IDisposable!
+static Orkeon.Application.Crew.Execution.DecisionCircuitScope.Current.get -> Orkeon.Application.Crew.Execution.DecisionCircuit?
 Orkeon.Application.Crew.Execution.DecisionTaskRunner.Circuit.get -> Orkeon.Application.Crew.Execution.DecisionCircuit!
 Orkeon.Application.Crew.Execution.DecisionUnavailableException
 Orkeon.Application.Crew.Execution.DecisionUnavailableException.Cause.get -> Orkeon.Application.Crew.Execution.DecisionCircuitCause?

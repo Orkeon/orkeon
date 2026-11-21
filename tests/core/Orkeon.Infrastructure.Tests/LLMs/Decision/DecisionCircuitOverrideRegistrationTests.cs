@@ -46,4 +46,34 @@ public class DecisionCircuitOverrideRegistrationTests
 
         Assert.Same(provider.GetRequiredService<DecisionTaskRunner>(), dependencies.DecisionRunner);
     }
+
+    [Fact]
+    public void A_scope_whose_override_is_on_leaves_the_runner_off_when_the_host_is_off()
+    {
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<IConfiguration>(new ConfigurationBuilder().Build())
+            .AddSingleton<IDecisionModel>(new FakeDecisionModel());
+        services.AddOrkeonInfrastructure();
+        services.AddSingleton(DecisionCircuit.Off);
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        scope.ServiceProvider.GetRequiredService<DecisionCircuitOverride>().Circuit = DecisionCircuit.On;
+
+        var dependencies = scope.ServiceProvider.GetRequiredService<CrewStrategyDependencies>();
+
+        Assert.False(dependencies.DecisionRunner!.Circuit.Enabled);
+    }
+
+    [Fact]
+    public void A_scope_whose_override_is_off_gives_the_crew_orchestrator_the_circuit_it_enters_for_the_run()
+    {
+        using var provider = Provider();
+        using var scope = provider.CreateScope();
+        scope.ServiceProvider.GetRequiredService<DecisionCircuitOverride>().Circuit = DecisionCircuit.OffBy(DecisionCircuitCause.Switch);
+
+        var orchestrator = scope.ServiceProvider.GetRequiredService<Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator>();
+
+        Assert.Equal(DecisionCircuit.OffBy(DecisionCircuitCause.Switch), orchestrator.RunScopeCircuit);
+    }
 }

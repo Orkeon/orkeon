@@ -1300,8 +1300,8 @@ delegation phases of every tool call. On by default, registered by `AddOrkeonInf
 The `Llm` sub-section adds an LLM judge, off by default: the decision model judges the input and the
 output of a task (`Phases`), a risk at or over `BlockThreshold` blocks, and when the model cannot answer
 `FailMode` decides: `Closed` (default) refuses, `Open` lets the text in; both audit
-`guardian.judge.unavailable`. While the output phase is guarded a task's streaming waits for the judgement. It needs a decision model (`AddOrkeonDecisionProvider`); enabled without
-one, the host refuses to start.
+`guardian.judge.unavailable`. While the output phase is guarded a task's streaming waits for the judgement. It needs a decision model (`AddOrkeonDecisionProvider`); enabled with
+`FailMode: Closed` and without one, the host refuses to start.
 The judge follows the decision circuit (`--no-decision`, `Orkeon:Decision:Enabled=false`, no provider): off,
 `FailMode: Closed` refuses to start naming the cause, and `Open` leaves the judge out with one warning
 ([Decision models](../architecture/decision-models.md#every-consumer-follows-the-circuit)).

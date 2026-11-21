@@ -38,3 +38,4 @@ Orkeon.Infrastructure.Configuration.CompactionYamlConfig.Prune.get -> bool?
 Orkeon.Infrastructure.Configuration.CompactionYamlConfig.Prune.set -> void
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.Skills.get -> object?
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.Skills.set -> void
+static Orkeon.Infrastructure.Decision.GuardianLlmOptions.CircuitRefusal(string! offReason) -> string!

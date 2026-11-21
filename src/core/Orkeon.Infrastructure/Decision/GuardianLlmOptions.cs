@@ -56,6 +56,17 @@ public sealed class GuardianLlmOptions
     /// <summary>Gets or sets the characters of a text the judge reads in one call. Under <c>Closed</c> a longer text is judged whole, chunk by chunk (any chunk that blocks blocks), up to 32 chunks, and a text beyond that is refused; under <c>Open</c> it is judged on its first and last half of that budget, what lies between is not judged, and the cut is audited.</summary>
     public int MaxContentChars { get; set; } = 8000;
 
+    /// <summary>
+    /// The refusal of a fail-closed judge the decision circuit leaves unable to judge (#433), one sentence that
+    /// names the cause: what the host start, <c>--validate</c> and the guardian pipeline say alike.
+    /// </summary>
+    /// <param name="offReason">Why the circuit is off, as <c>DecisionCircuit.OffReason</c> says it.</param>
+    /// <returns>The refusal.</returns>
+    public static string CircuitRefusal(string offReason) =>
+        $"{SectionName}:Enabled is true with FailMode Closed but {offReason}: " +
+        "a fail-closed judge cannot judge. Turn the circuit on (a decision provider, Orkeon:Decision:Enabled, no --no-decision), " +
+        $"set {SectionName}:FailMode to Open, or turn the LLM judge off.";
+
     /// <summary>Whether the judge runs in <paramref name="phase"/>.</summary>
     /// <param name="phase">The guard phase.</param>
     /// <returns>True for <c>Input</c> or <c>Output</c> when it is listed, or when the list is empty.</returns>
