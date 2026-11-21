@@ -147,7 +147,9 @@ internal class LlmProfileShape
     /// window of the model, else <c>Orkeon:Cli:Session:ContextWindowTokens</c> (200000 by default),
     /// with one warning per profile naming the figure assumed: set it for a smaller model the table does
     /// not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact
-    /// only once that figure fills. Never sent to the provider.
+    /// only once that figure fills. It holds for the model of this section alone: an agent whose
+    /// <c>llm.model</c> names another model reads that model's documented window, else the assumed one.
+    /// Never sent to the provider.
     /// </summary>
     public int? ContextWindowTokens { get; set; }
 
