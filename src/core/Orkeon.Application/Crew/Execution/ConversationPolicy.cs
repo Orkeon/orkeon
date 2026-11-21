@@ -188,18 +188,19 @@ internal static class ConversationPolicy
 
     /// <summary>
     /// Trims conversation history to keep it bounded while preserving system and user messages.
-    /// Preserves the first two messages (system + user task), injects a summary notice,
-    /// and keeps the most recent messages within the budget. Returns whether it trimmed.
+    /// Preserves the first two messages (system + user task) and a compaction's summary right after them (#432),
+    /// injects a summary notice, and keeps the most recent messages within the budget. Returns whether it trimmed.
     /// </summary>
     internal static bool TrimConversationHistory(List<ChatMessage> messages, int maxMessages)
     {
         if (messages.Count <= maxMessages) return false;
 
-        // Preserve: [0] system, [1] user task, then the N most recent messages
+        // Preserve: [0] system, [1] user task, [2] a compaction's summary when one is there (#432), then the N most recent messages
         var systemMsg = messages[0];
         var userMsg = messages[1];
+        var compactionSummary = Compaction.CompactionPrompts.IsSummary(messages[2].Text) ? messages[2] : null;
         var trimmedCount = messages.Count - maxMessages;
-        var keepCount = maxMessages - 3; // 3 = system + user + summary notice
+        var keepCount = maxMessages - 3 - (compactionSummary is null ? 0 : 1); // 3 = system + user + summary notice
         var recentMessages = messages.Skip(messages.Count - keepCount).ToList();
 
         // Skip leading tool-role messages whose assistant (tool_use) was trimmed away.
@@ -214,6 +215,8 @@ internal static class ConversationPolicy
         messages.Clear();
         messages.Add(systemMsg);
         messages.Add(userMsg);
+        if (compactionSummary is not null)
+            messages.Add(compactionSummary);
         messages.Add(summaryMsg);
         messages.AddRange(recentMessages);
         return true;
@@ -229,8 +232,9 @@ internal static class ConversationPolicy
 
         var systemMsg = messages[0];
         var userMsg = messages[1];
+        var compactionSummary = Compaction.CompactionPrompts.IsSummary(messages[2].Content) ? messages[2] : null;
         var trimmedCount = messages.Count - maxMessages;
-        var keepCount = maxMessages - 3;
+        var keepCount = maxMessages - 3 - (compactionSummary is null ? 0 : 1);
         var recentMessages = messages.Skip(messages.Count - keepCount).ToList();
 
         // Skip leading tool-role messages whose assistant (tool_use) was trimmed away.
@@ -245,6 +249,8 @@ internal static class ConversationPolicy
         messages.Clear();
         messages.Add(systemMsg);
         messages.Add(userMsg);
+        if (compactionSummary is not null)
+            messages.Add(compactionSummary);
         messages.Add(summaryMsg);
         messages.AddRange(recentMessages);
         return true;

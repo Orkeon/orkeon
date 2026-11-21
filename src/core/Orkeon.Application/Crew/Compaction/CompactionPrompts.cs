@@ -16,6 +16,10 @@ internal static class CompactionPrompts
         $"[Context compacted: {replacedMessages} earlier messages replaced by this summary. The original task " +
         $"and the most recent turns follow unchanged.]\n{summary}";
 
+    /// <summary>Whether <paramref name="text"/> is a summary <see cref="SummaryMessage"/> wrote.</summary>
+    internal static bool IsSummary(string? text) =>
+        text?.StartsWith("[Context compacted: ", StringComparison.Ordinal) == true;
+
     /// <summary>The user message of the summary call: the agent's task, then the transcript to condense.</summary>
     internal static string Transcript(string task, string transcript) =>
         $"The agent's task, which stays in its conversation:\n{task}\n\nConversation to summarise:\n\n{transcript}";
