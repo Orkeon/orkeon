@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Security;
 using Orkeon.Hosting.Tests.Doubles;
 using Orkeon.Hosting.ToolBridge;
@@ -179,5 +180,117 @@ public sealed class ToolBridgeServerTests
 
         // Assert
         Assert.Contains("Windows only", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("""{"call_id":"c1","tool":null,"arguments":{}}""")]
+    [InlineData("""{"call_id":"c1","tool":"firefox","arguments":{},"mounts":[null]}""")]
+    [InlineData("""{"call_id":"c1","tool":"firefox","arguments":{},"mounts":[{"path":null}]}""")]
+    [InlineData("""{"call_id":"c1","tool":"firefox","arguments":{},"files":[{"path":null,"content":""}]}""")]
+    public async Task ShouldAnswerBadRequest_WhenTheCallHoldsANullWhereAValueIsRequired(string json)
+    {
+        // Arrange
+        var (server, address) = await BridgeLoopback.StartServerAsync([new FakeBridgeTool("firefox")], ["*"]);
+        await using var _ = server;
+        using var client = Client(address);
+        using var body = Json(json);
+
+        // Act
+        using var response = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, body, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ShouldAnswerUnsupportedMediaType_WhenAPostIsNotJson()
+    {
+        // Arrange
+        var (server, address) = await BridgeLoopback.StartServerAsync([new FakeBridgeTool("firefox")], ["*"]);
+        await using var _ = server;
+        using var client = Client(address);
+        using var body = new StringContent("""{"call_id":"c1","tool":"firefox","arguments":{}}""", Encoding.UTF8, "text/plain");
+
+        // Act
+        using var response = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, body, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ShouldAnswerConflict_WhenACallIdIsAlreadyInFlight()
+    {
+        // Arrange
+        var tool = new FakeBridgeTool("firefox") { WaitsForCancellation = true };
+        var (server, address) = await BridgeLoopback.StartServerAsync([tool], ["*"]);
+        await using var _ = server;
+        using var client = Client(address);
+        const string Call = """{"call_id":"c1","tool":"firefox","arguments":{}}""";
+        var first = Task.Run(async () =>
+        {
+            using var firstBody = Json(Call);
+            using var answered = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, firstBody, TestContext.Current.CancellationToken);
+            return answered.StatusCode;
+        }, TestContext.Current.CancellationToken);
+        await tool.Started.Task.WaitAsync(TestContext.Current.CancellationToken);
+        using var secondBody = Json(Call);
+
+        // Act
+        using var second = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, secondBody, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+        using var cancel = Json("""{"call_id":"c1"}""");
+        using var cancelled = await client.PostAsync(ToolBridgeProtocol.CancelEndpoint, cancel, TestContext.Current.CancellationToken);
+        await first;
+    }
+
+    [Fact]
+    public async Task ShouldFailTheCall_WhenASentFileEscapesTheCallersMounts()
+    {
+        // Arrange
+        using var files = new BridgeFileSystem();
+        var tool = new FakeFileBridgeTool("firefox", files.Service);
+        var (server, address) = await BridgeLoopback.StartServerAsync([tool], ["*"], files: files);
+        await using var _ = server;
+        using var client = Client(address);
+        using var body = Json("""{"call_id":"c1","tool":"firefox","arguments":{},"mounts":[{"path":"/output","writable":true}],"files":[{"path":"/output/../etc/passwd","content":"AA=="}]}""");
+
+        // Act
+        using var response = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, body, TestContext.Current.CancellationToken);
+
+        // Assert
+        var answer = await response.Content.ReadFromJsonAsync<BridgeCallResponse>(ToolBridgeProtocol.JsonOptions, TestContext.Current.CancellationToken);
+        Assert.Equal((false, 0), (answer!.Success, tool.Calls.Count));
+    }
+
+    [Theory]
+    [InlineData("""{"call_id":"c1","tool":"firefox","arguments":{"action":"read","read_from":"/workspace/secret.txt"}}""")]
+    [InlineData("""{"call_id":"c1","tool":"firefox","arguments":{"action":"read","read_from":"/workspace/secret.txt"},"mounts":[{"path":"/output","writable":true}]}""")]
+    public async Task ShouldKeepTheBridgesOwnMountsOutOfReach_WhenACallOfAToolThatUsesFilesArrives(string json)
+    {
+        // Arrange
+        var folder = Directory.CreateTempSubdirectory("orkeon-bridge-boot-").FullName;
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(folder, "secret.txt"), "the bridge's own file", TestContext.Current.CancellationToken);
+            using var files = new BridgeFileSystem(new FileSystemMount(folder, "/workspace", FileAccessRights.ReadWrite));
+            var tool = new FakeFileBridgeTool("firefox", files.Service);
+            var (server, address) = await BridgeLoopback.StartServerAsync([tool], ["*"], files: files);
+            await using var _ = server;
+            using var client = Client(address);
+            using var body = Json(json);
+
+            // Act
+            using var response = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, body, TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Null(Assert.Single(tool.Read));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
     }
 }

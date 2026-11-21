@@ -2947,11 +2947,24 @@
       "description": "The tools never bridged, by name; a name here wins over `Allow`."
     },
     {
+      "path": "Orkeon:Tools:Bridge:HostHeader",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "string",
+      "description": "The `Host` header sent to the bridge, when it differs from the address's: a container of Docker Desktop reaches the bridge's loopback listener through `host.docker.internal`, while the listener answers only the host its prefix names. Unset, it is `127.0.0.1:<port>` for an address naming `host.docker.internal`, and the address's own otherwise."
+    },
+    {
       "path": "Orkeon:Tools:Bridge:MaxFileBytes",
       "section": "Orkeon:Tools:Bridge",
       "type": "integer",
       "default": 16777216,
       "description": "The largest total, in bytes, of the files of one call: those a call sends to the bridge, and those it brings back."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:MaxResponseBytes",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "integer",
+      "default": 33554432,
+      "description": "The largest answer, in bytes, this caller reads from the bridge; a larger one fails the call with its reason. The default leaves room for `MaxFileBytes` of files in base64 beside the result."
     },
     {
       "path": "Orkeon:Tools:Bridge:TokenEnvVar",

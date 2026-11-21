@@ -55,11 +55,12 @@ internal static class BridgeLoopback
 
     /// <summary>Connects a link of <paramref name="options"/> over <paramref name="registry"/>.</summary>
     public static async Task<ToolBridgeLink> ConnectAsync(
-        ToolRegistry registry, ToolBridgeClientOptions options, string? token = Token, IFileSystemService? fileSystem = null, TimeProvider? time = null)
+        ToolRegistry registry, ToolBridgeClientOptions options, string? token = Token, IFileSystemService? fileSystem = null, TimeProvider? time = null,
+        Microsoft.Extensions.Logging.ILogger? operatorLogger = null)
     {
         var link = new ToolBridgeLink(
             options, fileSystem ?? new FakeFileSystemService(), name => name == ToolBridgeProtocol.DefaultTokenEnvVar ? token : null, time);
-        await link.ConnectAsync(registry, null, null, NullLogger.Instance, NullLogger.Instance, TestContext.Current.CancellationToken);
+        await link.ConnectAsync(registry, null, null, NullLogger.Instance, operatorLogger ?? NullLogger.Instance, TestContext.Current.CancellationToken);
         return link;
     }
 }
@@ -73,8 +74,11 @@ internal sealed class BridgeFileSystem : IDisposable
     /// <summary>The ambient scope the service reads.</summary>
     public AsyncLocalFileSystemScope Scope { get; } = new();
 
-    /// <summary>The bridge's own mounts: none.</summary>
-    public FileSystemRegistry Boot { get; } = new([]);
+    /// <summary>Builds the file system over <paramref name="boot"/>, the bridge's own mounts (none by default).</summary>
+    public BridgeFileSystem(params FileSystemMount[] boot) => Boot = new FileSystemRegistry([.. boot]);
+
+    /// <summary>The bridge's own mounts.</summary>
+    public FileSystemRegistry Boot { get; }
 
     /// <summary>The service the bridge's tools write and read through.</summary>
     public FileSystemService Service => _service ??= new FileSystemService(

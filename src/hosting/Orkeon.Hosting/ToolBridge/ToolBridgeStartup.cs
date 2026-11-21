@@ -117,7 +117,11 @@ internal sealed partial class ToolBridgeLink : IDisposable
         foreach (var warning in selection.Warnings)
             RunnerOperatorLog.Warn(operatorLogger, warning);
 
-        var client = new ToolBridgeClient(new Uri(_options.Address!), token, _options.ConnectTimeout, _timeProvider);
+        if (_options.IsDockerHostOverHttp)
+            RunnerOperatorLog.Warn(operatorLogger,
+                $"{Section}:Address names {ToolBridgeAddress.DockerHost} over http: the token and every call travel in clear over the Docker host's virtual network.");
+        var client = new ToolBridgeClient(new Uri(_options.Address!), token, _options.ConnectTimeout, _timeProvider,
+            _options.EffectiveHostHeader(), _options.MaxResponseBytes);
         BridgeToolListResponse served;
         try
         {
@@ -129,7 +133,13 @@ internal sealed partial class ToolBridgeLink : IDisposable
             throw Refusal(ex.Message);
         }
 
-        if (served.HeartbeatWindowMs is > 0 and var window)
+        if (ListProblem(served, client.Address) is { } listProblem)
+        {
+            client.Dispose();
+            throw Refusal(listProblem);
+        }
+
+        if (served.HeartbeatWindowMs is { } window)
             client.HeartbeatWindow = TimeSpan.FromMilliseconds(window);
         var hashes = served.Tools.ToDictionary(t => t.Name, t => t.ContractHash, StringComparer.OrdinalIgnoreCase);
         var named = new HashSet<string>(_options.Allow.Where(a => a != ToolBridgeSelection.All), StringComparer.OrdinalIgnoreCase);
@@ -158,7 +168,7 @@ internal sealed partial class ToolBridgeLink : IDisposable
 
         foreach (var tool in bridged)
         {
-            var proxy = new ToolBridgeProxy(tool, client, _fileSystem, _options.MaxFileBytes);
+            var proxy = new ToolBridgeProxy(tool, client, _fileSystem, _options.MaxFileBytes, operatorLogger);
             var replacement = decorator?.Decorate(proxy) ?? proxy;
             if (!await registry.ReplaceToolAsync(tool, replacement, cancellationToken).ConfigureAwait(false))
             {
@@ -204,6 +214,29 @@ internal sealed partial class ToolBridgeLink : IDisposable
                 return path;
         }
 
+        return null;
+    }
+
+    /// <summary>
+    /// What the bridge's list of tools cannot be taken for: an entry without a name or a hash, a name listed twice, a
+    /// heartbeat window outside <see cref="ToolBridgeServerOptions.MinHeartbeatWindow"/> and
+    /// <see cref="ToolBridgeServerOptions.MaxHeartbeatWindow"/>; null when it is sound.
+    /// </summary>
+    /// <param name="served">The bridge's answer.</param>
+    /// <param name="address">The bridge's address, for the message.</param>
+    /// <returns>One sentence, or null.</returns>
+    internal static string? ListProblem(BridgeToolListResponse served, Uri address)
+    {
+        ArgumentNullException.ThrowIfNull(served);
+        if (served.Tools is null || served.Tools.Any(t => t is null || string.IsNullOrWhiteSpace(t.Name) || string.IsNullOrWhiteSpace(t.ContractHash)))
+            return $"the tool bridge at {address} sent a list of tools with an entry that names no tool or no contract hash.";
+        var twice = served.Tools.GroupBy(t => t.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        if (twice.Count > 0)
+            return $"the tool bridge at {address} lists {string.Join(", ", twice.Select(n => $"'{n}'"))} more than once.";
+        var min = ToolBridgeServerOptions.MinHeartbeatWindow;
+        var max = ToolBridgeServerOptions.MaxHeartbeatWindow;
+        if (served.HeartbeatWindowMs is { } window && (window < (long)min.TotalMilliseconds || window > (long)max.TotalMilliseconds))
+            return $"the tool bridge at {address} gives a heartbeat window of {window} ms, outside {min} to {max}.";
         return null;
     }
 

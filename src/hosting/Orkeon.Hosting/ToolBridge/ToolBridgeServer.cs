@@ -163,6 +163,7 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         }
 
         _listener = listener;
+        ToolBridgeScratch.HoldParent();
         _runs = new ToolBridgeRuns(_options.HeartbeatWindow, _time, _logger);
         _loop = ListenAsync(listener);
         LogServing(_logger, _options.Prefix, ServedTools.Count == 0 ? "(none)" : string.Join(", ", ServedTools));
@@ -185,7 +186,7 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         if (_runs is { } runs)
             await runs.DisposeAsync().ConfigureAwait(false);
         _runs = null;
-        ToolBridgeScratch.RemoveParent();
+        ToolBridgeScratch.ReleaseParent();
         // Abort, never Close after Stop: Close binds the port again for an instant on Linux and macOS.
         listener.Abort();
         _listener = null;
@@ -307,8 +308,13 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
 
     private async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)> CallAsync(byte[] body)
     {
-        if (Parse<BridgeCallRequest>(body) is not { } call || string.IsNullOrWhiteSpace(call.CallId) || call.Arguments.ValueKind != JsonValueKind.Object)
+        if (Parse<BridgeCallRequest>(body) is not { } call || string.IsNullOrWhiteSpace(call.CallId) || string.IsNullOrWhiteSpace(call.Tool)
+            || call.Arguments.ValueKind != JsonValueKind.Object)
             return Refuse(HttpStatusCode.BadRequest, "the body of a call names a call_id, a tool and an object of arguments.");
+        if (call.Mounts is { } mounts && mounts.Any(m => m is null || string.IsNullOrWhiteSpace(m.Path)))
+            return Refuse(HttpStatusCode.BadRequest, "each mount of a call names its path.");
+        if (call.Files is { } files && files.Any(f => f is null || string.IsNullOrWhiteSpace(f.Path)))
+            return Refuse(HttpStatusCode.BadRequest, "each file of a call names its path.");
         if (!_served.TryGetValue(call.Tool, out var served))
             return Refuse(HttpStatusCode.NotFound, $"the tool bridge serves no tool '{call.Tool}'.");
 
@@ -332,8 +338,9 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
     }
 
     /// <summary>
-    /// Runs the call in the bridge's scope of the caller's run, over the scratch of the caller's mounts when it carries
-    /// them, and answers with the tool's raw response and the files it wrote.
+    /// Runs the call in the bridge's scope of the caller's run, over a scratch presenting the caller's mounts (none when
+    /// the call names none), and answers with the tool's raw response and the files it wrote. Only a tool that acts on the
+    /// workspace, which the settings named, runs over the bridge's own mounts, and only for a call that sends none.
     /// </summary>
     private async System.Threading.Tasks.Task<BridgeCallResponse> RunAsync(IBaseTool tool, BridgeCallRequest call, CancellationToken cancellationToken)
     {
@@ -342,7 +349,8 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         var run = call is { CallerId: { Length: > 0 } caller, RunId: { Length: > 0 } runId } && _runs is { } runs
             ? runs.ScopeOf(caller, runId)
             : null;
-        if (call.Mounts is not null && (_fileScope is null || _bootMounts is null))
+        var needsScratch = call.Mounts is not null || (tool.UsesFileSystem && !ToolContracts.ActsOnWorkspace(tool));
+        if (needsScratch && (_fileScope is null || _bootMounts is null))
             return Failure("the tool bridge has no file system to present the caller's mounts on.");
         if (call.Files is { } sent && sent.Sum(f => (long)f.Content.Length) > _options.MaxFileBytes)
             return Failure($"the files the call sends exceed {ToolBridgeServerOptions.SectionName}:MaxFileBytes ({ToolBridgeProtocol.Describe(_options.MaxFileBytes)}).");
@@ -351,7 +359,7 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         ToolBridgeScratch? scratch = null;
         try
         {
-            if (call.Mounts is not null)
+            if (needsScratch)
                 scratch = ToolBridgeScratch.Enter(call, _fileScope!, _bootMounts!);
             ProtocolToolCallResponse response;
             try

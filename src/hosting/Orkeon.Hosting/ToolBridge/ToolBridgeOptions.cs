@@ -31,6 +31,38 @@ internal sealed class ToolBridgeClientOptions
     /// </summary>
     public long MaxFileBytes { get; set; } = ToolBridgeServerOptions.DefaultMaxFileBytes;
 
+    /// <summary>
+    /// The largest answer, in bytes, this caller reads from the bridge; a larger one fails the call with its reason. The
+    /// default leaves room for <see cref="MaxFileBytes"/> of files in base64 beside the result.
+    /// </summary>
+    public long MaxResponseBytes { get; set; } = DefaultMaxResponseBytes;
+
+    /// <summary>
+    /// The <c>Host</c> header sent to the bridge, when it differs from the address's: a container of Docker Desktop
+    /// reaches the bridge's loopback listener through <c>host.docker.internal</c>, while the listener answers only the
+    /// host its prefix names. Unset, it is <c>127.0.0.1:&lt;port&gt;</c> for an address naming
+    /// <c>host.docker.internal</c>, and the address's own otherwise.
+    /// </summary>
+    public string? HostHeader { get; set; }
+
+    /// <summary>The default largest answer read from the bridge: 32 MiB.</summary>
+    public const long DefaultMaxResponseBytes = 32L * 1024 * 1024;
+
+    /// <summary>The <c>Host</c> header the client sends: <see cref="HostHeader"/>, or the default for Docker Desktop.</summary>
+    /// <returns>The header, or null for the address's own.</returns>
+    public string? EffectiveHostHeader()
+    {
+        if (!string.IsNullOrWhiteSpace(HostHeader))
+            return HostHeader.Trim();
+        return Uri.TryCreate(Address, UriKind.Absolute, out var uri) && ToolBridgeAddress.IsDockerHost(uri)
+            ? "127.0.0.1:" + uri.Port.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : null;
+    }
+
+    /// <summary>Whether the address reaches the bridge over http through Docker Desktop's name for the host.</summary>
+    public bool IsDockerHostOverHttp =>
+        Uri.TryCreate(Address, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttp && ToolBridgeAddress.IsDockerHost(uri);
+
     /// <summary>Whether the caller bridges anything: an address and at least one tool allowed.</summary>
     public bool IsEnabled => !string.IsNullOrWhiteSpace(Address) && Allow.Count > 0;
 
@@ -38,14 +70,18 @@ internal sealed class ToolBridgeClientOptions
     /// <returns>One sentence per problem; none when they are sound.</returns>
     public IEnumerable<string> Problems()
     {
-        if (!string.IsNullOrWhiteSpace(Address) && ToolBridgeAddress.Problem(Address, $"{SectionName}:Address") is { } address)
+        if (!string.IsNullOrWhiteSpace(Address) && ToolBridgeAddress.Problem(Address, $"{SectionName}:Address", allowDockerHost: true) is { } address)
             yield return address;
+        if (!string.IsNullOrWhiteSpace(HostHeader) && !ToolBridgeAddress.IsAuthority(HostHeader.Trim()))
+            yield return $"{SectionName}:HostHeader '{HostHeader}' is not a host with an optional port (127.0.0.1:7410).";
         if (string.IsNullOrWhiteSpace(TokenEnvVar))
             yield return $"{SectionName}:TokenEnvVar names no environment variable.";
         if (ConnectTimeout <= TimeSpan.Zero)
             yield return $"{SectionName}:ConnectTimeout must be positive.";
         if (MaxFileBytes <= 0)
             yield return $"{SectionName}:MaxFileBytes must be positive.";
+        if (MaxResponseBytes <= 0 || MaxResponseBytes > int.MaxValue)
+            yield return $"{SectionName}:MaxResponseBytes must be positive and at most {int.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture)}.";
         foreach (var problem in ToolBridgeSelection.SyntaxProblems(SectionName, Allow, Deny))
             yield return problem;
     }
@@ -95,6 +131,12 @@ internal sealed class ToolBridgeServerOptions
     /// </summary>
     public TimeSpan HeartbeatWindow { get; set; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>The shortest heartbeat window either side accepts.</summary>
+    public static readonly TimeSpan MinHeartbeatWindow = TimeSpan.FromSeconds(1);
+
+    /// <summary>The longest heartbeat window either side accepts.</summary>
+    public static readonly TimeSpan MaxHeartbeatWindow = TimeSpan.FromMinutes(10);
+
     /// <summary>The problems of these options, judged at start.</summary>
     /// <returns>One sentence per problem; none when they are sound.</returns>
     public IEnumerable<string> Problems()
@@ -107,28 +149,35 @@ internal sealed class ToolBridgeServerOptions
             yield return $"{SectionName}:MaxRequestBytes must be positive.";
         if (MaxFileBytes <= 0)
             yield return $"{SectionName}:MaxFileBytes must be positive.";
-        if (HeartbeatWindow <= TimeSpan.Zero)
-            yield return $"{SectionName}:HeartbeatWindow must be positive.";
+        if (HeartbeatWindow < MinHeartbeatWindow || HeartbeatWindow > MaxHeartbeatWindow)
+            yield return $"{SectionName}:HeartbeatWindow must lie between {MinHeartbeatWindow} and {MaxHeartbeatWindow}.";
         foreach (var problem in ToolBridgeSelection.SyntaxProblems(SectionName, Allow, Deny))
             yield return problem;
     }
 }
 
-/// <summary>What makes an address of the bridge acceptable: absolute, http or https, a final slash, https off loopback.</summary>
+/// <summary>
+/// What makes an address of the bridge acceptable: absolute, http or https, a final slash, https off loopback; the
+/// caller's address may also name Docker Desktop's <c>host.docker.internal</c> over http.
+/// </summary>
 internal static class ToolBridgeAddress
 {
+    /// <summary>The name Docker Desktop gives the host machine inside a container.</summary>
+    public const string DockerHost = "host.docker.internal";
+
     /// <summary>The problem of <paramref name="value"/>, or null when it is acceptable.</summary>
     /// <param name="value">The address or prefix.</param>
     /// <param name="key">The settings key it was read from, for the message.</param>
+    /// <param name="allowDockerHost">Whether http may name <see cref="DockerHost"/> (the caller's address only).</param>
     /// <returns>One sentence, or null.</returns>
-    public static string? Problem(string? value, string key)
+    public static string? Problem(string? value, string key, bool allowDockerHost = false)
     {
         if (string.IsNullOrWhiteSpace(value) || !Uri.TryCreate(value, UriKind.Absolute, out var uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
             return $"{key} '{value}' is not an absolute http or https address.";
         if (!value.EndsWith('/'))
             return $"{key} '{value}' must end with '/'.";
-        if (uri.Scheme != Uri.UriSchemeHttps && !IsLoopback(uri))
+        if (uri.Scheme != Uri.UriSchemeHttps && !IsLoopback(uri) && !(allowDockerHost && IsDockerHost(uri)))
             return $"{key} '{value}' names a host other than loopback over http: such an address requires https.";
         return null;
     }
@@ -140,5 +189,26 @@ internal static class ToolBridgeAddress
     {
         ArgumentNullException.ThrowIfNull(uri);
         return uri.IsLoopback;
+    }
+
+    /// <summary>Whether <paramref name="uri"/> names <see cref="DockerHost"/>.</summary>
+    /// <param name="uri">The address.</param>
+    /// <returns>True for Docker Desktop's name of the host, in any case.</returns>
+    public static bool IsDockerHost(Uri uri)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        return string.Equals(uri.IdnHost, DockerHost, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Whether <paramref name="value"/> is a host with an optional port, and nothing else.</summary>
+    /// <param name="value">The value of a <c>Host</c> header.</param>
+    /// <returns>True for <c>127.0.0.1:7410</c>, <c>localhost</c>, <c>[::1]:7410</c>.</returns>
+    public static bool IsAuthority(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        if (value.Length == 0 || value.Any(c => char.IsWhiteSpace(c) || char.IsControl(c) || c is '/' or '@' or '?' or '#' or '\\'))
+            return false;
+        return Uri.TryCreate("http://" + value + "/", UriKind.Absolute, out var uri)
+            && uri.UserInfo.Length == 0 && uri.PathAndQuery == "/" && uri.Host.Length > 0;
     }
 }

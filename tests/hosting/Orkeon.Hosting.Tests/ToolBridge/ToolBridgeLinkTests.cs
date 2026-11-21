@@ -1,7 +1,10 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Tools;
 using Orkeon.Hosting.Tests.Doubles;
 using Orkeon.Hosting.ToolBridge;
 using Orkeon.Infrastructure.Tools;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.Network;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 using ToolCallResponse = Orkeon.Domain.Tools.Protocol.ToolCallResponse;
@@ -192,5 +195,135 @@ public sealed class ToolBridgeLinkTests
         var response = await call.WaitAsync(TestContext.Current.CancellationToken);
         Assert.Equal(true, response.Metadata!["cancelled"]);
         await remote.Cancelled.Task.WaitAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static string ListOf(string tools, string? window = null) =>
+        "{\"tools\":" + tools + (window is null ? "" : ",\"heartbeat_window_ms\":" + window) + "}";
+
+    private static string Served(IBaseTool tool) =>
+        "{\"name\":\"" + tool.Name + "\",\"contract_hash\":\"" + ToolBridgeContract.HashOf(tool) + "\"}";
+
+    public static TheoryData<string, string> HostileLists() => new()
+    {
+        { "twice", "more than once" },
+        { "nameless", "names no tool" },
+        { "window:1", "heartbeat window of 1 ms" },
+        { "window:9223372036854775807", "heartbeat window of 9223372036854775807 ms" },
+        { "window:0", "heartbeat window of 0 ms" },
+    };
+
+    [Theory]
+    [MemberData(nameof(HostileLists))]
+    public async Task ShouldRefuseTheStartWithAReason_WhenTheBridgeSendsAListItCannotTakeFor(string kind, string expected)
+    {
+        // Arrange
+        var local = new FakeBridgeTool("firefox");
+        await using var bridge = new StubBridgeServer();
+        bridge.Bodies[ToolBridgeProtocol.ToolsEndpoint] = kind switch
+        {
+            "twice" => ListOf("[" + Served(local) + "," + Served(new FakeBridgeTool("FIREFOX")) + "]"),
+            "nameless" => ListOf("[{\"name\":null,\"contract_hash\":\"x\"}]"),
+            _ => ListOf("[" + Served(local) + "]", kind["window:".Length..]),
+        };
+        var registry = new ToolRegistry([local]);
+
+        // Act
+        var refusal = await Assert.ThrowsAsync<RunnerSettingsException>(
+            () => BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(bridge.Address, "firefox")));
+
+        // Assert
+        Assert.Contains(expected, refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldTruncateTheBridgedResultLocally_WhenTheBridgeSaysItIsAlreadyBounded()
+    {
+        // Arrange
+        var local = new FakeBridgeTool("firefox");
+        await using var bridge = new StubBridgeServer();
+        bridge.Bodies[ToolBridgeProtocol.ToolsEndpoint] = ListOf("[" + Served(local) + "]");
+        bridge.Bodies[ToolBridgeProtocol.CallEndpoint] = """{"success":true,"result":"long","already_bounded":true}""";
+        var registry = new ToolRegistry([local]);
+        using var link = await BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(bridge.Address, "firefox"));
+        var bridged = await registry.GetToolByNameAsync("firefox", TestContext.Current.CancellationToken);
+
+        // Act
+        var response = await bridged!.CallAsync(Read("firefox"), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(("long", false), (response.Result, response.AlreadyBounded));
+    }
+
+    [Fact]
+    public async Task ShouldFailTheCallWithTheReason_WhenTheAnswerExceedsTheCallersResponseLimit()
+    {
+        // Arrange
+        var remote = new FakeBridgeTool("firefox") { Response = new ToolCallResponse(true, new string('r', 50_000), null) };
+        var (server, address) = await BridgeLoopback.StartServerAsync([remote], ["*"]);
+        await using var _ = server;
+        var registry = new ToolRegistry([new FakeBridgeTool("firefox")]);
+        var options = BridgeLoopback.ClientOptions(address, "firefox");
+        options.MaxResponseBytes = 4096;
+        using var link = await BridgeLoopback.ConnectAsync(registry, options);
+        var bridged = await registry.GetToolByNameAsync("firefox", TestContext.Current.CancellationToken);
+
+        // Act
+        var response = await bridged!.CallAsync(Read("firefox"), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.False(response.Success);
+        Assert.Contains("Orkeon:Tools:Bridge:MaxResponseBytes", response.Error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldBeAnsweredOnlyWithTheHostHeaderOfThePrefix_WhenTheAddressNamesTheBridgeUnderAnotherName(bool withHeader)
+    {
+        // Arrange
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "The test listener's prefix names localhost under Windows.");
+        var (server, address) = await BridgeLoopback.StartServerAsync([new FakeBridgeTool("firefox")], ["*"]);
+        await using var _ = server;
+        var registry = new ToolRegistry([new FakeBridgeTool("firefox")]);
+        var options = BridgeLoopback.ClientOptions(new Uri($"http://localhost:{address.Port}/"), "firefox");
+        options.HostHeader = withHeader ? $"127.0.0.1:{address.Port}" : null;
+
+        // Act
+        var connected = await Record.ExceptionAsync(async () => (await BridgeLoopback.ConnectAsync(registry, options)).Dispose());
+
+        // Assert
+        Assert.Equal(withHeader, connected is null);
+    }
+
+    [Fact]
+    public async Task ShouldWarnThatTheTokenTravelsInClear_WhenTheAddressNamesDockerDesktopsHostOverHttp()
+    {
+        // Arrange
+        var logger = new RecordingLogger();
+        var registry = new ToolRegistry([new FakeBridgeTool("firefox")]);
+        using var refusing = LoopbackPorts.Refusing();
+        var options = BridgeLoopback.ClientOptions(new Uri($"http://host.docker.internal:{refusing.Port}/"), "firefox");
+        options.ConnectTimeout = TimeSpan.FromSeconds(2);
+
+        // Act
+        await Record.ExceptionAsync(() => BridgeLoopback.ConnectAsync(registry, options, operatorLogger: logger));
+
+        // Assert
+        Assert.Single(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("in clear", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ShouldNameTheLocalSection_WhenTheSettingsConfigureABridgedTool()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Orkeon:Tools:Firefox:ExecutablePath"] = "/usr/bin/firefox" })
+            .Build();
+
+        // Act
+        var section = ToolBridgeLink.LocalSettingsOf(configuration, "firefox");
+
+        // Assert
+        Assert.Equal("Orkeon:Tools:Firefox", section);
     }
 }

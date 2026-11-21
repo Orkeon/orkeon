@@ -1,9 +1,11 @@
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Hosting.Tests.Doubles;
 using Orkeon.Hosting.ToolBridge;
 using Orkeon.Infrastructure.Tools;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 using ToolCallResponse = Orkeon.Domain.Tools.Protocol.ToolCallResponse;
@@ -26,11 +28,12 @@ public sealed class ToolBridgeFileTests : IDisposable
 
     public void Dispose() => _bridgeFiles.Dispose();
 
+    // A save is a call of the write class (the fake's action write is Edit), as firefox's screenshot is.
     private static ToolCallRequest Call(string name, object? value) =>
-        new("firefox", new Dictionary<string, object?> { ["action"] = "read", [name] = value });
+        new("firefox", new Dictionary<string, object?> { ["action"] = name == "save_to" ? "write" : "read", [name] = value });
 
     private async Task<(ToolBridgeServer Server, ToolBridgeLink Link, IBaseTool Bridged)> BridgeAsync(
-        FakeFileBridgeTool remote, long? callerMax = null, long? bridgeMax = null)
+        FakeFileBridgeTool remote, long? callerMax = null, long? bridgeMax = null, ILogger? operatorLogger = null)
     {
         var (server, address) = await BridgeLoopback.StartServerAsync([remote], ["*"], files: _bridgeFiles,
             configure: o => o.MaxFileBytes = bridgeMax ?? o.MaxFileBytes);
@@ -38,7 +41,7 @@ public sealed class ToolBridgeFileTests : IDisposable
         var options = BridgeLoopback.ClientOptions(address, "firefox");
         if (callerMax is { } max)
             options.MaxFileBytes = max;
-        var link = await BridgeLoopback.ConnectAsync(registry, options, fileSystem: _callerFiles);
+        var link = await BridgeLoopback.ConnectAsync(registry, options, fileSystem: _callerFiles, operatorLogger: operatorLogger);
         return (server, link, (await registry.GetToolByNameAsync("firefox", Ct))!);
     }
 
@@ -237,5 +240,119 @@ public sealed class ToolBridgeFileTests : IDisposable
 
         // Assert
         Assert.StartsWith(ToolBridgeScratch.Parent + Path.DirectorySeparatorChar, Assert.Single(remote.WrittenAt), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheFileAndKeepTheResult_WhenTheBridgeReturnsAPathNoArgumentNamed()
+    {
+        // Arrange
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service) { AlsoWritesTo = "/output/.github/ci.yml" };
+        var (server, link, bridged) = await BridgeAsync(remote);
+        await using var _ = server;
+        using var __ = link;
+
+        // Act
+        var response = await bridged.CallAsync(Call("save_to", "/output/shot.png"), Ct);
+
+        // Assert
+        Assert.Equal((true, true, false), (response.Success, await _callerFiles.ExistsAsync("/output/shot.png", Ct),
+            await _callerFiles.ExistsAsync("/output/.github/ci.yml", Ct)));
+    }
+
+    [Fact]
+    public async Task ShouldLogAWarning_WhenTheBridgeReturnsAPathNoArgumentNamed()
+    {
+        // Arrange
+        var logger = new RecordingLogger();
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service) { AlsoWritesTo = "/output/other.png" };
+        var (server, link, bridged) = await BridgeAsync(remote, operatorLogger: logger);
+        await using var _ = server;
+        using var __ = link;
+
+        // Act
+        await bridged.CallAsync(Call("save_to", "/output/shot.png"), Ct);
+
+        // Assert
+        Assert.True(logger.HasEntry(e => e.Level == LogLevel.Warning && e.Message.Contains("/output/other.png", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheFileAndKeepTheResult_WhenTheGateClassedTheCallARead()
+    {
+        // Arrange
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service);
+        var (server, link, bridged) = await BridgeAsync(remote);
+        await using var _ = server;
+        using var __ = link;
+        var read = new ToolCallRequest("firefox", new Dictionary<string, object?> { ["action"] = "read", ["save_to"] = "/output/shot.png" });
+
+        // Act
+        var response = await bridged.CallAsync(read, Ct);
+
+        // Assert
+        Assert.Equal((true, false), (response.Success, await _callerFiles.ExistsAsync("/output/shot.png", Ct)));
+    }
+
+    [Fact]
+    public async Task ShouldWriteTheFile_WhenItLiesUnderADirectoryAnArgumentNamed()
+    {
+        // Arrange
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service) { AlsoWritesTo = "/output/shots/1.png" };
+        var (server, link, bridged) = await BridgeAsync(remote);
+        await using var _ = server;
+        using var __ = link;
+        var call = new ToolCallRequest("firefox", new Dictionary<string, object?> { ["action"] = "write", ["text"] = "/output/shots" });
+
+        // Act
+        await bridged.CallAsync(call, Ct);
+
+        // Assert
+        Assert.True(await _callerFiles.ExistsAsync("/output/shots/1.png", Ct));
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheFilesAndKeepTheResult_WhenTheCallersToolCarriesNoFiles()
+    {
+        // Arrange
+        var local = new FakeFileBridgeTool("firefox", _callerFiles) { UsesFileSystem = false };
+        await using var bridge = new StubBridgeServer();
+        bridge.Bodies[ToolBridgeProtocol.ToolsEndpoint] =
+            "{\"tools\":[{\"name\":\"firefox\",\"contract_hash\":\"" + ToolBridgeContract.HashOf(local) + "\"}]}";
+        bridge.Bodies[ToolBridgeProtocol.CallEndpoint] = """{"success":true,"result":"done","files":[{"path":"/output/shot.png","content":"AQID"}]}""";
+        var registry = new ToolRegistry([local]);
+        using var link = await BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(bridge.Address, "firefox"), fileSystem: _callerFiles);
+        var bridged = await registry.GetToolByNameAsync("firefox", Ct);
+
+        // Act
+        var response = await bridged!.CallAsync(Call("save_to", "/output/shot.png"), Ct);
+
+        // Assert
+        Assert.Equal((true, false), (response.Success, await _callerFiles.ExistsAsync("/output/shot.png", Ct)));
+    }
+
+    [Fact]
+    public async Task ShouldNotSendALinkBack_WhenTheToolMadeASymbolicLinkInTheScratch()
+    {
+        // Arrange
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "A symbolic link needs a privilege under Windows.");
+        var outside = Path.Combine(Path.GetTempPath(), "orkeon-bridge-test-" + Guid.NewGuid().ToString("N"));
+        await File.WriteAllTextAsync(outside, "a file of the bridge machine", Ct);
+        try
+        {
+            var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service) { LinksTo = outside };
+            var (server, link, bridged) = await BridgeAsync(remote);
+            await using var _ = server;
+            using var __ = link;
+
+            // Act
+            await bridged.CallAsync(Call("save_to", "/output/shot.png"), Ct);
+
+            // Assert
+            Assert.False(await _callerFiles.ExistsAsync("/output/shot.png", Ct));
+        }
+        finally
+        {
+            File.Delete(outside);
+        }
     }
 }

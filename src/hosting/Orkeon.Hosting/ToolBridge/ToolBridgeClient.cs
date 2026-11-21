@@ -51,6 +51,7 @@ internal sealed class ToolBridgeClient : IDisposable
     private static readonly TimeSpan EndBound = TimeSpan.FromSeconds(5);
 
     private readonly HttpClient _http;
+    private readonly long _maxResponseBytes;
     private readonly Lock _sync = new();
     private readonly HashSet<string> _liveRuns = new(StringComparer.Ordinal);
     private readonly ITimer _heartbeat;
@@ -62,18 +63,29 @@ internal sealed class ToolBridgeClient : IDisposable
     /// <param name="token">The token, read from the environment by the caller.</param>
     /// <param name="connectTimeout">How long a connection may take.</param>
     /// <param name="timeProvider">The clock of the heartbeat; the system's when null.</param>
+    /// <param name="hostHeader">The <c>Host</c> header of every request; the address's own when null.</param>
+    /// <param name="maxResponseBytes">The largest answer read; a larger one fails the request.</param>
     [SuppressMessage("Reliability", "CA2000", Justification = "The handler is owned by the HttpClient (disposeHandler: true), which Dispose disposes.")]
-    public ToolBridgeClient(Uri address, string token, TimeSpan connectTimeout, TimeProvider? timeProvider = null)
+    public ToolBridgeClient(Uri address, string token, TimeSpan connectTimeout, TimeProvider? timeProvider = null, string? hostHeader = null,
+        long maxResponseBytes = ToolBridgeClientOptions.DefaultMaxResponseBytes)
     {
         ArgumentNullException.ThrowIfNull(address);
         ArgumentException.ThrowIfNullOrEmpty(token);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxResponseBytes);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(maxResponseBytes, int.MaxValue);
         Address = address;
+        _maxResponseBytes = maxResponseBytes;
         _http = new HttpClient(new SocketsHttpHandler { ConnectTimeout = connectTimeout, UseProxy = false }, disposeHandler: true)
         {
             BaseAddress = new Uri(address, ToolBridgeProtocol.BasePath),
             Timeout = Timeout.InfiniteTimeSpan,
+            // The answers this client does not read through ReadBoundedAsync (end of a run, heartbeat, cancellation)
+            // are buffered under the same bound.
+            MaxResponseContentBufferSize = maxResponseBytes,
         };
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(ToolBridgeProtocol.BearerScheme, token);
+        if (!string.IsNullOrWhiteSpace(hostHeader))
+            _http.DefaultRequestHeaders.Host = hostHeader;
         _heartbeat = (timeProvider ?? TimeProvider.System).CreateTimer(_ => _ = BeatAsync(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
     }
 
@@ -241,7 +253,8 @@ internal sealed class ToolBridgeClient : IDisposable
         HttpResponseMessage response;
         try
         {
-            response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            // The headers first: the body is read under this client's bound, never buffered whole beforehand.
+            response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -258,15 +271,15 @@ internal sealed class ToolBridgeClient : IDisposable
                 throw new ToolBridgeException(ToolBridgeFailure.TokenRefused, $"the tool bridge at {Address} refused the token.");
             try
             {
+                var body = await ReadBoundedAsync(response, cancellationToken).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                 {
-                    var refusal = await response.Content.ReadFromJsonAsync<BridgeErrorResponse>(ToolBridgeProtocol.JsonOptions, cancellationToken)
-                        .ConfigureAwait(false);
+                    var refusal = JsonSerializer.Deserialize<BridgeErrorResponse>(body, ToolBridgeProtocol.JsonOptions);
                     throw new ToolBridgeException(ToolBridgeFailure.Refused,
                         $"the tool bridge at {Address} refused the request ({(int)response.StatusCode}): {refusal?.Error ?? "no reason given"}.");
                 }
 
-                return await response.Content.ReadFromJsonAsync<T>(ToolBridgeProtocol.JsonOptions, cancellationToken).ConfigureAwait(false)
+                return JsonSerializer.Deserialize<T>(body, ToolBridgeProtocol.JsonOptions)
                     ?? throw new ToolBridgeException(ToolBridgeFailure.Refused, $"the tool bridge at {Address} sent an empty answer.");
             }
             catch (JsonException ex)
@@ -283,4 +296,27 @@ internal sealed class ToolBridgeClient : IDisposable
             }
         }
     }
+
+    /// <summary>The body of <paramref name="response"/>, refused once it exceeds the bound, whatever its length says.</summary>
+    private async System.Threading.Tasks.Task<byte[]> ReadBoundedAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.Content.Headers.ContentLength > _maxResponseBytes)
+            throw TooLarge();
+        var input = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        await using var _ = input.ConfigureAwait(false);
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await input.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) > 0)
+        {
+            if (buffer.Length + read > _maxResponseBytes)
+                throw TooLarge();
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+        }
+
+        return buffer.ToArray();
+    }
+
+    private ToolBridgeException TooLarge() => new(ToolBridgeFailure.Refused,
+        $"the tool bridge at {Address} sent an answer larger than {ToolBridgeClientOptions.SectionName}:MaxResponseBytes ({ToolBridgeProtocol.Describe(_maxResponseBytes)}).");
 }

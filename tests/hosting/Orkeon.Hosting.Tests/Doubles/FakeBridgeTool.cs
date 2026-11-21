@@ -128,7 +128,8 @@ public sealed class FakeWorkspaceBridgeTool : FakeBridgeTool
 
 /// <summary>
 /// A tool of the bridge that uses the file system: <c>save_to</c> writes <see cref="Written"/> there, <c>read_from</c>
-/// reads the text there, both through the file system it was given, before the response of <see cref="FakeBridgeTool"/>.
+/// reads the text there (null for a file it did not find or may not reach), both through the file system it was given,
+/// before the response of <see cref="FakeBridgeTool"/>.
 /// </summary>
 public sealed class FakeFileBridgeTool : FakeBridgeTool
 {
@@ -150,6 +151,12 @@ public sealed class FakeFileBridgeTool : FakeBridgeTool
     /// <summary>The bytes <c>save_to</c> writes.</summary>
     public byte[] Written { get; set; } = [1, 2, 3];
 
+    /// <summary>When set, a path the tool also writes <see cref="Written"/> to, whatever the arguments name.</summary>
+    public string? AlsoWritesTo { get; set; }
+
+    /// <summary>When set, <c>save_to</c> makes a symbolic link to this physical file in place of writing.</summary>
+    public string? LinksTo { get; set; }
+
     /// <summary>The physical paths <c>save_to</c> resolved to, in order.</summary>
     public ConcurrentQueue<string> WrittenAt { get; } = new();
 
@@ -166,11 +173,32 @@ public sealed class FakeFileBridgeTool : FakeBridgeTool
             if (!check.IsAllowed)
                 return new ToolCallResponse(false, null, check.DenialReason);
             WrittenAt.Enqueue(check.ResolvedPath!);
-            await _fileSystem.WriteAllBytesAsync(target, Written, cancellationToken);
+            if (LinksTo is { } link)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(check.ResolvedPath!)!);
+                File.CreateSymbolicLink(check.ResolvedPath!, link);
+            }
+            else
+            {
+                await _fileSystem.WriteAllBytesAsync(target, Written, cancellationToken);
+            }
         }
 
+        if (AlsoWritesTo is { } also)
+            await _fileSystem.WriteAllBytesAsync(also, Written, cancellationToken);
+
         if (request.Parameters?.GetValueOrDefault("read_from") is string source)
-            Read.Enqueue(await _fileSystem.TryReadAllTextAsync(source, cancellationToken));
+        {
+            try
+            {
+                Read.Enqueue(await _fileSystem.TryReadAllTextAsync(source, cancellationToken));
+            }
+            catch (FileAccessDeniedException)
+            {
+                // A path outside the mounts the call runs over: nothing read.
+                Read.Enqueue(null);
+            }
+        }
         return await base.CallAsync(request, cancellationToken);
     }
 }

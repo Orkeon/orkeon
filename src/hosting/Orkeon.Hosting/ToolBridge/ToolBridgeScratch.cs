@@ -28,30 +28,83 @@ internal sealed class ToolBridgeScratch : IDisposable
         _mounts = mounts;
     }
 
-    /// <summary>
-    /// The folder every scratch of this process is made in, under the temporary directory. The bridge's path validator
-    /// must allow it, as it allows the sandbox's session folder: <see cref="ToolBridgeStartup.RegisterServing"/> adds it
-    /// to <c>PathSecurity:AdditionalAllowedDirectories</c>; without it a tool that writes through the file system (the
-    /// screenshot of <c>firefox</c>) is refused with "Path is outside the allowed workspace directory".
-    /// </summary>
-    public static string Parent { get; } =
-        Path.Combine(Path.GetTempPath(), "orkeon-bridge-" + Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    private static readonly Lock s_parentSync = new();
+    private static string? s_parent;
+    private static int s_holders;
 
-    /// <summary>Removes <see cref="Parent"/> once no scratch is left in it; nothing when it is absent or still holds one.</summary>
-    public static void RemoveParent()
+    /// <summary>
+    /// The folder every scratch of this process is made in: a new folder of the temporary directory with an
+    /// unpredictable name, created exclusively and, outside Windows, with mode 0700
+    /// (<see cref="Directory.CreateTempSubdirectory"/>); an existing folder is never reused. The bridge's path validator
+    /// must allow it, as it allows the sandbox's session folder: <see cref="ToolBridgeStartup.RegisterServing"/> adds it
+    /// to <c>PathSecurity:AdditionalAllowedDirectories</c> for the life of the process; without it a tool that writes
+    /// through the file system (the screenshot of <c>firefox</c>) is refused with "Path is outside the allowed workspace
+    /// directory".
+    /// </summary>
+    public static string Parent
     {
-        try
+        get
         {
-            if (Directory.Exists(Parent) && !Directory.EnumerateFileSystemEntries(Parent).Any())
-                Directory.Delete(Parent);
+            lock (s_parentSync)
+                return EnsureParent();
         }
-        catch (IOException)
+    }
+
+    // Under s_parentSync: the parent of this process, created anew once it is gone.
+    private static string EnsureParent()
+    {
+        if (s_parent is null || !Directory.Exists(s_parent))
+            s_parent = Directory.CreateTempSubdirectory("orkeon-bridge-").FullName;
+        return s_parent;
+    }
+
+    /// <summary>Records a server that makes scratches: <see cref="Parent"/> stays until the last one has released it.</summary>
+    public static void HoldParent()
+    {
+        lock (s_parentSync)
+            s_holders++;
+    }
+
+    /// <summary>
+    /// Releases a server's hold and, with the last one, removes <see cref="Parent"/> once no scratch is left in it;
+    /// nothing when it is absent or still holds one.
+    /// </summary>
+    public static void ReleaseParent()
+    {
+        lock (s_parentSync)
         {
-            // A scratch created meanwhile: the folder is left to the system.
+            s_holders = Math.Max(0, s_holders - 1);
+            if (s_holders > 0 || s_parent is not { } parent)
+                return;
+            try
+            {
+                if (Directory.Exists(parent) && !Directory.EnumerateFileSystemEntries(parent).Any())
+                    Directory.Delete(parent);
+                if (!Directory.Exists(parent))
+                    s_parent = null;
+            }
+            catch (IOException)
+            {
+                // A scratch created meanwhile: the folder is left to the system.
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Same.
+            }
         }
-        catch (UnauthorizedAccessException)
+    }
+
+    // The folder of one call, inside the parent, created while the parent cannot be removed; never one that exists.
+    private static string CreateCallFolder()
+    {
+        lock (s_parentSync)
         {
-            // Same.
+            var folder = Path.Combine(EnsureParent(), Guid.NewGuid().ToString("N"));
+            if (Directory.Exists(folder) || File.Exists(folder))
+                throw new ToolBridgeFileException("the tool bridge found its scratch folder taken already.");
+            return (OperatingSystem.IsWindows()
+                ? Directory.CreateDirectory(folder)
+                : Directory.CreateDirectory(folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute)).FullName;
         }
     }
 
@@ -68,10 +121,7 @@ internal sealed class ToolBridgeScratch : IDisposable
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(boot);
-        var folder = Path.Combine(Parent, Guid.NewGuid().ToString("N"));
-        var root = (OperatingSystem.IsWindows()
-            ? Directory.CreateDirectory(folder)
-            : Directory.CreateDirectory(folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute)).FullName;
+        var root = CreateCallFolder();
         var handedOver = false;
         try
         {
@@ -107,7 +157,7 @@ internal sealed class ToolBridgeScratch : IDisposable
 
     /// <summary>
     /// The files the tool wrote in the caller's mounts: each file of the scratch that the call did not send, or whose
-    /// content changed.
+    /// content changed. A symbolic link is never followed: neither a linked file nor a linked folder goes back.
     /// </summary>
     /// <param name="maxBytes">The largest total.</param>
     /// <param name="cancellationToken">Cancels the reading.</param>
@@ -119,8 +169,10 @@ internal sealed class ToolBridgeScratch : IDisposable
         long total = 0;
         foreach (var (mount, folder) in _mounts)
         {
-            foreach (var physical in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+            foreach (var physical in Directory.EnumerateFiles(folder, "*", s_noLinks))
             {
+                if (IsLink(physical))
+                    continue;
                 var relative = Path.GetRelativePath(folder, physical).Replace(Path.DirectorySeparatorChar, '/');
                 var virtualPath = mount.Path.TrimEnd('/') + "/" + relative;
                 total += new FileInfo(physical).Length;
@@ -135,6 +187,20 @@ internal sealed class ToolBridgeScratch : IDisposable
         }
 
         return written.ToImmutable();
+    }
+
+    // Every file under a folder, without entering a linked folder nor listing a linked file.
+    private static readonly EnumerationOptions s_noLinks = new()
+    {
+        RecurseSubdirectories = true,
+        AttributesToSkip = FileAttributes.ReparsePoint,
+        IgnoreInaccessible = true,
+    };
+
+    private static bool IsLink(string physical)
+    {
+        var info = new FileInfo(physical);
+        return info.LinkTarget is not null || info.Attributes.HasFlag(FileAttributes.ReparsePoint);
     }
 
     /// <summary>Leaves the mounts and removes the scratch folder.</summary>
