@@ -13,7 +13,7 @@ namespace Orkeon.Application.Crew.Compaction;
 /// The pruning of a loop's older read-tool results (#434), the YAML loops' counterpart of a script's
 /// <c>onContextPressure</c>, run as the first <see cref="IContextPressureStage"/> before compaction. Once the
 /// estimate reaches <see cref="ToolResultPruningOptions.FillShare"/> of the usable window (or the trigger), each
-/// result of a read tool outside the last messages, longer than twice the head, is offered to the decision model,
+/// result of a read tool outside the last messages, of a turn the model has answered since, longer than twice the head, is offered to the decision model,
 /// which sees the call (tool, input, size, age) and never the result: two yes/no questions per call, "still
 /// needed" and "needed whole", give drop, head or keep. A pruned result leaves a line that says how to get it back,
 /// its call stays, so the tool-call protocol stays paired. A result kept is judged again once it has aged
@@ -156,7 +156,8 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
 
     /// <summary>
     /// The results worth a verdict, oldest first, at most <see cref="MaxCalls"/>: a read tool's, before the last
-    /// messages, longer than twice the head, neither settled nor kept less than <see cref="RejudgeTurns"/> ago.
+    /// messages and of a turn the model has answered since, longer than twice the head, neither settled nor kept
+    /// less than <see cref="RejudgeTurns"/> ago.
     /// </summary>
     private List<Candidate> Candidates(ConversationView conversation, Memory memory)
     {
@@ -175,7 +176,10 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
                 continue;
             var chars = conversation.TextAt(i).Length;
             var age = turnsAfter[i];
-            if (chars <= 2 * _options.HeadChars
+            // A result of a turn the model has not answered yet is one it has not read: never offered, however many
+            // results that turn holds (#434).
+            if (age == 0
+                || chars <= 2 * _options.HeadChars
                 || (memory.KeptAtAge.TryGetValue(call.CallId, out var keptAt) && age - keptAt < RejudgeTurns))
                 continue;
             candidates.Add(new Candidate(i, call, chars, age));

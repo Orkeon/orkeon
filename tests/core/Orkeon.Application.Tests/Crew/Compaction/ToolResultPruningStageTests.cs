@@ -158,6 +158,29 @@ public sealed class ToolResultPruningStageTests
         Assert.Equal(before, Render(messages));
     }
 
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldOfferNoResult_WhenTheModelHasNotAnsweredTheTurnThatReadIt()
+    {
+        // Arrange: one turn reads ten files at once; its first four results sit before the last six messages.
+        var messages = new List<ChatMessage> { new(ChatRole.System, "sys"), new(ChatRole.User, "Summarise the parser") };
+        messages.Add(new ChatMessage(ChatRole.Assistant, [.. Enumerable.Range(1, 10).Select(call =>
+            (AIContent)new FunctionCallContent($"call-{call}", ReadTool, new Dictionary<string, object?> { ["path"] = $"src/f{call}.cs" }))]));
+        for (var call = 1; call <= 10; call++)
+            messages.Add(new ChatMessage(ChatRole.Tool, [new FunctionResultContent($"call-{call}", Body(call, 2_000))]));
+        var view = new ChatConversationView(messages, (name, _) => name == ReadTool);
+        DropAll(10);
+        var before = Render(messages);
+
+        // Act
+        var changed = await Stage().RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.False(changed);
+        Assert.Empty(_model.Requests);
+        Assert.Equal(before, Render(messages));
+    }
+
     [Theory]
     [Trait("BR", "CH-434")]
     [InlineData(DecisionCircuitCause.Switch)]

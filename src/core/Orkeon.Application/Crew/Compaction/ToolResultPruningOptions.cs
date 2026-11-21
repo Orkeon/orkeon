@@ -19,7 +19,7 @@ public sealed class ToolResultPruningOptions
     /// <summary>The fill share by default: 0.4, as in Orkeon Code.</summary>
     public const double DefaultFillShare = 0.4;
 
-    /// <summary>The last messages never offered by default: 6, two model turns with up to two results each.</summary>
+    /// <summary>The last messages never offered by default: 6. A result of the turn the model has not answered yet is never offered, whatever its place.</summary>
     public const int DefaultKeepRecentMessages = 6;
 
     /// <summary>What a <c>head</c> verdict keeps by default: 300 characters, enough to recognise a file or a listing.</summary>
