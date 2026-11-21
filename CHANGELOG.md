@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 An Orkeon in a container can drive what lives on the user's machine, the browser first: `orkeon bridge serve`, run on
 that machine, serves the built-in tools its `Orkeon:Bridge:Allow` selects over JSON on HTTP (`/orkeon-bridge/v1/`:
-`GET tools`, `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`), and the caller's `Orkeon:Tools:Bridge`
+`GET tools`, `POST session`, `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`), and the caller's `Orkeon:Tools:Bridge`
 (`Address`, `Allow`, `Deny`) sends the calls of the tools it selects there. A tool is bridged when both sides select
 it; `*` selects only Orkeon's bridgeable tools: never a tool that acts on the workspace (files, shell,
 `code_interpreter`, `list_mounts`, code index), which a new `[ToolContract(ActsOnWorkspace = true)]` marks, an MCP tool
@@ -43,9 +43,15 @@ an `Edit` or `Execute` call that succeeded, never through the working directory,
 truncates a bridged
 result and reads an answer under `Orkeon:Tools:Bridge:MaxResponseBytes` (32 MiB); the bridge's scratch folders have an
 unpredictable name, mode 0700, and never send a symbolic link back. The guide: [Orkeon in a container, the browser on the
-desktop](docs/guides/tool-bridge.md); the decision: [ADR-019](docs/adr/ADR-019-tool-bridge.md). One bridge assumes
-one caller: the caller id is self-declared, so any holder of the token can act on another caller's runs
-([limitations](docs/reference/limitations.md)).
+desktop](docs/guides/tool-bridge.md); the decision: [ADR-019](docs/adr/ADR-019-tool-bridge.md). Each caller gets a
+session the bridge issues (`POST session`, an id of 256 random bits in `X-Orkeon-Bridge-Session`), which holds its runs
+and calls: callers sharing a token cannot end, keep alive, cancel or call into each other's runs, and a run whose
+session the bridge lost (`410 Gone`) fails, never falling back to a local tool. The bridge bounds `MaxSessions` (16)
+and `MaxConcurrentCalls` (32) with 503, `MaxCallsPerSession` (8) and `MaxRunsPerSession` (16) with 429, closes a
+connection whose body misses `RequestReadTimeout` (30 s), abandons and logs a call that outlives `StopTimeout` (10 s)
+at stop, answers only a loopback peer on a loopback prefix, refuses unsound call mounts (400) and scrubs its physical
+paths from a tool's error and metadata. The token stays shared and a session id is a bearer secret, in clear over
+http on loopback ([limitations](docs/reference/limitations.md)).
 
 **Also**: a `.ork.ts` script's `tools.firefox` now runs the registry's wrapper of a transient container tool (the
 bridge's proxy, the permission gate) instead of a new bare instance.

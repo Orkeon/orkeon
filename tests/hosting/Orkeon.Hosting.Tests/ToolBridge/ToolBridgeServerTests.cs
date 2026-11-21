@@ -17,13 +17,7 @@ namespace Orkeon.Hosting.Tests.ToolBridge;
 /// <summary>#445 - the serving side: the token, the Origin header, the body limit, the list, the raw call and its audit.</summary>
 public sealed class ToolBridgeServerTests
 {
-    private static HttpClient Client(Uri address, string? bearer)
-    {
-        var client = new HttpClient { BaseAddress = new Uri(address, ToolBridgeProtocol.BasePath) };
-        if (bearer is not null)
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
-        return client;
-    }
+    private static HttpClient Client(Uri address, string? bearer) => BridgeLoopback.Http(address, bearer);
 
     private static HttpClient Client(Uri address) => Client(address, BridgeLoopback.Token);
 
@@ -117,7 +111,7 @@ public sealed class ToolBridgeServerTests
         Assert.Equal(50_000, answer!.Result!.Value.GetString()!.Length);
         Assert.Equal("hi", Assert.Single(tool.Calls).Parameters["text"]);
         var recorded = Assert.Single(audit.Events);
-        Assert.Equal((AuditCategory.ToolExecution, "c1", "bridge"), (recorded.Category, recorded.CorrelationId, recorded.AgentRole));
+        Assert.Equal((AuditCategory.ToolExecution, "session-1/c1", "bridge"), (recorded.Category, recorded.CorrelationId, recorded.AgentRole));
     }
 
     [Fact]
@@ -405,5 +399,166 @@ public sealed class ToolBridgeServerTests
 
         // Assert
         Assert.Equal(["firefox"], list!.Tools.Select(t => t.Name));
+    }
+
+    [Theory]
+    [InlineData("""[{"path":"/output","writable":true},{"path":"/output/","writable":false}]""", "twice")]
+    [InlineData("""[{"path":"output","writable":true}]""", "absolute")]
+    [InlineData("""[{"path":"/","writable":true}]""", "root")]
+    [InlineData("""[{"path":"/output/../etc","writable":true}]""", "segment")]
+    public async Task ShouldRefuseTheCall_WhenItsMountsAreNotSound(string mounts, string reason)
+    {
+        // Arrange
+        var tool = new FakeBridgeTool("firefox");
+        var (server, address) = await BridgeLoopback.StartServerAsync([tool], ["*"]);
+        await using var _ = server;
+        using var client = Client(address);
+        using var body = Json("""{"call_id":"c1","tool":"firefox","arguments":{"action":"read"},"mounts":""" + mounts + "}");
+
+        // Act
+        using var response = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, body, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal((HttpStatusCode.BadRequest, 0), (response.StatusCode, tool.Calls.Count));
+        Assert.Contains(reason, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/state")]
+    [InlineData("/state/sub")]
+    [InlineData("/")]
+    public async Task ShouldRefuseTheCall_WhenAMountOverlapsAnInternalMountOfTheBridge(string path)
+    {
+        // Arrange
+        var folder = Directory.CreateTempSubdirectory("orkeon-bridge-internal-").FullName;
+        try
+        {
+            using var files = new BridgeFileSystem(new FileSystemMount(folder, "/state", FileAccessRights.ReadWrite, visibility: MountVisibility.Internal));
+            var tool = new FakeFileBridgeTool("firefox", files.Service);
+            var (server, address) = await BridgeLoopback.StartServerAsync([tool], ["*"], files: files);
+            await using var _ = server;
+            using var client = Client(address);
+            using var body = Json("""{"call_id":"c1","tool":"firefox","arguments":{"action":"read"},"mounts":[{"path":""" + "\"" + path + "\"" + ""","writable":true}]}""");
+
+            // Act
+            using var response = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, body, TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Equal((HttpStatusCode.BadRequest, 0), (response.StatusCode, tool.Calls.Count));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ShouldScrubTheBridgesPhysicalPaths_WhenTheToolAnswerNamesThem()
+    {
+        // Arrange
+        var folder = Directory.CreateTempSubdirectory("orkeon-bridge-boot-").FullName;
+        try
+        {
+            using var files = new BridgeFileSystem(new FileSystemMount(folder, "/workspace", FileAccessRights.ReadWrite));
+            var tool = new FakeBridgeTool("firefox")
+            {
+                Response = new ToolCallResponse(false, null, $"cannot open {folder}/profile.lock",
+                    new Dictionary<string, object?> { ["profile"] = $"{folder}/profile" }),
+            };
+            var (server, address) = await BridgeLoopback.StartServerAsync([tool], ["*"], files: files);
+            await using var _ = server;
+            using var client = Client(address);
+            using var body = Json("""{"call_id":"c1","tool":"firefox","arguments":{"action":"read"}}""");
+
+            // Act
+            using var response = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, body, TestContext.Current.CancellationToken);
+
+            // Assert
+            var answer = await response.Content.ReadFromJsonAsync<BridgeCallResponse>(ToolBridgeProtocol.JsonOptions, TestContext.Current.CancellationToken);
+            Assert.Equal(
+                ($"cannot open {ToolBridgeRedaction.Redacted}/profile.lock", $"{ToolBridgeRedaction.Redacted}/profile"),
+                (answer!.Error, answer.Metadata!["profile"].GetString()));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ShouldAbandonAndLogTheCall_WhenItOutlivesTheStopTimeout()
+    {
+        // Arrange
+        var clock = new Orkeon.Tests.Shared.Timing.ManualTimeProvider();
+        var logger = new RecordingLogger();
+        var tool = new FakeBridgeTool("firefox") { IgnoresCancellation = true };
+        var (server, address) = await BridgeLoopback.StartServerAsync([tool], ["*"], time: clock, logger: logger);
+        await using var _ = server;
+        using var client = Client(address);
+        var call = Task.Run(async () =>
+        {
+            using var body = Json("""{"call_id":"c1","tool":"firefox","arguments":{"action":"read"}}""");
+            try
+            {
+                using var answered = await client.PostAsync(ToolBridgeProtocol.CallEndpoint, body, TestContext.Current.CancellationToken);
+            }
+            catch (HttpRequestException)
+            {
+                // The bridge stopped under the call.
+            }
+        }, TestContext.Current.CancellationToken);
+        await tool.Started.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        var stop = server.StopAsync();
+        await Orkeon.Tests.Shared.Timing.Polling.WaitUntilAsync(() =>
+        {
+            clock.Advance(TimeSpan.FromSeconds(1));
+            return stop.IsCompleted;
+        });
+
+        // Assert
+        await stop;
+        tool.Release.TrySetResult();
+        await call;
+        Assert.Contains(logger.Entries, e => e.EventId.Id == 8 && e.Message.Contains("abandoned", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ShouldCloseTheConnection_WhenTheRequestBodyDoesNotArriveInTime()
+    {
+        // Arrange
+        var clock = new Orkeon.Tests.Shared.Timing.ManualTimeProvider();
+        var logger = new RecordingLogger();
+        var tool = new FakeBridgeTool("firefox");
+        var (server, address) = await BridgeLoopback.StartServerAsync([tool], ["*"], time: clock, logger: logger);
+        await using var _ = server;
+        using var tcp = new System.Net.Sockets.TcpClient();
+        await tcp.ConnectAsync(address.Host, address.Port, TestContext.Current.CancellationToken);
+        var stream = tcp.GetStream();
+        var head = $"POST {ToolBridgeProtocol.BasePath}{ToolBridgeProtocol.CallEndpoint} HTTP/1.1\r\nHost: {address.Authority}\r\n"
+            + $"Authorization: Bearer {BridgeLoopback.Token}\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{{";
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(head), TestContext.Current.CancellationToken);
+        var read = stream.ReadAsync(new byte[1024], TestContext.Current.CancellationToken).AsTask();
+
+        // Act
+        await Orkeon.Tests.Shared.Timing.Polling.WaitUntilAsync(() =>
+        {
+            clock.Advance(TimeSpan.FromSeconds(5));
+            return read.IsCompleted;
+        });
+
+        // Assert
+        try
+        {
+            await read;
+        }
+        catch (IOException)
+        {
+            // The connection was reset.
+        }
+
+        Assert.Contains(logger.Entries, e => e.EventId.Id == 7);
+        Assert.Empty(tool.Calls);
     }
 }

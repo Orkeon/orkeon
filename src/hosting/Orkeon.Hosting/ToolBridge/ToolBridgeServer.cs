@@ -9,6 +9,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Domain.Execution;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Security;
 using Orkeon.Domain.Tools;
@@ -23,20 +24,24 @@ namespace Orkeon.Hosting.ToolBridge;
 /// guardian, its truncation, its sanitizer) judges the call and its result, and the bridge records the call in its
 /// own audit under the caller <see cref="ToolBridgeProtocol.AuditCaller"/>.
 /// <para>
-/// A request carrying an <c>Origin</c> header (a browser page) is refused, as is one without the token, one whose
-/// body exceeds <see cref="ToolBridgeServerOptions.MaxRequestBytes"/>, and a <c>POST</c> that is not JSON. The token
-/// is read once, at start, from the environment variable the options name, and compared in fixed time.
+/// A request carrying an <c>Origin</c> header (a browser page) is refused, as is one without the token, one from
+/// another machine when the prefix is loopback, one whose body exceeds <see cref="ToolBridgeServerOptions.MaxRequestBytes"/>
+/// or does not arrive within <see cref="ToolBridgeServerOptions.RequestReadTimeout"/>, and a <c>POST</c> that is not
+/// JSON. The token is read once, at start, from the environment variable the options name, and compared in fixed time.
 /// </para>
 /// <para>
-/// A call of a caller's run runs in the bridge's scope of that run (<see cref="ToolBridgeRuns"/>), ended by the
-/// caller's <c>POST end-run</c> or by a missed heartbeat window. A call that carries the caller's mounts runs over a
-/// scratch folder presented at those virtual paths (<see cref="ToolBridgeScratch"/>), and its answer carries what the
-/// tool wrote there.
+/// A caller opens a session (<c>POST session</c>, <see cref="ToolBridgeSessions"/>) and names it on every later
+/// request; a session the bridge does not hold is answered <see cref="ToolBridgeProtocol.SessionLostStatus"/>. A call
+/// of a caller's run runs in the session's scope of that run, ended by the caller's <c>POST end-run</c> or with the
+/// session, at a missed heartbeat window. A call that carries the caller's mounts runs over a scratch folder presented
+/// at those virtual paths (<see cref="ToolBridgeScratch"/>), and its answer carries what the tool wrote there. The
+/// calls in flight, every session together and per session, and the runs of a session are bounded; one past a bound
+/// is refused, never queued.
 /// </para>
 /// <para>
 /// <c>orkeon bridge serve</c> builds one over the host's registry, calls <see cref="StartAsync"/>, reports
 /// <see cref="Prefix"/>, <see cref="ServedTools"/> and <see cref="Warnings"/>, and waits; <see cref="StopAsync"/>
-/// cancels the calls in flight and waits for them.
+/// cancels the calls in flight and waits for them, up to <see cref="ToolBridgeServerOptions.StopTimeout"/>.
 /// </para>
 /// </summary>
 [SuppressMessage("Usage", "CA2213", Justification = "The listener is disposed by HttpListener.Abort in StopAsync: Close after Stop binds the port again on Linux and macOS.")]
@@ -51,8 +56,9 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
     private readonly FileSystemRegistry? _bootMounts;
     private readonly TimeProvider _time;
     private readonly CancellationTokenSource _stopping = new();
-    private readonly ConcurrentDictionary<string, CancellationTokenSource> _calls = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<System.Threading.Tasks.Task, byte> _inFlight = new();
+    private int _activeCalls;
+    private bool _loopbackOnly;
     private ImmutableDictionary<string, (IBaseTool Tool, string Hash)> _served =
         ImmutableDictionary<string, (IBaseTool Tool, string Hash)>.Empty.WithComparers(StringComparer.OrdinalIgnoreCase);
     private byte[]? _tokenHash;
@@ -63,7 +69,7 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
     internal static readonly TimeSpan RefusalLogInterval = TimeSpan.FromSeconds(10);
     private HttpListener? _listener;
     private System.Threading.Tasks.Task? _loop;
-    private ToolBridgeRuns? _runs;
+    private ToolBridgeSessions? _sessions;
 
     /// <summary>Builds a server over <paramref name="registry"/>; nothing listens before <see cref="StartAsync"/>.</summary>
     /// <param name="registry">The registry whose tools are served.</param>
@@ -108,10 +114,13 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
     /// <summary>One sentence per tool that acts on the workspace and is served because the settings name it.</summary>
     public ImmutableList<string> Warnings { get; private set; } = [];
 
-    /// <summary>The number of runs the bridge holds for the caller <paramref name="callerId"/>.</summary>
-    /// <param name="callerId">The id the caller's link sends.</param>
-    /// <returns>Zero for a caller without runs, or before <see cref="StartAsync"/>.</returns>
-    public int RunsOf(string callerId) => _runs?.RunsOf(callerId) ?? 0;
+    /// <summary>The number of runs the bridge holds for the session <paramref name="sessionId"/>.</summary>
+    /// <param name="sessionId">The id the bridge issued to the caller.</param>
+    /// <returns>Zero for a session without runs or unknown, or before <see cref="StartAsync"/>.</returns>
+    public int RunsOf(string? sessionId) => _sessions?.RunsOf(sessionId) ?? 0;
+
+    /// <summary>The number of sessions the bridge holds.</summary>
+    public int Sessions => _sessions?.Count ?? 0;
 
     /// <summary>Whether the listener is running.</summary>
     public bool IsRunning => _listener is { IsListening: true };
@@ -166,16 +175,22 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         }
 
         _listener = listener;
+        _loopbackOnly = Uri.TryCreate(_options.Prefix, UriKind.Absolute, out var listened) && ToolBridgeAddress.IsLoopback(listened);
         ToolBridgeScratch.HoldParent();
-        _runs = new ToolBridgeRuns(_options.HeartbeatWindow, _time, _logger);
+        _sessions = new ToolBridgeSessions(_options.HeartbeatWindow, _options.MaxSessions, _options.MaxRunsPerSession,
+            _options.MaxCallsPerSession, _time, _logger);
         _loop = ListenAsync(listener);
         LogServing(_logger, _options.Prefix, ServedTools.Count == 0 ? "(none)" : string.Join(", ", ServedTools));
         foreach (var warning in Warnings)
             LogWarning(_logger, warning);
     }
 
-    /// <summary>Stops listening, cancels the calls in flight and waits for them.</summary>
-    /// <returns>A task that completes once every request has ended.</returns>
+    /// <summary>
+    /// Stops listening, cancels the calls in flight and waits for them up to
+    /// <see cref="ToolBridgeServerOptions.StopTimeout"/>; a call still running then is abandoned and logged, and every
+    /// session ends with its runs.
+    /// </summary>
+    /// <returns>A task that completes once every request has ended or was abandoned.</returns>
     public async System.Threading.Tasks.Task StopAsync()
     {
         if (_listener is not { } listener)
@@ -185,10 +200,20 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
             listener.Stop();
         if (_loop is { } loop)
             await loop.ConfigureAwait(false);
-        await System.Threading.Tasks.Task.WhenAll(_inFlight.Keys).ConfigureAwait(false);
-        if (_runs is { } runs)
-            await runs.DisposeAsync().ConfigureAwait(false);
-        _runs = null;
+        var pending = _inFlight.Keys.ToList();
+        var all = System.Threading.Tasks.Task.WhenAll(pending);
+        if (!all.IsCompleted)
+        {
+            using var deadline = new CancellationTokenSource();
+            var expired = System.Threading.Tasks.Task.Delay(_options.StopTimeout, _time, deadline.Token);
+            if (await System.Threading.Tasks.Task.WhenAny(all, expired).ConfigureAwait(false) != all)
+                LogCallsAbandoned(_logger, pending.Count(t => !t.IsCompleted), _options.StopTimeout.TotalSeconds);
+            await deadline.CancelAsync().ConfigureAwait(false);
+        }
+
+        if (_sessions is { } sessions)
+            await sessions.DisposeAsync().ConfigureAwait(false);
+        _sessions = null;
         ToolBridgeScratch.ReleaseParent();
         // Abort, never Close after Stop: Close binds the port again for an instant on Linux and macOS.
         listener.Abort();
@@ -231,8 +256,9 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
     {
         try
         {
-            var (status, body) = await AnswerAsync(context.Request).ConfigureAwait(false);
-            await WriteAsync(context.Response, status, body).ConfigureAwait(false);
+            // Null: the body did not arrive in time and the connection is closed already.
+            if (await AnswerAsync(context).ConfigureAwait(false) is { } answer)
+                await WriteAsync(context.Response, answer.Status, answer.Body).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -249,10 +275,15 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         }
     }
 
-    private async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)> AnswerAsync(HttpListenerRequest request)
+    private async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)?> AnswerAsync(HttpListenerContext context)
     {
+        var request = context.Request;
         if (!string.IsNullOrEmpty(request.Headers["Origin"]))
             return Refuse(HttpStatusCode.Forbidden, "a request carrying an Origin header is refused: the tool bridge serves no browser page.");
+        // HTTP.sys listens on every interface for the port and routes on the Host header: a loopback prefix answers
+        // this machine alone only when the peer's address is checked as well.
+        if (_loopbackOnly && !IsLoopback(request.RemoteEndPoint?.Address))
+            return Refuse(HttpStatusCode.Forbidden, "the tool bridge listens on loopback and answers this machine alone.");
         if (!HoldsToken(request.Headers["Authorization"]))
         {
             NoteRefusedToken(request);
@@ -271,23 +302,38 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
             return Refuse(HttpStatusCode.UnsupportedMediaType, "a POST of the tool bridge carries application/json.");
         if (request.ContentLength64 > _options.MaxRequestBytes)
             return TooLarge();
-        var body = await ReadBoundedAsync(request.InputStream, _options.MaxRequestBytes, _stopping.Token).ConfigureAwait(false);
-        if (body is null)
+        if (_sessions is not { } sessions)
+            return Refuse(HttpStatusCode.ServiceUnavailable, "the tool bridge is stopping.");
+        var read = await ReadBodyAsync(context).ConfigureAwait(false);
+        if (read.TimedOut)
+            return null;
+        if (read.Body is not { } body)
             return TooLarge();
+
+        if (endpoint == ToolBridgeProtocol.SessionEndpoint)
+            return OpenSession(sessions);
+        if (string.IsNullOrWhiteSpace(request.Headers[ToolBridgeProtocol.SessionHeader]))
+            return Refuse(HttpStatusCode.BadRequest, $"a request of the tool bridge other than {ToolBridgeProtocol.SessionEndpoint} names its session in the header {ToolBridgeProtocol.SessionHeader}.");
+        if (sessions.Find(request.Headers[ToolBridgeProtocol.SessionHeader]) is not { } session)
+            return SessionLost();
 
         return endpoint switch
         {
-            ToolBridgeProtocol.CallEndpoint => await CallAsync(body).ConfigureAwait(false),
-            ToolBridgeProtocol.CancelEndpoint => Cancel(body),
-            ToolBridgeProtocol.EndRunEndpoint => await EndRunAsync(body).ConfigureAwait(false),
-            _ => Heartbeat(body),
+            ToolBridgeProtocol.CallEndpoint => await CallAsync(sessions, session, body).ConfigureAwait(false),
+            ToolBridgeProtocol.CancelEndpoint => Cancel(sessions, session, body),
+            ToolBridgeProtocol.EndRunEndpoint => await EndRunAsync(sessions, session, body).ConfigureAwait(false),
+            _ => (HttpStatusCode.OK, new Dictionary<string, object?>()),
         };
     }
 
     private static readonly HashSet<string> s_postEndpoints = new(StringComparer.Ordinal)
     {
-        ToolBridgeProtocol.CallEndpoint, ToolBridgeProtocol.CancelEndpoint, ToolBridgeProtocol.EndRunEndpoint, ToolBridgeProtocol.HeartbeatEndpoint,
+        ToolBridgeProtocol.SessionEndpoint, ToolBridgeProtocol.CallEndpoint, ToolBridgeProtocol.CancelEndpoint,
+        ToolBridgeProtocol.EndRunEndpoint, ToolBridgeProtocol.HeartbeatEndpoint,
     };
+
+    private static bool IsLoopback(IPAddress? address) =>
+        address is not null && IPAddress.IsLoopback(address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address);
 
     private BridgeToolListResponse ListTools() => new()
     {
@@ -295,26 +341,29 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         HeartbeatWindowMs = (long)_options.HeartbeatWindow.TotalMilliseconds,
     };
 
-    private async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)> EndRunAsync(byte[] body)
+    private (HttpStatusCode Status, object Body) OpenSession(ToolBridgeSessions sessions) =>
+        sessions.Open() is { } id
+            ? (HttpStatusCode.Created, new BridgeSessionResponse { SessionId = id, HeartbeatWindowMs = (long)_options.HeartbeatWindow.TotalMilliseconds })
+            : Refuse(HttpStatusCode.ServiceUnavailable,
+                $"the tool bridge holds {ToolBridgeServerOptions.SectionName}:MaxSessions ({_options.MaxSessions}) sessions already: one must end, or its heartbeat window pass, first.");
+
+    private static (HttpStatusCode Status, object Body) SessionLost() =>
+        Refuse(ToolBridgeProtocol.SessionLostStatus,
+            "the tool bridge holds no such session: it was never opened, or it ended with its runs (a missed heartbeat window, or a restart of the bridge).");
+
+    private static async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)> EndRunAsync(
+        ToolBridgeSessions sessions, ToolBridgeSessions.Session session, byte[] body)
     {
-        if (Parse<BridgeRunRequest>(body) is not { } run || string.IsNullOrWhiteSpace(run.CallerId) || string.IsNullOrWhiteSpace(run.RunId))
-            return Refuse(HttpStatusCode.BadRequest, "the body of the end of a run names a caller_id and a run_id.");
-        if (_runs is { } runs)
-            await runs.EndAsync(run.CallerId, run.RunId).ConfigureAwait(false);
+        if (Parse<BridgeRunRequest>(body) is not { } run || string.IsNullOrWhiteSpace(run.RunId))
+            return Refuse(HttpStatusCode.BadRequest, "the body of the end of a run names a run_id.");
+        await sessions.EndRunAsync(session, run.RunId).ConfigureAwait(false);
         return (HttpStatusCode.OK, new Dictionary<string, object?>());
     }
 
-    private (HttpStatusCode Status, object Body) Heartbeat(byte[] body)
-    {
-        if (Parse<BridgeHeartbeatRequest>(body) is not { } beat || string.IsNullOrWhiteSpace(beat.CallerId))
-            return Refuse(HttpStatusCode.BadRequest, "the body of a heartbeat names a caller_id.");
-        _runs?.Touch(beat.CallerId);
-        return (HttpStatusCode.OK, new Dictionary<string, object?>());
-    }
-
-    [SuppressMessage("Design", "CA1031",
-        Justification = "A tool may throw anything; the call is answered and audited as a failure, never left unrecorded.")]
-    private async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)> CallAsync(byte[] body)
+    [SuppressMessage("Reliability", "CA2000",
+        Justification = "The scope of a run belongs to the session, which ends it with the run, or with the session.")]
+    private async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)> CallAsync(
+        ToolBridgeSessions sessions, ToolBridgeSessions.Session session, byte[] body)
     {
         if (Parse<BridgeCallRequest>(body) is not { } call || string.IsNullOrWhiteSpace(call.CallId) || string.IsNullOrWhiteSpace(call.Tool)
             || call.Arguments.ValueKind != JsonValueKind.Object)
@@ -323,47 +372,97 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
             return Refuse(HttpStatusCode.BadRequest, "each mount of a call names its path.");
         if (call.Files is { } files && files.Any(f => f is null || string.IsNullOrWhiteSpace(f.Path)))
             return Refuse(HttpStatusCode.BadRequest, "each file of a call names its path.");
+        if (call.Mounts is not null)
+        {
+            if (ToolBridgeMounts.Normalize(call.Mounts, _bootMounts, out var problem) is not { } normalized)
+                return Refuse(HttpStatusCode.BadRequest, problem!);
+            call = call with { Mounts = normalized };
+        }
         if (!_served.TryGetValue(call.Tool, out var served))
             return Refuse(HttpStatusCode.NotFound, $"the tool bridge serves no tool '{call.Tool}'.");
 
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token);
-        if (!_calls.TryAdd(call.CallId, cancellation))
-            return Refuse(HttpStatusCode.Conflict, $"a call '{call.CallId}' is already in flight.");
+        if (Interlocked.Increment(ref _activeCalls) > _options.MaxConcurrentCalls)
+        {
+            Interlocked.Decrement(ref _activeCalls);
+            return Refuse(HttpStatusCode.ServiceUnavailable,
+                $"the tool bridge runs {ToolBridgeServerOptions.SectionName}:MaxConcurrentCalls ({_options.MaxConcurrentCalls}) calls already: try again once one has ended.");
+        }
+
+        try
+        {
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token);
+            switch (sessions.BeginCall(session, call.CallId, cancellation))
+            {
+                case SessionAdmission.Lost:
+                    return SessionLost();
+                case SessionAdmission.Duplicate:
+                    return Refuse(HttpStatusCode.Conflict, $"a call '{call.CallId}' is already in flight in this session.");
+                case SessionAdmission.Full:
+                    return Refuse(HttpStatusCode.TooManyRequests,
+                        $"this session runs {ToolBridgeServerOptions.SectionName}:MaxCallsPerSession ({_options.MaxCallsPerSession}) calls already: try again once one has ended.");
+            }
+
+            try
+            {
+                AgentRunScope? run = null;
+                if (call.RunId is { Length: > 0 } runId)
+                {
+                    switch (sessions.ScopeOf(session, runId, out run))
+                    {
+                        case SessionAdmission.Lost:
+                            return SessionLost();
+                        case SessionAdmission.Full:
+                            return Refuse(HttpStatusCode.TooManyRequests,
+                                $"this session holds {ToolBridgeServerOptions.SectionName}:MaxRunsPerSession ({_options.MaxRunsPerSession}) runs already: one must end first.");
+                    }
+                }
+
+                return await RunAuditedAsync(served.Tool, call, run, $"{session.Label}/{call.CallId}", cancellation.Token).ConfigureAwait(false);
+            }
+            finally
+            {
+                sessions.EndCall(session, call.CallId);
+            }
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _activeCalls);
+        }
+    }
+
+    [SuppressMessage("Design", "CA1031",
+        Justification = "A tool may throw anything; the call is answered and audited as a failure, never left unrecorded.")]
+    private async System.Threading.Tasks.Task<(HttpStatusCode Status, object Body)> RunAuditedAsync(
+        IBaseTool tool, BridgeCallRequest call, AgentRunScope? run, string auditId, CancellationToken cancellationToken)
+    {
         var watch = Stopwatch.StartNew();
         BridgeCallResponse answer;
         try
         {
-            answer = await RunAsync(served.Tool, call, cancellation.Token).ConfigureAwait(false);
+            answer = await RunAsync(tool, call, run, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             // A tool that throws is a failed call, audited as one; its message may name a physical path, so only its
             // type crosses to the caller.
-            LogCallFailed(_logger, served.Tool.Name, ex.GetType().Name);
-            answer = Failure($"the tool '{served.Tool.Name}' failed on the tool bridge ({ex.GetType().Name}).");
-        }
-        finally
-        {
-            _calls.TryRemove(call.CallId, out _);
+            LogCallFailed(_logger, tool.Name, ex.GetType().Name);
+            answer = Failure($"the tool '{tool.Name}' failed on the tool bridge ({ex.GetType().Name}).");
         }
 
-        await AuditAsync(call.CallId, served.Tool.Name, answer.Success ? AuditOutcome.Success : AuditOutcome.Failure, watch.ElapsedMilliseconds)
+        await AuditAsync(auditId, tool.Name, answer.Success ? AuditOutcome.Success : AuditOutcome.Failure, watch.ElapsedMilliseconds)
             .ConfigureAwait(false);
         return (HttpStatusCode.OK, answer);
     }
 
     /// <summary>
-    /// Runs the call in the bridge's scope of the caller's run, over a scratch presenting the caller's mounts (none when
-    /// the call names none), and answers with the tool's raw response and the files it wrote. Only a tool that acts on the
-    /// workspace, which the settings named, runs over the bridge's own mounts, and only for a call that sends none.
+    /// Runs the call in the session's scope of the caller's run, over a scratch presenting the caller's mounts (none
+    /// when the call names none), and answers with the tool's raw response, the bridge's physical paths scrubbed from
+    /// its error and metadata, and the files it wrote. Only a tool that acts on the workspace, which the settings named,
+    /// runs over the bridge's own mounts, and only for a call that sends none.
     /// </summary>
-    private async System.Threading.Tasks.Task<BridgeCallResponse> RunAsync(IBaseTool tool, BridgeCallRequest call, CancellationToken cancellationToken)
+    private async System.Threading.Tasks.Task<BridgeCallResponse> RunAsync(
+        IBaseTool tool, BridgeCallRequest call, AgentRunScope? run, CancellationToken cancellationToken)
     {
-        if (call.CallerId is { Length: > 0 } callerId)
-            _runs?.Touch(callerId);
-        var run = call is { CallerId: { Length: > 0 } caller, RunId: { Length: > 0 } runId } && _runs is { } runs
-            ? runs.ScopeOf(caller, runId)
-            : null;
         var needsScratch = call.Mounts is not null || (tool.UsesFileSystem && !ToolContracts.ActsOnWorkspace(tool));
         if (needsScratch && (_fileScope is null || _bootMounts is null))
             return Failure("the tool bridge has no file system to present the caller's mounts on.");
@@ -375,7 +474,7 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         try
         {
             if (needsScratch)
-                scratch = ToolBridgeScratch.Enter(call, _fileScope!, _bootMounts!);
+                scratch = ToolBridgeScratch.Enter(call, _fileScope!, _bootMounts!, _logger);
             ProtocolToolCallResponse response;
             try
             {
@@ -387,10 +486,10 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
                 response = new ProtocolToolCallResponse(false, null, "Operation cancelled", new Dictionary<string, object?> { ["cancelled"] = true });
             }
 
-            var answer = ToWire(response);
+            var answer = ToolBridgeRedaction.Scrub(ToWire(response), ToolBridgeRedaction.PathsOf(_bootMounts, scratch));
             if (scratch is null)
                 return answer;
-            var written = await scratch.WrittenAsync(_options.MaxFileBytes, CancellationToken.None).ConfigureAwait(false);
+            var written = await scratch.WrittenAsync(_options.MaxFileBytes, _stopping.Token).ConfigureAwait(false);
             return written.Count == 0 ? answer : answer with { Files = written };
         }
         catch (ToolBridgeFileException ex)
@@ -405,22 +504,11 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
 
     private static BridgeCallResponse Failure(string reason) => new() { Success = false, Error = reason };
 
-    private (HttpStatusCode Status, object Body) Cancel(byte[] body)
+    private static (HttpStatusCode Status, object Body) Cancel(ToolBridgeSessions sessions, ToolBridgeSessions.Session session, byte[] body)
     {
         if (Parse<BridgeCancelRequest>(body) is not { } cancel || string.IsNullOrWhiteSpace(cancel.CallId))
             return Refuse(HttpStatusCode.BadRequest, "the body of a cancellation names a call_id.");
-        if (_calls.TryGetValue(cancel.CallId, out var call))
-        {
-            try
-            {
-                call.Cancel();
-            }
-            catch (ObjectDisposedException)
-            {
-                // The call ended meanwhile: nothing is left to cancel.
-            }
-        }
-
+        sessions.Cancel(session, cancel.CallId);
         return (HttpStatusCode.OK, new Dictionary<string, object?>());
     }
 
@@ -519,19 +607,44 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
         contentType is not null
         && contentType.Split(';')[0].Trim().Equals("application/json", StringComparison.OrdinalIgnoreCase);
 
-    private static async System.Threading.Tasks.Task<byte[]?> ReadBoundedAsync(Stream input, long limit, CancellationToken cancellationToken)
+    /// <summary>
+    /// The body of the request, null once it exceeds <see cref="ToolBridgeServerOptions.MaxRequestBytes"/>. A body that
+    /// has not arrived within <see cref="ToolBridgeServerOptions.RequestReadTimeout"/> closes the connection: a read
+    /// the listener does not cancel is ended by the abort.
+    /// </summary>
+    [SuppressMessage("Design", "CA1031",
+        Justification = "An aborted read ends in HttpListenerException, IOException or ObjectDisposedException depending on the platform; each is the timeout.")]
+    private async System.Threading.Tasks.Task<(byte[]? Body, bool TimedOut)> ReadBodyAsync(HttpListenerContext context)
     {
-        using var buffer = new MemoryStream();
-        var chunk = new byte[81920];
-        int read;
-        while ((read = await input.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) > 0)
+        using var timeout = new CancellationTokenSource(_options.RequestReadTimeout, _time);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, _stopping.Token);
+        var aborted = 0;
+        await using var abort = timeout.Token.Register(() =>
         {
-            if (buffer.Length + read > limit)
-                return null;
-            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
-        }
+            Interlocked.Exchange(ref aborted, 1);
+            context.Response.Abort();
+        }).ConfigureAwait(false);
+        try
+        {
+            using var buffer = new MemoryStream();
+            var chunk = new byte[81920];
+            int read;
+            while ((read = await context.Request.InputStream.ReadAsync(chunk, linked.Token).ConfigureAwait(false)) > 0)
+            {
+                if (buffer.Length + read > _options.MaxRequestBytes)
+                    return (null, false);
+                await buffer.WriteAsync(chunk.AsMemory(0, read), linked.Token).ConfigureAwait(false);
+            }
 
-        return buffer.ToArray();
+            return (buffer.ToArray(), false);
+        }
+        catch (Exception) when (Volatile.Read(ref aborted) == 1 || timeout.IsCancellationRequested)
+        {
+            LogBodyTimedOut(_logger, _options.RequestReadTimeout.TotalSeconds);
+            if (Volatile.Read(ref aborted) == 0)
+                context.Response.Abort();
+            return (null, true);
+        }
     }
 
     private static T? Parse<T>(byte[] body) where T : class
@@ -581,4 +694,12 @@ internal sealed partial class ToolBridgeServer : IAsyncDisposable
     [LoggerMessage(EventId = 6, Level = LogLevel.Warning,
         Message = "Tool bridge refused {Count} request(s) for a missing or wrong token, the last from {Remote}")]
     private static partial void LogTokenRefused(ILogger logger, string remote, long count);
+
+    [LoggerMessage(EventId = 7, Level = LogLevel.Warning,
+        Message = "Tool bridge closed a connection whose request body did not arrive within {Timeout} s")]
+    private static partial void LogBodyTimedOut(ILogger logger, double timeout);
+
+    [LoggerMessage(EventId = 8, Level = LogLevel.Warning,
+        Message = "Tool bridge stopped with {Count} call(s) still running after {Timeout} s: they are abandoned")]
+    private static partial void LogCallsAbandoned(ILogger logger, int count, double timeout);
 }

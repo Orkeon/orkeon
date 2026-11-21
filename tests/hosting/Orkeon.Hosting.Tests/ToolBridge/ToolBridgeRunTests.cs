@@ -11,8 +11,9 @@ using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 namespace Orkeon.Hosting.Tests.ToolBridge;
 
 /// <summary>
-/// #445 - the caller's runs on the bridge: one scope per caller run, ended with the run, or at once when the caller
-/// stays silent past the heartbeat window; the heartbeat of the caller while a run is live.
+/// #445 - the caller's runs on the bridge: one scope per caller run in the caller's session, ended with the run, or
+/// with the session when the caller stays silent past the heartbeat window; the heartbeat while the session is open;
+/// a run whose session was lost fails, and a later run opens a new session.
 /// </summary>
 public sealed class ToolBridgeRunTests
 {
@@ -81,7 +82,7 @@ public sealed class ToolBridgeRunTests
         await run.DisposeAsync();
 
         // Assert
-        Assert.Equal((true, 0, 0), (Assert.Single(remote.RunResources).IsDisposed, server.RunsOf(link.Client!.CallerId), link.Client.LiveRuns));
+        Assert.Equal((true, 0, 0), (Assert.Single(remote.RunResources).IsDisposed, server.RunsOf(link.Client!.SessionId), link.Client.LiveRuns));
     }
 
     [Fact]
@@ -101,7 +102,7 @@ public sealed class ToolBridgeRunTests
 
         // Assert
         await Polling.WaitUntilAsync(() => remote.RunResources.Single().IsDisposed);
-        Assert.Equal(0, server.RunsOf(link.Client!.CallerId));
+        Assert.Equal(0, server.RunsOf(link.Client!.SessionId));
     }
 
     [Fact]
@@ -116,20 +117,18 @@ public sealed class ToolBridgeRunTests
         await using var run = AgentRunScope.Begin("agent", "tester");
         await bridged.CallAsync(Read("firefox"), Ct);
         clock.Advance(Window / 2);
-        using var http = new HttpClient { BaseAddress = new Uri(link.Client!.Address, ToolBridgeProtocol.BasePath) };
-        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", BridgeLoopback.Token);
-        using var beat = await http.PostAsJsonAsync(ToolBridgeProtocol.HeartbeatEndpoint,
-            new BridgeHeartbeatRequest { CallerId = link.Client.CallerId }, ToolBridgeProtocol.JsonOptions, Ct);
+        using var http = BridgeLoopback.Plain(link.Client!.Address);
+        using var beat = await BridgeLoopback.PostAsync(http, ToolBridgeProtocol.HeartbeatEndpoint, link.Client.SessionId, "{}");
 
         // Act
         clock.Advance(Window * 3 / 4);
 
         // Assert
-        Assert.Equal((1, false), (server.RunsOf(link.Client.CallerId), remote.RunResources.Single().IsDisposed));
+        Assert.Equal((1, false), (server.RunsOf(link.Client.SessionId), remote.RunResources.Single().IsDisposed));
     }
 
     [Fact]
-    public async Task ShouldGiveANewScope_WhenTheCallerComesBackAfterItsRunsWereEnded()
+    public async Task ShouldFailTheCallAsSessionLost_WhenTheBridgeEndedTheSessionOfALiveRun()
     {
         // Arrange
         var clock = new ManualTimeProvider();
@@ -143,11 +142,41 @@ public sealed class ToolBridgeRunTests
         await Polling.WaitUntilAsync(() => remote.RunResources.Single().IsDisposed);
 
         // Act
-        await bridged.CallAsync(Read("firefox"), Ct);
+        var answer = await bridged.CallAsync(Read("firefox"), Ct);
+        var again = await bridged.CallAsync(Read("firefox"), Ct);
 
         // Assert
-        var scopes = remote.Runs.ToArray();
-        Assert.Equal((2, false), (remote.RunResources.Count, ReferenceEquals(scopes[0], scopes[1])));
+        Assert.Equal(
+            (false, nameof(ToolBridgeFailure.SessionLost), false, nameof(ToolBridgeFailure.SessionLost), 1),
+            (answer.Success, answer.Metadata?[ToolBridgeProxy.BridgeFailureKey]?.ToString(),
+                again.Success, again.Metadata?[ToolBridgeProxy.BridgeFailureKey]?.ToString(), remote.Calls.Count));
+        Assert.Contains("lost this caller's session", answer.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldOpenANewSession_WhenTheRunsOfTheLostSessionHaveEnded()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var remote = new FakeBridgeTool("firefox");
+        var (server, link, bridged) = await BridgeAsync(remote, serverTime: clock);
+        await using var _ = server;
+        using var __ = link;
+        var lostRun = AgentRunScope.Begin("agent", "tester");
+        await bridged.CallAsync(Read("firefox"), Ct);
+        var lost = link.Client!.SessionId;
+        clock.Advance(Window + Window);
+        await Polling.WaitUntilAsync(() => remote.RunResources.Single().IsDisposed);
+        await bridged.CallAsync(Read("firefox"), Ct);
+        await lostRun.DisposeAsync();
+        await using var run = AgentRunScope.Begin("agent", "tester");
+
+        // Act
+        var answer = await bridged.CallAsync(Read("firefox"), Ct);
+
+        // Assert
+        Assert.Equal((true, 2, 1), (answer.Success, remote.RunResources.Count, server.RunsOf(link.Client.SessionId)));
+        Assert.NotEqual(lost, link.Client.SessionId);
     }
 
     [Fact]
@@ -169,21 +198,25 @@ public sealed class ToolBridgeRunTests
     }
 
     [Fact]
-    public async Task ShouldStopTheHeartbeat_WhenTheLastCallerRunEnds()
+    public async Task ShouldStopTheHeartbeat_WhenTheBridgeAnswersThatItLostTheSession()
     {
         // Arrange
-        var clock = new ManualTimeProvider();
-        var (server, link, bridged) = await BridgeAsync(new FakeBridgeTool("firefox"), callerTime: clock);
+        var callerClock = new ManualTimeProvider();
+        var serverClock = new ManualTimeProvider();
+        var (server, link, bridged) = await BridgeAsync(new FakeBridgeTool("firefox"), serverTime: serverClock, callerTime: callerClock);
         await using var _ = server;
         using var __ = link;
-        var run = AgentRunScope.Begin("agent", "tester");
         await bridged.CallAsync(Read("firefox"), Ct);
-        await run.DisposeAsync();
+        serverClock.Advance(Window + Window);
+        await Polling.WaitUntilAsync(() => server.Sessions == 0);
+        callerClock.Advance(Window / 3);
+        await Polling.WaitUntilAsync(() => link.Client!.SessionId is null);
+        var sent = link.Client!.HeartbeatsSent;
 
         // Act
-        clock.Advance(Window);
+        callerClock.Advance(Window);
 
         // Assert
-        Assert.Equal(0, link.Client!.HeartbeatsSent);
+        Assert.Equal((1, 1), (sent, link.Client.HeartbeatsSent));
     }
 }

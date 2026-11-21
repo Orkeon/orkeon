@@ -346,8 +346,10 @@ own:
   user and a password, or the host name `loopback` (which a resolver may answer with any address), is refused, and the
   caller follows no redirect, which would carry a call's arguments and files to an address no setting named. A
   request carrying an `Origin` header is refused, since a page open in the user's own browser can post to loopback; a
-  body over `Orkeon:Bridge:MaxRequestBytes` (32 MiB) is refused before it is read. Only the five endpoints under
-  `/orkeon-bridge/v1/` answer: `GET tools`, `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`.
+  body over `Orkeon:Bridge:MaxRequestBytes` (32 MiB) is refused before it is read, and a body that does not arrive
+  within `Orkeon:Bridge:RequestReadTimeout` (30 s) closes the connection. A loopback listener answers only a loopback
+  peer, whatever the host name the request gives. Only the six endpoints under `/orkeon-bridge/v1/` answer:
+  `GET tools`, `POST session`, `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`.
 - **Both sides select.** A tool runs on the bridge only when the bridge's `Orkeon:Bridge:Allow` and the caller's
   `Orkeon:Tools:Bridge:Allow` both select it, `Deny` winning on each side. `*` selects only Orkeon's bridgeable
   tools: never a tool that acts on the workspace (files, shell, `code_interpreter`, `list_mounts`, code index), an MCP
@@ -383,11 +385,21 @@ own:
   bound); the working directory, a mount's root and `/` never are. A failure of the link, the host's shutdown
   included, is a failed call, never a local run.
 - **Lifetime.** A caller's run is one scope on the bridge, ended by `POST end-run`; a caller silent past
-  `Orkeon:Bridge:HeartbeatWindow` (30 s) loses its scopes, and their browsers, within 1.25 times the window. Stopping
-  the bridge cancels the calls in flight and ends every scope.
-- **One caller per bridge.** The caller id a request carries is the caller's own word, with no session behind it: any
-  holder of the token can end or call into another caller's runs. A bridge is meant for one caller; two callers that
-  must not reach each other's runs need two bridges, each with its own token.
+  `Orkeon:Bridge:HeartbeatWindow` (30 s) loses its session, its scopes and their browsers, within 1.25 times the
+  window. Stopping the bridge cancels the calls in flight, waits `Orkeon:Bridge:StopTimeout` (10 s) for them, then
+  abandons and logs those still running, and ends every scope.
+- **A session per caller.** A caller opens a session after the token check; the bridge issues an id of 256 random
+  bits and keeps only its SHA-256. Every other `POST` names it (`X-Orkeon-Bridge-Session`): missing, the request is
+  refused (400); unknown or ended, it gets `410 Gone`, and the caller fails the run as for a lost link, never falling
+  back to a local tool. A call id, a cancellation and an end of run reach only their own session, so callers sharing
+  a token cannot end, keep alive, cancel or call into each other's runs. The bridge bounds `MaxSessions` (16) and
+  `MaxConcurrentCalls` (32) with 503, `MaxCallsPerSession` (8) and `MaxRunsPerSession` (16) with 429. What stays: the
+  token is shared, so whoever holds it can open sessions up to the bound, and a session id is a bearer secret, in
+  clear over http on loopback.
+- **The answer names no path of the bridge.** The physical folders of a call's scratch become the caller's virtual
+  paths in the error and the metadata of a tool's answer, and the bridge's other base paths (its mounts, the scratch
+  and its parent) become `[REDACTED]`. A call's mounts are refused (400) when one is not an absolute virtual path, is
+  `/`, names an empty, `.` or `..` segment, appears twice, or overlaps a mount the bridge keeps for itself.
 
 ### LLM keys: the settings file names the variable
 

@@ -60,6 +60,12 @@ public class FakeBridgeTool : IBaseTool
     /// <summary>When set, a call waits for its cancellation and records it.</summary>
     public bool WaitsForCancellation { get; set; }
 
+    /// <summary>When set, a call ignores its cancellation and waits for <see cref="Release"/>.</summary>
+    public bool IgnoresCancellation { get; set; }
+
+    /// <summary>Releases a call that ignores its cancellation.</summary>
+    public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     /// <summary>The calls received, in order.</summary>
     public ConcurrentQueue<ToolCallRequest> Calls { get; } = new();
 
@@ -102,6 +108,13 @@ public class FakeBridgeTool : IBaseTool
             RunResources.Enqueue(resource);
             return resource;
         });
+        if (IgnoresCancellation)
+        {
+            Started.TrySetResult();
+            await Release.Task;
+            return Response;
+        }
+
         if (!WaitsForCancellation)
             return Response;
         Started.TrySetResult();

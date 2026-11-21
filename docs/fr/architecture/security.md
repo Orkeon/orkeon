@@ -376,7 +376,9 @@ conteneur. Chaque côté se défend pour lui-même :
   porterait les arguments et les fichiers d'un appel vers une adresse qu'aucun réglage n'a nommée. Une requête
   portant un en-tête `Origin` est refusée, car une page ouverte dans le navigateur de
   l'utilisateur peut poster vers la boucle locale ; un corps au-delà de `Orkeon:Bridge:MaxRequestBytes` (32 Mio) est
-  refusé avant d'être lu. Seuls répondent les cinq points d'accès sous `/orkeon-bridge/v1/` : `GET tools`,
+  refusé avant d'être lu, et un corps qui n'arrive pas dans `Orkeon:Bridge:RequestReadTimeout` (30 s) ferme la
+  connexion. Un écouteur en boucle locale ne répond qu'à un pair en boucle locale, quel que soit le nom d'hôte que
+  donne la requête. Seuls répondent les six points d'accès sous `/orkeon-bridge/v1/` : `GET tools`, `POST session`,
   `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`.
 - **Les deux côtés sélectionnent.** Un outil ne s'exécute sur le pont que si l'`Orkeon:Bridge:Allow` du pont et
   l'`Orkeon:Tools:Bridge:Allow` de l'appelant le sélectionnent tous deux, `Deny` l'emportant de chaque côté. `*` ne
@@ -418,12 +420,24 @@ conteneur. Chaque côté se défend pour lui-même :
   le répertoire de travail, la racine d'un montage et `/` ne le sont jamais. Une défaillance du lien, arrêt de l'hôte
   compris, est un appel en échec, jamais une exécution locale.
 - **La durée de vie.** Une exécution de l'appelant est une portée sur le pont, terminée par `POST end-run` ; un
-  appelant silencieux au-delà de `Orkeon:Bridge:HeartbeatWindow` (30 s) perd ses portées, et leurs navigateurs, en
-  au plus 1,25 fois la fenêtre. Arrêter le pont annule les appels en cours et termine chaque portée.
-- **Un appelant par pont.** L'identifiant d'appelant que porte une requête est la parole de l'appelant, sans session
-  derrière : tout détenteur du jeton peut terminer les exécutions d'un autre appelant ou y appeler des outils. Un pont
-  est fait pour un seul appelant ; deux appelants qui ne doivent pas atteindre les exécutions l'un de l'autre
-  demandent deux ponts, chacun avec son jeton.
+  appelant silencieux au-delà de `Orkeon:Bridge:HeartbeatWindow` (30 s) perd sa session, ses portées et leurs
+  navigateurs, en au plus 1,25 fois la fenêtre. Arrêter le pont annule les appels en cours, les attend
+  `Orkeon:Bridge:StopTimeout` (10 s), puis abandonne et journalise ceux qui tournent encore, et termine chaque portée.
+- **Une session par appelant.** Un appelant ouvre une session après le contrôle du jeton ; le pont émet un
+  identifiant de 256 bits aléatoires et n'en garde que le SHA-256. Chaque autre `POST` la nomme
+  (`X-Orkeon-Bridge-Session`) : absente, la requête est refusée (400) ; inconnue ou terminée, elle reçoit
+  `410 Gone`, et l'appelant fait échouer l'exécution comme pour un lien perdu, sans jamais se replier sur un outil
+  local. Un identifiant d'appel, une annulation et une fin d'exécution n'atteignent que leur propre session, si bien
+  que des appelants qui partagent un jeton ne peuvent ni terminer, ni maintenir en vie, ni annuler les exécutions
+  l'un de l'autre, ni y appeler. Le pont borne `MaxSessions` (16) et `MaxConcurrentCalls` (32) par un 503,
+  `MaxCallsPerSession` (8) et `MaxRunsPerSession` (16) par un 429. Ce qui reste : le jeton est partagé, si bien que
+  qui le détient peut ouvrir des sessions jusqu'à la borne, et un identifiant de session est un secret au porteur, en
+  clair en http sur la boucle locale.
+- **La réponse ne nomme aucun chemin du pont.** Les dossiers physiques du brouillon d'un appel deviennent les chemins
+  virtuels de l'appelant dans l'erreur et les métadonnées de la réponse d'un outil, et les autres chemins de base du
+  pont (ses montages, le brouillon et son parent) deviennent `[REDACTED]`. Les montages d'un appel sont refusés (400)
+  quand l'un n'est pas un chemin virtuel absolu, est `/`, nomme un segment vide, `.` ou `..`, apparaît deux fois, ou
+  chevauche un montage que le pont garde pour lui.
 
 ### Clés LLM : le fichier de réglages nomme la variable
 

@@ -17,6 +17,12 @@ internal enum ToolBridgeFailure
 
     /// <summary>The bridge answered with a refusal of another kind, or an answer the caller cannot read.</summary>
     Refused,
+
+    /// <summary>
+    /// The bridge no longer holds this caller's session: it expired at a missed heartbeat window, or the bridge
+    /// restarted. The runs the session held there are ended; a run in flight fails, as for a lost link.
+    /// </summary>
+    SessionLost,
 }
 
 /// <summary>A request to the tool bridge that failed, with its reason in the operator's words.</summary>
@@ -40,9 +46,13 @@ internal sealed class ToolBridgeException : Exception
 /// The connection is bounded by <see cref="ToolBridgeClientOptions.ConnectTimeout"/>; a call is not, since a tool
 /// may run for minutes, and ends with the caller's cancellation.
 /// <para>
-/// The client names itself with <see cref="CallerId"/> and keeps the caller's runs that have a scope on the bridge
-/// (<see cref="BeginRun"/>, <see cref="EndRunAsync"/>): while one is live it sends a heartbeat three times per
-/// <see cref="HeartbeatWindow"/>, so the bridge keeps those scopes; once none is, it stops.
+/// The client opens a session on the bridge before its first call (<c>POST session</c>) and names it on every later
+/// request (<see cref="ToolBridgeProtocol.SessionHeader"/>); while the session is open it sends a heartbeat three
+/// times per <see cref="HeartbeatWindow"/>, so the bridge keeps it and the runs it holds (<see cref="BeginRun"/>,
+/// <see cref="EndRunAsync"/>). When the bridge answers that it lost the session, the request fails with
+/// <see cref="ToolBridgeFailure.SessionLost"/>, and so does every later one while a run that was live then is not
+/// ended: its state on the bridge (a browser) is gone, and nothing falls back to a local tool. Once those runs ended,
+/// the next request opens a new session.
 /// </para>
 /// </summary>
 internal sealed class ToolBridgeClient : IDisposable
@@ -55,8 +65,11 @@ internal sealed class ToolBridgeClient : IDisposable
     private readonly Lock _sync = new();
     private readonly HashSet<string> _liveRuns = new(StringComparer.Ordinal);
     private readonly ITimer _heartbeat;
+    private readonly SemaphoreSlim _opening = new(1, 1);
     private TimeSpan _window = TimeSpan.FromSeconds(30);
     private bool _beating;
+    private string? _session;
+    private bool _lost;
 
     /// <summary>Builds a client of the bridge at <paramref name="address"/>.</summary>
     /// <param name="address">The bridge's base address; its path is ignored, the protocol's path is used.</param>
@@ -98,8 +111,15 @@ internal sealed class ToolBridgeClient : IDisposable
     /// <summary>The bridge's address, as the settings give it.</summary>
     public Uri Address { get; }
 
-    /// <summary>The id this client sends with each call, its runs' ends and its heartbeats.</summary>
-    public string CallerId { get; } = Guid.NewGuid().ToString("N");
+    /// <summary>The id of the session the bridge issued to this client; null before the first call, or once lost.</summary>
+    public string? SessionId
+    {
+        get
+        {
+            lock (_sync)
+                return _session;
+        }
+    }
 
     /// <summary>
     /// The window the bridge gives (<c>GET tools</c>, <c>Orkeon:Bridge:HeartbeatWindow</c>); the client beats three
@@ -137,24 +157,18 @@ internal sealed class ToolBridgeClient : IDisposable
 
     private int _heartbeatsSent;
 
-    /// <summary>Records that the caller's run <paramref name="runId"/> has a scope on the bridge; the heartbeat starts.</summary>
+    /// <summary>Records that the caller's run <paramref name="runId"/> has a scope on the bridge, in this client's session.</summary>
     /// <param name="runId">The run.</param>
     public void BeginRun(string runId)
     {
         lock (_sync)
-        {
             _liveRuns.Add(runId);
-            if (_beating)
-                return;
-            _beating = true;
-            var period = _window / 3;
-            _heartbeat.Change(period, period);
-        }
     }
 
     /// <summary>
     /// Ends the caller's run <paramref name="runId"/> on the bridge, best effort and bounded: a lost bridge ends it on
-    /// its own once the heartbeat stops. The heartbeat stops with the last live run.
+    /// its own once the heartbeat stops. Once the last run live at the loss of a session ended, the next request opens
+    /// a new session.
     /// </summary>
     /// <param name="runId">The run.</param>
     /// <returns>A task that completes once the bridge answered, or failed to.</returns>
@@ -162,21 +176,24 @@ internal sealed class ToolBridgeClient : IDisposable
         Justification = "The end of a run is best effort: a bridge that does not answer ends the run when the heartbeat stops.")]
     public async System.Threading.Tasks.Task EndRunAsync(string runId)
     {
+        string? session;
         lock (_sync)
         {
             _liveRuns.Remove(runId);
-            if (_liveRuns.Count == 0 && _beating)
-            {
-                _beating = false;
-                _heartbeat.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-            }
+            if (_lost && _liveRuns.Count == 0)
+                _lost = false;
+            session = _lost ? null : _session;
         }
 
+        if (session is null)
+            return;
         try
         {
             using var bound = new CancellationTokenSource(EndBound);
-            using var request = Post(ToolBridgeProtocol.EndRunEndpoint, new BridgeRunRequest { CallerId = CallerId, RunId = runId });
+            using var request = Post(ToolBridgeProtocol.EndRunEndpoint, new BridgeRunRequest { RunId = runId }, session);
             using var response = await _http.SendAsync(request, bound.Token).ConfigureAwait(false);
+            if (response.StatusCode == ToolBridgeProtocol.SessionLostStatus)
+                OnSessionLost(session);
         }
         catch (Exception)
         {
@@ -205,9 +222,11 @@ internal sealed class ToolBridgeClient : IDisposable
         Justification = "A cancellation is best effort: whatever fails, the call it names is abandoned by the caller already.")]
     public async System.Threading.Tasks.Task CancelAsync(string callId, CancellationToken cancellationToken)
     {
+        if (SessionId is not { } session)
+            return;
         try
         {
-            using var request = Post(ToolBridgeProtocol.CancelEndpoint, new BridgeCancelRequest { CallId = callId });
+            using var request = Post(ToolBridgeProtocol.CancelEndpoint, new BridgeCancelRequest { CallId = callId }, session);
             using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception)
@@ -221,6 +240,7 @@ internal sealed class ToolBridgeClient : IDisposable
     {
         _heartbeat.Dispose();
         _http.Dispose();
+        _opening.Dispose();
     }
 
     [SuppressMessage("Design", "CA1031",
@@ -228,19 +248,23 @@ internal sealed class ToolBridgeClient : IDisposable
     private async System.Threading.Tasks.Task BeatAsync()
     {
         TimeSpan window;
+        string? session;
         lock (_sync)
         {
-            if (!_beating)
+            if (!_beating || _session is null)
                 return;
             window = _window;
+            session = _session;
         }
 
         Interlocked.Increment(ref _heartbeatsSent);
         try
         {
             using var bound = new CancellationTokenSource(window);
-            using var request = Post(ToolBridgeProtocol.HeartbeatEndpoint, new BridgeHeartbeatRequest { CallerId = CallerId });
+            using var request = Post(ToolBridgeProtocol.HeartbeatEndpoint, new BridgeEmptyRequest(), session);
             using var response = await _http.SendAsync(request, bound.Token).ConfigureAwait(false);
+            if (response.StatusCode == ToolBridgeProtocol.SessionLostStatus)
+                OnSessionLost(session);
         }
         catch (Exception)
         {
@@ -248,12 +272,107 @@ internal sealed class ToolBridgeClient : IDisposable
         }
     }
 
-    private static HttpRequestMessage Post<T>(string endpoint, T body) => new(HttpMethod.Post, endpoint)
+    private static HttpRequestMessage Post<T>(string endpoint, T body, string? session = null)
     {
-        Content = JsonContent.Create(body, options: ToolBridgeProtocol.JsonOptions),
-    };
+        var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        {
+            Content = JsonContent.Create(body, options: ToolBridgeProtocol.JsonOptions),
+        };
+        if (session is not null)
+            request.Headers.Add(ToolBridgeProtocol.SessionHeader, session);
+        return request;
+    }
+
+    /// <summary>
+    /// The session of this client, opened at the first need; refused with <see cref="ToolBridgeFailure.SessionLost"/>
+    /// while a run live at the loss of the previous one is not ended.
+    /// </summary>
+    [SuppressMessage("Reliability", "CA2000", Justification = "SendRawAsync owns the request and disposes it.")]
+    private async System.Threading.Tasks.Task<string> SessionAsync(CancellationToken cancellationToken)
+    {
+        lock (_sync)
+        {
+            if (_lost)
+                throw Lost("the runs it held there are ended; this run cannot go on without them");
+            if (_session is { } open)
+                return open;
+        }
+
+        await _opening.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            lock (_sync)
+            {
+                if (_session is { } open)
+                    return open;
+            }
+
+            var opened = await SendRawAsync<BridgeSessionResponse>(Post(ToolBridgeProtocol.SessionEndpoint, new BridgeEmptyRequest()), cancellationToken)
+                .ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(opened.SessionId))
+                throw new ToolBridgeException(ToolBridgeFailure.Refused, $"the tool bridge at {Address} opened a session without an id.");
+            lock (_sync)
+            {
+                _session = opened.SessionId;
+                if (opened.HeartbeatWindowMs is > 0 and var ms)
+                    _window = TimeSpan.FromMilliseconds(ms);
+                _beating = true;
+                var period = _window / 3;
+                _heartbeat.Change(period, period);
+                return _session;
+            }
+        }
+        finally
+        {
+            _opening.Release();
+        }
+    }
+
+    // The bridge no longer holds the session: the runs live then are lost with it, a later run gets a new session.
+    private void OnSessionLost(string session)
+    {
+        lock (_sync)
+        {
+            if (!string.Equals(_session, session, StringComparison.Ordinal))
+                return;
+            _session = null;
+            _lost = _liveRuns.Count > 0;
+            _beating = false;
+            _heartbeat.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    private ToolBridgeException Lost(string detail) => new(ToolBridgeFailure.SessionLost,
+        $"the tool bridge at {Address} lost this caller's session (a missed heartbeat window, or a restart of the bridge): {detail}.");
 
     private async System.Threading.Tasks.Task<T> SendAsync<T>(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (request.Method != HttpMethod.Post)
+            return await SendRawAsync<T>(request, cancellationToken).ConfigureAwait(false);
+        string session;
+        try
+        {
+            session = await SessionAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            request.Dispose();
+            throw;
+        }
+
+        request.Headers.Add(ToolBridgeProtocol.SessionHeader, session);
+        try
+        {
+            return await SendRawAsync<T>(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ToolBridgeException ex) when (ex.Failure == ToolBridgeFailure.SessionLost)
+        {
+            OnSessionLost(session);
+            throw;
+        }
+    }
+
+    private async System.Threading.Tasks.Task<T> SendRawAsync<T>(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         using var owned = request;
         HttpResponseMessage response;
@@ -278,6 +397,8 @@ internal sealed class ToolBridgeClient : IDisposable
             try
             {
                 var body = await ReadBoundedAsync(response, cancellationToken).ConfigureAwait(false);
+                if (response.StatusCode == ToolBridgeProtocol.SessionLostStatus && request.Headers.Contains(ToolBridgeProtocol.SessionHeader))
+                    throw Lost("the runs it held there are ended, and a run in flight fails");
                 if (!response.IsSuccessStatusCode)
                 {
                     var refusal = JsonSerializer.Deserialize<BridgeErrorResponse>(body, ToolBridgeProtocol.JsonOptions);

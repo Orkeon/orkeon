@@ -116,7 +116,6 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
                 Tool = Name,
                 Arguments = JsonSerializer.SerializeToElement(arguments, ToolBridgeProtocol.JsonOptions),
                 Context = request.Context,
-                CallerId = _client.CallerId,
                 RunId = JoinRun(),
             };
             if (_carriesFiles)

@@ -127,8 +127,8 @@ internal sealed class ToolBridgeServerOptions
     public long MaxFileBytes { get; set; } = DefaultMaxFileBytes;
 
     /// <summary>
-    /// How long the bridge waits for a sign of a caller that has runs on it (a heartbeat or a request) before it ends
-    /// those runs, and their browsers, at once.
+    /// How long the bridge waits for a sign of a caller's session (a heartbeat or a request) before it ends the
+    /// session, its runs and their browsers at once.
     /// </summary>
     public TimeSpan HeartbeatWindow { get; set; } = TimeSpan.FromSeconds(30);
 
@@ -138,10 +138,61 @@ internal sealed class ToolBridgeServerOptions
     /// <summary>The longest heartbeat window either side accepts.</summary>
     public static readonly TimeSpan MaxHeartbeatWindow = TimeSpan.FromMinutes(10);
 
+    /// <summary>
+    /// The largest number of caller sessions the bridge holds at once; a caller that opens one more is refused with
+    /// 503 until a session ends.
+    /// </summary>
+    public int MaxSessions { get; set; } = 16;
+
+    /// <summary>
+    /// The largest number of calls the bridge runs at once, every session together; one more is refused with 503.
+    /// </summary>
+    public int MaxConcurrentCalls { get; set; } = 32;
+
+    /// <summary>The largest number of calls one session runs at once; one more is refused with 429.</summary>
+    public int MaxCallsPerSession { get; set; } = 8;
+
+    /// <summary>
+    /// The largest number of runs one session holds on the bridge, each with its own scope (and browser); a call that
+    /// opens one more is refused with 429 until a run ends.
+    /// </summary>
+    public int MaxRunsPerSession { get; set; } = 16;
+
+    /// <summary>
+    /// How long the body of a request may take to arrive once its headers are read; past it the connection is closed.
+    /// </summary>
+    public TimeSpan RequestReadTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// How long the stop of the bridge waits for the calls in flight, once cancelled; a call still running then is
+    /// abandoned and logged.
+    /// </summary>
+    public TimeSpan StopTimeout { get; set; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>The largest value of each count limit (<see cref="MaxSessions"/> and the like).</summary>
+    public const int MaxCountLimit = 1024;
+
+    /// <summary>The longest <see cref="RequestReadTimeout"/> and <see cref="StopTimeout"/> accepted.</summary>
+    public static readonly TimeSpan MaxTimeout = TimeSpan.FromMinutes(10);
+
     /// <summary>The problems of these options, judged at start.</summary>
     /// <returns>One sentence per problem; none when they are sound.</returns>
     public IEnumerable<string> Problems()
     {
+        foreach (var (key, value) in new[]
+        {
+            (nameof(MaxSessions), MaxSessions), (nameof(MaxConcurrentCalls), MaxConcurrentCalls),
+            (nameof(MaxCallsPerSession), MaxCallsPerSession), (nameof(MaxRunsPerSession), MaxRunsPerSession),
+        })
+        {
+            if (value < 1 || value > MaxCountLimit)
+                yield return $"{SectionName}:{key} must lie between 1 and {MaxCountLimit}.";
+        }
+
+        if (RequestReadTimeout < TimeSpan.FromSeconds(1) || RequestReadTimeout > MaxTimeout)
+            yield return $"{SectionName}:RequestReadTimeout must lie between 00:00:01 and {MaxTimeout}.";
+        if (StopTimeout < TimeSpan.Zero || StopTimeout > MaxTimeout)
+            yield return $"{SectionName}:StopTimeout must lie between 00:00:00 and {MaxTimeout}.";
         if (ToolBridgeAddress.Problem(Prefix, $"{SectionName}:Prefix") is { } prefix)
             yield return prefix;
         if (string.IsNullOrWhiteSpace(TokenEnvVar))

@@ -130,7 +130,7 @@ public sealed class ToolBridgeFirefoxIntegrationTests : IDisposable
         await run.DisposeAsync();
 
         // Assert
-        Assert.Equal(0, server.RunsOf(link.Client!.CallerId));
+        Assert.Equal(0, server.RunsOf(link.Client!.SessionId));
     }
 
     private async Task ServeAsync()

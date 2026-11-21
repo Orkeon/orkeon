@@ -8,11 +8,13 @@ namespace Orkeon.Hosting.ToolBridge;
 
 /// <summary>
 /// The wire of the tool bridge (#445, ADR-019): JSON over HTTP under a versioned path, not MCP. Every request
-/// carries the token as <c>Authorization: Bearer</c>. Version 1 has five endpoints: the tools the bridge serves
-/// (<c>GET tools</c>), a call (<c>POST call</c>), the cancellation of a call in flight (<c>POST cancel</c>), the end
-/// of a caller's run (<c>POST end-run</c>) and the heartbeat of a caller with live runs (<c>POST heartbeat</c>). A
-/// call names its caller and the caller's run, carries the caller's mounts and the files it reads, and its answer
-/// carries the files the tool wrote; a field a side does not know is ignored by the other.
+/// carries the token as <c>Authorization: Bearer</c>. Version 1 has six endpoints: the tools the bridge serves
+/// (<c>GET tools</c>), the opening of a caller's session (<c>POST session</c>), a call (<c>POST call</c>), the
+/// cancellation of a call in flight (<c>POST cancel</c>), the end of a caller's run (<c>POST end-run</c>) and the
+/// heartbeat of a session (<c>POST heartbeat</c>). The last four carry the session id the bridge issued in the header
+/// <see cref="SessionHeader"/>; a session the bridge does not hold, unknown or expired, is answered
+/// <see cref="SessionLostStatus"/>. A call names the caller's run, carries the caller's mounts and the files it reads,
+/// and its answer carries the files the tool wrote; a field a side does not know is ignored by the other.
 /// </summary>
 internal static class ToolBridgeProtocol
 {
@@ -21,6 +23,15 @@ internal static class ToolBridgeProtocol
 
     /// <summary>The tools the bridge serves, each with its contract hash (<c>GET</c>).</summary>
     public const string ToolsEndpoint = "tools";
+
+    /// <summary>The opening of a caller's session (<c>POST</c>, an empty object; a <see cref="BridgeSessionResponse"/>).</summary>
+    public const string SessionEndpoint = "session";
+
+    /// <summary>The header that carries the session id on every request of a session.</summary>
+    public const string SessionHeader = "X-Orkeon-Bridge-Session";
+
+    /// <summary>The status of a request whose session the bridge does not hold: unknown, expired or ended.</summary>
+    public const System.Net.HttpStatusCode SessionLostStatus = System.Net.HttpStatusCode.Gone;
 
     /// <summary>One call of a served tool (<c>POST</c>, a <see cref="BridgeCallRequest"/>).</summary>
     public const string CallEndpoint = "call";
@@ -31,7 +42,7 @@ internal static class ToolBridgeProtocol
     /// <summary>The end of a caller's run on the bridge (<c>POST</c>, a <see cref="BridgeRunRequest"/>).</summary>
     public const string EndRunEndpoint = "end-run";
 
-    /// <summary>The heartbeat of a caller that has runs on the bridge (<c>POST</c>, a <see cref="BridgeHeartbeatRequest"/>).</summary>
+    /// <summary>The heartbeat of a session (<c>POST</c>, an empty object).</summary>
     public const string HeartbeatEndpoint = "heartbeat";
 
     /// <summary>The scheme of the token header.</summary>
@@ -138,8 +149,8 @@ internal sealed record BridgeToolListResponse
     public required ImmutableList<BridgeServedTool> Tools { get; init; }
 
     /// <summary>
-    /// How long the bridge waits for a caller's heartbeat before it ends that caller's runs, in milliseconds
-    /// (<c>Orkeon:Bridge:HeartbeatWindow</c>); the caller beats three times in that window.
+    /// How long the bridge waits for a sign of a caller's session before it ends the session and its runs, in
+    /// milliseconds (<c>Orkeon:Bridge:HeartbeatWindow</c>); the caller beats three times in that window.
     /// </summary>
     [JsonPropertyName("heartbeat_window_ms")]
     public long? HeartbeatWindowMs { get; init; }
@@ -148,7 +159,7 @@ internal sealed record BridgeToolListResponse
 /// <summary>The body of <c>POST call</c>.</summary>
 internal sealed record BridgeCallRequest
 {
-    /// <summary>An id the caller picks for the call, which <c>POST cancel</c> names.</summary>
+    /// <summary>An id the caller picks for the call, unique within its session, which <c>POST cancel</c> names.</summary>
     [JsonPropertyName("call_id")]
     public required string CallId { get; init; }
 
@@ -163,10 +174,6 @@ internal sealed record BridgeCallRequest
     /// <summary>The call's context string, when the caller's request carries one.</summary>
     [JsonPropertyName("context")]
     public string? Context { get; init; }
-
-    /// <summary>The id the caller's link picked at its start; the runs and the heartbeat of a caller are under it.</summary>
-    [JsonPropertyName("caller_id")]
-    public string? CallerId { get; init; }
 
     /// <summary>The caller's <c>AgentRunScope.RunId</c>; absent for a call outside any run.</summary>
     [JsonPropertyName("run_id")]
@@ -216,24 +223,30 @@ internal sealed record BridgeFile
     public required ReadOnlyMemory<byte> Content { get; init; }
 }
 
-/// <summary>The body of <c>POST end-run</c>.</summary>
+/// <summary>The body of <c>POST end-run</c>; the run is one of the session the header names.</summary>
 internal sealed record BridgeRunRequest
 {
-    /// <summary>The caller's id.</summary>
-    [JsonPropertyName("caller_id")]
-    public required string CallerId { get; init; }
-
     /// <summary>The run that ended on the caller.</summary>
     [JsonPropertyName("run_id")]
     public required string RunId { get; init; }
 }
 
-/// <summary>The body of <c>POST heartbeat</c>.</summary>
-internal sealed record BridgeHeartbeatRequest
+/// <summary>The body of <c>POST session</c> and <c>POST heartbeat</c>: an empty object.</summary>
+internal sealed record BridgeEmptyRequest;
+
+/// <summary>The answer of <c>POST session</c>.</summary>
+internal sealed record BridgeSessionResponse
 {
-    /// <summary>The caller's id.</summary>
-    [JsonPropertyName("caller_id")]
-    public required string CallerId { get; init; }
+    /// <summary>
+    /// The session id: random, unguessable, sent back in <see cref="ToolBridgeProtocol.SessionHeader"/>; a bearer
+    /// secret of the caller, like the token.
+    /// </summary>
+    [JsonPropertyName("session_id")]
+    public required string SessionId { get; init; }
+
+    /// <summary>How long the bridge keeps the session without a sign of it, in milliseconds.</summary>
+    [JsonPropertyName("heartbeat_window_ms")]
+    public long? HeartbeatWindowMs { get; init; }
 }
 
 /// <summary>The answer of <c>POST call</c>: the tool's raw response, untruncated and unsanitized.</summary>

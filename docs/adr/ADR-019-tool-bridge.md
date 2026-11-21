@@ -19,14 +19,16 @@ tools, which both sides know.
 ## Decision
 
 1. **A protocol of its own, JSON over HTTP, not MCP.** Version 1 sits under `/orkeon-bridge/v1/`: `GET tools` (the
-   tools served, each with a contract hash), `POST call` (one call: an id, the tool, its arguments, its context; the
-   tool's raw response back), `POST cancel` (the cancellation of a call in flight), `POST end-run` (the end of a
-   caller's run) and `POST heartbeat` (a caller with live runs is still there). Every request carries the token as
-   `Authorization: Bearer`. A later version adds fields and endpoints beside these; a field a side does not know is
+   tools served, each with a contract hash), `POST session` (a session for the caller), `POST call` (one call: an id,
+   the tool, its arguments, its context; the tool's raw response back), `POST cancel` (the cancellation of a call in
+   flight), `POST end-run` (the end of a caller's run) and `POST heartbeat` (the caller's session is still there).
+   Every request carries the token as `Authorization: Bearer`, and every `POST` but `session` the caller's session in
+   `X-Orkeon-Bridge-Session`. A later version adds fields and endpoints beside these; a field a side does not know is
    ignored.
 2. **Both sides select.** The caller's section `Orkeon:Tools:Bridge` (`Address`, `TokenEnvVar`, `Allow`, `Deny`,
    `ConnectTimeout`, `MaxFileBytes`, `MaxResponseBytes`, `HostHeader`) and the server's `Orkeon:Bridge` (`Prefix`,
-   `TokenEnvVar`, `Allow`, `Deny`, `MaxRequestBytes`, `MaxFileBytes`, `HeartbeatWindow`) apply one rule: no `Allow`
+   `TokenEnvVar`, `Allow`, `Deny`, `MaxRequestBytes`, `MaxFileBytes`, `HeartbeatWindow`, `MaxSessions`,
+   `MaxConcurrentCalls`, `MaxCallsPerSession`, `MaxRunsPerSession`, `RequestReadTimeout`, `StopTimeout`) apply one rule: no `Allow`
    selects nothing, the lone `*` selects every bridgeable Orkeon tool, `Deny` wins, only names and the lone `*` are
    accepted, and a name that is no tool of the side's registry refuses the start. A tool is bridged when both sides
    select it. A coworker delegation tool is never selected, and naming one refuses the start: it stands for the
@@ -61,13 +63,21 @@ tools, which both sides know.
    `TokenEnvVar` names, never from a file, is trimmed, must hold at least 16 characters on both sides, and is compared
    in fixed time. A request carrying an `Origin` header is refused, as is a body over `MaxRequestBytes`. A call whose
    tool throws is audited as a failure.
-9. **A caller's run is a run on the bridge.** A call carries the caller's id and the id of its agent run; the bridge
-   keeps one `AgentRunScope` per caller run and runs every call of that run in it, so "one browser per run" means what
-   it means locally. The caller ends that scope with `POST end-run` when its own scope ends, and beats every third of
-   `Orkeon:Bridge:HeartbeatWindow` (30 s, 1 s to 10 min) while it has live runs; a caller silent past the window loses
-   its runs, and their browsers, within 1.25 times the window. A call outside any run carries no run id. The bridge
-   assumes one caller: the caller id is the caller's own word, with no session behind it, so any holder of the token
-   can end or act on another caller's runs.
+9. **A caller's run is a run on the bridge, in the caller's session.** Before its first call the caller opens a
+   session (`POST session`, after the token check): the bridge issues an id of 256 random bits, keeps only its
+   SHA-256, and maps to it the caller's runs and calls in flight. A call carries the id of its agent run; the bridge
+   keeps one `AgentRunScope` per run of the session and runs every call of that run in it, so "one browser per run"
+   means what it means locally. A call id, a cancellation and an end of run reach only the session that names them:
+   two callers sharing a token cannot end, keep alive, cancel or call into each other's runs. The caller ends a scope
+   with `POST end-run` when its own scope ends, and beats every third of `Orkeon:Bridge:HeartbeatWindow` (30 s, 1 s to
+   10 min) while its session is open; a session silent past the window ends with its runs, and their browsers, within
+   1.25 times the window. A request naming an unknown or ended session gets `410 Gone`, which the caller reports as
+   "the bridge lost this caller's session": the run fails as for a lost link, with no local fallback, and the caller
+   opens a new session once the runs of the lost one have ended. A call outside any run carries no run id. The bridge
+   bounds what a session holds: `MaxSessions` (16, then 503), `MaxConcurrentCalls` (32 in all, then 503),
+   `MaxCallsPerSession` (8, then 429), `MaxRunsPerSession` (16, then 429); a body that does not arrive within
+   `RequestReadTimeout` (30 s) closes the connection, and the stop waits `StopTimeout` (10 s) for the calls it
+   cancelled before it abandons and logs them.
 10. **A path stays the caller's.** A call of a tool that uses the file system (and does not act on the workspace)
     carries the caller's agent-facing mounts and the files its string arguments name. The bridge presents them in a
     scratch folder at the caller's virtual paths for the length of the call (a folder its path validator allows, as it
@@ -88,8 +98,10 @@ tools, which both sides know.
   longer applies.
 - A result the bridge returns travels as JSON: a typed result reaches the caller's pipeline as its JSON rendering rather
   than its `ToString()`.
-- One bridge serves one caller: two callers sharing a token can reach each other's runs (a known limit, in
+- Callers sharing a token are kept apart by their sessions, not by the token: whoever holds the token can open a
+  session, and a session id is a bearer secret, carried in clear over http on loopback (a known limit, in
   [Known limitations](../reference/limitations.md)).
-- A connection lost in mid-run ends the run on the bridge within the window, without a grace delay: a caller that
-  comes back starts new scopes, and its browser pages are gone.
+- A connection lost in mid-run ends the session, and its runs, on the bridge within the window, without a grace
+  delay: the runs in flight on the caller fail, a caller that comes back opens a new session, and its browser pages
+  are gone.
 - How to put both sides in place is the guide [Orkeon in a container, the browser on the desktop](../guides/tool-bridge.md).

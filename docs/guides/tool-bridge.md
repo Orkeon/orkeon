@@ -108,11 +108,16 @@ travels in clear off the machine.
 
 ## 4. What travels, and for how long
 
-- **One run on the caller is one run on the bridge.** The bridge keeps one scope per caller run, so "one browser per
-  run" means what it means locally. The caller ends that scope (`POST end-run`) when its own run ends, and beats
-  (`POST heartbeat`) every third of `Orkeon:Bridge:HeartbeatWindow` (30 s, between 1 s and 10 min) while it has
-  runs in flight. A caller silent past the window loses its runs on the bridge, and their browsers, within at most
-  1.25 times the window (the bridge checks every quarter of it): a caller that comes back starts new ones.
+- **One run on the caller is one run on the bridge.** The caller opens a session on the bridge at its first call
+  (`POST session`), and the bridge keeps one scope per run of that session, so "one browser per run" means what it
+  means locally; two callers sharing the token each get their own session, and neither can reach the other's runs.
+  The caller ends a scope (`POST end-run`) when its own run ends, and beats (`POST heartbeat`) every third of
+  `Orkeon:Bridge:HeartbeatWindow` (30 s, between 1 s and 10 min) while its session is open. A caller silent past the
+  window loses its session on the bridge, its runs and their browsers, within at most 1.25 times the window (the
+  bridge checks every quarter of it): a run in flight then fails with "the tool bridge ... lost this caller's
+  session", and the next run opens a new session. The bridge holds at most `Orkeon:Bridge:MaxSessions` sessions (16),
+  `MaxRunsPerSession` runs (16) and `MaxCallsPerSession` calls (8) per session, and `MaxConcurrentCalls` calls (32) in
+  all ([configuration](../reference/configuration.md#orkeonbridge)).
 - **A path stays the caller's.** A `screenshot` to `/output/page.png` lands in the caller's `/output` mount. A call of
   a tool that uses files carries the caller's mounts and the files its arguments name; the bridge presents them at
   the same virtual paths in a scratch folder for the length of the call, sends back what the tool wrote, then removes

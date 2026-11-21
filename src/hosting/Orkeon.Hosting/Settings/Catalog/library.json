@@ -2854,7 +2854,21 @@
       "section": "Orkeon:Bridge",
       "type": "duration",
       "default": "00:00:30",
-      "description": "How long the bridge waits for a sign of a caller that has runs on it (a heartbeat or a request) before it ends those runs, and their browsers, at once."
+      "description": "How long the bridge waits for a sign of a caller's session (a heartbeat or a request) before it ends the session, its runs and their browsers at once."
+    },
+    {
+      "path": "Orkeon:Bridge:MaxCallsPerSession",
+      "section": "Orkeon:Bridge",
+      "type": "integer",
+      "default": 8,
+      "description": "The largest number of calls one session runs at once; one more is refused with 429."
+    },
+    {
+      "path": "Orkeon:Bridge:MaxConcurrentCalls",
+      "section": "Orkeon:Bridge",
+      "type": "integer",
+      "default": 32,
+      "description": "The largest number of calls the bridge runs at once, every session together; one more is refused with 503."
     },
     {
       "path": "Orkeon:Bridge:MaxFileBytes",
@@ -2871,11 +2885,39 @@
       "description": "The largest body a request may carry, in bytes; a larger one is refused before it is read."
     },
     {
+      "path": "Orkeon:Bridge:MaxRunsPerSession",
+      "section": "Orkeon:Bridge",
+      "type": "integer",
+      "default": 16,
+      "description": "The largest number of runs one session holds on the bridge, each with its own scope (and browser); a call that opens one more is refused with 429 until a run ends."
+    },
+    {
+      "path": "Orkeon:Bridge:MaxSessions",
+      "section": "Orkeon:Bridge",
+      "type": "integer",
+      "default": 16,
+      "description": "The largest number of caller sessions the bridge holds at once; a caller that opens one more is refused with 503 until a session ends."
+    },
+    {
       "path": "Orkeon:Bridge:Prefix",
       "section": "Orkeon:Bridge",
       "type": "string",
       "defaultNote": "`http://127.0.0.1:7410/`, `http://localhost:7410/` under Windows",
       "description": "The listener's prefix. Loopback by default, `localhost` under Windows, whose URL reservations name it, `127.0.0.1` elsewhere; any other host requires `https`."
+    },
+    {
+      "path": "Orkeon:Bridge:RequestReadTimeout",
+      "section": "Orkeon:Bridge",
+      "type": "duration",
+      "default": "00:00:30",
+      "description": "How long the body of a request may take to arrive once its headers are read; past it the connection is closed."
+    },
+    {
+      "path": "Orkeon:Bridge:StopTimeout",
+      "section": "Orkeon:Bridge",
+      "type": "duration",
+      "default": "00:00:10",
+      "description": "How long the stop of the bridge waits for the calls in flight, once cancelled; a call still running then is abandoned and logged."
     },
     {
       "path": "Orkeon:Bridge:TokenEnvVar",

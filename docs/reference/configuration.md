@@ -184,13 +184,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 125 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 131 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-87 sections, 560 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+87 sections, 566 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1739,9 +1739,10 @@ not do is listed in [Known limitations](limitations.md).
 Read at the start of a run, after the MCP connections, when `Address` is set. The tools `Allow`
 selects run on the machine of the bridge instead of the local one: their name, schema and access stay
 those of the local registry, and only the call crosses. The start is refused when the bridge cannot
-be reached, refuses the token, does not serve a tool named or serves one whose contract differs. While
-runs are in flight the caller beats every third of the bridge's `HeartbeatWindow`, and ends each run's
-scope on the bridge when the run ends. Over http the address is loopback, or Docker Desktop's
+be reached, refuses the token, does not serve a tool named or serves one whose contract differs. The
+caller opens a session on the bridge at its first call, beats every third of the bridge's
+`HeartbeatWindow` while it is open, and ends each run's scope on the bridge when the run ends; a run
+whose session the bridge lost fails. Over http the address is loopback, or Docker Desktop's
 `host.docker.internal`, which gets the `Host` header `HostHeader` and a warning that the token travels
 in clear. How to set both sides up: the guide
 [Orkeon in a container, the browser on the desktop](../guides/tool-bridge.md); the decision is recorded
@@ -1766,7 +1767,9 @@ in [ADR-019](../adr/ADR-019-tool-bridge.md).
 
 Read by `orkeon bridge serve`, the side that serves its registry's tools to another machine; no
 setting starts a bridge. The token is read from the variable `TokenEnvVar` names; a request with an
-`Origin` header or a wrong token is refused. An https `Prefix` is served under Windows only, after a
+`Origin` header or a wrong token is refused, as is a request from a peer other than loopback when the
+`Prefix` is loopback. Each caller gets a session of its own, bounded by `MaxSessions`, `MaxRunsPerSession`
+and `MaxCallsPerSession`, with `MaxConcurrentCalls` over all of them. An https `Prefix` is served under Windows only, after a
 URL reservation (`netsh http add urlacl`) and a certificate binding; elsewhere it is refused at start.
 The guide: [Orkeon in a container, the browser on the desktop](../guides/tool-bridge.md); the decision
 is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
@@ -1778,10 +1781,16 @@ is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
 |---|---|---|---|
 | `Allow` | list of string | `[]` | The tools served, by name, or the lone `*` for every bridgeable Orkeon tool of the registry. |
 | `Deny` | list of string | `[]` | The tools never served, by name; a name here wins over `Allow`. |
-| `HeartbeatWindow` | duration | `"00:00:30"` | How long the bridge waits for a sign of a caller that has runs on it (a heartbeat or a request) before it ends those runs, and their browsers, at once. |
+| `HeartbeatWindow` | duration | `"00:00:30"` | How long the bridge waits for a sign of a caller's session (a heartbeat or a request) before it ends the session, its runs and their browsers at once. |
+| `MaxCallsPerSession` | integer | `8` | The largest number of calls one session runs at once; one more is refused with 429. |
+| `MaxConcurrentCalls` | integer | `32` | The largest number of calls the bridge runs at once, every session together; one more is refused with 503. |
 | `MaxFileBytes` | integer | `16777216` | The largest total, in bytes, of the files of one call: those a caller sends, and those the tool wrote that go back. |
 | `MaxRequestBytes` | integer | `33554432` | The largest body a request may carry, in bytes; a larger one is refused before it is read. |
+| `MaxRunsPerSession` | integer | `16` | The largest number of runs one session holds on the bridge, each with its own scope (and browser); a call that opens one more is refused with 429 until a run ends. |
+| `MaxSessions` | integer | `16` | The largest number of caller sessions the bridge holds at once; a caller that opens one more is refused with 503 until a session ends. |
 | `Prefix` | string | `http://127.0.0.1:7410/`, `http://localhost:7410/` under Windows | The listener's prefix. Loopback by default, `localhost` under Windows, whose URL reservations name it, `127.0.0.1` elsewhere; any other host requires `https`. |
+| `RequestReadTimeout` | duration | `"00:00:30"` | How long the body of a request may take to arrive once its headers are read; past it the connection is closed. |
+| `StopTimeout` | duration | `"00:00:10"` | How long the stop of the bridge waits for the calls in flight, once cancelled; a call still running then is abandoned and logged. |
 | `TokenEnvVar` | string | `"ORKEON_BRIDGE_TOKEN"` | The environment variable that holds the token; never the token itself. |
 <!-- /settings -->
 

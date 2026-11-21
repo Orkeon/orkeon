@@ -144,6 +144,43 @@ public sealed class ToolBridgeOptionsTests
         Assert.Contains("HeartbeatWindow", Assert.Single(problems), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(nameof(ToolBridgeServerOptions.MaxSessions), 0)]
+    [InlineData(nameof(ToolBridgeServerOptions.MaxSessions), 1025)]
+    [InlineData(nameof(ToolBridgeServerOptions.MaxConcurrentCalls), 0)]
+    [InlineData(nameof(ToolBridgeServerOptions.MaxCallsPerSession), 2000)]
+    [InlineData(nameof(ToolBridgeServerOptions.MaxRunsPerSession), -1)]
+    public void ShouldRefuseACountLimit_WhenItIsOutOfBounds(string key, int value)
+    {
+        // Arrange
+        var options = new ToolBridgeServerOptions();
+        typeof(ToolBridgeServerOptions).GetProperty(key)!.SetValue(options, value);
+
+        // Act
+        var problems = options.Problems().ToList();
+
+        // Assert
+        Assert.Contains(key, Assert.Single(problems), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(nameof(ToolBridgeServerOptions.RequestReadTimeout), 500)]
+    [InlineData(nameof(ToolBridgeServerOptions.RequestReadTimeout), 700_000)]
+    [InlineData(nameof(ToolBridgeServerOptions.StopTimeout), -1)]
+    [InlineData(nameof(ToolBridgeServerOptions.StopTimeout), 700_000)]
+    public void ShouldRefuseATimeout_WhenItIsOutOfBounds(string key, int milliseconds)
+    {
+        // Arrange
+        var options = new ToolBridgeServerOptions();
+        typeof(ToolBridgeServerOptions).GetProperty(key)!.SetValue(options, TimeSpan.FromMilliseconds(milliseconds));
+
+        // Act
+        var problems = options.Problems().ToList();
+
+        // Assert
+        Assert.Contains(key, Assert.Single(problems), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ShouldRefuseTheAddressWithoutEchoingIt_WhenItNamesAUserAndAPassword()
     {

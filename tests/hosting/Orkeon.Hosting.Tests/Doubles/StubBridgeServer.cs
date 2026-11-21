@@ -8,7 +8,7 @@ namespace Orkeon.Hosting.Tests.Doubles;
 /// <summary>
 /// A tool bridge that answers what the test tells it (#445): a hostile or broken bridge for the caller's checks. Each
 /// request gets the body of <see cref="Bodies"/> for its last path segment (<c>tools</c>, <c>call</c>, ...), or
-/// <c>{}</c>, with status 200.
+/// <c>{}</c> (a session for <c>session</c>), with status 200.
 /// </summary>
 public sealed class StubBridgeServer : IAsyncDisposable
 {
@@ -27,6 +27,8 @@ public sealed class StubBridgeServer : IAsyncDisposable
 
     /// <summary>The body each endpoint answers, by its last path segment.</summary>
     public ConcurrentDictionary<string, string> Bodies { get; } = new(StringComparer.Ordinal);
+
+    private const string SessionBody = """{"session_id":"stub-session-0123456789abcdef0123456789abcdef","heartbeat_window_ms":30000}""";
 
     /// <summary>The paths requested, in order.</summary>
     public ConcurrentQueue<string> Requested { get; } = new();
@@ -69,7 +71,7 @@ public sealed class StubBridgeServer : IAsyncDisposable
             }
 
             var segment = path.TrimEnd('/').Split('/')[^1];
-            var bytes = Encoding.UTF8.GetBytes(Bodies.GetValueOrDefault(segment, "{}"));
+            var bytes = Encoding.UTF8.GetBytes(Bodies.GetValueOrDefault(segment, segment == "session" ? SessionBody : "{}"));
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             context.Response.ContentLength64 = bytes.Length;

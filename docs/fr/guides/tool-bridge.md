@@ -112,12 +112,17 @@ ne voyage jamais en clair hors de la machine.
 
 ## 4. Ce qui voyage, et pour combien de temps
 
-- **Une exécution de l'appelant est une exécution sur le pont.** Le pont garde une portée par exécution de
-  l'appelant, si bien qu'« un navigateur par exécution » signifie ce qu'il signifie en local. L'appelant termine
-  cette portée (`POST end-run`) quand sa propre exécution se termine, et bat (`POST heartbeat`) tous les tiers de
-  `Orkeon:Bridge:HeartbeatWindow` (30 s, entre 1 s et 10 min) tant qu'il a des exécutions en cours. Un appelant
-  silencieux au-delà de la fenêtre perd ses exécutions sur le pont, et leurs navigateurs, en au plus 1,25 fois la
-  fenêtre (le pont vérifie tous les quarts de fenêtre) : un appelant qui revient en ouvre de nouvelles.
+- **Une exécution de l'appelant est une exécution sur le pont.** L'appelant ouvre une session sur le pont à son
+  premier appel (`POST session`), et le pont garde une portée par exécution de cette session, si bien qu'« un
+  navigateur par exécution » signifie ce qu'il signifie en local ; deux appelants qui partagent le jeton ont chacun
+  leur session, et aucun n'atteint les exécutions de l'autre. L'appelant termine une portée (`POST end-run`) quand sa
+  propre exécution se termine, et bat (`POST heartbeat`) tous les tiers de `Orkeon:Bridge:HeartbeatWindow` (30 s,
+  entre 1 s et 10 min) tant que sa session est ouverte. Un appelant silencieux au-delà de la fenêtre perd sa session
+  sur le pont, ses exécutions et leurs navigateurs, en au plus 1,25 fois la fenêtre (le pont vérifie tous les quarts
+  de fenêtre) : une exécution en cours échoue alors avec « the tool bridge ... lost this caller's session », et
+  l'exécution suivante ouvre une nouvelle session. Le pont tient au plus `Orkeon:Bridge:MaxSessions` sessions (16),
+  `MaxRunsPerSession` exécutions (16) et `MaxCallsPerSession` appels (8) par session, et `MaxConcurrentCalls` appels
+  (32) en tout ([configuration](../reference/configuration.md#orkeonbridge)).
 - **Un chemin reste celui de l'appelant.** Un `screenshot` vers `/output/page.png` arrive dans le montage `/output` de
   l'appelant. Un appel d'un outil qui utilise des fichiers porte les montages de l'appelant et les fichiers que
   nomment ses arguments ; le pont les présente aux mêmes chemins virtuels dans un dossier temporaire le temps de

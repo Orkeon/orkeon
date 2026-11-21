@@ -20,14 +20,16 @@ les deux côtés connaissent.
 ## Décision
 
 1. **Un protocole propre, JSON sur HTTP, pas MCP.** La version 1 se tient sous `/orkeon-bridge/v1/` : `GET tools` (les
-   outils servis, chacun avec une empreinte de contrat), `POST call` (un appel : un identifiant, l'outil, ses
-   arguments, son contexte ; la réponse brute de l'outil en retour), `POST cancel` (l'annulation d'un appel en
-   cours), `POST end-run` (la fin d'une exécution de l'appelant) et `POST heartbeat` (un appelant qui a des exécutions
-   en cours est toujours là). Chaque requête porte le jeton en `Authorization: Bearer`. Une version ultérieure ajoute
+   outils servis, chacun avec une empreinte de contrat), `POST session` (une session pour l'appelant), `POST call`
+   (un appel : un identifiant, l'outil, ses arguments, son contexte ; la réponse brute de l'outil en retour),
+   `POST cancel` (l'annulation d'un appel en cours), `POST end-run` (la fin d'une exécution de l'appelant) et
+   `POST heartbeat` (la session de l'appelant est toujours là). Chaque requête porte le jeton en
+   `Authorization: Bearer`, et chaque `POST` sauf `session` la session de l'appelant dans `X-Orkeon-Bridge-Session`. Une version ultérieure ajoute
    des champs et des points d'accès à côté de ceux-ci ; un champ qu'un côté ne connaît pas est ignoré.
 2. **Les deux côtés sélectionnent.** La section de l'appelant `Orkeon:Tools:Bridge` (`Address`, `TokenEnvVar`, `Allow`,
    `Deny`, `ConnectTimeout`, `MaxFileBytes`, `MaxResponseBytes`, `HostHeader`) et celle du serveur `Orkeon:Bridge`
-   (`Prefix`, `TokenEnvVar`, `Allow`, `Deny`, `MaxRequestBytes`, `MaxFileBytes`, `HeartbeatWindow`) appliquent une
+   (`Prefix`, `TokenEnvVar`, `Allow`, `Deny`, `MaxRequestBytes`, `MaxFileBytes`, `HeartbeatWindow`, `MaxSessions`,
+   `MaxConcurrentCalls`, `MaxCallsPerSession`, `MaxRunsPerSession`, `RequestReadTimeout`, `StopTimeout`) appliquent une
    seule règle : sans `Allow` rien n'est sélectionné, le `*` seul sélectionne tous les outils pontables d'Orkeon,
    `Deny` l'emporte, seuls des noms et le `*` seul sont acceptés, et un nom qui n'est pas un outil du registre de ce
    côté refuse le démarrage. Un outil est ponté quand les deux côtés le sélectionnent. Un outil de délégation entre
@@ -66,15 +68,24 @@ les deux côtés connaissent.
    variable d'environnement que nomme `TokenEnvVar`, jamais d'un fichier, est rogné, doit tenir au moins 16 caractères
    des deux côtés, et se compare en temps constant. Une requête qui porte un en-tête `Origin` est refusée, comme un
    corps au-delà de `MaxRequestBytes`. Un appel dont l'outil lève une exception est audité comme un échec.
-9. **Une exécution de l'appelant est une exécution sur le pont.** Un appel porte l'identifiant de l'appelant et celui
-   de son exécution d'agent ; le pont garde un `AgentRunScope` par exécution de l'appelant et y exécute chaque appel de
-   cette exécution, si bien qu'« un navigateur par exécution » signifie ce qu'il signifie en local. L'appelant termine
-   cette portée par `POST end-run` quand sa propre portée se termine, et bat tous les tiers de
-   `Orkeon:Bridge:HeartbeatWindow` (30 s, de 1 s à 10 min) tant qu'il a des exécutions en cours ; un appelant
-   silencieux au-delà de la fenêtre perd ses exécutions, et leurs navigateurs, en au plus 1,25 fois la fenêtre. Un
-   appel hors de toute exécution ne porte pas d'identifiant d'exécution. Le pont suppose un seul appelant :
-   l'identifiant d'appelant est la parole de l'appelant, sans session derrière, si bien que tout détenteur du jeton
-   peut terminer les exécutions d'un autre appelant ou agir sur elles.
+9. **Une exécution de l'appelant est une exécution sur le pont, dans la session de l'appelant.** Avant son premier
+   appel, l'appelant ouvre une session (`POST session`, après le contrôle du jeton) : le pont émet un identifiant de
+   256 bits aléatoires, n'en garde que le SHA-256, et y rattache les exécutions et les appels en cours de l'appelant.
+   Un appel porte l'identifiant de son exécution d'agent ; le pont garde un `AgentRunScope` par exécution de la
+   session et y exécute chaque appel de cette exécution, si bien qu'« un navigateur par exécution » signifie ce qu'il
+   signifie en local. Un identifiant d'appel, une annulation et une fin d'exécution n'atteignent que la session qui
+   les nomme : deux appelants qui partagent un jeton ne peuvent ni terminer, ni maintenir en vie, ni annuler les
+   exécutions l'un de l'autre, ni y appeler. L'appelant termine une portée par `POST end-run` quand sa propre portée
+   se termine, et bat tous les tiers de `Orkeon:Bridge:HeartbeatWindow` (30 s, de 1 s à 10 min) tant que sa session
+   est ouverte ; une session silencieuse au-delà de la fenêtre se termine avec ses exécutions, et leurs navigateurs,
+   en au plus 1,25 fois la fenêtre. Une requête qui nomme une session inconnue ou terminée reçoit `410 Gone`, que
+   l'appelant rapporte comme « le pont a perdu la session de cet appelant » : l'exécution échoue comme pour un lien
+   perdu, sans repli local, et l'appelant ouvre une nouvelle session une fois terminées les exécutions de la session
+   perdue. Un appel hors de toute exécution ne porte pas d'identifiant d'exécution. Le pont borne ce que tient une
+   session : `MaxSessions` (16, puis 503), `MaxConcurrentCalls` (32 en tout, puis 503), `MaxCallsPerSession` (8, puis
+   429), `MaxRunsPerSession` (16, puis 429) ; un corps qui n'arrive pas dans `RequestReadTimeout` (30 s) ferme la
+   connexion, et l'arrêt attend `StopTimeout` (10 s) les appels qu'il a annulés avant de les abandonner et de les
+   journaliser.
 10. **Un chemin reste celui de l'appelant.** Un appel d'un outil qui utilise le système de fichiers (et n'agit pas sur
     l'espace de travail) porte les montages de l'appelant visibles des agents et les fichiers que nomment ses
     arguments texte. Le pont les présente dans un dossier temporaire aux chemins virtuels de l'appelant le temps de
@@ -97,8 +108,10 @@ les deux côtés connaissent.
   (`Orkeon:Tools:<Outil>`) et qui ne s'applique plus.
 - Un résultat que renvoie le pont voyage en JSON : un résultat typé atteint le pipeline de l'appelant sous son rendu JSON
   plutôt que son `ToString()`.
-- Un pont sert un seul appelant : deux appelants qui partagent un jeton peuvent atteindre les exécutions l'un de
-  l'autre (une limite connue, dans les [Limitations connues](../reference/limitations.md)).
-- Une connexion perdue en cours d'exécution termine l'exécution sur le pont dans la fenêtre, sans délai de grâce : un
-  appelant qui revient ouvre de nouvelles portées, et les pages de son navigateur ont disparu.
+- Des appelants qui partagent un jeton sont séparés par leurs sessions, pas par le jeton : qui détient le jeton peut
+  ouvrir une session, et un identifiant de session est un secret au porteur, transmis en clair en http sur la boucle
+  locale (une limite connue, dans les [Limitations connues](../reference/limitations.md)).
+- Une connexion perdue en cours d'exécution termine la session, et ses exécutions, sur le pont dans la fenêtre, sans
+  délai de grâce : les exécutions en cours chez l'appelant échouent, un appelant qui revient ouvre une nouvelle
+  session, et les pages de son navigateur ont disparu.
 - Comment mettre les deux côtés en place : le guide [Orkeon dans un conteneur, le navigateur sur le bureau](../guides/tool-bridge.md).
