@@ -65,8 +65,10 @@ internal sealed class ContextCompaction
             return null;
 
         var model = string.IsNullOrWhiteSpace(callConfig?.Model) ? _baseConfig?.Model : callConfig.Model;
+        // The profile's window is declared for the profile's own model: an agent on another model reads that model's.
+        var onProfileModel = string.Equals(model, _baseConfig?.Model, StringComparison.OrdinalIgnoreCase);
         var window = _services.Windows.Resolve(_profile, model,
-            callConfig?.ContextWindowTokens ?? _baseConfig?.ContextWindowTokens);
+            callConfig?.ContextWindowTokens ?? (onProfileModel ? _baseConfig?.ContextWindowTokens : null));
         var setup = new ContextCompactorSetup
         {
             Window = window,
