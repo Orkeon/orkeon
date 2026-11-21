@@ -79,6 +79,7 @@ public sealed class SystemOneDecideTool : ToolBase<SystemOneDecideRequest, Syste
     private static readonly JsonSerializerOptions s_questions = new();
 
     private readonly IDecisionModel _model;
+    private readonly IServiceProvider? _services;
 
     /// <summary>Initializes a new instance of <see cref="SystemOneDecideTool"/>.</summary>
     /// <param name="model">The host's decision model.</param>
@@ -87,6 +88,30 @@ public sealed class SystemOneDecideTool : ToolBase<SystemOneDecideRequest, Syste
         ArgumentNullException.ThrowIfNull(model);
         _model = model;
     }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="SystemOneDecideTool"/> that reads the decision circuit of
+    /// <paramref name="services"/> at each call (#433).
+    /// </summary>
+    /// <param name="model">The host's decision model.</param>
+    /// <param name="services">The container whose circuit, with the run's, the tool follows.</param>
+    public SystemOneDecideTool(IDecisionModel model, IServiceProvider services)
+        : this(model)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        _services = services;
+    }
+
+    /// <summary>
+    /// The circuit at call time: the container's folded with the run in progress
+    /// (<see cref="Orkeon.Application.Crew.Execution.DecisionCircuit.Of(IServiceProvider)"/>), the run's alone when
+    /// the tool was built without a container. The tool is registered while the host's circuit is on; a run
+    /// whose scope switches it off still reaches the tool.
+    /// </summary>
+    private Orkeon.Application.Crew.Execution.DecisionCircuit CircuitNow() =>
+        _services is not null
+            ? Orkeon.Application.Crew.Execution.DecisionCircuit.Of(_services)
+            : Orkeon.Application.Crew.Execution.DecisionCircuitScope.Current ?? Orkeon.Application.Crew.Execution.DecisionCircuit.On;
 
     /// <inheritdoc />
     public override ToolAccess Access => ToolAccess.Read;
@@ -106,6 +131,11 @@ public sealed class SystemOneDecideTool : ToolBase<SystemOneDecideRequest, Syste
     protected override async Task<SystemOneDecideResponse> ExecuteTypedAsync(SystemOneDecideRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // Off for this run - --no-decision on a scope, a host running the crew without System One: no call
+        // reaches the model, and the agent is told why (#433).
+        if (CircuitNow() is { Enabled: false } off)
+            return new SystemOneDecideResponse { Error = $"{ToolName} is not available: {off.OffReason}." };
+
         ImmutableDictionary<string, DecisionQuestion> questions;
         try
         {

@@ -86,7 +86,7 @@ them as it checks the model's answer (every question, values in [0, 1], distribu
 asks once more when they fail, and derives `chosen`, the score and the confidence by the same rules as the model
 path; a second refusal fails the task, and no fallback is used. `task.completed` says which answered
 (`decisionSource: model | relay | fallback`), the checkpoint records it so that every process replays a decision on
-resume, and an `optional` crew resumed under the other circuit is refused. See
+resume, and an `optional` crew resumed under the other circuit is refused (code `decision_circuit_mismatch`, exit `1`). See
 [Decision models](../architecture/decision-models.md#the-without-relay).
 
 ## Alternatives considered

@@ -198,6 +198,104 @@ public sealed class DecisionRelayResumeTests
             $"exit={resumed.Exit} calls={resumedService.Calls.Count} stderr={resumed.Stderr}");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldExitOneWithTheMismatchRefusal_WhenAnOptionalCrewIsResumedUnderTheOtherCircuit(bool startedOn)
+    {
+        // Arrange
+        using var harness = new ResumeRunHarness();
+        var crew = harness.WriteCrewYaml("crew", Crew(harness.CrewName, "sequential"));
+        var ct = TestContext.Current.CancellationToken;
+        var killed = new FakeAgentExecutionService();
+        killed.FailOnCall["answer"] = 1;
+        await harness.RunAsync(crew, killed, configure: Circuit.Of(startedOn).Configure, ct: ct);
+
+        // Act
+        var resumed = await harness.RunAsync(crew, new FakeAgentExecutionService(), resume: "latest", configure: Circuit.Of(!startedOn).Configure, ct: ct);
+
+        // Assert
+        Assert.True(
+            resumed.Exit == 1 && resumed.Stderr.Contains("start a new run", StringComparison.Ordinal),
+            $"exit={resumed.Exit} stderr={resumed.Stderr}");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldRefuseTheResumeWithTheMismatch_WhenAnOptionalCrewRecordedWithSystemOneIsResumedWithoutADecisionModel()
+    {
+        // Arrange
+        using var harness = new ResumeRunHarness();
+        var crew = harness.WriteCrewYaml("crew", Crew(harness.CrewName, "sequential"));
+        var ct = TestContext.Current.CancellationToken;
+        var killed = new FakeAgentExecutionService();
+        killed.FailOnCall["answer"] = 1;
+        await harness.RunAsync(crew, killed, configure: Circuit.Of(on: true).Configure, ct: ct);
+        var resumedService = new FakeAgentExecutionService();
+
+        // Act
+        var resumed = await harness.RunAsync(crew, resumedService, resume: "latest", configure: WithoutDecisionModel, ct: ct);
+
+        // Assert
+        Assert.True(
+            resumed.Exit == 1 && resumedService.Calls.Count == 0
+                && resumed.Stderr.Contains("was started with the decision circuit on", StringComparison.Ordinal),
+            $"exit={resumed.Exit} calls={resumedService.Calls.Count} stderr={resumed.Stderr}");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldResume_WhenACrewWithModeNoneRecordedWithSystemOneIsResumedWithoutADecisionModel()
+    {
+        // Arrange
+        using var harness = new ResumeRunHarness();
+        var crew = harness.WriteCrew("crew", "sequential", extra: "decision: { mode: none }");
+        var ct = TestContext.Current.CancellationToken;
+        var killed = new FakeAgentExecutionService();
+        killed.FailOnCall["third"] = 1;
+        await harness.RunAsync(crew, killed, configure: Circuit.Of(on: true).Configure, ct: ct);
+        var resumedService = new FakeAgentExecutionService();
+
+        // Act
+        var resumed = await harness.RunAsync(crew, resumedService, resume: "latest", configure: WithoutDecisionModel, ct: ct);
+
+        // Assert
+        Assert.True(
+            resumed.Exit == 0 && resumedService.Calls.SequenceEqual(["third"]),
+            $"exit={resumed.Exit} calls={string.Join(",", resumedService.Calls)} stderr={resumed.Stderr}");
+    }
+
+    [Theory]
+    [InlineData("sequential")]
+    [InlineData("parallel")]
+    [InlineData("graph")]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldDecideAgain_WhenTheDecisionTaskChangedSinceTheRunAndTheRunIsResumed(string process)
+    {
+        // Arrange
+        using var harness = new ResumeRunHarness();
+        var yaml = Crew(harness.CrewName, process);
+        var crew = harness.WriteCrewYaml("crew", yaml);
+        var ct = TestContext.Current.CancellationToken;
+        var circuit = Circuit.Of(on: true);
+        var killed = new FakeAgentExecutionService();
+        killed.FailOnCall["answer"] = 1;
+        await harness.RunAsync(crew, killed, configure: circuit.Configure, ct: ct);
+        harness.WriteCrewYaml("crew", yaml.Replace("other: \"anything else\"", "other: \"a question or a feature request\"", StringComparison.Ordinal));
+
+        // Act
+        var resumed = await harness.RunAsync(crew, new FakeAgentExecutionService(), resume: "latest", configure: circuit.Configure, ct: ct);
+
+        // Assert
+        Assert.True(
+            resumed.Exit == 0 && circuit.Model.Requests == 2,
+            $"exit={resumed.Exit} requests={circuit.Model.Requests} stderr={resumed.Stderr}");
+    }
+
+    /// <summary>The circuit on in the settings and no decision model registered: the runner's circuit is off (#430).</summary>
+    private static void WithoutDecisionModel(IServiceCollection services) => services.AddSingleton(DecisionCircuit.On);
+
     [Fact]
     [Trait("BR", "CH-430")]
     public async Task ShouldAskTheRelayAgentByItsName_WhenAScriptedCrewRunsWithTheCircuitOffAndTheRoleDiffers()

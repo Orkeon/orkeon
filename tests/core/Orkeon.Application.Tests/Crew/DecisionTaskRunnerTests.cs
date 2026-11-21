@@ -6,6 +6,7 @@ using Orkeon.Application.Decision;
 using Orkeon.Application.Decision.DTOs;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Tests.Doubles;
+using Orkeon.Constants.Protocol;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 
@@ -310,5 +311,22 @@ public sealed class DecisionTaskRunnerTests
         Assert.Equal(150, result.TokensUsed);
         Assert.Equal(120, result.PromptTokens);
         Assert.Equal(30, result.CompletionTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public async System.Threading.Tasks.Task ShouldAnswerByFallbackWithoutRequest_WhenTheRunIsOffAndTheRunnerWasBuiltOn()
+    {
+        // Arrange
+        var runner = Runner(DecisionCircuit.On);
+        using var run = DecisionCircuitScope.Begin(DecisionCircuit.Off);
+
+        // Act
+        var result = await runner.RunAsync(Decide(Of()), NoInputs, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(
+            (0, true, DecisionSources.Fallback),
+            (_model.Requests.Count, result.Success, result.DecisionSource));
     }
 }

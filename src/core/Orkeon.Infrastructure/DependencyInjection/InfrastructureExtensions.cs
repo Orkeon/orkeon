@@ -521,11 +521,7 @@ public static class InfrastructureExtensions
             sp.GetService<Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher>())
         {
             DecisionRunner = ScopedCircuit(sp) is { } circuit
-                ? new Orkeon.Application.Crew.Execution.DecisionTaskRunner(
-                    sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>(),
-                    sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionRelay>(),
-                    circuit,
-                    sp.GetRequiredService<ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner>>())
+                ? BuildDecisionRunner(sp, circuit)
                 : sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(),
         });
 
@@ -982,14 +978,27 @@ public static class InfrastructureExtensions
         // The without: relay of an optional crew's decision tasks (#430): the relay agent's own provider or profile.
         services.TryAddSingleton<Orkeon.Application.Interfaces.Ports.IDecisionRelay>(sp =>
             new Orkeon.Infrastructure.LLMs.Decision.LlmDecisionRelay(sp.GetService<ILlmProfileRegistry>()));
-        services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(sp => new Orkeon.Application.Crew.Execution.DecisionTaskRunner(
-            sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>(),
-            sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionRelay>(),
-            sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionCircuit>(),
-            sp.GetRequiredService<ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner>>()));
+        services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(sp =>
+            BuildDecisionRunner(sp, sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionCircuit>()));
 
         return services;
     }
+
+    /// <summary>
+    /// The decision runner over <paramref name="circuit"/>: the host's model and relay, and the relay's calls
+    /// waiting under the host's clock and per-agent cap, as an agent's calls do (#430).
+    /// </summary>
+    private static Orkeon.Application.Crew.Execution.DecisionTaskRunner BuildDecisionRunner(
+        IServiceProvider sp, Orkeon.Application.Crew.Execution.DecisionCircuit circuit) =>
+        new(
+            sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>(),
+            sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionRelay>(),
+            circuit,
+            sp.GetRequiredService<ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner>>())
+        {
+            TimeProvider = sp.GetService<TimeProvider>() ?? TimeProvider.System,
+            AgentRequestsPerMinute = Orkeon.Application.DependencyInjection.ServiceCollectionExtensions.HostAgentRequestsPerMinute(sp),
+        };
 
     /// <summary>
     /// The circuit a scope's <see cref="Orkeon.Application.Crew.Execution.DecisionCircuitOverride"/> holds, null when

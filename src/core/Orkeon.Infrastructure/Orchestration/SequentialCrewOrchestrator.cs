@@ -309,9 +309,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 {
                     Succeeded = false,
                     Error = ex.Message,
-                    ErrorCode = ex is Orkeon.Application.Crew.Execution.DecisionUnavailableException
-                        ? Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable
-                        : null,
+                    ErrorCode = ex switch
+                    {
+                        Orkeon.Application.Crew.Execution.DecisionUnavailableException => Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable,
+                        Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException => Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionCircuitMismatch,
+                        _ => null,
+                    },
                 };
 
                 await FailCheckpointSessionAsync(sessionId, ex).ConfigureAwait(false);
@@ -564,8 +567,9 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     /// circuit is off (#429): a <see cref="Orkeon.Application.Crew.Execution.DecisionUnavailableException"/>, which
     /// fails the run with the <c>decision_unavailable</c> code. Then (#430) the refusal of a <c>decision.mode:
     /// optional</c> crew resumed under the other circuit than it was started with: its recorded decisions came
-    /// from the model or from the relay, and the decisions left would come from the other. Without a registered
-    /// circuit, nothing.
+    /// from the model or from the relay, and the decisions left would come from the other. A
+    /// <see cref="Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException"/>, code
+    /// <c>decision_circuit_mismatch</c>. Without a registered circuit, nothing.
     /// </summary>
     private async System.Threading.Tasks.Task RefuseWithoutSystemOneAsync(Orkeon.Domain.Crew.Crew crew, ResumePlan? resume, CancellationToken cancellationToken)
     {
@@ -592,7 +596,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         if (Checkpointing.CheckpointingAgentExecutionService.RecordedDecisionCircuit(resume.CompletedOutputs, decisionTaskKeys) is { } startedOn
             && startedOn != runnerCircuit.Enabled)
         {
-            throw new Orkeon.Application.Crew.Execution.DecisionUnavailableException(
+            throw new Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException(
                 ResumeMismatchMessage(crew.Name ?? crew.Id.ToString(), startedOn, runnerCircuit));
         }
     }

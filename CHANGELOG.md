@@ -135,11 +135,15 @@ and its probability for a `choice`, `yes` when p >= 0.5 and max(p, 1 - p) for a 
 with no `chosen` for a `score`. `task.completed` gains `decisionSource` (`model`, `relay` or `fallback`) on every
 decision task asked, before `deliverableMissing`; `defaulted` stays `true` for the fallback only. The relay's tokens
 count on the task and in the run's totals in Sequential, Parallel and Graph, and its `cost.updated` carries the new
-operation `relay` with the relay agent's role as `agentId`. Sequential and Parallel now replay a decision from the
+operation `relay` with the relay agent's role as `agentId`. A relay call waits its turn under the request limits as an
+agent's call does: the relay agent's `maxRpm`, the crew's and `RateLimiting:AgentRequestsPerMinute`, with the same
+`waited` line. Sequential and Parallel now replay a decision from the
 checkpoint on resume, as Graph did, with its stored source, and an `optional` crew resumed under the other circuit is
-refused with `decision_unavailable` and exit `69`, naming both circuits; only the decisions of tasks the crew still
+refused with an error code of its own, `decision_circuit_mismatch`, and exit `1`, naming both circuits; only the decisions of tasks the crew still
 declares count, by their key (one whose definition changed under the same key still counts), compared with the
-circuit of the run that resumes. `DecisionTaskRunner.SourceOf` is a new public member. A `when:` takes `[yes]` / `[no]` on a yes-no question,
+circuit of the run that resumes. A decision is replayed only while its task is unchanged: its questions, fallback and
+relay now count in the task's checkpoint fingerprint, so a decision task edited since the run is decided again, with
+the tasks after it. `DecisionTaskRunner.SourceOf` is a new public member. A `when:` takes `[yes]` / `[no]` on a yes-no question,
 gated by `minConfidence`; an option list on a score question is refused at load, naming the question. See
 [Decision models](docs/architecture/decision-models.md#the-without-relay).
 
@@ -158,7 +162,7 @@ host; a `required` crew that lists `system_one_decide` loads with the tool withh
 run emits one new `run.decision` event (`mode`, `circuit`, `cause`), and `--validate` reports the refusal a run would
 meet as a `WARNING:` line, exit `0`. A crew with no mode behaves as before. **Compatibility**: an engine before this
 release refuses the crew-level `decision:` key and a task's `without:`; `69` is a new exit code of `orkeon run` and
-`orkeon-host`, `decision_unavailable` a new error code and `run.decision` a new kind (`v` stays `2`); the
+`orkeon-host`, `decision_unavailable` and `decision_circuit_mismatch` new error codes and `run.decision` a new kind (`v` stays `2`); the
 `--validate` success line now ends with `, decision=<mode>)`, and a procedural script's with
 `(procedural script: bundled, not run, decision=unknown)`. New public members: `DecisionTaskRules.ModeRefusal`
 (the refusal's one spelling, in YAML, a script, the crew factory and `CrewBuilder`) and `SystemOneUses.SkillsAutoHolders`
@@ -214,7 +218,8 @@ settings) and is left out under `Open`; the `decision` reranker keeps the retrie
 `skills: { auto: true }` carries its `fallback` skills, `llm.profile: auto` runs on the default profile and tool-result
 pruning prunes nothing. The circuit is read at each call: a run whose scope switches it off (`DecisionCircuitOverride`,
 as the forge sets for a trial) is off for the consumers built once per host as well, a fail-closed judge then blocking
-and a fail-open one passing. New public members: `DecisionCircuit.OfHost`, `DecisionCircuit.Of(services, scopeCircuit)`,
+and a fail-open one passing; so are the decision tasks, answered by their relay or their fallback, and
+`system_one_decide`, which then answers a tool error naming the cause. New public members: `DecisionCircuit.OfHost`, `DecisionCircuit.Of(services, scopeCircuit)`,
 `DecisionCircuitScope` (`Begin`, `Current`) and `GuardianLlmOptions.CircuitRefusal`. **What to do**: a crew that lists
 `system_one_decide` and must run with the circuit off drops the tool from its agents; a host that runs the LLM judge
 with the circuit off sets `Orkeon:Guardian:Llm:FailMode` to `Open` or turns the judge off. See

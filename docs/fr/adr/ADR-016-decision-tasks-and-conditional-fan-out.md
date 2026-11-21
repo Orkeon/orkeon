@@ -92,7 +92,7 @@ distributions qui somment à 1 à 0,05 près), redemande une fois quand elles é
 la confiance selon les mêmes règles que la voie du modèle ; un second refus fait échouer la tâche, et aucun repli
 n'est utilisé. `task.completed` dit qui a répondu (`decisionSource: model | relay | fallback`), le checkpoint
 l'enregistre pour que chaque processus rejoue une décision à la reprise, et une crew `optional` reprise sous l'autre
-circuit est refusée. Voir [Modèles de décision](../architecture/decision-models.md#le-relais-without).
+circuit est refusée (code `decision_circuit_mismatch`, sortie `1`). Voir [Modèles de décision](../architecture/decision-models.md#le-relais-without).
 
 ## Alternatives écartées
 

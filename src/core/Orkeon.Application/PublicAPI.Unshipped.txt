@@ -361,3 +361,12 @@ static Orkeon.Application.Crew.Compaction.ConversationToolCall.operator ==(Orkeo
 static Orkeon.Application.Crew.Compaction.ToolResultPruningOptions.Problems(Orkeon.Application.Crew.Compaction.ToolResultPruningOptions! options) -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Application.Interfaces.Ports.AgentPruneNotice.operator !=(Orkeon.Application.Interfaces.Ports.AgentPruneNotice? left, Orkeon.Application.Interfaces.Ports.AgentPruneNotice? right) -> bool
 static Orkeon.Application.Interfaces.Ports.AgentPruneNotice.operator ==(Orkeon.Application.Interfaces.Ports.AgentPruneNotice? left, Orkeon.Application.Interfaces.Ports.AgentPruneNotice? right) -> bool
+Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException
+Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException.DecisionCircuitMismatchException() -> void
+Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException.DecisionCircuitMismatchException(string! message) -> void
+Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException.DecisionCircuitMismatchException(string! message, System.Exception! innerException) -> void
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.AgentRequestsPerMinute.get -> int?
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.AgentRequestsPerMinute.init -> void
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.TimeProvider.get -> System.TimeProvider!
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.TimeProvider.init -> void
+static Orkeon.Application.DependencyInjection.ServiceCollectionExtensions.HostAgentRequestsPerMinute(System.IServiceProvider! services) -> int?

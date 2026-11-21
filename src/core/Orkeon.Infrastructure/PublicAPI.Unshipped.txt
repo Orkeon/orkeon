@@ -39,3 +39,4 @@ Orkeon.Infrastructure.Configuration.CompactionYamlConfig.Prune.set -> void
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.Skills.get -> object?
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.Skills.set -> void
 static Orkeon.Infrastructure.Decision.GuardianLlmOptions.CircuitRefusal(string! offReason) -> string!
+Orkeon.Infrastructure.Tools.SystemOneDecideTool.SystemOneDecideTool(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, System.IServiceProvider! services) -> void

@@ -252,9 +252,12 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// The host's per-agent cap (<c>RateLimiting:AgentRequestsPerMinute</c>), read by the execution
     /// orchestrator and the manager (GAP-38); null when the host registers no <c>RateLimiting</c>
-    /// options — a container that never asked for the host's limits gets none.
+    /// options — a container that never asked for the host's limits gets none. The decision relay's calls wait
+    /// under the same cap (#430).
     /// </summary>
-    internal static int? HostAgentRequestsPerMinute(IServiceProvider services) =>
+    /// <param name="services">The container.</param>
+    /// <returns>The cap, or null.</returns>
+    public static int? HostAgentRequestsPerMinute(IServiceProvider services) =>
         services.GetService<IConfigureOptions<RateLimitingOptions>>() is null
             ? null
             : services.GetService<IOptions<RateLimitingOptions>>()?.Value.AgentRequestsPerMinute;

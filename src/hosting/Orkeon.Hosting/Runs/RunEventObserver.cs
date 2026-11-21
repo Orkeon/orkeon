@@ -290,7 +290,9 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                     ? Orkeon.Constants.Protocol.RunEventErrorCodes.CrewCancelled
                     : ex is Orkeon.Application.Crew.Execution.DecisionUnavailableException
                         ? Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable
-                        : Orkeon.Constants.Protocol.RunEventErrorCodes.CrewFailed,
+                        : ex is Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException
+                            ? Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionCircuitMismatch
+                            : Orkeon.Constants.Protocol.RunEventErrorCodes.CrewFailed,
                 message = isPartial.FailureReason ?? ex?.Message ?? string.Empty,
                 recoverable = false,
             });

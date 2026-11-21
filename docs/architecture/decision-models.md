@@ -366,7 +366,9 @@ The circuit is read at each call, not once per host. A run whose scope switches 
 `DecisionCircuitOverride`, as the forge sets for a trial, entered for the run as `DecisionCircuitScope`) is off
 for every consumer above, those built once per host included: there a fail-closed judge blocks each text it
 would judge and a fail-open one lets it through, with one warning, and a decision profile routes as if built
-without the model. A scope never switches on a circuit the host has off.
+without the model; a decision task is answered by its relay or its fallback, and `system_one_decide`, offered
+because the host's circuit is on, answers a tool error naming the cause without asking the model. A scope never
+switches on a circuit the host has off.
 
 #### A crew's decision mode
 
@@ -440,6 +442,9 @@ checked the same way.
 - **Reported.** The task's `task.completed` carries `decisionSource: relay` and `defaulted: false`; its
   `model` is `relay:<role>`. The relay's prompt and completion tokens count on the task and in the run's totals,
   and its `cost.updated` names the operation `relay` with the relay agent's role as `agentId`.
+- **Rate limits.** A relay call is a model call of the relay agent: it waits its turn as an agent's call does, under
+  the agent's `maxRpm`, the crew's `maxRpm` and `RateLimiting:AgentRequestsPerMinute`, and one Information line
+  says how long it waited and under which limit.
 - **`longContext`** is a request option of System One and the relay ignores it: a state larger than the relay
   model's window fails the task as any LLM call over its window does.
 
@@ -455,11 +460,13 @@ A decision task's answer is recorded in the run's checkpoint with its source (`m
 every process: a resumed Sequential, Parallel or Graph run replays it without a new request and reports the stored
 `decisionSource`. The checkpoint thus shows the circuit the run was started with: on when a decision came from the
 model, off when one came from the relay or the fallback. An `optional` crew resumed under the other circuit is
-refused, with `decision_unavailable`, naming both circuits: its decisions left would otherwise come from the other
+refused, with `decision_circuit_mismatch` and exit `1`, naming both circuits: its decisions left would otherwise come from the other
 source. Only the decisions of the tasks the crew still declares as decision tasks count, by their key (one whose
 definition changed under the same key still counts), and they are compared with the circuit of the run that
 resumes: off when its runner has no decision model. A run that recorded no decision yet resumes under either
-circuit, and a crew with no mode keeps the resume behaviour it had.
+circuit, and a crew with no mode keeps the resume behaviour it had. A decision is replayed only while its task is
+unchanged: its questions, fallback and relay count in the task's checkpoint fingerprint, beside its description and
+dependencies, so a decision task edited since the run is decided again, and the tasks after it run again.
 
 ### Jev's limits and long context
 

@@ -378,8 +378,9 @@ Le circuit est lu à chaque appel, pas une fois par hôte. Un run dont la porté
 `DecisionCircuitOverride`, comme la forge le règle pour un essai, ouvert pour le run en `DecisionCircuitScope`)
 est coupé pour chaque consommateur ci-dessus, y compris ceux construits une fois par hôte : un juge fail-closed
 y bloque chaque texte qu'il jugerait et un juge fail-open le laisse passer, avec un avertissement, et un profil
-de décision route comme s'il était construit sans le modèle. Une portée ne rallume jamais un circuit que l'hôte
-a coupé.
+de décision route comme s'il était construit sans le modèle ; une tâche de décision reçoit la réponse de son relais
+ou de son repli, et `system_one_decide`, offert parce que le circuit de l'hôte est allumé, répond une erreur d'outil
+qui nomme la cause sans interroger le modèle. Une portée ne rallume jamais un circuit que l'hôte a coupé.
 
 #### Le mode de décision d'une crew
 
@@ -456,6 +457,9 @@ de la même façon.
 - **Rapporté.** Le `task.completed` de la tâche porte `decisionSource: relay` et `defaulted: false` ; son `model`
   est `relay:<rôle>`. Les jetons de prompt et de complétion du relais comptent sur la tâche et dans les totaux du
   run, et son `cost.updated` nomme l'opération `relay` avec le rôle de l'agent relais pour `agentId`.
+- **Limites de débit.** Un appel du relais est un appel de modèle de l'agent relais : il attend son tour comme
+  l'appel d'un agent, sous le `maxRpm` de l'agent, celui de la crew et `RateLimiting:AgentRequestsPerMinute`, et
+  une ligne Information dit combien de temps il a attendu et sous quelle limite.
 - **`longContext`** est une option de requête de System One et le relais l'ignore : un état plus grand que la
   fenêtre du modèle du relais fait échouer la tâche comme tout appel LLM qui dépasse sa fenêtre.
 
@@ -472,11 +476,14 @@ La réponse d'une tâche de décision est enregistrée dans le checkpoint du run
 `fallback`), dans chaque process : un run Sequential, Parallel ou Graph repris la rejoue sans nouvelle requête et
 rapporte le `decisionSource` enregistré. Le checkpoint montre ainsi le circuit avec lequel le run a démarré : allumé
 quand une décision vient du modèle, coupé quand une vient du relais ou du repli. Une crew `optional` reprise sous
-l'autre circuit est refusée, avec `decision_unavailable`, en nommant les deux circuits : les décisions restantes
+l'autre circuit est refusée, avec `decision_circuit_mismatch` et la sortie `1`, en nommant les deux circuits : les décisions restantes
 viendraient sinon de l'autre source. Seules comptent les décisions des tâches que la crew déclare encore comme
 tâches de décision, par leur clé (une tâche dont la définition a changé sous la même clé compte encore), et elles
 sont comparées au circuit du run qui reprend : coupé quand son exécuteur n'a pas de modèle de décision. Un run qui
 n'a encore enregistré aucune décision reprend sous l'un ou l'autre circuit, et une crew sans mode garde le comportement de reprise qu'elle avait.
+Une décision n'est rejouée que tant que sa tâche est inchangée : ses questions, son repli et son relais comptent dans
+l'empreinte de la tâche au checkpoint, à côté de sa description et de ses dépendances ; une tâche de décision modifiée
+depuis le run est donc décidée à nouveau, et les tâches qui la suivent tournent à nouveau.
 
 ### Les limites de Jev et le contexte long
 

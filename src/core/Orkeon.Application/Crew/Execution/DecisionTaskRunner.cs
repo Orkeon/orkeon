@@ -50,14 +50,37 @@ public sealed class DecisionTaskRunner
         _logger = logger;
     }
 
-    /// <summary>Gets a value indicating whether the decision model is asked.</summary>
-    public bool IsEnabled => _circuit.Enabled && _model is not null;
+    /// <summary>
+    /// Gets the clock the request windows of a relay call count on (#430): the host's, as the agent loops'.
+    /// </summary>
+    public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 
     /// <summary>
-    /// Gets the circuit this runner applies: the one it was given, off by
-    /// <see cref="DecisionCircuitCause.NoProvider"/> when it was on and no decision model is configured.
+    /// Gets the host's per-agent cap a relay call waits under (<c>RateLimiting:AgentRequestsPerMinute</c>), beside
+    /// the relay agent's own <c>maxRpm</c> and the crew's; null sets none.
     /// </summary>
-    public DecisionCircuit Circuit => _circuit.Enabled && _model is null ? DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider) : _circuit;
+    public int? AgentRequestsPerMinute { get; init; }
+
+    /// <summary>Gets a value indicating whether the decision model is asked, read at call time.</summary>
+    public bool IsEnabled => Circuit.Enabled;
+
+    /// <summary>
+    /// Gets the circuit this runner applies, read at call time as <see cref="DecisionCircuit.Of(IServiceProvider, DecisionCircuit?)"/>
+    /// folds it: the one it was given when it is off, then the run in progress when it is off
+    /// (<see cref="DecisionCircuitScope.Current"/>, so a runner built once per host follows each run), then off by
+    /// <see cref="DecisionCircuitCause.NoProvider"/> when no decision model is configured; on otherwise.
+    /// </summary>
+    public DecisionCircuit Circuit
+    {
+        get
+        {
+            if (!_circuit.Enabled)
+                return _circuit;
+            if (DecisionCircuitScope.Current is { Enabled: false } running)
+                return running;
+            return _model is null ? DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider) : _circuit;
+        }
+    }
 
     /// <summary>
     /// What answers <paramref name="task"/> under this runner's circuit: the decision model with it on; with it
@@ -101,13 +124,14 @@ public sealed class DecisionTaskRunner
         var decision = task.Decision ?? throw new ArgumentException("The task is not a decision task.", nameof(task));
         var started = Stopwatch.GetTimestamp();
 
-        // The circuit is fixed for the run: off, an optional crew's decision task is answered by its without:
+        // The circuit is the run's, read now: off, an optional crew's decision task is answered by its without:
         // relay (#430), whatever turned the circuit off; a crew with no mode keeps its fallback. Neither is a
         // second chance after a failure: a model or a relay that fails fails the task.
-        if (!IsEnabled && decision.Without is { } relay)
+        var enabled = IsEnabled;
+        if (!enabled && decision.Without is { } relay)
             return await RelayAsync(task, decision, relay, relayAgent, inputs, started, ct).ConfigureAwait(false);
 
-        if (!IsEnabled)
+        if (!enabled)
             return Succeeded(decision.FallbackOutcome(), started, DecisionSources.Fallback);
 
         try
@@ -146,6 +170,9 @@ public sealed class DecisionTaskRunner
         for (var attempt = 1; attempt <= 2; attempt++)
         {
             DecisionRelayResponse answer;
+            // A relay call is a model call of the relay agent: it waits its turn in the agent's window and the
+            // crew's, as an agent loop's call does, and says so when it waited (#430).
+            await LlmCallGate.WaitTurnAsync(agent, AgentRequestsPerMinute, TimeProvider, _logger, null, ct).ConfigureAwait(false);
             try
             {
                 answer = await _relay.AskAsync(

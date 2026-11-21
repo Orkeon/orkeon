@@ -160,7 +160,8 @@ internal sealed partial class CrewHookDispatcher
 
     /// <summary>
     /// The <c>error</c> a stopped run ends on, before <c>run.finished</c>: <c>crew_cancelled</c>,
-    /// <c>decision_unavailable</c> (a required crew refused with the decision circuit off, #429) or
+    /// <c>decision_unavailable</c> (a required crew refused with the decision circuit off, #429),
+    /// <c>decision_circuit_mismatch</c> (an optional crew resumed under the other circuit, #430) or
     /// <c>crew_failed</c>, with the run's reason — the code the wire carries (<c>--events</c>).
     /// </summary>
     internal static CrewExecutionEvent FailureEvent(CrewHookStatus status, string? reason, Exception? cause = null) =>
@@ -171,10 +172,14 @@ internal sealed partial class CrewHookDispatcher
             Message = reason ?? string.Empty,
         };
 
-    /// <summary>The code of a stopped run's <c>error</c>: the cancellation first, then the refusal of #429, then a plain failure.</summary>
+    /// <summary>
+    /// The code of a stopped run's <c>error</c>: the cancellation first, then the refusal of #429, then the resume
+    /// under the other circuit of #430, then a plain failure.
+    /// </summary>
     internal static string FailureCode(CrewHookStatus status, Exception? cause) =>
         status == CrewHookStatus.Canceled ? RunEventErrorCodes.CrewCancelled
         : cause is Orkeon.Application.Crew.Execution.DecisionUnavailableException ? RunEventErrorCodes.DecisionUnavailable
+        : cause is Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException ? RunEventErrorCodes.DecisionCircuitMismatch
         : RunEventErrorCodes.CrewFailed;
 
     /// <summary>Tells the hook the crew's decision mode and the run's circuit, before the first task (#429).</summary>

@@ -97,4 +97,19 @@ public sealed class RunDecisionEventTests : IDisposable
         // Assert
         Assert.Equal("decision_unavailable", Assert.Single(Events()).GetProperty("code").GetString());
     }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldCodeTheErrorDecisionCircuitMismatch_WhenAnOptionalCrewIsResumedUnderTheOtherCircuit()
+    {
+        // Arrange
+        var observer = Observer();
+        var refusal = new DecisionCircuitMismatchException("crew 'triage-crew' (decision.mode: optional) was started with the decision circuit on");
+
+        // Act
+        await observer.OnCrewFailedAsync(Failed(), refusal, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal("decision_circuit_mismatch", Assert.Single(Events()).GetProperty("code").GetString());
+    }
 }

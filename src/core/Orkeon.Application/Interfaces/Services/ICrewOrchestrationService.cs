@@ -191,8 +191,9 @@ public sealed record CrewOutput(
 
     /// <summary>
     /// Gets the code of the failure when it has one of its own - <c>decision_unavailable</c> (a crew with
-    /// <c>decision.mode: required</c> refused with the decision circuit off, #429), a value of
-    /// <c>RunEventErrorCodes</c> -; null otherwise, and on success.
+    /// <c>decision.mode: required</c> refused with the decision circuit off, #429), <c>decision_circuit_mismatch</c>
+    /// (an <c>optional</c> crew resumed under the other circuit, #430), a value of <c>RunEventErrorCodes</c> -; null
+    /// otherwise, and on success.
     /// </summary>
     public string? ErrorCode { get; init; }
 

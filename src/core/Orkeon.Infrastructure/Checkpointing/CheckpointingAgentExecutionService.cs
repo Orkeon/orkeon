@@ -24,7 +24,7 @@ namespace Orkeon.Infrastructure.Checkpointing;
 /// definition (its <see cref="Orkeon.Domain.Task.ICrewTask.TaskId"/> is new at every load) and <c>n</c> the
 /// ordinal of the invocation of that key in the run, which tells a Hierarchical revision or a Graph cycle
 /// from the first run of the task. Next to its output the checkpoint keeps a fingerprint of the task
-/// (description, expected output, agent, dependencies): when a resumed run finds a task whose definition
+/// (description, expected output, agent, dependencies, and a decision task's questions, fallback and relay): when a resumed run finds a task whose definition
 /// changed since, that task and every task that runs after it run again, because what they would read
 /// of the earlier outputs is stale too. The decorator is inactive outside a run (<see cref="IRunScope"/>)
 /// and for a task without a key, such as one delegated by an agent. Only a successful result is
@@ -334,7 +334,36 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             agent?.Role.Value ?? string.Empty,
             agent?.Goal.Value ?? string.Empty,
             string.Join('\u0002', dependencies));
+
+        // A decision task is also what it asks: a recorded decision is replayed only while its questions, its
+        // fallback and its relay are those it was taken with; changed, it is decided again, and what runs after it
+        // too (#430). Only a decision task's fingerprint gains this part: the others keep theirs.
+        if (task is CrewTask { Decision: { } decision })
+            text = string.Concat(text, "\u0001", DecisionText(decision));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..16];
+    }
+
+    // The definition of a decision, in a stable order: the questions as declared, a map by its keys.
+    private static string DecisionText(TaskDecision decision)
+    {
+        static string Map(IReadOnlyDictionary<string, string> map) =>
+            string.Join('\u0003', map.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}\u0004{kv.Value}"));
+
+        var questions = decision.Questions.Select(question => question switch
+        {
+            ChoiceQuestionSpec choice => $"choice\u0004{choice.Name}\u0004{choice.Instructions}\u0004{Map(choice.Options)}",
+            ScoreQuestionSpec score => $"score\u0004{score.Name}\u0004{score.Instructions}\u0004{string.Join('\u0003', score.Levels)}",
+            YesNoQuestionSpec yesNo => $"yesno\u0004{yesNo.Name}\u0004{yesNo.Statement}",
+            _ => $"{question.GetType().Name}\u0004{question.Name}",
+        });
+        return string.Join(
+            '\u0002',
+            string.Join('\u0003', questions),
+            decision.ConfidenceFloor.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
+            string.Join('\u0003', decision.StateFrom),
+            decision.LongContext ? "long" : "short",
+            Map(decision.Fallback),
+            decision.Without is { } relay ? $"{relay.Agent}\u0004{relay.Instructions}" : string.Empty);
     }
 
     private async System.Threading.Tasks.Task<T> RunAsync<T>(Call call, Func<System.Threading.Tasks.Task<T>> execute)

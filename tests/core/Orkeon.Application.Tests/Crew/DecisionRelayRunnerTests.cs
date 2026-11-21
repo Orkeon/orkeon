@@ -417,4 +417,36 @@ public sealed class DecisionRelayRunnerTests
         // Assert
         Assert.Equal(expected, source);
     }
+
+    [Theory]
+    [InlineData(1, null)]
+    [InlineData(null, 1)]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldWaitItsTurnBeforeAskingTheRelay_WhenTheRelayAgentsWindowIsFull(int? agentMaxRpm, int? hostCap)
+    {
+        // Arrange
+        _relay.Answers = ["""{"route":{"bug":0.7,"other":0.3}}"""];
+        var clock = new Orkeon.Tests.Shared.Timing.ManualTimeProvider();
+        var builder = new AgentBuilder().Role(AgentRole.From("analyst")).Goal(AgentGoal.From("Triage the reports"));
+        if (agentMaxRpm is { } own)
+            builder.MaxRpm(own);
+        var analyst = builder.Build();
+        var ct = TestContext.Current.CancellationToken;
+        await RequestRates.WaitTurnAsync(analyst, hostCap, clock, ct);
+        var runner = new DecisionTaskRunner(_model, _relay, DecisionCircuit.Off, NullLogger<DecisionTaskRunner>.Instance)
+        {
+            TimeProvider = clock,
+            AgentRequestsPerMinute = hostCap,
+        };
+        var running = runner.RunAsync(Task(Decision(Route())), [("report", "The build breaks on save.")], analyst, ct);
+        await Orkeon.Tests.Shared.Timing.Polling.WaitUntilAsync(() => clock.PendingTimers >= 1);
+        var askedBefore = _relay.Requests.Count;
+
+        // Act
+        clock.Advance(TimeSpan.FromSeconds(60));
+        var result = await running;
+
+        // Assert
+        Assert.Equal((0, 1, true), (askedBefore, _relay.Requests.Count, result.Success));
+    }
 }
