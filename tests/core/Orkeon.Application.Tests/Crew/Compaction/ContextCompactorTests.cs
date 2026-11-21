@@ -86,6 +86,28 @@ public sealed class ContextCompactorTests
 
     [Fact]
     [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldKeepFewerRecentTurns_WhenTheTurnsItKeepsAloneAreOverTheTrigger()
+    {
+        // Arrange: three turns of 1,000 tokens, then two of 3,000 that alone pass the 5,000 trigger; two are kept.
+        var messages = Start();
+        for (var call = 1; call <= 3; call++)
+            AddTurn(messages, call);
+        AddTurn(messages, 4, resultChars: 12_000);
+        AddTurn(messages, 5, resultChars: 12_000);
+        var view = new ChatConversationView(messages);
+
+        // Act
+        await Compactor(keepRecentTurns: 2).BeforeCallAsync(view, TestContext.Current.CancellationToken);
+
+        // Assert: one summary call, the last turn alone kept, and no failure.
+        Assert.Single(_transcripts);
+        Assert.Equal(AgentCompactionOutcomes.Compacted, Assert.Single(_observer.Notices).Outcome);
+        Assert.StartsWith("[Context compacted: 8 earlier messages", messages[2].Text, StringComparison.Ordinal);
+        Assert.Equal(["call-5", "call-5"], messages.Skip(3).Select(CallIdOf));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
     public async System.Threading.Tasks.Task ShouldCompactAgain_WhenTheTurnsAfterASummaryAreAllThereIsToKeep()
     {
         // Arrange: a first compaction, then a sixth turn that passes the trigger with the summary and five turns.

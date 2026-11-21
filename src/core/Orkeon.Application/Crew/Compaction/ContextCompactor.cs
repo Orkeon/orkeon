@@ -139,11 +139,12 @@ internal sealed class ContextCompactor
 
     private async System.Threading.Tasks.Task<int> CompactAsync(ConversationView conversation, int before, CancellationToken cancellationToken)
     {
-        // The recent turns kept are all there is: fewer are kept, down to the last turn. Only when the last turn
-        // is all there is nothing failed, and a later turn gives the cut its room.
+        // The recent turns kept are all there is, or alone are over the trigger: fewer are kept, down to the last
+        // turn, so one summary call can bring the conversation under it. Only when the last turn is all there is
+        // nothing failed, and a later turn gives the cut its room.
         var cut = CutIndex(conversation, _setup.KeepRecentTurns);
-        if (cut <= 2)
-            cut = ShrunkCutIndex(conversation);
+        if (cut <= 2 || !KeptUnderTrigger(conversation, cut))
+            cut = Math.Max(cut, ShrunkCutIndex(conversation));
         if (cut <= 2)
         {
             CompactionLog.LogNothingToCut(_setup.Logger, _setup.AgentRole, _setup.TaskId, before, TriggerTokens);
@@ -219,9 +220,9 @@ internal sealed class ContextCompactor
     }
 
     /// <summary>
-    /// The cut when the <c>KeepRecentTurns</c> turns are all there is: the most turns, fewer than that, whose
-    /// messages (the system prompt and the task beside them) come under the trigger, else the last turn alone;
-    /// 2 when the last turn is all there is.
+    /// The cut when the <c>KeepRecentTurns</c> turns are all there is or alone pass the trigger: the most turns,
+    /// fewer than that, whose messages (the system prompt and the task beside them) come under the trigger, else
+    /// the last turn alone; 2 when the last turn is all there is.
     /// </summary>
     private int ShrunkCutIndex(ConversationView conversation)
     {
@@ -232,11 +233,15 @@ internal sealed class ContextCompactor
             if (cut <= 2)
                 continue;
             last = cut;
-            if (Count(conversation, 0, 2) + Count(conversation, cut) + _overheadTokens < TriggerTokens)
+            if (KeptUnderTrigger(conversation, cut))
                 return cut;
         }
         return last;
     }
+
+    // Whether the messages a cut at `cut` keeps (the system prompt and the task beside them) come under the trigger.
+    private bool KeptUnderTrigger(ConversationView conversation, int cut) =>
+        Count(conversation, 0, 2) + Count(conversation, cut) + _overheadTokens < TriggerTokens;
 
     private static int SystemMessages(ConversationView conversation, int start, int end)
     {
