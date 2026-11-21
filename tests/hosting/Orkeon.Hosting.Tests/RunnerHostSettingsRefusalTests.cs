@@ -137,6 +137,7 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "ToolResultPruningOptions", "Orkeon:Compaction:Prune:FillShare", "1.5", "Orkeon:Compaction:Prune:FillShare" },
         { "AgentSkillsOptions", "Orkeon:Skills:Library", "skills", "Orkeon:Skills:Library" },
         { "AgentRouteOptions", "Orkeon:Decision:Route:Ladder:0", "auto", "Orkeon:Decision:Route:Ladder" },
+        { "AgentEffortOptions", "Orkeon:Decision:Effort:Levels:0", "huge", "Orkeon:Decision:Effort:Levels" },
         { "MemorySectionOptions", "Memory:Provider", "redsi", "Memory:Provider" },
         { "EmbeddingOptions", "Orkeon:Embeddings:Dimension", "big", "Orkeon:Embeddings:Dimension" },
         { "EmbeddingCacheOptions", "Orkeon:EmbeddingCache:SlidingExpirationMinutes", "an hour", "Orkeon:EmbeddingCache:SlidingExpirationMinutes" },

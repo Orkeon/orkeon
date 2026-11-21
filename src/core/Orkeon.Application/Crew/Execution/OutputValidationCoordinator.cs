@@ -175,7 +175,7 @@ internal sealed class OutputValidationCoordinator
             await _llmGate.WaitTurnAsync(context.Agent, cancellationToken).ConfigureAwait(false);
 
         var prompt = $"{context.SystemPrompt}\n\n{correctionPrompt}";
-        var correctionConfig = Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(
+        var correctionConfig = TaskThinkingScope.Resolve(
             // An agent without a config names no model: the provider runs the call on its own (GAP-18).
             baseConfig: context.Agent.LlmConfig ?? Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile(),
             taskOverride: context.Task.LlmOverride);

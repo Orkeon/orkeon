@@ -178,7 +178,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 106 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 107 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -190,7 +190,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-84 sections, 544 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+85 sections, 545 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -734,6 +734,25 @@ is not the `route` stage of a decision profile, which picks a profile for each c
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `Ladder` | list of string | `[]` | The profiles an `auto` agent is routed among, cheapest first: two or more names of `Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included), each once; a ladder of one rung, or with a blank, `auto` or repeated rung, is refused at start. Empty by default: a crew naming `auto` on a host without a ladder fails its load. |
+<!-- /settings -->
+
+### `Orkeon:Decision:Effort`
+
+An agent or a task that writes `thinking: { effort: auto }` ([YAML schema](../architecture/yaml-schema.md)) lets
+System One pick its thinking level at the start of each task, among `Levels`, cheapest first; the task keeps it on
+its retries. With `llm.profile: auto` too, the profile and the level are asked in one decision call, each answer
+with its own floor of 0.6. Under that floor, without an answer, with the decision circuit off or with
+`--no-decision`, the effort the agent would have had without `auto` stands (its profile's `Llm:Thinking`, else the
+provider's own), with one warning per run. A crew on `decision: { mode: none }` naming `effort: auto` fails its
+load, as does one whose profile runs a model that does not think. `auto` in a host profile (`Llm:Thinking:Effort`)
+is refused at start: it is a crew's word. Each pick is a run event, `agent.effort`.
+
+<!-- settings:Orkeon:Decision:Effort -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Levels` | list of string | `[]` | The thinking levels System One may pick for an `effort: auto` agent or task, cheapest first: each one of `low`, `medium`, `high`, `xhigh`, `max`, in lower case, each once; a blank, unknown or repeated level is refused at start. Empty by default, which allows `low`, `medium` and `high`. |
 <!-- /settings -->
 
 ## Rate and budgets

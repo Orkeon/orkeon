@@ -95,6 +95,7 @@ agents:
       thinking:           # Contrôle du raisonnement (gaté par capacité selon le provider)
         enabled: bool
         effort: string    # "low" | "medium" | "high" | "xhigh" | "max", casse exacte — toute autre valeur fait échouer le chargement (un provider envoie le niveau le plus proche que son champ connaît)
+                          # auto (toute casse) : System One choisit, au début de chaque tâche, un niveau de Orkeon:Decision:Effort:Levels et la tâche le garde ; sous 0,6, sans réponse ou circuit coupé → l'effort que l'agent aurait eu sans lui (le Llm:Thinking de son profil, sinon celui du provider). decision.mode: none, ou un profil dont le modèle ne réfléchit pas → le chargement échoue
         budget_tokens: int # Honoré par Qwen et OpenRouter ; les autres providers émettent un warning
       responseFormat: string # "text" (= défaut du provider) | "json_object" | "json_schema" — toute autre valeur est transmise telle quelle avec un warning
       responseSchema:     # Avec responseFormat: json_schema (un schéma seul implique json_schema)
@@ -155,7 +156,7 @@ tasks:
       temperature: float
       max_tokens: int     # Positif ; omis = le plafond hérité, 0 ou moins fait échouer le chargement en nommant la tâche
       top_p: float
-      thinking: {enabled, effort, budget_tokens}
+      thinking: {enabled, effort, budget_tokens} # effort: auto comme sur l'agent ; sans choix, l'effort de l'agent s'applique
       cache: {system, tools, ttl}  # Même forme que le cache: de l'agent — remplace le bloc de l'agent en entier ; un bloc sans point d'arrêt coupe le cache de l'agent pour cette tâche
     guardrails:           # Guardrails au niveau tâche, même forme que le bloc agent (optionnel)
       preset: string      # "analysis" | "strict" | "creative" — tout autre nom fait échouer le chargement

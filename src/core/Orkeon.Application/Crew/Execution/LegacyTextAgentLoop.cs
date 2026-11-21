@@ -63,7 +63,7 @@ internal sealed class LegacyTextAgentLoop
         int consecutiveIdenticalErrors = 0;
 
         var task = invocation.Task;
-        var legacyEffectiveConfig = Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(
+        var legacyEffectiveConfig = TaskThinkingScope.Resolve(
             // An agent without a config names no model: the provider runs the call on its own (GAP-18).
             baseConfig: agent.LlmConfig ?? Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile(),
             taskOverride: task.LlmOverride);

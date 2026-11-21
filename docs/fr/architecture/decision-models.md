@@ -375,6 +375,7 @@ dégrade le dit en un avertissement :
 | Reranker `decision` | Laisse passer les passages dans leur ordre de récupération, comme `none`, avec un avertissement. |
 | Skills d'un agent (`skills: { auto: true }`) | L'agent porte sa liste `fallback`, sinon aucun skill, et la tâche s'exécute ; `agent.skills` indique `mode: fallback` et `reason: circuit-off`, avec la cause en `detail`. Un avertissement par run. |
 | Routage d'un agent (`llm.profile: auto`) | La tâche tourne sur le profil `default` de l'hôte, jamais sur celui de l'agent, sans appel de décision ; `agent.route` indique `reason: circuit-off`. Un avertissement par run. |
+| Niveau de réflexion (`thinking: { effort: auto }`) | La tâche tourne avec l'effort qu'elle aurait eu sans `auto` (le `Llm:Thinking` de son profil, sinon celui du provider), sans appel de décision ; `agent.effort` indique `reason: circuit-off`. Un avertissement par run. |
 | Élagage des résultats d'outils (`Orkeon:Compaction:Prune`) | Rien n'est élagué et aucun appel de décision n'est fait ; la boucle compacte comme elle le ferait sans lui, et aucun `agent.pruned` n'est écrit. Un avertissement par run. |
 
 Le circuit est lu à chaque appel, pas une fois par hôte. Un run dont la portée le coupe (son
@@ -401,6 +402,7 @@ Une crew dit ce qu'elle attend de System One dans un bloc `decision:` au niveau 
 | `system_one_decide` dans `tools:` | Refusé. | Refusé. | Permis. |
 | Profil de décision (`llm.profile`, `llm_override.profile`) | Refusé. | Permis ; circuit coupé, ses étapes se dégradent comme dans le tableau ci-dessus. | Permis. |
 | Routage d'agent (`llm.profile: auto`) | Refusé. | Permis ; circuit coupé, la tâche tourne sur le profil par défaut. | Permis. |
+| Niveau de réflexion (`thinking: { effort: auto }`) | Refusé : écrivez un niveau. | Permis ; circuit coupé, l'effort sans `auto` s'applique. | Permis. |
 | Skills d'agent (`skills: { auto: true }`) | Refusé : lister les skills à la place. | Permis ; circuit coupé, l'agent porte sa liste `fallback`. | Permis. |
 | Élagage des résultats d'outils (`compaction: { prune: true }`) | Refusé ; le `Orkeon:Compaction:Prune` de l'hôte ne s'applique pas à ses agents. | Permis ; circuit coupé, rien n'est élagué. | Permis. |
 
@@ -408,7 +410,7 @@ Une crew sans mode ne peut pas déclarer de relais `without:` : le chargement de
 relais nomme un agent de la crew (`without: { agent, instructions }`, `instructions` facultatif), et un agent que la
 crew ne déclare pas est refusé au chargement. Une crew `required` qui ne demande rien à System One (aucune tâche de
 décision, aucun `system_one_decide`, aucun profil de décision, aucun `llm.profile: auto`, aucun `skills: { auto: true }`,
-aucun `compaction: { prune: true }`) se charge avec un avertissement. Une crew construite en C# rencontre ces règles à
+aucun `compaction: { prune: true }`, aucun `thinking: { effort: auto }`) se charge avec un avertissement. Une crew construite en C# rencontre ces règles à
 `CrewBuilder.Build()`, un manager donné en objet (`.Hierarchical(manager)`, `.WithManager(manager)`) compris, et
 `llm.profile: auto` y est vérifié aussi (un agent sur `LlmConfig.OnProfile("auto")`, le `LlmConfigOverride.Profile`
 d'une tâche ; un manager ou un relais sans tâche propre reste accepté, comme en YAML), avec trois différences : son
@@ -557,6 +559,18 @@ seule, jamais de lui-même.
   dans une crew en `decision.mode: none`, il sert sans appel ni avertissement, `agent.route` donnant
   `reason: decision-none`. C'est un choix par tâche,
   pas l'étape `route` d'un profil de décision, qui choisit un profil à chaque appel.
+- **Niveau de réflexion** — un agent ou une tâche avec `thinking: { effort: auto }` pose un `choice` au début de
+  chaque tâche, `effort`, dont les options sont les niveaux de `Orkeon:Decision:Effort:Levels`, du moins cher au
+  plus cher, sur le même état que le routage d'un agent ; avec `llm.profile: auto`
+  aussi, les deux questions vont dans la même requête, chaque réponse avec son propre seuil. Le niveau choisi à une
+  probabilité de 0,6 ou plus sert à tous les appels de la tâche, nouvelles tentatives comprises ; en dessous de 0,6,
+  sans réponse, ou circuit coupé, c'est l'effort que l'agent aurait eu sans `auto` (le `Llm:Thinking` de son profil,
+  sinon celui du provider), et `agent.effort` dit pourquoi
+  ([`Orkeon:Decision:Effort`](../reference/configuration.md#orkeondecisioneffort)). Un hôte qui n'autorise qu'un
+  niveau obtient ce niveau sans appel (`reason: single-level`). Le marqueur n'atteint jamais un provider, et
+  `Llm:Thinking:Effort: auto` dans un profil d'hôte est refusé au démarrage. Un profil dont le modèle ne réfléchit pas
+  (support de réflexion `None`) fait échouer le chargement ; en `llm.profile: auto`, seulement quand aucun échelon de
+  l'échelle ni le défaut ne réfléchit.
 - **Élagage des résultats d'outils** — dès que l'estimation d'une boucle atteint le plus petit de
   `Orkeon:Compaction:Prune:FillShare` de la fenêtre utile et du seuil de compaction, avant la compaction, elle pose
   deux `noul` par ancien résultat d'outil de lecture, `needed_n` et `whole_n`, huit résultats par requête et 24 au

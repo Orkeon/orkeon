@@ -446,7 +446,7 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
 
         services.AddScoped<ICrewExecutionHook>(sp => new ProgressHook(existing is null ? null : Materialize(sp, existing)));
 
-        // The agent loops' events (agent.compacted, agent.skills, agent.route, agent.pruned) go to the history of the call
+        // The agent loops' events (agent.compacted, agent.skills, agent.route, agent.effort, agent.pruned) go to the history of the call
         // in flight on this control flow; with the history off, or outside a call, they are dropped.
         services.AddAgentRunEventObservers(ServiceLifetime.Singleton, _ => new DeferredRunEventSink(() => s_current.Value?.Events));
     }

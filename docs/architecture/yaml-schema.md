@@ -93,6 +93,7 @@ agents:
       thinking:           # Reasoning control (capability-gated per provider)
         enabled: bool
         effort: string    # "low" | "medium" | "high" | "xhigh" | "max", exact case — any other value fails the load (a provider sends the nearest level its field knows)
+                          # auto (any case): System One picks, at each task's start, one level of Orkeon:Decision:Effort:Levels and the task keeps it; under 0.6, no answer or circuit off → the effort the agent would have had without it (its profile's Llm:Thinking, else the provider's). decision.mode: none, or a profile whose model does not think → the load fails
         budget_tokens: int # Honoured by Qwen and OpenRouter; other providers warn
       responseFormat: string # "text" (= provider default) | "json_object" | "json_schema" — any other value is forwarded as-is with a warning
       responseSchema:     # With responseFormat: json_schema (a schema alone implies json_schema)
@@ -153,7 +154,7 @@ tasks:
       temperature: float
       max_tokens: int     # Positive; omitted = the inherited cap, 0 or less fails the load naming the task
       top_p: float
-      thinking: {enabled, effort, budget_tokens}
+      thinking: {enabled, effort, budget_tokens} # effort: auto as on the agent; without a pick, the agent's own effort stands
       cache: {system, tools, ttl}  # Same shape as the agent's cache: — replaces the agent's block whole; a block with no breakpoint turns the agent's cache off for this task
     guardrails:           # Task-level guardrails, same shape as the agent block (optional)
       preset: string      # "analysis" | "strict" | "creative" — any other name fails the load

@@ -204,6 +204,23 @@ public sealed class AgentBuilder
     }
 
     /// <summary>
+    /// Leaves the thinking effort of this agent to System One (<c>thinking: { effort: auto }</c>, #439): at the start
+    /// of each task, the decision model picks one of the levels the host allows (<c>Orkeon:Decision:Effort:Levels</c>),
+    /// and the task keeps it; without a pick, the effort the agent would have had stands (its profile's, else the
+    /// provider's own). Keeps the thinking switch already set. A crew on <c>decision.mode: none</c> refuses it.
+    /// Sugar over <see cref="WithLlmConfig"/>; on an agent without a config it names no model, like <see cref="Thinking"/>.
+    /// </summary>
+    public AgentBuilder ThinkingEffortAuto()
+    {
+        var config = _llmConfig ?? LlmConfig.OnProfile();
+        _llmConfig = config with
+        {
+            Thinking = (config.Thinking ?? new LlmThinkingConfig()) with { Effort = null, AutoEffort = LlmAutoEffort.Any },
+        };
+        return this;
+    }
+
+    /// <summary>
     /// Bounds the maximum number of output tokens the model may generate. Output is the dominant
     /// cost driver on thinking-mode providers (DeepSeek guideline §6.2), so cap it explicitly on
     /// agents that do not need long generations. Sugar over <see cref="WithLlmConfig"/>; on an

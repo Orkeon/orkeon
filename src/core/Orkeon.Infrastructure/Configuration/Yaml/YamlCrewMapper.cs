@@ -721,6 +721,18 @@ public sealed partial class YamlCrewMapper
     {
         if (yaml is null) return null;
         if (yaml.Enabled is null && string.IsNullOrWhiteSpace(yaml.Effort) && yaml.BudgetTokens is null) return null;
+
+        // effort: auto leaves the level to System One (#439): a marker in place of a level, never sent to a provider.
+        if (LlmAutoEffort.IsAuto(yaml.Effort))
+        {
+            return new LlmThinkingConfig
+            {
+                Enabled = yaml.Enabled,
+                AutoEffort = LlmAutoEffort.Any,
+                BudgetTokens = yaml.BudgetTokens,
+            };
+        }
+
         if (!string.IsNullOrWhiteSpace(yaml.Effort))
         {
             try

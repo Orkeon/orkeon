@@ -27,6 +27,7 @@
     "Orkeon:CrewFactory",
     "Orkeon:CrewMemory",
     "Orkeon:Decision",
+    "Orkeon:Decision:Effort",
     "Orkeon:Decision:Route",
     "Orkeon:EmbeddingCache",
     "Orkeon:Embeddings",

@@ -24,3 +24,4 @@ const Orkeon.Constants.Protocol.RunEventKinds.AgentCompacted = "agent.compacted"
 const Orkeon.Constants.Protocol.RunEventKinds.AgentSkills = "agent.skills" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.AgentRoute = "agent.route" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.AgentPruned = "agent.pruned" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.AgentEffort = "agent.effort" -> string!

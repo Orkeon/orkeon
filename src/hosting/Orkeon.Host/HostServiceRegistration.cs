@@ -101,7 +101,7 @@ internal static class HostServiceRegistration
         services.AddScoped<Orkeon.Application.Crew.ICrewExecutionHook>(
             sp => sp.GetRequiredService<HostRunRecording>().Hook(sp.GetRequiredService<RunProgressHook>()));
 
-        // The agent loops' events of a recorded run (agent.compacted, agent.skills, agent.route, agent.pruned): scoped like
+        // The agent loops' events of a recorded run (agent.compacted, agent.skills, agent.route, agent.effort, agent.pruned): scoped like
         // the orchestrator that holds them, over the run's publisher read at each write, since the recording opens it after
         // the run's scope exists. Nothing is written when the history is off.
         Orkeon.Hosting.Runs.AgentRunEventObservers.AddAgentRunEventObservers(services, ServiceLifetime.Scoped, sp =>

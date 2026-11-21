@@ -111,6 +111,8 @@ public static class DecisionTaskRules
                     $"{Capitalized(h)} declares skills: {{ auto: true }}, which System One picks and a crew with decision.mode: none refuses: list its skills instead."));
                 refusals.AddRange(uses.PruneHolders.Select(h =>
                     $"{Capitalized(h)} declares compaction: {{ prune: true }}, which the decision model judges and a crew with decision.mode: none refuses."));
+                refusals.AddRange(uses.EffortAutoHolders.Select(h =>
+                    $"{Capitalized(h)} declares thinking: {{ effort: auto }}, which System One picks and a crew with decision.mode: none refuses: write a level instead."));
                 break;
 
             case CrewDecisionMode.Optional:
@@ -141,9 +143,9 @@ public static class DecisionTaskRules
                 }
 
                 if (uses.DecisionProfiles is not null && decisions.Count == 0 && uses.DecideToolHolders.Count == 0 && profiles.Count == 0
-                    && uses.SkillsAutoHolders.Count == 0 && uses.PruneHolders.Count == 0)
+                    && uses.SkillsAutoHolders.Count == 0 && uses.PruneHolders.Count == 0 && uses.EffortAutoHolders.Count == 0)
                     warnings.Add("The crew requires System One but asks it nothing: it has no decision task, no system_one_decide, no decision profile, " +
-                        "no skills: { auto: true } and no compaction: { prune: true }.");
+                        "no skills: { auto: true }, no compaction: { prune: true } and no thinking: { effort: auto }.");
                 break;
 
             default:

@@ -5,8 +5,8 @@ using Orkeon.Application.Runs;
 namespace Orkeon.Hosting.Runs;
 
 /// <summary>
-/// The four observers of the agent loops (<c>agent.compacted</c>, <c>agent.skills</c>, <c>agent.route</c>,
-/// <c>agent.pruned</c>, #432 #434), registered over one sink the same way by every host that records a run:
+/// The four observers of the agent loops (<c>agent.compacted</c>, <c>agent.skills</c>, <c>agent.route</c> with
+/// <c>agent.effort</c>, <c>agent.pruned</c>, #432 #434 #439), registered over one sink the same way by every host that records a run:
 /// <c>orkeon run</c>, <c>orkeon-host</c> and the MCP host.
 /// </summary>
 internal static class AgentRunEventObservers

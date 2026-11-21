@@ -362,6 +362,7 @@ forge stream's `run.started`, `task.completed` and `llm.call.*` lines. Each cons
 | `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
 | Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` and `reason: circuit-off`, with the cause as `detail`. One warning per run. |
 | Agent routing (`llm.profile: auto`) | The task runs on the host's `default` profile, never the agent's own, with no decision call; `agent.route` reports `reason: circuit-off`. One warning per run. |
+| Thinking level (`thinking: { effort: auto }`) | The task runs with the effort it would have had without `auto` (its profile's `Llm:Thinking`, else the provider's), with no decision call; `agent.effort` reports `reason: circuit-off`. One warning per run. |
 | Tool-result pruning (`Orkeon:Compaction:Prune`) | Nothing is pruned and no decision call is made; the loop compacts as it would without it, and no `agent.pruned` is written. One warning per run. |
 
 The circuit is read at each call, not once per host. A run whose scope switches it off (its
@@ -388,13 +389,15 @@ declarative `.ork.ts` and C# crews:
 | `system_one_decide` in `tools:` | Refused. | Refused. | Allowed. |
 | Decision profile (`llm.profile`, `llm_override.profile`) | Refused. | Allowed; with the circuit off its stages degrade as in the table above. | Allowed. |
 | Agent routing (`llm.profile: auto`) | Refused. | Allowed; with the circuit off the task runs on the default profile. | Allowed. |
+| Thinking level (`thinking: { effort: auto }`) | Refused: write a level instead. | Allowed; with the circuit off the effort without `auto` stands. | Allowed. |
 | Agent skills (`skills: { auto: true }`) | Refused: list the skills instead. | Allowed; with the circuit off the agent carries its `fallback` list. | Allowed. |
 | Tool-result pruning (`compaction: { prune: true }`) | Refused; the host's `Orkeon:Compaction:Prune` is not applied to its agents. | Allowed; with the circuit off nothing is pruned. | Allowed. |
 
 A crew with no mode may not declare a `without:` relay: the load asks for `decision.mode: optional`. A relay names an
 agent of the crew (`without: { agent, instructions }`, `instructions` optional), and an agent the crew does not
 declare is refused at load. A `required` crew that asks System One nothing (no decision task, no `system_one_decide`,
-no decision profile, no `llm.profile: auto`, no `skills: { auto: true }`, no `compaction: { prune: true }`) loads with a
+no decision profile, no `llm.profile: auto`, no `skills: { auto: true }`, no `compaction: { prune: true }`, no
+`thinking: { effort: auto }`) loads with a
 warning. A crew built in C# meets these rules at `CrewBuilder.Build()`, a manager given as an object
 (`.Hierarchical(manager)`, `.WithManager(manager)`) included, and `llm.profile: auto` is checked there too (an agent on
 `LlmConfig.OnProfile("auto")`, a task's `LlmConfigOverride.Profile`; a manager or a relay with no task of its own
@@ -537,6 +540,16 @@ never on its own.
   ([`Orkeon:Decision:Route`](../reference/configuration.md#orkeondecisionroute)); in a crew on `decision.mode: none`
   it runs with no call and no warning, `agent.route` giving `reason: decision-none`. This is one pick per task, not the
   `route` stage of a decision profile, which picks a profile for each call.
+- **Thinking level** — an agent or a task with `thinking: { effort: auto }` asks one `choice` at the start of each
+  task, `effort`, whose options are the levels of `Orkeon:Decision:Effort:Levels`, cheapest
+  first, on the same state as the agent routing; with `llm.profile: auto` too, both questions go in the same
+  request, each answer with its own floor. The level picked at a probability of 0.6 or more runs every call of the
+  task, its retries included; under 0.6, without an answer, or with the circuit off, the effort the agent would have
+  had without `auto` runs (its profile's `Llm:Thinking`, else the provider's own), and `agent.effort` says why
+  ([`Orkeon:Decision:Effort`](../reference/configuration.md#orkeondecisioneffort)). A host that allows one level
+  gets that level with no call (`reason: single-level`). The marker never reaches a provider, and a host profile's
+  `Llm:Thinking:Effort: auto` is refused at start. A profile whose model does not think (thinking support `None`)
+  fails the load; on `llm.profile: auto`, only when no rung of the ladder nor the default thinks.
 - **Tool-result pruning** — once a loop's estimate reaches the smaller of `Orkeon:Compaction:Prune:FillShare` of the
   usable window and the compaction trigger, before compaction, it asks two `noul` per older read-tool result,
   `needed_n` and `whole_n`, eight results to a request and 24 at most at one pressure, oldest first, the rest at the

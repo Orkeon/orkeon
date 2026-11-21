@@ -130,6 +130,15 @@ public static class RunEventKinds
     public const string AgentRoute = "agent.route";
 
     /// <summary>
+    /// The thinking level a task on <c>thinking: { effort: auto }</c> runs with (#439), once per task and agent, at its
+    /// start: <c>taskId</c>, <c>agentRole</c>, <c>level</c> (the level sent, null when the provider's own stands),
+    /// <c>reason</c> (<c>model</c>, <c>low-confidence</c>, <c>no-answer</c>, <c>circuit-off</c>, <c>decision-none</c>,
+    /// <c>single-level</c>), <c>picked</c> and <c>probability</c> (the model's pick and its probability, null when it
+    /// picked no level) and <c>levels</c> (the levels offered). Additive: a consumer that does not know the kind ignores it.
+    /// </summary>
+    public const string AgentEffort = "agent.effort";
+
+    /// <summary>
     /// A loop's older read-tool results were judged for pruning before a model call (#434): <c>taskId</c>,
     /// <c>agentRole</c>, <c>estimatedTokens</c> and <c>thresholdTokens</c> (the measure and the estimate from which
     /// results are judged), <c>offered</c>, <c>judged</c>, <c>kept</c>, <c>cut</c>, <c>dropped</c> and
@@ -147,6 +156,6 @@ public static class RunEventKinds
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
         AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback, GraphNodeEntered,
-        RunDecision, AgentCompacted, AgentSkills, AgentRoute, AgentPruned,
+        RunDecision, AgentCompacted, AgentSkills, AgentRoute, AgentEffort, AgentPruned,
     ];
 }

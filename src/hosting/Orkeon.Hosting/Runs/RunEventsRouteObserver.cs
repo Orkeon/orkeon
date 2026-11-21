@@ -4,7 +4,10 @@ using Orkeon.Constants.Protocol;
 
 namespace Orkeon.Hosting.Runs;
 
-/// <summary>Writes the profile a task of an agent on <c>llm.profile: auto</c> runs on, on the run protocol (agent.route, #434).</summary>
+/// <summary>
+/// Writes the profile a task of an agent on <c>llm.profile: auto</c> runs on (agent.route, #434) and the thinking level
+/// a task on <c>effort: auto</c> runs with (agent.effort, #439), on the run protocol.
+/// </summary>
 internal sealed class RunEventsRouteObserver : IAgentRouteObserver
 {
     private readonly IRunEventSink _events;
@@ -24,6 +27,22 @@ internal sealed class RunEventsRouteObserver : IAgentRouteObserver
             picked = notice.Picked,
             probability = notice.Probability,
             ladder = notice.Ladder,
+        });
+    }
+
+    /// <inheritdoc />
+    public void EffortPicked(AgentEffortNotice notice)
+    {
+        ArgumentNullException.ThrowIfNull(notice);
+        _events.Emit(RunEventKinds.AgentEffort, new
+        {
+            taskId = notice.TaskId,
+            agentRole = notice.AgentRole,
+            level = notice.Level,
+            reason = notice.Reason,
+            picked = notice.Picked,
+            probability = notice.Probability,
+            levels = notice.Levels,
         });
     }
 }

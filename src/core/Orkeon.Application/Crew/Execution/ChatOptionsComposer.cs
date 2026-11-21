@@ -83,8 +83,9 @@ internal sealed class ChatOptionsComposer
 
         await TryAttachStructuredOutputGrammarAsync(options, task, cancellationToken).ConfigureAwait(false);
 
-        // The task's llm_override is merged once, by the resolver, over the agent's configuration.
-        ApplyLlmConfig(options, LlmConfigResolver.Resolve(
+        // The task's llm_override is merged once, by the resolver, over the agent's configuration, and a thinking
+        // effort left to System One is the one settled at the task's start (#439).
+        ApplyLlmConfig(options, TaskThinkingScope.Resolve(
             agent.LlmConfig ?? LlmConfig.OnProfile(), task.LlmOverride));
 
         return (options, availableTools);

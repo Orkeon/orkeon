@@ -99,6 +99,7 @@ public static class SettingsCategories
             ["Orkeon:Kev"] = Models,
             ["Orkeon:Decision"] = Models,
             ["Orkeon:Decision:Route"] = Models,
+            ["Orkeon:Decision:Effort"] = Models,
 
             ["RateLimiting"] = RateAndBudgets,
             ["ToolRateLimiting"] = RateAndBudgets,

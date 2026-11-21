@@ -189,7 +189,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 106 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 107 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -201,7 +201,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-84 sections, 544 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+85 sections, 545 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -767,6 +767,26 @@ appel.
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `Ladder` | liste de chaînes | `[]` | Les profils entre lesquels un agent `auto` est routé, du moins cher au plus cher : deux noms ou plus de `Llm:Profiles` ou `Orkeon:Decision:Profiles` (`default` compris), chacun une fois ; une échelle d'un seul échelon, ou avec un échelon vide, `auto` ou répété, est refusée au démarrage. Vide par défaut : une crew qui nomme `auto` sur un hôte sans échelle échoue à son chargement. |
+<!-- /settings -->
+
+### `Orkeon:Decision:Effort`
+
+Un agent ou une tâche qui écrit `thinking: { effort: auto }` ([schéma YAML](../architecture/yaml-schema.md)) laisse
+System One choisir son niveau de réflexion au début de chaque tâche, parmi `Levels`, du moins cher au plus cher ; la
+tâche le garde à ses reprises. Avec `llm.profile: auto` aussi, le profil et le niveau sont demandés dans un seul
+appel de décision, chaque réponse avec son propre seuil de 0,6. Sous ce seuil, sans réponse, avec le circuit de
+décision coupé ou avec `--no-decision`, l'effort que l'agent aurait eu sans `auto` s'applique (le `Llm:Thinking` de
+son profil, sinon celui du fournisseur), avec un avertissement par run. Une crew en `decision: { mode: none }` qui
+nomme `effort: auto` échoue à son chargement, comme celle dont le profil fait tourner un modèle qui ne réfléchit
+pas. `auto` dans un profil d'hôte (`Llm:Thinking:Effort`) est refusé au démarrage : c'est un mot de crew. Chaque
+choix est un événement de run, `agent.effort`.
+
+<!-- settings:Orkeon:Decision:Effort -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Levels` | liste de chaînes | `[]` | Les niveaux de réflexion entre lesquels System One peut choisir pour un agent ou une tâche en `effort: auto`, du moins cher au plus cher : chacun parmi `low`, `medium`, `high`, `xhigh`, `max`, en minuscules, une fois chacun ; un niveau vide, inconnu ou répété est refusé au démarrage. Vide par défaut, ce qui autorise `low`, `medium` et `high`. |
 <!-- /settings -->
 
 ## Débit et budgets

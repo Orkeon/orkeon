@@ -26,6 +26,12 @@ public sealed record SystemOneUses(IReadOnlyList<string> DecideToolHolders, IRea
     /// judges its older read-tool results.
     /// </summary>
     public IReadOnlyList<string> PruneHolders { get; init; } = [];
+
+    /// <summary>
+    /// Gets each agent or task whose thinking effort is left to System One (<c>thinking: { effort: auto }</c>, #439),
+    /// as <c>agent 'x'</c> or <c>task 'y'</c>: the decision model picks its level.
+    /// </summary>
+    public IReadOnlyList<string> EffortAutoHolders { get; init; } = [];
 }
 
 /// <summary>One agent or task naming a decision profile.</summary>

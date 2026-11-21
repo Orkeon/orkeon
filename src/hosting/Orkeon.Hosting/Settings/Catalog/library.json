@@ -35,6 +35,13 @@
       "description": "The `Orkeon:Decision:Enabled` switch of the decision circuit."
     },
     {
+      "path": "Orkeon:Decision:Effort",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "The thinking levels System One picks among for an agent or a task on `thinking: { effort: auto }` (#439), bound to the `Orkeon:Decision:Effort` section by `AddOrkeonInfrastructure()`. At the start of each task, the decision model picks one of `AgentEffortOptions.Levels`, and the task keeps it; under a probability of 0.6, without an answer or with the decision circuit off, the effort the agent would have had without `auto` stands."
+    },
+    {
       "path": "Orkeon:Decision:Route",
       "category": "models",
       "hosts": [],
@@ -1092,6 +1099,13 @@
       "section": "Orkeon:Decision",
       "type": "string",
       "description": "The decision provider: `typesafe`, `liquid` or `kev`; empty deduces it."
+    },
+    {
+      "path": "Orkeon:Decision:Effort:Levels",
+      "section": "Orkeon:Decision:Effort",
+      "type": "list of string",
+      "default": [],
+      "description": "The thinking levels System One may pick for an `effort: auto` agent or task, cheapest first: each one of `low`, `medium`, `high`, `xhigh`, `max`, in lower case, each once; a blank, unknown or repeated level is refused at start. Empty by default, which allows `low`, `medium` and `high`."
     },
     {
       "path": "Orkeon:Decision:Route:Ladder",

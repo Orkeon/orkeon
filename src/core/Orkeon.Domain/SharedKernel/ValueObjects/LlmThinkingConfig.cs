@@ -78,4 +78,40 @@ public sealed record LlmThinkingConfig
     /// dropping it.
     /// </remarks>
     public int? BudgetTokens { get; init; }
+
+    /// <summary>
+    /// The effort left to System One (<c>effort: auto</c>, #439), in place of <see cref="Effort"/>, which stays null:
+    /// the decision model picks the level of each task. Null when the effort is written, or left to the profile.
+    /// </summary>
+    public LlmAutoEffort? AutoEffort { get; init; }
+
+    /// <summary>Gets whether something of this config is left to System One (<see cref="AutoEffort"/>).</summary>
+    public bool HasAuto => AutoEffort is not null;
+
+    /// <summary>
+    /// The thinking a task's calls run on once System One has settled what this config leaves to it (#439): with
+    /// <paramref name="level"/>, that level in place of <c>auto</c>, the other fields as written; without one (a pick
+    /// under the floor, no answer, the circuit off), the thinking the agent would have had without <c>auto</c> -
+    /// <paramref name="standing"/>'s enabled switch and effort, this config's own switch and budget first. Null when
+    /// nothing is left to send: the provider's own thinking applies. A config with nothing left to System One is
+    /// returned as is.
+    /// </summary>
+    /// <param name="level">The level picked, one of <see cref="Levels"/>; null when none was.</param>
+    /// <param name="standing">The thinking that stands without <c>auto</c>: the next config down the chain (the agent's under a task's, else the profile's); null for the provider's own.</param>
+    /// <returns>A config with no <c>auto</c> left, or null.</returns>
+    public LlmThinkingConfig? Settle(string? level, LlmThinkingConfig? standing)
+    {
+        if (!HasAuto)
+            return this;
+        if (level is not null)
+            return this with { AutoEffort = null, Effort = ValidateEffort(level) };
+
+        var settled = new LlmThinkingConfig
+        {
+            Enabled = Enabled ?? standing?.Enabled,
+            Effort = standing?.AutoEffort is null ? standing?.Effort : null,
+            BudgetTokens = BudgetTokens ?? standing?.BudgetTokens,
+        };
+        return settled is { Enabled: null, Effort: null, BudgetTokens: null } ? null : settled;
+    }
 }

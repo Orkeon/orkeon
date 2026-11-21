@@ -86,6 +86,22 @@ public sealed class DecisionModeRulesTests
     }
 
     [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldRefuseTheEffortAutoSayingSystemOnePicksIt_WhenTheModeIsNone()
+    {
+        // Arrange
+        var uses = new SystemOneUses([], []) { EffortAutoHolders = ["agent 'coder'"] };
+
+        // Act
+        var findings = DecisionTaskRules.CheckMode(CrewDecisionMode.None, ProcessType.Sequential, [PlainTask("code")], uses);
+
+        // Assert
+        Assert.Equal(
+            ["Agent 'coder' declares thinking: { effort: auto }, which System One picks and a crew with decision.mode: none refuses: write a level instead."],
+            findings.Refusals);
+    }
+
+    [Fact]
     [Trait("BR", "CH-429")]
     public void ShouldAcceptTheCrew_WhenEveryDecisionTaskOfAnOptionalCrewHasARelay()
     {
@@ -233,7 +249,7 @@ public sealed class DecisionModeRulesTests
 
         // Assert
         Assert.Equal(
-            ["The crew requires System One but asks it nothing: it has no decision task, no system_one_decide, no decision profile, no skills: { auto: true } and no compaction: { prune: true }."],
+            ["The crew requires System One but asks it nothing: it has no decision task, no system_one_decide, no decision profile, no skills: { auto: true }, no compaction: { prune: true } and no thinking: { effort: auto }."],
             findings.Warnings);
     }
 

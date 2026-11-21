@@ -295,6 +295,57 @@ public partial class CrewFactory : ICrewFactory
 
         foreach (var task in config.Tasks)
             EnsureProfile(task.LlmOverride?.Profile, $"Crew '{config.Name}': task '{Shorten(task.Description)}'");
+
+        EnsureEffortAutoSupported(config);
+    }
+
+    /// <summary>
+    /// An agent or a task on <c>thinking: { effort: auto }</c> (#439) must run on a profile whose model thinks: one
+    /// whose thinking support is <c>None</c> has no level to pick, and the load says so. On <c>llm.profile: auto</c>,
+    /// only when every rung of the ladder and the default are <c>None</c>. A provider that cannot tell is trusted.
+    /// </summary>
+    private void EnsureEffortAutoSupported(CrewConfiguration config)
+    {
+        if (_llmProfiles is null)
+            return;
+
+        var agents = config.Agents.ToDictionary(a => a.Id);
+        foreach (var agent in config.Agents.Where(a => a.LlmConfig?.Thinking is { HasAuto: true }))
+            EnsureThinks(agent.LlmConfig?.Profile, NamedModel(agent.LlmConfig),
+                $"Crew '{config.Name}': agent '{agent.Key ?? agent.Role}' declares thinking: {{ effort: auto }}");
+
+        foreach (var task in config.Tasks.Where(t => t.LlmOverride?.Thinking is { HasAuto: true }))
+        {
+            var agent = task.AssignedAgentId is { } id && agents.TryGetValue(id, out var assigned) ? assigned : null;
+            // A task naming its own profile runs on that profile's model; else on its agent's.
+            var ownProfile = !string.IsNullOrWhiteSpace(task.LlmOverride!.Profile);
+            EnsureThinks(ownProfile ? task.LlmOverride.Profile : agent?.LlmConfig?.Profile, ownProfile ? null : NamedModel(agent?.LlmConfig),
+                $"Crew '{config.Name}': task '{Shorten(task.Description)}' declares thinking: {{ effort: auto }} in its llm_override");
+        }
+    }
+
+    private static string? NamedModel(LlmConfig? config) => string.IsNullOrWhiteSpace(config?.Model) ? null : config.Model;
+
+    private void EnsureThinks(string? profile, string? model, string where)
+    {
+        List<string> candidates = Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(profile)
+            ? [.. _routeLadder, Orkeon.Application.Interfaces.Ports.LlmProfiles.Default]
+            : [string.IsNullOrWhiteSpace(profile) ? Orkeon.Application.Interfaces.Ports.LlmProfiles.Default : profile];
+        if (candidates.Any(name => Thinks(name, model)))
+            return;
+
+        throw new InvalidOperationException(
+            $"{where}, and the model of {(candidates.Count == 1 ? $"its profile '{candidates[0]}'" : $"every profile System One may pick ({string.Join(", ", candidates)})")} " +
+            "does not think (thinking support None): System One has no level to pick. Remove the effort, or run it on a profile whose model thinks.");
+    }
+
+    private bool Thinks(string name, string? model)
+    {
+        var provider = _llmProfiles!.Resolve(name).Provider;
+#pragma warning disable ORKEXP005 // The reasoning capabilities are experimental; the load reads them to refuse a pick with no level.
+        var reasoning = provider.DescribeReasoning(model ?? provider.BaseConfig?.Model);
+#pragma warning restore ORKEXP005
+        return reasoning is null || reasoning.Thinking != ThinkingSupport.None;
     }
 
     /// <summary>

@@ -429,9 +429,15 @@ public partial class YamlCrewExporter
 
     /// <summary>The <c>thinking:</c> block; null when it sets nothing, as the loader reads an empty one.</summary>
     private static ThinkingYamlConfig? MapThinking(LlmThinkingConfig? thinking) =>
-        thinking is null || (thinking.Enabled is null && string.IsNullOrWhiteSpace(thinking.Effort) && thinking.BudgetTokens is null)
+        thinking is null || (thinking.Enabled is null && string.IsNullOrWhiteSpace(thinking.Effort) && thinking.BudgetTokens is null && !thinking.HasAuto)
             ? null
-            : new ThinkingYamlConfig { Enabled = thinking.Enabled, Effort = thinking.Effort, BudgetTokens = thinking.BudgetTokens };
+            : new ThinkingYamlConfig
+            {
+                Enabled = thinking.Enabled,
+                // A level left to System One (#439) round-trips as the marker it was written with.
+                Effort = thinking.AutoEffort is not null ? LlmAutoEffort.Name : thinking.Effort,
+                BudgetTokens = thinking.BudgetTokens,
+            };
 
     /// <summary>The <c>cache:</c> block; null when it marks no breakpoint, as the loader reads one.</summary>
     private static CacheYamlConfig? MapCache(LlmCacheConfig? cache)

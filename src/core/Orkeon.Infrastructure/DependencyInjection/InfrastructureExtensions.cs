@@ -270,6 +270,9 @@ public static class InfrastructureExtensions
         // The ladder an agent on llm.profile: auto is routed among (#434); its names are checked at a crew's load.
         services.AddOrkeonSettings<Application.Crew.Routing.AgentRouteOptions>(Application.Crew.Routing.AgentRouteOptions.SectionName)
             .ValidateSettings((options, _) => Application.Crew.Routing.AgentRouteOptions.Problems(options));
+        // The thinking levels an agent or a task on thinking: { effort: auto } is picked among (#439).
+        services.AddOrkeonSettings<Application.Crew.Routing.AgentEffortOptions>(Application.Crew.Routing.AgentEffortOptions.SectionName)
+            .ValidateSettings((options, _) => Application.Crew.Routing.AgentEffortOptions.Problems(options));
         services.TryAddSingleton<Application.Interfaces.Ports.IContextWindowResolver>(sp => new LLMs.Context.ContextWindowResolver(
             sp.GetService<IOptions<Session.CliSessionOptions>>()?.Value.ContextWindowTokens,
             sp.GetRequiredService<ILogger<LLMs.Context.ContextWindowResolver>>()));

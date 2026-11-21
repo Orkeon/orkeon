@@ -55,11 +55,12 @@ public static class ServiceCollectionExtensions
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Skills.AgentSkillsResolver>>())
             : null!);
         // One router per host; its warnings (the circuit off, no ladder) are said once per run, held by the run's
-        // SystemOneRunScope (#434). Its ladder is bound by AddOrkeonInfrastructure; without it, none, and an auto task
-        // runs on the default profile.
+        // SystemOneRunScope (#434). Its ladder and its thinking levels (#439) are bound by AddOrkeonInfrastructure;
+        // without them, no ladder, and an auto task runs on the default profile, and the three default levels.
         services.TryAddSingleton(sp => new Crew.Routing.AgentProfileRouter(
             sp,
             sp.GetService<IOptions<Crew.Routing.AgentRouteOptions>>()?.Value ?? new Crew.Routing.AgentRouteOptions(),
+            sp.GetService<IOptions<Crew.Routing.AgentEffortOptions>>()?.Value ?? new Crew.Routing.AgentEffortOptions(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Routing.AgentProfileRouter>>()));
         // The pruning of older read-tool results before compaction (#434), first of the pressure stages. Scoped: it
         // follows the run scope's decision circuit (#431); the circuit-off warning is said once per run. Its
