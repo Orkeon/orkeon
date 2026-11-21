@@ -221,7 +221,9 @@ with the circuit off sets `Orkeon:Guardian:Llm:FailMode` to `Open` or turns the 
   window has loaded; that wait was bounded by `CommandTimeoutSeconds` (30 s), not by the start's timeout, so a
   slow start that the announcement survived failed on the session, twice in a row since the retry of #335
   started Firefox cold again. `session.new` now waits `StartupTimeoutSeconds`, and the error and the warning
-  name it.
+  name it. The session wait no longer follows `CommandTimeoutSeconds`: a `CommandTimeoutSeconds` raised above
+  `StartupTimeoutSeconds` no longer lengthens it, so raise `StartupTimeoutSeconds` instead. A start that hangs
+  fails after at most 2 attempts × 2 × `StartupTimeoutSeconds` (the announcement, then the session).
 - **`spawn_agent` and `ctx.spawnBackground` are no longer refused five minutes into a run that names no
   budget (#426).** Without `.budget(...)` the act runs with no wall clock, but the spawn tool took
   `AgentExecutionBudget.Default`, built with each agent's context: every spawn made more than five minutes

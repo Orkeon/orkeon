@@ -222,4 +222,7 @@ Firefox annonce son protocole distant tôt dans son démarrage et ne répond à 
 démarrage, et attend à nouveau `StartupTimeoutSeconds`, non `CommandTimeoutSeconds`. Un navigateur qui
 la laisse sans réponse aussi longtemps est tué, son profil supprimé s'il est jetable, et redémarré une
 fois, avec un avertissement dans le journal ; un second silence fait échouer le démarrage avec une
-erreur qui dit que Firefox a été redémarré. Sur une machine chargée, augmentez `StartupTimeoutSeconds`.
+erreur qui dit que Firefox a été redémarré. Un démarrage bloqué échoue donc au plus après 2 tentatives ×
+2 × `StartupTimeoutSeconds` (l'annonce, puis la session) : environ 2 minutes avec le défaut de 30 s.
+L'attente de la session ne suit pas `CommandTimeoutSeconds`, même quand il est le plus grand. Sur une
+machine chargée, augmentez `StartupTimeoutSeconds`.

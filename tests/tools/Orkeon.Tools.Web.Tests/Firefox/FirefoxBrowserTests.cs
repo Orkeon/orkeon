@@ -112,6 +112,37 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
     }
 
     [Fact]
+    public async Task Should_NameTheStartupTimeoutInTheWarning_When_TheFirstBrowserLeavesTheSessionUnanswered()
+    {
+        var launched = 0;
+        Launcher.Configure += browser =>
+        {
+            if (++launched == 1)
+                browser.Wire.Unanswered.Add("session.new");
+        };
+
+        var opening = OpenBrowserAsync();
+        await TimeOutAsync(1, "session.new", Startup);
+        await using var browser = await Bounded(opening);
+
+        var warning = Assert.Single(_logger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("within 90 s", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_NameTheStartupTimeoutInTheError_When_TheSecondBrowserLeavesTheSessionUnansweredToo()
+    {
+        Launcher.Configure += browser => browser.Wire.Unanswered.Add("session.new");
+
+        var opening = OpenBrowserAsync();
+        await TimeOutAsync(1, "session.new", Startup);
+        await TimeOutAsync(2, "session.new", Startup);
+        var error = await Assert.ThrowsAsync<BiDiException>(() => Bounded(opening));
+
+        Assert.Contains("within 90 s", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_NotStartAnotherBrowser_When_ALaterStartCommandTimesOut()
     {
         Launcher.Configure += browser => browser.Wire.Unanswered.Add("browsingContext.getTree");
