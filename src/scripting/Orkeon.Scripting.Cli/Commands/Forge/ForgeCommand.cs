@@ -434,6 +434,8 @@ internal sealed record ForgeCommandOptions
             "--adopt only applies to `forge resume`."),
         ((o, _) => o.Adopt && o.Edit,
             "--adopt and --edit are two different answers to the same pause."),
+        ((o, _) => o.Adopt && o.NoDecision,
+            "--no-decision does not apply to `--adopt`: the adoption asks System One nothing."),
         ((o, _) => ReadOutsideACycle(o),
             "--read only applies to a new session or to `forge resume`."),
         ((o, _) => LanguageOutsideACycle(o),
@@ -820,7 +822,8 @@ internal static class ForgeCommand
         // agents while the engine is off — amending one is a resume that carries the
         // blueprint over the channel, validated in full, then a deterministic re-render.
         // The arbitration keeps its own edit decision; this path only exists BEFORE the
-        // first trial of the current iteration, so it charges none.
+        // trial of the current iteration, so it charges none — unless a budget stop between
+        // the two passes of that trial kept one (#431): the edit then charges a new cycle.
         if (options.Edit
             && await ApplyEditedBlueprintAsync(console, session, channel, events, knownTools).ConfigureAwait(false) is { } editExitCode)
         {
@@ -1253,6 +1256,21 @@ internal static class ForgeCommand
 
         events.SessionStarted(session, resumed: true);
 
+        // A budget stop between the two passes of an optional crew's trial (#431) kept the on pass of the crew as it
+        // was: the edited crew is a new cycle, charged like the arbitration's edit, so its trial gets a run number of
+        // its own and runs both passes. Refused, with nothing saved, when no cycle is left.
+        var newCycle = TestStage.HasKeptPass(session);
+        if (newCycle && !session.Document.Budget.CanStartIteration)
+        {
+            var detail =
+                $"session '{session.Document.Slug}' stopped between the two passes of its trial, and an edited crew is a new"
+                + $" cycle: its {session.Document.Budget.MaxIterations} iteration(s) are spent — raise --max-iterations, or resume without --edit.";
+            events.Error(ForgeEngine.CodeBudgetExhausted, detail, recoverable: true);
+            events.SessionFinished(StatusWord(session), ExitError);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {detail} ({ForgeEngine.CodeBudgetExhausted})").ConfigureAwait(false);
+            return ExitError;
+        }
+
         var json = await channel.ReadBlueprintAsync(CancellationToken.None).ConfigureAwait(false)
             ?? throw new OperationCanceledException("The user channel closed while sending the edited blueprint.");
         if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events, ForgeFolders.ExistingPaths(session), ForgeFolders.Of(session), session.Document.CrewDecision) is not { } edited)
@@ -1260,6 +1278,12 @@ internal static class ForgeCommand
             // The session has not moved: it waits at the same pause, resumable again.
             events.SessionFinished("paused", ExitError);
             return ExitError;
+        }
+
+        if (newCycle)
+        {
+            session.Document.Budget.RegisterIteration();
+            session.Document.Iteration = session.Document.Budget.ConsumedIterations;
         }
 
         session.SaveArtifact(ForgeSession.BlueprintFileName, edited);

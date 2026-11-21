@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Orkeon.Scripting.Cli.Commands.Forge;
+using Orkeon.Scripting.Cli.Tests.Doubles;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
@@ -149,6 +150,79 @@ public sealed class ForgeEditAtPauseTests : IDisposable
         Assert.True(ForgeSession.TryLoadBySlug(_workspace, "veille", out var reloaded, out _));
         Assert.Equal(ForgeState.Test, reloaded!.State);
         Assert.Equal("Web Researcher", reloaded.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName)!.Agents![0].Role);
+    }
+
+    /// <summary>
+    /// An <c>optional</c> session stopped by its budget between the two passes of its first trial (#431): state Test,
+    /// iteration 1, the on pass of the old crew kept under <c>runs/1/on/</c>.
+    /// </summary>
+    private ForgeSession CreateSessionStoppedBetweenPasses(int maxIterations = ForgeBudget.DefaultMaxIterations)
+    {
+        var session = ForgeSession.Create(_workspace, "tri", crewDecision: ForgeCrewDecision.Optional);
+        Assert.True(ForgeBlueprint.TryParse(ForgeCrewDecisionPlanTests.TriageBlueprint, out var blueprint, out _, [], ForgeCrewDecision.Optional));
+        session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
+        session.Document.Budget = new ForgeBudget { MaxIterations = maxIterations, MaxTokens = 1_000, ConsumedTokens = 1_500, ConsumedIterations = 1 };
+        session.Document.Iteration = 1;
+        var pass = new ForgeTestPass { Circuit = "on", Success = true, OutputPath = "runs/1/on/output.md" };
+        Directory.CreateDirectory(Path.Combine(session.Directory, TestStage.RunsDirectoryName, "1", "on"));
+        session.SaveArtifact(Path.Combine(TestStage.RunsDirectoryName, "1", "on", "run.json"),
+            new ForgeTestRun { Success = true, Output = "Tri par l'ancien crew.", Circuit = "on", Passes = [pass] });
+        session.SetState(ForgeState.Test);
+        session.SetStatus(ForgeSessionStatus.BudgetExhausted);
+        session.Save(DateTimeOffset.UtcNow);
+        return session;
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task An_edit_after_a_budget_stop_between_passes_starts_a_new_iteration_whose_trial_runs_both_passes()
+    {
+        // Arrange
+        var settings = WriteSettings();
+        CreateSessionStoppedBetweenPasses();
+        var amended = ForgeCrewDecisionPlanTests.TriageBlueprint.Replace("\"Reader\"", "\"Lecteur\"", StringComparison.Ordinal);
+        using var console = new TestConsole(stdin: BlueprintLine(amended) + Environment.NewLine);
+
+        // Act
+        var exitCode = await ForgeCommand.DispatchAsync(console,
+            ["resume", "tri", "--edit", "--dry", "--max-tokens", "100000", "--events", "jsonl", "--settings", settings], _workspace);
+
+        // Assert: the edited crew is a new cycle, so the old crew's on pass is no pass of its trial.
+        Assert.Equal(0, exitCode);
+        var ready = console.Stdout.Split('\n').Single(l => l.Contains("\"kind\":\"blueprint.ready\"", StringComparison.Ordinal));
+        Assert.Contains("\"iteration\":2", ready, StringComparison.Ordinal);
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "tri", out var reloaded, out _));
+        Assert.Equal(ForgeState.Test, reloaded!.State);
+        Assert.Equal(2, reloaded.Document.Budget.ConsumedIterations);
+        Assert.Equal(2, reloaded.Document.Iteration);
+        var bench = new FakeCircuitRecordingTestBench();
+        using var output = new StringWriter();
+        await new TestStage(bench, new ForgeRunObserver(), Orkeon.Application.Crew.Execution.DecisionCircuit.On)
+            .RunAsync(reloaded, new ForgeEventWriter(output), TestContext.Current.CancellationToken);
+        Assert.Equal(["on", "off"], bench.Circuits.Select(c => ForgeCrewDecision.CircuitName(c!)));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task An_edit_after_a_budget_stop_between_passes_with_no_iteration_left_is_refused_and_saves_nothing()
+    {
+        // Arrange
+        var settings = WriteSettings();
+        CreateSessionStoppedBetweenPasses(maxIterations: 1);
+        var amended = ForgeCrewDecisionPlanTests.TriageBlueprint.Replace("\"Reader\"", "\"Lecteur\"", StringComparison.Ordinal);
+        using var console = new TestConsole(stdin: BlueprintLine(amended) + Environment.NewLine);
+
+        // Act
+        var exitCode = await ForgeCommand.DispatchAsync(console,
+            ["resume", "tri", "--edit", "--dry", "--max-tokens", "100000", "--events", "jsonl", "--settings", settings], _workspace);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains(ForgeEngine.CodeBudgetExhausted, console.Stdout, StringComparison.Ordinal);
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "tri", out var reloaded, out _));
+        Assert.Equal(ForgeState.Test, reloaded!.State);
+        Assert.Equal(1, reloaded.Document.Budget.ConsumedIterations);
+        Assert.Equal("Reader", reloaded.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName)!.Agents![0].Role);
     }
 
     [Fact]

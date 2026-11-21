@@ -87,14 +87,28 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
     [Fact]
     public async Task A_resume_cannot_change_the_crew_decision_mode()
     {
-        SessionAtDryPause(ForgeCrewDecision.Optional);
+        var session = SessionAtDryPause(ForgeCrewDecision.Optional);
+        var before = SessionFiles(session);
         using var console = new TestConsole();
 
         var exitCode = await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--crew-decision", "required"], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("was created with --crew-decision optional", console.Stderr, StringComparison.Ordinal);
+        // Refused before saving anything: the stored mode, state and history are as they were.
+        Assert.Equal(before, SessionFiles(session));
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "tri", out var reloaded, out _));
+        Assert.Equal((ForgeCrewDecision.Optional, ForgeState.Test), (reloaded!.Document.CrewDecision, reloaded.State));
     }
+
+    /// <summary>The session's own record files, by name, as they are on disk: what a refusal must leave untouched.</summary>
+    private static IReadOnlyList<(string Name, string Text)> SessionFiles(ForgeSession session) =>
+    [
+        .. new[] { "session.json", ForgeSession.HistoryFileName, ForgeSession.BlueprintFileName }
+            .Select(name => Path.Combine(session.Directory, name))
+            .Where(File.Exists)
+            .Select(path => (Path.GetFileName(path), File.ReadAllText(path))),
+    ];
 
     [Fact]
     public async Task A_legacy_session_derives_its_mode_from_its_plan_and_warns()
@@ -199,10 +213,13 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
         using var console = new TestConsole();
 
         // Act
-        await ForgeCommand.DispatchAsync(console, ["trier", "les", "demandes", "--crew-decision", "required", "--settings", settings], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["trier", "les", "demandes", "--crew-decision", "required", "--settings", settings], _workspace);
 
-        // Assert
-        Assert.Empty(ForgeSession.List(_workspace));
+        // Assert: no folder at all under the sessions root, a half-deleted one included.
+        Assert.Equal(1, exitCode);
+        Assert.Contains(ForgeCrewDecision.UnavailableCode, console.Stderr, StringComparison.Ordinal);
+        var root = ForgeSession.RootFor(_workspace);
+        Assert.Empty(Directory.Exists(root) ? Directory.EnumerateFileSystemEntries(root) : []);
     }
 
     [Fact]
@@ -212,13 +229,62 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
         // Arrange
         var settings = WriteSettings();
         var session = SessionAtDryPause(ForgeCrewDecision.Required);
+        var before = SessionFiles(session);
         using var console = new TestConsole();
 
         // Act
-        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--settings", settings], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--settings", settings], _workspace);
+
+        // Assert: refused, nothing saved, and the session still loads at its pause, resumable.
+        Assert.Equal(1, exitCode);
+        Assert.Contains(ForgeCrewDecision.UnavailableCode, console.Stderr, StringComparison.Ordinal);
+        Assert.Equal(before, SessionFiles(session));
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "tri", out var reloaded, out var error), error);
+        Assert.Equal((ForgeState.Test, ForgeSessionStatus.Active), (reloaded!.State, reloaded.Status));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public void Adopting_with_no_decision_is_refused_as_an_option_it_would_ignore()
+    {
+        // Arrange
+        string[] args = ["resume", "tri", "--adopt", "--no-decision"];
+
+        // Act
+        var options = ForgeCommandOptions.Parse(args);
 
         // Assert
-        Assert.True(File.Exists(Path.Combine(session.Directory, "session.json")));
+        Assert.Equal("--no-decision does not apply to `--adopt`: the adoption asks System One nothing.", options.Error);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task Reopening_the_folder_of_a_legacy_session_announces_the_mode_its_resume_will_use()
+    {
+        // Arrange: a triage session promoted to a team folder, then stripped of its mode as a session from before
+        // --crew-decision has none.
+        var session = SessionAtDryPause(ForgeCrewDecision.Required);
+        session.SetState(ForgeState.Ready);
+        session.SetStatus(ForgeSessionStatus.Ready);
+        session.Save(DateTimeOffset.UtcNow);
+        var team = Path.Combine(_workspace, "teams", "tri");
+        using (var promote = new TestConsole())
+            Assert.Equal(0, await ForgeCommand.DispatchAsync(promote, ["promote", "tri", "--to", team, "--events", "jsonl"], _workspace));
+        var path = Path.Combine(session.Directory, "session.json");
+        var document = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken))!.AsObject();
+        Assert.True(document.Remove("crewDecision"));
+        await File.WriteAllTextAsync(path, document.ToJsonString(), TestContext.Current.CancellationToken);
+        using var console = new TestConsole();
+
+        // Act
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["reopen", team, "--events", "jsonl"], _workspace);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        var started = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonElement.Parse(line))
+            .Single(e => e.GetProperty("kind").GetString() == "session.started");
+        Assert.Equal(ForgeCrewDecision.Required, started.GetProperty("crewDecision").GetString());
     }
 
     [Fact]

@@ -234,6 +234,19 @@ internal sealed class TestStage : IForgeStageRunner
     private static string PassDirectory(string runDirectory, PassPlan plan) =>
         Path.Combine(runDirectory, ForgeCrewDecision.CircuitName(plan.Shown ?? DecisionCircuit.On));
 
+    /// <summary>
+    /// Whether the trial of the session's current iteration already ran a pass a resume would keep (#431): a budget
+    /// stop between the two passes of an <c>optional</c> crew. A new crew needs a new run number, or that pass of the
+    /// old crew would stand in for one of its own.
+    /// </summary>
+    public static bool HasKeptPass(ForgeSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        var runDirectory = Path.Combine(session.Directory, RunsDirectoryName, session.Document.Iteration.ToString(CultureInfo.InvariantCulture));
+        return new[] { DecisionCircuit.On, DecisionCircuit.Off }
+            .Any(circuit => KeptPass(session, Path.Combine(runDirectory, ForgeCrewDecision.CircuitName(circuit))) is not null);
+    }
+
     /// <summary>The pass a budget stop left in <paramref name="passDirectory"/> (#431); null when none ran there.</summary>
     private static (ForgeTestRun Run, ForgeTestPass Pass)? KeptPass(ForgeSession session, string passDirectory) =>
         session.TryLoadArtifact<ForgeTestRun>(Path.GetRelativePath(session.Directory, Path.Combine(passDirectory, "run.json"))) is { } kept

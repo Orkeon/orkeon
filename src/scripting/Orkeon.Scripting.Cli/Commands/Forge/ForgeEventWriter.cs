@@ -62,7 +62,7 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
             dir = session.Directory,
             format = session.Document.Format,
             // The decision mode of the crew being designed (#431).
-            crewDecision = session.Document.CrewDecision ?? ForgeCrewDecision.None,
+            crewDecision = session.CrewDecisionOrDerived(),
             // The forge's own System One circuit (#435), next to the crew's mode and orthogonal to it.
             forgeCircuit = SystemOne?.CircuitName,
             forgeCircuitCause = SystemOne?.Cause,
