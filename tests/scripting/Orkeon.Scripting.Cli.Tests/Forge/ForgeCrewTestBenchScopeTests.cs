@@ -62,7 +62,7 @@ public sealed class ForgeCrewTestBenchScopeTests : IDisposable
         services.AddSingleton<CircuitLog>();
         services.AddScoped<TrialScope>();
         services.AddScoped<DecisionCircuitOverride>();
-        services.AddScoped<ICrewFactory, CircuitReadingCrewFactory>();
+        services.AddScoped<ICrewFactory, FakeCircuitReadingCrewFactory>();
         services.AddScoped<ICrewOrchestrationService, FakeScopedOrchestrator>();
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         var session = ForgeSession.Create(_workspace, "scoped-circuit");
@@ -81,7 +81,7 @@ public sealed class ForgeCrewTestBenchScopeTests : IDisposable
     }
 
     /// <summary>Records the circuit its scope's override holds when it creates the crew, then creates it as the fake above.</summary>
-    private sealed class CircuitReadingCrewFactory(TrialScope scope, DecisionCircuitOverride circuit, CircuitLog log) : ICrewFactory
+    private sealed class FakeCircuitReadingCrewFactory(TrialScope scope, DecisionCircuitOverride circuit, CircuitLog log) : ICrewFactory
     {
         public Task<CrewAggregate> CreateFromConfigAsync(CrewConfiguration config, CancellationToken ct = default)
         {

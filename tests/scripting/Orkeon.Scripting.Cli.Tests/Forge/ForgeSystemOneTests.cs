@@ -568,7 +568,7 @@ public sealed class ForgeSystemOneTests : IDisposable
         var model = new StubDecisionModel();
 
         await RunAsync("optional", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
-            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new CircuitRecordingTestBench(),
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new FakeCircuitRecordingTestBench(),
             judge: new FakeJudge().Approves().Approves(), host: DecisionCircuit.On);
 
         var process = (ChoiceQuestion)model.Requests.Single(r => r.Questions.ContainsKey("process")).Questions["process"];
@@ -652,7 +652,7 @@ public sealed class ForgeSystemOneTests : IDisposable
     public async Task An_off_forge_still_produces_a_required_crew()
     {
         var cycle = await RunAsync("required", ForgeSystemOne.Off("switch"), crewDecision: ForgeCrewDecision.Required,
-            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new CircuitRecordingTestBench(), host: DecisionCircuit.On);
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new FakeCircuitRecordingTestBench(), host: DecisionCircuit.On);
 
         Assert.True(File.Exists(Path.Combine(cycle.Session.Directory, ForgeSession.VerdictFileName)));
     }
@@ -660,10 +660,10 @@ public sealed class ForgeSystemOneTests : IDisposable
     [Fact]
     public async Task An_off_forge_leaves_the_trial_of_a_required_crew_unchanged()
     {
-        var before = new CircuitRecordingTestBench();
+        var before = new FakeCircuitRecordingTestBench();
         await RunAsync("before", systemOne: null, crewDecision: ForgeCrewDecision.Required,
             blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: before, host: DecisionCircuit.On);
-        var off = new CircuitRecordingTestBench();
+        var off = new FakeCircuitRecordingTestBench();
 
         await RunAsync("off", ForgeSystemOne.Off("switch"), crewDecision: ForgeCrewDecision.Required,
             blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: off, host: DecisionCircuit.On);
@@ -675,10 +675,10 @@ public sealed class ForgeSystemOneTests : IDisposable
     public async Task An_off_forge_leaves_the_crew_of_a_required_session_unchanged()
     {
         var before = await RunAsync("before", systemOne: null, crewDecision: ForgeCrewDecision.Required,
-            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new CircuitRecordingTestBench(), host: DecisionCircuit.On);
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new FakeCircuitRecordingTestBench(), host: DecisionCircuit.On);
 
         var off = await RunAsync("off", ForgeSystemOne.Off("switch"), crewDecision: ForgeCrewDecision.Required,
-            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new CircuitRecordingTestBench(), host: DecisionCircuit.On);
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new FakeCircuitRecordingTestBench(), host: DecisionCircuit.On);
 
         Assert.Equal(before.Crew(), off.Crew());
     }
@@ -690,7 +690,7 @@ public sealed class ForgeSystemOneTests : IDisposable
         var services = new ServiceCollection().AddSingleton<IDecisionModel>(model).BuildServiceProvider();
 
         await RunAsync("required", ForgeSystemOne.Resolve(noDecision: true, services), crewDecision: ForgeCrewDecision.Required,
-            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new DecidingTestBench(model), host: DecisionCircuit.Of(services));
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new FakeDecidingTestBench(model), host: DecisionCircuit.Of(services));
 
         Assert.Equal(["urgent"], model.Requests.SelectMany(r => r.Questions.Keys));
     }
@@ -700,7 +700,7 @@ public sealed class ForgeSystemOneTests : IDisposable
     {
         var model = new StubDecisionModel();
         var services = new ServiceCollection().AddSingleton<IDecisionModel>(model).BuildServiceProvider();
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
 
         await RunAsync("optional", ForgeSystemOne.Resolve(noDecision: true, services), crewDecision: ForgeCrewDecision.Optional,
             blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: bench, judge: new FakeJudge().Approves().Approves(),
@@ -714,13 +714,13 @@ public sealed class ForgeSystemOneTests : IDisposable
     {
         var model = new StubDecisionModel();
         var stopped = await RunAsync("budget", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
-            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new CircuitRecordingTestBench { Tokens = 50_000 },
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new FakeCircuitRecordingTestBench { Tokens = 50_000 },
             budget: new ForgeBudget { MaxTokens = 40_000 }, host: DecisionCircuit.On);
         stopped.Session.Document.Budget = new ForgeBudget { MaxTokens = 1_000_000, ConsumedTokens = stopped.Session.Document.Budget.ConsumedTokens };
         stopped.Session.SetStatus(ForgeSessionStatus.Active);
 
         var resumed = await RunAsync("budget", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
-            bench: new CircuitRecordingTestBench(), judge: new FakeJudge().Approves().Approves(), host: DecisionCircuit.On,
+            bench: new FakeCircuitRecordingTestBench(), judge: new FakeJudge().Approves().Approves(), host: DecisionCircuit.On,
             session: stopped.Session);
 
         Assert.DoesNotContain(resumed.Events(ForgeSystemOne.AnsweredKind), e => e.GetProperty("use").GetString() == "estimate");
@@ -733,14 +733,14 @@ public sealed class ForgeSystemOneTests : IDisposable
         // Arrange
         var model = new StubDecisionModel();
         var stopped = await RunAsync("budget", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
-            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new CircuitRecordingTestBench { Tokens = 50_000 },
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: new FakeCircuitRecordingTestBench { Tokens = 50_000 },
             budget: new ForgeBudget { MaxTokens = 40_000 }, host: DecisionCircuit.On);
         stopped.Session.Document.Budget = new ForgeBudget { MaxTokens = 1_000_000, ConsumedTokens = stopped.Session.Document.Budget.ConsumedTokens };
         stopped.Session.SetStatus(ForgeSessionStatus.Active);
 
         // Act
         var resumed = await RunAsync("budget", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
-            bench: new CircuitRecordingTestBench(), judge: new FakeJudge().Approves().Approves(),
+            bench: new FakeCircuitRecordingTestBench(), judge: new FakeJudge().Approves().Approves(),
             host: DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider), session: stopped.Session);
 
         // Assert
@@ -749,7 +749,7 @@ public sealed class ForgeSystemOneTests : IDisposable
 
     // --- the criteria of each trial pass (#435) ---------------------------------------------------
 
-    private Task<Cycle> TryOptionalOnAsync(StubDecisionModel model, CircuitRecordingTestBench bench) =>
+    private Task<Cycle> TryOptionalOnAsync(StubDecisionModel model, FakeCircuitRecordingTestBench bench) =>
         RunAsync("optional", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
             blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: bench,
             judge: new FakeJudge().Approves().Approves(), host: DecisionCircuit.On);
@@ -766,7 +766,7 @@ public sealed class ForgeSystemOneTests : IDisposable
     public async Task Each_pass_of_an_optional_trial_gets_its_own_criteria_advice_named_by_its_circuit()
     {
         // Arrange
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
 
         // Act
         var cycle = await TryOptionalOnAsync(new StubDecisionModel(), bench);
@@ -783,7 +783,7 @@ public sealed class ForgeSystemOneTests : IDisposable
         var model = new StubDecisionModel();
 
         // Act
-        await TryOptionalOnAsync(model, new CircuitRecordingTestBench());
+        await TryOptionalOnAsync(model, new FakeCircuitRecordingTestBench());
 
         // Assert
         var outputs = model.Requests
@@ -798,7 +798,7 @@ public sealed class ForgeSystemOneTests : IDisposable
     public async Task A_failed_pass_of_an_optional_trial_gets_no_criteria_advice()
     {
         // Arrange
-        var bench = new CircuitRecordingTestBench { FailsTheOffPass = true };
+        var bench = new FakeCircuitRecordingTestBench { FailsTheOffPass = true };
 
         // Act
         var cycle = await TryOptionalOnAsync(new StubDecisionModel(), bench);

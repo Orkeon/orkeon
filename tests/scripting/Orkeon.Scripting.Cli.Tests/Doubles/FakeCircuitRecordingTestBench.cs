@@ -10,7 +10,7 @@ namespace Orkeon.Scripting.Cli.Tests.Doubles;
 /// with the same successful run. With an <see cref="Observer"/>, each pass also reports one model call and one
 /// completed task to it, as a crew run would.
 /// </summary>
-internal sealed class CircuitRecordingTestBench : IForgeTestBench
+internal sealed class FakeCircuitRecordingTestBench : IForgeTestBench
 {
     /// <summary>The circuit of each execution, in order; null when the trial ran on the host's own circuit.</summary>
     public List<DecisionCircuit?> Circuits { get; } = [];

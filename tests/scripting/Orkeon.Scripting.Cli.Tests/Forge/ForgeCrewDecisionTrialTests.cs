@@ -72,7 +72,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     {
         var observer = new ForgeRunObserver();
         return await TryOptionalAsync(
-            new CircuitRecordingTestBench { Observer = observer }, new FakeJudge().Approves().Approves(), DecisionCircuit.On,
+            new FakeCircuitRecordingTestBench { Observer = observer }, new FakeJudge().Approves().Approves(), DecisionCircuit.On,
             observer: observer);
     }
 
@@ -97,14 +97,14 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
         line.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
     /// <summary>An optional trial stopped by its budget after its on pass, then resumed on <paramref name="host"/>.</summary>
-    private async Task<(ForgeSession Session, CircuitRecordingTestBench Resumed)> ResumeAfterABudgetStopAsync(DecisionCircuit host, FakeJudge judge)
+    private async Task<(ForgeSession Session, FakeCircuitRecordingTestBench Resumed)> ResumeAfterABudgetStopAsync(DecisionCircuit host, FakeJudge judge)
     {
-        var first = new CircuitRecordingTestBench { Tokens = 1_500 };
+        var first = new FakeCircuitRecordingTestBench { Tokens = 1_500 };
         var session = await TryOptionalAsync(first, new FakeJudge(), DecisionCircuit.On, new ForgeBudget { MaxTokens = 1_000 });
         session.Document.Budget = new ForgeBudget { MaxTokens = 100_000, ConsumedTokens = session.Document.Budget.ConsumedTokens };
         session.SetStatus(ForgeSessionStatus.Active);
         _output.GetStringBuilder().Clear();
-        var resumed = new CircuitRecordingTestBench();
+        var resumed = new FakeCircuitRecordingTestBench();
         await Engine(session, resumed, judge, host).RunAsync(cancellationToken: TestContext.Current.CancellationToken);
         return (session, resumed);
     }
@@ -115,7 +115,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task An_optional_trial_runs_with_system_one_then_through_the_relays()
     {
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
 
         await TryOptionalAsync(bench, new FakeJudge().Approves().Approves(), DecisionCircuit.On);
 
@@ -125,7 +125,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task Each_pass_of_an_optional_trial_has_its_own_folder_and_the_run_lists_both()
     {
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
 
         var session = await TryOptionalAsync(bench, new FakeJudge().Approves().Approves(), DecisionCircuit.On);
 
@@ -139,7 +139,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task The_verdict_of_an_optional_trial_keeps_the_lower_score_and_lists_its_passes()
     {
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
 
         await TryOptionalAsync(bench, new FakeJudge().Approves(0.95).Approves(0.8), DecisionCircuit.On);
 
@@ -151,7 +151,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task An_optional_trial_fails_when_one_of_its_passes_fails()
     {
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
 
         await TryOptionalAsync(bench, new FakeJudge().Approves().Rejects(), DecisionCircuit.On);
 
@@ -162,7 +162,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task A_finding_of_an_optional_trial_names_the_circuit_of_its_pass()
     {
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
 
         await TryOptionalAsync(bench, new FakeJudge().Approves().Rejects(), DecisionCircuit.On);
 
@@ -173,7 +173,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task An_optional_trial_without_a_decision_model_runs_through_the_relays_only()
     {
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
 
         await TryOptionalAsync(bench, new FakeJudge().Approves(), HostOff);
 
@@ -183,7 +183,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task An_optional_trial_without_a_decision_model_warns_with_the_cause()
     {
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
 
         await TryOptionalAsync(bench, new FakeJudge().Approves(), HostOff);
 
@@ -195,7 +195,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task An_optional_trial_without_its_on_pass_adds_an_info_finding()
     {
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
 
         await TryOptionalAsync(bench, new FakeJudge().Approves(), HostOff);
 
@@ -207,7 +207,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task A_budget_used_up_by_the_on_pass_ends_the_session_before_the_off_pass()
     {
-        var bench = new CircuitRecordingTestBench { Tokens = 1_500 };
+        var bench = new FakeCircuitRecordingTestBench { Tokens = 1_500 };
 
         var session = await TryOptionalAsync(bench, new FakeJudge().Approves().Approves(), DecisionCircuit.On, new ForgeBudget { MaxTokens = 1_000 });
 
@@ -218,11 +218,11 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task A_resume_after_a_budget_stop_between_passes_runs_the_off_pass_only()
     {
-        var first = new CircuitRecordingTestBench { Tokens = 1_500 };
+        var first = new FakeCircuitRecordingTestBench { Tokens = 1_500 };
         var session = await TryOptionalAsync(first, new FakeJudge(), DecisionCircuit.On, new ForgeBudget { MaxTokens = 1_000 });
         session.Document.Budget = new ForgeBudget { MaxTokens = 100_000, ConsumedTokens = session.Document.Budget.ConsumedTokens };
         session.SetStatus(ForgeSessionStatus.Active);
-        var resumed = new CircuitRecordingTestBench();
+        var resumed = new FakeCircuitRecordingTestBench();
 
         await Engine(session, resumed, new FakeJudge().Approves().Approves(), DecisionCircuit.On)
             .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -255,7 +255,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task Run_started_numbers_each_pass_of_an_optional_trial()
     {
-        await TryOptionalAsync(new CircuitRecordingTestBench(), new FakeJudge().Approves().Approves(), DecisionCircuit.On);
+        await TryOptionalAsync(new FakeCircuitRecordingTestBench(), new FakeJudge().Approves().Approves(), DecisionCircuit.On);
 
         var started = Events().Where(e => e.GetProperty("kind").GetString() == "run.started")
             .Select(e => (e.GetProperty("passes").GetInt32(), e.GetProperty("pass").GetInt32()));
@@ -267,7 +267,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task Last_run_json_lists_both_passes_of_an_optional_trial()
     {
-        var session = await TryOptionalAsync(new CircuitRecordingTestBench(), new FakeJudge().Approves().Approves(), DecisionCircuit.On);
+        var session = await TryOptionalAsync(new FakeCircuitRecordingTestBench(), new FakeJudge().Approves().Approves(), DecisionCircuit.On);
 
         var lastRun = ReadJson(session, TestStage.LastRunFileName);
 
@@ -277,7 +277,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task A_pass_of_the_run_file_names_its_output_file_under_output()
     {
-        var session = await TryOptionalAsync(new CircuitRecordingTestBench(), new FakeJudge().Approves().Approves(), DecisionCircuit.On);
+        var session = await TryOptionalAsync(new FakeCircuitRecordingTestBench(), new FakeJudge().Approves().Approves(), DecisionCircuit.On);
 
         var run = ReadJson(session, Path.Combine(TestStage.RunsDirectoryName, "1", "run.json"));
         Assert.Equal(["runs/1/on/output.md", "runs/1/off/output.md"], run.GetProperty("passes").EnumerateArray().Select(p => p.GetProperty("output").GetString()));
@@ -286,7 +286,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task A_pass_of_verdict_ready_carries_its_figures_flat()
     {
-        await TryOptionalAsync(new CircuitRecordingTestBench { Tokens = 700, DurationMs = 90 }, new FakeJudge().Approves().Approves(), DecisionCircuit.On);
+        await TryOptionalAsync(new FakeCircuitRecordingTestBench { Tokens = 700, DurationMs = 90 }, new FakeJudge().Approves().Approves(), DecisionCircuit.On);
 
         var pass = Event("verdict.ready").GetProperty("passes")[0];
         Assert.Equal((700L, 90L), (pass.GetProperty("tokens").GetInt64(), pass.GetProperty("durationMs").GetInt64()));
@@ -295,7 +295,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     [Fact]
     public async Task An_optional_trial_with_the_circuit_off_by_the_settings_warns_with_the_settings_cause()
     {
-        await TryOptionalAsync(new CircuitRecordingTestBench(), new FakeJudge().Approves(), DecisionCircuit.OffBy(DecisionCircuitCause.Settings));
+        await TryOptionalAsync(new FakeCircuitRecordingTestBench(), new FakeJudge().Approves(), DecisionCircuit.OffBy(DecisionCircuitCause.Settings));
 
         var warning = Events().Single(e => e.GetProperty("kind").GetString() == "warning"
             && e.GetProperty("code").GetString() == ForgeCrewDecision.PassSkippedWarning);
@@ -351,7 +351,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
     public async Task A_pass_whose_snapshot_fails_leaves_no_run_file_a_resume_would_keep()
     {
         // Arrange: the pass writes a deliverable under /output, and a file takes the place of its snapshot.
-        var bench = new CircuitRecordingTestBench
+        var bench = new FakeCircuitRecordingTestBench
         {
             DuringRun = session =>
             {
@@ -368,17 +368,22 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
         var session = ForgeSession.Create(_workspace, "tri", crewDecision: ForgeCrewDecision.Optional);
 
         // Act
-        await Record.ExceptionAsync(() => Engine(session, bench, new FakeJudge().Approves().Approves(), DecisionCircuit.On)
-            .RunAsync(cancellationToken: TestContext.Current.CancellationToken));
+        var result = await Engine(session, bench, new FakeJudge().Approves().Approves(), DecisionCircuit.On)
+            .RunAsync(cancellationToken: TestContext.Current.CancellationToken);
 
-        // Assert
+        // Assert: the on pass ran, its snapshot is what failed, and it left no run file behind.
+        Assert.Equal(["on"], bench.Circuits.Select(c => ForgeCrewDecision.CircuitName(c!)));
+        Assert.Equal(ForgeEngineOutcome.Failed, result.Outcome);
+        var error = Event("error");
+        Assert.Equal(ForgeEngine.CodeEngineCrashed, error.GetProperty("code").GetString());
+        Assert.Contains(ForgeFolders.SessionDirectoryName, error.GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(session.Directory, TestStage.RunsDirectoryName, "1", "on", "run.json")));
     }
 
     [Fact]
     public async Task A_required_trial_runs_one_pass_on_the_hosts_circuit()
     {
-        var bench = new CircuitRecordingTestBench();
+        var bench = new FakeCircuitRecordingTestBench();
         var session = ForgeSession.Create(_workspace, "tri", crewDecision: ForgeCrewDecision.Required);
 
         await Engine(session, bench, new FakeJudge().Approves(), DecisionCircuit.On)

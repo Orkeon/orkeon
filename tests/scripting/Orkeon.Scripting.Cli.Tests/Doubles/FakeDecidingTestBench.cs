@@ -11,10 +11,10 @@ namespace Orkeon.Scripting.Cli.Tests.Doubles;
 /// A trial bench whose crew holds one decision task (#435): a pass on an on circuit asks <see cref="Model"/> one
 /// question, as the crew's decision task would; a pass through the relays asks nothing. Every circuit is recorded.
 /// </summary>
-internal sealed class DecidingTestBench : IForgeTestBench
+internal sealed class FakeDecidingTestBench : IForgeTestBench
 {
     /// <summary>Builds the bench over the decision model the crew's decision task asks.</summary>
-    public DecidingTestBench(IDecisionModel model) => Model = model;
+    public FakeDecidingTestBench(IDecisionModel model) => Model = model;
 
     /// <summary>The decision model the trial's decision task asks.</summary>
     public IDecisionModel Model { get; }
