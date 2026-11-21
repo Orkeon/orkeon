@@ -180,4 +180,53 @@ public sealed class CrewRunEntryPointTests
             try { Directory.Delete(root, recursive: true); } catch (IOException) { /* best-effort */ }
         }
     }
+
+    private const string LadderSettings = """
+        { "RaggableTree": { "Enabled": false },
+          "Orkeon": { "Decision": { "Route": { "Ladder": [ "default", "{rung}" ] } } },
+          "Llm": { "Provider": "mock", "Responses": "/crew/answers.jsonl",
+                   "Profiles": { "real": { "BaseUrl": "https://api.anthropic.com/v1", "ApiKey": "sk-test", "Model": "claude-sonnet-5" } } } }
+        """;
+
+    /// <summary>A hierarchical crew whose manager, on <c>llm.profile: auto</c>, has no task of its own.</summary>
+    private static string WriteManagerOnAutoCrew(string root, string rung, bool workerOnAuto)
+    {
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "appsettings.json"), LadderSettings.Replace("{rung}", rung, StringComparison.Ordinal));
+        File.WriteAllText(Path.Combine(root, "answers.jsonl"), "{\"match\":\"\",\"content\":\"ok\"}\n");
+        var path = Path.Combine(root, "crew.yaml");
+        File.WriteAllText(path, "name: led-crew\ngoal: Lead the work\nprocess: hierarchical\nmanagerAgent: chef\nagents:\n"
+            + "  chef:\n    role: Chef\n    goal: Lead the team\n    llm:\n      profile: auto\n"
+            + "  worker:\n    role: Worker\n    goal: Work\n    maxIter: 1\n" + (workerOnAuto ? "    llm:\n      profile: auto\n" : string.Empty)
+            + "tasks:\n  work:\n    description: Work.\n    expected_output: Done.\n    agent: worker\n");
+        return path;
+    }
+
+    [Theory]
+    [InlineData("real", false, "Completed")]
+    [InlineData("real", true, "Refused")]
+    [InlineData("ghost", false, "Completed")]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldResolveOnlyTheDefaultForAManagerOnAuto_WhenAnOfflineRunChecksItsProfiles(string rung, bool workerOnAuto, string expected)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-offline-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var service = new FakeAgentExecutionService();
+            using var entry = OpenOffline(WriteManagerOnAutoCrew(root, rung, workerOnAuto), service);
+
+            var result = await entry.RunAsync(EmptyInput, resume: null, TestContext.Current.CancellationToken, offline: true);
+
+            Assert.True(expected == result.Outcome.ToString(), $"{result.Outcome}: {result.Refusal} {result.LoadError?.Message}");
+            if (expected == "Refused")
+            {
+                Assert.Contains("agent 'Worker' (profile 'real'", result.Refusal, StringComparison.Ordinal);
+                Assert.DoesNotContain("Chef", result.Refusal, StringComparison.Ordinal);
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { /* best-effort */ }
+        }
+    }
 }

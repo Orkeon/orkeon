@@ -190,11 +190,11 @@ internal sealed class CrewRunEntryPoint : IDisposable
 
         var registry = services.GetRequiredService<ILlmProfileRegistry>();
         var agents = await services.GetRequiredService<IAgentRepository>().GetByIdsAsync(crew.Agents, ct).ConfigureAwait(false);
+        var tasks = await services.GetRequiredService<Orkeon.Domain.Task.ITaskRepository>().GetByIdsAsync(crew.Tasks, ct).ConfigureAwait(false);
+        var ladder = services.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Application.Crew.Routing.AgentRouteOptions>>()?.Value.Ladder ?? [];
         var offenders = new List<string>();
         foreach (var agent in agents)
         {
-            var profile = agent.LlmConfig?.Profile;
-            var named = string.IsNullOrWhiteSpace(profile) || LlmProfiles.IsDefault(profile) ? LlmProfiles.Default : profile.Trim();
             if (agent.Llm is { } own)
             {
                 if (!IsMock(own))
@@ -202,11 +202,10 @@ internal sealed class CrewRunEntryPoint : IDisposable
                 continue;
             }
 
-            // An agent on auto may run on the default or on any rung of the ladder (#434): each must be the mock.
-            var candidates = LlmProfiles.IsAuto(named)
-                ? [LlmProfiles.Default, .. services.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Application.Crew.Routing.AgentRouteOptions>>()?.Value.Ladder ?? []]
-                : new[] { named };
-            foreach (var candidate in candidates)
+            // An agent on auto may run on the default or on any rung of the ladder (#434), each of which must be the
+            // mock; a manager or a relay with no task of its own, or any agent of a decision.mode: none crew, runs on
+            // the default alone.
+            foreach (var candidate in Orkeon.Application.Crew.Routing.AgentRoutes.ProfilesOf(crew, agent, tasks, ladder))
             {
                 var provider = registry.Resolve(candidate).Provider;
                 if (!IsMock(provider))

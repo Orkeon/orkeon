@@ -376,3 +376,5 @@ Orkeon.Application.Crew.Execution.DecisionTaskRunner.AgentRequestsPerMinute.init
 Orkeon.Application.Crew.Execution.DecisionTaskRunner.TimeProvider.get -> System.TimeProvider!
 Orkeon.Application.Crew.Execution.DecisionTaskRunner.TimeProvider.init -> void
 static Orkeon.Application.DependencyInjection.ServiceCollectionExtensions.HostAgentRequestsPerMinute(System.IServiceProvider! services) -> int?
+Orkeon.Application.Crew.Routing.AgentRoutes
+static Orkeon.Application.Crew.Routing.AgentRoutes.ProfilesOf(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Agent.Agent! agent, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.CrewTask!>! tasks, System.Collections.Generic.IEnumerable<string!>! ladder) -> System.Collections.Generic.IReadOnlyList<string!>!
