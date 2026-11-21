@@ -90,7 +90,7 @@ public sealed partial class LlmJudgeGuard : IGuardian
         var content = context.Content;
         var closed = _options.FailMode == GuardianJudgeFailMode.Closed;
         if (Circuit?.Invoke() is { Enabled: false } off)
-            return CircuitOff(context.Phase, what, off.OffReason!, closed);
+            return await CircuitOffAsync(context, what, off.OffReason!, closed, ct).ConfigureAwait(false);
         var (chunks, refusal) = await BuildChunksAsync(context, what, content, closed, ct).ConfigureAwait(false);
         if (refusal is not null)
             return refusal;
@@ -120,14 +120,16 @@ public sealed partial class LlmJudgeGuard : IGuardian
     }
 
     // The verdict with the circuit off: no model call; a fail-closed judge blocks, a fail-open one lets the text in.
-    private GuardResult CircuitOff(GuardPhase phase, string what, string reason, bool closed)
+    // Both are audited, as the model-failure path is: what closed refused and what open let in is observable.
+    private async Task<GuardResult> CircuitOffAsync(GuardContext context, string what, string reason, bool closed, CancellationToken ct)
     {
         if (Interlocked.Exchange(ref _offWarned, 1) == 0)
             LogCircuitOff(reason, _options.FailMode);
+        var refusal = $"the LLM judge cannot judge the {what}: {reason} (fail mode: {_options.FailMode})";
+        await AuditAsync(context, UnavailableThreatType, refusal, AuditSeverity.Warning, ct).ConfigureAwait(false);
         if (!closed)
             return GuardResult.Allow();
-        var refusal = $"the LLM judge cannot judge the {what}: {reason} (fail mode: Closed)";
-        return GuardResult.Block(refusal, [Violation(phase, refusal, GuardThreatSeverity.Medium)]);
+        return GuardResult.Block(refusal, [Violation(context.Phase, refusal, GuardThreatSeverity.Medium)]);
     }
 
     // The highest probability of each risk over every chunk.

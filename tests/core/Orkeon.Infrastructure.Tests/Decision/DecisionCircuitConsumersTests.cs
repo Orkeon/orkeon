@@ -309,6 +309,45 @@ public sealed class DecisionCircuitConsumersTests
         Assert.Empty(model.Requests);
     }
 
+    // The consumer built with the circuit on, its call left for later: a build-time read of the circuit would ask.
+    private static Func<Task> BuiltConsumer(ServiceProvider container, string consumer)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        if (consumer == "judge")
+        {
+            var pipeline = container.GetRequiredService<IGuardianPipeline>();
+            return () => pipeline.ExecuteAsync(new GuardContext { Phase = GuardPhase.Output, AgentRole = "writer", Content = "the report" }, ct);
+        }
+
+        // A reranker lives one query: the pipeline creates it from the host's factory at each query
+        // (StagedRagPipeline), so the factory is what is built before the run.
+        var rerankers = container.GetRequiredService<RerankerFactory>();
+        return () => rerankers.Create(DecisionModelReranker.RerankerName).RerankAsync(
+            "what is X?",
+            [new ScoredChunk { Chunk = new Chunk { Id = "c", DocumentId = "d", SourceId = "s", Content = "x", Index = 0 }, Score = 1, ScoreOrigin = "vector" }],
+            topN: 1,
+            ct);
+    }
+
+    [Theory]
+    [InlineData("judge")]
+    [InlineData("reranker")]
+    [Trait("BR", "CH-433")]
+    public async Task ShouldMakeNoDecisionModelCall_WhenAConsumerBuiltBeforeAnOffRunIsCalledInIt(string consumer)
+    {
+        // Arrange
+        var model = Answering();
+        using var container = HostWithEveryConsumer(model);
+        var call = BuiltConsumer(container, consumer);
+        using var run = DecisionCircuitScope.Begin(DecisionCircuit.OffBy(DecisionCircuitCause.Switch));
+
+        // Act
+        await call();
+
+        // Assert
+        Assert.Empty(model.Requests);
+    }
+
     [Theory]
     [MemberData(nameof(HostConsumers))]
     [Trait("BR", "CH-433")]

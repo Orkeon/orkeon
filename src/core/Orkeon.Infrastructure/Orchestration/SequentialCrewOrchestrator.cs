@@ -578,15 +578,15 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     {
         if (_decisionCircuit is null)
             return;
-        await new CrewHookDispatcher(_executionHook, _logger)
-            .RunDecisionAsync(new RunDecisionNotice(crew.DecisionMode, _decisionCircuit), cancellationToken)
-            .ConfigureAwait(false);
 
-        // The circuit the decision runner applies, which is off when no decision model is registered: a required
-        // crew is refused on it, and an optional crew's resume is compared with it.
+        // The circuit the decision runner applies, which is off when no decision model is registered: the notice
+        // reports it, a required crew is refused on it, and an optional crew's resume is compared with it.
         var runnerCircuit = _decisionCircuit.Enabled && !HasDecisionModel
             ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider)
             : _decisionCircuit;
+        await new CrewHookDispatcher(_executionHook, _logger)
+            .RunDecisionAsync(new RunDecisionNotice(crew.DecisionMode, runnerCircuit), cancellationToken)
+            .ConfigureAwait(false);
         if (Orkeon.Application.Crew.Execution.DecisionUnavailableException.Refusing(crew, runnerCircuit) is { } refusal)
             throw refusal;
 
