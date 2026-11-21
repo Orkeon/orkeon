@@ -226,7 +226,7 @@ error, and the act goes on.
   defaults of `AgentExecutionBudget` (depth 2, 3 spawns, counted per agent run: each attempt and each
   hook) and sets no wall clock, tool-call or token cap, as its act sets none: a late spawn is not
   refused on time, and its child is not held to one. A `budget({...})` that leaves a dimension out gives
-  it that same value (#436), for its acts and its spawns alike: naming `spawnedAgents` or
+  it that same value, for its acts and its spawns alike: naming `spawnedAgents` or
   `delegationDepth` alone adds no wall clock, tool-call or token cap ([`budget` keys](../reference/scripting-dsl.md)). A
   refusal (depth or spawn budget exhausted, unknown agent) is a failed tool result the model reads,
   never an exception. The child's acts run under the stricter of their own

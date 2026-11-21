@@ -64,7 +64,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
     /// <summary>
     /// Starts a browser on <paramref name="profile"/> and opens the protocol session on its channel. Firefox
     /// announces its endpoint early in its start and answers <c>session.new</c> only once its first window
-    /// has loaded: the session is given the start's timeout, not a command's. A browser that leaves it
+    /// has loaded: the session is given the larger of the start's timeout and a command's. A browser that leaves it
     /// unanswered is killed, its profile removed, and a new one started once: a second silence fails the start.
     /// </summary>
     /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing or held.</exception>
@@ -79,6 +79,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(options);
 
         timings ??= FirefoxSessionTimings.Default;
+        var sessionTimeoutSeconds = Math.Max(options.StartupTimeoutSeconds, options.CommandTimeoutSeconds);
         for (var attempt = 1; ; attempt++)
         {
             var process = await launcher.LaunchAsync(profile, cancellationToken).ConfigureAwait(false);
@@ -88,14 +89,14 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
             {
                 try
                 {
-                    await browser.NewSessionAsync(TimeSpan.FromSeconds(options.StartupTimeoutSeconds), cancellationToken).ConfigureAwait(false);
+                    await browser.NewSessionAsync(TimeSpan.FromSeconds(sessionTimeoutSeconds), cancellationToken).ConfigureAwait(false);
                 }
                 catch (BiDiException ex) when (ex.Code == BiDiException.Timeout && attempt < StartAttempts)
                 {
                     // Seen once on a CI runner (#335): Firefox announced its endpoint, took the connection,
                     // and never answered the session. A fresh process and profile get past it.
                     if (logger is not null)
-                        LogSessionUnanswered(logger, options.StartupTimeoutSeconds);
+                        LogSessionUnanswered(logger, sessionTimeoutSeconds);
                     await browser.DisposeAsync().ConfigureAwait(false);
                     continue;
                 }
@@ -103,7 +104,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
                 {
                     throw new BiDiException(
                         BiDiException.Timeout,
-                        $"'session.new' got no answer within {options.StartupTimeoutSeconds} s, from Firefox started again after the first one did not answer either.",
+                        $"'session.new' got no answer within {sessionTimeoutSeconds} s, from Firefox started again after the first one did not answer either.",
                         ex);
                 }
 

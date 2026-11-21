@@ -32,7 +32,8 @@ declare global {
          * run with `BudgetExhaustedError`, and a child it spawns (`spawn_agent`, `ctx.spawnBackground`)
          * derives its budget from this one. `spawnedAgents` aside: past it the next spawn alone is
          * refused, not the run. An unknown key, or a count that is not a whole number of
-         * 1 or more, is refused when the run opens.
+         * 1 or more, is refused when the run opens. A key left out takes the value it has when no
+         * budget is named: no wall clock, tool-call, token or `contextTokens` cap, depth 2 and 3 spawns.
          */
         budget?: ExecutionBudget;
         /**
@@ -147,7 +148,8 @@ declare global {
          * refuse it, and so is a limit that is not 1 or more (zero, a negative or fractional count,
          * an unreadable `wallTime`). A key left out takes its default: no token cap, no wall time,
          * 50 tool calls (tasks handed out), 4 delegations, 10 spawns.
-         * Procedural shape: bounds `await crew.run()`.
+         * Procedural shape: bounds `await crew.run()`. A key left out takes the value it has when no
+         * budget is named: no wall clock, tool-call, token or `contextTokens` cap, depth 2 and 3 spawns.
          */
         budget(opts: ExecutionBudget): this;
         verbose(value?: boolean): this;

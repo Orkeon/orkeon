@@ -238,7 +238,7 @@ d'enfants épuisé n'est pas vérifié à la garde : il refuse seulement le lanc
   (profondeur 2, 3 spawns, comptés par run d'agent : chaque tentative et chaque hook) et ne fixe ni
   horloge, ni plafond d'appels d'outils ou de tokens, comme son act n'en fixe aucun : un spawn tardif
   n'est pas refusé faute de temps, et son enfant n'y est pas tenu. Un `budget({...})` qui omet une
-  dimension lui donne cette même valeur (#436), pour ses `act` comme pour ses spawns : nommer
+  dimension lui donne cette même valeur, pour ses `act` comme pour ses spawns : nommer
   `spawnedAgents` ou `delegationDepth` seul n'ajoute ni horloge, ni plafond d'appels d'outils ou de
   tokens ([clés de `budget`](../reference/scripting-dsl.md)).
   Un refus (profondeur ou budget de spawn épuisé, agent inconnu) est un résultat d'outil en échec que

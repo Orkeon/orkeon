@@ -23,9 +23,9 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
     private readonly ManualTimeProvider _clock = new();
     private readonly RecordingLogger _logger = new();
 
-    private Task<FirefoxBrowser> OpenBrowserAsync() =>
+    private Task<FirefoxBrowser> OpenBrowserAsync(FirefoxToolOptions? options = null) =>
         FirefoxBrowser.OpenAsync(
-            Launcher, FirefoxProfileChoice.Disposable, Options,
+            Launcher, FirefoxProfileChoice.Disposable, options ?? Options,
             Timings with { Clock = _clock, CloseWait = TimeSpan.Zero }, _logger, Ct);
 
     /// <summary>
@@ -69,6 +69,30 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
         // The second browser answers: the start ends and its browser is disposed.
         _clock.Advance(Startup);
         await using var browser = await Bounded(opening);
+    }
+
+    [Fact]
+    public async Task Should_WaitTheCommandTimeoutForTheSession_When_ItIsLongerThanTheStartupTimeout()
+    {
+        // A host that raised the command timeout keeps it for the session: the start's timeout is a floor, not a cap.
+        var options = new FirefoxToolOptions { StartupTimeoutSeconds = 30, CommandTimeoutSeconds = 120 };
+        var launched = 0;
+        Launcher.Configure += browser =>
+        {
+            if (++launched == 1)
+                browser.Wire.Unanswered.Add("session.new");
+        };
+
+        var opening = OpenBrowserAsync(options);
+        await WaitForAsync(1, "session.new");
+
+        Assert.Equal([TimeSpan.FromSeconds(120)], _clock.DueIns);
+
+        _clock.Advance(TimeSpan.FromSeconds(120));
+        await using var browser = await Bounded(opening);
+
+        var warning = Assert.Single(_logger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("within 120 s", warning.Message, StringComparison.Ordinal);
     }
 
     [Fact]
