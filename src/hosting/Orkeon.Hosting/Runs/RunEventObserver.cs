@@ -270,6 +270,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
         Orkeon.Application.Crew.Execution.DecisionCircuitCause.Switch => DecisionCircuitCauses.Switch,
         Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings => DecisionCircuitCauses.Settings,
         Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider => DecisionCircuitCauses.NoProvider,
+        Orkeon.Application.Crew.Execution.DecisionCircuitCause.Trial => DecisionCircuitCauses.Trial,
         _ => null,
     };
 

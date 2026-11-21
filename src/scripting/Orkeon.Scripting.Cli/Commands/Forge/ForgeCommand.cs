@@ -412,10 +412,11 @@ internal sealed record ForgeCommandOptions
 
     /// <summary>
     /// The rules that only make sense once every argument has been read, in the order they
-    /// are checked: the first one broken is the error. <c>promote</c> and <c>list</c> mount
-    /// nothing, so a read folder there would be silently ignored — and this parser never
-    /// ignores an option silently; <c>reopen</c> starts no cycle, so every option that shapes
-    /// one is refused there, and so does <c>rename</c>, whose only option is the name.
+    /// are checked: the first one broken is the error. <c>promote</c> mounts nothing, so a
+    /// read folder there would be silently ignored — and this parser never ignores an option
+    /// silently; <c>reopen</c> starts no cycle, so every option that shapes one is refused
+    /// there, and so does <c>rename</c>, whose only option is the name. <c>list</c> never
+    /// reaches these rules: <see cref="Parse"/> refuses any argument after it.
     /// </summary>
     private static readonly (Func<ForgeCommandOptions, int, bool> Broken, string Error)[] ReconcileRules =
     [
@@ -437,9 +438,9 @@ internal sealed record ForgeCommandOptions
             "--read only applies to a new session or to `forge resume`."),
         ((o, _) => LanguageOutsideACycle(o),
             "--lang only applies to a new session or to `forge resume`."),
-        ((o, _) => o.NoDecision && (o.PromoteSlug is not null || o.List),
+        ((o, _) => o.NoDecision && o.PromoteSlug is not null,
             "--no-decision only applies to a new session or to `forge resume`."),
-        ((o, _) => o.CrewDecision is not null && (o.PromoteSlug is not null || o.List),
+        ((o, _) => o.CrewDecision is not null && o.PromoteSlug is not null,
             "--crew-decision only applies to a new session or to `forge resume`."),
         ((o, _) => ReferenceOutsideANewSession(o),
             "--reference only applies to a new session: a session keeps the reference it was created with."),
@@ -465,16 +466,16 @@ internal sealed record ForgeCommandOptions
 
     /// <summary>Whether <c>--read</c> was passed to a verb that starts no cycle.</summary>
     private static bool ReadOutsideACycle(ForgeCommandOptions o) =>
-        o.ReadDirectory is not null && (o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o));
+        o.ReadDirectory is not null && (o.PromoteSlug is not null || ActsOnATeamFolder(o));
 
     /// <summary>Whether <c>--lang</c> was passed to a verb that holds no conversation.</summary>
     private static bool LanguageOutsideACycle(ForgeCommandOptions o) =>
-        o.Language is not null && (o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o) || o.Rephrase);
+        o.Language is not null && (o.PromoteSlug is not null || ActsOnATeamFolder(o) || o.Rephrase);
 
     /// <summary>Whether <c>--reference</c> was passed to a verb other than a new session.</summary>
     private static bool ReferenceOutsideANewSession(ForgeCommandOptions o) =>
         o.Reference is not null
-        && (o.ResumeSlug is not null || o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o));
+        && (o.ResumeSlug is not null || o.PromoteSlug is not null || ActsOnATeamFolder(o));
 
     /// <summary>Whether <c>rephrase</c> was given an option other than <c>--events</c> and <c>--settings</c>.</summary>
     private static bool RephraseWithOptions(ForgeCommandOptions o) =>
@@ -778,10 +779,19 @@ internal static class ForgeCommand
         }
 
         // A required crew cannot be tried without System One (#431): refused before the interview, while a dry run,
-        // which stops before the trial, is only warned.
+        // which stops before the trial, is only warned. A new session refused is deleted, so no session that never
+        // started is left to list or resume; a refused resume keeps its session.
         var hostCircuit = DecisionCircuit.Of(host.Services);
         if (await RefuseUnavailableDecisionAsync(console, events, session, hostCircuit, options).ConfigureAwait(false) is { } refusal)
+        {
+            if (!resumed)
+            {
+                host.Dispose();
+                session.DeleteQuietly();
+            }
+
             return refusal;
+        }
 
         // The forge's own System One circuit (#435), resolved once for this process and never stored: --no-decision
         // turns it off without touching the host, so the trial above keeps hostCircuit whatever the switch says.

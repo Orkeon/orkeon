@@ -191,6 +191,37 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_new_required_session_refused_without_system_one_leaves_no_session()
+    {
+        // Arrange
+        var settings = WriteSettings();
+        using var console = new TestConsole();
+
+        // Act
+        await ForgeCommand.DispatchAsync(console, ["trier", "les", "demandes", "--crew-decision", "required", "--settings", settings], _workspace);
+
+        // Assert
+        Assert.Empty(ForgeSession.List(_workspace));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_refused_resume_of_a_required_session_keeps_the_session()
+    {
+        // Arrange
+        var settings = WriteSettings();
+        var session = SessionAtDryPause(ForgeCrewDecision.Required);
+        using var console = new TestConsole();
+
+        // Act
+        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--settings", settings], _workspace);
+
+        // Assert
+        Assert.True(File.Exists(Path.Combine(session.Directory, "session.json")));
+    }
+
+    [Fact]
     public async Task Adopting_a_required_crew_without_system_one_is_not_refused()
     {
         SessionAtDryPause(ForgeCrewDecision.Required);

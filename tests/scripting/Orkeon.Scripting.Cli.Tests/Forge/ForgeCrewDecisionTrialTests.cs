@@ -239,7 +239,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
 
         var lines = PassLines(2);
         Assert.Equal(["llm.call", "run.finished", "run.started", "task.completed"], KindsOf(lines));
-        Assert.All(lines, line => Assert.Equal(("off", "switch"), (Text(line, "circuit"), Text(line, "cause"))));
+        Assert.All(lines, line => Assert.Equal(("off", "trial"), (Text(line, "circuit"), Text(line, "cause"))));
     }
 
     [Fact]

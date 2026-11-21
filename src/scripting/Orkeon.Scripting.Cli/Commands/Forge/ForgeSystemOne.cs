@@ -183,11 +183,12 @@ internal sealed class ForgeSystemOne
     }
 
     /// <summary>
-    /// The diagnosis's questions, after the judge: one call per acceptance criterion, does the output meet it.
-    /// Advice for the user only: never written into <c>verdict.json</c>.
+    /// The diagnosis's questions, after the judge: one call per acceptance criterion, does the output of one pass
+    /// meet it. <paramref name="circuit"/> names that pass (<c>on</c>, <c>off</c>) on each <c>systemone.answered</c>
+    /// line; null names none. Advice for the user only: never written into <c>verdict.json</c>.
     /// </summary>
     public async Task<ForgeUsageSnapshot> ReadCriteriaAsync(
-        ForgeEventWriter events, ForgeBrief brief, string output, CancellationToken cancellationToken)
+        ForgeEventWriter events, ForgeBrief brief, string output, string? circuit, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(brief);
         if (!Enabled)
@@ -205,7 +206,7 @@ internal sealed class ForgeSystemOne
             };
             var response = await AskAsync(events, ForgeEventWriter.Spell(ForgeState.Diagnose), UseCriteria,
                 StateOf(new { criterion = new { id = name, statement = criterion.Statement }, output }),
-                [KeyValuePair.Create<string, DecisionQuestion>(name, question)], cancellationToken)
+                [KeyValuePair.Create<string, DecisionQuestion>(name, question)], cancellationToken, circuit)
                 .ConfigureAwait(false);
             usage = usage.Plus(response.Usage);
         }
@@ -216,7 +217,8 @@ internal sealed class ForgeSystemOne
     /// <summary>
     /// One call: the answer and its <c>systemone.answered</c> line, or, on a <see cref="DecisionModelException"/>,
     /// one <see cref="FailedWarning"/> and no answer. The tokens are the stage's to charge: input as prompt, output
-    /// as completion, all of them System One's.
+    /// as completion, all of them System One's. <paramref name="circuit"/>, when given, names the trial pass the
+    /// call reads on its line.
     /// </summary>
     private async Task<(DecisionResponse? Answer, ForgeUsageSnapshot Usage)> AskAsync(
         ForgeEventWriter events,
@@ -224,7 +226,8 @@ internal sealed class ForgeSystemOne
         string use,
         JsonNode state,
         IEnumerable<KeyValuePair<string, DecisionQuestion>> questions,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? circuit = null)
     {
         var request = new DecisionRequest { State = state, Questions = questions.ToImmutableDictionary(StringComparer.Ordinal) };
         var started = Stopwatch.GetTimestamp();
@@ -245,6 +248,7 @@ internal sealed class ForgeSystemOne
         {
             stage,
             use,
+            circuit,
             questions = JsonSerializer.SerializeToNode(request.Questions),
             answers = CompactAnswers(response),
             model = response.Model,

@@ -559,6 +559,22 @@ internal sealed class ForgeSession
             File.Delete(path);
     }
 
+    /// <summary>
+    /// Deletes the whole session directory, best effort: a session the command refuses to start is not left behind,
+    /// and a file the disk keeps is not an error of its own, the refusal being reported is.
+    /// </summary>
+    public void DeleteQuietly()
+    {
+        try
+        {
+            System.IO.Directory.Delete(Directory, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Best effort: the caller reports the refusal that led here.
+        }
+    }
+
     /// <summary>The stored diagnosis of the last trial, at the session root.</summary>
     public const string VerdictFileName = "verdict.json";
 

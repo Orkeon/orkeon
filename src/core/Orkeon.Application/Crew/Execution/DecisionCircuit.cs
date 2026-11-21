@@ -34,6 +34,7 @@ public sealed record DecisionCircuit(bool Enabled)
             DecisionCircuitCause.Switch => "the decision circuit is off: --no-decision",
             DecisionCircuitCause.Settings => "the decision circuit is off: Orkeon:Decision:Enabled=false",
             DecisionCircuitCause.NoProvider => "the decision circuit is off: no decision provider resolved",
+            DecisionCircuitCause.Trial => "the decision circuit is off: the forge's trial pass without System One",
             _ => "the decision circuit is off",
         };
 

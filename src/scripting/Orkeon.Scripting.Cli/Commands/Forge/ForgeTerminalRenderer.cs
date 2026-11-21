@@ -140,8 +140,8 @@ internal sealed class ForgeTerminalRenderer : TextWriter
     }
 
     /// <summary>
-    /// System One's advice (#435), one line: the stage, the use, and each answer as its choice, its score or its
-    /// probability — advice for the user, which changes nothing in the cycle.
+    /// System One's advice (#435), one line: the stage, the use, the trial pass it read when it names one, and each
+    /// answer as its choice, its score or its probability — advice for the user, which changes nothing in the cycle.
     /// </summary>
     private void RenderSystemOneAnswered(JsonElement e)
     {
@@ -152,7 +152,8 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                 answers.Add($"{answer.Name}: {AnswerText(answer.Value)}");
         }
 
-        _console.WriteLine($"◇ System One advises ({Text(e, "stage")}, {Text(e, "use")}): {string.Join("; ", answers)}");
+        var pass = Text(e, "circuit") is { Length: > 0 } circuit ? $", {circuit} pass" : "";
+        _console.WriteLine($"◇ System One advises ({Text(e, "stage")}, {Text(e, "use")}{pass}): {string.Join("; ", answers)}");
     }
 
     private static string AnswerText(JsonElement answer)

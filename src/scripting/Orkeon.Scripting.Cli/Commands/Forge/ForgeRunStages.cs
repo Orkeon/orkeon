@@ -487,6 +487,8 @@ internal sealed class DiagnoseStage : IForgeStageRunner
         var runDirectory = Path.Combine(TestStage.RunsDirectoryName, run.Run.ToString(CultureInfo.InvariantCulture));
         IReadOnlyList<ForgeTestPass?> passes = run.Passes is { Count: > 1 } split ? [.. split] : [null];
         var judged = new List<(ForgeVerdict Verdict, string? Circuit)>();
+        var views = new List<(ForgeTestRun View, string? Circuit)>();
+        var optional = ForgeCrewDecision.Normalize(session.Document.CrewDecision) == ForgeCrewDecision.Optional;
         var usage = default(ForgeUsageSnapshot);
         foreach (var pass in passes)
         {
@@ -495,6 +497,7 @@ internal sealed class DiagnoseStage : IForgeStageRunner
             var (passVerdict, passUsage) = await JudgePassAsync(session, brief, view, snapshot, cancellationToken).ConfigureAwait(false);
             usage = usage.Plus(passUsage);
             judged.Add((passVerdict, pass?.Circuit ?? run.Circuit));
+            views.Add((view, optional ? pass?.Circuit ?? run.Circuit : null));
         }
 
         var verdict = Combined(session, run, judged);
@@ -503,10 +506,14 @@ internal sealed class DiagnoseStage : IForgeStageRunner
 
         EmitVerdictReady(events, verdict, run);
 
-        // System One's reading of each criterion (#435), after the judge: for the user only, never in verdict.json,
-        // so the arbitration and --auto read the judge's verdict alone.
-        if (run.Success && !string.IsNullOrWhiteSpace(run.Output))
-            usage = usage.Plus(await _systemOne.ReadCriteriaAsync(events, brief, run.Output, cancellationToken).ConfigureAwait(false));
+        // System One's reading of each criterion (#435), after the judge, pass by pass with that pass's output: for
+        // the user only, never in verdict.json, so the arbitration and --auto read the judge's verdict alone. A failed
+        // pass has nothing to read; an optional crew's lines name their pass by its circuit, like its findings.
+        foreach (var (view, circuit) in views)
+        {
+            if (view.Success && !string.IsNullOrWhiteSpace(view.Output))
+                usage = usage.Plus(await _systemOne.ReadCriteriaAsync(events, brief, view.Output, circuit, cancellationToken).ConfigureAwait(false));
+        }
 
         return new ForgeStageOutcome { Trigger = ForgeTrigger.Diagnosed, Usage = usage };
     }

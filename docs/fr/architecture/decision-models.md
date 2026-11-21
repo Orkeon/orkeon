@@ -359,7 +359,8 @@ Circuit coupé, chaque tâche de décision répond par son **repli**, sans requ�
 
 Circuit coupé, l'exécution ne fait **aucun** appel à `IDecisionModel`, quelle qu'en soit la cause. La
 cause est nommée dans chaque message, sous la forme `the decision circuit is off: <cause>`, la cause
-étant `--no-decision`, `Orkeon:Decision:Enabled=false` ou `no decision provider resolved` ; quand
+étant `--no-decision`, `Orkeon:Decision:Enabled=false` ou `no decision provider resolved`, et, dans le
+passage par les relais d'un essai de la forge, `the forge's trial pass without System One` (cause `trial`) ; quand
 l'option et le réglage valent tous deux, c'est l'option qui est nommée. Chaque consommateur qui se
 dégrade le dit en un avertissement :
 
@@ -544,7 +545,7 @@ seule, jamais de lui-même.
 - **La forge** — `orkeon forge` demande à System One ses propres avis pendant qu'elle conçoit une équipe : un
   `score` de la couverture de la demande par le brief, un `choice` de processus (transmis à l'assistant sous
   `processHint` à une probabilité de 0,6 ou plus, parmi les processus que permet le mode de décision de l'équipe),
-  une estimation `noul` avant l'essai et un `noul` par critère d'acceptation après le juge. Chaque réponse est un
+  une estimation `noul` avant l'essai et un `noul` par critère d'acceptation et par passage réussi de l'essai après le juge. Chaque réponse est un
   avis et ne déplace jamais le brief, le plan, le verdict ni l'arbitrage ; chaque appel est un événement
   `systemone.answered`, ses jetons sont imputés au budget de la session (`systemOneTokens` dans `cost.updated`), et un
   appel en échec donne un avertissement `FORGE-SYSTEMONE-FAILED`. Ces appels sont ceux de la forge, séparés de ceux

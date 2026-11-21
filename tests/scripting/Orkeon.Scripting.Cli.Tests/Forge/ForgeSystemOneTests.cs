@@ -554,6 +554,80 @@ public sealed class ForgeSystemOneTests : IDisposable
         Assert.DoesNotContain(resumed.Events(ForgeSystemOne.AnsweredKind), e => e.GetProperty("use").GetString() == "estimate");
     }
 
+    // --- the criteria of each trial pass (#435) ---------------------------------------------------
+
+    private Task<Cycle> TryOptionalOnAsync(StubDecisionModel model, CircuitRecordingTestBench bench) =>
+        RunAsync("optional", ForgeSystemOne.On(model), crewDecision: ForgeCrewDecision.Optional,
+            blueprint: ForgeCrewDecisionPlanTests.TriageBlueprint, bench: bench,
+            judge: new FakeJudge().Approves().Approves(), host: DecisionCircuit.On);
+
+    private static IReadOnlyList<string?> CriteriaCircuits(Cycle cycle) =>
+    [
+        .. cycle.Events(ForgeSystemOne.AnsweredKind)
+            .Where(e => e.GetProperty("use").GetString() == ForgeSystemOne.UseCriteria)
+            .Select(e => e.TryGetProperty("circuit", out var circuit) ? circuit.GetString() : null),
+    ];
+
+    [Fact]
+    [Trait("BR", "CH-435")]
+    public async Task Each_pass_of_an_optional_trial_gets_its_own_criteria_advice_named_by_its_circuit()
+    {
+        // Arrange
+        var bench = new CircuitRecordingTestBench();
+
+        // Act
+        var cycle = await TryOptionalOnAsync(new StubDecisionModel(), bench);
+
+        // Assert
+        Assert.Equal(["on", "on", "off", "off"], CriteriaCircuits(cycle));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-435")]
+    public async Task The_criteria_advice_of_each_pass_reads_that_passes_output()
+    {
+        // Arrange
+        var model = new StubDecisionModel();
+
+        // Act
+        await TryOptionalOnAsync(model, new CircuitRecordingTestBench());
+
+        // Assert
+        var outputs = model.Requests
+            .Where(r => r.State["output"] is not null)
+            .Select(r => r.State["output"]!.GetValue<string>())
+            .Distinct();
+        Assert.Equal(["Tri par System One.", "Tri par le relais."], outputs);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-435")]
+    public async Task A_failed_pass_of_an_optional_trial_gets_no_criteria_advice()
+    {
+        // Arrange
+        var bench = new CircuitRecordingTestBench { FailsTheOffPass = true };
+
+        // Act
+        var cycle = await TryOptionalOnAsync(new StubDecisionModel(), bench);
+
+        // Assert
+        Assert.Equal(["on", "on"], CriteriaCircuits(cycle));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-435")]
+    public async Task The_criteria_advice_of_a_one_pass_trial_names_no_circuit()
+    {
+        // Arrange
+        var model = new StubDecisionModel();
+
+        // Act
+        var cycle = await RunAsync("one", ForgeSystemOne.On(model), host: DecisionCircuit.On);
+
+        // Assert
+        Assert.Equal([null, null], CriteriaCircuits(cycle));
+    }
+
     // --- the forge's own calls name no decision profile ------------------------------------------
 
     [Fact]
@@ -589,5 +663,21 @@ public sealed class ForgeSystemOneTests : IDisposable
             """{"v":2,"seq":4,"ts":"2026-08-19T12:00:00Z","kind":"systemone.answered","stage":"test","use":"estimate","answers":{"estimate":{"chosen":"yes","probability":0.82,"confidence":0.82}},"model":"stub-1","inputTokens":300,"outputTokens":0,"durationMs":12}""");
 
         Assert.Equal("◇ System One advises (test, estimate): estimate: yes (p 0.82)", console.ToString().TrimEnd());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-435")]
+    public void The_terminal_names_the_pass_a_criteria_line_read()
+    {
+        // Arrange
+        var console = new StringWriter();
+        using var renderer = new ForgeTerminalRenderer(console);
+
+        // Act
+        renderer.WriteLine(
+            """{"v":2,"seq":9,"ts":"2026-08-19T12:00:00Z","kind":"systemone.answered","stage":"diagnose","use":"criteria","circuit":"off","answers":{"A1":{"chosen":"yes","probability":0.9,"confidence":0.9}},"model":"stub-1","inputTokens":300,"outputTokens":0,"durationMs":12}""");
+
+        // Assert
+        Assert.Equal("◇ System One advises (diagnose, criteria, off pass): A1: yes (p 0.90)", console.ToString().TrimEnd());
     }
 }

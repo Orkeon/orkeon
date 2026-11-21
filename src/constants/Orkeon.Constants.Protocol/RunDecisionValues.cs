@@ -40,6 +40,9 @@ public static class DecisionCircuitCauses
 
     /// <summary>No decision provider resolved.</summary>
     public const string NoProvider = "no-provider";
+
+    /// <summary>The forge's trial pass without System One: an <c>optional</c> crew's relay pass (#431).</summary>
+    public const string Trial = "trial";
 }
 
 /// <summary>

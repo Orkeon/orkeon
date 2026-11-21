@@ -92,8 +92,8 @@ Les deux rendus convergent vers le même validateur, et l'essai charge la crew *
   son `circuit`. Sans modèle de décision seul le passage par les relais tourne, avec l'avertissement
   `FORGE-DECISION-PASS-SKIPPED` et le constat `F-PASS-ON-SKIPPED`.
 - `required` : l'équipe a besoin de System One ; `system_one_decide` est proposé quand le circuit de décision est
-  ouvert. Circuit coupé, la session est refusée avant son entretien (`FORGE-DECISION-UNAVAILABLE`, sortie 1) ; la
-  session est gardée et reprend une fois un modèle de décision configuré. `--dry` le signale seulement, `--adopt` ne
+  ouvert. Circuit coupé, la session est refusée avant son entretien (`FORGE-DECISION-UNAVAILABLE`, sortie 1) : une
+  nouvelle session est supprimée, une session reprise est gardée et reprend une fois un modèle de décision configuré. `--dry` le signale seulement, `--adopt` ne
   demande aucun essai.
 
 Le mode est enregistré dans `session.json` et ne change pas à la reprise. Une session antérieure à l'option reprend
@@ -120,7 +120,9 @@ terminal et un événement `systemone.answered` :
 - **process**, avant le plan : quel processus convient au brief, parmi ceux que permet le mode de décision de
   l'équipe. À une probabilité de 0,6 ou plus, l'assistant le reçoit comme une suggestion ; son propre choix tient.
 - **estimate**, avant l'essai : l'équipe le mènera-t-elle à bien en satisfaisant ses critères ?
-- **criteria**, après le juge : une lecture par critère d'acceptation. Jamais écrite dans `verdict.json`.
+- **criteria**, après le juge : une lecture par critère d'acceptation, pour chaque passage réussi de l'essai, face à
+  la sortie de ce passage ; les lignes d'une équipe `optional` nomment leur passage (`diagnose, criteria, off pass`).
+  Jamais écrite dans `verdict.json`.
 
 Rien de cela ne change le verdict, `passing`, l'arbitrage ni `--auto` ; les jetons comptent contre le budget et
 apparaissent sous `systemOneTokens`. `--no-decision` éteint ces avis pour une exécution, sans toucher l'essai d'une

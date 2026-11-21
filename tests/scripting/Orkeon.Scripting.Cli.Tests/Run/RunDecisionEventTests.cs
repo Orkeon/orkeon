@@ -53,6 +53,23 @@ public sealed class RunDecisionEventTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task ShouldNameTheTrialAsTheCause_WhenTheForgesRelayPassTurnsTheCircuitOff()
+    {
+        // Arrange
+        var observer = Observer();
+
+        // Act
+        await observer.OnRunDecisionAsync(
+            new RunDecisionNotice(CrewDecisionMode.Optional, DecisionCircuit.OffBy(DecisionCircuitCause.Trial)),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var e = Assert.Single(Events());
+        Assert.Equal(("off", "trial"), (e.GetProperty("circuit").GetString(), e.GetProperty("cause").GetString()));
+    }
+
+    [Fact]
     [Trait("BR", "CH-429")]
     public async Task ShouldLeaveTheCauseOut_WhenTheCircuitIsOn()
     {

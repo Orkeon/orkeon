@@ -85,7 +85,7 @@ internal sealed record ForgeTestPass
     [JsonPropertyName("circuit")]
     public string? Circuit { get; init; }
 
-    /// <summary>Why the circuit was off (<c>switch</c>, <c>settings</c>, <c>no-provider</c>); null when on.</summary>
+    /// <summary>Why the circuit was off (<c>switch</c>, <c>settings</c>, <c>no-provider</c>, <c>trial</c>); null when on.</summary>
     [JsonPropertyName("cause")]
     public string? Cause { get; init; }
 

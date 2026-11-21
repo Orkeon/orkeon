@@ -255,4 +255,18 @@ public sealed class ForgeCrewDecisionPlanTests : IDisposable
 
         Assert.Equal(expected, passes);
     }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public void The_relay_pass_of_an_optional_trial_is_off_by_the_trial_cause()
+    {
+        // Arrange
+        var host = DecisionCircuit.On;
+
+        // Act
+        var passes = ForgeCrewDecision.PassesOf(ForgeCrewDecision.Optional, host);
+
+        // Assert
+        Assert.Equal((false, DecisionCircuitCause.Trial, "trial"), (passes[1].Enabled, passes[1].Cause, ForgeCrewDecision.CauseName(passes[1])));
+    }
 }

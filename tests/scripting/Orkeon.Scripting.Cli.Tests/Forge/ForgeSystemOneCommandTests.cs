@@ -84,6 +84,20 @@ public sealed class ForgeSystemOneCommandTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-435")]
+    public void List_refuses_the_switch_as_an_argument()
+    {
+        // Arrange
+        string[] args = ["list", "--no-decision"];
+
+        // Act
+        var options = ForgeCommandOptions.Parse(args);
+
+        // Assert
+        Assert.Equal("list takes no argument.", options.Error);
+    }
+
+    [Fact]
     public void The_switch_reads_as_no_decision()
     {
         var options = ForgeCommandOptions.Parse(["une", "veille", "--no-decision"]);

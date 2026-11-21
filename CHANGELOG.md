@@ -88,7 +88,8 @@ after each compaction.
 With a decision model configured and on, the forge now asks System One for advice while it designs a crew: the
 brief's coverage of the request (`score`), the process that fits the brief (`choice`, passed to the assistant as
 `processHint` at p ≥ 0.6 and only among the processes `--crew-decision` allows), an estimate before the trial
-(`noul`) and one reading per acceptance criterion after the judge (`noul`). The advice never changes `brief.json`,
+(`noul`) and one reading per acceptance criterion after the judge (`noul`), for each trial pass that succeeded,
+against that pass's output, an `optional` crew's lines naming the pass's `circuit`. The advice never changes `brief.json`,
 the blueprint, `verdict.json`, `passing`, the arbitration or `--auto`. Each call is a new `systemone.answered` event
 (`stage`, `use`, `questions`, `answers`, `model`, `inputTokens`, `outputTokens`, `durationMs`); its tokens are
 charged to the budget and count against `--max-tokens`, and `cost.updated` gains `systemOneTokens`. A failed call is
@@ -109,15 +110,16 @@ rules; `promote` and `list` refuse it. A session written before the option resum
 holds a decision task or `system_one_decide`, else `none`, with the warning `FORGE-DECISION-MODE-DERIVED`; `reopen`
 of a team whose crew declares no mode gives the same warning, after `session.started`, when its plan makes it
 `required`. An `optional` crew's trial runs
-twice, with System One then through the relays: `runs/<n>/on/` and `runs/<n>/off/` each hold a pass (output, run
+twice, with System One then through the relays, the relay pass off by its own cause `trial` (on `run.decision`,
+the pass's lines and its record): `runs/<n>/on/` and `runs/<n>/off/` each hold a pass (output, run
 file, folders), `runs/<n>/run.json`, `last-run.json` and `verdict.ready` gain `passes[]` (a pass of the run files
 names its file as `output`, a pass of `verdict.ready` carries its figures flat), the verdict passes when every pass
 passes and keeps the lowest score, and findings carry `circuit`. Without a decision model only the relay
 pass runs, with `FORGE-DECISION-PASS-SKIPPED` (and its `cause`) and the info finding `F-PASS-ON-SKIPPED`. A budget
 used up by the first pass ends the session with `FORGE-BUDGET-EXHAUSTED`, and the resume keeps that pass, runs the
 second only, even without a decision model, and asks no second estimate. A `required` session with the circuit off is
-refused before its interview with `FORGE-DECISION-UNAVAILABLE` (exit 1, its `cause` on the `error` event); the
-session is kept and resumes once a decision model is configured; `--dry` only warns and `--adopt` is not refused. `forge.json` records `crewDecision`, `FORGE.md` and the launcher state the mode,
+refused before its interview with `FORGE-DECISION-UNAVAILABLE` (exit 1, its `cause` on the `error` event); a new
+session so refused is deleted, a refused resume keeps its session, which resumes once a decision model is configured; `--dry` only warns and `--adopt` is not refused. `forge.json` records `crewDecision`, `FORGE.md` and the launcher state the mode,
 and `reopen` reads `decision`, `when` and `without` back with the crew's mode. The shared crew validator no longer
 asks a decision task for an expected output. See
 [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md#a-crew-that-decides).

@@ -78,6 +78,20 @@ public sealed class DecisionCircuitConsumersTests
     }
 
     [Fact]
+    [Trait("BR", "CH-431")]
+    public void ShouldNameTheForgesTrialPassInTheReason_WhenTheTrialTurnsTheCircuitOff()
+    {
+        // Arrange
+        var circuit = DecisionCircuit.OffBy(DecisionCircuitCause.Trial);
+
+        // Act
+        var reason = circuit.OffReason;
+
+        // Assert
+        Assert.Equal("the decision circuit is off: the forge's trial pass without System One", reason);
+    }
+
+    [Fact]
     [Trait("BR", "CH-433")]
     public void ShouldNameNoProviderAsTheCause_WhenNoDecisionModelIsRegistered()
     {

@@ -90,8 +90,8 @@ Both renders converge on the same validator, and the try loads the crew **from t
   score is the lower one and each finding names its `circuit`. Without a decision model only the relay pass runs,
   with the warning `FORGE-DECISION-PASS-SKIPPED` and the finding `F-PASS-ON-SKIPPED`.
 - `required`: the crew needs System One; `system_one_decide` is offered when the decision circuit is on. With the
-  circuit off the session is refused before its interview (`FORGE-DECISION-UNAVAILABLE`, exit 1); the session is
-  kept and resumes once a decision model is configured. `--dry` only warns, `--adopt` asks for no try.
+  circuit off the session is refused before its interview (`FORGE-DECISION-UNAVAILABLE`, exit 1): a new session is
+  deleted, a resumed one is kept and resumes once a decision model is configured. `--dry` only warns, `--adopt` asks for no try.
 
 The mode is recorded in `session.json` and cannot change on resume. A session older than the option resumes as
 `required` when its plan holds a decision task or `system_one_decide`, else `none`, with `FORGE-DECISION-MODE-DERIVED`.
@@ -117,7 +117,9 @@ the crew's own decisions above. Four questions, each answered as one line in the
 - **process**, before the plan: which process fits the brief, among those the crew's decision mode allows. At a
   probability of 0.6 or more the assistant receives it as a suggestion; its own choice stands.
 - **estimate**, before the try: will the team complete it and meet its criteria?
-- **criteria**, after the judge: one reading per acceptance criterion. Never written into `verdict.json`.
+- **criteria**, after the judge: one reading per acceptance criterion, for each pass of the try that succeeded,
+  against that pass's output; an `optional` team's lines name their pass (`diagnose, criteria, off pass`). Never
+  written into `verdict.json`.
 
 None of it changes the verdict, `passing`, the arbitration or `--auto`; the tokens count against the budget and
 appear as `systemOneTokens`. `--no-decision` turns this advice off for one run, without touching the trial of an

@@ -81,11 +81,12 @@ internal static class ForgeCrewDecision
 
     /// <summary>
     /// The circuits a trial runs, in order: the host's for <see cref="None"/>, on for <see cref="Required"/>, on
-    /// then off for <see cref="Optional"/> (off alone when the host's circuit is off).
+    /// then off by <see cref="DecisionCircuitCause.Trial"/> for <see cref="Optional"/> (the host's off circuit alone
+    /// when it is off).
     /// </summary>
     public static IReadOnlyList<DecisionCircuit> PassesOf(string? mode, DecisionCircuit host) => Normalize(mode) switch
     {
-        Optional when host.Enabled => [DecisionCircuit.On, DecisionCircuit.OffBy(DecisionCircuitCause.Switch)],
+        Optional when host.Enabled => [DecisionCircuit.On, DecisionCircuit.OffBy(DecisionCircuitCause.Trial)],
         Optional => [host],
         Required => [host],
         _ => [host],
@@ -95,12 +96,13 @@ internal static class ForgeCrewDecision
     public static string CircuitName(DecisionCircuit circuit) =>
         circuit.Enabled ? DecisionCircuitStates.On : DecisionCircuitStates.Off;
 
-    /// <summary>The cause of an off circuit as the stream spells it (<c>switch</c>, <c>settings</c>, <c>no-provider</c>).</summary>
+    /// <summary>The cause of an off circuit as the stream spells it (<c>switch</c>, <c>settings</c>, <c>no-provider</c>, <c>trial</c>).</summary>
     public static string? CauseName(DecisionCircuit circuit) => circuit.Cause switch
     {
         DecisionCircuitCause.Switch => DecisionCircuitCauses.Switch,
         DecisionCircuitCause.Settings => DecisionCircuitCauses.Settings,
         DecisionCircuitCause.NoProvider => DecisionCircuitCauses.NoProvider,
+        DecisionCircuitCause.Trial => DecisionCircuitCauses.Trial,
         _ => null,
     };
 

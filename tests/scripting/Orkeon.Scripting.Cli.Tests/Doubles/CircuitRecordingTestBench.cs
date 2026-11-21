@@ -24,6 +24,9 @@ internal sealed class CircuitRecordingTestBench : IForgeTestBench
     /// <summary>The trial observer each pass reports its model call and its task to; null reports nothing.</summary>
     public ForgeRunObserver? Observer { get; init; }
 
+    /// <summary>Whether the pass with the circuit off fails; every pass succeeds otherwise.</summary>
+    public bool FailsTheOffPass { get; init; }
+
     /// <summary>What each pass does to the session while it runs (a deliverable written, say); null does nothing.</summary>
     public Action<ForgeSession>? DuringRun { get; init; }
 
@@ -56,7 +59,7 @@ internal sealed class CircuitRecordingTestBench : IForgeTestBench
 
         return new ForgeTestRun
         {
-            Success = true,
+            Success = !(FailsTheOffPass && circuit is { Enabled: false }),
             Output = circuit is { Enabled: false } ? "Tri par le relais." : "Tri par System One.",
             TaskCount = 3,
             DurationMs = DurationMs,

@@ -11,4 +11,10 @@ public enum DecisionCircuitCause
 
     /// <summary>No decision provider resolved: the host registers no <see cref="Interfaces.Ports.IDecisionModel"/>.</summary>
     NoProvider,
+
+    /// <summary>
+    /// The forge's trial pass without System One: the second pass of an <c>optional</c> crew's trial, run through
+    /// the relays while the host's circuit is on (#431).
+    /// </summary>
+    Trial,
 }

@@ -348,7 +348,8 @@ marked **defaulted** (`defaulted` in the task's event; the question name `defaul
 
 With the circuit off, the run makes **no** `IDecisionModel` call, whatever the cause. The cause is
 named in every message, as `the decision circuit is off: <cause>`, the cause being `--no-decision`,
-`Orkeon:Decision:Enabled=false` or `no decision provider resolved`; when the switch and the setting
+`Orkeon:Decision:Enabled=false` or `no decision provider resolved`, and, in the relay pass of a forge
+trial, `the forge's trial pass without System One` (cause `trial`); when the switch and the setting
 both hold, the switch is named. Each consumer that degrades says so in one warning:
 
 | Consumer | Circuit off |
@@ -525,7 +526,7 @@ never on its own.
 - **The forge** — `orkeon forge` asks System One for its own advice while it designs a crew: a `score` of the
   brief's coverage of the request, a `choice` of process (passed to the assistant as `processHint` at a probability
   of 0.6 or more, among the processes the crew's decision mode allows), a `noul` estimate before the trial and one
-  `noul` per acceptance criterion after the judge. Every answer is advice and never moves the brief, the blueprint,
+  `noul` per acceptance criterion and per successful trial pass after the judge. Every answer is advice and never moves the brief, the blueprint,
   the verdict or the arbitration; each call is one `systemone.answered` event, its tokens are charged to the
   session's budget (`systemOneTokens` on `cost.updated`), and a failed call is one `FORGE-SYSTEMONE-FAILED` warning.
   These calls are the forge's own and are split from the trial's: `--no-decision` (announced on `session.started`

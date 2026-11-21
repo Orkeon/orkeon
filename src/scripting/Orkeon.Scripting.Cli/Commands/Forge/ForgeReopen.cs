@@ -510,23 +510,11 @@ internal static class ForgeSessionRebuilder
         {
             // A session no folder names would be rebuilt again at every reopen; none is left
             // behind instead, and the refusal is the command's to report.
-            DeleteQuietly(session.Directory);
+            session.DeleteQuietly();
             throw;
         }
 
         return new ForgeRebuildResult(session, briefSource, crewDecisionDerived);
-    }
-
-    private static void DeleteQuietly(string directory)
-    {
-        try
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // Best effort: the error being reported is the record the folder refused.
-        }
     }
 
     /// <summary>
