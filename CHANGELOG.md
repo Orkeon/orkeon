@@ -186,7 +186,9 @@ dimension they left out from `AgentExecutionBudget.Default`, so `budget({ spawne
 value it has when no budget is named (#426): no wall clock, tool-call, token or `contextTokens` cap; the
 delegation-depth and spawn-count defaults (depth 2, 3 spawns) stay. The declarative `CrewBudget` already left the
 tokens and the wall time uncapped, and is unchanged. An act whose run has no token cap logs its running sum without
-a limit, `running sum <sum> tokens over <n> calls, no limit`, in place of `<sum>/2147483647`. **What to do**: a
+a limit, `running sum <sum> tokens over <n> calls, no limit`, in place of `<sum>/2147483647`; so does a child
+spawned after its parent spent tokens, since a child budget keeps a dimension no budget of its chain caps uncapped.
+A `budget` run option with no `charge` reads the crew's clock, as the crew's budget does. **What to do**: a
 script that relied on the implicit caps names them, for instance
 `budget({ spawnedAgents: 10, toolCalls: 15, tokens: 16000, wallTime: "5m" })`.
 

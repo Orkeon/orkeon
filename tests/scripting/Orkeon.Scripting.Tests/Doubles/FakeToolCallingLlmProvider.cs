@@ -47,6 +47,9 @@ internal sealed class FakeToolCallingLlmProvider : ILlmProvider
     /// <summary>Called with the turn's index (from 0, in call order) before each scripted turn answers.</summary>
     public Action<int>? BeforeTurn { get; set; }
 
+    /// <summary>The tokens each scripted turn reports as used (<see cref="LlmResponse.TokensUsed"/>); 0 reports none.</summary>
+    public int TokensPerTurn { get; set; }
+
     /// <summary>The content of every tool-result message received, in order.</summary>
     public List<string> ToolResults { get; } = new();
 
@@ -92,7 +95,8 @@ internal sealed class FakeToolCallingLlmProvider : ILlmProvider
             var step = _turn < _script.Count ? _script[_turn] : ScriptStep.Answer("script exhausted");
             _turn++;
             if (step is { ToolName: null, Text: null }) throw new InvalidOperationException("scripted provider failure");
-            return step.ToolName is null ? new LlmResponse { Content = step.Text! } : ToolCall(step.ToolName, step.ArgumentsJson!);
+            var response = step.ToolName is null ? new LlmResponse { Content = step.Text! } : ToolCall(step.ToolName, step.ArgumentsJson!);
+            return TokensPerTurn > 0 ? response with { TokensUsed = TokensPerTurn } : response;
         }
         if (_turn++ == 0)
         {

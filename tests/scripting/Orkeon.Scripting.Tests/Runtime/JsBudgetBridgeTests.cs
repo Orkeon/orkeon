@@ -199,6 +199,22 @@ public sealed class JsBudgetBridgeTests
     }
 
     [Fact]
+    [Trait("BR", "CH-436")]
+    public void FromRunOption_reads_the_given_clock_when_it_charges_no_budget()
+    {
+        // Arrange
+        using var engine = new Orkeon.Scripting.JsEngineFactory().Create();
+        var clock = new Orkeon.Tests.Shared.Timing.ManualTimeProvider();
+
+        // Act
+        var budget = JsBudgetBridge.FromRunOption(Js(engine, "{ wallTime: 60 }"), chargedTo: null, clock);
+
+        // Assert
+        Assert.NotNull(budget);
+        Assert.Same(clock, budget.TimeProvider);
+    }
+
+    [Fact]
     public void FromRunOption_without_a_dimension_returns_null()
     {
         using var engine = new Orkeon.Scripting.JsEngineFactory().Create();

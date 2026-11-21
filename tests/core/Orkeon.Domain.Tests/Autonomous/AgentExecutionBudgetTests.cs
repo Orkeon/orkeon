@@ -460,4 +460,40 @@ public class AgentExecutionBudgetTests
 
         Assert.Equal(3_800, child.MaxContextTokens);
     }
+
+    [Fact]
+    [Trait("BR", "CH-436")]
+    public void ShouldKeepTheChildsTokensAndToolCallsUncapped_WhenNoBudgetOfTheChainCapsThemAndTokensWereSpent()
+    {
+        // Arrange: an uncapped chain that has already spent tokens and tool calls
+        var crew = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, MaxToolCalls = int.MaxValue, MaxWallTime = TimeSpan.MaxValue };
+        var run = new AgentExecutionBudget
+        {
+            MaxTokensConsumed = int.MaxValue, MaxToolCalls = int.MaxValue, MaxWallTime = TimeSpan.MaxValue, ChargedTo = crew,
+        };
+        run.RecordTokens(5_000);
+        run.RecordToolCall();
+
+        // Act
+        var child = run.CreateChildBudget();
+
+        // Assert
+        Assert.Equal((int.MaxValue, int.MaxValue, TimeSpan.MaxValue), (child.MaxTokensConsumed, child.MaxToolCalls, child.MaxWallTime));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-436")]
+    public void ShouldCapTheChildsTokensByTheChargedBudget_WhenOnlyItCapsThem()
+    {
+        // Arrange
+        var crew = new AgentExecutionBudget { MaxTokensConsumed = 10_000 };
+        var run = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, ChargedTo = crew };
+        run.RecordTokens(4_000);
+
+        // Act
+        var child = run.CreateChildBudget();
+
+        // Assert
+        Assert.Equal(6_000, child.MaxTokensConsumed);
+    }
 }

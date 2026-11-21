@@ -367,6 +367,25 @@ public sealed class CrewBudgetRunTests
     }
 
     [Fact]
+    [Trait("BR", "CH-436")]
+    public async Task ShouldEndTheRunOnItsWallTime_WhenRunAgentGivesAWallTimeWithoutAChargeAndTheCrewClockRunsOut()
+    {
+        // Arrange: each model turn moves the crew's fake clock by 30 s; B allows itself one minute and charges nothing
+        var clock = new FakeTimeProvider();
+        var (engine, _, provider) = NewDelegatingCrew("crew.runAgent(\"B\", \"go\", { budget: { wallTime: \"1m\" } })");
+        using var owned = engine;
+        provider.OnChat = () => clock.Advance(TimeSpan.FromSeconds(30));
+        ((JsCrew)(await engine.EvaluateAsync("crew", null, Ct)).ToObject()!).Clock = clock;
+
+        // Act
+        var outcome = await RunAAsync(engine);
+
+        // Assert
+        Assert.StartsWith("budget: Wall time exceeded", outcome, StringComparison.Ordinal);
+        Assert.Equal(2, provider.ChatCount);
+    }
+
+    [Fact]
     public async Task ShouldRefuseTheSecondSpawn_WhenTheDelegatedRunGivesSpawnedAgentsOne()
     {
         // Arrange

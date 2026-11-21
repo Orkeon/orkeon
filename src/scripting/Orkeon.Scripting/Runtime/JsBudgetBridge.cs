@@ -109,9 +109,13 @@ internal static class JsBudgetBridge
     /// run option is given at the call that spends it, so a value <see cref="FromSpec"/> would skip (an
     /// unknown key, a count that is not a whole number of 1 or more, a wall time it cannot read) is
     /// refused with an <see cref="InvalidScriptException"/> instead of leaving the run unbounded. Null
-    /// for a spec with no dimension (<c>{}</c>), as for the crew.
+    /// for a spec with no dimension (<c>{}</c>), as for the crew. Without <paramref name="chargedTo"/>, the
+    /// budget reads <paramref name="clock"/>, as <see cref="FromSpec"/> does.
     /// </summary>
-    internal static AgentExecutionBudget? FromRunOption(JsValue value, AgentExecutionBudget? chargedTo)
+    /// <param name="value">The <c>budget</c> option.</param>
+    /// <param name="chargedTo">The budget this one also charges, or null.</param>
+    /// <param name="clock">The clock read when <paramref name="chargedTo"/> is null; <see cref="TimeProvider.System"/> when null.</param>
+    internal static AgentExecutionBudget? FromRunOption(JsValue value, AgentExecutionBudget? chargedTo, TimeProvider? clock = null)
     {
         if (value is not JsObject spec || spec.ToObject() is not IDictionary<string, object?> fields)
             throw new InvalidScriptException($"{Where} budget must be an object such as {{ toolCalls: 20, tokens: 50000, wallTime: 300 }}.");
@@ -129,7 +133,7 @@ internal static class JsBudgetBridge
             throw new InvalidScriptException($"{Where} budget.{key} must be a whole number of 1 or more; got {Show(raw)}.");
         }
 
-        return FromSpec(fields.ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal), chargedTo);
+        return FromSpec(fields.ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal), chargedTo, clock);
     }
 
     /// <summary>
