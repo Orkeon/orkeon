@@ -66,18 +66,18 @@ public sealed class DecisionTaskRunner
 
     /// <summary>
     /// Gets the circuit this runner applies, read at call time as <see cref="DecisionCircuit.Of(IServiceProvider, DecisionCircuit?)"/>
-    /// folds it: the one it was given when it is off, then the run in progress when it is off
-    /// (<see cref="DecisionCircuitScope.Current"/>, so a runner built once per host follows each run), then off by
-    /// <see cref="DecisionCircuitCause.NoProvider"/> when no decision model is configured; on otherwise.
+    /// folds it: the run in progress when it is off (<see cref="DecisionCircuitScope.Current"/>, so a runner built
+    /// once per host follows each run and names the run's cause), then the one it was given when it is off, then off
+    /// by <see cref="DecisionCircuitCause.NoProvider"/> when no decision model is configured; on otherwise.
     /// </summary>
     public DecisionCircuit Circuit
     {
         get
         {
-            if (!_circuit.Enabled)
-                return _circuit;
             if (DecisionCircuitScope.Current is { Enabled: false } running)
                 return running;
+            if (!_circuit.Enabled)
+                return _circuit;
             return _model is null ? DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider) : _circuit;
         }
     }

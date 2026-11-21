@@ -145,10 +145,12 @@ agent's call does: the relay agent's `maxRpm`, the crew's and `RateLimiting:Agen
 `waited` line. Sequential and Parallel now replay a decision from the
 checkpoint on resume, as Graph did, with its stored source, and an `optional` crew resumed under the other circuit is
 refused with an error code of its own, `decision_circuit_mismatch`, and exit `1`, naming both circuits; only the decisions of tasks the crew still
-declares count, by their key (one whose definition changed under the same key still counts), compared with the
-circuit of the run that resumes. A decision is replayed only while its task is unchanged: its questions, fallback and
+declares count, by their key (one whose definition changed under the same key still counts, though it would be decided
+again: the check is made at kickoff, before any task's fingerprint is compared), compared with the circuit of the run
+that resumes. A decision is replayed only while its task is unchanged: its questions, fallback and
 relay now count in the task's checkpoint fingerprint, so a decision task edited since the run is decided again, with
-the tasks after it. `DecisionTaskRunner.SourceOf` is a new public member. A `when:` takes `[yes]` / `[no]` on a yes-no question,
+the tasks after it. A checkpoint written before this version lacks that part: on resume, its first recorded decision
+task is decided again once, and every task after it runs again. `DecisionTaskRunner.SourceOf` is a new public member. A `when:` takes `[yes]` / `[no]` on a yes-no question,
 gated by `minConfidence`; an option list on a score question is refused at load, naming the question. See
 [Decision models](docs/architecture/decision-models.md#the-without-relay).
 
@@ -158,7 +160,9 @@ A crew-level `decision: { mode: none | optional | required }` (YAML, also in the
 `crewBuilder().decision({ mode })` in a script; `CrewBuilder.DecisionMode` in C#) says whether the crew runs without
 the decision model; the mode is read without regard to case or surrounding spaces, in YAML as in a script. `none` refuses decision tasks, `system_one_decide`, decision profiles, `llm.profile: auto`, `skills: { auto: true }` and
 `compaction: { prune: true }` at load, and the host's `Orkeon:Compaction:Prune` does not apply to its agents in its
-runs (an agent shared with another crew keeps it there; the builder no longer writes it onto the agent). `optional` asks
+runs (an agent shared with another crew keeps it there; the builder no longer writes it onto the agent). The rule
+holds per run, for every agent of a `none` run, a spawned agent and a synthetic manager included; outside a run, a
+task served over A2A for one, the host's pruning applies. `optional` asks
 every decision task for a `without: { agent, instructions }` relay, an agent of the crew (its key in YAML, its
 `name(...)` in a script, its role in C#), and refuses a `fallback` and
 `system_one_decide`; the relay answers with the circuit off (see the entry above, #430). `required` refuses the run before its first task when the decision

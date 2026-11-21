@@ -329,4 +329,19 @@ public sealed class DecisionTaskRunnerTests
             (0, true, DecisionSources.Fallback),
             (_model.Requests.Count, result.Success, result.DecisionSource));
     }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public void ShouldNameTheRunsCause_WhenTheRunAndTheRunnersOwnCircuitAreBothOff()
+    {
+        // Arrange: the host's settings turned the runner off, and the run is off by its switch.
+        var runner = Runner(DecisionCircuit.OffBy(DecisionCircuitCause.Settings));
+        using var run = DecisionCircuitScope.Begin(DecisionCircuit.Off);
+
+        // Act
+        var circuit = runner.Circuit;
+
+        // Assert
+        Assert.Equal(DecisionCircuitCause.Switch, circuit.Cause);
+    }
 }

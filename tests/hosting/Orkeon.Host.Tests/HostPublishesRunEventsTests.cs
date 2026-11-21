@@ -49,7 +49,7 @@ public sealed class HostPublishesRunEventsTests : IDisposable
 
     private string CrewPath => Path.Combine(_root, "crews", "support.yaml");
 
-    private IHost Build(HeldLlmProvider llm, bool? history = null)
+    private IHost Build(HeldLlmProvider llm, bool? history = null, bool ladder = false)
     {
         var root = new Dictionary<string, object?>
         {
@@ -61,6 +61,9 @@ public sealed class HostPublishesRunEventsTests : IDisposable
         };
         if (history is { } enabled)
             ((Dictionary<string, object?>)root["Orkeon"]!)["RunHistory"] = new { Enabled = enabled };
+        // A route ladder of the default profile and a "small" one the host registers below.
+        if (ladder)
+            ((Dictionary<string, object?>)root["Orkeon"]!)["Decision"] = new { Route = new { Ladder = new[] { "default", "small" } } };
 
         var settings = Path.Combine(_root, $"{Guid.NewGuid():N}.json");
         File.WriteAllText(settings, JsonSerializer.Serialize(root));
@@ -81,6 +84,8 @@ public sealed class HostPublishesRunEventsTests : IDisposable
             {
                 services.AddHostServices(context.Configuration, crewPlan);
                 services.AddOrkeonLlmProvider(_ => llm);
+                if (ladder)
+                    services.AddOrkeonLlmProfile("small", _ => llm, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Create("model-of-small"));
             },
             configureBuilder: builder => builder.UseDefaultServiceProvider(options =>
             {
@@ -228,5 +233,47 @@ public sealed class HostPublishesRunEventsTests : IDisposable
         // Assert
         Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
         Assert.Null(host.Services.GetService<IRunHistoryReader>());
+    }
+
+    // The crew's agent is routed by System One (llm.profile: auto); the host has no decision model, so the default
+    // profile stands, and the agent loop tells its observer (agent.route, #434): the event is what is checked.
+    private void WriteRoutedCrew() => File.WriteAllText(CrewPath, """
+        name: support
+        goal: Answer one question offline
+        process: sequential
+        agents:
+          helper:
+            role: Helper
+            goal: Help
+            backstory: A minimal test agent.
+            maxIter: 1
+            llm:
+              profile: auto
+        tasks:
+          answer:
+            description: Answer the question.
+            expected_output: An answer.
+            agent: helper
+        """);
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWriteTheAgentRouteEventInTheRunHistory_WhenAHostedAgentIsRoutedBySystemOne()
+    {
+        // Arrange
+        WriteRoutedCrew();
+        using var host = Build(new HeldLlmProvider("the answer"), ladder: true);
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+
+        // Act
+        var result = await runner.RunAsync("support", "What changed?", "test");
+
+        // Assert
+        Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
+        var reader = host.Services.GetRequiredService<IRunHistoryReader>();
+        var summary = Assert.Single(await reader.ListAsync(new RunQuery(), Ct));
+        var events = await reader.ReadEventsAsync(summary.RunId, 1, Ct);
+        var route = Assert.Single(events, e => e.Kind == RunEventKinds.AgentRoute);
+        Assert.Equal(("Helper", summary.RunId), (route.Payload?["agentRole"]?.GetValue<string>(), route.CorrelationId));
     }
 }

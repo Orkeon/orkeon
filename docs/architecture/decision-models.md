@@ -463,8 +463,8 @@ every process: a resumed Sequential, Parallel or Graph run replays it without a 
 model, off when one came from the relay or the fallback. An `optional` crew resumed under the other circuit is
 refused, with `decision_circuit_mismatch` and exit `1`, naming both circuits: its decisions left would otherwise come from the other
 source. Only the decisions of the tasks the crew still declares as decision tasks count, by their key (one whose
-definition changed under the same key still counts), and they are compared with the circuit of the run that
-resumes: off when its runner has no decision model. A run that recorded no decision yet resumes under either
+definition changed under the same key still counts, though it would be decided again: the check is made at kickoff,
+before any task's fingerprint is compared), and they are compared with the circuit of the run that resumes: off when its runner has no decision model. A run that recorded no decision yet resumes under either
 circuit, and a crew with no mode keeps the resume behaviour it had. A decision is replayed only while its task is
 unchanged: its questions, fallback and relay count in the task's checkpoint fingerprint, beside its description and
 dependencies, so a decision task edited since the run is decided again, and the tasks after it run again.

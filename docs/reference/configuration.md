@@ -711,7 +711,7 @@ in the middle), never the conversation. Under a probability of 0.6, without an a
 call fails or when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`,
 no decision provider), the host's `default` profile (the `Llm` section) stands, never the agent's own, with no
 error: an off circuit makes no decision call. A warning is logged once per run when the circuit is off or `Ladder`
-is missing, and when the call fails; a low
+is missing (outside a run, once per host), and at each failed call; a low
 probability or a missing answer is logged as information only. Each pick emits `agent.route` on
 the run's event stream, once per task and agent of a run. A task's `llm_override: { profile: auto }`
 is routed the same way, and falls back to `default` too, not to its agent's profile. A manager or a decision relay (`without.agent`) on `auto` with no task

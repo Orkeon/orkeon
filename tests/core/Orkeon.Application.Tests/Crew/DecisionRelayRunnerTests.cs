@@ -1,12 +1,21 @@
+using System.Globalization;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.DependencyInjection;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Constants.Protocol;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Agent.ValueObjects;
+using Orkeon.Domain.Crew;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
+using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Tests.Shared.FileSystem;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 
 namespace Orkeon.Application.Tests.Crew;
@@ -448,5 +457,48 @@ public sealed class DecisionRelayRunnerTests
 
         // Assert
         Assert.Equal((0, 1, true), (askedBefore, _relay.Requests.Count, result.Success));
+    }
+
+    [Theory]
+    [InlineData(1, null)]
+    [InlineData(null, 1)]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldWaitItsTurnInTheRun_WhenTheHostBuiltTheRunnerAndTheCrewWindowOrTheHostCapIsFull(int? crewMaxRpm, int? hostCap)
+    {
+        // Arrange: the host's own runner, with no decision model, in a run whose crew window or host cap an earlier
+        // call of the relay agent filled.
+        _relay.Answers = ["""{"route":{"bug":0.7,"other":0.3}}"""];
+        var clock = new Orkeon.Tests.Shared.Timing.ManualTimeProvider();
+        var settings = new Dictionary<string, string?>();
+        if (hostCap is { } cap)
+            settings["RateLimiting:AgentRequestsPerMinute"] = cap.ToString(CultureInfo.InvariantCulture);
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+        services.AddLogging();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        services.AddSingleton<TimeProvider>(clock);
+        services.AddSingleton<IDecisionRelay>(_relay);
+        services.AddOrkeonLlmProvider(_ => new ScriptedFullLlmProvider());
+        services.AddOrkeonApplication();
+        services.AddOrkeonInfrastructure();
+        await using var host = services.BuildServiceProvider();
+        var runner = host.GetRequiredService<DecisionTaskRunner>();
+        var crew = new CrewBuilder().Goal("Triage the reports");
+        if (crewMaxRpm is { } limit)
+            crew.MaxRpm(limit);
+        var analyst = new AgentBuilder().Role(AgentRole.From("analyst")).Goal(AgentGoal.From("Triage the reports")).Build();
+        var ct = TestContext.Current.CancellationToken;
+        using var run = RequestRates.BeginRun(crew.Build(), clock);
+        await RequestRates.WaitTurnAsync(analyst, hostCap, clock, ct);
+        var running = runner.RunAsync(Task(Decision(Route())), [("report", "The build breaks on save.")], analyst, ct);
+        await Orkeon.Tests.Shared.Timing.Polling.WaitUntilAsync(() => clock.PendingTimers >= 1);
+        var askedBefore = _relay.Requests.Count;
+
+        // Act
+        clock.Advance(TimeSpan.FromSeconds(60));
+        var result = await running;
+
+        // Assert
+        Assert.Equal((0, 1, true, DecisionSources.Relay), (askedBefore, _relay.Requests.Count, result.Success, result.DecisionSource));
     }
 }

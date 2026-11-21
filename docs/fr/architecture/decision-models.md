@@ -479,8 +479,9 @@ rapporte le `decisionSource` enregistré. Le checkpoint montre ainsi le circuit 
 quand une décision vient du modèle, coupé quand une vient du relais ou du repli. Une crew `optional` reprise sous
 l'autre circuit est refusée, avec `decision_circuit_mismatch` et la sortie `1`, en nommant les deux circuits : les décisions restantes
 viendraient sinon de l'autre source. Seules comptent les décisions des tâches que la crew déclare encore comme
-tâches de décision, par leur clé (une tâche dont la définition a changé sous la même clé compte encore), et elles
-sont comparées au circuit du run qui reprend : coupé quand son exécuteur n'a pas de modèle de décision. Un run qui
+tâches de décision, par leur clé (une tâche dont la définition a changé sous la même clé compte encore, bien qu'elle
+soit décidée à nouveau : la vérification se fait au lancement, avant qu'aucune empreinte de tâche ne soit comparée),
+et elles sont comparées au circuit du run qui reprend : coupé quand son exécuteur n'a pas de modèle de décision. Un run qui
 n'a encore enregistré aucune décision reprend sous l'un ou l'autre circuit, et une crew sans mode garde le comportement de reprise qu'elle avait.
 Une décision n'est rejouée que tant que sa tâche est inchangée : ses questions, son repli et son relais comptent dans
 l'empreinte de la tâche au checkpoint, à côté de sa description et de ses dépendances ; une tâche de décision modifiée

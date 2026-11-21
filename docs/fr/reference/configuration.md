@@ -741,7 +741,7 @@ réponse, quand l'appel échoue ou quand le circuit de décision est coupé (`--
 `Orkeon:Decision:Enabled: false`, aucun fournisseur de décision), le profil `default` de l'hôte
 (la section `Llm`) s'applique, jamais celui de l'agent, sans erreur : un circuit coupé ne fait aucun
 appel de décision. Un avertissement est journalisé une fois par run quand le circuit est coupé ou que
-`Ladder` manque, et quand l'appel échoue ; une probabilité basse
+`Ladder` manque (hors d'un run, une fois par hôte), et à chaque appel en échec ; une probabilité basse
 ou une réponse manquante n'est journalisée qu'en information. Chaque choix émet `agent.route` sur
 le flux d'événements du run, une fois par tâche et par agent d'un run. Le
 `llm_override: { profile: auto }` d'une tâche est routé de la même façon, et se replie lui aussi
