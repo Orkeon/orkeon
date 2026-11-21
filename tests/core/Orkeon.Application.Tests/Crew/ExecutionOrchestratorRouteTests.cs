@@ -58,7 +58,7 @@ public sealed class ExecutionOrchestratorRouteTests : IDisposable
     }
 
     private static Orkeon.Domain.Agent.Agent AutoAgent() => new AgentBuilder().Role("Coder").Goal("Change code")
-        .WithLlmConfig(LlmConfig.Create("m") with { Profile = LlmProfiles.Auto }).Build();
+        .WithLlmConfig(LlmConfig.OnProfile(LlmProfiles.Auto)).Build();
 
     private static DomainTask Task() => DomainTask.Create(TaskDescription.From("Design the cache layer."), ExpectedOutput.From("A design."));
 
