@@ -251,6 +251,11 @@ internal sealed class ChatClientAgentLoop
                 AgentExitReason.Completed, IterationsUsed: iteration + 1));
         }
 
+        // The synthesis call at the cap goes through the same measure as every call: the last iteration's results
+        // were added after the last one, and with compaction on no trim bounds them (#432).
+        if (compactor is not null)
+            totalTokensUsed += await compactor.BeforeCallAsync(view!, cancellationToken).ConfigureAwait(false);
+
         var maxIterResult = await HandleMaxIterExhaustedAsync(
             agent, messages, options, maxIter, task.Id, totalTokensUsed, cancellationToken).ConfigureAwait(false);
         return WithTokenSplit(maxIterResult);

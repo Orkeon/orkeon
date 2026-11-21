@@ -42,7 +42,8 @@ public sealed class ChatLoopCompactionTests
     private static async System.Threading.Tasks.Task<Run> RunAsync(
         int toolTurns, int resultChars, ContextWindow? window, ContextCompactionOptions? options = null,
         AgentCompaction? agentCompaction = null, bool summaryFails = false, IReadOnlyList<IContextPressureStage>? stages = null,
-        ToolAccess access = ToolAccess.Unspecified, FakeCompactionChatClient? chatClient = null, ILlmProvider? summaryProvider = null)
+        ToolAccess access = ToolAccess.Unspecified, FakeCompactionChatClient? chatClient = null, ILlmProvider? summaryProvider = null,
+        int? maxIterations = null)
     {
         var tool = new SpyTool(ToolName, result: new string('x', resultChars)) { Access = access };
         // The double holds nothing to release, and the test reads its records after the run.
@@ -69,7 +70,7 @@ public sealed class ChatLoopCompactionTests
             new ChatClientAgentLoop.ChatClientAgentLoopOptions(Compaction: compaction));
         var task = DomainTask.Create(TaskDescription.From("Read every page"), ExpectedOutput.From("A digest"));
 
-        var result = await loop.ExecuteAsync(Agent(tool, toolTurns + 4, agentCompaction), task, "sys", "user", [],
+        var result = await loop.ExecuteAsync(Agent(tool, maxIterations ?? toolTurns + 4, agentCompaction), task, "sys", "user", [],
             TestContext.Current.CancellationToken);
         return new Run(result, client, observer, logger);
     }
@@ -424,6 +425,24 @@ public sealed class ChatLoopCompactionTests
         Assert.Contains(client.AgentRequests, r => r.Count > 2 && r[2].Text.StartsWith("[Context trimmed", StringComparison.Ordinal));
         Assert.All(stage.Pressures.Skip(1), p => Assert.True(p.EstimatedTokens > 100,
             $"the estimate holds the turn added since the last call, it was {p.EstimatedTokens}"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldCompactBeforeTheSynthesisCall_WhenTheIterationCapEndsTheLoopPastTheTrigger()
+    {
+        // Arrange: five iterations each read 1,000 tokens; the fifth result takes the conversation past the 4,428 trigger.
+        var toolTurns = 10;
+
+        // Act
+        var run = await RunAsync(toolTurns, resultChars: 4_000, MidWindow, maxIterations: 5);
+
+        // Assert: the call made without tools at the cap is measured, and compacted, like any other.
+        Assert.Equal(6, run.Client.AgentRequests.Count);
+        Assert.Single(run.Client.SummaryRequests);
+        Assert.Equal(AgentCompactionOutcomes.Compacted, Assert.Single(run.Observer.Notices).Outcome);
+        Assert.Contains(run.Client.AgentRequests[^1], m => m.Text.StartsWith("[Context compacted", StringComparison.Ordinal));
+        Assert.Equal(50, run.Result.TokensUsed);
     }
 
     [Fact]
