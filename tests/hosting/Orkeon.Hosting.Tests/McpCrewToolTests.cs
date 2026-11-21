@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Runs;
@@ -309,6 +310,148 @@ public sealed class McpCrewToolTests : IDisposable
         Assert.Equal(RunEventKinds.RunStarted, kinds[0]);
         Assert.Equal(RunEventKinds.RunFinished, kinds[^1]);
         Assert.True(kinds.Count > 2, string.Join(", ", kinds));
+        // Once a run, after the crew loads and before its first task (#429): the MCP host's hook forwards it.
+        Assert.Single(kinds, k => k == RunEventKinds.RunDecision);
+    }
+
+    // One crew of one task, written with its own agent and settings, on a host that answers through the host's
+    // default model (configure adds what the test needs).
+    private async Task<McpCrewToolHost> OpenCrewAsync(
+        string folder, string crewYaml, string settings, Action<Microsoft.Extensions.DependencyInjection.IServiceCollection> configure)
+    {
+        var dir = Path.Combine(_root, folder);
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "appsettings.json"), settings, Ct);
+        var path = Path.Combine(dir, "crew.yaml");
+        await File.WriteAllTextAsync(path, crewYaml, Ct);
+        var host = await McpCrewToolHost.OpenAsync(
+            [path],
+            new McpCrewHostOptions
+            {
+                WorkingDirectory = _root, AllowExternalMounts = true,
+                Console = _console,
+                ConfigureServices = (_, services) => configure(services),
+            },
+            Ct);
+        Assert.True(host is not null, _console.ErrorOutput.ToString());
+        return host;
+    }
+
+    private static async Task<IReadOnlyList<RunEvent>> TheCallsEventsAsync(McpCrewToolHost host)
+    {
+        var reader = Assert.Single(host.Hosts).Services.GetRequiredService<IRunHistoryReader>();
+        var run = Assert.Single(await reader.ListAsync(new RunQuery(), Ct));
+        return await reader.ReadEventsAsync(run.RunId, 1, Ct);
+    }
+
+    private const string RequiredCrew = """
+        name: "Triage"
+        goal: "Triage one ticket"
+        process: "sequential"
+        decision:
+          mode: required
+        agents:
+          worker:
+            role: "Worker"
+            goal: "Work"
+            backstory: "A minimal test agent."
+            maxIter: 1
+        tasks:
+          answer:
+            description: "Triage the ticket about {topic}."
+            expectedOutput: "A category."
+            agent: "worker"
+        """;
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public async Task ShouldRecordExit69AndTellTheClientWhy_WhenARequiredCrewMeetsTheCircuitOff()
+    {
+        // Arrange
+        const string off = """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "RunHistory": { "Enabled": true }, "Decision": { "Enabled": false } } }""";
+        using var host = await OpenCrewAsync("required", RequiredCrew, off, services => services.AddScoped<IAgentExecutionService>(_ => _model));
+
+        // Act
+        var result = await host.CallToolAsync("run_crew_triage", Args(new { topic = "bees" }), new RecordingProgress(), Ct);
+
+        // Assert
+        Assert.True(result.IsError);
+        var text = Assert.Single(result.Content).Text;
+        Assert.Contains("requires System One", text, StringComparison.Ordinal);
+        var events = await TheCallsEventsAsync(host);
+        var decision = Assert.Single(events, e => e.Kind == RunEventKinds.RunDecision);
+        Assert.Equal("off", decision.Payload?["circuit"]?.GetValue<string>());
+        var finished = Assert.Single(events, e => e.Kind == RunEventKinds.RunFinished);
+        Assert.Equal(69, finished.Payload?["exitCode"]?.GetValue<int>());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public async Task ShouldTellTheCrewsOwnHookTheRunDecision_WhenTheMcpHostWrapsIt()
+    {
+        // Arrange: the crew's own hook, which the MCP host wraps in its progress hook.
+        var hook = new FakeCrewExecutionHook();
+        const string off = """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Decision": { "Enabled": false } } }""";
+        using var host = await OpenCrewAsync("wrapped", RequiredCrew, off, services =>
+        {
+            services.AddScoped<IAgentExecutionService>(_ => _model);
+            services.AddSingleton<Orkeon.Application.Crew.ICrewExecutionHook>(hook);
+        });
+
+        // Act
+        await host.CallToolAsync("run_crew_triage", Args(new { topic = "bees" }), new RecordingProgress(), Ct);
+
+        // Assert
+        var notice = Assert.Single(hook.RunDecisions);
+        Assert.Equal((Orkeon.Domain.Crew.CrewDecisionMode.Required, false), (notice.Mode, notice.Circuit.Enabled));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWriteTheCompactionAndPruningEventsInTheCallsHistory_WhenTheAgentLoopTellsThem()
+    {
+        // Arrange
+        using var host = await OpenCrewAsync("observed", RequiredCrew.Replace("mode: required", "mode: none", StringComparison.Ordinal), History,
+            services => services.AddScoped<IAgentExecutionService>(sp => new FakeObservingAgentExecutionService(
+                sp.GetRequiredService<IAgentCompactionObserver>(), sp.GetRequiredService<IAgentPruneObserver>())));
+
+        // Act
+        var result = await host.CallToolAsync("run_crew_triage", Args(new { topic = "bees" }), new RecordingProgress(), Ct);
+
+        // Assert
+        Assert.False(result.IsError, JsonSerializer.Serialize(result));
+        var events = await TheCallsEventsAsync(host);
+        var compacted = Assert.Single(events, e => e.Kind == RunEventKinds.AgentCompacted);
+        var pruned = Assert.Single(events, e => e.Kind == RunEventKinds.AgentPruned);
+        Assert.Equal(("Worker", "Worker"), (compacted.Payload?["agentRole"]?.GetValue<string>(), pruned.Payload?["agentRole"]?.GetValue<string>()));
+        Assert.Equal(events[0].CorrelationId, compacted.CorrelationId);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWriteTheAgentRouteEventInTheCallsHistory_WhenTheCrewsAgentIsRoutedBySystemOne()
+    {
+        // Arrange: a route ladder of the default profile and a "small" one; with no decision model the default stands,
+        // and the agent loop tells its route observer.
+        const string ladder = """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "RunHistory": { "Enabled": true }, "Decision": { "Route": { "Ladder": ["default", "small"] } } } }""";
+        var routed = RequiredCrew.Replace("decision:\n  mode: required\n", "", StringComparison.Ordinal)
+            .Replace("maxIter: 1", "maxIter: 1\n    llm:\n      profile: auto", StringComparison.Ordinal);
+        var llm = new CountingLlmProvider();
+        using var host = await OpenCrewAsync("routed", routed, ladder, services =>
+        {
+            services.AddOrkeonLlmProvider(_ => llm);
+            services.AddOrkeonLlmProfile("small", _ => llm, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Create("model-of-small"));
+        });
+
+        // Act
+        var result = await host.CallToolAsync("run_crew_triage", Args(new { topic = "bees" }), new RecordingProgress(), Ct);
+
+        // Assert
+        Assert.False(result.IsError, JsonSerializer.Serialize(result));
+        var events = await TheCallsEventsAsync(host);
+        var route = Assert.Single(events, e => e.Kind == RunEventKinds.AgentRoute);
+        Assert.Equal(("Worker", events[0].CorrelationId), (route.Payload?["agentRole"]?.GetValue<string>(), route.CorrelationId));
     }
 
     // A crew whose agent declares one skill, run by the real agent loop on a model double: the loop tells its skills
