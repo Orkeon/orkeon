@@ -114,11 +114,11 @@ agents:
     compaction:           # Remplace Orkeon:Compaction pour cet agent (optionnel) ; une clé mal orthographiée fait échouer le chargement
       enabled: bool       # défaut : Orkeon:Compaction:Enabled (true) ; false garde la coupe à 40 messages
       triggerShare: float # (0, 1], la part de la fenêtre utile qui déclenche un résumé ; défaut : Orkeon:Compaction:TriggerShare (0,75)
-      prune: bool         # Si System One élague les anciens résultats d'outils de lecture de cet agent avant de compacter ; défaut : Orkeon:Compaction:Prune:Enabled (false) ; circuit coupé → rien n'est élagué
+      prune: bool         # Si System One élague les anciens résultats d'outils de lecture de cet agent avant de compacter ; défaut : Orkeon:Compaction:Prune:Enabled (false) ; enabled: false ou circuit coupé → rien n'est élagué
     skills: [string]      # Fichiers markdown (chemins virtuels) ajoutés au prompt système sous '## Skills' à chaque tâche (optionnel) ; chacun coupé à Orkeon:Skills:MaxSkillChars, le bloc à MaxBlockChars
     # skills:             # Ou la forme de choix : System One choisit au plus 3 skills de Orkeon:Skills:Library par tâche, en lisant une ligne par skill
     #   auto: true        # requis dans la forme map ; false fait échouer le chargement (une liste fixe s'écrit en liste)
-    #   fallback: [string] # porté quand le circuit de décision est coupé ou que le choix échoue ; absent : aucun skill. Toute autre clé fait échouer le chargement
+    #   fallback: [string] # porté quand le circuit de décision est coupé, que la bibliothèque est vide ou illisible, que le choix échoue ou que sa réponse ne porte aucun choix utilisable ; absent : aucun skill. Toute autre clé fait échouer le chargement
     knowledge:            # Collections de connaissance (RAG) attachées à l'agent (optionnel) ; une clé inconnue d'une entrée est refusée, une valeur mal formée reste un warning
       - string            # Forme courte : nom de collection avec options par défaut
       - collection: string       # Forme longue (clé requise)
@@ -174,7 +174,7 @@ tasks:
       state: [string]        # Clés des tâches dont le modèle juge la sortie ; défaut : les sorties des dépendances qui ont tourné
       longContext: bool      # défaut : false — demande le contexte long du modèle
       fallback: {<question>: string}  # Réponses utilisées sans requête quand le circuit de décision est coupé
-      without: {agent: string, instructions: string}  # decision.mode optional seulement : l'agent qui répond quand le circuit est coupé
+      without: {agent: string, instructions: string}  # decision.mode optional (exigé sur chaque tâche de décision) ou required (chargé avec un avertissement, jamais utilisé) ; refusé sinon : l'agent qui répond quand le circuit est coupé
     when:                 # Ne lance la tâche que si une tâche de décision a répondu comme écrit (une seule tâche de décision par when:)
       <task>.<question>: [string] | ">= 0.7"  # Une liste d'options (choice, ou [yes] / ["no"] sur un oui/non), ou un seuil : une probabilité (oui/non) ou une position de niveau (score)
       <task>.<question>.<option>: ">= 0.25"   # La probabilité d'une option d'un choice
@@ -284,9 +284,10 @@ tasks:
   option d'un choice, un niveau d'un score, `yes` ou `no` d'un oui/non (mettez `"no"` entre guillemets,
   que YAML lit comme un booléen). Une question sans réponse de repli ne sélectionne aucune option. Voir
   [le repli](./decision-models.md#le-circuit-de-décision-et-le-repli).
-- `without` (une crew en `decision.mode: optional` seulement) nomme l'agent qui répond aux questions quand le
-  circuit est coupé, `agent` une clé des `agents:` de la crew et `instructions` un texte facultatif ajouté aux
-  questions. L'agent ne donne que des probabilités, vérifiées et lues comme la réponse du modèle : voir
+- `without` nomme l'agent qui répond aux questions quand le circuit est coupé, dans une crew en
+  `decision.mode: optional`, qui l'exige sur chaque tâche de décision ; une crew `required` le charge avec un
+  avertissement sans jamais s'en servir, et une crew sans mode ou en `none` le refuse. `agent` est une clé des `agents:` de la crew et
+  `instructions` un texte facultatif ajouté aux questions. L'agent ne donne que des probabilités, vérifiées et lues comme la réponse du modèle : voir
   [le relais](./decision-models.md#le-relais-without).
 - Une tâche de décision exige toujours une `description` et un `expectedOutput` comme toute tâche, et
   la crew exige toujours un agent, même si aucune tâche ne l'utilise.

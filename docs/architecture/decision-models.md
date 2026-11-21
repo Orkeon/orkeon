@@ -350,7 +350,8 @@ With the circuit off, the run makes **no** `IDecisionModel` call, whatever the c
 named in every message, as `the decision circuit is off: <cause>`, the cause being `--no-decision`,
 `Orkeon:Decision:Enabled=false` or `no decision provider resolved`, and, in the relay pass of a forge
 trial, `the forge's trial pass without System One` (cause `trial`); when the switch and the setting
-both hold, the switch is named. Each consumer that degrades says so in one warning:
+both hold, the switch is named. A forge trial emits no `run.decision`: its pass reports `circuit` and `cause` on the
+forge stream's `run.started`, `task.completed` and `llm.call.*` lines. Each consumer that degrades says so in one warning:
 
 | Consumer | Circuit off |
 | --- | --- |
@@ -359,7 +360,7 @@ both hold, the switch is named. Each consumer that degrades says so in one warni
 | Decision profile | Built without the model: its calls go to the `route`'s `fallback`, else to the `target`; a `verify` never escalates; a `guard` lets the call go on, except in a `failClosed` profile, where every call is blocked. One warning when the profile is first resolved. |
 | LLM judge (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuses to start, naming the cause (the runner host checks it with its settings); `Open` leaves the judge out of the pipeline, with one warning, and the other guards stay. |
 | `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
-| Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` with the cause as `reason`. One warning per run. |
+| Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` and `reason: circuit-off`, with the cause as `detail`. One warning per run. |
 | Agent routing (`llm.profile: auto`) | The task runs on the host's `default` profile, never the agent's own, with no decision call; `agent.route` reports `reason: circuit-off`. One warning per run. |
 | Tool-result pruning (`Orkeon:Compaction:Prune`) | Nothing is pruned and no decision call is made; the loop compacts as it would without it, and no `agent.pruned` is written. One warning per run. |
 
@@ -393,9 +394,11 @@ A crew with no mode may not declare a `without:` relay: the load asks for `decis
 agent of the crew (`without: { agent, instructions }`, `instructions` optional), and an agent the crew does not
 declare is refused at load. A `required` crew that asks System One nothing (no decision task, no `system_one_decide`,
 no decision profile, no `llm.profile: auto`, no `skills: { auto: true }`, no `compaction: { prune: true }`) loads with a
-warning. A crew built in C# meets these rules at `CrewBuilder.Build()`, with two differences: its relay names an
-agent by its role (a crew factory resolves a YAML or `.ork.ts` key to the agent), and its decision profiles are not
-checked there, since only the crew factory knows the host's profiles.
+warning. A crew built in C# meets these rules at `CrewBuilder.Build()`, with three differences: its relay names an
+agent by its role (a crew factory resolves a YAML or `.ork.ts` key to the agent); its decision profiles are not
+checked there, since only the crew factory knows the host's profiles, and neither is `llm.profile: auto`, so a `none`
+crew with an agent on `LlmConfig.OnProfile("auto")` is not refused; and the rules' warnings are dropped, only their
+refusals fail the build.
 
 With `mode: required` and the circuit off, whatever the cause, the run is **refused before its first task**, in every
 process and every host: `crew 'x' requires System One (decision.mode: required) and the decision circuit is off:
@@ -410,7 +413,7 @@ cause ([the run event bus](./run-event-bus.md)).
 
 | Mode | Circuit off |
 | --- | --- |
-| no mode (`unspecified`) | Each decision task answers by its fallback, marked `defaulted`, as above; a resumed run behaves as before this mode existed. |
+| no mode (`unspecified`) | Each decision task answers by its fallback, marked `defaulted`, as above; a resumed run replays the decisions it recorded, a `defaulted` fallback included, without deciding again ([below](#decisions-on-resume)). |
 | `none` | Nothing changes: the crew has no decision task. |
 | `optional` | Each decision task is answered by its `without:` relay; no fallback is used, and `defaulted` stays `false`. |
 | `required` | The run is refused before its first task, with `decision_unavailable`. |
@@ -431,7 +434,8 @@ The schema of that object is generated from the questions. A provider that decla
 its response format; any other receives it in the prompt, and its answer (a fenced block included) is read and
 checked the same way.
 
-- **Checks.** The answer is JSON that parses, every question is present, every value is in [0, 1], and each
+- **Checks.** The answer is JSON that parses, every question is present and no other key, a distribution gives a
+  probability to every option or level and to none that was not offered, every value is in [0, 1], and each
   distribution sums to 1 within a tolerance of **0.05**; it is then normalised.
 - **Derivation.** The rest is derived exactly as from the model's answer: a `choice` takes the most probable option
   as `chosen`, with that probability as its confidence; a `noul` is `yes` when p >= 0.5, with a confidence of
@@ -440,8 +444,8 @@ checked the same way.
 - **One more try.** An answer that fails a check is asked once more, with the reason it was refused. This is the
   relay's own retry, not the task's `retry:` (which decision tasks refuse). A second refusal fails the task with
   the reason; so does an error of the call. No fallback is ever used.
-- **Reported.** The task's `task.completed` carries `decisionSource: relay` and `defaulted: false`; its
-  `model` is `relay:<role>`. The relay's prompt and completion tokens count on the task and in the run's totals,
+- **Reported.** The task's `task.completed` carries `decisionSource: relay`, `defaulted: false`, its answers as
+  `decision`; it names no model. The relay's prompt and completion tokens count on the task and in the run's totals,
   and its `cost.updated` names the operation `relay` with the relay agent's role as `agentId`.
 - **Rate limits.** A relay call is a model call of the relay agent: it waits its turn as an agent's call does, under
   the agent's `maxRpm`, the crew's `maxRpm` and `RateLimiting:AgentRequestsPerMinute`, and one Information line
@@ -465,7 +469,8 @@ refused, with `decision_circuit_mismatch` and exit `1`, naming both circuits: it
 source. Only the decisions of the tasks the crew still declares as decision tasks count, by their key (one whose
 definition changed under the same key still counts, though it would be decided again: the check is made at kickoff,
 before any task's fingerprint is compared), and they are compared with the circuit of the run that resumes: off when its runner has no decision model. A run that recorded no decision yet resumes under either
-circuit, and a crew with no mode keeps the resume behaviour it had. A decision is replayed only while its task is
+circuit, and a crew with no mode is never refused for its circuit: its recorded decisions are replayed, a
+`defaulted` fallback included, even when the run resumes with System One back. A decision is replayed only while its task is
 unchanged: its questions, fallback and relay count in the task's checkpoint fingerprint, beside its description and
 dependencies, so a decision task edited since the run is decided again, and the tasks after it run again.
 
@@ -511,9 +516,10 @@ never on its own.
   without an answer, or with the circuit off, the host's default profile does, and `agent.route` says why
   ([`Orkeon:Decision:Route`](../reference/configuration.md#orkeondecisionroute)). This is one pick per task, not the
   `route` stage of a decision profile, which picks a profile for each call.
-- **Tool-result pruning** — once a loop's estimate reaches `Orkeon:Compaction:Prune:FillShare` of the usable window,
-  before compaction, it asks two `noul` per older read-tool result, `needed_n` and `whole_n`, eight results to a
-  request; the state is the task's text cut at 2,000 characters and one line per call (tool, input cut at 200
+- **Tool-result pruning** — once a loop's estimate reaches the smaller of `Orkeon:Compaction:Prune:FillShare` of the
+  usable window and the compaction trigger, before compaction, it asks two `noul` per older read-tool result,
+  `needed_n` and `whole_n`, eight results to a request and 24 at most at one pressure, oldest first, the rest at the
+  next model call; the state is the task's text cut at 2,000 characters and one line per call (tool, input cut at 200
   characters, result size, age in model turns), never the result itself. Not needed drops the result, needed but not
   whole keeps its first `HeadChars` characters, needed whole keeps it, at a probability of 0.5. A failed request
   leaves its results as they are; with the circuit off nothing is asked

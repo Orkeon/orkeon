@@ -262,6 +262,10 @@ unset is the section's (the key, `BaseUrl`, `TimeoutSeconds`, `Thinking`, `MaxTo
 sets wins (the planner's temperature 0.3, an analysis's output cap). A profile's provider works
 the same way with its own keys.
 
+Left unset, `ContextWindowTokens` (here and under `Profiles:<name>`) falls back on the documented window of
+a model only for the four models the table of [`Orkeon:Compaction`](#orkeoncompaction) lists;
+every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
+
 <!-- settings:Llm -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
@@ -1840,8 +1844,13 @@ message among the older turns (the soft-budget steering) stays, right after the 
 trigger, else the last turn alone; a call over the trigger with one turn alone waits for a later
 turn, and counts as no failure. The window is the profile's
 `ContextWindowTokens`, else the model's documented one, else
-[`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession), with one warning per profile naming
-the figure assumed. That figure may overstate a smaller model the table does not know, so on it
+[`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession) (200000 by default), with one warning
+per profile naming the figure assumed. The table of documented windows (`LlmModelContextWindows`)
+knows four models: `kimi-k3` (1000000 tokens), `kimi-k2.6`, `mistral-medium-2604` and
+`mistral-medium-3-5` (256000 each). A model id matches one of them exactly, else the longest one
+it starts with followed by `-`, `:`, `@` or `_`, else by its part after a vendor slash, ignoring
+case; every other model compacts against the assumed figure. That figure may overstate a smaller
+model, so on it
 the loop keeps the 40-message trim beside compaction; set `ContextWindowTokens` on that model's
 profile to compact against its real window alone. Three failed compactions in a row bring the 40-message trim back for the
 rest of the task attempt (a retried task compacts again), and the pruning below stops with them.
@@ -1904,7 +1913,10 @@ short is said in the prompt and in the `cut` field of
 `agent.skills`; a skill left out (no room left in the block, a file that cannot be read) is said
 in that `cut` field alone. An agent with `skills: [<paths>]` carries those files on every task. An agent with `skills: { auto: true, fallback: [<paths>] }` has System One pick, for
 each task, at most three skills of `Library`: the decision model reads one line per skill (its
-front-matter `name` and `description`, else its first heading and line), never a body. When the
+front-matter `name` and `description`, else its first heading and line), never a body, for the
+first 24 files of the library in name order (ordinal) alone: a file past the 24th is never offered.
+The question is one choice, so the skills that fit split the model's probability: a skill is
+picked when its share reaches 0.3, the largest share first. When the
 decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`, no decision
 provider), when the library holds no skill or cannot be read, or when the decision model fails or
 answers no usable choice (`reason: pick-failed`), the agent carries its `fallback` list, else no skill, with one warning per run and no error. The choice holds
@@ -2160,7 +2172,9 @@ The typed memory behind `memory_store` (`FileCategoryMemoryStore`): one `memory.
 
 ### `Orkeon:Cli:Session`
 
-The context window used by `token_budget` (`TokenBudgetTool`) and the TUI.
+The context window used by `token_budget` (`TokenBudgetTool`) and the TUI, and the one the agent
+loops compact and prune against when an LLM profile sets no `ContextWindowTokens` and the table
+of documented windows does not know its model ([`Orkeon:Compaction`](#orkeoncompaction)).
 
 <!-- settings:Orkeon:Cli:Session -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.

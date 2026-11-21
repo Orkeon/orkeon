@@ -280,6 +280,10 @@ celle de la section au lieu de la remplacer. Ce qu'il laisse vide est celui de l
 0,3 du planificateur, le plafond de sortie d'une analyse). Le fournisseur d'un profil fait de même
 avec ses propres clés.
 
+Non renseigné, `ContextWindowTokens` (ici et sous `Profiles:<nom>`) ne se rabat sur la fenêtre documentée d'un
+modèle que pour les quatre modèles que liste la table de [`Orkeon:Compaction`](#orkeoncompaction) ;
+tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
+
 <!-- settings:Llm -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
@@ -1747,7 +1751,7 @@ livré : c'est celui qui est installé sur la machine. La fenêtre est visible s
 | `Profile` | chaîne | — |  | Profil avec lequel un navigateur démarre quand l'agent n'en nomme aucun : `disposable` (par défaut, un dossier neuf supprimé à la fermeture du navigateur), le nom d'un profil du Firefox installé sur l'hôte (`profiles.ini`), ou le chemin d'un dossier de profil. Un profil nommé est utilisé sur place, avec ses cookies et ses sessions, et jamais supprimé ; un profil qu'un autre Firefox tient ouvert est refusé. |
 | `ProfileRoot` | chaîne | — |  | Dossier sous lequel chaque navigateur reçoit son propre dossier de profil, supprimé à la fermeture du navigateur. Non renseigné : `~/snap/firefox/common/orkeon/profiles` quand Firefox est un snap (un snap ne lit pas le dossier temporaire du système), sinon `orkeon-firefox` sous le dossier temporaire du système. |
 | `SharedInstance` | booléen | `false` |  | `true` partage un navigateur par profil entre les exécutions d'agents de l'hôte : chaque exécution y pilote ses propres onglets, et le navigateur se ferme quand la dernière exécution le quitte, sauf si `Lifetime` vaut `Host`. Par défaut, chaque exécution a son propre navigateur. |
-| `StartupTimeoutSeconds` | entier | `30` |  | Secondes laissées à Firefox pour démarrer : pour ouvrir son protocole distant, puis à nouveau pour répondre à sa session, ce qu'il fait une fois sa première fenêtre chargée. |
+| `StartupTimeoutSeconds` | entier | `30` |  | Secondes laissées à Firefox pour ouvrir son protocole distant ; sa session, à laquelle il répond une fois sa première fenêtre chargée, attend ensuite la plus grande de cette valeur et de `CommandTimeoutSeconds`. |
 <!-- /settings -->
 
 ### `MCP`
@@ -1899,9 +1903,13 @@ résumé. Quand les `KeepRecentTurns` tours sont tout ce qu'il y a, moins sont g
 nombre dont les messages passent sous le seuil, sinon le dernier tour seul ; un appel au-delà du
 seuil avec un seul tour attend un tour plus tard, et ne compte pas comme un échec. La fenêtre est le
 `ContextWindowTokens` du profil, sinon celle que documente le modèle, sinon
-[`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession), avec un avertissement par profil qui
-nomme le chiffre supposé. Ce chiffre peut surestimer un modèle plus petit que la table ne connaît
-pas : sur lui, la boucle garde la coupe à 40 messages à côté de la compaction ; donnez
+[`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession) (200000 par défaut), avec un
+avertissement par profil qui nomme le chiffre supposé. La table des fenêtres documentées
+(`LlmModelContextWindows`) connaît quatre modèles : `kimi-k3` (1000000 tokens), `kimi-k2.6`,
+`mistral-medium-2604` et `mistral-medium-3-5` (256000 chacun). Un identifiant de modèle en prend un
+exactement, sinon le plus long par lequel il commence suivi de `-`, `:`, `@` ou `_`, sinon par sa
+partie après une barre oblique de vendeur, sans tenir compte de la casse ; tout autre modèle
+compacte contre le chiffre supposé. Ce chiffre peut surestimer un modèle plus petit : sur lui, la boucle garde la coupe à 40 messages à côté de la compaction ; donnez
 `ContextWindowTokens` au profil de ce modèle pour compacter contre sa vraie fenêtre seule. Trois compactions ratées de suite
 ramènent la coupe à 40 messages pour le reste de la tentative de la tâche (une tâche relancée
 compacte de nouveau), et l'élagage ci-dessous s'arrête avec elles. Chaque
@@ -1917,8 +1925,8 @@ de préfixe automatique facture de nouveau la conversation après la coupe.
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `Enabled` | booléen | `true` | Si les boucles compactent leur conversation. Vrai par défaut : une longue boucle paie un appel de résumé au lieu de perdre son milieu dans la coupe à 40 messages. Faux ramène cette coupe, comme le fait `compaction: { enabled: false }` d'un agent pour cet agent seul. |
-| `KeepRecentTurns` | entier | `6` | Combien des tours les plus récents une compaction garde mot pour mot, un tour étant un message de l'assistant avec ses résultats d'outil (un appel d'outil n'est jamais séparé de son résultat). 6 par défaut ; 0 résume tous les tours. |
-| `Profile` | chaîne | — | Le profil LLM qui écrit le résumé : `default` ou un profil de `Llm:Profiles` ; un nom que l'hôte ne propose pas (absent de `Llm:Profiles`, ou que `Orkeon:Host:LlmProfiles` écarte), ou `auto`, refuse le démarrage. Omis, le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
+| `KeepRecentTurns` | entier | `6` | Combien des tours les plus récents une compaction garde mot pour mot, un tour étant une réponse de l'assistant, en un message ou plusieurs, avec ses résultats d'outil (un appel d'outil n'est jamais séparé de son résultat). 6 par défaut ; 0 résume tous les tours. |
+| `Profile` | chaîne | — | Le profil LLM qui écrit le résumé : `default`, un profil de `Llm:Profiles` ou un profil de décision de `Orkeon:Decision:Profiles` ; un nom que l'hôte ne propose pas (qu'aucune des deux sections ne définit, ou que `Orkeon:Host:LlmProfiles` écarte), ou `auto`, refuse le démarrage. Omis, le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
 | `TriggerShare` | nombre | `0.75` | La part de la fenêtre utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum documenté du modèle, sinon 4096, au plus la moitié de la fenêtre) que le prompt estimé atteint pour que la boucle compacte, au-dessus de 0 et au plus 1. 0,75 par défaut ; `compaction: { triggerShare }` d'un agent la remplace. |
 <!-- /settings -->
 
@@ -1966,7 +1974,11 @@ illisible) est dit dans ce seul champ `cut`. Un agent avec `skills: [<chemins>]`
 fichiers à chaque tâche. Un agent avec
 `skills: { auto: true, fallback: [<chemins>] }` fait choisir à System One, pour chaque tâche, au
 plus trois skills de `Library` : le modèle de décision lit une ligne par skill (le `name` et la
-`description` de son front matter, sinon son premier titre et sa première ligne), jamais un corps.
+`description` de son front matter, sinon son premier titre et sa première ligne), jamais un corps,
+pour les 24 premiers fichiers de la bibliothèque dans l'ordre des noms (ordinal) seuls : un fichier
+au-delà du 24e n'est jamais proposé. La question est un choix unique, si bien que les skills qui
+conviennent se partagent la probabilité du modèle : un skill est choisi quand sa part atteint 0,3,
+la plus grande part d'abord.
 Quand le circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enabled: false`, aucun
 fournisseur de décision), quand la bibliothèque ne contient aucun skill ou ne peut être lue, ou
 quand le modèle de décision échoue ou ne répond aucun choix utilisable (`reason: pick-failed`),
@@ -2225,7 +2237,10 @@ La mémoire typée derrière `memory_store` (`FileCategoryMemoryStore`) : un `me
 
 ### `Orkeon:Cli:Session`
 
-La fenêtre de contexte utilisée par `token_budget` (`TokenBudgetTool`) et le TUI.
+La fenêtre de contexte utilisée par `token_budget` (`TokenBudgetTool`) et le TUI, et celle contre
+laquelle les boucles d'agent compactent et élaguent quand un profil LLM ne fixe aucun
+`ContextWindowTokens` et que la table des fenêtres documentées ne connaît pas son modèle
+([`Orkeon:Compaction`](#orkeoncompaction)).
 
 <!-- settings:Orkeon:Cli:Session -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

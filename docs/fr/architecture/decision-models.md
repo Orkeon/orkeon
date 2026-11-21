@@ -361,17 +361,19 @@ Circuit coupé, l'exécution ne fait **aucun** appel à `IDecisionModel`, quelle
 cause est nommée dans chaque message, sous la forme `the decision circuit is off: <cause>`, la cause
 étant `--no-decision`, `Orkeon:Decision:Enabled=false` ou `no decision provider resolved`, et, dans le
 passage par les relais d'un essai de la forge, `the forge's trial pass without System One` (cause `trial`) ; quand
-l'option et le réglage valent tous deux, c'est l'option qui est nommée. Chaque consommateur qui se
+l'option et le réglage valent tous deux, c'est l'option qui est nommée. Un essai de la forge n'émet aucun
+`run.decision` : son passage indique `circuit` et `cause` sur les lignes `run.started`, `task.completed` et
+`llm.call.*` du flux de la forge. Chaque consommateur qui se
 dégrade le dit en un avertissement :
 
 | Consommateur | Circuit coupé |
 | --- | --- |
 | Tâche de décision | Répond par son repli, comme ci-dessus. |
-| Outil `system_one_decide` | Retenu : une crew qui le liste échoue au chargement sous `StrictTools` (le défaut des runners), en nommant l'outil et la cause (`tool 'system_one_decide' withheld: the decision circuit is off: --no-decision`) ; une crew `required` rencontre à la place le refus de son mode ; sinon il est ignoré avec un avertissement. Sous `--validate`, c'est une ligne `WARNING:`, l'outil n'est pas compté dans `tools resolved` et le code de sortie reste 0. |
+| Outil `system_one_decide` | Retiré : une crew qui le liste échoue au chargement sous `StrictTools` (le défaut des runners), en nommant l'outil et la cause (`tool 'system_one_decide' withheld: the decision circuit is off: --no-decision`) ; une crew `required` rencontre à la place le refus de son mode ; sinon il est ignoré avec un avertissement. Sous `--validate`, c'est une ligne `WARNING:`, l'outil n'est pas compté dans `tools resolved` et le code de sortie reste 0. |
 | Profil de décision | Construit sans le modèle : ses appels vont au `fallback` de la `route`, sinon à la `target` ; un `verify` n'escalade jamais ; un `guard` laisse passer l'appel, sauf dans un profil `failClosed`, où chaque appel est bloqué. Un avertissement à la première résolution du profil. |
 | Juge LLM (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuse de démarrer, en nommant la cause (l'hôte runner le vérifie avec ses réglages) ; `Open` retire le juge du pipeline, avec un avertissement, et les autres gardiens restent. |
 | Reranker `decision` | Laisse passer les passages dans leur ordre de récupération, comme `none`, avec un avertissement. |
-| Skills d'un agent (`skills: { auto: true }`) | L'agent porte sa liste `fallback`, sinon aucun skill, et la tâche s'exécute ; `agent.skills` indique `mode: fallback` avec la cause en `reason`. Un avertissement par run. |
+| Skills d'un agent (`skills: { auto: true }`) | L'agent porte sa liste `fallback`, sinon aucun skill, et la tâche s'exécute ; `agent.skills` indique `mode: fallback` et `reason: circuit-off`, avec la cause en `detail`. Un avertissement par run. |
 | Routage d'un agent (`llm.profile: auto`) | La tâche tourne sur le profil `default` de l'hôte, jamais sur celui de l'agent, sans appel de décision ; `agent.route` indique `reason: circuit-off`. Un avertissement par run. |
 | Élagage des résultats d'outils (`Orkeon:Compaction:Prune`) | Rien n'est élagué et aucun appel de décision n'est fait ; la boucle compacte comme elle le ferait sans lui, et aucun `agent.pruned` n'est écrit. Un avertissement par run. |
 
@@ -406,14 +408,16 @@ relais nomme un agent de la crew (`without: { agent, instructions }`, `instructi
 crew ne déclare pas est refusé au chargement. Une crew `required` qui ne demande rien à System One (aucune tâche de
 décision, aucun `system_one_decide`, aucun profil de décision, aucun `llm.profile: auto`, aucun `skills: { auto: true }`,
 aucun `compaction: { prune: true }`) se charge avec un avertissement. Une crew construite en C# rencontre ces règles à
-`CrewBuilder.Build()`, avec deux différences : son relais nomme un agent par son rôle (une fabrique de crew résout la
-clé d'un YAML ou d'un `.ork.ts` vers l'agent), et ses profils de décision n'y sont pas vérifiés, car seule la fabrique
-de crew connaît les profils de l'hôte.
+`CrewBuilder.Build()`, avec trois différences : son relais nomme un agent par son rôle (une fabrique de crew résout la
+clé d'un YAML ou d'un `.ork.ts` vers l'agent) ; ses profils de décision n'y sont pas vérifiés, car seule la fabrique
+de crew connaît les profils de l'hôte, et `llm.profile: auto` non plus, si bien qu'une crew `none` dont un agent est
+sur `LlmConfig.OnProfile("auto")` n'est pas refusée ; et les avertissements des règles sont abandonnés, seuls leurs
+refus font échouer la construction.
 
 Avec `mode: required` et le circuit coupé, quelle qu'en soit la cause, le run est **refusé avant sa première tâche**,
 dans chaque processus et chaque hôte : `crew 'x' requires System One (decision.mode: required) and the decision
 circuit is off: --no-decision`. L'erreur porte le code `decision_unavailable`, et `orkeon run` sort en `69`
-(`EX_UNAVAILABLE`). Une crew `required` qui liste `system_one_decide` se charge quand même, l'outil retenu avec un
+(`EX_UNAVAILABLE`). Une crew `required` qui liste `system_one_decide` se charge quand même, l'outil retiré avec un
 avertissement, pour rencontrer ce refus plutôt qu'un outil inconnu. Avec `mode: optional` et le circuit coupé, chaque
 tâche de décision reçoit la réponse de son relais `without:` ([plus bas](#le-relais-without)). `--validate` signale le refus
 qu'un run rencontrerait par une ligne `WARNING:` et sort en `0` ([le CLI](../reference/cli.md#orkeon-run)), et un run
@@ -423,7 +427,7 @@ qu'un run rencontrerait par une ligne `WARNING:` et sort en `0` ([le CLI](../ref
 
 | Mode | Circuit coupé |
 | --- | --- |
-| sans mode (`unspecified`) | Chaque tâche de décision répond par son repli, marquée `defaulted`, comme ci-dessus ; un run repris se comporte comme avant l'existence du mode. |
+| sans mode (`unspecified`) | Chaque tâche de décision répond par son repli, marquée `defaulted`, comme ci-dessus ; un run repris rejoue les décisions qu'il a enregistrées, un repli `defaulted` compris, sans décider à nouveau ([plus bas](#les-décisions-à-la-reprise)). |
 | `none` | Rien ne change : la crew n'a pas de tâche de décision. |
 | `optional` | Chaque tâche de décision reçoit la réponse de son relais `without:` ; aucun repli n'est utilisé, et `defaulted` reste `false`. |
 | `required` | Le run est refusé avant sa première tâche, avec `decision_unavailable`. |
@@ -445,8 +449,9 @@ Le schéma de cet objet est généré depuis les questions. Un fournisseur qui d
 format de réponse ; tout autre le reçoit dans le prompt, et sa réponse (un bloc clôturé compris) est lue et vérifiée
 de la même façon.
 
-- **Vérifications.** La réponse est un JSON qui se lit, chaque question est présente, chaque valeur est dans [0, 1],
-  et chaque distribution somme à 1 à une tolérance de **0,05** près ; elle est ensuite normalisée.
+- **Vérifications.** La réponse est un JSON qui se lit, chaque question est présente et aucune autre clé, une
+  distribution donne une probabilité à chaque option ou niveau et à aucun qui n'a pas été proposé, chaque valeur est
+  dans [0, 1], et chaque distribution somme à 1 à une tolérance de **0,05** près ; elle est ensuite normalisée.
 - **Dérivation.** Le reste se dérive exactement comme depuis la réponse du modèle : un `choice` prend l'option la
   plus probable comme `chosen`, avec cette probabilité pour confiance ; un `noul` vaut `yes` quand p >= 0,5, avec une
   confiance de max(p, 1 - p) ; un `score` est la position pondérée, la somme des i * p(i) où le premier niveau
@@ -455,8 +460,8 @@ de la même façon.
   refus. C'est le nouvel essai propre au relais, pas le `retry:` de la tâche (que les tâches de décision refusent).
   Un second refus fait échouer la tâche avec la raison ; une erreur de l'appel aussi. Aucun repli n'est jamais
   utilisé.
-- **Rapporté.** Le `task.completed` de la tâche porte `decisionSource: relay` et `defaulted: false` ; son `model`
-  est `relay:<rôle>`. Les jetons de prompt et de complétion du relais comptent sur la tâche et dans les totaux du
+- **Rapporté.** Le `task.completed` de la tâche porte `decisionSource: relay`, `defaulted: false` et ses réponses en
+  `decision` ; il ne nomme aucun modèle. Les jetons de prompt et de complétion du relais comptent sur la tâche et dans les totaux du
   run, et son `cost.updated` nomme l'opération `relay` avec le rôle de l'agent relais pour `agentId`.
 - **Limites de débit.** Un appel du relais est un appel de modèle de l'agent relais : il attend son tour comme
   l'appel d'un agent, sous le `maxRpm` de l'agent, celui de la crew et `RateLimiting:AgentRequestsPerMinute`, et
@@ -482,7 +487,8 @@ viendraient sinon de l'autre source. Seules comptent les décisions des tâches 
 tâches de décision, par leur clé (une tâche dont la définition a changé sous la même clé compte encore, bien qu'elle
 soit décidée à nouveau : la vérification se fait au lancement, avant qu'aucune empreinte de tâche ne soit comparée),
 et elles sont comparées au circuit du run qui reprend : coupé quand son exécuteur n'a pas de modèle de décision. Un run qui
-n'a encore enregistré aucune décision reprend sous l'un ou l'autre circuit, et une crew sans mode garde le comportement de reprise qu'elle avait.
+n'a encore enregistré aucune décision reprend sous l'un ou l'autre circuit, et une crew sans mode n'est jamais refusée pour son circuit : ses décisions
+enregistrées sont rejouées, un repli `defaulted` compris, même quand le run reprend avec System One revenu.
 Une décision n'est rejouée que tant que sa tâche est inchangée : ses questions, son repli et son relais comptent dans
 l'empreinte de la tâche au checkpoint, à côté de sa description et de ses dépendances ; une tâche de décision modifiée
 depuis le run est donc décidée à nouveau, et les tâches qui la suivent tournent à nouveau.
@@ -530,9 +536,10 @@ seule, jamais de lui-même.
   la tâche ; en dessous, sans réponse, ou circuit coupé, c'est le profil par défaut de l'hôte, et `agent.route` dit
   pourquoi ([`Orkeon:Decision:Route`](../reference/configuration.md#orkeondecisionroute)). C'est un choix par tâche,
   pas l'étape `route` d'un profil de décision, qui choisit un profil à chaque appel.
-- **Élagage des résultats d'outils** — dès que l'estimation d'une boucle atteint `Orkeon:Compaction:Prune:FillShare`
-  de la fenêtre utile, avant la compaction, elle pose deux `noul` par ancien résultat d'outil de lecture,
-  `needed_n` et `whole_n`, huit résultats par requête ; l'état est le texte de la tâche coupé à 2 000 caractères et
+- **Élagage des résultats d'outils** — dès que l'estimation d'une boucle atteint le plus petit de
+  `Orkeon:Compaction:Prune:FillShare` de la fenêtre utile et du seuil de compaction, avant la compaction, elle pose
+  deux `noul` par ancien résultat d'outil de lecture, `needed_n` et `whole_n`, huit résultats par requête et 24 au
+  plus à une même pression, les plus anciens d'abord, le reste au prochain appel du modèle ; l'état est le texte de la tâche coupé à 2 000 caractères et
   une ligne par appel (outil, entrée coupée à 200 caractères, taille du résultat, âge en tours du modèle), jamais le
   résultat lui-même. Inutile retire le résultat, utile mais pas en entier en garde les `HeadChars` premiers
   caractères, utile en entier le garde, à une probabilité de 0,5. Une requête ratée laisse ses résultats tels quels ;
@@ -542,7 +549,7 @@ seule, jamais de lui-même.
   coupé, il garde l'ordre de récupération.
 - **Tool** — `system_one_decide` permet à un agent de poser des questions `choice`, `score` et
   `noul` ([Inventaire des outils](../tools/inventory.md)) ; `box` est refusé. Circuit coupé, il est
-  retenu.
+  retiré.
 - **La forge** — `orkeon forge` demande à System One ses propres avis pendant qu'elle conçoit une équipe : un
   `score` de la couverture de la demande par le brief, un `choice` de processus (transmis à l'assistant sous
   `processHint` à une probabilité de 0,6 ou plus, parmi les processus que permet le mode de décision de l'équipe),

@@ -353,7 +353,7 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 | `spawn_agent` (C# `SpawnAgentTool`) | ❌ (l'hôte doit l'enregistrer) | ❌ |
 | `code_interpreter` | enregistrement en type concret seulement — non résoluble par nom | idem |
 | `progress_report` | ❌ | ✅ (commandes scriptées) |
-| `system_one_decide` | ✅ quand un fournisseur de décision est configuré (`Orkeon:Decision:Provider`, ou déduit de sa section ou de sa clé d'API) et que le circuit de décision est actif : avec `--no-decision` ou `Orkeon:Decision:Enabled=false`, il est retenu : une crew qui le liste échoue au chargement sous `StrictTools` (le défaut des runners) ; une crew `required` rencontre à la place le refus de son mode ; sinon il est ignoré avec un avertissement ([Modèles de décision](../architecture/decision-models.md#chaque-consommateur-suit-le-circuit)) | ✅ même règle |
+| `system_one_decide` | ✅ quand un fournisseur de décision est configuré (`Orkeon:Decision:Provider`, ou déduit de sa section ou de sa clé d'API) et que le circuit de décision est actif : avec `--no-decision` ou `Orkeon:Decision:Enabled=false`, il est retiré : une crew qui le liste échoue au chargement sous `StrictTools` (le défaut des runners) ; une crew `required` rencontre à la place le refus de son mode ; sinon il est ignoré avec un avertissement ([Modèles de décision](../architecture/decision-models.md#chaque-consommateur-suit-le-circuit)) | ✅ même règle |
 | `mcp_prompt_get` | ✅ quand `MCP:Servers` déclare des serveurs | ✅ même règle |
 | `memory_recall` | ✅ quand `Orkeon:CognitiveMemory:Enabled` = `true`, tenu par une crew à `memory: true` | ❌ |
 

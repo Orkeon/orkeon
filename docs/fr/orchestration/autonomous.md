@@ -157,12 +157,16 @@ Quand la stratégie délègue, ou que `SpawnAgentTool` crée un agent, le sous-a
 
 ```csharp
 var childBudget = parentBudget.CreateChildBudget();
-// MaxToolCalls       = max(1, parent.Max - parent.Current)
-// MaxDelegationDepth = max(0, parent.Max - parent.Current - 1)
-// MaxWallTime        = parent.MaxWallTime - parent.Elapsed
-// MaxTokensConsumed  = max(100, parent.Max - parent.Current)
-// MaxSpawnedAgents   = max(0, parent.Max - parent.Current)
+// La chaîne : le parent et chaque budget qu'il impute (ChargedTo), de proche en proche.
+// MaxToolCalls       = sans plafond si aucun budget de la chaîne ne le plafonne, sinon max(1, min sur la chaîne de Max - Current)
+// MaxTokensConsumed  = de même, plancher 100
+// MaxContextTokens   = de même, plancher 100
+// MaxSpawnedAgents   = de même, plancher 0
+// MaxWallTime        = sans plafond si aucun budget de la chaîne ne le plafonne, sinon min sur la chaîne de MaxWallTime - Elapsed (sans plancher)
+// MaxDelegationDepth = max(0, parent.Max - parent.Current - 1)   (le parent seul)
 ```
+
+Une dimension qu'aucun budget de la chaîne ne plafonne (`int.MaxValue`, ou `TimeSpan.MaxValue` pour le temps mural) reste sans plafond pour l'enfant, quoi qu'on y ait déjà dépensé : une crew sans `tokens` ne donne à ses enfants aucun plafond de tokens.
 
 Un budget enfant est une copie indépendante de l'allocation **restante** du parent, avec ses propres compteurs : deux enfants dérivés l'un après l'autre reçoivent chacun la totalité du reste. Le plafond du parent n'est tenu que là où la consommation lui est aussi imputée — les tokens d'une exécution déléguée, et chaque spawn. Un budget peut aussi en imputer un autre (`ChargedTo`, posé par l'option `charge: "crew"` du [DSL de script](../reference/scripting-dsl.md)) : chaque appel d'outil, token et spawn qu'il enregistre l'est aussi sur celui-là, `CreateChildBudget()` transmet cette imputation à l'enfant (il n'impute pas le parent lui-même), et `IsExhausted` est vrai quand le budget lui-même ou celui qu'il impute est épuisé.
 

@@ -112,11 +112,11 @@ agents:
     compaction:           # Overrides Orkeon:Compaction for this agent (optional); a misspelled key fails the load
       enabled: bool       # default: Orkeon:Compaction:Enabled (true); false keeps the 40-message trim
       triggerShare: float # (0, 1], the share of the usable window that triggers a summary; default: Orkeon:Compaction:TriggerShare (0.75)
-      prune: bool         # Whether System One prunes this agent's older read-tool results before compacting; default: Orkeon:Compaction:Prune:Enabled (false); circuit off → nothing pruned
+      prune: bool         # Whether System One prunes this agent's older read-tool results before compacting; default: Orkeon:Compaction:Prune:Enabled (false); enabled: false or circuit off → nothing pruned
     skills: [string]      # Markdown files (virtual paths) appended to the system prompt under '## Skills' on every task (optional); each cut at Orkeon:Skills:MaxSkillChars, the block at MaxBlockChars
     # skills:             # Or the pick form: System One picks at most 3 skills of Orkeon:Skills:Library per task, reading one line per skill
     #   auto: true        # required in the map form; false fails the load (write a fixed list as a list)
-    #   fallback: [string] # carried when the decision circuit is off or the pick fails; absent: no skill. Any other key fails the load
+    #   fallback: [string] # carried when the decision circuit is off, the library is empty or unreadable, the pick fails or its answer holds no usable choice; absent: no skill. Any other key fails the load
     knowledge:            # Knowledge (RAG) collections attached to the agent (optional); an unknown key of an entry is refused, a malformed value stays a warning
       - string            # Short form: collection name with default options
       - collection: string       # Long form (required key)
@@ -172,7 +172,7 @@ tasks:
       state: [string]        # Keys of the tasks whose output the model judges; default: the outputs of the dependencies that ran
       longContext: bool      # default: false — asks for the model's long context
       fallback: {<question>: string}  # Answers used without a request when the decision circuit is off
-      without: {agent: string, instructions: string}  # decision.mode optional only: the agent that answers when the circuit is off
+      without: {agent: string, instructions: string}  # decision.mode optional (every decision task needs one) or required (loaded with a warning, never used); refused otherwise: the agent that answers when the circuit is off
     when:                 # Runs the task only when a decision task answered as written (one decision task per when:)
       <task>.<question>: [string] | ">= 0.7"  # An option list (choice, or [yes] / ["no"] on a yes-no), or a threshold: a probability (yes-no) or a level position (score)
       <task>.<question>.<option>: ">= 0.25"   # The probability of one option of a choice
@@ -278,8 +278,10 @@ tasks:
   choice, a level of a score, `yes` or `no` of a yes-no (quote `"no"`, which YAML reads as a
   boolean). A question without a fallback answer selects no option. See
   [the fallback](./decision-models.md#the-decision-circuit-and-the-fallback).
-- `without` (a crew with `decision.mode: optional` only) names the agent that answers the questions when the
-  circuit is off, `agent` a key of the crew's `agents:` and `instructions` an optional text added to the questions.
+- `without` names the agent that answers the questions when the circuit is off, in a crew with
+  `decision.mode: optional`, which requires it on every decision task; a `required` crew loads it with a warning and
+  never uses it, and a crew with no mode or `none` refuses it. `agent` is a key of the crew's `agents:` and
+  `instructions` an optional text added to the questions.
   The agent gives probabilities only, checked and read as the model's answer: see
   [the relay](./decision-models.md#the-without-relay).
 - A decision task still needs a `description` and an `expectedOutput` like any task, and the crew

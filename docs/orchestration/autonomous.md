@@ -157,12 +157,16 @@ When the strategy delegates, or `SpawnAgentTool` spawns, the sub-agent receives 
 
 ```csharp
 var childBudget = parentBudget.CreateChildBudget();
-// MaxToolCalls       = max(1, parent.Max - parent.Current)
-// MaxDelegationDepth = max(0, parent.Max - parent.Current - 1)
-// MaxWallTime        = parent.MaxWallTime - parent.Elapsed
-// MaxTokensConsumed  = max(100, parent.Max - parent.Current)
-// MaxSpawnedAgents   = max(0, parent.Max - parent.Current)
+// The chain: the parent and every budget it charges (ChargedTo), transitively.
+// MaxToolCalls       = uncapped if no budget of the chain caps it, else max(1, min over the chain of Max - Current)
+// MaxTokensConsumed  = the same, floor 100
+// MaxContextTokens   = the same, floor 100
+// MaxSpawnedAgents   = the same, floor 0
+// MaxWallTime        = uncapped if no budget of the chain caps it, else min over the chain of MaxWallTime - Elapsed (no floor)
+// MaxDelegationDepth = max(0, parent.Max - parent.Current - 1)   (the parent alone)
 ```
+
+A dimension no budget of the chain caps (`int.MaxValue`, or `TimeSpan.MaxValue` for the wall time) stays uncapped for the child, whatever was spent on it already: a crew with no `tokens` hands its children no token cap.
 
 A child budget is an independent copy of the parent's **remaining** allowance, with its own counters: two children derived one after the other each receive the full remainder. The parent's cap is held where the consumption is recorded on it too — the tokens of a delegated execution, and each spawn. A budget may also charge another one (`ChargedTo`, set by the `charge: "crew"` option of the [scripting DSL](../reference/scripting-dsl.md)): every tool call, token and spawn recorded on it is recorded there too, `CreateChildBudget()` hands that charge on to the child (it does not charge the parent itself), and `IsExhausted` is true when the budget itself or the one it charges is spent.
 
