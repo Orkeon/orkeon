@@ -449,6 +449,9 @@ public sealed class AgentBuilder
         if (_llm is not null)
             ValidateOwnProvider(_llm);
 
+        if (_llmConfig is { } llmConfig && AutoProfileModel(llmConfig) is { } model)
+            throw new BuilderValidationException("Agent", AutoProfileModelRefusal($"The agent '{_role.Value}' (.WithLlmConfig)", model));
+
         var agent = Agent.Create(new AgentCreateOptions
         {
             Role = _role,
@@ -477,6 +480,24 @@ public sealed class AgentBuilder
         agent.PermissionMode = _permissionMode;
         return agent;
     }
+
+    /// <summary>
+    /// The model a configuration names beside the profile <c>auto</c> (#434), or null: System One picks a rung of
+    /// the ladder, whose own model must run, and a model named beside it would run on every rung.
+    /// </summary>
+    internal static string? AutoProfileModel(LlmConfig config) =>
+        string.Equals(config.Profile?.Trim(), Orkeon.Constants.Llm.LlmProfileNames.Auto, StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrWhiteSpace(config.Model)
+            ? config.Model.Trim()
+            : null;
+
+    /// <summary>The refusal of a model named beside the profile <c>auto</c> (#434): one spelling for the builder and the crew factory.</summary>
+    /// <param name="who">The agent and where it names them.</param>
+    /// <param name="model">The model it names.</param>
+    internal static string AutoProfileModelRefusal(string who, string model) =>
+        $"{who} names the model '{model}' beside the LLM profile '{Orkeon.Constants.Llm.LlmProfileNames.Auto}': System One picks " +
+        "a profile of the route ladder (Orkeon:Decision:Route:Ladder) and that profile's own model runs, so a model named beside " +
+        "it would run on every rung. Drop the model, or name one profile instead of auto.";
 
     /// <summary>
     /// The agent's own provider against the rest of the builder (GAP-34), in the builder's words: a

@@ -475,6 +475,85 @@ public class CrewBuilderTests
         Assert.Contains("Agent 'Writer' declares skills: { auto: true }", ex.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseTheCrew_WhenANoneCrewHasAnAgentOnTheAutoProfile()
+    {
+        // Arrange
+        var agent = new AgentBuilder().Role("Writer").Goal("Write").WithLlmConfig(LlmConfig.OnProfile("auto")).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None).WithAgent(agent).WithTask(CreateTask());
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Agent 'Writer' names the profile 'auto', which System One picks and a crew with decision.mode: none refuses.", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseTheCrew_WhenANoneCrewHasATaskOverrideOnTheAutoProfile()
+    {
+        // Arrange
+        var task = new CrewTaskBuilder().Description("Write the notes").ExpectedOutput("Notes").WithKey("notes")
+            .WithLlmOverride(new LlmConfigOverride { Profile = "Auto" }).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None).WithAgent(CreateAgent("Writer")).WithTask(task);
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Task 'notes' names the profile 'Auto'", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldAcceptTheCrew_WhenOnlyAManagerWithNoTaskIsOnTheAutoProfile()
+    {
+        // Arrange: a manager with no task of its own runs on the default profile, as the crew factory rules (#434).
+        var manager = new AgentBuilder().Role("Lead").Goal("Lead").WithLlmConfig(LlmConfig.OnProfile("auto")).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None)
+            .Hierarchical(manager).WithAgent(CreateAgent("Writer")).WithTask(CreateTask());
+
+        // Act
+        var crew = builder.Build();
+
+        // Assert
+        Assert.Equal(manager.Id, crew.ManagerAgentId);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseTheCrew_WhenANoneCrewsManagerGivenAsAnObjectDeclaresSkillsAuto()
+    {
+        // Arrange
+        var manager = new AgentBuilder().Role("Lead").Goal("Lead").Skills(new AgentSkills { Auto = true }).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None)
+            .WithAgent(CreateAgent("Writer")).WithTask(CreateTask()).Hierarchical(manager);
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Agent 'Lead' declares skills: { auto: true }", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseTheCrew_WhenANoneCrewsManagerGivenWithWithManagerPrunes()
+    {
+        // Arrange
+        var manager = new AgentBuilder().Role("Lead").Goal("Lead").Compaction(new AgentCompaction { Prune = true }).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None).Hierarchical()
+            .WithManager(manager).WithAgent(CreateAgent("Writer")).WithTask(CreateTask());
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Agent 'Lead' declares compaction: { prune: true }", ex.Message, StringComparison.Ordinal);
+    }
+
     #region Test Doubles
 
     private sealed class StubLlmProvider : ILlmProvider

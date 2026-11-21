@@ -323,4 +323,36 @@ public sealed class LlmProfileAutoRouteTests
         Assert.Equal(1, _large.ChatCallCount);
         Assert.Equal(0, _default.ChatCallCount);
     }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldRefuseTheLoad_WhenTheAgentNamesAModelBesideAuto()
+    {
+        // Arrange: the model would run on every rung System One picks.
+        await using var container = Container(null, "small", "large");
+        var yaml = Crew().Replace("profile: auto", "profile: auto\n      model: model-of-large", StringComparison.Ordinal);
+
+        // Act
+        var error = await LoadFailureAsync(container, yaml);
+
+        // Assert
+        Assert.StartsWith("Crew 'routed': agent 'coder' (its llm: block, or the crew's) names the model 'model-of-large' beside the LLM profile 'auto'",
+            error.Message, StringComparison.Ordinal);
+        Assert.Empty(_model.Requests);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldRefuseTheLoad_WhenTheCrewsLlmBlockGivesAModelToAnAgentOnAuto()
+    {
+        // Arrange
+        await using var container = Container(null, "small", "large");
+        var yaml = Crew().Replace("process: sequential", "process: sequential\nllm:\n  model: model-of-small", StringComparison.Ordinal);
+
+        // Act
+        var error = await LoadFailureAsync(container, yaml);
+
+        // Assert
+        Assert.Contains("names the model 'model-of-small' beside the LLM profile 'auto'", error.Message, StringComparison.Ordinal);
+    }
 }

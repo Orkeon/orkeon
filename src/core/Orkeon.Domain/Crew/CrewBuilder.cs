@@ -369,8 +369,9 @@ public sealed class CrewBuilder
     }
 
     /// <summary>
-    /// The rules of <see cref="Task.DecisionTaskRules.CheckMode"/> over the tasks and agents given as objects: a
-    /// task added by id only is not seen, and the decision profiles are the host's, checked by the crew factory.
+    /// The rules of <see cref="Task.DecisionTaskRules.CheckMode"/> over the tasks and agents given as objects, the
+    /// manager among them: a task added by id only is not seen, and the decision profiles are the host's, checked by
+    /// the crew factory; the profile <c>auto</c>, which System One picks, is known here and checked (#434).
     /// A <c>without:</c> relay names an agent by its role, or by the key a crew factory resolved to its id: as the run finds it.
     /// </summary>
     private void EnsureDecisionModeRules()
@@ -378,27 +379,57 @@ public sealed class CrewBuilder
         static bool Decides(IReadOnlyList<Tools.IBaseTool> tools) =>
             tools.Any(t => string.Equals(t.Name, Task.ValueObjects.SystemOneUses.DecideToolName, StringComparison.OrdinalIgnoreCase));
 
+        // The manager given as an object is one of the crew's agents for these rules, as YAML and .ork.ts keep it.
+        var agents = _managerAgent is { } manager && _agents.All(a => a.Id != manager.Id)
+            ? (List<DomainAgent>)[.. _agents, manager]
+            : _agents;
         var declarations = _tasks
             .Select(t => new Task.ValueObjects.DecisionTaskDeclaration(t.Key ?? t.Description.Value, t.Decision, t.Condition, t.AssignedAgent is not null))
             .ToList();
-        var holders = _agents.Where(a => Decides(a.Tools)).Select(a => $"agent '{a.Role.Value}'")
+        var holders = agents.Where(a => Decides(a.Tools)).Select(a => $"agent '{a.Role.Value}'")
             .Concat(_tasks.Where(t => Decides(t.Tools)).Select(t => $"task '{t.Key ?? t.Description.Value}'"))
             .ToList();
-        var uses = new Task.ValueObjects.SystemOneUses(holders, null)
+        var uses = new Task.ValueObjects.SystemOneUses(holders, AutoProfileUses(agents))
         {
-            SkillsAutoHolders = _agents.Where(a => a.Skills is { Auto: true }).Select(a => $"agent '{a.Role.Value}'").ToList(),
-            PruneHolders = _agents.Where(a => a.Compaction is { Prune: true }).Select(a => $"agent '{a.Role.Value}'").ToList(),
+            SkillsAutoHolders = agents.Where(a => a.Skills is { Auto: true }).Select(a => $"agent '{a.Role.Value}'").ToList(),
+            PruneHolders = agents.Where(a => a.Compaction is { Prune: true }).Select(a => $"agent '{a.Role.Value}'").ToList(),
         };
         // A relay finds its agent as the dispatcher does: by the id a crew factory resolved, else by its role.
-        var agentKeys = _agents.Select(a => a.Role.Value)
+        var agentKeys = agents.Select(a => a.Role.Value)
             .Concat(_tasks.Select(t => t.Decision?.Without)
-                .Where(r => r?.AgentId is { } id && _agents.Any(a => a.Id == id))
+                .Where(r => r?.AgentId is { } id && agents.Any(a => a.Id == id))
                 .Select(r => r!.Agent))
             .Distinct(StringComparer.Ordinal)
             .ToList();
         var findings = Task.DecisionTaskRules.CheckMode(_decisionMode, _processType, declarations, uses, agentKeys);
         if (findings.Refusals.Count > 0)
             throw new BuilderValidationException("Crew", Task.DecisionTaskRules.ModeRefusal(findings.Refusals));
+    }
+
+    /// <summary>
+    /// Each agent and task on the profile <c>auto</c>, which asks System One for its profile as a decision profile
+    /// does (#434). A manager or a relay no task is assigned to runs on the default profile and is left out, as the
+    /// crew factory rules. The host's own decision profiles are not known here.
+    /// </summary>
+    private List<Task.ValueObjects.DecisionProfileUse> AutoProfileUses(List<DomainAgent> agents)
+    {
+        static bool IsAuto(string? profile) =>
+            string.Equals(profile?.Trim(), Orkeon.Constants.Llm.LlmProfileNames.Auto, StringComparison.OrdinalIgnoreCase);
+
+        var assigned = _tasks.Select(t => t.AssignedAgent).OfType<AgentId>().ToHashSet();
+        var relays = _tasks.Select(t => t.Decision?.Without).OfType<Task.ValueObjects.DecisionRelay>().ToList();
+        bool Unrouted(DomainAgent agent) =>
+            !assigned.Contains(agent.Id)
+            && (agent.Id == _managerAgentId
+                || relays.Any(r => r.AgentId == agent.Id || string.Equals(r.Agent, agent.Role.Value, StringComparison.Ordinal)));
+
+        return agents
+            .Where(a => IsAuto(a.LlmConfig?.Profile) && !Unrouted(a))
+            .Select(a => new Task.ValueObjects.DecisionProfileUse($"agent '{a.Role.Value}'", a.LlmConfig!.Profile!.Trim()))
+            .Concat(_tasks
+                .Where(t => IsAuto(t.LlmOverride?.Profile))
+                .Select(t => new Task.ValueObjects.DecisionProfileUse($"task '{t.Key ?? t.Description.Value}'", t.LlmOverride!.Profile!.Trim())))
+            .ToList();
     }
 
     /// <summary>

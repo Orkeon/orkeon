@@ -136,9 +136,11 @@ public partial class CrewFactory : ICrewFactory
         CrewConfiguration config,
         CancellationToken ct)
     {
+        // The decision.mode rules first (#429): a configuration handed straight to the factory is refused in the
+        // one spelling every loader uses, not among the validator's errors.
+        ValidateDecisionMode(config);
         ValidateConfiguration(config);
         ValidateLlmProfiles(config);
-        ValidateDecisionMode(config);
 
         await PrepareRagCollectionsAsync(config, ct).ConfigureAwait(false);
         WarnOnKnowledgeWithoutSubsystem(config);
@@ -281,6 +283,11 @@ public partial class CrewFactory : ICrewFactory
         var unrouted = UnroutedAgents(config);
         foreach (var agent in config.Agents)
         {
+            // A model beside auto would run on every rung System One picks (#434): the rung's own model must.
+            if (agent.LlmConfig is { } llm && AgentBuilder.AutoProfileModel(llm) is { } model)
+                throw new InvalidOperationException(AgentBuilder.AutoProfileModelRefusal(
+                    $"Crew '{config.Name}': agent '{agent.Key ?? agent.Role}' (its llm: block, or the crew's)", model));
+
             if (unrouted.Contains(agent.Id) && Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(agent.LlmConfig?.Profile))
                 continue;
             EnsureProfile(agent.LlmConfig?.Profile, $"Crew '{config.Name}': agent '{agent.Role}'");
@@ -340,7 +347,8 @@ public partial class CrewFactory : ICrewFactory
         var profiles = _decisionProfiles;
         // An agent on llm.profile: auto asks System One for its profile, as a decision profile does (#434), but
         // not a manager or a relay with no task of its own: it runs on the default profile.
-        var uses = config.SystemOneUses(profiles is null ? null : p => profiles.Contains(p, StringComparer.OrdinalIgnoreCase)
+        // Without the host's decision profiles, auto is still known: System One picks it.
+        var uses = config.SystemOneUses(p => (profiles is not null && profiles.Contains(p, StringComparer.OrdinalIgnoreCase))
             || Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(p));
         var unroutedIds = UnroutedAgents(config);
         var unrouted = config.Agents.Where(a => unroutedIds.Contains(a.Id))
