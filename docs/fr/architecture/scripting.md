@@ -145,7 +145,10 @@ Cinq options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la
 - **`effort: "low" | "medium" | "high" | "xhigh" | "max"`** règle la réflexion du fournisseur pour l'appel
   (`LlmConfig.Thinking`, activée avec cet effort). Le même `effort` est accepté par les autres appels
   `ctx.llm`, par `LlmConfig.with({...})` (`llm.default_.with({ effort })`) et par `agentBuilder().effort(level)` ; toute autre valeur est refusée
-  avec `effort must be low|medium|high|xhigh|max`. Anthropic prend les cinq niveaux ; un fournisseur dont le
+  avec `effort must be low|medium|high|xhigh|max`. `agentBuilder().effort(...)`, `LlmConfig.with({ effort })` et
+  `taskBuilder().withEffort(...)` prennent aussi `"auto"` (le choix de System One au début de chaque tâche, #439) et
+  refusent toute autre valeur avec `effort must be low|medium|high|xhigh|max|auto, not '<value>'` ; un appel `ctx.llm`
+  refuse `"auto"`, un choix se faisant par tâche, jamais par appel. Anthropic prend les cinq niveaux ; un fournisseur dont le
   champ en connaît moins (ses `EffortLevels` déclarés : les trois par défaut pour `think`
   d'Ollama, Gemini, Azure OpenAI et Mistral ; jusqu'à `xhigh` pour OpenAI et Grok ; les cinq pour Z.ai, Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI, Hugging Face, MiniMax et Mammouth AI), ou un modèle qui en prend moins (la table par modèle de `docs/fr/architecture/llm-providers.md`), envoie le plus haut niveau que les deux prennent en dessous de celui demandé, et le dit dans un
   avertissement, jamais un changement silencieux.

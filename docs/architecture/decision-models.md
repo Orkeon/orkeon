@@ -397,7 +397,7 @@ A crew with no mode may not declare a `without:` relay: the load asks for `decis
 agent of the crew (`without: { agent, instructions }`, `instructions` optional), and an agent the crew does not
 declare is refused at load. A `required` crew that asks System One nothing (no decision task, no `system_one_decide`,
 no decision profile, no `llm.profile: auto`, no `skills: { auto: true }`, no `compaction: { prune: true }`, no
-`thinking: { effort: auto }`) loads with a
+`thinking: { effort: auto }` or `{ enabled: auto }`) loads with a
 warning. A crew built in C# meets these rules at `CrewBuilder.Build()`, a manager given as an object
 (`.Hierarchical(manager)`, `.WithManager(manager)`) included, and `llm.profile: auto` is checked there too (an agent on
 `LlmConfig.OnProfile("auto")`, a task's `LlmConfigOverride.Profile`; a manager or a relay with no task of its own
@@ -542,15 +542,16 @@ never on its own.
   `route` stage of a decision profile, which picks a profile for each call.
 - **Thinking level** — an agent or a task with `thinking: { effort: auto }` asks one `choice` at the start of each
   task, `effort`, whose options are the levels of `Orkeon:Decision:Effort:Levels`, cheapest
-  first, on the same state as the agent routing; with `llm.profile: auto` too, both questions go in the same
+  first (a host that lists them out of the order `low`, `medium`, `high`, `xhigh`, `max` is refused at start), on the same state as the agent routing; with `llm.profile: auto` too, both questions go in the same
   request, each answer with its own floor. With `enabled: auto` the options start with `off` (no thinking), and the
   map form `effort: { auto: true, min, max }` keeps only the levels inside its bounds. The level picked at a
   probability of 0.6 or more runs every call of the task and its retries, except that a correction round after an output that failed its validation (`output_json`), once per
   failed round, and an attempt after a failed one (a failed result or a thrown error, never a cancellation, a guardian
-  refusal or an exhausted budget) run a step higher among the options, with no call (`reason: raised`, `previous` the level before); under 0.6, without an answer, or with the circuit off, the effort the agent would have
+  refusal, an exhausted budget or a timeout) run a step higher among the options, with no call (`reason: raised`, `previous` the level before); under 0.6, without an answer, or with the circuit off, the effort the agent would have
   had without `auto` runs (its profile's `Llm:Thinking`, else the provider's own), and `agent.effort` says why
-  ([`Orkeon:Decision:Effort`](../reference/configuration.md#orkeondecisioneffort)). A host that allows one level
-  gets that level with no call (`reason: single-level`). The marker never reaches a provider, and a host profile's
+  ([`Orkeon:Decision:Effort`](../reference/configuration.md#orkeondecisioneffort)). When one answer is left to offer
+  (the host allows one level, or the bounds keep one, and `enabled: auto` adds no `off`), it runs with no call
+  (`reason: single-level`); with `enabled: auto`, `off` and that level are still asked. The marker never reaches a provider, and a host profile's
   `Llm:Thinking:Effort: auto` is refused at start. A profile whose model does not think (thinking support `None`)
   fails the load; on `llm.profile: auto`, only when no rung of the ladder nor the default thinks.
 - **Tool-result pruning** — once a loop's estimate reaches the smaller of `Orkeon:Compaction:Prune:FillShare` of the

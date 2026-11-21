@@ -309,7 +309,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Profiles:<name>:Responses` | string | — | With `Provider: mock`, the virtual path of the JSONL file — one `{match, regex?, content, toolCalls?}` object per line — the mock provider answers from. |
 | `Profiles:<name>:StreamIdleSeconds` | integer | — | The longest silence a streamed answer may hold between two of its chunks, in seconds. Left out, nothing bounds it: `TimeoutSeconds` alone bounds the whole call, streamed or not. A model that thinks before it writes may stay silent for a while: set it only above that silence, or turn its thinking off. |
 | `Profiles:<name>:Temperature` | number | — | The sampling temperature. Left out, none is sent and the model applies its own. |
-| `Profiles:<name>:Thinking:Effort` | string | — | How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. |
+| `Profiles:<name>:Thinking:Effort` | string | — | How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. `auto` is refused at start: it is a crew's word (`thinking: { effort: auto }`). |
 | `Profiles:<name>:Thinking:Enabled` | boolean | — | Whether the model thinks before it answers. Left out, the provider's own behaviour. |
 | `Profiles:<name>:TimeoutSeconds` | integer | `30` | How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off. |
 | `Provider` | string | — | `mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key. |
@@ -318,7 +318,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Responses` | string | — | With `Provider: mock`, the virtual path of the JSONL file — one `{match, regex?, content, toolCalls?}` object per line — the mock provider answers from. |
 | `StreamIdleSeconds` | integer | — | The longest silence a streamed answer may hold between two of its chunks, in seconds. Left out, nothing bounds it: `TimeoutSeconds` alone bounds the whole call, streamed or not. A model that thinks before it writes may stay silent for a while: set it only above that silence, or turn its thinking off. |
 | `Temperature` | number | — | The sampling temperature. Left out, none is sent and the model applies its own. |
-| `Thinking:Effort` | string | — | How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. |
+| `Thinking:Effort` | string | — | How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. `auto` is refused at start: it is a crew's word (`thinking: { effort: auto }`). |
 | `Thinking:Enabled` | boolean | — | Whether the model thinks before it answers. Left out, the provider's own behaviour. |
 | `TimeoutSeconds` | integer | `30` | How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off. |
 <!-- /settings -->
@@ -739,10 +739,11 @@ is not the `route` stage of a decision profile, which picks a profile for each c
 ### `Orkeon:Decision:Effort`
 
 An agent or a task that writes `thinking: { effort: auto }` ([YAML schema](../architecture/yaml-schema.md)) lets
-System One pick its thinking level at the start of each task, among `Levels`, cheapest first; the task keeps it on
+System One pick its thinking level at the start of each task, among `Levels`, cheapest first (a list out of the
+order `low`, `medium`, `high`, `xhigh`, `max` is refused at start); the task keeps it on
 its retries, except after a failure, which runs the next try a level higher (`reason: raised`, with no decision call):
 a correction round after an output that failed its validation (`output_json`), once per failed round, and an attempt
-after a failed one (a failed result or a thrown error, never a cancellation, a guardian refusal or an exhausted budget).
+after a failed one (a failed result or a thrown error, never a cancellation, a guardian refusal, an exhausted budget or a timeout).
 The failed `verify` of a decision profile does not raise it: that stage escalates the call itself to another profile
 ([limitations](./limitations.md)). The map form `effort: { auto: true, min, max }` bounds the pick to the levels of `Levels` inside `min` and
 `max`: one left is that level with no call, none left fails the load, naming the agent or the task and this key.
@@ -762,7 +763,7 @@ is refused at start: it is a crew's word. Each pick and each raise is a run even
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `Levels` | list of string | `[]` | The thinking levels System One may pick for an `effort: auto` agent or task, cheapest first: each one of `low`, `medium`, `high`, `xhigh`, `max`, in lower case, each once; a blank, unknown or repeated level is refused at start. Empty by default, which allows `low`, `medium` and `high`. |
+| `Levels` | list of string | `[]` | The thinking levels System One may pick for an `effort: auto` agent or task, cheapest first: each one of `low`, `medium`, `high`, `xhigh`, `max`, in lower case, each once, in that order; a blank, unknown or repeated level, and a list that does not rise strictly in that order, are refused at start. Empty by default, which allows `low`, `medium` and `high`. |
 <!-- /settings -->
 
 ## Rate and budgets

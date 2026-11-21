@@ -327,7 +327,7 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Profiles:<nom>:Responses` | chaîne | — | Avec `Provider: mock`, le chemin virtuel du fichier JSONL — un objet `{match, regex?, content, toolCalls?}` par ligne — dont le fournisseur mock tire ses réponses. |
 | `Profiles:<nom>:StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Profiles:<nom>:Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
-| `Profiles:<nom>:Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. |
+| `Profiles:<nom>:Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. `auto` est refusé au démarrage : c'est un mot d'équipage (`thinking: { effort: auto }`). |
 | `Profiles:<nom>:Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
 | `Profiles:<nom>:TimeoutSeconds` | entier | `30` | La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion. |
 | `Provider` | chaîne | — | `mock`, la seule valeur : le fournisseur hors ligne qui répond depuis le fichier JSONL que nomme `Responses`. Omise, le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. |
@@ -336,7 +336,7 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Responses` | chaîne | — | Avec `Provider: mock`, le chemin virtuel du fichier JSONL — un objet `{match, regex?, content, toolCalls?}` par ligne — dont le fournisseur mock tire ses réponses. |
 | `StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
-| `Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. |
+| `Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. `auto` est refusé au démarrage : c'est un mot d'équipage (`thinking: { effort: auto }`). |
 | `Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
 | `TimeoutSeconds` | entier | `30` | La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion. |
 <!-- /settings -->
@@ -772,11 +772,12 @@ appel.
 ### `Orkeon:Decision:Effort`
 
 Un agent ou une tâche qui écrit `thinking: { effort: auto }` ([schéma YAML](../architecture/yaml-schema.md)) laisse
-System One choisir son niveau de réflexion au début de chaque tâche, parmi `Levels`, du moins cher au plus cher ; la
+System One choisir son niveau de réflexion au début de chaque tâche, parmi `Levels`, du moins cher au plus cher (une liste
+hors de l'ordre `low`, `medium`, `high`, `xhigh`, `max` est refusée au démarrage) ; la
 tâche le garde à ses reprises, sauf après un échec, qui fait tourner l'essai suivant un niveau plus haut
 (`reason: raised`, sans appel de décision) : un tour de correction après une sortie qui a échoué à sa validation
 (`output_json`), une fois par tour échoué, et une tentative après une tentative échouée (un résultat en échec ou une
-erreur levée, jamais une annulation, un refus du gardien ni un budget épuisé). Le `verify` échoué d'un profil de
+erreur levée, jamais une annulation, un refus du gardien, un budget épuisé ni un délai dépassé). Le `verify` échoué d'un profil de
 décision ne le relève pas : cette étape escalade l'appel lui-même vers un autre profil ([limites](./limitations.md)). La forme map `effort: { auto: true, min, max }` borne le choix aux
 niveaux de `Levels` entre `min` et `max` : un seul restant donne ce niveau sans appel, aucun fait échouer le
 chargement en nommant l'agent ou la tâche et cette clé. `enabled: auto` laisse System One couper la réflexion pour
@@ -798,7 +799,7 @@ choix et chaque relèvement est un événement de run, `agent.effort`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
-| `Levels` | liste de chaînes | `[]` | Les niveaux de réflexion entre lesquels System One peut choisir pour un agent ou une tâche en `effort: auto`, du moins cher au plus cher : chacun parmi `low`, `medium`, `high`, `xhigh`, `max`, en minuscules, une fois chacun ; un niveau vide, inconnu ou répété est refusé au démarrage. Vide par défaut, ce qui autorise `low`, `medium` et `high`. |
+| `Levels` | liste de chaînes | `[]` | Les niveaux de réflexion entre lesquels System One peut choisir pour un agent ou une tâche en `effort: auto`, du moins cher au plus cher : chacun parmi `low`, `medium`, `high`, `xhigh`, `max`, en minuscules, une fois chacun, dans cet ordre ; un niveau vide, inconnu ou répété, et une liste qui ne monte pas strictement dans cet ordre, sont refusés au démarrage. Vide par défaut, ce qui autorise `low`, `medium` et `high`. |
 <!-- /settings -->
 
 ## Débit et budgets

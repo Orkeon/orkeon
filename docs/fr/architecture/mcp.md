@@ -447,7 +447,7 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
     jeton et l'appel n'est pas répondu.
   - **Le run est enregistré comme tout run de l'hôte.** Avec `Orkeon:RunHistory:Enabled` activé dans les réglages de la
     crew, chaque appel est un run de l'historique : `run.started`, `run.decision`, les événements de tâche, les `agent.compacted`,
-    `agent.skills`, `agent.route` et `agent.pruned` des boucles d'agent, `run.finished`, sous son
+    `agent.skills`, `agent.route`, `agent.effort` et `agent.pruned` des boucles d'agent, `run.finished`, sous son
     propre identifiant de run (celui des checkpoints), lu avec `orkeon runs`. Historique éteint, rien n'est écrit. `run.finished` porte `success`, `exitCode`,
     `durationMs`, `cappedTasks` et `missingDeliverables`, et aucun champ de tokens (voir [le bus d'événements de
     run](./run-event-bus.md)) ; son `exitCode` vaut `69` pour une crew refusée faute de System One, comme sous

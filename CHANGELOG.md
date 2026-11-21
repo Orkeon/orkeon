@@ -40,27 +40,27 @@ bridge's proxy, the permission gate) instead of a new bare instance.
 ### Added — `thinking: { effort: auto }`: System One picks a task's thinking level (#439)
 
 An agent or a task (`llm_override`) that writes `thinking: { effort: auto }` lets the decision model pick, at the start
-of each task, one level of `Orkeon:Decision:Effort:Levels` (empty by default: `low`, `medium`, `high`), the task
+of each task, one level of `Orkeon:Decision:Effort:Levels` (empty by default: `low`, `medium`, `high`; a list out of the
+order `low`, `medium`, `high`, `xhigh`, `max` is refused at start), the task
 keeping it on its retries; with `llm.profile: auto` too, the profile and the level are asked in one decision call. The
 map form `effort: { auto: true, min, max }` bounds the pick: a single level left is sent with no call, none left fails
 the load naming the agent or the task and the key. `enabled: auto` lets System One switch thinking off for a trivial
-task (its options are `off` and the written level); under `enabled: false` nothing is left to it. A correction round
+task (its options are `off` and the written level, `off` and `on` when no level is written, and `off` and every allowed
+level with `effort: auto` too); under `enabled: false` nothing is left to it. A correction round
 after an output that failed its validation (`output_json`), once per failed round, and an attempt after a failed one (a
-failed result or a thrown error, not a cancellation, a guardian refusal or an exhausted budget) run one step higher,
+failed result or a thrown error, not a cancellation, a guardian refusal, an exhausted budget or a timeout) run one step higher,
 with no call; a written level is never raised, and a decision profile's `verify` does not raise it (it escalates the
 call itself). Under 0.6, without an answer, with the circuit off or with `--no-decision`, the thinking the agent would
 have had without `auto` stands, its budget kept, with the warnings of `llm.profile: auto` (once per run with the
 circuit off, at each failed call). Each pick and each raise is a run event `agent.effort` (`level`, `previous`, `reason`
 among `model`, `low-confidence`, `no-answer`, `circuit-off`, `decision-none`, `single-level`, `raised`). A crew on
-`decision: { mode: none }` naming either `auto`, or running it on a model that does not think, fails its load; `auto`
+`decision: { mode: none }` naming either `auto` fails its load, and so does, in every mode, a crew that runs it on a
+model that does not think; `auto`
 in a host profile's `Llm:Thinking:Effort` is refused at start. In `.ork.ts`: `agentBuilder().effort("auto")`,
 `llm.profile(name, { effort: "auto" })`, `.with({ effort: "auto" })` and the new `taskBuilder().withEffort(level |
 "auto")`; a single `ctx.llm` call takes a level only, and on an `effort("auto")` agent runs with its profile's effort. In C#: `AgentBuilder.ThinkingEffortAuto(min, max)` and
-`ThinkingEnabledAuto()`.
-
-**Compatibility**: `ThinkingYamlConfig.Effort` and `Enabled` are now `object?` (they were `string?` and `bool?`), so
-that the map form and `auto` are read as written and refused naming the agent or the task: code that builds this YAML
-model by hand keeps compiling for assignments, but a read of either property needs a cast.
+`ThinkingEnabledAuto()`. The YAML model's
+`ThinkingYamlConfig.Effort` and `Enabled` change type: see the **[breaking]** entry below.
 
 ### Added — System One prunes a loop's older read-tool results before it compacts (#434)
 
@@ -364,11 +364,28 @@ fail-open one for each text it lets in. New public members: `DecisionCircuit.OfH
 with the circuit off sets `Orkeon:Guardian:Llm:FailMode` to `Open` or turns the judge off. See
 [Decision models](docs/architecture/decision-models.md#every-consumer-follows-the-circuit).
 
-### Changed — two public constructors take new optional parameters **[breaking]** (#429, #433, #434)
+### Changed — `ThinkingYamlConfig.Effort` and `Enabled` are `object?` **[breaking]** (#439)
+
+**Before**: the YAML model's `ThinkingYamlConfig.Effort` was a `string?` and `ThinkingYamlConfig.Enabled` a `bool?`.
+**Now**: both are `object?`, so that the map form `effort: { auto: true, min, max }`, `effort: auto` and
+`enabled: auto` are read as written and refused at load naming the agent or the task. Source that assigns a string or a
+boolean compiles unchanged, but a read of either property needs a cast or a pattern match, and an assembly built
+against the shipped surface fails with `MissingMethodException`: the getters and the setters both change signature
+(`set_Effort(string)` becomes `set_Effort(object)`). **Migration**: recompile against this version; a reader of these
+properties matches on the value (`string`, `bool`, or a map for `Effort`), or reads the mapped `LlmThinkingConfig` of
+the agent rather than the YAML model.
+
+| Member | Before | Now |
+|---|---|---|
+| `ThinkingYamlConfig.Effort` | `string?` | `object?` (a level, `auto`, or the map form) |
+| `ThinkingYamlConfig.Enabled` | `bool?` | `object?` (a boolean or `auto`) |
+
+### Changed — two public constructors take new optional parameters **[breaking]** (#429, #433, #434, #439)
 
 **Before**: `CrewFactory` ended with `ILlmProfileRegistry? llmProfiles = null` and `SequentialCrewOrchestrator` with
 `ICostBudgetManager? budget = null`. **Now**: `CrewFactory` adds `DecisionCircuit? decisionCircuit`,
-`IOptions<DecisionProfilesOptions>? decisionProfiles` and `IOptions<AgentRouteOptions>? route`, and
+`IOptions<DecisionProfilesOptions>? decisionProfiles`, `IOptions<AgentRouteOptions>? route` and
+`IOptions<AgentEffortOptions>? effort` (#439: the levels `thinking: { effort: auto }` is checked against), and
 `SequentialCrewOrchestrator` adds `DecisionCircuit? decisionCircuit`, all trailing and defaulting to `null`. The
 old signatures are gone: source that calls them compiles unchanged, but an assembly built against the shipped ones
 fails with `MissingMethodException`. **Migration**: recompile against this version; a host that builds them by hand
@@ -377,7 +394,7 @@ host's circuit.
 
 | Member | Before | Now |
 |---|---|---|
-| `CrewFactory(..., llmProfiles)` | last parameter `llmProfiles` | `+ decisionCircuit, decisionProfiles, route` |
+| `CrewFactory(..., llmProfiles)` | last parameter `llmProfiles` | `+ decisionCircuit, decisionProfiles, route, effort` |
 | `SequentialCrewOrchestrator(..., budget)` | last parameter `budget` | `+ decisionCircuit` |
 
 ### Fixed
