@@ -33,6 +33,6 @@ internal static partial class AgentRouteLog
     public static partial void EffortPicked(ILogger logger, string agentRole, string taskId, string level, string reason);
 
     [LoggerMessage(Level = LogLevel.Information,
-        Message = "Agent {AgentRole} task {TaskId}: thinking effort raised from {Previous} to {Level} after a failed attempt.")]
+        Message = "Agent {AgentRole} task {TaskId}: thinking effort raised from {Previous} to {Level} after a failed attempt or a failed validation round.")]
     public static partial void EffortRaised(ILogger logger, string agentRole, string taskId, string previous, string level);
 }

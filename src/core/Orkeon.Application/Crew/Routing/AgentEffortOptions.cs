@@ -21,8 +21,9 @@ public sealed class AgentEffortOptions
 
     /// <summary>
     /// The thinking levels System One may pick for an <c>effort: auto</c> agent or task, cheapest first: each one of
-    /// <c>low</c>, <c>medium</c>, <c>high</c>, <c>xhigh</c>, <c>max</c>, in lower case, each once; a blank, unknown or
-    /// repeated level is refused at start. Empty by default, which allows <c>low</c>, <c>medium</c> and <c>high</c>.
+    /// <c>low</c>, <c>medium</c>, <c>high</c>, <c>xhigh</c>, <c>max</c>, in lower case, each once, in that order; a
+    /// blank, unknown or repeated level, and a list that does not rise strictly in that order, are refused at start.
+    /// Empty by default, which allows <c>low</c>, <c>medium</c> and <c>high</c>.
     /// </summary>
     public IList<string> Levels { get; init; } = [];
 
@@ -57,6 +58,18 @@ public sealed class AgentEffortOptions
             .GroupBy(level => level, StringComparer.Ordinal)
             .Where(group => group.Count() > 1)
             .Select(group => $"{LevelsKey} names the level '{group.Key}' more than once: each level is listed once."));
+
+        // A raise steps to the next level of the list and the decision model reads it cheapest first, so a
+        // list out of rank order would lower the effort it claims to raise (#439).
+        var known = levels.Where(level => LlmThinkingConfig.RankOf(level) >= 0).ToList();
+        for (var i = 1; i < known.Count; i++)
+        {
+            if (LlmThinkingConfig.RankOf(known[i]) >= LlmThinkingConfig.RankOf(known[i - 1]))
+                continue;
+            problems.Add($"{LevelsKey} lists '{known[i]}' after '{known[i - 1]}': list the levels cheapest first, in the order {string.Join(", ", LlmThinkingConfig.Levels)}.");
+            break;
+        }
+
         return problems;
     }
 }

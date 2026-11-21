@@ -7,6 +7,7 @@ using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Crew.Routing;
 using Orkeon.Application.Decision.DTOs;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
@@ -345,6 +346,43 @@ public sealed class ExecutionOrchestratorEffortTests : IDisposable
         // Assert
         Assert.Equal("medium", _small.ReceivedConfigs[^1]?.Thinking?.Effort);
         Assert.Equal(AgentEffortReasons.Raised, _observer.EffortNotices[^1].Reason);
+    }
+
+    public static TheoryData<AgentExitReason> ExitsThatDoNotRaise =>
+    [
+        AgentExitReason.Cancelled,
+        AgentExitReason.GuardianBlocked,
+        AgentExitReason.BudgetExhausted,
+        AgentExitReason.ExecutionTimeExceeded,
+    ];
+
+    [Theory]
+    [MemberData(nameof(ExitsThatDoNotRaise))]
+    [Trait("BR", "CH-439")]
+    public void ShouldNotCountTheAttemptForARaise_WhenItEndedOnACancellationARefusalABudgetOrATimeout(AgentExitReason exit)
+    {
+        // Arrange
+        var result = new TaskResult(false, string.Empty, null, [], TimeSpan.Zero, "stopped") { ExitReason = exit };
+
+        // Act
+        var failed = ExecutionOrchestrator.FailedForRaise(result);
+
+        // Assert
+        Assert.False(failed);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldCountTheAttemptForARaise_WhenItEndedOnAFailedResult()
+    {
+        // Arrange
+        var result = new TaskResult(false, string.Empty, null, [], TimeSpan.Zero, "empty answer") { ExitReason = AgentExitReason.EmptyFinalAnswer };
+
+        // Act
+        var failed = ExecutionOrchestrator.FailedForRaise(result);
+
+        // Assert
+        Assert.True(failed);
     }
 
     [Fact]

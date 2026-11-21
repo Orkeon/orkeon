@@ -1144,10 +1144,12 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
     /// <summary>
     /// Whether an attempt failed in a way a raise of the thinking may help (#439): a failed result, as <c>retry:</c>
-    /// retries it - never a cancellation, a refusal of the guardian or an exhausted budget.
+    /// retries it - never a cancellation, a refusal of the guardian, an exhausted budget or a timeout: a retry that
+    /// thinks harder runs longer, and so would time out again.
     /// </summary>
-    private static bool FailedForRaise(TaskResult result) =>
-        !result.Success && result.ExitReason is not (AgentExitReason.Cancelled or AgentExitReason.GuardianBlocked or AgentExitReason.BudgetExhausted);
+    internal static bool FailedForRaise(TaskResult result) =>
+        !result.Success && result.ExitReason is not (AgentExitReason.Cancelled or AgentExitReason.GuardianBlocked
+            or AgentExitReason.BudgetExhausted or AgentExitReason.ExecutionTimeExceeded);
 
     /// <summary>
     /// What <paramref name="task"/> runs on (GAP-17, GAP-34): the profile its <c>llm_override</c>

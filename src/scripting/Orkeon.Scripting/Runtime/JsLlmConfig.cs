@@ -152,11 +152,13 @@ public sealed class JsLlmConfig
 
     /// <summary>
     /// The thinking setting every <c>effort</c> option builds: enabled, at the validated level; on <c>"auto"</c>
-    /// (#439), the level left to System One, picked at each task's start among the host's levels.
+    /// (#439), the level left to System One, picked at each task's start among the host's levels, with
+    /// <c>Enabled</c> left unset as YAML's <c>effort: auto</c> leaves it: without a pick, the thinking the agent
+    /// would have had without <c>auto</c> stands, a profile's <c>Thinking:Enabled: false</c> included.
     /// </summary>
     internal static LlmThinkingConfig ThinkingAt(string? effort)
         => LlmAutoEffort.IsAuto(RequireEffortOrAuto(effort))
-            ? new() { Enabled = true, AutoEffort = LlmAutoEffort.Any }
+            ? new() { AutoEffort = LlmAutoEffort.Any }
             : new() { Enabled = true, Effort = effort };
 
     /// <summary>

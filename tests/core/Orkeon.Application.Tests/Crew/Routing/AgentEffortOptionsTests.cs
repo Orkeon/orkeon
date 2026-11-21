@@ -12,6 +12,8 @@ public sealed class AgentEffortOptionsTests
         { ["huge"], "'huge', which is not a thinking level" },
         { ["High"], "'High', which is not a thinking level" },
         { ["low", "low"], "names the level 'low' more than once" },
+        { ["high", "low"], "lists 'low' after 'high': list the levels cheapest first, in the order low, medium, high, xhigh, max" },
+        { ["low", "max", "medium"], "lists 'medium' after 'max'" },
     };
 
     [Theory]
@@ -45,15 +47,17 @@ public sealed class AgentEffortOptionsTests
 
     [Fact]
     [Trait("BR", "CH-439")]
-    public void ShouldAllowTheListedLevelsInTheirOrder_WhenTheHostListsSome()
+    public void ShouldAllowTheListedLevels_WhenTheHostListsSomeCheapestFirst()
     {
         // Arrange
-        var options = new AgentEffortOptions { Levels = [" high", "max"] };
+        var options = new AgentEffortOptions { Levels = ["low", " high", "max"] };
 
         // Act
+        var problems = AgentEffortOptions.Problems(options);
         var levels = AgentEffortOptions.AllowedLevels(options);
 
         // Assert
-        Assert.Equal(["high", "max"], levels);
+        Assert.Empty(problems);
+        Assert.Equal(["low", "high", "max"], levels);
     }
 }

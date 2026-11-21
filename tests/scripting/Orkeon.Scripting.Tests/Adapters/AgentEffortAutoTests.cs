@@ -85,6 +85,68 @@ public sealed class AgentEffortAutoTests
         await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         // Assert
-        Assert.Equal(new LlmThinkingConfig { Enabled = true, Effort = "high", BudgetTokens = 4000 }, provider.LastConfig?.Thinking);
+        Assert.Equal(new LlmThinkingConfig { Effort = "high", BudgetTokens = 4000 }, provider.LastConfig?.Thinking);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-439")]
+    [InlineData(""".effort("auto")""")]
+    [InlineData(""".llm(llm.default_.with({ effort: "auto" }))""")]
+    public void ShouldLeaveThinkingOnOrOffUnset_WhenTheAgentAsksForTheEffortAuto(string agentCalls)
+    {
+        // Act
+        var thinking = JsCrewConfigurationAdapter.ToConfiguration(Crew(agentCalls)).Agents.Single().LlmConfig!.Thinking!;
+
+        // Assert
+        Assert.Null(thinking.Enabled);
+        Assert.False(thinking.AutoEnabled);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-439")]
+    [InlineData(""".effort("auto")""", "", "Agent '")]
+    [InlineData("", """.withEffort("auto")""", "Task '")]
+    public void ShouldRefuseTheLoad_WhenACrewOnDecisionModeNoneLeavesTheEffortToSystemOne(string agentCalls, string taskCalls, string expected)
+    {
+        // Arrange
+        var crew = (JsCrew)new JsEngineFactory().Create().Evaluate($$"""
+            const coder = agentBuilder().name("coder").role("Coder").goal("Change code"){{agentCalls}}.build();
+            const change = taskBuilder().name("change").agent(coder)
+                .description("Rename x").expectedOutput("Done"){{taskCalls}}.build();
+            crewBuilder().name("auto").goal("Pick a level").decision({ mode: "none" }).withAgent(coder).withTasks([change]).build();
+            """).ToObject()!;
+
+        // Act
+        var error = Assert.Throws<InvalidOperationException>(() => JsCrewConfigurationAdapter.ToConfiguration(crew));
+
+        // Assert
+        Assert.Contains(expected, error.Message, StringComparison.Ordinal);
+        Assert.Contains("which System One picks and a crew with decision.mode: none refuses: write a level instead", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async Task ShouldKeepThinkingOff_WhenAnAgentOnEffortAutoRunsOnAProfileWithThinkingOff()
+    {
+        // Arrange
+        var provider = new StubLlmProvider
+        {
+            BaseConfig = LlmConfig.Create("boot-model") with { Thinking = new LlmThinkingConfig { Enabled = false } },
+        };
+        provider.RespondWith(new LlmResponse { Content = "ok" });
+        var engine = new JsEngineFactory(builtInTools: [], llmProvider: provider).Create();
+        var js = """
+            const a = agentBuilder().name("a").role("R").goal("G").effort("auto")
+                .body(async (input, ctx) => { await ctx.llm.complete("hi"); return "sent"; })
+                .build();
+            crewBuilder().name("c").withAgent(a).build();
+            """;
+        var crew = (JsCrew)(await engine.EvaluateAsync(js, null, Ct)).ToObject()!;
+
+        // Act
+        await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
+
+        // Assert
+        Assert.Equal(new LlmThinkingConfig { Enabled = false }, provider.LastConfig?.Thinking);
     }
 }

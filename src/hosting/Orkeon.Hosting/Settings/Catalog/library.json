@@ -832,7 +832,7 @@
       "path": "Llm:Profiles:<name>:Thinking:Effort",
       "section": "Llm",
       "type": "string",
-      "description": "How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own."
+      "description": "How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. `auto` is refused at start: it is a crew's word (`thinking: { effort: auto }`)."
     },
     {
       "path": "Llm:Profiles:<name>:Thinking:Enabled",
@@ -887,7 +887,7 @@
       "path": "Llm:Thinking:Effort",
       "section": "Llm",
       "type": "string",
-      "description": "How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own."
+      "description": "How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. `auto` is refused at start: it is a crew's word (`thinking: { effort: auto }`)."
     },
     {
       "path": "Llm:Thinking:Enabled",
@@ -1117,7 +1117,7 @@
       "section": "Orkeon:Decision:Effort",
       "type": "list of string",
       "default": [],
-      "description": "The thinking levels System One may pick for an `effort: auto` agent or task, cheapest first: each one of `low`, `medium`, `high`, `xhigh`, `max`, in lower case, each once; a blank, unknown or repeated level is refused at start. Empty by default, which allows `low`, `medium` and `high`."
+      "description": "The thinking levels System One may pick for an `effort: auto` agent or task, cheapest first: each one of `low`, `medium`, `high`, `xhigh`, `max`, in lower case, each once, in that order; a blank, unknown or repeated level, and a list that does not rise strictly in that order, are refused at start. Empty by default, which allows `low`, `medium` and `high`."
     },
     {
       "path": "Orkeon:Decision:Route:Ladder",

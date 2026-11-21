@@ -226,6 +226,136 @@ public sealed class LlmProfileAutoEffortTests
         Assert.Contains("Orkeon:Decision:Effort:Levels", error.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>A crew whose agent writes a level, its task leaving the effort to System One through its llm_override.</summary>
+    private static string TaskCrew(string overrideLines, string mode = "") => $$"""
+        name: thoughtful
+        goal: Pick a level
+        process: sequential
+        {{mode}}
+        agents:
+          coder:
+            role: Coder
+            goal: Change code
+            llm:
+              profile: small
+        tasks:
+          change:
+            description: Rename the variable x to count
+            expected_output: The change
+            agent: coder
+            llm_override:
+        {{overrideLines}}
+        """;
+
+    private const string TaskEffortAuto = """
+              thinking:
+                effort: auto
+        """;
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async Task ShouldRefuseTheLoadNamingTheTask_WhenTheTaskLeavesTheEffortToSystemOneOnItsAgentsProfileThatDoesNotThink()
+    {
+        // Arrange
+        _small.Reasoning = Thinks(ThinkingSupport.None);
+        await using var container = Container();
+
+        // Act
+        var error = await LoadFailureAsync(container, TaskCrew(TaskEffortAuto));
+
+        // Assert
+        Assert.Contains("task 'Rename the variable x to count' declares thinking: { effort: auto } in its llm_override", error.Message, StringComparison.Ordinal);
+        Assert.Contains("its profile 'small' does not think", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async Task ShouldRefuseTheLoadNamingTheTasksOwnProfile_WhenItsModelDoesNotThink()
+    {
+        // Arrange
+        _large.Reasoning = Thinks(ThinkingSupport.None);
+        await using var container = Container();
+
+        // Act
+        var error = await LoadFailureAsync(container, TaskCrew("      profile: large\n" + TaskEffortAuto));
+
+        // Assert
+        Assert.Contains("in its llm_override", error.Message, StringComparison.Ordinal);
+        Assert.Contains("its profile 'large' does not think", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async Task ShouldRefuseTheLoad_WhenTheTaskIsOnProfileAutoAndNoProfileSystemOneMayPickThinks()
+    {
+        // Arrange
+        _small.Reasoning = Thinks(ThinkingSupport.None);
+        _large.Reasoning = Thinks(ThinkingSupport.None);
+        _default.Reasoning = Thinks(ThinkingSupport.None);
+        await using var container = Container();
+
+        // Act
+        var error = await LoadFailureAsync(container, TaskCrew("      profile: auto\n" + TaskEffortAuto));
+
+        // Assert
+        Assert.Contains("in its llm_override", error.Message, StringComparison.Ordinal);
+        Assert.Contains("every profile System One may pick (small, large, default)", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async Task ShouldRefuseTheLoadNamingTheTask_WhenItsBoundsKeepNoneOfTheHostLevels()
+    {
+        // Arrange
+        await using var container = Container();
+
+        // Act
+        var error = await LoadFailureAsync(container, TaskCrew("""
+                  thinking:
+                    effort: { auto: true, min: xhigh }
+            """));
+
+        // Assert
+        Assert.Contains("task 'Rename the variable x to count' declares thinking: { effort: { auto: true, min: xhigh } } in its llm_override", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Decision:Effort:Levels", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public async Task ShouldRefuseTheLoadNamingEnabledAuto_WhenTheAgentsModelDoesNotThink()
+    {
+        // Arrange
+        _small.Reasoning = Thinks(ThinkingSupport.None);
+        await using var container = Container();
+        var yaml = Crew().Replace("effort: auto", "enabled: auto", StringComparison.Ordinal);
+
+        // Act
+        var error = await LoadFailureAsync(container, yaml);
+
+        // Assert
+        Assert.Contains("agent 'coder' declares thinking: { enabled: auto }", error.Message, StringComparison.Ordinal);
+        Assert.Contains("its profile 'small' does not think", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-439")]
+    [InlineData("effort: auto", "declares thinking: { effort: auto }, which System One picks")]
+    [InlineData("enabled: auto", "declares thinking: { enabled: auto }, which System One picks")]
+    public async Task ShouldRefuseTheLoadNamingTheTask_WhenACrewWithDecisionModeNoneHasATaskThatLeavesThinkingToSystemOne(string written, string expected)
+    {
+        // Arrange
+        await using var container = Container();
+        var yaml = TaskCrew(TaskEffortAuto.Replace("effort: auto", written, StringComparison.Ordinal), mode: "decision: { mode: none }");
+
+        // Act
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => container.GetRequiredService<ICrewDefinitionLoader>()
+            .LoadFromStringAsync(yaml, Ct));
+
+        // Assert
+        Assert.Contains("Task '", error.Message, StringComparison.Ordinal);
+        Assert.Contains(expected, error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     [Trait("BR", "CH-439")]
     public async Task ShouldSendTheOnlyLevelWithNoDecisionCall_WhenTheBoundsKeepOneHostLevel()
