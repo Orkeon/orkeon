@@ -460,6 +460,10 @@ de la même façon.
 - **Vérifications.** La réponse est un JSON qui se lit, chaque question est présente et aucune autre clé, une
   distribution donne une probabilité à chaque option ou niveau et à aucun qui n'a pas été proposé, chaque valeur est
   dans [0, 1], et chaque distribution somme à 1 à une tolérance de **0,05** près ; elle est ensuite normalisée.
+- **Ordre.** La décision enregistrée (le JSON `decision` de `task.completed`, et le checkpoint) liste les réponses
+  dans l'ordre de déclaration des questions et les probabilités d'un choix dans l'ordre de déclaration de ses
+  options, le niveau le plus bas d'un score en premier, que le modèle ou le relais ait répondu. Le corps envoyé à
+  System One liste questions, critères et assets dans l'ordre ordinal de leurs noms, le même dans tous les processus.
 - **Dérivation.** Le reste se dérive exactement comme depuis la réponse du modèle : un `choice` prend l'option la
   plus probable comme `chosen` (à égalité, l'option déclarée la première ; des options données en C# en
   `ImmutableDictionary`, dont l'ordre change d'un processus à l'autre, sont gardées dans l'ordre ordinal de leurs

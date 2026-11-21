@@ -44,7 +44,8 @@ decision profiles are left to the crew factory. An agent on `auto` that reaches 
 the load, naming the agent and the model, and `AgentBuilder.Build()` refuses it too: the model of the rung System One
 picks runs. `--offline` checks, for an agent on `auto`, the `default` profile and the ladder's rungs only where System
 One routes it: a manager or a relay with no task of its own, and every agent of a `none` crew, run on `default`
-alone, so a rung no longer refuses them. In a `.ork.ts` crew, routing works at task
+alone, so a rung no longer refuses them. `--offline` also checks the profile a task's `llm_override` moves it to
+(`auto` as the default and the ladder's rungs) and refuses a real one, naming the task. In a `.ork.ts` crew, routing works at task
 level only: `task.withProfile("auto")` is routed, `llm.profile("auto")` throws. This is one pick per task, apart from
 the per-call `route` stage of a decision profile. **Compatibility**: a ladder of one rung, or with a blank, `auto` or
 repeated rung, is refused at start; `auto` becoming a reserved profile name is under Changed below. New public members:
@@ -171,7 +172,11 @@ every question and no other key, no unknown option, values in [0, 1], distributi
 normalised), asks once more with the
 reason when it fails, then fails the task, never falling back. It derives the rest as from the decision model: argmax
 (on a tie, the option declared first) and its probability for a `choice`, `yes` when p >= 0.5 and max(p, 1 - p) for a `noul`, the weighted position from 0
-with no `chosen` for a `score`. `task.completed` gains `decisionSource` (`model`, `relay` or `fallback`) on every
+with no `chosen` for a `score`. A decision task, asked of the model or of the relay, records its answers in the order its questions are declared and
+each choice's probabilities in the order its options are declared (a score's lowest level first), in the `decision`
+JSON of `task.completed` and in checkpoints; the body sent to System One, the answers of `system_one_decide` and the
+forge's `systemone.answered` lines no longer change order from one process to the next: the names the port's maps
+carry are written in ordinal order. `task.completed` gains `decisionSource` (`model`, `relay` or `fallback`) on every
 decision task asked, before `deliverableMissing`; `defaulted` stays `true` for the fallback only. The relay's tokens
 count on the task and in the run's totals in Sequential, Parallel and Graph, and its `cost.updated` carries the new
 operation `relay` with the relay agent's role as `agentId`. A relay call waits its turn under the request limits as an

@@ -445,6 +445,10 @@ checked the same way.
 - **Checks.** The answer is JSON that parses, every question is present and no other key, a distribution gives a
   probability to every option or level and to none that was not offered, every value is in [0, 1], and each
   distribution sums to 1 within a tolerance of **0.05**; it is then normalised.
+- **Order.** The recorded decision (the `decision` JSON of `task.completed`, and the checkpoint) lists the answers
+  in the order the questions are declared and a choice's probabilities in the order its options are declared, a
+  score's lowest level first, whether the model or the relay answered. The body sent to System One lists
+  questions, criteria and assets in the ordinal order of their names, the same in every process.
 - **Derivation.** The rest is derived exactly as from the model's answer: a `choice` takes the most probable option
   as `chosen` (on a tie, the option declared first; options given in C# as an `ImmutableDictionary`, whose order
   changes from one process to the next, are kept in the ordinal order of their names), with that probability as its
