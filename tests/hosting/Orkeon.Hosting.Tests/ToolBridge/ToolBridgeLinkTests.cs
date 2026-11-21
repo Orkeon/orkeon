@@ -408,4 +408,48 @@ public sealed class ToolBridgeLinkTests
         // Assert
         Assert.Equal(["firefox"], link.BridgedTools);
     }
+
+    [Fact]
+    public async Task ShouldPutEveryLocalToolBack_WhenAReplacementFailsMidway()
+    {
+        // Arrange
+        var (server, address) = await BridgeLoopback.StartServerAsync([new FakeBridgeTool("firefox"), new FakeBridgeTool("teams_chat")], ["*"]);
+        await using var _ = server;
+        var firefox = new FakeBridgeTool("firefox");
+        var teams = new FakeBridgeTool("teams_chat");
+        var registry = new FakeToolRegistry([firefox, teams]) { RefuseReplacementNumber = 2 };
+        using var link = new ToolBridgeLink(BridgeLoopback.ClientOptions(address, "firefox", "teams_chat"), new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(),
+            BridgeLoopback.Environment);
+
+        // Act
+        var refusal = await Assert.ThrowsAsync<RunnerSettingsException>(() => link.ConnectAsync(
+            registry, null, null, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, TestContext.Current.CancellationToken));
+
+        // Assert
+        Assert.Contains("changed in the registry", refusal.Message, StringComparison.Ordinal);
+        Assert.Same(firefox, await registry.GetToolByNameAsync("firefox", TestContext.Current.CancellationToken));
+        Assert.Same(teams, await registry.GetToolByNameAsync("teams_chat", TestContext.Current.CancellationToken));
+        Assert.Equal((false, null), (link.IsConnected, link.Client));
+    }
+
+    [Fact]
+    public async Task ShouldLeaveABridgedToolAsItIs_WhenAnotherLinkConnectsOverTheSameRegistry()
+    {
+        // Arrange
+        var (server, address) = await BridgeLoopback.StartServerAsync([new FakeBridgeTool("firefox")], ["*"]);
+        await using var _ = server;
+        var registry = new ToolRegistry([new FakeBridgeTool("firefox")]);
+        using var first = await BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(address, "*"));
+        var proxy = (await registry.GetToolByNameAsync("firefox", TestContext.Current.CancellationToken))!;
+        var decorated = new StubWrapperTool(proxy);
+        Assert.True(await registry.ReplaceToolAsync(proxy, decorated, TestContext.Current.CancellationToken));
+
+        // Act
+        using var second = await BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(address, "*"));
+
+        // Assert
+        Assert.Same(decorated, await registry.GetToolByNameAsync("firefox", TestContext.Current.CancellationToken));
+        Assert.Empty(second.BridgedTools);
+    }
 }

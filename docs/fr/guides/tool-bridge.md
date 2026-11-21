@@ -131,6 +131,21 @@ ne voyage jamais en clair hors de la machine.
   jamais tout un arbre. Tout autre fichier est refusé avec un avertissement.
   `Orkeon:Tools:Bridge:MaxFileBytes` et
   `Orkeon:Bridge:MaxFileBytes` (16 Mio chacun) bornent chaque sens.
+- **Un dossier voyage avec ses fichiers.** Un argument de chemin qui nomme un dossier de l'appelant envoie les
+  fichiers qu'il contient, à toute profondeur, liens symboliques exclus, au plus 256 fichiers par dossier et dans la
+  limite de `MaxFileBytes` : au-delà de l'une ou l'autre borne, l'appel échoue avant d'être envoyé. Le répertoire de
+  travail, la racine d'un montage, `/` et un dossier au-dessus d'eux ne sont jamais envoyés en entier. Tout autre
+  argument texte n'envoie que le fichier qu'il nomme.
+- **Les fichiers reviennent tous ou aucun.** L'appelant vérifie chaque fichier de la réponse (la borne de taille, puis
+  les règles de son propre système de fichiers) avant d'écrire le premier : un seul fichier refusé fait échouer
+  l'appel et aucun n'est écrit. Une écriture qui échoue en cours de route (un disque plein) fait échouer l'appel et
+  nomme les fichiers déjà écrits.
+- **Un pont perdu est un appel en échec.** Quoi qui échoue en route (le pont injoignable, l'hôte qui s'arrête, un
+  argument qui ne peut être envoyé en JSON), l'appel rend un résultat en échec avec la raison du pont, marqué
+  `bridge_failure` dans ses métadonnées ; il ne lève jamais d'exception dans l'exécution et ne se replie jamais sur
+  l'outil local. Un outil MCP ponté le reste quand son serveur, chez l'appelant, change sa liste (`list_changed`) :
+  l'adaptateur de l'appelant n'est jamais remis par-dessus le proxy du pont, et l'appelant journalise
+  `mcp.tool.held` une fois.
 - **Ce que `*` ne sélectionne jamais.** `"Allow": ["*"]` ne sélectionne, d'un côté comme de l'autre, que les outils
   d'Orkeon sûrs sur une autre machine (`firefox`, `web_search`, `github`...). Il ne sélectionne jamais :
   - un outil qui agit sur l'espace de travail (fichiers, shell, `code_interpreter`, `list_mounts`, index de code) :
@@ -153,7 +168,7 @@ ne voyage jamais en clair hors de la machine.
 | `the token in the environment variable … is shorter than 16 characters` | prendre une longue valeur aléatoire (`openssl rand -hex 32`) |
 | `the tool bridge at … refused the token` | donner le même jeton aux deux côtés |
 | `Orkeon:Tools:Bridge:Allow names 'x', which the tool bridge at … does not serve` | ajouter `x` à l'`Allow` du pont, ou le retirer de celui de l'appelant |
-| `the contract of 'x' differs between this Orkeon and the tool bridge` | exécuter la même version d'Orkeon des deux côtés |
+| `the contract of 'x' differs between this Orkeon and the tool bridge` | exécuter la même version d'Orkeon des deux côtés (l'empreinte couvre la forme du schéma, le transport de fichiers de l'outil et ses classes d'accès) |
 | `Allow names 'x', a tool of the caller's own run` | retirer `x` : il reste chez l'appelant |
 | `names a host other than loopback over http: such an address requires https` | utiliser la boucle locale (`--network host`) ou https |
 | `asks for https, which the tool bridge serves under Windows only` | garder le préfixe en boucle locale en http et utiliser `--network host`, ou placer un terminateur TLS devant |

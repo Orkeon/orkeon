@@ -123,6 +123,18 @@ travels in clear off the machine.
   path or under that folder, for a call classed `Edit` or `Execute` that succeeded. A text typed into a page never
   names a path, and the working directory, a mount's root, `/` or a folder above one of them never opens a whole tree. Any other file is refused with a warning.
   `Orkeon:Tools:Bridge:MaxFileBytes` and `Orkeon:Bridge:MaxFileBytes` (16 MiB each) bound each direction.
+- **A folder travels with its files.** A path-like argument that names a folder of the caller sends the files under
+  it, at any depth, symbolic links left out, at most 256 files per folder and within `MaxFileBytes`: past either
+  bound the call fails before it is sent. The working directory, a mount's root, `/` and a folder above them are never
+  sent whole. Any other string argument sends only the file it names.
+- **The files come back all or none.** The caller checks every file of the answer (the size bound, then its own file
+  system's rules) before it writes the first: one refused file fails the call and none is written. A write that fails
+  midway (a full disk) fails the call and names the files already written.
+- **A lost bridge is a failed call.** Whatever goes wrong on the way (the bridge unreachable, the host shutting down,
+  an argument that cannot be sent as JSON), the call returns a failed result with the bridge's reason, marked
+  `bridge_failure` in its metadata; it never throws into the run, and never falls back to the local tool. A bridged
+  MCP tool stays bridged when its server on the caller changes its list (`list_changed`): the caller's adapter is
+  never put back over the bridge's proxy, and the caller logs `mcp.tool.held` once.
 - **What `*` never selects.** `"Allow": ["*"]` selects, on either side, only Orkeon's own tools that are safe on
   another machine (`firefox`, `web_search`, `github`...). It never selects:
   - a tool that acts on the workspace (files, shell, `code_interpreter`, `list_mounts`, code index): bridged, it would
@@ -145,7 +157,7 @@ travels in clear off the machine.
 | `the token in the environment variable … is shorter than 16 characters` | use a long random value (`openssl rand -hex 32`) |
 | `the tool bridge at … refused the token` | give both sides the same token |
 | `Orkeon:Tools:Bridge:Allow names 'x', which the tool bridge at … does not serve` | add `x` to the bridge's `Allow`, or remove it from the caller's |
-| `the contract of 'x' differs between this Orkeon and the tool bridge` | run the same Orkeon version on both sides |
+| `the contract of 'x' differs between this Orkeon and the tool bridge` | run the same Orkeon version on both sides (the hash covers the schema's shape, whether the tool carries files, and its access classes) |
 | `Allow names 'x', a tool of the caller's own run` | remove `x`: it stays with the caller |
 | `names a host other than loopback over http: such an address requires https` | use loopback (`--network host`) or https |
 | `asks for https, which the tool bridge serves under Windows only` | keep the prefix on loopback over http and use `--network host`, or put a TLS terminator in front |

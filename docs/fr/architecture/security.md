@@ -411,7 +411,12 @@ conteneur. Chaque côté se défend pour lui-même :
   de chemin (un paramètre de format `path`, ou dont le nom est ou finit par un mot de chemin : `path`, `file`, `dir`,
   `folder`, `output`, `target`...) a nommé le chemin ou un dossier au-dessus ; le répertoire de travail, la racine
   d'un montage, `/` ou un dossier au-dessus de l'un d'eux ne nomment rien. Tout autre fichier est refusé avec un
-  avertissement, le résultat gardé ; un chemin hors d'un montage inscriptible y est refusé.
+  avertissement, le résultat gardé ; un chemin hors d'un montage inscriptible y est refusé. Le retour des fichiers
+  est tout ou rien : chaque fichier est vérifié avant l'écriture du premier, si bien qu'un seul refus ne laisse rien
+  d'écrit, et une écriture qui échoue en cours de route nomme les fichiers déjà écrits. Un dossier que nomme un
+  argument de chemin est envoyé avec ses fichiers (liens exclus, au plus 256 par dossier, dans la borne de taille) ;
+  le répertoire de travail, la racine d'un montage et `/` ne le sont jamais. Une défaillance du lien, arrêt de l'hôte
+  compris, est un appel en échec, jamais une exécution locale.
 - **La durée de vie.** Une exécution de l'appelant est une portée sur le pont, terminée par `POST end-run` ; un
   appelant silencieux au-delà de `Orkeon:Bridge:HeartbeatWindow` (30 s) perd ses portées, et leurs navigateurs, en
   au plus 1,25 fois la fenêtre. Arrêter le pont annule les appels en cours et termine chaque portée.

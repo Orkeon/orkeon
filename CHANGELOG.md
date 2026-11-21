@@ -50,6 +50,13 @@ one caller: the caller id is self-declared, so any holder of the token can act o
 **Also**: a `.ork.ts` script's `tools.firefox` now runs the registry's wrapper of a transient container tool (the
 bridge's proxy, the permission gate) instead of a new bare instance.
 
+**Also**: the write-back of a bridged call is all or none (every file checked before the first is written; a write
+failing midway names the files already written); a folder a path-like argument names is sent with its files (at most
+256 per folder, within `MaxFileBytes`); any failure of the link is a failed call marked `bridge_failure`, never a
+thrown exception; a failed bridging start puts every local tool back and never wraps a proxy twice; an MCP
+`list_changed` keeps a bridged tool bridged (`mcp.tool.held`); the contract hash covers file carrying and enum
+combinations, and keeps a parameter named `description`.
+
 ### Added — `thinking: { effort: auto }`: System One picks a task's thinking level (#439)
 
 An agent or a task (`llm_override`) that writes `thinking: { effort: auto }` lets the decision model pick, at the start

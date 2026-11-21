@@ -934,6 +934,17 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
             foreach (var (name, held) in entry.SnapshotTools())
             {
+                // The registry holds another instance under the name (a tool bridged to another machine wraps ours):
+                // that instance stays, the server's change is not applied to it, and our adapter is never put back
+                // over it, which would run the tool here in place of where it was sent.
+                if (await _toolRegistry.GetToolByNameAsync(name, apply).ConfigureAwait(false) is { } holder && !ReferenceEquals(holder, held.Adapter))
+                {
+                    entry.Forget(name);
+                    setAside.Add(name);
+                    LogMcpToolHeldElsewhere(name, serverId);
+                    continue;
+                }
+
                 if (!current.TryGetValue(name, out var definition))
                 {
                     await _toolRegistry.UnregisterToolAsync(name, apply).ConfigureAwait(false);
@@ -1084,6 +1095,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
     [LoggerMessage(EventName = "mcp.tool.rejected", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "The tool '{Name}' of MCP server '{ServerId}' now collides with an already-registered tool and is ignored; the registered tool keeps the name")]
     private partial void LogMcpToolRejected(string name, string serverId);
+
+    [LoggerMessage(EventName = "mcp.tool.held", Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "MCP server '{ServerId}' changed its tool list, but the registry holds the tool '{Name}' through another instance (a tool bridge runs it elsewhere): that instance keeps the name, the change is not applied to it, and the tool is never registered here again while it holds it")]
+    private partial void LogMcpToolHeldElsewhere(string name, string serverId);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "MCP server '{ServerId}' changed its tool list and the client could not list it again; the tools registered so far stay")]
     private partial void LogMcpToolResyncFailed(Exception exception, string serverId);

@@ -55,4 +55,98 @@ public sealed class ToolBridgeContractTests
         // Assert
         Assert.Equal(ToolBridgeContract.HashOf(new FakeBridgeTool("firefox")), hash);
     }
+
+    private static FakeBridgeTool WithParameter(string name, ParameterSchema parameter) => new("firefox")
+    {
+        Schema = new ToolSchema("firefox", "a fake tool of the bridge", new Dictionary<string, ParameterSchema>
+        {
+            ["action"] = new("string", "what to do", Required: true, Enum: ["read", "write"]),
+            [name] = parameter,
+        }),
+    };
+
+    [Fact]
+    public void ShouldChangeTheHash_WhenAParameterNamedDescriptionChangesItsType()
+    {
+        // Arrange
+        var text = WithParameter("description", new ParameterSchema("string", "a text", Required: false));
+
+        // Act
+        var number = ToolBridgeContract.HashOf(WithParameter("description", new ParameterSchema("integer", "a text", Required: false)));
+
+        // Assert
+        Assert.NotEqual(ToolBridgeContract.HashOf(text), number);
+    }
+
+    [Fact]
+    public void ShouldChangeTheHash_WhenOneSideCarriesFilesAndTheOtherDoesNot()
+    {
+        // Arrange
+        var carries = new FakeBridgeTool("firefox") { UsesFileSystem = true };
+
+        // Act
+        var hash = ToolBridgeContract.HashOf(carries);
+
+        // Assert
+        Assert.NotEqual(ToolBridgeContract.HashOf(new FakeBridgeTool("firefox")), hash);
+    }
+
+    [Fact]
+    public void ShouldChangeTheHash_WhenOneSideActsOnTheWorkspace()
+    {
+        // Arrange
+        var workspace = new FakeWorkspaceBridgeTool();
+
+        // Act
+        var canonical = ToolBridgeContract.CanonicalOf(workspace);
+
+        // Assert
+        Assert.Contains("acts_on_workspace=true", canonical, StringComparison.Ordinal);
+        Assert.Contains("acts_on_workspace=false", ToolBridgeContract.CanonicalOf(new FakeBridgeTool("workspace_tool")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldKeepTheHash_WhenOnlyTheOrderOfTheEnumValuesDiffers()
+    {
+        // Arrange
+        var reversed = new FakeBridgeTool("firefox", "write", "read");
+
+        // Act
+        var hash = ToolBridgeContract.HashOf(reversed);
+
+        // Assert
+        Assert.Equal(ToolBridgeContract.HashOf(new FakeBridgeTool("firefox", "read", "write")), hash);
+    }
+
+    [Fact]
+    public void ShouldSampleTheAccessOfAnEnumMap_WhenAParameterDeclaresOne()
+    {
+        // Arrange
+        var tool = WithParameter("mode", new ParameterSchema("string", "a mode", Required: false, EnumMap: new() { ["fast"] = 0, ["safe"] = 1 }));
+
+        // Act
+        var table = ToolBridgeContract.AccessTable(tool);
+
+        // Assert
+        Assert.Contains(table, line => line.StartsWith("mode=fast:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ShouldChangeTheHash_WhenOnlyACombinationOfEnumValuesChangesItsAccess()
+    {
+        // Arrange
+        var mode = new ParameterSchema("string", "a mode", Required: false, Enum: ["dry", "real"]);
+        var plain = WithParameter("mode", mode);
+        var joint = new FakeBridgeTool("firefox")
+        {
+            Schema = plain.Schema,
+            AccessOf = a => a.GetValueOrDefault("action") as string == "write" && a.GetValueOrDefault("mode") as string == "real" ? ToolAccess.Execute : null,
+        };
+
+        // Act
+        var hash = ToolBridgeContract.HashOf(joint);
+
+        // Assert
+        Assert.NotEqual(ToolBridgeContract.HashOf(plain), hash);
+    }
 }

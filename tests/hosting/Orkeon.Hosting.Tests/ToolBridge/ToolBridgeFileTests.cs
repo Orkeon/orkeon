@@ -486,4 +486,149 @@ public sealed class ToolBridgeFileTests : IDisposable
         // Assert
         Assert.Equal(expected, pathLike);
     }
+
+    [Fact]
+    public async Task ShouldWriteNoFile_WhenOneFileOfTheAnswerIsRefusedHere()
+    {
+        // Arrange: the second file lies under a path no mount of the caller holds, so its write is refused.
+        var (bridge, link, bridged, files) = await HostileAsync(
+            """{"success":true,"result":"done","files":[{"path":"/output/shot.png","content":"AQID"},{"path":"/elsewhere/shots/1.png","content":"AQID"}]}""");
+        await using var _ = bridge;
+        using var __ = link;
+        var call = new ToolCallRequest("firefox", new Dictionary<string, object?>
+        {
+            ["action"] = "write", ["save_to_path"] = "/output/shot.png", ["output_dir"] = "/elsewhere/shots",
+        });
+
+        // Act
+        var response = await bridged.CallAsync(call, Ct);
+
+        // Assert
+        Assert.Equal((false, false), (response.Success, await files.ExistsAsync("/output/shot.png", Ct)));
+        Assert.Contains("none of its files was written here", response.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldNameTheFilesAlreadyWritten_WhenAWriteFailsMidway()
+    {
+        // Arrange
+        var (bridge, link, bridged, files) = await HostileAsync(
+            """{"success":true,"result":"done","files":[{"path":"/output/shots/1.png","content":"AQID"},{"path":"/output/shots/2.png","content":"AQID"}]}""");
+        await using var _ = bridge;
+        using var __ = link;
+        files.FailingWrites.Add("/output/shots/2.png");
+
+        // Act
+        var response = await bridged.CallAsync(Write("output_dir", "/output/shots"), Ct);
+
+        // Assert
+        Assert.False(response.Success);
+        Assert.Contains("already written here: '/output/shots/1.png'", response.Error, StringComparison.Ordinal);
+        Assert.Contains("'/output/shots/2.png'", response.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldSendTheFilesUnderADirectory_WhenAPathLikeArgumentNamesIt()
+    {
+        // Arrange
+        _callerFiles.AddFile("/input/docs/a.txt", "a").AddFile("/input/docs/sub/b.txt", "b");
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service);
+        var (server, link, bridged) = await BridgeAsync(remote);
+        await using var _ = server;
+        using var __ = link;
+
+        // Act
+        var response = await bridged.CallAsync(Call("input_dir", "/input/docs"), Ct);
+
+        // Assert
+        Assert.True(response.Success, response.Error);
+        Assert.Equal(["/input/docs/a.txt", "/input/docs/sub/b.txt"], remote.Listed.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task ShouldSendNoFileOfTheMount_WhenTheDirectoryNamedIsAMountsRoot()
+    {
+        // Arrange
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service);
+        var (server, link, bridged) = await BridgeAsync(remote);
+        await using var _ = server;
+        using var __ = link;
+
+        // Act
+        await bridged.CallAsync(Call("input_dir", "/input"), Ct);
+
+        // Assert
+        Assert.Empty(remote.Listed);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheCallBeforeSendingIt_WhenADirectoryHoldsTooManyFiles()
+    {
+        // Arrange
+        for (var i = 0; i <= ToolBridgeProxy.MaxDirectoryFiles; i++)
+            _callerFiles.AddFile($"/input/many/{i}.txt", "x");
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service);
+        var (server, link, bridged) = await BridgeAsync(remote);
+        await using var _ = server;
+        using var __ = link;
+
+        // Act
+        var response = await bridged.CallAsync(Call("input_dir", "/input/many"), Ct);
+
+        // Assert
+        Assert.Equal((false, 0), (response.Success, remote.Calls.Count));
+        Assert.Contains($"more than {ToolBridgeProxy.MaxDirectoryFiles} files", response.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheCallBeforeSendingIt_WhenTheFilesOfADirectoryExceedTheLimit()
+    {
+        // Arrange
+        _callerFiles.AddFile("/input/big/a.txt", new byte[8]).AddFile("/input/big/b.txt", new byte[8]);
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service);
+        var (server, link, bridged) = await BridgeAsync(remote, callerMax: 12);
+        await using var _ = server;
+        using var __ = link;
+
+        // Act
+        var response = await bridged.CallAsync(Call("input_dir", "/input/big"), Ct);
+
+        // Assert
+        Assert.Equal((false, 0), (response.Success, remote.Calls.Count));
+        Assert.Contains("MaxFileBytes", response.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldFailTheCallWithTheBridgeReason_WhenTheLinkIsClosed()
+    {
+        // Arrange
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service);
+        var (server, link, bridged) = await BridgeAsync(remote);
+        await using var _ = server;
+        link.Dispose();
+
+        // Act
+        var response = await bridged.CallAsync(Call("text", "hello"), Ct);
+
+        // Assert
+        Assert.False(response.Success);
+        Assert.True(response.Metadata?.ContainsKey(ToolBridgeProxy.BridgeFailureKey), response.Error);
+    }
+
+    [Fact]
+    public async Task ShouldFailTheCallWithTheBridgeReason_WhenAnArgumentCannotBeSent()
+    {
+        // Arrange
+        var remote = new FakeFileBridgeTool("firefox", _bridgeFiles.Service);
+        var (server, link, bridged) = await BridgeAsync(remote);
+        await using var _ = server;
+        using var __ = link;
+
+        // Act
+        var response = await bridged.CallAsync(Call("text", typeof(string)), Ct);
+
+        // Assert
+        Assert.Equal((false, 0), (response.Success, remote.Calls.Count));
+        Assert.True(response.Metadata?.ContainsKey(ToolBridgeProxy.BridgeFailureKey), response.Error);
+    }
 }

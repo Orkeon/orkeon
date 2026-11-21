@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -28,7 +29,10 @@ namespace Orkeon.Hosting.ToolBridge;
 /// that an argument of a path-like parameter named (<see cref="ToolBridgePathArguments"/>), only for a call the gate
 /// classed as a write (<see cref="ToolAccess.Edit"/> or <see cref="ToolAccess.Execute"/>), and only for a call that
 /// succeeded: any other file of the answer is refused with a warning, and the call still returns its result. A path
-/// that is the working directory, a mount's root, <c>/</c> or a folder above one of them grants nothing.
+/// that is the working directory, a mount's root, <c>/</c> or a folder above one of them grants nothing. A folder a
+/// path-like argument names is sent with its files, bounded (<see cref="MaxDirectoryFiles"/>, the size limit); the
+/// files that come back are written all or none. Any failure of the link is a failed call marked
+/// <see cref="BridgeFailureKey"/>, never an exception and never a local run.
 /// </para>
 /// <para>
 /// The bridge's word that a result is already bounded is never taken: the caller's pipeline applies its one truncation
@@ -45,6 +49,9 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
 
     // The longest string argument taken for a path.
     private const int MaxPathLength = 1024;
+
+    /// <summary>The most files a bridged call sends from one directory an argument names.</summary>
+    public const int MaxDirectoryFiles = 256;
 
     private readonly ToolBridgeClient _client;
     private readonly IFileSystemService _fileSystem;
@@ -94,25 +101,29 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
     public bool UsesFileSystem => Inner.UsesFileSystem;
 
     /// <inheritdoc />
+    [SuppressMessage("Design", "CA1031",
+        Justification = "A bridged call never throws to the caller's pipeline: any failure of the bridge, the host's shutdown included, is a failed call with its reason.")]
     public async Task<ProtocolToolCallResponse> CallAsync(ProtocolToolCallRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         var arguments = request.Parameters ?? new Dictionary<string, object?>();
-        var call = new BridgeCallRequest
-        {
-            CallId = Guid.NewGuid().ToString("N"),
-            Tool = Name,
-            Arguments = JsonSerializer.SerializeToElement(arguments, ToolBridgeProtocol.JsonOptions),
-            Context = request.Context,
-            CallerId = _client.CallerId,
-            RunId = JoinRun(),
-        };
+        var callId = Guid.NewGuid().ToString("N");
         try
         {
+            var call = new BridgeCallRequest
+            {
+                CallId = callId,
+                Tool = Name,
+                Arguments = JsonSerializer.SerializeToElement(arguments, ToolBridgeProtocol.JsonOptions),
+                Context = request.Context,
+                CallerId = _client.CallerId,
+                RunId = JoinRun(),
+            };
             if (_carriesFiles)
             {
-                if (await FilesOfAsync(arguments, cancellationToken).ConfigureAwait(false) is not { } files)
-                    return Failure($"{Name} runs on the tool bridge, and the files its arguments name exceed {ToolBridgeClientOptions.SectionName}:MaxFileBytes ({ToolBridgeProtocol.Describe(_maxFileBytes)}).");
+                var sent = await FilesOfAsync(arguments, cancellationToken).ConfigureAwait(false);
+                if (sent.Problem is { } problem)
+                    return Failure($"{Name} runs on the tool bridge, and {problem}");
                 call = call with
                 {
                     Mounts = [.. _fileSystem.GetAvailableMounts()
@@ -120,7 +131,7 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
                         .Select(m => new BridgeMount { Path = m.VirtualPath, Writable = m.DefaultRights.HasFlag(FileAccessRights.Write) })],
                     WorkingDirectory = _fileSystem.WorkingDirectory,
                     WriteDirectory = _fileSystem.WriteDirectory,
-                    Files = files.Count == 0 ? null : files,
+                    Files = sent.Files.Count == 0 ? null : sent.Files,
                 };
             }
 
@@ -132,15 +143,31 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             using var bound = new CancellationTokenSource(CancelBound);
-            await _client.CancelAsync(call.CallId, bound.Token).ConfigureAwait(false);
+            await _client.CancelAsync(callId, bound.Token).ConfigureAwait(false);
             return new ProtocolToolCallResponse(false, null, "Operation cancelled", new Dictionary<string, object?> { ["cancelled"] = true });
         }
         catch (ToolBridgeException ex)
         {
-            return new ProtocolToolCallResponse(false, null, $"{Name} runs on the tool bridge, and {ex.Message}",
-                new Dictionary<string, object?> { [BridgeFailureKey] = ex.Failure.ToString() });
+            return BridgeFailure(ex.Message, ex.Failure);
+        }
+        catch (ObjectDisposedException)
+        {
+            // The host is shutting down, or the link was taken down: the bridge is gone for this caller.
+            return BridgeFailure($"the link to the tool bridge at {_client.Address} is closed (the host is shutting down).", ToolBridgeFailure.Unreachable);
+        }
+        catch (NotSupportedException ex)
+        {
+            return BridgeFailure($"its arguments cannot be sent to the tool bridge: {ex.Message}", ToolBridgeFailure.Refused);
+        }
+        catch (Exception ex)
+        {
+            return BridgeFailure($"the call to the tool bridge at {_client.Address} failed: {ex.Message}", ToolBridgeFailure.Unreachable);
         }
     }
+
+    private ProtocolToolCallResponse BridgeFailure(string reason, ToolBridgeFailure failure) =>
+        new(false, null, $"{Name} runs on the tool bridge, and {reason}",
+            new Dictionary<string, object?> { [BridgeFailureKey] = failure.ToString() });
 
     /// <inheritdoc />
     public async Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
@@ -194,53 +221,141 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
     }
 
     /// <summary>
-    /// The caller's files the arguments name: each string argument, at any depth, that is a virtual path under a mount and an existing file this run may
-    /// read. Null when they exceed the size limit.
+    /// The caller's files the arguments name: each string argument, at any depth, that is a virtual path under a mount
+    /// and an existing file this run may read; and, for an argument of a path-like parameter
+    /// (<see cref="ToolBridgePathArguments"/>) that names a directory, the files under it at any depth, links left out. A
+    /// directory that is the working directory, a mount's root, <c>/</c> or a folder above one of them is not sent. The
+    /// problem in place of the files when they exceed the size limit, or when one directory holds more than
+    /// <see cref="MaxDirectoryFiles"/> files.
     /// </summary>
-    [SuppressMessage("Design", "CA1031",
-        Justification = "A string that is no path of the caller fails in many ways (format, rights, IO); each means: not a file to send.")]
-    private async System.Threading.Tasks.Task<ImmutableList<BridgeFile>?> FilesOfAsync(
+    private async System.Threading.Tasks.Task<(ImmutableList<BridgeFile> Files, string? Problem)> FilesOfAsync(
         IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var files = ImmutableList.CreateBuilder<BridgeFile>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         long total = 0;
+        var tooLarge = $"the files its arguments name exceed {ToolBridgeClientOptions.SectionName}:MaxFileBytes ({ToolBridgeProtocol.Describe(_maxFileBytes)}).";
+        var named = new HashSet<string>(ToolBridgePathArguments.Of(arguments, Inner.Schema), StringComparer.Ordinal);
+        var roots = Roots();
         using var _ = AgentRunScope.EnterToolCall();
         foreach (var candidate in Strings(arguments.Values))
         {
             if (candidate.Length > MaxPathLength || candidate.Contains("://", StringComparison.Ordinal) || candidate.Any(char.IsControl)
                 || !UnderAMount(candidate))
                 continue;
-            byte[]? content;
-            string path;
-            try
+            if (await ReadableAsync(candidate, cancellationToken).ConfigureAwait(false) is not { } entry)
+                continue;
+            if (entry.Kind == VirtualEntryKind.File)
             {
-                var check = _fileSystem.ResolveAndValidate(candidate, FileAccessRights.Read);
-                if (!check.IsAllowed || check.ResolvedPath is null)
+                if (!seen.Add(entry.Path) || await ReadAsync(entry.Path, cancellationToken).ConfigureAwait(false) is not { } content)
                     continue;
-                path = _fileSystem.ToVirtualPath(check.ResolvedPath) ?? candidate;
-                if (!seen.Add(path) || await _fileSystem.GetEntryKindAsync(path, cancellationToken).ConfigureAwait(false) != VirtualEntryKind.File)
-                    continue;
-                content = await _fileSystem.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception)
-            {
+                total += content.Length;
+                if (total > _maxFileBytes)
+                    return ([], tooLarge);
+                files.Add(new BridgeFile { Path = entry.Path, Content = content });
                 continue;
             }
 
-            if (content is null)
+            if (entry.Kind != VirtualEntryKind.Directory || !named.Contains(candidate)
+                || VirtualPaths.Normalize(entry.Path, "/") is not { } directory || roots.Any(root => VirtualPaths.IsAtOrUnder(root, directory)))
                 continue;
-            total += content.Length;
-            if (total > _maxFileBytes)
-                return null;
-            files.Add(new BridgeFile { Path = path, Content = content });
+            var count = 0;
+            await foreach (var found in UnderAsync(directory, cancellationToken).ConfigureAwait(false))
+            {
+                if (++count > MaxDirectoryFiles)
+                    return ([], $"the directory '{directory}' its arguments name holds more than {MaxDirectoryFiles} files, the most a bridged call sends from one directory.");
+                if (!seen.Add(found) || await ReadableAsync(found, cancellationToken).ConfigureAwait(false) is not { Kind: VirtualEntryKind.File } file
+                    || await ReadAsync(file.Path, cancellationToken).ConfigureAwait(false) is not { } content)
+                    continue;
+                total += content.Length;
+                if (total > _maxFileBytes)
+                    return ([], tooLarge);
+                files.Add(new BridgeFile { Path = file.Path, Content = content });
+            }
         }
 
-        return files.ToImmutable();
+        return (files.ToImmutable(), null);
+    }
+
+    /// <summary>The working directory, the mounts' roots and <c>/</c>, normalised: a folder at or above one names nothing.</summary>
+    private List<string> Roots()
+    {
+        var working = _fileSystem.WorkingDirectory is { Length: > 0 } wd ? VirtualPaths.Normalize(wd, "/") ?? "/" : "/";
+        return [.. _fileSystem.GetAvailableMounts()
+            .Select(m => VirtualPaths.Normalize(m.VirtualPath, "/"))
+            .OfType<string>()
+            .Append(working)];
+    }
+
+    // The entry at candidate, by its virtual path, when this run may read it; null for a string that is no readable path.
+    [SuppressMessage("Design", "CA1031",
+        Justification = "A string that is no path of the caller fails in many ways (format, rights, IO); each means: not a file to send.")]
+    private async System.Threading.Tasks.Task<(string Path, VirtualEntryKind Kind)?> ReadableAsync(string candidate, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var check = _fileSystem.ResolveAndValidate(candidate, FileAccessRights.Read);
+            if (!check.IsAllowed || check.ResolvedPath is null)
+                return null;
+            var path = _fileSystem.ToVirtualPath(check.ResolvedPath) ?? candidate;
+            return (path, await _fileSystem.GetEntryKindAsync(path, cancellationToken).ConfigureAwait(false));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    [SuppressMessage("Design", "CA1031", Justification = "A file that cannot be read is not sent, as one that does not exist.")]
+    private async System.Threading.Tasks.Task<byte[]?> ReadAsync(string path, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _fileSystem.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    // The files under directory, at any depth, links left out; the listing stops where it can no longer be read.
+    private async IAsyncEnumerable<string> UnderAsync(string directory, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var entries = _fileSystem.EnumerateFilesAsync(directory, new VirtualEnumerationOptions(Recursive: true, FollowSymlinks: false), cancellationToken)
+            .GetAsyncEnumerator(cancellationToken);
+        try
+        {
+            while (true)
+            {
+                VirtualFileEntry entry;
+                try
+                {
+                    if (!await entries.MoveNextAsync().ConfigureAwait(false))
+                        yield break;
+                    entry = entries.Current;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileAccessDeniedException)
+                {
+                    yield break;
+                }
+
+                if (entry.Kind == VirtualEntryKind.File && entry.LinkTarget is null)
+                    yield return entry.VirtualPath;
+            }
+        }
+        finally
+        {
+            await entries.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     // Whether candidate is a virtual path under a mount of the caller: a word such as an action name, or a relative
@@ -272,9 +387,11 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
     }
 
     /// <summary>
-    /// Writes the files the tool wrote on the bridge through the caller's file system, under the checks of its run; the
-    /// reason of the first refusal, or null when every file asked for was written. A file at a path the arguments did
-    /// not name, or returned for a call the gate classed as a read or for a call that failed, is left out with a warning.
+    /// Writes the files the tool wrote on the bridge through the caller's file system, under the checks of its run, all
+    /// or none: every file asked for is checked (the size limit, then the file system's policy) before the first one is
+    /// written, so a refusal leaves no file written. The reason of a refusal, which names the files already written when
+    /// a write failed midway; null when every file asked for was written. A file at a path the arguments did not name,
+    /// or returned for a call the gate classed as a read or for a call that failed, is left out with a warning.
     /// </summary>
     private async System.Threading.Tasks.Task<string?> WriteBackAsync(
         ImmutableList<BridgeFile>? files, IReadOnlyDictionary<string, object?> arguments, bool succeeded, CancellationToken cancellationToken)
@@ -285,21 +402,31 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
         if (asked.Count == 0)
             return null;
         if (asked.Sum(f => (long)f.Content.Length) > _maxFileBytes)
-            return $"the files it wrote exceed {ToolBridgeClientOptions.SectionName}:MaxFileBytes ({ToolBridgeProtocol.Describe(_maxFileBytes)}).";
+            return $"the files it wrote exceed {ToolBridgeClientOptions.SectionName}:MaxFileBytes ({ToolBridgeProtocol.Describe(_maxFileBytes)}): none of them was written here.";
         using var _ = AgentRunScope.EnterToolCall();
         foreach (var file in asked)
         {
             var check = _fileSystem.ResolveAndValidate(file.Path, FileAccessRights.Write);
             if (!check.IsAllowed)
-                return $"the file '{file.Path}' it wrote is refused here: {check.DenialReason ?? "the path is refused by the file system policy"}.";
+                return $"the file '{file.Path}' it wrote is refused here: {check.DenialReason ?? "the path is refused by the file system policy"}; none of its files was written here.";
+        }
+
+        var written = new List<string>();
+        foreach (var file in asked)
+        {
             try
             {
                 await _fileSystem.WriteAllBytesAsync(file.Path, file.Content.ToArray(), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileAccessDeniedException)
             {
-                return $"the file '{file.Path}' it wrote could not be written here: {ex.Message}";
+                var done = written.Count == 0
+                    ? "none of its files was written here"
+                    : "already written here: " + string.Join(", ", written.Select(p => $"'{p}'"));
+                return $"the file '{file.Path}' it wrote could not be written here: {ex.Message} ({done}).";
             }
+
+            written.Add(file.Path);
         }
 
         return null;
@@ -342,11 +469,7 @@ internal sealed partial class ToolBridgeProxy : IBaseTool, IToolWrapper
     {
         var named = new HashSet<string>(StringComparer.Ordinal);
         var working = _fileSystem.WorkingDirectory is { Length: > 0 } wd ? VirtualPaths.Normalize(wd, "/") ?? "/" : "/";
-        var roots = _fileSystem.GetAvailableMounts()
-            .Select(m => VirtualPaths.Normalize(m.VirtualPath, "/"))
-            .OfType<string>()
-            .Append(working)
-            .ToList();
+        var roots = Roots();
         foreach (var candidate in ToolBridgePathArguments.Of(arguments, Inner.Schema))
         {
             if (candidate.Length == 0 || candidate.Length > MaxPathLength || candidate.Contains("://", StringComparison.Ordinal) || candidate.Any(char.IsControl))

@@ -48,6 +48,9 @@ public class FakeBridgeTool : IBaseTool
     /// <inheritdoc />
     public ToolAccess Access { get; init; } = ToolAccess.Execute;
 
+    /// <summary>When set, the class of a call it gives a class to, before the class of <c>action</c>.</summary>
+    public Func<IReadOnlyDictionary<string, object?>, ToolAccess?>? AccessOf { get; init; }
+
     /// <summary>The class of the action <c>write</c>; <see cref="ToolAccess.Read"/> for every other one.</summary>
     public ToolAccess WriteAccess { get; init; } = ToolAccess.Edit;
 
@@ -77,7 +80,8 @@ public class FakeBridgeTool : IBaseTool
 
     /// <inheritdoc />
     public ToolAccess AccessFor(IReadOnlyDictionary<string, object?> arguments) =>
-        arguments.TryGetValue("action", out var action) && action?.ToString() == "write" ? WriteAccess
+        AccessOf?.Invoke(arguments) is { } given ? given
+        : arguments.TryGetValue("action", out var action) && action?.ToString() == "write" ? WriteAccess
         : arguments.ContainsKey("action") ? ToolAccess.Read
         : Access;
 
@@ -153,6 +157,7 @@ public sealed class FakeFileBridgeTool : FakeBridgeTool
             ["output_dir"] = new("string", "a folder the call may write under", Required: false),
             ["text"] = new("string", "a text, never a path", Required: false),
             ["read_from"] = new("string", "what to read", Required: false),
+            ["input_dir"] = new("string", "a folder whose files the tool lists", Required: false),
         });
     }
 
@@ -170,6 +175,9 @@ public sealed class FakeFileBridgeTool : FakeBridgeTool
 
     /// <summary>The texts <c>read_from</c> read, in order; null for a file it did not find.</summary>
     public ConcurrentQueue<string?> Read { get; } = new();
+
+    /// <summary>The files <c>input_dir</c> held on the bridge, by virtual path, in order.</summary>
+    public ConcurrentQueue<string> Listed { get; } = new();
 
     /// <inheritdoc />
     public override async Task<ToolCallResponse> CallAsync(ToolCallRequest request, CancellationToken cancellationToken = default)
@@ -194,6 +202,15 @@ public sealed class FakeFileBridgeTool : FakeBridgeTool
 
         if (AlsoWritesTo is { } also)
             await _fileSystem.WriteAllBytesAsync(also, Written, cancellationToken);
+
+        if (request.Parameters?.GetValueOrDefault("input_dir") is string folder)
+        {
+            await foreach (var entry in _fileSystem.EnumerateFilesAsync(folder, null, cancellationToken))
+            {
+                if (entry.Kind == VirtualEntryKind.File)
+                    Listed.Enqueue(entry.VirtualPath);
+            }
+        }
 
         if (request.Parameters?.GetValueOrDefault("read_from") is string source)
         {

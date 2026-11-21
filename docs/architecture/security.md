@@ -377,7 +377,11 @@ own:
   a path-like argument (a parameter of format `path`, or whose name is or ends in a path word: `path`, `file`, `dir`,
   `folder`, `output`, `target`...) named the path or a folder above it; the working directory, a mount's root, `/` or
   a folder above one of them names nothing. Any other file is refused with a warning, the result kept; a path outside
-  a writable mount is refused there.
+  a writable mount is refused there. The write-back is all or none: every file is checked before the first is
+  written, so one refusal leaves nothing written, and a write that fails midway names the files already written. A
+  folder a path-like argument names is sent with its files (links left out, at most 256 per folder, within the size
+  bound); the working directory, a mount's root and `/` never are. A failure of the link, the host's shutdown
+  included, is a failed call, never a local run.
 - **Lifetime.** A caller's run is one scope on the bridge, ended by `POST end-run`; a caller silent past
   `Orkeon:Bridge:HeartbeatWindow` (30 s) loses its scopes, and their browsers, within 1.25 times the window. Stopping
   the bridge cancels the calls in flight and ends every scope.

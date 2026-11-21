@@ -108,7 +108,12 @@ internal sealed partial class ToolBridgeLink : IDisposable
         var token = ToolBridgeProtocol.ReadToken(_readEnvironment(_options.TokenEnvVar), _options.TokenEnvVar, out var tokenProblem)
             ?? throw Refusal(tokenProblem!);
 
-        var local = await registry.GetAllToolsAsync(cancellationToken).ConfigureAwait(false);
+        // A tool the registry holds bridged already is left as it is: a proxy is never wrapped in another one.
+        var all = await registry.GetAllToolsAsync(cancellationToken).ConfigureAwait(false);
+        var local = all.Where(t => !IsBridged(t)).ToList();
+        if (all.Where(IsBridged).Select(t => t.Name).ToList() is { Count: > 0 } already)
+            RunnerOperatorLog.Warn(operatorLogger,
+                $"{Section}: {string.Join(", ", already.Select(n => $"'{n}'"))} runs on a tool bridge already and is left as it is.");
         var selection = ToolBridgeSelection.Resolve(Section, local, [.. _options.Allow], [.. _options.Deny]);
         if (selection.Problems.Count > 0)
             throw Refusal(string.Join(" ", selection.Problems));
@@ -166,16 +171,7 @@ internal sealed partial class ToolBridgeLink : IDisposable
             throw Refusal(string.Join(" ", refusals));
         }
 
-        foreach (var tool in bridged)
-        {
-            var proxy = new ToolBridgeProxy(tool, client, _fileSystem, _options.MaxFileBytes, operatorLogger);
-            var replacement = decorator?.Decorate(proxy) ?? proxy;
-            if (!await registry.ReplaceToolAsync(tool, replacement, cancellationToken).ConfigureAwait(false))
-            {
-                client.Dispose();
-                throw Refusal($"'{tool.Name}' changed in the registry while it was being bridged.");
-            }
-        }
+        await InstallAsync(registry, decorator, client, bridged, operatorLogger, cancellationToken).ConfigureAwait(false);
 
         _client = client;
         BridgedTools = [.. bridged.Select(t => t.Name)];
@@ -188,6 +184,76 @@ internal sealed partial class ToolBridgeLink : IDisposable
                 RunnerOperatorLog.Warn(operatorLogger,
                     $"{section} is set here, but '{name}' runs on the tool bridge with the bridge's own settings: this section is not used.");
         }
+    }
+
+    /// <summary>
+    /// Puts a proxy in the registry in place of each tool of <paramref name="bridged"/>, all or none: when a replacement
+    /// fails (the registry changed under a tool, a cancellation), the proxies already installed give their place back to
+    /// the originals, the client is disposed and the start is refused, so the next attempt finds the registry as it was.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031",
+        Justification = "Whatever stopped the replacement, the registry is rolled back before the failure is reported.")]
+    private async System.Threading.Tasks.Task InstallAsync(
+        IToolRegistry registry, IToolDecorator? decorator, ToolBridgeClient client, List<IBaseTool> bridged, ILogger operatorLogger,
+        CancellationToken cancellationToken)
+    {
+        var installed = new List<(IBaseTool Original, IBaseTool Replacement)>();
+        string? failure = null;
+        Exception? thrown = null;
+        foreach (var tool in bridged)
+        {
+            var proxy = new ToolBridgeProxy(tool, client, _fileSystem, _options.MaxFileBytes, operatorLogger);
+            var replacement = decorator?.Decorate(proxy) ?? proxy;
+            try
+            {
+                if (await registry.ReplaceToolAsync(tool, replacement, cancellationToken).ConfigureAwait(false))
+                {
+                    installed.Add((tool, replacement));
+                    continue;
+                }
+
+                failure = $"'{tool.Name}' changed in the registry while it was being bridged.";
+            }
+            catch (Exception ex)
+            {
+                thrown = ex;
+            }
+
+            break;
+        }
+
+        if (failure is null && thrown is null)
+            return;
+        var kept = new List<string>();
+        foreach (var (original, replacement) in Enumerable.Reverse(installed))
+        {
+            if (!await registry.ReplaceToolAsync(replacement, original, CancellationToken.None).ConfigureAwait(false))
+                kept.Add(original.Name);
+        }
+
+        client.Dispose();
+        if (thrown is OperationCanceledException && kept.Count == 0)
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(thrown);
+        var reason = failure ?? thrown!.Message;
+        if (kept.Count > 0)
+            reason += $" The registry changed under {string.Join(", ", kept.Select(n => $"'{n}'"))} too: their local instance could not be put back.";
+        throw Refusal(reason);
+    }
+
+    /// <summary>Whether <paramref name="tool"/> is, or wraps at any depth, a proxy of the bridge: a tool bridged already.</summary>
+    /// <param name="tool">A tool of the registry.</param>
+    /// <returns>True for a bridged tool.</returns>
+    internal static bool IsBridged(IBaseTool tool)
+    {
+        var current = tool;
+        for (var depth = 0; depth < 16 && current is not null; depth++)
+        {
+            if (current is ToolBridgeProxy)
+                return true;
+            current = (current as IToolWrapper)?.Inner;
+        }
+
+        return false;
     }
 
     /// <summary>
