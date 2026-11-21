@@ -261,4 +261,39 @@ public sealed class AgentProfileRouterTests
         Assert.Empty(_model.Requests);
         Assert.Equal(AgentRouteReasons.CircuitOff, notice.Reason);
     }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldWarnAgainInTheNextRun_WhenTheCircuitIsOff()
+    {
+        // Arrange
+        var router = Router(DecisionCircuit.Off);
+        using (SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified))
+            await router.RouteAsync(Agent(), "t1", Request, null, TestContext.Current.CancellationToken);
+        using var next = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified);
+
+        // Act
+        await router.RouteAsync(Agent(), "t1", Request, null, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(2, _logger.Entries.Count(e => e.Level == LogLevel.Warning));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldWarnAgainInTheNextRun_WhenTheHostDeclaresNoLadder()
+    {
+        // Arrange
+        var router = new AgentProfileRouter(
+            new ServiceCollection().AddSingleton<IDecisionModel>(_model).BuildServiceProvider(), new AgentRouteOptions(), _logger);
+        using (SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified))
+            await router.RouteAsync(Agent(), "t1", Request, null, TestContext.Current.CancellationToken);
+        using var next = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified);
+
+        // Act
+        await router.RouteAsync(Agent(), "t1", Request, null, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(2, _logger.Entries.Count(e => e.Level == LogLevel.Warning));
+    }
 }

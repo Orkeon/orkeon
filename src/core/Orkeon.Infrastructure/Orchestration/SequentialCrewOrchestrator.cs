@@ -532,11 +532,14 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // The crew's request window rides the same way (GAP-38): every model call made for one of
             // its agents or its manager during the run counts in it, a crew run from a task in its own.
             // Each task's deliverable is judged against its state at the task's first attempt of the run, and what
-            // System One picks for a task of an agent (its profile on auto, its skills) holds for the run (#434).
+            // System One picks for a task of an agent (its profile on auto, its skills) holds for the run (#434). The
+            // crew's decision mode reaches the agent loops the same way (#429), and System One's warnings are said
+            // once per run.
             DomainCrewOutput domainOutput;
             using (CrewPlanScope.Begin(plan))
             using (DeliverableBaselineScope.Begin())
             using (TaskPickScope.Begin())
+            using (SystemOneRunScope.Begin(crew.DecisionMode))
             using (CrewVerbosity.Begin(crew.Verbose))
             using (RequestRates.BeginRun(crew, _time))
             {

@@ -442,21 +442,22 @@ public class CrewBuilderTests
     }
 
     [Theory]
-    [InlineData(CrewDecisionMode.None, false)]
-    [InlineData(CrewDecisionMode.Unspecified, null)]
-    [InlineData(CrewDecisionMode.Required, null)]
+    [InlineData(CrewDecisionMode.None)]
+    [InlineData(CrewDecisionMode.Unspecified)]
+    [InlineData(CrewDecisionMode.Required)]
     [Trait("BR", "CH-429")]
-    public void ShouldTakeTheAgentsOutOfTheHostsPruning_OnlyWhenTheCrewAsksSystemOneNothing(CrewDecisionMode mode, bool? expectedPrune)
+    public void ShouldLeaveTheCallersAgentCompactionUnchanged_WhateverTheCrewsDecisionMode(CrewDecisionMode mode)
     {
-        // Arrange
+        // Arrange: the run, not the builder, takes a none crew's agents out of the host's pruning (#429).
         var agent = CreateAgent("Reader");
+        var before = agent.Compaction;
         var builder = new CrewBuilder().Goal("Read the tickets").DecisionMode(mode).WithAgent(agent).WithTask(CreateTask());
 
         // Act
         builder.Build();
 
         // Assert
-        Assert.Equal(expectedPrune, agent.Compaction?.Prune);
+        Assert.Same(before, agent.Compaction);
     }
 
     [Fact]

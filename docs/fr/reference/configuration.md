@@ -738,12 +738,14 @@ les appels de cet agent dans le run, nouvelles tentatives et révisions comprise
 sur la tâche, un votant, a le sien) ; le modèle de décision lit le rôle de l'agent et la tâche
 (coupée au milieu à 4 000 caractères), jamais la conversation. Sous une probabilité de 0,6, sans
 réponse, quand l'appel échoue ou quand le circuit de décision est coupé (`--no-decision`,
-`Orkeon:Decision:Enabled: false`, aucun fournisseur de décision), le profil par défaut de l'hôte
-s'applique, sans erreur : un circuit coupé ne fait aucun appel de décision. Un avertissement est
-journalisé une fois quand le circuit est coupé ou que `Ladder` manque, et quand l'appel échoue ; une probabilité basse
+`Orkeon:Decision:Enabled: false`, aucun fournisseur de décision), le profil `default` de l'hôte
+(la section `Llm`) s'applique, jamais celui de l'agent, sans erreur : un circuit coupé ne fait aucun
+appel de décision. Un avertissement est journalisé une fois par run quand le circuit est coupé ou que
+`Ladder` manque, et quand l'appel échoue ; une probabilité basse
 ou une réponse manquante n'est journalisée qu'en information. Chaque choix émet `agent.route` sur
 le flux d'événements du run, une fois par tâche et par agent d'un run. Le
-`llm_override: { profile: auto }` d'une tâche est routé de la même façon. Un manager ou un relais
+`llm_override: { profile: auto }` d'une tâche est routé de la même façon, et se replie lui aussi
+sur `default`, pas sur le profil de son agent. Un manager ou un relais
 de décision (`without.agent`) sur `auto` sans tâche à lui tourne sur le profil par défaut, et
 reste donc hors des vérifications de chargement ci-dessous. Dans une crew `.ork.ts`, le routage
 se fait au niveau de la tâche seulement : `task.withProfile("auto")` est routé, et
@@ -1932,7 +1934,7 @@ comprise, et son appel reste. Un résultat gardé, ou que le modèle de décisio
 est jugé de nouveau après huit tours du modèle de plus. Chaque élagage qui a coupé ou retiré un
 résultat émet `agent.pruned` sous `orkeon run`, `orkeon-host` et `orkeon mcp serve --crew` ;
 un tour qui a tout gardé n'émet rien. Circuit de décision coupé, rien
-n'est élagué : un avertissement, aucun appel de décision, aucune erreur. Une fois le disjoncteur de
+n'est élagué : un avertissement par run, aucun appel de décision, aucune erreur. Une fois le disjoncteur de
 la compaction ouvert (trois échecs de suite), la boucle n'élague plus pour le reste de la tentative
 de la tâche. Un agent remplace `Enabled` par `compaction: { prune }` ; un agent qui ne compacte pas
 n'élague pas.
@@ -1963,7 +1965,7 @@ plus trois skills de `Library` : le modèle de décision lit une ligne par skill
 Quand le circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enabled: false`, aucun
 fournisseur de décision), quand la bibliothèque ne contient aucun skill ou ne peut être lue, ou
 quand le modèle de décision échoue, l'agent porte sa liste `fallback`, sinon aucun skill, avec un
-avertissement et sans erreur. Le choix vaut pour chaque tentative de la tâche par cet agent dans
+avertissement par run et sans erreur. Le choix vaut pour chaque tentative de la tâche par cet agent dans
 le run, et émet `agent.skills` sur le flux d'événements du run une fois par tâche et par agent
 d'un run. Une crew `.ork.ts` n'a pas de skills.
 

@@ -303,9 +303,9 @@ public sealed partial class YamlCrewMapper
 
     /// <summary>
     /// The agent's <c>skills:</c> (#434), or null when it declares none: a list of virtual paths, or a map with
-    /// <c>auto</c> and an optional <c>fallback</c> list. Strict: another shape, a blank path, an unknown key or an
-    /// <c>auto</c> that is no boolean refuses the load, naming the agent. <c>auto: false</c> reads the fallback
-    /// list as a fixed one. Whether each file exists is the run's to tell: a missing one is left out with a warning.
+    /// <c>auto: true</c> and an optional <c>fallback</c> list. Strict: another shape, a blank path, an unknown key,
+    /// an <c>auto</c> that is no boolean or an <c>auto: false</c> refuses the load, naming the agent; a fixed list is
+    /// written as a list. Whether each file exists is the run's to tell: a missing one is left out with a warning.
     /// </summary>
     private static Orkeon.Domain.Agent.AgentSkills? MapSkills(string agentKey, object? written)
     {
@@ -344,9 +344,10 @@ public sealed partial class YamlCrewMapper
                 return auto switch
                 {
                     true => new Orkeon.Domain.Agent.AgentSkills { Auto = true, Fallback = fallback },
-                    false => new Orkeon.Domain.Agent.AgentSkills { Paths = fallback },
+                    false => throw new InvalidOperationException(
+                        $"Agent '{agentKey}' skills: 'auto: false' is not read; the map form is System One's pick ('auto: true'). For a fixed list, write the paths as a list: 'skills: [/workspace/skills/review.md]'."),
                     null => throw new InvalidOperationException(
-                        $"Agent '{agentKey}' skills: the map form needs 'auto': true for System One's pick among the library, false for the fallback list as it is; for a fixed list, the paths can also be written as a list: 'skills: [/workspace/skills/review.md]'."),
+                        $"Agent '{agentKey}' skills: the map form needs 'auto: true' for System One's pick among the library; for a fixed list, write the paths as a list: 'skills: [/workspace/skills/review.md]'."),
                 };
             default:
                 throw new InvalidOperationException(

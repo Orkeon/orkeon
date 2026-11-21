@@ -504,4 +504,36 @@ public sealed class ToolResultPruningStageTests
         Assert.IsType<OperationCanceledException>(exception, exactMatch: false);
         Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Warning);
     }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldWarnAgainInTheNextRun_WhenTheCircuitIsOff()
+    {
+        // Arrange
+        var stage = Stage(DecisionCircuit.Off);
+        using (SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified))
+            await stage.RelieveAsync(Pressure(), Conversation().View, TestContext.Current.CancellationToken);
+        using var next = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified);
+
+        // Act
+        await stage.RelieveAsync(Pressure(), Conversation().View, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(2, _logger.Entries.Count(e => e.Level == LogLevel.Warning));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldWarnOnce_WhenTwoScopesOfOneRunEachHoldAStage()
+    {
+        // Arrange: a host that resolves the stage in more than one scope during one run.
+        using var run = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified);
+        await Stage(DecisionCircuit.Off).RelieveAsync(Pressure(), Conversation().View, TestContext.Current.CancellationToken);
+
+        // Act
+        await Stage(DecisionCircuit.Off).RelieveAsync(Pressure(), Conversation().View, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning);
+    }
 }

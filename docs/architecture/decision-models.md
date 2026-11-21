@@ -359,9 +359,9 @@ both hold, the switch is named. Each consumer that degrades says so in one warni
 | Decision profile | Built without the model: its calls go to the `route`'s `fallback`, else to the `target`; a `verify` never escalates; a `guard` lets the call go on, except in a `failClosed` profile, where every call is blocked. One warning when the profile is first resolved. |
 | LLM judge (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuses to start, naming the cause (the runner host checks it with its settings); `Open` leaves the judge out of the pipeline, with one warning, and the other guards stay. |
 | `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
-| Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` with the cause as `reason`. One warning per host. |
-| Agent routing (`llm.profile: auto`) | The task runs on the host's default profile, with no decision call; `agent.route` reports `reason: circuit-off`. One warning per host. |
-| Tool-result pruning (`Orkeon:Compaction:Prune`) | Nothing is pruned and no decision call is made; the loop compacts as it would without it, and no `agent.pruned` is written. One warning per run scope. |
+| Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` with the cause as `reason`. One warning per run. |
+| Agent routing (`llm.profile: auto`) | The task runs on the host's `default` profile, never the agent's own, with no decision call; `agent.route` reports `reason: circuit-off`. One warning per run. |
+| Tool-result pruning (`Orkeon:Compaction:Prune`) | Nothing is pruned and no decision call is made; the loop compacts as it would without it, and no `agent.pruned` is written. One warning per run. |
 
 The circuit is read at each call, not once per host. A run whose scope switches it off (its
 `DecisionCircuitOverride`, as the forge sets for a trial, entered for the run as `DecisionCircuitScope`) is off

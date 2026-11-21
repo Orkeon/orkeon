@@ -509,4 +509,38 @@ public sealed class AgentSkillsResolverTests
         // Assert
         Assert.IsType<OperationCanceledException>(exception, exactMatch: false);
     }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldWarnAgainInTheNextRun_WhenTheCircuitIsOff()
+    {
+        // Arrange
+        var resolver = Resolver(DecisionCircuit.Off);
+        using (SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified))
+            await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+        using var next = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified);
+
+        // Act
+        await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(2, _logger.Entries.Count(e => e.Level == LogLevel.Warning));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldWarnAgainInTheNextRun_WhenTheLibraryHoldsNoSkill()
+    {
+        // Arrange
+        var resolver = Resolver();
+        using (SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified))
+            await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+        using var next = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.Unspecified);
+
+        // Act
+        await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(2, _logger.Entries.Count(e => e.Level == LogLevel.Warning && e.Message.Contains(Library, StringComparison.Ordinal)));
+    }
 }

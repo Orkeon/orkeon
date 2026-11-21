@@ -15,8 +15,8 @@ namespace Orkeon.Application.Crew.Skills;
 /// <summary>
 /// The skills block of a task's system prompt (#434). A fixed list is read as written. An <c>auto</c> agent
 /// has the decision model pick, from the one-line card of each skill of the library (never a body), at most
-/// <see cref="MaxPicks"/> skills; with the decision circuit off (one warning), a failed call or an empty or
-/// unreadable library (one warning), its fallback list stands, and with no fallback the prompt carries no skill.
+/// <see cref="MaxPicks"/> skills; with the decision circuit off (one warning per run), a failed call or an empty or
+/// unreadable library (one warning per run), its fallback list stands, and with no fallback the prompt carries no skill.
 /// Nothing here fails a task: a skill that cannot be read is left out with a warning. The block, its heading and
 /// each skill's title line included, stays within <see cref="AgentSkillsOptions.MaxBlockChars"/>.
 /// </summary>
@@ -50,8 +50,7 @@ internal sealed class AgentSkillsResolver
     private readonly IServiceProvider _services;
     private readonly AgentSkillsOptions _options;
     private readonly ILogger _logger;
-    private int _offWarned;
-    private int _emptyWarned;
+    private readonly RunWarnings _warnings = new();
 
     /// <param name="fileSystem">The file system the skills and the library are read through.</param>
     /// <param name="services">The container whose decision circuit and model an <c>auto</c> agent uses.</param>
@@ -123,7 +122,7 @@ internal sealed class AgentSkillsResolver
         if (model is null)
         {
             var reason = circuit.OffReason ?? DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider).OffReason!;
-            if (Interlocked.Exchange(ref _offWarned, 1) == 0)
+            if (RunWarnings.Of(_warnings).First("skills.circuit-off"))
                 AgentSkillsLog.CircuitOff(_logger, reason);
             return Fallback(skills, AgentSkillsReasons.CircuitOff, reason);
         }
@@ -134,7 +133,7 @@ internal sealed class AgentSkillsResolver
             var empty = fault is null
                 ? $"the library {_options.Library} holds no skill"
                 : $"the library {_options.Library} could not be read: {fault}";
-            if (Interlocked.Exchange(ref _emptyWarned, 1) == 0)
+            if (RunWarnings.Of(_warnings).First("skills.empty-library"))
                 AgentSkillsLog.EmptyLibrary(_logger, empty);
             return Fallback(skills, AgentSkillsReasons.EmptyLibrary, empty);
         }

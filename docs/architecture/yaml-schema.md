@@ -115,7 +115,7 @@ agents:
       prune: bool         # Whether System One prunes this agent's older read-tool results before compacting; default: Orkeon:Compaction:Prune:Enabled (false); circuit off → nothing pruned
     skills: [string]      # Markdown files (virtual paths) appended to the system prompt under '## Skills' on every task (optional); each cut at Orkeon:Skills:MaxSkillChars, the block at MaxBlockChars
     # skills:             # Or the pick form: System One picks at most 3 skills of Orkeon:Skills:Library per task, reading one line per skill
-    #   auto: true        # required in the map form; false reads the fallback as a fixed list
+    #   auto: true        # required in the map form; false fails the load (write a fixed list as a list)
     #   fallback: [string] # carried when the decision circuit is off or the pick fails; absent: no skill. Any other key fails the load
     knowledge:            # Knowledge (RAG) collections attached to the agent (optional); an unknown key of an entry is refused, a malformed value stays a warning
       - string            # Short form: collection name with default options

@@ -16,6 +16,8 @@ static Orkeon.Application.Crew.Execution.DecisionCircuitScope.Begin(Orkeon.Appli
 static Orkeon.Application.Crew.Execution.DecisionCircuitScope.Current.get -> Orkeon.Application.Crew.Execution.DecisionCircuit?
 Orkeon.Application.Crew.Execution.TaskPickScope
 static Orkeon.Application.Crew.Execution.TaskPickScope.Begin() -> System.IDisposable!
+Orkeon.Application.Crew.Execution.SystemOneRunScope
+static Orkeon.Application.Crew.Execution.SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode mode) -> System.IDisposable!
 Orkeon.Application.Crew.Execution.DecisionTaskRunner.Circuit.get -> Orkeon.Application.Crew.Execution.DecisionCircuit!
 Orkeon.Application.Crew.Execution.DecisionUnavailableException
 Orkeon.Application.Crew.Execution.DecisionUnavailableException.Cause.get -> Orkeon.Application.Crew.Execution.DecisionCircuitCause?

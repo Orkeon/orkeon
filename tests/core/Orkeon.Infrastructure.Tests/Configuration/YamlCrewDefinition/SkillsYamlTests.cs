@@ -8,7 +8,8 @@ namespace Orkeon.Infrastructure.Tests.Configuration;
 
 /// <summary>
 /// #434 in YAML: an agent's <c>skills:</c>, a list of virtual paths or <c>{ auto: true, fallback: [...] }</c>,
-/// reaches the configuration, survives an export, and a value of another shape is refused naming the agent.
+/// reaches the configuration, survives an export, and a value of another shape (<c>auto: false</c> included) is
+/// refused naming the agent.
 /// </summary>
 public sealed class SkillsYamlTests
 {
@@ -71,18 +72,18 @@ public sealed class SkillsYamlTests
 
     [Fact]
     [Trait("BR", "CH-434")]
-    public async Task ShouldReadTheFallbackAsAFixedList_WhenAutoIsFalse()
+    public async Task ShouldRefuseTheLoadPointingToTheListForm_WhenAutoIsFalse()
     {
         // Arrange
-        const string lines = "    skills: { auto: false, fallback: [/workspace/skills/review.md] }";
+        var yaml = Yaml("    skills: { auto: false, fallback: [/workspace/skills/review.md] }");
 
         // Act
-        var skills = (await WriterAsync(lines)).Skills;
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => Loader().LoadFromStringAsync(yaml, Ct));
 
         // Assert
-        Assert.NotNull(skills);
-        Assert.False(skills.Auto);
-        Assert.Equal(["/workspace/skills/review.md"], skills.Paths);
+        Assert.Contains(
+            "Agent 'writer' skills: 'auto: false' is not read; the map form is System One's pick ('auto: true'). For a fixed list, write the paths as a list: 'skills: [/workspace/skills/review.md]'.",
+            error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -104,7 +105,7 @@ public sealed class SkillsYamlTests
     [InlineData("    skills: /workspace/skills/review.md", "expected a list of virtual paths or a map")]
     [InlineData("    skills: { auto: true, library: /x }", "unknown key 'library'")]
     [InlineData("    skills: { auto: maybe }", "'maybe' is not true or false")]
-    [InlineData("    skills: { fallback: [/workspace/a.md] }", "needs 'auto'")]
+    [InlineData("    skills: { fallback: [/workspace/a.md] }", "needs 'auto: true'")]
     [InlineData("    skills: { auto: true, fallback: /workspace/a.md }", "skills.fallback: expected a list")]
     [InlineData("    skills: ['']", "each item is the virtual path")]
     public async Task ShouldRefuseTheLoadNamingTheAgent_WhenSkillsHasAnotherShape(string lines, string expected)
@@ -122,16 +123,18 @@ public sealed class SkillsYamlTests
 
     [Fact]
     [Trait("BR", "CH-434")]
-    public async Task ShouldOfferBothValuesOfAuto_WhenTheMapFormLeavesItOut()
+    public async Task ShouldAskForAutoTrueOrTheListForm_WhenTheMapFormLeavesAutoOut()
     {
-        // Arrange: auto: false keeps the fallback list as it is, so the error asks for neither value alone.
+        // Arrange: auto: false is refused, so the error offers auto: true or a list.
         var yaml = Yaml("    skills: { fallback: [/workspace/a.md] }");
 
         // Act
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => Loader().LoadFromStringAsync(yaml, Ct));
 
         // Assert
-        Assert.Contains("true for System One's pick among the library, false for the fallback list as it is", error.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            "the map form needs 'auto: true' for System One's pick among the library; for a fixed list, write the paths as a list",
+            error.Message, StringComparison.Ordinal);
     }
 
     [Theory]

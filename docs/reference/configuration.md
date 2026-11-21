@@ -709,11 +709,12 @@ that agent in the run, retries and revisions included (another agent on the task
 its own picked); the decision model reads the agent's role and the task (cut at 4 000 characters
 in the middle), never the conversation. Under a probability of 0.6, without an answer, when the
 call fails or when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`,
-no decision provider), the host's default profile stands, with no error: an off circuit makes no
-decision call. A warning is logged once when the circuit is off or `Ladder` is missing, and when the call fails; a low
+no decision provider), the host's `default` profile (the `Llm` section) stands, never the agent's own, with no
+error: an off circuit makes no decision call. A warning is logged once per run when the circuit is off or `Ladder`
+is missing, and when the call fails; a low
 probability or a missing answer is logged as information only. Each pick emits `agent.route` on
 the run's event stream, once per task and agent of a run. A task's `llm_override: { profile: auto }`
-is routed the same way. A manager or a decision relay (`without.agent`) on `auto` with no task
+is routed the same way, and falls back to `default` too, not to its agent's profile. A manager or a decision relay (`without.agent`) on `auto` with no task
 of its own runs on the default profile, so it is left out of the load checks below. In a `.ork.ts`
 crew, routing works at task level only: `task.withProfile("auto")` is routed, and
 `llm.profile("auto")` on an agent is refused. A rung names a profile of
@@ -1873,7 +1874,7 @@ call's whole input in it, and its call stays. A result kept, or one the decision
 judge, is judged again after eight more model turns. Each pruning that cut or dropped a result
 emits `agent.pruned` under `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew`; a turn that kept
 everything emits nothing. With the decision circuit
-off, nothing is pruned: one warning, no decision call, no error. Once compaction's breaker opens
+off, nothing is pruned: one warning per run, no decision call, no error. Once compaction's breaker opens
 (three failures in a row), the loop prunes no more for the rest of the task attempt. An agent
 overrides `Enabled` with `compaction: { prune }`; an agent that does not compact does not prune.
 
@@ -1900,7 +1901,7 @@ each task, at most three skills of `Library`: the decision model reads one line 
 front-matter `name` and `description`, else its first heading and line), never a body. When the
 decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`, no decision
 provider), when the library holds no skill or cannot be read, or when the decision model fails, the
-agent carries its `fallback` list, else no skill, with one warning and no error. The choice holds
+agent carries its `fallback` list, else no skill, with one warning per run and no error. The choice holds
 for every attempt of the task by that agent in the run, and emits `agent.skills` on the run's
 event stream once per task and agent of a run. A `.ork.ts` crew has no skills.
 

@@ -2,7 +2,9 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Constants.Llm;
+using Orkeon.Domain.Agent;
 using Orkeon.Domain.Constants.Llm;
+using Orkeon.Domain.Crew;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
@@ -73,7 +75,7 @@ internal sealed class ContextCompaction
             KeepRecentTurns = options.KeepRecentTurns,
             TaskId = taskId.ToString() ?? string.Empty,
             AgentRole = agent.Role.ToString(),
-            AgentCompaction = agent.Compaction,
+            AgentCompaction = RunCompaction(agent.Compaction),
             TokenCounter = _services.TokenCounter,
             Stages = _services.Stages,
             Observer = _services.Observer,
@@ -84,6 +86,17 @@ internal sealed class ContextCompaction
             : ownModel;
         return new ContextCompactor(setup, summaryCall);
     }
+
+    /// <summary>
+    /// The agent's compaction settings in the run in progress. A crew with <c>decision.mode: none</c> asks System One
+    /// nothing (#429): in its run, an agent that leaves <c>prune</c> unset is out of the host's pruning of read-tool
+    /// results, which the decision model judges. Read per run, never written onto the agent: an agent another crew
+    /// shares keeps the host's setting there.
+    /// </summary>
+    internal static AgentCompaction? RunCompaction(AgentCompaction? own) =>
+        SystemOneRunScope.Current?.Mode == CrewDecisionMode.None && own?.Prune is null
+            ? (own ?? new AgentCompaction()) with { Prune = false }
+            : own;
 
     /// <summary>
     /// The tokens held back for the call's output: its cap, else the model's documented maximum, else

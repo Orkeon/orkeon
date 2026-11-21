@@ -117,7 +117,7 @@ agents:
       prune: bool         # Si System One élague les anciens résultats d'outils de lecture de cet agent avant de compacter ; défaut : Orkeon:Compaction:Prune:Enabled (false) ; circuit coupé → rien n'est élagué
     skills: [string]      # Fichiers markdown (chemins virtuels) ajoutés au prompt système sous '## Skills' à chaque tâche (optionnel) ; chacun coupé à Orkeon:Skills:MaxSkillChars, le bloc à MaxBlockChars
     # skills:             # Ou la forme de choix : System One choisit au plus 3 skills de Orkeon:Skills:Library par tâche, en lisant une ligne par skill
-    #   auto: true        # requis dans la forme map ; false lit le fallback comme une liste fixe
+    #   auto: true        # requis dans la forme map ; false fait échouer le chargement (une liste fixe s'écrit en liste)
     #   fallback: [string] # porté quand le circuit de décision est coupé ou que le choix échoue ; absent : aucun skill. Toute autre clé fait échouer le chargement
     knowledge:            # Collections de connaissance (RAG) attachées à l'agent (optionnel) ; une clé inconnue d'une entrée est refusée, une valeur mal formée reste un warning
       - string            # Forme courte : nom de collection avec options par défaut

@@ -158,6 +158,52 @@ public sealed class NativeLoopCompactionTests
     }
 
     [Fact]
+    [Trait("BR", "CH-429")]
+    public async System.Threading.Tasks.Task ShouldPruneNothing_WhenTheRunsCrewAsksSystemOneNothing()
+    {
+        // Arrange: the same six reads and a host that prunes, in a run of a decision.mode: none crew.
+        var logger = new SpyExecutionLogger();
+        var provider = new ScriptedFullLlmProvider();
+        for (var turn = 1; turn <= 6; turn++)
+            provider.EnqueueOpenAiToolCall($"call-{turn}", ToolName, $"{{\"page\":{turn}}}");
+        provider.EnqueueText("done");
+        var model = new FakeDecisionModel
+        {
+            Respond = request => new DecisionResponse
+            {
+                Model = "fake",
+                Answers = request.Questions.Keys.ToImmutableDictionary(k => k, _ => (DecisionAnswer)new NoulAnswer { Noul = 0.1 }),
+            },
+        };
+        var services = new ServiceCollection().AddSingleton<IDecisionModel>(model).BuildServiceProvider();
+        var compaction = new ContextCompactionServices
+        {
+            Options = new ContextCompactionOptions { KeepRecentTurns = 2 },
+            Windows = new FakeContextWindowResolver(new ContextWindow(10_000, ContextWindowSources.Table)),
+            Logger = logger,
+            Observer = new FakeCompactionObserver(),
+            Stages = [new ToolResultPruningStage(services, new ToolResultPruningOptions { Enabled = true }, null, null, new RecordingLogger())],
+        }.For(LlmProfiles.Default, baseConfig: null);
+        var tool = new SpyTool(ToolName, result: new string('x', 4_000)) { Access = ToolAccess.Read };
+        var loop = new NativeToolCallingAgentLoop(logger, provider,
+            new FakeToolCallingStrategy(new OpenAiShapedToolCallParser()), [tool],
+            new LlmCallGate(logger, new ScriptedBasicLlmProvider()), ToolInvocationPipeline.Unguarded,
+            new NativeToolCallingAgentLoop.NativeToolCallingLoopOptions(Compaction: compaction));
+        DomainAgent agent = new AgentBuilder().Role("Reader").Goal("Read the pages").MaxIterations(10).WithTool(tool).Build();
+        var task = DomainTask.Create(TaskDescription.From("Read every page"), ExpectedOutput.From("A digest"));
+        using var run = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.None);
+
+        // Act
+        await loop.ExecuteAsync(
+            new ExecutionInvocationContext(agent, task, "sys", "user", Context: null, ToolsUsed: [],
+                Stopwatch: System.Diagnostics.Stopwatch.StartNew()),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(model.Requests);
+    }
+
+    [Fact]
     [Trait("BR", "CH-432")]
     public async System.Threading.Tasks.Task ShouldReproduceTodaysTrimExactly_WhenCompactionIsDisabled()
     {

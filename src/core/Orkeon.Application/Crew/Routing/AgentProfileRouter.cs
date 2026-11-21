@@ -13,7 +13,7 @@ namespace Orkeon.Application.Crew.Routing;
 /// The profile of a task of an agent on <c>llm.profile: auto</c> (#434): at the task's start, the decision model
 /// picks one rung of the ladder (<see cref="AgentRouteOptions.Ladder"/>, cheapest first), and the task keeps it.
 /// Under a probability of <see cref="MinProbability"/>, without an answer, with the decision circuit off (one
-/// warning, no call) or without a ladder, the host's default profile stands. Nothing here fails a task. Unlike the
+/// warning per run, no call) or without a ladder, the host's <c>default</c> profile stands, never the agent's own. Nothing here fails a task. Unlike the
 /// <c>route</c> stage of a decision profile, which routes each call on its last message, this picks once per task.
 /// </summary>
 internal sealed class AgentProfileRouter
@@ -34,8 +34,7 @@ internal sealed class AgentProfileRouter
     private readonly IServiceProvider _services;
     private readonly ImmutableList<string> _ladder;
     private readonly ILogger _logger;
-    private int _offWarned;
-    private int _noLadderWarned;
+    private readonly RunWarnings _warnings = new();
 
     /// <param name="services">The container whose decision circuit and model the router uses.</param>
     /// <param name="options">The ladder.</param>
@@ -81,7 +80,7 @@ internal sealed class AgentProfileRouter
     {
         if (_ladder.Count == 0)
         {
-            if (Interlocked.Exchange(ref _noLadderWarned, 1) == 0)
+            if (RunWarnings.Of(_warnings).First("route.no-ladder"))
                 AgentRouteLog.NoLadder(_logger, role, LlmProfiles.RouteLadderKey);
             return Standing(AgentRouteReasons.NoLadder);
         }
@@ -90,7 +89,7 @@ internal sealed class AgentProfileRouter
         var model = circuit.Enabled ? _services.GetService<IDecisionModel>() : null;
         if (model is null)
         {
-            if (Interlocked.Exchange(ref _offWarned, 1) == 0)
+            if (RunWarnings.Of(_warnings).First("route.circuit-off"))
                 AgentRouteLog.CircuitOff(_logger, circuit.OffReason ?? DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider).OffReason!);
             return Standing(AgentRouteReasons.CircuitOff);
         }

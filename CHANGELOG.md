@@ -17,7 +17,7 @@ drop it, leaving a line that says how to get it back, the call's whole input in 
 (tool, input, size, age), never the result: two yes/no questions per call, eight calls to a request, 24 at most at a
 time. A kept result, or one the decision model failed to judge, is judged again eight model turns later. Under
 `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` (their run history), each pruning that cut or dropped a result emits `agent.pruned`. With the decision circuit off nothing is
-pruned and no decision call is made, with one warning and no error; an agent that does not compact does not prune.
+pruned and no decision call is made, with one warning per run and no error; an agent that does not compact does not prune.
 **Compatibility**: `compaction.prune` is a new agent key, refused by a 1.3.0 loader; `Orkeon:Compaction:Prune` is
 a new settings section and `agent.pruned` a new run event kind; `ConversationView` gains `ToolCallAt` (the call a
 tool result answers) and `ContextPressure` the agent's `AgentCompaction`, for a custom `IContextPressureStage`.
@@ -29,8 +29,9 @@ profile of `Orkeon:Decision:Route:Ladder`, listed cheapest first (two or more pr
 `Orkeon:Decision:Profiles`, `default` included); the task keeps it for every call of that agent in the run, retries
 and revisions included, and another agent on the task (a voter) has its own picked. The decision model reads the
 agent's role and the task, cut at 4000 characters. Under a probability of 0.6, without an answer, when the call fails
-or with the decision circuit off, the host's default profile stands, with no error; an off circuit makes no decision
-call. A warning is logged once when the circuit is off or the ladder is missing, and when the call fails. Under
+or with the decision circuit off, the host's `default` profile stands (never the agent's own), with no error; an off
+circuit makes no decision call. A warning is logged once per run when the circuit is off or the ladder is missing, and
+when the call fails. Under
 `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` (their run history), each pick emits `agent.route` (`profile`, `reason`, `picked`, `probability`, `ladder`), once per task
 and agent of a run. A crew naming `auto` on a host without a ladder, or with a rung the host does not offer, fails
 its load, as does `auto` in a crew with `decision.mode: none`; a manager or a decision relay on `auto` with no task
@@ -50,12 +51,13 @@ With `auto`, each task asks the decision model one `choice` among the `.md` file
 (`/workspace/.orkeon/skills`), reading one line per skill (its front-matter `name` and `description`, else its first
 heading and line) and never a body; the options at a probability of 0.3 or more are kept, three at most. With the
 decision circuit off, an empty or unreadable library or a failed call, the agent carries its `fallback`, else no
-skill, with one warning and no error. The choice holds for every attempt of the task by that agent in the run. Under
+skill, with one warning per run and no error. The choice holds for every attempt of the task by that agent in the run. Under
 `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` (their run history), it emits `agent.skills` (`mode`, `skills`, `offered`, `cut`, `reason`, `detail`) once per task and agent
 of a run: a fallback's `reason` is `circuit-off`, `empty-library` or `pick-failed`, and `detail` says it in a
 sentence. **Compatibility**: an engine at 1.3.0 refuses a crew that writes `skills:`; an unknown key of the map
-form, a non-boolean `auto` or a map without `auto` now fails the load. The `Orkeon:Skills` section and the event are
-new; a `.ork.ts` crew has no skills. New public members: `TaskPickScope` (`Begin`), `AgentSkillsNotice.Detail` and
+form, a non-boolean `auto`, `auto: false` (a fixed list is written as a list) or a map without `auto` now fails the
+load. The `Orkeon:Skills` section and the event are
+new; a `.ork.ts` crew has no skills. New public members: `TaskPickScope` (`Begin`), `SystemOneRunScope` (`Begin`), `AgentSkillsNotice.Detail` and
 `AgentSkillsReasons`.
 
 ### Added — agent loops compact a long conversation against the model's window (#432)
@@ -155,7 +157,8 @@ gated by `minConfidence`; an option list on a score question is refused at load,
 A crew-level `decision: { mode: none | optional | required }` (YAML, also in the `config.yaml` of a split crew;
 `crewBuilder().decision({ mode })` in a script; `CrewBuilder.DecisionMode` in C#) says whether the crew runs without
 the decision model; the mode is read without regard to case or surrounding spaces, in YAML as in a script. `none` refuses decision tasks, `system_one_decide`, decision profiles, `llm.profile: auto`, `skills: { auto: true }` and
-`compaction: { prune: true }` at load, and the host's `Orkeon:Compaction:Prune` does not apply to its agents. `optional` asks
+`compaction: { prune: true }` at load, and the host's `Orkeon:Compaction:Prune` does not apply to its agents in its
+runs (an agent shared with another crew keeps it there; the builder no longer writes it onto the agent). `optional` asks
 every decision task for a `without: { agent, instructions }` relay, an agent of the crew (its key in YAML, its
 `name(...)` in a script, its role in C#), and refuses a `fallback` and
 `system_one_decide`; the relay answers with the circuit off (see the entry above, #430). `required` refuses the run before its first task when the decision

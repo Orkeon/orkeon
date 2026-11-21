@@ -17,7 +17,7 @@ namespace Orkeon.Application.Crew.Compaction;
 /// which sees the call (tool, input, size, age) and never the result: two yes/no questions per call, "still
 /// needed" and "needed whole", give drop, head or keep. A pruned result leaves a line that says how to get it back,
 /// its call stays, so the tool-call protocol stays paired. A result kept is judged again once it has aged
-/// <see cref="RejudgeTurns"/> model turns. With the decision circuit off (one warning, no call), nothing is pruned.
+/// <see cref="RejudgeTurns"/> model turns. With the decision circuit off (one warning per run, no call), nothing is pruned.
 /// Nothing here fails a task.
 /// </summary>
 internal sealed class ToolResultPruningStage : IContextPressureStage
@@ -52,7 +52,7 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
     private readonly IAgentPruneObserver? _observer;
     private readonly ILogger _logger;
     private readonly ConditionalWeakTable<ConversationView, Memory> _memories = [];
-    private int _offWarned;
+    private readonly RunWarnings _warnings = new();
 
     /// <param name="services">The container whose decision circuit and model the stage uses.</param>
     /// <param name="options">The pruning settings.</param>
@@ -102,7 +102,7 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
         var model = circuit.Enabled ? _services.GetService<IDecisionModel>() : null;
         if (model is null)
         {
-            if (Interlocked.Exchange(ref _offWarned, 1) == 0)
+            if (RunWarnings.Of(_warnings).First("prune.circuit-off"))
                 PruneLog.CircuitOff(_logger, circuit.OffReason ?? DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider).OffReason!);
             return false;
         }

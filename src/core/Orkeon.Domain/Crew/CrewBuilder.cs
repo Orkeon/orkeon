@@ -460,15 +460,11 @@ public sealed class CrewBuilder
             GraphConfig = _graphConfig
         });
 
-        // 6. Add agents. A crew with decision.mode: none asks System One nothing (#429): its agents leave the
-        // host's pruning of read-tool results (Orkeon:Compaction:Prune:Enabled), which the decision model judges;
-        // a prune: true of their own was refused above.
+        // 6. Add agents. A crew with decision.mode: none asks System One nothing (#429): a prune: true of their own
+        // was refused above, and the run takes them out of the host's pruning (ContextCompaction), never their Agent,
+        // which another crew may share.
         foreach (var agent in _agents)
-        {
-            if (_decisionMode == CrewDecisionMode.None && agent.Compaction?.Prune is null)
-                agent.Compaction = (agent.Compaction ?? new AgentCompaction()) with { Prune = false };
             crew.AddAgent(agent.Id);
-        }
 
         // 7. Add tasks. A task is checkpointed under its key (FWK-07): two tasks of a crew never share one.
         var seenKeys = new HashSet<string>(StringComparer.Ordinal);

@@ -45,8 +45,8 @@ public static class ServiceCollectionExtensions
         services.RegisterDeliverableResolvers();
         services.RegisterToolInvocationPipeline();
         services.RegisterExecutionOrchestrator();
-        // One resolver per host, so the circuit-off warning of an auto agent is said once (#434). Its
-        // settings are bound by AddOrkeonInfrastructure; without them, the defaults.
+        // One resolver per host; its warnings (the circuit off, an empty library) are said once per run, held by the
+        // run's SystemOneRunScope (#434). Its settings are bound by AddOrkeonInfrastructure; without them, the defaults.
         services.TryAddSingleton(sp => sp.GetService<Domain.FileSystem.IFileSystemService>() is { } fileSystem
             ? new Crew.Skills.AgentSkillsResolver(
                 fileSystem,
@@ -54,14 +54,15 @@ public static class ServiceCollectionExtensions
                 sp.GetService<IOptions<Crew.Skills.AgentSkillsOptions>>()?.Value ?? new Crew.Skills.AgentSkillsOptions(),
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Skills.AgentSkillsResolver>>())
             : null!);
-        // One router per host, so the circuit-off warning of an auto agent is said once (#434). Its ladder is
-        // bound by AddOrkeonInfrastructure; without it, none, and an auto task runs on the default profile.
+        // One router per host; its warnings (the circuit off, no ladder) are said once per run, held by the run's
+        // SystemOneRunScope (#434). Its ladder is bound by AddOrkeonInfrastructure; without it, none, and an auto task
+        // runs on the default profile.
         services.TryAddSingleton(sp => new Crew.Routing.AgentProfileRouter(
             sp,
             sp.GetService<IOptions<Crew.Routing.AgentRouteOptions>>()?.Value ?? new Crew.Routing.AgentRouteOptions(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Routing.AgentProfileRouter>>()));
         // The pruning of older read-tool results before compaction (#434), first of the pressure stages. Scoped: it
-        // follows the run scope's decision circuit (#431), and the circuit-off warning is said once per scope. Its
+        // follows the run scope's decision circuit (#431); the circuit-off warning is said once per run. Its
         // settings are bound by AddOrkeonInfrastructure; without them, the defaults (off).
         services.TryAddEnumerable(ServiceDescriptor.Scoped<Crew.Compaction.IContextPressureStage, Crew.Compaction.ToolResultPruningStage>(
             sp => new Crew.Compaction.ToolResultPruningStage(
