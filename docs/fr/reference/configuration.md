@@ -1796,7 +1796,7 @@ quand le pont est injoignable, refuse le jeton, ne sert pas un outil nommé ou e
 contrat diffère. La décision est consignée dans l'[ADR-019](../adr/ADR-019-tool-bridge.md).
 
 <!-- settings:Orkeon:Tools:Bridge -->
-**Lue par** : `orkeon`, `orkeon-host`.
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
@@ -1814,7 +1814,7 @@ se lit dans la variable que nomme `TokenEnvVar` ; une requête qui porte un en-t
 mauvais jeton est refusée. La décision est consignée dans l'[ADR-019](../adr/ADR-019-tool-bridge.md).
 
 <!-- settings:Orkeon:Bridge -->
-**Lue par** : `orkeon`, `orkeon-host`.
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|

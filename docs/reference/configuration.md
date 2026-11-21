@@ -1735,7 +1735,7 @@ be reached, refuses the token, does not serve a tool named or serves one whose c
 decision is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
 
 <!-- settings:Orkeon:Tools:Bridge -->
-**Read by**: `orkeon`, `orkeon-host`.
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
@@ -1753,7 +1753,7 @@ read from the variable `TokenEnvVar` names; a request with an `Origin` header or
 refused. The decision is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
 
 <!-- settings:Orkeon:Bridge -->
-**Read by**: `orkeon`, `orkeon-host`.
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
