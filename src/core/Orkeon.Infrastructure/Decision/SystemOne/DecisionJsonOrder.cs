@@ -27,12 +27,17 @@ internal static class DecisionJsonOrder
         return body;
     }
 
-    /// <summary>The questions by ordinal name, each choice's criteria by ordinal name too.</summary>
-    internal static JsonObject Questions(ImmutableDictionary<string, DecisionQuestion> questions)
+    /// <summary>
+    /// The questions in the order <paramref name="asked"/> names them, then by ordinal name; each choice's criteria
+    /// by ordinal name.
+    /// </summary>
+    internal static JsonObject Questions(ImmutableDictionary<string, DecisionQuestion> questions, IReadOnlyList<string> asked)
     {
         ArgumentNullException.ThrowIfNull(questions);
+        ArgumentNullException.ThrowIfNull(asked);
         var json = JsonSerializer.SerializeToNode(questions)!.AsObject();
         Questions(json);
+        Sort(json, asked);
         return json;
     }
 
@@ -64,11 +69,18 @@ internal static class DecisionJsonOrder
         }
     }
 
-    /// <summary>Puts the properties of <paramref name="json"/> in the ordinal order of their names, in place.</summary>
-    internal static void Sort(JsonObject json)
+    /// <summary>
+    /// Puts the properties of <paramref name="json"/> in place: those <paramref name="first"/> names in its order,
+    /// then the others in the ordinal order of their names.
+    /// </summary>
+    internal static void Sort(JsonObject json, IReadOnlyList<string>? first = null)
     {
         ArgumentNullException.ThrowIfNull(json);
-        var properties = json.OrderBy(p => p.Key, StringComparer.Ordinal).ToList();
+        var rank = first?.Select((name, i) => (name, i)).ToDictionary(p => p.name, p => p.i, StringComparer.Ordinal);
+        var properties = json
+            .OrderBy(p => rank is not null && rank.TryGetValue(p.Key, out var i) ? i : int.MaxValue)
+            .ThenBy(p => p.Key, StringComparer.Ordinal)
+            .ToList();
         json.Clear();
         foreach (var (name, value) in properties)
             json[name] = value;

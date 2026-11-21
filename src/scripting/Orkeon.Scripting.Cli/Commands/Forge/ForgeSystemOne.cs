@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Decision;
 using Orkeon.Application.Decision.DTOs;
+using Orkeon.Infrastructure.Decision.SystemOne;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Task.ValueObjects;
 
@@ -252,7 +253,9 @@ internal sealed class ForgeSystemOne
         CancellationToken cancellationToken,
         string? circuit = null)
     {
-        var request = new DecisionRequest { State = state, Questions = questions.ToImmutableDictionary(StringComparer.Ordinal) };
+        var ask = questions.ToList();
+        var asked = ask.Select(static q => q.Key).ToList();
+        var request = new DecisionRequest { State = state, Questions = ask.ToImmutableDictionary(StringComparer.Ordinal) };
         var started = Stopwatch.GetTimestamp();
         DecisionResponse response;
         try
@@ -274,8 +277,8 @@ internal sealed class ForgeSystemOne
             stage,
             use,
             circuit,
-            questions = JsonSerializer.SerializeToNode(request.Questions),
-            answers = CompactAnswers(response),
+            questions = DecisionJsonOrder.Questions(request.Questions, asked),
+            answers = CompactAnswers(response, asked),
             model = response.Model,
             // A count the model did not report is written as zero, so the line always carries both.
             inputTokens = input,
@@ -285,16 +288,23 @@ internal sealed class ForgeSystemOne
         return (response, new ForgeUsageSnapshot(input, output, 0) { SystemOneTokens = input + output });
     }
 
-    /// <summary>The answers in the compact decision shape of a decision task's output (<see cref="DecisionOutcome.ToCompactJson"/>).</summary>
-    internal static JsonNode? CompactAnswers(DecisionResponse response)
+    /// <summary>
+    /// The answers in the compact decision shape of a decision task's output (<see cref="DecisionOutcome.ToCompactJson"/>):
+    /// in the order <paramref name="asked"/> names the questions, then any other answer by ordinal name, each one's
+    /// probabilities by ordinal key. The response's maps enumerate in a hash order that changes from one process to
+    /// the next (#430), and the line must read the same in every one.
+    /// </summary>
+    internal static JsonNode? CompactAnswers(DecisionResponse response, IReadOnlyList<string> asked)
     {
-        var values = new Dictionary<string, DecisionAnswerValue>(StringComparer.Ordinal);
-        foreach (var (name, answer) in response.Answers)
+        var names = asked.Where(response.Answers.ContainsKey)
+            .Concat(response.Answers.Keys.Where(k => !asked.Contains(k)).Order(StringComparer.Ordinal));
+        var values = new OrderedDictionary<string, DecisionAnswerValue>(StringComparer.Ordinal);
+        foreach (var name in names)
         {
-            values[name] = answer switch
+            values[name] = response.Answers[name] switch
             {
-                ChoiceAnswer c => new DecisionAnswerValue { Chosen = c.Choice, Confidence = c.Confidence, Probabilities = c.Probabilities },
-                ScoreAnswer s => new DecisionAnswerValue { Score = s.Score, Confidence = s.Confidence, Probabilities = s.Probabilities },
+                ChoiceAnswer c => new DecisionAnswerValue { Chosen = c.Choice, Confidence = c.Confidence, Probabilities = Ordinal(c.Probabilities) },
+                ScoreAnswer s => new DecisionAnswerValue { Score = s.Score, Confidence = s.Confidence, Probabilities = Ordinal(s.Probabilities) },
                 NoulAnswer n => new DecisionAnswerValue
                 {
                     Chosen = n.Noul >= 0.5 ? "yes" : "no",
@@ -308,6 +318,9 @@ internal sealed class ForgeSystemOne
 
         return JsonNode.Parse(new DecisionOutcome { Answers = values }.ToCompactJson());
     }
+
+    private static OrderedDictionary<string, double> Ordinal(ImmutableDictionary<string, double> probabilities) =>
+        new(probabilities.OrderBy(static p => p.Key, StringComparer.Ordinal), StringComparer.Ordinal);
 
     private static JsonNode StateOf(object state) => JsonSerializer.SerializeToNode(state, StateOptions)!;
 }

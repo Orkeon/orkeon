@@ -944,4 +944,28 @@ public sealed class ForgeSystemOneTests : IDisposable
         // Assert
         Assert.Equal("◇ System One advises (diagnose, criteria, off pass): A1: yes (p 0.90)", console.ToString().TrimEnd());
     }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void A_system_one_line_lists_its_answers_as_asked_and_their_probabilities_in_ordinal_order()
+    {
+        // Arrange: ten answers of ten options each, in maps whose order is their per-process hash order.
+        string[] options = ["whiskey", "alpha", "tango", "bravo", "oscar", "charlie", "kilo", "delta", "zulu", "echo"];
+        string[] asked = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10"];
+        var probabilities = options.ToImmutableDictionary(o => o, _ => 0.1);
+        var response = new DecisionResponse
+        {
+            Model = "stub-1",
+            Answers = asked.ToImmutableDictionary(a => a, _ => (DecisionAnswer)new ChoiceAnswer { Choice = "kilo", Confidence = 0.1, Probabilities = probabilities }),
+            Usage = new DecisionUsage(),
+        };
+
+        // Act
+        var answers = ForgeSystemOne.CompactAnswers(response, asked)!.AsObject();
+
+        // Assert: the same line in every process.
+        Assert.Equal(asked, answers.Select(a => a.Key));
+        foreach (var (_, answer) in answers)
+            Assert.Equal(options.Order(StringComparer.Ordinal), answer!["probabilities"]!.AsObject().Select(p => p.Key));
+    }
 }
