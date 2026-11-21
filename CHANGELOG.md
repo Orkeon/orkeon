@@ -26,8 +26,12 @@ caller's virtual paths, bounded by `Orkeon:Bridge:MaxFileBytes` and `Orkeon:Tool
 variable `TokenEnvVar` names) and is compared in fixed time; the bridge listens on loopback (`127.0.0.1:7410`,
 `localhost:7410` under Windows), refuses a request with an `Origin` header or a body over `MaxRequestBytes`, and
 requires https on another host, which it serves under Windows only (a URL reservation, `netsh http add urlacl`, which
-the start failure names). From a Linux engine the container reaches it with `--network host`; Docker Desktop's
-`host.docker.internal` is not accepted yet. The guide: [Orkeon in a container, the browser on the
+the start failure names). From a Linux engine the container reaches it with `--network host`; from Docker Desktop with
+`http://host.docker.internal:7410/`, the caller sending the `Host` header `Orkeon:Tools:Bridge:HostHeader`
+(`127.0.0.1:<port>` by default, `localhost:<port>` under Windows) and warning that the token travels in clear. The
+caller writes back only the files a call's arguments named, for an `Edit` or `Execute` call, always truncates a bridged
+result and reads an answer under `Orkeon:Tools:Bridge:MaxResponseBytes` (32 MiB); the bridge's scratch folders have an
+unpredictable name, mode 0700, and never send a symbolic link back. The guide: [Orkeon in a container, the browser on the
 desktop](docs/guides/tool-bridge.md); the decision: [ADR-019](docs/adr/ADR-019-tool-bridge.md).
 
 **Also**: a `.ork.ts` script's `tools.firefox` now runs the registry's wrapper of a transient container tool (the

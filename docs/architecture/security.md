@@ -350,13 +350,21 @@ own:
   is never bridged. A name that is no tool of the side's registry refuses the start.
 - **The caller judges, the bridge runs.** The caller's permission gate, guardian, truncation and result sanitizer
   judge each call and its result, by the local tool's schema and access class; a contract hash that differs between
-  the sides refuses the start. The bridge applies none of them: it runs the tool raw, with its own tool settings and
+  the sides refuses the start. The truncation always applies to a bridged result: the caller never takes the
+  bridge's word that a result is already bounded, and reads an answer under `Orkeon:Tools:Bridge:MaxResponseBytes`
+  (32 MiB), a larger one failing the call. A tool list that names a tool twice, or a heartbeat window outside 1 s
+  to 10 min, refuses the start. The bridge applies none of them: it runs the tool raw, with its own tool settings and
   its own URL policy, and records each call in its audit under the caller `bridge`.
 - **Files.** A call carries the caller's agent-facing mounts and the files its arguments name, at most
   `Orkeon:Tools:Bridge:MaxFileBytes` (16 MiB) in all, and the bridge's `Orkeon:Bridge:MaxFileBytes` (16 MiB) bounds
-  both what it accepts and what it sends back. On the bridge they live in a scratch folder of the bridge process, mode 0700 under
-  Unix, that its path validator allows for the length of the call and that is removed after it. What comes back is
-  written by the caller through its own virtual file system, under its run's mounts and rights: a path outside a
+  both what it accepts and what it sends back. On the bridge they live in a scratch folder per call, inside a parent
+  folder of the bridge process whose name is unpredictable, created exclusively and never reused, mode 0700 under
+  Unix; the bridge's path validator allows that parent for the life of the process, and each call's folder is
+  removed after it. A symbolic link the tool made there is never followed when the files are read back. A call
+  without mounts of a tool that uses files runs over an empty scratch, never over the bridge's own mounts, unless the
+  tool acts on the workspace and was named. What comes back is written by the caller through its own virtual file
+  system, under its run's mounts and rights, and only when the call is an `Edit` or `Execute` one and its arguments
+  named the path or a folder above it: any other file is refused with a warning, the result kept; a path outside a
   writable mount is refused there.
 - **Lifetime.** A caller's run is one scope on the bridge, ended by `POST end-run`; a caller silent past
   `Orkeon:Bridge:HeartbeatWindow` (30 s) loses its scopes, and their browsers, at once. Stopping the bridge cancels

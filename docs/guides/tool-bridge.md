@@ -80,9 +80,20 @@ travels in clear off the machine.
   (`HttpListener` has no TLS on Linux and macOS): an https `Orkeon:Bridge:Prefix` there is refused at start. Without
   `--network host`, put a TLS terminator of your choice on the Docker bridge address in front of the loopback
   listener, and give the caller its `https://` address.
-- **Docker Desktop (Windows, macOS).** `host.docker.internal` reaches a listener on the host's loopback, but this
-  version does not accept it yet: the caller refuses an http address that is not loopback, and the listener answers
-  only the host its prefix names. See [Known limitations](../reference/limitations.md).
+- **Docker Desktop (Windows, macOS).** `host.docker.internal` reaches a listener on the host's loopback. The bridge
+  keeps listening on loopback; the caller's `Address` is `http://host.docker.internal:7410/`, the one http address
+  besides loopback the caller accepts. The listener answers only the host its prefix names, so the caller sends the
+  `Host` header `Orkeon:Tools:Bridge:HostHeader`, `127.0.0.1:<port>` when nothing sets it: right for the default
+  prefix on macOS. Under Windows the default prefix is `http://localhost:7410/`, so set `HostHeader` to
+  `localhost:7410` (HTTP.sys matches that prefix on the `Host` header alone).
+
+  ```json
+  { "Orkeon": { "Tools": { "Bridge": { "Address": "http://host.docker.internal:7410/", "HostHeader": "localhost:7410", "Allow": ["firefox"] } } } }
+  ```
+
+  The start logs a warning: over http the token and every call travel in clear over the Docker host's virtual
+  network, which other containers of that host may see. This path is not yet checked on a real Docker Desktop; see
+  [Known limitations](../reference/limitations.md).
 - **A bridge under Windows on another address.** An https prefix other than `localhost` needs a URL reservation for
   the account that runs the bridge, and a certificate bound to the port, both made once in an elevated prompt:
 

@@ -1733,7 +1733,9 @@ selects run on the machine of the bridge instead of the local one: their name, s
 those of the local registry, and only the call crosses. The start is refused when the bridge cannot
 be reached, refuses the token, does not serve a tool named or serves one whose contract differs. While
 runs are in flight the caller beats every third of the bridge's `HeartbeatWindow`, and ends each run's
-scope on the bridge when the run ends. How to set both sides up: the guide
+scope on the bridge when the run ends. Over http the address is loopback, or Docker Desktop's
+`host.docker.internal`, which gets the `Host` header `HostHeader` and a warning that the token travels
+in clear. How to set both sides up: the guide
 [Orkeon in a container, the browser on the desktop](../guides/tool-bridge.md); the decision is recorded
 in [ADR-019](../adr/ADR-019-tool-bridge.md).
 

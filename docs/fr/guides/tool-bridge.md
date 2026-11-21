@@ -82,9 +82,21 @@ ne voyage jamais en clair hors de la machine.
   (`HttpListener` n'a pas de TLS sous Linux et macOS) : un `Orkeon:Bridge:Prefix` en https y est refusé au démarrage.
   Sans `--network host`, placez un terminateur TLS de votre choix sur l'adresse du pont Docker, devant l'écouteur en
   boucle locale, et donnez à l'appelant son adresse `https://`.
-- **Docker Desktop (Windows, macOS).** `host.docker.internal` atteint un écouteur sur la boucle locale de l'hôte, mais
-  cette version ne l'accepte pas encore : l'appelant refuse une adresse http qui n'est pas la boucle locale, et
-  l'écouteur ne répond qu'à l'hôte que nomme son préfixe. Voir les [Limites connues](../reference/limitations.md).
+- **Docker Desktop (Windows, macOS).** `host.docker.internal` atteint un écouteur sur la boucle locale de l'hôte. Le
+  pont continue d'écouter en boucle locale ; l'`Address` de l'appelant est `http://host.docker.internal:7410/`, la
+  seule adresse http hors boucle locale que l'appelant accepte. L'écouteur ne répond qu'à l'hôte que nomme son
+  préfixe, donc l'appelant envoie l'en-tête `Host` `Orkeon:Tools:Bridge:HostHeader`, `127.0.0.1:<port>` quand rien
+  ne le fixe : juste pour le préfixe par défaut sous macOS. Sous Windows le préfixe par défaut est
+  `http://localhost:7410/` : fixez `HostHeader` à `localhost:7410` (HTTP.sys ne fait correspondre ce préfixe que
+  sur l'en-tête `Host`).
+
+  ```json
+  { "Orkeon": { "Tools": { "Bridge": { "Address": "http://host.docker.internal:7410/", "HostHeader": "localhost:7410", "Allow": ["firefox"] } } } }
+  ```
+
+  Le démarrage consigne un avertissement : en http, le jeton et chaque appel circulent en clair sur le réseau
+  virtuel de l'hôte Docker, que d'autres conteneurs de cet hôte peuvent voir. Ce chemin n'est pas encore vérifié
+  sur un vrai Docker Desktop ; voir les [Limites connues](../reference/limitations.md).
 - **Un pont sous Windows sur une autre adresse.** Un préfixe https autre que `localhost` demande une réservation d'URL
   pour le compte qui exécute le pont, et un certificat lié au port, les deux faits une fois dans une invite élevée :
 

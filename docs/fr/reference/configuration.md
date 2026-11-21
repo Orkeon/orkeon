@@ -1795,7 +1795,9 @@ schéma et leur accès restent ceux du registre local, seul l'appel traverse. Le
 quand le pont est injoignable, refuse le jeton, ne sert pas un outil nommé ou en sert un dont le
 contrat diffère. Tant que des exécutions sont en cours, l'appelant bat tous les tiers du
 `HeartbeatWindow` du pont, et termine la portée de chaque exécution sur le pont quand l'exécution se
-termine. Comment mettre les deux côtés en place : le guide
+termine. En http, l'adresse est la boucle locale, ou le `host.docker.internal` de Docker Desktop,
+qui reçoit l'en-tête `Host` `HostHeader` et un avertissement : le jeton circule en clair. Comment
+mettre les deux côtés en place : le guide
 [Orkeon dans un conteneur, le navigateur sur le bureau](../guides/tool-bridge.md) ; la décision est
 consignée dans l'[ADR-019](../adr/ADR-019-tool-bridge.md).
 

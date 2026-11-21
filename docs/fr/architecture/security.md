@@ -380,15 +380,24 @@ conteneur. Chaque côté se défend pour lui-même :
   n'est aucun outil du registre d'un côté refuse le démarrage.
 - **L'appelant juge, le pont exécute.** La porte de permissions, le gardien, la troncature et l'assainisseur de
   résultats de l'appelant jugent chaque appel et son résultat, selon le schéma et la classe d'accès de l'outil local ;
-  une empreinte de contrat qui diffère entre les côtés refuse le démarrage. Le pont n'en applique aucun : il exécute
+  une empreinte de contrat qui diffère entre les côtés refuse le démarrage. La troncature s'applique toujours à un
+  résultat ponté : l'appelant ne croit jamais le pont sur parole quand il dit un résultat déjà borné, et lit une
+  réponse sous `Orkeon:Tools:Bridge:MaxResponseBytes` (32 Mio), une réponse plus grosse faisant échouer l'appel. Une
+  liste d'outils qui nomme un outil deux fois, ou une fenêtre de battement hors de 1 s à 10 min, refuse le démarrage. Le pont n'en applique aucun : il exécute
   l'outil brut, avec ses propres réglages d'outil et sa propre politique d'URL, et consigne chaque appel dans son
   audit sous l'appelant `bridge`.
 - **Les fichiers.** Un appel porte les montages de l'appelant visibles des agents et les fichiers que nomment ses
   arguments, au plus `Orkeon:Tools:Bridge:MaxFileBytes` (16 Mio) au total, et le `Orkeon:Bridge:MaxFileBytes` du pont (16 Mio)
-  borne à la fois ce qu'il accepte et ce qu'il renvoie. Sur le pont, ils vivent dans un dossier temporaire du
-  processus du pont, en mode 0700 sous Unix, que son validateur de chemins autorise le temps de l'appel et qui est
-  supprimé ensuite. Ce qui revient est écrit par l'appelant par son propre système de fichiers virtuel, sous les
-  montages et les droits de son exécution : un chemin hors d'un montage inscriptible y est refusé.
+  borne à la fois ce qu'il accepte et ce qu'il renvoie. Sur le pont, ils vivent dans un dossier temporaire par
+  appel, dans un dossier parent du processus du pont au nom imprévisible, créé en exclusivité et jamais réutilisé,
+  en mode 0700 sous Unix ; le validateur de chemins du pont autorise ce parent pour la vie du processus, et le
+  dossier de chaque appel est supprimé ensuite. Un lien symbolique que l'outil y a créé n'est jamais suivi quand les
+  fichiers sont relus. Un appel sans montages d'un outil qui utilise des fichiers s'exécute sur un dossier vide,
+  jamais sur les montages du pont lui-même, sauf pour un outil qui agit sur l'espace de travail et qui a été nommé.
+  Ce qui revient est écrit par l'appelant par son propre système de fichiers virtuel, sous les montages et les
+  droits de son exécution, et seulement quand l'appel est de classe `Edit` ou `Execute` et que ses arguments ont
+  nommé le chemin ou un dossier au-dessus : tout autre fichier est refusé avec un avertissement, le résultat gardé ;
+  un chemin hors d'un montage inscriptible y est refusé.
 - **La durée de vie.** Une exécution de l'appelant est une portée sur le pont, terminée par `POST end-run` ; un
   appelant silencieux au-delà de `Orkeon:Bridge:HeartbeatWindow` (30 s) perd ses portées, et leurs navigateurs,
   aussitôt. Arrêter le pont annule les appels en cours et termine chaque portée.
