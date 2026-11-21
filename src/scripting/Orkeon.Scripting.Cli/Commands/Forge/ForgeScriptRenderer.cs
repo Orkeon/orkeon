@@ -134,15 +134,17 @@ internal static class ForgeScriptRenderer
     {
         var decisionTask = when.Keys.First().Split('.')[0];
         script.Append("    .when(").Append(Literal(decisionTask)).Append(", ");
+        // The values the crew file holds (a string, or a list of strings), never the plan's raw JSON: a number the
+        // YAML writes as text would be refused by the script's mapper, and the two formats of one plan would differ.
         if (when.Count == 1 && !when.Keys.First().Contains('.', StringComparison.Ordinal))
         {
-            script.Append(when.Values.First().GetRawText()).Append(")\n");
+            script.Append(JsonSerializer.Serialize(ForgeBlueprintDecisions.WhenValue(when.Values.First()), DecisionOptions)).Append(")\n");
             return;
         }
 
         var clauses = when.ToDictionary(
             pair => pair.Key.StartsWith(decisionTask + ".", StringComparison.Ordinal) ? pair.Key[(decisionTask.Length + 1)..] : pair.Key,
-            static pair => pair.Value,
+            static pair => ForgeBlueprintDecisions.WhenValue(pair.Value),
             StringComparer.Ordinal);
         script.Append(JsonSerializer.Serialize(clauses, DecisionOptions)).Append(")\n");
     }

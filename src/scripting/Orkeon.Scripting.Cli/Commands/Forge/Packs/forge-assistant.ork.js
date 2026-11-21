@@ -123,7 +123,8 @@ function stableHeader() {
       lines.push("  expectedOutput, deliverable or tools:");
       lines.push("  `decision: {questions: {category: {choice: {bug: \"a defect\", feature: \"a request\"}}}}`;");
       lines.push("  a question is `choice` (option -> what it means), `score` (labels) or `noul` (a yes/no");
-      lines.push("  statement), with optional `instructions`. Its dependencies are what it reads.");
+      lines.push("  statement); `instructions` go on a choice or a score only: a `noul` statement says it all.");
+      lines.push("  Its dependencies are what it reads.");
       lines.push("- A task gated by a decision has `when`: `{\"triage.category\": [\"bug\"]}` runs it when");
       lines.push("  the option holds, `{\"triage.urgency\": \">= 0.7\"}` on a threshold, and");
       lines.push("  `{\"triage\": \"otherwise\"}` when no other gated task matched.");

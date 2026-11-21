@@ -78,15 +78,22 @@ internal static class ForgeBlueprintDecisions
     public static Dictionary<string, object> ToYaml(IReadOnlyDictionary<string, JsonElement> when) =>
         when.ToDictionary(
             static pair => pair.Key,
-            static pair => pair.Value.ValueKind switch
-            {
-                JsonValueKind.String => (object)pair.Value.GetString()!,
-                JsonValueKind.Array => pair.Value.EnumerateArray()
-                    .Select(static item => item.ValueKind == JsonValueKind.String ? (object)item.GetString()! : item.GetRawText())
-                    .ToList(),
-                _ => pair.Value.GetRawText(),
-            },
+            static pair => WhenValue(pair.Value),
             StringComparer.Ordinal);
+
+    /// <summary>
+    /// One value of a <c>when:</c> map as the crew file holds it: a string, or a list of strings, a JSON number or
+    /// boolean written as its text (<c>[1]</c> names the option <c>"1"</c>). The script's <c>.when(...)</c> is rendered
+    /// from this same value, so the two formats of one plan load alike.
+    /// </summary>
+    public static object WhenValue(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString()!,
+        JsonValueKind.Array => value.EnumerateArray()
+            .Select(static item => item.ValueKind == JsonValueKind.String ? item.GetString()! : item.GetRawText())
+            .ToList(),
+        _ => value.GetRawText(),
+    };
 
     /// <summary>The plan's decision of a crew file's <c>decision:</c> block, for a reopen.</summary>
     public static ForgeBlueprintDecision FromYaml(DecisionYamlConfig decision) => new()
@@ -128,8 +135,52 @@ internal static class ForgeBlueprintDecisions
             errors.Add($"tasks[{index}] ('{task.Key}'): Task '{name}' declares both a decision and a deliverable: a decision task runs no agent and writes no file, remove the deliverable.");
         if (task.Tools is { Count: > 0 })
             errors.Add($"tasks[{index}] ('{task.Key}'): Task '{name}' declares both a decision and tools: a decision task runs no agent and calls no tool, remove the tools.");
-        if (task.Decision!.Questions is not { Count: > 0 })
+        if (task.Decision!.Questions is not { Count: > 0 } questions)
             errors.Add($"tasks[{index}] ('{task.Key}'): 'decision.questions' must name at least one question.");
+        else
+        {
+            foreach (var (question, spec) in questions)
+                ValidateQuestion(errors, $"tasks[{index}] ('{task.Key}'): question '{question}'", spec);
+        }
+
+        // The script refuses a null where the crew file reads a missing value: refused here, so both formats load alike.
+        if (task.Decision.Fallback?.Any(static pair => pair.Value is null) ?? false)
+            errors.Add($"tasks[{index}] ('{task.Key}'): 'decision.fallback' gives a question no answer: give each one an option, or leave it out.");
+        if (task.Decision.State?.Any(static name => name is null) ?? false)
+            errors.Add($"tasks[{index}] ('{task.Key}'): 'decision.state' holds a null: name each task by its key.");
+    }
+
+    /// <summary>
+    /// One question of a decision: exactly one kind, every option described, every label named, and no
+    /// <c>instructions</c> on a yes/no question, which reads none (its statement is all System One is told). Without
+    /// these checks the loaders would drop a part without a word, or one format would refuse what the other accepts.
+    /// </summary>
+    private static void ValidateQuestion(List<string> errors, string where, ForgeBlueprintQuestion? spec)
+    {
+        var kinds = new[] { ("choice", spec?.Choice is not null), ("score", spec?.Score is not null), ("noul", spec?.Noul is not null) }
+            .Where(static kind => kind.Item2)
+            .Select(static kind => kind.Item1)
+            .ToList();
+        if (kinds.Count == 0)
+        {
+            errors.Add($"{where} declares no kind: give it exactly one of 'choice' (option to what it means), 'score' (labels) or 'noul' (a yes/no statement).");
+            return;
+        }
+
+        if (kinds.Count > 1)
+            errors.Add($"{where} declares more than one kind ({string.Join(", ", kinds)}): a question has exactly one.");
+        foreach (var (option, description) in spec!.Choice ?? new Dictionary<string, string>())
+        {
+            if (description is null)
+                errors.Add($"{where}: option '{option}' has no description: say what it means.");
+        }
+
+        if (spec.Score?.Any(static label => string.IsNullOrWhiteSpace(label)) ?? false)
+            errors.Add($"{where}: 'score' holds an empty label: name each label.");
+        if (spec.Noul is { } statement && string.IsNullOrWhiteSpace(statement))
+            errors.Add($"{where}: 'noul' is empty: write the yes/no statement System One tests.");
+        if (spec.Noul is not null && spec.Instructions is not null)
+            errors.Add($"{where} is a yes/no question, which reads no 'instructions': put what System One must weigh in its 'noul' statement, and remove the instructions.");
     }
 
     private static void ValidateNone(List<string> errors, IReadOnlyList<ForgeBlueprintTask> tasks, IReadOnlyList<string> decideHolders)

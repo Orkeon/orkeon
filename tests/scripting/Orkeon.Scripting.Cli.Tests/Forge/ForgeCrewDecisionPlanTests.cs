@@ -269,4 +269,99 @@ public sealed class ForgeCrewDecisionPlanTests : IDisposable
         // Assert
         Assert.Equal((false, DecisionCircuitCause.Trial, "trial"), (passes[1].Enabled, passes[1].Cause, ForgeCrewDecision.CauseName(passes[1])));
     }
+
+    // --- the YAML and the script of one plan load alike (review 3, F3, F6) ------------------------
+
+    /// <summary>The triage plan with <paramref name="question"/> as its one question and <paramref name="when"/> on the fix.</summary>
+    private static string TriageWith(string question, string when) =>
+        TriageBlueprint
+            .Replace("\"category\": { \"choice\": { \"bug\": \"un defaut\", \"feature\": \"une demande\" } }", question, StringComparison.Ordinal)
+            .Replace("\"when\": { \"triage.category\": [ \"bug\" ] }", "\"when\": " + when, StringComparison.Ordinal);
+
+    /// <summary>Renders <paramref name="json"/> in both formats and returns the fix task's condition as each loads it.</summary>
+    private async Task<(Orkeon.Domain.Task.ValueObjects.TaskCondition? Yaml, Orkeon.Domain.Task.ValueObjects.TaskCondition? Script)> LoadBothAsync(string json)
+    {
+        var blueprint = Parse(json, ForgeCrewDecision.Required);
+        ForgeYamlRenderer.Render(ForgeBlueprintCompiler.Compile(blueprint, crewDecision: ForgeCrewDecision.Required), _sessionDirectory);
+        var yaml = await LoadYamlAsync();
+        AssertValid(yaml);
+        ForgeScriptRenderer.Render(blueprint, _sessionDirectory, ForgeCrewDecision.Required);
+        var script = await LoadScriptAsync();
+        AssertValid(script);
+        return (yaml.Tasks.Single(t => t.Key == "correction").Condition, script.Tasks.Single(t => t.Key == "correction").Condition);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_condition_on_a_numeric_option_renders_a_yaml_and_a_script_that_both_load_alike()
+    {
+        // Arrange: the plan names the option "1" by a JSON number.
+        var json = TriageWith("\"level\": { \"choice\": { \"1\": \"mineur\", \"2\": \"majeur\" } }", "{ \"triage.level\": [ 1 ] }");
+
+        // Act
+        var (yaml, script) = await LoadBothAsync(json);
+
+        // Assert
+        Assert.NotNull(yaml);
+        Assert.Equal(["1"], yaml.Clauses.Single().Options);
+        Assert.Equal(yaml, script);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_condition_on_the_answer_no_of_a_yes_no_question_renders_a_yaml_and_a_script_that_both_load_alike()
+    {
+        // Arrange
+        var json = TriageWith("\"urgent\": { \"noul\": \"La demande est urgente\" }", "{ \"triage.urgent\": [ \"no\" ] }");
+
+        // Act
+        var (yaml, script) = await LoadBothAsync(json);
+
+        // Assert
+        Assert.NotNull(yaml);
+        Assert.Equal(["no"], yaml.Clauses.Single().Options);
+        Assert.Equal(yaml, script);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public void An_option_without_its_description_is_a_repairable_refusal_of_the_plan()
+    {
+        // Arrange
+        var json = TriageWith("\"category\": { \"choice\": { \"bug\": null, \"feature\": \"une demande\" } }", "{ \"triage.category\": [ \"bug\" ] }");
+
+        // Act
+        var errors = Errors(json, ForgeCrewDecision.Required);
+
+        // Assert
+        Assert.Contains(errors, e => e.Contains("'category'", StringComparison.Ordinal) && e.Contains("'bug'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public void A_question_of_no_kind_is_refused()
+    {
+        // Arrange
+        var json = TriageWith("\"category\": {}", "{ \"triage\": \"otherwise\" }");
+
+        // Act
+        var errors = Errors(json, ForgeCrewDecision.Required);
+
+        // Assert
+        Assert.Contains(errors, e => e.Contains("'category'", StringComparison.Ordinal) && e.Contains("noul", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public void Instructions_on_a_yes_no_question_are_refused_rather_than_dropped()
+    {
+        // Arrange
+        var json = TriageWith("\"urgent\": { \"noul\": \"La demande est urgente\", \"instructions\": \"Lire la date\" }", "{ \"triage.urgent\": [ \"yes\" ] }");
+
+        // Act
+        var errors = Errors(json, ForgeCrewDecision.Required);
+
+        // Assert
+        Assert.Contains(errors, e => e.Contains("'urgent'", StringComparison.Ordinal) && e.Contains("instructions", StringComparison.Ordinal));
+    }
 }
