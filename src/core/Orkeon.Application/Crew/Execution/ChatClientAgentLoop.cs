@@ -515,8 +515,10 @@ internal sealed class ChatClientAgentLoop
         cbState.LastErrorMessage = lastError;
         cbState.ConsecutiveIdenticalErrors = count;
         // With compaction on, the token measure replaces the message count; the trim is its fallback (#432).
-        if (dispatch.Compactor is not { ReplacesTrim: true })
-            ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages);
+        // A trim rewrites the conversation: the next estimate counts it again.
+        if (dispatch.Compactor is not { ReplacesTrim: true }
+            && ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages))
+            dispatch.Compactor?.Rewritten();
         return (null, cbState);
     }
 
@@ -549,8 +551,10 @@ internal sealed class ChatClientAgentLoop
         cbState.LastErrorMessage = lastError;
         cbState.ConsecutiveIdenticalErrors = count;
         // With compaction on, the token measure replaces the message count; the trim is its fallback (#432).
-        if (dispatch.Compactor is not { ReplacesTrim: true })
-            ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages);
+        // A trim rewrites the conversation: the next estimate counts it again.
+        if (dispatch.Compactor is not { ReplacesTrim: true }
+            && ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages))
+            dispatch.Compactor?.Rewritten();
         return (null, cbState);
     }
 

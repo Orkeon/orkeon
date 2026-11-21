@@ -167,8 +167,10 @@ internal sealed class NativeToolCallingAgentLoop
                     ConversationPolicy.ExtractLastAssistantText(messages));
             }
             // With compaction on, the token measure replaces the message count; the trim is its fallback (#432).
-            if (compactor is not { ReplacesTrim: true })
-                ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages);
+            // A trim rewrites the conversation: the next estimate counts it again.
+            if (compactor is not { ReplacesTrim: true }
+                && ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages))
+                compactor?.Rewritten();
             sw.Restart();
         }
 

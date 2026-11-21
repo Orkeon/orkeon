@@ -407,6 +407,27 @@ public sealed class ChatLoopCompactionTests
 
     [Fact]
     [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldCountTheNewestTurn_WhenTheTrimRewroteTheConversationBesideAnAssumedWindow()
+    {
+        // Arrange: the provider counts 100 prompt tokens a call; past 40 messages the trim runs after every turn,
+        // and the estimate must still hold the turn added since the last call.
+#pragma warning disable CA2000
+        var client = new FakeCompactionChatClient { ToolName = ToolName, ToolTurns = 25, ReportedPromptTokens = 100 };
+#pragma warning restore CA2000
+        var stage = new FakeContextPressureStage { FromShare = 2 };
+        var assumed = new ContextWindow(SmallWindow.Tokens, ContextWindowSources.Settings);
+
+        // Act
+        await RunAsync(25, resultChars: 20, assumed, stages: [stage], chatClient: client);
+
+        // Assert
+        Assert.Contains(client.AgentRequests, r => r.Count > 2 && r[2].Text.StartsWith("[Context trimmed", StringComparison.Ordinal));
+        Assert.All(stage.Pressures.Skip(1), p => Assert.True(p.EstimatedTokens > 100,
+            $"the estimate holds the turn added since the last call, it was {p.EstimatedTokens}"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
     public async System.Threading.Tasks.Task ShouldStillCompact_WhenTheWindowIsTheSettingsFallback()
     {
         // Arrange: the run that compacts once against a documented window, against the same window assumed.

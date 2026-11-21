@@ -52,11 +52,12 @@ internal sealed class ScriptedFullLlmProvider : ILlmProvider
     public void EnqueueText(string content) =>
         _responses.Enqueue(new LlmResponse { Content = content });
 
-    /// <summary>Enqueues a response whose raw body carries OpenAI-shaped tool calls.</summary>
-    public void EnqueueOpenAiToolCall(string callId, string toolName, string argumentsJson) =>
+    /// <summary>Enqueues a response whose raw body carries OpenAI-shaped tool calls; it reports <paramref name="promptTokens"/> when set.</summary>
+    public void EnqueueOpenAiToolCall(string callId, string toolName, string argumentsJson, int? promptTokens = null) =>
         _responses.Enqueue(new LlmResponse
         {
             Content = "",
+            PromptTokens = promptTokens,
             RawResponseBody =
                 $$$"""{"choices":[{"message":{"tool_calls":[{"id":"{{{callId}}}","type":"function","function":{"name":"{{{toolName}}}","arguments":"{{{argumentsJson.Replace("\"", "\\\"", StringComparison.Ordinal)}}}"}}]}}]}""",
         });

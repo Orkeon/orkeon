@@ -279,7 +279,11 @@ internal sealed class ContextCompactor
     // The whole conversation counted again, with the overhead the provider's last count showed.
     private int Recount(ConversationView conversation) => Count(conversation, 0) + _overheadTokens;
 
-    private void Rewritten() => _lastPromptTokens = null;
+    /// <summary>
+    /// The conversation was rewritten since the last call, by a stage, a summary or the loop's 40-message trim: the
+    /// next estimate counts it again rather than adding the messages past the last call's count to that call's prompt.
+    /// </summary>
+    internal void Rewritten() => _lastPromptTokens = null;
 
     private ContextPressure Pressure(int estimate) => new()
     {

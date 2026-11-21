@@ -189,11 +189,11 @@ internal static class ConversationPolicy
     /// <summary>
     /// Trims conversation history to keep it bounded while preserving system and user messages.
     /// Preserves the first two messages (system + user task), injects a summary notice,
-    /// and keeps the most recent messages within the budget.
+    /// and keeps the most recent messages within the budget. Returns whether it trimmed.
     /// </summary>
-    internal static void TrimConversationHistory(List<ChatMessage> messages, int maxMessages)
+    internal static bool TrimConversationHistory(List<ChatMessage> messages, int maxMessages)
     {
-        if (messages.Count <= maxMessages) return;
+        if (messages.Count <= maxMessages) return false;
 
         // Preserve: [0] system, [1] user task, then the N most recent messages
         var systemMsg = messages[0];
@@ -216,15 +216,16 @@ internal static class ConversationPolicy
         messages.Add(userMsg);
         messages.Add(summaryMsg);
         messages.AddRange(recentMessages);
+        return true;
     }
 
     /// <summary>
     /// Trims conversation history (LlmMessage variant) to keep it bounded while preserving system and user messages.
-    /// Same logic as the ChatMessage overload, adapted for the native tool calling path.
+    /// Same logic as the ChatMessage overload, adapted for the native tool calling path. Returns whether it trimmed.
     /// </summary>
-    internal static void TrimConversationHistory(List<Domain.SharedKernel.ValueObjects.LlmMessage> messages, int maxMessages)
+    internal static bool TrimConversationHistory(List<Domain.SharedKernel.ValueObjects.LlmMessage> messages, int maxMessages)
     {
-        if (messages.Count <= maxMessages) return;
+        if (messages.Count <= maxMessages) return false;
 
         var systemMsg = messages[0];
         var userMsg = messages[1];
@@ -246,6 +247,7 @@ internal static class ConversationPolicy
         messages.Add(userMsg);
         messages.Add(summaryMsg);
         messages.AddRange(recentMessages);
+        return true;
     }
 
     /// <summary>

@@ -112,6 +112,45 @@ public sealed class NativeLoopCompactionTests
     }
 
     [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldCountTheNewestTurn_WhenTheTrimRewroteTheConversationBesideAnAssumedWindow()
+    {
+        // Arrange: the provider counts 100 prompt tokens a call; past 40 messages the trim runs after every turn,
+        // and the estimate must still hold the turn added since the last call.
+        var logger = new SpyExecutionLogger();
+        var provider = new ScriptedFullLlmProvider();
+        for (var turn = 1; turn <= 25; turn++)
+            provider.EnqueueOpenAiToolCall($"call-{turn}", ToolName, "{}", promptTokens: 100);
+        provider.EnqueueText("done");
+        var stage = new FakeContextPressureStage { FromShare = 2 };
+        var compaction = new ContextCompactionServices
+        {
+            Options = new ContextCompactionOptions { KeepRecentTurns = 2 },
+            Windows = new FakeContextWindowResolver(new ContextWindow(SmallWindow.Tokens, ContextWindowSources.Settings)),
+            Logger = logger,
+            Stages = [stage],
+        }.For(LlmProfiles.Default, baseConfig: null);
+        var tool = new SpyTool(ToolName, result: new string('x', 20));
+        var loop = new NativeToolCallingAgentLoop(logger, provider,
+            new FakeToolCallingStrategy(new OpenAiShapedToolCallParser()), [tool],
+            new LlmCallGate(logger, new ScriptedBasicLlmProvider()), ToolInvocationPipeline.Unguarded,
+            new NativeToolCallingAgentLoop.NativeToolCallingLoopOptions(Compaction: compaction));
+        DomainAgent agent = new AgentBuilder().Role("Reader").Goal("Read the pages").MaxIterations(30).WithTool(tool).Build();
+        var task = DomainTask.Create(TaskDescription.From("Read every page"), ExpectedOutput.From("A digest"));
+
+        // Act
+        await loop.ExecuteAsync(
+            new ExecutionInvocationContext(agent, task, "sys", "user", Context: null, ToolsUsed: [],
+                Stopwatch: System.Diagnostics.Stopwatch.StartNew()),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Contains(provider.ReceivedTurns, t => t.Length > 2 && t[2].Content.StartsWith("[Context trimmed", StringComparison.Ordinal));
+        Assert.All(stage.Pressures.Skip(1), p => Assert.True(p.EstimatedTokens > 100,
+            $"the estimate holds the turn added since the last call, it was {p.EstimatedTokens}"));
+    }
+
+    [Fact]
     [Trait("BR", "CH-434")]
     public async System.Threading.Tasks.Task ShouldFindTheCallOfAnOldReadResultAndDropIt_WhenThePruningStageRunsFirst()
     {
