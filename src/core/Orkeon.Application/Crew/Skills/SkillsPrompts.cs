@@ -21,7 +21,10 @@ internal static class SkillsPrompts
     /// <summary>The option that says no skill fits.</summary>
     internal const string NoSkillFits = "None of these playbooks helps with this task.";
 
-    /// <summary>The note under a skill cut by a cap.</summary>
-    internal static string CutNote(int shown, int length) =>
-        FormattableString.Invariant($"[skill cut: {shown} of {length} characters shown]");
+    /// <summary>The note under a skill cut by a cap: the file is read no further than the cap, so its length is not known.</summary>
+    internal static string CutNote(int shown) =>
+        FormattableString.Invariant($"[skill cut: the first {shown} characters shown]");
+
+    /// <summary>Why an answer of the decision model picks nothing: the fallback stands.</summary>
+    internal const string NoUsableChoice = "its answer held no usable choice";
 }

@@ -424,6 +424,36 @@ public sealed class ToolResultPruningStageTests
         Assert.Single(_model.Requests);
     }
 
+    public static TheoryData<string> GarbageAnswers => ["no answer", "another kind"];
+
+    [Theory]
+    [Trait("BR", "CH-434")]
+    [MemberData(nameof(GarbageAnswers))]
+    public async System.Threading.Tasks.Task ShouldNotOfferAResultAgain_WhenTheModelGaveNoUsableVerdictWithinEightTurns(string garbage)
+    {
+        // Arrange: a model that answers nothing usable is asked once, then waits RejudgeTurns turns like a kept result.
+        var (messages, view) = Conversation();
+        if (garbage == "another kind")
+        {
+            _model.Respond = request => new DecisionResponse
+            {
+                Model = "fake",
+                Answers = request.Questions.Keys.ToImmutableDictionary(k => k,
+                    _ => (DecisionAnswer)new ChoiceAnswer { Choice = "maybe", Confidence = 0.5, Probabilities = ImmutableDictionary<string, double>.Empty }),
+            };
+        }
+        var stage = Stage();
+        await stage.RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Act
+        var changed = await stage.RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.False(changed);
+        Assert.Single(_model.Requests);
+        Assert.Equal(2_000, ResultOf(messages, 1).Length);
+    }
+
     [Fact]
     [Trait("BR", "CH-434")]
     public async System.Threading.Tasks.Task ShouldJudgeAKeptResultAgain_WhenEightModelTurnsHavePassed()

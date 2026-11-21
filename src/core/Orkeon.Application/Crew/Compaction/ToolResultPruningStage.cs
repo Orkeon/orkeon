@@ -202,7 +202,7 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
 
     /// <summary>
     /// The verdict of each call the answers settle, by call id: not needed, drop; needed but not whole, head; needed
-    /// whole, keep. A call an answer is missing for is left out.
+    /// whole, keep. A call an answer is missing for is left out, and waits as a kept one does.
     /// </summary>
     internal static IEnumerable<(string CallId, PruneVerdict Verdict)> Verdicts(IReadOnlyList<Candidate> batch, DecisionResponse response)
     {
@@ -225,8 +225,13 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
         long freedChars = 0;
         foreach (var candidate in candidates)
         {
+            // An answer with no usable verdict waits RejudgeTurns turns, as a kept result does, rather than being
+            // asked again before every model call (#434).
             if (!verdicts.TryGetValue(candidate.Call.CallId, out var verdict))
+            {
+                memory.KeptAtAge[candidate.Call.CallId] = candidate.Age;
                 continue;
+            }
             if (verdict == PruneVerdict.Keep)
             {
                 kept++;

@@ -56,7 +56,7 @@ public static class AgentSkillsReasons
     /// <summary>The library holds no skill, or could not be read: no call is made.</summary>
     public const string EmptyLibrary = "empty-library";
 
-    /// <summary>The decision model's call failed.</summary>
+    /// <summary>The decision model's call failed, or its answer held no usable choice.</summary>
     public const string PickFailed = "pick-failed";
 }
 

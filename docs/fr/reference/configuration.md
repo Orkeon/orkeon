@@ -293,7 +293,7 @@ avec ses propres clés.
 | `Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
-| `ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, au-dessus de zéro, contre laquelle les boucles d'agent compactent une longue conversation ; zéro ou moins refuse le démarrage. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens` (200000 par défaut), avec un avertissement par profil qui nomme le chiffre supposé : donnez-la pour un modèle plus petit que la table ne connaît pas, sinon les boucles ne compactent ni ne coupent avant que sa fenêtre soit pleine. Jamais envoyée au fournisseur. |
+| `ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, au-dessus de zéro, contre laquelle les boucles d'agent compactent une longue conversation ; zéro ou moins refuse le démarrage. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens` (200000 par défaut), avec un avertissement par profil qui nomme le chiffre supposé : donnez-la pour un modèle plus petit que la table ne connaît pas : sur le chiffre supposé, les boucles gardent la coupe à 40 messages à côté de la compaction, mais ne compactent qu'une fois ce chiffre atteint. Jamais envoyée au fournisseur. |
 | `Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
 | `MaxRateLimitWait` | durée | `"00:05:00"` | La plus longue fenêtre de limite de débit qu'un appel attend avant d'échouer : un fournisseur qui en annonce une plus longue fait échouer l'appel aussitôt avec une erreur de limite de débit. `00:00:00` n'attend rien. |
 | `MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
@@ -311,7 +311,7 @@ avec ses propres clés.
 | `Profiles:<nom>:Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Profiles:<nom>:Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `Profiles:<nom>:CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
-| `Profiles:<nom>:ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, au-dessus de zéro, contre laquelle les boucles d'agent compactent une longue conversation ; zéro ou moins refuse le démarrage. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens` (200000 par défaut), avec un avertissement par profil qui nomme le chiffre supposé : donnez-la pour un modèle plus petit que la table ne connaît pas, sinon les boucles ne compactent ni ne coupent avant que sa fenêtre soit pleine. Jamais envoyée au fournisseur. |
+| `Profiles:<nom>:ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, au-dessus de zéro, contre laquelle les boucles d'agent compactent une longue conversation ; zéro ou moins refuse le démarrage. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens` (200000 par défaut), avec un avertissement par profil qui nomme le chiffre supposé : donnez-la pour un modèle plus petit que la table ne connaît pas : sur le chiffre supposé, les boucles gardent la coupe à 40 messages à côté de la compaction, mais ne compactent qu'une fois ce chiffre atteint. Jamais envoyée au fournisseur. |
 | `Profiles:<nom>:Fallback` | liste de chaînes | `[]` | Les profils vers lesquels un appel passe, dans l'ordre, quand celui-ci échoue d'une façon qu'un nouvel essai ne guérit pas : une erreur de transport, un 5xx, un 429 une fois `MaxRetries` épuisé, un délai dépassé. Une liste de noms de profils, ou une seule valeur séparée par des virgules ; `default` désigne le profil de l'hôte. Omise, un échec reste celui de l'appel. |
 | `Profiles:<nom>:FallbackBudgetSeconds` | entier | — | Le temps maximal, en secondes et compté depuis le premier appel, que la chaîne peut passer avant de cesser d'essayer le profil suivant. Il est vérifié entre deux profils et ne coupe jamais un appel en cours. Omis, la chaîne n'est bornée que par le `TimeoutSeconds` et le `MaxRetries` de chaque profil. |
 | `Profiles:<nom>:Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
@@ -1892,13 +1892,17 @@ conversation est comptée de nouveau. Dès que l'estimation atteint `TriggerShar
 utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum
 documenté du modèle, sinon 4096, au plus la moitié de la fenêtre), un appel de résumé, qui lit
 aussi la tâche, remplace les tours anciens, et le prompt système, la tâche et les
-`KeepRecentTurns` derniers tours restent tels quels. Un appel au-delà du seuil dont tous les tours
-sont récents attend un tour plus tard, et ne compte pas comme un échec. La fenêtre est le
+`KeepRecentTurns` derniers tours restent tels quels. Un tour est une réponse de l'assistant, en un
+message ou plusieurs, avec ses résultats d'outils : un appel n'est jamais gardé sans son résultat.
+Un message système parmi les tours anciens (le pilotage du budget souple) reste, juste après le
+résumé. Quand les `KeepRecentTurns` tours sont tout ce qu'il y a, moins sont gardés : le plus grand
+nombre dont les messages passent sous le seuil, sinon le dernier tour seul ; un appel au-delà du
+seuil avec un seul tour attend un tour plus tard, et ne compte pas comme un échec. La fenêtre est le
 `ContextWindowTokens` du profil, sinon celle que documente le modèle, sinon
 [`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession), avec un avertissement par profil qui
-nomme le chiffre supposé. Ce chiffre surestime un modèle plus petit que la table ne connaît pas :
-compaction active, sa boucle ne compacte ni ne coupe avant que la vraie fenêtre soit pleine ;
-donnez donc `ContextWindowTokens` au profil de ce modèle. Trois compactions ratées de suite
+nomme le chiffre supposé. Ce chiffre peut surestimer un modèle plus petit que la table ne connaît
+pas : sur lui, la boucle garde la coupe à 40 messages à côté de la compaction ; donnez
+`ContextWindowTokens` au profil de ce modèle pour compacter contre sa vraie fenêtre seule. Trois compactions ratées de suite
 ramènent la coupe à 40 messages pour le reste de la tentative de la tâche (une tâche relancée
 compacte de nouveau), et l'élagage ci-dessous s'arrête avec elles. Chaque
 compaction émet `agent.compacted` sur le flux d'événements du run et dans son historique, sous
@@ -1930,8 +1934,8 @@ tâche et chaque appel - outil, entrée, taille et âge en tours du modèle -, j
 répond à deux questions oui/non par appel : encore utile, et utile en entier. Inutile retire le
 résultat, utile en partie en garde les `HeadChars` premiers caractères, utile en entier le garde ;
 un résultat élagué laisse une ligne qui dit comment le retrouver, l'entrée entière de l'appel
-comprise, et son appel reste. Un résultat gardé, ou que le modèle de décision n'a pas su juger,
-est jugé de nouveau après huit tours du modèle de plus. Chaque élagage qui a coupé ou retiré un
+comprise, et son appel reste. Un résultat gardé, ou que le modèle de décision n'a pas su juger
+(l'appel a échoué, ou sa réponse ne portait aucun verdict utilisable), est jugé de nouveau après huit tours du modèle de plus. Chaque élagage qui a coupé ou retiré un
 résultat émet `agent.pruned` sous `orkeon run`, `orkeon-host` et `orkeon mcp serve --crew` ;
 un tour qui a tout gardé n'émet rien. Circuit de décision coupé, rien
 n'est élagué : un avertissement par run, aucun appel de décision, aucune erreur. Une fois le disjoncteur de
@@ -1955,7 +1959,8 @@ n'élague pas.
 Comment les `skills:` d'un agent atteignent son prompt. Un skill est un fichier markdown
 lu par le système de fichiers virtuel et ajouté au prompt système de l'agent sous un titre
 `## Skills`, chaque skill coupé à `MaxSkillChars` et le bloc entier, son titre et la ligne de
-titre de chaque skill compris, à `MaxBlockChars`. Un skill coupé est dit dans le prompt et dans le
+titre de chaque skill compris, à `MaxBlockChars` ; un fichier de skill n'est pas lu au-delà de
+`MaxSkillChars`. Un skill coupé est dit dans le prompt et dans le
 champ `cut` de `agent.skills` ; un skill laissé de côté (plus de place dans le bloc, un fichier
 illisible) est dit dans ce seul champ `cut`. Un agent avec `skills: [<chemins>]` porte ces
 fichiers à chaque tâche. Un agent avec
@@ -1964,7 +1969,8 @@ plus trois skills de `Library` : le modèle de décision lit une ligne par skill
 `description` de son front matter, sinon son premier titre et sa première ligne), jamais un corps.
 Quand le circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enabled: false`, aucun
 fournisseur de décision), quand la bibliothèque ne contient aucun skill ou ne peut être lue, ou
-quand le modèle de décision échoue, l'agent porte sa liste `fallback`, sinon aucun skill, avec un
+quand le modèle de décision échoue ou ne répond aucun choix utilisable (`reason: pick-failed`),
+l'agent porte sa liste `fallback`, sinon aucun skill, avec un
 avertissement par run et sans erreur. Le choix vaut pour chaque tentative de la tâche par cet agent dans
 le run, et émet `agent.skills` sur le flux d'événements du run une fois par tâche et par agent
 d'un run. Une crew `.ork.ts` n'a pas de skills.

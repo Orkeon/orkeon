@@ -248,13 +248,13 @@ public sealed class ChatLoopCompactionTests
 
     [Fact]
     [Trait("BR", "CH-432")]
-    public async System.Threading.Tasks.Task ShouldNeitherCountAFailureNorSaySo_WhenTheRecentTurnsAreAllThereIsToKeep()
+    public async System.Threading.Tasks.Task ShouldNeitherCountAFailureNorSaySo_WhenTheLastTurnIsAllThereIsToKeep()
     {
-        // Arrange: every call is over the 750-token trigger, and five turns never pass the six kept.
+        // Arrange: the one turn is over the 750-token trigger, and nothing comes before it.
         var options = new ContextCompactionOptions { KeepRecentTurns = 6 };
 
         // Act
-        var run = await RunAsync(toolTurns: 5, resultChars: 4_000, SmallWindow, options);
+        var run = await RunAsync(toolTurns: 1, resultChars: 4_000, SmallWindow, options);
 
         // Assert
         Assert.Equal(AgentExitReason.Completed, run.Result.ExitReason);
@@ -264,13 +264,13 @@ public sealed class ChatLoopCompactionTests
 
     [Fact]
     [Trait("BR", "CH-432")]
-    public async System.Threading.Tasks.Task ShouldLeaveADebugLine_WhenTheRecentTurnsAreAllThereIsToKeep()
+    public async System.Threading.Tasks.Task ShouldLeaveADebugLine_WhenTheLastTurnIsAllThereIsToKeep()
     {
-        // Arrange: every call is over the 750-token trigger, and five turns never pass the six kept.
+        // Arrange: the one turn is over the 750-token trigger, and nothing comes before it.
         var options = new ContextCompactionOptions { KeepRecentTurns = 6 };
 
         // Act
-        var run = await RunAsync(toolTurns: 5, resultChars: 4_000, SmallWindow, options);
+        var run = await RunAsync(toolTurns: 1, resultChars: 4_000, SmallWindow, options);
 
         // Assert
         Assert.Contains(run.Logger.Messages, m => m.StartsWith("[Debug] ", StringComparison.Ordinal)
@@ -386,5 +386,37 @@ public sealed class ChatLoopCompactionTests
         Assert.Equal(AgentCompactionOutcomes.Failed, notice.Outcome);
         Assert.True(notice.TokensAfter >= 4_428, $"tokensAfter shows the conversation still over the trigger, it was {notice.TokensAfter}");
         Assert.StartsWith("[Context compacted: 6 earlier messages", run.Client.AgentRequests[5][2].Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldTrimAsWell_WhenTheWindowIsTheSettingsFallback()
+    {
+        // Arrange: 25 turns make 52 messages, far under a window no profile sets and no table knows.
+        var assumed = new ContextWindow(1_000_000, ContextWindowSources.Settings);
+
+        // Act
+        var run = await RunAsync(toolTurns: 25, resultChars: 20, assumed);
+
+        // Assert
+        var last = run.Client.AgentRequests[^1];
+        Assert.True(last.Count <= 40, $"the trim keeps 40 messages at most, the last request held {last.Count}");
+        Assert.StartsWith("[Context trimmed", last[2].Text, StringComparison.Ordinal);
+        Assert.Empty(run.Client.SummaryRequests);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldStillCompact_WhenTheWindowIsTheSettingsFallback()
+    {
+        // Arrange: the run that compacts once against a documented window, against the same window assumed.
+        var assumed = new ContextWindow(MidWindow.Tokens, ContextWindowSources.Settings);
+
+        // Act
+        var run = await RunAsync(6, resultChars: 4_000, assumed);
+
+        // Assert
+        Assert.Equal(AgentCompactionOutcomes.Compacted, Assert.Single(run.Observer.Notices).Outcome);
+        Assert.Equal(ContextWindowSources.Settings, run.Observer.Notices[0].WindowSource);
     }
 }

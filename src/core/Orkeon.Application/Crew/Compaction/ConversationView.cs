@@ -51,7 +51,10 @@ public abstract class ConversationView
     /// <returns>False when the message is not a tool result, and nothing changed.</returns>
     public abstract bool ReplaceToolResult(int index, string text);
 
-    /// <summary>Replaces <paramref name="count"/> messages from <paramref name="start"/> with one user message.</summary>
+    /// <summary>
+    /// Replaces <paramref name="count"/> messages from <paramref name="start"/> with one user message; the system
+    /// messages among them are kept, in order, right after it.
+    /// </summary>
     internal abstract void ReplaceRange(int start, int count, string userText);
 }
 

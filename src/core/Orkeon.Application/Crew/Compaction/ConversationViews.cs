@@ -106,8 +106,10 @@ internal sealed class ChatConversationView : ConversationView
 
     internal override void ReplaceRange(int start, int count, string userText)
     {
+        var instructions = _messages.GetRange(start, count).Where(m => m.Role == ChatRole.System).ToList();
         _messages.RemoveRange(start, count);
         _messages.Insert(start, new ChatMessage(ChatRole.User, userText));
+        _messages.InsertRange(start + 1, instructions);
     }
 
     private static StringBuilder Separate(StringBuilder text) => text.Length == 0 ? text : text.Append('\n');
@@ -175,7 +177,9 @@ internal sealed class LlmConversationView : ConversationView
 
     internal override void ReplaceRange(int start, int count, string userText)
     {
+        var instructions = _messages.GetRange(start, count).Where(m => LlmRoles.IsSystem(m.Role)).ToList();
         _messages.RemoveRange(start, count);
         _messages.Insert(start, LlmMessage.User(userText));
+        _messages.InsertRange(start + 1, instructions);
     }
 }

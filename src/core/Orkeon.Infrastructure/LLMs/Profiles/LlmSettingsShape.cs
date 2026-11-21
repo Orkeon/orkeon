@@ -146,7 +146,8 @@ internal class LlmProfileShape
     /// conversation against; zero or less refuses the start. Left out, the loops read the documented
     /// window of the model, else <c>Orkeon:Cli:Session:ContextWindowTokens</c> (200000 by default),
     /// with one warning per profile naming the figure assumed: set it for a smaller model the table does
-    /// not know, or the loops neither compact nor trim before its window is full. Never sent to the provider.
+    /// not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact
+    /// only once that figure fills. Never sent to the provider.
     /// </summary>
     public int? ContextWindowTokens { get; set; }
 

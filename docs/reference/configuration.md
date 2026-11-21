@@ -275,7 +275,7 @@ the same way with its own keys.
 | `Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
-| `ContextWindowTokens` | integer | — | The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know, or the loops neither compact nor trim before its window is full. Never sent to the provider. |
+| `ContextWindowTokens` | integer | — | The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact only once that figure fills. Never sent to the provider. |
 | `Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
 | `MaxRateLimitWait` | duration | `"00:05:00"` | The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing. |
 | `MaxRetries` | integer | `10` | How many times a call that fails on a passing error is tried again; `0` never retries. |
@@ -293,7 +293,7 @@ the same way with its own keys.
 | `Profiles:<name>:Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Profiles:<name>:Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `Profiles:<name>:CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
-| `Profiles:<name>:ContextWindowTokens` | integer | — | The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know, or the loops neither compact nor trim before its window is full. Never sent to the provider. |
+| `Profiles:<name>:ContextWindowTokens` | integer | — | The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact only once that figure fills. Never sent to the provider. |
 | `Profiles:<name>:Fallback` | list of string | `[]` | The profiles a call moves to, in order, when this one fails in a way a retry cannot cure: a transport error, a 5xx, a 429 once `MaxRetries` is spent, a timeout. A list of profile names, or one comma-separated value; `default` names the host's own. Left out, a failure is the call's. |
 | `Profiles:<name>:FallbackBudgetSeconds` | integer | — | The longest the chain may spend before it stops trying the next profile, in seconds, counted from the first call. It is checked between two profiles and never cuts a call in flight. Left out, the chain is bounded only by each profile's own `TimeoutSeconds` and `MaxRetries`. |
 | `Profiles:<name>:Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
@@ -1833,13 +1833,17 @@ definitions, the framing) stays in the estimate when the conversation is counted
 estimate reaches `TriggerShare` of the usable window (the context window less the output reserve:
 the call's cap, else the model's documented maximum, else 4096, at most half the window), one
 summary call, which reads the task too, replaces the older turns, and the system prompt, the task
-and the last `KeepRecentTurns` turns stay as they were. A call over the trigger whose turns are
-all recent ones waits for a later turn, and counts as no failure. The window is the profile's
+and the last `KeepRecentTurns` turns stay as they were. A turn is an assistant response, in one
+message or several, with its tool results: a call is never kept apart from its result. A system
+message among the older turns (the soft-budget steering) stays, right after the summary. When the
+`KeepRecentTurns` turns are all there is, fewer are kept: the most whose messages come under the
+trigger, else the last turn alone; a call over the trigger with one turn alone waits for a later
+turn, and counts as no failure. The window is the profile's
 `ContextWindowTokens`, else the model's documented one, else
 [`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession), with one warning per profile naming
-the figure assumed. That figure overstates a smaller model the table does not know: compaction on,
-its loop neither compacts nor trims before the real window is full, so set `ContextWindowTokens`
-on that model's profile. Three failed compactions in a row bring the 40-message trim back for the
+the figure assumed. That figure may overstate a smaller model the table does not know, so on it
+the loop keeps the 40-message trim beside compaction; set `ContextWindowTokens` on that model's
+profile to compact against its real window alone. Three failed compactions in a row bring the 40-message trim back for the
 rest of the task attempt (a retried task compacts again), and the pruning below stops with them.
 Each compaction emits `agent.compacted` on the run's event stream and in its history, under
 `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` alike. An agent overrides `Enabled` and
@@ -1871,7 +1875,8 @@ age in model turns - never the result, and answers two yes/no questions per call
 and needed whole. Not needed drops the result, needed in part keeps its first `HeadChars`
 characters, needed whole keeps it; a pruned result leaves a line saying how to get it back, the
 call's whole input in it, and its call stays. A result kept, or one the decision model failed to
-judge, is judged again after eight more model turns. Each pruning that cut or dropped a result
+judge (the call failed, or its answer held no usable verdict), is judged again after eight more
+model turns. Each pruning that cut or dropped a result
 emits `agent.pruned` under `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew`; a turn that kept
 everything emits nothing. With the decision circuit
 off, nothing is pruned: one warning per run, no decision call, no error. Once compaction's breaker opens
@@ -1894,14 +1899,15 @@ overrides `Enabled` with `compaction: { prune }`; an agent that does not compact
 How an agent's `skills:` reach its prompt. A skill is a markdown file read through the
 virtual file system and appended to the agent's system prompt under a `## Skills` heading, each
 skill cut at `MaxSkillChars` and the whole block, its heading and each skill's title line
-included, at `MaxBlockChars`. A skill cut short is said in the prompt and in the `cut` field of
+included, at `MaxBlockChars`; a skill file is read no further than `MaxSkillChars`. A skill cut
+short is said in the prompt and in the `cut` field of
 `agent.skills`; a skill left out (no room left in the block, a file that cannot be read) is said
 in that `cut` field alone. An agent with `skills: [<paths>]` carries those files on every task. An agent with `skills: { auto: true, fallback: [<paths>] }` has System One pick, for
 each task, at most three skills of `Library`: the decision model reads one line per skill (its
 front-matter `name` and `description`, else its first heading and line), never a body. When the
 decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`, no decision
-provider), when the library holds no skill or cannot be read, or when the decision model fails, the
-agent carries its `fallback` list, else no skill, with one warning per run and no error. The choice holds
+provider), when the library holds no skill or cannot be read, or when the decision model fails or
+answers no usable choice (`reason: pick-failed`), the agent carries its `fallback` list, else no skill, with one warning per run and no error. The choice holds
 for every attempt of the task by that agent in the run, and emits `agent.skills` on the run's
 event stream once per task and agent of a run. A `.ork.ts` crew has no skills.
 

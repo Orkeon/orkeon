@@ -106,7 +106,7 @@ public sealed class AgentSkillsResolverTests
         Assert.NotNull(resolution);
         Assert.Contains(new string('a', 50), resolution.Block, StringComparison.Ordinal);
         Assert.DoesNotContain(new string('a', 50) + "b", resolution.Block, StringComparison.Ordinal);
-        Assert.Contains("[skill cut: 50 of 100 characters shown]", resolution.Block, StringComparison.Ordinal);
+        Assert.Contains("[skill cut: the first 50 characters shown]", resolution.Block, StringComparison.Ordinal);
         Assert.Equal(["/workspace/skills/long.md"], resolution.Notice.Cut);
     }
 
@@ -204,6 +204,88 @@ public sealed class AgentSkillsResolverTests
         Assert.Equal(AgentSkillsModes.Auto, resolution.Notice.Mode);
         Assert.Empty(resolution.Notice.Skills);
         Assert.Equal(string.Empty, resolution.Block);
+    }
+
+    public static TheoryData<string> GarbageAnswers => ["no answer", "another kind", "an unknown option", "no share"];
+
+    [Theory]
+    [Trait("BR", "CH-434")]
+    [MemberData(nameof(GarbageAnswers))]
+    public async System.Threading.Tasks.Task ShouldUseTheFallback_WhenTheModelGivesNoUsableChoice(string garbage)
+    {
+        // Arrange
+        AddLibrary(2);
+        _files.AddFile("/workspace/skills/review.md", "Check the inputs.");
+        switch (garbage)
+        {
+            case "another kind":
+                _model.Respond = _ => new DecisionResponse
+                {
+                    Model = "fake",
+                    Answers = ImmutableDictionary<string, DecisionAnswer>.Empty.Add(AgentSkillsResolver.QuestionName, new NoulAnswer { Noul = 0.9 }),
+                };
+                break;
+            case "an unknown option":
+                Answer("s42", ("s42", 1.0));
+                break;
+            case "no share":
+                Answer("s1");
+                break;
+        }
+
+        // Act
+        var resolution = await Resolver().ResolveAsync(
+            Agent(Auto("/workspace/skills/review.md")), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Single(_model.Requests);
+        Assert.NotNull(resolution);
+        Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
+        Assert.Equal(AgentSkillsReasons.PickFailed, resolution.Notice.Reason);
+        Assert.Equal(["/workspace/skills/review.md"], resolution.Notice.Skills);
+        Assert.Contains("Check the inputs.", resolution.Block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldReadASkillNoFurtherThanItsCap_WhenTheFileIsLonger()
+    {
+        // Arrange: a skill file far longer than the cap.
+        var reads = new FakeCountingReadFileSystemService(new FakeFileSystemService().AddMount("/workspace")
+            .AddFile("/workspace/skills/long.md", "  " + new string('a', 50) + new string('b', 100_000)));
+        var resolver = new AgentSkillsResolver(reads, new ServiceCollection().BuildServiceProvider(),
+            new AgentSkillsOptions { MaxSkillChars = 50 }, _logger);
+        var agent = Agent(new AgentSkills { Paths = ["/workspace/skills/long.md"] });
+
+        // Act
+        var resolution = await resolver.ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.Contains(new string('a', 50), resolution.Block, StringComparison.Ordinal);
+        Assert.DoesNotContain(new string('a', 50) + "b", resolution.Block, StringComparison.Ordinal);
+        Assert.Contains("[skill cut: the first 50 characters shown]", resolution.Block, StringComparison.Ordinal);
+        Assert.Equal(["/workspace/skills/long.md"], resolution.Notice.Cut);
+        Assert.Equal(0, reads.WholeReads);
+        Assert.True(reads.BytesRead < 10_000, $"read {reads.BytesRead} bytes of a 100,052-byte skill");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldNotSayASkillIsCut_WhenOnlyWhiteSpaceFollowsTheCap()
+    {
+        // Arrange
+        _files.AddFile("/workspace/skills/exact.md", new string('a', 50) + "\n\n  \n");
+        var agent = Agent(new AgentSkills { Paths = ["/workspace/skills/exact.md"] });
+
+        // Act
+        var resolution = await Resolver(options: new AgentSkillsOptions { MaxSkillChars = 50 })
+            .ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.DoesNotContain("[skill cut", resolution.Block, StringComparison.Ordinal);
+        Assert.Empty(resolution.Notice.Cut);
     }
 
     [Theory]

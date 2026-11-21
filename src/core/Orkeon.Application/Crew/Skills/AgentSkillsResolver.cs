@@ -149,7 +149,14 @@ internal sealed class AgentSkillsResolver
             return Fallback(skills, AgentSkillsReasons.PickFailed, $"the decision model failed: {ex.Message}");
         }
 
-        return new Choice(AgentSkillsModes.Auto, Picks(response, cards), cards.Count, null, null);
+        // An answer that says nothing usable is no pick: the fallback stands, as when the call fails.
+        if (Picks(response, cards) is not { } picks)
+        {
+            AgentSkillsLog.PickFailed(_logger, agent.Role.Value, SkillsPrompts.NoUsableChoice);
+            return Fallback(skills, AgentSkillsReasons.PickFailed, $"the decision model's answer: {SkillsPrompts.NoUsableChoice}");
+        }
+
+        return new Choice(AgentSkillsModes.Auto, picks, cards.Count, null, null);
     }
 
     // What a read of the library or of a skill may throw: a path outside the mounts, a missing file or folder,
@@ -181,13 +188,18 @@ internal sealed class AgentSkillsResolver
 
     /// <summary>
     /// The skills whose share reaches <see cref="MinShare"/>, the largest first, <see cref="MaxPicks"/> at most;
-    /// none when the model chose that none fits or gave no choice.
+    /// none when the model chose that none fits. Null when the answer is no usable choice: missing, of another
+    /// kind, an option that was not offered, or no share at all.
     /// </summary>
-    internal static IReadOnlyList<string> Picks(DecisionResponse response, IReadOnlyList<SkillCard> cards)
+    internal static IReadOnlyList<string>? Picks(DecisionResponse response, IReadOnlyList<SkillCard> cards)
     {
-        if (!response.Answers.TryGetValue(QuestionName, out var answer) || answer is not ChoiceAnswer choice
-            || choice.Choice == NoSkillOption)
+        if (!response.Answers.TryGetValue(QuestionName, out var answer) || answer is not ChoiceAnswer choice)
+            return null;
+        if (choice.Choice == NoSkillOption)
             return [];
+        var offered = Enumerable.Range(0, cards.Count).Select(Option).ToHashSet(StringComparer.Ordinal);
+        if (!offered.Contains(choice.Choice) || !choice.Probabilities.Keys.Any(k => offered.Contains(k) || k == NoSkillOption))
+            return null;
 
         return [.. cards
             .Select((card, i) => (card.Path, Share: choice.Probabilities.GetValueOrDefault(Option(i))))
@@ -247,16 +259,56 @@ internal sealed class AgentSkillsResolver
         }
     }
 
-    private async System.Threading.Tasks.Task<string?> ReadAsync(string path, CancellationToken cancellationToken)
+    /// <summary>
+    /// A skill's text, its leading white space skipped, read through the file system no further than
+    /// <paramref name="cap"/> characters and one more: that one says the file goes on (white space aside). Null
+    /// when the file cannot be read.
+    /// </summary>
+    private async System.Threading.Tasks.Task<(string Text, bool Longer)?> ReadSkillAsync(string path, int cap, CancellationToken cancellationToken)
     {
         try
         {
-            return await _fileSystem.TryReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
+            var stream = await _fileSystem.OpenReadStreamAsync(path, cancellationToken).ConfigureAwait(false);
+            await using (stream.ConfigureAwait(false))
+            {
+                using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 4_096);
+                var text = new StringBuilder();
+                var buffer = new char[Math.Min(cap + 1, 4_096)];
+                int read;
+                while (text.Length <= cap
+                    && (read = await reader.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, cap + 1 - text.Length)), cancellationToken).ConfigureAwait(false)) > 0)
+                {
+                    var chunk = buffer.AsSpan(0, read);
+                    if (text.Length == 0)
+                        chunk = chunk.TrimStart();
+                    text.Append(chunk);
+                }
+
+                if (text.Length <= cap)
+                    return (text.ToString().TrimEnd(), false);
+                // Past the cap, never inside a surrogate pair: the file is longer unless all that follows is white space.
+                var whole = text.ToString();
+                var keep = TextCut.HeadLength(whole, cap);
+                var longer = !whole.AsSpan(keep).IsWhiteSpace() || await RestIsTextAsync(reader, buffer, cancellationToken).ConfigureAwait(false);
+                return longer ? (whole[..keep], true) : (whole[..keep].TrimEnd(), false);
+            }
         }
         catch (Exception ex) when (IsReadFault(ex))
         {
             return null;
         }
+    }
+
+    // Whether what is left to read holds anything but white space, read a buffer at a time and stopped at the first.
+    private static async System.Threading.Tasks.Task<bool> RestIsTextAsync(StreamReader reader, char[] buffer, CancellationToken cancellationToken)
+    {
+        int read;
+        while ((read = await reader.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false)) > 0)
+        {
+            if (!buffer.AsSpan(0, read).IsWhiteSpace())
+                return true;
+        }
+        return false;
     }
 
     // The block: each skill under its name and path, cut at MaxSkillChars and at what remains of MaxBlockChars,
@@ -277,7 +329,8 @@ internal sealed class AgentSkillsResolver
         var newLine = Environment.NewLine.Length;
         foreach (var path in choice.Paths.Distinct(StringComparer.Ordinal))
         {
-            var text = (await ReadAsync(path, cancellationToken).ConfigureAwait(false))?.Trim();
+            var read = await ReadSkillAsync(path, _options.MaxSkillChars, cancellationToken).ConfigureAwait(false);
+            var text = read?.Text;
             if (string.IsNullOrEmpty(text))
             {
                 AgentSkillsLog.SkillLeftOut(_logger, agent.Role.Value, path);
@@ -291,12 +344,12 @@ internal sealed class AgentSkillsResolver
             var room = remaining - title.Length - newLine;
             var shown = Math.Min(text.Length, Math.Min(_options.MaxSkillChars, room));
             string? note = null;
-            if (shown < text.Length)
+            if (shown < text.Length || read!.Value.Longer)
             {
                 // A cut text carries its note: room is kept for the longest it can be.
-                var noteRoom = SkillsPrompts.CutNote(text.Length, text.Length).Length + newLine;
+                var noteRoom = SkillsPrompts.CutNote(text.Length).Length + newLine;
                 shown = TextCut.HeadLength(text, Math.Min(shown, room - noteRoom));
-                note = SkillsPrompts.CutNote(shown, text.Length);
+                note = SkillsPrompts.CutNote(shown);
             }
 
             if (shown <= 0)

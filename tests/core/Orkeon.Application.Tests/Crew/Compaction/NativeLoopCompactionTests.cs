@@ -29,7 +29,7 @@ public sealed class NativeLoopCompactionTests
 
     /// <summary>25 reads of 100 tokens each, then an answer, on <paramref name="options"/>; no compaction at all when null.</summary>
     private static async System.Threading.Tasks.Task<NativeRun> RunTwentyFiveReadsAsync(
-        ContextCompactionOptions? options, ILlmProvider? summaryProvider = null)
+        ContextCompactionOptions? options, ILlmProvider? summaryProvider = null, ContextWindow? window = null, int resultChars = 400)
     {
         var logger = new SpyExecutionLogger();
         var provider = new ScriptedFullLlmProvider();
@@ -42,13 +42,13 @@ public sealed class NativeLoopCompactionTests
             : new ContextCompactionServices
             {
                 Options = options,
-                Windows = new FakeContextWindowResolver(SmallWindow),
+                Windows = new FakeContextWindowResolver(window ?? SmallWindow),
                 Logger = logger,
                 Observer = observer,
                 Stages = [],
                 SummaryProvider = () => summaryProvider,
             }.For(LlmProfiles.Default, baseConfig: null);
-        var tool = new SpyTool(ToolName, result: new string('x', 400));
+        var tool = new SpyTool(ToolName, result: new string('x', resultChars));
         var loop = new NativeToolCallingAgentLoop(logger, provider,
             new FakeToolCallingStrategy(new OpenAiShapedToolCallParser()), [tool],
             new LlmCallGate(logger, new ScriptedBasicLlmProvider()), ToolInvocationPipeline.Unguarded,
@@ -244,5 +244,36 @@ public sealed class NativeLoopCompactionTests
             run.Observer.Notices.Select(n => n.Outcome));
         Assert.Equal(3, summariser.ReceivedTurns.Count);
         Assert.StartsWith("[Context trimmed", run.Provider.ReceivedTurns[^1][2].Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldTrimAsWell_WhenTheWindowIsTheSettingsFallback()
+    {
+        // Arrange: a window no profile sets and no table knows, far above what 25 reads of 5 tokens fill.
+        var assumed = new ContextWindow(1_000_000, ContextWindowSources.Settings);
+
+        // Act
+        var run = await RunTwentyFiveReadsAsync(new ContextCompactionOptions { KeepRecentTurns = 2 }, window: assumed, resultChars: 20);
+
+        // Assert
+        var last = run.Provider.ReceivedTurns[^1];
+        Assert.True(last.Length <= 40, $"the trim keeps 40 messages at most, the last request held {last.Length}");
+        Assert.StartsWith("[Context trimmed", last[2].Content, StringComparison.Ordinal);
+        Assert.Empty(run.Observer.Notices);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async System.Threading.Tasks.Task ShouldNotTrim_WhenTheWindowIsKnownForTheModel()
+    {
+        // Arrange: the same run against a documented window.
+        var documented = new ContextWindow(1_000_000, ContextWindowSources.Table);
+
+        // Act
+        var run = await RunTwentyFiveReadsAsync(new ContextCompactionOptions { KeepRecentTurns = 2 }, window: documented, resultChars: 20);
+
+        // Assert
+        Assert.DoesNotContain(run.Provider.ReceivedTurns[^1], m => m.Content.StartsWith("[Context trimmed", StringComparison.Ordinal));
     }
 }

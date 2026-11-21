@@ -72,9 +72,11 @@ internal sealed class ContextCompactor
 
     /// <summary>
     /// Whether compaction stands in for the 40-message trim: true until the breaker opens, after which
-    /// the loop trims its conversation for the rest of the attempt.
+    /// the loop trims its conversation for the rest of the attempt. False from the start when the window
+    /// is the settings fallback (<see cref="ContextWindowSources.Settings"/>): the model's own window is
+    /// not known and may be far smaller, so the loop trims as well as it compacts.
     /// </summary>
-    internal bool ReplacesTrim => !_reverted;
+    internal bool ReplacesTrim => !_reverted && _setup.Window.Source != ContextWindowSources.Settings;
 
     /// <summary>The tokens the summary calls used so far, charged to the task.</summary>
     internal int SpentTokens { get; private set; }
@@ -137,16 +139,20 @@ internal sealed class ContextCompactor
 
     private async System.Threading.Tasks.Task<int> CompactAsync(ConversationView conversation, int before, CancellationToken cancellationToken)
     {
-        // The recent turns are all there is: nothing failed, and a later turn gives the cut its room.
-        var cut = CutIndex(conversation);
+        // The recent turns kept are all there is: fewer are kept, down to the last turn. Only when the last turn
+        // is all there is nothing failed, and a later turn gives the cut its room.
+        var cut = CutIndex(conversation, _setup.KeepRecentTurns);
+        if (cut <= 2)
+            cut = ShrunkCutIndex(conversation);
         if (cut <= 2)
         {
             CompactionLog.LogNothingToCut(_setup.Logger, _setup.AgentRole, _setup.TaskId, before, TriggerTokens);
             return 0;
         }
 
+        var transcript = Transcript(conversation, 2, cut);
         var summary = await _summarize(CompactionPrompts.Instructions,
-            CompactionPrompts.Transcript(conversation.TextAt(1), Transcript(conversation, 2, cut)), cancellationToken).ConfigureAwait(false);
+            CompactionPrompts.Transcript(conversation.TextAt(1), transcript), cancellationToken).ConfigureAwait(false);
         SpentTokens += summary.TokensUsed;
         SpentPromptTokens += summary.PromptTokens;
         SpentCompletionTokens += summary.CompletionTokens;
@@ -156,8 +162,9 @@ internal sealed class ContextCompactor
         if (string.IsNullOrWhiteSpace(summary.Text))
             return summary.TokensUsed + Failed(before, before, conversation.Count, summary.TokensUsed, "the summary came back empty");
 
-        var replaced = cut - 2;
-        conversation.ReplaceRange(2, replaced, CompactionPrompts.SummaryMessage(replaced, summary.Text.Trim()));
+        // A system message of the span (the soft-budget steering) is an instruction, not history: it stays, after the summary.
+        var replaced = cut - 2 - SystemMessages(conversation, 2, cut);
+        conversation.ReplaceRange(2, cut - 2, CompactionPrompts.SummaryMessage(replaced, summary.Text.Trim()));
         Rewritten();
         var after = Recount(conversation);
         var kept = conversation.Count - 1;
@@ -190,36 +197,73 @@ internal sealed class ContextCompactor
     }
 
     /// <summary>
-    /// Where the kept turns start: the <c>KeepRecentTurns</c>-th assistant message from the end, so a
-    /// tool result always stays with the call before it; the end of the conversation when none is kept.
+    /// Where the kept turns start: the <paramref name="keep"/>-th turn from the end, so a tool result always
+    /// stays with the call before it; the end of the conversation when none is kept, 2 when there are no more turns.
+    /// A turn starts at an assistant message that follows no other: a response whose call and text come as two
+    /// assistant messages is one turn, never cut between its call and its result.
     /// </summary>
-    private int CutIndex(ConversationView conversation)
+    private static int CutIndex(ConversationView conversation, int keep)
     {
-        var keep = _setup.KeepRecentTurns;
         if (keep == 0)
             return conversation.Count;
 
         var seen = 0;
         for (var i = conversation.Count - 1; i >= 2; i--)
         {
-            if (conversation.RoleAt(i) == ConversationView.AssistantRole && ++seen == keep)
+            if (conversation.RoleAt(i) == ConversationView.AssistantRole
+                && conversation.RoleAt(i - 1) != ConversationView.AssistantRole
+                && ++seen == keep)
                 return i;
         }
         return 2;
+    }
+
+    /// <summary>
+    /// The cut when the <c>KeepRecentTurns</c> turns are all there is: the most turns, fewer than that, whose
+    /// messages (the system prompt and the task beside them) come under the trigger, else the last turn alone;
+    /// 2 when the last turn is all there is.
+    /// </summary>
+    private int ShrunkCutIndex(ConversationView conversation)
+    {
+        var last = 2;
+        for (var keep = _setup.KeepRecentTurns - 1; keep >= 1; keep--)
+        {
+            var cut = CutIndex(conversation, keep);
+            if (cut <= 2)
+                continue;
+            last = cut;
+            if (Count(conversation, 0, 2) + Count(conversation, cut) + _overheadTokens < TriggerTokens)
+                return cut;
+        }
+        return last;
+    }
+
+    private static int SystemMessages(ConversationView conversation, int start, int end)
+    {
+        var count = 0;
+        for (var i = start; i < end; i++)
+        {
+            if (conversation.RoleAt(i) == ConversationView.SystemRole)
+                count++;
+        }
+        return count;
     }
 
     private static string Transcript(ConversationView conversation, int start, int end)
     {
         var text = new StringBuilder();
         for (var i = start; i < end; i++)
-            text.Append('[').Append(conversation.RoleAt(i)).Append("] ").Append(conversation.TextAt(i)).Append("\n\n");
+        {
+            if (conversation.RoleAt(i) != ConversationView.SystemRole)
+                text.Append('[').Append(conversation.RoleAt(i)).Append("] ").Append(conversation.TextAt(i)).Append("\n\n");
+        }
         return text.ToString();
     }
 
-    private int Count(ConversationView conversation, int from)
+    private int Count(ConversationView conversation, int from, int? to = null)
     {
         var total = 0;
-        for (var i = from; i < conversation.Count; i++)
+        for (var i = from; i < (to ?? conversation.Count); i++)
         {
             var text = conversation.TextAt(i);
             total += MessageOverheadTokens + (_setup.TokenCounter?.CountTokens(text) ?? (text.Length + 3) / 4);
