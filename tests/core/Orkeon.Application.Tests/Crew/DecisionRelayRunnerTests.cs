@@ -311,6 +311,54 @@ public sealed class DecisionRelayRunnerTests
              schema.RootElement.GetProperty("additionalProperties").GetBoolean()));
     }
 
+    // Twelve options in no ordinal order: a hash-ordered store matches it once in 12! processes.
+    private static readonly string[] Declared =
+        ["zeta", "alpha", "mike", "bravo", "yankee", "charlie", "xray", "delta", "whiskey", "echo", "victor", "foxtrot"];
+
+    private static TaskDecision Twelve() =>
+        Decision(ChoiceQuestionSpec.Create("route", "Pick the route", Declared.ToDictionary(o => o, o => o + " route")));
+
+    private static string EvenAnswer() =>
+        "{\"route\":{" + string.Join(",", Declared.Select(o => $"\"{o}\":{(1.0 / Declared.Length).ToString("R", CultureInfo.InvariantCulture)}")) + "}}";
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldChooseTheFirstDeclaredOption_WhenTheRelayTiesEveryOption()
+    {
+        // Arrange
+        _relay.Answers = [EvenAnswer()];
+
+        // Act
+        var result = await RunOffAsync(Twelve());
+
+        // Assert
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("zeta", result.Decision!.Answers["route"].Chosen);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldListTheOptionsInTheDeclaredOrder_WhenAskingTheRelay()
+    {
+        // Arrange
+        _relay.Answers = [EvenAnswer()];
+
+        // Act
+        await RunOffAsync(Twelve());
+
+        // Assert: the prompt, the schema's properties and its required list follow the declaration.
+        var request = _relay.Requests[0];
+        var inPrompt = Declared.Select(o => request.Prompt.IndexOf($"\"{o}\": {o} route", StringComparison.Ordinal)).ToList();
+        using var schema = JsonDocument.Parse(request.Schema);
+        var route = schema.RootElement.GetProperty("properties").GetProperty("route");
+        var declared = string.Join(",", Declared);
+        Assert.Equal(
+            (true, declared, declared),
+            (inPrompt.All(i => i >= 0) && inPrompt.SequenceEqual(inPrompt.Order()),
+             string.Join(",", route.GetProperty("properties").EnumerateObject().Select(p => p.Name)),
+             string.Join(",", route.GetProperty("required").EnumerateArray().Select(e => e.GetString()))));
+    }
+
     [Fact]
     [Trait("BR", "CH-430")]
     public async System.Threading.Tasks.Task ShouldWriteTheSchemaIntoThePromptWithSchema_WhenAskingTheRelay()

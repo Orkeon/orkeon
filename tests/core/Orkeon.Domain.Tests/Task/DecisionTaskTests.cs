@@ -77,6 +77,66 @@ public class DecisionTaskTests
         Assert.Equal(10, ScoreQuestionSpec.Create("q", "i", tooManyLevels.Take(10).ToList()).Levels.Count);
     }
 
+    // Twelve options in no ordinal order: a hash-ordered store matches it once in 12! processes.
+    private static readonly string[] Declared =
+        ["zeta", "alpha", "mike", "bravo", "yankee", "charlie", "xray", "delta", "whiskey", "echo", "victor", "foxtrot"];
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldKeepTheDeclaredOptionOrder_WhenAChoiceQuestionIsCreated()
+    {
+        // Act
+        var question = Intent(Declared);
+
+        // Assert
+        Assert.Equal(Declared, question.Options.Keys);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldKeepTheDeclaredOptionOrder_WhenTheDecisionFreezesItsQuestions()
+    {
+        // Act
+        var decision = TaskDecision.Create([Intent(Declared)]);
+
+        // Assert
+        Assert.Equal(Declared, Assert.IsType<ChoiceQuestionSpec>(decision.Questions[0]).Options.Keys);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldKeepTheGivenOptionOrder_WhenTheOptionsAreSetByInitializer()
+    {
+        // Act
+        var question = new ChoiceQuestionSpec { Name = "intent", Options = Declared.ToDictionary(o => o, o => o) };
+
+        // Assert
+        Assert.Equal(Declared, question.Options.Keys);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldOrderTheOptionsOrdinally_WhenTheyComeAsAHashOrderedImmutableDictionary()
+    {
+        // Act: an ImmutableDictionary has no declared order, its own changes from one process to the next.
+        var question = ChoiceQuestionSpec.Create("intent", "i", System.Collections.Immutable.ImmutableDictionary.CreateRange(Declared.ToDictionary(o => o, o => o)));
+
+        // Assert
+        Assert.Equal(Declared.Order(StringComparer.Ordinal), question.Options.Keys);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldStayEqualByContent_WhenTheSameOptionsAreDeclaredInAnotherOrder()
+    {
+        // Act
+        var declared = Intent(Declared);
+        var reversed = Intent([.. Declared.Reverse()]);
+
+        // Assert
+        Assert.Equal((declared, declared.GetHashCode()), (reversed, reversed.GetHashCode()));
+    }
+
     [Fact]
     [Trait("BR", "BR-07")]
     public void ShouldRefuseDecision_WhenFloorOutsideUnitRange()

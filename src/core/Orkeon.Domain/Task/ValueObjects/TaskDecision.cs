@@ -134,9 +134,9 @@ public sealed class TaskDecision
         };
     }
 
+    // A choice's options are copied, in their order, by the question itself (DeclaredOptions).
     private static DecisionQuestionSpec Frozen(DecisionQuestionSpec question) => question switch
     {
-        ChoiceQuestionSpec choice => choice with { Options = choice.Options.ToImmutableDictionary() },
         ScoreQuestionSpec score => score with { Levels = score.Levels.ToImmutableList() },
         _ => question,
     };
