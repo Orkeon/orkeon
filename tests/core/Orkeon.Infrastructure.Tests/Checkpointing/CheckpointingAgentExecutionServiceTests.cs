@@ -1029,6 +1029,86 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
         Assert.False(replayed.Resumed);
     }
 
+    // A decision task's fingerprint (#430): what it asks, its fallback and its relay; a map by content, not by order.
+    private static TaskDecision Decision(
+        string[]? options = null,
+        string[]? levels = null,
+        string statement = "It is urgent.",
+        double floor = 0.5,
+        string routeFallback = "other",
+        bool fallbackReversed = false,
+        string agent = "analyst",
+        string? instructions = "Weigh the cost")
+    {
+        var route = ChoiceQuestionSpec.Create("route", "Pick the route", (options ?? ["bug", "feature", "other"]).ToDictionary(o => o, o => o + " route"));
+        var severity = ScoreQuestionSpec.Create("severity", "Rate it", levels ?? ["low", "high"]);
+        var urgent = YesNoQuestionSpec.Create("urgent", statement);
+        KeyValuePair<string, string>[] fallback = [new("route", routeFallback), new("severity", "low"), new("urgent", "no")];
+        return TaskDecision.Create(
+                [route, severity, urgent], floor, null, false,
+                new Dictionary<string, string>(fallbackReversed ? fallback.Reverse() : fallback))
+            .WithRelay(new DecisionRelay(agent, instructions));
+    }
+
+    private static CrewTask DecisionTask(TaskDecision decision) =>
+        new CrewTaskBuilder().WithKey("triage").Description("Route the ticket").ExpectedOutput("A route").WithDecision(decision).Build();
+
+    /// <summary>Decides <paramref name="first"/>, resumes the run with <paramref name="resumed"/>; the number of times it was decided.</summary>
+    private async System.Threading.Tasks.Task<int> DecidedAsync(TaskDecision first, TaskDecision resumed)
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        var decided = 0;
+        System.Threading.Tasks.Task<TaskResult> Decide()
+        {
+            decided++;
+            return System.Threading.Tasks.Task.FromResult(new TaskResult(true, "route: bug", null, [], TimeSpan.Zero));
+        }
+
+        using (Enter(id))
+            await ((ICheckpointedDecisions)Decorate()).RunDecisionAsync(DecisionTask(first), Decide, TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+        using (Enter(id, plan))
+            await ((ICheckpointedDecisions)Decorate()).RunDecisionAsync(DecisionTask(resumed), Decide, TestContext.Current.CancellationToken);
+        return decided;
+    }
+
+    public static TheoryData<string> DecisionChanges => ["fallback", "relay agent", "relay instructions", "relay instructions added", "score levels", "statement", "floor"];
+
+    private static TaskDecision Changed(string change) => change switch
+    {
+        "fallback" => Decision(routeFallback: "feature"),
+        "relay agent" => Decision(agent: "reviewer"),
+        "relay instructions" => Decision(instructions: "Weigh the risk"),
+        "relay instructions added" => Decision(instructions: null),
+        "score levels" => Decision(levels: ["low", "mid", "high"]),
+        "statement" => Decision(statement: "It blocks a release."),
+        "floor" => Decision(floor: 0.6),
+        _ => throw new ArgumentOutOfRangeException(nameof(change), change, null),
+    };
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldReplayTheDecision_WhenTheResumedDecisionTaskIsTheSame()
+    {
+        Assert.Equal(1, await DecidedAsync(Decision(), Decision()));
+    }
+
+    [Theory]
+    [MemberData(nameof(DecisionChanges))]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldDecideAgain_WhenThePartOfTheDecisionChangedSinceTheRun(string change)
+    {
+        Assert.Equal(2, await DecidedAsync(Decision(), Changed(change)));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldReplayTheDecision_WhenOnlyTheOrderOfTheOptionsAndTheFallbackKeysChanged()
+    {
+        Assert.Equal(1, await DecidedAsync(Decision(), Decision(options: ["other", "feature", "bug"], fallbackReversed: true)));
+    }
+
     /// <summary>A type the serializer cannot build: its only constructor is private.</summary>
     public sealed class Unbuildable
     {

@@ -45,7 +45,7 @@ public sealed class DecisionRelayResumeTests
             {{graph}}
             agents:
               worker: { role: "Worker", goal: "Work", backstory: "A minimal test agent.", maxIter: 1 }
-              analyst: { role: "Analyst", goal: "Judge the ticket", backstory: "A minimal test agent.", maxIter: 1 }
+              analyst: { role: "Triage lead", goal: "Judge the ticket", backstory: "A minimal test agent.", maxIter: 1 }
             tasks:
               intake:
                 description: "Read the ticket."
@@ -304,7 +304,7 @@ public sealed class DecisionRelayResumeTests
         using var harness = new ResumeRunHarness();
         var crew = harness.WriteCrewScript("crew", $$"""
             /// <reference orkeon-script="1.0" />
-            const analyst = agentBuilder().name("analyst").role("Analyst").goal("Judge the ticket").build();
+            const analyst = agentBuilder().name("analyst").role("Triage lead").goal("Judge the ticket").build();
             const worker = agentBuilder().name("worker").role("Worker").goal("Work").build();
             const intake = taskBuilder().name("intake").agent(worker).description("Read the ticket.").expectedOutput("A summary.").build();
             const triage = taskBuilder().name("triage").decision({
@@ -325,7 +325,7 @@ public sealed class DecisionRelayResumeTests
         // Assert
         var decision = hook.Completed.Single(s => s.IsDecision);
         Assert.True(
-            run.Exit == 0 && circuit.Relay.Calls == 1 && decision.DecisionSource == DecisionSources.Relay && decision.Success,
-            $"exit={run.Exit} relay={circuit.Relay.Calls} source={decision.DecisionSource} stderr={run.Stderr}");
+            run.Exit == 0 && circuit.Relay.Roles.SequenceEqual(["Triage lead"]) && decision.DecisionSource == DecisionSources.Relay && decision.Success,
+            $"exit={run.Exit} relay={string.Join(",", circuit.Relay.Roles)} source={decision.DecisionSource} stderr={run.Stderr}");
     }
 }
