@@ -448,7 +448,7 @@
       "category": "orchestration-and-persistence",
       "hosts": [],
       "registration": "AddOrkeonInfrastructure",
-      "description": "How an agent's `skills:` reach its prompt, bound to the `Orkeon:Skills` section by `AddOrkeonInfrastructure()`. Each skill is a markdown file read through the virtual file system and appended to the agent's system prompt under a `## Skills` heading, cut at `AgentSkillsOptions.MaxSkillChars`, the whole block at `AgentSkillsOptions.MaxBlockChars`. An agent with `skills: { auto: true }` has the decision model pick, for each task, at most three skills of `AgentSkillsOptions.Library`."
+      "description": "How an agent's `skills:` reach its prompt, bound to the `Orkeon:Skills` section by `AddOrkeonInfrastructure()`. Each skill is a markdown file read through the virtual file system and appended to the agent's system prompt under a `## Skills` heading, cut at `AgentSkillsOptions.MaxSkillChars`, the whole block, headings included, at `AgentSkillsOptions.MaxBlockChars`. An agent with `skills: { auto: true }` has the decision model pick, for each task, at most three skills of `AgentSkillsOptions.Library`."
     },
     {
       "path": "Orkeon:Cli:ConsoleStreaming",
@@ -1098,7 +1098,7 @@
       "section": "Orkeon:Decision:Route",
       "type": "list of string",
       "default": [],
-      "description": "The profiles an `auto` agent is routed among, cheapest first: two or more names of `Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included), each once. Empty by default: a crew naming `auto` on a host without a ladder fails its load."
+      "description": "The profiles an `auto` agent is routed among, cheapest first: two or more names of `Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included), each once; a ladder of one rung, or with a blank, `auto` or repeated rung, is refused at start. Empty by default: a crew naming `auto` on a host without a ladder fails its load."
     },
     {
       "path": "Orkeon:Kev:ApiKey",
@@ -3675,21 +3675,21 @@
       "section": "Orkeon:Skills",
       "type": "string",
       "default": "/workspace/.orkeon/skills",
-      "description": "The virtual folder an `auto` agent's skills are picked from, one `<name>.md` file per skill (sub-folders are not read). `/workspace/.orkeon/skills` by default."
+      "description": "The virtual folder an `auto` agent's skills are picked from, one `<name>.md` file per skill (sub-folders are not read); a relative path is refused at start. `/workspace/.orkeon/skills` by default."
     },
     {
       "path": "Orkeon:Skills:MaxBlockChars",
       "section": "Orkeon:Skills",
       "type": "integer",
       "default": 12000,
-      "description": "The characters the whole skills block carries, every skill's text included; a skill past it is cut to what remains, or left out. 12000 by default, three skills at their cap."
+      "description": "The characters the whole skills block carries, its heading, each skill's title line and cut notes included; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. 0 or less is refused at start. 12000 by default."
     },
     {
       "path": "Orkeon:Skills:MaxSkillChars",
       "section": "Orkeon:Skills",
       "type": "integer",
       "default": 4000,
-      "description": "The characters of one skill the prompt carries; the rest is cut, and the cut is said in the prompt and in `agent.skills`. 4000 by default."
+      "description": "The characters of one skill the prompt carries; the rest is cut, and the cut is said in the prompt and in the `cut` of `agent.skills`. 0 or less is refused at start. 4000 by default."
     },
     {
       "path": "Orkeon:Cli:ConsoleStreaming:Enabled",

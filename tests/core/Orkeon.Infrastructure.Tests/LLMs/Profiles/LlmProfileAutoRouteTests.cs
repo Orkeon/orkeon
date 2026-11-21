@@ -199,4 +199,128 @@ public sealed class LlmProfileAutoRouteTests
         // Assert
         Assert.Contains("names the profile 'auto', which System One picks", error.Message, StringComparison.Ordinal);
     }
+
+    private const string ManagerOnAuto = """
+        name: led
+        goal: Lead a task
+        process: hierarchical
+        managerAgent: chef
+        agents:
+          chef:
+            role: Chef
+            goal: Lead the team
+            llm:
+              profile: auto
+          writer:
+            role: Writer
+            goal: Write the article
+        tasks:
+          write:
+            description: Write the article
+            expected_output: An article
+        """;
+
+    private const string RelayOnAuto = """
+        name: support
+        goal: Handle tickets
+        process: sequential
+        decision:
+          mode: optional
+        agents:
+          writer: { role: Writer, goal: Write the answer }
+          analyst:
+            role: Analyst
+            goal: Read the ticket
+            llm:
+              profile: auto
+        tasks:
+          intake:
+            description: Read the ticket
+            expectedOutput: A summary
+            agent: writer
+          triage:
+            description: Route the ticket
+            expectedOutput: A route
+            decision:
+              questions:
+                route:
+                  choice:
+                    bug: a defect
+                    other: anything else
+              state: [intake]
+              without:
+                agent: analyst
+                instructions: Read the summary first.
+        """;
+
+    private static async Task CreateAsync(ServiceProvider container, string yaml)
+    {
+        var config = await container.GetRequiredService<ICrewDefinitionLoader>().LoadFromStringAsync(yaml, Ct);
+        await container.GetRequiredService<ICrewFactory>().CreateFromConfigAsync(config, Ct);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldLoadTheCrew_WhenItsManagerIsOnAutoOnAHostWithoutALadder()
+    {
+        // Arrange: the manager runs on the default profile, System One routes the tasks of an agent only.
+        await using var container = Container();
+
+        // Act
+        var error = await Record.ExceptionAsync(() => CreateAsync(container, ManagerOnAuto));
+
+        // Assert
+        Assert.Null(error);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldLoadTheCrew_WhenItsManagerIsOnAutoInACrewWithDecisionModeNone()
+    {
+        // Arrange
+        await using var container = Container(null, "small", "large");
+        var yaml = ManagerOnAuto.Replace("process: hierarchical", "process: hierarchical\ndecision: { mode: none }", StringComparison.Ordinal);
+
+        // Act
+        var error = await Record.ExceptionAsync(() => CreateAsync(container, yaml));
+
+        // Assert
+        Assert.Null(error);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldLoadTheCrew_WhenItsDecisionRelayIsOnAutoOnAHostWithoutALadder()
+    {
+        // Arrange: LlmDecisionRelay runs the relay on the default profile.
+        await using var container = Container();
+
+        // Act
+        var error = await Record.ExceptionAsync(() => CreateAsync(container, RelayOnAuto));
+
+        // Assert
+        Assert.Null(error);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldRunTheTaskOnTheRungSystemOnePicks_WhenTheTaskOverridesItsProfileWithAuto()
+    {
+        // Arrange
+        Answer("large", 0.9);
+        await using var container = Container(null, "small", "large");
+        var yaml = Crew().Replace("""
+                llm:
+                  profile: auto
+            """, string.Empty, StringComparison.Ordinal)
+            .Replace("agent: coder", "agent: coder\n    llm_override:\n      profile: auto", StringComparison.Ordinal);
+
+        // Act
+        var output = await RunAsync(container, yaml);
+
+        // Assert
+        Assert.Single(output.TaskOutputs);
+        Assert.Equal(1, _large.ChatCallCount);
+        Assert.Equal(0, _default.ChatCallCount);
+    }
 }

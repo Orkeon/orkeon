@@ -52,7 +52,7 @@ internal sealed partial record SkillCard(string Path, string Name, string Descri
         var paragraph = prose.FirstOrDefault(l => l.Length > 0 && !l.StartsWith('#') && l != "---") ?? string.Empty;
         var name = Present(fields, "name") ?? heading ?? FileName(path);
         var description = WhitespacePattern().Replace(Present(fields, "description") ?? paragraph, " ").Trim();
-        return new SkillCard(path, name, description.Length <= DescriptionChars ? description : description[..DescriptionChars] + "...");
+        return new SkillCard(path, name, Execution.TextCut.Head(description, DescriptionChars, "..."));
     }
 
     /// <summary>The name a path gives a skill: its file name, less <c>.md</c>.</summary>

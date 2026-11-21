@@ -13,6 +13,8 @@ static Orkeon.Application.Crew.Execution.DecisionCircuit.OfHost(System.IServiceP
 Orkeon.Application.Crew.Execution.DecisionCircuitScope
 static Orkeon.Application.Crew.Execution.DecisionCircuitScope.Begin(Orkeon.Application.Crew.Execution.DecisionCircuit? circuit) -> System.IDisposable!
 static Orkeon.Application.Crew.Execution.DecisionCircuitScope.Current.get -> Orkeon.Application.Crew.Execution.DecisionCircuit?
+Orkeon.Application.Crew.Execution.TaskPickScope
+static Orkeon.Application.Crew.Execution.TaskPickScope.Begin() -> System.IDisposable!
 Orkeon.Application.Crew.Execution.DecisionTaskRunner.Circuit.get -> Orkeon.Application.Crew.Execution.DecisionCircuit!
 Orkeon.Application.Crew.Execution.DecisionUnavailableException
 Orkeon.Application.Crew.Execution.DecisionUnavailableException.Cause.get -> Orkeon.Application.Crew.Execution.DecisionCircuitCause?
@@ -231,6 +233,8 @@ Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Offered.get -> int
 Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Offered.init -> void
 Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Reason.get -> string?
 Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Reason.init -> void
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Detail.get -> string?
+Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Detail.init -> void
 Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Skills.get -> System.Collections.Immutable.ImmutableList<string!>!
 Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.Skills.init -> void
 Orkeon.Application.Interfaces.Ports.AgentSkillsNotice.TaskId.get -> string!
@@ -246,6 +250,10 @@ Orkeon.Application.Interfaces.Ports.AgentSkillsModes
 const Orkeon.Application.Interfaces.Ports.AgentSkillsModes.Auto = "auto" -> string!
 const Orkeon.Application.Interfaces.Ports.AgentSkillsModes.Fallback = "fallback" -> string!
 const Orkeon.Application.Interfaces.Ports.AgentSkillsModes.List = "list" -> string!
+Orkeon.Application.Interfaces.Ports.AgentSkillsReasons
+const Orkeon.Application.Interfaces.Ports.AgentSkillsReasons.CircuitOff = "circuit-off" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentSkillsReasons.EmptyLibrary = "empty-library" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentSkillsReasons.PickFailed = "pick-failed" -> string!
 Orkeon.Application.Crew.Routing.AgentRouteOptions
 Orkeon.Application.Crew.Routing.AgentRouteOptions.AgentRouteOptions() -> void
 Orkeon.Application.Crew.Routing.AgentRouteOptions.Ladder.get -> System.Collections.Generic.IList<string!>!

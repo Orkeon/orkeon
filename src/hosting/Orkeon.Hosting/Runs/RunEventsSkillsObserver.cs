@@ -24,6 +24,7 @@ internal sealed class RunEventsSkillsObserver : IAgentSkillsObserver
             offered = notice.Offered,
             cut = notice.Cut,
             reason = notice.Reason,
+            detail = notice.Detail,
         });
     }
 }

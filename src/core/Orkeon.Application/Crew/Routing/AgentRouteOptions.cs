@@ -15,8 +15,9 @@ public sealed class AgentRouteOptions
 
     /// <summary>
     /// The profiles an <c>auto</c> agent is routed among, cheapest first: two or more names of <c>Llm:Profiles</c>
-    /// or <c>Orkeon:Decision:Profiles</c> (<c>default</c> included), each once. Empty by default: a crew naming
-    /// <c>auto</c> on a host without a ladder fails its load.
+    /// or <c>Orkeon:Decision:Profiles</c> (<c>default</c> included), each once; a ladder of one rung, or with a
+    /// blank, <c>auto</c> or repeated rung, is refused at start. Empty by default: a crew naming <c>auto</c> on a
+    /// host without a ladder fails its load.
     /// </summary>
     public IList<string> Ladder { get; init; } = [];
 

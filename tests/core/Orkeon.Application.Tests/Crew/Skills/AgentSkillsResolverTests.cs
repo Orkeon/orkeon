@@ -114,12 +114,13 @@ public sealed class AgentSkillsResolverTests
     [Trait("BR", "CH-434")]
     public async System.Threading.Tasks.Task ShouldLeaveOutASkill_WhenTheBlockCapIsSpent()
     {
-        // Arrange
-        _files.AddFile("/workspace/skills/one.md", new string('x', 40)).AddFile("/workspace/skills/two.md", "second skill");
+        // Arrange: the heading, the intro, the first skill's title line and its text spend 300 characters but some
+        // twenty, too few for the second skill's title line.
+        _files.AddFile("/workspace/skills/one.md", new string('x', 100)).AddFile("/workspace/skills/two.md", "second skill");
         var agent = Agent(new AgentSkills { Paths = ["/workspace/skills/one.md", "/workspace/skills/two.md"] });
 
         // Act
-        var resolution = await Resolver(options: new AgentSkillsOptions { MaxBlockChars = 40 })
+        var resolution = await Resolver(options: new AgentSkillsOptions { MaxBlockChars = 300 })
             .ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
 
         // Assert
@@ -171,9 +172,9 @@ public sealed class AgentSkillsResolverTests
     [Trait("BR", "CH-434")]
     public async System.Threading.Tasks.Task ShouldPickAtMostThreeSkillsByShare_WhenTheModelAnswers()
     {
-        // Arrange
+        // Arrange: shares as a model gives them, unnormalised: four reach the floor, the three largest are kept.
         AddLibrary(5);
-        Answer("s4", ("s1", 0.05), ("s2", 0.3), ("s3", 0.31), ("s4", 0.34), ("s5", 0.0));
+        Answer("s4", ("s1", 0.3), ("s2", 0.5), ("s3", 0.7), ("s4", 0.9), ("s5", 0.1));
 
         // Act
         var resolution = await Resolver().ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
@@ -182,6 +183,7 @@ public sealed class AgentSkillsResolverTests
         Assert.NotNull(resolution);
         Assert.Equal(AgentSkillsModes.Auto, resolution.Notice.Mode);
         Assert.Equal([$"{Library}/skill-4.md", $"{Library}/skill-3.md", $"{Library}/skill-2.md"], resolution.Notice.Skills);
+        Assert.DoesNotContain($"{Library}/skill-1.md", resolution.Notice.Skills);
         Assert.Equal(5, resolution.Notice.Offered);
         Assert.Contains("BODY OF SKILL 4", resolution.Block, StringComparison.Ordinal);
     }
@@ -224,7 +226,7 @@ public sealed class AgentSkillsResolverTests
         Assert.NotNull(resolution);
         Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
         Assert.Equal(["/workspace/skills/review.md"], resolution.Notice.Skills);
-        Assert.Equal(circuit.OffReason, resolution.Notice.Reason);
+        Assert.Equal(circuit.OffReason, resolution.Notice.Detail);
     }
 
     [Fact]
@@ -260,7 +262,7 @@ public sealed class AgentSkillsResolverTests
         // Assert
         Assert.NotNull(resolution);
         Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
-        Assert.Equal(DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider).OffReason, resolution.Notice.Reason);
+        Assert.Equal(DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider).OffReason, resolution.Notice.Detail);
     }
 
     [Fact]
@@ -296,7 +298,7 @@ public sealed class AgentSkillsResolverTests
         Assert.NotNull(resolution);
         Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
         Assert.Equal(["/workspace/skills/review.md"], resolution.Notice.Skills);
-        Assert.Contains("provider down", resolution.Notice.Reason, StringComparison.Ordinal);
+        Assert.Contains("provider down", resolution.Notice.Detail, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -314,7 +316,7 @@ public sealed class AgentSkillsResolverTests
         Assert.Empty(_model.Requests);
         Assert.NotNull(resolution);
         Assert.Equal(AgentSkillsModes.Fallback, resolution.Notice.Mode);
-        Assert.Contains(Library, resolution.Notice.Reason, StringComparison.Ordinal);
+        Assert.Contains(Library, resolution.Notice.Detail, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -331,7 +333,7 @@ public sealed class AgentSkillsResolverTests
 
         // Assert
         Assert.Empty(_model.Requests);
-        Assert.Equal(DecisionCircuit.Off.OffReason, resolution!.Notice.Reason);
+        Assert.Equal(DecisionCircuit.Off.OffReason, resolution!.Notice.Detail);
     }
 
     [Fact]
@@ -348,5 +350,163 @@ public sealed class AgentSkillsResolverTests
 
         // Assert
         Assert.Empty(_model.Requests);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldKeepTheWholeBlockWithinItsCap_WhenTitleLinesAndCutNotesAreCounted()
+    {
+        // Arrange
+        _files.AddFile("/workspace/skills/a.md", new string('a', 200)).AddFile("/workspace/skills/b.md", new string('b', 200))
+            .AddFile("/workspace/skills/c.md", new string('c', 200));
+        var agent = Agent(new AgentSkills { Paths = ["/workspace/skills/a.md", "/workspace/skills/b.md", "/workspace/skills/c.md"] });
+
+        // Act
+        var resolution = await Resolver(options: new AgentSkillsOptions { MaxBlockChars = 500 })
+            .ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(resolution);
+        Assert.InRange(resolution.Block.Length, 1, 500);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldNeverSplitASurrogatePair_WhenASkillIsCutAtItsCap()
+    {
+        // Arrange: the 50th character is the first half of an emoji.
+        _files.AddFile("/workspace/skills/long.md", new string('a', 49) + "\U0001F600" + new string('b', 50));
+        var agent = Agent(new AgentSkills { Paths = ["/workspace/skills/long.md"] });
+
+        // Act
+        var resolution = await Resolver(options: new AgentSkillsOptions { MaxSkillChars = 50 })
+            .ResolveAsync(agent, "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Null(Record.Exception(() => StrictUtf8.GetByteCount(resolution!.Block)));
+    }
+
+    private static readonly System.Text.UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldWarnOnce_WhenTheLibraryHoldsNoSkillForSeveralTasks()
+    {
+        // Arrange
+        var resolver = Resolver();
+        await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Act
+        await resolver.ResolveAsync(Agent(Auto()), "t2", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Contains(Library, Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldWarnWithTheFault_WhenTheLibraryCannotBeRead()
+    {
+        // Arrange: a library outside every mount.
+        var resolver = Resolver(options: new AgentSkillsOptions { Library = "/elsewhere/skills" });
+
+        // Act
+        await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Contains("No mount for virtual path '/elsewhere/skills'",
+            Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldGiveTheReasonCircuitOff_WhenTheCircuitIsOff()
+    {
+        // Arrange
+        AddLibrary(2);
+
+        // Act
+        var resolution = await Resolver(DecisionCircuit.Off).ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(AgentSkillsReasons.CircuitOff, resolution!.Notice.Reason);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldGiveTheReasonEmptyLibrary_WhenTheLibraryHoldsNoSkill()
+    {
+        // Arrange
+        var resolver = Resolver();
+
+        // Act
+        var resolution = await resolver.ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(AgentSkillsReasons.EmptyLibrary, resolution!.Notice.Reason);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldGiveTheReasonPickFailed_WhenTheDecisionModelFails()
+    {
+        // Arrange
+        AddLibrary(2);
+        _model.Failure = new DecisionModelException("provider down");
+
+        // Act
+        var resolution = await Resolver().ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(AgentSkillsReasons.PickFailed, resolution!.Notice.Reason);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldOfferTwentyFourSkillsAtMost_WhenTheLibraryHoldsMore()
+    {
+        // Arrange
+        AddLibrary(30);
+        Answer(AgentSkillsResolver.NoSkillOption, ("none", 1.0));
+
+        // Act
+        var resolution = await Resolver().ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(24, resolution!.Notice.Offered);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldOfferTheSkillsInNameOrder_WhenTheyWereWrittenInAnotherOrder()
+    {
+        // Arrange
+        _files.AddFile($"{Library}/zeta.md", "Zeta body.").AddFile($"{Library}/alpha.md", "Alpha body.");
+        Answer(AgentSkillsResolver.NoSkillOption, ("none", 1.0));
+
+        // Act
+        await Resolver().ResolveAsync(Agent(Auto()), "t1", Request, TestContext.Current.CancellationToken);
+
+        // Assert
+        var question = Assert.IsType<ChoiceQuestion>(Assert.Single(_model.Requests).Questions[AgentSkillsResolver.QuestionName]);
+        Assert.StartsWith("alpha", question.Criteria["s1"]!.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldStopWithTheCancellationAndNoFallback_WhenTheTaskIsCancelled()
+    {
+        // Arrange
+        AddLibrary(2);
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _model.Failure = new OperationCanceledException(cancellation.Token);
+        var resolver = Resolver();
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => resolver.ResolveAsync(Agent(Auto("/workspace/skills/review.md")), "t1", Request, cancellation.Token));
+
+        // Assert
+        Assert.IsType<OperationCanceledException>(exception, exactMatch: false);
     }
 }

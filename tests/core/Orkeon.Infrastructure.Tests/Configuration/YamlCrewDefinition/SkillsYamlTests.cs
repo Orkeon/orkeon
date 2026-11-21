@@ -104,7 +104,7 @@ public sealed class SkillsYamlTests
     [InlineData("    skills: /workspace/skills/review.md", "expected a list of virtual paths or a map")]
     [InlineData("    skills: { auto: true, library: /x }", "unknown key 'library'")]
     [InlineData("    skills: { auto: maybe }", "'maybe' is not true or false")]
-    [InlineData("    skills: { fallback: [/workspace/a.md] }", "needs 'auto: true'")]
+    [InlineData("    skills: { fallback: [/workspace/a.md] }", "needs 'auto'")]
     [InlineData("    skills: { auto: true, fallback: /workspace/a.md }", "skills.fallback: expected a list")]
     [InlineData("    skills: ['']", "each item is the virtual path")]
     public async Task ShouldRefuseTheLoadNamingTheAgent_WhenSkillsHasAnotherShape(string lines, string expected)
@@ -118,6 +118,20 @@ public sealed class SkillsYamlTests
         // Assert
         Assert.Contains("Agent 'writer' skills", error.Message, StringComparison.Ordinal);
         Assert.Contains(expected, error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldOfferBothValuesOfAuto_WhenTheMapFormLeavesItOut()
+    {
+        // Arrange: auto: false keeps the fallback list as it is, so the error asks for neither value alone.
+        var yaml = Yaml("    skills: { fallback: [/workspace/a.md] }");
+
+        // Act
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => Loader().LoadFromStringAsync(yaml, Ct));
+
+        // Assert
+        Assert.Contains("true for System One's pick among the library, false for the fallback list as it is", error.Message, StringComparison.Ordinal);
     }
 
     [Theory]

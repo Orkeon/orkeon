@@ -120,6 +120,28 @@ public sealed class ExecutionOrchestratorRouteTests : IDisposable
         // Arrange
         Answer("small", 0.9);
         var orchestrator = Orchestrator(DecisionCircuit.On);
+        var agent = AutoAgent();
+        var task = Task();
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+        Answer("large", 0.9);
+
+        // Act
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Single(_model.Requests);
+        Assert.Single(_observer.Notices);
+        Assert.Empty(_large.ReceivedTurns);
+        Assert.Empty(_default.ReceivedTurns);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldPickItsOwnProfile_WhenAnotherAgentRunsTheSameTask()
+    {
+        // Arrange: two voters of a consensual crew on one task.
+        Answer("small", 0.9);
+        var orchestrator = Orchestrator(DecisionCircuit.On);
         var task = Task();
         await orchestrator.ExecuteTaskCoreAsync(AutoAgent(), task, Context(), TestContext.Current.CancellationToken);
         Answer("large", 0.9);
@@ -128,9 +150,29 @@ public sealed class ExecutionOrchestratorRouteTests : IDisposable
         await orchestrator.ExecuteTaskCoreAsync(AutoAgent(), task, Context(), TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(_model.Requests);
-        Assert.Single(_observer.Notices);
-        Assert.Empty(_large.ReceivedTurns);
-        Assert.Empty(_default.ReceivedTurns);
+        Assert.Equal(["small", "large"], _observer.Notices.Select(n => n.Profile));
+        Assert.NotEmpty(_large.ReceivedTurns);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldPickAgain_WhenTheNextRunRunsTheSameTask()
+    {
+        // Arrange: each kickoff of a crew opens the scope of its run.
+        Answer("small", 0.9);
+        var orchestrator = Orchestrator(DecisionCircuit.On);
+        var agent = AutoAgent();
+        var task = Task();
+        using (TaskPickScope.Begin())
+            await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+        Answer("large", 0.9);
+        using var next = TaskPickScope.Begin();
+
+        // Act
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(2, _model.Requests.Count);
+        Assert.NotEmpty(_large.ReceivedTurns);
     }
 }

@@ -159,11 +159,5 @@ internal sealed class AgentProfileRouter
     }
 
     /// <summary><paramref name="text"/> within <paramref name="max"/> characters, its start and its end kept.</summary>
-    internal static string MiddleCut(string text, int max)
-    {
-        if (text.Length <= max)
-            return text;
-        var half = (max - RoutePrompts.Elision.Length) / 2;
-        return string.Concat(text.AsSpan(0, half), RoutePrompts.Elision, text.AsSpan(text.Length - half));
-    }
+    internal static string MiddleCut(string text, int max) => TextCut.Middle(text, max, RoutePrompts.Elision);
 }

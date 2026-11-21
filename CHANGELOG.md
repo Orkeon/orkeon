@@ -13,9 +13,10 @@ With `Orkeon:Compaction:Prune:Enabled` (off by default) or an agent's `compactio
 chat-client loop's estimate reaches `Orkeon:Compaction:Prune:FillShare` (0.4) of the usable window, or the compaction
 trigger if that comes first, the decision model judges each result of a read tool outside the last
 `KeepRecentMessages` (6) messages and longer than twice `HeadChars` (300): keep it, keep its first 300 characters, or
-drop it, leaving a line that says how to get it back. It reads the task and each call (tool, input, size, age),
-never the result: two yes/no questions per call, eight calls to a request, 24 at most at a time. A kept result is
-judged again eight model turns later. Under `orkeon run`, each pruning emits `agent.pruned`. With the decision circuit off nothing is
+drop it, leaving a line that says how to get it back, the call's whole input in it. It reads the task and each call
+(tool, input, size, age), never the result: two yes/no questions per call, eight calls to a request, 24 at most at a
+time. A kept result, or one the decision model failed to judge, is judged again eight model turns later. Under
+`orkeon run`, each pruning that cut or dropped a result emits `agent.pruned`. With the decision circuit off nothing is
 pruned and no decision call is made, with one warning and no error; an agent that does not compact does not prune.
 **Compatibility**: `compaction.prune` is a new agent key, refused by a 1.3.0 loader; `Orkeon:Compaction:Prune` is
 a new settings section and `agent.pruned` a new run event kind; `ConversationView` gains `ToolCallAt` (the call a
@@ -25,28 +26,34 @@ tool result answers) and `ContextPressure` the agent's `AgentCompaction`, for a 
 
 An agent (or a task's `llm_override`) on `llm.profile: auto` has System One pick, at the start of each task, one
 profile of `Orkeon:Decision:Route:Ladder`, listed cheapest first (two or more profiles of `Llm:Profiles` or
-`Orkeon:Decision:Profiles`, `default` included); the task keeps it for every call. The decision model reads the
-agent's role and the task, cut at 4000 characters. Under a probability of 0.6, without an answer, or with the
-decision circuit off, the host's default profile stands, with one warning and no error; an off circuit makes no
-decision call. Under `orkeon run`, each such task emits `agent.route` (`profile`, `reason`, `picked`, `probability`, `ladder`). A crew
-naming `auto` on a host without a ladder, or with a rung the host does not offer, fails its load, as does `auto` in a
-crew with `decision.mode: none`; a manager or a decision relay on `auto` runs on the default profile. This is one pick
-per task, apart from the per-call `route` stage of a decision profile. **Compatibility**: `auto` is now a reserved
-profile name: a host whose settings declare `Llm:Profiles:auto` or `Orkeon:Decision:Profiles:auto` (or that registers
-a profile named `auto` in C#) is refused at start, the message naming the key; rename that profile, and every crew
-that names it.
+`Orkeon:Decision:Profiles`, `default` included); the task keeps it for every call of that agent in the run, retries
+and revisions included, and another agent on the task (a voter) has its own picked. The decision model reads the
+agent's role and the task, cut at 4000 characters. Under a probability of 0.6, without an answer, when the call fails
+or with the decision circuit off, the host's default profile stands, with no error; an off circuit makes no decision
+call. A warning is logged once when the circuit is off or the ladder is missing, and when the call fails. Under
+`orkeon run`, each pick emits `agent.route` (`profile`, `reason`, `picked`, `probability`, `ladder`), once per task
+and agent of a run. A crew naming `auto` on a host without a ladder, or with a rung the host does not offer, fails
+its load, as does `auto` in a crew with `decision.mode: none`; a manager or a decision relay on `auto` with no task
+of its own runs on the default profile and is left out of those checks. In a `.ork.ts` crew, routing works at task
+level only: `task.withProfile("auto")` is routed, `llm.profile("auto")` throws. This is one pick per task, apart from
+the per-call `route` stage of a decision profile. **Compatibility**: a ladder of one rung, or with a blank, `auto` or
+repeated rung, is refused at start; `auto` becoming a reserved profile name is under Changed below.
 
 ### Added — agent skills: a fixed list of playbooks, or System One's pick of at most three (#434)
 
 A YAML agent takes `skills:`, a list of markdown files read through the virtual file system, or
 `{ auto: true, fallback: [...] }`. The skills are appended to the agent's system prompt under `## Skills`, each cut at
-`Orkeon:Skills:MaxSkillChars` (4000) and the block at `Orkeon:Skills:MaxBlockChars` (12000), the cut said in the prompt.
+`Orkeon:Skills:MaxSkillChars` (4000) and the block, its heading and each skill's title line included, at
+`Orkeon:Skills:MaxBlockChars` (12000): a skill cut short is said in the prompt and in the event's `cut`, a skill left
+out (no room left, a file that cannot be read) in `cut` alone.
 With `auto`, each task asks the decision model one `choice` among the `.md` files of `Orkeon:Skills:Library`
 (`/workspace/.orkeon/skills`), reading one line per skill (its front-matter `name` and `description`, else its first
 heading and line) and never a body; the options at a probability of 0.3 or more are kept, three at most. With the
-decision circuit off, an empty library or a failed call, the agent carries its `fallback`, else no skill, with one
-warning and no error. Under `orkeon run`, each task of an agent that declares skills emits `agent.skills` (`mode`, `skills`, `offered`,
-`cut`, `reason`). **Compatibility**: an engine at 1.3.0 refuses a crew that writes `skills:`; an unknown key of the map
+decision circuit off, an empty or unreadable library or a failed call, the agent carries its `fallback`, else no
+skill, with one warning and no error. The choice holds for every attempt of the task by that agent in the run. Under
+`orkeon run`, it emits `agent.skills` (`mode`, `skills`, `offered`, `cut`, `reason`, `detail`) once per task and agent
+of a run: a fallback's `reason` is `circuit-off`, `empty-library` or `pick-failed`, and `detail` says it in a
+sentence. **Compatibility**: an engine at 1.3.0 refuses a crew that writes `skills:`; an unknown key of the map
 form, a non-boolean `auto` or a map without `auto` now fails the load. The `Orkeon:Skills` section and the event are
 new; a `.ork.ts` crew has no skills.
 
@@ -152,6 +159,13 @@ release refuses the crew-level `decision:` key and a task's `without:`; `69` is 
 `--validate` success line now ends with `, decision=<mode>)`, and a procedural script's with
 `(procedural script: bundled, not run, decision=unknown)`. See
 [Decision models](docs/architecture/decision-models.md#a-crews-decision-mode).
+
+### Changed — `auto` is a reserved LLM profile name **[breaking]** (#434)
+
+**Before**: a host could name one of its profiles `auto`. **Now**: `auto` is the profile System One routes
+([`Orkeon:Decision:Route`](docs/reference/configuration.md#orkeondecisionroute)), so a host whose settings declare
+`Llm:Profiles:auto` or `Orkeon:Decision:Profiles:auto` (or that registers a profile named `auto` in C#) is refused at
+start, the message naming the key. **Migration**: rename that profile, and every crew that names it.
 
 ### Changed — the agent loops compact a long conversation by default **[breaking]** (#432)
 

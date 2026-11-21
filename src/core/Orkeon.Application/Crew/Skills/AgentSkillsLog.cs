@@ -9,6 +9,10 @@ internal static partial class AgentSkillsLog
     public static partial void CircuitOff(ILogger logger, string reason);
 
     [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Agent skills with auto take no pick: {Reason}. Each such agent uses its fallback list, or no skill when it has none.")]
+    public static partial void EmptyLibrary(ILogger logger, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning,
         Message = "Agent {AgentRole}: the decision model could not pick its skills ({Error}); its fallback list stands.")]
     public static partial void PickFailed(ILogger logger, string agentRole, string error);
 

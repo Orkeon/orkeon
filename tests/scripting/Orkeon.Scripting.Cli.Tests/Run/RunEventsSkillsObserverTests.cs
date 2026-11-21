@@ -28,7 +28,7 @@ public sealed class RunEventsSkillsObserverTests : IDisposable
             Skills = ["/workspace/skills/review.md"],
             Offered = 0,
             Cut = ["/workspace/skills/gone.md"],
-            Reason = "the decision circuit is off: --no-decision",
+            Reason = AgentSkillsReasons.CircuitOff,
         };
 
         // Act
@@ -44,6 +44,32 @@ public sealed class RunEventsSkillsObserverTests : IDisposable
         Assert.Equal("/workspace/skills/review.md", Assert.Single(json.GetProperty("skills").EnumerateArray()).GetString());
         Assert.Equal(0, json.GetProperty("offered").GetInt32());
         Assert.Equal("/workspace/skills/gone.md", Assert.Single(json.GetProperty("cut").EnumerateArray()).GetString());
-        Assert.Equal("the decision circuit is off: --no-decision", json.GetProperty("reason").GetString());
+        Assert.Equal("circuit-off", json.GetProperty("reason").GetString());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public void ShouldWriteTheDetailBesideTheReason_WhenTheFallbackStands()
+    {
+        // Arrange
+        var observer = new RunEventsSkillsObserver(new OrkeonEventWriter(_output, new FakeOrkeonClock()));
+        var notice = new AgentSkillsNotice
+        {
+            TaskId = "task-1",
+            AgentRole = "Reviewer",
+            Mode = AgentSkillsModes.Fallback,
+            Skills = [],
+            Offered = 0,
+            Cut = [],
+            Reason = AgentSkillsReasons.CircuitOff,
+            Detail = "the decision circuit is off: --no-decision",
+        };
+
+        // Act
+        observer.SkillsChosen(notice);
+
+        // Assert
+        var json = JsonElement.Parse(Assert.Single(_output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries)));
+        Assert.Equal("the decision circuit is off: --no-decision", json.GetProperty("detail").GetString());
     }
 }

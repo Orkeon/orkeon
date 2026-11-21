@@ -278,11 +278,32 @@ public partial class CrewFactory : ICrewFactory
     /// </summary>
     private void ValidateLlmProfiles(CrewConfiguration config)
     {
+        var unrouted = UnroutedAgents(config);
         foreach (var agent in config.Agents)
+        {
+            if (unrouted.Contains(agent.Id) && Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(agent.LlmConfig?.Profile))
+                continue;
             EnsureProfile(agent.LlmConfig?.Profile, $"Crew '{config.Name}': agent '{agent.Role}'");
+        }
 
         foreach (var task in config.Tasks)
             EnsureProfile(task.LlmOverride?.Profile, $"Crew '{config.Name}': task '{Shorten(task.Description)}'");
+    }
+
+    /// <summary>
+    /// The agents no task is assigned to that the crew names as its manager or as a decision relay
+    /// (<c>without.agent</c>): one on <c>llm.profile: auto</c> runs on the default profile, System One routes only an
+    /// agent's tasks (#434), so it is left out of the <c>auto</c> checks.
+    /// </summary>
+    private static HashSet<AgentId> UnroutedAgents(CrewConfiguration config)
+    {
+        var relays = config.Tasks.Select(t => t.Decision?.Without?.Agent).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        var assigned = config.Tasks.Select(t => t.AssignedAgentId).OfType<AgentId>().ToHashSet();
+        return config.Agents
+            .Where(a => !assigned.Contains(a.Id)
+                && (a.Id.Equals(config.ManagerAgentId) || relays.Contains(a.Key ?? a.Role)))
+            .Select(a => a.Id)
+            .ToHashSet();
     }
 
     /// <summary>
@@ -317,13 +338,24 @@ public partial class CrewFactory : ICrewFactory
     private void ValidateDecisionMode(CrewConfiguration config)
     {
         var profiles = _decisionProfiles;
+        // An agent on llm.profile: auto asks System One for its profile, as a decision profile does (#434), but
+        // not a manager or a relay with no task of its own: it runs on the default profile.
+        var uses = config.SystemOneUses(profiles is null ? null : p => profiles.Contains(p, StringComparer.OrdinalIgnoreCase)
+            || Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(p));
+        var unrouted = config.Agents.Where(a => UnroutedAgents(config).Contains(a.Id))
+            .Select(a => $"agent '{a.Key ?? a.Role}'").ToHashSet(StringComparer.Ordinal);
+        if (uses.DecisionProfiles is { } named && unrouted.Count > 0)
+            uses = uses with
+            {
+                DecisionProfiles = named
+                    .Where(u => !(unrouted.Contains(u.Holder) && Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(u.Profile)))
+                    .ToList(),
+            };
         var findings = Orkeon.Domain.Task.DecisionTaskRules.CheckMode(
             config.DecisionMode,
             config.Process,
             config.DecisionDeclarations(),
-            // An agent on llm.profile: auto asks System One for its profile, as a decision profile does (#434).
-            config.SystemOneUses(profiles is null ? null : p => profiles.Contains(p, StringComparer.OrdinalIgnoreCase)
-                || Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(p)));
+            uses);
         if (findings.Refusals.Count > 0)
             throw new InvalidOperationException(
                 $"Crew '{config.Name}': {Orkeon.Domain.Task.DecisionTaskRules.ModeRefusal(findings.Refusals)}");

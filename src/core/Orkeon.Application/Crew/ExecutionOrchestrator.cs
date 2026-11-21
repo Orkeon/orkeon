@@ -267,9 +267,14 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// <summary>The circuit of this orchestrator's run scope when it is not the container's (#431); null follows the container's.</summary>
     internal Execution.DecisionCircuit? ScopeCircuit { get; set; }
 
-    // The profile each task of an auto agent was routed to, by task: picked at the task's first attempt, kept by
-    // its retries and revisions in this scope (#434).
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _routedProfiles = new(StringComparer.Ordinal);
+    // What System One picked for each task of an agent (#434) - its profile on llm.profile: auto, its skills -
+    // outside a run: within one, the run's own (TaskPickScope), so the next run picks again.
+    private readonly Execution.TaskPicks _ownPicks = new();
+
+    private const string RoutePick = "route";
+    private const string SkillsPick = "skills";
+
+    private Execution.TaskPicks Picks => Execution.TaskPickScope.Current ?? _ownPicks;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ExecutionOrchestrator"/>.
@@ -904,9 +909,10 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     }
 
     /// <summary>
-    /// Appends the agent's skills block (#434) to <paramref name="systemPrompt"/>, and tells the observer what
-    /// was chosen. The prompt is unchanged when no resolver is wired, the agent declares no skill or none is
-    /// carried (an auto pick of none, a fallback left empty).
+    /// Appends the agent's skills block (#434) to <paramref name="systemPrompt"/>. The block is chosen at the task's
+    /// first attempt by this agent in the run, the observer told then, and every later attempt carries the same.
+    /// The prompt is unchanged when no resolver is wired, the agent declares no skill or none is carried (an auto
+    /// pick of none, a fallback left empty).
     /// </summary>
     private async System.Threading.Tasks.Task<string> AppendSkillsAsync(
         DomainAgent agent,
@@ -918,12 +924,19 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         if (SkillsResolver is null || agent.Skills is null)
             return systemPrompt;
 
-        var resolution = await SkillsResolver.ResolveAsync(
-            agent, task.Id.ToString(), AgentPromptComposer.BuildKnowledgeQueryText(task, context), ScopeCircuit, cancellationToken).ConfigureAwait(false);
+        var resolver = SkillsResolver;
+        var taskId = task.Id.ToString();
+        var resolution = await Picks.OnceAsync(SkillsPick, taskId, agent.Id.ToString(), async token =>
+        {
+            var chosen = await resolver.ResolveAsync(
+                agent, taskId, AgentPromptComposer.BuildKnowledgeQueryText(task, context), ScopeCircuit, token).ConfigureAwait(false);
+            if (chosen is not null)
+                SkillsObserver?.SkillsChosen(chosen.Notice);
+            return chosen;
+        }, cancellationToken).ConfigureAwait(false);
         if (resolution is null)
             return systemPrompt;
 
-        SkillsObserver?.SkillsChosen(resolution.Notice);
         return resolution.Block.Length == 0
             ? systemPrompt
             : systemPrompt + Environment.NewLine + resolution.Block + Environment.NewLine;
@@ -1037,25 +1050,24 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     }
 
     /// <summary>
-    /// The profile System One picks for <paramref name="task"/> of an agent on <c>llm.profile: auto</c> (#434), once:
-    /// a later attempt of the same task in this scope keeps it, and the observer is told at the first. Without a
-    /// router, the default profile.
+    /// The profile System One picks for <paramref name="task"/> of an agent on <c>llm.profile: auto</c> (#434), once
+    /// per agent and run: a later attempt of the same task by the same agent keeps it, another agent on the task
+    /// (a voter) has its own picked, and the observer is told at each pick. Without a router, the default profile.
     /// </summary>
     private async System.Threading.Tasks.Task<string> RoutedProfileAsync(
         DomainAgent agent, CrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
     {
-        var taskId = task.Id.ToString();
-        if (_routedProfiles.TryGetValue(taskId, out var kept))
-            return kept;
-        if (ProfileRouter is null)
-            return _routedProfiles.GetOrAdd(taskId, Interfaces.Ports.LlmProfiles.Default);
+        if (ProfileRouter is not { } router)
+            return Interfaces.Ports.LlmProfiles.Default;
 
-        var notice = await ProfileRouter.RouteAsync(
-            agent, taskId, AgentPromptComposer.BuildKnowledgeQueryText(task, context), ScopeCircuit, cancellationToken).ConfigureAwait(false);
-        if (!_routedProfiles.TryAdd(taskId, notice.Profile))
-            return _routedProfiles[taskId];
-        RouteObserver?.ProfileRouted(notice);
-        return notice.Profile;
+        var taskId = task.Id.ToString();
+        return await Picks.OnceAsync(RoutePick, taskId, agent.Id.ToString(), async token =>
+        {
+            var notice = await router.RouteAsync(
+                agent, taskId, AgentPromptComposer.BuildKnowledgeQueryText(task, context), ScopeCircuit, token).ConfigureAwait(false);
+            RouteObserver?.ProfileRouted(notice);
+            return notice.Profile;
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>The loop and provider of the host profile <paramref name="profile"/> — the default's for none.</summary>

@@ -6,7 +6,7 @@ namespace Orkeon.Application.Crew.Skills;
 /// How an agent's <c>skills:</c> reach its prompt, bound to the <c>Orkeon:Skills</c> section by
 /// <c>AddOrkeonInfrastructure()</c>. Each skill is a markdown file read through the virtual file system and
 /// appended to the agent's system prompt under a <c>## Skills</c> heading, cut at <see cref="MaxSkillChars"/>,
-/// the whole block at <see cref="MaxBlockChars"/>. An agent with <c>skills: { auto: true }</c> has the
+/// the whole block, headings included, at <see cref="MaxBlockChars"/>. An agent with <c>skills: { auto: true }</c> has the
 /// decision model pick, for each task, at most three skills of <see cref="Library"/>.
 /// </summary>
 public sealed class AgentSkillsOptions
@@ -20,24 +20,26 @@ public sealed class AgentSkillsOptions
     /// <summary>The cap of one skill by default, in characters: 4000.</summary>
     public const int DefaultMaxSkillChars = 4_000;
 
-    /// <summary>The cap of the whole block by default, in characters: 12000, three skills at their cap.</summary>
+    /// <summary>The cap of the whole block by default, in characters: 12000.</summary>
     public const int DefaultMaxBlockChars = 12_000;
 
     /// <summary>
     /// The virtual folder an <c>auto</c> agent's skills are picked from, one <c>&lt;name&gt;.md</c> file per
-    /// skill (sub-folders are not read). <c>/workspace/.orkeon/skills</c> by default.
+    /// skill (sub-folders are not read); a relative path is refused at start. <c>/workspace/.orkeon/skills</c> by
+    /// default.
     /// </summary>
     public string Library { get; set; } = DefaultLibrary;
 
     /// <summary>
     /// The characters of one skill the prompt carries; the rest is cut, and the cut is said in the prompt and
-    /// in <c>agent.skills</c>. 4000 by default.
+    /// in the <c>cut</c> of <c>agent.skills</c>. 0 or less is refused at start. 4000 by default.
     /// </summary>
     public int MaxSkillChars { get; set; } = DefaultMaxSkillChars;
 
     /// <summary>
-    /// The characters the whole skills block carries, every skill's text included; a skill past it is cut to
-    /// what remains, or left out. 12000 by default, three skills at their cap.
+    /// The characters the whole skills block carries, its heading, each skill's title line and cut notes
+    /// included; a skill past it is cut to what remains, said in the prompt, or left out, said in the <c>cut</c>
+    /// of <c>agent.skills</c> alone. 0 or less is refused at start. 12000 by default.
     /// </summary>
     public int MaxBlockChars { get; set; } = DefaultMaxBlockChars;
 

@@ -704,12 +704,19 @@ warned as ignored in the start log (with a hint to name it when no provider is n
 ### `Orkeon:Decision:Route`
 
 Where an agent on `llm.profile: auto` is routed. At the start of each of its tasks, System
-One picks one profile of `Ladder`, listed cheapest first, and the task keeps it for every call;
-the decision model reads the agent's role and the task (cut at 4 000 characters in the middle),
-never the conversation. Under a probability of 0.6, without an answer, or when the decision
-circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`, no decision provider), the
-host's default profile stands, with one warning and no error: an off circuit makes no decision
-call. Each routed task emits `agent.route` on the run's event stream. A rung names a profile of
+One picks one profile of `Ladder`, listed cheapest first, and the task keeps it for every call of
+that agent in the run, retries and revisions included (another agent on the task, a voter, has
+its own picked); the decision model reads the agent's role and the task (cut at 4 000 characters
+in the middle), never the conversation. Under a probability of 0.6, without an answer, when the
+call fails or when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`,
+no decision provider), the host's default profile stands, with no error: an off circuit makes no
+decision call. A warning is logged once when the circuit is off, and when the call fails; a low
+probability or a missing answer is logged as information only. Each pick emits `agent.route` on
+the run's event stream, once per task and agent of a run. A task's `llm_override: { profile: auto }`
+is routed the same way. A manager or a decision relay (`without.agent`) on `auto` with no task
+of its own runs on the default profile, so it is left out of the load checks below. In a `.ork.ts`
+crew, routing works at task level only: `task.withProfile("auto")` is routed, and
+`llm.profile("auto")` on an agent is refused. A rung names a profile of
 `Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included); a crew naming `auto` on a host
 without a ladder, or with a rung the host does not offer, fails its load. `auto` is a reserved
 profile name: `Llm:Profiles:auto` and `Orkeon:Decision:Profiles:auto` are refused at start. This
@@ -720,7 +727,7 @@ is not the `route` stage of a decision profile, which picks a profile for each c
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `Ladder` | list of string | `[]` | The profiles an `auto` agent is routed among, cheapest first: two or more names of `Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included), each once. Empty by default: a crew naming `auto` on a host without a ladder fails its load. |
+| `Ladder` | list of string | `[]` | The profiles an `auto` agent is routed among, cheapest first: two or more names of `Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included), each once; a ladder of one rung, or with a blank, `auto` or repeated rung, is refused at start. Empty by default: a crew naming `auto` on a host without a ladder fails its load. |
 <!-- /settings -->
 
 ## Rate and budgets
@@ -1861,9 +1868,11 @@ result of a read tool (a tool whose access is `read` for that input) outside the
 up to 24 at a time, eight to a request. It reads the task and each call - tool, input, size and
 age in model turns - never the result, and answers two yes/no questions per call: still needed,
 and needed whole. Not needed drops the result, needed in part keeps its first `HeadChars`
-characters, needed whole keeps it; a pruned result leaves a line saying how to get it back, and
-its call stays. A result kept is judged again after eight more model turns. Each pruning emits
-`agent.pruned` under `orkeon run` (the other hosts write no such event). With the decision circuit
+characters, needed whole keeps it; a pruned result leaves a line saying how to get it back, the
+call's whole input in it, and its call stays. A result kept, or one the decision model failed to
+judge, is judged again after eight more model turns. Each pruning that cut or dropped a result
+emits `agent.pruned` under `orkeon run` (the other hosts write no such event); a turn that kept
+everything emits nothing. With the decision circuit
 off, nothing is pruned: one warning, no decision call, no error. Once compaction's breaker opens
 (three failures in a row), the loop prunes no more for the rest of the task attempt. An agent
 overrides `Enabled` with `compaction: { prune }`; an agent that does not compact does not prune.
@@ -1883,24 +1892,26 @@ overrides `Enabled` with `compaction: { prune }`; an agent that does not compact
 
 How an agent's `skills:` reach its prompt. A skill is a markdown file read through the
 virtual file system and appended to the agent's system prompt under a `## Skills` heading, each
-skill cut at `MaxSkillChars` and the whole block at `MaxBlockChars`; a cut is said in the prompt
-and in the `cut` field of `agent.skills`. An agent with `skills: [<paths>]` carries those files on
-every task. An agent with `skills: { auto: true, fallback: [<paths>] }` has System One pick, for
+skill cut at `MaxSkillChars` and the whole block, its heading and each skill's title line
+included, at `MaxBlockChars`. A skill cut short is said in the prompt and in the `cut` field of
+`agent.skills`; a skill left out (no room left in the block, a file that cannot be read) is said
+in that `cut` field alone. An agent with `skills: [<paths>]` carries those files on every task. An agent with `skills: { auto: true, fallback: [<paths>] }` has System One pick, for
 each task, at most three skills of `Library`: the decision model reads one line per skill (its
 front-matter `name` and `description`, else its first heading and line), never a body. When the
 decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`, no decision
-provider), when the library holds no skill or the decision model fails, the agent carries its
-`fallback` list, else no skill, with one warning and no error. Each task of an agent that
-declares skills emits `agent.skills` on the run's event stream. A `.ork.ts` crew has no skills.
+provider), when the library holds no skill or cannot be read, or when the decision model fails, the
+agent carries its `fallback` list, else no skill, with one warning and no error. The choice holds
+for every attempt of the task by that agent in the run, and emits `agent.skills` on the run's
+event stream once per task and agent of a run. A `.ork.ts` crew has no skills.
 
 <!-- settings:Orkeon:Skills -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `Library` | string | `"/workspace/.orkeon/skills"` | The virtual folder an `auto` agent's skills are picked from, one `<name>.md` file per skill (sub-folders are not read). `/workspace/.orkeon/skills` by default. |
-| `MaxBlockChars` | integer | `12000` | The characters the whole skills block carries, every skill's text included; a skill past it is cut to what remains, or left out. 12000 by default, three skills at their cap. |
-| `MaxSkillChars` | integer | `4000` | The characters of one skill the prompt carries; the rest is cut, and the cut is said in the prompt and in `agent.skills`. 4000 by default. |
+| `Library` | string | `"/workspace/.orkeon/skills"` | The virtual folder an `auto` agent's skills are picked from, one `<name>.md` file per skill (sub-folders are not read); a relative path is refused at start. `/workspace/.orkeon/skills` by default. |
+| `MaxBlockChars` | integer | `12000` | The characters the whole skills block carries, its heading, each skill's title line and cut notes included; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. 0 or less is refused at start. 12000 by default. |
+| `MaxSkillChars` | integer | `4000` | The characters of one skill the prompt carries; the rest is cut, and the cut is said in the prompt and in the `cut` of `agent.skills`. 0 or less is refused at start. 4000 by default. |
 <!-- /settings -->
 
 ### `Orkeon:CrewFactory`

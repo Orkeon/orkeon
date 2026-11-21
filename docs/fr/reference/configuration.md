@@ -734,12 +734,20 @@ sections présentes, ou aucune section et les deux clés définies, sont refusé
 
 Où est routé un agent sur `llm.profile: auto`. Au début de chacune de ses tâches, System One
 choisit un profil de `Ladder`, listé du moins cher au plus cher, et la tâche le garde pour tous
-ses appels ; le modèle de décision lit le rôle de l'agent et la tâche (coupée au milieu à 4 000
-caractères), jamais la conversation. Sous une probabilité de 0,6, sans réponse, ou quand le
-circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enabled: false`, aucun
-fournisseur de décision), le profil par défaut de l'hôte s'applique, avec un avertissement et
-sans erreur : un circuit coupé ne fait aucun appel de décision. Chaque tâche routée émet
-`agent.route` sur le flux d'événements du run. Un échelon nomme un profil de `Llm:Profiles` ou
+les appels de cet agent dans le run, nouvelles tentatives et révisions comprises (un autre agent
+sur la tâche, un votant, a le sien) ; le modèle de décision lit le rôle de l'agent et la tâche
+(coupée au milieu à 4 000 caractères), jamais la conversation. Sous une probabilité de 0,6, sans
+réponse, quand l'appel échoue ou quand le circuit de décision est coupé (`--no-decision`,
+`Orkeon:Decision:Enabled: false`, aucun fournisseur de décision), le profil par défaut de l'hôte
+s'applique, sans erreur : un circuit coupé ne fait aucun appel de décision. Un avertissement est
+journalisé une fois quand le circuit est coupé, et quand l'appel échoue ; une probabilité basse
+ou une réponse manquante n'est journalisée qu'en information. Chaque choix émet `agent.route` sur
+le flux d'événements du run, une fois par tâche et par agent d'un run. Le
+`llm_override: { profile: auto }` d'une tâche est routé de la même façon. Un manager ou un relais
+de décision (`without.agent`) sur `auto` sans tâche à lui tourne sur le profil par défaut, et
+reste donc hors des vérifications de chargement ci-dessous. Dans une crew `.ork.ts`, le routage
+se fait au niveau de la tâche seulement : `task.withProfile("auto")` est routé, et
+`llm.profile("auto")` sur un agent est refusé. Un échelon nomme un profil de `Llm:Profiles` ou
 de `Orkeon:Decision:Profiles` (`default` compris) ; une crew qui nomme `auto` sur un hôte sans
 échelle, ou avec un échelon que l'hôte n'offre pas, échoue à son chargement. `auto` est un nom de
 profil réservé : `Llm:Profiles:auto` et `Orkeon:Decision:Profiles:auto` sont refusés au
@@ -751,7 +759,7 @@ appel.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
-| `Ladder` | liste de chaînes | `[]` | Les profils entre lesquels un agent `auto` est routé, du moins cher au plus cher : deux noms ou plus de `Llm:Profiles` ou `Orkeon:Decision:Profiles` (`default` compris), chacun une fois. Vide par défaut : une crew qui nomme `auto` sur un hôte sans échelle échoue à son chargement. |
+| `Ladder` | liste de chaînes | `[]` | Les profils entre lesquels un agent `auto` est routé, du moins cher au plus cher : deux noms ou plus de `Llm:Profiles` ou `Orkeon:Decision:Profiles` (`default` compris), chacun une fois ; une échelle d'un seul échelon, ou avec un échelon vide, `auto` ou répété, est refusée au démarrage. Vide par défaut : une crew qui nomme `auto` sur un hôte sans échelle échoue à son chargement. |
 <!-- /settings -->
 
 ## Débit et budgets
@@ -1919,9 +1927,11 @@ cette entrée) hors des `KeepRecentMessages` derniers messages et plus long que 
 tâche et chaque appel - outil, entrée, taille et âge en tours du modèle -, jamais le résultat, et
 répond à deux questions oui/non par appel : encore utile, et utile en entier. Inutile retire le
 résultat, utile en partie en garde les `HeadChars` premiers caractères, utile en entier le garde ;
-un résultat élagué laisse une ligne qui dit comment le retrouver, et son appel reste. Un résultat
-gardé est jugé de nouveau après huit tours du modèle de plus. Chaque élagage émet `agent.pruned`
-sous `orkeon run` (les autres hôtes n'écrivent pas cet événement). Circuit de décision coupé, rien
+un résultat élagué laisse une ligne qui dit comment le retrouver, l'entrée entière de l'appel
+comprise, et son appel reste. Un résultat gardé, ou que le modèle de décision n'a pas su juger,
+est jugé de nouveau après huit tours du modèle de plus. Chaque élagage qui a coupé ou retiré un
+résultat émet `agent.pruned` sous `orkeon run` (les autres hôtes n'écrivent pas cet événement) ;
+un tour qui a tout gardé n'émet rien. Circuit de décision coupé, rien
 n'est élagué : un avertissement, aucun appel de décision, aucune erreur. Une fois le disjoncteur de
 la compaction ouvert (trois échecs de suite), la boucle n'élague plus pour le reste de la tentative
 de la tâche. Un agent remplace `Enabled` par `compaction: { prune }` ; un agent qui ne compacte pas
@@ -1942,26 +1952,29 @@ n'élague pas.
 
 Comment les `skills:` d'un agent atteignent son prompt. Un skill est un fichier markdown
 lu par le système de fichiers virtuel et ajouté au prompt système de l'agent sous un titre
-`## Skills`, chaque skill coupé à `MaxSkillChars` et le bloc entier à `MaxBlockChars` ; une coupe
-est dite dans le prompt et dans le champ `cut` de `agent.skills`. Un agent avec
-`skills: [<chemins>]` porte ces fichiers à chaque tâche. Un agent avec
+`## Skills`, chaque skill coupé à `MaxSkillChars` et le bloc entier, son titre et la ligne de
+titre de chaque skill compris, à `MaxBlockChars`. Un skill coupé est dit dans le prompt et dans le
+champ `cut` de `agent.skills` ; un skill laissé de côté (plus de place dans le bloc, un fichier
+illisible) est dit dans ce seul champ `cut`. Un agent avec `skills: [<chemins>]` porte ces
+fichiers à chaque tâche. Un agent avec
 `skills: { auto: true, fallback: [<chemins>] }` fait choisir à System One, pour chaque tâche, au
 plus trois skills de `Library` : le modèle de décision lit une ligne par skill (le `name` et la
 `description` de son front matter, sinon son premier titre et sa première ligne), jamais un corps.
 Quand le circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enabled: false`, aucun
-fournisseur de décision), quand la bibliothèque ne contient aucun skill ou que le modèle de
-décision échoue, l'agent porte sa liste `fallback`, sinon aucun skill, avec un avertissement et
-sans erreur. Chaque tâche d'un agent qui déclare des skills émet `agent.skills` sur le flux
-d'événements du run. Une crew `.ork.ts` n'a pas de skills.
+fournisseur de décision), quand la bibliothèque ne contient aucun skill ou ne peut être lue, ou
+quand le modèle de décision échoue, l'agent porte sa liste `fallback`, sinon aucun skill, avec un
+avertissement et sans erreur. Le choix vaut pour chaque tentative de la tâche par cet agent dans
+le run, et émet `agent.skills` sur le flux d'événements du run une fois par tâche et par agent
+d'un run. Une crew `.ork.ts` n'a pas de skills.
 
 <!-- settings:Orkeon:Skills -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
-| `Library` | chaîne | `"/workspace/.orkeon/skills"` | Le dossier virtuel où sont choisis les skills d'un agent `auto`, un fichier `<nom>.md` par skill (les sous-dossiers ne sont pas lus). `/workspace/.orkeon/skills` par défaut. |
-| `MaxBlockChars` | entier | `12000` | Les caractères que porte le bloc de skills entier, texte de chaque skill compris ; un skill au-delà est coupé à ce qui reste, ou laissé de côté. 12000 par défaut, trois skills à leur plafond. |
-| `MaxSkillChars` | entier | `4000` | Les caractères d'un skill que porte le prompt ; le reste est coupé, et la coupe est dite dans le prompt et dans `agent.skills`. 4000 par défaut. |
+| `Library` | chaîne | `"/workspace/.orkeon/skills"` | Le dossier virtuel où sont choisis les skills d'un agent `auto`, un fichier `<nom>.md` par skill (les sous-dossiers ne sont pas lus) ; un chemin relatif est refusé au démarrage. `/workspace/.orkeon/skills` par défaut. |
+| `MaxBlockChars` | entier | `12000` | Les caractères que porte le bloc de skills entier, son titre, la ligne de titre de chaque skill et les notes de coupe compris ; un skill au-delà est coupé à ce qui reste, ce que dit le prompt, ou laissé de côté, ce que dit le seul `cut` de `agent.skills`. 0 ou moins est refusé au démarrage. 12000 par défaut. |
+| `MaxSkillChars` | entier | `4000` | Les caractères d'un skill que porte le prompt ; le reste est coupé, et la coupe est dite dans le prompt et dans le `cut` de `agent.skills`. 0 ou moins est refusé au démarrage. 4000 par défaut. |
 <!-- /settings -->
 
 ### `Orkeon:CrewFactory`

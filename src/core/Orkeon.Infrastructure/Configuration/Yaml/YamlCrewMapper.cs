@@ -346,7 +346,7 @@ public sealed partial class YamlCrewMapper
                     true => new Orkeon.Domain.Agent.AgentSkills { Auto = true, Fallback = fallback },
                     false => new Orkeon.Domain.Agent.AgentSkills { Paths = fallback },
                     null => throw new InvalidOperationException(
-                        $"Agent '{agentKey}' skills: the map form needs 'auto: true'; for a fixed list, write the paths as a list: 'skills: [/workspace/skills/review.md]'."),
+                        $"Agent '{agentKey}' skills: the map form needs 'auto': true for System One's pick among the library, false for the fallback list as it is; for a fixed list, the paths can also be written as a list: 'skills: [/workspace/skills/review.md]'."),
                 };
             default:
                 throw new InvalidOperationException(

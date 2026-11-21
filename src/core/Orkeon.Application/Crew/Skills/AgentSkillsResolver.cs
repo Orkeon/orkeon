@@ -15,9 +15,10 @@ namespace Orkeon.Application.Crew.Skills;
 /// <summary>
 /// The skills block of a task's system prompt (#434). A fixed list is read as written. An <c>auto</c> agent
 /// has the decision model pick, from the one-line card of each skill of the library (never a body), at most
-/// <see cref="MaxPicks"/> skills; with the decision circuit off (one warning), a failed call or an empty
-/// library, its fallback list stands, and with no fallback the prompt carries no skill. Nothing here fails a
-/// task: a skill that cannot be read is left out with a warning.
+/// <see cref="MaxPicks"/> skills; with the decision circuit off (one warning), a failed call or an empty or
+/// unreadable library (one warning), its fallback list stands, and with no fallback the prompt carries no skill.
+/// Nothing here fails a task: a skill that cannot be read is left out with a warning. The block, its heading and
+/// each skill's title line included, stays within <see cref="AgentSkillsOptions.MaxBlockChars"/>.
 /// </summary>
 internal sealed class AgentSkillsResolver
 {
@@ -50,6 +51,7 @@ internal sealed class AgentSkillsResolver
     private readonly AgentSkillsOptions _options;
     private readonly ILogger _logger;
     private int _offWarned;
+    private int _emptyWarned;
 
     /// <param name="fileSystem">The file system the skills and the library are read through.</param>
     /// <param name="services">The container whose decision circuit and model an <c>auto</c> agent uses.</param>
@@ -94,7 +96,7 @@ internal sealed class AgentSkillsResolver
 
         var choice = skills.Auto
             ? await PickAsync(agent, skills, request, scopeCircuit, cancellationToken).ConfigureAwait(false)
-            : new Choice(AgentSkillsModes.List, skills.Paths, 0, null);
+            : new Choice(AgentSkillsModes.List, skills.Paths, 0, null, null);
         var (block, kept, cut) = await ComposeAsync(agent, choice, cancellationToken).ConfigureAwait(false);
         var notice = new AgentSkillsNotice
         {
@@ -105,12 +107,13 @@ internal sealed class AgentSkillsResolver
             Offered = choice.Offered,
             Cut = cut,
             Reason = choice.Reason,
+            Detail = choice.Detail,
         };
         AgentSkillsLog.Chosen(_logger, agent.Role.Value, taskId, choice.Mode, kept.Count == 0 ? "none" : string.Join(", ", kept));
         return new AgentSkillsResolution { Block = block, Notice = notice };
     }
 
-    private sealed record Choice(string Mode, IReadOnlyList<string> Paths, int Offered, string? Reason);
+    private sealed record Choice(string Mode, IReadOnlyList<string> Paths, int Offered, string? Reason, string? Detail);
 
     private async System.Threading.Tasks.Task<Choice> PickAsync(
         DomainAgent agent, Domain.Agent.AgentSkills skills, string request, DecisionCircuit? scopeCircuit, CancellationToken cancellationToken)
@@ -122,12 +125,19 @@ internal sealed class AgentSkillsResolver
             var reason = circuit.OffReason ?? DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider).OffReason!;
             if (Interlocked.Exchange(ref _offWarned, 1) == 0)
                 AgentSkillsLog.CircuitOff(_logger, reason);
-            return Fallback(skills, reason);
+            return Fallback(skills, AgentSkillsReasons.CircuitOff, reason);
         }
 
-        var cards = await CardsAsync(cancellationToken).ConfigureAwait(false);
+        var (cards, fault) = await CardsAsync(cancellationToken).ConfigureAwait(false);
         if (cards.Count == 0)
-            return Fallback(skills, $"the library {_options.Library} holds no skill");
+        {
+            var empty = fault is null
+                ? $"the library {_options.Library} holds no skill"
+                : $"the library {_options.Library} could not be read: {fault}";
+            if (Interlocked.Exchange(ref _emptyWarned, 1) == 0)
+                AgentSkillsLog.EmptyLibrary(_logger, empty);
+            return Fallback(skills, AgentSkillsReasons.EmptyLibrary, empty);
+        }
 
         DecisionResponse response;
         try
@@ -137,10 +147,10 @@ internal sealed class AgentSkillsResolver
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             AgentSkillsLog.PickFailed(_logger, agent.Role.Value, ex.Message);
-            return Fallback(skills, $"the decision model failed: {ex.Message}");
+            return Fallback(skills, AgentSkillsReasons.PickFailed, $"the decision model failed: {ex.Message}");
         }
 
-        return new Choice(AgentSkillsModes.Auto, Picks(response, cards), cards.Count, null);
+        return new Choice(AgentSkillsModes.Auto, Picks(response, cards), cards.Count, null, null);
     }
 
     // What a read of the library or of a skill may throw: a path outside the mounts, a missing file or folder,
@@ -148,8 +158,8 @@ internal sealed class AgentSkillsResolver
     private static bool IsReadFault(Exception ex) =>
         ex is IOException or UnauthorizedAccessException or FileAccessDeniedException or ArgumentException or InvalidOperationException;
 
-    private static Choice Fallback(Domain.Agent.AgentSkills skills, string reason) =>
-        new(AgentSkillsModes.Fallback, skills.Fallback, 0, reason);
+    private static Choice Fallback(Domain.Agent.AgentSkills skills, string reason, string detail) =>
+        new(AgentSkillsModes.Fallback, skills.Fallback, 0, reason, detail);
 
     /// <summary>One choice among the skills, numbered from 1, and the option that none fits.</summary>
     internal static DecisionRequest Question(IReadOnlyList<SkillCard> cards, string request)
@@ -161,7 +171,7 @@ internal sealed class AgentSkillsResolver
         var state = request.Trim();
         return new DecisionRequest
         {
-            State = JsonValue.Create(state.Length <= RequestChars ? state : state[..RequestChars])!,
+            State = JsonValue.Create(TextCut.Head(state, RequestChars))!,
             Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add(QuestionName, new ChoiceQuestion
             {
                 Instructions = JsonValue.Create(SkillsPrompts.QuestionInstructions),
@@ -191,8 +201,8 @@ internal sealed class AgentSkillsResolver
     private static string Option(int index) => "s" + (index + 1).ToString(CultureInfo.InvariantCulture);
 
     // The card of each markdown file of the library, in name order, MaxCandidates at most; an unreadable
-    // library or file is no skill.
-    private async System.Threading.Tasks.Task<List<SkillCard>> CardsAsync(CancellationToken cancellationToken)
+    // file is no skill, and an unreadable library none, its fault given.
+    private async System.Threading.Tasks.Task<(List<SkillCard> Cards, string? Fault)> CardsAsync(CancellationToken cancellationToken)
     {
         var paths = new List<string>();
         try
@@ -206,7 +216,7 @@ internal sealed class AgentSkillsResolver
         }
         catch (Exception ex) when (IsReadFault(ex))
         {
-            return [];
+            return ([], ex.Message);
         }
 
         var cards = new List<SkillCard>();
@@ -216,7 +226,7 @@ internal sealed class AgentSkillsResolver
             if (!string.IsNullOrWhiteSpace(head))
                 cards.Add(SkillCard.Of(path, head));
         }
-        return cards;
+        return (cards, null);
     }
 
     private async System.Threading.Tasks.Task<string?> ReadHeadAsync(string path, CancellationToken cancellationToken)
@@ -250,14 +260,22 @@ internal sealed class AgentSkillsResolver
         }
     }
 
-    // The block: each skill under its name and path, cut at MaxSkillChars and at what remains of MaxBlockChars.
+    // The block: each skill under its name and path, cut at MaxSkillChars and at what remains of MaxBlockChars,
+    // which the heading, the intro, each title line and each cut note are charged against too. A skill with no
+    // room left is left out, said in the notice's Cut alone.
     private async System.Threading.Tasks.Task<(string Block, ImmutableList<string> Kept, ImmutableList<string> Cut)> ComposeAsync(
         DomainAgent agent, Choice choice, CancellationToken cancellationToken)
     {
+        var header = new StringBuilder()
+            .AppendLine(SkillsPrompts.Heading)
+            .AppendLine()
+            .AppendLine(choice.Mode == AgentSkillsModes.Auto ? SkillsPrompts.PickIntro : SkillsPrompts.ListIntro)
+            .ToString();
         var sections = new StringBuilder();
         var kept = ImmutableList.CreateBuilder<string>();
         var cut = ImmutableList.CreateBuilder<string>();
-        var remaining = _options.MaxBlockChars;
+        var remaining = _options.MaxBlockChars - header.Length;
+        var newLine = Environment.NewLine.Length;
         foreach (var path in choice.Paths.Distinct(StringComparer.Ordinal))
         {
             var text = (await ReadAsync(path, cancellationToken).ConfigureAwait(false))?.Trim();
@@ -268,33 +286,40 @@ internal sealed class AgentSkillsResolver
                 continue;
             }
 
-            if (remaining <= 0)
+            var title = new StringBuilder().AppendLine().Append("### ").Append(SkillCard.FileName(path))
+                .Append(" (").Append(path).AppendLine(")").ToString();
+            // What the skill's text may take here, its line end included.
+            var room = remaining - title.Length - newLine;
+            var shown = Math.Min(text.Length, Math.Min(_options.MaxSkillChars, room));
+            string? note = null;
+            if (shown < text.Length)
+            {
+                // A cut text carries its note: room is kept for the longest it can be.
+                var noteRoom = SkillsPrompts.CutNote(text.Length, text.Length).Length + newLine;
+                shown = TextCut.HeadLength(text, Math.Min(shown, room - noteRoom));
+                note = SkillsPrompts.CutNote(shown, text.Length);
+            }
+
+            if (shown <= 0)
             {
                 cut.Add(path);
                 continue;
             }
 
-            var shown = Math.Min(text.Length, Math.Min(_options.MaxSkillChars, remaining));
-            remaining -= shown;
+            remaining -= title.Length + shown + newLine + (note is null ? 0 : note.Length + newLine);
             kept.Add(path);
-            sections.AppendLine().Append("### ").Append(SkillCard.FileName(path)).Append(" (").Append(path).AppendLine(")");
-            sections.AppendLine(text[..shown]);
-            if (shown < text.Length)
+            sections.Append(title).AppendLine(text[..shown]);
+            if (note is not null)
             {
                 cut.Add(path);
-                sections.AppendLine(SkillsPrompts.CutNote(shown, text.Length));
+                sections.AppendLine(note);
             }
         }
 
         if (kept.Count == 0)
             return (string.Empty, kept.ToImmutable(), cut.ToImmutable());
 
-        var block = new StringBuilder()
-            .AppendLine(SkillsPrompts.Heading)
-            .AppendLine()
-            .AppendLine(choice.Mode == AgentSkillsModes.Auto ? SkillsPrompts.PickIntro : SkillsPrompts.ListIntro)
-            .Append(sections);
-        return (block.ToString().TrimEnd(), kept.ToImmutable(), cut.ToImmutable());
+        return ((header + sections).TrimEnd(), kept.ToImmutable(), cut.ToImmutable());
     }
 }
 

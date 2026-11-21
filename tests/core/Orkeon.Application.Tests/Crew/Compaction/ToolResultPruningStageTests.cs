@@ -42,17 +42,23 @@ public sealed class ToolResultPruningStageTests
 
     // The system prompt, the task, `old` turns that read a file each, then three recent turns the last six messages hold.
     private static (List<ChatMessage> Messages, ChatConversationView View) Conversation(
-        int old = 3, string tool = ReadTool, int resultChars = 2_000)
+        int old = 3, string tool = ReadTool, int resultChars = 2_000, string folder = "src")
     {
         var messages = new List<ChatMessage> { new(ChatRole.System, "sys"), new(ChatRole.User, "Summarise the parser") };
-        for (var call = 1; call <= old + 3; call++)
+        AddTurns(messages, 1, old + 3, tool, resultChars, folder);
+        return (messages, new ChatConversationView(messages, (name, _) => name == ReadTool));
+    }
+
+    // Turns `first` to `last`, each a call of `tool` and its result.
+    private static void AddTurns(List<ChatMessage> messages, int first, int last, string tool = ReadTool, int resultChars = 2_000, string folder = "src")
+    {
+        for (var call = first; call <= last; call++)
         {
             var id = $"call-{call}";
             messages.Add(new ChatMessage(ChatRole.Assistant,
-                [new FunctionCallContent(id, tool, new Dictionary<string, object?> { ["path"] = $"src/f{call}.cs" })]));
+                [new FunctionCallContent(id, tool, new Dictionary<string, object?> { ["path"] = $"{folder}/f{call}.cs" })]));
             messages.Add(new ChatMessage(ChatRole.Tool, [new FunctionResultContent(id, Body(call, resultChars))]));
         }
-        return (messages, new ChatConversationView(messages, (name, _) => name == ReadTool));
     }
 
     private static string Body(int call, int chars) => string.Concat($"SECRET-{call}:", new string('x', chars))[..chars];
@@ -305,11 +311,12 @@ public sealed class ToolResultPruningStageTests
     [MemberData(nameof(SettledVerdicts))]
     public async System.Threading.Tasks.Task ShouldNotOfferAResultAgain_WhenItWasJudgedAtTheLastCall(string verdict, double answer)
     {
-        // Arrange: a kept result waits eight model turns before it is judged again.
+        // Arrange: a kept result waits eight model turns before it is judged again; a dropped one, whose note is
+        // longer than twice a head of 10 characters, is settled and never judged again.
         _ = verdict;
         var (_, view) = Conversation();
         Answer((1, answer, answer), (2, answer, answer), (3, answer, answer));
-        var stage = Stage();
+        var stage = Stage(options: new ToolResultPruningOptions { Enabled = true, HeadChars = 10 });
         await stage.RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
 
         // Act
@@ -335,7 +342,6 @@ public sealed class ToolResultPruningStageTests
         Assert.False(changed);
         Assert.Equal(before, Render(messages));
         Assert.Contains("model down", Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning).Message, StringComparison.Ordinal);
-        Assert.Equal(0, Assert.Single(_observer.Notices).Judged);
     }
 
     [Fact]
@@ -368,5 +374,134 @@ public sealed class ToolResultPruningStageTests
 
         // Assert
         Assert.Equal([16, 4], _model.Requests.Select(r => r.Questions.Count));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldTellTheObserverNothing_WhenEveryResultIsKept()
+    {
+        // Arrange
+        var (_, view) = Conversation();
+        Answer((1, 0.9, 0.9), (2, 0.9, 0.9), (3, 0.9, 0.9));
+
+        // Act
+        var changed = await Stage().RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.False(changed);
+        Assert.Empty(_observer.Notices);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldTellTheObserverNothing_WhenTheDecisionModelFails()
+    {
+        // Arrange
+        var (_, view) = Conversation();
+        _model.Failure = new InvalidOperationException("model down");
+
+        // Act
+        await Stage().RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(_observer.Notices);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldNotOfferAFailedBatchAgain_WhenTheNextCallComesWithinEightTurns()
+    {
+        // Arrange
+        var (_, view) = Conversation();
+        _model.Failure = new InvalidOperationException("model down");
+        var stage = Stage();
+        await stage.RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Act
+        await stage.RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Single(_model.Requests);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldJudgeAKeptResultAgain_WhenEightModelTurnsHavePassed()
+    {
+        // Arrange
+        var (messages, view) = Conversation();
+        Answer((1, 0.9, 0.9), (2, 0.9, 0.9), (3, 0.9, 0.9));
+        var stage = Stage();
+        await stage.RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+        AddTurns(messages, 7, 14);
+
+        // Act
+        await stage.RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Contains("1. file_read {\"path\":\"src/f1.cs\"}", _model.Requests[1].State.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldGiveTheWholeInputInTheNote_WhenTheInputIsLongerThanTheQuestionShowsIt()
+    {
+        // Arrange
+        var folder = "src/" + new string('d', 300);
+        var (messages, view) = Conversation(folder: folder);
+        DropAll(3);
+
+        // Act
+        await Stage().RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Contains($"{folder}/f1.cs", ResultOf(messages, 1), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldOfferTwentyFourCallsAtMost_WhenMoreResultsAreWorthAVerdict()
+    {
+        // Arrange
+        var (_, view) = Conversation(old: 30);
+
+        // Act
+        await Stage().RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal([16, 16, 16], _model.Requests.Select(r => r.Questions.Count));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldNotOfferTheFirstOfTheLastMessages_WhenKeepRecentMessagesReachesIt()
+    {
+        // Arrange: of 14 messages, the last seven are kept, the result of call 3 (index 7) among them.
+        var (_, view) = Conversation();
+        var stage = Stage(options: new ToolResultPruningOptions { Enabled = true, KeepRecentMessages = 7 });
+
+        // Act
+        await stage.RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(["needed_1", "needed_2", "whole_1", "whole_2"], Assert.Single(_model.Requests).Questions.Keys.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldStopWithTheCancellationAndNoWarning_WhenTheRunIsCancelled()
+    {
+        // Arrange
+        var (_, view) = Conversation();
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _model.Failure = new OperationCanceledException(cancellation.Token);
+
+        // Act
+        var exception = await Record.ExceptionAsync(async () => await Stage().RelieveAsync(Pressure(), view, cancellation.Token));
+
+        // Assert
+        Assert.IsType<OperationCanceledException>(exception, exactMatch: false);
+        Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Warning);
     }
 }

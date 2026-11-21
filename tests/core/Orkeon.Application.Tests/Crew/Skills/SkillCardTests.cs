@@ -60,4 +60,18 @@ public sealed class SkillCardTests
         // Assert
         Assert.Equal(SkillCard.DescriptionChars + 3, card.Description.Length);
     }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public void ShouldStopTheDescriptionBeforeAnEmoji_WhenTheCapFallsBetweenItsHalves()
+    {
+        // Arrange: the 300th character is the first half of an emoji.
+        var head = "---\nname: long\ndescription: " + new string('d', SkillCard.DescriptionChars - 1) + "\U0001F600 more\n---\n";
+
+        // Act
+        var card = SkillCard.Of("/workspace/.orkeon/skills/long.md", head);
+
+        // Assert
+        Assert.Equal("long: " + new string('d', SkillCard.DescriptionChars - 1) + "...", card.Line);
+    }
 }

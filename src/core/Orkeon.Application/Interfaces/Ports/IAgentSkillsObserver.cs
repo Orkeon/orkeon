@@ -31,11 +31,33 @@ public sealed record AgentSkillsNotice
     /// <summary>The skills offered to the decision model: 0 unless <see cref="Mode"/> is <c>auto</c>.</summary>
     public required int Offered { get; init; }
 
-    /// <summary>The skills cut by a cap or left out (a cap, a file that could not be read), by virtual path.</summary>
+    /// <summary>
+    /// The skills cut short by a cap (said in the prompt too) or left out (the block's cap was spent, or the file
+    /// could not be read; said here alone), by virtual path.
+    /// </summary>
     public required ImmutableList<string> Cut { get; init; }
 
-    /// <summary>Why the fallback stands (<see cref="AgentSkillsModes.Fallback"/>); null otherwise.</summary>
+    /// <summary>Why the fallback stands (<see cref="AgentSkillsModes.Fallback"/>), one of <see cref="AgentSkillsReasons"/>; null otherwise.</summary>
     public string? Reason { get; init; }
+
+    /// <summary>
+    /// What <see cref="Reason"/> means here, in a sentence: the circuit's off reason, the library and its fault, the
+    /// decision model's error; null when no fallback stands.
+    /// </summary>
+    public string? Detail { get; init; }
+}
+
+/// <summary>The <c>reason</c> of <c>agent.skills</c> when its <c>mode</c> is <c>fallback</c>.</summary>
+public static class AgentSkillsReasons
+{
+    /// <summary>The decision circuit is off (or no decision provider is registered): no call is made.</summary>
+    public const string CircuitOff = "circuit-off";
+
+    /// <summary>The library holds no skill, or could not be read: no call is made.</summary>
+    public const string EmptyLibrary = "empty-library";
+
+    /// <summary>The decision model's call failed.</summary>
+    public const string PickFailed = "pick-failed";
 }
 
 /// <summary>The <c>mode</c> of <c>agent.skills</c>.</summary>

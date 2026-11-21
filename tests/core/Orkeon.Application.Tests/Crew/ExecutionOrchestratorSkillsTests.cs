@@ -94,4 +94,23 @@ public sealed class ExecutionOrchestratorSkillsTests
         // Assert
         Assert.Empty(_model.Requests);
     }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async System.Threading.Tasks.Task ShouldPickTheSkillsOnceAndTellTheObserverOnce_WhenTheSameTaskRunsAgain()
+    {
+        // Arrange: a retry or a revision of the task by the same agent.
+        _files.AddFile($"{AgentSkillsOptions.DefaultLibrary}/review.md", "---\nname: review\n---\nBody.");
+        var agent = new AgentBuilder().Role("Reviewer").Goal("Review code").Skills(new AgentSkills { Auto = true }).Build();
+        var orchestrator = Orchestrator(DecisionCircuit.On);
+        var task = Task();
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+
+        // Act
+        await orchestrator.ExecuteTaskCoreAsync(agent, task, Context(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Single(_model.Requests);
+        Assert.Single(_observer.Notices);
+    }
 }

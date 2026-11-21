@@ -128,6 +128,32 @@ public sealed class JsonlMockLlmProviderTests
         return [.. messages];
     }
 
+    private static string[] ToolCallIds(LlmResponse response)
+    {
+        using var doc = JsonDocument.Parse(response.RawResponseBody!);
+        return [.. doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("tool_calls")
+            .EnumerateArray().Select(call => call.GetProperty("id").GetString()!)];
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldNeverServeTheSameCallIdTwice_WhenSeveralRoundsAskForTools()
+    {
+        // Arrange
+        var provider = Provider(
+            """{"match":"plan","toolCalls":[{"name":"first_tool","arguments":{}},{"name":"other_tool","arguments":{}}]}""",
+            """{"match":"plan","toolCalls":[{"name":"second_tool","arguments":{}}]}""",
+            """{"match":"plan","content":"All done."}""");
+        var round0 = await provider.ChatAsync(AfterToolRounds("plan it", 0), null, TestContext.Current.CancellationToken);
+
+        // Act
+        var round1 = await provider.ChatAsync(AfterToolRounds("plan it", 1), null, TestContext.Current.CancellationToken);
+
+        // Assert
+        var ids = ToolCallIds(round0).Concat(ToolCallIds(round1)).ToList();
+        Assert.Equal(3, ids.Distinct(StringComparer.Ordinal).Count());
+    }
+
     private static string FirstToolName(LlmResponse response)
     {
         Assert.NotNull(response.RawResponseBody);

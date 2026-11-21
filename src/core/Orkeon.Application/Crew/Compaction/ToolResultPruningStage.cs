@@ -124,11 +124,19 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
+                // A batch the decision model failed on waits RejudgeTurns turns, as a kept one does, rather than
+                // being asked again at the next turn (#434).
                 PruneLog.JudgeFailed(_logger, pressure.AgentRole, batch.Length, ex.Message);
+                foreach (var candidate in batch)
+                    memory.KeptAtAge[candidate.Call.CallId] = candidate.Age;
             }
         }
 
         var tally = Apply(conversation, memory, candidates, verdicts);
+        // A turn that changed nothing is no event: agent.pruned says what was cut or dropped (#434).
+        if (tally.Cut + tally.Dropped == 0)
+            return false;
+
         PruneLog.Pruned(_logger, pressure.AgentRole, pressure.TaskId, candidates.Count, verdicts.Count, tally.Dropped, tally.Cut, tally.FreedTokens);
         _observer?.Pruned(new AgentPruneNotice
         {
@@ -143,7 +151,7 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
             Dropped = tally.Dropped,
             FreedTokens = tally.FreedTokens,
         });
-        return tally.Cut + tally.Dropped > 0;
+        return true;
     }
 
     /// <summary>
@@ -226,12 +234,14 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
                 continue;
             }
 
-            var input = Cut(candidate.Call.Input, InputChars);
+            // The note carries the call's whole input, so the agent can make the same call again (#434).
+            var input = candidate.Call.Input;
             var content = conversation.TextAt(candidate.Index);
+            var head = TextCut.HeadLength(content, _options.HeadChars);
             var pruned = verdict == PruneVerdict.Drop
                 ? PrunePrompts.Dropped(candidate.Call.ToolName, input, content.Length)
-                : string.Concat(content.AsSpan(0, _options.HeadChars),
-                    PrunePrompts.Headed(candidate.Call.ToolName, input, content.Length - _options.HeadChars, content.Length));
+                : string.Concat(content.AsSpan(0, head),
+                    PrunePrompts.Headed(candidate.Call.ToolName, input, content.Length - head, content.Length));
             memory.Settled.Add(candidate.Call.CallId);
             if (pruned.Length >= content.Length || !conversation.ReplaceToolResult(candidate.Index, pruned))
                 continue;
@@ -242,7 +252,7 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
         return new Tally(kept, cut, dropped, (int)Math.Min(int.MaxValue, freedChars / 4));
     }
 
-    private static string Cut(string text, int max) => text.Length <= max ? text : text[..max] + PrunePrompts.Ellipsis;
+    private static string Cut(string text, int max) => TextCut.Head(text, max, PrunePrompts.Ellipsis);
 }
 
 /// <summary>What becomes of one read-tool result (#434), as the script's <c>onContextPressure</c> answers it.</summary>
