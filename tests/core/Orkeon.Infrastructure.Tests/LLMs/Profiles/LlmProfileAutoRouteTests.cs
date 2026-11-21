@@ -173,6 +173,20 @@ public sealed class LlmProfileAutoRouteTests
     }
 
     [Fact]
+    [Trait("BR", "CH-429")]
+    public async Task ShouldSpellTheRefusalAsTheLoadersDo_WhenTheFactoryRefusesTheDecisionMode()
+    {
+        // Arrange
+        await using var container = Container(null, "small", "large");
+
+        // Act
+        var error = await LoadFailureAsync(container, Crew("decision: { mode: none }"));
+
+        // Assert
+        Assert.StartsWith("Crew 'routed': " + Orkeon.Domain.Task.DecisionTaskRules.ModeRefusal([]), error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     [Trait("BR", "CH-434")]
     public async Task ShouldRefuseTheLoad_WhenACrewWithDecisionModeNoneNamesAuto()
     {

@@ -117,7 +117,7 @@ public sealed partial class YamlCrewMapper
             configuration.SystemOneUses(),
             agentKeys);
         if (findings.Refusals.Count > 0)
-            throw new InvalidOperationException("Invalid decision.mode declaration: " + string.Join(" ", findings.Refusals));
+            throw new InvalidOperationException(DecisionTaskRules.ModeRefusal(findings.Refusals));
     }
 
     /// <summary>The <c>budget:</c> block as the crew's budget (#218); the validator refuses a limit of zero or less.</summary>

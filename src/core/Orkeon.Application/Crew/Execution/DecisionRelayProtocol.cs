@@ -64,7 +64,7 @@ internal static class DecisionRelayProtocol
     }
 
     /// <summary>
-    /// Reads and checks an answer: JSON that parses, every question present, each value in [0, 1], each
+    /// Reads and checks an answer: JSON that parses, every question present and no other key, each value in [0, 1], each
     /// distribution summing to 1 within <see cref="SumTolerance"/>. The distributions are normalised, then
     /// <c>chosen</c>, <c>score</c> and <c>confidence</c> are derived.
     /// </summary>
@@ -81,6 +81,10 @@ internal static class DecisionRelayProtocol
         {
             throw new FormatException($"the answer is not valid JSON ({ex.Message})", ex);
         }
+
+        // The schema allows no other key: one that is not a question is refused, and the answer asked again.
+        if (answer.Select(p => p.Key).FirstOrDefault(k => decision.Questions.All(q => q.Name != k)) is { } stray)
+            throw new FormatException($"the answer has a key '{stray}', which is not a question");
 
         var answers = ImmutableDictionary.CreateBuilder<string, DecisionAnswer>(StringComparer.Ordinal);
         foreach (var question in decision.Questions)
@@ -181,7 +185,9 @@ internal static class DecisionRelayProtocol
         };
     }
 
-    private static JsonObject ProbabilitySchema() => new() { ["type"] = "number", ["minimum"] = 0, ["maximum"] = 1 };
+    // No minimum nor maximum: a provider's native json_schema may refuse the numeric bounds, and Probability
+    // refuses a value outside [0, 1] anyway, which asks the answer again.
+    private static JsonObject ProbabilitySchema() => new() { ["type"] = "number" };
 
     private static JsonArray Names(IEnumerable<string> names) => [.. names.Select(n => (JsonNode)JsonValue.Create(n))];
 

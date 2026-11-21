@@ -135,6 +135,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     internal Orkeon.Application.Crew.Execution.DecisionCircuit? RunScopeCircuit { get; set; }
 
     /// <summary>
+    /// Whether the host registers a decision model (#430): without one, the decision runner answers with the
+    /// circuit off whatever the circuit says, and the resume check compares with that. Set by the registration.
+    /// </summary>
+    internal bool HasDecisionModel { get; set; } = true;
+
+    /// <summary>
     /// Runs the crew and returns its output. Never throws: a failed run — a task that did not
     /// succeed, an exception, a cancellation — is a <see cref="CrewOutput"/> whose
     /// <see cref="CrewOutput.Succeeded"/> is false and whose <see cref="CrewOutput.Error"/> says why.
@@ -569,13 +575,23 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         if (Orkeon.Application.Crew.Execution.DecisionUnavailableException.Refusing(crew, _decisionCircuit) is { } refusal)
             throw refusal;
 
-        if (crew.DecisionMode == Orkeon.Domain.Crew.CrewDecisionMode.Optional
-            && resume is not null
-            && Checkpointing.CheckpointingAgentExecutionService.RecordedDecisionCircuit(resume.CompletedOutputs) is { } startedOn
-            && startedOn != _decisionCircuit.Enabled)
+        if (crew.DecisionMode != Orkeon.Domain.Crew.CrewDecisionMode.Optional || resume is null)
+            return;
+
+        // The circuit the decision runner applies, which is off when no decision model is registered; and only
+        // the recorded decisions this crew could replay.
+        var runnerCircuit = _decisionCircuit.Enabled && !HasDecisionModel
+            ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider)
+            : _decisionCircuit;
+        var decisionTaskKeys = _taskRepository is null
+            ? null
+            : (await _taskRepository.GetByIdsAsync(crew.Tasks, cancellationToken).ConfigureAwait(false))
+                .Where(t => t.Decision is not null && t.Key is not null).Select(t => t.Key!).ToList();
+        if (Checkpointing.CheckpointingAgentExecutionService.RecordedDecisionCircuit(resume.CompletedOutputs, decisionTaskKeys) is { } startedOn
+            && startedOn != runnerCircuit.Enabled)
         {
             throw new Orkeon.Application.Crew.Execution.DecisionUnavailableException(
-                ResumeMismatchMessage(crew.Name ?? crew.Id.ToString(), startedOn, _decisionCircuit));
+                ResumeMismatchMessage(crew.Name ?? crew.Id.ToString(), startedOn, runnerCircuit));
         }
     }
 

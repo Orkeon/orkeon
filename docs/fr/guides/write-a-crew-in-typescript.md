@@ -190,7 +190,7 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- \
 ```
 
 ```
-VALIDATION OK: …/crew-review-desk/main.ork.ts (agents=3, tasks=3, tools resolved=5)
+VALIDATION OK: …/crew-review-desk/main.ork.ts (agents=3, tasks=3, tools resolved=5, decision=unspecified)
 ```
 
 Ce contrôle n'existe que sur cette forme, et c'est une bonne raison de la préférer : il

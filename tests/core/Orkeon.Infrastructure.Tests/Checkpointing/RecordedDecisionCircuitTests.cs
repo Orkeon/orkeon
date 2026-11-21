@@ -33,4 +33,39 @@ public sealed class RecordedDecisionCircuitTests
         // Assert
         Assert.True(expected == circuit, $"{name}: expected {expected}, got {circuit}");
     }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldReadNoCircuit_WhenTheOnlySourceRecordedIsOfATaskTheCrewNoLongerDeclares()
+    {
+        // Arrange
+        var outputs = new Dictionary<string, string?>
+        {
+            ["intake#1"] = """{"success":true}""",
+            ["routing#1"] = """{"success":true,"decisionSource":"model"}""",
+            ["triage#1"] = """{"success":true,"output":"route: bug"}""",
+        };
+
+        // Act
+        var circuit = CheckpointingAgentExecutionService.RecordedDecisionCircuit(outputs, ["triage"]);
+
+        // Assert
+        Assert.Null(circuit);
+    }
+
+    [Theory]
+    [InlineData("triage#1")]
+    [InlineData("triage@2#1")]
+    [Trait("BR", "CH-430")]
+    public void ShouldReadTheCircuit_WhenTheSourceIsOfADecisionTaskTheCrewStillDeclares(string key)
+    {
+        // Arrange
+        var outputs = new Dictionary<string, string?> { ["triager#1"] = """{"success":true,"decisionSource":"model"}""", [key] = """{"success":true,"decisionSource":"relay"}""" };
+
+        // Act
+        var circuit = CheckpointingAgentExecutionService.RecordedDecisionCircuit(outputs, ["triage"]);
+
+        // Assert
+        Assert.False(circuit);
+    }
 }

@@ -1077,8 +1077,8 @@ public static partial class RunnerExecution
         PrintCrewOutput(output, opts.MachineReadableStdout ? console.ErrorOutput : console.Output);
         if (!output.Succeeded)
         {
-            // A crew that requires System One, refused with the decision circuit off, ran nothing to take up
-            // again: 69, the refusal as the last stderr line (#429).
+            // A crew that requires System One, refused with the decision circuit off, or an optional crew resumed
+            // under the other circuit, ran nothing to take up again: 69, the refusal as the last stderr line (#429, #430).
             if (output.ErrorCode == Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable)
                 return (Orkeon.Constants.Cli.RunExitCodes.DecisionUnavailable, output.Error ?? output.FinalOutput);
 

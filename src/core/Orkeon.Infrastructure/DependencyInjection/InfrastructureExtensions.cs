@@ -190,10 +190,12 @@ public static class InfrastructureExtensions
         // The run enters that circuit (DecisionCircuitScope), so what is built once per host follows it too.
         services.AddScoped<SequentialCrewOrchestrator>(sp =>
         {
-            if (ScopedCircuit(sp) is not { } circuit)
-                return ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp);
-            var orchestrator = ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp, circuit);
+            var circuit = ScopedCircuit(sp);
+            var orchestrator = circuit is null
+                ? ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp)
+                : ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp, circuit);
             orchestrator.RunScopeCircuit = circuit;
+            orchestrator.HasDecisionModel = sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is not null;
             return orchestrator;
         });
         services.AddScoped<ICrewOrchestrationService>(sp => sp.GetRequiredService<SequentialCrewOrchestrator>());

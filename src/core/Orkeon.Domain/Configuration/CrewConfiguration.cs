@@ -72,8 +72,9 @@ public sealed record CrewConfiguration
 
     /// <summary>
     /// Lists what the crew asks System One besides its decision tasks (#429): every agent and task that lists
-    /// <c>system_one_decide</c>, and, when <paramref name="isDecisionProfile"/> is given, every one that names a
-    /// decision profile through <c>llm.profile</c> or <c>llm_override.profile</c>.
+    /// <c>system_one_decide</c>, every agent on <c>skills: auto</c> or <c>compaction: { prune: true }</c> (#434),
+    /// and, when <paramref name="isDecisionProfile"/> is given, every one that names a decision profile through
+    /// <c>llm.profile</c> or <c>llm_override.profile</c>.
     /// </summary>
     /// <param name="isDecisionProfile">Whether a profile name is a decision profile of the host; null when unknown.</param>
     /// <returns>The uses, holders named <c>agent 'x'</c> or <c>task 'y'</c>.</returns>
@@ -85,8 +86,10 @@ public sealed record CrewConfiguration
         var holders = Agents.Where(a => Decides(a.Tools)).Select(a => $"agent '{a.Key ?? a.Role}'")
             .Concat(Tasks.Where(t => Decides(t.Tools)).Select(t => $"task '{t.Key ?? t.Description}'"))
             .ToList();
+        var skillsAuto = Agents.Where(a => a.Skills is { Auto: true }).Select(a => $"agent '{a.Key ?? a.Role}'").ToList();
+        var prune = Agents.Where(a => a.Compaction is { Prune: true }).Select(a => $"agent '{a.Key ?? a.Role}'").ToList();
         if (isDecisionProfile is null)
-            return new Orkeon.Domain.Task.ValueObjects.SystemOneUses(holders, null);
+            return new Orkeon.Domain.Task.ValueObjects.SystemOneUses(holders, null) { SkillsAutoHolders = skillsAuto, PruneHolders = prune };
 
         var profiles = Agents
             .Where(a => a.LlmConfig?.Profile is { Length: > 0 } p && isDecisionProfile(p.Trim()))
@@ -95,7 +98,7 @@ public sealed record CrewConfiguration
                 .Where(t => t.LlmOverride?.Profile is { Length: > 0 } p && isDecisionProfile(p.Trim()))
                 .Select(t => new Orkeon.Domain.Task.ValueObjects.DecisionProfileUse($"task '{t.Key ?? t.Description}'", t.LlmOverride!.Profile!.Trim())))
             .ToList();
-        return new Orkeon.Domain.Task.ValueObjects.SystemOneUses(holders, profiles);
+        return new Orkeon.Domain.Task.ValueObjects.SystemOneUses(holders, profiles) { SkillsAutoHolders = skillsAuto, PruneHolders = prune };
     }
 
     /// <summary>Lists what each task declares about decisions.</summary>
@@ -112,8 +115,9 @@ public sealed record AgentConfiguration
     /// <summary>
     /// Gets the key the agent has in its crew file — <c>researcher</c> under <c>agents:</c>, or the
     /// file name in the per-entity layout —, the name its author gave it and every reference uses
-    /// (GAP-39). The YAML loader sets it; null for a configuration built in code or by a
-    /// <c>.ork.ts</c> script. The export writes the agent under it, and the validator names it.
+    /// (GAP-39). The YAML loader sets it, and a <c>.ork.ts</c> script sets it to the agent's
+    /// <c>name(...)</c>; null for a configuration built in code. The export writes the agent under it,
+    /// the validator names it, and a decision task's <c>without.agent</c> names it.
     /// </summary>
     public string? Key { get; init; }
     /// <summary>Gets the role of the agent.</summary>

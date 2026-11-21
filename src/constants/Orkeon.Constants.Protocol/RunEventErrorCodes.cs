@@ -16,7 +16,8 @@ public static class RunEventErrorCodes
 
     /// <summary>
     /// The run was refused before its first task: the crew requires System One (<c>decision.mode: required</c>)
-    /// and the decision circuit is off. The message names the crew and the cause (#429).
+    /// and the decision circuit is off, or an <c>optional</c> crew is resumed under the other circuit than the one
+    /// its recorded decisions were taken with. The message names the crew and the cause (#429, #430).
     /// </summary>
     public const string DecisionUnavailable = "decision_unavailable";
 }

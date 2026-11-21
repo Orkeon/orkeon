@@ -119,7 +119,7 @@ public static class JsCrewConfigurationAdapter
             configuration.SystemOneUses(),
             crew.agents.Select(a => a.name).ToList());
         if (modeFindings.Refusals.Count > 0)
-            throw new InvalidOperationException("Invalid decision.mode declaration: " + string.Join(" ", modeFindings.Refusals));
+            throw new InvalidOperationException(DecisionTaskRules.ModeRefusal(modeFindings.Refusals));
         return configuration;
     }
 
@@ -152,6 +152,8 @@ public static class JsCrewConfigurationAdapter
         return new AgentConfiguration
         {
             Id = id,
+            // The name every reference of the script uses: a decision task's without.agent names it (#430).
+            Key = jsAgent.name,
             Role = builder.AgentRole ?? jsAgent.name,
             Goal = builder.AgentGoal ?? string.Empty,
             Backstory = builder.AgentBackstoryText ?? string.Empty,

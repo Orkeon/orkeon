@@ -2,7 +2,8 @@ namespace Orkeon.Domain.Task.ValueObjects;
 
 /// <summary>
 /// What a crew asks System One besides its decision tasks, for <see cref="DecisionTaskRules.CheckMode"/> (#429):
-/// who lists <c>system_one_decide</c>, and who names a decision profile.
+/// who lists <c>system_one_decide</c>, who names a decision profile, and who has the decision model pick its
+/// skills or judge its read-tool results (#434).
 /// </summary>
 /// <param name="DecideToolHolders">Each agent or task that lists <c>system_one_decide</c>, as <c>agent 'x'</c> or <c>task 'y'</c>.</param>
 /// <param name="DecisionProfiles">
@@ -16,6 +17,15 @@ public sealed record SystemOneUses(IReadOnlyList<string> DecideToolHolders, IRea
 
     /// <summary>Gets a crew that asks nothing besides its decision tasks, its profiles unknown.</summary>
     public static SystemOneUses Unknown { get; } = new([], null);
+
+    /// <summary>Gets each agent that declares <c>skills: auto</c>, as <c>agent 'x'</c>: the decision model picks its skills.</summary>
+    public IReadOnlyList<string> SkillsAutoHolders { get; init; } = [];
+
+    /// <summary>
+    /// Gets each agent that declares <c>compaction: { prune: true }</c>, as <c>agent 'x'</c>: the decision model
+    /// judges its older read-tool results.
+    /// </summary>
+    public IReadOnlyList<string> PruneHolders { get; init; } = [];
 }
 
 /// <summary>One agent or task naming a decision profile.</summary>

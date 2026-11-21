@@ -371,6 +371,7 @@ public sealed class CrewBuilder
     /// <summary>
     /// The rules of <see cref="Task.DecisionTaskRules.CheckMode"/> over the tasks and agents given as objects: a
     /// task added by id only is not seen, and the decision profiles are the host's, checked by the crew factory.
+    /// A <c>without:</c> relay names an agent by its role, or by the key a crew factory resolved to its id: as the run finds it.
     /// </summary>
     private void EnsureDecisionModeRules()
     {
@@ -383,8 +384,19 @@ public sealed class CrewBuilder
         var holders = _agents.Where(a => Decides(a.Tools)).Select(a => $"agent '{a.Role.Value}'")
             .Concat(_tasks.Where(t => Decides(t.Tools)).Select(t => $"task '{t.Key ?? t.Description.Value}'"))
             .ToList();
-        var findings = Task.DecisionTaskRules.CheckMode(
-            _decisionMode, _processType, declarations, new Task.ValueObjects.SystemOneUses(holders, null));
+        var uses = new Task.ValueObjects.SystemOneUses(holders, null)
+        {
+            SkillsAutoHolders = _agents.Where(a => a.Skills is { Auto: true }).Select(a => $"agent '{a.Role.Value}'").ToList(),
+            PruneHolders = _agents.Where(a => a.Compaction is { Prune: true }).Select(a => $"agent '{a.Role.Value}'").ToList(),
+        };
+        // A relay finds its agent as the dispatcher does: by the id a crew factory resolved, else by its role.
+        var agentKeys = _agents.Select(a => a.Role.Value)
+            .Concat(_tasks.Select(t => t.Decision?.Without)
+                .Where(r => r?.AgentId is { } id && _agents.Any(a => a.Id == id))
+                .Select(r => r!.Agent))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var findings = Task.DecisionTaskRules.CheckMode(_decisionMode, _processType, declarations, uses, agentKeys);
         if (findings.Refusals.Count > 0)
             throw new BuilderValidationException("Crew", string.Join(" ", findings.Refusals));
     }
@@ -448,9 +460,13 @@ public sealed class CrewBuilder
             GraphConfig = _graphConfig
         });
 
-        // 6. Add agents
+        // 6. Add agents. A crew with decision.mode: none asks System One nothing (#429): its agents leave the
+        // host's pruning of read-tool results (Orkeon:Compaction:Prune:Enabled), which the decision model judges;
+        // a prune: true of their own was refused above.
         foreach (var agent in _agents)
         {
+            if (_decisionMode == CrewDecisionMode.None && agent.Compaction?.Prune is null)
+                agent.Compaction = (agent.Compaction ?? new AgentCompaction()) with { Prune = false };
             crew.AddAgent(agent.Id);
         }
 

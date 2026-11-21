@@ -150,9 +150,11 @@ public partial class CrewFactory : ICrewFactory
         var refuseWithheld = config.DecisionMode != Orkeon.Domain.Crew.CrewDecisionMode.Required;
         var agentMap = await CreateAgentsAsync(config.Agents, config.Rag?.DefaultProfile, refuseWithheld, ct).ConfigureAwait(false);
         // A without: relay names its agent by key (#430): resolved here to the agent built for that key.
+        // A script may give two agents one name: a relay then names the first of them.
         var agentIdByKey = config.Agents
             .Where(a => a.Key is not null && agentMap.ContainsKey(a.Id))
-            .ToDictionary(a => a.Key!, a => agentMap[a.Id].Id, StringComparer.Ordinal);
+            .GroupBy(a => a.Key!, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => agentMap[g.First().Id].Id, StringComparer.Ordinal);
         var taskMap = await CreateTasksAsync(config.Tasks, agentMap, agentIdByKey, refuseWithheld, ct).ConfigureAwait(false);
 
         SetupTaskDependencies(config.Tasks, taskMap);
@@ -324,7 +326,7 @@ public partial class CrewFactory : ICrewFactory
                 || Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(p)));
         if (findings.Refusals.Count > 0)
             throw new InvalidOperationException(
-                $"Crew '{config.Name}': invalid decision.mode declaration: {string.Join(" ", findings.Refusals)}");
+                $"Crew '{config.Name}': {Orkeon.Domain.Task.DecisionTaskRules.ModeRefusal(findings.Refusals)}");
 
         foreach (var warning in findings.Warnings)
         {

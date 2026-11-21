@@ -382,11 +382,17 @@ the crew behaves as above, and the engine reports its mode as `unspecified`. The
 | `fallback` | n/a | Refused: never used. | A warning: never used; the fallback-or-otherwise rule does not apply. |
 | `system_one_decide` in `tools:` | Refused. | Refused. | Allowed. |
 | Decision profile (`llm.profile`, `llm_override.profile`) | Refused. | Allowed; with the circuit off its stages degrade as in the table above. | Allowed. |
+| Agent routing (`llm.profile: auto`) | Refused. | Allowed; with the circuit off the task runs on the default profile. | Allowed. |
+| Agent skills (`skills: { auto: true }`) | Refused: list the skills instead. | Allowed; with the circuit off the agent carries its `fallback` list. | Allowed. |
+| Tool-result pruning (`compaction: { prune: true }`) | Refused; the host's `Orkeon:Compaction:Prune` is not applied to its agents. | Allowed; with the circuit off nothing is pruned. | Allowed. |
 
 A crew with no mode may not declare a `without:` relay: the load asks for `decision.mode: optional`. A relay names an
 agent of the crew (`without: { agent, instructions }`, `instructions` optional), and an agent the crew does not
 declare is refused at load. A `required` crew that asks System One nothing (no decision task, no `system_one_decide`,
-no decision profile) loads with a warning.
+no decision profile, no `llm.profile: auto`, no `skills: { auto: true }`, no `compaction: { prune: true }`) loads with a
+warning. A crew built in C# meets these rules at `CrewBuilder.Build()`, with two differences: its relay names an
+agent by its role (a crew factory resolves a YAML or `.ork.ts` key to the agent), and its decision profiles are not
+checked there, since only the crew factory knows the host's profiles.
 
 With `mode: required` and the circuit off, whatever the cause, the run is **refused before its first task**, in every
 process and every host: `crew 'x' requires System One (decision.mode: required) and the decision circuit is off:

@@ -358,6 +358,104 @@ public class CrewBuilderTests
         Assert.Single(crew.Tasks);
     }
 
+    private static TaskDecision RelayedDecision(string relayAgent) =>
+        TaskDecision.Create(
+            [ChoiceQuestionSpec.Create("route", "Pick the route", new Dictionary<string, string> { ["bug"] = "a defect", ["other"] = "anything else" })],
+            null, null, false, null)
+        .WithRelay(new DecisionRelay(relayAgent));
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldRefuseTheCrew_WhenARelayNamesNoRoleOfTheCrew()
+    {
+        // Arrange
+        var builder = new CrewBuilder()
+            .Goal("Triage the tickets")
+            .DecisionMode(CrewDecisionMode.Optional)
+            .WithAgent(CreateAgent("Analyst"))
+            .WithTask(t => t.Description("Route the ticket").ExpectedOutput("A route").WithKey("triage").WithDecision(RelayedDecision("Reviewer")));
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Task 'triage' without.agent 'Reviewer' is not an agent of the crew; its agents: Analyst.", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldAcceptTheCrew_WhenTheRelayNamesTheRoleOfOneOfItsAgents()
+    {
+        // Arrange
+        var builder = new CrewBuilder()
+            .Goal("Triage the tickets")
+            .DecisionMode(CrewDecisionMode.Optional)
+            .WithAgent(CreateAgent("Analyst"))
+            .WithTask(t => t.Description("Route the ticket").ExpectedOutput("A route").WithKey("triage").WithDecision(RelayedDecision("Analyst")));
+
+        // Act
+        var crew = builder.Build();
+
+        // Assert
+        Assert.Single(crew.Tasks);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldAcceptTheCrew_WhenTheRelayNamesTheKeyACrewFactoryResolvedToOneOfItsAgents()
+    {
+        // Arrange
+        var analyst = CreateAgent("Analyst");
+        var decision = TaskDecision.Create(
+                [ChoiceQuestionSpec.Create("route", "Pick the route", new Dictionary<string, string> { ["bug"] = "a defect", ["other"] = "anything else" })],
+                null, null, false, null)
+            .WithRelay(new DecisionRelay("analyst").ResolvedTo(analyst.Id));
+        var builder = new CrewBuilder()
+            .Goal("Triage the tickets")
+            .DecisionMode(CrewDecisionMode.Optional)
+            .WithAgent(analyst)
+            .WithTask(t => t.Description("Route the ticket").ExpectedOutput("A route").WithKey("triage").WithDecision(decision));
+
+        // Act
+        var crew = builder.Build();
+
+        // Assert
+        Assert.Single(crew.Tasks);
+    }
+
+    [Theory]
+    [InlineData(CrewDecisionMode.None, false)]
+    [InlineData(CrewDecisionMode.Unspecified, null)]
+    [InlineData(CrewDecisionMode.Required, null)]
+    [Trait("BR", "CH-429")]
+    public void ShouldTakeTheAgentsOutOfTheHostsPruning_OnlyWhenTheCrewAsksSystemOneNothing(CrewDecisionMode mode, bool? expectedPrune)
+    {
+        // Arrange
+        var agent = CreateAgent("Reader");
+        var builder = new CrewBuilder().Goal("Read the tickets").DecisionMode(mode).WithAgent(agent).WithTask(CreateTask());
+
+        // Act
+        builder.Build();
+
+        // Assert
+        Assert.Equal(expectedPrune, agent.Compaction?.Prune);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseTheCrew_WhenANoneCrewHasAnAgentOnSkillsAuto()
+    {
+        // Arrange
+        var agent = new AgentBuilder().Role("Writer").Goal("Write").Skills(new AgentSkills { Auto = true }).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None).WithAgent(agent).WithTask(CreateTask());
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Agent 'Writer' declares skills: { auto: true }", ex.Message, StringComparison.Ordinal);
+    }
+
     #region Test Doubles
 
     private sealed class StubLlmProvider : ILlmProvider

@@ -203,15 +203,18 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
     /// <summary>
     /// The decision circuit a run was started with, as its checkpoint shows it (#430): on when a recorded decision
     /// was answered by the model, off when one was answered by the relay or the fallback; null when it recorded
-    /// no decision, or only checkpoints written before the source was kept.
+    /// no decision, or only checkpoints written before the source was kept. Only the decisions the resume could
+    /// replay count: those of a decision task the crew still declares.
     /// </summary>
     /// <param name="completedOutputs">The stored outputs of the run, by checkpoint key.</param>
-    internal static bool? RecordedDecisionCircuit(IReadOnlyDictionary<string, string?> completedOutputs)
+    /// <param name="decisionTaskKeys">The keys of the crew's decision tasks; null counts every stored output.</param>
+    internal static bool? RecordedDecisionCircuit(
+        IReadOnlyDictionary<string, string?> completedOutputs, IReadOnlyCollection<string>? decisionTaskKeys = null)
     {
         ArgumentNullException.ThrowIfNull(completedOutputs);
-        foreach (var output in completedOutputs.Values)
+        foreach (var (key, output) in completedOutputs)
         {
-            if (output is null)
+            if (output is null || (decisionTaskKeys is not null && !decisionTaskKeys.Any(task => IsKeyOf(key, task))))
                 continue;
             string? source;
             try
@@ -229,6 +232,12 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
 
         return null;
     }
+
+    // A checkpoint key is the task's key, its slot after '@' when it has one, then '#' and the ordinal (OpenAsync).
+    private static bool IsKeyOf(string checkpointKey, string taskKey) =>
+        checkpointKey.Length > taskKey.Length
+            && checkpointKey.StartsWith(taskKey, StringComparison.Ordinal)
+            && checkpointKey[taskKey.Length] is '#' or '@';
 
     private StoredResult? Lookup(RunScope run, RunState state, string key, string fingerprint, ICrewTask task)
     {

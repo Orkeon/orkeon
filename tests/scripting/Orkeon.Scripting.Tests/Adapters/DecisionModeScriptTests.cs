@@ -86,4 +86,20 @@ public sealed class DecisionModeScriptTests
         // Assert
         Assert.Contains("without.agent 'analyst' is not an agent of the crew", error.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldKeyEachAgentByItsName_WhenItsRoleDiffers()
+    {
+        // Arrange
+        var crew = Crew(".decision({ mode: \"optional\" })", Relay);
+
+        // Act
+        var config = JsCrewConfigurationAdapter.ToConfiguration(crew);
+
+        // Assert
+        Assert.Equal(
+            [("analyst", "Analyst"), ("writer", "Writer")],
+            config.Agents.Select(a => (a.Key, a.Role)).ToList());
+    }
 }

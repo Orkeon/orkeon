@@ -12,7 +12,8 @@ public static class RunExitCodes
     /// <summary>
     /// The run was refused before its first task (<c>EX_UNAVAILABLE</c>): the crew requires System One
     /// (<c>decision.mode: required</c>) and the decision circuit is off - <c>--no-decision</c>,
-    /// <c>Orkeon:Decision:Enabled=false</c>, or no decision provider resolved (#429).
+    /// <c>Orkeon:Decision:Enabled=false</c>, or no decision provider resolved (#429) -, or an <c>optional</c> crew is
+    /// resumed under the other circuit than the one its recorded decisions were taken with (#430).
     /// </summary>
     public const int DecisionUnavailable = 69;
 }

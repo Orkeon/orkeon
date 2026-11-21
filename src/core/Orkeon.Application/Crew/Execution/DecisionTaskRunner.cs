@@ -59,6 +59,20 @@ public sealed class DecisionTaskRunner
     /// </summary>
     public DecisionCircuit Circuit => _circuit.Enabled && _model is null ? DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider) : _circuit;
 
+    /// <summary>
+    /// What answers <paramref name="task"/> under this runner's circuit: the decision model with it on; with it
+    /// off, the task's <c>without:</c> relay when it declares one, else its fallback.
+    /// </summary>
+    /// <param name="task">The decision task.</param>
+    /// <returns>One of <see cref="DecisionSources"/>.</returns>
+    public string SourceOf(CrewTask task)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+        if (IsEnabled)
+            return DecisionSources.Model;
+        return task.Decision?.Without is not null ? DecisionSources.Relay : DecisionSources.Fallback;
+    }
+
     /// <summary>Runs a decision task.</summary>
     /// <param name="task">The decision task.</param>
     /// <param name="inputs">The outputs of the tasks it depends on, labelled by task name.</param>

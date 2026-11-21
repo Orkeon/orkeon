@@ -70,7 +70,9 @@ and misleads one that cannot. A crew now declares which it is, in a crew-level `
 never asks System One), `optional` (each decision task names a `without:` relay, an agent of the crew that answers
 with the circuit off, in place of a fallback) or `required` (a run with the circuit off is refused before its first
 task, exit `69`, code `decision_unavailable`). A crew with no mode keeps the fallback semantics above. The rules live
-in `DecisionTaskRules` beside the existing ones, so YAML, `.ork.ts` and C# crews meet the same checks; the refusal
+in `DecisionTaskRules` beside the existing ones, so YAML, `.ork.ts` and C# crews meet the same checks (a C# crew's
+relay names an agent by its role, and its decision profiles are checked only by the crew factory, which knows the
+host's profiles); the refusal
 sits in the orchestrator, before memory and planning, so every process and every host enforces it. The relay itself
 is declared and checked at load here and run by a later change (#430). See
 [Decision models](../architecture/decision-models.md#a-crews-decision-mode).

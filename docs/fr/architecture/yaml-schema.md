@@ -36,6 +36,7 @@ maxRpm: int               # default: aucun — au plus N requêtes au modèle pa
 budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous seulement — voir Budget autonome plus bas ; default: aucun plafond de tokens ni de durée, 50 / 4 / 10
 managerAgent: string      # La clé d'un des agents de la crew (tout autre nom fait échouer le chargement, en les listant). Hiérarchique : le manager — requis (omis, le chargement échoue) ; il assigne et revoit sur son propre bloc llm:, profil et modèle. Consensual : l'arbitre du repli ManagerDecision (inactif, avec un avertissement au début du run, sous un autre repli). Tout autre process : refusé au chargement
 graph: {…}                # Mode Graph : nœuds, arêtes et réglages du circuit breaker (voir la section dédiée)
+decision: {mode}          # mode : "none" | "optional" | "required" (insensible à la casse) — ce dont la crew a besoin de System One ; omis, le mode est non spécifié ; un mode inconnu ou absent fait échouer le chargement. Voir le mode de décision d'une crew dans decision-models.md
 
 llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAMP sous le llm: propre de chaque agent (même forme que agents.<id>.llm)
   profile: string         # Profil LLM de l'hôte (Llm:Profiles:<nom>) pour tous les agents — inconnu → le chargement échoue en listant les profils de l'hôte

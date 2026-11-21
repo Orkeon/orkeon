@@ -395,11 +395,18 @@ Une crew dit ce qu'elle attend de System One dans un bloc `decision:` au niveau 
 | `fallback` | s.o. | Refusé : jamais utilisé. | Un avertissement : jamais utilisé ; la règle repli-ou-otherwise ne s'applique pas. |
 | `system_one_decide` dans `tools:` | Refusé. | Refusé. | Permis. |
 | Profil de décision (`llm.profile`, `llm_override.profile`) | Refusé. | Permis ; circuit coupé, ses étapes se dégradent comme dans le tableau ci-dessus. | Permis. |
+| Routage d'agent (`llm.profile: auto`) | Refusé. | Permis ; circuit coupé, la tâche tourne sur le profil par défaut. | Permis. |
+| Skills d'agent (`skills: { auto: true }`) | Refusé : lister les skills à la place. | Permis ; circuit coupé, l'agent porte sa liste `fallback`. | Permis. |
+| Élagage des résultats d'outils (`compaction: { prune: true }`) | Refusé ; le `Orkeon:Compaction:Prune` de l'hôte ne s'applique pas à ses agents. | Permis ; circuit coupé, rien n'est élagué. | Permis. |
 
 Une crew sans mode ne peut pas déclarer de relais `without:` : le chargement demande `decision.mode: optional`. Un
 relais nomme un agent de la crew (`without: { agent, instructions }`, `instructions` facultatif), et un agent que la
 crew ne déclare pas est refusé au chargement. Une crew `required` qui ne demande rien à System One (aucune tâche de
-décision, aucun `system_one_decide`, aucun profil de décision) se charge avec un avertissement.
+décision, aucun `system_one_decide`, aucun profil de décision, aucun `llm.profile: auto`, aucun `skills: { auto: true }`,
+aucun `compaction: { prune: true }`) se charge avec un avertissement. Une crew construite en C# rencontre ces règles à
+`CrewBuilder.Build()`, avec deux différences : son relais nomme un agent par son rôle (une fabrique de crew résout la
+clé d'un YAML ou d'un `.ork.ts` vers l'agent), et ses profils de décision n'y sont pas vérifiés, car seule la fabrique
+de crew connaît les profils de l'hôte.
 
 Avec `mode: required` et le circuit coupé, quelle qu'en soit la cause, le run est **refusé avant sa première tâche**,
 dans chaque processus et chaque hôte : `crew 'x' requires System One (decision.mode: required) and the decision

@@ -15,6 +15,14 @@ public static class DecisionTaskRules
     public static string UnsupportedProcessMessage(string taskName, ProcessType process) =>
         $"Task '{taskName}' declares a decision or a condition, which the {process} process does not support.";
 
+    /// <summary>
+    /// The refusal of a crew whose <c>decision.mode</c> breaks a rule of <see cref="CheckMode"/>: one spelling for
+    /// every loader (YAML, <c>.ork.ts</c>, the crew factory).
+    /// </summary>
+    /// <param name="refusals">The refusals <see cref="CheckMode"/> found.</param>
+    public static string ModeRefusal(IEnumerable<string> refusals) =>
+        "Invalid decision.mode declaration: " + string.Join(" ", refusals);
+
     /// <summary>Checks the declarations, one message per fault.</summary>
     public static IReadOnlyList<string> Check(ProcessType process, IReadOnlyList<DecisionTaskDeclaration> tasks)
     {
@@ -99,6 +107,10 @@ public static class DecisionTaskRules
                 refusals.AddRange(profiles.Select(p => string.Equals(p.Profile, Orkeon.Constants.Llm.LlmProfileNames.Auto, StringComparison.OrdinalIgnoreCase)
                     ? $"{Capitalized(p.Holder)} names the profile '{p.Profile}', which System One picks and a crew with decision.mode: none refuses."
                     : $"{Capitalized(p.Holder)} names the decision profile '{p.Profile}', which a crew with decision.mode: none refuses."));
+                refusals.AddRange(uses.SkillsAutoHolders.Select(h =>
+                    $"{Capitalized(h)} declares skills: {{ auto: true }}, which System One picks and a crew with decision.mode: none refuses: list its skills instead."));
+                refusals.AddRange(uses.PruneHolders.Select(h =>
+                    $"{Capitalized(h)} declares compaction: {{ prune: true }}, which the decision model judges and a crew with decision.mode: none refuses."));
                 break;
 
             case CrewDecisionMode.Optional:
@@ -128,8 +140,10 @@ public static class DecisionTaskRules
                         warnings.Add($"Decision task '{task.Name}' declares a without: relay, which a crew with decision.mode: required never uses.");
                 }
 
-                if (uses.DecisionProfiles is not null && decisions.Count == 0 && uses.DecideToolHolders.Count == 0 && profiles.Count == 0)
-                    warnings.Add("The crew requires System One but asks it nothing: it has no decision task, no system_one_decide and no decision profile.");
+                if (uses.DecisionProfiles is not null && decisions.Count == 0 && uses.DecideToolHolders.Count == 0 && profiles.Count == 0
+                    && uses.SkillsAutoHolders.Count == 0 && uses.PruneHolders.Count == 0)
+                    warnings.Add("The crew requires System One but asks it nothing: it has no decision task, no system_one_decide, no decision profile, " +
+                        "no skills: { auto: true } and no compaction: { prune: true }.");
                 break;
 
             default:

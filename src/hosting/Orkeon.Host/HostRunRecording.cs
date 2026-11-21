@@ -51,7 +51,7 @@ internal sealed class HostRunRecording
 
     /// <summary>
     /// Records that the run was refused before its first task: its crew requires System One and the decision
-    /// circuit is off (#429), exit 69.
+    /// circuit is off (#429), or an optional crew is resumed under the other circuit (#430), exit 69.
     /// </summary>
     public bool DecisionUnavailable { get; set; }
 

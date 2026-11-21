@@ -34,6 +34,7 @@ maxRpm: int               # default: none — at most N model requests per minut
 budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous only — see Autonomous budget below; default: no token or time cap, 50 / 4 / 10
 managerAgent: string      # The key of one of the crew's agents (any other name fails the load, listing them). Hierarchical: the manager — required (omitted, the load fails); it assigns and reviews on its own llm: block, profile and model. Consensual: the arbiter of the ManagerDecision fallback (idle, with a warning at the start of the run, under another fallback). Any other process: refused at load
 graph: {…}                # Graph mode: nodes, edges and the circuit-breaker settings (see the dedicated section)
+decision: {mode}          # mode: "none" | "optional" | "required" (case-insensitive) — what the crew needs from System One; omitted, the mode is unspecified; an unknown or missing mode fails the load. See a crew's decision mode in decision-models.md
 
 llm:                      # Crew-default LLM, merged FIELD BY FIELD under each agent's own llm: (same shape as agents.<id>.llm)
   profile: string         # Host LLM profile (Llm:Profiles:<name>) for every agent — unknown → the load fails, listing the host's profiles

@@ -333,4 +333,88 @@ public sealed class DecisionRelayRunnerTests
         // Assert
         Assert.Equal(DecisionSources.Model, result.DecisionSource);
     }
+
+    public static TheoryData<string, string, string> RefusedAnswers => new()
+    {
+        { "a key that is no question", """{"route":{"bug":0.6,"other":0.4},"note":0.1}""", "the answer has a key 'note', which is not a question" },
+        { "an option the choice lacks", """{"route":{"bug":0.6,"other":0.3,"feature":0.1}}""", "question 'route' has no option 'feature'" },
+    };
+
+    [Theory]
+    [MemberData(nameof(RefusedAnswers))]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldAskAgainNamingTheFault_WhenTheAnswerCarriesAKeyTheQuestionsDoNotHave(string name, string answer, string reason)
+    {
+        // Arrange
+        _relay.Answers = [answer, """{"route":{"bug":0.6,"other":0.4}}"""];
+
+        // Act
+        var result = await RunOffAsync(Decision(Route()));
+
+        // Assert
+        Assert.True(result.Success && _relay.Requests[1].Prompt.Contains(reason, StringComparison.Ordinal), $"{name}: {_relay.Requests[1].Prompt}");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldAskAgainSayingItIsNotANumber_WhenAYesNoIsGivenAsAnObject()
+    {
+        // Arrange
+        _relay.Answers = ["""{"urgent":{"yes":0.7}}""", """{"urgent":0.7}"""];
+
+        // Act
+        await RunOffAsync(Decision(Urgent()));
+
+        // Assert
+        Assert.Contains("question 'urgent' is not a number", _relay.Requests[1].Prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldCountTheTokensOfBothCalls_WhenTheRelayIsRefusedTwice()
+    {
+        // Arrange
+        _relay.Answers = ["not json"];
+        _relay.InputTokens = 100;
+        _relay.OutputTokens = 20;
+
+        // Act
+        var result = await RunOffAsync(Decision(Route()));
+
+        // Assert
+        Assert.Equal((false, 200, 40, 240), (result.Success, result.PromptTokens, result.CompletionTokens, result.TokensUsed));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldBoundNoProbabilityInTheSchema_WhenAskingTheRelay()
+    {
+        // Arrange
+        _relay.Answers = ["""{"route":{"bug":0.6,"other":0.4},"urgent":0.4}"""];
+        var decision = TaskDecision.Create([Route(), Urgent()], null, null, false, null).WithRelay(new DecisionRelay("analyst"));
+
+        // Act
+        await RunOffAsync(decision);
+
+        // Assert
+        var schema = _relay.Requests[0].Schema;
+        Assert.False(schema.Contains("minimum", StringComparison.Ordinal) || schema.Contains("maximum", StringComparison.Ordinal), schema);
+    }
+
+    [Theory]
+    [InlineData(true, true, DecisionSources.Model)]
+    [InlineData(false, true, DecisionSources.Relay)]
+    [InlineData(false, false, DecisionSources.Fallback)]
+    [Trait("BR", "CH-430")]
+    public void ShouldNameTheSourceTheRunnerWouldAsk_WhenTheCircuitAndTheRelayVary(bool circuitOn, bool relayed, string expected)
+    {
+        // Arrange
+        var decision = relayed ? Decision(Route()) : TaskDecision.Create([Route()], null, null, false, null);
+
+        // Act
+        var source = Runner(circuitOn ? DecisionCircuit.On : DecisionCircuit.Off).SourceOf(Task(decision));
+
+        // Assert
+        Assert.Equal(expected, source);
+    }
 }

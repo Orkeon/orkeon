@@ -113,3 +113,8 @@ static Orkeon.Domain.Agent.AgentSkills.operator !=(Orkeon.Domain.Agent.AgentSkil
 static Orkeon.Domain.Agent.AgentSkills.operator ==(Orkeon.Domain.Agent.AgentSkills? left, Orkeon.Domain.Agent.AgentSkills? right) -> bool
 Orkeon.Domain.Configuration.AgentConfiguration.Skills.get -> Orkeon.Domain.Agent.AgentSkills?
 Orkeon.Domain.Configuration.AgentConfiguration.Skills.init -> void
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.PruneHolders.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.PruneHolders.init -> void
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.SkillsAutoHolders.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.SkillsAutoHolders.init -> void
+static Orkeon.Domain.Task.DecisionTaskRules.ModeRefusal(System.Collections.Generic.IEnumerable<string!>! refusals) -> string!

@@ -76,7 +76,8 @@ niveau de la crew : `none` (elle ne demande jamais rien à System One), `optiona
 relais `without:`, un agent de la crew qui répond circuit coupé, à la place d'un repli) ou `required` (un run circuit
 coupé est refusé avant sa première tâche, sortie `69`, code `decision_unavailable`). Une crew sans mode garde la
 sémantique de repli ci-dessus. Les règles vivent dans `DecisionTaskRules` à côté des autres, si bien que les crews
-YAML, `.ork.ts` et C# passent les mêmes vérifications ; le refus se tient dans l'orchestrateur, avant la mémoire et la
+YAML, `.ork.ts` et C# passent les mêmes vérifications (le relais d'une crew C# nomme un agent par son rôle, et ses
+profils de décision ne sont vérifiés que par la fabrique de crew, qui connaît les profils de l'hôte) ; le refus se tient dans l'orchestrateur, avant la mémoire et la
 planification, si bien que chaque processus et chaque hôte l'applique. Le relais lui-même est déclaré et vérifié au
 chargement ici, et exécuté par un changement ultérieur (#430). Voir
 [Modèles de décision](../architecture/decision-models.md#le-mode-de-décision-dune-crew).

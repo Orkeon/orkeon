@@ -147,4 +147,25 @@ public sealed class LlmDecisionRelayTests : IDisposable
         // Assert
         Assert.Equal((1, "small-1"), (fast.GetResponseCallCount, fast.LastGetResponseOptions!.ModelId));
     }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldPassTheStopSequencesAndThePenaltiesOfTheAgent_WhenAskingTheRelay()
+    {
+        // Arrange
+        _client.SetGetResponseResult(Answer);
+        var agent = Analyst(b => b.WithLlmConfig(LlmConfig.Create("analyst-1") with
+        {
+            StopSequences = ["END"],
+            FrequencyPenalty = 0.5,
+            PresencePenalty = 0.25,
+        }));
+
+        // Act
+        await AskAsync(agent);
+
+        // Assert
+        var options = _client.LastGetResponseOptions!;
+        Assert.Equal(("END", 0.5f, 0.25f), (string.Join(",", options.StopSequences ?? []), options.FrequencyPenalty, options.PresencePenalty));
+    }
 }

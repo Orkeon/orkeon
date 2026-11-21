@@ -224,4 +224,24 @@ public sealed class CrewBuilderTests
 
         Assert.StartsWith("true|DuplicateAgentNameException|", caught, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData("Required", Orkeon.Domain.Crew.CrewDecisionMode.Required)]
+    [InlineData(" OPTIONAL ", Orkeon.Domain.Crew.CrewDecisionMode.Optional)]
+    [InlineData("None", Orkeon.Domain.Crew.CrewDecisionMode.None)]
+    [Trait("BR", "CH-429")]
+    public void ShouldReadTheDecisionMode_WhenTheScriptWritesItInAnotherCaseOrWithSpaces(string written, Orkeon.Domain.Crew.CrewDecisionMode expected)
+    {
+        // Arrange
+        var engine = NewEngine();
+
+        // Act
+        var crew = Eval<JsCrew>(engine, $$"""
+            const a = agentBuilder().name("A").role("R").goal("G").build();
+            crewBuilder().name("c").decision({ mode: "{{written}}" }).withAgent(a).build();
+            """);
+
+        // Assert
+        Assert.Equal(expected, crew.DecisionMode);
+    }
 }

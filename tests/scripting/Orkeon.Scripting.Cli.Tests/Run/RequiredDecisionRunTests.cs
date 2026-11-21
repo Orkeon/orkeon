@@ -15,9 +15,15 @@ public sealed class RequiredDecisionRunTests
         name: triage-crew
         goal: Triage the tickets
         process: {{process}}
+        {{(process == "hierarchical" ? "managerAgent: chief" : string.Empty)}}
         decision:
           mode: required
         agents:
+          chief:
+            role: "Chief"
+            goal: "Coordinate"
+            backstory: "Assigns the work."
+            allowDelegation: true
           reader:
             role: "Reader"
             goal: "Read"
@@ -31,17 +37,20 @@ public sealed class RequiredDecisionRunTests
             agent: reader
         """;
 
-    private static async Task<(int Exit, TestConsole Console)> RunAsync(ScriptScratch scratch, string process, bool validate = false)
+    private const string PlainSettings = """{ "RaggableTree": { "Enabled": false } }""";
+
+    private static async Task<(int Exit, TestConsole Console)> RunAsync(
+        ScriptScratch scratch, string process, bool validate = false, bool noDecision = true, string settingsJson = PlainSettings)
     {
         var crew = scratch.WriteScript("crew.yaml", Crew(process));
-        var settings = scratch.WriteFile("appsettings.json", """{ "RaggableTree": { "Enabled": false } }""");
+        var settings = scratch.WriteFile("appsettings.json", settingsJson);
         var console = new TestConsole(stdin: string.Empty);
         var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = crew,
             SettingsPath = settings,
             AllowExternalMounts = true,
-            NoDecision = true,
+            NoDecision = noDecision,
             Validate = validate,
             Events = validate ? null : "jsonl",
         });
@@ -69,6 +78,76 @@ public sealed class RequiredDecisionRunTests
             "crew 'triage-crew' requires System One (decision.mode: required) and the decision circuit is off: --no-decision",
             console.Stderr + console.Stdout,
             StringComparison.Ordinal);
+    }
+
+    public static TheoryData<string, string> CausesByProcess()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var cause in new[] { "switch", "settings", "no-provider" })
+            foreach (var process in new[] { "sequential", "parallel", "autonomous", "hierarchical", "consensual", "graph" })
+                data.Add(cause, process);
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(CausesByProcess))]
+    [Trait("BR", "CH-429")]
+    public async Task ShouldRefuseTheRunWithExit69NamingTheCause_WhenARequiredCrewRunsWithTheCircuitOffInAnyProcess(string cause, string process)
+    {
+        // Arrange
+        using var scratch = new ScriptScratch();
+        var (noDecision, settings, reason) = cause switch
+        {
+            "switch" => (true, PlainSettings, "--no-decision"),
+            "settings" => (false, """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Decision": { "Enabled": false } } }""", "Orkeon:Decision:Enabled=false"),
+            _ => (false, PlainSettings, "no decision provider resolved"),
+        };
+
+        // Act
+        var (exit, console) = await RunAsync(scratch, process, noDecision: noDecision, settingsJson: settings);
+
+        // Assert
+        using var _ = console;
+        var expected = "crew 'triage-crew' requires System One (decision.mode: required) and the decision circuit is off: " + reason;
+        Assert.True(
+            exit == 69 && (console.Stderr + console.Stdout).Contains(expected, StringComparison.Ordinal),
+            $"{cause}/{process}: exit {exit}: {console.Stderr}{console.Stdout}");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public async Task ShouldWriteTheDecisionEventBeforeTheFirstTaskStarts_WhenACrewRunsWithEvents()
+    {
+        // Arrange
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteScript("crew.yaml", """
+            name: plain
+            goal: Read the ticket
+            decision:
+              mode: none
+            agents:
+              reader: { role: Reader, goal: Read, backstory: Reads tickets. }
+            tasks:
+              read: { description: Read the ticket., expected_output: A summary., agent: reader }
+            """);
+        var settings = scratch.WriteFile("appsettings.json", PlainSettings);
+        using var console = new TestConsole(stdin: string.Empty);
+
+        // Act
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
+        {
+            ScriptPath = crew,
+            SettingsPath = settings,
+            AllowExternalMounts = true,
+            Events = "jsonl",
+        });
+
+        // Assert
+        var kinds = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonElement.Parse(line).GetProperty("kind").GetString()).ToList();
+        var decision = kinds.IndexOf("run.decision");
+        var started = kinds.IndexOf("task.started");
+        Assert.True(exit == Program.ExitOk && decision >= 0 && started > decision, $"exit {exit}: {string.Join(", ", kinds)} {console.Stderr}");
     }
 
     [Fact]

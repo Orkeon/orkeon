@@ -171,13 +171,15 @@ internal sealed partial class JsCrewBuilder
         var mode = spec.AsObject().Get("mode");
         if (!mode.IsString())
             throw new InvalidScriptException("crewBuilder().decision({ mode }) names a mode: 'none', 'optional' or 'required'.");
-        _decisionMode = mode.AsString() switch
+        // Trimmed and case-blind, as the YAML loader reads decision.mode.
+        var written = mode.AsString().Trim();
+        _decisionMode = written.ToUpperInvariant() switch
         {
-            "none" => Orkeon.Domain.Crew.CrewDecisionMode.None,
-            "optional" => Orkeon.Domain.Crew.CrewDecisionMode.Optional,
-            "required" => Orkeon.Domain.Crew.CrewDecisionMode.Required,
-            var other => throw new InvalidScriptException(
-                $"crewBuilder().decision({{ mode: '{other}' }}): not a mode; expected 'none', 'optional' or 'required'."),
+            "NONE" => Orkeon.Domain.Crew.CrewDecisionMode.None,
+            "OPTIONAL" => Orkeon.Domain.Crew.CrewDecisionMode.Optional,
+            "REQUIRED" => Orkeon.Domain.Crew.CrewDecisionMode.Required,
+            _ => throw new InvalidScriptException(
+                $"crewBuilder().decision({{ mode: '{written}' }}): not a mode; expected 'none', 'optional' or 'required'."),
         };
         return this;
     });

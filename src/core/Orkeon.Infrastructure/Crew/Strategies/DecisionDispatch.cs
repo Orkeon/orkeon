@@ -79,7 +79,8 @@ internal sealed class DecisionDispatch
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // A decision model that breaks fails its task, like an agent that fails: the dependants take the blocked path.
-            return new TaskResult(false, string.Empty, null, [], TimeSpan.Zero, ex.Message);
+            // The failure names what the runner was asking, as one the runner reports itself does.
+            return new TaskResult(false, string.Empty, null, [], TimeSpan.Zero, ex.Message) { DecisionSource = _runner.SourceOf(task) };
         }
     }
 }

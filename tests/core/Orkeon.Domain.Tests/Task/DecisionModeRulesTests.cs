@@ -233,7 +233,7 @@ public sealed class DecisionModeRulesTests
 
         // Assert
         Assert.Equal(
-            ["The crew requires System One but asks it nothing: it has no decision task, no system_one_decide and no decision profile."],
+            ["The crew requires System One but asks it nothing: it has no decision task, no system_one_decide, no decision profile, no skills: { auto: true } and no compaction: { prune: true }."],
             findings.Warnings);
     }
 
@@ -357,5 +357,80 @@ public sealed class DecisionModeRulesTests
         // Assert
         Assert.Equal(["agent 'reader'"], uses.DecideToolHolders);
         Assert.Equal([new DecisionProfileUse("agent 'router'", "triage-router")], uses.DecisionProfiles!);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseSkillsAuto_WhenTheModeIsNone()
+    {
+        // Arrange
+        var uses = new SystemOneUses([], []) { SkillsAutoHolders = ["agent 'writer'"] };
+
+        // Act
+        var findings = DecisionTaskRules.CheckMode(CrewDecisionMode.None, ProcessType.Sequential, [PlainTask("write")], uses);
+
+        // Assert
+        Assert.Equal(
+            ["Agent 'writer' declares skills: { auto: true }, which System One picks and a crew with decision.mode: none refuses: list its skills instead."],
+            findings.Refusals);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefusePruning_WhenTheModeIsNone()
+    {
+        // Arrange
+        var uses = new SystemOneUses([], []) { PruneHolders = ["agent 'reader'"] };
+
+        // Act
+        var findings = DecisionTaskRules.CheckMode(CrewDecisionMode.None, ProcessType.Sequential, [PlainTask("read")], uses);
+
+        // Assert
+        Assert.Equal(
+            ["Agent 'reader' declares compaction: { prune: true }, which the decision model judges and a crew with decision.mode: none refuses."],
+            findings.Refusals);
+    }
+
+    public static TheoryData<string, SystemOneUses> PickingUses => new()
+    {
+        { "skills: auto", new SystemOneUses([], []) { SkillsAutoHolders = ["agent 'writer'"] } },
+        { "compaction.prune: true", new SystemOneUses([], []) { PruneHolders = ["agent 'reader'"] } },
+    };
+
+    [Theory]
+    [MemberData(nameof(PickingUses))]
+    [Trait("BR", "CH-429")]
+    public void ShouldNotWarnThatItAsksNothing_WhenARequiredCrewHasTheModelPickSkillsOrJudgeResults(string name, SystemOneUses uses)
+    {
+        // Arrange
+        var tasks = new[] { PlainTask("read") };
+
+        // Act
+        var findings = DecisionTaskRules.CheckMode(CrewDecisionMode.Required, ProcessType.Sequential, tasks, uses);
+
+        // Assert
+        Assert.True(findings.Warnings.Count == 0, $"{name}: {string.Join(" | ", findings.Warnings)}");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldListTheAgentsOnSkillsAutoAndOnPruning_WhenTheConfigurationDeclaresThem()
+    {
+        // Arrange
+        var config = new CrewConfiguration
+        {
+            Agents =
+            [
+                new AgentConfiguration { Key = "writer", Role = "Writer", Skills = new Orkeon.Domain.Agent.AgentSkills { Auto = true } },
+                new AgentConfiguration { Key = "reader", Role = "Reader", Compaction = new Orkeon.Domain.Agent.AgentCompaction { Prune = true } },
+                new AgentConfiguration { Key = "editor", Role = "Editor", Compaction = new Orkeon.Domain.Agent.AgentCompaction { Prune = false } },
+            ],
+        };
+
+        // Act
+        var uses = config.SystemOneUses();
+
+        // Assert
+        Assert.Equal("agent 'writer' / agent 'reader'", $"{string.Join(", ", uses.SkillsAutoHolders)} / {string.Join(", ", uses.PruneHolders)}");
     }
 }

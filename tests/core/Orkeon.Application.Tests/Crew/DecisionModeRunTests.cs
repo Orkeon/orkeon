@@ -23,7 +23,8 @@ public sealed class DecisionModeRunTests
     {
         var builder = new CrewBuilder().Name("triage-crew").Goal("Triage").DecisionMode(mode);
         if (mode == CrewDecisionMode.Optional)
-            builder.WithTasks([new CrewTaskBuilder().WithKey("triage").Description("Decide").ExpectedOutput("An outcome").WithDecision(Relayed()).Build()]);
+            builder.WithAgent(new Orkeon.Domain.Agent.AgentBuilder().Role("analyst").Goal("Triage the reports").Build())
+                .WithTasks([new CrewTaskBuilder().WithKey("triage").Description("Decide").ExpectedOutput("An outcome").WithDecision(Relayed()).Build()]);
         return builder.Build();
     }
 

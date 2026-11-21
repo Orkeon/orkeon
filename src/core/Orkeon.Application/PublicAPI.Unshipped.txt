@@ -42,6 +42,7 @@ Orkeon.Application.Crew.Execution.DecisionUnavailableException.DecisionUnavailab
 const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Relay = "relay" -> string!
 Orkeon.Application.Crew.Execution.DecisionTaskRunner.DecisionTaskRunner(Orkeon.Application.Interfaces.Ports.IDecisionModel? model, Orkeon.Application.Interfaces.Ports.IDecisionRelay? relay, Orkeon.Application.Crew.Execution.DecisionCircuit! circuit, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner!>! logger) -> void
 Orkeon.Application.Crew.Execution.DecisionTaskRunner.RunAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<(string! TaskName, string! Output)>! inputs, Orkeon.Domain.Agent.Agent? relayAgent, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.TaskResult!>!
+Orkeon.Application.Crew.Execution.DecisionTaskRunner.SourceOf(Orkeon.Domain.Task.CrewTask! task) -> string!
 Orkeon.Application.Crew.TaskExecutionSnapshot.DecisionSource.get -> string?
 Orkeon.Application.Crew.TaskExecutionSnapshot.DecisionSource.init -> void
 Orkeon.Application.Decision.DTOs.DecisionRelayRequest

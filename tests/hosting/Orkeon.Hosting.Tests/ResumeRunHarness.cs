@@ -117,6 +117,17 @@ internal sealed partial class ResumeRunHarness : IDisposable
         return path;
     }
 
+    /// <summary>Writes <paramref name="script"/> as <c>crew.ork.ts</c> in <paramref name="folder"/>, beside the run's settings.</summary>
+    public string WriteCrewScript(string folder, string script, string settings = Settings)
+    {
+        var dir = Path.Combine(_root, folder);
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "appsettings.json"), settings);
+        var path = Path.Combine(dir, "crew.ork.ts");
+        File.WriteAllText(path, script);
+        return path;
+    }
+
 #pragma warning disable CA1822 // an instance member: the harness is the one thing a test holds
     /// <summary>Runs the crew once through the runner, with <paramref name="service"/> as its agents' model.</summary>
     public async Task<(int Exit, string Stderr, string Stdout)> RunAsync(

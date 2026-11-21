@@ -170,4 +170,64 @@ public sealed class DecisionRelayResumeTests
                 && resumed.Stderr.Contains($"was started with the decision circuit {(startedOn ? "on" : "off")}", StringComparison.Ordinal),
             $"exit={resumed.Exit} calls={resumedService.Calls.Count} stderr={resumed.Stderr}");
     }
+
+    [Theory]
+    [InlineData("parallel", true)]
+    [InlineData("parallel", false)]
+    [InlineData("graph", true)]
+    [InlineData("graph", false)]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldRefuseTheResume_WhenAParallelOrGraphCrewIsResumedUnderTheOtherCircuit(string process, bool startedOn)
+    {
+        // Arrange
+        using var harness = new ResumeRunHarness();
+        var crew = harness.WriteCrewYaml("crew", Crew(harness.CrewName, process));
+        var ct = TestContext.Current.CancellationToken;
+        var killed = new FakeAgentExecutionService();
+        killed.FailOnCall["answer"] = 1;
+        await harness.RunAsync(crew, killed, configure: Circuit.Of(startedOn).Configure, ct: ct);
+        var resumedService = new FakeAgentExecutionService();
+
+        // Act
+        var resumed = await harness.RunAsync(crew, resumedService, resume: "latest", configure: Circuit.Of(!startedOn).Configure, ct: ct);
+
+        // Assert
+        Assert.True(
+            resumed.Exit != 0 && resumedService.Calls.Count == 0
+                && resumed.Stderr.Contains($"was started with the decision circuit {(startedOn ? "on" : "off")}", StringComparison.Ordinal),
+            $"exit={resumed.Exit} calls={resumedService.Calls.Count} stderr={resumed.Stderr}");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldAskTheRelayAgentByItsName_WhenAScriptedCrewRunsWithTheCircuitOffAndTheRoleDiffers()
+    {
+        // Arrange
+        using var harness = new ResumeRunHarness();
+        var crew = harness.WriteCrewScript("crew", $$"""
+            /// <reference orkeon-script="1.0" />
+            const analyst = agentBuilder().name("analyst").role("Analyst").goal("Judge the ticket").build();
+            const worker = agentBuilder().name("worker").role("Worker").goal("Work").build();
+            const intake = taskBuilder().name("intake").agent(worker).description("Read the ticket.").expectedOutput("A summary.").build();
+            const triage = taskBuilder().name("triage").decision({
+                questions: { route: { choice: { bug: "a defect", other: "anything else" } } },
+                state: ["intake"],
+                without: { agent: "analyst" },
+            }).build();
+            const crew = crewBuilder().name("{{harness.CrewName}}").goal("Triage a ticket").decision({ mode: "optional" })
+                .withAgent(analyst).withAgent(worker).withTask(intake).withTask(triage).build();
+            (globalThis as any).crew = crew;
+            """);
+        var circuit = Circuit.Of(on: false);
+        var hook = new FakeCrewExecutionHook();
+
+        // Act
+        var run = await harness.RunAsync(crew, new FakeAgentExecutionService(), hook: hook, configure: circuit.Configure, ct: TestContext.Current.CancellationToken);
+
+        // Assert
+        var decision = hook.Completed.Single(s => s.IsDecision);
+        Assert.True(
+            run.Exit == 0 && circuit.Relay.Calls == 1 && decision.DecisionSource == DecisionSources.Relay && decision.Success,
+            $"exit={run.Exit} relay={circuit.Relay.Calls} source={decision.DecisionSource} stderr={run.Stderr}");
+    }
 }

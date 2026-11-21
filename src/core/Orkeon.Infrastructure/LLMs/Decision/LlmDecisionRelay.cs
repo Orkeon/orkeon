@@ -92,6 +92,13 @@ internal sealed class LlmDecisionRelay : IDecisionRelay
             options.TopP = (float)topP;
         if (llm.Seed is { } seed)
             options.Seed = seed;
+        // The penalties have no unset value: 0 is every vendor's default, so one is sent when it is not 0.
+        if (llm.FrequencyPenalty != 0.0)
+            options.FrequencyPenalty = (float)llm.FrequencyPenalty;
+        if (llm.PresencePenalty != 0.0)
+            options.PresencePenalty = (float)llm.PresencePenalty;
+        if (llm.StopSequences is { Count: > 0 } stopSequences)
+            options.StopSequences = [.. stopSequences];
         return options;
     }
 }

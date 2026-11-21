@@ -163,6 +163,43 @@ tasks:
         Assert.Contains("Agent 'reader' lists system_one_decide, which a crew with decision.mode: none refuses.", ex.Message, StringComparison.Ordinal);
     }
 
+    public static TheoryData<string, string> PickingAgents => new()
+    {
+        { "skills: { auto: true }", "Agent 'reader' declares skills: { auto: true }, which System One picks and a crew with decision.mode: none refuses" },
+        { "compaction: { prune: true }", "Agent 'reader' declares compaction: { prune: true }, which the decision model judges and a crew with decision.mode: none refuses." },
+    };
+
+    [Theory]
+    [MemberData(nameof(PickingAgents))]
+    [Trait("BR", "CH-429")]
+    public async Task ShouldRefuseTheLoad_WhenACrewWithModeNoneHasTheModelPickSkillsOrJudgeResults(string agentKey, string expected)
+    {
+        // Arrange
+        var yaml = "name: plain\ngoal: Read\ndecision: { mode: none }\nagents:\n  reader: { role: Reader, goal: G, " + agentKey + " }\n" +
+            "tasks:\n  t: { description: D, expectedOutput: O, agent: reader }";
+
+        // Act
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => NewLoader().LoadFromStringAsync(yaml, Ct));
+
+        // Assert
+        Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public async Task ShouldOpenTheRefusalWithTheOneDecisionModePrefix_WhenTheLoaderRefusesTheMode()
+    {
+        // Arrange
+        var yaml = "name: plain\ngoal: Read\ndecision: { mode: none }\nagents:\n  reader: { role: Reader, goal: G, tools: [system_one_decide] }\n" +
+            "tasks:\n  t: { description: D, expectedOutput: O, agent: reader }";
+
+        // Act
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => NewLoader().LoadFromStringAsync(yaml, Ct));
+
+        // Assert
+        Assert.StartsWith(Orkeon.Domain.Task.DecisionTaskRules.ModeRefusal([]), ex.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     [Trait("BR", "CH-429")]
     public async Task ShouldReadTheMode_WhenTheCrewIsSplitIntoFiles()
