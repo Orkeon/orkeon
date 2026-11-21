@@ -22,10 +22,36 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
     /// </summary>
     public ForgeSystemOne? SystemOne { get; set; }
 
-    /// <summary>Opening event of a run of the engine.</summary>
+    /// <summary>The warnings held until <c>session.started</c> opens the stream.</summary>
+    private readonly List<(string Code, string Message)> _afterStart = [];
+
+    private bool _started;
+
+    /// <summary>
+    /// A warning about the session itself, written right after <c>session.started</c> — at once when the session was
+    /// already announced. The same order as <c>forge reopen</c>: the stream names the session before it warns about it.
+    /// </summary>
+    public void WarningAfterStart(string code, string message)
+    {
+        if (_started)
+            Warning(code, message);
+        else
+            _afterStart.Add((code, message));
+    }
+
+    /// <summary>Opening event of a run of the engine, then the warnings held for it.</summary>
     public void SessionStarted(ForgeSession session, bool resumed)
     {
         ArgumentNullException.ThrowIfNull(session);
+        EmitSessionStarted(session, resumed);
+        _started = true;
+        foreach (var (code, message) in _afterStart)
+            Warning(code, message);
+        _afterStart.Clear();
+    }
+
+    private void EmitSessionStarted(ForgeSession session, bool resumed)
+    {
         Emit("session.started", new
         {
             slug = session.Document.Slug,

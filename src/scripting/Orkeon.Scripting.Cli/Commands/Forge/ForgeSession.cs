@@ -206,6 +206,13 @@ internal sealed class ForgeSession
     public bool CrewDecisionDerived { get; private set; }
 
     /// <summary>
+    /// The crew's decision mode: the recorded one, or, for a session written before <c>--crew-decision</c>, the one
+    /// its plan implies (<see cref="ForgeCrewDecision.Derive"/>), read without being stored.
+    /// </summary>
+    public string CrewDecisionOrDerived() =>
+        Document.CrewDecision ?? ForgeCrewDecision.Derive(TryLoadArtifact<ForgeBlueprint>(BlueprintFileName));
+
+    /// <summary>
     /// Gives a session written before <c>--crew-decision</c> its mode, derived from its plan
     /// (<see cref="ForgeCrewDecision.Derive"/>), and stores it. Returns whether it derived one.
     /// </summary>
@@ -214,7 +221,7 @@ internal sealed class ForgeSession
         if (Document.CrewDecision is not null)
             return false;
 
-        Document.CrewDecision = ForgeCrewDecision.Derive(TryLoadArtifact<ForgeBlueprint>(BlueprintFileName));
+        Document.CrewDecision = CrewDecisionOrDerived();
         CrewDecisionDerived = true;
         Save(now);
         return true;

@@ -626,9 +626,13 @@ internal static class ForgeCommand
     /// <c>FORGE-DECISION-UNAVAILABLE</c> (#431): a <c>required</c> crew's trial with the host's decision circuit off
     /// (<c>Orkeon:Decision:Enabled=false</c>, no decision model) is refused on stderr, and with <c>--events</c> on the
     /// stream too, exit 1; <c>--dry</c>, which stops before the trial, only warns. Null when the cycle may go on.
+    /// Both come after <c>session.started</c>, as <c>forge reopen</c> orders its warning; a refusal closes the stream
+    /// with <c>session.finished</c> — on the status the session keeps when resumed, <c>failed</c> for a new one,
+    /// which the caller deletes.
     /// </summary>
     private static async Task<int?> RefuseUnavailableDecisionAsync(
-        IRunnerConsole console, ForgeEventWriter events, ForgeSession session, DecisionCircuit hostCircuit, ForgeCommandOptions options)
+        IRunnerConsole console, ForgeEventWriter events, ForgeSession session, DecisionCircuit hostCircuit, ForgeCommandOptions options,
+        bool resumed)
     {
         if (session.Document.CrewDecision != ForgeCrewDecision.Required || hostCircuit.Enabled)
             return null;
@@ -638,12 +642,14 @@ internal static class ForgeCommand
             + "configure a decision model, or set Orkeon:Decision:Enabled=true, before its trial.";
         if (options.Dry)
         {
-            events.Warning(ForgeCrewDecision.UnavailableCode, message);
+            events.WarningAfterStart(ForgeCrewDecision.UnavailableCode, message);
             return null;
         }
 
+        events.SessionStarted(session, resumed);
         if (options.Events)
             events.Emit("error", new { code = ForgeCrewDecision.UnavailableCode, message, recoverable = false, cause });
+        events.SessionFinished(resumed ? StatusWord(session) : "failed", ExitError);
         await console.ErrorOutput.WriteLineAsync($"orkeon forge: {message} ({ForgeCrewDecision.UnavailableCode})").ConfigureAwait(false);
         return ExitError;
     }
@@ -758,12 +764,9 @@ internal static class ForgeCommand
         var events = new ForgeEventWriter(renderer ?? console.Output);
         foreach (var warning in mountWarnings)
             events.Warning(ForgeErrorCodes.MountAmbiguous, warning);
+        // Said right after session.started, as forge reopen says it.
         if (session.CrewDecisionDerived)
-        {
-            events.Warning(
-                ForgeCrewDecision.DerivedWarning,
-                $"Session '{session.Document.Slug}' predates --crew-decision: its plan makes it '{session.Document.CrewDecision}', now recorded.");
-        }
+            events.WarningAfterStart(ForgeCrewDecision.DerivedWarning, DerivedCrewDecisionMessage(session));
 
         using var host = BuildEngineHost(console, settingsPath, mountPlan, box, tally, observer);
 
@@ -778,11 +781,17 @@ internal static class ForgeCommand
             return ExitError;
         }
 
+        // The forge's own System One circuit (#435), resolved once for this process and never stored: --no-decision
+        // turns it off without touching the host, so the trial below keeps hostCircuit whatever the switch says.
+        // Resolved first, since session.started names it, even on the refusal below.
+        var systemOne = ForgeSystemOne.Resolve(options.NoDecision, host.Services);
+        events.SystemOne = systemOne;
+
         // A required crew cannot be tried without System One (#431): refused before the interview, while a dry run,
         // which stops before the trial, is only warned. A new session refused is deleted, so no session that never
         // started is left to list or resume; a refused resume keeps its session.
         var hostCircuit = DecisionCircuit.Of(host.Services);
-        if (await RefuseUnavailableDecisionAsync(console, events, session, hostCircuit, options).ConfigureAwait(false) is { } refusal)
+        if (await RefuseUnavailableDecisionAsync(console, events, session, hostCircuit, options, resumed).ConfigureAwait(false) is { } refusal)
         {
             if (!resumed)
             {
@@ -792,11 +801,6 @@ internal static class ForgeCommand
 
             return refusal;
         }
-
-        // The forge's own System One circuit (#435), resolved once for this process and never stored: --no-decision
-        // turns it off without touching the host, so the trial above keeps hostCircuit whatever the switch says.
-        var systemOne = ForgeSystemOne.Resolve(options.NoDecision, host.Services);
-        events.SystemOne = systemOne;
 
         // The sandbox catalogue, built once: what the blueprint prompt shows is exactly what the
         // validation enforces (SPEC §9.1) — one list, two consumers.
@@ -1134,6 +1138,11 @@ internal static class ForgeCommand
             return (null, ExitError);
         }
 
+        // The crew's decision mode is a fact of its plan, as its format is (#431): a resume cannot change it, and is
+        // refused before anything is saved, so a session older than the option keeps no mode it was refused with.
+        if (await RefuseCrewDecisionChangeAsync(console, session, options).ConfigureAwait(false))
+            return (null, ExitError);
+
         // The reopen (W-09): anything that reached a verdict re-enters at the
         // arbitration — modify / re-try / re-adopt. No-op on an ordinary resume.
         session.TryReopen(DateTimeOffset.UtcNow);
@@ -1149,18 +1158,8 @@ internal static class ForgeCommand
             return (null, ExitError);
         }
 
-        // The crew's decision mode is a fact of its plan, as its format is (#431): a session older than the
-        // option gets the one its plan implies, then a resume cannot change it.
+        // A session older than --crew-decision gets the mode its plan implies, now recorded.
         session.EnsureCrewDecision(DateTimeOffset.UtcNow);
-        if (options.CrewDecision is { } requestedMode
-            && ForgeCrewDecision.Normalize(requestedMode) != session.Document.CrewDecision)
-        {
-            await console.ErrorOutput.WriteLineAsync(
-                $"orkeon forge: session '{slug}' was created with --crew-decision {session.Document.CrewDecision}"
-                + " — the decision mode of a session cannot change on resume.")
-                .ConfigureAwait(false);
-            return (null, ExitError);
-        }
 
         if (ForgeSession.IsScriptFormat(session.Document.Format) && !EsbuildAvailable(workspace, options))
         {
@@ -1174,6 +1173,30 @@ internal static class ForgeCommand
         RaiseBudget(session, options);
         return (session, 0);
     }
+
+    /// <summary>
+    /// Whether <c>--crew-decision</c> names another mode than the session's (#431) — recorded, or implied by the plan
+    /// of a session older than the option — refused on stderr, with nothing saved. Plain resume and adoption alike.
+    /// </summary>
+    private static async Task<bool> RefuseCrewDecisionChangeAsync(IRunnerConsole console, ForgeSession session, ForgeCommandOptions options)
+    {
+        if (options.CrewDecision is not { } requestedMode)
+            return false;
+
+        var mode = session.CrewDecisionOrDerived();
+        if (ForgeCrewDecision.Normalize(requestedMode) == mode)
+            return false;
+
+        await console.ErrorOutput.WriteLineAsync(
+            $"orkeon forge: session '{session.Document.Slug}' was created with --crew-decision {mode}"
+            + " — the decision mode of a session cannot change on resume.")
+            .ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>The warning that a session older than <c>--crew-decision</c> was given the mode its plan implies.</summary>
+    private static string DerivedCrewDecisionMessage(ForgeSession session) =>
+        $"Session '{session.Document.Slug}' predates --crew-decision: its plan makes it '{session.Document.CrewDecision}', now recorded.";
 
     /// <summary>
     /// A brand-new session, with the budget the command line asked for and the reference it is
@@ -1282,11 +1305,20 @@ internal static class ForgeCommand
             return ExitError;
         }
 
+        // The crew's decision mode, as a plain resume reads it (#431): refused when --crew-decision names another,
+        // before anything is saved; derived and recorded for a session older than the option, so the adopted crew's
+        // FORGE.md, its launcher and session.started all state it.
+        if (await RefuseCrewDecisionChangeAsync(console, session!, options).ConfigureAwait(false))
+            return ExitError;
+        session!.EnsureCrewDecision(DateTimeOffset.UtcNow);
+
         using var renderer = options.Events ? null : new ForgeTerminalRenderer(console.Output);
         var events = new ForgeEventWriter(renderer ?? console.Output);
-        events.SessionStarted(session!, resumed: true);
+        events.SessionStarted(session, resumed: true);
+        if (session.CrewDecisionDerived)
+            events.Warning(ForgeCrewDecision.DerivedWarning, DerivedCrewDecisionMessage(session));
 
-        if (!session!.TryAdoptWithoutTrial(DateTimeOffset.UtcNow))
+        if (!session.TryAdoptWithoutTrial(DateTimeOffset.UtcNow))
         {
             var detail =
                 $"session '{options.ResumeSlug}' is {session.Document.Status} at "

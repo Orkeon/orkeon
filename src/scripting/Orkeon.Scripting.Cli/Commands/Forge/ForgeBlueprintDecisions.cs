@@ -16,17 +16,14 @@ internal static class ForgeBlueprintDecisions
     public static void Validate(ForgeBlueprint blueprint, string mode, List<string> errors)
     {
         var tasks = blueprint.Tasks ?? [];
-        var hasDecisionContent = false;
         for (var i = 0; i < tasks.Count; i++)
         {
             var task = tasks[i];
-            hasDecisionContent |= task.Decision is not null || task.When is not null;
             if (task.Decision is not null)
                 ValidateDecisionTask(errors, i, task);
         }
 
         var decideHolders = DecideToolHolders(blueprint);
-        hasDecisionContent |= decideHolders.Count > 0;
 
         switch (mode)
         {
@@ -41,7 +38,7 @@ internal static class ForgeBlueprintDecisions
                 return;
         }
 
-        if (errors.Count > 0 || !hasDecisionContent && mode == ForgeCrewDecision.Required)
+        if (errors.Count > 0)
             return;
 
         // The engine's own load rules of the mode (relays, fallbacks, processes, conditions): the mapper throws

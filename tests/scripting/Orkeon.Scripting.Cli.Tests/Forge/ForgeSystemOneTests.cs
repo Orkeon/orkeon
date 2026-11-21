@@ -196,17 +196,210 @@ public sealed class ForgeSystemOneTests : IDisposable
     }
 
     [Fact]
-    public async Task An_off_forge_writes_the_same_files_and_requests_as_a_forge_without_the_circuit()
+    [Trait("BR", "CH-435")]
+    public async Task An_off_forge_feeds_the_assistant_and_writes_the_files_of_a_forge_before_the_circuit()
     {
-        var before = await RunAsync("before", systemOne: null);
-
+        // Arrange: the switch, the cause an off forge is most often off by.
         var off = await RunAsync("off", ForgeSystemOne.Off("switch"));
 
-        Assert.Equal(before.Requests(), off.Requests());
-        Assert.Equal(before.File(ForgeSession.BriefFileName), off.File(ForgeSession.BriefFileName));
-        Assert.Equal(before.File(ForgeSession.BlueprintFileName), off.File(ForgeSession.BlueprintFileName));
-        Assert.Equal(before.Crew(), off.Crew());
-        Assert.Equal(before.File(ForgeSession.VerdictFileName), off.File(ForgeSession.VerdictFileName));
+        // Assert: the assistant's inputs, built as the real assistant builds them, hold no processHint key and no
+        // other field beyond those of a forge before #435.
+        Assert.Equal([ForgeAssistantPhase.Brief, ForgeAssistantPhase.Blueprint], off.Assistant.Requests.Select(r => r.Phase));
+        foreach (var request in off.Assistant.Requests)
+        {
+            Assert.Null(request.ProcessHint);
+            var inputs = JsonElement.Parse(ForgeCrewAssistant.BuildInputsJson(request, off.Session, [], [], "fr"));
+            Assert.False(inputs.TryGetProperty("processHint", out _));
+            Assert.Equal(OffCapture.InputKeys[request.Phase], inputs.EnumerateObject().Select(p => p.Name));
+        }
+
+        // Assert: the files, against the fixed capture of an off forge.
+        Assert.Equal(OffCapture.Brief.ReplaceLineEndings(), off.File(ForgeSession.BriefFileName).ReplaceLineEndings());
+        Assert.Equal(OffCapture.Blueprint.ReplaceLineEndings(), off.File(ForgeSession.BlueprintFileName).ReplaceLineEndings());
+        Assert.Equal(
+            OffCapture.Crew.Select(f => (f.Path, f.Text.ReplaceLineEndings())),
+            off.Crew().Select(f => (f.Path.Replace('\\', '/'), f.Text.ReplaceLineEndings())));
+        Assert.Equal(OffCapture.Verdict.ReplaceLineEndings(), off.File(ForgeSession.VerdictFileName).ReplaceLineEndings());
+    }
+
+    /// <summary>
+    /// The files an off forge writes, captured once from the cycle <see cref="RunAsync"/> drives (FakeJudge approving,
+    /// FakeTestBench succeeding): none carries a System One field, and an off circuit must keep writing exactly these,
+    /// so any change on the off path shows here. The input keys are those the assistant read before #435, whose only
+    /// addition to them is <c>processHint</c>.
+    /// </summary>
+    private static class OffCapture
+    {
+        public const string Brief = """
+            {
+              "goal": "R\u00E9sumer chaque matin les nouvelles offres du fournisseur",
+              "context": "Achat de composants \u00E9lectroniques",
+              "inputs": [
+                {
+                  "name": "supplier_url",
+                  "description": "La page des offres",
+                  "example": "https://exemple.fr/offres"
+                }
+              ],
+              "expectedOutput": {
+                "format": "markdown",
+                "description": "Un r\u00E9sum\u00E9 d\u0027une page, sources cit\u00E9es"
+              },
+              "folders": [
+                {
+                  "path": "/workspace",
+                  "role": "input",
+                  "purpose": "Ce que l\u0027\u00E9quipe lit."
+                },
+                {
+                  "path": "/output",
+                  "role": "output",
+                  "purpose": "O\u00F9 l\u0027\u00E9quipe \u00E9crit ses r\u00E9sultats."
+                }
+              ],
+              "constraints": [
+                "moins d\u0027une page",
+                "en fran\u00E7ais"
+              ],
+              "toolHints": [
+                "lire une page web"
+              ],
+              "acceptance": [
+                {
+                  "id": "A1",
+                  "statement": "Le r\u00E9sum\u00E9 cite ses sources",
+                  "kind": "must"
+                },
+                {
+                  "id": "A2",
+                  "statement": "Moins d\u0027une page",
+                  "kind": "should"
+                }
+              ],
+              "sample": {
+                "variables": {
+                  "supplier_url": "https://exemple.fr/offres"
+                },
+                "initialContext": "Premier essai"
+              },
+              "language": "fr"
+            }
+            """;
+
+        public const string Blueprint = """
+            {
+              "crew": {
+                "name": "veille-fournisseur",
+                "goal": "R\u00E9sumer les nouvelles offres",
+                "process": "sequential"
+              },
+              "agents": [
+                {
+                  "key": "collecteur",
+                  "role": "Web Researcher",
+                  "goal": "Collecter les offres",
+                  "tools": [
+                    "web_scrape"
+                  ]
+                },
+                {
+                  "key": "redacteur",
+                  "role": "Writer",
+                  "goal": "R\u00E9diger le r\u00E9sum\u00E9",
+                  "tools": [
+                    "file_write"
+                  ]
+                }
+              ],
+              "tasks": [
+                {
+                  "key": "collecte",
+                  "description": "Collecter les offres du jour",
+                  "expectedOutput": "La liste brute",
+                  "agent": "collecteur"
+                },
+                {
+                  "key": "resume",
+                  "description": "R\u00E9diger le r\u00E9sum\u00E9",
+                  "expectedOutput": "Le r\u00E9sum\u00E9 cit\u00E9",
+                  "agent": "redacteur",
+                  "dependencies": [
+                    "collecte"
+                  ],
+                  "deliverable": "/output/resume.md"
+                }
+              ],
+              "rationale": "Deux r\u00F4les s\u00E9par\u00E9s: collecter puis r\u00E9diger, s\u00E9quentiel."
+            }
+            """;
+
+        public const string Verdict = """
+            {
+              "score": 0.9,
+              "passing": true,
+              "findings": [
+                {
+                  "id": "F-DELIVERABLE-resume",
+                  "severity": "major",
+                  "statement": "Task \u0027resume\u0027 promised \u0027/output/resume.md\u0027 and the run did not produce it."
+                }
+              ],
+              "suggestions": [],
+              "judge": "llm",
+              "passes": [
+                {
+                  "passing": true,
+                  "score": 0.9
+                }
+              ]
+            }
+            """;
+
+        /// <summary>Every file of the rendered crew, by its path inside the crew folder; each ends with a line feed.</summary>
+        public static readonly IReadOnlyList<(string Path, string Text)> Crew =
+        [
+            ("agents/collecteur.yaml", """
+                role: Web Researcher
+                goal: Collecter les offres
+                tools:
+                - web_scrape
+                """ + "\n"),
+            ("agents/redacteur.yaml", """
+                role: Writer
+                goal: Rédiger le résumé
+                tools:
+                - file_write
+                """ + "\n"),
+            ("config.yaml", """
+                name: veille-fournisseur
+                goal: Résumer les nouvelles offres
+                process: sequential
+                mounts:
+                - /workspace
+                - /output
+                """ + "\n"),
+            ("tasks/collecte.yaml", """
+                description: Collecter les offres du jour
+                expectedOutput: La liste brute
+                agent: collecteur
+                """ + "\n"),
+            ("tasks/resume.yaml", """
+                description: Rédiger le résumé
+                expectedOutput: Le résumé cité
+                agent: redacteur
+                dependencies:
+                - collecte
+                deliverable:
+                  path: /output/resume.md
+                """ + "\n"),
+        ];
+
+        /// <summary>The keys of the assistant's inputs per phase, as an off forge filled them before #435.</summary>
+        public static readonly IReadOnlyDictionary<ForgeAssistantPhase, string[]> InputKeys = new Dictionary<ForgeAssistantPhase, string[]>
+        {
+            [ForgeAssistantPhase.Brief] = ["phase", "language", "message", "history", "readTools", "submitTool"],
+            [ForgeAssistantPhase.Blueprint] = ["phase", "language", "history", "brief", "readTools", "crewTools", "submitTool", "crewDecision"],
+        };
     }
 
     [Fact]

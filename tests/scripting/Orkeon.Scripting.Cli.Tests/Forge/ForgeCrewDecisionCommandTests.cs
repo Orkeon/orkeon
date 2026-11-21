@@ -232,6 +232,167 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
         Assert.Equal(0, exitCode);
     }
 
+    private static IReadOnlyList<JsonElement> Events(string stdout) =>
+        [.. stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => JsonElement.Parse(line))];
+
+    private static string? Kind(JsonElement e) => e.GetProperty("kind").GetString();
+
+    private static string? Code(JsonElement e) => e.TryGetProperty("code", out var code) ? code.GetString() : null;
+
+    private static string? RecordedMode(ForgeSession session)
+    {
+        var document = JsonElement.Parse(File.ReadAllText(Path.Combine(session.Directory, "session.json")));
+        return document.TryGetProperty("crewDecision", out var mode) && mode.ValueKind == JsonValueKind.String ? mode.GetString() : null;
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task Adopting_a_legacy_session_derives_its_mode_and_warns_after_session_started()
+    {
+        // Arrange
+        var session = SessionAtDryPause(mode: null);
+        using var console = new TestConsole();
+
+        // Act
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--adopt", "--events", "jsonl"], _workspace);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        var events = Events(console.Stdout);
+        Assert.Equal(["session.started", "warning"], events.Take(2).Select(Kind));
+        Assert.Equal("required", events[0].GetProperty("crewDecision").GetString());
+        Assert.Equal(ForgeCrewDecision.DerivedWarning, Code(events[1]));
+        Assert.Equal("required", RecordedMode(session));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task Adopting_with_another_crew_decision_mode_is_refused_and_moves_nothing()
+    {
+        // Arrange
+        var session = SessionAtDryPause(ForgeCrewDecision.Optional);
+        using var console = new TestConsole();
+
+        // Act
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--adopt", "--crew-decision", "none"], _workspace);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("was created with --crew-decision optional", console.Stderr, StringComparison.Ordinal);
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "tri", out var reloaded, out _));
+        Assert.Equal(ForgeState.Test, reloaded!.State);
+        Assert.Equal(session.Document.Status, reloaded.Document.Status);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task Adopting_a_legacy_session_with_another_mode_than_its_plan_is_refused_and_records_nothing()
+    {
+        // Arrange
+        var session = SessionAtDryPause(mode: null);
+        using var console = new TestConsole();
+
+        // Act
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--adopt", "--crew-decision", "none"], _workspace);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("was created with --crew-decision required", console.Stderr, StringComparison.Ordinal);
+        Assert.Null(RecordedMode(session));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_legacy_resume_with_another_mode_than_its_plan_is_refused_before_anything_is_recorded()
+    {
+        // Arrange
+        var session = SessionAtDryPause(mode: null);
+        using var console = new TestConsole();
+
+        // Act
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--crew-decision", "none"], _workspace);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("was created with --crew-decision required", console.Stderr, StringComparison.Ordinal);
+        Assert.Null(RecordedMode(session));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_valid_resume_after_a_refused_one_still_warns_of_the_derived_mode()
+    {
+        // Arrange
+        var settings = WriteSettings();
+        SessionAtDryPause(mode: null);
+        using (var refused = new TestConsole())
+            await ForgeCommand.DispatchAsync(refused, ["resume", "tri", "--crew-decision", "none"], _workspace);
+        using var console = new TestConsole();
+
+        // Act
+        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--dry", "--events", "jsonl", "--settings", settings], _workspace);
+
+        // Assert
+        Assert.Contains(Events(console.Stdout), e => Code(e) == ForgeCrewDecision.DerivedWarning);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_legacy_resume_warns_of_its_derived_mode_after_session_started()
+    {
+        // Arrange
+        var settings = WriteSettings();
+        SessionAtDryPause(mode: null);
+        using var console = new TestConsole();
+
+        // Act
+        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--dry", "--events", "jsonl", "--settings", settings], _workspace);
+
+        // Assert
+        var events = Events(console.Stdout);
+        var started = events.ToList().FindIndex(e => Kind(e) == "session.started");
+        var derived = events.ToList().FindIndex(e => Code(e) == ForgeCrewDecision.DerivedWarning);
+        Assert.InRange(started, 0, derived - 1);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_required_crew_refusal_comes_after_session_started_and_closes_the_stream()
+    {
+        // Arrange
+        var settings = WriteSettings();
+        SessionAtDryPause(ForgeCrewDecision.Required);
+        using var console = new TestConsole();
+
+        // Act
+        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--events", "jsonl", "--settings", settings], _workspace);
+
+        // Assert
+        var events = Events(console.Stdout);
+        Assert.Equal(["session.started", "error", "session.finished"], events.Select(Kind));
+        Assert.Equal(ForgeCrewDecision.UnavailableCode, Code(events[1]));
+        Assert.Equal(1, events[2].GetProperty("exitCode").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-431")]
+    public async Task A_dry_run_of_a_required_crew_without_system_one_warns_after_session_started()
+    {
+        // Arrange
+        var settings = WriteSettings();
+        SessionAtDryPause(ForgeCrewDecision.Required);
+        using var console = new TestConsole();
+
+        // Act
+        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--dry", "--events", "jsonl", "--settings", settings], _workspace);
+
+        // Assert
+        var events = Events(console.Stdout).ToList();
+        var started = events.FindIndex(e => Kind(e) == "session.started");
+        var unavailable = events.FindIndex(e => Code(e) == ForgeCrewDecision.UnavailableCode);
+        Assert.InRange(started, 0, unavailable - 1);
+    }
+
     [Fact]
     public async Task A_dry_run_of_a_required_crew_without_system_one_only_warns()
     {
