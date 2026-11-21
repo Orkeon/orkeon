@@ -93,6 +93,7 @@ public sealed class HttpApiResponse
 /// Tool for making HTTP API calls (GET, POST, PUT, DELETE).
 /// Returns response body, status code, and headers.
 /// </summary>
+[ToolContract("http_api")]
 public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
 {
     private static readonly HashSet<string> AllowedMethods = new(StringComparer.OrdinalIgnoreCase)

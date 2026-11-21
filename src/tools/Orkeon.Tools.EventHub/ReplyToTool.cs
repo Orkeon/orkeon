@@ -7,7 +7,7 @@ using Orkeon.Tools.EventHub.Dtos;
 namespace Orkeon.Tools.EventHub;
 
 /// <summary>Agent tool that replies to a previously issued <c>send_request</c> by correlation id.</summary>
-[ToolContract("reply_to",
+[ToolContract("reply_to", StaysWithCaller = true,
     Name = "reply_to",
     Description = "Reply to a pending request identified by correlation_id.",
     Category = "EventHub")]

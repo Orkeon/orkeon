@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -78,6 +79,7 @@ public sealed class ModelTokensEntry
 /// <c>/stats</c>). Combines <see cref="ISessionBufferService"/> with the optional
 /// <see cref="ICostBudgetManager"/>.
 /// </summary>
+[ToolContract("session_stats", StaysWithCaller = true)]
 public sealed class SessionStatsTool : ToolBase<SessionStatsRequest, SessionStatsResponse>
 {
     /// <inheritdoc />

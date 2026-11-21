@@ -154,5 +154,9 @@ Orkeon.Domain.Task.ValueObjects.SystemOneUses.EnabledAutoHolders.get -> System.C
 Orkeon.Domain.Task.ValueObjects.SystemOneUses.EnabledAutoHolders.init -> void
 Orkeon.Domain.Attributes.ToolContractAttribute.ActsOnWorkspace.get -> bool
 Orkeon.Domain.Attributes.ToolContractAttribute.ActsOnWorkspace.set -> void
+Orkeon.Domain.Attributes.ToolContractAttribute.StaysWithCaller.get -> bool
+Orkeon.Domain.Attributes.ToolContractAttribute.StaysWithCaller.set -> void
 Orkeon.Domain.Tools.ToolContracts
 static Orkeon.Domain.Tools.ToolContracts.ActsOnWorkspace(Orkeon.Domain.Tools.IBaseTool! tool) -> bool
+static Orkeon.Domain.Tools.ToolContracts.ContractOf(Orkeon.Domain.Tools.IBaseTool! tool) -> Orkeon.Domain.Attributes.ToolContractAttribute?
+static Orkeon.Domain.Tools.ToolContracts.StaysWithCaller(Orkeon.Domain.Tools.IBaseTool! tool) -> bool

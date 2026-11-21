@@ -10,7 +10,7 @@ namespace Orkeon.Tools.EventHub;
 /// Agent tool that waits for the next message on a topic.
 /// Requires exactly one of <c>timeout_ms</c> / <c>wait_forever:true</c>.
 /// </summary>
-[ToolContract("wait_for_event",
+[ToolContract("wait_for_event", StaysWithCaller = true,
     Name = "wait_for_event",
     Description = "Wait for the next event on a topic. Requires exactly one of timeout_ms / wait_forever.",
     Category = "EventHub")]

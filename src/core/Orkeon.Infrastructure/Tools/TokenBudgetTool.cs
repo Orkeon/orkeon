@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Session;
 using Orkeon.Tools.Abstractions.Base;
@@ -74,6 +75,7 @@ public sealed class TokenBudgetByKind
 /// default 200000, judged at the host's start) and <c>Llm:Model</c>. Used tokens come from the
 /// buffer's heuristic, split by kind of entry in <see cref="TokenBudgetResponse.UsedTokensByKind"/>.
 /// </remarks>
+[ToolContract("token_budget", StaysWithCaller = true)]
 public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetResponse>
 {
     /// <inheritdoc />

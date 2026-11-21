@@ -12,7 +12,7 @@ namespace Orkeon.Tools.EventHub;
 /// Agent tool that publishes an event on a topic. Rejects any attempt to publish on a topic
 /// starting with <c>_system.</c> (reserved for hub-emitted messages, spec §5.1 / §9.2).
 /// </summary>
-[ToolContract("publish_event",
+[ToolContract("publish_event", StaysWithCaller = true,
     Name = "publish_event",
     Description = "Publish an event on a topic (broadcast 1→N). Optional crew scope and metadata.",
     Category = "EventHub")]

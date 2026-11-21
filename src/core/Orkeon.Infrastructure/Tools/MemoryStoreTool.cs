@@ -64,6 +64,7 @@ public sealed class MemoryStoreResponse
 /// Operations: <c>list</c> / <c>add</c> / <c>replace</c> / <c>delete</c> / <c>get</c>. The store behind it outlives the
 /// process when <c>Orkeon:Cli:Memory:Persist</c> is on (<see cref="Memory.FileCategoryMemoryStore"/>).
 /// </summary>
+[ToolContract("memory_store", StaysWithCaller = true)]
 public sealed class MemoryStoreTool : ToolBase<MemoryStoreRequest, MemoryStoreResponse>
 {
     /// <inheritdoc />

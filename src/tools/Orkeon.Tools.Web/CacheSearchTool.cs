@@ -86,7 +86,7 @@ public record CacheSearchResponse
 /// and optionally filters results by source tag and/or URL substring before returning the
 /// top-K chunks. Cheap on tokens because only the relevant excerpts hit the agent's context.
 /// </summary>
-[ToolContract("cache_search",
+[ToolContract("cache_search", StaysWithCaller = true,
     Name = "cache_search",
     Description = "Semantic search over content previously stored in the RAG cache (e.g. by web_scrape with cached=true). source filter scopes by producing tool; url_filter scopes by URL substring; both are optional — empty means global search.",
     Category = "Search")]

@@ -103,6 +103,7 @@ public sealed class SessionStoreResponse
 /// Read/write access to the session conversation buffer and metadata — the pivot tool of a
 /// coding agent session. Backed by <see cref="ISessionBufferService"/>.
 /// </summary>
+[ToolContract("session_store", StaysWithCaller = true)]
 public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStoreResponse>
 {
     /// <inheritdoc />

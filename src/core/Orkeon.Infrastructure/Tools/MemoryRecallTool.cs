@@ -64,6 +64,7 @@ public sealed class MemoryRecallResponse
 /// the tool answers only for a crew that remembers (<c>memory: true</c>): a script's <c>act</c> that lists it
 /// under a crew with <c>memory: false</c> reads nothing.
 /// </summary>
+[ToolContract("memory_recall", StaysWithCaller = true)]
 public sealed class MemoryRecallTool : ToolBase<MemoryRecallRequest, MemoryRecallResponse>
 {
     private const int DefaultLimit = 5;

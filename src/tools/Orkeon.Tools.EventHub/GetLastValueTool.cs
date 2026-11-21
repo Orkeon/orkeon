@@ -8,7 +8,7 @@ using Orkeon.Tools.EventHub.Dtos;
 namespace Orkeon.Tools.EventHub;
 
 /// <summary>Agent tool that reads the retained value behind a LastValueCache key.</summary>
-[ToolContract("get_last_value",
+[ToolContract("get_last_value", StaysWithCaller = true,
     Name = "get_last_value",
     Description = "Read the last retained payload for a given key (LastValueCache).",
     Category = "EventHub")]

@@ -17,6 +17,15 @@ public sealed class ToolContractAttribute : ComponentContractAttribute
     /// </summary>
     public bool ActsOnWorkspace { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether the tool belongs to the run of the Orkeon that calls it (#445): its human, its memory, its
+    /// session, its budget, its sub-agents, its decision model, its progress, its event hub, its RAG stores. Run on
+    /// another machine, it would act on that machine's state, not the caller's. A tool bridge never selects such a tool
+    /// through <c>*</c>, and naming it refuses the start. Read through wrappers with
+    /// <see cref="Orkeon.Domain.Tools.ToolContracts.StaysWithCaller"/>.
+    /// </summary>
+    public bool StaysWithCaller { get; set; }
+
     /// <summary>Initializes a new instance of <see cref="ToolContractAttribute"/> with the given unique name.</summary>
     /// <param name="uniqueName">The unique machine-readable name of the tool.</param>
     public ToolContractAttribute(string uniqueName) : base(uniqueName)

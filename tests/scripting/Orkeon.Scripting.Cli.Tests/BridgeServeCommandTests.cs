@@ -41,7 +41,7 @@ public sealed class BridgeServeCommandTests
         using var scratch = new ScriptScratch();
         var prefix = LoopbackPorts.BaseAddress(LoopbackPorts.Probe());
         using var console = new TestConsole();
-        var (exit, _) = await StartAsync(console, Settings(scratch, prefix, "\"rag_search\""));
+        var (exit, _) = await StartAsync(console, Settings(scratch, prefix, "\"web_search\""));
         using var client = new HttpClient { BaseAddress = new Uri(prefix, ToolBridgeProtocol.BasePath) };
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token);
 
@@ -51,7 +51,7 @@ public sealed class BridgeServeCommandTests
         // Assert
         console.Interrupt();
         await exit;
-        Assert.Contains("\"rag_search\"", listing, StringComparison.Ordinal);
+        Assert.Contains("\"web_search\"", listing, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -63,13 +63,13 @@ public sealed class BridgeServeCommandTests
         using var console = new TestConsole();
 
         // Act
-        var (exit, _) = await StartAsync(console, Settings(scratch, prefix, "\"rag_search\""));
+        var (exit, _) = await StartAsync(console, Settings(scratch, prefix, "\"web_search\""));
 
         // Assert
         console.Interrupt();
         await exit;
         Assert.Contains($"listening on {prefix}", console.Stdout, StringComparison.Ordinal);
-        Assert.Contains("serving rag_search", console.Stdout, StringComparison.Ordinal);
+        Assert.Contains("serving web_search", console.Stdout, StringComparison.Ordinal);
     }
 
     [Fact]

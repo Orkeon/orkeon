@@ -15,8 +15,9 @@ namespace Orkeon.Hosting.Tests.Doubles;
 /// A tool on either side of the tool bridge (#445): an <c>action</c> parameter whose values carry their own access
 /// class, a response it returns as given, the calls it received, and a mode that waits for the call's cancellation.
 /// Each call records the agent run it ran in and puts one resource in that run's scope, as the browser of
-/// <c>firefox</c> does.
+/// <c>firefox</c> does. Its contract declares no kind, so the lone <c>*</c> selects it and its subclasses.
 /// </summary>
+[ToolContract("fake_bridge_tool")]
 public class FakeBridgeTool : IBaseTool
 {
     /// <summary>Builds the tool under <paramref name="name"/>.</summary>
@@ -80,10 +81,15 @@ public class FakeBridgeTool : IBaseTool
         : arguments.ContainsKey("action") ? ToolAccess.Read
         : Access;
 
+    /// <summary>When set, each call throws it once recorded.</summary>
+    public Exception? Throws { get; set; }
+
     /// <inheritdoc />
     public virtual async Task<ToolCallResponse> CallAsync(ToolCallRequest request, CancellationToken cancellationToken = default)
     {
         Calls.Enqueue(request);
+        if (Throws is { } thrown)
+            throw thrown;
         var run = AgentRunScope.Current;
         Runs.Enqueue(run);
         run?.GetOrAdd(this, () =>
@@ -127,7 +133,7 @@ public sealed class FakeWorkspaceBridgeTool : FakeBridgeTool
 }
 
 /// <summary>
-/// A tool of the bridge that uses the file system: <c>save_to</c> writes <see cref="Written"/> there, <c>read_from</c>
+/// A tool of the bridge that uses the file system: <c>save_to_path</c> writes <see cref="Written"/> there, <c>read_from</c>
 /// reads the text there (null for a file it did not find or may not reach), both through the file system it was given,
 /// before the response of <see cref="FakeBridgeTool"/>.
 /// </summary>
@@ -143,21 +149,23 @@ public sealed class FakeFileBridgeTool : FakeBridgeTool
         Schema = new ToolSchema(name, "a fake tool of the bridge that writes and reads files", new Dictionary<string, ParameterSchema>
         {
             ["action"] = new("string", "what to do", Required: true, Enum: [.. Actions]),
-            ["save_to"] = new("string", "where to write", Required: false),
+            ["save_to_path"] = new("string", "where to write", Required: false),
+            ["output_dir"] = new("string", "a folder the call may write under", Required: false),
+            ["text"] = new("string", "a text, never a path", Required: false),
             ["read_from"] = new("string", "what to read", Required: false),
         });
     }
 
-    /// <summary>The bytes <c>save_to</c> writes.</summary>
+    /// <summary>The bytes <c>save_to_path</c> writes.</summary>
     public byte[] Written { get; set; } = [1, 2, 3];
 
     /// <summary>When set, a path the tool also writes <see cref="Written"/> to, whatever the arguments name.</summary>
     public string? AlsoWritesTo { get; set; }
 
-    /// <summary>When set, <c>save_to</c> makes a symbolic link to this physical file in place of writing.</summary>
+    /// <summary>When set, <c>save_to_path</c> makes a symbolic link to this physical file in place of writing.</summary>
     public string? LinksTo { get; set; }
 
-    /// <summary>The physical paths <c>save_to</c> resolved to, in order.</summary>
+    /// <summary>The physical paths <c>save_to_path</c> resolved to, in order.</summary>
     public ConcurrentQueue<string> WrittenAt { get; } = new();
 
     /// <summary>The texts <c>read_from</c> read, in order; null for a file it did not find.</summary>
@@ -167,7 +175,7 @@ public sealed class FakeFileBridgeTool : FakeBridgeTool
     public override async Task<ToolCallResponse> CallAsync(ToolCallRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.Parameters?.GetValueOrDefault("save_to") is string target)
+        if (request.Parameters?.GetValueOrDefault("save_to_path") is string target)
         {
             var check = _fileSystem.ResolveAndValidate(target, FileAccessRights.Write);
             if (!check.IsAllowed)
