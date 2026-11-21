@@ -773,13 +773,18 @@ appel.
 
 Un agent ou une tâche qui écrit `thinking: { effort: auto }` ([schéma YAML](../architecture/yaml-schema.md)) laisse
 System One choisir son niveau de réflexion au début de chaque tâche, parmi `Levels`, du moins cher au plus cher ; la
-tâche le garde à ses reprises. Avec `llm.profile: auto` aussi, le profil et le niveau sont demandés dans un seul
+tâche le garde à ses reprises, sauf après une tentative échouée, qui fait tourner la suivante un niveau plus haut
+(`reason: raised`, sans appel de décision). La forme map `effort: { auto: true, min, max }` borne le choix aux
+niveaux de `Levels` entre `min` et `max` : un seul restant donne ce niveau sans appel, aucun fait échouer le
+chargement en nommant l'agent ou la tâche et cette clé. `enabled: auto` laisse System One couper la réflexion pour
+une tâche triviale : ses options sont `off` et le niveau écrit (ou `on` quand aucun n'est écrit), et avec
+`effort: auto` aussi, `off` et chaque niveau permis. Avec `llm.profile: auto` aussi, le profil et le niveau sont demandés dans un seul
 appel de décision, chaque réponse avec son propre seuil de 0,6. Sous ce seuil, sans réponse, avec le circuit de
 décision coupé ou avec `--no-decision`, l'effort que l'agent aurait eu sans `auto` s'applique (le `Llm:Thinking` de
 son profil, sinon celui du fournisseur), avec un avertissement par run. Une crew en `decision: { mode: none }` qui
 nomme `effort: auto` échoue à son chargement, comme celle dont le profil fait tourner un modèle qui ne réfléchit
 pas. `auto` dans un profil d'hôte (`Llm:Thinking:Effort`) est refusé au démarrage : c'est un mot de crew. Chaque
-choix est un événement de run, `agent.effort`.
+choix et chaque relèvement est un événement de run, `agent.effort`.
 
 <!-- settings:Orkeon:Decision:Effort -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

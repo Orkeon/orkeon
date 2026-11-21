@@ -362,7 +362,7 @@ forge stream's `run.started`, `task.completed` and `llm.call.*` lines. Each cons
 | `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
 | Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` and `reason: circuit-off`, with the cause as `detail`. One warning per run. |
 | Agent routing (`llm.profile: auto`) | The task runs on the host's `default` profile, never the agent's own, with no decision call; `agent.route` reports `reason: circuit-off`. One warning per run. |
-| Thinking level (`thinking: { effort: auto }`) | The task runs with the effort it would have had without `auto` (its profile's `Llm:Thinking`, else the provider's), with no decision call; `agent.effort` reports `reason: circuit-off`. One warning per run. |
+| Thinking level (`thinking: { effort: auto }`, `{ enabled: auto }`) | The task runs with the effort it would have had without `auto` (its profile's `Llm:Thinking`, else the provider's), with no decision call; `agent.effort` reports `reason: circuit-off`. One warning per run. |
 | Tool-result pruning (`Orkeon:Compaction:Prune`) | Nothing is pruned and no decision call is made; the loop compacts as it would without it, and no `agent.pruned` is written. One warning per run. |
 
 The circuit is read at each call, not once per host. A run whose scope switches it off (its
@@ -389,7 +389,7 @@ declarative `.ork.ts` and C# crews:
 | `system_one_decide` in `tools:` | Refused. | Refused. | Allowed. |
 | Decision profile (`llm.profile`, `llm_override.profile`) | Refused. | Allowed; with the circuit off its stages degrade as in the table above. | Allowed. |
 | Agent routing (`llm.profile: auto`) | Refused. | Allowed; with the circuit off the task runs on the default profile. | Allowed. |
-| Thinking level (`thinking: { effort: auto }`) | Refused: write a level instead. | Allowed; with the circuit off the effort without `auto` stands. | Allowed. |
+| Thinking level (`thinking: { effort: auto }`, `{ enabled: auto }`) | Refused: write a level, or `true`/`false`, instead. | Allowed; with the circuit off the effort without `auto` stands. | Allowed. |
 | Agent skills (`skills: { auto: true }`) | Refused: list the skills instead. | Allowed; with the circuit off the agent carries its `fallback` list. | Allowed. |
 | Tool-result pruning (`compaction: { prune: true }`) | Refused; the host's `Orkeon:Compaction:Prune` is not applied to its agents. | Allowed; with the circuit off nothing is pruned. | Allowed. |
 
@@ -543,8 +543,11 @@ never on its own.
 - **Thinking level** — an agent or a task with `thinking: { effort: auto }` asks one `choice` at the start of each
   task, `effort`, whose options are the levels of `Orkeon:Decision:Effort:Levels`, cheapest
   first, on the same state as the agent routing; with `llm.profile: auto` too, both questions go in the same
-  request, each answer with its own floor. The level picked at a probability of 0.6 or more runs every call of the
-  task, its retries included; under 0.6, without an answer, or with the circuit off, the effort the agent would have
+  request, each answer with its own floor. With `enabled: auto` the options start with `off` (no thinking), and the
+  map form `effort: { auto: true, min, max }` keeps only the levels inside its bounds. The level picked at a
+  probability of 0.6 or more runs every call of the task and its retries, except that a failed attempt (a failed
+  result, never a cancellation, a guardian refusal or an exhausted budget) runs the next one a step higher among the
+  options, with no call (`reason: raised`, `previous` the level before); under 0.6, without an answer, or with the circuit off, the effort the agent would have
   had without `auto` runs (its profile's `Llm:Thinking`, else the provider's own), and `agent.effort` says why
   ([`Orkeon:Decision:Effort`](../reference/configuration.md#orkeondecisioneffort)). A host that allows one level
   gets that level with no call (`reason: single-level`). The marker never reaches a provider, and a host profile's

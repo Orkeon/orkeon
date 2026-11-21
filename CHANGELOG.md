@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `thinking: { effort: auto }`: System One picks a task's thinking level (#439)
+
+An agent or a task (`llm_override`) that writes `thinking: { effort: auto }` lets the decision model pick, at the start
+of each task, one level of `Orkeon:Decision:Effort:Levels` (empty by default: `low`, `medium`, `high`), the task
+keeping it on its retries; with `llm.profile: auto` too, the profile and the level are asked in one decision call. The
+map form `effort: { auto: true, min, max }` bounds the pick: a single level left is sent with no call, none left fails
+the load naming the agent or the task and the key. `enabled: auto` lets System One switch thinking off for a trivial
+task (its options are `off` and the written level). After a failed attempt (a failed result, not a cancellation, a
+guardian refusal or an exhausted budget) the next attempt runs one step higher, with no call; a written level is never
+raised. Under 0.6, without an answer, with the circuit off or with `--no-decision`, the thinking the agent would have
+had without `auto` stands. Each pick and each raise is a run event `agent.effort` (`level`, `previous`, `reason`
+among `model`, `low-confidence`, `no-answer`, `circuit-off`, `decision-none`, `single-level`, `raised`). A crew on
+`decision: { mode: none }` naming either `auto`, or running it on a model that does not think, fails its load; `auto`
+in a host profile's `Llm:Thinking:Effort` is refused at start. In `.ork.ts`: `agentBuilder().effort("auto")`,
+`llm.profile(name, { effort: "auto" })`, `.with({ effort: "auto" })` and the new `taskBuilder().withEffort(level |
+"auto")`; a single `ctx.llm` call takes a level only. In C#: `AgentBuilder.ThinkingEffortAuto(min, max)` and
+`ThinkingEnabledAuto()`.
+
+**Compatibility**: `ThinkingYamlConfig.Effort` and `Enabled` are now `object?` (they were `string?` and `bool?`), so
+that the map form and `auto` are read as written and refused naming the agent or the task: code that builds this YAML
+model by hand keeps compiling for assignments, but a read of either property needs a cast.
+
 ### Added — System One prunes a loop's older read-tool results before it compacts (#434)
 
 With `Orkeon:Compaction:Prune:Enabled` (off by default) or an agent's `compaction: { prune: true }`, once a native or

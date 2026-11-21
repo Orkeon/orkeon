@@ -93,9 +93,11 @@ agents:
       maxTokens: int      # Plafond de tokens en sortie, positif — omis = le maximum documenté du modèle ; 0 ou moins fait échouer le chargement
       topP: float         # Nucleus sampling, envoyé quelle que soit sa valeur — omis = celui du profil, sinon rien n'est envoyé (Mistral écrit 1)
       thinking:           # Contrôle du raisonnement (gaté par capacité selon le provider)
-        enabled: bool
+        enabled: bool     # ou auto : System One peut couper la réflexion pour une tâche triviale (options off et le niveau écrit, ou on) ; toute autre valeur fait échouer le chargement
         effort: string    # "low" | "medium" | "high" | "xhigh" | "max", casse exacte — toute autre valeur fait échouer le chargement (un provider envoie le niveau le plus proche que son champ connaît)
                           # auto (toute casse) : System One choisit, au début de chaque tâche, un niveau de Orkeon:Decision:Effort:Levels et la tâche le garde ; sous 0,6, sans réponse ou circuit coupé → l'effort que l'agent aurait eu sans lui (le Llm:Thinking de son profil, sinon celui du provider). decision.mode: none, ou un profil dont le modèle ne réfléchit pas → le chargement échoue
+                          # { auto: true, min: low, max: high } (forme map) : le choix parmi les niveaux de l'hôte entre min et max (chacun facultatif) ; un seul niveau restant → ce niveau, sans appel ; aucun, auto: false, une clé inconnue ou min au-dessus de max → le chargement échoue
+                          # après une tentative échouée de la tâche (un résultat en échec, ni annulation, ni refus du gardien, ni budget épuisé) la suivante tourne un niveau plus haut, jamais plus bas ; un niveau écrit n'est jamais relevé
         budget_tokens: int # Honoré par Qwen et OpenRouter ; les autres providers émettent un warning
       responseFormat: string # "text" (= défaut du provider) | "json_object" | "json_schema" — toute autre valeur est transmise telle quelle avec un warning
       responseSchema:     # Avec responseFormat: json_schema (un schéma seul implique json_schema)
@@ -156,7 +158,7 @@ tasks:
       temperature: float
       max_tokens: int     # Positif ; omis = le plafond hérité, 0 ou moins fait échouer le chargement en nommant la tâche
       top_p: float
-      thinking: {enabled, effort, budget_tokens} # effort: auto comme sur l'agent ; sans choix, l'effort de l'agent s'applique
+      thinking: {enabled, effort, budget_tokens} # effort: auto, sa forme map et enabled: auto comme sur l'agent ; sans choix, l'effort de l'agent s'applique
       cache: {system, tools, ttl}  # Même forme que le cache: de l'agent — remplace le bloc de l'agent en entier ; un bloc sans point d'arrêt coupe le cache de l'agent pour cette tâche
     guardrails:           # Guardrails au niveau tâche, même forme que le bloc agent (optionnel)
       preset: string      # "analysis" | "strict" | "creative" — tout autre nom fait échouer le chargement

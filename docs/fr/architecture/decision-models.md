@@ -375,7 +375,7 @@ dégrade le dit en un avertissement :
 | Reranker `decision` | Laisse passer les passages dans leur ordre de récupération, comme `none`, avec un avertissement. |
 | Skills d'un agent (`skills: { auto: true }`) | L'agent porte sa liste `fallback`, sinon aucun skill, et la tâche s'exécute ; `agent.skills` indique `mode: fallback` et `reason: circuit-off`, avec la cause en `detail`. Un avertissement par run. |
 | Routage d'un agent (`llm.profile: auto`) | La tâche tourne sur le profil `default` de l'hôte, jamais sur celui de l'agent, sans appel de décision ; `agent.route` indique `reason: circuit-off`. Un avertissement par run. |
-| Niveau de réflexion (`thinking: { effort: auto }`) | La tâche tourne avec l'effort qu'elle aurait eu sans `auto` (le `Llm:Thinking` de son profil, sinon celui du provider), sans appel de décision ; `agent.effort` indique `reason: circuit-off`. Un avertissement par run. |
+| Niveau de réflexion (`thinking: { effort: auto }`, `{ enabled: auto }`) | La tâche tourne avec l'effort qu'elle aurait eu sans `auto` (le `Llm:Thinking` de son profil, sinon celui du provider), sans appel de décision ; `agent.effort` indique `reason: circuit-off`. Un avertissement par run. |
 | Élagage des résultats d'outils (`Orkeon:Compaction:Prune`) | Rien n'est élagué et aucun appel de décision n'est fait ; la boucle compacte comme elle le ferait sans lui, et aucun `agent.pruned` n'est écrit. Un avertissement par run. |
 
 Le circuit est lu à chaque appel, pas une fois par hôte. Un run dont la portée le coupe (son
@@ -402,7 +402,7 @@ Une crew dit ce qu'elle attend de System One dans un bloc `decision:` au niveau 
 | `system_one_decide` dans `tools:` | Refusé. | Refusé. | Permis. |
 | Profil de décision (`llm.profile`, `llm_override.profile`) | Refusé. | Permis ; circuit coupé, ses étapes se dégradent comme dans le tableau ci-dessus. | Permis. |
 | Routage d'agent (`llm.profile: auto`) | Refusé. | Permis ; circuit coupé, la tâche tourne sur le profil par défaut. | Permis. |
-| Niveau de réflexion (`thinking: { effort: auto }`) | Refusé : écrivez un niveau. | Permis ; circuit coupé, l'effort sans `auto` s'applique. | Permis. |
+| Niveau de réflexion (`thinking: { effort: auto }`, `{ enabled: auto }`) | Refusé : écrivez un niveau, ou `true`/`false`. | Permis ; circuit coupé, l'effort sans `auto` s'applique. | Permis. |
 | Skills d'agent (`skills: { auto: true }`) | Refusé : lister les skills à la place. | Permis ; circuit coupé, l'agent porte sa liste `fallback`. | Permis. |
 | Élagage des résultats d'outils (`compaction: { prune: true }`) | Refusé ; le `Orkeon:Compaction:Prune` de l'hôte ne s'applique pas à ses agents. | Permis ; circuit coupé, rien n'est élagué. | Permis. |
 
@@ -562,8 +562,12 @@ seule, jamais de lui-même.
 - **Niveau de réflexion** — un agent ou une tâche avec `thinking: { effort: auto }` pose un `choice` au début de
   chaque tâche, `effort`, dont les options sont les niveaux de `Orkeon:Decision:Effort:Levels`, du moins cher au
   plus cher, sur le même état que le routage d'un agent ; avec `llm.profile: auto`
-  aussi, les deux questions vont dans la même requête, chaque réponse avec son propre seuil. Le niveau choisi à une
-  probabilité de 0,6 ou plus sert à tous les appels de la tâche, nouvelles tentatives comprises ; en dessous de 0,6,
+  aussi, les deux questions vont dans la même requête, chaque réponse avec son propre seuil. Avec `enabled: auto` les
+  options commencent par `off` (pas de réflexion), et la forme map `effort: { auto: true, min, max }` ne garde que les
+  niveaux entre ses bornes. Le niveau choisi à une probabilité de 0,6 ou plus sert à tous les appels de la tâche et
+  à ses reprises, sauf qu'une tentative échouée (un résultat en échec, jamais une annulation, un refus du gardien ni
+  un budget épuisé) fait tourner la suivante un cran plus haut parmi les options, sans appel (`reason: raised`,
+  `previous` le niveau d'avant) ; en dessous de 0,6,
   sans réponse, ou circuit coupé, c'est l'effort que l'agent aurait eu sans `auto` (le `Llm:Thinking` de son profil,
   sinon celui du provider), et `agent.effort` dit pourquoi
   ([`Orkeon:Decision:Effort`](../reference/configuration.md#orkeondecisioneffort)). Un hôte qui n'autorise qu'un

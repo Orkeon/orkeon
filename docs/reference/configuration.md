@@ -740,12 +740,16 @@ is not the `route` stage of a decision profile, which picks a profile for each c
 
 An agent or a task that writes `thinking: { effort: auto }` ([YAML schema](../architecture/yaml-schema.md)) lets
 System One pick its thinking level at the start of each task, among `Levels`, cheapest first; the task keeps it on
-its retries. With `llm.profile: auto` too, the profile and the level are asked in one decision call, each answer
+its retries, except after a failed attempt, which runs the next one a level higher (`reason: raised`, with no decision
+call). The map form `effort: { auto: true, min, max }` bounds the pick to the levels of `Levels` inside `min` and
+`max`: one left is that level with no call, none left fails the load, naming the agent or the task and this key.
+`enabled: auto` lets System One switch thinking off for a trivial task: its options are `off` and the written level
+(or `on` when none is written), and with `effort: auto` too, `off` and every allowed level. With `llm.profile: auto` too, the profile and the level are asked in one decision call, each answer
 with its own floor of 0.6. Under that floor, without an answer, with the decision circuit off or with
 `--no-decision`, the effort the agent would have had without `auto` stands (its profile's `Llm:Thinking`, else the
 provider's own), with one warning per run. A crew on `decision: { mode: none }` naming `effort: auto` fails its
 load, as does one whose profile runs a model that does not think. `auto` in a host profile (`Llm:Thinking:Effort`)
-is refused at start: it is a crew's word. Each pick is a run event, `agent.effort`.
+is refused at start: it is a crew's word. Each pick and each raise is a run event, `agent.effort`.
 
 <!-- settings:Orkeon:Decision:Effort -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.

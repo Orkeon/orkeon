@@ -54,7 +54,7 @@ inferred.
 | `llm` | the provider only: an agent configured with `llm.profile("…")` has `ctx.llm` talk to that profile's provider, on the profile's model; otherwise `ctx.llm` uses the host's provider on its configured model (per call: `{ llm: { profile } }` for another host profile, `{ llm: { model } }` for another model) | ✅ an `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — sets the agent's provider (one of the host's profiles), model, temperature and token cap. A string or a plain object is refused by `.llm(...)`. Routing by System One ([`Orkeon:Decision:Route`](configuration.md#orkeondecisionroute)) works at task level only: `llm.profile("auto")` throws, and a task's `withProfile("auto")` is routed as YAML's `llm_override: { profile: auto }` is |
 | `tools([...])` built-ins by name | ✅ what `ctx.llm.act` may call — a name the host does not offer rejects `act` with an `UnknownToolError`, before any model call | ✅ strict: an unknown name fails the run |
 | `withAutonomousTool(s)` instances | callable from a body (`tool.execute(input)`) and offered to `ctx.llm.act`, which runs the tool's `execute` in the script | ✅ registered and resolved by name |
-| `effort(level)` — `"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: turns the provider's thinking on at that effort | ✅ sent on the agent's `ctx.llm` calls, unless a call sets its own `{ effort }` | ✅ |
+| `effort(level)` — `"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: turns the provider's thinking on at that effort; `"auto"` leaves the level to System One at each task's start, as YAML's `effort: auto` (also `llm.profile(name, { effort: "auto" })` and `.with({ effort: "auto" })`) | ✅ sent on the agent's `ctx.llm` calls, unless a call sets its own `{ effort }` | ✅ |
 | `cache({ systemPrompt, tools, ttl })` — YAML `cache:`: asks the provider's prompt cache to keep the system prompt and/or the tool definitions (`ttl` `"5m"` or `"1h"`; `cache({})` turns caching off, the host default `Llm:Cache` included) | ✅ sent on the agent's `ctx.llm` calls, unless a call sets its own `{ cache }` | ✅ |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` has its own `maxIterations`) | ✅ — `maxIterations` defaults to 20, as in YAML and C# |
 | `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for this agent, one more waiting its turn (none by default; 0 or less refused at `build()`) | ❌ (warned: `ctx.llm` calls are no agent turns — the host's `RateLimiting` still caps them) | ✅ |
@@ -115,10 +115,11 @@ draw, and it runs when you call `.run()` on it — from an agent `.body()`, so p
 Declarative only — the procedural engine never reads tasks. Carried to the crew:
 `description`, `agent` (a built agent), `expectedOutput`, `withContext(s)` (this is what builds
 the DAG), `tools` (added to the agent's own tools for that task only, never replacing them), `humanInput`, `asyncExecution`, `retry`, `deliverable`, `withResponseFormat(type)`,
-`withResponseSchema(name, schema, strict?)` and `withProfile(name)` (YAML `llm_override: { profile }`:
+`withResponseSchema(name, schema, strict?)`, `withProfile(name)` (YAML `llm_override: { profile }`:
 this task alone runs on one of the host's profiles, on that profile's own model, and `"default"`
 brings it back to the host's default; a name the host does not offer fails the load, listing the
-known ones). `name` is the task's key: `when(...)` and a decision's `state` refer to a task by it, and a
+known ones) and `withEffort(level)` (YAML `llm_override: { thinking: { effort } }`: this task alone runs at that
+level, or at the one System One picks on `"auto"`; any other value is refused). `name` is the task's key: `when(...)` and a decision's `state` refer to a task by it, and a
 decision task requires it. Accepted but not acted on: `expect` (recorded in the
 task context when there is no `deliverable`, never validated).
 
@@ -195,7 +196,7 @@ stages to the call — and the others patch the configuration of the call's prov
 model, within the profile's provider when `profile` is set: `{ profile, model }` is
 `llm.profile(profile, { model })`; an `LlmConfig` is refused there, its temperature and token cap
 would not apply) and `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: the provider's thinking, on at that effort;
-any other value is refused with `effort must be low|medium|high|xhigh|max`) and `cache` (the prompt-cache request, as `agentBuilder().cache(...)` takes it). `act` takes more: see
+any other value is refused with `effort must be low|medium|high|xhigh|max`; `"auto"` is refused too, a pick being per task, never per call) and `cache` (the prompt-cache request, as `agentBuilder().cache(...)` takes it). `act` takes more: see
 [Options of `act`](../architecture/scripting.md#options-of-act) (`tools`, `effort`, `onToolCall`,
 `onToolResult`, `onContextPressure`, `waitFor`). There is no per-call vendor, temperature or token cap, and no `signal` — the call
 already observes the context's. `embed` is a local stub: it calls no provider and reads none of these
