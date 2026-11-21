@@ -60,7 +60,14 @@ public sealed class JsLlmConfig
     /// The effort a call on this configuration asks for and the one the provider sends (#360), the host's
     /// <c>Llm:Thinking:Effort</c> included. Null when no effort is asked or the provider cannot tell.
     /// </summary>
-    public JsLlmReasoning? reasoning => Guarded(() => JsLlmReasoning.From(Target?.ReportEffort(Domain)));
+    /// <remarks>
+    /// On <c>effort: "auto"</c> (#439), <c>asked</c> is <c>"auto"</c> and <c>notice</c> <c>"auto"</c>: the level is System
+    /// One's pick at each task's start, and <c>sent</c> is what a call outside a task sends, the effort the agent would
+    /// have had without <c>auto</c> (the profile's), else null.
+    /// </remarks>
+    public JsLlmReasoning? reasoning => Guarded(() => Domain.Thinking is { HasAuto: true } auto
+        ? JsLlmReasoning.Auto(Target, Domain with { Thinking = auto.Settle(null, Target?.BaseConfig?.Thinking) })
+        : JsLlmReasoning.From(Target?.ReportEffort(Domain)));
 
     // A provider that throws while it describes the model reaches the script's catch (SCR-25, #364).
     private T Guarded<T>(Func<T> body) => _engine is null ? body() : JsHostError.Guard(_engine, body);
@@ -150,15 +157,41 @@ public sealed class JsLlmConfig
             "LlmConfig.with(...) maxTokens must be an integer between 1 and 2147483647; omit it to keep the inherited cap.");
     }
 
-    /// <summary>The thinking setting every <c>effort</c> option builds: enabled, at the validated level.</summary>
+    /// <summary>
+    /// The thinking setting every <c>effort</c> option builds: enabled, at the validated level; on <c>"auto"</c>
+    /// (#439), the level left to System One, picked at each task's start among the host's levels, with
+    /// <c>Enabled</c> left unset as YAML's <c>effort: auto</c> leaves it: without a pick, the thinking the agent
+    /// would have had without <c>auto</c> stands, a profile's <c>Thinking:Enabled: false</c> included.
+    /// </summary>
     internal static LlmThinkingConfig ThinkingAt(string? effort)
-        => new() { Enabled = true, Effort = RequireEffort(effort) };
+        => RequireEffortOrAuto(effort) is var level && level == LlmAutoEffort.Name
+            ? new() { AutoEffort = LlmAutoEffort.Any }
+            : new() { Enabled = true, Effort = level };
 
+    /// <summary>
+    /// The thinking a single <c>ctx.llm</c> call asks for: a level only, since a pick of System One is made per
+    /// task, never per call (#439).
+    /// </summary>
+    internal static LlmThinkingConfig CallThinkingAt(string? effort)
+        => LlmAutoEffort.IsAuto(effort)
+            ? throw new InvalidScriptException(
+                "effort 'auto' is System One's pick for a task, not for one call: set it on the agent (.effort('auto')) " +
+                $"or the task (.withEffort('auto')), or give this call a level ({string.Join('|', LlmThinkingConfig.Levels)}).")
+            : new() { Enabled = true, Effort = RequireEffort(effort) };
+
+    /// <summary>A level in any case, as a YAML crew reads it (#439), given in lower case; anything else is refused.</summary>
     internal static string RequireEffort(string? value)
-        => value is not null && LlmThinkingConfig.Levels.Contains(value)
-            ? value
-            : throw new InvalidScriptException(
+        => LlmThinkingConfig.ParseEffort(value)
+            ?? throw new InvalidScriptException(
                 $"effort must be {string.Join('|', LlmThinkingConfig.Levels)}, not '{value}'.");
+
+    /// <summary>A level, or <c>"auto"</c> (#439), in any case as a YAML crew reads them, given in lower case; anything else is refused.</summary>
+    internal static string RequireEffortOrAuto(string? value)
+        => LlmAutoEffort.IsAuto(value)
+            ? LlmAutoEffort.Name
+            : LlmThinkingConfig.ParseEffort(value)
+                ?? throw new InvalidScriptException(
+                    $"effort must be {string.Join('|', LlmThinkingConfig.Levels)}|{LlmAutoEffort.Name}, not '{value}'.");
 
     private static readonly string[] s_cacheKeys = ["systemPrompt", "tools", "ttl"];
 

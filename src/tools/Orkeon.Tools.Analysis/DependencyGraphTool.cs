@@ -9,9 +9,11 @@ using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Analysis.Internal;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("dependency_graph", ActsOnWorkspace = true)]
 public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, DependencyGraphResponse>
 {
     private readonly IRaggableStore _store;

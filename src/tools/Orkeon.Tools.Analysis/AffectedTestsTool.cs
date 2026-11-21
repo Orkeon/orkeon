@@ -9,6 +9,7 @@ using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("affected_tests", ActsOnWorkspace = true)]
 public sealed class AffectedTestsTool : ToolBase<AffectedTestsRequest, AffectedTestsResponse>
 {
     private readonly IRaggableStore _store;

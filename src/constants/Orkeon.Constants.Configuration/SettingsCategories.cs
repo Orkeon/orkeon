@@ -99,6 +99,7 @@ public static class SettingsCategories
             ["Orkeon:Kev"] = Models,
             ["Orkeon:Decision"] = Models,
             ["Orkeon:Decision:Route"] = Models,
+            ["Orkeon:Decision:Effort"] = Models,
 
             ["RateLimiting"] = RateAndBudgets,
             ["ToolRateLimiting"] = RateAndBudgets,
@@ -140,6 +141,8 @@ public static class SettingsCategories
             ["Orkeon:Tools:Drive"] = Tools,
             ["Orkeon:Tools:GitHub"] = Tools,
             ["Orkeon:Tools:Firefox"] = Tools,
+            ["Orkeon:Tools:Bridge"] = Tools,
+            ["Orkeon:Bridge"] = Tools,
             ["MCP"] = Tools,
             ["RaggableTree"] = Tools,
             [EnvironmentVariableNames.BraveApiKey] = Tools,

@@ -76,7 +76,7 @@ public record SearchResponse
 /// Tool for semantic search using embeddings.
 /// Uses IEmbeddingService and IVectorMemoryStore for similarity search.
 /// </summary>
-[ToolContract("semantic_search",
+[ToolContract("semantic_search", StaysWithCaller = true,
     Name = "semantic_search",
     Description = "Perform semantic search using embeddings to find relevant information.",
     Category = "Search")]

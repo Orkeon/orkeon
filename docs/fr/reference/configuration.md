@@ -189,19 +189,19 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 106 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 107 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 110 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 131 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-84 sections, 544 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+87 sections, 566 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -327,7 +327,7 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Profiles:<nom>:Responses` | chaîne | — | Avec `Provider: mock`, le chemin virtuel du fichier JSONL — un objet `{match, regex?, content, toolCalls?}` par ligne — dont le fournisseur mock tire ses réponses. |
 | `Profiles:<nom>:StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Profiles:<nom>:Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
-| `Profiles:<nom>:Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. |
+| `Profiles:<nom>:Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. `auto` est refusé au démarrage : c'est un mot d'équipage (`thinking: { effort: auto }`). |
 | `Profiles:<nom>:Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
 | `Profiles:<nom>:TimeoutSeconds` | entier | `30` | La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion. |
 | `Provider` | chaîne | — | `mock`, la seule valeur : le fournisseur hors ligne qui répond depuis le fichier JSONL que nomme `Responses`. Omise, le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. |
@@ -336,7 +336,7 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Responses` | chaîne | — | Avec `Provider: mock`, le chemin virtuel du fichier JSONL — un objet `{match, regex?, content, toolCalls?}` par ligne — dont le fournisseur mock tire ses réponses. |
 | `StreamIdleSeconds` | entier | — | La plus longue absence de réponse tolérée entre deux fragments d'une réponse en flux, en secondes. Omise, rien ne la borne : `TimeoutSeconds` seule borne l'appel entier, en flux ou non. Un modèle qui réfléchit avant d'écrire peut rester silencieux un moment : ne la fixez qu'au-dessus de ce silence, ou coupez sa réflexion. |
 | `Temperature` | nombre | — | La température d'échantillonnage. Omise, aucune n'est envoyée et le modèle applique la sienne. |
-| `Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. |
+| `Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. `auto` est refusé au démarrage : c'est un mot d'équipage (`thinking: { effort: auto }`). |
 | `Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
 | `TimeoutSeconds` | entier | `30` | La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion. |
 <!-- /settings -->
@@ -456,7 +456,7 @@ n'est pas celle qui est lue : elle n'est pas jugée. Les réglages jugés, tiré
 | Réglages | Correction énoncée |
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey`, `Orkeon:Embeddings:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
 | `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` ; `Orkeon:Tools:GitHub:Token` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
 | `MCP:Servers:<id>:Env:<nom>` | retirer l'entrée : le serveur hérite de l'environnement où tourne Orkeon, y poser la variable |
 | `Secrets:<nom>` | retirer l'entrée et poser `ORKEON_<nom>`, que la chaîne des secrets lit en premier |
@@ -767,6 +767,46 @@ appel.
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `Ladder` | liste de chaînes | `[]` | Les profils entre lesquels un agent `auto` est routé, du moins cher au plus cher : deux noms ou plus de `Llm:Profiles` ou `Orkeon:Decision:Profiles` (`default` compris), chacun une fois ; une échelle d'un seul échelon, ou avec un échelon vide, `auto` ou répété, est refusée au démarrage. Vide par défaut : une crew qui nomme `auto` sur un hôte sans échelle échoue à son chargement. |
+<!-- /settings -->
+
+### `Orkeon:Decision:Effort`
+
+Un agent ou une tâche qui écrit `thinking: { effort: auto }` ([schéma YAML](../architecture/yaml-schema.md)) laisse
+System One choisir son niveau de réflexion au début de chaque tâche, parmi `Levels`, du moins cher au plus cher (une liste
+hors de l'ordre `low`, `medium`, `high`, `xhigh`, `max` est refusée au démarrage) ; la
+tâche le garde à ses reprises, sauf après un échec, qui fait tourner l'essai suivant un niveau plus haut
+(`reason: raised`, sans appel de décision) : un tour de correction après une sortie qui a échoué à sa validation
+(`output_json`), une fois par tour échoué, et une tentative après une tentative échouée (un résultat en échec ou une
+erreur levée, jamais une annulation, un refus du gardien, un budget épuisé ni un délai dépassé). Le `verify` échoué d'un profil de
+décision ne le relève pas : cette étape escalade l'appel lui-même vers un autre profil ([limites](./limitations.md)). La forme map `effort: { auto: true, min, max }` borne le choix aux
+niveaux de `Levels` entre `min` et `max` : un seul restant donne ce niveau sans appel, aucun fait échouer le
+chargement en nommant l'agent ou la tâche et cette clé. `enabled: auto` laisse System One couper la réflexion pour
+une tâche triviale : ses options sont `off` et le niveau écrit (ou `on` quand aucun n'est écrit), et avec
+`effort: auto` aussi, `off` et chaque niveau permis. Avec `llm.profile: auto` aussi, le profil et le niveau sont demandés dans un seul
+appel de décision, chaque réponse avec son propre seuil de 0,6. Sous ce seuil, sans réponse, avec le circuit de
+décision coupé ou avec `--no-decision`, l'effort que l'agent aurait eu sans `auto` s'applique (le `Llm:Thinking` de
+son profil, sinon celui du fournisseur), sans erreur, comme pour `llm.profile: auto` : un avertissement est journalisé
+une fois par run quand le circuit est coupé (hors run, une fois par hôte), et à chaque appel en échec ; une probabilité
+basse ou une réponse absente n'est journalisée qu'en information, l'événement `agent.effort` disant pourquoi. Un agent
+qui écrit `enabled: false` sous un `effort: auto` de la crew ou d'une tâche, ou dont le `Llm:Thinking:Enabled` du
+profil vaut `false`, ne laisse rien à System One : aucun appel, la réflexion reste coupée ; seul `enabled: auto` laisse
+le choix l'allumer. Sans choix, un niveau écrit hors de `min` et `max` est ramené à la borne la plus proche ; le niveau
+propre du fournisseur (aucun écrit) est laissé tel quel et jamais relevé, un pas depuis le plus bas pouvant l'abaisser.
+Un orchestrateur sans routeur de profils (un hôte câblé à la main) fait tourner chaque `auto` sur l'effort sans lui et
+avertit une fois par run. Une crew bâtie en C# (`AgentBuilder.ThinkingEffortAuto`) rencontre les contrôles de
+chargement ci-dessous au début de chaque tâche : la tâche échoue avant tout appel. Le relais de décision `system_one`
+d'une tâche de décision tourne sur l'effort que porte le profil, sans choix. Les niveaux, `auto`, les booléens et les
+clés de map se lisent en toute casse en YAML et en `.ork.ts`. Une crew en `decision: { mode: none }` qui
+nomme `effort: auto` échoue à son chargement, comme celle dont le profil fait tourner un modèle qui ne réfléchit
+pas. `auto` dans un profil d'hôte (`Llm:Thinking:Effort`) est refusé au démarrage : c'est un mot de crew. Chaque
+choix et chaque relèvement est un événement de run, `agent.effort`.
+
+<!-- settings:Orkeon:Decision:Effort -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Levels` | liste de chaînes | `[]` | Les niveaux de réflexion entre lesquels System One peut choisir pour un agent ou une tâche en `effort: auto`, du moins cher au plus cher : chacun parmi `low`, `medium`, `high`, `xhigh`, `max`, en minuscules, une fois chacun, dans cet ordre ; un niveau vide, inconnu ou répété, et une liste qui ne monte pas strictement dans cet ordre, sont refusés au démarrage. Vide par défaut, ce qui autorise `low`, `medium` et `high`. |
 <!-- /settings -->
 
 ## Débit et budgets
@@ -1755,6 +1795,67 @@ livré : c'est celui qui est installé sur la machine. La fenêtre est visible s
 | `StartupTimeoutSeconds` | entier | `30` |  | Secondes laissées à Firefox pour ouvrir son protocole distant ; sa session, à laquelle il répond une fois sa première fenêtre chargée, attend ensuite la plus grande de cette valeur et de `CommandTimeoutSeconds`. |
 <!-- /settings -->
 
+### `Orkeon:Tools:Bridge`
+
+Lue au démarrage d'une exécution, après les connexions MCP, quand `Address` est renseignée. Les outils
+que `Allow` choisit s'exécutent sur la machine du pont au lieu de la machine locale : leur nom, leur
+schéma et leur accès restent ceux du registre local, seul l'appel traverse. Le démarrage est refusé
+quand le pont est injoignable, refuse le jeton, ne sert pas un outil nommé ou en sert un dont le
+contrat diffère. L'appelant ouvre une session sur le pont à son premier appel, bat tous les tiers du
+`HeartbeatWindow` du pont tant qu'elle est ouverte, et termine la portée de chaque exécution sur le
+pont quand l'exécution se termine ; une exécution dont le pont a perdu la session échoue. En http, l'adresse est la boucle locale, ou le `host.docker.internal` de Docker Desktop,
+qui reçoit l'en-tête `Host` `HostHeader` et un avertissement : le jeton circule en clair. Comment
+mettre les deux côtés en place : le guide
+[Orkeon dans un conteneur, le navigateur sur le bureau](../guides/tool-bridge.md) ; la décision est
+consignée dans l'[ADR-019](../adr/ADR-019-tool-bridge.md).
+
+<!-- settings:Orkeon:Tools:Bridge -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Address` | chaîne | — | L'adresse de base du pont (`https://hote:7410/`) ; non renseignée, rien ne passe par le pont. |
+| `Allow` | liste de chaînes | `[]` | Les outils à faire passer par le pont, par nom, ou le seul `*` pour tous les outils pontables d'Orkeon que le pont sert. |
+| `ConnectTimeout` | durée | `"00:00:10"` | Le temps que la connexion au pont peut prendre avant qu'un appel échoue ; un appel lui-même n'a pas de limite. |
+| `Deny` | liste de chaînes | `[]` | Les outils jamais confiés au pont, par nom ; un nom présent ici l'emporte sur `Allow`. |
+| `HostHeader` | chaîne | — | L'en-tête `Host` envoyé au pont, quand il diffère de celui de l'adresse : un conteneur de Docker Desktop atteint l'écoute en boucle locale du pont par `host.docker.internal`, alors que l'écoute ne répond qu'à l'hôte que son préfixe nomme. Non renseigné, il vaut `127.0.0.1:<port>` pour une adresse qui nomme `host.docker.internal`, et celui de l'adresse sinon. |
+| `MaxFileBytes` | entier | `16777216` | Le plus gros total, en octets, des fichiers d'un appel : ceux qu'un appel envoie au pont, et ceux qu'il en rapporte. |
+| `MaxResponseBytes` | entier | `33554432` | La plus grosse réponse, en octets, que cet appelant lit du pont ; une réponse plus grosse fait échouer l'appel avec sa raison. La valeur par défaut laisse la place de `MaxFileBytes` de fichiers en base64 à côté du résultat. |
+| `TokenEnvVar` | chaîne | `"ORKEON_BRIDGE_TOKEN"` | La variable d'environnement qui tient le jeton ; jamais le jeton lui-même. |
+<!-- /settings -->
+
+### `Orkeon:Bridge`
+
+Lue par `orkeon bridge serve`, le côté qui sert les outils de son registre à une autre machine ;
+aucun réglage ne démarre un pont. Le jeton se lit dans la variable que nomme `TokenEnvVar` ; une
+requête qui porte un en-tête `Origin` ou un mauvais jeton est refusée, comme une requête d'un pair hors
+de la boucle locale quand le `Prefix` est en boucle locale. Chaque appelant reçoit sa propre session,
+bornée par `MaxSessions`, `MaxRunsPerSession` et `MaxCallsPerSession`, avec `MaxConcurrentCalls` sur
+toutes. Un `Prefix` en https n'est servi
+que sous Windows, après une réservation d'URL (`netsh http add urlacl`) et la liaison d'un certificat ;
+ailleurs, il est refusé au démarrage. Le guide : [Orkeon dans un conteneur, le navigateur sur le
+bureau](../guides/tool-bridge.md) ; la décision est consignée dans l'[ADR-019](../adr/ADR-019-tool-bridge.md).
+
+<!-- settings:Orkeon:Bridge -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Allow` | liste de chaînes | `[]` | Les outils servis, par nom, ou le seul `*` pour tous les outils pontables d'Orkeon du registre. |
+| `Deny` | liste de chaînes | `[]` | Les outils jamais servis, par nom ; un nom présent ici l'emporte sur `Allow`. |
+| `HeartbeatWindow` | durée | `"00:00:30"` | Le temps que le pont attend un signe de la session d'un appelant (un battement ou une requête) avant de mettre fin à la session, à ses exécutions et à leurs navigateurs, aussitôt. |
+| `MaxCallsPerSession` | entier | `8` | Le plus grand nombre d'appels qu'une session mène à la fois ; un de plus est refusé en 429. |
+| `MaxConcurrentCalls` | entier | `32` | Le plus grand nombre d'appels que le pont mène à la fois, toutes sessions confondues ; un de plus est refusé en 503. |
+| `MaxFileBytes` | entier | `16777216` | Le plus gros total, en octets, des fichiers d'un appel : ceux qu'un appelant envoie, et ceux que l'outil a écrits et qui repartent. |
+| `MaxRequestBytes` | entier | `33554432` | Le plus gros corps qu'une requête peut porter, en octets ; un corps plus gros est refusé avant d'être lu. |
+| `MaxRunsPerSession` | entier | `16` | Le plus grand nombre d'exécutions qu'une session tient sur le pont, chacune avec sa portée (et son navigateur) ; un appel qui en ouvrirait une de plus est refusé en 429 jusqu'à ce qu'une exécution se termine. |
+| `MaxSessions` | entier | `16` | Le plus grand nombre de sessions d'appelants que le pont tient à la fois ; un appelant qui en ouvrirait une de plus est refusé en 503 jusqu'à ce qu'une session se termine. |
+| `Prefix` | chaîne | `http://127.0.0.1:7410/`, `http://localhost:7410/` sous Windows | Le préfixe de l'écoute. Boucle locale par défaut, `localhost` sous Windows, dont les réservations d'URL le nomment, `127.0.0.1` ailleurs ; tout autre hôte exige `https`. |
+| `RequestReadTimeout` | durée | `"00:00:30"` | Le temps que le corps d'une requête peut mettre à arriver une fois ses en-têtes lus ; au-delà, la connexion est fermée. |
+| `StopTimeout` | durée | `"00:00:10"` | Le temps que l'arrêt du pont attend les appels en cours, une fois annulés ; un appel qui tourne encore alors est abandonné et journalisé. |
+| `TokenEnvVar` | chaîne | `"ORKEON_BRIDGE_TOKEN"` | La variable d'environnement qui tient le jeton ; jamais le jeton lui-même. |
+<!-- /settings -->
+
 ### `MCP`
 
 Connexions client MCP (`MCP:Servers:<nom>`) et l'interrupteur `MCP:Enabled`. Aucun réglage ne
@@ -2576,6 +2677,8 @@ une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit c
 | `Orkeon:Embeddings:ApiKeyEnvVar` | La clé d'API du provider d'embeddings `mistral`, `azure-openai` ou `gemini`, lue quand `Orkeon:Embeddings:ApiKey` n'est pas réglée. | L'environnement du processus. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | La clé de la recherche web sur laquelle le RAG correctif se replie ; vide, aucune clé n'est envoyée. | L'environnement du processus. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | Le jeton de bot du canal Discord ; la clé nomme `ORKEON_DISCORD_TOKEN` quand rien ne la règle. | L'environnement du processus. |
+| `Orkeon:Tools:Bridge:TokenEnvVar` | Le jeton que l'exécution envoie au pont d'outils ; la clé nomme `ORKEON_BRIDGE_TOKEN` quand rien ne la règle. | L'environnement du processus. |
+| `Orkeon:Bridge:TokenEnvVar` | Le jeton que le serveur du pont d'outils attend de ses appelants ; la clé nomme `ORKEON_BRIDGE_TOKEN` quand rien ne la règle. | L'environnement du processus. |
 
 La variable conventionnelle de chaque fournisseur — `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, … — est
 un nom à écrire dans `ApiKeyEnvVar` :

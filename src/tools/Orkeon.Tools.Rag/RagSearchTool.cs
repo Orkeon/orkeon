@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Rag.Abstractions.Interfaces;
@@ -19,6 +20,7 @@ namespace Orkeon.Tools.Rag;
 /// (RAG-02/C5) with the same agent-facing name; the result is
 /// <c>{answer, citations}</c>.
 /// </summary>
+[ToolContract("rag_search", StaysWithCaller = true)]
 public class RagSearchTool : ToolBase<RagSearchRequest, RagSearchResponse>
 {
     /// <summary>

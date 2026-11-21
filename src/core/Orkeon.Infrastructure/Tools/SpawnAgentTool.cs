@@ -74,7 +74,7 @@ public record SpawnAgentResponse
 /// Each spawn is recorded against the parent's <see cref="AgentExecutionBudget"/>
 /// and the child receives a derived budget with reduced limits.
 /// </summary>
-[ToolContract("spawn_agent", Name = "Spawn sub-agent",
+[ToolContract("spawn_agent", StaysWithCaller = true, Name = "Spawn sub-agent",
     Description = "Dynamically create and execute a specialised sub-agent for a specific task",
     Category = "Autonomous")]
 [Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]

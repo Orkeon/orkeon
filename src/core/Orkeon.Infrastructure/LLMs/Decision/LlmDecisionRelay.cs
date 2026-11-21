@@ -34,7 +34,7 @@ internal sealed class LlmDecisionRelay : IDecisionRelay
         // json_schema only where the provider declares it: elsewhere the adapter would drop it, and the schema
         // the agent must follow goes in its prompt instead.
         var native = profile.Provider.Capabilities.ResponseFormat >= ResponseFormatSupport.JsonSchema;
-        var options = Options(agent.LlmConfig);
+        var options = Options(agent.LlmConfig, profile.Provider.BaseConfig?.Thinking);
         if (native)
         {
             options.AdditionalProperties ??= [];
@@ -78,7 +78,7 @@ internal sealed class LlmDecisionRelay : IDecisionRelay
     }
 
     // What the agent's config sets for its calls, as an agent's own call forwards it; the rest stays the provider's.
-    private static ChatOptions Options(LlmConfig? llm)
+    private static ChatOptions Options(LlmConfig? llm, LlmThinkingConfig? profileThinking)
     {
         var options = new ChatOptions();
         if (llm is null)
@@ -104,10 +104,12 @@ internal sealed class LlmDecisionRelay : IDecisionRelay
         // Thinking and prompt caching travel as an agent's own call sends them (ChatOptionsComposer): the
         // provider honours them or warns that it cannot. The llm block's response_format is not sent: the relay
         // answers its own JSON schema.
-        if (llm.Thinking is not null)
+        // A relay call answers a decision, not a task: an effort: auto gets no pick there, and the call runs with the
+        // thinking the agent would have had without auto - the profile's effort kept, the marker never sent (#439).
+        if (llm.Thinking?.Settle(null, profileThinking) is { } thinking)
         {
             options.AdditionalProperties ??= [];
-            options.AdditionalProperties[LlmChatOptionsKeys.Thinking] = llm.Thinking;
+            options.AdditionalProperties[LlmChatOptionsKeys.Thinking] = thinking;
         }
 
         if (llm.Cache is not null)

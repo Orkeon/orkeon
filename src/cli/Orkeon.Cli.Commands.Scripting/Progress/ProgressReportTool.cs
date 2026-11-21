@@ -63,6 +63,7 @@ public sealed class ProgressReportResponse
 /// same <see cref="IBaseTool"/> enumeration as the built-ins, so an agent handed that
 /// whole set does get it.
 /// </remarks>
+[ToolContract("progress_report", StaysWithCaller = true)]
 public sealed class ProgressReportTool : ToolBase<ProgressReportRequest, ProgressReportResponse>
 {
     /// <inheritdoc />

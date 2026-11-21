@@ -180,6 +180,33 @@ public sealed class McpToolListChangedTests
     }
 
     [Fact]
+    public async Task ShouldKeepTheInstanceThatHoldsTheName_WhenTheServerDropsAndListsAgainABridgedTool()
+    {
+        // Arrange: a tool bridge put its proxy over the adapter of b.
+        var registry = new MockToolRegistry();
+        var clock = new ManualTimeProvider();
+        var server = new Server("a", "b");
+        await using var provider = new McpToolProvider(registry, timeProvider: clock);
+        await provider.ConnectServerAsync("srv", server.Transport, new McpServerConfig(), TestContext.Current.CancellationToken);
+        var adapter = (await registry.GetToolByNameAsync("b", TestContext.Current.CancellationToken))!;
+        var proxy = new Orkeon.Tests.Shared.Doubles.StubWrapperTool(adapter);
+        Assert.True(await registry.ReplaceToolAsync(adapter, proxy, TestContext.Current.CancellationToken));
+
+        // Act
+        server.Tools = ["a"];
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 1);
+        server.Tools = ["a", "b"];
+        await NotifyAsync(server, clock);
+        await SettledAsync(provider, 2);
+
+        // Assert
+        Assert.Same(proxy, await registry.GetToolByNameAsync("b", TestContext.Current.CancellationToken));
+        await provider.DisconnectServerAsync("srv");
+        Assert.Same(proxy, await registry.GetToolByNameAsync("b", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task ShouldLeaveARunningTaskItsToolInstance_WhenTheServerDropsIt()
     {
         var registry = new MockToolRegistry();

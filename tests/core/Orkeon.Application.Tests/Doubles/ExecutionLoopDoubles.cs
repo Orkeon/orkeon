@@ -50,6 +50,16 @@ internal sealed class ScriptedFullLlmProvider : ILlmProvider
 
     public List<LlmConfig?> ReceivedConfigs { get; } = [];
 
+    /// <summary>What every call throws while it is set; null by default, the calls then answer.</summary>
+    public Exception? Throws { get; set; }
+
+#pragma warning disable ORKEXP005 // The reasoning capabilities are experimental; the double answers them for the #439 load checks.
+    /// <summary>What <see cref="DescribeReasoning"/> answers; null by default (the provider cannot tell).</summary>
+    public LlmReasoningCapabilities? Reasoning { get; init; }
+
+    public LlmReasoningCapabilities? DescribeReasoning(string? model) => Reasoning;
+#pragma warning restore ORKEXP005
+
     public void Enqueue(LlmResponse response) => _responses.Enqueue(response);
 
     public void EnqueueText(string content) =>
@@ -98,6 +108,8 @@ internal sealed class ScriptedFullLlmProvider : ILlmProvider
         cancellationToken.ThrowIfCancellationRequested();
         ReceivedTurns.Add(messages);
         ReceivedConfigs.Add(config);
+        if (Throws is { } exception)
+            throw exception;
 
         return System.Threading.Tasks.Task.FromResult(_responses.Count > 0
             ? _responses.Dequeue()

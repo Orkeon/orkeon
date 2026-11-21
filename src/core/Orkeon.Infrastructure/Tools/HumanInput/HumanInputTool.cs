@@ -71,7 +71,7 @@ public record HumanInputResponse
 /// Built-in tool exposing <see cref="IHumanInputProvider"/> to agents.
 /// Auto-injected by the orchestrator when <c>task.HumanInput == true</c>.
 /// </summary>
-[ToolContract("human_input",
+[ToolContract("human_input", StaysWithCaller = true,
     Name = "human_input",
     Description = "Ask the human user for input (text, approval, or a choice). The runtime suspends until the user responds.",
     Category = "Interaction")]

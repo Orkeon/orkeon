@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -34,6 +35,7 @@ public sealed class SessionCostResponse
 /// Reports cumulative session cost (USD), token usage, and per-model breakdown (backs
 /// <c>/cost</c>). Backed by <see cref="ICostBudgetManager"/>; reports zeros when unwired.
 /// </summary>
+[ToolContract("session_cost", StaysWithCaller = true)]
 public sealed class SessionCostTool : ToolBase<SessionCostRequest, SessionCostResponse>
 {
     /// <inheritdoc />

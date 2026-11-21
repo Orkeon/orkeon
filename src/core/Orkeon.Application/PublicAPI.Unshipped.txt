@@ -378,3 +378,46 @@ Orkeon.Application.Crew.Execution.DecisionTaskRunner.TimeProvider.init -> void
 static Orkeon.Application.DependencyInjection.ServiceCollectionExtensions.HostAgentRequestsPerMinute(System.IServiceProvider! services) -> int?
 Orkeon.Application.Crew.Routing.AgentRoutes
 static Orkeon.Application.Crew.Routing.AgentRoutes.ProfilesOf(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Agent.Agent! agent, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.CrewTask!>! tasks, System.Collections.Generic.IEnumerable<string!>! ladder) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Application.Crew.Routing.AgentEffortOptions
+Orkeon.Application.Crew.Routing.AgentEffortOptions.AgentEffortOptions() -> void
+Orkeon.Application.Crew.Routing.AgentEffortOptions.Levels.get -> System.Collections.Generic.IList<string!>!
+Orkeon.Application.Crew.Routing.AgentEffortOptions.Levels.init -> void
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.<Clone>$() -> Orkeon.Application.Interfaces.Ports.AgentEffortNotice!
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.AgentEffortNotice() -> void
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.AgentRole.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.AgentRole.init -> void
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Equals(Orkeon.Application.Interfaces.Ports.AgentEffortNotice? other) -> bool
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Level.get -> string?
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Level.init -> void
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Levels.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Levels.init -> void
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Picked.get -> string?
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Picked.init -> void
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Probability.get -> double?
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Probability.init -> void
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Reason.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Reason.init -> void
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.TaskId.get -> string!
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.TaskId.init -> void
+Orkeon.Application.Interfaces.Ports.AgentEffortReasons
+Orkeon.Application.Interfaces.Ports.IAgentRouteObserver.EffortPicked(Orkeon.Application.Interfaces.Ports.AgentEffortNotice! notice) -> void
+const Orkeon.Application.Crew.Routing.AgentEffortOptions.LevelsKey = "Orkeon:Decision:Effort:Levels" -> string!
+const Orkeon.Application.Crew.Routing.AgentEffortOptions.SectionName = "Orkeon:Decision:Effort" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentEffortReasons.CircuitOff = "circuit-off" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentEffortReasons.DecisionNone = "decision-none" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentEffortReasons.LowConfidence = "low-confidence" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentEffortReasons.Model = "model" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentEffortReasons.NoAnswer = "no-answer" -> string!
+const Orkeon.Application.Interfaces.Ports.AgentEffortReasons.SingleLevel = "single-level" -> string!
+override Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.AgentEffortNotice.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.AgentEffortNotice.ToString() -> string!
+static Orkeon.Application.Crew.Routing.AgentEffortOptions.AllowedLevels(Orkeon.Application.Crew.Routing.AgentEffortOptions! options) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Application.Crew.Routing.AgentEffortOptions.DefaultLevels.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Application.Crew.Routing.AgentEffortOptions.Problems(Orkeon.Application.Crew.Routing.AgentEffortOptions! options) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Application.Interfaces.Ports.AgentEffortNotice.operator !=(Orkeon.Application.Interfaces.Ports.AgentEffortNotice? left, Orkeon.Application.Interfaces.Ports.AgentEffortNotice? right) -> bool
+static Orkeon.Application.Interfaces.Ports.AgentEffortNotice.operator ==(Orkeon.Application.Interfaces.Ports.AgentEffortNotice? left, Orkeon.Application.Interfaces.Ports.AgentEffortNotice? right) -> bool
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Previous.get -> string?
+Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Previous.init -> void
+const Orkeon.Application.Interfaces.Ports.AgentEffortReasons.Raised = "raised" -> string!

@@ -117,7 +117,8 @@ internal sealed class RunCommandOptions : CliOptions
                        + "is withheld, decision profiles route to their fallback without escalation, a fail-closed LLM "
                        + "judge refuses to start and a fail-open one is left out, the decision reranker keeps the "
                        + "retrieval order, an agent with skills auto carries its fallback skills, llm.profile: auto runs on "
-                       + "the host's default profile and tool-result pruning prunes nothing. See docs/architecture/decision-models.md.")]
+                       + "the host's default profile, thinking effort: auto and enabled: auto run with the thinking the agent "
+                       + "would have had without auto, and tool-result pruning prunes nothing. See docs/architecture/decision-models.md.")]
         public bool NoDecision { get; set; }
 
         /// <summary>Verbosity level 0-2 (aligned with YAML runner).</summary>
@@ -950,6 +951,8 @@ internal static partial class RunCommand
         // The declared MCP servers, connected as for a crew: their tools reach the script through
         // the registry, in the tools namespace, an agent's .tools([...]) and act.
         await McpStartup.ConnectConfiguredServersAsync(host, linkCts.Token).ConfigureAwait(false);
+        // The tool bridge (#445): the tools it runs replace their local instances before the script sees them.
+        await Orkeon.Hosting.ToolBridge.ToolBridgeStartup.ConnectAsync(host.Services, linkCts.Token).ConfigureAwait(false);
         var tools = new Orkeon.Scripting.ScriptToolCatalogue(
             host.Services.GetServices<IBaseTool>(), host.Services.GetService<IToolRegistry>()).ToList();
         // LLM provider is optional — scripts that never call ctx.llm work without one. The host's

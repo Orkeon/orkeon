@@ -35,6 +35,7 @@ public sealed class SessionSnipResponse
 /// Atomically truncates the session buffer to a minimal window (head + last N turns) — a fast,
 /// destructive alternative to <c>/compact</c> (backs <c>/force-snip</c>).
 /// </summary>
+[ToolContract("session_snip", StaysWithCaller = true)]
 public sealed class SessionSnipTool : ToolBase<SessionSnipRequest, SessionSnipResponse>
 {
     /// <inheritdoc />

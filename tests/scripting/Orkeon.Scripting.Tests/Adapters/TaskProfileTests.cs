@@ -122,4 +122,40 @@ public sealed class TaskProfileTests
         Assert.Contains("'inconnu'", error.Message, StringComparison.Ordinal);
         Assert.Contains("Known profiles: default, a, b.", error.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldLeaveThatTasksLevelToSystemOne_WhenTheTaskAsksWithEffortAuto()
+    {
+        // Act
+        var config = JsCrewConfigurationAdapter.ToConfiguration(Crew(""".withEffort("auto")"""));
+
+        // Assert
+        var thinking = Assert.Single(config.Tasks, t => t.Description == "Special task").LlmOverride!.Thinking;
+        Assert.Equal(LlmAutoEffort.Any, thinking!.AutoEffort);
+        Assert.Null(Assert.Single(config.Tasks, t => t.Description == "Usual task").LlmOverride);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldRunThatTaskAtTheLevel_WhenTheTaskAsksWithEffortALevel()
+    {
+        // Act
+        var config = JsCrewConfigurationAdapter.ToConfiguration(Crew(""".withEffort("high")"""));
+
+        // Assert
+        var thinking = Assert.Single(config.Tasks, t => t.Description == "Special task").LlmOverride!.Thinking;
+        Assert.Equal(new LlmThinkingConfig { Enabled = true, Effort = "high" }, thinking);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-439")]
+    public void ShouldRefuseTheTask_WhenWithEffortNamesNoLevel()
+    {
+        // Act
+        var error = Record.Exception(() => Crew(""".withEffort("turbo")"""));
+
+        // Assert
+        Assert.Contains("effort must be low|medium|high|xhigh|max|auto, not 'turbo'", error?.ToString(), StringComparison.Ordinal);
+    }
 }

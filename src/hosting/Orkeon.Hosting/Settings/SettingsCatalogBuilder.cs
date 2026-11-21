@@ -430,7 +430,7 @@ internal static class SettingsCatalogBuilder
             string? note = null;
             if (!isSecret)
             {
-                note = MachineDefault(value);
+                note = PlatformDefaults.GetValueOrDefault(path) ?? MachineDefault(value);
                 if (note is null)
                     literal = Literal(value);
             }
@@ -471,6 +471,15 @@ internal static class SettingsCatalogBuilder
                || key.EndsWith("_API_KEY", StringComparison.OrdinalIgnoreCase)
                || s_secretEndings.Any(ending => key.EndsWith(ending, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>
+    /// The keys whose default depends on the platform the binary runs on, in words: the catalogue is produced on one
+    /// machine and read on every other, so it never states one platform's value as the default.
+    /// </summary>
+    private static readonly Dictionary<string, string> PlatformDefaults = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Orkeon:Bridge:Prefix"] = "`http://127.0.0.1:7410/`, `http://localhost:7410/` under Windows",
+    };
 
     /// <summary>
     /// A default the machine or the moment gives, in words, never as the value of the machine that

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
@@ -22,6 +23,7 @@ namespace Orkeon.Tools.Rag;
 /// surfaces; an http(s) address reaches the web loader as written, its <c>?</c> or
 /// <c>*</c> no pattern (GAP-19).
 /// </summary>
+[ToolContract("rag_ingest", StaysWithCaller = true)]
 public class RagIngestTool : IBaseTool
 {
     private readonly IIngestionPipeline _ingestionPipeline;

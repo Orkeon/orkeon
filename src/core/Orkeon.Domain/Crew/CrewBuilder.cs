@@ -393,6 +393,13 @@ public sealed class CrewBuilder
         {
             SkillsAutoHolders = agents.Where(a => a.Skills is { Auto: true }).Select(a => $"agent '{a.Role.Value}'").ToList(),
             PruneHolders = agents.Where(a => a.Compaction is { Prune: true }).Select(a => $"agent '{a.Role.Value}'").ToList(),
+            // An effort: auto under enabled: false leaves nothing to System One (#439): it is no use of it.
+            EffortAutoHolders = agents.Where(a => a.LlmConfig?.Thinking is { AutoEffort: not null, HasAuto: true }).Select(a => $"agent '{a.Role.Value}'")
+                .Concat(_tasks.Where(t => t.LlmOverride?.Thinking is { AutoEffort: not null, HasAuto: true }).Select(t => $"task '{t.Key ?? t.Description.Value}'"))
+                .ToList(),
+            EnabledAutoHolders = agents.Where(a => a.LlmConfig?.Thinking is { AutoEnabled: true }).Select(a => $"agent '{a.Role.Value}'")
+                .Concat(_tasks.Where(t => t.LlmOverride?.Thinking is { AutoEnabled: true }).Select(t => $"task '{t.Key ?? t.Description.Value}'"))
+                .ToList(),
         };
         // A relay finds its agent as the dispatcher does: by the id a crew factory resolved, else by its role.
         var agentKeys = agents.Select(a => a.Role.Value)

@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Rag.Abstractions.Models;
@@ -21,6 +22,7 @@ namespace Orkeon.Tools.Rag;
 /// judge mode labelled), and the markdown/JSON reports are written through the
 /// VFS.
 /// </summary>
+[ToolContract("rag_eval", StaysWithCaller = true)]
 public class RagEvalTool : ToolBase<RagEvalRequest, RagEvalResponse>
 {
     /// <summary>Metric cutoff applied when the caller gives no <c>k</c>.</summary>

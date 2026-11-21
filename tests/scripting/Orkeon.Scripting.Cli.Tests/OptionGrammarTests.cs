@@ -314,6 +314,9 @@ public sealed class OptionGrammarTests
             Row<McpServeCommandOptions>("--settings", "s.json", "--tools", "a,b"),
             Row<McpServeCommandOptions>("--tools=a,b"),
             Row<McpServeCommandOptions>("--nope"),
+            Row<BridgeServeCommandOptions>("--settings", "s.json"),
+            Row<BridgeServeCommandOptions>("-s=s.json"),
+            Row<BridgeServeCommandOptions>("--nope"),
             Row<RunCommandOptions>("crew.yaml", "--settings=/etc/orkeon/appsettings.json", "--events", "jsonl", "--client=observer"),
         ];
     }

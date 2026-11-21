@@ -7,7 +7,7 @@ using Orkeon.Tools.EventHub.Dtos;
 namespace Orkeon.Tools.EventHub;
 
 /// <summary>Agent tool that fire-and-forgets a message to an addressed mailbox.</summary>
-[ToolContract("post_message",
+[ToolContract("post_message", StaysWithCaller = true,
     Name = "post_message",
     Description = "Fire-and-forget a message to a mailbox (agent://, crew://, topic://, or client://).",
     Category = "EventHub")]

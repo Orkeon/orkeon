@@ -41,6 +41,9 @@ public sealed class JsTask
     /// <summary>The host LLM profile captured by <c>taskBuilder().withProfile(name)</c>; <c>null</c> when unset (GAP-19).</summary>
     internal string? ProfileValue { get; }
 
+    /// <summary>The thinking level captured by <c>taskBuilder().withEffort(level)</c>; <c>null</c> when unset (#439).</summary>
+    internal string? EffortValue { get; }
+
     /// <summary>YAML parity <c>humanInput</c> flag captured by <c>taskBuilder().humanInput(...)</c>.</summary>
     internal bool HumanInputFlag { get; }
 
@@ -87,6 +90,7 @@ public sealed class JsTask
         ResponseSchema = metadata.ResponseSchema;
         ResponseSchemaStrict = metadata.ResponseSchemaStrict;
         ProfileValue = metadata.Profile;
+        EffortValue = metadata.Effort;
         HumanInputFlag = metadata.HumanInput;
         AsyncExecutionFlag = metadata.AsyncExecution;
         RetryPolicy = metadata.Retry;

@@ -206,7 +206,7 @@ internal class LlmThinkingShape
     /// <summary>Whether the model thinks before it answers. Left out, the provider's own behaviour.</summary>
     public bool? Enabled { get; set; }
 
-    /// <summary>How hard it thinks, in the provider's own words (<c>low</c>, <c>medium</c>, <c>high</c>…). Left out, the provider's own.</summary>
+    /// <summary>How hard it thinks, in the provider's own words (<c>low</c>, <c>medium</c>, <c>high</c>…). Left out, the provider's own. <c>auto</c> is refused at start: it is a crew's word (<c>thinking: { effort: auto }</c>).</summary>
     public string? Effort { get; set; }
 }
 

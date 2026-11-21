@@ -32,6 +32,8 @@
       href: guides/drive.md
     - name: The firefox tool
       href: guides/firefox.md
+    - name: Orkeon in a container, the browser on the desktop
+      href: guides/tool-bridge.md
     - name: orkeon drive commands
       href: reference/cli.md#orkeon-drive
 - name: Architecture

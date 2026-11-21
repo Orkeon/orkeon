@@ -260,7 +260,7 @@ public static class JsCrewConfigurationAdapter
 
     /// <summary>
     /// Materialises <c>taskBuilder().withResponseFormat(...)</c> / <c>.withResponseSchema(...)</c>
-    /// and <c>.withProfile(name)</c> (GAP-19) into a <see cref="LlmConfigOverride"/> — the
+    /// <c>.withProfile(name)</c> (GAP-19) and <c>.withEffort(level)</c> (#439) into a <see cref="LlmConfigOverride"/> — the
     /// <c>llm_override</c> a YAML task writes. Returns <c>null</c> when the task sets neither (a
     /// format of <c>"text"</c> is the provider default, and sets nothing).
     /// </summary>
@@ -272,10 +272,16 @@ public static class JsCrewConfigurationAdapter
             jsTask.ResponseSchema,
             jsTask.ResponseSchemaStrict);
 
-        if (format is null && jsTask.ProfileValue is null)
+        if (format is null && jsTask.ProfileValue is null && jsTask.EffortValue is null)
             return null;
 
-        return new LlmConfigOverride { ResponseFormat = format, Profile = jsTask.ProfileValue };
+        return new LlmConfigOverride
+        {
+            ResponseFormat = format,
+            Profile = jsTask.ProfileValue,
+            // .withEffort(level | 'auto') (#439): the task's own thinking, as a YAML llm_override writes it.
+            Thinking = jsTask.EffortValue is null ? null : Orkeon.Scripting.Runtime.JsLlmConfig.ThinkingAt(jsTask.EffortValue),
+        };
     }
 
     /// <summary>

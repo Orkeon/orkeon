@@ -65,7 +65,7 @@ public sealed class SystemOneDecideResponse
 /// returns calibrated answers. For a judgement an agent wants measured rather than written. The
 /// key is the host's; a request never carries one. Images and box questions are not offered.
 /// </summary>
-[ToolContract("system_one_decide",
+[ToolContract("system_one_decide", StaysWithCaller = true,
     Description = "Ask the decision model typed questions about a state and get calibrated answers: " +
                   "a choice with its probabilities, a score on a scale, or the probability of a yes.")]
 public sealed class SystemOneDecideTool : ToolBase<SystemOneDecideRequest, SystemOneDecideResponse>

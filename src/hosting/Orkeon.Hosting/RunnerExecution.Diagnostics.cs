@@ -92,6 +92,7 @@ public static partial class RunnerExecution
                 // Same order as a kickoff: the MCP tools exist before the crew
                 // resolves its own, so --validate judges the crew a run would actually get.
                 await McpStartup.ConnectConfiguredServersAsync(host, cts.Token).ConfigureAwait(false);
+                await ToolBridge.ToolBridgeStartup.ConnectAsync(host.Services, cts.Token).ConfigureAwait(false);
 
                 // The types of a .ork.ts, before it loads: esbuild strips them, so a wrong one only
                 // showed at run time (FWK-12).
@@ -269,7 +270,7 @@ public static partial class RunnerExecution
     /// The host <c>--list-tools</c> prints and <c>orkeon mcp serve</c> serves (GAP-24): the runner
     /// host over the settings' mounts and the <c>--mount</c> values of <paramref name="mounts"/>, no crew, every log line on
     /// stderr — stdout carries the manifest, or the protocol — and the MCP servers of the settings
-    /// connected, so both see the tools a kickoff sees.
+    /// connected, then the tool bridge (#445), so both see the tools a kickoff sees.
     /// <para>
     /// The host needs a file system even to list the tools: without one <c>IFileSystemService</c>
     /// is not registered, and the filesystem-backed tools cannot be constructed when the registry
@@ -355,7 +356,16 @@ public static partial class RunnerExecution
         try
         {
             await McpStartup.ConnectConfiguredServersAsync(host, ct).ConfigureAwait(false);
+            // The tools Orkeon:Tools:Bridge names run on the bridge here too (#445), or the host is refused: never
+            // half-bridged. The host of orkeon bridge serve is marked and skipped.
+            await ToolBridge.ToolBridgeStartup.ConnectAsync(host.Services, ct).ConfigureAwait(false);
             return host;
+        }
+        catch (RunnerSettingsException ex)
+        {
+            host.Dispose();
+            ReportRefusedSettings(ex, error);
+            return null;
         }
         catch (OperationCanceledException)
         {

@@ -35,7 +35,7 @@ internal sealed record SpawnAgentScriptResponse
 /// engine, under a child budget (depth + 1). The run is engine work: the act loop reaches it through its
 /// JS tool pump (<see cref="Start(string, string?)"/>), never from the loop's own thread.
 /// </summary>
-[ToolContract("spawn_agent", Name = "Spawn sub-agent",
+[ToolContract("spawn_agent", StaysWithCaller = true, Name = "Spawn sub-agent",
     Description = "Run a named agent of the crew as a child and return its output",
     Category = "Autonomous")]
 internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, SpawnAgentScriptResponse>

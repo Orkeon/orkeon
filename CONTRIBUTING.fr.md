@@ -376,8 +376,11 @@ demandent pas davantage, **la surface fonctionnelle ne grandit pas** :
   ([ADR-012](docs/fr/adr/ADR-012-email-tool-family.md)). La famille drive
   (`Orkeon.Tools.Drive`, onze outils pour Google Drive et OneDrive) est la
   troisième, actée par le propriétaire le 2026-10-17, pour la même raison
-  ([ADR-013](docs/fr/adr/ADR-013-drive-tool-family.md)). La règle vaut pour
-  tout le reste ;
+  ([ADR-013](docs/fr/adr/ADR-013-drive-tool-family.md)). Le pont d'outils
+  (`orkeon bridge serve`, [ADR-019](docs/fr/adr/ADR-019-tool-bridge.md))
+  n'ajoute aucun outil : il exécute sur une autre machine les outils intégrés
+  qui existent, et un outil n'est pas intégré parce que le pont pourrait le
+  porter. La règle vaut pour tout le reste ;
 - pas de nouveau store de mémoire, adaptateur de langage ou mode d'orchestration.
 
 Une pull request qui ajoute l'un d'eux sera fermée avec un lien vers cette

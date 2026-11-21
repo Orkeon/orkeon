@@ -56,6 +56,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private NativeToolCallingAgentLoop? _nativeLoop;
     private OutputValidationCoordinator? _outputValidation;
 
+    // The routing warnings of an orchestrator outside a run (#439): in a run, the run's own are said once.
+    private readonly Execution.RunWarnings _routeWarnings = new();
+
     private LlmCallGate LlmGate =>
         _llmGate ??= new LlmCallGate(_logger, _llmProvider, TimeProvider, AgentRequestsPerMinute, _verboseLogger);
 
@@ -588,11 +591,30 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         ArgumentNullException.ThrowIfNull(agent);
         ArgumentNullException.ThrowIfNull(task);
         ArgumentNullException.ThrowIfNull(context);
+        // The thinking this task keeps across its attempts when it leaves something to System One (#439): told how the
+        // attempt ended, so that the next one runs a step higher after a failure.
+        Execution.KeptThinking? keptThinking = null;
         return ExecuteTaskStampedAsync();
 
         // The execution's own end, on the clock the executions use, read before anything after it.
-        async System.Threading.Tasks.Task<TaskResult> ExecuteTaskStampedAsync() =>
-            (await ExecuteTaskCoreInnerAsync().ConfigureAwait(false)) with { EndedAt = TimeProvider.GetUtcNow() };
+        async System.Threading.Tasks.Task<TaskResult> ExecuteTaskStampedAsync()
+        {
+            TaskResult result;
+            try
+            {
+                result = await ExecuteTaskCoreInnerAsync().ConfigureAwait(false);
+            }
+            catch when (!cancellationToken.IsCancellationRequested)
+            {
+                // An attempt that throws is a failed one its retry runs a step higher; a cancellation is not (#439).
+                keptThinking?.NoteAttempt(true);
+                throw;
+            }
+
+            var endedAt = TimeProvider.GetUtcNow();
+            keptThinking?.NoteAttempt(FailedForRaise(result));
+            return result with { EndedAt = endedAt };
+        }
 
         async System.Threading.Tasks.Task<TaskResult> ExecuteTaskCoreInnerAsync()
         {
@@ -624,6 +646,14 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // provider or profile, else the default (GAP-17, GAP-34) —, for its turns and its
                 // correction round alike.
                 var llm = await LlmForAsync(agent, task, context, taskToken).ConfigureAwait(false);
+                // The thinking settled at the task's start when its effort is left to System One (#439): every call of
+                // this execution - its turns, its correction round - runs on it.
+                // A task that leaves nothing to System One opens a scope too, so that its correction rounds never raise
+                // the level of a task it runs inside (a delegated sub-task).
+                using var thinkingScope = llm.Kept is { } kept
+                    ? Execution.TaskThinkingScope.Begin(new RaisingThinking(this, agent.Role.Value, task.Id.ToString(), kept))
+                    : Execution.TaskThinkingScope.Begin(llm.Thinking?.Thinking);
+                keptThinking = llm.Kept;
                 var toolbelt = TaskToolbelt.Compose(agent, task, _registeredTools, MemoryRegistry?.IsMemoryEnabled(context.CrewId) == true);
 
                 // A provider that runs its own tools — a Microsoft Agent Framework agent — never calls
@@ -1021,15 +1051,32 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// <summary>
     /// What a task runs on: the loop of its provider — null for the host's default, which keeps the
     /// orchestrator's own loops — and that provider, whose capabilities the run reads (null when the
-    /// default's is unknown to an orchestrator built by hand).
+    /// default's is unknown to an orchestrator built by hand). <paramref name="Thinking"/> is the thinking its calls
+    /// run on when its config leaves the effort to System One (#439), null when it leaves nothing.
     /// </summary>
-    private readonly record struct TaskLlm(ChatClientAgentLoop? Loop, Domain.SharedKernel.ILlmProvider? Provider);
+    private readonly record struct TaskLlm(
+        ChatClientAgentLoop? Loop, Domain.SharedKernel.ILlmProvider? Provider, SettledThinking? Thinking = null, Execution.KeptThinking? Kept = null);
+
+    /// <summary>The thinking settled for a task whose effort is left to System One (#439); null for the provider's own.</summary>
+    private sealed record SettledThinking(Domain.SharedKernel.ValueObjects.LlmThinkingConfig? Thinking);
+
+    /// <summary>What System One picked for a task, kept by its later attempts (#434, #439).</summary>
+    private sealed record RoutedTask(string? Profile, Execution.KeptThinking? Thinking, SettledThinking? HeldOff = null);
+
+    /// <summary>
+    /// Whether an attempt failed in a way a raise of the thinking may help (#439): a failed result, as <c>retry:</c>
+    /// retries it - never a cancellation, a refusal of the guardian, an exhausted budget or a timeout: a retry that
+    /// thinks harder runs longer, and so would time out again.
+    /// </summary>
+    internal static bool FailedForRaise(TaskResult result) =>
+        !result.Success && result.ExitReason is not (AgentExitReason.Cancelled or AgentExitReason.GuardianBlocked
+            or AgentExitReason.BudgetExhausted or AgentExitReason.ExecutionTimeExceeded);
 
     /// <summary>
     /// What <paramref name="task"/> runs on (GAP-17, GAP-34): the profile its <c>llm_override</c>
     /// names — <c>default</c> included —, else its agent's own provider (<c>Agent.Llm</c>), else its
     /// agent's profile, else the host's default. A profile of <c>auto</c> is the one System One picks for the
-    /// task (#434).
+    /// task (#434), and an effort of <c>auto</c> the level it picks (#439), in one decision call for both.
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// The profile is not one <see cref="LlmProfiles"/> offers — the crew load checks it first; this is
@@ -1040,34 +1087,211 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         DomainAgent agent, CrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
     {
         var taskProfile = task.LlmOverride?.Profile;
-        if (string.IsNullOrWhiteSpace(taskProfile) && agent.Llm is { } own)
-            return OwnProviderLlm(agent, own);
-
+        var own = string.IsNullOrWhiteSpace(taskProfile) ? agent.Llm : null;
         var profile = string.IsNullOrWhiteSpace(taskProfile) ? agent.LlmConfig?.Profile : taskProfile;
-        if (Interfaces.Ports.LlmProfiles.IsAuto(profile))
-            profile = await RoutedProfileAsync(agent, task, context, cancellationToken).ConfigureAwait(false);
-        return ProfileLlm(agent, profile);
+        var routeProfile = own is null && Interfaces.Ports.LlmProfiles.IsAuto(profile);
+        var thinking = Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(
+            agent.LlmConfig ?? Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile(), task.LlmOverride).Thinking;
+        if (!routeProfile && thinking is not { HasAuto: true })
+            return own is not null ? OwnProviderLlm(agent, own) : ProfileLlm(agent, profile);
+
+        var routed = await RoutedTaskAsync(agent, task, context, routeProfile ? null : profile, own, thinking, cancellationToken).ConfigureAwait(false);
+        var llm = own is not null ? OwnProviderLlm(agent, own) : ProfileLlm(agent, routed.Profile);
+        return llm with { Thinking = routed.Thinking is { } kept ? new SettledThinking(kept.Current) : routed.HeldOff, Kept = routed.Thinking };
     }
 
     /// <summary>
-    /// The profile System One picks for <paramref name="task"/> of an agent on <c>llm.profile: auto</c> (#434), once
-    /// per agent and run: a later attempt of the same task by the same agent keeps it, another agent on the task
-    /// (a voter) has its own picked, and the observer is told at each pick. Without a router, the default profile.
+    /// What System One picks for <paramref name="task"/> of <paramref name="agent"/> (#434, #439), once per agent and
+    /// run: the profile of an agent on <c>llm.profile: auto</c>, the thinking of a config on <c>effort: auto</c>,
+    /// asked in one call. A later attempt of the same task by the same agent keeps it - its thinking raised one step
+    /// when the attempt before failed -, another agent on the task (a voter) has its own picked, and the observer is
+    /// told at each pick and each raise. Without a router, the default profile and the effort without <c>auto</c>.
     /// </summary>
-    private async System.Threading.Tasks.Task<string> RoutedProfileAsync(
-        DomainAgent agent, CrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
+    /// <param name="agent">The agent that runs the task.</param>
+    /// <param name="task">The task.</param>
+    /// <param name="context">The run's context, for the request the decision model reads.</param>
+    /// <param name="fixedProfile">The profile when it is not routed (null on <c>auto</c>).</param>
+    /// <param name="own">The agent's own provider, when it runs on it.</param>
+    /// <param name="thinking">The task's thinking, its override merged.</param>
+    /// <param name="cancellationToken">Cancels the decision call.</param>
+    private async System.Threading.Tasks.Task<RoutedTask> RoutedTaskAsync(
+        DomainAgent agent, CrewTask task, SimpleExecutionContext context, string? fixedProfile,
+        Domain.SharedKernel.ILlmProvider? own, Domain.SharedKernel.ValueObjects.LlmThinkingConfig? thinking,
+        CancellationToken cancellationToken)
     {
-        if (ProfileRouter is not { } router)
-            return Interfaces.Ports.LlmProfiles.Default;
-
+        var routeProfile = own is null && fixedProfile is null && Interfaces.Ports.LlmProfiles.IsAuto(
+            string.IsNullOrWhiteSpace(task.LlmOverride?.Profile) ? agent.LlmConfig?.Profile : task.LlmOverride.Profile);
+        var autoThinking = thinking is { HasAuto: true } ? thinking : null;
         var taskId = task.Id.ToString();
-        return await Picks.OnceAsync(RoutePick, taskId, agent.Id.ToString(), async token =>
+        var fixedProvider = routeProfile ? null : own ?? ProfileLlm(agent, fixedProfile).Provider;
+
+        // A thinking written off below - the agent's, or the profile's when it is not routed - stays off whatever the
+        // pick (#439): no level is asked, and the task runs on it switched off.
+        SettledThinking? heldOff = null;
+        if (autoThinking is not null && (!routeProfile || WrittenStanding(agent, task) is not null)
+            && StandingThinking(agent, task, fixedProvider) is var known && autoThinking.IsHeldOffBy(known))
         {
-            var notice = await router.RouteAsync(
-                agent, taskId, AgentPromptComposer.BuildKnowledgeQueryText(task, context), ScopeCircuit, token).ConfigureAwait(false);
-            RouteObserver?.ProfileRouted(notice);
-            return notice.Profile;
+            heldOff = new SettledThinking(autoThinking.Settle(null, known));
+            autoThinking = null;
+            if (!routeProfile)
+                return new RoutedTask(fixedProfile, null, heldOff);
+        }
+
+        if (autoThinking is not null)
+            EnsureAutoThinkingRunnable(agent, task, autoThinking, fixedProvider);
+        if (ProfileRouter is null)
+            WarnNoRouter(routeProfile, autoThinking is not null);
+
+        var routed = await Picks.OnceAsync(RoutePick, taskId, agent.Id.ToString(), async token =>
+        {
+            Routing.TaskRoute? route = null;
+            if (ProfileRouter is { } router)
+            {
+                route = await router.RouteAsync(
+                    agent, taskId, AgentPromptComposer.BuildKnowledgeQueryText(task, context), routeProfile, autoThinking, ScopeCircuit, token).ConfigureAwait(false);
+                if (route.Profile is { } notice)
+                    RouteObserver?.ProfileRouted(notice);
+            }
+
+            var profile = routeProfile ? route?.Profile?.Profile ?? Interfaces.Ports.LlmProfiles.Default : fixedProfile;
+            if (autoThinking is null)
+                return new RoutedTask(profile, null, heldOff);
+
+            var provider = own ?? ProfileLlm(agent, profile).Provider;
+            var standing = StandingThinking(agent, task, provider);
+            var settled = autoThinking.Settle(route?.Effort?.Level, standing);
+            var options = route?.Effort?.Levels
+                ?? [.. autoThinking.AutoOptions(ProfileRouter?.EffortLevels ?? Routing.AgentEffortOptions.DefaultLevels)];
+            if (route?.Effort is { } pick)
+            {
+                RouteObserver?.EffortPicked(new AgentEffortNotice
+                {
+                    TaskId = taskId,
+                    AgentRole = agent.Role.Value,
+                    Level = Execution.KeptThinking.LevelOf(settled),
+                    Reason = pick.Reason,
+                    Picked = pick.Picked,
+                    Probability = pick.Probability,
+                    Levels = pick.Levels,
+                });
+            }
+
+            return new RoutedTask(profile, new Execution.KeptThinking(autoThinking, standing, settled, options));
         }, cancellationToken).ConfigureAwait(false);
+
+        // The level is kept, except after a failed attempt: one step up, with no decision call (#439).
+        if (routed.Thinking is { } kept && kept.RaiseAfterFailure() is { } raise)
+            TellRaised(agent.Role.Value, taskId, kept, raise);
+
+        return routed;
+    }
+
+    /// <summary>Logs a raise of a task's thinking and tells the observer, <c>agent.effort</c> with <c>reason: raised</c> (#439).</summary>
+    private void TellRaised(string agentRole, string taskId, Execution.KeptThinking kept, (string? Previous, string? Raised) raise)
+    {
+        Routing.AgentRouteLog.EffortRaised(_logger, agentRole, taskId, raise.Previous ?? "(the provider's own)", raise.Raised ?? "(the provider's own)");
+        RouteObserver?.EffortPicked(new AgentEffortNotice
+        {
+            TaskId = taskId,
+            AgentRole = agentRole,
+            Level = raise.Raised,
+            Previous = raise.Previous,
+            Reason = AgentEffortReasons.Raised,
+            Levels = kept.Options,
+        });
+    }
+
+    /// <summary>
+    /// The thinking one execution of a task runs on when it leaves something to System One (#439): the kept one as the
+    /// execution starts, raised a step when a round of its output fails its guardrail. Its own: a concurrent execution of
+    /// the same task by the same agent never changes it mid-run.
+    /// </summary>
+    private sealed class RaisingThinking(ExecutionOrchestrator orchestrator, string agentRole, string taskId, Execution.KeptThinking kept)
+        : Execution.ITaskThinking
+    {
+        private readonly Lock _gate = new();
+        private Domain.SharedKernel.ValueObjects.LlmThinkingConfig? _current = kept.Current;
+
+        public Domain.SharedKernel.ValueObjects.LlmThinkingConfig? Current
+        {
+            get
+            {
+                lock (_gate)
+                    return _current;
+            }
+        }
+
+        public void RaiseAfterFailedRound()
+        {
+            (Domain.SharedKernel.ValueObjects.LlmThinkingConfig? Settled, string? Previous, string? Raised)? raise;
+            lock (_gate)
+            {
+                raise = kept.RaiseFrom(_current);
+                if (raise is { } raised)
+                    _current = raised.Settled;
+            }
+
+            if (raise is { } told)
+                orchestrator.TellRaised(agentRole, taskId, kept, (told.Previous, told.Raised));
+        }
+    }
+
+    /// <summary>
+    /// The thinking a task on <c>effort: auto</c> would have had without it (#439): the agent's own when the
+    /// <c>auto</c> is its task's override and the agent writes a thinking of its own, else the profile's (the
+    /// provider's config), else none - the provider's own.
+    /// </summary>
+    private static Domain.SharedKernel.ValueObjects.LlmThinkingConfig? StandingThinking(
+        DomainAgent agent, CrewTask task, Domain.SharedKernel.ILlmProvider? provider) =>
+        WrittenStanding(agent, task) ?? provider?.BaseConfig?.Thinking;
+
+    /// <summary>The agent's own thinking when the <c>auto</c> is its task's override and the agent writes one (#439); else null.</summary>
+    private static Domain.SharedKernel.ValueObjects.LlmThinkingConfig? WrittenStanding(DomainAgent agent, CrewTask task) =>
+        task.LlmOverride?.Thinking is { HasAuto: true } && agent.LlmConfig?.Thinking is { HasAuto: false } written ? written : null;
+
+    /// <summary>
+    /// The checks a YAML crew's load makes on a thinking left to System One (#439), made at the start of a task of a
+    /// crew built in C# or by hand: bounds <c>min</c>/<c>max</c> that keep none of the host's levels, and a model that
+    /// does not think (thinking support <c>None</c>) on a profile that is not routed, fail the task before any call. A
+    /// provider that cannot tell is trusted; on <c>llm.profile: auto</c>, the model is the pick's and is not checked.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">System One would have nothing to pick.</exception>
+    private void EnsureAutoThinkingRunnable(
+        DomainAgent agent, CrewTask task, Domain.SharedKernel.ValueObjects.LlmThinkingConfig thinking, Domain.SharedKernel.ILlmProvider? provider)
+    {
+        var where = $"Agent '{agent.Role.Value}' leaves its thinking to System One on task '{task.Key ?? task.Id.ToString()}'";
+        IReadOnlyList<string> levels = ProfileRouter?.EffortLevels ?? Routing.AgentEffortOptions.DefaultLevels;
+        if (thinking.AutoEffort is { IsBounded: true } bounded && bounded.Allowed(levels).Count == 0)
+            throw new InvalidOperationException(
+                $"{where} with bounds {{ {bounded.DescribeBounds()} }} that keep none of the levels the host offers ({string.Join(", ", levels)}, " +
+                $"{Routing.AgentEffortOptions.LevelsKey}): widen min/max, or add a level inside them to the host's levels.");
+        if (provider is null)
+            return;
+
+        var model = string.IsNullOrWhiteSpace(task.LlmOverride?.Profile) && !string.IsNullOrWhiteSpace(agent.LlmConfig?.Model)
+            ? agent.LlmConfig.Model
+            : provider.BaseConfig?.Model;
+#pragma warning disable ORKEXP005 // The reasoning capabilities are experimental; read to refuse a pick with no level, as a YAML load does.
+        var reasoning = provider.DescribeReasoning(model);
+#pragma warning restore ORKEXP005
+        if (reasoning is { Thinking: Domain.SharedKernel.ValueObjects.ThinkingSupport.None })
+            throw new InvalidOperationException(
+                $"{where}, and the model of its profile does not think (thinking support None): System One has nothing to pick. " +
+                "Remove the auto, or run it on a profile whose model thinks.");
+    }
+
+    /// <summary>
+    /// An orchestrator built without a profile router picks nothing (#434, #439): once per run, a warning says so, as the
+    /// circuit off does, and the tasks run on the default profile and the effort they would have had without <c>auto</c>.
+    /// </summary>
+    private void WarnNoRouter(bool routeProfile, bool routeEffort)
+    {
+        const string reason = "this orchestrator has no profile router (AgentProfileRouter)";
+        var warnings = Execution.RunWarnings.Of(_routeWarnings);
+        if (routeProfile && warnings.First("route.no-router"))
+            Routing.AgentRouteLog.CircuitOff(_logger, reason);
+        if (routeEffort && warnings.First("effort.no-router"))
+            Routing.AgentRouteLog.EffortCircuitOff(_logger, reason);
     }
 
     /// <summary>The loop and provider of the host profile <paramref name="profile"/> — the default's for none.</summary>

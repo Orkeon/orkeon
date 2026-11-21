@@ -55,6 +55,12 @@ declare global {
          * profile. A name the host does not offer fails the load, listing the known ones.
          */
         withProfile(name: string): this;
+        /**
+         * YAML parity `llm_override: { thinking: { effort } }` (#439) — runs this task alone at this thinking level,
+         * or on `"auto"`, at the level System One picks at the task's start among the host's levels. Wins over its
+         * agent's `.effort(...)`. Anything else throws.
+         */
+        withEffort(level: AgentEffort): this;
         /** YAML parity `humanInput: true` — the task pauses for the human-input provider. */
         humanInput(value?: boolean): this;
         /**

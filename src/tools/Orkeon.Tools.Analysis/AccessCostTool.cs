@@ -14,6 +14,7 @@ using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("access_cost", ActsOnWorkspace = true)]
 public sealed class AccessCostTool : ToolBase<AccessCostRequest, AccessCostResponse>
 {
     private const int PageSize = 1000;

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions.DependencyInjection;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 
@@ -24,6 +25,7 @@ namespace Orkeon.Tools.Embeddings.Local;
 /// callers can detect a mismatch deterministically without an exception.
 /// </para>
 /// </remarks>
+[ToolContract("local_embed_text")]
 public sealed class LocalEmbedTool : ToolBase<LocalEmbedRequest, LocalEmbedResponse>
 {
     /// <summary>Logical model identifier reported in <see cref="LocalEmbedResponse.Model"/>.</summary>

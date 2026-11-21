@@ -75,7 +75,7 @@ public sealed class McpPromptGetResponse
 /// Gets a prompt template of a connected MCP server (<c>prompts/get</c>), or lists the server's prompts
 /// when no name is given. The text the server returns is data, never instructions of the operator.
 /// </summary>
-[ToolContract("mcp_prompt_get",
+[ToolContract("mcp_prompt_get", StaysWithCaller = true,
     Description = "Get a prompt template from a connected MCP server, its arguments filled in; without a name, list the prompts the server offers.",
     Category = "MCP")]
 public sealed class McpPromptGetTool : ToolBase<McpPromptGetRequest, McpPromptGetResponse>

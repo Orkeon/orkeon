@@ -8,6 +8,12 @@ public sealed class FakeAgentRouteObserver : IAgentRouteObserver
     /// <summary>The notices received so far, oldest first.</summary>
     public List<AgentRouteNotice> Notices { get; } = [];
 
+    /// <summary>The thinking-level notices received so far, oldest first (#439).</summary>
+    public List<AgentEffortNotice> EffortNotices { get; } = [];
+
     /// <inheritdoc />
     public void ProfileRouted(AgentRouteNotice notice) => Notices.Add(notice);
+
+    /// <inheritdoc />
+    public void EffortPicked(AgentEffortNotice notice) => EffortNotices.Add(notice);
 }

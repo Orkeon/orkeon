@@ -10,7 +10,7 @@ namespace Orkeon.Tools.EventHub;
 /// Agent tool that pulls the next message from a mailbox (default: caller's own mailbox).
 /// Requires exactly one of <c>timeout_ms</c> / <c>wait_forever:true</c>.
 /// </summary>
-[ToolContract("receive_message",
+[ToolContract("receive_message", StaysWithCaller = true,
     Name = "receive_message",
     Description = "Pull the next message from a mailbox (default: current agent). Only mailboxes of the calling crew are readable — reading is destructive, and a mailbox belongs to its owner. Requires exactly one of timeout_ms / wait_forever.",
     Category = "EventHub")]

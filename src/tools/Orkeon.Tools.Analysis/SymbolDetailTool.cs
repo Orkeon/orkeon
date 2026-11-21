@@ -7,9 +7,11 @@ using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Analysis.Internal;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("symbol_detail", ActsOnWorkspace = true)]
 public sealed class SymbolDetailTool : ToolBase<SymbolDetailRequest, SymbolDetailResponse>
 {
     private const int TopLinksLimit = 10;

@@ -575,6 +575,12 @@ public static class LlmSettings
         if (enabled is null && effort is null)
             return null;
 
+        // auto is a crew's word (#439): System One picks a level per task, which a host profile cannot hold.
+        if (LlmAutoEffort.IsAuto(effort))
+            throw new InvalidOperationException(
+                $"{thinking.Path}:Effort is '{LlmAutoEffort.Name}', which only a crew writes (thinking: {{ effort: auto }}): " +
+                $"write a level ({string.Join(", ", LlmThinkingConfig.Levels)}) here, and list the levels System One may pick under Orkeon:Decision:Effort:Levels.");
+
         if (effort is not null)
         {
             try

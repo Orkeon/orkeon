@@ -101,7 +101,7 @@ internal static class HostServiceRegistration
         services.AddScoped<Orkeon.Application.Crew.ICrewExecutionHook>(
             sp => sp.GetRequiredService<HostRunRecording>().Hook(sp.GetRequiredService<RunProgressHook>()));
 
-        // The agent loops' events of a recorded run (agent.compacted, agent.skills, agent.route, agent.pruned): scoped like
+        // The agent loops' events of a recorded run (agent.compacted, agent.skills, agent.route, agent.effort, agent.pruned): scoped like
         // the orchestrator that holds them, over the run's publisher read at each write, since the recording opens it after
         // the run's scope exists. Nothing is written when the history is off.
         Orkeon.Hosting.Runs.AgentRunEventObservers.AddAgentRunEventObservers(services, ServiceLifetime.Scoped, sp =>
@@ -167,6 +167,8 @@ internal static class HostServiceRegistration
     /// <item><see cref="McpConnectionService"/> first, so the MCP servers' tools are in the
     /// registry before the channel can deliver a message that loads a crew, and so the servers
     /// stay connected until every run has drained (GAP-11);</item>
+    /// <item><see cref="ToolBridgeConnectionService"/> right after, so the tools the bridge runs are in place before a
+    /// crew resolves them (#445);</item>
     /// <item><see cref="HostA2AService"/>, after MCP for the same reason — a task loads a crew —
     /// and before the chat channel and the crew host, so it stops after the drain and a run in
     /// flight still answers the peer that asked for it (GAP-23);</item>
@@ -182,6 +184,7 @@ internal static class HostServiceRegistration
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<McpConnectionService>();
+        services.AddHostedService<ToolBridgeConnectionService>();
         services.AddHostedService<HostA2AService>();
         services.TryAddSingleton<Api.HostApiOptionalServices>();
         services.AddHostedService<Api.HostApiServer>();

@@ -40,9 +40,13 @@ public sealed class FakeFileSystemService : IFileSystemService
         return this;
     }
 
+    /// <summary>Every path <see cref="ResolveAndValidate"/> was asked, in order.</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<string> Validated { get; } = new();
+
     public PathValidationResult ResolveAndValidate(string virtualPath, FileAccessRights requiredRight)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
+        Validated.Enqueue(virtualPath);
 
         if (!IsUnderMount(virtualPath))
             return PathValidationResult.Denied($"No mount for virtual path '{virtualPath}'.");
@@ -231,10 +235,15 @@ public sealed class FakeFileSystemService : IFileSystemService
         return Task.CompletedTask;
     }
 
+    /// <summary>The paths whose <see cref="WriteAllBytesAsync"/> fails with an <see cref="IOException"/>, as a full disk does.</summary>
+    public HashSet<string> FailingWrites { get; } = new(StringComparer.Ordinal);
+
     public Task<int> WriteAllBytesAsync(string virtualPath, byte[] content, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(content);
         EnsureUnderMount(virtualPath);
+        if (FailingWrites.Contains(virtualPath))
+            throw new IOException($"No space left to write '{virtualPath}'.");
         EnsureDirectories(virtualPath);
         _entries[virtualPath] = new FakeEntry(content, DateTimeOffset.UtcNow, VirtualEntryKind.File, DateTimeOffset.UtcNow);
         return Task.FromResult(content.Length);

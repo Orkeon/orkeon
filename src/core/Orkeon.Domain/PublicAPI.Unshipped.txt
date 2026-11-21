@@ -118,3 +118,48 @@ Orkeon.Domain.Task.ValueObjects.SystemOneUses.PruneHolders.init -> void
 Orkeon.Domain.Task.ValueObjects.SystemOneUses.SkillsAutoHolders.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.Task.ValueObjects.SystemOneUses.SkillsAutoHolders.init -> void
 static Orkeon.Domain.Task.DecisionTaskRules.ModeRefusal(System.Collections.Generic.IEnumerable<string!>! refusals) -> string!
+Orkeon.Domain.Agent.AgentBuilder.ThinkingEffortAuto(string? min = null, string? max = null) -> Orkeon.Domain.Agent.AgentBuilder!
+Orkeon.Domain.Agent.AgentBuilder.ThinkingEnabledAuto() -> Orkeon.Domain.Agent.AgentBuilder!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort
+Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.Allowed(System.Collections.Generic.IReadOnlyList<string!>! hostLevels) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.Equals(Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort? other) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.DescribeBounds() -> string!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.IsBounded.get -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.Max.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.Min.get -> string?
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.Bounded(string? min, string? max) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort!
+const Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.Name = "auto" -> string!
+override Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.Equals(object? obj) -> bool
+override Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.GetHashCode() -> int
+override Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.ToString() -> string!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.Any.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.IsAuto(string? effort) -> bool
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort? right) -> bool
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort? right) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.AutoEffort.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.AutoEffort.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.HasAuto.get -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.AutoEnabled.get -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.AutoEnabled.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.AutoOptions(System.Collections.Generic.IReadOnlyList<string!>! hostLevels) -> System.Collections.Generic.IReadOnlyList<string!>!
+const Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.Off = "off" -> string!
+const Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.On = "on" -> string!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.AnswerOf(Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig? settled, System.Collections.Generic.IReadOnlyList<string!>! options) -> string?
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.Above(string? current, System.Collections.Generic.IReadOnlyList<string!>! options) -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.Settle(string? level, Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig? standing) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig?
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.EffortAutoHolders.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.EffortAutoHolders.init -> void
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.EnabledAutoHolders.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Task.ValueObjects.SystemOneUses.EnabledAutoHolders.init -> void
+Orkeon.Domain.Attributes.ToolContractAttribute.ActsOnWorkspace.get -> bool
+Orkeon.Domain.Attributes.ToolContractAttribute.ActsOnWorkspace.set -> void
+Orkeon.Domain.Attributes.ToolContractAttribute.StaysWithCaller.get -> bool
+Orkeon.Domain.Attributes.ToolContractAttribute.StaysWithCaller.set -> void
+Orkeon.Domain.Tools.ToolContracts
+static Orkeon.Domain.Tools.ToolContracts.ActsOnWorkspace(Orkeon.Domain.Tools.IBaseTool! tool) -> bool
+static Orkeon.Domain.Tools.ToolContracts.ContractOf(Orkeon.Domain.Tools.IBaseTool! tool) -> Orkeon.Domain.Attributes.ToolContractAttribute?
+static Orkeon.Domain.Tools.ToolContracts.StaysWithCaller(Orkeon.Domain.Tools.IBaseTool! tool) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmAutoEffort.Clamp(string? level) -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.IsHeldOffBy(Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig? standing) -> bool
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmThinkingConfig.ParseEffort(string? effort) -> string?

@@ -47,6 +47,7 @@ internal sealed class JsTaskBuilder
     private JsValue? _responseSchema;
     private bool _responseSchemaStrict = true;
     private string? _profile;
+    private string? _effort;
     private object? _decisionSpec;
     private string? _whenTask;
     private object? _whenSpec;
@@ -166,6 +167,19 @@ internal sealed class JsTaskBuilder
         if (name is null || !name.IsString() || string.IsNullOrWhiteSpace(name.AsString()))
             throw new InvalidScriptException(".withProfile(name) takes the profile name as a non-empty string.");
         _profile = name.AsString().Trim();
+        return this;
+    });
+
+    /// <summary>
+    /// YAML parity <c>llm_override: { thinking: { effort } }</c> (#439) - runs this task alone at one thinking level
+    /// (<c>low</c>, <c>medium</c>, <c>high</c>, <c>xhigh</c>, <c>max</c>), or <c>"auto"</c>, the level System One picks
+    /// at the task's start among the host's levels. Anything else is refused.
+    /// </summary>
+    public JsTaskBuilder withEffort(JsValue level) => Guarded(() =>
+    {
+        if (level is null || !level.IsString())
+            throw new InvalidScriptException(".withEffort(level) takes a level or 'auto' as a string.");
+        _effort = Orkeon.Scripting.Runtime.JsLlmConfig.RequireEffortOrAuto(level.AsString());
         return this;
     });
 
@@ -293,6 +307,7 @@ internal sealed class JsTaskBuilder
             ResponseSchema = _responseSchema,
             ResponseSchemaStrict = _responseSchemaStrict,
             Profile = _profile,
+            Effort = _effort,
             HumanInput = _humanInput,
             AsyncExecution = _asyncExecution,
             Retry = _retry,

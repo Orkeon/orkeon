@@ -7,6 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a tool bridge: some tools of a run execute on another machine, `orkeon bridge serve` (#445)
+
+An Orkeon in a container can drive what lives on the user's machine, the browser first: `orkeon bridge serve`, run on
+that machine, serves the built-in tools its `Orkeon:Bridge:Allow` selects over JSON on HTTP (`/orkeon-bridge/v1/`:
+`GET tools`, `POST session`, `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`), and the caller's `Orkeon:Tools:Bridge`
+(`Address`, `Allow`, `Deny`) sends the calls of the tools it selects there. A tool is bridged when both sides select
+it; `*` selects only Orkeon's bridgeable tools: never a tool that acts on the workspace (files, shell,
+`code_interpreter`, `list_mounts`, code index), which a new `[ToolContract(ActsOnWorkspace = true)]` marks, an MCP tool
+or a tool without a `[ToolContract]`, each bridged only when named, with a warning; never a tool of the caller's own
+run (human input, memory, session, budget, sub-agents, decision model, progress, event hub, RAG stores), which a new
+`[ToolContract(StaysWithCaller = true)]` marks (`ToolContracts.StaysWithCaller`, public API), nor a coworker
+delegation tool, either of which named refuses the start. The caller's
+gate, guardian, truncation and sanitizer judge every call by the local tool's schema and access; the bridge runs it
+raw, with its own tool settings and URL policy, and audits it under the caller `bridge`, a tool that throws as a
+failure. Every caller (`orkeon run`, `validate`, `--list-tools`, `orkeon mcp serve`, `.ork.ts` scripts, `eval`,
+`orkeon-repl`, and `orkeon-host`, which exits 78) connects or refuses to start when the
+bridge cannot be reached, refuses the token, does not serve a tool named, or serves one whose contract hash differs; a
+call the bridge cannot answer fails, never runs locally. A caller run is one scope on the bridge (one browser per run),
+ended with the run or within 1.25 times `Orkeon:Bridge:HeartbeatWindow` (30 s, 1 s to 10 min) without a heartbeat;
+a tool's files travel at the
+caller's virtual paths, bounded by `Orkeon:Bridge:MaxFileBytes` and `Orkeon:Tools:Bridge:MaxFileBytes` (16 MiB), so a
+`screenshot` to `/output/page.png` lands in the caller's `/output`. The token comes from `ORKEON_BRIDGE_TOKEN` (or the
+variable `TokenEnvVar` names), trimmed, at least 16 characters, and is compared in fixed time; the bridge listens on
+loopback (`127.0.0.1:7410`,
+`localhost:7410` under Windows), refuses a request with an `Origin` header or a body over `MaxRequestBytes`, and
+requires https on another host, which it serves under Windows only (a URL reservation, `netsh http add urlacl`, which
+the start failure names). From a Linux engine the container reaches it with `--network host`; from Docker Desktop with
+`http://host.docker.internal:7410/`, the caller sending the `Host` header `Orkeon:Tools:Bridge:HostHeader`
+(`127.0.0.1:<port>` by default: a Windows bridge, which listens on `localhost`, needs `localhost:<port>`) and warning
+that the token travels in clear. The caller refuses an address with a user and a password or the host name
+`loopback`, and follows no redirect. It writes back only the files at a path, or under a folder, that a path-like
+argument named (a parameter of format `path`, or named after a path, as `path`, `output_file`, `save_to_path`), for
+an `Edit` or `Execute` call that succeeded, never through the working directory, a mount's root or `/`; it always
+truncates a bridged
+result and reads an answer under `Orkeon:Tools:Bridge:MaxResponseBytes` (32 MiB); the bridge's scratch folders have an
+unpredictable name, mode 0700, and never send a symbolic link back. The guide: [Orkeon in a container, the browser on the
+desktop](docs/guides/tool-bridge.md); the decision: [ADR-019](docs/adr/ADR-019-tool-bridge.md). Each caller gets a
+session the bridge issues (`POST session`, an id of 256 random bits in `X-Orkeon-Bridge-Session`), which holds its runs
+and calls: callers sharing a token cannot end, keep alive, cancel or call into each other's runs, and a run whose
+session the bridge lost (`410 Gone`) fails, never falling back to a local tool. The bridge bounds `MaxSessions` (16)
+and `MaxConcurrentCalls` (32) with 503, `MaxCallsPerSession` (8) and `MaxRunsPerSession` (16) with 429, closes a
+connection whose body misses `RequestReadTimeout` (30 s), abandons and logs a call that outlives `StopTimeout` (10 s)
+at stop, answers only a loopback peer on a loopback prefix, refuses unsound call mounts (400) and scrubs its physical
+paths from a tool's error and metadata. The token stays shared and a session id is a bearer secret, in clear over
+http on loopback ([limitations](docs/reference/limitations.md)).
+
+**Also**: a `.ork.ts` script's `tools.firefox` now runs the registry's wrapper of a transient container tool (the
+bridge's proxy, the permission gate) instead of a new bare instance.
+
+**Also**: the write-back of a bridged call is all or none (every file checked before the first is written; a write
+failing midway names the files already written); a folder a path-like argument names is sent with its files (at most
+256 per folder, within `MaxFileBytes`); any failure of the link is a failed call marked `bridge_failure`, never a
+thrown exception; a failed bridging start puts every local tool back and never wraps a proxy twice; an MCP
+`list_changed` keeps a bridged tool bridged (`mcp.tool.held`); the contract hash covers file carrying and enum
+combinations, and keeps a parameter named `description`.
+
+### Added — `thinking: { effort: auto }`: System One picks a task's thinking level (#439)
+
+An agent or a task (`llm_override`) that writes `thinking: { effort: auto }` lets the decision model pick, at the start
+of each task, one level of `Orkeon:Decision:Effort:Levels` (empty by default: `low`, `medium`, `high`; a list out of the
+order `low`, `medium`, `high`, `xhigh`, `max` is refused at start), the task
+keeping it on its retries; with `llm.profile: auto` too, the profile and the level are asked in one decision call. The
+map form `effort: { auto: true, min, max }` bounds the pick: a single level left is sent with no call, none left fails
+the load naming the agent or the task and the key. `enabled: auto` lets System One switch thinking off for a trivial
+task (its options are `off` and the written level, `off` and `on` when no level is written, and `off` and every allowed
+level with `effort: auto` too); under `enabled: false` (the agent's own under a task's `effort: auto`, or its profile's)
+nothing is left to it, with no call. Without a pick, a written level outside the bounds is brought to the nearest one;
+the provider's own level is never raised. A correction round
+after an output that failed its validation (`output_json`), once per failed round, and an attempt after a failed one (a
+failed result or a thrown error, not a cancellation, a guardian refusal, an exhausted budget or a timeout) run one step higher,
+with no call; a written level is never raised, and a decision profile's `verify` does not raise it (it escalates the
+call itself). Under 0.6, without an answer, with the circuit off or with `--no-decision`, the thinking the agent would
+have had without `auto` stands, its budget kept, with the warnings of `llm.profile: auto` (once per run with the
+circuit off, at each failed call). Each pick and each raise is a run event `agent.effort` (`level`, `previous`, `reason`
+among `model`, `low-confidence`, `no-answer`, `circuit-off`, `decision-none`, `single-level`, `raised`). A crew on
+`decision: { mode: none }` naming either `auto` fails its load, and so does, in every mode, a crew that runs it on a
+model that does not think; `auto`
+in a host profile's `Llm:Thinking:Effort` is refused at start. In `.ork.ts`: `agentBuilder().effort("auto")`,
+`llm.profile(name, { effort: "auto" })`, `.with({ effort: "auto" })` and the new `taskBuilder().withEffort(level |
+"auto")`; a single `ctx.llm` call takes a level only, and on an `effort("auto")` agent runs with its profile's effort. In C#: `AgentBuilder.ThinkingEffortAuto(min, max)` and
+`ThinkingEnabledAuto()` (`ThinkingEffortAuto()` after `Thinking(false)` throws); a C# crew meets the bounds and
+non-thinking-model checks at each task's start, and an orchestrator with no profile router warns once per run.
+Levels, `auto`, the booleans and the map keys are read in any case in YAML and `.ork.ts`; an `effort: "auto"`
+configuration's `reasoning` reports `asked` and `notice` `"auto"`. The new public members are
+`LlmThinkingConfig.ParseEffort`, `LlmThinkingConfig.IsHeldOffBy` and `LlmAutoEffort.Clamp`. The YAML model's
+`ThinkingYamlConfig.Effort` and `Enabled` change type: see the **[breaking]** entry below.
+
 ### Added — System One prunes a loop's older read-tool results before it compacts (#434)
 
 With `Orkeon:Compaction:Prune:Enabled` (off by default) or an agent's `compaction: { prune: true }`, once a native or
@@ -309,11 +396,28 @@ fail-open one for each text it lets in. New public members: `DecisionCircuit.OfH
 with the circuit off sets `Orkeon:Guardian:Llm:FailMode` to `Open` or turns the judge off. See
 [Decision models](docs/architecture/decision-models.md#every-consumer-follows-the-circuit).
 
-### Changed — two public constructors take new optional parameters **[breaking]** (#429, #433, #434)
+### Changed — `ThinkingYamlConfig.Effort` and `Enabled` are `object?` **[breaking]** (#439)
+
+**Before**: the YAML model's `ThinkingYamlConfig.Effort` was a `string?` and `ThinkingYamlConfig.Enabled` a `bool?`.
+**Now**: both are `object?`, so that the map form `effort: { auto: true, min, max }`, `effort: auto` and
+`enabled: auto` are read as written and refused at load naming the agent or the task. Source that assigns a string or a
+boolean compiles unchanged, but a read of either property needs a cast or a pattern match, and an assembly built
+against the shipped surface fails with `MissingMethodException`: the getters and the setters both change signature
+(`set_Effort(string)` becomes `set_Effort(object)`). **Migration**: recompile against this version; a reader of these
+properties matches on the value (`string`, `bool`, or a map for `Effort`), or reads the mapped `LlmThinkingConfig` of
+the agent rather than the YAML model.
+
+| Member | Before | Now |
+|---|---|---|
+| `ThinkingYamlConfig.Effort` | `string?` | `object?` (a level, `auto`, or the map form) |
+| `ThinkingYamlConfig.Enabled` | `bool?` | `object?` (a boolean or `auto`) |
+
+### Changed — two public constructors take new optional parameters **[breaking]** (#429, #433, #434, #439)
 
 **Before**: `CrewFactory` ended with `ILlmProfileRegistry? llmProfiles = null` and `SequentialCrewOrchestrator` with
 `ICostBudgetManager? budget = null`. **Now**: `CrewFactory` adds `DecisionCircuit? decisionCircuit`,
-`IOptions<DecisionProfilesOptions>? decisionProfiles` and `IOptions<AgentRouteOptions>? route`, and
+`IOptions<DecisionProfilesOptions>? decisionProfiles`, `IOptions<AgentRouteOptions>? route` and
+`IOptions<AgentEffortOptions>? effort` (#439: the levels `thinking: { effort: auto }` is checked against), and
 `SequentialCrewOrchestrator` adds `DecisionCircuit? decisionCircuit`, all trailing and defaulting to `null`. The
 old signatures are gone: source that calls them compiles unchanged, but an assembly built against the shipped ones
 fails with `MissingMethodException`. **Migration**: recompile against this version; a host that builds them by hand
@@ -322,7 +426,7 @@ host's circuit.
 
 | Member | Before | Now |
 |---|---|---|
-| `CrewFactory(..., llmProfiles)` | last parameter `llmProfiles` | `+ decisionCircuit, decisionProfiles, route` |
+| `CrewFactory(..., llmProfiles)` | last parameter `llmProfiles` | `+ decisionCircuit, decisionProfiles, route, effort` |
 | `SequentialCrewOrchestrator(..., budget)` | last parameter `budget` | `+ decisionCircuit` |
 
 ### Fixed

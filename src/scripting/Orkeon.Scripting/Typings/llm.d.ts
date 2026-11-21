@@ -30,14 +30,17 @@ declare global {
         /**
          * What the provider and this configuration's model take for reasoning, read from the runtime's capability
          * table (the host's `Llm:ModelCapabilities` overrides included), by the rule every call is judged with.
-         * `null` when the provider cannot tell (no provider, a test double).
+         * `null` when the provider cannot tell (no provider, a test double). It judges the model, whatever the effort:
+         * a configuration on `effort: "auto"` reads the same as one on a level.
          */
         readonly capabilities: LlmCapabilities | null;
         /**
          * The effort a call on this configuration asks for and the one the provider sends — the host's
          * `Llm:Thinking:Effort` included. `null` when no effort is asked or the provider cannot tell. Inside an
          * agent, `ctx.llm` calls run on the agent's provider, model and effort, which no configuration carries:
-         * read `ctx.llm.reasoning(opts)` there, the report `extract` and `complete` cannot carry.
+         * read `ctx.llm.reasoning(opts)` there, the report `extract` and `complete` cannot carry. On
+         * `effort: "auto"`, `asked` and `notice` are `"auto"`: the level is System One's pick at each task's start, and
+         * `sent` is what a call outside a task sends, the effort it would have had without `auto` (the profile's).
          */
         readonly reasoning: LlmReasoning | null;
 
@@ -50,6 +53,14 @@ declare global {
 
     /** An effort level a script may ask for. */
     type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
+
+    /**
+     * An effort for an agent or a task (#439): a level, or `"auto"`, the level System One picks at each task's start
+     * among the host's levels (`Orkeon:Decision:Effort:Levels`); the task keeps it, one step higher after a failed
+     * attempt. Never for a single `ctx.llm` call, which takes a level only. The bounds (`min`, `max`) and
+     * `enabled: auto` are YAML only.
+     */
+    type AgentEffort = EffortLevel | "auto";
 
     /** What a provider and one of its models take for reasoning, on `LlmConfig.capabilities`. */
     interface LlmCapabilities {
@@ -81,8 +92,11 @@ declare global {
     interface LlmReasoning {
         /** The model the call goes to. */
         readonly model: string;
-        /** The effort asked: the call's `effort`, the agent's, the configuration's, or the host's `Llm:Thinking:Effort`. */
-        readonly asked: EffortLevel;
+        /**
+         * The effort asked: the call's `effort`, the agent's, the configuration's, or the host's `Llm:Thinking:Effort`;
+         * `"auto"` on `LlmConfig.reasoning` for a configuration on `effort: "auto"`.
+         */
+        readonly asked: EffortLevel | "auto";
         /** The effort sent to the provider; `null` when none is. */
         readonly sent: EffortLevel | null;
         /**
@@ -90,9 +104,10 @@ declare global {
          * provider and the model both take: the highest one below was sent, or the lowest one when none lies below),
          * `dropped` (`sent` is `null`: the model takes no effort, the model or the provider has no thinking control,
          * or the provider's field carries none of the model's levels), or `unchecked` (the table does not know the
-         * model: the effort was sent as asked).
+         * model: the effort was sent as asked), or `auto` (`asked` is `"auto"`: the level is System One's pick at each task's
+         * start; `sent` is what a call outside a task sends).
          */
-        readonly notice: "lowered" | "dropped" | "unchecked" | null;
+        readonly notice: "lowered" | "dropped" | "unchecked" | "auto" | null;
     }
 
     /** What `LlmConfig.with(...)` and `llm.model(name, ...)` apply. */
@@ -108,9 +123,10 @@ declare global {
          * `medium`, `high` and `max` for Z.ai; all five for Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI,
          * Hugging Face, MiniMax and Mammouth AI) sends the highest it knows below the one asked, and warns. The model's
          * entry in the capability table narrows the levels further (GLM-5.3 takes `low`, `high` and `max` only):
-         * `LlmConfig.capabilities` lists the levels of the model, `reasoning` says what the call sends.
+         * `LlmConfig.capabilities` lists the levels of the model, `reasoning` says what the call sends. `"auto"`
+         * leaves the level to System One at each task's start (#439).
          */
-        effort?: EffortLevel;
+        effort?: AgentEffort;
         /**
          * The prompt-cache request, as `agentBuilder().cache(...)` takes it; an object that marks nothing
          * cacheable (`{}`) turns caching off, the host default `Llm:Cache` included.
