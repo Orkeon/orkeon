@@ -330,6 +330,46 @@ grant the fewest rights, set a `Root`, and do not give an untrusted crew both dr
 outbound channel (`http_api`, the web tools, `drive_share`). The token files are plain JSON:
 shielded from the VFS tools, **not** from a shell or code tool running as the same user.
 
+### Tool bridge
+
+The tool bridge ([guide](../guides/tool-bridge.md), [ADR-019](../adr/ADR-019-tool-bridge.md)) runs some built-in
+tools of a run on another machine, usually the user's desktop for a run in a container. Each side is defended on its
+own:
+
+- **The token.** Both sides read it from the environment variable `TokenEnvVar` names (`ORKEON_BRIDGE_TOKEN`), never
+  from a settings file. Every request carries it as `Authorization: Bearer`; the bridge compares the SHA-256 of both
+  in fixed time and answers 401 otherwise.
+- **The listener.** `orkeon bridge serve` listens on loopback by default; any other host requires https, so that the
+  token never travels in clear off the machine (under Windows only: elsewhere an https prefix is refused at start). A
+  request carrying an `Origin` header is refused, since a page open in the user's own browser can post to loopback; a
+  body over `Orkeon:Bridge:MaxRequestBytes` (32 MiB) is refused before it is read. Only the five endpoints under
+  `/orkeon-bridge/v1/` answer: `GET tools`, `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`.
+- **Both sides select.** A tool runs on the bridge only when the bridge's `Orkeon:Bridge:Allow` and the caller's
+  `Orkeon:Tools:Bridge:Allow` both select it, `Deny` winning on each side. `*` never selects a tool that acts on the
+  workspace (files, shell, code index); naming one bridges it, with a warning on each side. A coworker delegation tool
+  is never bridged. A name that is no tool of the side's registry refuses the start.
+- **The caller judges, the bridge runs.** The caller's permission gate, guardian, truncation and result sanitizer
+  judge each call and its result, by the local tool's schema and access class; a contract hash that differs between
+  the sides refuses the start. The truncation always applies to a bridged result: the caller never takes the
+  bridge's word that a result is already bounded, and reads an answer under `Orkeon:Tools:Bridge:MaxResponseBytes`
+  (32 MiB), a larger one failing the call. A tool list that names a tool twice, or a heartbeat window outside 1 s
+  to 10 min, refuses the start. The bridge applies none of them: it runs the tool raw, with its own tool settings and
+  its own URL policy, and records each call in its audit under the caller `bridge`.
+- **Files.** A call carries the caller's agent-facing mounts and the files its arguments name, at most
+  `Orkeon:Tools:Bridge:MaxFileBytes` (16 MiB) in all, and the bridge's `Orkeon:Bridge:MaxFileBytes` (16 MiB) bounds
+  both what it accepts and what it sends back. On the bridge they live in a scratch folder per call, inside a parent
+  folder of the bridge process whose name is unpredictable, created exclusively and never reused, mode 0700 under
+  Unix; the bridge's path validator allows that parent for the life of the process, and each call's folder is
+  removed after it. A symbolic link the tool made there is never followed when the files are read back. A call
+  without mounts of a tool that uses files runs over an empty scratch, never over the bridge's own mounts, unless the
+  tool acts on the workspace and was named. What comes back is written by the caller through its own virtual file
+  system, under its run's mounts and rights, and only when the call is an `Edit` or `Execute` one and its arguments
+  named the path or a folder above it: any other file is refused with a warning, the result kept; a path outside a
+  writable mount is refused there.
+- **Lifetime.** A caller's run is one scope on the bridge, ended by `POST end-run`; a caller silent past
+  `Orkeon:Bridge:HeartbeatWindow` (30 s) loses its scopes, and their browsers, at once. Stopping the bridge cancels
+  the calls in flight and ends every scope.
+
 ### LLM keys: the settings file names the variable
 
 A settings file never has to hold an API key: `ApiKeyEnvVar`, in `Llm` and in each

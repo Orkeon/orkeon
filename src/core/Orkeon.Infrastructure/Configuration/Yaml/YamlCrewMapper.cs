@@ -290,7 +290,7 @@ public sealed partial class YamlCrewMapper
                 MaxRpm = kvp.Value.MaxRpm,
                 MaxExecutionTime = kvp.Value.MaxExecutionTime is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
                 Verbose = kvp.Value.Verbose ?? false,
-                LlmConfig = MapAgentLlm(effectiveLlm),
+                LlmConfig = MapAgentLlm(kvp.Key, effectiveLlm),
                 Guardrails = MapGuardrails($"Agent '{kvp.Key}'", kvp.Value.Guardrails),
                 Compaction = MapCompaction(kvp.Key, kvp.Value.Compaction),
                 Skills = MapSkills(kvp.Key, kvp.Value.Skills),
@@ -390,7 +390,7 @@ public sealed partial class YamlCrewMapper
     /// none set — the profile's, else the model's own (GAP-36); the loader used to fill in the
     /// engine's 0.7 and 1.0.
     /// </summary>
-    private LlmConfig? MapAgentLlm(LlmYamlConfig? effectiveLlm)
+    private LlmConfig? MapAgentLlm(string agentKey, LlmYamlConfig? effectiveLlm)
     {
         if (effectiveLlm is null)
             return null;
@@ -405,7 +405,7 @@ public sealed partial class YamlCrewMapper
             Temperature = effectiveLlm.Temperature,
             MaxTokens = effectiveLlm.MaxTokens,   // null = the model's documented maximum (LLM-10)
             TopP = effectiveLlm.TopP,
-            Thinking = MapThinking(effectiveLlm.Thinking),
+            Thinking = MapThinking($"Agent '{agentKey}' llm.thinking", effectiveLlm.Thinking),
             ResponseFormat = MapResponseFormat(effectiveLlm.ResponseFormat, effectiveLlm.ResponseSchema),
             Cache = MapCache(effectiveLlm.Cache),
         };
@@ -461,7 +461,7 @@ public sealed partial class YamlCrewMapper
                 HumanInput = kvp.Value.HumanInput ?? false,
                 Context = kvp.Value.Context ?? [],
                 Deliverable = MapDeliverable(kvp.Value.Deliverable),
-                LlmOverride = MapTaskLlmOverride(kvp.Value.LlmOverride),
+                LlmOverride = MapTaskLlmOverride(kvp.Key, kvp.Value.LlmOverride),
                 Guardrails = MapGuardrails($"Task '{kvp.Key}'", kvp.Value.Guardrails),
                 Decision = decisions.GetValueOrDefault(kvp.Key),
                 Condition = condition,
@@ -708,37 +708,137 @@ public sealed partial class YamlCrewMapper
         return new ThinkingYamlConfig
         {
             Enabled = agentLevel.Enabled ?? crewLevel.Enabled,
-            Effort = string.IsNullOrWhiteSpace(agentLevel.Effort) ? crewLevel.Effort : agentLevel.Effort,
+            Effort = IsUnset(agentLevel.Effort) ? crewLevel.Effort : agentLevel.Effort,
             BudgetTokens = agentLevel.BudgetTokens ?? crewLevel.BudgetTokens,
         };
     }
 
+    private static bool IsUnset(object? written) => written is null || (written is string text && string.IsNullOrWhiteSpace(text));
+
     /// <summary>
     /// Maps a YAML thinking block to its domain value object. Returns null when no
-    /// fields were provided so the provider default stays in effect.
+    /// fields were provided so the provider default stays in effect. <c>enabled</c> is <c>true</c>, <c>false</c> or
+    /// <c>auto</c>; <c>effort</c> a level, <c>auto</c>, or <c>{ auto: true, min, max }</c> (#439). Strict: another
+    /// value refuses the load, naming <paramref name="where"/>.
     /// </summary>
-    private static LlmThinkingConfig? MapThinking(ThinkingYamlConfig? yaml)
+    private static LlmThinkingConfig? MapThinking(string where, ThinkingYamlConfig? yaml)
     {
         if (yaml is null) return null;
-        if (yaml.Enabled is null && string.IsNullOrWhiteSpace(yaml.Effort) && yaml.BudgetTokens is null) return null;
-        if (!string.IsNullOrWhiteSpace(yaml.Effort))
+        if (IsUnset(yaml.Enabled) && IsUnset(yaml.Effort) && yaml.BudgetTokens is null) return null;
+
+        var (enabled, autoEnabled) = MapThinkingEnabled(where, yaml.Enabled);
+        var (effort, autoEffort) = MapThinkingEffort(where, yaml.Effort);
+        return new LlmThinkingConfig
         {
-            try
+            Enabled = enabled,
+            AutoEnabled = autoEnabled,
+            Effort = effort,
+            // effort: auto leaves the level to System One (#439): a marker in place of a level, never sent to a provider.
+            AutoEffort = autoEffort,
+            BudgetTokens = yaml.BudgetTokens,
+        };
+    }
+
+    /// <summary><c>thinking.enabled</c>: <c>true</c>, <c>false</c>, or <c>auto</c> (#439), System One's switch.</summary>
+    private static (bool? Enabled, bool Auto) MapThinkingEnabled(string where, object? written)
+    {
+        if (IsUnset(written))
+            return (null, false);
+        var text = written is IDictionary<object, object> or IList<object> ? null : written!.ToString()?.Trim();
+        if (LlmAutoEffort.IsAuto(text))
+            return (null, true);
+        if (YamlBoolean(text) is { } on)
+            return (on, false);
+        throw new InvalidOperationException(
+            $"{where}.enabled: '{DescribeYamlValue(written!)}' is not true, false or auto (System One switches thinking off for a trivial task).");
+    }
+
+    /// <summary>
+    /// The spellings of a boolean the YAML reader took for <c>thinking.enabled</c> before it could also be <c>auto</c>
+    /// (#439): <c>true</c>, <c>yes</c>, <c>y</c>, <c>on</c> and <c>false</c>, <c>no</c>, <c>n</c>, <c>off</c>, in any case.
+    /// </summary>
+    private static bool? YamlBoolean(string? text) => text?.ToUpperInvariant() switch
+    {
+        "TRUE" or "YES" or "Y" or "ON" => true,
+        "FALSE" or "NO" or "N" or "OFF" => false,
+        _ => null,
+    };
+
+    /// <summary>
+    /// <c>thinking.effort</c>: a level, <c>auto</c>, or the map <c>{ auto: true, min, max }</c> of a bounded pick (#439).
+    /// </summary>
+    private static (string? Effort, LlmAutoEffort? Auto) MapThinkingEffort(string where, object? written)
+    {
+        switch (written)
+        {
+            case var _ when IsUnset(written):
+                return (null, null);
+            case IDictionary<object, object> map:
+                return (null, MapBoundedEffort(where, map));
+            case IList<object>:
+                throw new InvalidOperationException(
+                    $"{where}.effort: expected a level, auto or {{ auto: true, min, max }}; got a list.");
+        }
+
+        var text = written!.ToString()!.Trim();
+        if (LlmAutoEffort.IsAuto(text))
+            return (null, LlmAutoEffort.Any);
+        try
+        {
+            return (LlmThinkingConfig.ValidateEffort(text), null);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException($"{where}.effort: {ex.Message}", ex);
+        }
+    }
+
+    private static LlmAutoEffort MapBoundedEffort(string where, IDictionary<object, object> map)
+    {
+        bool? auto = null;
+        string? min = null;
+        string? max = null;
+        foreach (var (key, value) in map)
+        {
+            switch (key?.ToString())
             {
-                LlmThinkingConfig.ValidateEffort(yaml.Effort);
-            }
-            catch (ArgumentException ex)
-            {
-                throw new InvalidOperationException($"thinking.effort: {ex.Message}", ex);
+                case "auto":
+                    auto = bool.TryParse(value?.ToString(), out var on)
+                        ? on
+                        : throw new InvalidOperationException($"{where}.effort.auto: '{value}' is not true or false.");
+                    break;
+                case "min":
+                    min = BoundLevel(where, "min", value);
+                    break;
+                case "max":
+                    max = BoundLevel(where, "max", value);
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"{where}.effort: unknown key '{key}'; the map form has auto, min and max.");
             }
         }
 
-        return new LlmThinkingConfig
+        if (auto != true)
+            throw new InvalidOperationException(
+                $"{where}.effort: the map form is System One's pick and needs 'auto: true'; for a written level, write it as a scalar: 'effort: high'.");
+        try
         {
-            Enabled = yaml.Enabled,
-            Effort = yaml.Effort,
-            BudgetTokens = yaml.BudgetTokens,
-        };
+            return LlmAutoEffort.Bounded(min, max);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException($"{where}.effort: {ex.Message}", ex);
+        }
+    }
+
+    private static string BoundLevel(string where, string bound, object? value)
+    {
+        var text = value?.ToString()?.Trim();
+        return text is not null && LlmThinkingConfig.Levels.Contains(text, StringComparer.Ordinal)
+            ? text
+            : throw new InvalidOperationException(
+                $"{where}.effort.{bound}: '{value}' is not a thinking level: write one of {string.Join(", ", LlmThinkingConfig.Levels)} (lower case).");
     }
 
     /// <summary>
@@ -817,7 +917,7 @@ public sealed partial class YamlCrewMapper
     /// Maps the YAML <c>llm_override:</c> block to a <see cref="LlmConfigOverride"/>.
     /// Returns <c>null</c> when no field is set (empty block = no patch).
     /// </summary>
-    private LlmConfigOverride? MapTaskLlmOverride(LlmOverrideYamlConfig? yaml)
+    private LlmConfigOverride? MapTaskLlmOverride(string taskKey, LlmOverrideYamlConfig? yaml)
     {
         if (yaml is null) return null;
         if (string.IsNullOrWhiteSpace(yaml.Profile)
@@ -839,7 +939,7 @@ public sealed partial class YamlCrewMapper
             Temperature = yaml.Temperature,
             MaxTokens = yaml.MaxTokens,
             TopP = yaml.TopP,
-            Thinking = MapThinking(yaml.Thinking),
+            Thinking = MapThinking($"Task '{taskKey}' llm_override.thinking", yaml.Thinking),
             // A present block with no breakpoint is Off: it replaces the agent's cache and turns it off.
             Cache = MapCache(yaml.Cache),
         };

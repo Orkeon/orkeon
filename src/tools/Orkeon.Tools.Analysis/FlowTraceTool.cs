@@ -9,9 +9,11 @@ using Orkeon.Analysis.Core;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Analysis.Internal;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("flow_trace", ActsOnWorkspace = true)]
 public sealed class FlowTraceTool : ToolBase<FlowTraceRequest, FlowTraceResponse>
 {
     private readonly IRaggableStore _store;

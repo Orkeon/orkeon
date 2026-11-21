@@ -51,6 +51,14 @@ declare global {
     /** An effort level a script may ask for. */
     type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
 
+    /**
+     * An effort for an agent or a task (#439): a level, or `"auto"`, the level System One picks at each task's start
+     * among the host's levels (`Orkeon:Decision:Effort:Levels`); the task keeps it, one step higher after a failed
+     * attempt. Never for a single `ctx.llm` call, which takes a level only. The bounds (`min`, `max`) and
+     * `enabled: auto` are YAML only.
+     */
+    type AgentEffort = EffortLevel | "auto";
+
     /** What a provider and one of its models take for reasoning, on `LlmConfig.capabilities`. */
     interface LlmCapabilities {
         /** The model judged: the configuration's, else the provider's own. */
@@ -108,9 +116,10 @@ declare global {
          * `medium`, `high` and `max` for Z.ai; all five for Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI,
          * Hugging Face, MiniMax and Mammouth AI) sends the highest it knows below the one asked, and warns. The model's
          * entry in the capability table narrows the levels further (GLM-5.3 takes `low`, `high` and `max` only):
-         * `LlmConfig.capabilities` lists the levels of the model, `reasoning` says what the call sends.
+         * `LlmConfig.capabilities` lists the levels of the model, `reasoning` says what the call sends. `"auto"`
+         * leaves the level to System One at each task's start (#439).
          */
-        effort?: EffortLevel;
+        effort?: AgentEffort;
         /**
          * The prompt-cache request, as `agentBuilder().cache(...)` takes it; an object that marks nothing
          * cacheable (`{}`) turns caching off, the host default `Llm:Cache` included.

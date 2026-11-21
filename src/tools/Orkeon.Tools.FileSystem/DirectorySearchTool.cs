@@ -20,7 +20,7 @@ namespace Orkeon.Tools.FileSystem;
 /// incrementally as inline sources (unchanged corpus = zero embeddings), and
 /// queried through the document store.
 /// </summary>
-[ToolContract("directory_search",
+[ToolContract("directory_search", ActsOnWorkspace = true,
     Name = "directory_search",
     Description = "Perform semantic search across all files in a directory using RAG embeddings. Finds the most relevant file content matching a query.",
     Category = "File System")]

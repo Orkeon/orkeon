@@ -9,6 +9,7 @@ using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Analysis;
 
@@ -17,6 +18,7 @@ namespace Orkeon.Tools.Analysis;
 /// class" (the targets of <c>inherits</c>), where <c>dependency_graph</c> samples its nodes first. The cursor is the
 /// position of the last edge returned, so a page resumes after it even when the index changed in between.
 /// </summary>
+[ToolContract("edge_list", ActsOnWorkspace = true)]
 public sealed class EdgeListTool : ToolBase<EdgeListRequest, EdgeListResponse>
 {
     private readonly IRaggableStore _store;

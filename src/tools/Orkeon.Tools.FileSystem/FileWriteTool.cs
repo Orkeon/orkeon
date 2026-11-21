@@ -89,6 +89,7 @@ public sealed class FileWriteResponse
 /// Tool for writing content to files.
 /// Supports creating new files or overwriting existing ones.
 /// </summary>
+[ToolContract("file_write", ActsOnWorkspace = true)]
 public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteResponse>
 {
     /// <inheritdoc />

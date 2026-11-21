@@ -72,8 +72,8 @@ public sealed record CrewConfiguration
 
     /// <summary>
     /// Lists what the crew asks System One besides its decision tasks (#429): every agent and task that lists
-    /// <c>system_one_decide</c>, every agent on <c>skills: auto</c> or <c>compaction: { prune: true }</c> (#434),
-    /// and, when <paramref name="isDecisionProfile"/> is given, every one that names a decision profile through
+    /// <c>system_one_decide</c>, every agent on <c>skills: auto</c> or <c>compaction: { prune: true }</c> (#434), every
+    /// agent and task on <c>thinking: { effort: auto }</c> or <c>{ enabled: auto }</c> (#439), and, when <paramref name="isDecisionProfile"/> is given, every one that names a decision profile through
     /// <c>llm.profile</c> or <c>llm_override.profile</c>.
     /// </summary>
     /// <param name="isDecisionProfile">Whether a profile name is a decision profile of the host; null when unknown.</param>
@@ -88,8 +88,14 @@ public sealed record CrewConfiguration
             .ToList();
         var skillsAuto = Agents.Where(a => a.Skills is { Auto: true }).Select(a => $"agent '{a.Key ?? a.Role}'").ToList();
         var prune = Agents.Where(a => a.Compaction is { Prune: true }).Select(a => $"agent '{a.Key ?? a.Role}'").ToList();
+        var effortAuto = Agents.Where(a => a.LlmConfig?.Thinking is { AutoEffort: not null, HasAuto: true }).Select(a => $"agent '{a.Key ?? a.Role}'")
+            .Concat(Tasks.Where(t => t.LlmOverride?.Thinking is { AutoEffort: not null, HasAuto: true }).Select(t => $"task '{t.Key ?? t.Description}'"))
+            .ToList();
+        var enabledAuto = Agents.Where(a => a.LlmConfig?.Thinking is { AutoEnabled: true }).Select(a => $"agent '{a.Key ?? a.Role}'")
+            .Concat(Tasks.Where(t => t.LlmOverride?.Thinking is { AutoEnabled: true }).Select(t => $"task '{t.Key ?? t.Description}'"))
+            .ToList();
         if (isDecisionProfile is null)
-            return new Orkeon.Domain.Task.ValueObjects.SystemOneUses(holders, null) { SkillsAutoHolders = skillsAuto, PruneHolders = prune };
+            return new Orkeon.Domain.Task.ValueObjects.SystemOneUses(holders, null) { SkillsAutoHolders = skillsAuto, PruneHolders = prune, EffortAutoHolders = effortAuto, EnabledAutoHolders = enabledAuto };
 
         var profiles = Agents
             .Where(a => a.LlmConfig?.Profile is { Length: > 0 } p && isDecisionProfile(p.Trim()))
@@ -98,7 +104,7 @@ public sealed record CrewConfiguration
                 .Where(t => t.LlmOverride?.Profile is { Length: > 0 } p && isDecisionProfile(p.Trim()))
                 .Select(t => new Orkeon.Domain.Task.ValueObjects.DecisionProfileUse($"task '{t.Key ?? t.Description}'", t.LlmOverride!.Profile!.Trim())))
             .ToList();
-        return new Orkeon.Domain.Task.ValueObjects.SystemOneUses(holders, profiles) { SkillsAutoHolders = skillsAuto, PruneHolders = prune };
+        return new Orkeon.Domain.Task.ValueObjects.SystemOneUses(holders, profiles) { SkillsAutoHolders = skillsAuto, PruneHolders = prune, EffortAutoHolders = effortAuto, EnabledAutoHolders = enabledAuto };
     }
 
     /// <summary>Lists what each task declares about decisions.</summary>

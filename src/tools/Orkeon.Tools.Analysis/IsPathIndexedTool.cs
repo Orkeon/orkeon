@@ -4,9 +4,11 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("is_path_indexed", ActsOnWorkspace = true)]
 public sealed class IsPathIndexedTool : ToolBase<IsPathIndexedRequest, IsPathIndexedResponse>
 {
     private readonly IRaggableStore _store;

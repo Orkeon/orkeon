@@ -178,7 +178,7 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
 /// physical paths and the arguments are rewritten as when unconfined.
 /// </para>
 /// </remarks>
-[ToolContract("shell_command",
+[ToolContract("shell_command", ActsOnWorkspace = true,
     Name = "shell_command",
     Description = "Runs a shell command in the working directory and returns its exit code, stdout and stderr, cut at 10 000 characters; a command the allowlist or blocklist refuses is not run. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find.",
     Category = "Code Operations")]

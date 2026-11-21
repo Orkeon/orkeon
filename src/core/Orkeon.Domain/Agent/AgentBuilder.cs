@@ -204,6 +204,45 @@ public sealed class AgentBuilder
     }
 
     /// <summary>
+    /// Leaves the thinking effort of this agent to System One (<c>thinking: { effort: auto }</c>, #439): at the start
+    /// of each task, the decision model picks one of the levels the host allows (<c>Orkeon:Decision:Effort:Levels</c>),
+    /// inside <paramref name="min"/> and <paramref name="max"/> when given (<c>effort: { auto: true, min, max }</c>),
+    /// and the task keeps it; without a pick, the effort the agent would have had stands (its profile's, else the
+    /// provider's own). Keeps the thinking switch already set. A crew on <c>decision.mode: none</c> refuses it, and a
+    /// load refuses bounds that leave none of the host's levels.
+    /// Sugar over <see cref="WithLlmConfig"/>; on an agent without a config it names no model, like <see cref="Thinking"/>.
+    /// </summary>
+    /// <param name="min">The lowest level the pick may give, one of <see cref="LlmThinkingConfig.Levels"/>; null for none.</param>
+    /// <param name="max">The highest level the pick may give, one of <see cref="LlmThinkingConfig.Levels"/>; null for none.</param>
+    /// <exception cref="ArgumentException">A bound is not a level, or <paramref name="min"/> is above <paramref name="max"/>.</exception>
+    public AgentBuilder ThinkingEffortAuto(string? min = null, string? max = null)
+    {
+        var auto = LlmAutoEffort.Bounded(min, max);
+        var config = _llmConfig ?? LlmConfig.OnProfile();
+        _llmConfig = config with
+        {
+            Thinking = (config.Thinking ?? new LlmThinkingConfig()) with { Effort = null, AutoEffort = auto },
+        };
+        return this;
+    }
+
+    /// <summary>
+    /// Lets System One switch thinking off for a task of this agent (<c>thinking: { enabled: auto }</c>, #439): the
+    /// decision model's answers hold <c>off</c> beside the effort - the levels of <see cref="ThinkingEffortAuto"/>, the
+    /// effort written, else <c>on</c> (thinking on at the effort the agent would have had). Without a pick, the switch
+    /// the agent would have had stands. Keeps the effort already set. A crew on <c>decision.mode: none</c> refuses it.
+    /// </summary>
+    public AgentBuilder ThinkingEnabledAuto()
+    {
+        var config = _llmConfig ?? LlmConfig.OnProfile();
+        _llmConfig = config with
+        {
+            Thinking = (config.Thinking ?? new LlmThinkingConfig()) with { Enabled = null, AutoEnabled = true },
+        };
+        return this;
+    }
+
+    /// <summary>
     /// Bounds the maximum number of output tokens the model may generate. Output is the dominant
     /// cost driver on thinking-mode providers (DeepSeek guideline §6.2), so cap it explicitly on
     /// agents that do not need long generations. Sugar over <see cref="WithLlmConfig"/>; on an

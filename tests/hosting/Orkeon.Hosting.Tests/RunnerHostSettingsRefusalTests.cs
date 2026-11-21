@@ -68,6 +68,17 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-439")]
+    public void A_host_profile_whose_thinking_effort_is_auto_is_refused_at_its_start_naming_the_key()
+    {
+        // Act: auto is a crew's word, the level System One picks per task, never a host profile's effort.
+        var error = Refusal("""{ "RaggableTree": { "Enabled": false }, "Llm": { "Profiles": { "x": { "BaseUrl": "http://localhost:11434", "Thinking": { "Effort": "auto" } } } } }""");
+
+        // Assert
+        Assert.Contains("Llm:Profiles:x:Thinking:Effort is 'auto', which only a crew writes", error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_settings_file_that_is_not_JSON_is_refused_naming_the_file_and_the_line()
     {
         var error = Refusal("""
@@ -123,6 +134,8 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "CrewExecutionStatePersistenceOptions", "Orkeon:ExecutionState:Persistence:Enabled", "yes please", "Orkeon:ExecutionState:Persistence:Enabled" },
         { "CostTrackingOptions", "Orkeon:CostTracking:Enabled", "on", "Orkeon:CostTracking:Enabled" },
         { "TokenCounterOptions", "Orkeon:TokenCounter:CharsPerToken", "four", "Orkeon:TokenCounter:CharsPerToken" },
+        { "ToolBridgeClientOptions", "Orkeon:Tools:Bridge:ConnectTimeout", "ten seconds", "Orkeon:Tools:Bridge:ConnectTimeout" },
+        { "ToolBridgeServerOptions", "Orkeon:Bridge:MaxRequestBytes", "plenty", "Orkeon:Bridge:MaxRequestBytes" },
         { "ConsensualProcessOptions", "Orkeon:Consensus:MaxVotingRounds", "three", "Orkeon:Consensus:MaxVotingRounds" },
         { "SandboxOptions", "Orkeon:CodeSandbox:TimeoutSeconds", "1m", "Orkeon:CodeSandbox:TimeoutSeconds" },
         { "DockerSandboxOptions", "Orkeon:CodeSandbox:Docker:PullImageOnStartup", "daily", "Orkeon:CodeSandbox:Docker:PullImageOnStartup" },
@@ -137,6 +150,7 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "ToolResultPruningOptions", "Orkeon:Compaction:Prune:FillShare", "1.5", "Orkeon:Compaction:Prune:FillShare" },
         { "AgentSkillsOptions", "Orkeon:Skills:Library", "skills", "Orkeon:Skills:Library" },
         { "AgentRouteOptions", "Orkeon:Decision:Route:Ladder:0", "auto", "Orkeon:Decision:Route:Ladder" },
+        { "AgentEffortOptions", "Orkeon:Decision:Effort:Levels:0", "huge", "Orkeon:Decision:Effort:Levels" },
         { "MemorySectionOptions", "Memory:Provider", "redsi", "Memory:Provider" },
         { "EmbeddingOptions", "Orkeon:Embeddings:Dimension", "big", "Orkeon:Embeddings:Dimension" },
         { "EmbeddingCacheOptions", "Orkeon:EmbeddingCache:SlidingExpirationMinutes", "an hour", "Orkeon:EmbeddingCache:SlidingExpirationMinutes" },

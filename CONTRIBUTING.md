@@ -360,7 +360,10 @@ ask for more, **the functional surface does not grow**:
   was asked ([ADR-012](docs/adr/ADR-012-email-tool-family.md)). The drive
   family (`Orkeon.Tools.Drive`, eleven tools for Google Drive and OneDrive)
   is the third, decided by the owner on 2026-10-17, for the same reason
-  ([ADR-013](docs/adr/ADR-013-drive-tool-family.md)). The rule stands for
+  ([ADR-013](docs/adr/ADR-013-drive-tool-family.md)). The tool bridge
+  (`orkeon bridge serve`, [ADR-019](docs/adr/ADR-019-tool-bridge.md)) adds no
+  tool: it runs the built-in tools that exist on another machine, and a tool
+  is not built in because the bridge could carry it. The rule stands for
   everything else;
 - no new memory store, language adapter, or orchestration mode.
 

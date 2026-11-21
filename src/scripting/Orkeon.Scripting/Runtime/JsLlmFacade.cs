@@ -2202,12 +2202,16 @@ public sealed partial class JsLlmFacade
 
     private LlmConfig? ConfigFrom(JsValue? options, ILlmProvider? provider, JsValue llm)
     {
-        // The agent's own effort and cache apply to every call; a call's options win over them (#254).
+        // The agent's own effort and cache apply to every call; a call's options win over them (#254). A single call
+        // is no task: an agent on effort("auto") gets no pick there, and the call runs with the thinking the agent
+        // would have had without auto - the profile's effort kept, the marker never sent (#439).
         LlmConfig? config = AgentSettings is { Thinking: null, Cache: null } or null
             ? null
             : Inherited() with
             {
-                Thinking = AgentSettings.Thinking ?? Inherited().Thinking,
+                Thinking = AgentSettings.Thinking is { HasAuto: true } auto
+                    ? auto.Settle(null, Inherited().Thinking)
+                    : AgentSettings.Thinking ?? Inherited().Thinking,
                 Cache = AgentSettings.Cache ?? Inherited().Cache,
             };
 
@@ -2229,7 +2233,7 @@ public sealed partial class JsLlmFacade
 
         var effort = options.Get("effort");
         if (effort.IsString())
-            config = (config ?? Inherited()) with { Thinking = JsLlmConfig.ThinkingAt(effort.AsString()) };
+            config = (config ?? Inherited()) with { Thinking = JsLlmConfig.CallThinkingAt(effort.AsString()) };
 
         var cache = options.Get("cache");
         if (!cache.IsUndefined())

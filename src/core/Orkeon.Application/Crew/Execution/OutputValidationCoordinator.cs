@@ -110,6 +110,8 @@ internal sealed class OutputValidationCoordinator
             }
 
             LogRetryAttempt(request.Task, retry, pipelineResult, maxOutputRetries);
+            // The output failed its guardrail: the next round thinks a step higher when the effort is System One's (#439).
+            TaskThinkingScope.RaiseAfterFailedRound();
             var correctionContext = new CorrectionExecutionContext(
                 request.Agent, request.Task, request.SystemPrompt, request.ToolsUsed,
                 request.ChatLoop ?? _chatLoop);
@@ -175,7 +177,7 @@ internal sealed class OutputValidationCoordinator
             await _llmGate.WaitTurnAsync(context.Agent, cancellationToken).ConfigureAwait(false);
 
         var prompt = $"{context.SystemPrompt}\n\n{correctionPrompt}";
-        var correctionConfig = Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(
+        var correctionConfig = TaskThinkingScope.Resolve(
             // An agent without a config names no model: the provider runs the call on its own (GAP-18).
             baseConfig: context.Agent.LlmConfig ?? Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile(),
             taskOverride: context.Task.LlmOverride);

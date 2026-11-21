@@ -30,6 +30,9 @@ internal sealed record JsTaskMetadata
     /// <summary>The host LLM profile captured by <c>taskBuilder().withProfile(name)</c> (GAP-19).</summary>
     public string? Profile { get; init; }
 
+    /// <summary>The thinking level captured by <c>taskBuilder().withEffort(level)</c>, <c>"auto"</c> included (#439).</summary>
+    public string? Effort { get; init; }
+
     /// <summary>YAML parity <c>humanInput: true</c> — the task pauses for the human-input provider.</summary>
     public bool HumanInput { get; init; }
 

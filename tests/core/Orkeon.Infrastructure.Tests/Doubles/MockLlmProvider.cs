@@ -31,6 +31,14 @@ public sealed class MockLlmProvider : ILlmProvider
     /// <summary>What the provider declares it supports (<see cref="ILlmProvider.Capabilities"/>).</summary>
     public LlmProviderCapabilities Capabilities { get; set; } = LlmProviderCapabilities.Unknown;
 
+    /// <summary>What <see cref="DescribeReasoning"/> answers for every model; null, the provider cannot tell.</summary>
+    public LlmReasoningCapabilities? Reasoning { get; set; }
+
+#pragma warning disable ORKEXP005 // The double answers the experimental reasoning capabilities a test sets.
+    /// <inheritdoc />
+    public LlmReasoningCapabilities? DescribeReasoning(string? model) => Reasoning;
+#pragma warning restore ORKEXP005
+
     // --- Tracking ---
     public int GenerateCallCount { get; private set; }
     public int ChatCallCount { get; private set; }

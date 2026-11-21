@@ -91,8 +91,11 @@ agents:
       maxTokens: int      # Output token pin, positive — omitted = the model's documented maximum; 0 or less fails the load
       topP: float         # Nucleus sampling, sent whatever its value — omitted = the profile's, else none is sent (Mistral writes 1)
       thinking:           # Reasoning control (capability-gated per provider)
-        enabled: bool
+        enabled: bool     # or auto: System One may switch thinking off for a trivial task (options off and the written level, or on); any other value fails the load
         effort: string    # "low" | "medium" | "high" | "xhigh" | "max", exact case — any other value fails the load (a provider sends the nearest level its field knows)
+                          # auto (any case): System One picks, at each task's start, one level of Orkeon:Decision:Effort:Levels and the task keeps it; under 0.6, no answer or circuit off → the effort the agent would have had without it (its profile's Llm:Thinking, else the provider's). decision.mode: none, or a profile whose model does not think → the load fails
+                          # { auto: true, min: low, max: high } (map form): the pick among the host's levels inside min and max (each optional); a single level left → that level, no call; none left, auto: false, an unknown key or min above max → the load fails
+                          # raised one level, never lowered, with no call: for the next correction round when the output failed its validation (output_json), once per failed round, and for the next attempt after a failed one (a failed result or a thrown error, not a cancellation, a guardian refusal or an exhausted budget); a written level is never raised. Under enabled: false (an agent's own, under a crew's effort: auto) nothing is left to System One: no call, thinking stays off
         budget_tokens: int # Honoured by Qwen and OpenRouter; other providers warn
       responseFormat: string # "text" (= provider default) | "json_object" | "json_schema" — any other value is forwarded as-is with a warning
       responseSchema:     # With responseFormat: json_schema (a schema alone implies json_schema)
@@ -153,7 +156,7 @@ tasks:
       temperature: float
       max_tokens: int     # Positive; omitted = the inherited cap, 0 or less fails the load naming the task
       top_p: float
-      thinking: {enabled, effort, budget_tokens}
+      thinking: {enabled, effort, budget_tokens} # effort: auto, its map form and enabled: auto as on the agent; without a pick, the agent's own effort stands
       cache: {system, tools, ttl}  # Same shape as the agent's cache: — replaces the agent's block whole; a block with no breakpoint turns the agent's cache off for this task
     guardrails:           # Task-level guardrails, same shape as the agent block (optional)
       preset: string      # "analysis" | "strict" | "creative" — any other name fails the load

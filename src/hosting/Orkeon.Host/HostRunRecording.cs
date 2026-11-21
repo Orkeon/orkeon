@@ -45,7 +45,7 @@ internal sealed class HostRunRecording
 
     /// <summary>
     /// The run's publisher once <see cref="Begin"/> opened a recording, else null: the agent loops' observers write to it
-    /// (agent.compacted, agent.skills, agent.route, agent.pruned) through a <see cref="DeferredRunEventSink"/>.
+    /// (agent.compacted, agent.skills, agent.route, agent.effort, agent.pruned) through a <see cref="DeferredRunEventSink"/>.
     /// </summary>
     public IRunEventSink? Events => _publisher;
 

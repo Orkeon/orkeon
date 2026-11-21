@@ -150,15 +150,38 @@ public sealed class JsLlmConfig
             "LlmConfig.with(...) maxTokens must be an integer between 1 and 2147483647; omit it to keep the inherited cap.");
     }
 
-    /// <summary>The thinking setting every <c>effort</c> option builds: enabled, at the validated level.</summary>
+    /// <summary>
+    /// The thinking setting every <c>effort</c> option builds: enabled, at the validated level; on <c>"auto"</c>
+    /// (#439), the level left to System One, picked at each task's start among the host's levels.
+    /// </summary>
     internal static LlmThinkingConfig ThinkingAt(string? effort)
-        => new() { Enabled = true, Effort = RequireEffort(effort) };
+        => LlmAutoEffort.IsAuto(RequireEffortOrAuto(effort))
+            ? new() { Enabled = true, AutoEffort = LlmAutoEffort.Any }
+            : new() { Enabled = true, Effort = effort };
+
+    /// <summary>
+    /// The thinking a single <c>ctx.llm</c> call asks for: a level only, since a pick of System One is made per
+    /// task, never per call (#439).
+    /// </summary>
+    internal static LlmThinkingConfig CallThinkingAt(string? effort)
+        => LlmAutoEffort.IsAuto(effort)
+            ? throw new InvalidScriptException(
+                "effort 'auto' is System One's pick for a task, not for one call: set it on the agent (.effort('auto')) " +
+                $"or the task (.withEffort('auto')), or give this call a level ({string.Join('|', LlmThinkingConfig.Levels)}).")
+            : new() { Enabled = true, Effort = RequireEffort(effort) };
 
     internal static string RequireEffort(string? value)
         => value is not null && LlmThinkingConfig.Levels.Contains(value)
             ? value
             : throw new InvalidScriptException(
                 $"effort must be {string.Join('|', LlmThinkingConfig.Levels)}, not '{value}'.");
+
+    /// <summary>A level, or <c>"auto"</c> (#439) as written; anything else is refused.</summary>
+    internal static string RequireEffortOrAuto(string? value)
+        => value == LlmAutoEffort.Name || (value is not null && LlmThinkingConfig.Levels.Contains(value))
+            ? value
+            : throw new InvalidScriptException(
+                $"effort must be {string.Join('|', LlmThinkingConfig.Levels)}|{LlmAutoEffort.Name}, not '{value}'.");
 
     private static readonly string[] s_cacheKeys = ["systemPrompt", "tools", "ttl"];
 

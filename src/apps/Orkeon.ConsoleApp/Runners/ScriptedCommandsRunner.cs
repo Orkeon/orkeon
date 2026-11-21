@@ -54,6 +54,7 @@ internal sealed class ScriptedCommandsRunner : InteractiveRunnerBase
     protected override async System.Threading.Tasks.Task OnStartAsync(CancellationToken ct)
     {
         await Orkeon.Hosting.McpStartup.ConnectConfiguredServersAsync(Services, ct).ConfigureAwait(false);
+        await Orkeon.Hosting.ToolBridge.ToolBridgeStartup.ConnectAsync(Services, ct).ConfigureAwait(false);
         await _scripts.EnsureLoadedAsync(ct).ConfigureAwait(false);
     }
 

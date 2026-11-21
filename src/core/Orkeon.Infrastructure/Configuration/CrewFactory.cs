@@ -39,6 +39,7 @@ public partial class CrewFactory : ICrewFactory
     private readonly Action<string>? _onDecisionWarning;
     private readonly IReadOnlyCollection<string>? _decisionProfiles;
     private readonly System.Collections.Immutable.ImmutableList<string> _routeLadder;
+    private readonly IReadOnlyList<string> _effortLevels;
 
     /// <summary>Initializes a new instance of <see cref="CrewFactory"/>.</summary>
     /// <param name="loader">The crew definition loader.</param>
@@ -81,6 +82,10 @@ public partial class CrewFactory : ICrewFactory
     /// a crew naming <c>auto</c> fails its load when the host declares no ladder or the ladder names a profile the
     /// host does not offer. Null declares none.
     /// </param>
+    /// <param name="effort">
+    /// The levels System One picks among on <c>thinking: { effort: auto }</c> (<c>Orkeon:Decision:Effort:Levels</c>,
+    /// #439): a crew whose <c>min</c>/<c>max</c> bounds leave none of them fails its load. Null is the default levels.
+    /// </param>
 #pragma warning disable S107 // DI-composed factory: one optional collaborator per opt-in subsystem
     public CrewFactory(
         ICrewDefinitionLoader loader,
@@ -95,7 +100,8 @@ public partial class CrewFactory : ICrewFactory
         Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null,
         Orkeon.Application.Crew.Execution.DecisionCircuit? decisionCircuit = null,
         IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionProfilesOptions>? decisionProfiles = null,
-        IOptions<Orkeon.Application.Crew.Routing.AgentRouteOptions>? route = null)
+        IOptions<Orkeon.Application.Crew.Routing.AgentRouteOptions>? route = null,
+        IOptions<Orkeon.Application.Crew.Routing.AgentEffortOptions>? effort = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(loader);
@@ -121,6 +127,9 @@ public partial class CrewFactory : ICrewFactory
         _onDecisionWarning = options?.Value.OnDecisionWarning;
         _decisionProfiles = decisionProfiles?.Value.Profiles.Keys.ToList();
         _routeLadder = [.. route?.Value.Ladder ?? []];
+        _effortLevels = effort is null
+            ? Orkeon.Application.Crew.Routing.AgentEffortOptions.DefaultLevels
+            : Orkeon.Application.Crew.Routing.AgentEffortOptions.AllowedLevels(effort.Value);
     }
 
     /// <inheritdoc />
@@ -295,6 +304,81 @@ public partial class CrewFactory : ICrewFactory
 
         foreach (var task in config.Tasks)
             EnsureProfile(task.LlmOverride?.Profile, $"Crew '{config.Name}': task '{Shorten(task.Description)}'");
+
+        EnsureEffortAutoSupported(config);
+    }
+
+    /// <summary>
+    /// An agent or a task whose thinking leaves something to System One (<c>effort: auto</c>, <c>enabled: auto</c>,
+    /// #439) must leave it a level: bounds <c>min</c>/<c>max</c> that keep none of the host's levels refuse the load,
+    /// whatever the profiles. It must also run on a profile whose model thinks: one whose thinking support is
+    /// <c>None</c> has no level to pick, and the load says so. On <c>llm.profile: auto</c>, only when every rung of the
+    /// ladder and the default are <c>None</c>. A provider that cannot tell is trusted.
+    /// </summary>
+    private void EnsureEffortAutoSupported(CrewConfiguration config)
+    {
+        var agents = config.Agents.ToDictionary(a => a.Id);
+        foreach (var agent in config.Agents.Where(a => a.LlmConfig?.Thinking is { HasAuto: true }))
+        {
+            var where = $"Crew '{config.Name}': agent '{agent.Key ?? agent.Role}' declares thinking: {{ {AutoMarker(agent.LlmConfig!.Thinking!)} }}";
+            EnsureLevelsLeft(agent.LlmConfig.Thinking!, where);
+            if (_llmProfiles is not null)
+                EnsureThinks(agent.LlmConfig.Profile, NamedModel(agent.LlmConfig), where);
+        }
+
+        foreach (var task in config.Tasks.Where(t => t.LlmOverride?.Thinking is { HasAuto: true }))
+        {
+            var where = $"Crew '{config.Name}': task '{Shorten(task.Description)}' declares thinking: {{ {AutoMarker(task.LlmOverride!.Thinking!)} }} in its llm_override";
+            EnsureLevelsLeft(task.LlmOverride.Thinking!, where);
+            if (_llmProfiles is null)
+                continue;
+            var agent = task.AssignedAgentId is { } id && agents.TryGetValue(id, out var assigned) ? assigned : null;
+            // A task naming its own profile runs on that profile's model; else on its agent's.
+            var ownProfile = !string.IsNullOrWhiteSpace(task.LlmOverride.Profile);
+            EnsureThinks(ownProfile ? task.LlmOverride.Profile : agent?.LlmConfig?.Profile, ownProfile ? null : NamedModel(agent?.LlmConfig), where);
+        }
+    }
+
+    /// <summary>What a thinking leaves to System One, as the crew writes it (#439).</summary>
+    private static string AutoMarker(LlmThinkingConfig thinking) => thinking.AutoEffort switch
+    {
+        { IsBounded: true } bounded => $"effort: {{ auto: true, {bounded.DescribeBounds()} }}",
+        not null => "effort: auto",
+        _ => "enabled: auto",
+    };
+
+    private void EnsureLevelsLeft(LlmThinkingConfig thinking, string where)
+    {
+        if (thinking.AutoEffort is not { IsBounded: true } bounded || bounded.Allowed(_effortLevels).Count > 0)
+            return;
+
+        throw new InvalidOperationException(
+            $"{where}, and its bounds keep none of the levels the host offers ({string.Join(", ", _effortLevels)}, " +
+            $"{Orkeon.Application.Crew.Routing.AgentEffortOptions.LevelsKey}): widen min/max, or add a level inside them to the host's levels.");
+    }
+
+    private static string? NamedModel(LlmConfig? config) => string.IsNullOrWhiteSpace(config?.Model) ? null : config.Model;
+
+    private void EnsureThinks(string? profile, string? model, string where)
+    {
+        List<string> candidates = Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(profile)
+            ? [.. _routeLadder, Orkeon.Application.Interfaces.Ports.LlmProfiles.Default]
+            : [string.IsNullOrWhiteSpace(profile) ? Orkeon.Application.Interfaces.Ports.LlmProfiles.Default : profile];
+        if (candidates.Any(name => Thinks(name, model)))
+            return;
+
+        throw new InvalidOperationException(
+            $"{where}, and the model of {(candidates.Count == 1 ? $"its profile '{candidates[0]}'" : $"every profile System One may pick ({string.Join(", ", candidates)})")} " +
+            "does not think (thinking support None): System One has nothing to pick. Remove the auto, or run it on a profile whose model thinks.");
+    }
+
+    private bool Thinks(string name, string? model)
+    {
+        var provider = _llmProfiles!.Resolve(name).Provider;
+#pragma warning disable ORKEXP005 // The reasoning capabilities are experimental; the load reads them to refuse a pick with no level.
+        var reasoning = provider.DescribeReasoning(model ?? provider.BaseConfig?.Model);
+#pragma warning restore ORKEXP005
+        return reasoning is null || reasoning.Thinking != ThinkingSupport.None;
     }
 
     /// <summary>

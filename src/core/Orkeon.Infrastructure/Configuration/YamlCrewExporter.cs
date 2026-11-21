@@ -429,9 +429,27 @@ public partial class YamlCrewExporter
 
     /// <summary>The <c>thinking:</c> block; null when it sets nothing, as the loader reads an empty one.</summary>
     private static ThinkingYamlConfig? MapThinking(LlmThinkingConfig? thinking) =>
-        thinking is null || (thinking.Enabled is null && string.IsNullOrWhiteSpace(thinking.Effort) && thinking.BudgetTokens is null)
+        thinking is null || (thinking.Enabled is null && string.IsNullOrWhiteSpace(thinking.Effort) && thinking.BudgetTokens is null && !thinking.HasAuto)
             ? null
-            : new ThinkingYamlConfig { Enabled = thinking.Enabled, Effort = thinking.Effort, BudgetTokens = thinking.BudgetTokens };
+            : new ThinkingYamlConfig
+            {
+                // What is left to System One (#439) round-trips as the marker it was written with.
+                Enabled = thinking.AutoEnabled ? LlmAutoEffort.Name : thinking.Enabled,
+                Effort = thinking.AutoEffort is not { } auto ? thinking.Effort
+                    : auto.IsBounded ? BoundedEffort(auto) : LlmAutoEffort.Name,
+                BudgetTokens = thinking.BudgetTokens,
+            };
+
+    /// <summary>The map form of a bounded pick (#439): <c>{ auto: true, min, max }</c>, an absent bound left out.</summary>
+    private static Dictionary<string, object> BoundedEffort(LlmAutoEffort auto)
+    {
+        var map = new Dictionary<string, object>(StringComparer.Ordinal) { ["auto"] = true };
+        if (auto.Min is { } min)
+            map["min"] = min;
+        if (auto.Max is { } max)
+            map["max"] = max;
+        return map;
+    }
 
     /// <summary>The <c>cache:</c> block; null when it marks no breakpoint, as the loader reads one.</summary>
     private static CacheYamlConfig? MapCache(LlmCacheConfig? cache)

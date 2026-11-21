@@ -35,6 +35,13 @@
       "description": "The `Orkeon:Decision:Enabled` switch of the decision circuit."
     },
     {
+      "path": "Orkeon:Decision:Effort",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "The thinking levels System One picks among for an agent or a task on `thinking: { effort: auto }` (#439), bound to the `Orkeon:Decision:Effort` section by `AddOrkeonInfrastructure()`. At the start of each task, the decision model picks one of `AgentEffortOptions.Levels`, and the task keeps it; under a probability of 0.6, without an answer or with the decision circuit off, the effort the agent would have had without `auto` stands."
+    },
+    {
       "path": "Orkeon:Decision:Route",
       "category": "models",
       "hosts": [],
@@ -328,11 +335,23 @@
       "description": "Configuration for the Orkeon MCP server."
     },
     {
+      "path": "Orkeon:Bridge",
+      "category": "tools",
+      "hosts": [],
+      "description": "The serving side of the tool bridge, section `Orkeon:Bridge`: the tools `orkeon bridge serve` runs for a caller on another machine. Nothing is served while `Allow` is empty."
+    },
+    {
       "path": "Orkeon:MultiModal",
       "category": "tools",
       "hosts": [],
       "registration": "AddOrkeonMultiModal",
       "description": "Configuration options for multi-modal content support."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge",
+      "category": "tools",
+      "hosts": [],
+      "description": "The caller's side of the tool bridge, section `Orkeon:Tools:Bridge`: the tools of this Orkeon that run on another machine. Nothing is bridged while `Address` is unset or `Allow` is empty."
     },
     {
       "path": "Orkeon:Tools:Drive",
@@ -1092,6 +1111,13 @@
       "section": "Orkeon:Decision",
       "type": "string",
       "description": "The decision provider: `typesafe`, `liquid` or `kev`; empty deduces it."
+    },
+    {
+      "path": "Orkeon:Decision:Effort:Levels",
+      "section": "Orkeon:Decision:Effort",
+      "type": "list of string",
+      "default": [],
+      "description": "The thinking levels System One may pick for an `effort: auto` agent or task, cheapest first: each one of `low`, `medium`, `high`, `xhigh`, `max`, in lower case, each once; a blank, unknown or repeated level is refused at start. Empty by default, which allows `low`, `medium` and `high`."
     },
     {
       "path": "Orkeon:Decision:Route:Ladder",
@@ -2810,6 +2836,55 @@
       "description": "Server version advertised in the handshake and in the `_meta` of the modern era. Empty or blank (the default): the version of the running Orkeon release."
     },
     {
+      "path": "Orkeon:Bridge:Allow",
+      "section": "Orkeon:Bridge",
+      "type": "list of string",
+      "default": [],
+      "description": "The tools served, by name, or the lone `*` for every tool of the registry."
+    },
+    {
+      "path": "Orkeon:Bridge:Deny",
+      "section": "Orkeon:Bridge",
+      "type": "list of string",
+      "default": [],
+      "description": "The tools never served, by name; a name here wins over `Allow`."
+    },
+    {
+      "path": "Orkeon:Bridge:HeartbeatWindow",
+      "section": "Orkeon:Bridge",
+      "type": "duration",
+      "default": "00:00:30",
+      "description": "How long the bridge waits for a sign of a caller that has runs on it (a heartbeat or a request) before it ends those runs, and their browsers, at once."
+    },
+    {
+      "path": "Orkeon:Bridge:MaxFileBytes",
+      "section": "Orkeon:Bridge",
+      "type": "integer",
+      "default": 16777216,
+      "description": "The largest total, in bytes, of the files of one call: those a caller sends, and those the tool wrote that go back."
+    },
+    {
+      "path": "Orkeon:Bridge:MaxRequestBytes",
+      "section": "Orkeon:Bridge",
+      "type": "integer",
+      "default": 33554432,
+      "description": "The largest body a request may carry, in bytes; a larger one is refused before it is read."
+    },
+    {
+      "path": "Orkeon:Bridge:Prefix",
+      "section": "Orkeon:Bridge",
+      "type": "string",
+      "default": "http://127.0.0.1:7410/",
+      "description": "The listener's prefix. Loopback by default; any other host requires `https`."
+    },
+    {
+      "path": "Orkeon:Bridge:TokenEnvVar",
+      "section": "Orkeon:Bridge",
+      "type": "string",
+      "default": "ORKEON_BRIDGE_TOKEN",
+      "description": "The environment variable that holds the token; never the token itself."
+    },
+    {
       "path": "Orkeon:MultiModal:Enabled",
       "section": "Orkeon:MultiModal",
       "type": "boolean",
@@ -2843,6 +2918,60 @@
       "type": "list of string",
       "default": ["image/png", "image/jpeg", "image/gif", "image/webp"],
       "description": "List of supported image MIME types."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:Address",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "string",
+      "description": "The bridge's base address (`https://host:7410/`); unset, nothing is bridged."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:Allow",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "list of string",
+      "default": [],
+      "description": "The tools to bridge, by name, or the lone `*` for every tool the bridge serves."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:ConnectTimeout",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "duration",
+      "default": "00:00:10",
+      "description": "How long the connection to the bridge may take before a call fails; a call itself has no limit."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:Deny",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "list of string",
+      "default": [],
+      "description": "The tools never bridged, by name; a name here wins over `Allow`."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:HostHeader",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "string",
+      "description": "The `Host` header sent to the bridge, when it differs from the address's: a container of Docker Desktop reaches the bridge's loopback listener through `host.docker.internal`, while the listener answers only the host its prefix names. Unset, it is `127.0.0.1:<port>` for an address naming `host.docker.internal`, and the address's own otherwise."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:MaxFileBytes",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "integer",
+      "default": 16777216,
+      "description": "The largest total, in bytes, of the files of one call: those a call sends to the bridge, and those it brings back."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:MaxResponseBytes",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "integer",
+      "default": 33554432,
+      "description": "The largest answer, in bytes, this caller reads from the bridge; a larger one fails the call with its reason. The default leaves room for `MaxFileBytes` of files in base64 beside the result."
+    },
+    {
+      "path": "Orkeon:Tools:Bridge:TokenEnvVar",
+      "section": "Orkeon:Tools:Bridge",
+      "type": "string",
+      "default": "ORKEON_BRIDGE_TOKEN",
+      "description": "The environment variable that holds the token; never the token itself."
     },
     {
       "path": "Orkeon:Tools:Drive:Accounts:<name>:Auth:ClientId",

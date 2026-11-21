@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a tool bridge: some tools of a run execute on another machine, `orkeon bridge serve` (#445)
+
+An Orkeon in a container can drive what lives on the user's machine, the browser first: `orkeon bridge serve`, run on
+that machine, serves the built-in tools its `Orkeon:Bridge:Allow` selects over JSON on HTTP (`/orkeon-bridge/v1/`:
+`GET tools`, `POST call`, `POST cancel`, `POST end-run`, `POST heartbeat`), and the caller's `Orkeon:Tools:Bridge`
+(`Address`, `Allow`, `Deny`) sends the calls of the tools it selects there. A tool is bridged when both sides select
+it; `*` selects every tool but those that act on the workspace (files, shell, code index), which a new
+`[ToolContract(ActsOnWorkspace = true)]` marks and which are bridged only when named, with a warning. The caller's
+gate, guardian, truncation and sanitizer judge every call by the local tool's schema and access; the bridge runs it
+raw, with its own tool settings and URL policy, and audits it under the caller `bridge`. The caller (`orkeon run`,
+`validate`, `.ork.ts` scripts, `eval`, `orkeon-repl`, and `orkeon-host`, which exits 78) refuses to start when the
+bridge cannot be reached, refuses the token, does not serve a tool named, or serves one whose contract hash differs; a
+call the bridge cannot answer fails, never runs locally. A caller run is one scope on the bridge (one browser per run),
+ended with the run or after `Orkeon:Bridge:HeartbeatWindow` (30 s) without a heartbeat; a tool's files travel at the
+caller's virtual paths, bounded by `Orkeon:Bridge:MaxFileBytes` and `Orkeon:Tools:Bridge:MaxFileBytes` (16 MiB), so a
+`screenshot` to `/output/page.png` lands in the caller's `/output`. The token comes from `ORKEON_BRIDGE_TOKEN` (or the
+variable `TokenEnvVar` names) and is compared in fixed time; the bridge listens on loopback (`127.0.0.1:7410`,
+`localhost:7410` under Windows), refuses a request with an `Origin` header or a body over `MaxRequestBytes`, and
+requires https on another host, which it serves under Windows only (a URL reservation, `netsh http add urlacl`, which
+the start failure names). From a Linux engine the container reaches it with `--network host`; from Docker Desktop with
+`http://host.docker.internal:7410/`, the caller sending the `Host` header `Orkeon:Tools:Bridge:HostHeader`
+(`127.0.0.1:<port>` by default, `localhost:<port>` under Windows) and warning that the token travels in clear. The
+caller writes back only the files a call's arguments named, for an `Edit` or `Execute` call, always truncates a bridged
+result and reads an answer under `Orkeon:Tools:Bridge:MaxResponseBytes` (32 MiB); the bridge's scratch folders have an
+unpredictable name, mode 0700, and never send a symbolic link back. The guide: [Orkeon in a container, the browser on the
+desktop](docs/guides/tool-bridge.md); the decision: [ADR-019](docs/adr/ADR-019-tool-bridge.md).
+
+**Also**: a `.ork.ts` script's `tools.firefox` now runs the registry's wrapper of a transient container tool (the
+bridge's proxy, the permission gate) instead of a new bare instance.
+
+### Added — `thinking: { effort: auto }`: System One picks a task's thinking level (#439)
+
+An agent or a task (`llm_override`) that writes `thinking: { effort: auto }` lets the decision model pick, at the start
+of each task, one level of `Orkeon:Decision:Effort:Levels` (empty by default: `low`, `medium`, `high`), the task
+keeping it on its retries; with `llm.profile: auto` too, the profile and the level are asked in one decision call. The
+map form `effort: { auto: true, min, max }` bounds the pick: a single level left is sent with no call, none left fails
+the load naming the agent or the task and the key. `enabled: auto` lets System One switch thinking off for a trivial
+task (its options are `off` and the written level); under `enabled: false` nothing is left to it. A correction round
+after an output that failed its validation (`output_json`), once per failed round, and an attempt after a failed one (a
+failed result or a thrown error, not a cancellation, a guardian refusal or an exhausted budget) run one step higher,
+with no call; a written level is never raised, and a decision profile's `verify` does not raise it (it escalates the
+call itself). Under 0.6, without an answer, with the circuit off or with `--no-decision`, the thinking the agent would
+have had without `auto` stands, its budget kept, with the warnings of `llm.profile: auto` (once per run with the
+circuit off, at each failed call). Each pick and each raise is a run event `agent.effort` (`level`, `previous`, `reason`
+among `model`, `low-confidence`, `no-answer`, `circuit-off`, `decision-none`, `single-level`, `raised`). A crew on
+`decision: { mode: none }` naming either `auto`, or running it on a model that does not think, fails its load; `auto`
+in a host profile's `Llm:Thinking:Effort` is refused at start. In `.ork.ts`: `agentBuilder().effort("auto")`,
+`llm.profile(name, { effort: "auto" })`, `.with({ effort: "auto" })` and the new `taskBuilder().withEffort(level |
+"auto")`; a single `ctx.llm` call takes a level only, and on an `effort("auto")` agent runs with its profile's effort. In C#: `AgentBuilder.ThinkingEffortAuto(min, max)` and
+`ThinkingEnabledAuto()`.
+
+**Compatibility**: `ThinkingYamlConfig.Effort` and `Enabled` are now `object?` (they were `string?` and `bool?`), so
+that the map form and `auto` are read as written and refused naming the agent or the task: code that builds this YAML
+model by hand keeps compiling for assignments, but a read of either property needs a cast.
+
 ### Added — System One prunes a loop's older read-tool results before it compacts (#434)
 
 With `Orkeon:Compaction:Prune:Enabled` (off by default) or an agent's `compaction: { prune: true }`, once a native or

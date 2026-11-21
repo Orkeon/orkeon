@@ -165,6 +165,7 @@ public sealed class CrewScriptRunner : ICrewScriptRunner
         // The sequence of orkeon run's kickoff: the MCP tools join the registry before the crew
         // resolves its own, and the load and the kickoff share one scope (GAP-25).
         await McpStartup.ConnectConfiguredServersAsync(host, cancellationToken).ConfigureAwait(false);
+        await ToolBridge.ToolBridgeStartup.ConnectAsync(host.Services, cancellationToken).ConfigureAwait(false);
         var scope = host.Services.CreateAsyncScope();
         await using var scopeLease = scope.ConfigureAwait(false);
         var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();

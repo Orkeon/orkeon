@@ -7,9 +7,11 @@ using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Analysis.Internal;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Analysis;
 
+[ToolContract("package_summary", ActsOnWorkspace = true)]
 public sealed class PackageSummaryTool : ToolBase<PackageSummaryRequest, PackageSummaryResponse>
 {
     private static readonly HashSet<string> EntryPointNames = new(StringComparer.OrdinalIgnoreCase)

@@ -58,7 +58,7 @@ déduit.
 | `llm` | le fournisseur seulement : un agent configuré avec `llm.profile("…")` fait parler `ctx.llm` au fournisseur de ce profil, sur le modèle du profil ; sinon `ctx.llm` utilise le fournisseur de l'hôte sur son modèle configuré (par appel : `{ llm: { profile } }` pour un autre profil de l'hôte, `{ llm: { model } }` pour un autre modèle) | ✅ un `LlmConfig` — `llm.default_`, `llm.model("…")`, `llm.profile("…")`, `.with({...})` — règle le fournisseur de l'agent (l'un des profils de l'hôte), son modèle, sa température et son plafond de jetons. Une chaîne ou un objet simple est refusé par `.llm(...)`. Le routage par System One ([`Orkeon:Decision:Route`](configuration.md#orkeondecisionroute)) se fait au niveau de la tâche seulement : `llm.profile("auto")` lève une erreur, et le `withProfile("auto")` d'une tâche est routé comme le `llm_override: { profile: auto }` du YAML |
 | `tools([...])` intégrés par nom | ✅ ce que `ctx.llm.act` peut appeler — un nom que l'hôte n'offre pas fait rejeter `act` par une `UnknownToolError`, avant tout appel au modèle | ✅ strict : un nom inconnu fait échouer le run |
 | `withAutonomousTool(s)` instances | appelables depuis un `body` (`tool.execute(input)`) et proposées à `ctx.llm.act`, qui exécute le `execute` de l'outil dans le script | ✅ enregistrées et résolues par nom |
-| `effort(level)` — `"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : active la réflexion du fournisseur à cet effort | ✅ envoyé sur les appels `ctx.llm` de l'agent, sauf si un appel fixe son propre `{ effort }` | ✅ |
+| `effort(level)` — `"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : active la réflexion du fournisseur à cet effort ; `"auto"` laisse le niveau à System One au début de chaque tâche, comme le `effort: auto` du YAML (aussi `llm.profile(nom, { effort: "auto" })` et `.with({ effort: "auto" })`) | ✅ envoyé sur les appels `ctx.llm` de l'agent, sauf si un appel fixe son propre `{ effort }` ; sur `"auto"` un appel seul n'a pas de choix (ce n'est pas une tâche) et part avec la réflexion que l'agent aurait eue sans `auto`, l'effort de son profil | ✅ |
 | `cache({ systemPrompt, tools, ttl })` — le `cache:` du YAML : demande au cache de prompt du fournisseur de garder le prompt système et/ou les définitions d'outils (`ttl` `"5m"` ou `"1h"` ; `cache({})` coupe le cache, y compris le défaut `Llm:Cache` de l'hôte) | ✅ envoyé sur les appels `ctx.llm` de l'agent, sauf si un appel fixe son propre `{ cache }` | ✅ |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` a son propre `maxIterations`) | ✅ — `maxIterations` vaut 20 par défaut, comme en YAML et en C# |
 | `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour cet agent, une de plus attendant son tour (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit : les appels `ctx.llm` ne sont pas des tours d'agent — le `RateLimiting` de l'hôte les plafonne toujours) | ✅ |
@@ -122,10 +122,12 @@ Déclaratif uniquement — le moteur procédural ne lit jamais les tâches. Tran
 `description`, `agent` (un agent construit), `expectedOutput`, `withContext(s)` (c'est ce qui
 construit le DAG), `tools` (ajoutés aux outils de l'agent pour cette tâche seulement, sans jamais
 les remplacer), `humanInput`, `asyncExecution`, `retry`, `deliverable`,
-`withResponseFormat(type)`, `withResponseSchema(name, schema, strict?)` et `withProfile(nom)` (le
+`withResponseFormat(type)`, `withResponseSchema(name, schema, strict?)`, `withProfile(nom)` (le
 `llm_override: { profile }` du YAML : cette tâche seule tourne sur un des profils de l'hôte, sur le
 modèle propre de ce profil, et `"default"` la ramène au défaut de l'hôte ; un nom que l'hôte
-n'offre pas fait échouer le chargement en listant les profils connus). `name` est la clé de la
+n'offre pas fait échouer le chargement en listant les profils connus) et `withEffort(niveau)` (le
+`llm_override: { thinking: { effort } }` du YAML : cette tâche seule tourne à ce niveau, ou à celui que System One
+choisit sur `"auto"` ; toute autre valeur est refusée). `name` est la clé de la
 tâche : `when(...)` et le `state` d'une décision désignent une tâche par elle, et une tâche de
 décision l'exige. Accepté mais sans effet : `expect` (consigné dans le contexte de la tâche en l'absence de
 `deliverable`, jamais validé).
@@ -205,7 +207,7 @@ configuration du fournisseur de l'appel : `responseFormat` (`"json_object"`, `"j
 `llm: { model }` (un modèle par appel, dans le fournisseur du profil quand `profile` est donné :
 `{ profile, model }` vaut `llm.profile(profile, { model })` ; un `LlmConfig` y est refusé, sa
 température et son plafond de jetons ne s'appliqueraient pas) et `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : la réflexion du fournisseur, activée à cet effort ;
-toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max`) et `cache` (la demande de cache de prompt, telle que la prend `agentBuilder().cache(...)`). `act` en prend davantage : voir
+toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max` ; `"auto"` aussi, un choix se faisant par tâche, jamais par appel) et `cache` (la demande de cache de prompt, telle que la prend `agentBuilder().cache(...)`). `act` en prend davantage : voir
 [Options de `act`](../architecture/scripting.md#options-de-act) (`tools`, `effort`, `onToolCall`,
 `onToolResult`, `onContextPressure`, `waitFor`). Il n'y a ni fournisseur nommé, ni température, ni plafond de
 jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte. `embed` est un stub local :

@@ -89,7 +89,7 @@ public record DirectoryReadResponse
 /// <summary>
 /// Tool for listing directory contents including files and subdirectories.
 /// </summary>
-[ToolContract("directory_read",
+[ToolContract("directory_read", ActsOnWorkspace = true,
     Name = "directory_read",
     Description = "What is in this folder? Lists the files and sub-folders of a directory, recursive on request, filtered by a glob pattern, at most max_results entries (200 by default; truncated says when the folder holds more). To find files by name across a tree, glob; to find files by content, grep.",
     Category = "File System")]

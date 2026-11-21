@@ -76,6 +76,7 @@ public sealed class EditFileResponse
 }
 
 /// <summary>Replaces a unique string in a file.</summary>
+[ToolContract("edit_file", ActsOnWorkspace = true)]
 public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileResponse>
 {
     private static readonly byte[] Utf8Bom = [0xEF, 0xBB, 0xBF];

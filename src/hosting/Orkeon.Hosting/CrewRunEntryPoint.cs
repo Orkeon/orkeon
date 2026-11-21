@@ -160,6 +160,17 @@ internal sealed class CrewRunEntryPoint : IDisposable
             _mcpConnected = true;
         }
 
+        // The tool bridge (#445) right after, once per host too (the link is idempotent): a bridge that refuses
+        // the start fails the load with its reason, and the next run tries again.
+        try
+        {
+            await ToolBridge.ToolBridgeStartup.ConnectAsync(host.Services, ct).ConfigureAwait(false);
+        }
+        catch (RunnerSettingsException ex)
+        {
+            return (null, ex);
+        }
+
         // One scope for the load and the kickoff, as orkeon-host's CrewRunner opens per run (GAP-25):
         // the crew factory, the orchestrator and the repositories the crew is loaded into are scoped.
         var factory = scope.ServiceProvider.GetRequiredService<ICrewFactory>();

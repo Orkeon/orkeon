@@ -251,11 +251,12 @@ public sealed class JsAgentBuilder
 
     /// <summary>
     /// Turns the provider's thinking on at <c>low</c>, <c>medium</c>, <c>high</c>, <c>xhigh</c> or <c>max</c>
-    /// effort. A provider whose field does not know the level sends the nearest it knows, and warns.
+    /// effort. A provider whose field does not know the level sends the nearest it knows, and warns. <c>"auto"</c>
+    /// (#439) leaves the level to System One, picked at each task's start among the host's levels.
     /// </summary>
     public JsAgentBuilder effort(string level) => Guarded(() =>
     {
-        EffortValue = Orkeon.Scripting.Runtime.JsLlmConfig.RequireEffort(level);
+        EffortValue = Orkeon.Scripting.Runtime.JsLlmConfig.RequireEffortOrAuto(level);
         return this;
     });
 

@@ -19,4 +19,20 @@ internal static partial class AgentRouteLog
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Agent {AgentRole} task {TaskId}: profile {Profile} ({Reason}).")]
     public static partial void Routed(ILogger logger, string agentRole, string taskId, string profile, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Agents and tasks on thinking: {{ effort: auto }} take no pick: {Reason}. Each of their tasks runs with the effort it would have had without auto.")]
+    public static partial void EffortCircuitOff(ILogger logger, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Agent {AgentRole}: the decision model could not pick its thinking effort ({Error}); the effort it would have had without auto stands.")]
+    public static partial void EffortPickFailed(ILogger logger, string agentRole, string error);
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Agent {AgentRole} task {TaskId}: thinking effort {Level} ({Reason}).")]
+    public static partial void EffortPicked(ILogger logger, string agentRole, string taskId, string level, string reason);
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Agent {AgentRole} task {TaskId}: thinking effort raised from {Previous} to {Level} after a failed attempt.")]
+    public static partial void EffortRaised(ILogger logger, string agentRole, string taskId, string previous, string level);
 }

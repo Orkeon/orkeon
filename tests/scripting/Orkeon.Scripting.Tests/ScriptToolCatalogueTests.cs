@@ -63,4 +63,33 @@ public sealed class ScriptToolCatalogueTests
 
         Assert.Equal(1, resolved);
     }
+
+    [Fact]
+    public async Task ShouldHoldTheRegistrysWrapper_WhenItReplacedAContainerTool()
+    {
+        // Arrange
+        var container = new StubBaseTool("firefox");
+        var registry = Registry();
+        await registry.RegisterToolAsync(new StubWrapperTool(container), TestContext.Current.CancellationToken);
+
+        // Act
+        var held = Assert.Single(new ScriptToolCatalogue([container], registry));
+
+        // Assert
+        Assert.Same(container, Assert.IsType<StubWrapperTool>(held).Inner);
+    }
+
+    [Fact]
+    public async Task ShouldHoldTheRegistrysWrapper_WhenItWrapsAnotherInstanceOfATransientContainerTool()
+    {
+        // Arrange
+        var registry = Registry();
+        await registry.RegisterToolAsync(new StubWrapperTool(new StubBaseTool("firefox")), TestContext.Current.CancellationToken);
+
+        // Act
+        var held = Assert.Single(new ScriptToolCatalogue([new StubBaseTool("firefox")], registry));
+
+        // Assert
+        Assert.IsType<StubWrapperTool>(held);
+    }
 }

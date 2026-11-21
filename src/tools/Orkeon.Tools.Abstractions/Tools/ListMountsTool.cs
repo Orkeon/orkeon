@@ -3,6 +3,7 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Microsoft.Extensions.Logging;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Tools.Abstractions.Tools;
 
@@ -53,6 +54,7 @@ public sealed record OverrideDto
 /// Tool that lists all available virtual file system mounts with their paths and access rights.
 /// This tool is intended for LLM agents to discover which file system areas are accessible.
 /// </summary>
+[ToolContract("list_mounts", ActsOnWorkspace = true)]
 public class ListMountsTool : ToolBase<ListMountsRequest, ListMountsResponse>
 {
     private readonly IFileSystemService _fileSystemService;

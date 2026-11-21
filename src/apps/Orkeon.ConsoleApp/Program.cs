@@ -318,6 +318,8 @@ static class Program
         // MCP:Servers, as the runners read it: registered when servers are declared, connected by the
         // runner before it loads the commands (ScriptedCommandsRunner.OnStartAsync).
         Orkeon.Hosting.RunnerHost.RegisterMcp(context, services);
+        // The tool bridge (#445), as the runners register it: connected after the servers, before the commands load.
+        Orkeon.Hosting.ToolBridge.ToolBridgeStartup.Register(services, context.Configuration);
         // An oauth2-device server shows its sign-in code on the process terminal, as orkeon run does.
         Orkeon.Hosting.RunnerHost.RegisterMcpLoginInteraction(services, Orkeon.Hosting.SystemRunnerConsole.Instance);
         // The decision models, as the runners register them: the active decision provider (the guard and
