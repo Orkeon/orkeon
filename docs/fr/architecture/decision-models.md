@@ -565,8 +565,9 @@ seule, jamais de lui-même.
   aussi, les deux questions vont dans la même requête, chaque réponse avec son propre seuil. Avec `enabled: auto` les
   options commencent par `off` (pas de réflexion), et la forme map `effort: { auto: true, min, max }` ne garde que les
   niveaux entre ses bornes. Le niveau choisi à une probabilité de 0,6 ou plus sert à tous les appels de la tâche et
-  à ses reprises, sauf qu'une tentative échouée (un résultat en échec, jamais une annulation, un refus du gardien ni
-  un budget épuisé) fait tourner la suivante un cran plus haut parmi les options, sans appel (`reason: raised`,
+  à ses reprises, sauf qu'un tour de correction après une sortie qui a échoué à sa validation (`output_json`), une
+  fois par tour échoué, et une tentative après une tentative échouée (un résultat en échec ou une erreur levée, jamais
+  une annulation, un refus du gardien ni un budget épuisé) tournent un cran plus haut parmi les options, sans appel (`reason: raised`,
   `previous` le niveau d'avant) ; en dessous de 0,6,
   sans réponse, ou circuit coupé, c'est l'effort que l'agent aurait eu sans `auto` (le `Llm:Thinking` de son profil,
   sinon celui du provider), et `agent.effort` dit pourquoi

@@ -773,15 +773,22 @@ appel.
 
 Un agent ou une tâche qui écrit `thinking: { effort: auto }` ([schéma YAML](../architecture/yaml-schema.md)) laisse
 System One choisir son niveau de réflexion au début de chaque tâche, parmi `Levels`, du moins cher au plus cher ; la
-tâche le garde à ses reprises, sauf après une tentative échouée, qui fait tourner la suivante un niveau plus haut
-(`reason: raised`, sans appel de décision). La forme map `effort: { auto: true, min, max }` borne le choix aux
+tâche le garde à ses reprises, sauf après un échec, qui fait tourner l'essai suivant un niveau plus haut
+(`reason: raised`, sans appel de décision) : un tour de correction après une sortie qui a échoué à sa validation
+(`output_json`), une fois par tour échoué, et une tentative après une tentative échouée (un résultat en échec ou une
+erreur levée, jamais une annulation, un refus du gardien ni un budget épuisé). Le `verify` échoué d'un profil de
+décision ne le relève pas : cette étape escalade l'appel lui-même vers un autre profil ([limites](./limitations.md)). La forme map `effort: { auto: true, min, max }` borne le choix aux
 niveaux de `Levels` entre `min` et `max` : un seul restant donne ce niveau sans appel, aucun fait échouer le
 chargement en nommant l'agent ou la tâche et cette clé. `enabled: auto` laisse System One couper la réflexion pour
 une tâche triviale : ses options sont `off` et le niveau écrit (ou `on` quand aucun n'est écrit), et avec
 `effort: auto` aussi, `off` et chaque niveau permis. Avec `llm.profile: auto` aussi, le profil et le niveau sont demandés dans un seul
 appel de décision, chaque réponse avec son propre seuil de 0,6. Sous ce seuil, sans réponse, avec le circuit de
 décision coupé ou avec `--no-decision`, l'effort que l'agent aurait eu sans `auto` s'applique (le `Llm:Thinking` de
-son profil, sinon celui du fournisseur), avec un avertissement par run. Une crew en `decision: { mode: none }` qui
+son profil, sinon celui du fournisseur), sans erreur, comme pour `llm.profile: auto` : un avertissement est journalisé
+une fois par run quand le circuit est coupé (hors run, une fois par hôte), et à chaque appel en échec ; une probabilité
+basse ou une réponse absente n'est journalisée qu'en information, l'événement `agent.effort` disant pourquoi. Un agent
+qui écrit `enabled: false` sous un `effort: auto` de la crew ne laisse rien à System One : aucun appel, la réflexion
+reste coupée. Une crew en `decision: { mode: none }` qui
 nomme `effort: auto` échoue à son chargement, comme celle dont le profil fait tourner un modèle qui ne réfléchit
 pas. `auto` dans un profil d'hôte (`Llm:Thinking:Effort`) est refusé au démarrage : c'est un mot de crew. Chaque
 choix et chaque relèvement est un événement de run, `agent.effort`.

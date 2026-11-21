@@ -545,9 +545,9 @@ never on its own.
   first, on the same state as the agent routing; with `llm.profile: auto` too, both questions go in the same
   request, each answer with its own floor. With `enabled: auto` the options start with `off` (no thinking), and the
   map form `effort: { auto: true, min, max }` keeps only the levels inside its bounds. The level picked at a
-  probability of 0.6 or more runs every call of the task and its retries, except that a failed attempt (a failed
-  result, never a cancellation, a guardian refusal or an exhausted budget) runs the next one a step higher among the
-  options, with no call (`reason: raised`, `previous` the level before); under 0.6, without an answer, or with the circuit off, the effort the agent would have
+  probability of 0.6 or more runs every call of the task and its retries, except that a correction round after an output that failed its validation (`output_json`), once per
+  failed round, and an attempt after a failed one (a failed result or a thrown error, never a cancellation, a guardian
+  refusal or an exhausted budget) run a step higher among the options, with no call (`reason: raised`, `previous` the level before); under 0.6, without an answer, or with the circuit off, the effort the agent would have
   had without `auto` runs (its profile's `Llm:Thinking`, else the provider's own), and `agent.effort` says why
   ([`Orkeon:Decision:Effort`](../reference/configuration.md#orkeondecisioneffort)). A host that allows one level
   gets that level with no call (`reason: single-level`). The marker never reaches a provider, and a host profile's

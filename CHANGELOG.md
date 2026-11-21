@@ -14,15 +14,18 @@ of each task, one level of `Orkeon:Decision:Effort:Levels` (empty by default: `l
 keeping it on its retries; with `llm.profile: auto` too, the profile and the level are asked in one decision call. The
 map form `effort: { auto: true, min, max }` bounds the pick: a single level left is sent with no call, none left fails
 the load naming the agent or the task and the key. `enabled: auto` lets System One switch thinking off for a trivial
-task (its options are `off` and the written level). After a failed attempt (a failed result, not a cancellation, a
-guardian refusal or an exhausted budget) the next attempt runs one step higher, with no call; a written level is never
-raised. Under 0.6, without an answer, with the circuit off or with `--no-decision`, the thinking the agent would have
-had without `auto` stands. Each pick and each raise is a run event `agent.effort` (`level`, `previous`, `reason`
+task (its options are `off` and the written level); under `enabled: false` nothing is left to it. A correction round
+after an output that failed its validation (`output_json`), once per failed round, and an attempt after a failed one (a
+failed result or a thrown error, not a cancellation, a guardian refusal or an exhausted budget) run one step higher,
+with no call; a written level is never raised, and a decision profile's `verify` does not raise it (it escalates the
+call itself). Under 0.6, without an answer, with the circuit off or with `--no-decision`, the thinking the agent would
+have had without `auto` stands, its budget kept, with the warnings of `llm.profile: auto` (once per run with the
+circuit off, at each failed call). Each pick and each raise is a run event `agent.effort` (`level`, `previous`, `reason`
 among `model`, `low-confidence`, `no-answer`, `circuit-off`, `decision-none`, `single-level`, `raised`). A crew on
 `decision: { mode: none }` naming either `auto`, or running it on a model that does not think, fails its load; `auto`
 in a host profile's `Llm:Thinking:Effort` is refused at start. In `.ork.ts`: `agentBuilder().effort("auto")`,
 `llm.profile(name, { effort: "auto" })`, `.with({ effort: "auto" })` and the new `taskBuilder().withEffort(level |
-"auto")`; a single `ctx.llm` call takes a level only. In C#: `AgentBuilder.ThinkingEffortAuto(min, max)` and
+"auto")`; a single `ctx.llm` call takes a level only, and on an `effort("auto")` agent runs with its profile's effort. In C#: `AgentBuilder.ThinkingEffortAuto(min, max)` and
 `ThinkingEnabledAuto()`.
 
 **Compatibility**: `ThinkingYamlConfig.Effort` and `Enabled` are now `object?` (they were `string?` and `bool?`), so
