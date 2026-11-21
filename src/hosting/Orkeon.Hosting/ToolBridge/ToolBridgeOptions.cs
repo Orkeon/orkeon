@@ -17,7 +17,7 @@ internal sealed class ToolBridgeClientOptions
     /// <summary>The environment variable that holds the token; never the token itself.</summary>
     public string TokenEnvVar { get; set; } = ToolBridgeProtocol.DefaultTokenEnvVar;
 
-    /// <summary>The tools to bridge, by name, or the lone <c>*</c> for every tool the bridge serves.</summary>
+    /// <summary>The tools to bridge, by name, or the lone <c>*</c> for every bridgeable Orkeon tool the bridge serves.</summary>
     public Collection<string> Allow { get; } = [];
 
     /// <summary>The tools never bridged, by name; a name here wins over <see cref="Allow"/>.</summary>
@@ -103,14 +103,15 @@ internal sealed class ToolBridgeServerOptions
     public const long DefaultMaxFileBytes = 16L * 1024 * 1024;
 
     /// <summary>
-    /// The listener's prefix. Loopback by default; any other host requires <c>https</c>.
+    /// The listener's prefix. Loopback by default, <c>localhost</c> under Windows, whose URL reservations name it,
+    /// <c>127.0.0.1</c> elsewhere; any other host requires <c>https</c>.
     /// </summary>
     public string Prefix { get; set; } = OperatingSystem.IsWindows() ? "http://localhost:7410/" : "http://127.0.0.1:7410/";
 
     /// <summary>The environment variable that holds the token; never the token itself.</summary>
     public string TokenEnvVar { get; set; } = ToolBridgeProtocol.DefaultTokenEnvVar;
 
-    /// <summary>The tools served, by name, or the lone <c>*</c> for every tool of the registry.</summary>
+    /// <summary>The tools served, by name, or the lone <c>*</c> for every bridgeable Orkeon tool of the registry.</summary>
     public Collection<string> Allow { get; } = [];
 
     /// <summary>The tools never served, by name; a name here wins over <see cref="Allow"/>.</summary>

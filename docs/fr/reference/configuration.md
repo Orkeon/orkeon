@@ -1808,7 +1808,7 @@ consignée dans l'[ADR-019](../adr/ADR-019-tool-bridge.md).
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `Address` | chaîne | — | L'adresse de base du pont (`https://hote:7410/`) ; non renseignée, rien ne passe par le pont. |
-| `Allow` | liste de chaînes | `[]` | Les outils à faire passer par le pont, par nom, ou le seul `*` pour tous les outils que le pont sert. |
+| `Allow` | liste de chaînes | `[]` | Les outils à faire passer par le pont, par nom, ou le seul `*` pour tous les outils pontables d'Orkeon que le pont sert. |
 | `ConnectTimeout` | durée | `"00:00:10"` | Le temps que la connexion au pont peut prendre avant qu'un appel échoue ; un appel lui-même n'a pas de limite. |
 | `Deny` | liste de chaînes | `[]` | Les outils jamais confiés au pont, par nom ; un nom présent ici l'emporte sur `Allow`. |
 | `HostHeader` | chaîne | — | L'en-tête `Host` envoyé au pont, quand il diffère de celui de l'adresse : un conteneur de Docker Desktop atteint l'écoute en boucle locale du pont par `host.docker.internal`, alors que l'écoute ne répond qu'à l'hôte que son préfixe nomme. Non renseigné, il vaut `127.0.0.1:<port>` pour une adresse qui nomme `host.docker.internal`, et celui de l'adresse sinon. |
@@ -1831,12 +1831,12 @@ bureau](../guides/tool-bridge.md) ; la décision est consignée dans l'[ADR-019]
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
-| `Allow` | liste de chaînes | `[]` | Les outils servis, par nom, ou le seul `*` pour tous les outils du registre. |
+| `Allow` | liste de chaînes | `[]` | Les outils servis, par nom, ou le seul `*` pour tous les outils pontables d'Orkeon du registre. |
 | `Deny` | liste de chaînes | `[]` | Les outils jamais servis, par nom ; un nom présent ici l'emporte sur `Allow`. |
 | `HeartbeatWindow` | durée | `"00:00:30"` | Le temps que le pont attend un signe d'un appelant qui a des exécutions chez lui (un battement ou une requête) avant de mettre fin à ces exécutions, et à leurs navigateurs, aussitôt. |
 | `MaxFileBytes` | entier | `16777216` | Le plus gros total, en octets, des fichiers d'un appel : ceux qu'un appelant envoie, et ceux que l'outil a écrits et qui repartent. |
 | `MaxRequestBytes` | entier | `33554432` | Le plus gros corps qu'une requête peut porter, en octets ; un corps plus gros est refusé avant d'être lu. |
-| `Prefix` | chaîne | `"http://127.0.0.1:7410/"` | Le préfixe de l'écoute. Boucle locale par défaut ; tout autre hôte exige `https`. |
+| `Prefix` | chaîne | `http://127.0.0.1:7410/`, `http://localhost:7410/` sous Windows | Le préfixe de l'écoute. Boucle locale par défaut, `localhost` sous Windows, dont les réservations d'URL le nomment, `127.0.0.1` ailleurs ; tout autre hôte exige `https`. |
 | `TokenEnvVar` | chaîne | `"ORKEON_BRIDGE_TOKEN"` | La variable d'environnement qui tient le jeton ; jamais le jeton lui-même. |
 <!-- /settings -->
 

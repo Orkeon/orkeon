@@ -1746,7 +1746,7 @@ in [ADR-019](../adr/ADR-019-tool-bridge.md).
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `Address` | string | — | The bridge's base address (`https://host:7410/`); unset, nothing is bridged. |
-| `Allow` | list of string | `[]` | The tools to bridge, by name, or the lone `*` for every tool the bridge serves. |
+| `Allow` | list of string | `[]` | The tools to bridge, by name, or the lone `*` for every bridgeable Orkeon tool the bridge serves. |
 | `ConnectTimeout` | duration | `"00:00:10"` | How long the connection to the bridge may take before a call fails; a call itself has no limit. |
 | `Deny` | list of string | `[]` | The tools never bridged, by name; a name here wins over `Allow`. |
 | `HostHeader` | string | — | The `Host` header sent to the bridge, when it differs from the address's: a container of Docker Desktop reaches the bridge's loopback listener through `host.docker.internal`, while the listener answers only the host its prefix names. Unset, it is `127.0.0.1:<port>` for an address naming `host.docker.internal`, and the address's own otherwise. |
@@ -1769,12 +1769,12 @@ is recorded in [ADR-019](../adr/ADR-019-tool-bridge.md).
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `Allow` | list of string | `[]` | The tools served, by name, or the lone `*` for every tool of the registry. |
+| `Allow` | list of string | `[]` | The tools served, by name, or the lone `*` for every bridgeable Orkeon tool of the registry. |
 | `Deny` | list of string | `[]` | The tools never served, by name; a name here wins over `Allow`. |
 | `HeartbeatWindow` | duration | `"00:00:30"` | How long the bridge waits for a sign of a caller that has runs on it (a heartbeat or a request) before it ends those runs, and their browsers, at once. |
 | `MaxFileBytes` | integer | `16777216` | The largest total, in bytes, of the files of one call: those a caller sends, and those the tool wrote that go back. |
 | `MaxRequestBytes` | integer | `33554432` | The largest body a request may carry, in bytes; a larger one is refused before it is read. |
-| `Prefix` | string | `"http://127.0.0.1:7410/"` | The listener's prefix. Loopback by default; any other host requires `https`. |
+| `Prefix` | string | `http://127.0.0.1:7410/`, `http://localhost:7410/` under Windows | The listener's prefix. Loopback by default, `localhost` under Windows, whose URL reservations name it, `127.0.0.1` elsewhere; any other host requires `https`. |
 | `TokenEnvVar` | string | `"ORKEON_BRIDGE_TOKEN"` | The environment variable that holds the token; never the token itself. |
 <!-- /settings -->
 

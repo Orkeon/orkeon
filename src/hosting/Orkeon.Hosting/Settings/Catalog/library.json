@@ -2840,7 +2840,7 @@
       "section": "Orkeon:Bridge",
       "type": "list of string",
       "default": [],
-      "description": "The tools served, by name, or the lone `*` for every tool of the registry."
+      "description": "The tools served, by name, or the lone `*` for every bridgeable Orkeon tool of the registry."
     },
     {
       "path": "Orkeon:Bridge:Deny",
@@ -2874,8 +2874,8 @@
       "path": "Orkeon:Bridge:Prefix",
       "section": "Orkeon:Bridge",
       "type": "string",
-      "default": "http://127.0.0.1:7410/",
-      "description": "The listener's prefix. Loopback by default; any other host requires `https`."
+      "defaultNote": "`http://127.0.0.1:7410/`, `http://localhost:7410/` under Windows",
+      "description": "The listener's prefix. Loopback by default, `localhost` under Windows, whose URL reservations name it, `127.0.0.1` elsewhere; any other host requires `https`."
     },
     {
       "path": "Orkeon:Bridge:TokenEnvVar",
@@ -2930,7 +2930,7 @@
       "section": "Orkeon:Tools:Bridge",
       "type": "list of string",
       "default": [],
-      "description": "The tools to bridge, by name, or the lone `*` for every tool the bridge serves."
+      "description": "The tools to bridge, by name, or the lone `*` for every bridgeable Orkeon tool the bridge serves."
     },
     {
       "path": "Orkeon:Tools:Bridge:ConnectTimeout",
