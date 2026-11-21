@@ -47,7 +47,7 @@ public sealed class RunCommandValidateTests
         using var _ = console;
 
         Assert.Equal(Program.ExitOk, exit);
-        Assert.Contains("(procedural script: bundled, not run)", console.Stdout, StringComparison.Ordinal);
+        Assert.Contains("(procedural script: bundled, not run, decision=unknown)", console.Stdout, StringComparison.Ordinal);
         Assert.DoesNotContain("At least one task is required", console.Stderr, StringComparison.Ordinal);
     }
 

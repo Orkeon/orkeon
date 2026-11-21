@@ -16,10 +16,42 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
     {
     }
 
-    /// <summary>Opening event of a run of the engine.</summary>
+    /// <summary>
+    /// The forge's own decision circuit (#435) that <c>session.started</c> names; null for a command that designs
+    /// nothing, whose line then carries no <c>forgeCircuit</c>.
+    /// </summary>
+    public ForgeSystemOne? SystemOne { get; set; }
+
+    /// <summary>The warnings held until <c>session.started</c> opens the stream.</summary>
+    private readonly List<(string Code, string Message)> _afterStart = [];
+
+    private bool _started;
+
+    /// <summary>
+    /// A warning about the session itself, written right after <c>session.started</c> — at once when the session was
+    /// already announced. The same order as <c>forge reopen</c>: the stream names the session before it warns about it.
+    /// </summary>
+    public void WarningAfterStart(string code, string message)
+    {
+        if (_started)
+            Warning(code, message);
+        else
+            _afterStart.Add((code, message));
+    }
+
+    /// <summary>Opening event of a run of the engine, then the warnings held for it.</summary>
     public void SessionStarted(ForgeSession session, bool resumed)
     {
         ArgumentNullException.ThrowIfNull(session);
+        EmitSessionStarted(session, resumed);
+        _started = true;
+        foreach (var (code, message) in _afterStart)
+            Warning(code, message);
+        _afterStart.Clear();
+    }
+
+    private void EmitSessionStarted(ForgeSession session, bool resumed)
+    {
         Emit("session.started", new
         {
             slug = session.Document.Slug,
@@ -29,6 +61,11 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
             id = session.Document.Id,
             dir = session.Directory,
             format = session.Document.Format,
+            // The decision mode of the crew being designed (#431).
+            crewDecision = session.CrewDecisionOrDerived(),
+            // The forge's own System One circuit (#435), next to the crew's mode and orthogonal to it.
+            forgeCircuit = SystemOne?.CircuitName,
+            forgeCircuitCause = SystemOne?.Cause,
             // The use case the session is composed from: what a client reopening the
             // session shows again. Absent for a session started from nothing.
             reference = session.Document.Reference,

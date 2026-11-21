@@ -59,6 +59,14 @@ internal sealed record ForgeSessionDocument
     public string Format { get; set; } = "yaml";
 
     /// <summary>
+    /// The decision mode of the crew the session designs (<c>--crew-decision</c>, #431): <c>none</c>,
+    /// <c>optional</c> or <c>required</c>. Null in a session written before it, until its resume derives
+    /// the mode from the plan and stores it.
+    /// </summary>
+    [JsonPropertyName("crewDecision")]
+    public string? CrewDecision { get; set; }
+
+    /// <summary>
     /// The use case the session was composed from, <c>--reference</c>: recorded
     /// at creation, so a resume composes with it again and a client reopening the session reads it
     /// back. Titled in English until the promotion titles it in the brief's language (D-04). Null
@@ -194,6 +202,31 @@ internal sealed class ForgeSession
     /// <summary>The persisted state.</summary>
     public ForgeSessionDocument Document { get; }
 
+    /// <summary>Whether this load derived the crew's decision mode from the plan (a session older than #431).</summary>
+    public bool CrewDecisionDerived { get; private set; }
+
+    /// <summary>
+    /// The crew's decision mode: the recorded one, or, for a session written before <c>--crew-decision</c>, the one
+    /// its plan implies (<see cref="ForgeCrewDecision.Derive"/>), read without being stored.
+    /// </summary>
+    public string CrewDecisionOrDerived() =>
+        Document.CrewDecision ?? ForgeCrewDecision.Derive(TryLoadArtifact<ForgeBlueprint>(BlueprintFileName));
+
+    /// <summary>
+    /// Gives a session written before <c>--crew-decision</c> its mode, derived from its plan
+    /// (<see cref="ForgeCrewDecision.Derive"/>), and stores it. Returns whether it derived one.
+    /// </summary>
+    public bool EnsureCrewDecision(DateTimeOffset now)
+    {
+        if (Document.CrewDecision is not null)
+            return false;
+
+        Document.CrewDecision = CrewDecisionOrDerived();
+        CrewDecisionDerived = true;
+        Save(now);
+        return true;
+    }
+
     /// <summary>The stage the cycle is in, parsed back from the document.</summary>
     public ForgeState State =>
         Enum.TryParse<ForgeState>(Document.State, out var state) ? state : ForgeState.Failed;
@@ -221,7 +254,8 @@ internal sealed class ForgeSession
         string format = "yaml",
         ForgeBudget? budget = null,
         DateTimeOffset? now = null,
-        ForgeReferenceRecord? reference = null)
+        ForgeReferenceRecord? reference = null,
+        string crewDecision = ForgeCrewDecision.None)
     {
         var root = RootFor(workspaceDirectory);
         var stamp = (now ?? DateTimeOffset.UtcNow).UtcDateTime;
@@ -243,6 +277,7 @@ internal sealed class ForgeSession
             Id = Guid.NewGuid(),
             Slug = slug,
             Format = format,
+            CrewDecision = crewDecision,
             Reference = reference,
             Budget = budget ?? new ForgeBudget(),
             CreatedAt = createdAt,
@@ -529,6 +564,22 @@ internal sealed class ForgeSession
         var path = Path.Combine(Directory, fileName);
         if (File.Exists(path))
             File.Delete(path);
+    }
+
+    /// <summary>
+    /// Deletes the whole session directory, best effort: a session the command refuses to start is not left behind,
+    /// and a file the disk keeps is not an error of its own, the refusal being reported is.
+    /// </summary>
+    public void DeleteQuietly()
+    {
+        try
+        {
+            System.IO.Directory.Delete(Directory, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Best effort: the caller reports the refusal that led here.
+        }
     }
 
     /// <summary>The stored diagnosis of the last trial, at the session root.</summary>

@@ -331,4 +331,33 @@ public class LlmJudgeGuardTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => Guard(model).CheckAsync(Output, cts.Token));
     }
+
+    [Theory]
+    [InlineData(GuardianJudgeFailMode.Closed, GuardAction.Block)]
+    [InlineData(GuardianJudgeFailMode.Open, GuardAction.Allow)]
+    [Trait("BR", "CH-433")]
+    public async Task ShouldAuditTheUnavailability_WhenTheCircuitIsOff(GuardianJudgeFailMode failMode, GuardAction expected)
+    {
+        // Arrange: as the model-failure path, what closed refused and what open let in is in the audit trail.
+        var model = Answering(0);
+        var audit = new MockAuditLogger();
+        var guard = new LlmJudgeGuard(
+            model,
+            Options.Create(new GuardianLlmOptions { Enabled = true, FailMode = failMode }),
+            NullLogger<LlmJudgeGuard>.Instance,
+            audit)
+        {
+            Circuit = () => Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.Switch),
+        };
+
+        // Act
+        var result = await guard.CheckAsync(Output, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(expected, result.Action);
+        Assert.Empty(model.Requests);
+        var logged = Assert.Single(audit.AllLoggedEvents);
+        Assert.Equal(LlmJudgeGuard.UnavailableThreatType, logged.Details["threatType"]);
+        Assert.Contains($"fail mode: {failMode}", logged.Details["description"], StringComparison.Ordinal);
+    }
 }

@@ -31,13 +31,20 @@ internal static class ForgeSandbox
     /// The catalogue a forged crew may draw from: everything the host registered, minus
     /// the denied set, sorted for a stable prompt prefix.
     /// </summary>
-    public static IReadOnlyList<ForgeToolInfo> SelectCrewTools(IEnumerable<IBaseTool> tools)
+    /// <remarks>
+    /// <c>system_one_decide</c> is offered only to a <c>required</c> crew whose trial circuit is on (#431,
+    /// <see cref="ForgeCrewDecision.OffersDecideTool"/>): the prompt and the validation read this one list.
+    /// </remarks>
+    public static IReadOnlyList<ForgeToolInfo> SelectCrewTools(
+        IEnumerable<IBaseTool> tools, string? crewDecision = null, Orkeon.Application.Crew.Execution.DecisionCircuit? circuit = null)
     {
         ArgumentNullException.ThrowIfNull(tools);
 
+        var offersDecide = ForgeCrewDecision.OffersDecideTool(crewDecision, circuit ?? Orkeon.Application.Crew.Execution.DecisionCircuit.Off);
         return [.. tools
             .OfType<IBaseTool>()
             .Where(tool => !DeniedTools.Contains(tool.Name))
+            .Where(tool => offersDecide || !string.Equals(tool.Name, ForgeCrewDecision.DecideTool, StringComparison.Ordinal))
             .OrderBy(tool => tool.Name, StringComparer.Ordinal)
             .Select(tool => new ForgeToolInfo(tool.Name, tool.Description))];
     }

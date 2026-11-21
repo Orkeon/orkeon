@@ -33,6 +33,9 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     private long _cacheHitTokens;
     private long _cacheMissTokens;
     private bool _cacheMeasured;
+
+    // run.decision is emitted once per run (#429): a crew run from a task reaches the hook again.
+    private bool _decisionReported;
     private long _estimatedTokens;
     private decimal? _vendorCost;
     private string? _vendorCostCurrency;
@@ -221,6 +224,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                 isDecision = snapshot.IsDecision,
                 decision = snapshot.DecisionAnswers,
                 endedOnIterationCap = snapshot.EndedOnIterationCap,
+                decisionSource = snapshot.DecisionSource,
                 deliverableMissing = snapshot.DeliverableMissing,
             });
 
@@ -231,6 +235,44 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     /// <inheritdoc />
     public Task OnCrewCompletedAsync(CrewExecutionSnapshot snapshot, CancellationToken ct) =>
         _inner?.OnCrewCompletedAsync(snapshot, ct) ?? Task.CompletedTask;
+
+    /// <inheritdoc />
+    public Task OnRunDecisionAsync(RunDecisionNotice notice, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(notice);
+        if (_decisionReported)
+            return _inner?.OnRunDecisionAsync(notice, ct) ?? Task.CompletedTask;
+        _decisionReported = true;
+        _events.Emit(
+            RunEventKinds.RunDecision,
+            RunEventScope.None,
+            new
+            {
+                mode = WireMode(notice.Mode),
+                circuit = notice.Circuit.Enabled ? DecisionCircuitStates.On : DecisionCircuitStates.Off,
+                cause = notice.Circuit.Enabled ? null : WireCause(notice.Circuit.Cause),
+            });
+        return _inner?.OnRunDecisionAsync(notice, ct) ?? Task.CompletedTask;
+    }
+
+    /// <summary>The <c>mode</c> of <c>run.decision</c> (#429).</summary>
+    internal static string WireMode(Orkeon.Domain.Crew.CrewDecisionMode mode) => mode switch
+    {
+        Orkeon.Domain.Crew.CrewDecisionMode.None => RunDecisionModes.None,
+        Orkeon.Domain.Crew.CrewDecisionMode.Optional => RunDecisionModes.Optional,
+        Orkeon.Domain.Crew.CrewDecisionMode.Required => RunDecisionModes.Required,
+        _ => RunDecisionModes.Unspecified,
+    };
+
+    /// <summary>The <c>cause</c> of an off circuit on <c>run.decision</c> (#429); null when unknown.</summary>
+    private static string? WireCause(Orkeon.Application.Crew.Execution.DecisionCircuitCause? cause) => cause switch
+    {
+        Orkeon.Application.Crew.Execution.DecisionCircuitCause.Switch => DecisionCircuitCauses.Switch,
+        Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings => DecisionCircuitCauses.Settings,
+        Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider => DecisionCircuitCauses.NoProvider,
+        Orkeon.Application.Crew.Execution.DecisionCircuitCause.Trial => DecisionCircuitCauses.Trial,
+        _ => null,
+    };
 
     /// <inheritdoc />
     public Task OnCrewFailedAsync(CrewExecutionSnapshot isPartial, Exception? ex, CancellationToken ct)
@@ -247,7 +289,11 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
             {
                 code = isPartial.Status == CrewHookStatus.Canceled
                     ? Orkeon.Constants.Protocol.RunEventErrorCodes.CrewCancelled
-                    : Orkeon.Constants.Protocol.RunEventErrorCodes.CrewFailed,
+                    : ex is Orkeon.Application.Crew.Execution.DecisionUnavailableException
+                        ? Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable
+                        : ex is Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException
+                            ? Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionCircuitMismatch
+                            : Orkeon.Constants.Protocol.RunEventErrorCodes.CrewFailed,
                 message = isPartial.FailureReason ?? ex?.Message ?? string.Empty,
                 recoverable = false,
             });

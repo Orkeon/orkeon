@@ -45,6 +45,8 @@ the next task had to parse.
 
    > Amendment 2026-10-31: the decision model behind a decision task may be TypeSafe, Liquid or Kev; the task, its circuit and its fallback do not change.
 
+   > Amendment 2026-11-20 (#433), on point 5: the circuit covers every consumer of the decision model, not the decision tasks alone. Off, whatever the cause (the switch, the setting, no provider), the run makes no `IDecisionModel` call: `system_one_decide` is withheld, a decision profile takes no decision (its `route` falls back, its `verify` never escalates, its `guard` lets the call on unless the profile is fail-closed), the LLM judge refuses to start when fail-closed and is left out when fail-open, and the `decision` reranker keeps the retrieval order. Every consumer reads the circuit through `DecisionCircuit.Of` or the scope's override (`DecisionCircuitOverride`, entered for the run as `DecisionCircuitScope`), which names the cause (`DecisionCircuitCause`), and says it in one warning. See [Decision models](../architecture/decision-models.md#every-consumer-follows-the-circuit).
+
 ## Consequences
 
 - A decision task costs one request per evaluation; the only repeats are the adapter's retries on
@@ -61,9 +63,39 @@ chains with "last answer" defaults; fixes to guarded profiles; reranker batching
 surfaces; box questions and images. A retry or fallback when a request fails is not planned: the
 fallback exists only for a circuit that is off.
 
+## Amendment — a crew's decision mode (#429)
+
+With the circuit off a decision task answers from its fallback, which suits a crew that can run without System One
+and misleads one that cannot. A crew now declares which it is, in a crew-level `decision: { mode }`: `none` (it
+never asks System One), `optional` (each decision task names a `without:` relay, an agent of the crew that answers
+with the circuit off, in place of a fallback) or `required` (a run with the circuit off is refused before its first
+task, exit `69`, code `decision_unavailable`). A crew with no mode keeps the fallback semantics above. The rules live
+in `DecisionTaskRules` beside the existing ones, so YAML, `.ork.ts` and C# crews meet the same checks (a C# crew's
+relay names an agent by its role, and its decision profiles are checked only by the crew factory, which knows the
+host's profiles); the refusal
+sits in the orchestrator, before memory and planning, so every process and every host enforces it for a crew the
+orchestrator runs (a procedural `.ork.ts` crew, which it does not run, applies no mode). The relay itself
+is declared and checked at load here and run by a later change (#430). See
+[Decision models](../architecture/decision-models.md#a-crews-decision-mode).
+
+## Amendment — the `without:` relay (#430)
+
+This amends §5: with the circuit off, a decision task of an `optional` crew is not answered by a fallback but by its
+`without:` relay. The relay makes one LLM call on the relay agent's provider, with no tool and no history, and the
+agent reports probabilities only, in a JSON object whose schema is generated from the questions. The engine checks
+them as it checks the model's answer (every question, values in [0, 1], distributions summing to 1 within 0.05),
+asks once more when they fail, and derives `chosen`, the score and the confidence by the same rules as the model
+path; a second refusal fails the task, and no fallback is used. `task.completed` says which answered
+(`decisionSource: model | relay | fallback`), the checkpoint records it so that every process replays a decision on
+resume, and an `optional` crew resumed under the other circuit is refused (code `decision_circuit_mismatch`, exit `1`). See
+[Decision models](../architecture/decision-models.md#the-without-relay).
+
 ## Alternatives considered
 
 - **An agent that classifies and writes the route**: rejected. It spends an LLM call on a
-  judgement and returns text the next task has to parse.
+  judgement and returns text the next task has to parse. The `without:` relay (#430) is not that agent: it is
+  an LLM call constrained by a schema to probabilities, checked like the model's answer and read by the same
+  conditions, and it is only a second mode an `optional` crew declares for a circuit that is off. Nothing parses
+  a route out of its text.
 - **A condition that fails the task when false**: rejected. A branch not taken is the expected
   case, and a failure would trigger the crew's retries and error handling.

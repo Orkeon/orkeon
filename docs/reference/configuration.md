@@ -178,19 +178,19 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 103 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 106 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 110 |
-| [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 28 |
+| [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 530 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+84 sections, 544 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -262,6 +262,10 @@ unset is the section's (the key, `BaseUrl`, `TimeoutSeconds`, `Thinking`, `MaxTo
 sets wins (the planner's temperature 0.3, an analysis's output cap). A profile's provider works
 the same way with its own keys.
 
+Left unset, `ContextWindowTokens` (here and under `Profiles:<name>`) falls back on the documented window of
+a model only for the four models the table of [`Orkeon:Compaction`](#orkeoncompaction) lists;
+every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
+
 <!-- settings:Llm -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
@@ -275,6 +279,7 @@ the same way with its own keys.
 | `Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
+| `ContextWindowTokens` | integer | — | The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact only once that figure fills. It holds for the model of this section alone: an agent whose `llm.model` names another model reads that model's documented window, else the assumed one. Never sent to the provider. |
 | `Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
 | `MaxRateLimitWait` | duration | `"00:05:00"` | The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing. |
 | `MaxRetries` | integer | `10` | How many times a call that fails on a passing error is tried again; `0` never retries. |
@@ -292,6 +297,7 @@ the same way with its own keys.
 | `Profiles:<name>:Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Profiles:<name>:Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `Profiles:<name>:CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
+| `Profiles:<name>:ContextWindowTokens` | integer | — | The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact only once that figure fills. It holds for the model of this section alone: an agent whose `llm.model` names another model reads that model's documented window, else the assumed one. Never sent to the provider. |
 | `Profiles:<name>:Fallback` | list of string | `[]` | The profiles a call moves to, in order, when this one fails in a way a retry cannot cure: a transport error, a 5xx, a 429 once `MaxRetries` is spent, a timeout. A list of profile names, or one comma-separated value; `default` names the host's own. Left out, a failure is the call's. |
 | `Profiles:<name>:FallbackBudgetSeconds` | integer | — | The longest the chain may spend before it stops trying the next profile, in seconds, counted from the first call. It is checked between two profiles and never cuts a call in flight. Left out, the chain is bounded only by each profile's own `TimeoutSeconds` and `MaxRetries`. |
 | `Profiles:<name>:Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
@@ -699,6 +705,37 @@ warned as ignored in the start log (with a hint to name it when no provider is n
 | `Provider` | string | — | The decision provider: `typesafe`, `liquid` or `kev`; empty deduces it. |
 <!-- /settings -->
 
+### `Orkeon:Decision:Route`
+
+Where an agent on `llm.profile: auto` is routed. At the start of each of its tasks, System
+One picks one profile of `Ladder`, listed cheapest first, and the task keeps it for every call of
+that agent in the run, retries and revisions included (another agent on the task, a voter, has
+its own picked); the decision model reads the agent's role and the task (cut at 4 000 characters
+in the middle), never the conversation. Under a probability of 0.6, without an answer, when the
+call fails or when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`,
+no decision provider), the host's `default` profile (the `Llm` section) stands, never the agent's own, with no
+error: an off circuit makes no decision call. In a crew with `decision.mode: none`, the `default` profile stands
+too, with no call and no warning (`reason: decision-none`). A warning is logged once per run when the circuit is off or `Ladder`
+is missing (outside a run, once per host), and at each failed call; a low
+probability or a missing answer is logged as information only. Each pick emits `agent.route` on
+the run's event stream, once per task and agent of a run. A task's `llm_override: { profile: auto }`
+is routed the same way, and falls back to `default` too, not to its agent's profile. A manager or a decision relay (`without.agent`) on `auto` with no task
+of its own runs on the default profile, so it is left out of the load checks below. In a `.ork.ts`
+crew, routing works at task level only: `task.withProfile("auto")` is routed, and
+`llm.profile("auto")` on an agent is refused. A rung names a profile of
+`Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included); a crew naming `auto` on a host
+without a ladder, or with a rung the host does not offer, fails its load. `auto` is a reserved
+profile name: `Llm:Profiles:auto` and `Orkeon:Decision:Profiles:auto` are refused at start. This
+is not the `route` stage of a decision profile, which picks a profile for each call.
+
+<!-- settings:Orkeon:Decision:Route -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Ladder` | list of string | `[]` | The profiles an `auto` agent is routed among, cheapest first: two or more names of `Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included), each once; a ladder of one rung, or with a blank, `auto` or repeated rung, is refused at start. Empty by default: a crew naming `auto` on a host without a ladder fails its load. |
+<!-- /settings -->
+
 ## Rate and budgets
 
 Two different things are called rate limiting. **`RateLimiting`** caps the calls to the model,
@@ -1035,7 +1072,8 @@ The query pipeline, stage by stage:
 - **`Collection`** — the collection `rag_search` queries when the agent names none (unset:
   `default`); `rag_eval` uses it for a dataset that names no collection and brings no corpus.
 - **`Retrieval`** — the bounds of the retrieval stage; **`Retrieval:Mmr`** — opt-in MMR.
-- **`Rerank`** — reranker selection and depth.
+- **`Rerank`** — reranker selection and depth. `Kind: decision` follows the decision circuit: off, it keeps the
+  retrieval order, with one warning ([Decision models](../architecture/decision-models.md#every-consumer-follows-the-circuit)).
 - **`Context`** — context assembly (anti-Lost-in-the-Middle `edges` ordering).
 - **`Groundedness`** — the groundedness hook.
 - **`Generation`** — the cited generation stage.
@@ -1275,8 +1313,11 @@ delegation phases of every tool call. On by default, registered by `AddOrkeonInf
 The `Llm` sub-section adds an LLM judge, off by default: the decision model judges the input and the
 output of a task (`Phases`), a risk at or over `BlockThreshold` blocks, and when the model cannot answer
 `FailMode` decides: `Closed` (default) refuses, `Open` lets the text in; both audit
-`guardian.judge.unavailable`. While the output phase is guarded a task's streaming waits for the judgement. It needs a decision model (`AddOrkeonDecisionProvider`); enabled without
-one, the host refuses to start.
+`guardian.judge.unavailable`. While the output phase is guarded a task's streaming waits for the judgement. It needs a decision model (`AddOrkeonDecisionProvider`); enabled with
+`FailMode: Closed` and without one, the host refuses to start.
+The judge follows the decision circuit (`--no-decision`, `Orkeon:Decision:Enabled=false`, no provider): off,
+`FailMode: Closed` refuses to start naming the cause, and `Open` leaves the judge out with one warning
+([Decision models](../architecture/decision-models.md#every-consumer-follows-the-circuit)).
 
 <!-- settings:Orkeon:Guardian -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1653,7 +1694,7 @@ not do is listed in [Known limitations](limitations.md).
 | `Profile` | string | — |  | The profile a browser starts with when the agent names none: `disposable` (the default, a fresh folder removed when the browser closes), the name of a profile of the Firefox installed on the host (`profiles.ini`), or the path of a profile folder. A named profile is used in place, with its cookies and sessions, and never removed; a profile another Firefox holds open is refused. |
 | `ProfileRoot` | string | — |  | Folder under which each browser gets its own profile folder, removed when the browser closes. Not set: `~/snap/firefox/common/orkeon/profiles` when Firefox is a snap (a snap cannot read the system's temp folder), else `orkeon-firefox` under the system's temp folder. |
 | `SharedInstance` | boolean | `false` |  | `true` shares one browser per profile between the agent runs of the host: each run drives tabs of its own in it, and the browser closes when the last run leaves it, unless `Lifetime` is `Host`. The default gives each run a browser of its own. |
-| `StartupTimeoutSeconds` | integer | `30` |  | Seconds Firefox is given to start and open its remote protocol. |
+| `StartupTimeoutSeconds` | integer | `30` |  | Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`. |
 <!-- /settings -->
 
 ### `MCP`
@@ -1787,6 +1828,123 @@ host calls `AddOrkeonPlugins(fileSystem, configuration)` — see [Plugins](../ar
 ## Orchestration and persistence
 
 How a crew is built and how it decides, and what of its execution is kept.
+
+### `Orkeon:Compaction`
+
+How the agent loops keep a long conversation inside the model's window. Before each call,
+the loop estimates its prompt: the prompt tokens the provider counted on the last call plus a
+count of the messages added since; what that count held beyond the messages (the tool
+definitions, the framing) stays in the estimate when the conversation is counted again. Once the
+estimate reaches `TriggerShare` of the usable window (the context window less the output reserve:
+the call's cap, else the model's documented maximum, else 4096, at most half the window), one
+summary call, which reads the task too, replaces the older turns, and the system prompt, the task
+and the last `KeepRecentTurns` turns stay as they were. When `Profile` names a profile whose window is known
+(its `ContextWindowTokens`, else its model's documented one) and the summary call would not fit that window less
+its output reserve, each message of the transcript is cut to one length, the shortest ones kept whole, and one
+information line says so. A turn is an assistant response, in one
+message or several, with its tool results: a call is never kept apart from its result. A system
+message among the older turns (the soft-budget steering) stays, right after the summary. When the
+`KeepRecentTurns` turns are all there is, or alone come over the trigger, fewer are kept: the most
+whose messages come under the trigger, else the last turn alone; a call over the trigger with one turn alone waits for a later
+turn, and counts as no failure. The window is the profile's
+`ContextWindowTokens` for the profile's own model (an agent whose `llm.model` names another model
+reads that model's documented window, else the assumed figure), else the model's documented one, else
+[`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession) (200000 by default), with one warning
+per profile naming the figure assumed. The table of documented windows (`LlmModelContextWindows`)
+knows four models: `kimi-k3` (1000000 tokens), `kimi-k2.6`, `mistral-medium-2604` and
+`mistral-medium-3-5` (256000 each). A model id matches one of them exactly, else the longest one
+it starts with followed by `-`, `:`, `@` or `_`, else by its part after a vendor slash, ignoring
+case; every other model compacts against the assumed figure. That figure may overstate a smaller
+model, so on it
+the loop keeps the 40-message trim beside compaction (the trim keeps a compaction's summary right
+after the task); set `ContextWindowTokens` on that model's
+profile to compact against its real window alone. Three failed compactions in a row bring the 40-message trim back for the
+rest of the task attempt (a retried task compacts again), and the pruning below stops with them.
+Each compaction emits `agent.compacted` on the run's event stream and in its history, under
+`orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` alike. An agent overrides `Enabled` and
+`TriggerShare` with its YAML `compaction:` key; a `.ork.ts` crew follows these settings. The
+text-protocol loop keeps its trim. A provider with explicit cache breakpoints (Anthropic) keeps
+its cached system prompt and tools; a provider with an automatic prefix cache bills the
+conversation again after the cut.
+
+<!-- settings:Orkeon:Compaction -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Enabled` | boolean | `true` | Whether the loops compact their conversation. True by default: a long loop pays one summary call instead of losing its middle to the 40-message trim. False brings that trim back, as an agent's `compaction: { enabled: false }` does for that agent alone. |
+| `KeepRecentTurns` | integer | `6` | How many of the most recent turns a compaction keeps verbatim, a turn being one assistant response, in one message or several, with its tool results (a tool call is never parted from its result). Fewer are kept when they are all the conversation holds or alone pass the trigger. 6 by default; 0 summarises every turn. |
+| `Profile` | string | — | The LLM profile that writes the summary: `default`, a profile of `Llm:Profiles` or a decision profile of `Orkeon:Decision:Profiles`; a name the host does not offer (one neither section defines, or one `Orkeon:Host:LlmProfiles` leaves out), or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way. |
+| `TriggerShare` | number | `0.75` | The share of the usable window (the context window less the output reserve: the call's cap, else the model's documented maximum, else 4096, at most half the window) the estimated prompt reaches for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's `compaction: { triggerShare }` overrides it. |
+<!-- /settings -->
+
+### `Orkeon:Compaction:Prune`
+
+How the agent loops prune their older read-tool results before they compact, the YAML
+loops' counterpart of a script's `onContextPressure`. Off by default. Once the estimated prompt
+reaches `FillShare` of the usable window (or the compaction trigger, whichever comes first), each
+result of a read tool (a tool whose access is `read` for that input) outside the last
+`KeepRecentMessages` messages, of a turn the model has answered since, and longer than twice
+`HeadChars` is offered to the decision model,
+up to 24 at a time, eight to a request. It reads the task and each call - tool, input, size and
+age in model turns - never the result, and answers two yes/no questions per call: still needed,
+and needed whole. Not needed drops the result, needed in part keeps its first `HeadChars`
+characters, needed whole keeps it; a pruned result leaves a line saying how to get it back, the
+call's whole input in it, and its call stays. A result kept, or one the decision model failed to
+judge (the call failed, or its answer held no usable verdict), is judged again after eight more
+model turns. Each pruning that cut or dropped a result
+emits `agent.pruned` under `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew`; a turn that kept
+everything emits nothing. With the decision circuit
+off, nothing is pruned: one warning per run, no decision call, no error. Once compaction's breaker opens
+(three failures in a row), the loop prunes no more for the rest of the task attempt. An agent
+overrides `Enabled` with `compaction: { prune }`; an agent that does not compact does not prune.
+
+<!-- settings:Orkeon:Compaction:Prune -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Enabled` | boolean | `false` | Whether the loops prune. False by default: each judgement is a request to the decision model. An agent's `compaction: { prune }` overrides it. |
+| `FillShare` | number | `0.4` | The share of the usable window (the context window less the output reserve: the call's cap, else the model's documented maximum, else 4096, at most half the window) the estimated prompt reaches for the results to be judged, above 0 and at most 1. 0.4 by default, under the compaction trigger, so a loop prunes before it compacts. |
+| `HeadChars` | integer | `300` | The characters a `head` verdict keeps of a result, 1 or more. 300 by default; a result of twice that or less is never offered, since cutting it frees nothing. |
+| `KeepRecentMessages` | integer | `6` | How many of the last messages have their results never offered. 6 by default. |
+<!-- /settings -->
+
+### `Orkeon:Skills`
+
+How an agent's `skills:` reach its prompt. A skill is a markdown file read through the
+virtual file system and appended to the agent's system prompt under a `## Skills` heading, each
+skill cut at `MaxSkillChars` and the whole block, its heading and each skill's title line
+included, at `MaxBlockChars`; a skill file is read no further than `MaxSkillChars` characters and 256 more:
+past the cap, white space is read on to tell a file that ends there from one that goes on, and white
+space that runs on past those 256 characters counts as more text, the skill then said cut.
+`MaxBlockChars` under 500 (`AgentSkillsOptions.MinBlockChars`) is refused at start, the message naming
+the minimum: a smaller block cannot hold its heading and a skill. A skill cut
+short is said in the prompt and in the `cut` field of
+`agent.skills`; a skill left out (no room left in the block, a file that cannot be read) is said
+in that `cut` field alone. An agent with `skills: [<paths>]` carries those files on every task. An agent with `skills: { auto: true, fallback: [<paths>] }` has System One pick, for
+each task, at most three skills of `Library`: the decision model reads one line per skill (its
+front-matter `name` and `description`, else its first heading and line), never a body, for the
+first 24 files of the library in name order (ordinal) alone: a file past the 24th is never offered.
+The question is one choice, so the skills that fit split the model's probability: a skill is
+picked when its share reaches 0.3, the largest share first. When the
+decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`, no decision
+provider), when the library holds no skill or cannot be read, or when the decision model fails or
+answers no usable choice (`reason: pick-failed`), the agent carries its `fallback` list, else no skill, with one warning per run for each cause (outside a run,
+once per host) and no error; in a crew with `decision.mode: none`, its `fallback` list stands too, with no
+decision call and no warning (`reason: decision-none`). The choice holds
+for every attempt of the task by that agent in the run, and emits `agent.skills` on the run's
+event stream once per task and agent of a run. A `.ork.ts` crew has no skills.
+
+<!-- settings:Orkeon:Skills -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Library` | string | `"/workspace/.orkeon/skills"` | The virtual folder an `auto` agent's skills are picked from, one `<name>.md` file per skill (sub-folders are not read); a relative path is refused at start. `/workspace/.orkeon/skills` by default. |
+| `MaxBlockChars` | integer | `12000` | The characters the whole skills block carries, its heading, each skill's title line and cut notes included, so that with the defaults three skills of a full `MaxSkillChars` do not all fit and the third is cut; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. Less than `500`, which cannot hold the block's heading and a skill, is refused at start. 12000 by default. |
+| `MaxSkillChars` | integer | `4000` | The characters of one skill the prompt carries; the rest is cut, and the cut is said in the prompt and in the `cut` of `agent.skills`. 0 or less is refused at start. 4000 by default. |
+<!-- /settings -->
 
 ### `Orkeon:CrewFactory`
 
@@ -2027,7 +2185,9 @@ The typed memory behind `memory_store` (`FileCategoryMemoryStore`): one `memory.
 
 ### `Orkeon:Cli:Session`
 
-The context window used by `token_budget` (`TokenBudgetTool`) and the TUI.
+The context window used by `token_budget` (`TokenBudgetTool`) and the TUI, and the one the agent
+loops compact and prune against when an LLM profile sets no `ContextWindowTokens` and the table
+of documented windows does not know its model ([`Orkeon:Compaction`](#orkeoncompaction)).
 
 <!-- settings:Orkeon:Cli:Session -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.

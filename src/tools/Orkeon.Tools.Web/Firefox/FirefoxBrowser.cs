@@ -62,9 +62,10 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
     }
 
     /// <summary>
-    /// Starts a browser on <paramref name="profile"/> and opens the protocol session on its channel. A
-    /// browser that leaves its first <c>session.new</c> unanswered is killed, its profile removed, and a
-    /// new one started once: a second silence fails the start.
+    /// Starts a browser on <paramref name="profile"/> and opens the protocol session on its channel. Firefox
+    /// announces its endpoint early in its start and answers <c>session.new</c> only once its first window
+    /// has loaded: the session is given the larger of the start's timeout and a command's. A browser that leaves it
+    /// unanswered is killed, its profile removed, and a new one started once: a second silence fails the start.
     /// </summary>
     /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing or held.</exception>
     /// <exception cref="BiDiException">The browser refused the session, or two browsers in a row left it unanswered.</exception>
@@ -78,6 +79,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(options);
 
         timings ??= FirefoxSessionTimings.Default;
+        var sessionTimeoutSeconds = Math.Max(options.StartupTimeoutSeconds, options.CommandTimeoutSeconds);
         for (var attempt = 1; ; attempt++)
         {
             var process = await launcher.LaunchAsync(profile, cancellationToken).ConfigureAwait(false);
@@ -87,14 +89,14 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
             {
                 try
                 {
-                    await browser.NewSessionAsync(cancellationToken).ConfigureAwait(false);
+                    await browser.NewSessionAsync(TimeSpan.FromSeconds(sessionTimeoutSeconds), cancellationToken).ConfigureAwait(false);
                 }
                 catch (BiDiException ex) when (ex.Code == BiDiException.Timeout && attempt < StartAttempts)
                 {
                     // Seen once on a CI runner (#335): Firefox announced its endpoint, took the connection,
                     // and never answered the session. A fresh process and profile get past it.
                     if (logger is not null)
-                        LogSessionUnanswered(logger, options.CommandTimeoutSeconds);
+                        LogSessionUnanswered(logger, sessionTimeoutSeconds);
                     await browser.DisposeAsync().ConfigureAwait(false);
                     continue;
                 }
@@ -102,7 +104,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
                 {
                     throw new BiDiException(
                         BiDiException.Timeout,
-                        $"'session.new' got no answer within {options.CommandTimeoutSeconds} s, from Firefox started again after the first one did not answer either.",
+                        $"'session.new' got no answer within {sessionTimeoutSeconds} s, from Firefox started again after the first one did not answer either.",
                         ex);
                 }
 
@@ -250,11 +252,13 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
         await _process.DisposeAsync().ConfigureAwait(false);
     }
 
-    private Task<JsonObject> NewSessionAsync(CancellationToken cancellationToken) =>
-        SendAsync("session.new", new JsonObject
+    // Firefox answers 'session.new' once its first window has loaded, the second half of its start: under
+    // load that outlasts a command's timeout while the start's still holds (#437).
+    private Task<JsonObject> NewSessionAsync(TimeSpan timeout, CancellationToken cancellationToken) =>
+        _connection.SendAsync("session.new", new JsonObject
         {
             ["capabilities"] = new JsonObject { ["alwaysMatch"] = new JsonObject { ["acceptInsecureCerts"] = false } },
-        }, cancellationToken);
+        }, timeout, cancellationToken);
 
     private async Task StartAsync(CancellationToken cancellationToken)
     {

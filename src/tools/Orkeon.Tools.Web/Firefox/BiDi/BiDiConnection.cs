@@ -43,9 +43,18 @@ internal sealed partial class BiDiConnection : IAsyncDisposable
     /// <summary><c>true</c> once the browser closed the channel or the connection was disposed.</summary>
     public bool IsClosed => _closed;
 
-    /// <summary>Sends <paramref name="method"/> and returns its <c>result</c>.</summary>
+    /// <summary>Sends <paramref name="method"/> and returns its <c>result</c>, within the command timeout of the connection.</summary>
     /// <exception cref="BiDiException">The browser answered an error, did not answer in time, or the connection is closed.</exception>
-    public async Task<JsonObject> SendAsync(string method, JsonObject? parameters, CancellationToken cancellationToken)
+    public Task<JsonObject> SendAsync(string method, JsonObject? parameters, CancellationToken cancellationToken) =>
+        SendAsync(method, parameters, _commandTimeout, cancellationToken);
+
+    /// <summary>
+    /// Sends <paramref name="method"/> and returns its <c>result</c>, within <paramref name="timeout"/>
+    /// in place of the command timeout: a command whose answer waits for more than the browser's work
+    /// on it (<c>session.new</c> waits for the end of the browser's start).
+    /// </summary>
+    /// <exception cref="BiDiException">The browser answered an error, did not answer in time, or the connection is closed.</exception>
+    public async Task<JsonObject> SendAsync(string method, JsonObject? parameters, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(method);
         if (_closed)
@@ -71,12 +80,12 @@ internal sealed partial class BiDiConnection : IAsyncDisposable
 
             try
             {
-                return await completion.Task.WaitAsync(_commandTimeout, _clock, cancellationToken).ConfigureAwait(false);
+                return await completion.Task.WaitAsync(timeout, _clock, cancellationToken).ConfigureAwait(false);
             }
             catch (TimeoutException ex)
             {
                 throw new BiDiException(
-                    BiDiException.Timeout, $"'{method}' got no answer within {_commandTimeout.TotalSeconds:0.#} s.", ex);
+                    BiDiException.Timeout, $"'{method}' got no answer within {timeout.TotalSeconds:0.#} s.", ex);
             }
         }
         finally

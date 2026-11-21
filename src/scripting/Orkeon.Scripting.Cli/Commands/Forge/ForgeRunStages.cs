@@ -1,7 +1,9 @@
 using Orkeon.Hosting.Runs;
 using System.Globalization;
 using Orkeon.Application.Crew;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Constants.Protocol;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Cli.Commands.Run;
 
@@ -52,7 +54,20 @@ internal sealed class ForgeRunObserver : ICrewExecutionHook, ILlmCallObserver
     public void Attach(ForgeEventWriter events, bool withCalls = false)
     {
         _events = events;
-        _calls = withCalls ? new RunEventsLlmCallObserver(events, TimeProvider.System) : null;
+        _calls = withCalls ? new RunEventsLlmCallObserver(new ForgeCircuitSink(events, () => (_circuit, _cause)), TimeProvider.System) : null;
+    }
+
+    private string? _circuit;
+    private string? _cause;
+
+    /// <summary>
+    /// The decision circuit of the pass that runs (#431): <c>task.completed</c> and the <c>llm.call.*</c> lines carry
+    /// it, with its cause when off. Null leaves them as they were.
+    /// </summary>
+    public void SetCircuit(string? circuit, string? cause)
+    {
+        _circuit = circuit;
+        _cause = cause;
     }
 
     /// <inheritdoc />
@@ -91,6 +106,8 @@ internal sealed class ForgeRunObserver : ICrewExecutionHook, ILlmCallObserver
             toolCalls = snapshot.ToolCallCount,
             endedOnIterationCap = snapshot.EndedOnIterationCap,
             deliverableMissing = snapshot.DeliverableMissing,
+            circuit = _circuit,
+            cause = _cause,
         });
         return Task.CompletedTask;
     }
@@ -122,33 +139,175 @@ internal sealed class TestStage : IForgeStageRunner
 
     private readonly IForgeTestBench _bench;
     private readonly ForgeRunObserver _observer;
+    private readonly DecisionCircuit? _hostCircuit;
+    private readonly ForgeSystemOne _systemOne;
 
-    /// <summary>Builds the stage over the bench seam; the observer supplies the capped-task count.</summary>
-    public TestStage(IForgeTestBench bench, ForgeRunObserver observer)
+    /// <summary>
+    /// Builds the stage over the bench seam; the observer supplies the capped-task count. <paramref name="hostCircuit"/>
+    /// is the engine host's decision circuit (#431), which picks the passes of an <c>optional</c> crew's trial; null
+    /// when unknown, read as on. <paramref name="systemOne"/> is the forge's own circuit (#435), which only estimates
+    /// the trial for the user before it starts and never changes the trial's circuit; null asks nothing.
+    /// </summary>
+    public TestStage(IForgeTestBench bench, ForgeRunObserver observer, DecisionCircuit? hostCircuit = null, ForgeSystemOne? systemOne = null)
     {
         _bench = bench ?? throw new ArgumentNullException(nameof(bench));
         _observer = observer ?? throw new ArgumentNullException(nameof(observer));
+        _hostCircuit = hostCircuit;
+        _systemOne = systemOne ?? ForgeSystemOne.None;
     }
 
     /// <inheritdoc />
     public ForgeState Stage => ForgeState.Test;
 
+    /// <summary>One pass to run: the circuit the bench is given (null: the host's) and the one the files name.</summary>
+    private sealed record PassPlan(DecisionCircuit? Override, DecisionCircuit? Shown);
+
     /// <inheritdoc />
     public async Task<ForgeStageOutcome> RunAsync(
         ForgeSession session, ForgeEventWriter events, CancellationToken cancellationToken)
     {
-        _observer.BeginTrial();
-
         var runNumber = session.Document.Iteration;
         var runDirectory = Path.Combine(session.Directory, RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture));
         Directory.CreateDirectory(runDirectory);
 
-        events.Emit("run.started", new { run = runNumber, target = ForgeYamlRenderer.CrewDirectoryName });
+        var plans = PlanPasses(session, events, runDirectory);
+        var split = plans.Count > 1;
+        var passes = new List<(ForgeTestRun Run, ForgeTestPass Pass)>();
+        var kept = split
+            ? [.. plans.Select(plan => KeptPass(session, PassDirectory(runDirectory, plan)))]
+            : new List<(ForgeTestRun Run, ForgeTestPass Pass)?> { null };
+
+        // System One's estimate of the trial (#435), before run.started: for the user, it never skips a pass. A resume
+        // that keeps a pass already ran (#431) was estimated before that pass, and is not asked or charged again.
+        var usage = kept.Any(static pass => pass is not null)
+            ? default
+            : await _systemOne.EstimateTrialAsync(
+                events,
+                session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName),
+                session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName),
+                session.Document.Budget,
+                default,
+                cancellationToken).ConfigureAwait(false);
+
+        for (var index = 0; index < plans.Count; index++)
+        {
+            var plan = plans[index];
+            var passDirectory = split ? PassDirectory(runDirectory, plan) : runDirectory;
+
+            // A resume after a budget stop between passes (#431): the pass that ran is kept, never run again.
+            if (kept[index] is { } keptPass)
+            {
+                passes.Add(keptPass);
+                continue;
+            }
+
+            var ran = await RunPassAsync(session, events, runNumber, index + 1, plans.Count, plan, passDirectory, cancellationToken)
+                .ConfigureAwait(false);
+            if (ran.Failure is { } failure)
+                return failure with { Usage = usage };
+
+            passes.Add((ran.Run!, ran.Pass!));
+            usage = usage.Plus(TrialUsage(ran.Run!));
+
+            // The on pass is charged before the off pass starts: a budget it used up ends the session here,
+            // resumable at the trial with runs/<n>/on/ kept.
+            if (index + 1 < plans.Count
+                && session.Document.Budget.ExhaustedDimensionAfter(usage, ran.Run!.DurationMs / 1000) is { } dimension)
+            {
+                return new ForgeStageOutcome { Trigger = ForgeTrigger.TestCompleted, Usage = usage, BudgetExhausted = dimension };
+            }
+        }
+
+        _observer.SetCircuit(null, null);
+        var run = Combine(runNumber, passes, plans);
+        session.SaveArtifact(Path.Combine(RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture), "run.json"), run);
+        session.SaveArtifact(LastRunFileName, run);
+
+        return new ForgeStageOutcome
+        {
+            Trigger = ForgeTrigger.TestCompleted,
+            Usage = usage,
+        };
+    }
+
+    /// <summary>The folder of one pass of a two-pass trial: <c>runs/&lt;n&gt;/on</c> or <c>runs/&lt;n&gt;/off</c>.</summary>
+    private static string PassDirectory(string runDirectory, PassPlan plan) =>
+        Path.Combine(runDirectory, ForgeCrewDecision.CircuitName(plan.Shown ?? DecisionCircuit.On));
+
+    /// <summary>
+    /// Whether the trial of the session's current iteration already ran a pass a resume would keep (#431): a budget
+    /// stop between the two passes of an <c>optional</c> crew. A new crew needs a new run number, or that pass of the
+    /// old crew would stand in for one of its own.
+    /// </summary>
+    public static bool HasKeptPass(ForgeSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        var runDirectory = Path.Combine(session.Directory, RunsDirectoryName, session.Document.Iteration.ToString(CultureInfo.InvariantCulture));
+        return new[] { DecisionCircuit.On, DecisionCircuit.Off }
+            .Any(circuit => KeptPass(session, Path.Combine(runDirectory, ForgeCrewDecision.CircuitName(circuit))) is not null);
+    }
+
+    /// <summary>The pass a budget stop left in <paramref name="passDirectory"/> (#431); null when none ran there.</summary>
+    private static (ForgeTestRun Run, ForgeTestPass Pass)? KeptPass(ForgeSession session, string passDirectory) =>
+        session.TryLoadArtifact<ForgeTestRun>(Path.GetRelativePath(session.Directory, Path.Combine(passDirectory, "run.json"))) is { } kept
+        && kept.Passes is [{ } keptPass]
+            ? (kept, keptPass)
+            : null;
+
+    /// <summary>
+    /// The passes of this trial (#431): on then off for an <c>optional</c> crew, off alone, warned, when the host's
+    /// circuit is off; one pass on the host's circuit otherwise. A resume whose on pass ran before a budget stop keeps
+    /// both passes even when the host's circuit is off since: the on pass is kept, and the off pass runs.
+    /// </summary>
+    private List<PassPlan> PlanPasses(ForgeSession session, ForgeEventWriter events, string runDirectory)
+    {
+        if (ForgeCrewDecision.Normalize(session.Document.CrewDecision) != ForgeCrewDecision.Optional)
+            return [new PassPlan(null, _hostCircuit)];
+
+        var host = _hostCircuit ?? DecisionCircuit.On;
+        var circuits = ForgeCrewDecision.PassesOf(ForgeCrewDecision.Optional, host);
+        var on = new PassPlan(DecisionCircuit.On, DecisionCircuit.On);
+        if (!host.Enabled && KeptPass(session, PassDirectory(runDirectory, on)) is not null)
+            return [on, new PassPlan(host, host)];
+
+        if (!host.Enabled)
+        {
+            events.Emit("warning", new
+            {
+                code = ForgeCrewDecision.PassSkippedWarning,
+                message = $"The crew is 'optional' and {host.OffReason}: its trial runs without System One only.",
+                cause = ForgeCrewDecision.CauseName(host),
+            });
+        }
+
+        return [.. circuits.Select(static circuit => new PassPlan(circuit, circuit))];
+    }
+
+    /// <summary>One pass: the crew run once, its output, its run file and its folders under <paramref name="passDirectory"/>.</summary>
+    private async Task<(ForgeTestRun? Run, ForgeTestPass? Pass, ForgeStageOutcome? Failure)> RunPassAsync(
+        ForgeSession session, ForgeEventWriter events, int runNumber, int pass, int passCount, PassPlan plan,
+        string passDirectory, CancellationToken cancellationToken)
+    {
+        _observer.BeginTrial();
+        Directory.CreateDirectory(passDirectory);
+        var circuit = plan.Shown is { } shown ? ForgeCrewDecision.CircuitName(shown) : null;
+        var cause = plan.Shown is { } off ? ForgeCrewDecision.CauseName(off) : null;
+        _observer.SetCircuit(circuit, cause);
+
+        events.Emit("run.started", new
+        {
+            run = runNumber,
+            target = ForgeYamlRenderer.CrewDirectoryName,
+            passes = passCount,
+            pass,
+            circuit,
+            cause,
+        });
 
         ForgeTestRun run;
         try
         {
-            run = await _bench.ExecuteAsync(session, runNumber, cancellationToken).ConfigureAwait(false);
+            run = await _bench.ExecuteAsync(session, runNumber, plan.Override, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -160,40 +319,89 @@ internal sealed class TestStage : IForgeStageRunner
             // The trial ends on a failure, but its closing event is still written: a consumer
             // of the stream waits for run.finished, whatever the verdict.
             EmitRunFinished(events, runNumber, success: false, outputPath: null, durationMs: 0, tokens: 0,
-                promptTokens: 0, completionTokens: 0, cacheHitTokens: 0, cacheMissTokens: 0, mailActions: Array.Empty<object>());
-            return new ForgeStageOutcome
+                promptTokens: 0, completionTokens: 0, cacheHitTokens: 0, cacheMissTokens: 0, mailActions: Array.Empty<object>(),
+                circuit, cause);
+            _observer.SetCircuit(null, null);
+            return (null, null, new ForgeStageOutcome
             {
                 Trigger = ForgeTrigger.Fail,
                 Detail = $"The test bench crashed: {ex.Message}",
-            };
+            });
         }
 #pragma warning restore CA1031
 
-        var relativeOutput = Path.Combine(RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture), "output.md");
+        var relativeOutput = Path.GetRelativePath(session.Directory, Path.Combine(passDirectory, "output.md"));
         await File.WriteAllTextAsync(Path.Combine(session.Directory, relativeOutput), run.Output, cancellationToken)
             .ConfigureAwait(false);
-        session.SaveArtifact(Path.Combine(RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture), "run.json"), run);
-        session.SaveArtifact(LastRunFileName, run);
 
-        // The run's output folders are snapshotted into the run directory and cleared, so
-        // deliverables never leak from one cycle into the next one's diagnosis.
-        SnapshotOutputs(session, runDirectory);
+        var passRecord = new ForgeTestPass
+        {
+            Circuit = circuit,
+            Cause = cause,
+            Success = run.Success,
+            OutputPath = relativeOutput.Replace(Path.DirectorySeparatorChar, '/'),
+            Error = run.Error,
+            DurationMs = run.DurationMs,
+            Tokens = run.Tokens,
+            PromptTokens = run.PromptTokens,
+            CompletionTokens = run.CompletionTokens,
+            CacheHitTokens = run.CacheHitTokens,
+            CacheMissTokens = run.CacheMissTokens,
+            MailActions = run.MailActions,
+        };
+        run = run with { Circuit = circuit, Passes = [passRecord] };
+
+        // The run's output folders are snapshotted into the pass directory and cleared, so
+        // deliverables never leak from one pass, or one cycle, into the next one's diagnosis.
+        SnapshotOutputs(session, passDirectory);
+
+        // The pass's run.json comes last: a resume keeps a pass that has one as finished (#431), so a stop before
+        // the snapshot leaves none, and the pass runs again.
+        if (passCount > 1)
+            session.SaveArtifact(Path.GetRelativePath(session.Directory, Path.Combine(passDirectory, "run.json")), run);
 
         // W-08: the closing event carries what the trial itself cost — distinct from the
         // session-cumulative cost.updated, which folds in assistant and judge usage.
         EmitRunFinished(events, runNumber, run.Success, relativeOutput, run.DurationMs, run.Tokens, run.PromptTokens,
-            run.CompletionTokens, run.CacheHitTokens, run.CacheMissTokens, run.MailActions);
+            run.CompletionTokens, run.CacheHitTokens, run.CacheMissTokens, run.MailActions, circuit, cause);
+        return (run, passRecord, null);
+    }
 
-        return new ForgeStageOutcome
+    /// <summary>
+    /// The trial's record over its passes (#431): today's fields, the six figures summed, success when every pass
+    /// succeeded, the last pass's output, the mail actions in pass order, and <c>passes[]</c>.
+    /// </summary>
+    private static ForgeTestRun Combine(int runNumber, List<(ForgeTestRun Run, ForgeTestPass Pass)> passes, List<PassPlan> plans)
+    {
+        if (passes.Count == 1)
+            return passes[0].Run with { Run = runNumber };
+
+        var last = passes[^1].Run;
+        return last with
         {
-            Trigger = ForgeTrigger.TestCompleted,
-            Usage = TrialUsage(run),
+            Run = runNumber,
+            Success = passes.All(static p => p.Run.Success),
+            Output = last.Output,
+            DurationMs = passes.Sum(static p => p.Run.DurationMs),
+            Tokens = Sum(passes, static r => r.Tokens),
+            PromptTokens = Sum(passes, static r => r.PromptTokens),
+            CompletionTokens = Sum(passes, static r => r.CompletionTokens),
+            CacheHitTokens = Sum(passes, static r => r.CacheHitTokens),
+            CacheMissTokens = Sum(passes, static r => r.CacheMissTokens),
+            Error = passes.Select(static p => p.Run.Error).FirstOrDefault(static e => e is not null),
+            MailActions = [.. passes.SelectMany(static p => p.Run.MailActions)],
+            Circuit = plans.Count == 1 ? last.Circuit : null,
+            Passes = [.. passes.Select(static p => p.Pass)],
         };
     }
 
+    private static long? Sum(List<(ForgeTestRun Run, ForgeTestPass Pass)> passes, Func<ForgeTestRun, long?> figure) =>
+        passes.All(p => figure(p.Run) is null) ? null : passes.Sum(p => figure(p.Run) ?? 0);
+
     private void EmitRunFinished(
         ForgeEventWriter events, int runNumber, bool success, string? outputPath, long? durationMs, long? tokens,
-        long? promptTokens, long? completionTokens, long? cacheHitTokens, long? cacheMissTokens, object mailActions) =>
+        long? promptTokens, long? completionTokens, long? cacheHitTokens, long? cacheMissTokens, object mailActions,
+        string? circuit, string? cause) =>
         events.Emit("run.finished", new
         {
             run = runNumber,
@@ -208,6 +416,8 @@ internal sealed class TestStage : IForgeStageRunner
             mailActions,
             cappedTasks = _observer.CappedTasks,
             missingDeliverables = _observer.MissingDeliverables,
+            circuit,
+            cause,
         });
 
     /// <summary>
@@ -257,10 +467,17 @@ internal sealed class TestStage : IForgeStageRunner
 internal sealed class DiagnoseStage : IForgeStageRunner
 {
     private readonly IForgeJudge _judge;
+    private readonly ForgeSystemOne _systemOne;
 
-    /// <summary>Builds the stage over the judge seam.</summary>
-    public DiagnoseStage(IForgeJudge judge) =>
+    /// <summary>
+    /// Builds the stage over the judge seam. <paramref name="systemOne"/> is the forge's own circuit (#435): on, it
+    /// reads the output against each acceptance criterion after the judge, for the user only; null asks nothing.
+    /// </summary>
+    public DiagnoseStage(IForgeJudge judge, ForgeSystemOne? systemOne = null)
+    {
         _judge = judge ?? throw new ArgumentNullException(nameof(judge));
+        _systemOne = systemOne ?? ForgeSystemOne.None;
+    }
 
     /// <inheritdoc />
     public ForgeState Stage => ForgeState.Diagnose;
@@ -281,49 +498,120 @@ internal sealed class DiagnoseStage : IForgeStageRunner
             };
         }
 
-        var mechanical = MechanicalFindings(session, run);
+        // Each pass is judged on its own, with the same prompt; the verdict combines them (#431).
+        var runDirectory = Path.Combine(TestStage.RunsDirectoryName, run.Run.ToString(CultureInfo.InvariantCulture));
+        IReadOnlyList<ForgeTestPass?> passes = run.Passes is { Count: > 1 } split ? [.. split] : [null];
+        var judged = new List<(ForgeVerdict Verdict, string? Circuit)>();
+        var views = new List<(ForgeTestRun View, string? Circuit)>();
+        var optional = ForgeCrewDecision.Normalize(session.Document.CrewDecision) == ForgeCrewDecision.Optional;
+        var usage = default(ForgeUsageSnapshot);
+        foreach (var pass in passes)
+        {
+            var view = pass is null ? run : PassView(session, run, pass);
+            var snapshot = pass is null ? runDirectory : Path.Combine(runDirectory, pass.Circuit ?? "");
+            var (passVerdict, passUsage) = await JudgePassAsync(session, brief, view, snapshot, cancellationToken).ConfigureAwait(false);
+            usage = usage.Plus(passUsage);
+            judged.Add((passVerdict, pass?.Circuit ?? run.Circuit));
+            views.Add((view, optional ? pass?.Circuit ?? run.Circuit : null));
+        }
+
+        var verdict = Combined(session, run, judged);
+        session.SaveArtifact(Path.Combine(runDirectory, ForgeSession.VerdictFileName), verdict);
+        session.SaveArtifact(ForgeSession.VerdictFileName, verdict);
+
+        EmitVerdictReady(events, verdict, run);
+
+        // System One's reading of each criterion (#435), after the judge, pass by pass with that pass's output: for
+        // the user only, never in verdict.json, so the arbitration and --auto read the judge's verdict alone. A failed
+        // pass has nothing to read; an optional crew's lines name their pass by its circuit, like its findings.
+        foreach (var (view, circuit) in views)
+        {
+            if (view.Success && !string.IsNullOrWhiteSpace(view.Output))
+                usage = usage.Plus(await _systemOne.ReadCriteriaAsync(events, brief, view.Output, circuit, session.Document.Budget, usage, cancellationToken).ConfigureAwait(false));
+        }
+
+        return new ForgeStageOutcome { Trigger = ForgeTrigger.Diagnosed, Usage = usage };
+    }
+
+    /// <summary>The pass of a two-pass trial as a run of its own: its output, figures and mail actions.</summary>
+    private static ForgeTestRun PassView(ForgeSession session, ForgeTestRun run, ForgeTestPass pass)
+    {
+        var outputPath = pass.OutputPath is { } relative ? Path.Combine(session.Directory, relative) : null;
+        return run with
+        {
+            Success = pass.Success,
+            Output = outputPath is not null && File.Exists(outputPath) ? File.ReadAllText(outputPath) : "",
+            Error = pass.Error,
+            DurationMs = pass.DurationMs,
+            Tokens = pass.Tokens,
+            MailActions = pass.MailActions,
+        };
+    }
+
+    /// <summary>One pass judged: the mechanical checks over its snapshot, then the judge, combined as before.</summary>
+    private async Task<(ForgeVerdict Verdict, ForgeUsageSnapshot Usage)> JudgePassAsync(
+        ForgeSession session, ForgeBrief brief, ForgeTestRun run, string snapshotDirectory, CancellationToken cancellationToken)
+    {
+        var mechanical = MechanicalFindings(session, run, snapshotDirectory);
 
         // A failed run never consults the judge — nothing to judge, nothing to pay.
         var judgement = run.Success && !string.IsNullOrWhiteSpace(run.Output)
             ? await _judge.JudgeAsync(brief, run.Output, run.MailActions, cancellationToken).ConfigureAwait(false)
             : ForgeJudgement.Unavailable;
 
-        ForgeVerdict verdict;
         if (judgement.Verdict is { } judged)
         {
-            verdict = judged with { Findings = [.. mechanical, .. judged.Findings] };
-            verdict = verdict with
+            var verdict = judged with { Findings = [.. mechanical, .. judged.Findings] };
+            return (verdict with
             {
                 Passing = verdict.Score >= ForgeVerdict.PassingThreshold && !verdict.HasBlockingFinding,
-            };
+            }, judgement.Usage);
         }
-        else
+
+        // No judge (or nothing worth judging): mechanical checks only, and said so.
+        var passing = mechanical.Count == 0;
+        return (new ForgeVerdict
         {
-            // No judge (or nothing worth judging): mechanical checks only, and said so.
-            var passing = mechanical.Count == 0;
-            verdict = new ForgeVerdict
-            {
-                Score = passing ? ForgeVerdict.PassingThreshold : 0.0,
-                Passing = passing,
-                Findings = mechanical,
-                Judge = ForgeVerdict.JudgeDeterministic,
-            };
-        }
-
-        var runDirectory = Path.Combine(TestStage.RunsDirectoryName, run.Run.ToString(CultureInfo.InvariantCulture));
-        session.SaveArtifact(Path.Combine(runDirectory, ForgeSession.VerdictFileName), verdict);
-        session.SaveArtifact(ForgeSession.VerdictFileName, verdict);
-
-        EmitVerdictReady(events, verdict, run);
-
-        return new ForgeStageOutcome { Trigger = ForgeTrigger.Diagnosed, Usage = judgement.Usage };
+            Score = passing ? ForgeVerdict.PassingThreshold : 0.0,
+            Passing = passing,
+            Findings = mechanical,
+            Judge = ForgeVerdict.JudgeDeterministic,
+        }, judgement.Usage);
     }
 
     /// <summary>
-    /// The one <c>verdict.ready</c> payload builder — the diagnosis and the Verdict
-    /// stage's recall (a resumed arbitration) must never drift apart. The metrics are the
-    /// LAST TRIAL's own (W-08), null when the run left them unmeasured.
+    /// The verdict over the passes (#431): passing only when every pass passes, the lowest score, every finding
+    /// tagged with its pass's circuit in an <c>optional</c> crew, and <c>F-PASS-ON-SKIPPED</c> (info) when its trial
+    /// ran without its on pass.
     /// </summary>
+    private static ForgeVerdict Combined(ForgeSession session, ForgeTestRun run, List<(ForgeVerdict Verdict, string? Circuit)> judged)
+    {
+        var optional = ForgeCrewDecision.Normalize(session.Document.CrewDecision) == ForgeCrewDecision.Optional;
+        var findings = judged
+            .SelectMany(j => j.Verdict.Findings.Select(f => optional ? f with { Circuit = j.Circuit } : f))
+            .ToList();
+        if (optional && judged.Count == 1 && run.Passes is [{ Circuit: DecisionCircuitStates.Off } offPass])
+        {
+            findings.Add(new ForgeFinding
+            {
+                Id = ForgeCrewDecision.PassOnSkippedFinding,
+                Severity = "info",
+                Statement = "The trial ran without System One only: the crew's run with a decision model was not tried.",
+                Evidence = offPass.Cause,
+                Circuit = DecisionCircuitStates.Off,
+            });
+        }
+
+        return judged[0].Verdict with
+        {
+            Score = judged.Min(static j => j.Verdict.Score),
+            Passing = judged.All(static j => j.Verdict.Passing),
+            Findings = findings,
+            Suggestions = [.. judged.SelectMany(static j => j.Verdict.Suggestions)],
+            Passes = [.. judged.Select(static j => new ForgeVerdictPass { Circuit = j.Circuit, Passing = j.Verdict.Passing, Score = j.Verdict.Score })],
+        };
+    }
+
     internal static void EmitVerdictReady(ForgeEventWriter events, ForgeVerdict verdict, ForgeTestRun? run)
     {
         events.Emit("verdict.ready", new
@@ -339,11 +627,26 @@ internal sealed class DiagnoseStage : IForgeStageRunner
             completionTokens = run?.CompletionTokens,
             cacheHitTokens = run?.CacheHitTokens,
             cacheMissTokens = run?.CacheMissTokens,
+            // Each pass's verdict and its six figures, flat beside it (#431); the top level above holds their sums.
+            passes = verdict.Passes?
+                .Select(pass => (Verdict: pass, Ran: run?.Passes?.FirstOrDefault(p => p.Circuit == pass.Circuit)))
+                .Select(static pass => new
+                {
+                    circuit = pass.Verdict.Circuit,
+                    passing = pass.Verdict.Passing,
+                    score = pass.Verdict.Score,
+                    durationMs = pass.Ran?.DurationMs,
+                    tokens = pass.Ran?.Tokens,
+                    promptTokens = pass.Ran?.PromptTokens,
+                    completionTokens = pass.Ran?.CompletionTokens,
+                    cacheHitTokens = pass.Ran?.CacheHitTokens,
+                    cacheMissTokens = pass.Ran?.CacheMissTokens,
+                }),
         });
     }
 
     /// <summary>What no judge is needed to see; blocking when the run itself went wrong.</summary>
-    private static List<ForgeFinding> MechanicalFindings(ForgeSession session, ForgeTestRun run)
+    private static List<ForgeFinding> MechanicalFindings(ForgeSession session, ForgeTestRun run, string snapshotDirectory)
     {
         var findings = new List<ForgeFinding>();
 
@@ -383,8 +686,7 @@ internal sealed class DiagnoseStage : IForgeStageRunner
                 ? null
                 : Path.Combine(
                     session.Directory,
-                    TestStage.RunsDirectoryName,
-                    run.Run.ToString(CultureInfo.InvariantCulture),
+                    snapshotDirectory,
                     ForgeFolders.SessionDirectoryName,
                     folder.Name,
                     deliverable[(folder.Path!.Length + 1)..].Replace('/', Path.DirectorySeparatorChar));
@@ -546,7 +848,7 @@ internal sealed class VerdictStage : IForgeStageRunner
             return false;
         }
 
-        if (ValidateEditedBlueprint(json, _knownTools, events, ForgeFolders.ExistingPaths(session), ForgeFolders.Of(session)) is not { } blueprint)
+        if (ValidateEditedBlueprint(json, _knownTools, events, ForgeFolders.ExistingPaths(session), ForgeFolders.Of(session), session.Document.CrewDecision) is not { } blueprint)
             return false;
 
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint);
@@ -565,15 +867,15 @@ internal sealed class VerdictStage : IForgeStageRunner
     /// </summary>
     internal static ForgeBlueprint? ValidateEditedBlueprint(
         string json, IReadOnlyCollection<string> knownTools, ForgeEventWriter events, IReadOnlyCollection<string> existingPaths,
-        IReadOnlyList<ForgeFolder>? folders = null)
+        IReadOnlyList<ForgeFolder>? folders = null, string? crewDecision = null)
     {
-        if (!ForgeBlueprint.TryParse(json, out var blueprint, out var errors, existingPaths))
+        if (!ForgeBlueprint.TryParse(json, out var blueprint, out var errors, existingPaths, crewDecision))
         {
             events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", errors), recoverable: true);
             return null;
         }
 
-        var compilation = ForgeBlueprintCompiler.Compile(blueprint!, folders);
+        var compilation = ForgeBlueprintCompiler.Compile(blueprint!, folders, crewDecision);
         var validation = ForgeBlueprintCompiler.Validate(compilation, knownTools, folders);
         if (validation.Errors.Count > 0)
         {

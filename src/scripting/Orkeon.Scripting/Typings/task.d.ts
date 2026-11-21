@@ -125,6 +125,13 @@ declare global {
         longContext?: boolean;
         /** Question name to the answer (a string, anything else is refused at load) given when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled=false`, no model). */
         fallback?: Record<string, string>;
+        /**
+         * The relay of an `optional` crew (`crewBuilder().decision({ mode: 'optional' })`): the crew agent, by its
+         * name, that answers the questions when the decision circuit is off. Required on every decision task of an
+         * `optional` crew, refused in a crew with no mode or `none`, unused by a `required` crew. It makes one LLM
+         * call that gives probabilities only, checked and read as the decision model's answer.
+         */
+        without?: { agent: string; instructions?: string };
     }
 
     /** One question: a choice among described options, a score per label, or a yes/no ("noul") test. */
@@ -135,7 +142,8 @@ declare global {
 
     /**
      * Branch clauses: `question` maps to an option list or a threshold such as `">= 0.7"`;
-     * `"question.option"` maps to a threshold such as `">= 0.25"`.
+     * `"question.option"` maps to a threshold such as `">= 0.25"`. A yes/no question takes
+     * `["yes"]` or `["no"]` as its option list; a score question takes a threshold only.
      */
     type WhenClauses = Record<string, string[] | string>;
 

@@ -3,6 +3,7 @@ using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Security;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Scripting.Tests.Doubles;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.Timing;
 using static Orkeon.Scripting.Tests.Doubles.FakeToolCallingLlmProvider;
 
@@ -298,6 +299,25 @@ public sealed class SpawnAgentScriptToolTests
     }
 
     [Fact]
+    [Trait("BR", "CH-436")]
+    public async Task ShouldSpawnThroughSpawnAgent_WhenTheBudgetNamesOnlySpawnsAndSixMinutesHavePassed()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+
+        // Act: root's first turn comes six minutes in; the child's turn two hours after that.
+        var run = await RunUnbudgetedAsync(Crew(".budget({ spawnedAgents: 10 })"), clock,
+            turn => clock.Advance(turn == 0 ? TimeSpan.FromMinutes(6) : turn == 1 ? TimeSpan.FromHours(2) : TimeSpan.Zero),
+            ScriptStep.Call("spawn_agent", Spawn("b")),
+            ScriptStep.Answer("B-final"),
+            ScriptStep.Answer("ROOT-final"));
+
+        // Assert
+        Assert.Contains("B-final", Assert.Single(run.Provider.ToolResults), StringComparison.Ordinal);
+        Assert.Equal("ROOT-final", run.Output);
+    }
+
+    [Fact]
     [Trait("BR", "RT-02")]
     public async Task ShouldSpawnInBackground_WhenNoBudgetIsNamedAndSixMinutesHavePassed()
     {
@@ -345,6 +365,28 @@ public sealed class SpawnAgentScriptToolTests
         Assert.Equal(17, run.Provider.ToolResults.Count);
         Assert.Contains("B-final", run.Provider.ToolResults[^1], StringComparison.Ordinal);
         Assert.Equal("ROOT-final", run.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-436")]
+    public async Task ShouldLogTheChildsTokensWithNoLimit_WhenTheParentSpentTokensBeforeTheSpawn()
+    {
+        // Arrange: a budget that caps spawns only; the root's turn spends 5,000 tokens before it spawns b.
+        using var loggers = new RecordingLoggerFactory();
+        var provider = new FakeToolCallingLlmProvider(
+            ScriptStep.Call("spawn_agent", Spawn("b")),
+            ScriptStep.Answer("B-final"),
+            ScriptStep.Answer("ROOT-final")) { TokensPerTurn = 5_000 };
+        var engine = new JsEngineFactory(loggerFactory: loggers, llmProvider: provider).Create();
+        var crew = (JsCrew)(await engine.EvaluateAsync(Crew(".budget({ spawnedAgents: 10 })"), null, TestContext.Current.CancellationToken)).ToObject()!;
+
+        // Act
+        await crew.RunAsync(null, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Contains(loggers.Logger.Entries, e => e.Message.Contains(
+            "agent 'b' call used 5000 tokens, running sum 5000 tokens over 1 call, no limit", StringComparison.Ordinal));
+        Assert.DoesNotContain(loggers.Logger.Entries, e => e.Message.Contains("/214748", StringComparison.Ordinal));
     }
 
     [Fact]

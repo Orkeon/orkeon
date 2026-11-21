@@ -3,6 +3,12 @@ namespace Orkeon.Domain.SharedKernel;
 /// <summary>
 /// Interface for managing LLM context window limits.
 /// </summary>
+/// <remarks>
+/// Obsolete (#432): it summarises one string, not a conversation with tool turns. The agent loops
+/// compact their conversation themselves (<c>Orkeon:Compaction</c>); this interface is removed in a
+/// future major version.
+/// </remarks>
+[Obsolete("Summarises one string, not a conversation with tool turns: the agent loops compact their conversation themselves (Orkeon:Compaction, #432). Removed in a future major version.")]
 public interface IContextWindowManager
 {
     /// <summary>

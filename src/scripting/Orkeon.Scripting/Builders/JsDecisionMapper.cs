@@ -17,7 +17,7 @@ internal static class JsDecisionMapper
 
         try
         {
-            return TaskDecision.Create(
+            var decision = TaskDecision.Create(
                 questions,
                 MinConfidence(map),
                 map.TryGetValue("state", out var state)
@@ -27,12 +27,30 @@ internal static class JsDecisionMapper
                 map.TryGetValue("fallback", out var fallback)
                     ? StringMap(fallback, "fallback", "an object of strings")
                     : null);
+            return map.TryGetValue("without", out var without) ? decision.WithRelay(Relay(without)) : decision;
         }
         catch (Exception ex) when (ex is ArgumentException or FormatException or InvalidCastException or OverflowException)
         {
-            var part = (ex as ArgumentException)?.ParamName == "fallback" ? "decision.fallback" : "decision";
+            var part = (ex as ArgumentException)?.ParamName switch
+            {
+                "fallback" => "decision.fallback",
+                "agent" or "without" => "decision.without",
+                _ => "decision",
+            };
             throw new InvalidOperationException($"Task '{task}' {part}: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>The <c>without</c> relay (#429, #430): <c>{ agent, instructions? }</c>, the agent named by its name.</summary>
+    private static DecisionRelay Relay(object? without)
+    {
+        var relay = AsMap(without)
+            ?? throw new ArgumentException("without expects an object: { agent, instructions? }.", nameof(without));
+        var agent = relay.TryGetValue("agent", out var name) ? name as string : null;
+        var instructions = relay.TryGetValue("instructions", out var text) ? text : null;
+        if (instructions is not null and not string)
+            throw new ArgumentException("without.instructions must be a string.", nameof(without));
+        return new DecisionRelay(agent ?? string.Empty, instructions as string);
     }
 
     private static List<DecisionQuestionSpec> MapQuestions(string task, IDictionary<string, object?> map)

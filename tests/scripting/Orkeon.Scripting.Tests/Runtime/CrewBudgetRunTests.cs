@@ -95,6 +95,35 @@ public sealed class CrewBudgetRunTests
         Assert.Contains("max tool-call iterations", Assert.IsType<string>(result.output), StringComparison.Ordinal);
     }
 
+    [Fact]
+    [Trait("BR", "CH-436")]
+    public async Task ShouldRefuseTheRun_WhenTheProceduralCrewsBudgetHasAWallTimeItCannotRead()
+    {
+        // Arrange: "5 min" is no duration the budget reads; before, the run went on with no wall clock at all.
+        var tool = new CountingTool("echo_tool");
+        var provider = new LoopingProvider(ToolCallBody("echo_tool", "{\"text\":\"again\"}"));
+        using var engine = new Orkeon.Scripting.JsEngineFactory(builtInTools: new IBaseTool[] { tool }, llmProvider: provider).Create();
+        var crew = BuildCrew(engine, """
+            const a = agentBuilder()
+              .name("A").role("R").goal("G")
+              .tools(["echo_tool"])
+              .body(async (_input, ctx) => {
+                const r = await ctx.llm.act("loop forever", { maxIterations: 3 });
+                return String(r?.output ?? r);
+              })
+              .build();
+            crewBuilder().name("c").budget({ toolCalls: 20, wallTime: "5 min" }).withAgent(a).build();
+            """);
+
+        // Act
+        var ex = await Record.ExceptionAsync(() => crew.RunAsync(null, Ct));
+
+        // Assert
+        Assert.NotNull(ex);
+        Assert.Contains("crewBuilder().budget({...}): budget.wallTime must be a positive number of seconds", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(0, tool.CallCount);
+    }
+
     // ── a delegated run's budget (#189) ─────────────────────────────────────────
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
@@ -360,6 +389,25 @@ public sealed class CrewBudgetRunTests
 
         // Act
         var outcome = (await engine.EvaluateAsync("(async () => await crew.runAgent(\"A\", \"go\", { budget: hostBudget }))()", null, Ct)).AsString();
+
+        // Assert
+        Assert.StartsWith("budget: Wall time exceeded", outcome, StringComparison.Ordinal);
+        Assert.Equal(2, provider.ChatCount);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-436")]
+    public async Task ShouldEndTheRunOnItsWallTime_WhenRunAgentGivesAWallTimeWithoutAChargeAndTheCrewClockRunsOut()
+    {
+        // Arrange: each model turn moves the crew's fake clock by 30 s; B allows itself one minute and charges nothing
+        var clock = new FakeTimeProvider();
+        var (engine, _, provider) = NewDelegatingCrew("crew.runAgent(\"B\", \"go\", { budget: { wallTime: \"1m\" } })");
+        using var owned = engine;
+        provider.OnChat = () => clock.Advance(TimeSpan.FromSeconds(30));
+        ((JsCrew)(await engine.EvaluateAsync("crew", null, Ct)).ToObject()!).Clock = clock;
+
+        // Act
+        var outcome = await RunAAsync(engine);
 
         // Assert
         Assert.StartsWith("budget: Wall time exceeded", outcome, StringComparison.Ordinal);

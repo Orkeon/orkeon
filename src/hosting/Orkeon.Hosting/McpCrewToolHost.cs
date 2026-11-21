@@ -190,9 +190,18 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
 
         public ICrewExecutionHook Observer => _observer;
 
+        /// <summary>The call's publisher, which the agent loops' observers write to.</summary>
+        public IRunEventSink Events => _publisher;
+
         public bool Succeeded { get; set; }
 
         public bool Cancelled { get; set; }
+
+        /// <summary>
+        /// True when the crew requires System One and met the decision circuit off (#429): exit 69, as
+        /// <c>orkeon run</c> and <c>orkeon-host</c> record it.
+        /// </summary>
+        public bool DecisionUnavailable { get; set; }
 
         /// <summary>The recording of a call on <paramref name="host"/>, or null when its history is off.</summary>
         public static CallRecording? Begin(IHost host, string crewName)
@@ -225,6 +234,8 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
         {
             if (Succeeded)
                 return 0;
+            if (DecisionUnavailable)
+                return Orkeon.Constants.Cli.RunExitCodes.DecisionUnavailable;
             return Cancelled ? 130 : 1;
         }
     }
@@ -232,9 +243,12 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
     private sealed class McpCrewOptions : RunnerOptionsBase;
 
     /// <summary>What a call reports: the tasks that finished, out of the crew's tasks.</summary>
-    private sealed class RunProgress(IMcpProgress progress, int total, ICrewExecutionHook? recorder)
+    private sealed class RunProgress(IMcpProgress progress, int total, ICrewExecutionHook? recorder, IRunEventSink? events)
     {
         public ICrewExecutionHook? Recorder => recorder;
+
+        /// <summary>The call's publisher when the history is on, else null.</summary>
+        public IRunEventSink? Events => events;
 
         private int _done;
 
@@ -280,6 +294,24 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
                 await recorder.OnCrewFailedAsync(isPartial, ex, ct).ConfigureAwait(false);
             if (inner is not null)
                 await inner.OnCrewFailedAsync(isPartial, ex, ct).ConfigureAwait(false);
+        }
+
+        // The two members with a default body: a wrapper that leaves them out swallows them, so the run's history would
+        // miss run.decision (#429) and the human-input notices, and the inner hook would never see them.
+        public async System.Threading.Tasks.Task OnHumanInputAsync(HumanInputNotice notice, CancellationToken ct)
+        {
+            if (s_current.Value?.Recorder is { } recorder)
+                await recorder.OnHumanInputAsync(notice, ct).ConfigureAwait(false);
+            if (inner is not null)
+                await inner.OnHumanInputAsync(notice, ct).ConfigureAwait(false);
+        }
+
+        public async System.Threading.Tasks.Task OnRunDecisionAsync(RunDecisionNotice notice, CancellationToken ct)
+        {
+            if (s_current.Value?.Recorder is { } recorder)
+                await recorder.OnRunDecisionAsync(notice, ct).ConfigureAwait(false);
+            if (inner is not null)
+                await inner.OnRunDecisionAsync(notice, ct).ConfigureAwait(false);
         }
     }
 
@@ -402,7 +434,10 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
         return new CrewDescription(crew.Name, crew.Goal.Value, tasks);
     }
 
-    /// <summary>Puts the progress hook on the crew's hook: what <c>AutoSummaryWriter</c> registered stays inside it.</summary>
+    /// <summary>
+    /// Puts the progress hook on the crew's hook (what <c>AutoSummaryWriter</c> registered stays inside it) and the agent
+    /// loops' observers on the call's history.
+    /// </summary>
     private static void ObserveTasks(IServiceCollection services)
     {
         var existing = services.LastOrDefault(d => d.ServiceType == typeof(ICrewExecutionHook));
@@ -410,6 +445,10 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
             services.Remove(existing);
 
         services.AddScoped<ICrewExecutionHook>(sp => new ProgressHook(existing is null ? null : Materialize(sp, existing)));
+
+        // The agent loops' events (agent.compacted, agent.skills, agent.route, agent.pruned) go to the history of the call
+        // in flight on this control flow; with the history off, or outside a call, they are dropped.
+        services.AddAgentRunEventObservers(ServiceLifetime.Singleton, _ => new DeferredRunEventSink(() => s_current.Value?.Events));
     }
 
     private static ICrewExecutionHook? Materialize(IServiceProvider sp, ServiceDescriptor descriptor)
@@ -513,7 +552,7 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
         ServedCrew crew, Dictionary<string, string> variables, IMcpProgress progress, CancellationToken ct)
     {
         using var recording = CallRecording.Begin(crew.Entry.Host, crew.Name);
-        s_current.Value = new RunProgress(progress, crew.Tasks.Count, recording?.Observer);
+        s_current.Value = new RunProgress(progress, crew.Tasks.Count, recording?.Observer, recording?.Events);
         try
         {
             var run = await crew.Entry.RunAsync(
@@ -524,8 +563,12 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
 
             // A crew whose agent was cancelled answers a failed output, not an exception: the client that cancelled gets no answer.
             ct.ThrowIfCancellationRequested();
+            var refusedForSystemOne = run.Output?.ErrorCode == Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable;
             if (recording is not null)
+            {
                 recording.Succeeded = run.Output is { Succeeded: true };
+                recording.DecisionUnavailable = refusedForSystemOne;
+            }
 
             // A failure's own text (an exception message, a task error) may carry a path or a secret of the run: it goes
             // to the log, and the client reads that it failed and where the details are.
@@ -533,6 +576,12 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
             {
                 case CrewRunOutcome.Completed when run.Output is { Succeeded: true } output:
                     return Text(output.FinalOutput, isError: false);
+                // A crew that requires System One, refused with the decision circuit off, ran nothing: the refusal names the
+                // crew and the operator setting that turned the circuit off, no secret of a run, so the client reads it (#429).
+                // A decision_circuit_mismatch needs a resume, which a call never makes: it stays a failure, exit 1.
+                case CrewRunOutcome.Completed when refusedForSystemOne:
+                    LogCrewOutputFailed(LoggerOf(crew), crew.Name, run.Output!.Error ?? "decision unavailable");
+                    return Text(run.Output.Error ?? CrewFailedText, isError: true);
                 case CrewRunOutcome.Completed:
                     LogCrewOutputFailed(LoggerOf(crew), crew.Name, run.Output?.Error ?? run.Output?.FinalOutput ?? "no error text");
                     return Text(CrewFailedText, isError: true);

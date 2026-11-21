@@ -35,6 +35,13 @@
       "description": "The `Orkeon:Decision:Enabled` switch of the decision circuit."
     },
     {
+      "path": "Orkeon:Decision:Route",
+      "category": "models",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "Where an agent on `llm.profile: auto` is routed, bound to the `Orkeon:Decision:Route` section by `AddOrkeonInfrastructure()`. At the start of each task, the decision model picks one profile of `AgentRouteOptions.Ladder`, and the task keeps it; under a probability of 0.6, without an answer or with the decision circuit off, the host's default profile stands."
+    },
+    {
       "path": "Orkeon:Kev",
       "category": "models",
       "hosts": [],
@@ -390,6 +397,20 @@
       "description": "The `Orkeon:Checkpointing` section: whether a host checkpoints its runs and in which store."
     },
     {
+      "path": "Orkeon:Compaction",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "How the agent loops keep a long conversation inside the model's window, bound to the `ContextCompactionOptions.SectionName` section by `AddOrkeonInfrastructure()`. Before each model call the native and the chat-client loops estimate the prompt in tokens; past `ContextCompactionOptions.TriggerShare` of the usable window (the window less the output reserve) they replace the middle of the conversation with one summary, keeping the system prompt, the task and the `ContextCompactionOptions.KeepRecentTurns` most recent turns. The text loop keeps its own character trim."
+    },
+    {
+      "path": "Orkeon:Compaction:Prune",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "How the agent loops prune their older read-tool results before they compact, bound to the `ToolResultPruningOptions.SectionName` section by `AddOrkeonInfrastructure()`. Once the estimated prompt reaches `ToolResultPruningOptions.FillShare` of the usable window (or the compaction trigger, whichever comes first), the decision model judges each result of a read tool older than the `ToolResultPruningOptions.KeepRecentMessages` last messages: keep it, keep its first `ToolResultPruningOptions.HeadChars` characters, or drop it. It sees the call (tool, input, size, age), never the result. With the decision circuit off, nothing is pruned. Pruning rides compaction: an agent that does not compact does not prune."
+    },
+    {
       "path": "Orkeon:Consensus",
       "category": "orchestration-and-persistence",
       "hosts": [],
@@ -421,6 +442,13 @@
       "category": "orchestration-and-persistence",
       "hosts": [],
       "description": "The `Orkeon:RunHistory` section: whether the events of a run are kept after it ended, and where."
+    },
+    {
+      "path": "Orkeon:Skills",
+      "category": "orchestration-and-persistence",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "How an agent's `skills:` reach its prompt, bound to the `Orkeon:Skills` section by `AddOrkeonInfrastructure()`. Each skill is a markdown file read through the virtual file system and appended to the agent's system prompt under a `## Skills` heading, cut at `AgentSkillsOptions.MaxSkillChars`, the whole block, headings included, at `AgentSkillsOptions.MaxBlockChars`. An agent with `skills: { auto: true }` has the decision model pick, for each task, at most three skills of `AgentSkillsOptions.Library`."
     },
     {
       "path": "Orkeon:Cli:ConsoleStreaming",
@@ -592,6 +620,12 @@
       "description": "How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming."
     },
     {
+      "path": "Llm:ContextWindowTokens",
+      "section": "Llm",
+      "type": "integer",
+      "description": "The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact only once that figure fills. It holds for the model of this section alone: an agent whose `llm.model` names another model reads that model's documented window, else the assumed one. Never sent to the provider."
+    },
+    {
       "path": "Llm:Grammar",
       "section": "Llm",
       "type": "boolean",
@@ -698,6 +732,12 @@
       "type": "string",
       "default": "Auto",
       "description": "How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming."
+    },
+    {
+      "path": "Llm:Profiles:<name>:ContextWindowTokens",
+      "section": "Llm",
+      "type": "integer",
+      "description": "The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact only once that figure fills. It holds for the model of this section alone: an agent whose `llm.model` names another model reads that model's documented window, else the assumed one. Never sent to the provider."
     },
     {
       "path": "Llm:Profiles:<name>:Fallback",
@@ -1052,6 +1092,13 @@
       "section": "Orkeon:Decision",
       "type": "string",
       "description": "The decision provider: `typesafe`, `liquid` or `kev`; empty deduces it."
+    },
+    {
+      "path": "Orkeon:Decision:Route:Ladder",
+      "section": "Orkeon:Decision:Route",
+      "type": "list of string",
+      "default": [],
+      "description": "The profiles an `auto` agent is routed among, cheapest first: two or more names of `Llm:Profiles` or `Orkeon:Decision:Profiles` (`default` included), each once; a ladder of one rung, or with a blank, `auto` or repeated rung, is refused at start. Empty by default: a crew naming `auto` on a host without a ladder fails its load."
     },
     {
       "path": "Orkeon:Kev:ApiKey",
@@ -3172,7 +3219,7 @@
       "section": "Orkeon:Tools:Firefox",
       "type": "integer",
       "default": 30,
-      "description": "Seconds Firefox is given to start and open its remote protocol."
+      "description": "Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`."
     },
     {
       "path": "Orkeon:Tools:GitHub:Token",
@@ -3412,6 +3459,61 @@
       "description": "The store (default: `Memory`)."
     },
     {
+      "path": "Orkeon:Compaction:Enabled",
+      "section": "Orkeon:Compaction",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the loops compact their conversation. True by default: a long loop pays one summary call instead of losing its middle to the 40-message trim. False brings that trim back, as an agent's `compaction: { enabled: false }` does for that agent alone."
+    },
+    {
+      "path": "Orkeon:Compaction:KeepRecentTurns",
+      "section": "Orkeon:Compaction",
+      "type": "integer",
+      "default": 6,
+      "description": "How many of the most recent turns a compaction keeps verbatim, a turn being one assistant response, in one message or several, with its tool results (a tool call is never parted from its result). Fewer are kept when they are all the conversation holds or alone pass the trigger. 6 by default; 0 summarises every turn."
+    },
+    {
+      "path": "Orkeon:Compaction:Profile",
+      "section": "Orkeon:Compaction",
+      "type": "string",
+      "description": "The LLM profile that writes the summary: `default`, a profile of `Llm:Profiles` or a decision profile of `Orkeon:Decision:Profiles`; a name the host does not offer (one neither section defines, or one `Orkeon:Host:LlmProfiles` leaves out), or `auto`, refuses the start. Left out, the agent's own model and profile. The summary's tokens are charged to the task either way."
+    },
+    {
+      "path": "Orkeon:Compaction:TriggerShare",
+      "section": "Orkeon:Compaction",
+      "type": "number",
+      "default": 0.75,
+      "description": "The share of the usable window (the context window less the output reserve: the call's cap, else the model's documented maximum, else 4096, at most half the window) the estimated prompt reaches for the loop to compact, above 0 and at most 1. 0.75 by default; an agent's `compaction: { triggerShare }` overrides it."
+    },
+    {
+      "path": "Orkeon:Compaction:Prune:Enabled",
+      "section": "Orkeon:Compaction:Prune",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the loops prune. False by default: each judgement is a request to the decision model. An agent's `compaction: { prune }` overrides it."
+    },
+    {
+      "path": "Orkeon:Compaction:Prune:FillShare",
+      "section": "Orkeon:Compaction:Prune",
+      "type": "number",
+      "default": 0.4,
+      "description": "The share of the usable window (the context window less the output reserve: the call's cap, else the model's documented maximum, else 4096, at most half the window) the estimated prompt reaches for the results to be judged, above 0 and at most 1. 0.4 by default, under the compaction trigger, so a loop prunes before it compacts."
+    },
+    {
+      "path": "Orkeon:Compaction:Prune:HeadChars",
+      "section": "Orkeon:Compaction:Prune",
+      "type": "integer",
+      "default": 300,
+      "description": "The characters a `head` verdict keeps of a result, 1 or more. 300 by default; a result of twice that or less is never offered, since cutting it frees nothing."
+    },
+    {
+      "path": "Orkeon:Compaction:Prune:KeepRecentMessages",
+      "section": "Orkeon:Compaction:Prune",
+      "type": "integer",
+      "default": 6,
+      "description": "How many of the last messages have their results never offered. 6 by default."
+    },
+    {
       "path": "Orkeon:Consensus:EnableDiscussion",
       "section": "Orkeon:Consensus",
       "type": "boolean",
@@ -3567,6 +3669,27 @@
         "Sqlite"
       ],
       "description": "The store: `jsonl` (default) or `sqlite`."
+    },
+    {
+      "path": "Orkeon:Skills:Library",
+      "section": "Orkeon:Skills",
+      "type": "string",
+      "default": "/workspace/.orkeon/skills",
+      "description": "The virtual folder an `auto` agent's skills are picked from, one `<name>.md` file per skill (sub-folders are not read); a relative path is refused at start. `/workspace/.orkeon/skills` by default."
+    },
+    {
+      "path": "Orkeon:Skills:MaxBlockChars",
+      "section": "Orkeon:Skills",
+      "type": "integer",
+      "default": 12000,
+      "description": "The characters the whole skills block carries, its heading, each skill's title line and cut notes included, so that with the defaults three skills of a full `MaxSkillChars` do not all fit and the third is cut; a skill past it is cut to what remains, said in the prompt, or left out, said in the `cut` of `agent.skills` alone. Less than `500`, which cannot hold the block's heading and a skill, is refused at start. 12000 by default."
+    },
+    {
+      "path": "Orkeon:Skills:MaxSkillChars",
+      "section": "Orkeon:Skills",
+      "type": "integer",
+      "default": 4000,
+      "description": "The characters of one skill the prompt carries; the rest is cut, and the cut is said in the prompt and in the `cut` of `agent.skills`. 0 or less is refused at start. 4000 by default."
     },
     {
       "path": "Orkeon:Cli:ConsoleStreaming:Enabled",

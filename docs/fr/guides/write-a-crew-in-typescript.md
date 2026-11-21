@@ -190,14 +190,14 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- \
 ```
 
 ```
-VALIDATION OK: …/crew-review-desk/main.ork.ts (agents=3, tasks=3, tools resolved=5)
+VALIDATION OK: …/crew-review-desk/main.ork.ts (agents=3, tasks=3, tools resolved=5, decision=unspecified)
 ```
 
 Ce contrôle n'existe que sur cette forme, et c'est une bonne raison de la préférer : il
 attrape un nom d'outil non enregistré ou une tâche pointant vers un agent non déclaré avant
 d'avoir dépensé un token. Sur un fichier procédural, `--validate` vérifie ce qu'il
 peut sans l'exécuter — la directive de version, les types, le bundle esbuild — et imprime
-`VALIDATION OK: … (procedural script: bundled, not run)` ; il ne l'évalue jamais. Seule la source
+`VALIDATION OK: … (procedural script: bundled, not run, decision=unknown)` ; il ne l'évalue jamais. Seule la source
 du fichier d'entrée est lue pour le passage de relais : un script qui affecte `globalThis.crew`
 dans un helper importé est procédural, pour `orkeon run` comme pour `--validate`.
 

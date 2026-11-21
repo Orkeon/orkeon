@@ -94,7 +94,9 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
     /// Builds the assistant over the engine host's services. The pack must already be
     /// materialized (<see cref="ForgePack.Ensure"/>) and the session directory mounted at
     /// <paramref name="sessionVirtualRoot"/>. <paramref name="reference"/> is the use case the
-    /// composition starts from, when there is one.
+    /// composition starts from, when there is one. <paramref name="crewTools"/> is the sandbox catalogue the caller
+    /// built once for the session (<see cref="ForgeSandbox.SelectCrewTools"/>), which its validation also enforces;
+    /// null builds it here from the host's tools and decision circuit.
     /// </summary>
     public ForgeCrewAssistant(
         IServiceProvider services,
@@ -102,7 +104,8 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         string packPhysicalPath,
         string sessionVirtualRoot = "/forge",
         ForgeReference? reference = null,
-        string? language = null)
+        string? language = null,
+        IReadOnlyList<ForgeToolInfo>? crewTools = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         _session = session ?? throw new ArgumentNullException(nameof(session));
@@ -117,7 +120,8 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         _readTools = [.. ReadToolAllowlist.Where(name => tools.Any(t => t.Name == name))];
         // What the designed team may use (SPEC §7.3): the sandbox catalogue with
         // descriptions — a closed list the blueprint prompt shows and validation enforces.
-        _crewTools = ForgeSandbox.SelectCrewTools(tools);
+        _crewTools = crewTools ?? ForgeSandbox.SelectCrewTools(
+            tools, session.Document.CrewDecision, Orkeon.Application.Crew.Execution.DecisionCircuit.Of(services));
 
         // The reference's structure, cut down to that very catalogue: read
         // once, since neither the crew file nor the catalogue changes during a session.
@@ -201,6 +205,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
 
         _box.Reset();
         _box.ExistingPaths = ForgeFolders.ExistingPaths(request.Brief?.Folders);
+        _box.CrewDecision = _session.Document.CrewDecision;
         var before = _tally.Snapshot;
 
         // Every model call — and every streamed chunk — reports the turn's running total.
@@ -266,9 +271,25 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         return new ForgeAssistantReply { Message = message, Usage = usage };
     }
 
-    private string BuildInputsJson(ForgeAssistantRequest request)
+    private string BuildInputsJson(ForgeAssistantRequest request) =>
+        BuildInputsJson(request, _session, _readTools, _crewTools, LanguageOf(request), _reference, _referenceOutline);
+
+    /// <summary>
+    /// The inputs the assistant's script reads for one turn, as JSON: a null field is left out, so a key the forge did
+    /// not fill (<c>processHint</c> on an off circuit, #435) is absent rather than null.
+    /// </summary>
+    internal static string BuildInputsJson(
+        ForgeAssistantRequest request,
+        ForgeSession session,
+        IReadOnlyList<string> readTools,
+        IReadOnlyList<ForgeToolInfo> crewTools,
+        string language,
+        ForgeReference? reference = null,
+        string? referenceOutline = null)
     {
-        var history = _session.LoadTranscript()
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(session);
+        var history = session.LoadTranscript()
             .Select(turn => new { role = turn.Role, text = turn.Text })
             .ToArray();
 
@@ -276,27 +297,31 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         return JsonSerializer.Serialize(new
         {
             phase = isBrief ? "brief" : "blueprint",
-            language = LanguageOf(request),
+            language,
             message = request.UserMessage,
             history,
             brief = request.Brief is { } sent ? sent with { Folders = sent.Folders?.Select(static f => f with { Existing = [] }).ToList() } : null,
             previousBlueprint = request.PreviousBlueprint,
             errors = request.Errors,
-            readTools = _readTools,
+            readTools,
             crewTools = isBrief
                 ? null
-                : _crewTools.Select(tool => new { name = tool.Name, description = tool.Description }),
+                : crewTools.Select(tool => new { name = tool.Name, description = tool.Description }),
             // The use case the composition starts from: its structure, for the
             // blueprint phase only — the interview's brief is the user's need, not the example's.
-            reference = isBrief || _reference is null
+            reference = isBrief || reference is null
                 ? null
                 : new
                 {
-                    id = _reference.Id,
-                    title = _reference.TitleIn(request.Brief?.Language),
-                    outline = _referenceOutline,
+                    id = reference.Id,
+                    title = reference.TitleIn(request.Brief?.Language),
+                    outline = referenceOutline,
                 },
             submitTool = isBrief ? "brief_submit" : "blueprint_submit",
+            // The decision mode of the crew (#431): what the plan may hold, for the blueprint phase only.
+            crewDecision = isBrief ? null : ForgeCrewDecision.Normalize(session.Document.CrewDecision),
+            // System One's suggestion of a process (#435): present only when the forge asked and p reached 0.6.
+            processHint = request.ProcessHint is { } hint ? new { process = hint.Process, p = hint.P } : null,
         }, InputsOptions);
     }
 

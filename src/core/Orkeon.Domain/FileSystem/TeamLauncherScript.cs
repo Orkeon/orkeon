@@ -178,6 +178,12 @@ public sealed record TeamLauncherSpec
     /// </summary>
     public string? WriterNote { get; init; }
 
+    /// <summary>
+    /// The crew's decision mode, as one sentence the launchers carry right under their header (#431): whether a
+    /// run needs System One. Null or blank, no line; written as <see cref="WriterNote"/> is.
+    /// </summary>
+    public string? DecisionNote { get; init; }
+
     /// <summary>Whether the crew is a script (<c>crew/crew.ork.ts</c>), which takes no sample input.</summary>
     public bool IsScript { get; init; }
 
@@ -309,6 +315,8 @@ public static class TeamLauncherScript
 
         Line("@echo off");
         Line("rem " + Header(spec.TeamName));
+        if (NoteLine(spec.DecisionNote, windows: true) is { } windowsDecision)
+            Line("rem " + windowsDecision);
         if (NoteLine(spec.WriterNote, windows: true) is { } windowsNote)
             Line("rem " + windowsNote);
         Line(spec.IsScript
@@ -358,6 +366,8 @@ public static class TeamLauncherScript
 
         Line("#!/usr/bin/env sh");
         Line("# " + Header(spec.TeamName));
+        if (NoteLine(spec.DecisionNote, windows: false) is { } posixDecision)
+            Line("# " + posixDecision);
         if (NoteLine(spec.WriterNote, windows: false) is { } posixNote)
             Line("# " + posixNote);
         Line(spec.IsScript

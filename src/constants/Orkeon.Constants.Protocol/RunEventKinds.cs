@@ -96,6 +96,49 @@ public static class RunEventKinds
     public const string GraphNodeEntered = "graph.node.entered";
 
     /// <summary>
+    /// Once per run, after the crew loads and before its first <see cref="TaskStarted"/>: the crew's
+    /// <c>mode</c> (<see cref="RunDecisionModes"/>), the decision <c>circuit</c>
+    /// (<see cref="DecisionCircuitStates"/>) and, off, its <c>cause</c> (<see cref="DecisionCircuitCauses"/>), #429.
+    /// </summary>
+    public const string RunDecision = "run.decision";
+
+    /// <summary>
+    /// An agent loop compacted its conversation, failed to, or reverted to the 40-message trim (#432):
+    /// <c>taskId</c>, <c>agentRole</c>, <c>outcome</c> (<c>compacted</c>, <c>failed</c>, <c>reverted</c>),
+    /// <c>tokensBefore</c>, <c>tokensAfter</c>, <c>window</c>, <c>windowSource</c> (<c>profile</c>,
+    /// <c>table</c>, <c>settings</c>), <c>keptMessages</c>, <c>summaryTokens</c>. Additive: a consumer that
+    /// does not know the kind ignores it.
+    /// </summary>
+    public const string AgentCompacted = "agent.compacted";
+
+    /// <summary>
+    /// The skills a task's prompt carries (#434), once per task of an agent that declares <c>skills:</c>:
+    /// <c>taskId</c>, <c>agentRole</c>, <c>mode</c> (<c>list</c>, <c>auto</c>, <c>fallback</c>), <c>skills</c>
+    /// (the virtual paths carried), <c>offered</c> (the skills offered to the decision model), <c>cut</c> (the
+    /// skills cut by a cap or left out) and <c>reason</c> (why the fallback stands, else null). Additive: a
+    /// consumer that does not know the kind ignores it.
+    /// </summary>
+    public const string AgentSkills = "agent.skills";
+
+    /// <summary>
+    /// The profile a task of an agent on <c>llm.profile: auto</c> runs on (#434), once per task, at its start:
+    /// <c>taskId</c>, <c>agentRole</c>, <c>profile</c> (a rung of the ladder, or <c>default</c>), <c>reason</c>
+    /// (<c>model</c>, <c>low-confidence</c>, <c>no-answer</c>, <c>circuit-off</c>, <c>no-ladder</c>, <c>decision-none</c>),
+    /// <c>picked</c> and <c>probability</c> (the model's pick and its probability, null when it picked no rung) and
+    /// <c>ladder</c>. Additive: a consumer that does not know the kind ignores it.
+    /// </summary>
+    public const string AgentRoute = "agent.route";
+
+    /// <summary>
+    /// A loop's older read-tool results were judged for pruning before a model call (#434): <c>taskId</c>,
+    /// <c>agentRole</c>, <c>estimatedTokens</c> and <c>thresholdTokens</c> (the measure and the estimate from which
+    /// results are judged), <c>offered</c>, <c>judged</c>, <c>kept</c>, <c>cut</c>, <c>dropped</c> and
+    /// <c>freedTokens</c>. Never written with the decision circuit off. Additive: a consumer that does not know the
+    /// kind ignores it.
+    /// </summary>
+    public const string AgentPruned = "agent.pruned";
+
+    /// <summary>
     /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
     /// as an event that silently never arrives.
     /// </summary>
@@ -104,5 +147,6 @@ public static class RunEventKinds
         RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
         AgentSpawned, HubMessage, LlmCallStarted, LlmCallProgress, LlmCallFinished, LlmFallback, GraphNodeEntered,
+        RunDecision, AgentCompacted, AgentSkills, AgentRoute, AgentPruned,
     ];
 }

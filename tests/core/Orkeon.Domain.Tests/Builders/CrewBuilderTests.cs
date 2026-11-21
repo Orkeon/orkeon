@@ -358,6 +358,202 @@ public class CrewBuilderTests
         Assert.Single(crew.Tasks);
     }
 
+    private static TaskDecision RelayedDecision(string relayAgent) =>
+        TaskDecision.Create(
+            [ChoiceQuestionSpec.Create("route", "Pick the route", new Dictionary<string, string> { ["bug"] = "a defect", ["other"] = "anything else" })],
+            null, null, false, null)
+        .WithRelay(new DecisionRelay(relayAgent));
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldRefuseTheCrew_WhenARelayNamesNoRoleOfTheCrew()
+    {
+        // Arrange
+        var builder = new CrewBuilder()
+            .Goal("Triage the tickets")
+            .DecisionMode(CrewDecisionMode.Optional)
+            .WithAgent(CreateAgent("Analyst"))
+            .WithTask(t => t.Description("Route the ticket").ExpectedOutput("A route").WithKey("triage").WithDecision(RelayedDecision("Reviewer")));
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Task 'triage' without.agent 'Reviewer' is not an agent of the crew; its agents: Analyst.", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldOpenTheRefusalWithTheSharedPrefix_WhenTheDecisionModeIsBroken()
+    {
+        // Arrange
+        var builder = new CrewBuilder()
+            .Goal("Triage the tickets")
+            .DecisionMode(CrewDecisionMode.Optional)
+            .WithAgent(CreateAgent("Analyst"))
+            .WithTask(t => t.Description("Route the ticket").ExpectedOutput("A route").WithKey("triage").WithDecision(RelayedDecision("Reviewer")));
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains(Orkeon.Domain.Task.DecisionTaskRules.ModeRefusal(["Task 'triage'"]), ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldAcceptTheCrew_WhenTheRelayNamesTheRoleOfOneOfItsAgents()
+    {
+        // Arrange
+        var builder = new CrewBuilder()
+            .Goal("Triage the tickets")
+            .DecisionMode(CrewDecisionMode.Optional)
+            .WithAgent(CreateAgent("Analyst"))
+            .WithTask(t => t.Description("Route the ticket").ExpectedOutput("A route").WithKey("triage").WithDecision(RelayedDecision("Analyst")));
+
+        // Act
+        var crew = builder.Build();
+
+        // Assert
+        Assert.Single(crew.Tasks);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public void ShouldAcceptTheCrew_WhenTheRelayNamesTheKeyACrewFactoryResolvedToOneOfItsAgents()
+    {
+        // Arrange
+        var analyst = CreateAgent("Analyst");
+        var decision = TaskDecision.Create(
+                [ChoiceQuestionSpec.Create("route", "Pick the route", new Dictionary<string, string> { ["bug"] = "a defect", ["other"] = "anything else" })],
+                null, null, false, null)
+            .WithRelay(new DecisionRelay("analyst").ResolvedTo(analyst.Id));
+        var builder = new CrewBuilder()
+            .Goal("Triage the tickets")
+            .DecisionMode(CrewDecisionMode.Optional)
+            .WithAgent(analyst)
+            .WithTask(t => t.Description("Route the ticket").ExpectedOutput("A route").WithKey("triage").WithDecision(decision));
+
+        // Act
+        var crew = builder.Build();
+
+        // Assert
+        Assert.Single(crew.Tasks);
+    }
+
+    [Theory]
+    [InlineData(CrewDecisionMode.None)]
+    [InlineData(CrewDecisionMode.Unspecified)]
+    [InlineData(CrewDecisionMode.Required)]
+    [Trait("BR", "CH-429")]
+    public void ShouldLeaveTheCallersAgentCompactionUnchanged_WhateverTheCrewsDecisionMode(CrewDecisionMode mode)
+    {
+        // Arrange: the run, not the builder, takes a none crew's agents out of the host's pruning (#429).
+        var agent = CreateAgent("Reader");
+        var before = agent.Compaction;
+        var builder = new CrewBuilder().Goal("Read the tickets").DecisionMode(mode).WithAgent(agent).WithTask(CreateTask());
+
+        // Act
+        builder.Build();
+
+        // Assert
+        Assert.Same(before, agent.Compaction);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseTheCrew_WhenANoneCrewHasAnAgentOnSkillsAuto()
+    {
+        // Arrange
+        var agent = new AgentBuilder().Role("Writer").Goal("Write").Skills(new AgentSkills { Auto = true }).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None).WithAgent(agent).WithTask(CreateTask());
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Agent 'Writer' declares skills: { auto: true }", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseTheCrew_WhenANoneCrewHasAnAgentOnTheAutoProfile()
+    {
+        // Arrange
+        var agent = new AgentBuilder().Role("Writer").Goal("Write").WithLlmConfig(LlmConfig.OnProfile("auto")).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None).WithAgent(agent).WithTask(CreateTask());
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Agent 'Writer' names the profile 'auto', which System One picks and a crew with decision.mode: none refuses.", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseTheCrew_WhenANoneCrewHasATaskOverrideOnTheAutoProfile()
+    {
+        // Arrange
+        var task = new CrewTaskBuilder().Description("Write the notes").ExpectedOutput("Notes").WithKey("notes")
+            .WithLlmOverride(new LlmConfigOverride { Profile = "Auto" }).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None).WithAgent(CreateAgent("Writer")).WithTask(task);
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Task 'notes' names the profile 'Auto'", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldAcceptTheCrew_WhenOnlyAManagerWithNoTaskIsOnTheAutoProfile()
+    {
+        // Arrange: a manager with no task of its own runs on the default profile, as the crew factory rules (#434).
+        var manager = new AgentBuilder().Role("Lead").Goal("Lead").WithLlmConfig(LlmConfig.OnProfile("auto")).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None)
+            .Hierarchical(manager).WithAgent(CreateAgent("Writer")).WithTask(CreateTask());
+
+        // Act
+        var crew = builder.Build();
+
+        // Assert
+        Assert.Equal(manager.Id, crew.ManagerAgentId);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseTheCrew_WhenANoneCrewsManagerGivenAsAnObjectDeclaresSkillsAuto()
+    {
+        // Arrange
+        var manager = new AgentBuilder().Role("Lead").Goal("Lead").Skills(new AgentSkills { Auto = true }).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None)
+            .WithAgent(CreateAgent("Writer")).WithTask(CreateTask()).Hierarchical(manager);
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Agent 'Lead' declares skills: { auto: true }", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public void ShouldRefuseTheCrew_WhenANoneCrewsManagerGivenWithWithManagerPrunes()
+    {
+        // Arrange
+        var manager = new AgentBuilder().Role("Lead").Goal("Lead").Compaction(new AgentCompaction { Prune = true }).Build();
+        var builder = new CrewBuilder().Goal("Write the notes").DecisionMode(CrewDecisionMode.None).Hierarchical()
+            .WithManager(manager).WithAgent(CreateAgent("Writer")).WithTask(CreateTask());
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("Agent 'Lead' declares compaction: { prune: true }", ex.Message, StringComparison.Ordinal);
+    }
+
     #region Test Doubles
 
     private sealed class StubLlmProvider : ILlmProvider

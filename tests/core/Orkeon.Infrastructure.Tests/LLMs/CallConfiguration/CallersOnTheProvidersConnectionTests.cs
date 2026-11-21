@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // OpenAIContextWindowManager is obsolete (#432) and removed in a future major version, its tests with it.
 using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.AI;

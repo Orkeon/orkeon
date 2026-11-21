@@ -110,6 +110,42 @@ function stableHeader() {
     lines.push("- maxIterations: leave it out (the engine's default fits most agents). When you");
     lines.push("  set it, count one iteration per tool call, one per retry and one for the");
     lines.push("  final answer — never below 6.");
+    // The crew's decision mode (#431, --crew-decision): what the plan may hold.
+    var crewDecision = input.crewDecision || "none";
+    if (crewDecision === "none") {
+      lines.push("- Decisions: this crew asks System One nothing. No task has `decision` or `when`,");
+      lines.push("  no agent or task holds system_one_decide.");
+    } else {
+      lines.push("- Decisions (this crew is '" + crewDecision + "'): a decision task routes the work. Use one");
+      lines.push("  where the next step depends on a judgement over what came before (a category, an");
+      lines.push("  urgency, a yes/no, the probability that something holds), never for work an agent");
+      lines.push("  writes. A decision task has a key, a description and `decision`, and NO agent,");
+      lines.push("  expectedOutput, deliverable or tools:");
+      lines.push("  `decision: {questions: {category: {choice: {bug: \"a defect\", feature: \"a request\"}}}}`;");
+      lines.push("  a question is `choice` (option -> what it means), `score` (labels) or `noul` (a yes/no");
+      lines.push("  statement); `instructions` go on a choice or a score only: a `noul` statement says it all.");
+      lines.push("  Its dependencies are what it reads.");
+      lines.push("- A task gated by a decision has `when`: `{\"triage.category\": [\"bug\"]}` runs it when");
+      lines.push("  the option holds, `{\"triage.urgency\": \">= 0.7\"}` on a threshold, and");
+      lines.push("  `{\"triage\": \"otherwise\"}` when no other gated task matched.");
+      lines.push("- A crew with a decision task runs 'sequential', 'parallel' or 'graph': no other");
+      lines.push("  process runs decision tasks.");
+      if (crewDecision === "optional") {
+        lines.push("- Every decision task names its relay: `without: {agent: \"<agent key>\"}`, the agent that");
+        lines.push("  answers the questions when no decision model runs. The relay may run no task. No");
+        lines.push("  `fallback`, no system_one_decide. Prefer option clauses ([\"bug\"]) to thresholds:");
+        lines.push("  a relay's probabilities are coarser than a model's.");
+      } else {
+        lines.push("- The crew needs System One: at least one decision task (or an agent holding");
+        lines.push("  system_one_decide, when the catalogue lists it).");
+      }
+    }
+    // System One's advice on the process (#435): present only when the forge asked and p >= 0.6.
+    if (input.processHint && input.processHint.process) {
+      lines.push("- Suggestion only: a decision model rates '" + input.processHint.process + "' as the process that fits");
+      lines.push("  this brief (p = " + input.processHint.p + "). Weigh it, then choose crew.process yourself:");
+      lines.push("  it is advice, never a rule, and the rationale stays yours.");
+    }
     lines.push("- Hand-offs: a file one task writes for another is that task's deliverable, and");
     lines.push("  the task that reads it lists the writer in dependencies; a task names no other");
     lines.push("  file of the deliverable folders, except files already present. A folder is fine when a");

@@ -71,14 +71,39 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
 
     private ChatClientAgentLoop ChatLoop =>
         _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher,
-            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink, _verboseLogger, ToolCallDlp));
+            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink, _verboseLogger, ToolCallDlp,
+                CompactionServices?.For(Interfaces.Ports.LlmProfiles.Default, _fullProvider?.BaseConfig)));
 
     private LegacyTextAgentLoop LegacyLoop =>
         _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools, _verboseLogger);
 
     private NativeToolCallingAgentLoop NativeLoop =>
         _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools,
-            new NativeToolCallingAgentLoop.NativeToolCallingLoopOptions(_verboseLogger, ToolLimits));
+            new NativeToolCallingAgentLoop.NativeToolCallingLoopOptions(_verboseLogger, ToolLimits,
+                CompactionServices?.For(Interfaces.Ports.LlmProfiles.Default, _fullProvider?.BaseConfig)));
+
+    /// <summary>
+    /// What the loops compact with (#432), or null when <see cref="CompactionOptions"/> or
+    /// <see cref="ContextWindows"/> is unset — an orchestrator built by hand —: the loops then trim
+    /// their conversation to the last 40 messages, as they did before compaction.
+    /// </summary>
+    private Compaction.ContextCompactionServices? CompactionServices =>
+        CompactionOptions is null || ContextWindows is null
+            ? null
+            : _compactionServices ??= new Compaction.ContextCompactionServices
+            {
+                Options = CompactionOptions,
+                Windows = ContextWindows,
+                Logger = _logger,
+                TokenCounter = TokenCounter,
+                Observer = CompactionObserver,
+                Stages = ContextPressureStages,
+                SummaryProvider = () => string.IsNullOrWhiteSpace(CompactionOptions.Profile) || LlmProfiles is null
+                    ? null
+                    : LlmProfiles.Resolve(CompactionOptions.Profile).Provider,
+            };
+
+    private Compaction.ContextCompactionServices? _compactionServices;
 
     /// <summary>
     /// One agent loop per host profile an agent or a task of this scope named (GAP-17): the
@@ -199,6 +224,57 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// <c>AddOrkeonApplication</c>; null — an orchestrator built by hand — injects none.
     /// </summary>
     public Orkeon.Application.Memory.CrewMemoryProviderRegistry? MemoryRegistry { get; set; }
+
+    /// <summary>
+    /// How the native and the chat-client loops compact a long conversation (<c>Orkeon:Compaction</c>,
+    /// #432). Set by <c>AddOrkeonApplication</c> with <see cref="ContextWindows"/>; null — an
+    /// orchestrator built by hand — keeps the 40-message trim. Read when the loops are first built.
+    /// </summary>
+    public Compaction.ContextCompactionOptions? CompactionOptions { get; set; }
+
+    /// <summary>The context window a loop compacts against (#432); null keeps the 40-message trim.</summary>
+    public IContextWindowResolver? ContextWindows { get; set; }
+
+    /// <summary>The counter that estimates a conversation's prompt (#432); null estimates four characters a token.</summary>
+    public Domain.SharedKernel.ITokenCounter? TokenCounter { get; set; }
+
+    /// <summary>Told of every compaction (<c>agent.compacted</c>, #432); null logs it alone.</summary>
+    public IAgentCompactionObserver? CompactionObserver { get; set; }
+
+    /// <summary>
+    /// The stages that relieve a conversation before compaction does (#432, the seam of #434), in
+    /// order; empty by default. Each runs before every model call of a loop that compacts.
+    /// </summary>
+    public IReadOnlyList<Compaction.IContextPressureStage> ContextPressureStages { get; set; } = [];
+
+    /// <summary>
+    /// Reads the skills an agent's prompt carries (<c>skills:</c>, #434); null, an agent's skills are ignored.
+    /// </summary>
+    internal Skills.AgentSkillsResolver? SkillsResolver { get; set; }
+
+    /// <summary>Told which skills each task's prompt carries (<c>agent.skills</c>, #434); null logs it alone.</summary>
+    internal IAgentSkillsObserver? SkillsObserver { get; set; }
+
+    /// <summary>
+    /// Picks the profile of each task of an agent on <c>llm.profile: auto</c> (#434); null, such a task runs on
+    /// the default profile.
+    /// </summary>
+    internal Routing.AgentProfileRouter? ProfileRouter { get; set; }
+
+    /// <summary>Told which profile each task of an <c>auto</c> agent runs on (<c>agent.route</c>, #434); null logs it alone.</summary>
+    internal IAgentRouteObserver? RouteObserver { get; set; }
+
+    /// <summary>The circuit of this orchestrator's run scope when it is not the container's (#431); null follows the container's.</summary>
+    internal Execution.DecisionCircuit? ScopeCircuit { get; set; }
+
+    // What System One picked for each task of an agent (#434) - its profile on llm.profile: auto, its skills -
+    // outside a run: within one, the run's own (TaskPickScope), so the next run picks again.
+    private readonly Execution.TaskPicks _ownPicks = new();
+
+    private const string RoutePick = "route";
+    private const string SkillsPick = "skills";
+
+    private Execution.TaskPicks Picks => Execution.TaskPickScope.Current ?? _ownPicks;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ExecutionOrchestrator"/>.
@@ -532,6 +608,11 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 agentId: agent.Role.Value,
                 taskId: task.Id.ToString());
 
+            // The run scope's circuit (#431), when it is not the container's: what this task asks of the decision
+            // model through a service built once per host - the judge, a decision profile, the decision reranker -
+            // follows it, as the scoped services do.
+            using var circuitScope = Execution.DecisionCircuitScope.Begin(ScopeCircuit);
+
             // The agent's time limit (CH-01): opened before anything waits — the maxRpm turn
             // included — so every wait counts inside it; the one place a task runs in the six modes.
             using var deadline = BeginDeadline(agent, cancellationToken);
@@ -542,7 +623,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // What the task runs on — the profile its llm_override names, else its agent's own
                 // provider or profile, else the default (GAP-17, GAP-34) —, for its turns and its
                 // correction round alike.
-                var llm = LlmFor(agent, task);
+                var llm = await LlmForAsync(agent, task, context, taskToken).ConfigureAwait(false);
                 var toolbelt = TaskToolbelt.Compose(agent, task, _registeredTools, MemoryRegistry?.IsMemoryEnabled(context.CrewId) == true);
 
                 // A provider that runs its own tools — a Microsoft Agent Framework agent — never calls
@@ -561,6 +642,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                     agent, task, toolbelt,
                     _toolCallingStrategy?.SupportsNativeToolCalling == true,
                     _fileSystem);
+                // The agent's skills (#434): a fixed list, or the decision model's pick for this task.
+                systemPrompt = await AppendSkillsAsync(agent, task, context, systemPrompt, taskToken).ConfigureAwait(false);
                 var knowledgeContext = await ResolveKnowledgeContextAsync(
                     agent, task, context, taskToken).ConfigureAwait(false);
                 // The task's plan, when the crew plans (GAP-31): the run's scope holds it, so it
@@ -826,6 +909,40 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     }
 
     /// <summary>
+    /// Appends the agent's skills block (#434) to <paramref name="systemPrompt"/>. The block is chosen at the task's
+    /// first attempt by this agent in the run, the observer told then, and every later attempt carries the same.
+    /// The prompt is unchanged when no resolver is wired, the agent declares no skill or none is carried (an auto
+    /// pick of none, a fallback left empty).
+    /// </summary>
+    private async System.Threading.Tasks.Task<string> AppendSkillsAsync(
+        DomainAgent agent,
+        CrewTask task,
+        SimpleExecutionContext context,
+        string systemPrompt,
+        CancellationToken cancellationToken)
+    {
+        if (SkillsResolver is null || agent.Skills is null)
+            return systemPrompt;
+
+        var resolver = SkillsResolver;
+        var taskId = task.Id.ToString();
+        var resolution = await Picks.OnceAsync(SkillsPick, taskId, agent.Id.ToString(), async token =>
+        {
+            var chosen = await resolver.ResolveAsync(
+                agent, taskId, AgentPromptComposer.BuildKnowledgeQueryText(task, context), ScopeCircuit, token).ConfigureAwait(false);
+            if (chosen is not null)
+                SkillsObserver?.SkillsChosen(chosen.Notice);
+            return chosen;
+        }, cancellationToken).ConfigureAwait(false);
+        if (resolution is null)
+            return systemPrompt;
+
+        return resolution.Block.Length == 0
+            ? systemPrompt
+            : systemPrompt + Environment.NewLine + resolution.Block + Environment.NewLine;
+    }
+
+    /// <summary>
     /// Resolves the retrieved-knowledge context block for the executing agent (RAG-03/C4).
     /// Returns null — leaving the user prompt byte-identical to the pre-RAG output — when
     /// no <see cref="KnowledgeAugmenter"/> is wired, the agent has no knowledge attachment,
@@ -911,20 +1028,46 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// <summary>
     /// What <paramref name="task"/> runs on (GAP-17, GAP-34): the profile its <c>llm_override</c>
     /// names — <c>default</c> included —, else its agent's own provider (<c>Agent.Llm</c>), else its
-    /// agent's profile, else the host's default.
+    /// agent's profile, else the host's default. A profile of <c>auto</c> is the one System One picks for the
+    /// task (#434).
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// The profile is not one <see cref="LlmProfiles"/> offers — the crew load checks it first; this is
     /// the guard for a crew built by hand —, or the agent carries its own provider and no registry
     /// can build its client.
     /// </exception>
-    private TaskLlm LlmFor(DomainAgent agent, CrewTask task)
+    private async System.Threading.Tasks.Task<TaskLlm> LlmForAsync(
+        DomainAgent agent, CrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
     {
         var taskProfile = task.LlmOverride?.Profile;
         if (string.IsNullOrWhiteSpace(taskProfile) && agent.Llm is { } own)
             return OwnProviderLlm(agent, own);
 
-        return ProfileLlm(agent, string.IsNullOrWhiteSpace(taskProfile) ? agent.LlmConfig?.Profile : taskProfile);
+        var profile = string.IsNullOrWhiteSpace(taskProfile) ? agent.LlmConfig?.Profile : taskProfile;
+        if (Interfaces.Ports.LlmProfiles.IsAuto(profile))
+            profile = await RoutedProfileAsync(agent, task, context, cancellationToken).ConfigureAwait(false);
+        return ProfileLlm(agent, profile);
+    }
+
+    /// <summary>
+    /// The profile System One picks for <paramref name="task"/> of an agent on <c>llm.profile: auto</c> (#434), once
+    /// per agent and run: a later attempt of the same task by the same agent keeps it, another agent on the task
+    /// (a voter) has its own picked, and the observer is told at each pick. Without a router, the default profile.
+    /// </summary>
+    private async System.Threading.Tasks.Task<string> RoutedProfileAsync(
+        DomainAgent agent, CrewTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
+    {
+        if (ProfileRouter is not { } router)
+            return Interfaces.Ports.LlmProfiles.Default;
+
+        var taskId = task.Id.ToString();
+        return await Picks.OnceAsync(RoutePick, taskId, agent.Id.ToString(), async token =>
+        {
+            var notice = await router.RouteAsync(
+                agent, taskId, AgentPromptComposer.BuildKnowledgeQueryText(task, context), ScopeCircuit, token).ConfigureAwait(false);
+            RouteObserver?.ProfileRouted(notice);
+            return notice.Profile;
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>The loop and provider of the host profile <paramref name="profile"/> — the default's for none.</summary>
@@ -969,7 +1112,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             new LlmCallGate(_logger, profile.BasicProvider, TimeProvider, AgentRequestsPerMinute, _verboseLogger),
             OptionsComposer,
             ToolDispatcher,
-            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink, _verboseLogger));
+            new ChatClientAgentLoop.ChatClientAgentLoopOptions(DeltaSink, _verboseLogger,
+                Compaction: CompactionServices?.For(profile.Name, profile.Provider.BaseConfig)));
 
     /// <summary>
     /// Why <paramref name="task"/> cannot run on <paramref name="provider"/>, or null (GAP-34): the

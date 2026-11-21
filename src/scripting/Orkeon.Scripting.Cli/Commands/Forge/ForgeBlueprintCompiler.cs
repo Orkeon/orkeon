@@ -101,7 +101,7 @@ internal static class ForgeBlueprintCompiler
     /// nothing by an exception) into the loader's DTO form and the domain configuration. The verdict is a separate step (<see cref="Validate"/>), so a
     /// render and its validation always look at the same compilation.
     /// </summary>
-    public static ForgeCompilation Compile(ForgeBlueprint blueprint, IReadOnlyList<ForgeFolder>? folders = null)
+    public static ForgeCompilation Compile(ForgeBlueprint blueprint, IReadOnlyList<ForgeFolder>? folders = null, string? crewDecision = null)
     {
         ArgumentNullException.ThrowIfNull(blueprint);
 
@@ -122,6 +122,8 @@ internal static class ForgeBlueprintCompiler
             Memory = blueprint.Crew?.Memory,
             ManagerAgent = blueprint.Manager,
             Mounts = expectedRoots.Count > 0 ? new Collection<string>(expectedRoots) : null,
+            // None renders no block: a crew of that mode loads on an engine that predates the key (#431).
+            Decision = ForgeCrewDecision.BlockOf(crewDecision),
         };
 
         var agents = new Dictionary<string, AgentYamlConfig>(StringComparer.Ordinal);
@@ -151,6 +153,8 @@ internal static class ForgeBlueprintCompiler
                 Deliverable = string.IsNullOrWhiteSpace(task.Deliverable)
                     ? null
                     : new DeliverableYamlConfig { Path = task.Deliverable, Source = EmittedDeliverableSource(blueprint, task) is FinalMessageSource ? FinalMessageSource : null },
+                Decision = task.Decision is { } decision ? ForgeBlueprintDecisions.ToYaml(decision) : null,
+                When = task.When is { } when ? ForgeBlueprintDecisions.ToYaml(when) : null,
             };
         }
 
@@ -165,6 +169,7 @@ internal static class ForgeBlueprintCompiler
                 Memory = settings.Memory,
                 ManagerAgent = settings.ManagerAgent,
                 Mounts = settings.Mounts,
+                Decision = settings.Decision,
             },
             agents,
             tasks);

@@ -54,7 +54,8 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
     /// <summary>
     /// The allowance of a run that names no budget (#426): no wall clock, tool-call or token cap, as its
     /// act has none, so neither a late spawn nor the child it starts stops on a limit the crew never set.
-    /// The delegation-depth and spawn-count defaults of <see cref="AgentExecutionBudget"/> stay.
+    /// The delegation-depth and spawn-count defaults of <see cref="AgentExecutionBudget"/> stay. A
+    /// <c>budget({...})</c> fills the dimensions it leaves out from it too (#436).
     /// </summary>
     /// <param name="clock">The clock the budget reads; <see cref="TimeProvider.System"/> when null.</param>
     internal static AgentExecutionBudget Unbudgeted(TimeProvider? clock = null) => new()

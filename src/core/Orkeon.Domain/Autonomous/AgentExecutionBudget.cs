@@ -391,48 +391,49 @@ public sealed class AgentExecutionBudget
     /// <summary>
     /// Creates a child budget for a delegated sub-agent, inheriting remaining allowances with reduced depth.
     /// A budget that charges another one (<see cref="ChargedTo"/>) hands the charge to its child, and each
-    /// allowance is also capped by what the charged budget has left.
+    /// allowance is also capped by what the charged budget has left. A dimension no budget of the chain
+    /// caps (<see cref="int.MaxValue"/>, or <see cref="TimeSpan.MaxValue"/> for the wall time) stays
+    /// uncapped for the child, whatever was spent on it already (#436).
     /// </summary>
     public AgentExecutionBudget CreateChildBudget() => new()
     {
-        MaxToolCalls = Math.Max(1, Remaining(static b => b.MaxToolCalls - b._toolCalls)),
+        MaxToolCalls = ChildAllowance(static b => b.MaxToolCalls, static b => b._toolCalls, 1),
         MaxDelegationDepth = Math.Max(0, MaxDelegationDepth - _delegationDepth - 1),
         MaxWallTime = RemainingWallTime(),
-        MaxTokensConsumed = Math.Max(100, Remaining(static b => b.MaxTokensConsumed - b._tokensConsumed)),
-        MaxContextTokens = UnboundedContextChain()
-            ? int.MaxValue
-            : Math.Max(100, Remaining(static b => b.MaxContextTokens == int.MaxValue ? int.MaxValue : b.MaxContextTokens - b._contextTokens)),
-        MaxSpawnedAgents = Math.Max(0, Remaining(static b => b.MaxSpawnedAgents - b._spawnedAgents)),
+        MaxTokensConsumed = ChildAllowance(static b => b.MaxTokensConsumed, static b => b._tokensConsumed, 100),
+        MaxContextTokens = ChildAllowance(static b => b.MaxContextTokens, static b => b._contextTokens, 100),
+        MaxSpawnedAgents = ChildAllowance(static b => b.MaxSpawnedAgents, static b => b._spawnedAgents, 0),
         TimeProvider = _timeProvider,
         ChargedTo = ChargedTo
     };
 
-    /// <summary>True when no budget of the chain, this one included, sets <see cref="MaxContextTokens"/>.</summary>
-    private bool UnboundedContextChain()
-    {
-        for (var budget = this; budget is not null; budget = budget.ChargedTo)
-        {
-            if (budget.MaxContextTokens != int.MaxValue)
-                return false;
-        }
-        return true;
-    }
-
-    /// <summary>The smallest of <paramref name="left"/> over this budget and every budget it charges, transitively.</summary>
-    private int Remaining(Func<AgentExecutionBudget, int> left)
+    /// <summary>
+    /// What a child may spend of one dimension: <see cref="int.MaxValue"/> when no budget of the chain, this
+    /// one included, caps it (<paramref name="limit"/> is <see cref="int.MaxValue"/> on each), else the
+    /// smallest of what each capping budget has left, never below <paramref name="floor"/>.
+    /// </summary>
+    private int ChildAllowance(Func<AgentExecutionBudget, int> limit, Func<AgentExecutionBudget, int> spent, int floor)
     {
         var remaining = int.MaxValue;
         for (var budget = this; budget is not null; budget = budget.ChargedTo)
-            remaining = Math.Min(remaining, left(budget));
-        return remaining;
+        {
+            var max = limit(budget);
+            if (max != int.MaxValue)
+                remaining = Math.Min(remaining, max - spent(budget));
+        }
+        return remaining == int.MaxValue ? int.MaxValue : Math.Max(floor, remaining);
     }
 
-    /// <summary>The smallest wall time left over this budget and every budget it charges, transitively.</summary>
+    /// <summary>
+    /// The smallest wall time left over this budget and every budget it charges, transitively;
+    /// <see cref="TimeSpan.MaxValue"/> when none of them caps the wall time.
+    /// </summary>
     private TimeSpan RemainingWallTime()
     {
         var remaining = TimeSpan.MaxValue;
         for (var budget = this; budget is not null; budget = budget.ChargedTo)
         {
+            if (budget.MaxWallTime == TimeSpan.MaxValue) continue;
             var left = budget.MaxWallTime - budget.Elapsed;
             if (left < remaining) remaining = left;
         }

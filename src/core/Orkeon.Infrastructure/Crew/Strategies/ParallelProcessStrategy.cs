@@ -70,7 +70,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
         _lifecycle = dependencies.LifecycleFor(logger);
         _decisionRunner = dependencies.DecisionRunner;
-        _decisions = _decisionRunner is null ? null : new DecisionDispatch(_decisionRunner);
+        _decisions = _decisionRunner is null ? null : new DecisionDispatch(_decisionRunner, _executionService);
     }
 
     /// <summary>Initializes a new instance of <see cref="ParallelProcessStrategy"/>.</summary>
@@ -162,7 +162,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             throw new InvalidOperationException("No agents available for parallel execution");
 
         // Once, before any task: a decision task that could not answer fails the run at its door.
-        var faults = DecisionPreflight.Check(tasks, _decisionRunner);
+        var faults = DecisionPreflight.Check(tasks, _decisionRunner, crew.DecisionMode);
         if (faults.Count > 0)
             return await DecisionPreflight.FailAtEntryAsync(_hooks, crew.Id.ToString(), startedAt, string.Join(' ', faults)).ConfigureAwait(false);
 
@@ -301,7 +301,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 : outcome.RecordStartAsync(task, agent)).ConfigureAwait(false);
             launched.Add((task, agent));
             launch.ExecutionTasks.Add(System.Threading.Tasks.Task.Run(async () => await ExecuteWaveTaskAsync(
-                capturedAgent, capturedTask, tasks, context, run.TokenTally, run.TaskSnapshots, cancellationToken)
+                capturedAgent, capturedTask, tasks, agents, context, run.TokenTally, run.TaskSnapshots, cancellationToken)
                 .ConfigureAwait(false)));
         }
 
@@ -433,6 +433,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         DomainAgent? agent,
         DomainTask task,
         IReadOnlyList<DomainTask> crewTasks,
+        IReadOnlyList<DomainAgent> agents,
         SimpleExecutionContext context,
         TokenUsageTally tokenTally,
         System.Collections.Concurrent.ConcurrentBag<TaskExecutionSnapshot> taskSnapshots,
@@ -446,7 +447,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             .ConfigureAwait(false);
 
         var result = agent is null
-            ? await RunDecisionAsync(task, crewTasks, context, cancellationToken).ConfigureAwait(false)
+            ? await RunDecisionAsync(task, crewTasks, agents, context, cancellationToken).ConfigureAwait(false)
             : await _executionService.ExecuteTaskAsync(agent, task, context, cancellationToken).ConfigureAwait(false);
 
         tokenTally.Record(result);
@@ -489,6 +490,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             CacheHitTokens = result.CacheHitTokens,
             CacheMissTokens = result.CacheMissTokens,
             Defaulted = result.Decision?.IsDefaulted ?? false,
+            DecisionSource = result.DecisionSource,
             EndedOnIterationCap = result.EndedOnIterationCap,
             DeliverableMissing = result.DeliverableMissing,
         }, domainOutput, isDecisionTask: agent is null);
@@ -498,12 +500,15 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         return (domainOutput, appOutput, result.Error ?? result.LastError, result.EndedAt);
     }
 
-    /// <summary>A decision task answered by the decision runner from the wave's context: no agent, no memory, no tokens.</summary>
+    /// <summary>
+    /// A decision task answered by the decision runner from the wave's context: no agent of its own, no memory;
+    /// the tokens the decision model or the relay agent (#430) reports are tallied like an agent's.
+    /// </summary>
     private System.Threading.Tasks.Task<TaskResult> RunDecisionAsync(
-        DomainTask task, IReadOnlyList<DomainTask> crewTasks, SimpleExecutionContext context, CancellationToken cancellationToken) =>
+        DomainTask task, IReadOnlyList<DomainTask> crewTasks, IReadOnlyList<DomainAgent> agents, SimpleExecutionContext context, CancellationToken cancellationToken) =>
         _decisions is null
             ? throw new InvalidOperationException($"Task {task.Id} is a decision task and the strategy has no decision runner.")
-            : _decisions.RunAsync(task, crewTasks, context.PreviousOutputs, cancellationToken);
+            : _decisions.RunAsync(task, crewTasks, agents, context.PreviousOutputs, cancellationToken);
 
     /// <summary>
     /// The tasks grouped into dependency waves: everything in a wave can run at once, and a

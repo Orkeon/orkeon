@@ -45,6 +45,10 @@ public sealed partial class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmPr
     private readonly ILogger _logger;
     private readonly Lazy<Task<LoadResult>> _entries;
 
+    // The number of the last tool call served: ids run on across every answer of the provider (#434), so two
+    // rounds of one conversation never carry the same id.
+    private int _lastCallId;
+
     /// <summary>Creates a provider over the JSONL file at <paramref name="responsesPath"/>.</summary>
     /// <param name="fileSystem">The virtual file system the file is read through.</param>
     /// <param name="responsesPath">The virtual path of the JSONL file; it is read on the first call.</param>
@@ -177,14 +181,14 @@ public sealed partial class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmPr
             return Failed($"No line of {_path} matches the prompt: {Excerpt(prompt)}");
 
         var (chosen, text) = script[Math.Min(rounds, script.Count - 1)];
-        if (rounds >= script.Count && chosen.ToolCallsBody is not null)
+        if (rounds >= script.Count && chosen.HasToolCalls)
             return Failed($"The lines of {_path} that match the prompt ran out after {script.Count} round(s) of tool results, and the last one still asks for a tool: add a line with the final answer.");
 
         return new LlmResponse
         {
             Content = text,
             Model = Name,
-            RawResponseBody = chosen.ToolCallsBody,
+            RawResponseBody = chosen.ToolCallsBody(() => Interlocked.Increment(ref _lastCallId)),
         };
     }
 
@@ -243,16 +247,26 @@ public sealed partial class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmPr
 
         private readonly string _content;
 
-        private Entry(string match, Regex? regex, string content, string? toolCallsBody, int lineNumber)
+        // The tool calls of the line, by name and raw arguments; null for a line that answers with text alone.
+        private readonly IReadOnlyList<(string Name, string Arguments)>? _toolCalls;
+
+        private Entry(string match, Regex? regex, string content, IReadOnlyList<(string Name, string Arguments)>? toolCalls, int lineNumber)
         {
             _match = match;
             _regex = regex;
             _content = content;
-            ToolCallsBody = toolCallsBody;
+            _toolCalls = toolCalls;
             LineNumber = lineNumber;
         }
 
-        public string? ToolCallsBody { get; }
+        public bool HasToolCalls => _toolCalls is not null;
+
+        /// <summary>
+        /// The OpenAI-shaped body of the line's tool calls, each id numbered by <paramref name="nextId"/>; null for a
+        /// line with none.
+        /// </summary>
+        public string? ToolCallsBody(Func<int> nextId) =>
+            _toolCalls is null ? null : BuildToolCallsBody(_toolCalls, _content, nextId);
 
         public int LineNumber { get; }
 
@@ -282,9 +296,9 @@ public sealed partial class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmPr
                 ? c.GetString()!
                 : string.Empty;
 
-            string? body = null;
+            List<(string Name, string Arguments)>? toolCalls = null;
             if (root.TryGetProperty("toolCalls", out var calls) && calls.ValueKind == JsonValueKind.Array && calls.GetArrayLength() > 0)
-                body = BuildToolCallsBody(calls, content);
+                toolCalls = ParseToolCalls(calls);
             else if (content.Length == 0)
                 throw new InvalidOperationException("'content' or 'toolCalls' is required");
 
@@ -292,22 +306,30 @@ public sealed partial class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmPr
                 match,
                 isRegex ? new Regex(match, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, s_regexTimeout) : null,
                 content,
-                body,
+                toolCalls,
                 lineNumber);
         }
 
-        private static string BuildToolCallsBody(JsonElement calls, string content)
+        private static List<(string Name, string Arguments)> ParseToolCalls(JsonElement calls)
         {
-            var list = new List<object?>();
-            var index = 0;
+            var list = new List<(string Name, string Arguments)>();
             foreach (var call in calls.EnumerateArray())
             {
                 var name = call.GetProperty("name").GetString()
                     ?? throw new InvalidOperationException("a tool call needs a 'name'");
-                var arguments = call.TryGetProperty("arguments", out var a) ? a.GetRawText() : "{}";
+                list.Add((name, call.TryGetProperty("arguments", out var a) ? a.GetRawText() : "{}"));
+            }
+            return list;
+        }
+
+        private static string BuildToolCallsBody(IReadOnlyList<(string Name, string Arguments)> calls, string content, Func<int> nextId)
+        {
+            var list = new List<object?>();
+            foreach (var (name, arguments) in calls)
+            {
                 list.Add(new Dictionary<string, object?>
                 {
-                    ["id"] = $"mock_call_{index++}",
+                    ["id"] = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"mock_call_{nextId()}"),
                     ["type"] = "function",
                     ["function"] = new Dictionary<string, object?> { ["name"] = name, ["arguments"] = arguments },
                 });

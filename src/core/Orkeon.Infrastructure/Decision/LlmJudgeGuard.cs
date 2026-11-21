@@ -48,6 +48,7 @@ public sealed partial class LlmJudgeGuard : IGuardian
     private readonly IReadOnlyDictionary<string, string> _risks;
     private readonly ILogger<LlmJudgeGuard> _logger;
     private readonly IAuditLogger? _auditLogger;
+    private int _offWarned;
 
     /// <summary>Initializes a new instance of <see cref="LlmJudgeGuard"/>.</summary>
     /// <param name="model">The decision model.</param>
@@ -69,6 +70,13 @@ public sealed partial class LlmJudgeGuard : IGuardian
     /// <summary>Whether the guard runs (<c>Orkeon:Guardian:Llm:Enabled</c>).</summary>
     public bool Enabled => _options.Enabled;
 
+    /// <summary>
+    /// The decision circuit read at each check (#433, #431); null judges every time. Off - a run whose scope is
+    /// off - the model is not asked: <see cref="GuardianLlmOptions.FailMode"/> decides, <c>Closed</c> blocks and
+    /// <c>Open</c> lets the text in, and one warning says it.
+    /// </summary>
+    internal Func<Orkeon.Application.Crew.Execution.DecisionCircuit>? Circuit { get; init; }
+
     /// <inheritdoc />
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031",
         Justification = "Fail-mode: an unreachable decision model blocks (closed) or warns and is audited (open) rather than failing the turn.")]
@@ -81,6 +89,8 @@ public sealed partial class LlmJudgeGuard : IGuardian
         var what = context.Phase == GuardPhase.Output ? "output" : "input";
         var content = context.Content;
         var closed = _options.FailMode == GuardianJudgeFailMode.Closed;
+        if (Circuit?.Invoke() is { Enabled: false } off)
+            return await CircuitOffAsync(context, what, off.OffReason!, closed, ct).ConfigureAwait(false);
         var (chunks, refusal) = await BuildChunksAsync(context, what, content, closed, ct).ConfigureAwait(false);
         if (refusal is not null)
             return refusal;
@@ -107,6 +117,19 @@ public sealed partial class LlmJudgeGuard : IGuardian
         }
 
         return Verdict(context, what, merged);
+    }
+
+    // The verdict with the circuit off: no model call; a fail-closed judge blocks, a fail-open one lets the text in.
+    // Both are audited, as the model-failure path is: what closed refused and what open let in is observable.
+    private async Task<GuardResult> CircuitOffAsync(GuardContext context, string what, string reason, bool closed, CancellationToken ct)
+    {
+        if (Interlocked.Exchange(ref _offWarned, 1) == 0)
+            LogCircuitOff(reason, _options.FailMode);
+        var refusal = $"the LLM judge cannot judge the {what}: {reason} (fail mode: {_options.FailMode})";
+        await AuditAsync(context, UnavailableThreatType, refusal, AuditSeverity.Warning, ct).ConfigureAwait(false);
+        if (!closed)
+            return GuardResult.Allow();
+        return GuardResult.Block(refusal, [Violation(context.Phase, refusal, GuardThreatSeverity.Medium)]);
     }
 
     // The highest probability of each risk over every chunk.
@@ -227,6 +250,9 @@ public sealed partial class LlmJudgeGuard : IGuardian
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "LLM judge ({Phase}): the decision model failed for agent {AgentRole}")]
     private partial void LogModelFailed(Exception exception, GuardPhase phase, string agentRole);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "LLM judge (Orkeon:Guardian:Llm): {Reason}; the decision model is not asked, FailMode {FailMode} decides (Closed blocks, Open lets the text in)")]
+    private partial void LogCircuitOff(string reason, GuardianJudgeFailMode failMode);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "LLM judge: the audit event could not be written")]
     private partial void LogAuditFailed(Exception exception);

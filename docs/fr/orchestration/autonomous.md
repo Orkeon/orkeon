@@ -157,12 +157,16 @@ Quand la stratégie délègue, ou que `SpawnAgentTool` crée un agent, le sous-a
 
 ```csharp
 var childBudget = parentBudget.CreateChildBudget();
-// MaxToolCalls       = max(1, parent.Max - parent.Current)
-// MaxDelegationDepth = max(0, parent.Max - parent.Current - 1)
-// MaxWallTime        = parent.MaxWallTime - parent.Elapsed
-// MaxTokensConsumed  = max(100, parent.Max - parent.Current)
-// MaxSpawnedAgents   = max(0, parent.Max - parent.Current)
+// La chaîne : le parent et chaque budget qu'il impute (ChargedTo), de proche en proche.
+// MaxToolCalls       = sans plafond si aucun budget de la chaîne ne le plafonne, sinon max(1, min sur la chaîne de Max - Current)
+// MaxTokensConsumed  = de même, plancher 100
+// MaxContextTokens   = de même, plancher 100
+// MaxSpawnedAgents   = de même, plancher 0
+// MaxWallTime        = sans plafond si aucun budget de la chaîne ne le plafonne, sinon min sur la chaîne de MaxWallTime - Elapsed (sans plancher)
+// MaxDelegationDepth = max(0, parent.Max - parent.Current - 1)   (le parent seul)
 ```
+
+Une dimension qu'aucun budget de la chaîne ne plafonne (`int.MaxValue`, ou `TimeSpan.MaxValue` pour le temps mural) reste sans plafond pour l'enfant, quoi qu'on y ait déjà dépensé : une crew sans `tokens` ne donne à ses enfants aucun plafond de tokens.
 
 Un budget enfant est une copie indépendante de l'allocation **restante** du parent, avec ses propres compteurs : deux enfants dérivés l'un après l'autre reçoivent chacun la totalité du reste. Le plafond du parent n'est tenu que là où la consommation lui est aussi imputée — les tokens d'une exécution déléguée, et chaque spawn. Un budget peut aussi en imputer un autre (`ChargedTo`, posé par l'option `charge: "crew"` du [DSL de script](../reference/scripting-dsl.md)) : chaque appel d'outil, token et spawn qu'il enregistre l'est aussi sur celui-là, `CreateChildBudget()` transmet cette imputation à l'enfant (il n'impute pas le parent lui-même), et `IsExhausted` est vrai quand le budget lui-même ou celui qu'il impute est épuisé.
 
@@ -287,7 +291,7 @@ agents:
 
 `spawn_agent` n'est pas listé : le loader YAML résout les noms d'outils dans le registre d'outils, où aucun `SpawnAgentTool` n'est enregistré par défaut (un nom inconnu est ignoré avec un avertissement, ou fait échouer le chargement en mode strict des outils).
 
-> **Note** : le budget de la crew est `budget:` en YAML (`tokens`, `wallTimeSeconds`, `toolCalls`, `delegationDepth`, `spawnedAgents`) ; dans le DSL de scripting, `crewBuilder().budget({...})` le fixe dans les deux formes — la forme déclarative d'une crew `process("autonomous")`, la forme procédurale (`await crew.run()`) — et la forme déclarative d'un autre process le refuse, comme le YAML, ainsi qu'une limite inférieure à 1. Les défauts sont sous [Presets](#presets).
+> **Note** : le budget de la crew est `budget:` en YAML (`tokens`, `wallTimeSeconds`, `toolCalls`, `delegationDepth`, `spawnedAgents`) ; dans le DSL de scripting, `crewBuilder().budget({...})` le fixe dans les deux formes — la forme déclarative d'une crew `process("autonomous")`, la forme procédurale (`await crew.run()`) — et la forme déclarative d'un autre process le refuse, comme le YAML, ainsi qu'une limite inférieure à 1. Une clé omise n'est pas plafonnée dans la forme procédurale, hors les défauts structurels du nombre de spawns et de la profondeur de délégation ([`ctx` — le contexte d'agent](../reference/scripting-dsl.md#ctx--le-contexte-dagent), les clés de `budget`), et prend le défaut de `CrewBudget` dans la forme déclarative (le paragraphe `KickoffAsync` sous [Presets](#presets)) : aucune des deux ne suit les presets.
 
 > **Délégation** : la stratégie autonome délègue via l'`IAgentChannel` ; il n'existe pas de service de délégation de tâches.
 

@@ -121,6 +121,18 @@ public partial class YamlCrewExporter
         Dictionary<string, AgentYamlConfig> Agents,
         Dictionary<string, TaskYamlConfig> Tasks);
 
+    // An agent's skills: (#434) as the mapper reads them back, a list or the map of a pick.
+    private static object? MapSkills(Orkeon.Domain.Agent.AgentSkills? skills) => skills switch
+    {
+        null => null,
+        { Auto: true } => new Dictionary<string, object>
+        {
+            ["auto"] = true,
+            ["fallback"] = new Collection<string>([.. skills.Fallback]),
+        },
+        _ => new Collection<string>([.. skills.Paths]),
+    };
+
     private static CrewDocument MapCrewDocument(CrewConfiguration config)
     {
         var names = EntryNames.For(config);
@@ -150,6 +162,7 @@ public partial class YamlCrewExporter
             Planning = config.Planning ? true : null,
             MaxRpm = config.MaxRpm,
             Budget = MapBudget(config.Budget),
+            Decision = MapDecisionMode(config.DecisionMode),
             ManagerAgent = config.ManagerAgentId is { } manager ? names.Of(manager) : null,
             Graph = MapGraph(config, names),
             Rag = MapRag(config.Rag),
@@ -335,6 +348,10 @@ public partial class YamlCrewExporter
             Verbose = agent.Verbose ? true : null,
             Llm = MapLlmConfig(agent.LlmConfig),
             Guardrails = MapGuardrails(agent.Guardrails),
+            Compaction = agent.Compaction is { } compaction
+                ? new CompactionYamlConfig { Enabled = compaction.Enabled, TriggerShare = compaction.TriggerShare, Prune = compaction.Prune }
+                : null,
+            Skills = MapSkills(agent.Skills),
             Knowledge = MapKnowledge(agent.KnowledgeAttachments),
         };
     }
@@ -532,7 +549,14 @@ public partial class YamlCrewExporter
         State = decision.StateFrom.Count > 0 ? new Collection<string>([.. decision.StateFrom]) : null,
         LongContext = decision.LongContext ? true : null,
         Fallback = decision.HasExplicitFallback ? new Dictionary<string, string>(decision.Fallback) : null,
+        Without = decision.Without is { } relay ? new DecisionRelayYamlConfig { Agent = relay.Agent, Instructions = relay.Instructions } : null,
     };
+
+    /// <summary>The crew's <c>decision.mode</c> (#429); nothing for a crew that declares none.</summary>
+    private static CrewDecisionYamlConfig? MapDecisionMode(Orkeon.Domain.Crew.CrewDecisionMode mode) =>
+#pragma warning disable CA1308 // lowercase is the required YAML wire/storage form, not a comparison normalization
+        mode == Orkeon.Domain.Crew.CrewDecisionMode.Unspecified ? null : new CrewDecisionYamlConfig { Mode = mode.ToString().ToLowerInvariant() };
+#pragma warning restore CA1308
 
     private static QuestionYamlConfig MapQuestion(DecisionQuestionSpec question) => question switch
     {

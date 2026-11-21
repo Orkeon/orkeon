@@ -149,6 +149,49 @@ public partial class YamlCrewExportRoundTripTests
     }
 
     [Fact]
+    [Trait("BR", "CH-429")]
+    public async Task ShouldReloadTheExport_WhenAWhenListHoldsTheOptionsNoAndYes()
+    {
+        // Arrange: a loader refuses an unquoted no in a when: list, so the export quotes it.
+        var loaded = await _loader.LoadFromStringAsync(
+            """
+            name: gated
+            goal: Escalate when asked
+            agents:
+              worker:
+                goal: Work
+            tasks:
+              triage:
+                description: Classify
+                expectedOutput: A class
+                decision:
+                  questions:
+                    escalate:
+                      choice:
+                        yes: escalate it
+                        no: keep it
+                        later: decide later
+                  fallback:
+                    escalate: "no"
+              notify:
+                description: Notify the owner
+                expectedOutput: A notice
+                agent: worker
+                when:
+                  triage.escalate: ["no", "yes"]
+            """,
+            TestContext.Current.CancellationToken);
+
+        // Act
+        var exported = _exporter.ExportToString(loaded);
+        var reloaded = await _loader.LoadFromStringAsync(exported, TestContext.Current.CancellationToken);
+
+        // Assert
+        CrewConfigurationProjection.AssertEqual(loaded, reloaded);
+        Assert.Equal(exported, _exporter.ExportToString(reloaded));
+    }
+
+    [Fact]
     [Trait("BR", "BR-02")]
     public async Task ShouldOmitMinConfidence_WhenDecisionFloorIsTheDefault()
     {

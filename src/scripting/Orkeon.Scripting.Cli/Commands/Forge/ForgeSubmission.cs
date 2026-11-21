@@ -36,6 +36,9 @@ internal sealed class ForgeSubmissionBox
     /// <summary>The files the brief's folders already hold; the assistant sets it before each turn.</summary>
     public IReadOnlyCollection<string> ExistingPaths { get; set; } = [];
 
+    /// <summary>The decision mode of the crew being designed (#431): what a submitted plan may declare.</summary>
+    public string? CrewDecision { get; set; }
+
     /// <summary>Empties the box; the assistant wrapper calls this before every turn.</summary>
     public void Reset()
     {
@@ -202,7 +205,7 @@ internal sealed class BlueprintSubmitTool : ForgeSubmitToolBase
         {
             ["crew"] = new("object", "{name, goal, process, verbose, memory}.", Required: true),
             ["agents"] = new("array", "{key, role, goal, backstory, tools, allowDelegation, maxIterations}.", Required: true),
-            ["tasks"] = new("array", "{key, description, expectedOutput, agent, dependencies, deliverable}.", Required: true),
+            ["tasks"] = new("array", "{key, description, expectedOutput, agent, dependencies, deliverable, decision, when}.", Required: true),
             ["manager"] = new("string", "Manager agent key, hierarchical or consensual crews only.", Required: false),
             ["rationale"] = new("string", "Why this shape of team, in plain words.", Required: false),
         });
@@ -210,7 +213,7 @@ internal sealed class BlueprintSubmitTool : ForgeSubmitToolBase
     /// <inheritdoc />
     private protected override string Submit(string json)
     {
-        if (!ForgeBlueprint.TryParse(json, out _, out var errors, Box.ExistingPaths))
+        if (!ForgeBlueprint.TryParse(json, out _, out var errors, Box.ExistingPaths, Box.CrewDecision))
             return "REJECTED — fix these and call blueprint_submit again: " + string.Join(" ", errors);
 
         Box.OfferBlueprint(json);
@@ -235,6 +238,12 @@ internal readonly record struct ForgeUsageSnapshot(
     /// <summary>Both directions together — the one number the budget meters.</summary>
     public long TotalTokens => PromptTokens + CompletionTokens;
 
+    /// <summary>
+    /// How much of the sum the forge's own System One calls spent (#435): already counted in both directions,
+    /// shown apart so a client can tell the decision model's share.
+    /// </summary>
+    public long SystemOneTokens { get; init; }
+
     /// <summary>Whether any part of this was approximated rather than reported.</summary>
     public bool HasEstimate => EstimatedTokens > 0;
 
@@ -242,13 +251,19 @@ internal readonly record struct ForgeUsageSnapshot(
     public ForgeUsageSnapshot Since(ForgeUsageSnapshot before) => new(
         PromptTokens - before.PromptTokens,
         CompletionTokens - before.CompletionTokens,
-        EstimatedTokens - before.EstimatedTokens);
+        EstimatedTokens - before.EstimatedTokens)
+    {
+        SystemOneTokens = SystemOneTokens - before.SystemOneTokens,
+    };
 
     /// <summary>This reading plus <paramref name="other"/> — a stage accumulating its turns.</summary>
     public ForgeUsageSnapshot Plus(ForgeUsageSnapshot other) => new(
         PromptTokens + other.PromptTokens,
         CompletionTokens + other.CompletionTokens,
-        EstimatedTokens + other.EstimatedTokens);
+        EstimatedTokens + other.EstimatedTokens)
+    {
+        SystemOneTokens = SystemOneTokens + other.SystemOneTokens,
+    };
 }
 
 /// <summary>

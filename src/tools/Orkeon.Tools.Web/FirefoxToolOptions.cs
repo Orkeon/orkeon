@@ -66,7 +66,7 @@ public sealed class FirefoxToolOptions
     /// </summary>
     public FirefoxBrowserLifetime Lifetime { get; set; }
 
-    /// <summary>Seconds Firefox is given to start and open its remote protocol.</summary>
+    /// <summary>Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`.</summary>
     public int StartupTimeoutSeconds { get; set; } = 30;
 
     /// <summary>Seconds one browser command (a page load, a script, a click) is given to answer.</summary>

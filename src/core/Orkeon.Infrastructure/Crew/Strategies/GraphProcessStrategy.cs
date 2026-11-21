@@ -89,7 +89,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         _agentSelector = agentSelector ?? TaskAgentSelector.RoundRobin;
         _lifecycle = dependencies.LifecycleFor(logger);
         _decisionRunner = dependencies.DecisionRunner;
-        _decisions = _decisionRunner is null ? null : new DecisionDispatch(_decisionRunner);
+        _decisions = _decisionRunner is null ? null : new DecisionDispatch(_decisionRunner, _executionService);
     }
 
     /// <inheritdoc />
@@ -149,7 +149,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             throw new InvalidOperationException("No agents available for graph execution.");
 
         // Once, before any task: a decision task that could not answer fails the run at its door.
-        var faults = DecisionPreflight.Check(loaded, _decisionRunner);
+        var faults = DecisionPreflight.Check(loaded, _decisionRunner, crew.DecisionMode);
         if (faults.Count > 0)
             return await DecisionPreflight.FailAtEntryAsync(_hooks, crew.Id.ToString(), startedAt, string.Join(' ', faults)).ConfigureAwait(false);
 
@@ -307,6 +307,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                     Defaulted = result.TaskId is { } id && (state.Outcome.DecisionOf(id)?.IsDefaulted ?? false),
                     EndedOnIterationCap = state.CappedResults.Contains(index),
                     DeliverableMissing = state.MissingDeliverableResults.Contains(index),
+                    DecisionSource = state.DecisionSources.GetValueOrDefault(index),
                 }, result, state.CrewTasks.Any(t => t.Id == result.TaskId && t.IsDecision));
             snapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot).ConfigureAwait(false);
@@ -538,13 +539,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         if (_decisions is null)
             throw new InvalidOperationException($"Task {task.Id} is a decision task and the strategy has no decision runner.");
 
-        Task<TaskResult> Decide() => _decisions.RunAsync(task, state.CrewTasks, state.ApplicationOutputs, ct);
-
-        // Taken once, then replayed from the checkpoint on a resumed run: the route a decision picked is part of
-        // the run, and a model asked again could pick another (FWK-28).
-        return _executionService is Checkpointing.ICheckpointedDecisions checkpointed
-            ? checkpointed.RunDecisionAsync(task, Decide, ct)
-            : Decide();
+        // Replayed from the checkpoint on a resumed run, by the dispatch (FWK-28, #430).
+        return _decisions.RunAsync(task, state.CrewTasks, state.Agents, state.ApplicationOutputs, ct);
     }
 
     /// <summary>
@@ -603,6 +599,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             state.CappedResults.Add(state.DomainResults.Count);
         if (executionResult.DeliverableMissing)
             state.MissingDeliverableResults.Add(state.DomainResults.Count);
+        if (executionResult.DecisionSource is { } source)
+            state.DecisionSources[state.DomainResults.Count] = source;
 
         state.AddDomainResult(DomainTaskOutput.Create(
             rawOutput: rawOutput,
@@ -826,6 +824,9 @@ public sealed class CrewGraphState
 
     /// <summary>The indexes of the entries of <see cref="DomainResults"/> whose attempt succeeded without writing its <c>tool_call</c> deliverable (#392).</summary>
     internal HashSet<int> MissingDeliverableResults { get; } = [];
+
+    /// <summary>What answered each decision task, keyed by the index of its entry in <see cref="DomainResults"/> (#430).</summary>
+    internal Dictionary<int, string> DecisionSources { get; } = [];
 
     /// <summary>The tasks skipped by their condition, which leave no result: their snapshot and the count of results when they were skipped.</summary>
     internal List<(int Position, TaskExecutionSnapshot Snapshot)> ConditionSkips { get; } = [];

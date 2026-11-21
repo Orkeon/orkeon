@@ -65,6 +65,14 @@ internal sealed class ForgeBudget
     [JsonPropertyName("consumedEstimatedTokens")]
     public long ConsumedEstimatedTokens { get; set; }
 
+    /// <summary>
+    /// How much of <see cref="ConsumedTokens"/> the forge's own System One calls spent (#435). Left out of the
+    /// session file while zero, so a session that never asked System One is written as before.
+    /// </summary>
+    [JsonPropertyName("consumedSystemOneTokens")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public long ConsumedSystemOneTokens { get; set; }
+
     /// <summary>Wall-clock seconds consumed so far, across resumes.</summary>
     [JsonPropertyName("consumedWallSeconds")]
     public long ConsumedWallSeconds { get; set; }
@@ -86,10 +94,12 @@ internal sealed class ForgeBudget
         ArgumentOutOfRangeException.ThrowIfNegative(usage.PromptTokens);
         ArgumentOutOfRangeException.ThrowIfNegative(usage.CompletionTokens);
         ArgumentOutOfRangeException.ThrowIfNegative(usage.EstimatedTokens);
+        ArgumentOutOfRangeException.ThrowIfNegative(usage.SystemOneTokens);
 
         ConsumedPromptTokens += usage.PromptTokens;
         ConsumedCompletionTokens += usage.CompletionTokens;
         ConsumedEstimatedTokens += usage.EstimatedTokens;
+        ConsumedSystemOneTokens += usage.SystemOneTokens;
         ConsumedTokens += usage.TotalTokens;
     }
 
@@ -112,6 +122,21 @@ internal sealed class ForgeBudget
             return ForgeBudgetDimension.Tokens;
 
         if (MaxWallSeconds > 0 && ConsumedWallSeconds >= MaxWallSeconds)
+            return ForgeBudgetDimension.WallTime;
+
+        return null;
+    }
+
+    /// <summary>
+    /// The dimension that <paramref name="pending"/> tokens and <paramref name="pendingSeconds"/> seconds, not charged
+    /// yet, would exhaust: what a trial checks between its passes (#431), before it starts the next one.
+    /// </summary>
+    public ForgeBudgetDimension? ExhaustedDimensionAfter(ForgeUsageSnapshot pending, long pendingSeconds)
+    {
+        if (MaxTokens > 0 && ConsumedTokens + pending.TotalTokens >= MaxTokens)
+            return ForgeBudgetDimension.Tokens;
+
+        if (MaxWallSeconds > 0 && ConsumedWallSeconds + pendingSeconds >= MaxWallSeconds)
             return ForgeBudgetDimension.WallTime;
 
         return null;

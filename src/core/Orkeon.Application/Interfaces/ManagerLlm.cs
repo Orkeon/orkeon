@@ -52,7 +52,12 @@ public sealed class ManagerLlm
         return ProfilePrefix + ProfileOf(managerAgent?.LlmConfig);
     }
 
-    /// <summary>The profile a manager agent's configuration names; <see cref="LlmProfiles.Default"/> when it names none.</summary>
+    /// <summary>
+    /// The profile a manager agent's configuration names; <see cref="LlmProfiles.Default"/> when it names none, or
+    /// <c>auto</c>, which routes tasks and a manager has none (#434).
+    /// </summary>
     private static string ProfileOf(LlmConfig? config) =>
-        LlmProfiles.IsDefault(config?.Profile) ? LlmProfiles.Default : config!.Profile!.Trim();
+        config?.Profile is not { } profile || LlmProfiles.IsDefault(profile) || LlmProfiles.IsAuto(profile)
+            ? LlmProfiles.Default
+            : profile.Trim();
 }

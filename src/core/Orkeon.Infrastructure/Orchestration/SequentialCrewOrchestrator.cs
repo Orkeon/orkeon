@@ -38,6 +38,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private readonly ILogger<SequentialCrewOrchestrator> _logger;
     private readonly ICrewExecutionStateManager _stateManager;
     private readonly IProcessStrategyFactory _processStrategyFactory;
+    private readonly Orkeon.Application.Crew.Execution.DecisionCircuit? _decisionCircuit;
     private readonly IAgentRepository? _agentRepository;
     private readonly ICheckpointManager? _checkpointManager;
     private readonly IResumeEngine? _resumeEngine;
@@ -94,7 +95,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         TimeProvider? timeProvider = null,
         IRunScope? runScope = null,
         IResumeEngine? resumeEngine = null,
-        Orkeon.Application.Interfaces.Ports.ICostBudgetManager? budget = null)
+        Orkeon.Application.Interfaces.Ports.ICostBudgetManager? budget = null,
+        Orkeon.Application.Crew.Execution.DecisionCircuit? decisionCircuit = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(crewRepository);
@@ -123,7 +125,20 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         _runScope = runScope;
         _resumeEngine = resumeEngine;
         _budget = budget;
+        _decisionCircuit = decisionCircuit;
     }
+
+    /// <summary>
+    /// The circuit of this orchestrator's run scope when it is not the container's (<c>DecisionCircuitOverride</c>,
+    /// #431), entered for each run (<c>DecisionCircuitScope</c>); null leaves the run on the container's.
+    /// </summary>
+    internal Orkeon.Application.Crew.Execution.DecisionCircuit? RunScopeCircuit { get; set; }
+
+    /// <summary>
+    /// Whether the host registers a decision model (#430): without one, the decision runner answers with the
+    /// circuit off whatever the circuit says, and the resume check compares with that. Set by the registration.
+    /// </summary>
+    internal bool HasDecisionModel { get; set; } = true;
 
     /// <summary>
     /// Runs the crew and returns its output. Never throws: a failed run — a task that did not
@@ -251,7 +266,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 // so it flows through strategies, agents and tools alike.
                 var domainOutput = await RunWithCrewIdentityAsync(
                     crew.Id,
-                    () => ExecuteAndCompleteAsync(crew, processStrategy, input, cancellationToken))
+                    () => ExecuteAndCompleteAsync(crew, processStrategy, input, resumePlan, cancellationToken))
                     .ConfigureAwait(false);
 
                 // A run that stopped on a question to a human ends here, waiting for its answer (FWK-23): its session
@@ -291,7 +306,16 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                     TaskOutputs: [],
                     Duration: stopwatch.Elapsed,
                     TokensUsed: null) // failed before telemetry could be collected
-                { Succeeded = false, Error = ex.Message };
+                {
+                    Succeeded = false,
+                    Error = ex.Message,
+                    ErrorCode = ex switch
+                    {
+                        Orkeon.Application.Crew.Execution.DecisionUnavailableException => Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable,
+                        Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException => Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionCircuitMismatch,
+                        _ => null,
+                    },
+                };
 
                 await FailCheckpointSessionAsync(sessionId, ex).ConfigureAwait(false);
             }
@@ -419,7 +443,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         if (end.Reported)
         {
             if (!end.FailureReported)
-                CrewStreamScope.Write(CrewHookDispatcher.FailureEvent(status, output.Error));
+                CrewStreamScope.Write(CrewHookDispatcher.FailureEvent(status, output.Error, cause));
             return;
         }
 
@@ -471,16 +495,25 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         Orkeon.Domain.Crew.Crew crew,
         IProcessStrategy processStrategy,
         CrewInput input,
+        ResumePlan? resume,
         CancellationToken cancellationToken)
     {
         // Every LLM call of the run is metered for this crew, whichever part of the run makes
         // it — the planner, the manager, an agent, a tool. The narrower scopes
         // opened below say what the work was; this one says whose run it is.
         using var usageScope = Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(crewId: crew.Id.ToString());
+        // The run scope's circuit (#431), when it is not the container's: every part of the run - the planner,
+        // the manager, an agent, a tool - asks the decision model through it, the services built once per host
+        // included.
+        using var circuitScope = Orkeon.Application.Crew.Execution.DecisionCircuitScope.Begin(RunScopeCircuit);
 
         var ended = false;
         try
         {
+            // Every process says the crew's decision mode and the run's circuit once, then refuses a crew that
+            // requires System One with the circuit off, before anything is asked of a model (#429).
+            await RefuseWithoutSystemOneAsync(crew, resume, cancellationToken).ConfigureAwait(false);
+
             // A crew that remembers is refused before anything is asked of a model when its memory
             // cannot work: no embedder, a refused key, an unreachable store, a vector of the wrong
             // dimension (GAP-30). During the run, a memory that fails is only a warning.
@@ -498,10 +531,15 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             // on every run, empty without planning, so a run nested in a task sees its own plan only.
             // The crew's request window rides the same way (GAP-38): every model call made for one of
             // its agents or its manager during the run counts in it, a crew run from a task in its own.
-            // Each task's deliverable is judged against its state at the task's first attempt of the run.
+            // Each task's deliverable is judged against its state at the task's first attempt of the run, and what
+            // System One picks for a task of an agent (its profile on auto, its skills) holds for the run (#434). The
+            // crew's decision mode reaches the agent loops the same way (#429), and System One's warnings are said
+            // once per run.
             DomainCrewOutput domainOutput;
             using (CrewPlanScope.Begin(plan))
             using (DeliverableBaselineScope.Begin())
+            using (TaskPickScope.Begin())
+            using (SystemOneRunScope.Begin(crew.DecisionMode))
             using (CrewVerbosity.Begin(crew.Verbose))
             using (RequestRates.BeginRun(crew, _time))
             {
@@ -526,6 +564,55 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             throw;
         }
     }
+
+    /// <summary>
+    /// The <c>run.decision</c> notice, then the refusal of a <c>decision.mode: required</c> crew when the decision
+    /// circuit is off (#429): a <see cref="Orkeon.Application.Crew.Execution.DecisionUnavailableException"/>, which
+    /// fails the run with the <c>decision_unavailable</c> code. Then (#430) the refusal of a <c>decision.mode:
+    /// optional</c> crew resumed under the other circuit than it was started with: its recorded decisions came
+    /// from the model or from the relay, and the decisions left would come from the other. A
+    /// <see cref="Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException"/>, code
+    /// <c>decision_circuit_mismatch</c>. Without a registered circuit, nothing.
+    /// </summary>
+    private async System.Threading.Tasks.Task RefuseWithoutSystemOneAsync(Orkeon.Domain.Crew.Crew crew, ResumePlan? resume, CancellationToken cancellationToken)
+    {
+        if (_decisionCircuit is null)
+            return;
+
+        // The circuit the decision runner applies, which is off when no decision model is registered: the notice
+        // reports it, a required crew is refused on it, and an optional crew's resume is compared with it.
+        var runnerCircuit = _decisionCircuit.Enabled && !HasDecisionModel
+            ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider)
+            : _decisionCircuit;
+        await new CrewHookDispatcher(_executionHook, _logger)
+            .RunDecisionAsync(new RunDecisionNotice(crew.DecisionMode, runnerCircuit), cancellationToken)
+            .ConfigureAwait(false);
+        if (Orkeon.Application.Crew.Execution.DecisionUnavailableException.Refusing(crew, runnerCircuit) is { } refusal)
+            throw refusal;
+
+        if (crew.DecisionMode != Orkeon.Domain.Crew.CrewDecisionMode.Optional || resume is null)
+            return;
+
+        // Only the recorded decisions this crew could replay.
+        var decisionTaskKeys = _taskRepository is null
+            ? null
+            : (await _taskRepository.GetByIdsAsync(crew.Tasks, cancellationToken).ConfigureAwait(false))
+                .Where(t => t.Decision is not null && t.Key is not null).Select(t => t.Key!).ToList();
+        if (Checkpointing.CheckpointingAgentExecutionService.RecordedDecisionCircuit(resume.CompletedOutputs, decisionTaskKeys) is { } startedOn
+            && startedOn != runnerCircuit.Enabled)
+        {
+            throw new Orkeon.Application.Crew.Execution.DecisionCircuitMismatchException(
+                ResumeMismatchMessage(crew.Name ?? crew.Id.ToString(), startedOn, runnerCircuit));
+        }
+    }
+
+    /// <summary>The refusal of an optional crew resumed under the other circuit (#430): both circuits, named.</summary>
+    internal static string ResumeMismatchMessage(string crewName, bool startedOn, Orkeon.Application.Crew.Execution.DecisionCircuit now) =>
+        startedOn
+            ? $"crew '{crewName}' (decision.mode: optional) was started with the decision circuit on, its decisions answered by the decision model, " +
+              $"and is resumed with {now.OffReason}: resume it with the circuit on, or start a new run"
+            : $"crew '{crewName}' (decision.mode: optional) was started with the decision circuit off, its decisions answered by their without: relay, " +
+              "and is resumed with the circuit on: resume it with the circuit off (--no-decision), or start a new run";
 
     /// <summary>
     /// The tasks a successful run completed, each counted once by its final outcome: a graph keeps

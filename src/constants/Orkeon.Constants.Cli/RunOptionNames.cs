@@ -97,6 +97,9 @@ public static class RunOptionNames
     /// <summary>Memory ceiling, in megabytes.</summary>
     public const string MemoryLimitMb = "memory-limit-mb";
 
+    /// <summary>Switches the decision circuit off for the run.</summary>
+    public const string NoDecision = "no-decision";
+
     /// <summary>
     /// The command-line spelling of an option name: <c>--settings</c> for
     /// <see cref="Settings"/>. For the tooling that composes an argument list rather than

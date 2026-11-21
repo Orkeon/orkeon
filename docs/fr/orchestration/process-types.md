@@ -634,7 +634,7 @@ Une sixième limite, `MaxContextTokens` (sans limite par défaut), compte les to
 
 `ICrewOrchestrationService` exécute ce mode sous le budget de la crew (`budget:` en YAML) ; une crew qui n'en fixe aucun n'a ni plafond de tokens ni temps mural, et garde les limites structurelles de 50 tâches distribuées, 4 délégations et 10 spawns.
 
-**Budgets enfants** : `CreateChildBudget()` donne au délégué l'allocation **restante** du parent sur chaque axe (un niveau de délégation en moins, au moins 1 appel d'outil et 100 tokens). Chaque budget enfant est une copie indépendante : deux délégués reçoivent chacun la totalité du reste.
+**Budgets enfants** : `CreateChildBudget()` donne au délégué l'allocation **restante** du parent sur chaque axe, plafonnée par ce qui reste à chaque budget qu'il impute (`ChargedTo`) : un niveau de délégation en moins et, sur un axe plafonné, au moins 1 appel d'outil, 100 tokens consommés et 100 tokens de contexte. Un axe qu'aucun budget de la chaîne ne plafonne reste sans plafond pour le délégué. Chaque budget enfant est une copie indépendante : deux délégués reçoivent chacun la totalité du reste.
 
 ### Communication A2A
 

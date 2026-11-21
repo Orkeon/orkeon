@@ -18,4 +18,12 @@ public static class LlmProfileNames
     /// configuration binder compares keys.
     /// </summary>
     public const string Default = "default";
+
+    /// <summary>
+    /// The name an agent writes to have System One pick its profile for each task, among the ladder of
+    /// <c>Orkeon:Decision:Route:Ladder</c> (#434). Reserved like <see cref="Default"/>: a host that defines
+    /// <c>Llm:Profiles:auto</c> or <c>Orkeon:Decision:Profiles:auto</c> refuses to start. Compared
+    /// case-insensitively.
+    /// </summary>
+    public const string Auto = "auto";
 }

@@ -187,14 +187,14 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- \
 ```
 
 ```
-VALIDATION OK: …/crew-review-desk/main.ork.ts (agents=3, tasks=3, tools resolved=5)
+VALIDATION OK: …/crew-review-desk/main.ork.ts (agents=3, tasks=3, tools resolved=5, decision=unspecified)
 ```
 
 That check is only available on this shape, and it is a good reason to prefer it: it catches
 an unregistered tool name or a task pointing at an undeclared agent before you spend a token.
 On a procedural file `--validate` checks what it can without running it — the version
 directive, the types, the esbuild bundle — and prints `VALIDATION OK: … (procedural script:
-bundled, not run)`; it never evaluates it. Only the entry file's own source is read for the
+bundled, not run, decision=unknown)`; it never evaluates it. Only the entry file's own source is read for the
 handoff: a script that assigns `globalThis.crew` inside an imported helper is procedural, for
 `orkeon run` as for `--validate`.
 

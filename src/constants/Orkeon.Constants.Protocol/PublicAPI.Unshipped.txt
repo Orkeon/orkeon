@@ -1,1 +1,26 @@
 #nullable enable
+Orkeon.Constants.Protocol.DecisionCircuitCauses
+Orkeon.Constants.Protocol.DecisionCircuitStates
+Orkeon.Constants.Protocol.RunDecisionModes
+const Orkeon.Constants.Protocol.DecisionCircuitCauses.NoProvider = "no-provider" -> string!
+const Orkeon.Constants.Protocol.DecisionCircuitCauses.Settings = "settings" -> string!
+const Orkeon.Constants.Protocol.DecisionCircuitCauses.Switch = "switch" -> string!
+const Orkeon.Constants.Protocol.DecisionCircuitCauses.Trial = "trial" -> string!
+const Orkeon.Constants.Protocol.DecisionCircuitStates.Off = "off" -> string!
+const Orkeon.Constants.Protocol.DecisionCircuitStates.On = "on" -> string!
+const Orkeon.Constants.Protocol.RunDecisionModes.None = "none" -> string!
+const Orkeon.Constants.Protocol.RunDecisionModes.Optional = "optional" -> string!
+const Orkeon.Constants.Protocol.RunDecisionModes.Required = "required" -> string!
+const Orkeon.Constants.Protocol.RunDecisionModes.Unknown = "unknown" -> string!
+const Orkeon.Constants.Protocol.RunDecisionModes.Unspecified = "unspecified" -> string!
+const Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable = "decision_unavailable" -> string!
+const Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionCircuitMismatch = "decision_circuit_mismatch" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.RunDecision = "run.decision" -> string!
+Orkeon.Constants.Protocol.DecisionSources
+const Orkeon.Constants.Protocol.DecisionSources.Fallback = "fallback" -> string!
+const Orkeon.Constants.Protocol.DecisionSources.Model = "model" -> string!
+const Orkeon.Constants.Protocol.DecisionSources.Relay = "relay" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.AgentCompacted = "agent.compacted" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.AgentSkills = "agent.skills" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.AgentRoute = "agent.route" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.AgentPruned = "agent.pruned" -> string!

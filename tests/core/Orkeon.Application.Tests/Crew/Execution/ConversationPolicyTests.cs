@@ -189,6 +189,53 @@ public class ConversationPolicyTests
         Assert.True(messages.Count <= 10);
     }
 
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public void ShouldKeepTheCompactionSummary_WhenTheTrimCutsTheTurnsAfterIt()
+    {
+        // Arrange: a compaction left its summary at index 2; the kept turns then pass the bound.
+        var summary = Orkeon.Application.Crew.Compaction.CompactionPrompts.SummaryMessage(6, "The agent read six pages.");
+        var messages = new List<ChatMessage> { new(ChatRole.System, "sys"), new(ChatRole.User, "task"), new(ChatRole.User, summary) };
+        for (var i = 0; i < 10; i++)
+        {
+            messages.Add(new ChatMessage(ChatRole.Assistant, $"call {i}"));
+            messages.Add(new ChatMessage(ChatRole.Tool, $"result {i}"));
+        }
+
+        // Act
+        ConversationPolicy.TrimConversationHistory(messages, maxMessages: 10);
+
+        // Assert
+        Assert.Equal(["sys", "task", summary], messages.Take(3).Select(m => m.Text));
+        Assert.Contains("[Context trimmed:", messages[3].Text, StringComparison.Ordinal);
+        Assert.NotEqual(ChatRole.Tool, messages[4].Role);
+        Assert.True(messages.Count <= 10);
+        Assert.Equal("result 9", messages[^1].Text);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public void ShouldKeepTheCompactionSummaryOfTheLlmMessageShape_WhenTheTrimCutsTheTurnsAfterIt()
+    {
+        // Arrange: a compaction left its summary at index 2; the kept turns then pass the bound.
+        var summary = Orkeon.Application.Crew.Compaction.CompactionPrompts.SummaryMessage(6, "The agent read six pages.");
+        var messages = new List<LlmMessage> { LlmMessage.System("sys"), LlmMessage.User("task"), LlmMessage.User(summary) };
+        for (var i = 0; i < 10; i++)
+        {
+            messages.Add(new LlmMessage { Role = "assistant", Content = $"call {i}" });
+            messages.Add(new LlmMessage { Role = "tool", Content = $"result {i}" });
+        }
+
+        // Act
+        ConversationPolicy.TrimConversationHistory(messages, maxMessages: 10);
+
+        // Assert
+        Assert.Equal(["sys", "task", summary], messages.Take(3).Select(m => m.Content));
+        Assert.Contains("[Context trimmed:", messages[3].Content, StringComparison.Ordinal);
+        Assert.NotEqual("tool", messages[4].Role);
+        Assert.True(messages.Count <= 10);
+    }
+
     // ── TruncateToolResult ────────────────────────────────────────────────
 
     [Fact]

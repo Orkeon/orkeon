@@ -199,7 +199,12 @@ and that are more than ten minutes old: what a host killed with its browsers lef
 `MaxTextLength`. When Firefox is a snap, the default profile root is `~/snap/firefox/common/orkeon/profiles`: a
 snap cannot read the system's temp folder.
 
-A browser that opened its remote protocol but leaves the first command, `session.new`, without an
-answer for `CommandTimeoutSeconds` is killed, its profile removed when disposable, and started again
-once, with a warning in the log; a second silence fails the start with an error that says Firefox was
-started again.
+Firefox announces its remote protocol early in its start and answers the first command,
+`session.new`, only once its first window has loaded: that answer is the second half of the start,
+and waits `StartupTimeoutSeconds` again, or `CommandTimeoutSeconds` when that is the larger. A browser that leaves it without
+an answer that long is killed, its profile removed when disposable, and started again once, with a
+warning in the log; a second silence fails the start with an error that says Firefox was started
+again. A start that hangs on the announcement or on the session therefore fails after at most 2 attempts ×
+(`StartupTimeoutSeconds` + the session wait): about 2 minutes with the defaults of 30 s. The bound leaves out the rest of the start: the
+connection to the announced address has no timeout of its own, and the two commands that follow the session
+(`browsingContext.getTree`, `session.subscribe`) each wait `CommandTimeoutSeconds`, with no restart. On a loaded machine, raise `StartupTimeoutSeconds`.

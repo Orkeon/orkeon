@@ -190,6 +190,14 @@ public sealed record CrewOutput(
     public string? Error { get; init; }
 
     /// <summary>
+    /// Gets the code of the failure when it has one of its own - <c>decision_unavailable</c> (a crew with
+    /// <c>decision.mode: required</c> refused with the decision circuit off, #429), <c>decision_circuit_mismatch</c>
+    /// (an <c>optional</c> crew resumed under the other circuit, #430), a value of <c>RunEventErrorCodes</c> -; null
+    /// otherwise, and on success.
+    /// </summary>
+    public string? ErrorCode { get; init; }
+
+    /// <summary>
     /// Gets the identifier of the run that produced this output, its <see cref="Orkeon.Application.Interfaces.Services.ExecutionId"/>
     /// in string form: the id a failed run is resumed by. Null when the run never got an identity.
     /// </summary>
@@ -280,6 +288,9 @@ public sealed record CrewExecutionEvent
 
     /// <summary><c>task.completed</c>: the task is a decision task.</summary>
     public bool IsDecision { get; init; }
+
+    /// <summary><c>task.completed</c>: what answered a decision task that was asked (<c>model</c>, <c>relay</c> or <c>fallback</c>); null otherwise.</summary>
+    public string? DecisionSource { get; init; }
 
     /// <summary><c>task.completed</c>: the decision answers as compact JSON; null unless <see cref="IsDecision"/>.</summary>
     public string? DecisionAnswers { get; init; }

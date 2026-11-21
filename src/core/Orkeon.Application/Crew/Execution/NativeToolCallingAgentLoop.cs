@@ -20,9 +20,11 @@ internal sealed class NativeToolCallingAgentLoop
     /// <summary>The optional diagnostics and limits of the loop.</summary>
     /// <param name="VerboseLogger">The logger of the verbose trace, or <c>null</c>.</param>
     /// <param name="Limits">The tool result limits, or <c>null</c> for the defaults.</param>
+    /// <param name="Compaction">The loop's conversation compaction (#432), or <c>null</c> for the 40-message trim alone.</param>
     internal sealed record NativeToolCallingLoopOptions(
         ILogger? VerboseLogger = null,
-        IOptions<ToolResultLimitsOptions>? Limits = null);
+        IOptions<ToolResultLimitsOptions>? Limits = null,
+        Compaction.ContextCompaction? Compaction = null);
 
     private readonly ILogger _logger;
     private readonly ILogger? _verboseLogger;
@@ -32,6 +34,7 @@ internal sealed class NativeToolCallingAgentLoop
     private readonly LlmCallGate _llmGate;
     private readonly IToolInvocationPipeline _toolInvocation;
     private readonly int _maxParallelToolCalls;
+    private readonly Compaction.ContextCompaction? _compaction;
 
     internal NativeToolCallingAgentLoop(
         ILogger logger,
@@ -50,6 +53,7 @@ internal sealed class NativeToolCallingAgentLoop
         _registeredTools = registeredTools;
         _llmGate = llmGate;
         _toolInvocation = toolInvocation;
+        _compaction = options?.Compaction;
     }
 
     /// <summary>
@@ -85,14 +89,25 @@ internal sealed class NativeToolCallingAgentLoop
         string? lastErrorMessage = null;
         int consecutiveIdenticalErrors = 0;
 
+        // The conversation's compaction (#432): null when it is off, and the loop trims as it always has.
+        var compactor = _compaction?.Begin(agent, task.Id, config, maxOutputTokens: null,
+            Compaction.ContextCompaction.OverProvider(_fullProvider, config, _llmGate, agent), _llmGate);
+        var view = compactor is null ? null : new Compaction.LlmConversationView(messages, Compaction.ReadToolChecks.Over(availableTools.Values));
+        // The native loop reports no token of its turns; a summary's are the task's (#432).
+        int Spent() => compactor?.SpentTokens ?? 0;
+
         for (int iteration = 0; iteration < maxIter; iteration++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (compactor is not null)
+                await compactor.BeforeCallAsync(view!, cancellationToken).ConfigureAwait(false);
 
             // The call's turn in the agent's and the crew's windows (GAP-38) — nothing held past it.
             await _llmGate.WaitTurnAsync(agent, cancellationToken).ConfigureAwait(false);
             var response = await _fullProvider.ChatAsync(
                 messages.ToArray(), config, cancellationToken).ConfigureAwait(false);
+            compactor?.Observe(response.PromptTokens, view!);
 
             sw.Stop();
             var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
@@ -103,7 +118,7 @@ internal sealed class NativeToolCallingAgentLoop
             if (response.Error is { } callFailure)
             {
                 ExecutionLog.LogLlmCallFailed(_logger, agent.Role, iteration + 1, task.Id, callFailure);
-                return new AgentLoopResult(string.Empty, 0, AgentExitReason.LlmCallFailed,
+                return new AgentLoopResult(string.Empty, Spent(), AgentExitReason.LlmCallFailed,
                     IterationsUsed: iteration + 1, LastError: callFailure);
             }
 
@@ -111,7 +126,7 @@ internal sealed class NativeToolCallingAgentLoop
             if (string.IsNullOrEmpty(response.RawResponseBody))
             {
                 // No raw body means no native tool calling support — return text
-                return FinalAnswer(agent, task, response.Content, iteration);
+                return FinalAnswer(agent, task, response.Content, iteration, Spent());
             }
 
             using var doc = System.Text.Json.JsonDocument.Parse(response.RawResponseBody);
@@ -120,10 +135,13 @@ internal sealed class NativeToolCallingAgentLoop
             if (parsedCalls.Count == 0)
             {
                 // No tool calls — this is the final text answer
-                return FinalAnswer(agent, task, response.Content, iteration);
+                return FinalAnswer(agent, task, response.Content, iteration, Spent());
             }
 
             AppendAssistantToolCallMessage(messages, response, doc.RootElement);
+            // The pruning stage reads each result's call from the view (#434).
+            foreach (var call in parsedCalls)
+                view?.NoteToolCall(call.Id, call.ToolName, call.Arguments);
 
             // Execute each tool call
             ExecutionLog.LogLegacyToolCallsDetected(turnLogger, agent.Role, iteration + 1, parsedCalls.Count);
@@ -145,17 +163,21 @@ internal sealed class NativeToolCallingAgentLoop
             {
                 ExecutionLog.LogCircuitBreakerTripped(_logger, agent.Role, consecutiveIdenticalErrors, newError!);
                 return ConversationPolicy.BuildCircuitBreakerResult(
-                    consecutiveIdenticalErrors, newError!, totalTokensUsed: 0, iteration,
+                    consecutiveIdenticalErrors, newError!, totalTokensUsed: Spent(), iteration,
                     ConversationPolicy.ExtractLastAssistantText(messages));
             }
-            ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages);
+            // With compaction on, the token measure replaces the message count; the trim is its fallback (#432).
+            // A trim rewrites the conversation: the next estimate counts it again.
+            if (compactor is not { ReplacesTrim: true }
+                && ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages))
+                compactor?.Rewritten();
             sw.Restart();
         }
 
         ExecutionLog.LogMaxIterationsReached(_logger, maxIter, task.Id);
         return new AgentLoopResult(
             PromptDefaults.MaxIterationsMessage,
-            0,
+            Spent(),
             AgentExitReason.MaxIterationsReached,
             IterationsUsed: maxIter,
             LastError: "Agent did not produce a final answer within the allowed iterations");
@@ -166,13 +188,13 @@ internal sealed class NativeToolCallingAgentLoop
     /// <see cref="AgentExitReason.EmptyFinalAnswer"/> failure: an empty text used to exit
     /// Completed here and the task went green with no deliverable.
     /// </summary>
-    private AgentLoopResult FinalAnswer(DomainAgent agent, Domain.Task.CrewTask task, string text, int iteration)
+    private AgentLoopResult FinalAnswer(DomainAgent agent, Domain.Task.CrewTask task, string text, int iteration, int tokensUsed)
     {
         if (!string.IsNullOrWhiteSpace(text))
-            return new AgentLoopResult(text, 0, AgentExitReason.Completed, IterationsUsed: iteration + 1);
+            return new AgentLoopResult(text, tokensUsed, AgentExitReason.Completed, IterationsUsed: iteration + 1);
 
         ExecutionLog.LogEmptyFinalAnswer(_logger, agent.Role, task.Id);
-        return new AgentLoopResult(string.Empty, 0,
+        return new AgentLoopResult(string.Empty, tokensUsed,
             AgentExitReason.EmptyFinalAnswer, IterationsUsed: iteration + 1,
             LastError: FinalAnswerPolicy.EmptyFinalAnswerReason);
     }

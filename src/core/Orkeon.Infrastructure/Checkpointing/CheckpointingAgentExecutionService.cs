@@ -24,7 +24,7 @@ namespace Orkeon.Infrastructure.Checkpointing;
 /// definition (its <see cref="Orkeon.Domain.Task.ICrewTask.TaskId"/> is new at every load) and <c>n</c> the
 /// ordinal of the invocation of that key in the run, which tells a Hierarchical revision or a Graph cycle
 /// from the first run of the task. Next to its output the checkpoint keeps a fingerprint of the task
-/// (description, expected output, agent, dependencies): when a resumed run finds a task whose definition
+/// (description, expected output, agent, dependencies, and a decision task's questions, fallback and relay): when a resumed run finds a task whose definition
 /// changed since, that task and every task that runs after it run again, because what they would read
 /// of the earlier outputs is stale too. The decorator is inactive outside a run (<see cref="IRunScope"/>)
 /// and for a task without a key, such as one delegated by an agent. Only a successful result is
@@ -200,6 +200,45 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             call.Run.TaskAttempts[task.TaskId.Value.ToString()] = stored.RetryCount + 1;
     }
 
+    /// <summary>
+    /// The decision circuit a run was started with, as its checkpoint shows it (#430): on when a recorded decision
+    /// was answered by the model, off when one was answered by the relay or the fallback; null when it recorded
+    /// no decision, or only checkpoints written before the source was kept. Only the decisions the resume could
+    /// replay count: those of a decision task the crew still declares.
+    /// </summary>
+    /// <param name="completedOutputs">The stored outputs of the run, by checkpoint key.</param>
+    /// <param name="decisionTaskKeys">The keys of the crew's decision tasks; null counts every stored output.</param>
+    internal static bool? RecordedDecisionCircuit(
+        IReadOnlyDictionary<string, string?> completedOutputs, IReadOnlyCollection<string>? decisionTaskKeys = null)
+    {
+        ArgumentNullException.ThrowIfNull(completedOutputs);
+        foreach (var (key, output) in completedOutputs)
+        {
+            if (output is null || (decisionTaskKeys is not null && !decisionTaskKeys.Any(task => IsKeyOf(key, task))))
+                continue;
+            string? source;
+            try
+            {
+                source = JsonSerializer.Deserialize<StoredResult>(output, Json)?.DecisionSource;
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            if (source is not null)
+                return source == Orkeon.Constants.Protocol.DecisionSources.Model;
+        }
+
+        return null;
+    }
+
+    // A checkpoint key is the task's key, its slot after '@' when it has one, then '#' and the ordinal (OpenAsync).
+    private static bool IsKeyOf(string checkpointKey, string taskKey) =>
+        checkpointKey.Length > taskKey.Length
+            && checkpointKey.StartsWith(taskKey, StringComparison.Ordinal)
+            && checkpointKey[taskKey.Length] is '#' or '@';
+
     private StoredResult? Lookup(RunScope run, RunState state, string key, string fingerprint, ICrewTask task)
     {
         if (state.Stale || run.Resume is not { } plan || !plan.CompletedOutputs.TryGetValue(key, out var output) || output is null)
@@ -295,7 +334,36 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             agent?.Role.Value ?? string.Empty,
             agent?.Goal.Value ?? string.Empty,
             string.Join('\u0002', dependencies));
+
+        // A decision task is also what it asks: a recorded decision is replayed only while its questions, its
+        // fallback and its relay are those it was taken with; changed, it is decided again, and what runs after it
+        // too (#430). Only a decision task's fingerprint gains this part: the others keep theirs.
+        if (task is CrewTask { Decision: { } decision })
+            text = string.Concat(text, "\u0001", DecisionText(decision));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..16];
+    }
+
+    // The definition of a decision, in a stable order: the questions as declared, a map by its keys.
+    private static string DecisionText(TaskDecision decision)
+    {
+        static string Map(IReadOnlyDictionary<string, string> map) =>
+            string.Join('\u0003', map.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}\u0004{kv.Value}"));
+
+        var questions = decision.Questions.Select(question => question switch
+        {
+            ChoiceQuestionSpec choice => $"choice\u0004{choice.Name}\u0004{choice.Instructions}\u0004{Map(choice.Options)}",
+            ScoreQuestionSpec score => $"score\u0004{score.Name}\u0004{score.Instructions}\u0004{string.Join('\u0003', score.Levels)}",
+            YesNoQuestionSpec yesNo => $"yesno\u0004{yesNo.Name}\u0004{yesNo.Statement}",
+            _ => $"{question.GetType().Name}\u0004{question.Name}",
+        });
+        return string.Join(
+            '\u0002',
+            string.Join('\u0003', questions),
+            decision.ConfidenceFloor.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
+            string.Join('\u0003', decision.StateFrom),
+            decision.LongContext ? "long" : "short",
+            Map(decision.Fallback),
+            decision.Without is { } relay ? $"{relay.Agent}\u0004{relay.Instructions}" : string.Empty);
     }
 
     private async System.Threading.Tasks.Task<T> RunAsync<T>(Call call, Func<System.Threading.Tasks.Task<T>> execute)
@@ -392,6 +460,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         // The outcome of a decision task, which a route reads: kept so that a resumed run replays it.
         public Orkeon.Domain.Task.ValueObjects.DecisionOutcome? Decision { get; init; }
 
+        // What answered the decision task (#430): model or relay, which a resumed run reports again and from
+        // which it reads the circuit the run was started with; a checkpoint written before replays null.
+        public string? DecisionSource { get; init; }
+
         // Whether the answer came from the tool-free retry after the iteration cap (#388): a resumed run reports it again.
         public bool EndedOnIterationCap { get; init; }
 
@@ -418,6 +490,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             RetryCount = result.RetryCount,
             EndedAt = result.EndedAt,
             Decision = result.Decision,
+            DecisionSource = result.DecisionSource,
             EndedOnIterationCap = result.EndedOnIterationCap,
             DeliverableMissing = result.DeliverableMissing,
             DeliverablePath = result.DeliverablePath,
@@ -456,6 +529,7 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             RetryCount = RetryCount,
             EndedAt = EndedAt,
             Decision = Decision,
+            DecisionSource = DecisionSource,
             EndedOnIterationCap = EndedOnIterationCap,
             DeliverableMissing = DeliverableMissing,
             DeliverablePath = DeliverablePath,

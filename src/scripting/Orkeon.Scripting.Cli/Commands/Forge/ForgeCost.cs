@@ -40,6 +40,8 @@ internal static class ForgeCost
             // How much of the total the runtime had to approximate because a provider
             // reported nothing — a figure a screen must mark rather than pass off as a count.
             estimatedTokens = budget.ConsumedEstimatedTokens + pending.EstimatedTokens,
+            // The forge's own System One calls (#435): already in the total, which the budget meters.
+            systemOneTokens = budget.ConsumedSystemOneTokens + pending.SystemOneTokens,
             // USD is the client's business (it knows the pricing).
             budgetRemaining = budget.MaxTokens > 0 ? Math.Max(0, budget.MaxTokens - total) : (long?)null,
         });

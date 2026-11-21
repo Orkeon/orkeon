@@ -634,7 +634,7 @@ A sixth limit, `MaxContextTokens` (no limit by default), counts tokens with the 
 
 `ICrewOrchestrationService` runs this mode under the crew's budget (YAML `budget:`); a crew that sets none has no token cap and no wall time, and keeps the structural limits of 50 tasks handed out, 4 delegations and 10 spawns.
 
-**Child budgets**: `CreateChildBudget()` gives the delegate the parent's **remaining** allowance on each axis (one less delegation level, at least 1 tool call and 100 tokens). Each child budget is an independent copy: two delegates each receive the full remainder.
+**Child budgets**: `CreateChildBudget()` gives the delegate the parent's **remaining** allowance on each axis, capped by what each budget it charges (`ChargedTo`) has left: one less delegation level, and on a capped axis at least 1 tool call, 100 tokens consumed and 100 context tokens. An axis no budget of the chain caps stays uncapped for the delegate. Each child budget is an independent copy: two delegates each receive the full remainder.
 
 ### A2A communication
 

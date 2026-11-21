@@ -55,7 +55,21 @@ public interface ICrewExecutionHook
     /// <param name="ct">Cancellation token.</param>
     System.Threading.Tasks.Task OnHumanInputAsync(HumanInputNotice notice, CancellationToken ct) =>
         System.Threading.Tasks.Task.CompletedTask;
+
+    /// <summary>
+    /// Called once per run, before its first task, with the crew's <c>decision.mode</c> and the state of the
+    /// decision circuit (#429). The default does nothing: only the observers that publish run events care.
+    /// </summary>
+    /// <param name="notice">The mode and the circuit.</param>
+    /// <param name="ct">Cancellation token.</param>
+    System.Threading.Tasks.Task OnRunDecisionAsync(RunDecisionNotice notice, CancellationToken ct) =>
+        System.Threading.Tasks.Task.CompletedTask;
 }
+
+/// <summary>What a run tells its observers about System One before its first task (#429): the <c>run.decision</c> event.</summary>
+/// <param name="Mode">The crew's <c>decision.mode</c>.</param>
+/// <param name="Circuit">The run's decision circuit.</param>
+public sealed record RunDecisionNotice(Orkeon.Domain.Crew.CrewDecisionMode Mode, Orkeon.Application.Crew.Execution.DecisionCircuit Circuit);
 
 /// <summary>What a durable human-input provider tells the run's observers (FWK-23).</summary>
 public enum HumanInputNoticeKind

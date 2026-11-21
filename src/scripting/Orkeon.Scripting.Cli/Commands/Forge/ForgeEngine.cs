@@ -24,6 +24,13 @@ internal sealed record ForgeStageOutcome
     /// <c>FORGE-STAGE-FAILED</c> when a stage does not name one.
     /// </summary>
     public string? FailureCode { get; init; }
+
+    /// <summary>
+    /// The budget dimension the stage ran out of partway (#431: a trial between its passes). The engine charges
+    /// <see cref="Usage"/>, then ends the session on <c>FORGE-BUDGET-EXHAUSTED</c> without moving the machine: a
+    /// resume with a raised budget runs the stage again, which picks up where it stopped.
+    /// </summary>
+    public ForgeBudgetDimension? BudgetExhausted { get; init; }
 }
 
 /// <summary>
@@ -232,6 +239,9 @@ internal sealed class ForgeEngine
         if (outcome.Usage.TotalTokens > 0)
             ForgeCost.Emit(_events, run.Budget, pending: default);
 
+        if (outcome.BudgetExhausted is { } partway)
+            return run.FinishBudgetExhausted(partway);
+
         // Looping back is what iterations meter: the budget arbitrates before the
         // machine moves, so a refused cycle costs nothing and the session stays
         // exactly where it was — resumable with a raised budget. A user edit loops
@@ -265,7 +275,7 @@ internal sealed class ForgeEngine
         return null;
     }
 
-    private static string Spell(ForgeBudgetDimension dimension) => dimension switch
+    internal static string Spell(ForgeBudgetDimension dimension) => dimension switch
     {
         ForgeBudgetDimension.Iterations => "iteration",
         ForgeBudgetDimension.Tokens => "token",

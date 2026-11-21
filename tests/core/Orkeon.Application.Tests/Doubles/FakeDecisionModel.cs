@@ -20,6 +20,9 @@ public sealed class FakeDecisionModel : IDecisionModel
     /// <summary>Thrown by <see cref="DecideAsync"/> when set.</summary>
     public Exception? Failure { get; set; }
 
+    /// <summary>Run by <see cref="DecideAsync"/> once the request is kept, before it answers: cancels a caller's token, say.</summary>
+    public Action<DecisionRequest>? OnDecide { get; set; }
+
     /// <summary>The requests received so far, oldest first.</summary>
     public IReadOnlyList<DecisionRequest> Requests
     {
@@ -34,6 +37,7 @@ public sealed class FakeDecisionModel : IDecisionModel
     {
         lock (_gate)
             _requests.Add(request);
+        OnDecide?.Invoke(request);
         return Failure is null ? System.Threading.Tasks.Task.FromResult(Respond(request)) : System.Threading.Tasks.Task.FromException<DecisionResponse>(Failure);
     }
 }

@@ -361,7 +361,7 @@ Liée par-dessus le preset sélectionné — chaque clé est une surcharge indiv
 | `Orkeon:Rag:QueryTransform:Mode` | `none` | `none` / `multi-query` / `rag-fusion` / `hyde` |
 | `Orkeon:Rag:QueryTransform:VariantCount` | 3 | Variantes demandées aux transformers autres que `none` |
 | `Orkeon:Rag:Rerank:Enabled` | false (`fast`) | Si l'étape de rerank s'exécute |
-| `Orkeon:Rag:Rerank:Kind` | `none` | `none` / `llm` / `onnx` / `decision` / tout nom enregistré |
+| `Orkeon:Rag:Rerank:Kind` | `none` | `none` / `llm` / `onnx` / `decision` / tout nom enregistré ; `decision` garde l'ordre de récupération, avec un avertissement, quand le circuit de décision est coupé ([Modèles de décision](./decision-models.md#chaque-consommateur-suit-le-circuit)) |
 | `Orkeon:Rag:Rerank:TopN` | 5 | Chunks conservés après reranking |
 | `Orkeon:Rag:Context:MaxTokens` | 2000 | Budget de contexte (≈ 4 caractères/token ; les chunks en excès sont écartés, jamais de dépassement) |
 | `Orkeon:Rag:Context:Ordering` | `edges` | `edges` (anti-Lost-in-the-Middle) ou `linear` |

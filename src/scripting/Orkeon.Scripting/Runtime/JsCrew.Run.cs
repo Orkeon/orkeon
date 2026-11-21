@@ -352,7 +352,7 @@ public sealed partial class JsCrew
         if (budget.ToObject() is Orkeon.Domain.Autonomous.AgentExecutionBudget childBudget)
             scope.Budget = childBudget;
         else if (scope.Kind == CrewRunKind.Agent)
-            scope.Budget = ScriptRunBudget(_engine, bag, budget);
+            scope.Budget = ScriptRunBudget(_engine, bag, budget, Clock);
         scope.Permit = bag?.Get("permit").ToObject() as GatePermit;
         scope.Instance = bag?.Get("instance").ToObject() as AgentInstanceRun;
         scope.InheritedRoot = inherited?.Root;
@@ -368,9 +368,10 @@ public sealed partial class JsCrew
     /// the budget of the run it is called from as well — the caller's context's for <c>ctx.delegate</c>
     /// (<see cref="CallerBudget"/>); for <c>crew.runAgent</c>, the one budget every open attempt runs under,
     /// refused when they run under several (<see cref="JsEngineAttempts.BudgetToCharge"/>). With the charge
-    /// and no <c>budget</c>, the run spends straight from the caller's. Neither: no budget, as before.
+    /// and no <c>budget</c>, the run spends straight from the caller's. Neither: no budget, as before. A
+    /// <c>budget</c> with no charge reads <paramref name="clock"/>, the crew's (<see cref="Clock"/>).
     /// </summary>
-    private static Orkeon.Domain.Autonomous.AgentExecutionBudget? ScriptRunBudget(Jint.Engine engine, JsValue? bag, JsValue budget)
+    private static Orkeon.Domain.Autonomous.AgentExecutionBudget? ScriptRunBudget(Jint.Engine engine, JsValue? bag, JsValue budget, TimeProvider clock)
     {
         Orkeon.Domain.Autonomous.AgentExecutionBudget? charged = null;
         var charge = bag?.Get("charge") ?? JsValue.Undefined;
@@ -384,7 +385,7 @@ public sealed partial class JsCrew
                     + "and this call runs under none: give the crew a budget, crewBuilder().budget({...}).");
         }
         if (budget.IsUndefined() || budget.IsNull()) return charged;
-        return JsBudgetBridge.FromRunOption(budget, charged) ?? charged;
+        return JsBudgetBridge.FromRunOption(budget, charged, clock) ?? charged;
     }
 
     /// <summary>Begins the follow-up run of instance <paramref name="id"/>: the options its run is opened with.</summary>

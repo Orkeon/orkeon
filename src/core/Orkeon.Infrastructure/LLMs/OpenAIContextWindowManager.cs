@@ -7,6 +7,8 @@ namespace Orkeon.Infrastructure.LLMs;
 /// <summary>
 /// OpenAI-based context window manager implementation.
 /// </summary>
+/// <remarks>Obsolete (#432), like <see cref="IContextWindowManager"/>: removed in a future major version.</remarks>
+[Obsolete("Summarises one string, not a conversation with tool turns: the agent loops compact their conversation themselves (Orkeon:Compaction, #432). Removed in a future major version.")]
 public sealed partial class OpenAIContextWindowManager : IContextWindowManager
 {
     private readonly ITokenCounter _tokenCounter;

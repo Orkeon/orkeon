@@ -55,6 +55,7 @@ Each cycle lives under `.orkeon/forge/<slug>/` in your working directory:
 ├── repair.json           the validation errors a repair must address, while one is pending
 ├── crew/                 the rendered crew — what actually runs
 ├── runs/<n>/             each try: output, metrics, verdict, deliverables (folders/<name>/)
+├── runs/<n>/on|off/      the two passes of an `optional` crew's try, one per decision circuit
 ├── transcript.jsonl      the conversation
 └── history.jsonl         every state transition
 ```
@@ -76,6 +77,57 @@ The same pause takes a second answer: `resume --adopt` keeps the team as generat
 The assistant never writes YAML or TypeScript — it produces one schema-validated plan, and a deterministic renderer derives the files. `--format yaml` (default) renders the per-entity YAML layout; `--format script` renders an editable `crew.ork.ts` — the scripted equivalent of the same crew, a starting point for your own edits, not conditional logic. The script path needs esbuild; without it, a new session falls back to YAML and says so (`FORGE-ESBUILD-MISSING`).
 
 Both renders converge on the same validator, and the try loads the crew **from the rendered files** — what was written is what runs.
+
+## A crew that decides
+
+`--crew-decision` sets what the designed crew asks of System One, the decision model, for the whole session:
+
+- `none` (default): no decision task, no `when:`, no `system_one_decide`, and no `decision:` block in the crew.
+- `optional`: the plan may route its work with decision tasks — a key, a description and `decision.questions`, no
+  agent and no expected output — and tasks gated by `when:`. Each question is one `choice`, `score` or `noul`;
+  `instructions` go on a `choice` or a `score` question, a `noul` question reads none, its statement says it all. Each decision task names its relay, `without: { agent }`,
+  the agent that answers when no decision model runs; it may run no task of its own. The try runs twice, with
+  System One then through the relays, under `runs/<n>/on/` and `runs/<n>/off/`: it passes when both passes pass, its
+  score is the lower one and each finding names its `circuit`. Without a decision model only the relay pass runs,
+  with the warning `FORGE-DECISION-PASS-SKIPPED` and the finding `F-PASS-ON-SKIPPED`.
+- `required`: the crew needs System One; `system_one_decide` is offered when the decision circuit is on. With the
+  circuit off the session is refused before its interview (`FORGE-DECISION-UNAVAILABLE`, exit 1): a new session is
+  deleted, a resumed one is kept and resumes once a decision model is configured. `--dry` only warns, `--adopt` asks for no try.
+
+The mode is recorded in `session.json` and cannot change on resume. A session older than the option resumes as
+`required` when its plan holds a decision task or `system_one_decide`, else `none`, with `FORGE-DECISION-MODE-DERIVED`.
+The promoted team records it in `forge.json`, and `FORGE.md` and the launcher state it; `reopen` reads it back from
+the crew's `decision:` block. When the budget runs out after the first pass, the session stops there and its resume
+runs the second pass only; a `resume --edit` there starts a new iteration whose trial runs both passes, and is refused
+when no iteration is left.
+
+## System One's advice
+
+When a decision model is configured and on, the forge asks it for advice while it designs the team — distinct from
+the crew's own decisions above. Four questions, each answered as one line in the terminal and one
+`systemone.answered` event:
+
+```text
+◇ System One advises (brief, coverage): coverage: score 2.0 (confidence 0.90)
+◇ System One advises (blueprint, process): process: sequential (confidence 0.82)
+◇ System One advises (test, estimate): estimate: yes (p 0.74)
+◇ System One advises (diagnose, criteria): A1: yes (p 0.91)
+```
+
+- **coverage**, once the brief is submitted: does it cover the request as you stated it (`misses`, `partial`,
+  `covers`)? For you only: the brief stays as the assistant wrote it.
+- **process**, before the plan: which process fits the brief, among those the crew's decision mode allows. At a
+  probability of 0.6 or more the assistant receives it as a suggestion; its own choice stands.
+- **estimate**, before the try: will the team complete it and meet its criteria?
+- **criteria**, after the judge: one reading per acceptance criterion, for each pass of the try that succeeded,
+  against that pass's output; an `optional` team's lines name their pass (`diagnose, criteria, off pass`). Never
+  written into `verdict.json`.
+
+None of it changes the verdict, `passing`, the arbitration or `--auto`; the tokens count against the budget and
+appear as `systemOneTokens`. A failed call is one `FORGE-SYSTEMONE-FAILED` warning, and a call the token or time
+budget no longer covers is not made (`FORGE-SYSTEMONE-SKIPPED`): the stage carries on without that advice.
+`--no-decision` turns this advice off for one run, without touching the trial of an
+`optional` or `required` crew, which keeps the decision circuit of the host.
 
 ## Adopt it
 
@@ -101,6 +153,7 @@ Run it with its own launcher — `~/solutions/supplier-watch/run.sh`. A bare `or
 
 | Option | Applies to | What it does |
 |---|---|---|
+| `--no-decision` | a new session, `forge resume` but `--adopt` | The forge asks System One nothing for its own advice (below); the crew's own trial is unchanged. |
 | `--read <dir>` | a new session, `forge resume` | The folder the trial reads behind the first input folder no real folder was bound to (`/workspace` by default), in place of the working directory — point a trial at the documents the team is meant to read; the sessions stay under the working directory. |
 | `--reference <id>` | a new session | Composes the team from a use case of the catalogue (`orkeon usecases list`): its crew's structure is the assistant's model, and the session, `forge.json` and `FORGE.md` record it. |
 | `--lang <code>` | a new session, `forge resume` | The language the assistant converses in and names the team in (`fr`, `en`, `es`, `de`, `zh`; English by default) — until you write in another language or ask for one. |

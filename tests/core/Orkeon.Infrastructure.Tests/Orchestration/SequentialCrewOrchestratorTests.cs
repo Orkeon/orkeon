@@ -1168,4 +1168,37 @@ public class SequentialCrewOrchestratorTests
     }
 
     #endregion
+
+    [Fact]
+    [Trait("BR", "CH-429")]
+    public async Task KickoffAsync_ShouldRefuseARequiredCrew_WhenTheCircuitIsOnButNoDecisionModelIsRegistered()
+    {
+        // Arrange: the host registers the circuit on, but no decision model answers it, so the runner runs off.
+        var repository = new TestCrewRepository();
+        var strategyFactory = new TestProcessStrategyFactory();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), strategyFactory,
+            new ExecutionPlanParser(), new RecordingDomainEventDispatcher(),
+            decisionCircuit: Orkeon.Application.Crew.Execution.DecisionCircuit.On)
+        {
+            HasDecisionModel = false,
+        };
+        var crew = DomainCrew.Create(new CrewCreateOptions
+        {
+            Goal = "Test crew",
+            Name = "triage-crew",
+            ProcessType = ProcessType.Sequential,
+            DecisionMode = CrewDecisionMode.Required,
+        });
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        // Act
+        var output = await orchestrator.KickoffAsync(
+            crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal((false, Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable), (output.Succeeded, output.ErrorCode));
+    }
 }

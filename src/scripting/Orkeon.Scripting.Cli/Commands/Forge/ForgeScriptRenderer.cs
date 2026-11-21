@@ -33,7 +33,7 @@ internal static class ForgeScriptRenderer
     /// whatever was there — same stale-entity policy as the YAML render: a re-render never
     /// leaves files from the previous shape of the team. Returns the written relative paths.
     /// </summary>
-    public static IReadOnlyList<string> Render(ForgeBlueprint blueprint, string sessionDirectory)
+    public static IReadOnlyList<string> Render(ForgeBlueprint blueprint, string sessionDirectory, string? crewDecision = null)
     {
         ArgumentNullException.ThrowIfNull(blueprint);
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionDirectory);
@@ -56,7 +56,7 @@ internal static class ForgeScriptRenderer
         foreach (var task in OrderByDependencies(blueprint.Tasks ?? []))
             AppendTask(script, blueprint, task, identifiers);
 
-        AppendCrew(script, blueprint, identifiers);
+        AppendCrew(script, blueprint, identifiers, crewDecision);
 
         var relative = Path.Combine(ForgeYamlRenderer.CrewDirectoryName, ScriptFileName);
         File.WriteAllText(Path.Combine(sessionDirectory, relative), script.ToString());
@@ -94,7 +94,13 @@ internal static class ForgeScriptRenderer
         script.Append("const ").Append(identifiers[TaskKey(task.Key!)]).Append(" = taskBuilder()\n");
         script.Append("    .name(").Append(Literal(task.Key!)).Append(")\n");
         script.Append("    .description(").Append(Literal(task.Description ?? "")).Append(")\n");
-        script.Append("    .expectedOutput(").Append(Literal(task.ExpectedOutput ?? "")).Append(")\n");
+        // A decision task runs no agent: no expected output, its decision instead (#431).
+        if (task.Decision is { } decision)
+            script.Append("    .decision(").Append(JsonSerializer.Serialize(decision, DecisionOptions)).Append(")\n");
+        else
+            script.Append("    .expectedOutput(").Append(Literal(task.ExpectedOutput ?? "")).Append(")\n");
+        if (task.When is { Count: > 0 } when)
+            AppendWhen(script, when);
         if (task.Agent is not null && identifiers.TryGetValue(AgentKey(task.Agent), out var agentIdentifier))
             script.Append("    .agent(").Append(agentIdentifier).Append(")\n");
         foreach (var dependency in task.Dependencies ?? [])
@@ -120,8 +126,37 @@ internal static class ForgeScriptRenderer
         script.Append("    .build();\n");
     }
 
+    /// <summary>
+    /// The builder's <c>.when(task, clauses)</c> of a plan's condition: the decision task is the first segment of
+    /// the keys, which the clauses spell without it; <c>{"triage": "otherwise"}</c> is the string form.
+    /// </summary>
+    private static void AppendWhen(StringBuilder script, IReadOnlyDictionary<string, JsonElement> when)
+    {
+        var decisionTask = when.Keys.First().Split('.')[0];
+        script.Append("    .when(").Append(Literal(decisionTask)).Append(", ");
+        // The values the crew file holds (a string, or a list of strings), never the plan's raw JSON: a number the
+        // YAML writes as text would be refused by the script's mapper, and the two formats of one plan would differ.
+        if (when.Count == 1 && !when.Keys.First().Contains('.', StringComparison.Ordinal))
+        {
+            script.Append(JsonSerializer.Serialize(ForgeBlueprintDecisions.WhenValue(when.Values.First()), DecisionOptions)).Append(")\n");
+            return;
+        }
+
+        var clauses = when.ToDictionary(
+            pair => pair.Key.StartsWith(decisionTask + ".", StringComparison.Ordinal) ? pair.Key[(decisionTask.Length + 1)..] : pair.Key,
+            static pair => ForgeBlueprintDecisions.WhenValue(pair.Value),
+            StringComparer.Ordinal);
+        script.Append(JsonSerializer.Serialize(clauses, DecisionOptions)).Append(")\n");
+    }
+
+    private static readonly JsonSerializerOptions DecisionOptions = new()
+    {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     private static void AppendCrew(
-        StringBuilder script, ForgeBlueprint blueprint, Dictionary<string, string> identifiers)
+        StringBuilder script, ForgeBlueprint blueprint, Dictionary<string, string> identifiers, string? crewDecision)
     {
         script.Append('\n');
         if (blueprint.Crew?.Memory == true)
@@ -139,6 +174,8 @@ internal static class ForgeScriptRenderer
             script.Append("    .process(").Append(Literal(blueprint.Crew.Process)).Append(")\n");
         if (blueprint.Crew?.Verbose == true)
             script.Append("    .verbose(true)\n");
+        if (ForgeCrewDecision.BlockOf(crewDecision) is { } block)
+            script.Append("    .decision({ mode: ").Append(Literal(block.Mode!)).Append(" })\n");
 
         foreach (var agent in blueprint.Agents ?? [])
             script.Append("    .withAgent(").Append(identifiers[AgentKey(agent.Key!)]).Append(")\n");

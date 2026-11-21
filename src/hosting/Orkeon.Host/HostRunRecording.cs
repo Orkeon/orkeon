@@ -43,11 +43,23 @@ internal sealed class HostRunRecording
     /// <summary>True once <see cref="Begin"/> opened a recording.</summary>
     public bool IsActive => _publisher is not null;
 
+    /// <summary>
+    /// The run's publisher once <see cref="Begin"/> opened a recording, else null: the agent loops' observers write to it
+    /// (agent.compacted, agent.skills, agent.route, agent.pruned) through a <see cref="DeferredRunEventSink"/>.
+    /// </summary>
+    public IRunEventSink? Events => _publisher;
+
     /// <summary>Records that the run's crew completed (or not); read when the recording ends.</summary>
     public bool Succeeded { get; set; }
 
     /// <summary>Records that the run stopped on a question to a human (FWK-23): its end is <c>waiting_for_input</c>, exit 75.</summary>
     public bool WaitingForInput { get; set; }
+
+    /// <summary>
+    /// Records that the run was refused before its first task: its crew requires System One and the decision
+    /// circuit is off (#429), exit 69. An optional crew resumed under the other circuit (#430) exits 1, as any failure.
+    /// </summary>
+    public bool DecisionUnavailable { get; set; }
 
     /// <summary>
     /// The task-event observer in front of <paramref name="inner"/> when the run is recorded, else <paramref name="inner"/>
@@ -114,6 +126,8 @@ internal sealed class HostRunRecording
             return Orkeon.Constants.Cli.RunExitCodes.WaitingForInput;
         if (success)
             return 0;
+        if (DecisionUnavailable)
+            return Orkeon.Constants.Cli.RunExitCodes.DecisionUnavailable;
         return cancelled() ? CancelledExitCode : 1;
     }
 

@@ -45,6 +45,32 @@ public static class ServiceCollectionExtensions
         services.RegisterDeliverableResolvers();
         services.RegisterToolInvocationPipeline();
         services.RegisterExecutionOrchestrator();
+        // One resolver per host; its warnings (the circuit off, an empty library) are said once per run, held by the
+        // run's SystemOneRunScope (#434). Its settings are bound by AddOrkeonInfrastructure; without them, the defaults.
+        services.TryAddSingleton(sp => sp.GetService<Domain.FileSystem.IFileSystemService>() is { } fileSystem
+            ? new Crew.Skills.AgentSkillsResolver(
+                fileSystem,
+                sp,
+                sp.GetService<IOptions<Crew.Skills.AgentSkillsOptions>>()?.Value ?? new Crew.Skills.AgentSkillsOptions(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Skills.AgentSkillsResolver>>())
+            : null!);
+        // One router per host; its warnings (the circuit off, no ladder) are said once per run, held by the run's
+        // SystemOneRunScope (#434). Its ladder is bound by AddOrkeonInfrastructure; without it, none, and an auto task
+        // runs on the default profile.
+        services.TryAddSingleton(sp => new Crew.Routing.AgentProfileRouter(
+            sp,
+            sp.GetService<IOptions<Crew.Routing.AgentRouteOptions>>()?.Value ?? new Crew.Routing.AgentRouteOptions(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Routing.AgentProfileRouter>>()));
+        // The pruning of older read-tool results before compaction (#434), first of the pressure stages. Scoped: it
+        // follows the run scope's decision circuit (#431); the circuit-off warning is said once per run. Its
+        // settings are bound by AddOrkeonInfrastructure; without them, the defaults (off).
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<Crew.Compaction.IContextPressureStage, Crew.Compaction.ToolResultPruningStage>(
+            sp => new Crew.Compaction.ToolResultPruningStage(
+                sp,
+                sp.GetService<IOptions<Crew.Compaction.ToolResultPruningOptions>>()?.Value ?? new Crew.Compaction.ToolResultPruningOptions(),
+                sp.GetService<Crew.Execution.DecisionCircuitOverride>()?.Circuit,
+                sp.GetService<IAgentPruneObserver>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Compaction.ToolResultPruningStage>>())));
         services.AddScoped<ICallbackOrchestrator, CallbackOrchestrator>();
         services.AddScoped<IMemoryCoordinator, MemoryCoordinator>();
 
@@ -153,7 +179,9 @@ public static class ServiceCollectionExtensions
             ExecutionOrchestrator orchestrator;
             if (chatClient != null)
             {
-                var tools = sp.GetServices<Domain.Tools.IBaseTool>();
+                // A tool the container withholds resolves to null (a dropped plugin tool, system_one_decide
+                // with the decision circuit off): skipped.
+                var tools = sp.GetServices<Domain.Tools.IBaseTool>().OfType<Domain.Tools.IBaseTool>().ToList();
                 var validationPipeline = sp.GetService<IOutputValidationPipeline>();
                 var parserFactory = sp.GetService<IOutputParserFactory>();
                 // The full constructor — native tool calling, deliverables — whenever output validation
@@ -191,6 +219,19 @@ public static class ServiceCollectionExtensions
             // provider; every other one stays on the default resolved above.
             orchestrator.LlmProfiles = sp.GetService<Interfaces.Ports.ILlmProfileRegistry>();
             orchestrator.MemoryRegistry = sp.GetService<Memory.CrewMemoryProviderRegistry>();
+            // The conversation's compaction (#432): the settings and the window together, or the trim alone.
+            orchestrator.CompactionOptions = sp.GetService<IOptions<Crew.Compaction.ContextCompactionOptions>>()?.Value;
+            orchestrator.ContextWindows = sp.GetService<IContextWindowResolver>();
+            orchestrator.TokenCounter = sp.GetService<Domain.SharedKernel.ITokenCounter>();
+            orchestrator.CompactionObserver = sp.GetService<IAgentCompactionObserver>();
+            orchestrator.ContextPressureStages = sp.GetServices<Crew.Compaction.IContextPressureStage>().ToList();
+            // An agent's skills (#434): read through the VFS, an auto pick asked of the decision model.
+            orchestrator.SkillsResolver = sp.GetService<Crew.Skills.AgentSkillsResolver>();
+            orchestrator.SkillsObserver = sp.GetService<IAgentSkillsObserver>();
+            // An agent on llm.profile: auto (#434): System One picks the profile of each of its tasks.
+            orchestrator.ProfileRouter = sp.GetService<Crew.Routing.AgentProfileRouter>();
+            orchestrator.RouteObserver = sp.GetService<IAgentRouteObserver>();
+            orchestrator.ScopeCircuit = sp.GetService<Crew.Execution.DecisionCircuitOverride>()?.Circuit;
 
             // GAP-32 — a host that renders the model's text as it arrives (orkeon run --stream, the
             // REPL's console) gets every agent turn streamed to it, not only ctx.llm.* calls.
@@ -212,9 +253,12 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// The host's per-agent cap (<c>RateLimiting:AgentRequestsPerMinute</c>), read by the execution
     /// orchestrator and the manager (GAP-38); null when the host registers no <c>RateLimiting</c>
-    /// options — a container that never asked for the host's limits gets none.
+    /// options — a container that never asked for the host's limits gets none. The decision relay's calls wait
+    /// under the same cap (#430).
     /// </summary>
-    internal static int? HostAgentRequestsPerMinute(IServiceProvider services) =>
+    /// <param name="services">The container.</param>
+    /// <returns>The cap, or null.</returns>
+    public static int? HostAgentRequestsPerMinute(IServiceProvider services) =>
         services.GetService<IConfigureOptions<RateLimitingOptions>>() is null
             ? null
             : services.GetService<IOptions<RateLimitingOptions>>()?.Value.AgentRequestsPerMinute;

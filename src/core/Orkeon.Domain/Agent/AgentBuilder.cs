@@ -24,6 +24,8 @@ public sealed class AgentBuilder
     private string? _workingRoot;
     private IReadOnlyList<FileSystem.FileSystemScopeEntry> _fileSystemScope = [];
     private bool _announceMounts = true;
+    private AgentCompaction? _compaction;
+    private AgentSkills? _skills;
     private Security.PermissionMode? _permissionMode;
     private TimeSpan? _maxExecutionTime;
     private string? _systemTemplate;
@@ -262,6 +264,34 @@ public sealed class AgentBuilder
     }
 
     /// <summary>
+    /// What the agent overrides of the host's conversation compaction (#432): whether its loops
+    /// compact, and at which share of the window. Null, or a field left null, follows <c>Orkeon:Compaction</c>.
+    /// </summary>
+    /// <param name="compaction">The override; null overrides nothing.</param>
+    /// <exception cref="ArgumentOutOfRangeException">The trigger share is not above 0 and at most 1.</exception>
+    public AgentBuilder Compaction(AgentCompaction? compaction)
+    {
+        if (AgentCompaction.TriggerShareProblem(compaction?.TriggerShare, "compaction.triggerShare") is { } problem)
+            throw new ArgumentOutOfRangeException(nameof(compaction), problem);
+        _compaction = compaction;
+        return this;
+    }
+
+    /// <summary>
+    /// The skills the agent's prompt carries (#434): a fixed list of virtual paths, or a pick of the decision
+    /// model with its fallback list. Null declares none.
+    /// </summary>
+    /// <param name="skills">The skills; null declares none.</param>
+    /// <exception cref="ArgumentException">A path is blank.</exception>
+    public AgentBuilder Skills(AgentSkills? skills)
+    {
+        if (skills is not null && skills.Paths.Concat(skills.Fallback).Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException("A skill path is blank: write the virtual path of a markdown file.", nameof(skills));
+        _skills = skills;
+        return this;
+    }
+
+    /// <summary>
     /// Attaches a knowledge (RAG) collection to the agent with default retrieval options.
     /// Cumulative: call once per collection to attach several collections.
     /// </summary>
@@ -419,6 +449,9 @@ public sealed class AgentBuilder
         if (_llm is not null)
             ValidateOwnProvider(_llm);
 
+        if (_llmConfig is { } llmConfig && AutoProfileModel(llmConfig) is { } model)
+            throw new BuilderValidationException("Agent", AutoProfileModelRefusal($"The agent '{_role.Value}' (.WithLlmConfig)", model));
+
         var agent = Agent.Create(new AgentCreateOptions
         {
             Role = _role,
@@ -442,9 +475,29 @@ public sealed class AgentBuilder
         agent.WorkingRoot = _workingRoot;
         agent.FileSystemScope = _fileSystemScope;
         agent.AnnounceMounts = _announceMounts;
+        agent.Compaction = _compaction;
+        agent.Skills = _skills;
         agent.PermissionMode = _permissionMode;
         return agent;
     }
+
+    /// <summary>
+    /// The model a configuration names beside the profile <c>auto</c> (#434), or null: System One picks a rung of
+    /// the ladder, whose own model must run, and a model named beside it would run on every rung.
+    /// </summary>
+    internal static string? AutoProfileModel(LlmConfig config) =>
+        string.Equals(config.Profile?.Trim(), Orkeon.Constants.Llm.LlmProfileNames.Auto, StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrWhiteSpace(config.Model)
+            ? config.Model.Trim()
+            : null;
+
+    /// <summary>The refusal of a model named beside the profile <c>auto</c> (#434): one spelling for the builder and the crew factory.</summary>
+    /// <param name="who">The agent and where it names them.</param>
+    /// <param name="model">The model it names.</param>
+    internal static string AutoProfileModelRefusal(string who, string model) =>
+        $"{who} names the model '{model}' beside the LLM profile '{Orkeon.Constants.Llm.LlmProfileNames.Auto}': System One picks " +
+        "a profile of the route ladder (Orkeon:Decision:Route:Ladder) and that profile's own model runs, so a model named beside " +
+        "it would run on every rung. Drop the model, or name one profile instead of auto.";
 
     /// <summary>
     /// The agent's own provider against the rest of the builder (GAP-34), in the builder's words: a

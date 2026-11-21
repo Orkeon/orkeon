@@ -54,6 +54,7 @@ Chaque cycle vit sous `.orkeon/forge/<slug>/` dans votre répertoire de travail 
 ├── blueprint.json        le plan d'équipe (source unique des deux rendus)
 ├── repair.json           les erreurs de validation qu'une réparation doit corriger, tant qu'elle est en attente
 ├── crew/                 la crew rendue — ce qui tourne vraiment
+├── runs/<n>/on|off/      les deux passages de l'essai d'une équipe `optional`, un par circuit de décision
 ├── runs/<n>/             chaque essai : sortie, métriques, verdict, livrables (folders/<nom>/)
 ├── transcript.jsonl      la conversation
 └── history.jsonl         chaque transition d'état
@@ -76,6 +77,61 @@ La même pause accepte une seconde réponse : `resume --adopt` garde l'équipe t
 L'assistant n'écrit jamais ni YAML ni TypeScript — il produit un plan validé par schéma, et un renderer déterministe en dérive les fichiers. `--format yaml` (défaut) rend le layout YAML par entité ; `--format script` rend un `crew.ork.ts` éditable — l'équivalent scripté de la même crew, un point de départ pour vos propres retouches, pas de la logique conditionnelle. Le chemin script exige esbuild ; sans lui, une nouvelle session retombe sur YAML et le dit (`FORGE-ESBUILD-MISSING`).
 
 Les deux rendus convergent vers le même validateur, et l'essai charge la crew **depuis les fichiers rendus** — ce qui est écrit est ce qui tourne.
+
+## Une équipe qui décide
+
+`--crew-decision` fixe, pour toute la session, ce que l'équipe conçue demande à System One, le modèle de décision :
+
+- `none` (défaut) : aucune tâche de décision, aucun `when:`, aucun `system_one_decide`, et aucun bloc `decision:`
+  dans l'équipe.
+- `optional` : le plan peut aiguiller son travail par des tâches de décision — une clé, une description et
+  `decision.questions`, sans agent ni résultat attendu — et des tâches conditionnées par `when:`. Chaque question est
+  un `choice`, un `score` ou un `noul` ; les `instructions` vont sur une question `choice` ou `score`, une question
+  `noul` n'en lit aucune, son énoncé dit tout. Chaque tâche de
+  décision nomme son relais, `without: { agent }`, l'agent qui répond quand aucun modèle de décision ne tourne ; il
+  peut n'exécuter aucune tâche. L'essai tourne deux fois, avec System One puis par les relais, sous `runs/<n>/on/` et
+  `runs/<n>/off/` : il réussit quand les deux passages réussissent, son score est le plus bas et chaque constat nomme
+  son `circuit`. Sans modèle de décision seul le passage par les relais tourne, avec l'avertissement
+  `FORGE-DECISION-PASS-SKIPPED` et le constat `F-PASS-ON-SKIPPED`.
+- `required` : l'équipe a besoin de System One ; `system_one_decide` est proposé quand le circuit de décision est
+  ouvert. Circuit coupé, la session est refusée avant son entretien (`FORGE-DECISION-UNAVAILABLE`, sortie 1) : une
+  nouvelle session est supprimée, une session reprise est gardée et reprend une fois un modèle de décision configuré. `--dry` le signale seulement, `--adopt` ne
+  demande aucun essai.
+
+Le mode est enregistré dans `session.json` et ne change pas à la reprise. Une session antérieure à l'option reprend
+en `required` quand son plan porte une tâche de décision ou `system_one_decide`, en `none` sinon, avec
+`FORGE-DECISION-MODE-DERIVED`. L'équipe promue l'enregistre dans `forge.json`, `FORGE.md` et le lanceur l'énoncent ;
+`reopen` le relit dans le bloc `decision:` de l'équipe. Quand le budget s'épuise après le premier passage, la session
+s'arrête là et sa reprise ne lance que le second ; un `resume --edit` à cet endroit ouvre une nouvelle itération dont
+l'essai lance les deux passages, et il est refusé quand il ne reste aucune itération.
+
+## Les avis de System One
+
+Quand un modèle de décision est configuré et actif, la forge lui demande des avis pendant qu'elle conçoit l'équipe —
+à distinguer des décisions de l'équipe elle-même, ci-dessus. Quatre questions, chacune répondue par une ligne au
+terminal et un événement `systemone.answered` :
+
+```text
+◇ System One advises (brief, coverage): coverage: score 2.0 (confidence 0.90)
+◇ System One advises (blueprint, process): process: sequential (confidence 0.82)
+◇ System One advises (test, estimate): estimate: yes (p 0.74)
+◇ System One advises (diagnose, criteria): A1: yes (p 0.91)
+```
+
+- **coverage**, une fois le brief soumis : couvre-t-il la demande telle que vous l'avez formulée (`misses`,
+  `partial`, `covers`) ? Pour vous seul : le brief reste tel que l'assistant l'a écrit.
+- **process**, avant le plan : quel processus convient au brief, parmi ceux que permet le mode de décision de
+  l'équipe. À une probabilité de 0,6 ou plus, l'assistant le reçoit comme une suggestion ; son propre choix tient.
+- **estimate**, avant l'essai : l'équipe le mènera-t-elle à bien en satisfaisant ses critères ?
+- **criteria**, après le juge : une lecture par critère d'acceptation, pour chaque passage réussi de l'essai, face à
+  la sortie de ce passage ; les lignes d'une équipe `optional` nomment leur passage (`diagnose, criteria, off pass`).
+  Jamais écrite dans `verdict.json`.
+
+Rien de cela ne change le verdict, `passing`, l'arbitrage ni `--auto` ; les jetons comptent contre le budget et
+apparaissent sous `systemOneTokens`. Un appel en échec donne un avertissement `FORGE-SYSTEMONE-FAILED`, et un appel
+que le budget de jetons ou de durée ne couvre plus n'est pas fait (`FORGE-SYSTEMONE-SKIPPED`) : l'étape continue sans
+cet avis. `--no-decision` éteint ces avis pour une exécution, sans toucher l'essai d'une
+équipe `optional` ou `required`, qui garde le circuit de décision de l'hôte.
 
 ## L'adopter
 
@@ -101,6 +157,7 @@ Lancez-la par son propre script — `~/solutions/veille-fournisseur/run.sh`. Un 
 
 | Option | S'applique à | Effet |
 |---|---|---|
+| `--no-decision` | une nouvelle session, `forge resume` sauf `--adopt` | La forge ne demande rien à System One pour ses propres avis (ci-dessus) ; l'essai de l'équipe ne change pas. |
 | `--read <dir>` | une nouvelle session, `forge resume` | Le dossier que l'essai lit derrière le premier dossier d'entrée relié à aucun dossier réel (`/workspace` par défaut), à la place du répertoire de travail — pour pointer un essai sur les documents que l'équipe doit lire ; les sessions restent sous le répertoire de travail. |
 | `--reference <id>` | une nouvelle session | Compose l'équipe à partir d'un cas d'usage du catalogue (`orkeon usecases list`) : la structure de sa crew sert de modèle à l'assistant, et la session, `forge.json` et `FORGE.md` l'enregistrent. |
 | `--lang <code>` | une nouvelle session, `forge resume` | La langue dans laquelle l'assistant converse et nomme l'équipe (`fr`, `en`, `es`, `de`, `zh` ; l'anglais par défaut) — jusqu'à ce que vous écriviez dans une autre langue ou le demandiez. |

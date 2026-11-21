@@ -36,10 +36,11 @@ maxRpm: int               # default: aucun — au plus N requêtes au modèle pa
 budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous seulement — voir Budget autonome plus bas ; default: aucun plafond de tokens ni de durée, 50 / 4 / 10
 managerAgent: string      # La clé d'un des agents de la crew (tout autre nom fait échouer le chargement, en les listant). Hiérarchique : le manager — requis (omis, le chargement échoue) ; il assigne et revoit sur son propre bloc llm:, profil et modèle. Consensual : l'arbitre du repli ManagerDecision (inactif, avec un avertissement au début du run, sous un autre repli). Tout autre process : refusé au chargement
 graph: {…}                # Mode Graph : nœuds, arêtes et réglages du circuit breaker (voir la section dédiée)
+decision: {mode}          # mode : "none" | "optional" | "required" (insensible à la casse) — ce dont la crew a besoin de System One ; omis, le mode est non spécifié ; un mode inconnu ou absent fait échouer le chargement. Voir le mode de décision d'une crew dans decision-models.md
 
 llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAMP sous le llm: propre de chaque agent (même forme que agents.<id>.llm)
   profile: string         # Profil LLM de l'hôte (Llm:Profiles:<nom>) pour tous les agents — inconnu → le chargement échoue en listant les profils de l'hôte
-  model: string
+  model: string           # Refusé quand il atteint un agent sur profile: auto (le chargement échoue en nommant l'agent)
   max_tokens: int         # Positif ; omis = le plafond hérité, 0 ou moins fait échouer le chargement en nommant la crew
   temperature: float
 
@@ -86,7 +87,8 @@ agents:
     verbose: bool         # default: false — logs détaillés pour cet agent (appels d'outils, résultats, réponses du modèle, en Information, catégorie Orkeon.Verbose)
     llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
       profile: string     # Profil LLM de l'hôte (Llm:Profiles:<nom>) : le fournisseur de cet agent ; "default" = la section Llm
-      model: string       # Identifiant du modèle LLM — omis → le modèle propre du profil
+      # profile: auto     # Réservé : System One choisit, au début de chaque tâche, un profil de Orkeon:Decision:Route:Ladder (du moins cher au plus cher), que la tâche garde ; sous 0,6, sans réponse ou circuit coupé → le profil par défaut. Sans échelle, un model: à côté (ici ou venu du llm: de la crew), ou decision.mode: none → le chargement échoue
+      model: string       # Identifiant du modèle LLM — omis → le modèle propre du profil ; refusé à côté de profile: auto, où tourne le modèle propre de l'échelon choisi
       temperature: float  # Envoyée quelle que soit sa valeur — omise = celle du profil, sinon rien n'est envoyé et le modèle applique la sienne
       maxTokens: int      # Plafond de tokens en sortie, positif — omis = le maximum documenté du modèle ; 0 ou moins fait échouer le chargement
       topP: float         # Nucleus sampling, envoyé quelle que soit sa valeur — omis = celui du profil, sinon rien n'est envoyé (Mistral écrit 1)
@@ -109,6 +111,14 @@ agents:
       rules: [string]     # Règles globales numérotées
       toolRules:          # Règles rendues seulement quand l'agent possède l'outil ; un nom d'outil ignore la casse, et un outil écrit sous deux clés fait échouer le chargement
         <tool_name>: [string]
+    compaction:           # Remplace Orkeon:Compaction pour cet agent (optionnel) ; une clé mal orthographiée fait échouer le chargement
+      enabled: bool       # défaut : Orkeon:Compaction:Enabled (true) ; false garde la coupe à 40 messages
+      triggerShare: float # (0, 1], la part de la fenêtre utile qui déclenche un résumé ; défaut : Orkeon:Compaction:TriggerShare (0,75)
+      prune: bool         # Si System One élague les anciens résultats d'outils de lecture de cet agent avant de compacter ; défaut : Orkeon:Compaction:Prune:Enabled (false) ; enabled: false ou circuit coupé → rien n'est élagué
+    skills: [string]      # Fichiers markdown (chemins virtuels) ajoutés au prompt système sous '## Skills' à chaque tâche (optionnel) ; chacun coupé à Orkeon:Skills:MaxSkillChars, le bloc à MaxBlockChars
+    # skills:             # Ou la forme de choix : System One choisit au plus 3 skills de Orkeon:Skills:Library par tâche, en lisant une ligne par skill
+    #   auto: true        # requis dans la forme map ; false fait échouer le chargement (une liste fixe s'écrit en liste)
+    #   fallback: [string] # porté quand le circuit de décision est coupé, que la bibliothèque est vide ou illisible, que le choix échoue ou que sa réponse ne porte aucun choix utilisable ; absent : aucun skill. Toute autre clé fait échouer le chargement
     knowledge:            # Collections de connaissance (RAG) attachées à l'agent (optionnel) ; une clé inconnue d'une entrée est refusée, une valeur mal formée reste un warning
       - string            # Forme courte : nom de collection avec options par défaut
       - collection: string       # Forme longue (clé requise)
@@ -164,8 +174,9 @@ tasks:
       state: [string]        # Clés des tâches dont le modèle juge la sortie ; défaut : les sorties des dépendances qui ont tourné
       longContext: bool      # défaut : false — demande le contexte long du modèle
       fallback: {<question>: string}  # Réponses utilisées sans requête quand le circuit de décision est coupé
+      without: {agent: string, instructions: string}  # decision.mode optional (exigé sur chaque tâche de décision) ou required (chargé avec un avertissement, jamais utilisé) ; refusé sinon : l'agent qui répond quand le circuit est coupé
     when:                 # Ne lance la tâche que si une tâche de décision a répondu comme écrit (une seule tâche de décision par when:)
-      <task>.<question>: [string] | ">= 0.7"  # Une liste d'options (choice), ou un seuil : une probabilité (oui/non) ou une position de niveau (score)
+      <task>.<question>: [string] | ">= 0.7"  # Une liste d'options (choice, ou [yes] / ["no"] sur un oui/non), ou un seuil : une probabilité (oui/non) ou une position de niveau (score)
       <task>.<question>.<option>: ">= 0.25"   # La probabilité d'une option d'un choice
       <task>: otherwise                       # Seule : vaut quand aucune condition sœur sur cette tâche ne vaut
 ```
@@ -273,6 +284,11 @@ tasks:
   option d'un choice, un niveau d'un score, `yes` ou `no` d'un oui/non (mettez `"no"` entre guillemets,
   que YAML lit comme un booléen). Une question sans réponse de repli ne sélectionne aucune option. Voir
   [le repli](./decision-models.md#le-circuit-de-décision-et-le-repli).
+- `without` nomme l'agent qui répond aux questions quand le circuit est coupé, dans une crew en
+  `decision.mode: optional`, qui l'exige sur chaque tâche de décision ; une crew `required` le charge avec un
+  avertissement sans jamais s'en servir, et une crew sans mode ou en `none` le refuse. `agent` est une clé des `agents:` de la crew et
+  `instructions` un texte facultatif ajouté aux questions. L'agent ne donne que des probabilités, vérifiées et lues comme la réponse du modèle : voir
+  [le relais](./decision-models.md#le-relais-without).
 - Une tâche de décision exige toujours une `description` et un `expectedOutput` comme toute tâche, et
   la crew exige toujours un agent, même si aucune tâche ne l'utilise.
 
@@ -283,6 +299,7 @@ Plusieurs clauses s'écrivent dans un même bloc et **doivent toutes valoir**. L
 | Clause | Vaut quand |
 |---|---|
 | `<task>.<question>: [a, b]` | La question est un choice, l'option choisie est dans la liste et la confiance est au moins égale à `minConfidence`. |
+| `<task>.<question>: [yes]` | La question est un oui/non, sa réponse choisie (`yes` quand sa probabilité vaut 0,5 ou plus) est celle de la liste (écrivez `["no"]` : un `[no]` sans guillemets est refusé au chargement avec l'invitation à le mettre entre guillemets, YAML le lisant comme un booléen) et la confiance est au moins égale à `minConfidence`. |
 | `<task>.<question>: ">= 0.7"` | La question est un oui/non (sa probabilité d'un oui, dans [0, 1]) ou un score (le score pondéré du modèle sur les positions des niveaux, de 0 à n-1) et la comparaison vaut. Le seuil de confiance ne s'applique pas. |
 | `<task>.<question>.<option>: ">= 0.25"` | La probabilité de cette option d'un choice satisfait la comparaison, même si l'option n'est pas la choisie. Le seuil de confiance ne s'applique pas. |
 | `<task>: otherwise` | Aucune condition sœur sur cette tâche de décision ne vaut, y compris quand la confiance est sous le seuil. |
@@ -317,10 +334,36 @@ dans tous les messages, sous la forme `Task '<clé>' <partie> …` où la partie
   décision, un `otherwise` sans condition sœur sur cette tâche de décision ;
 - une clause d'option avec une liste (`triage.category.bug: [bug]`), qui n'accepte qu'une chaîne de
   seuil ;
+- une liste d'options sur une question de score, en nommant la question : un score n'a pas de niveau choisi et
+  prend un seuil ; une liste d'options sur une question oui/non autre que `yes` et `no` ;
 - une décision ou un `when:` dans un processus autre que les trois ci-dessus.
 
 Avec le circuit de décision coupé, l'exécution est aussi refusée avant sa première tâche quand une
 tâche de décision n'a ni `fallback` ni tâche `otherwise`.
+
+### Le mode de décision d'une crew
+
+```yaml
+decision:
+  mode: optional          # none | optional | required
+tasks:
+  triage:
+    description: Sort the ticket
+    expectedOutput: The route
+    decision:
+      questions:
+        route: { choice: { bug: a defect, other: anything else } }
+      without:            # crews optional seulement : qui répond quand le circuit est coupé
+        agent: analyst    # un agent de la crew
+        instructions: Read the summary first.
+```
+
+Le bloc `decision:` au niveau de la crew dit ce qu'elle attend de System One. Il est lu dans `crew.yaml` et dans le
+`config.yaml` d'une crew découpée ; le bloc nomme un `mode`, `none`, `optional` ou `required`, et toute autre valeur
+est refusée au chargement. Le `without:` d'une tâche de décision nomme l'agent qui y répond quand le circuit est coupé.
+Les règles que chaque mode applique au chargement et au run sont dans
+[Modèles de décision](./decision-models.md#le-mode-de-décision-dune-crew). Un moteur antérieur à cette version refuse
+la clé `decision:` au niveau de la crew.
 
 ## Configuration Guardrails
 
@@ -628,7 +671,9 @@ camelCase, et une clé que rien ne fixe n'est pas écrite du tout.
   configuration : un `preset:` de guardrails revient sous la forme du `header`, des `rules` et des
   `toolRules` qu'il a apportés, le `llm:` de crew sous la forme du bloc que chaque agent en a reçu, sous
   chaque agent, et les `anchors:` sous la forme du texte qu'elles remplaçaient. Un attachement de
-  connaissance qui ne nomme que sa collection est écrit en forme courte, tout autre en forme longue.
+  connaissance qui ne nomme que sa collection est écrit en forme courte, tout autre en forme longue. Une
+  chaîne que YAML lirait comme un autre type (`no`, `yes`, `on`, `null`, `1.0`) est écrite entre guillemets, si
+  bien qu'une liste `when:` qui contient l'option `no` se charge à nouveau.
 - **Une source relative suit le fichier.** Une source de `rag:` est écrite telle quelle : `./data/faq.md`
   se lit donc par rapport au dossier d'où le fichier exporté est chargé (voir
   [Configuration Knowledge & RAG](#configuration-knowledge--rag)) — exportez à côté des données, ou

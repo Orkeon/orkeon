@@ -49,7 +49,7 @@ public sealed class HostPublishesRunEventsTests : IDisposable
 
     private string CrewPath => Path.Combine(_root, "crews", "support.yaml");
 
-    private IHost Build(HeldLlmProvider llm, bool? history = null)
+    private IHost Build(HeldLlmProvider llm, bool? history = null, bool ladder = false, Action<IServiceCollection>? configure = null)
     {
         var root = new Dictionary<string, object?>
         {
@@ -61,6 +61,9 @@ public sealed class HostPublishesRunEventsTests : IDisposable
         };
         if (history is { } enabled)
             ((Dictionary<string, object?>)root["Orkeon"]!)["RunHistory"] = new { Enabled = enabled };
+        // A route ladder of the default profile and a "small" one the host registers below.
+        if (ladder)
+            ((Dictionary<string, object?>)root["Orkeon"]!)["Decision"] = new { Route = new { Ladder = new[] { "default", "small" } } };
 
         var settings = Path.Combine(_root, $"{Guid.NewGuid():N}.json");
         File.WriteAllText(settings, JsonSerializer.Serialize(root));
@@ -81,6 +84,9 @@ public sealed class HostPublishesRunEventsTests : IDisposable
             {
                 services.AddHostServices(context.Configuration, crewPlan);
                 services.AddOrkeonLlmProvider(_ => llm);
+                if (ladder)
+                    services.AddOrkeonLlmProfile("small", _ => llm, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Create("model-of-small"));
+                configure?.Invoke(services);
             },
             configureBuilder: builder => builder.UseDefaultServiceProvider(options =>
             {
@@ -168,5 +174,212 @@ public sealed class HostPublishesRunEventsTests : IDisposable
         Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
         Assert.Null(host.Services.GetService<IRunHistoryReader>());
         Assert.False(Directory.Exists(Path.Combine(_root, ".orkeon", "runs")));
+    }
+
+    // The crew's agent declares one skill: its task's prompt carries the skills block, and the agent loop tells its
+    // observer (agent.skills, #434). The file does not exist, so the notice names it as cut: the event is what is checked.
+    private void WriteSkilledCrew() => File.WriteAllText(CrewPath, """
+        name: support
+        goal: Answer one question offline
+        process: sequential
+        agents:
+          helper:
+            role: Helper
+            goal: Help
+            backstory: A minimal test agent.
+            maxIter: 1
+            skills: [/workspace/skills/style.md]
+        tasks:
+          answer:
+            description: Answer the question.
+            expected_output: An answer.
+            agent: helper
+        """);
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWriteTheAgentSkillsEventInTheRunHistory_WhenAHostedAgentDeclaresSkills()
+    {
+        // Arrange
+        WriteSkilledCrew();
+        using var host = Build(new HeldLlmProvider("the answer"));
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+
+        // Act
+        var result = await runner.RunAsync("support", "What changed?", "test");
+
+        // Assert
+        Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
+        var reader = host.Services.GetRequiredService<IRunHistoryReader>();
+        var summary = Assert.Single(await reader.ListAsync(new RunQuery(), Ct));
+        var events = await reader.ReadEventsAsync(summary.RunId, 1, Ct);
+        var skills = Assert.Single(events, e => e.Kind == RunEventKinds.AgentSkills);
+        Assert.Equal("Helper", skills.Payload?["agentRole"]?.GetValue<string>());
+        Assert.Equal(summary.RunId, skills.CorrelationId);
+        Assert.Equal(Enumerable.Range(1, events.Count), events.Select(e => e.Seq));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldCompleteTheRun_WhenAnAgentDeclaresSkillsAndTheHistoryIsOff()
+    {
+        // Arrange
+        WriteSkilledCrew();
+        using var host = Build(new HeldLlmProvider("the answer"), history: false);
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+
+        // Act
+        var result = await runner.RunAsync("support", "hello", "test");
+
+        // Assert
+        Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
+        Assert.Null(host.Services.GetService<IRunHistoryReader>());
+    }
+
+    // The crew's agent is routed by System One (llm.profile: auto); the host has no decision model, so the default
+    // profile stands, and the agent loop tells its observer (agent.route, #434): the event is what is checked.
+    private void WriteRoutedCrew() => File.WriteAllText(CrewPath, """
+        name: support
+        goal: Answer one question offline
+        process: sequential
+        agents:
+          helper:
+            role: Helper
+            goal: Help
+            backstory: A minimal test agent.
+            maxIter: 1
+            llm:
+              profile: auto
+        tasks:
+          answer:
+            description: Answer the question.
+            expected_output: An answer.
+            agent: helper
+        """);
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWriteTheAgentRouteEventInTheRunHistory_WhenAHostedAgentIsRoutedBySystemOne()
+    {
+        // Arrange
+        WriteRoutedCrew();
+        using var host = Build(new HeldLlmProvider("the answer"), ladder: true);
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+
+        // Act
+        var result = await runner.RunAsync("support", "What changed?", "test");
+
+        // Assert
+        Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
+        var reader = host.Services.GetRequiredService<IRunHistoryReader>();
+        var summary = Assert.Single(await reader.ListAsync(new RunQuery(), Ct));
+        var events = await reader.ReadEventsAsync(summary.RunId, 1, Ct);
+        var route = Assert.Single(events, e => e.Kind == RunEventKinds.AgentRoute);
+        Assert.Equal(("Helper", summary.RunId), (route.Payload?["agentRole"]?.GetValue<string>(), route.CorrelationId));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWriteTheCompactionAndPruningEventsInTheRunHistory_WhenAHostedAgentLoopTellsThem()
+    {
+        // Arrange: the run's agent tells the host's compaction and pruning observers what the agent loop tells them.
+        using var host = Build(new HeldLlmProvider("unused"), configure: services =>
+            services.AddScoped<Orkeon.Application.Interfaces.Services.IAgentExecutionService>(sp => new FakeObservingAgentExecutionService(
+                sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IAgentCompactionObserver>(),
+                sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IAgentPruneObserver>())));
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+
+        // Act
+        var result = await runner.RunAsync("support", "What changed?", "test");
+
+        // Assert
+        Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
+        var reader = host.Services.GetRequiredService<IRunHistoryReader>();
+        var summary = Assert.Single(await reader.ListAsync(new RunQuery(), Ct));
+        var events = await reader.ReadEventsAsync(summary.RunId, 1, Ct);
+        var compacted = Assert.Single(events, e => e.Kind == RunEventKinds.AgentCompacted);
+        var pruned = Assert.Single(events, e => e.Kind == RunEventKinds.AgentPruned);
+        Assert.Equal(("Helper", summary.RunId), (compacted.Payload?["agentRole"]?.GetValue<string>(), compacted.CorrelationId));
+        Assert.Equal(("Helper", summary.RunId), (pruned.Payload?["agentRole"]?.GetValue<string>(), pruned.CorrelationId));
+        Assert.Equal(Enumerable.Range(1, events.Count), events.Select(e => e.Seq));
+    }
+
+    // The crew's agent has System One pick its skills, over three tasks, from a library of one skill beside the crew
+    // file (the crews' mount, /crews), and the decision model fails every pick (#434).
+    private void WriteSkillsAutoCrew()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "crews", "skills"));
+        File.WriteAllText(Path.Combine(_root, "crews", "skills", "style.md"), "Style: write plainly.\n");
+        File.WriteAllText(CrewPath, """
+            name: support
+            goal: Answer three questions offline
+            process: sequential
+            agents:
+              helper:
+                role: Helper
+                goal: Help
+                backstory: A minimal test agent.
+                maxIter: 1
+                skills:
+                  auto: true
+            tasks:
+              first:
+                description: Answer the first question.
+                expected_output: An answer.
+                agent: helper
+              second:
+                description: Answer the second question.
+                expected_output: An answer.
+                agent: helper
+              third:
+                description: Answer the third question.
+                expected_output: An answer.
+                agent: helper
+            """);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWarnOfAFailedSkillsPickOncePerRun_WhenTheDaemonRunsACrewOfThreeTasksTwice()
+    {
+        // Arrange
+        WriteSkillsAutoCrew();
+        var model = new StubFailingDecisionModel();
+        using var logs = new RecordingLoggerProvider();
+        using var host = Build(new HeldLlmProvider("the answer"), configure: services =>
+        {
+            services.AddSingleton<Orkeon.Application.Interfaces.Ports.IDecisionModel>(model);
+            services.PostConfigure<Orkeon.Application.Crew.Skills.AgentSkillsOptions>(o => o.Library = "/crews/skills");
+            services.AddSingleton<ILoggerProvider>(logs);
+        });
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+        int PickFailedWarnings() => logs.Logger.Entries.Count(e => e.Level == LogLevel.Warning
+            && e.Message.Contains("could not pick its skills", StringComparison.Ordinal));
+
+        // Act
+        var first = await runner.RunAsync("support", "What changed?", "test");
+        var afterFirst = PickFailedWarnings();
+        var second = await runner.RunAsync("support", "What else?", "test");
+
+        // Assert: three failed picks in each run, one warning in each, the detail on every task's agent.skills.
+        Assert.Equal(HostedRunOutcome.Completed, first.Outcome);
+        Assert.Equal(HostedRunOutcome.Completed, second.Outcome);
+        Assert.Equal(6, model.Requests);
+        Assert.Equal(1, afterFirst);
+        Assert.Equal(2, PickFailedWarnings());
+        var reader = host.Services.GetRequiredService<IRunHistoryReader>();
+        var runs = await reader.ListAsync(new RunQuery(), Ct);
+        Assert.Equal(2, runs.Count);
+        foreach (var run in runs)
+        {
+            var skills = (await reader.ReadEventsAsync(run.RunId, 1, Ct)).Where(e => e.Kind == RunEventKinds.AgentSkills).ToList();
+            Assert.Equal(3, skills.Count);
+            Assert.All(skills, e =>
+            {
+                Assert.Equal(Orkeon.Application.Interfaces.Ports.AgentSkillsReasons.PickFailed, e.Payload?["reason"]?.GetValue<string>());
+                Assert.Contains(model.Fault, e.Payload?["detail"]?.GetValue<string>(), StringComparison.Ordinal);
+            });
+        }
     }
 }

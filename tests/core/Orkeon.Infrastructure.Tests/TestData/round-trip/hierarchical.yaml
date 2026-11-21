@@ -35,6 +35,7 @@ agents:
   lead:
     role: Board lead
     goal: Assign the reviews and decide
+    skills: [/workspace/skills/review.md]
     llm:
       profile: default
       temperature: 0.3

@@ -93,7 +93,7 @@ public static class JsCrewConfigurationAdapter
             managerId = mid;
         }
 
-        return new CrewConfiguration
+        var configuration = new CrewConfiguration
         {
             Name = crew.name,
             Goal = ResolveCrewGoal(crew),
@@ -107,7 +107,20 @@ public static class JsCrewConfigurationAdapter
             ManagerAgentId = managerId,
             Agents = agentConfigs,
             Tasks = taskConfigs,
+            DecisionMode = crew.DecisionMode,
         };
+
+        // The rules of the crew's decision.mode a loader can check (#429): the host's decision profiles are
+        // checked by the crew factory.
+        var modeFindings = DecisionTaskRules.CheckMode(
+            configuration.DecisionMode,
+            process,
+            configuration.DecisionDeclarations(),
+            configuration.SystemOneUses(),
+            crew.agents.Select(a => a.name).ToList());
+        if (modeFindings.Refusals.Count > 0)
+            throw new InvalidOperationException(DecisionTaskRules.ModeRefusal(modeFindings.Refusals));
+        return configuration;
     }
 
     private static AgentConfiguration BuildAgentConfiguration(AgentId id, JsAgent jsAgent)
@@ -139,6 +152,8 @@ public static class JsCrewConfigurationAdapter
         return new AgentConfiguration
         {
             Id = id,
+            // The name every reference of the script uses: a decision task's without.agent names it (#430).
+            Key = jsAgent.name,
             Role = builder.AgentRole ?? jsAgent.name,
             Goal = builder.AgentGoal ?? string.Empty,
             Backstory = builder.AgentBackstoryText ?? string.Empty,

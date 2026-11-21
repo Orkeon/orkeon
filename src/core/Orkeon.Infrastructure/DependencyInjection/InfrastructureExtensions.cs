@@ -185,7 +185,19 @@ public static class InfrastructureExtensions
         services.AddScoped<Domain.SharedKernel.Events.IDomainEventDispatcher, DomainEventDispatcher>();
 
         // Orchestration services (moved from Application — R16)
-        services.AddScoped<SequentialCrewOrchestrator>();
+        // A scope whose DecisionCircuitOverride holds a circuit runs with it (#431): the notice, the refusal of a
+        // required crew and the resume check read the scope's circuit, not the container's.
+        // The run enters that circuit (DecisionCircuitScope), so what is built once per host follows it too.
+        services.AddScoped<SequentialCrewOrchestrator>(sp =>
+        {
+            var circuit = ScopedCircuit(sp);
+            var orchestrator = circuit is null
+                ? ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp)
+                : ActivatorUtilities.CreateInstance<SequentialCrewOrchestrator>(sp, circuit);
+            orchestrator.RunScopeCircuit = circuit;
+            orchestrator.HasDecisionModel = sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is not null;
+            return orchestrator;
+        });
         services.AddScoped<ICrewOrchestrationService>(sp => sp.GetRequiredService<SequentialCrewOrchestrator>());
         services.AddSingleton<ICrewExecutionStateManager, ScopedCrewExecutionStateManager>();
 
@@ -242,6 +254,26 @@ public static class InfrastructureExtensions
         // where every host composes its memory, from the container's configuration.
         services.AddOrkeonSettings<CrewMemoryOptions>(CrewMemoryOptions.SectionName);
 
+        // How the agent loops keep a long conversation inside the model's window (#432), and the
+        // window itself: the profile's, the model's documented one, else the session's figure.
+        services.AddOrkeonSettings<Application.Crew.Compaction.ContextCompactionOptions>(Application.Crew.Compaction.ContextCompactionOptions.SectionName)
+            .ValidateSettings((options, provider) =>
+                CompactionProfileProblem(options.Profile, provider) is { } profile
+                    ? [.. Application.Crew.Compaction.ContextCompactionOptions.Problems(options), profile]
+                    : Application.Crew.Compaction.ContextCompactionOptions.Problems(options));
+        // The pruning of older read-tool results before compaction (#434): off unless the host turns it on.
+        services.AddOrkeonSettings<Application.Crew.Compaction.ToolResultPruningOptions>(Application.Crew.Compaction.ToolResultPruningOptions.SectionName)
+            .ValidateSettings((options, _) => Application.Crew.Compaction.ToolResultPruningOptions.Problems(options));
+        // How an agent's skills: reach its prompt (#434): the library an auto pick reads, the caps.
+        services.AddOrkeonSettings<Application.Crew.Skills.AgentSkillsOptions>(Application.Crew.Skills.AgentSkillsOptions.SectionName)
+            .ValidateSettings((options, _) => Application.Crew.Skills.AgentSkillsOptions.Problems(options));
+        // The ladder an agent on llm.profile: auto is routed among (#434); its names are checked at a crew's load.
+        services.AddOrkeonSettings<Application.Crew.Routing.AgentRouteOptions>(Application.Crew.Routing.AgentRouteOptions.SectionName)
+            .ValidateSettings((options, _) => Application.Crew.Routing.AgentRouteOptions.Problems(options));
+        services.TryAddSingleton<Application.Interfaces.Ports.IContextWindowResolver>(sp => new LLMs.Context.ContextWindowResolver(
+            sp.GetService<IOptions<Session.CliSessionOptions>>()?.Value.ContextWindowTokens,
+            sp.GetRequiredService<ILogger<LLMs.Context.ContextWindowResolver>>()));
+
         // Memory:Provider names the TYPE of the application-wide provider, judged at start against the
         // types the factory serves, with what the named provider needs from its own section (GAP-40):
         // an unknown type, or LanceDB without its endpoint, used to run on the volatile provider.
@@ -255,6 +287,25 @@ public static class InfrastructureExtensions
                 .GetProvider(sp.GetRequiredService<IOptions<Memory.MemorySectionOptions>>().Value.Provider ?? string.Empty));
 
         return services;
+    }
+
+    /// <summary>
+    /// What is wrong with <c>Orkeon:Compaction:Profile</c> (#432): a name the host does not define, or
+    /// <c>auto</c>, which picks a profile per task and writes no summary; null when it is left out or known.
+    /// A host without a profile registry offers the default alone.
+    /// </summary>
+    private static string? CompactionProfileProblem(string? profile, IServiceProvider services)
+    {
+        const string key = Application.Crew.Compaction.ContextCompactionOptions.SectionName + ":Profile";
+        if (LlmProfiles.IsDefault(profile))
+            return null;
+        var name = profile!.Trim();
+        if (LlmProfiles.IsAuto(name))
+            return $"{key} is '{LlmProfiles.Auto}', which picks a profile per task and cannot write a summary: name a profile of Llm:Profiles, or leave the key out for the agent's own.";
+        var registry = services.GetService<ILlmProfileRegistry>();
+        return registry is not null && registry.IsKnown(name)
+            ? null
+            : LlmProfiles.UnknownMessage(name, key, registry?.Names ?? []);
     }
 
     private static IServiceCollection AddOrkeonSerializationAndEmbeddings(this IServiceCollection services)
@@ -469,7 +520,9 @@ public static class InfrastructureExtensions
             sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IMemoryScope>(),
             sp.GetService<Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher>())
         {
-            DecisionRunner = sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(),
+            DecisionRunner = ScopedCircuit(sp) is { } circuit
+                ? BuildDecisionRunner(sp, circuit)
+                : sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(),
         });
 
         // Add Process Strategies
@@ -719,7 +772,9 @@ public static class InfrastructureExtensions
         // "Orkeon:CrewFactory:StrictTools" key and defaults it to true for runners).
         services.AddOptions<Orkeon.Infrastructure.Configuration.CrewFactoryOptions>();
         services.TryAddSingleton<ICrewDefinitionLoader, YamlCrewDefinitionLoader>();
-        services.TryAddScoped<ICrewFactory, CrewFactory>();
+        services.TryAddScoped<ICrewFactory>(sp => ScopedCircuit(sp) is { } circuit
+            ? ActivatorUtilities.CreateInstance<CrewFactory>(sp, circuit)
+            : ActivatorUtilities.CreateInstance<CrewFactory>(sp));
         services.TryAddSingleton<YamlCrewExporter>();
 
         return services;
@@ -872,17 +927,32 @@ public static class InfrastructureExtensions
 
             pipeline.AddGuard(GuardPhase.Input, sp.GetRequiredService<InputGuard>());
             // The LLM judge, beside the built-in guards: the decision model judges the input and the
-            // output of a task (Orkeon:Guardian:Llm, off by default). Enabled without a decision model
-            // is a refusal to start: a judge that cannot judge must not leave the phase unguarded.
+            // output of a task (Orkeon:Guardian:Llm, off by default). It follows the decision circuit
+            // (#433): off in the host, a fail-closed judge refuses to start - a judge that cannot judge must
+            // not leave the phase unguarded - and a fail-open one is left out with one warning. Built once
+            // per host, the judge reads the circuit again at each check, so a run whose scope is off
+            // (DecisionCircuitScope, #431) asks no model: a fail-closed judge blocks, a fail-open one passes.
             if (options.Llm.Enabled)
             {
-                var model = sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>()
-                    ?? throw new InvalidOperationException(
-                        $"{GuardianLlmOptions.SectionName}:Enabled is true but no decision model is registered: " +
-                        "call AddOrkeonDecisionProvider, or turn the LLM judge off.");
-                var judge = new LlmJudgeGuard(model, Options.Create(options.Llm), sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), auditLogger);
-                foreach (var phase in new[] { GuardPhase.Input, GuardPhase.Output }.Where(options.Llm.Judges))
-                    pipeline.AddGuard(phase, judge);
+                var circuit = Orkeon.Application.Crew.Execution.DecisionCircuit.OfHost(sp);
+                if (circuit.Enabled)
+                {
+                    var model = sp.GetRequiredService<Orkeon.Application.Interfaces.Ports.IDecisionModel>();
+                    var judge = new LlmJudgeGuard(model, Options.Create(options.Llm), sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), auditLogger)
+                    {
+                        Circuit = () => Orkeon.Application.Crew.Execution.DecisionCircuit.Of(sp),
+                    };
+                    foreach (var phase in new[] { GuardPhase.Input, GuardPhase.Output }.Where(options.Llm.Judges))
+                        pipeline.AddGuard(phase, judge);
+                }
+                else if (options.Llm.FailMode == GuardianJudgeFailMode.Closed)
+                {
+                    throw new InvalidOperationException(GuardianLlmOptions.CircuitRefusal(circuit.OffReason!));
+                }
+                else
+                {
+                    DecisionCircuitLog.JudgeLeftOut(sp.GetRequiredService<ILogger<LlmJudgeGuard>>(), circuit.OffReason!);
+                }
             }
             pipeline.AddGuard(GuardPhase.ToolExecution, sp.GetRequiredService<ToolGuard>());
             pipeline.AddGuard(GuardPhase.Delegation, sp.GetRequiredService<DelegationGuard>());
@@ -891,19 +961,52 @@ public static class InfrastructureExtensions
         });
         services.TryAddSingleton<IGuardianPipeline>(sp => sp.GetRequiredService<GuardianPipeline>());
 
-        // The decision circuit: on when a decision model is registered and Orkeon:Decision:Enabled allows it.
+        // The decision circuit: on when Orkeon:Decision:Enabled allows it and a decision model is
+        // registered; off, it carries its cause - the settings before the missing provider. The
+        // --no-decision switch registers its own circuit after this one, and wins.
         services.AddOrkeonSettings<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>(Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.SectionName);
         services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionCircuit>(sp =>
         {
-            var enabled = sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is not null
-                && (sp.GetRequiredService<IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>>().Value.Enabled);
-            return new Orkeon.Application.Crew.Execution.DecisionCircuit(enabled);
+            if (!sp.GetRequiredService<IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>>().Value.Enabled)
+                return Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings);
+            return sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is null
+                ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider)
+                : Orkeon.Application.Crew.Execution.DecisionCircuit.On;
         });
-        services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(sp => new Orkeon.Application.Crew.Execution.DecisionTaskRunner(
-            sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>(),
-            sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionCircuit>(),
-            sp.GetRequiredService<ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner>>()));
+        // The circuit of one run scope, set by a host that runs the same crew with and without System One (#431).
+        services.TryAddScoped<Orkeon.Application.Crew.Execution.DecisionCircuitOverride>();
+        // The without: relay of an optional crew's decision tasks (#430): the relay agent's own provider or profile.
+        services.TryAddSingleton<Orkeon.Application.Interfaces.Ports.IDecisionRelay>(sp =>
+            new Orkeon.Infrastructure.LLMs.Decision.LlmDecisionRelay(sp.GetService<ILlmProfileRegistry>()));
+        services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionTaskRunner>(sp =>
+            BuildDecisionRunner(sp, sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionCircuit>()));
 
         return services;
     }
+
+    /// <summary>
+    /// The decision runner over <paramref name="circuit"/>: the host's model and relay, and the relay's calls
+    /// waiting under the host's clock and per-agent cap, as an agent's calls do (#430).
+    /// </summary>
+    private static Orkeon.Application.Crew.Execution.DecisionTaskRunner BuildDecisionRunner(
+        IServiceProvider sp, Orkeon.Application.Crew.Execution.DecisionCircuit circuit) =>
+        new(
+            sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>(),
+            sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionRelay>(),
+            circuit,
+            sp.GetRequiredService<ILogger<Orkeon.Application.Crew.Execution.DecisionTaskRunner>>())
+        {
+            TimeProvider = sp.GetService<TimeProvider>() ?? TimeProvider.System,
+            AgentRequestsPerMinute = Orkeon.Application.DependencyInjection.ServiceCollectionExtensions.HostAgentRequestsPerMinute(sp),
+        };
+
+    /// <summary>
+    /// The circuit a scope's <see cref="Orkeon.Application.Crew.Execution.DecisionCircuitOverride"/> holds, null when
+    /// none is set (#431), as <see cref="Orkeon.Application.Crew.Execution.DecisionCircuit.Of(IServiceProvider, Orkeon.Application.Crew.Execution.DecisionCircuit?)"/>
+    /// reads it - an off container stays off: the scoped run services take it in place of the container's circuit.
+    /// </summary>
+    private static Orkeon.Application.Crew.Execution.DecisionCircuit? ScopedCircuit(IServiceProvider services) =>
+        services.GetService<Orkeon.Application.Crew.Execution.DecisionCircuitOverride>()?.Circuit is { } circuit
+            ? Orkeon.Application.Crew.Execution.DecisionCircuit.Of(services, circuit)
+            : null;
 }

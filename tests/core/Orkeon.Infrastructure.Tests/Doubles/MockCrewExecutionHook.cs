@@ -14,6 +14,7 @@ public sealed class MockCrewExecutionHook : ICrewExecutionHook
     private readonly List<TaskExecutionSnapshot> _completedTasks = [];
     private readonly List<CrewExecutionSnapshot> _completions = [];
     private readonly List<CrewExecutionSnapshot> _failures = [];
+    private readonly List<RunDecisionNotice> _decisions = [];
     private readonly Dictionary<string, TaskCompletionSource> _heardEnds = new(StringComparer.Ordinal);
 
     // --- Tracking ---
@@ -21,6 +22,7 @@ public sealed class MockCrewExecutionHook : ICrewExecutionHook
     public IReadOnlyList<TaskExecutionSnapshot> CompletedTasks { get { lock (_gate) return [.. _completedTasks]; } }
     public IReadOnlyList<CrewExecutionSnapshot> Completions { get { lock (_gate) return [.. _completions]; } }
     public IReadOnlyList<CrewExecutionSnapshot> Failures { get { lock (_gate) return [.. _failures]; } }
+    public IReadOnlyList<RunDecisionNotice> Decisions { get { lock (_gate) return [.. _decisions]; } }
 
     /// <summary>
     /// Completes once the hook has heard the end of the task <paramref name="taskId"/>: a test that
@@ -32,6 +34,12 @@ public sealed class MockCrewExecutionHook : ICrewExecutionHook
     }
 
     // --- ICrewExecutionHook ---
+    public Task OnRunDecisionAsync(RunDecisionNotice notice, CancellationToken ct)
+    {
+        lock (_gate) _decisions.Add(notice);
+        return Task.CompletedTask;
+    }
+
     public Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct)
     {
         lock (_gate) _startedTasks.Add(snapshot);

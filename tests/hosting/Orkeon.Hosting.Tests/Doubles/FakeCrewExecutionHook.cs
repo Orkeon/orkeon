@@ -5,7 +5,7 @@ namespace Orkeon.Hosting.Tests.Doubles;
 
 /// <summary>
 /// Hand-written <see cref="ICrewExecutionHook"/> that keeps what it is told: the snapshot of every task
-/// that completed, in order, and how each crew ended.
+/// that completed, in order, how each crew ended and the run decision notices.
 /// </summary>
 public sealed class FakeCrewExecutionHook : ICrewExecutionHook
 {
@@ -45,4 +45,14 @@ public sealed class FakeCrewExecutionHook : ICrewExecutionHook
 
     /// <inheritdoc />
     public Task OnCrewFailedAsync(CrewExecutionSnapshot isPartial, Exception? ex, CancellationToken ct) => Task.CompletedTask;
+
+    /// <summary>Every run decision notice reported (#429), in order.</summary>
+    public ConcurrentQueue<RunDecisionNotice> RunDecisions { get; } = new();
+
+    /// <inheritdoc />
+    public Task OnRunDecisionAsync(RunDecisionNotice notice, CancellationToken ct)
+    {
+        RunDecisions.Enqueue(notice);
+        return Task.CompletedTask;
+    }
 }

@@ -83,4 +83,7 @@ internal sealed record JsCrewDefinition
     /// declarative shape, all its agents and its manager together. Null sets no limit of its own.
     /// </summary>
     public int? MaxRpm { get; init; }
+
+    /// <summary>YAML parity <c>decision: { mode }</c> (#429): whether the crew needs System One.</summary>
+    public Orkeon.Domain.Crew.CrewDecisionMode DecisionMode { get; init; }
 }

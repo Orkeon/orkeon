@@ -41,6 +41,7 @@ internal sealed partial class JsCrewBuilder
     private bool _memory;
     private bool _planning;
     private int? _maxRpm;
+    private Orkeon.Domain.Crew.CrewDecisionMode _decisionMode;
     private int _concurrency = 4;
     private int _maxInstances = 32;
     private JsValue? _onCrewStart, _onCrewComplete, _onCrewError;
@@ -158,6 +159,33 @@ internal sealed partial class JsCrewBuilder
     });
 
     /// <summary>
+    /// YAML parity <c>decision: { mode: none | optional | required }</c> (#429): whether the crew needs System One.
+    /// <c>none</c> never asks it, <c>optional</c> runs with it or without it (each decision task declares a
+    /// <c>without</c> relay), <c>required</c> is refused before its first task when the decision circuit is off.
+    /// Left out, the crew keeps the behaviour it had before the key existed. Declarative shape only: the procedural
+    /// <c>await crew.run()</c> never reads the mode (the engine knows no decision circuit), and does not warn.
+    /// </summary>
+    public JsCrewBuilder decision(JsValue spec) => Guarded(() =>
+    {
+        if (spec is null || !spec.IsObject())
+            throw new InvalidScriptException("crewBuilder().decision(spec) expects an object: { mode: 'none' | 'optional' | 'required' }.");
+        var mode = spec.AsObject().Get("mode");
+        if (!mode.IsString())
+            throw new InvalidScriptException("crewBuilder().decision({ mode }) names a mode: 'none', 'optional' or 'required'.");
+        // Trimmed and case-blind, as the YAML loader reads decision.mode.
+        var written = mode.AsString().Trim();
+        _decisionMode = written.ToUpperInvariant() switch
+        {
+            "NONE" => Orkeon.Domain.Crew.CrewDecisionMode.None,
+            "OPTIONAL" => Orkeon.Domain.Crew.CrewDecisionMode.Optional,
+            "REQUIRED" => Orkeon.Domain.Crew.CrewDecisionMode.Required,
+            _ => throw new InvalidScriptException(
+                $"crewBuilder().decision({{ mode: '{written}' }}): not a mode; expected 'none', 'optional' or 'required'."),
+        };
+        return this;
+    });
+
+    /// <summary>
     /// YAML parity <c>memory: true</c> — the crew remembers: each run stores the result of its tasks
     /// and recalls the closest ones before each task, in the host's default memory store, under the
     /// crew's name (GAP-30). Off by default. Not <c>ctx.memory.*</c>, the scoped key/value stores of a run.
@@ -228,6 +256,7 @@ internal sealed partial class JsCrewBuilder
             Memory = _memory,
             Planning = _planning,
             MaxRpm = _maxRpm,
+            DecisionMode = _decisionMode,
             Concurrency = _concurrency,
             MaxInstances = _maxInstances,
             Logger = _logger,

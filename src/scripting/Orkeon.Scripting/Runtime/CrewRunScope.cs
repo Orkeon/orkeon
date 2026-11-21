@@ -182,7 +182,7 @@ internal sealed class CrewRunScope : IDisposable
         }
         if (Kind == CrewRunKind.Agent) return;
 
-        Budget = JsBudgetBridge.FromSpec(_crew.Budget);
+        Budget = JsBudgetBridge.FromSpec(_crew.Budget, clock: _crew.Clock);
         Activity = ScriptingActivitySource.Instance.StartActivity(ScriptingActivitySource.CrewRunSpan);
         Activity?.SetTag("orkeon.crew.name", _crew.name);
         Activity?.SetTag("orkeon.crew.process", _crew.Process);

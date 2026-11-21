@@ -189,19 +189,19 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 103 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 106 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 110 |
-| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory) | 28 |
+| [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-80 sections, 530 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+84 sections, 544 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -280,6 +280,10 @@ celle de la section au lieu de la remplacer. Ce qu'il laisse vide est celui de l
 0,3 du planificateur, le plafond de sortie d'une analyse). Le fournisseur d'un profil fait de même
 avec ses propres clés.
 
+Non renseigné, `ContextWindowTokens` (ici et sous `Profiles:<nom>`) ne se rabat sur la fenêtre documentée d'un
+modèle que pour les quatre modèles que liste la table de [`Orkeon:Compaction`](#orkeoncompaction) ;
+tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
+
 <!-- settings:Llm -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
@@ -293,6 +297,7 @@ avec ses propres clés.
 | `Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
+| `ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, au-dessus de zéro, contre laquelle les boucles d'agent compactent une longue conversation ; zéro ou moins refuse le démarrage. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens` (200000 par défaut), avec un avertissement par profil qui nomme le chiffre supposé : donnez-la pour un modèle plus petit que la table ne connaît pas : sur le chiffre supposé, les boucles gardent la coupe à 40 messages à côté de la compaction, mais ne compactent qu'une fois ce chiffre atteint. Elle vaut pour le modèle de cette section seul : un agent dont `llm.model` nomme un autre modèle lit la fenêtre documentée de ce modèle, sinon celle supposée. Jamais envoyée au fournisseur. |
 | `Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
 | `MaxRateLimitWait` | durée | `"00:05:00"` | La plus longue fenêtre de limite de débit qu'un appel attend avant d'échouer : un fournisseur qui en annonce une plus longue fait échouer l'appel aussitôt avec une erreur de limite de débit. `00:00:00` n'attend rien. |
 | `MaxRetries` | entier | `10` | Combien de fois un appel qui échoue sur une erreur passagère est retenté ; `0` ne retente jamais. |
@@ -310,6 +315,7 @@ avec ses propres clés.
 | `Profiles:<nom>:Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Profiles:<nom>:Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt` ou `Tools`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
 | `Profiles:<nom>:CallMode` | chaîne | `"Auto"` | Comment un appel atteint le modèle : `Auto`, `Buffer` ou `Stream`, casse ignorée. Omis, `Auto` : l'appel est diffusé en flux, et retombe sur un appel tamponné quand le fournisseur refuse le flux. |
+| `Profiles:<nom>:ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle en tokens, au-dessus de zéro, contre laquelle les boucles d'agent compactent une longue conversation ; zéro ou moins refuse le démarrage. Omise, les boucles lisent la fenêtre documentée du modèle, sinon `Orkeon:Cli:Session:ContextWindowTokens` (200000 par défaut), avec un avertissement par profil qui nomme le chiffre supposé : donnez-la pour un modèle plus petit que la table ne connaît pas : sur le chiffre supposé, les boucles gardent la coupe à 40 messages à côté de la compaction, mais ne compactent qu'une fois ce chiffre atteint. Elle vaut pour le modèle de cette section seul : un agent dont `llm.model` nomme un autre modèle lit la fenêtre documentée de ce modèle, sinon celle supposée. Jamais envoyée au fournisseur. |
 | `Profiles:<nom>:Fallback` | liste de chaînes | `[]` | Les profils vers lesquels un appel passe, dans l'ordre, quand celui-ci échoue d'une façon qu'un nouvel essai ne guérit pas : une erreur de transport, un 5xx, un 429 une fois `MaxRetries` épuisé, un délai dépassé. Une liste de noms de profils, ou une seule valeur séparée par des virgules ; `default` désigne le profil de l'hôte. Omise, un échec reste celui de l'appel. |
 | `Profiles:<nom>:FallbackBudgetSeconds` | entier | — | Le temps maximal, en secondes et compté depuis le premier appel, que la chaîne peut passer avant de cesser d'essayer le profil suivant. Il est vérifié entre deux profils et ne coupe jamais un appel en cours. Omis, la chaîne n'est bornée que par le `TimeoutSeconds` et le `MaxRetries` de chaque profil. |
 | `Profiles:<nom>:Grammar` | booléen | `false` | Si le point d'accès honore une grammaire GBNF — un serveur compatible llama.cpp, comme Docker Model Runner. Ailleurs une grammaire est abandonnée avec un avertissement. |
@@ -728,6 +734,41 @@ sections présentes, ou aucune section et les deux clés définies, sont refusé
 | `Provider` | chaîne | — | Le fournisseur de décision actif : `typesafe`, `liquid` ou `kev` ; vide, il se déduit des sections et des clés. |
 <!-- /settings -->
 
+### `Orkeon:Decision:Route`
+
+Où est routé un agent sur `llm.profile: auto`. Au début de chacune de ses tâches, System One
+choisit un profil de `Ladder`, listé du moins cher au plus cher, et la tâche le garde pour tous
+les appels de cet agent dans le run, nouvelles tentatives et révisions comprises (un autre agent
+sur la tâche, un votant, a le sien) ; le modèle de décision lit le rôle de l'agent et la tâche
+(coupée au milieu à 4 000 caractères), jamais la conversation. Sous une probabilité de 0,6, sans
+réponse, quand l'appel échoue ou quand le circuit de décision est coupé (`--no-decision`,
+`Orkeon:Decision:Enabled: false`, aucun fournisseur de décision), le profil `default` de l'hôte
+(la section `Llm`) s'applique, jamais celui de l'agent, sans erreur : un circuit coupé ne fait aucun
+appel de décision. Dans une crew en `decision.mode: none`, le profil `default` s'applique aussi, sans
+appel ni avertissement (`reason: decision-none`). Un avertissement est journalisé une fois par run quand le circuit est coupé ou que
+`Ladder` manque (hors d'un run, une fois par hôte), et à chaque appel en échec ; une probabilité basse
+ou une réponse manquante n'est journalisée qu'en information. Chaque choix émet `agent.route` sur
+le flux d'événements du run, une fois par tâche et par agent d'un run. Le
+`llm_override: { profile: auto }` d'une tâche est routé de la même façon, et se replie lui aussi
+sur `default`, pas sur le profil de son agent. Un manager ou un relais
+de décision (`without.agent`) sur `auto` sans tâche à lui tourne sur le profil par défaut, et
+reste donc hors des vérifications de chargement ci-dessous. Dans une crew `.ork.ts`, le routage
+se fait au niveau de la tâche seulement : `task.withProfile("auto")` est routé, et
+`llm.profile("auto")` sur un agent est refusé. Un échelon nomme un profil de `Llm:Profiles` ou
+de `Orkeon:Decision:Profiles` (`default` compris) ; une crew qui nomme `auto` sur un hôte sans
+échelle, ou avec un échelon que l'hôte n'offre pas, échoue à son chargement. `auto` est un nom de
+profil réservé : `Llm:Profiles:auto` et `Orkeon:Decision:Profiles:auto` sont refusés au
+démarrage. Ce n'est pas l'étape `route` d'un profil de décision, qui choisit un profil à chaque
+appel.
+
+<!-- settings:Orkeon:Decision:Route -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Ladder` | liste de chaînes | `[]` | Les profils entre lesquels un agent `auto` est routé, du moins cher au plus cher : deux noms ou plus de `Llm:Profiles` ou `Orkeon:Decision:Profiles` (`default` compris), chacun une fois ; une échelle d'un seul échelon, ou avec un échelon vide, `auto` ou répété, est refusée au démarrage. Vide par défaut : une crew qui nomme `auto` sur un hôte sans échelle échoue à son chargement. |
+<!-- /settings -->
+
 ## Débit et budgets
 
 Deux choses différentes s'appellent « rate limiting ». **`RateLimiting`** plafonne les appels au
@@ -1071,7 +1112,8 @@ Le pipeline de requête, étape par étape :
   définie : `default`) ; `rag_eval` l'utilise pour un dataset qui ne nomme pas de collection et
   n'apporte pas de corpus.
 - **`Retrieval`** — les bornes de l'étape de retrieval ; **`Retrieval:Mmr`** — MMR opt-in.
-- **`Rerank`** — choix et profondeur du reranker.
+- **`Rerank`** — choix et profondeur du reranker. `Kind: decision` suit le circuit de décision : coupé, il garde
+  l'ordre de récupération, avec un avertissement ([Modèles de décision](../architecture/decision-models.md#chaque-consommateur-suit-le-circuit)).
 - **`Context`** — assemblage du contexte (ordre `edges` anti-Lost-in-the-Middle).
 - **`Groundedness`** — le hook de groundedness.
 - **`Generation`** — l'étape de génération citée.
@@ -1317,7 +1359,10 @@ La sous-section `Llm` ajoute un juge LLM, coupé par défaut : le modèle de dé
 sortie d'une tâche (`Phases`), un risque à `BlockThreshold` ou au-dessus bloque, et quand le modèle ne
 répond pas `FailMode` tranche : `Closed` (défaut) refuse, `Open` laisse passer le texte ; les deux auditent
 `guardian.judge.unavailable`. Tant que la phase de sortie est gardée, le streaming d'une tâche attend le jugement. Il demande un modèle de décision (`AddOrkeonDecisionProvider`) ; activé
-sans lui, l'hôte refuse de démarrer.
+en `FailMode: Closed` et sans lui, l'hôte refuse de démarrer.
+Le juge suit le circuit de décision (`--no-decision`, `Orkeon:Decision:Enabled=false`, aucun fournisseur) : coupé,
+`FailMode: Closed` refuse de démarrer en nommant la cause, et `Open` retire le juge avec un avertissement
+([Modèles de décision](../architecture/decision-models.md#chaque-consommateur-suit-le-circuit)).
 
 <!-- settings:Orkeon:Guardian -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1707,7 +1752,7 @@ livré : c'est celui qui est installé sur la machine. La fenêtre est visible s
 | `Profile` | chaîne | — |  | Profil avec lequel un navigateur démarre quand l'agent n'en nomme aucun : `disposable` (par défaut, un dossier neuf supprimé à la fermeture du navigateur), le nom d'un profil du Firefox installé sur l'hôte (`profiles.ini`), ou le chemin d'un dossier de profil. Un profil nommé est utilisé sur place, avec ses cookies et ses sessions, et jamais supprimé ; un profil qu'un autre Firefox tient ouvert est refusé. |
 | `ProfileRoot` | chaîne | — |  | Dossier sous lequel chaque navigateur reçoit son propre dossier de profil, supprimé à la fermeture du navigateur. Non renseigné : `~/snap/firefox/common/orkeon/profiles` quand Firefox est un snap (un snap ne lit pas le dossier temporaire du système), sinon `orkeon-firefox` sous le dossier temporaire du système. |
 | `SharedInstance` | booléen | `false` |  | `true` partage un navigateur par profil entre les exécutions d'agents de l'hôte : chaque exécution y pilote ses propres onglets, et le navigateur se ferme quand la dernière exécution le quitte, sauf si `Lifetime` vaut `Host`. Par défaut, chaque exécution a son propre navigateur. |
-| `StartupTimeoutSeconds` | entier | `30` |  | Secondes laissées à Firefox pour démarrer et ouvrir son protocole distant. |
+| `StartupTimeoutSeconds` | entier | `30` |  | Secondes laissées à Firefox pour ouvrir son protocole distant ; sa session, à laquelle il répond une fois sa première fenêtre chargée, attend ensuite la plus grande de cette valeur et de `CommandTimeoutSeconds`. |
 <!-- /settings -->
 
 ### `MCP`
@@ -1841,6 +1886,130 @@ présente ; un autre hôte appelle `AddOrkeonPlugins(fileSystem, configuration)`
 ## Orchestration et persistance
 
 Comment une crew se construit et décide, et ce qui est gardé de son exécution.
+
+### `Orkeon:Compaction`
+
+Comment les boucles d'agent gardent une longue conversation dans la fenêtre du modèle.
+Avant chaque appel, la boucle estime son prompt : les tokens de prompt que le fournisseur a
+comptés au dernier appel plus un compte des messages ajoutés depuis ; ce que ce compte tenait
+au-delà des messages (les définitions d'outils, l'habillage) reste dans l'estimation quand la
+conversation est comptée de nouveau. Dès que l'estimation atteint `TriggerShare` de la fenêtre
+utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum
+documenté du modèle, sinon 4096, au plus la moitié de la fenêtre), un appel de résumé, qui lit
+aussi la tâche, remplace les tours anciens, et le prompt système, la tâche et les
+`KeepRecentTurns` derniers tours restent tels quels. Quand `Profile` nomme un profil dont la fenêtre
+est connue (son `ContextWindowTokens`, sinon la fenêtre documentée de son modèle) et que l'appel de
+résumé ne tiendrait pas dans cette fenêtre moins sa réserve de sortie, chaque message de la
+transcription est coupé à une même longueur, les plus courts gardés entiers, et une ligne
+d'information le dit. Un tour est une réponse de l'assistant, en un
+message ou plusieurs, avec ses résultats d'outils : un appel n'est jamais gardé sans son résultat.
+Un message système parmi les tours anciens (le pilotage du budget souple) reste, juste après le
+résumé. Quand les `KeepRecentTurns` tours sont tout ce qu'il y a, ou dépassent seuls le seuil, moins sont gardés : le plus grand
+nombre dont les messages passent sous le seuil, sinon le dernier tour seul ; un appel au-delà du
+seuil avec un seul tour attend un tour plus tard, et ne compte pas comme un échec. La fenêtre est le
+`ContextWindowTokens` du profil pour le modèle propre du profil (un agent dont `llm.model` nomme un
+autre modèle lit la fenêtre documentée de ce modèle, sinon le chiffre supposé), sinon celle que
+documente le modèle, sinon
+[`Orkeon:Cli:Session:ContextWindowTokens`](#orkeonclisession) (200000 par défaut), avec un
+avertissement par profil qui nomme le chiffre supposé. La table des fenêtres documentées
+(`LlmModelContextWindows`) connaît quatre modèles : `kimi-k3` (1000000 tokens), `kimi-k2.6`,
+`mistral-medium-2604` et `mistral-medium-3-5` (256000 chacun). Un identifiant de modèle en prend un
+exactement, sinon le plus long par lequel il commence suivi de `-`, `:`, `@` ou `_`, sinon par sa
+partie après une barre oblique de vendeur, sans tenir compte de la casse ; tout autre modèle
+compacte contre le chiffre supposé. Ce chiffre peut surestimer un modèle plus petit : sur lui, la boucle garde la coupe à 40 messages à côté de la compaction (la coupe garde le résumé d'une
+compaction juste après la tâche) ; donnez
+`ContextWindowTokens` au profil de ce modèle pour compacter contre sa vraie fenêtre seule. Trois compactions ratées de suite
+ramènent la coupe à 40 messages pour le reste de la tentative de la tâche (une tâche relancée
+compacte de nouveau), et l'élagage ci-dessous s'arrête avec elles. Chaque
+compaction émet `agent.compacted` sur le flux d'événements du run et dans son historique, sous
+`orkeon run`, `orkeon-host` et `orkeon mcp serve --crew` également. Un agent remplace `Enabled` et `TriggerShare` par sa clé YAML `compaction:` ; une crew `.ork.ts` suit
+ces réglages. La boucle à protocole texte garde sa coupe. Un fournisseur aux points de cache
+explicites (Anthropic) garde son prompt système et ses outils en cache ; un fournisseur au cache
+de préfixe automatique facture de nouveau la conversation après la coupe.
+
+<!-- settings:Orkeon:Compaction -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Enabled` | booléen | `true` | Si les boucles compactent leur conversation. Vrai par défaut : une longue boucle paie un appel de résumé au lieu de perdre son milieu dans la coupe à 40 messages. Faux ramène cette coupe, comme le fait `compaction: { enabled: false }` d'un agent pour cet agent seul. |
+| `KeepRecentTurns` | entier | `6` | Combien des tours les plus récents une compaction garde mot pour mot, un tour étant une réponse de l'assistant, en un message ou plusieurs, avec ses résultats d'outil (un appel d'outil n'est jamais séparé de son résultat). Moins sont gardés quand ils sont tout ce que tient la conversation ou dépassent seuls le seuil. 6 par défaut ; 0 résume tous les tours. |
+| `Profile` | chaîne | — | Le profil LLM qui écrit le résumé : `default`, un profil de `Llm:Profiles` ou un profil de décision de `Orkeon:Decision:Profiles` ; un nom que l'hôte ne propose pas (qu'aucune des deux sections ne définit, ou que `Orkeon:Host:LlmProfiles` écarte), ou `auto`, refuse le démarrage. Omis, le modèle et le profil propres de l'agent. Les tokens du résumé sont comptés à la tâche dans les deux cas. |
+| `TriggerShare` | nombre | `0.75` | La part de la fenêtre utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum documenté du modèle, sinon 4096, au plus la moitié de la fenêtre) que le prompt estimé atteint pour que la boucle compacte, au-dessus de 0 et au plus 1. 0,75 par défaut ; `compaction: { triggerShare }` d'un agent la remplace. |
+<!-- /settings -->
+
+### `Orkeon:Compaction:Prune`
+
+Comment les boucles d'agent élaguent leurs anciens résultats d'outils de lecture avant de compacter,
+le pendant pour les boucles YAML de l'`onContextPressure` d'un script. Éteint par défaut.
+Dès que le prompt estimé atteint `FillShare` de la fenêtre utile (ou le seuil de compaction, le
+premier atteint), chaque résultat d'un outil de lecture (un outil dont l'accès est `read` pour
+cette entrée) hors des `KeepRecentMessages` derniers messages, d'un tour auquel le modèle a répondu depuis, et plus
+long que deux fois `HeadChars` est proposé au modèle de décision, jusqu'à 24 à la fois, huit par requête. Il lit la
+tâche et chaque appel - outil, entrée, taille et âge en tours du modèle -, jamais le résultat, et
+répond à deux questions oui/non par appel : encore utile, et utile en entier. Inutile retire le
+résultat, utile en partie en garde les `HeadChars` premiers caractères, utile en entier le garde ;
+un résultat élagué laisse une ligne qui dit comment le retrouver, l'entrée entière de l'appel
+comprise, et son appel reste. Un résultat gardé, ou que le modèle de décision n'a pas su juger
+(l'appel a échoué, ou sa réponse ne portait aucun verdict utilisable), est jugé de nouveau après huit tours du modèle de plus. Chaque élagage qui a coupé ou retiré un
+résultat émet `agent.pruned` sous `orkeon run`, `orkeon-host` et `orkeon mcp serve --crew` ;
+un tour qui a tout gardé n'émet rien. Circuit de décision coupé, rien
+n'est élagué : un avertissement par run, aucun appel de décision, aucune erreur. Une fois le disjoncteur de
+la compaction ouvert (trois échecs de suite), la boucle n'élague plus pour le reste de la tentative
+de la tâche. Un agent remplace `Enabled` par `compaction: { prune }` ; un agent qui ne compacte pas
+n'élague pas.
+
+<!-- settings:Orkeon:Compaction:Prune -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Enabled` | booléen | `false` | Si les boucles élaguent. Faux par défaut : chaque jugement est une requête au modèle de décision. `compaction: { prune }` d'un agent le remplace. |
+| `FillShare` | nombre | `0.4` | La part de la fenêtre utile (la fenêtre de contexte moins la réserve de sortie : le plafond de l'appel, sinon le maximum documenté du modèle, sinon 4096, au plus la moitié de la fenêtre) que le prompt estimé atteint pour que les résultats soient jugés, au-dessus de 0 et au plus 1. 0,4 par défaut, sous le seuil de compaction, si bien qu'une boucle élague avant de compacter. |
+| `HeadChars` | entier | `300` | Les caractères qu'un verdict `head` garde d'un résultat, 1 ou plus. 300 par défaut ; un résultat de deux fois cela ou moins n'est jamais proposé, puisque le couper ne libère rien. |
+| `KeepRecentMessages` | entier | `6` | Combien des derniers messages n'ont jamais leurs résultats proposés. 6 par défaut. |
+<!-- /settings -->
+
+### `Orkeon:Skills`
+
+Comment les `skills:` d'un agent atteignent son prompt. Un skill est un fichier markdown
+lu par le système de fichiers virtuel et ajouté au prompt système de l'agent sous un titre
+`## Skills`, chaque skill coupé à `MaxSkillChars` et le bloc entier, son titre et la ligne de
+titre de chaque skill compris, à `MaxBlockChars` ; un fichier de skill n'est pas lu au-delà de
+`MaxSkillChars` caractères et 256 de plus : passé le plafond, les blancs sont lus pour distinguer un
+fichier qui finit là d'un fichier qui continue, et des blancs qui se prolongent au-delà de ces 256
+caractères comptent comme du texte en plus, le skill étant alors dit coupé. Un `MaxBlockChars` sous
+500 (`AgentSkillsOptions.MinBlockChars`) est refusé au démarrage, le message nommant le minimum : un
+bloc plus petit ne peut tenir son titre et un skill. Un skill coupé est dit dans le prompt et dans le
+champ `cut` de `agent.skills` ; un skill laissé de côté (plus de place dans le bloc, un fichier
+illisible) est dit dans ce seul champ `cut`. Un agent avec `skills: [<chemins>]` porte ces
+fichiers à chaque tâche. Un agent avec
+`skills: { auto: true, fallback: [<chemins>] }` fait choisir à System One, pour chaque tâche, au
+plus trois skills de `Library` : le modèle de décision lit une ligne par skill (le `name` et la
+`description` de son front matter, sinon son premier titre et sa première ligne), jamais un corps,
+pour les 24 premiers fichiers de la bibliothèque dans l'ordre des noms (ordinal) seuls : un fichier
+au-delà du 24e n'est jamais proposé. La question est un choix unique, si bien que les skills qui
+conviennent se partagent la probabilité du modèle : un skill est choisi quand sa part atteint 0,3,
+la plus grande part d'abord.
+Quand le circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enabled: false`, aucun
+fournisseur de décision), quand la bibliothèque ne contient aucun skill ou ne peut être lue, ou
+quand le modèle de décision échoue ou ne répond aucun choix utilisable (`reason: pick-failed`),
+l'agent porte sa liste `fallback`, sinon aucun skill, avec un
+avertissement par run pour chaque cause (hors d'un run, une fois par hôte) et sans erreur ; dans une
+crew en `decision.mode: none`, sa liste `fallback` s'applique aussi, sans appel de décision ni
+avertissement (`reason: decision-none`). Le choix vaut pour chaque tentative de la tâche par cet agent dans
+le run, et émet `agent.skills` sur le flux d'événements du run une fois par tâche et par agent
+d'un run. Une crew `.ork.ts` n'a pas de skills.
+
+<!-- settings:Orkeon:Skills -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Library` | chaîne | `"/workspace/.orkeon/skills"` | Le dossier virtuel où sont choisis les skills d'un agent `auto`, un fichier `<nom>.md` par skill (les sous-dossiers ne sont pas lus) ; un chemin relatif est refusé au démarrage. `/workspace/.orkeon/skills` par défaut. |
+| `MaxBlockChars` | entier | `12000` | Les caractères que porte le bloc de skills entier, son titre, la ligne de titre de chaque skill et les notes de coupe compris, si bien qu'avec les défauts trois skills d'un `MaxSkillChars` plein ne tiennent pas tous et que le troisième est coupé ; un skill au-delà est coupé à ce qui reste, ce que dit le prompt, ou laissé de côté, ce que dit le seul `cut` de `agent.skills`. Moins de `500`, qui ne peut tenir le titre du bloc et un skill, est refusé au démarrage. 12000 par défaut. |
+| `MaxSkillChars` | entier | `4000` | Les caractères d'un skill que porte le prompt ; le reste est coupé, et la coupe est dite dans le prompt et dans le `cut` de `agent.skills`. 0 ou moins est refusé au démarrage. 4000 par défaut. |
+<!-- /settings -->
 
 ### `Orkeon:CrewFactory`
 
@@ -2082,7 +2251,10 @@ La mémoire typée derrière `memory_store` (`FileCategoryMemoryStore`) : un `me
 
 ### `Orkeon:Cli:Session`
 
-La fenêtre de contexte utilisée par `token_budget` (`TokenBudgetTool`) et le TUI.
+La fenêtre de contexte utilisée par `token_budget` (`TokenBudgetTool`) et le TUI, et celle contre
+laquelle les boucles d'agent compactent et élaguent quand un profil LLM ne fixe aucun
+`ContextWindowTokens` et que la table des fenêtres documentées ne connaît pas son modèle
+([`Orkeon:Compaction`](#orkeoncompaction)).
 
 <!-- settings:Orkeon:Cli:Session -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

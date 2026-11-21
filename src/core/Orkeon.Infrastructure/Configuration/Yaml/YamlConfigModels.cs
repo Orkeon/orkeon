@@ -56,6 +56,17 @@ public class AgentYamlConfig
     /// <summary>Gets or sets the guardrails configuration.</summary>
     public GuardrailsYamlConfig? Guardrails { get; set; }
     /// <summary>
+    /// Gets or sets what the agent overrides of the host's conversation compaction (<c>compaction:</c>, #432):
+    /// <c>enabled</c>, <c>triggerShare</c> (or <c>trigger_share</c>) and <c>prune</c> (#434); unset, <c>Orkeon:Compaction</c> decides.
+    /// </summary>
+    public CompactionYamlConfig? Compaction { get; set; }
+    /// <summary>
+    /// Gets or sets the skills the agent's prompt carries (<c>skills:</c>, #434): a list of virtual paths of
+    /// markdown files, or a map <c>{ auto: true, fallback: [paths] }</c> for a pick of the decision model. Read
+    /// as a raw value so a value of another shape is refused naming the agent (<see cref="YamlCrewMapper"/>).
+    /// </summary>
+    public object? Skills { get; set; }
+    /// <summary>
     /// Gets or sets the knowledge (RAG) collections attached to the agent. Two forms are
     /// accepted per item: the short form (a plain collection-name string) and the long form
     /// (a mapping with <c>collection</c>, <c>top_k</c>, <c>min_score</c>, <c>profile</c>,
@@ -63,6 +74,17 @@ public class AgentYamlConfig
     /// normalizes both forms into <see cref="Orkeon.Domain.Knowledge.KnowledgeAttachment"/>.
     /// </summary>
     public Collection<object>? Knowledge { get; set; }
+}
+
+/// <summary>YAML model of an agent's <c>compaction:</c> block (#432): each key left out follows <c>Orkeon:Compaction</c>.</summary>
+public class CompactionYamlConfig
+{
+    /// <summary>Gets or sets whether the agent's loops compact their conversation.</summary>
+    public bool? Enabled { get; set; }
+    /// <summary>Gets or sets the share of the usable window at which they compact, above 0 and at most 1.</summary>
+    public double? TriggerShare { get; set; }
+    /// <summary>Gets or sets whether the loops prune their older read-tool results before they compact (#434).</summary>
+    public bool? Prune { get; set; }
 }
 
 /// <summary>
@@ -129,6 +151,27 @@ public class DecisionYamlConfig
     public bool? LongContext { get; set; }
     /// <summary>Gets or sets the fallback answers by question.</summary>
     public Dictionary<string, string>? Fallback { get; set; }
+    /// <summary>
+    /// Gets or sets the <c>without:</c> relay: the crew agent that answers the questions when an <c>optional</c>
+    /// crew runs with the decision circuit off (#429, #430).
+    /// </summary>
+    public DecisionRelayYamlConfig? Without { get; set; }
+}
+
+/// <summary>YAML model for the <c>without:</c> relay of a decision task (#429, #430).</summary>
+public class DecisionRelayYamlConfig
+{
+    /// <summary>Gets or sets the key of the crew agent that answers.</summary>
+    public string? Agent { get; set; }
+    /// <summary>Gets or sets what is added to the questions.</summary>
+    public string? Instructions { get; set; }
+}
+
+/// <summary>YAML model for the crew-level <c>decision:</c> block (#429).</summary>
+public class CrewDecisionYamlConfig
+{
+    /// <summary>Gets or sets whether the crew needs System One: <c>none</c>, <c>optional</c> or <c>required</c>.</summary>
+    public string? Mode { get; set; }
 }
 
 /// <summary>YAML model for one question of a decision.</summary>
@@ -418,6 +461,11 @@ public class CrewYamlConfig
     /// </summary>
     public CrewBudgetYamlConfig? Budget { get; set; }
     /// <summary>
+    /// Gets or sets whether the crew needs System One (<c>decision: { mode: none | optional | required }</c>, #429);
+    /// unset, the crew keeps the behaviour it had before the key existed.
+    /// </summary>
+    public CrewDecisionYamlConfig? Decision { get; set; }
+    /// <summary>
     /// Gets or sets the key of the crew's manager agent (<c>managerAgent:</c>): the hierarchical
     /// manager — required there — or the consensual crew's arbiter of the <c>ManagerDecision</c>
     /// fallback. The four other processes have none, and a key that names no agent fails the load
@@ -492,6 +540,8 @@ public class CrewSettingsYamlConfig
     public int? MaxRpm { get; set; }
     /// <summary>Gets or sets what one autonomous run may spend - see <see cref="CrewYamlConfig.Budget"/>.</summary>
     public CrewBudgetYamlConfig? Budget { get; set; }
+    /// <summary>Gets or sets whether the crew needs System One - see <see cref="CrewYamlConfig.Decision"/>.</summary>
+    public CrewDecisionYamlConfig? Decision { get; set; }
     /// <summary>
     /// Gets or sets the key of the crew's manager agent (<c>managerAgent:</c>): Hierarchical (required)
     /// and Consensual (the <c>ManagerDecision</c> arbiter) only — see <see cref="CrewYamlConfig.ManagerAgent"/>.

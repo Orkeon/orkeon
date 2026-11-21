@@ -346,7 +346,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 | `spawn_agent` (C# `SpawnAgentTool`) | ❌ (host must register it) | ❌ |
 | `code_interpreter` | concrete-type registration only — not resolvable by name | idem |
 | `progress_report` | ❌ | ✅ (scripted commands) |
-| `system_one_decide` | ✅ when a decision provider is configured (`Orkeon:Decision:Provider`, or deduced from its section or API key) | ✅ same rule |
+| `system_one_decide` | ✅ when a decision provider is configured (`Orkeon:Decision:Provider`, or deduced from its section or API key) and the decision circuit is on: with `--no-decision` or `Orkeon:Decision:Enabled=false` it is withheld: a crew that lists it fails to load under `StrictTools` (the runners' default); a `required` crew meets the mode refusal instead; otherwise it is skipped with a warning ([Decision models](../architecture/decision-models.md#every-consumer-follows-the-circuit)) | ✅ same rule |
 | `mcp_prompt_get` | ✅ when `MCP:Servers` declares servers | ✅ same rule |
 | `memory_recall` | ✅ when `Orkeon:CognitiveMemory:Enabled` = `true`, held by a crew with `memory: true` | ❌ |
 

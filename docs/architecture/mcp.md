@@ -407,7 +407,9 @@ stdout, one per line; closing stdin ends the server.
     `description` and `expectedOutput` (matched without regard to case, in order of first use) and no other
     property. A number or a boolean is read as its text; an object, an array or `null` is refused, so is an unknown
     or a missing argument (`-32602`, the names listed). The result is the crew's final output; a crew that fails is a
-    result with `isError`, not a JSON-RPC error.
+    result with `isError`, not a JSON-RPC error: it answers that the crew failed and that the details are in the
+    server's log, except a crew refused for want of System One (`decision.mode: required` with the decision circuit
+    off), which answers the refusal's own text, naming the crew and the setting that turned the circuit off.
   - **Progress**: when the call carries `_meta.progressToken`, the server sends one `notifications/progress` per
     finished task (`progress` 1 to `total`, the number of tasks, with a `message`) before the answer; without a token
     nothing is sent. `notifications/cancelled` cancels the run.
@@ -419,9 +421,11 @@ stdout, one per line; closing stdin ends the server.
     crews, and every other tool, run alongside). Each call still runs in a scope of its own, with its own task state, and
     a client's `notifications/cancelled` cancels the running crew: its agents see the token and the call is not answered.
   - **The run is recorded like any run of the host.** With `Orkeon:RunHistory:Enabled` on in the crew's settings, each call
-    is a run of the history: `run.started`, the task events, `run.finished`, under its own run id (the one the
+    is a run of the history: `run.started`, `run.decision`, the task events, the agent loops' `agent.compacted`, `agent.skills`,
+    `agent.route` and `agent.pruned`, `run.finished`, under its own run id (the one the
     checkpoints use), read with `orkeon runs`. With the history off nothing is written. `run.finished` carries `success`, `exitCode`,
-    `durationMs`, `cappedTasks` and `missingDeliverables`, and no token fields (see [the run event bus](./run-event-bus.md)). The events carry no token
+    `durationMs`, `cappedTasks` and `missingDeliverables`, and no token fields (see [the run event bus](./run-event-bus.md));
+    its `exitCode` is `69` for a crew refused for want of System One, as under `orkeon run` and `orkeon-host`. The events carry no token
     count: the model's usage is not attributed per call.
   - **There is no offline mode.** The serve host reads the real settings and a crew calls the models they declare; the
     mock provider is reached only by pointing the profiles at it.

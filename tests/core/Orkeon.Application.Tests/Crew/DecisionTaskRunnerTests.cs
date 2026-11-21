@@ -6,6 +6,7 @@ using Orkeon.Application.Decision;
 using Orkeon.Application.Decision.DTOs;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Tests.Doubles;
+using Orkeon.Constants.Protocol;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 
@@ -310,5 +311,87 @@ public sealed class DecisionTaskRunnerTests
         Assert.Equal(150, result.TokensUsed);
         Assert.Equal(120, result.PromptTokens);
         Assert.Equal(30, result.CompletionTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public async System.Threading.Tasks.Task ShouldAnswerByFallbackWithoutRequest_WhenTheRunIsOffAndTheRunnerWasBuiltOn()
+    {
+        // Arrange
+        var runner = Runner(DecisionCircuit.On);
+        using var run = DecisionCircuitScope.Begin(DecisionCircuit.Off);
+
+        // Act
+        var result = await runner.RunAsync(Decide(Of()), NoInputs, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(
+            (0, true, DecisionSources.Fallback),
+            (_model.Requests.Count, result.Success, result.DecisionSource));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public void ShouldNameTheRunsCause_WhenTheRunAndTheRunnersOwnCircuitAreBothOff()
+    {
+        // Arrange: the host's settings turned the runner off, and the run is off by its switch.
+        var runner = Runner(DecisionCircuit.OffBy(DecisionCircuitCause.Settings));
+        using var run = DecisionCircuitScope.Begin(DecisionCircuit.Off);
+
+        // Act
+        var circuit = runner.Circuit;
+
+        // Assert
+        Assert.Equal(DecisionCircuitCause.Switch, circuit.Cause);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async System.Threading.Tasks.Task ShouldRecordAnswersAndProbabilitiesInDeclaredOrder_WhenTheModelAnswersInHashOrder()
+    {
+        // Arrange: ten options and nine questions declared in an order that is neither ordinal nor a hash order,
+        // answered by a model whose maps enumerate in their per-process hash order.
+        string[] options = ["zulu", "alpha", "mike", "bravo", "yankee", "charlie", "xray", "delta", "whiskey", "echo"];
+        string[] questions = ["q-whiskey", "q-alpha", "q-tango", "q-bravo", "q-score", "q-oscar", "q-charlie", "q-kilo", "q-delta"];
+        string[] levels = ["l0", "l1", "l2", "l3", "l4", "l5", "l6", "l7", "l8", "l9"];
+        var specs = questions
+            .Select(name => name == "q-score"
+                ? (DecisionQuestionSpec)ScoreQuestionSpec.Create(name, "Rate", levels)
+                : ChoiceQuestionSpec.Create(name, "Pick", options.ToDictionary(o => o, o => "when " + o)))
+            .ToList();
+        var decision = TaskDecision.Create(specs, null, null, false, null);
+        _model.Respond = request => new DecisionResponse
+        {
+            Model = "fake",
+            Answers = request.Questions.ToImmutableDictionary(
+                q => q.Key,
+                q => q.Value is ScoreQuestion score
+                    ? (DecisionAnswer)new ScoreAnswer
+                    {
+                        Score = 1,
+                        Confidence = 0.1,
+                        Probabilities = Enumerable.Range(0, score.Criteria.Count).ToImmutableDictionary(i => i.ToString(System.Globalization.CultureInfo.InvariantCulture), _ => 0.1),
+                    }
+                    : new ChoiceAnswer
+                    {
+                        Choice = "mike",
+                        Confidence = 0.1,
+                        Probabilities = ((ChoiceQuestion)q.Value).Criteria.Keys.ToImmutableDictionary(k => k, _ => 0.1),
+                    }),
+        };
+
+        // Act
+        var result = await Runner(DecisionCircuit.On).RunAsync(Decide(decision), NoInputs, CancellationToken.None);
+
+        // Assert: the outcome and its JSON list the questions, the options and the levels as declared.
+        Assert.True(result.Success, result.Error);
+        Assert.NotNull(result.Decision);
+        Assert.Equal(questions, result.Decision.Answers.Keys);
+        string[] positions = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+        foreach (var name in questions)
+            Assert.Equal(name == "q-score" ? positions : options, result.Decision.Answers[name].Probabilities.Keys);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.Equal(questions, json.RootElement.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(options, json.RootElement.GetProperty("q-alpha").GetProperty("probabilities").EnumerateObject().Select(p => p.Name));
     }
 }

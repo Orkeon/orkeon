@@ -34,10 +34,11 @@ maxRpm: int               # default: none — at most N model requests per minut
 budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous only — see Autonomous budget below; default: no token or time cap, 50 / 4 / 10
 managerAgent: string      # The key of one of the crew's agents (any other name fails the load, listing them). Hierarchical: the manager — required (omitted, the load fails); it assigns and reviews on its own llm: block, profile and model. Consensual: the arbiter of the ManagerDecision fallback (idle, with a warning at the start of the run, under another fallback). Any other process: refused at load
 graph: {…}                # Graph mode: nodes, edges and the circuit-breaker settings (see the dedicated section)
+decision: {mode}          # mode: "none" | "optional" | "required" (case-insensitive) — what the crew needs from System One; omitted, the mode is unspecified; an unknown or missing mode fails the load. See a crew's decision mode in decision-models.md
 
 llm:                      # Crew-default LLM, merged FIELD BY FIELD under each agent's own llm: (same shape as agents.<id>.llm)
   profile: string         # Host LLM profile (Llm:Profiles:<name>) for every agent — unknown → the load fails, listing the host's profiles
-  model: string
+  model: string           # Refused when it reaches an agent on profile: auto (the load fails, naming the agent)
   max_tokens: int         # Positive; omitted = the inherited cap, 0 or less fails the load naming the crew
   temperature: float
 
@@ -84,7 +85,8 @@ agents:
     verbose: bool         # default: false — detailed logs for this agent (tool calls, tool results, model responses, at Information, category Orkeon.Verbose)
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
       profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section
-      model: string       # LLM model id — omitted → the profile's own model
+      # profile: auto     # Reserved: System One picks, at each task's start, one profile of Orkeon:Decision:Route:Ladder (cheapest first) and the task keeps it; under 0.6, no answer or circuit off → the default profile. No ladder, a model: beside it (here or from the crew's llm:), or decision.mode: none → the load fails
+      model: string       # LLM model id — omitted → the profile's own model; refused beside profile: auto, where the picked rung's own model runs
       temperature: float  # Sent whatever its value — omitted = the profile's, else none is sent and the model applies its own
       maxTokens: int      # Output token pin, positive — omitted = the model's documented maximum; 0 or less fails the load
       topP: float         # Nucleus sampling, sent whatever its value — omitted = the profile's, else none is sent (Mistral writes 1)
@@ -107,6 +109,14 @@ agents:
       rules: [string]     # Global numbered rules
       toolRules:          # Rules rendered only when the agent has the tool; a tool name ignores case, and one written under two keys fails the load
         <tool_name>: [string]
+    compaction:           # Overrides Orkeon:Compaction for this agent (optional); a misspelled key fails the load
+      enabled: bool       # default: Orkeon:Compaction:Enabled (true); false keeps the 40-message trim
+      triggerShare: float # (0, 1], the share of the usable window that triggers a summary; default: Orkeon:Compaction:TriggerShare (0.75)
+      prune: bool         # Whether System One prunes this agent's older read-tool results before compacting; default: Orkeon:Compaction:Prune:Enabled (false); enabled: false or circuit off → nothing pruned
+    skills: [string]      # Markdown files (virtual paths) appended to the system prompt under '## Skills' on every task (optional); each cut at Orkeon:Skills:MaxSkillChars, the block at MaxBlockChars
+    # skills:             # Or the pick form: System One picks at most 3 skills of Orkeon:Skills:Library per task, reading one line per skill
+    #   auto: true        # required in the map form; false fails the load (write a fixed list as a list)
+    #   fallback: [string] # carried when the decision circuit is off, the library is empty or unreadable, the pick fails or its answer holds no usable choice; absent: no skill. Any other key fails the load
     knowledge:            # Knowledge (RAG) collections attached to the agent (optional); an unknown key of an entry is refused, a malformed value stays a warning
       - string            # Short form: collection name with default options
       - collection: string       # Long form (required key)
@@ -162,8 +172,9 @@ tasks:
       state: [string]        # Keys of the tasks whose output the model judges; default: the outputs of the dependencies that ran
       longContext: bool      # default: false — asks for the model's long context
       fallback: {<question>: string}  # Answers used without a request when the decision circuit is off
+      without: {agent: string, instructions: string}  # decision.mode optional (every decision task needs one) or required (loaded with a warning, never used); refused otherwise: the agent that answers when the circuit is off
     when:                 # Runs the task only when a decision task answered as written (one decision task per when:)
-      <task>.<question>: [string] | ">= 0.7"  # An option list (choice), or a threshold: a probability (yes-no) or a level position (score)
+      <task>.<question>: [string] | ">= 0.7"  # An option list (choice, or [yes] / ["no"] on a yes-no), or a threshold: a probability (yes-no) or a level position (score)
       <task>.<question>.<option>: ">= 0.25"   # The probability of one option of a choice
       <task>: otherwise                       # Alone: holds when no sibling condition on that task holds
 ```
@@ -267,6 +278,12 @@ tasks:
   choice, a level of a score, `yes` or `no` of a yes-no (quote `"no"`, which YAML reads as a
   boolean). A question without a fallback answer selects no option. See
   [the fallback](./decision-models.md#the-decision-circuit-and-the-fallback).
+- `without` names the agent that answers the questions when the circuit is off, in a crew with
+  `decision.mode: optional`, which requires it on every decision task; a `required` crew loads it with a warning and
+  never uses it, and a crew with no mode or `none` refuses it. `agent` is a key of the crew's `agents:` and
+  `instructions` an optional text added to the questions.
+  The agent gives probabilities only, checked and read as the model's answer: see
+  [the relay](./decision-models.md#the-without-relay).
 - A decision task still needs a `description` and an `expectedOutput` like any task, and the crew
   still needs one agent, even when no task uses it.
 
@@ -277,6 +294,7 @@ written in one block and **all must hold**. The grammar:
 | Clause | Holds when |
 |---|---|
 | `<task>.<question>: [a, b]` | The question is a choice, the chosen option is one of the list and the confidence is at or above `minConfidence`. |
+| `<task>.<question>: [yes]` | The question is a yes-no, its chosen answer (`yes` when its probability is 0.5 or more) is the one listed (write `["no"]`: an unquoted `[no]` is refused at load with the hint to quote it, as YAML reads it as a boolean) and the confidence is at or above `minConfidence`. |
 | `<task>.<question>: ">= 0.7"` | The question is a yes-no (its probability of a yes, in [0, 1]) or a score (the model's weighted score on the positions of the levels, 0 to n-1) and the comparison holds. The floor does not apply. |
 | `<task>.<question>.<option>: ">= 0.25"` | The probability of that option of a choice satisfies the comparison, even when the option is not the chosen one. The floor does not apply. |
 | `<task>: otherwise` | No sibling condition on that decision task holds, including when the confidence is under the floor. |
@@ -310,10 +328,35 @@ message, in the form `Task '<key>' <part> …` where the part is `decision`,
   `otherwise` with no sibling condition on that decision task;
 - an option clause with a list on an option (`triage.category.bug: [bug]`), which takes a threshold
   string only;
+- an option list on a score question, naming the question: a score has no chosen level and takes a threshold;
+  an option list on a yes-no question other than `yes` and `no`;
 - a decision or a `when:` in a process other than the three above.
 
 With the decision circuit off, the run is also refused before its first task when a decision task has
 neither a `fallback` nor an `otherwise` task.
+
+### A crew's decision mode
+
+```yaml
+decision:
+  mode: optional          # none | optional | required
+tasks:
+  triage:
+    description: Sort the ticket
+    expectedOutput: The route
+    decision:
+      questions:
+        route: { choice: { bug: a defect, other: anything else } }
+      without:            # optional crews only: who answers when the circuit is off
+        agent: analyst    # an agent of the crew
+        instructions: Read the summary first.
+```
+
+The crew-level `decision:` block says what the crew needs from System One. It is read from `crew.yaml` and from the
+`config.yaml` of a split crew; the block names a `mode`, `none`, `optional` or `required`, and any other value is
+refused at load. A decision task's `without:` names the agent that answers it when the circuit is off. The rules each
+mode applies at load and at run are in [Decision models](./decision-models.md#a-crews-decision-mode). An engine older
+than this release refuses the crew-level `decision:` key.
 
 ## Guardrails configuration
 
@@ -603,7 +646,8 @@ and a key nothing sets is not written at all.
   carries: a guardrails `preset:` comes back as the `header`, `rules` and `toolRules` it brought, the
   crew's `llm:` as the block each agent got from it, under each agent, and `anchors:` as the text they
   stood for. A knowledge attachment that only names its collection is written in the short form, any
-  other in the long form.
+  other in the long form. A string YAML would read as another type (`no`, `yes`, `on`, `null`, `1.0`) is
+  written quoted, so a `when:` list holding the option `no` loads again.
 - **A relative source follows the file.** A `rag:` source is written as it was, so `./data/faq.md` is
   read against the folder the exported file is loaded from (see
   [Knowledge & RAG configuration](#knowledge--rag-configuration)): export next to the data, or write

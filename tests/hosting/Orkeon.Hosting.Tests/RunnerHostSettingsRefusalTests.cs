@@ -54,6 +54,19 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         Assert.Contains("Orkeon:CrewFactory:StrictTools", error.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("auto")]
+    [InlineData("Auto")]
+    [Trait("BR", "CH-434")]
+    public void A_host_profile_named_auto_is_refused_at_its_start_naming_the_key(string name)
+    {
+        // Act: auto is the name System One routes on, never a profile of the host.
+        var error = Refusal($$"""{ "RaggableTree": { "Enabled": false }, "Llm": { "Profiles": { "{{name}}": { "BaseUrl": "http://localhost:11434" } } } }""");
+
+        // Assert
+        Assert.Contains($"Llm:Profiles:{name}", error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_settings_file_that_is_not_JSON_is_refused_naming_the_file_and_the_line()
     {
@@ -120,6 +133,10 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "PineconeOptions", "Orkeon:Pinecone:Environment", "us-east1-gcp", "Orkeon:Pinecone:Environment" },
         { "LanceDbOptions", "Orkeon:LanceDb:EmbeddingDimension", "auto", "Orkeon:LanceDb:EmbeddingDimension" },
         { "CrewMemoryOptions", "Orkeon:CrewMemory:RecallLimit", "all", "Orkeon:CrewMemory:RecallLimit" },
+        { "ContextCompactionOptions", "Orkeon:Compaction:TriggerShare", "1.5", "Orkeon:Compaction:TriggerShare" },
+        { "ToolResultPruningOptions", "Orkeon:Compaction:Prune:FillShare", "1.5", "Orkeon:Compaction:Prune:FillShare" },
+        { "AgentSkillsOptions", "Orkeon:Skills:Library", "skills", "Orkeon:Skills:Library" },
+        { "AgentRouteOptions", "Orkeon:Decision:Route:Ladder:0", "auto", "Orkeon:Decision:Route:Ladder" },
         { "MemorySectionOptions", "Memory:Provider", "redsi", "Memory:Provider" },
         { "EmbeddingOptions", "Orkeon:Embeddings:Dimension", "big", "Orkeon:Embeddings:Dimension" },
         { "EmbeddingCacheOptions", "Orkeon:EmbeddingCache:SlidingExpirationMinutes", "an hour", "Orkeon:EmbeddingCache:SlidingExpirationMinutes" },
@@ -149,6 +166,24 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
 
     /// <summary>The host of the theory: one mount, so the file system — and its sections — is registered.</summary>
     private RunnerMountPlan Mounted() => new() { CliMounts = [$"{_root}:/workspace:ro"], AllowExternalMounts = true };
+
+    public static TheoryData<string> CompactionProfilesNoHostOffers => ["summariser", "auto"];
+
+    [Theory]
+    [Trait("BR", "CH-432")]
+    [MemberData(nameof(CompactionProfilesNoHostOffers))]
+    public void A_compaction_profile_the_host_does_not_define_or_auto_is_refused_at_its_start(string profile)
+    {
+        // Arrange
+        var settings = OneSetting("Orkeon:Compaction:Profile", profile);
+
+        // Act
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(settings, Mounted()));
+
+        // Assert
+        Assert.Contains($"Orkeon:Compaction:Profile", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"'{profile}'", error.Message, StringComparison.Ordinal);
+    }
 
     [Theory]
     [MemberData(nameof(LateSections))]
@@ -329,5 +364,81 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(OneSetting("Orkeon:TypeSafe:Guard:Enabled", "true"), Mounted()));
 
         Assert.Contains("Orkeon:TypeSafe:Guard is not a setting", error.Message, StringComparison.Ordinal);
+    }
+
+    private const string FailClosedJudge =
+        """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Guardian": { "Llm": { "Enabled": true, "FailMode": "Closed" } }, "Decision": { "Enabled": false } } }""";
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public void ShouldRefuseTheStartNamingTheSwitch_WhenAFailClosedJudgeMeetsNoDecision()
+    {
+        // Arrange
+        var settings = Settings(FailClosedJudge);
+
+        // Act
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(
+            settings, new RunnerMountPlan(), configureServices: (_, services) => services.AddSingleton(Orkeon.Application.Crew.Execution.DecisionCircuit.Off)));
+
+        // Assert
+        Assert.Contains("Orkeon:Guardian:Llm:Enabled is true with FailMode Closed but the decision circuit is off: --no-decision", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public void ShouldRefuseTheStartNamingTheSettings_WhenAFailClosedJudgeMeetsDecisionDisabled()
+    {
+        // Arrange
+        var settings = Settings(FailClosedJudge);
+
+        // Act
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(settings, new RunnerMountPlan()));
+
+        // Assert
+        Assert.Contains("Orkeon:Guardian:Llm:Enabled is true with FailMode Closed but the decision circuit is off: Orkeon:Decision:Enabled=false", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public void ShouldStart_WhenAFailOpenJudgeMeetsDecisionDisabled()
+    {
+        // Arrange
+        var settings = Settings(FailClosedJudge.Replace("\"Closed\"", "\"Open\"", StringComparison.Ordinal));
+
+        // Act
+        using var host = RunnerHost.Build(settings, new RunnerMountPlan());
+
+        // Assert
+        Assert.NotNull(host);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-433")]
+    public void ShouldListTheProviderKeyInsteadOfThrowing_WhenAFailClosedJudgeMeetsADecisionProviderItRefuses()
+    {
+        // Arrange
+        var settings = Settings(
+            """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Guardian": { "Llm": { "Enabled": true, "FailMode": "Closed" } }, "Decision": { "Provider": "kev" }, "Kev": { "TimeoutSeconds": 0 } } }""");
+
+        // Act
+        var error = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(settings, new RunnerMountPlan()));
+
+        // Assert
+        Assert.Contains("Orkeon:Kev:TimeoutSeconds", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public void ShouldStart_WhenTheCompactionProfileIsOneTheHostDefines()
+    {
+        // Arrange
+        var settings = Settings(
+            """{ "RaggableTree": { "Enabled": false }, "Llm": { "Profiles": { "summariser": { "BaseUrl": "http://localhost:11434", "Model": "qwen3" } } }, "Orkeon": { "Compaction": { "Profile": "summariser" } } }""");
+
+        // Act
+        using var host = RunnerHost.Build(settings, Mounted());
+
+        // Assert
+        Assert.NotNull(host);
     }
 }

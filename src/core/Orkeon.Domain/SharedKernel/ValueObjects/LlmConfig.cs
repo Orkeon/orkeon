@@ -68,6 +68,13 @@ public sealed record LlmConfig
     /// </summary>
     public int? MaxTokens { get; init; }
     /// <summary>
+    /// The model's context window in tokens, as the profile declares it (<c>ContextWindowTokens</c>,
+    /// #432), or null when the profile sets none: a loop then reads the documented window of the model
+    /// (<c>LlmModelContextWindows</c>), else <c>Orkeon:Cli:Session:ContextWindowTokens</c>. Never
+    /// sent to the provider; the loops compact a conversation against it.
+    /// </summary>
+    public int? ContextWindowTokens { get; init; }
+    /// <summary>
     /// The nucleus sampling probability (0.0 to 1.0), or null when nothing sets one: the request
     /// then carries none — but on Mistral, whose dialect writes 1 (GAP-36). Set, it is sent
     /// whatever its value; 1.0 used to be taken for "not set".
@@ -260,6 +267,7 @@ public sealed record LlmConfig
             BaseUrl = BaseUrl ?? provider.BaseUrl,
             Temperature = Temperature ?? provider.Temperature,
             MaxTokens = MaxTokens ?? provider.MaxTokens,
+            ContextWindowTokens = ContextWindowTokens ?? provider.ContextWindowTokens,
             TopP = TopP ?? provider.TopP,
             Seed = Seed ?? provider.Seed,
             StopSequences = StopSequences is { Count: > 0 } ? StopSequences : provider.StopSequences,

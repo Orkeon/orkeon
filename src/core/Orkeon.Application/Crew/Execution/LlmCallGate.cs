@@ -46,13 +46,28 @@ internal sealed class LlmCallGate
     /// the crew in progress declares a limit — and counts the call.
     /// </summary>
     /// <exception cref="OperationCanceledException">The call was cancelled while it waited; it counted nothing.</exception>
-    internal async System.Threading.Tasks.Task WaitTurnAsync(DomainAgent agent, CancellationToken cancellationToken)
+    internal System.Threading.Tasks.Task WaitTurnAsync(DomainAgent agent, CancellationToken cancellationToken) =>
+        WaitTurnAsync(agent, _hostAgentLimit, _time, _logger, _verboseLogger, cancellationToken);
+
+    /// <summary>
+    /// The same wait for a model call made outside an agent loop - the <c>without:</c> relay of a decision task
+    /// (#430) -: the agent's window and the crew's, the host's per-agent cap, and the line of a call that waited.
+    /// </summary>
+    /// <param name="agent">The agent the call is made for.</param>
+    /// <param name="hostAgentLimit">The host's per-agent cap; null sets none.</param>
+    /// <param name="time">The clock the windows count on.</param>
+    /// <param name="logger">Where the line of a call that waited goes.</param>
+    /// <param name="verboseLogger">Where the line goes for a verbose agent or crew; null keeps it on <paramref name="logger"/>.</param>
+    /// <param name="cancellationToken">The call's token.</param>
+    /// <exception cref="OperationCanceledException">The call was cancelled while it waited; it counted nothing.</exception>
+    internal static async System.Threading.Tasks.Task WaitTurnAsync(
+        DomainAgent agent, int? hostAgentLimit, TimeProvider time, ILogger logger, ILogger? verboseLogger, CancellationToken cancellationToken)
     {
-        var turn = await RequestRates.WaitTurnAsync(agent, _hostAgentLimit, _time, cancellationToken).ConfigureAwait(false);
+        var turn = await RequestRates.WaitTurnAsync(agent, hostAgentLimit, time, cancellationToken).ConfigureAwait(false);
         if (!turn.HasWaited)
             return;
 
-        var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
+        var turnLogger = ExecutionLog.TurnLogger(logger, verboseLogger, agent);
         ExecutionLog.LogWaitedForTurn(turnLogger, agent.Role, turn.Waited.TotalSeconds, turn.Limit ?? string.Empty);
     }
 }

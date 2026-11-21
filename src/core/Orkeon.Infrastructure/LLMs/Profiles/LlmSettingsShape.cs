@@ -142,6 +142,18 @@ internal class LlmProfileShape
     public int? MaxTokens { get; set; }
 
     /// <summary>
+    /// The model's context window in tokens, above zero, which the agent loops compact a long
+    /// conversation against; zero or less refuses the start. Left out, the loops read the documented
+    /// window of the model, else <c>Orkeon:Cli:Session:ContextWindowTokens</c> (200000 by default),
+    /// with one warning per profile naming the figure assumed: set it for a smaller model the table does
+    /// not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact
+    /// only once that figure fills. It holds for the model of this section alone: an agent whose
+    /// <c>llm.model</c> names another model reads that model's documented window, else the assumed one.
+    /// Never sent to the provider.
+    /// </summary>
+    public int? ContextWindowTokens { get; set; }
+
+    /// <summary>
     /// How long one call may take, in seconds. Too short at its default for a model that thinks
     /// before it answers: write 600 for one, or turn its thinking off.
     /// </summary>

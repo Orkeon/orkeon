@@ -81,21 +81,6 @@ public class DecisionProfileRegistrationTests
         Assert.Contains("'strong' is not defined", ex.ToString(), StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task ShouldAskForTheDecisionModel_WhenNoneIsRegistered()
-    {
-        var services = new ServiceCollection()
-            .AddLogging()
-            .AddOrkeonLlmProfile("cheap", _ => new StubLlmProvider())
-            .AddOrkeonLlmProfile("strong", _ => new StubLlmProvider())
-            .AddOrkeonDecisionProfiles(Configuration(Triage));
-        await using var container = services.BuildServiceProvider();
-
-        var ex = Assert.ThrowsAny<Exception>(() => container.GetRequiredService<ILlmProfileRegistry>().Resolve("triage").Provider);
-
-        Assert.Contains("AddOrkeonDecisionProvider", ex.ToString(), StringComparison.Ordinal);
-    }
-
     [Theory]
     [InlineData("triage:Stages:0:Kind", "summarise", "is not a stage")]
     [InlineData("triage:Target", "other", "is a decision profile")]
@@ -131,5 +116,19 @@ public class DecisionProfileRegistrationTests
         Assert.Equal(once, services.Count);
         await using var container = services.BuildServiceProvider();
         Assert.NotNull(container.GetRequiredService<ILlmProfileRegistry>().Resolve("triage").Provider);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public void ShouldFailTheBuildNamingTheKeyToRename_WhenADecisionProfileIsNamedAuto()
+    {
+        // Arrange
+        var values = Triage.Select(v => ("auto" + v.Item1["triage".Length..], v.Item2)).ToArray();
+
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddOrkeonDecisionProfiles(Configuration(values)));
+
+        // Assert
+        Assert.StartsWith("Orkeon:Decision:Profiles:auto: 'auto' is a reserved profile name", ex.Message, StringComparison.Ordinal);
     }
 }

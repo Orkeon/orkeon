@@ -20,8 +20,13 @@ internal static class DecisionPreflight
     internal static CrewTask? FindDecisionTask(IReadOnlyList<CrewTask> tasks, string name) =>
         tasks.FirstOrDefault(t => t.IsDecision && string.Equals(NameOf(t), name, StringComparison.Ordinal));
 
-    /// <summary>Lists the faults that stop the run, one message each; empty when it may start.</summary>
-    internal static IReadOnlyList<string> Check(IReadOnlyList<CrewTask> tasks, DecisionTaskRunner? runner)
+    /// <summary>
+    /// Lists the faults that stop the run, one message each; empty when it may start. A decision task of an
+    /// <c>optional</c> crew is answered by its <c>without:</c> relay, of a <c>required</c> one never with the
+    /// circuit off (#429): <paramref name="mode"/> says which.
+    /// </summary>
+    internal static IReadOnlyList<string> Check(
+        IReadOnlyList<CrewTask> tasks, DecisionTaskRunner? runner, Orkeon.Domain.Crew.CrewDecisionMode mode = Orkeon.Domain.Crew.CrewDecisionMode.Unspecified)
     {
         if (!tasks.Any(t => t.IsDecision || t.Condition is not null))
             return [];
@@ -34,6 +39,7 @@ internal static class DecisionPreflight
         [
             .. faults,
             .. DecisionTaskRules.CheckFallbacks(
+                mode,
                 [.. tasks.Select(t => new DecisionTaskDeclaration(NameOf(t), t.Decision, t.Condition, t.AssignedAgent is not null))])
         ];
     }

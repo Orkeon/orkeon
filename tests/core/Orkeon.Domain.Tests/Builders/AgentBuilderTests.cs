@@ -291,6 +291,31 @@ public class AgentBuilderTests
         Assert.Contains("MaxTokens", ex.Message);
     }
 
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public void ShouldRefuseTheAgent_WhenItsLlmConfigNamesAModelBesideTheAutoProfile()
+    {
+        // Arrange: the routed rung's model would be overridden on every pick.
+        var builder = MinimalAgent().WithLlmConfig(LlmConfig.Create("strong-model") with { Profile = "auto" });
+
+        // Act
+        var ex = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        // Assert
+        Assert.Contains("names the model 'strong-model' beside the LLM profile 'auto'", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public void ShouldAcceptTheAgent_WhenTheAutoProfileComesWithNoModel()
+    {
+        // Act
+        var agent = MinimalAgent().WithLlmConfig(LlmConfig.OnProfile("auto")).Build();
+
+        // Assert
+        Assert.Equal("auto", agent.LlmConfig!.Profile);
+    }
+
     #region Test Doubles
 
     private sealed class StubTool : IBaseTool

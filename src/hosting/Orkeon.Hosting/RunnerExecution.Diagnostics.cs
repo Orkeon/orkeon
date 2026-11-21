@@ -26,7 +26,9 @@ public static partial class RunnerExecution
     /// probing the LLM endpoint or running any kickoff. Prints
     /// <c>VALIDATION OK: &lt;config&gt; (agents=N, tasks=M, tools resolved=K)</c> to stdout on
     /// success (exit 0); on any load failure prints <c>VALIDATION FAILED: &lt;config&gt;</c> plus
-    /// the error to stderr and returns exit 1.
+    /// the error to stderr and returns exit 1. A tool the host withholds (<c>system_one_decide</c> with
+    /// the decision circuit off, #433) is not a load failure: it is a <c>WARNING:</c> line on stderr,
+    /// left out of the tools resolved.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Validation fault barrier: any crew-load failure (unknown tool, malformed YAML, adapter error) is reported as a validation failure with exit code 1 rather than crashing the runner.")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
@@ -44,6 +46,11 @@ public static partial class RunnerExecution
             // Validation must never touch the RAG index: loading the crew skips the
             // ingestion of rag:-declared collections (CrewFactoryOptions). The factory's
             // deliverable warning is off too: the WARNING: lines below say each finding once.
+            // A tool the host withholds (system_one_decide with the decision circuit off, #433) is a
+            // WARNING: line, not a load failure, and is not counted among the tools resolved.
+            var withheld = new List<string>();
+            // The warnings of the crew's decision.mode rules (#429) are WARNING: lines too.
+            var decisionWarnings = new List<string>();
             void ConfigureValidationServices(HostBuilderContext context, IServiceCollection services)
             {
                 configureServices?.Invoke(context, services);
@@ -51,6 +58,16 @@ public static partial class RunnerExecution
                 {
                     o.PrepareRagCollections = false;
                     o.WarnOnDeliverableTools = false;
+                    o.OnDecisionWarning = message =>
+                    {
+                        lock (decisionWarnings)
+                            decisionWarnings.Add(message);
+                    };
+                    o.OnWithheldTool = message =>
+                    {
+                        lock (withheld)
+                            withheld.Add(message);
+                    };
                 });
             }
 
@@ -89,7 +106,7 @@ public static partial class RunnerExecution
                 {
                     await BundleProceduralScriptAsync(host, virtualConfigPath, cts.Token).ConfigureAwait(false);
                     await console.Output.WriteLineAsync(
-                        $"VALIDATION OK: {configPath} (procedural script: bundled, not run)").ConfigureAwait(false);
+                        $"VALIDATION OK: {configPath} (procedural script: bundled, not run, decision={Orkeon.Constants.Protocol.RunDecisionModes.Unknown})").ConfigureAwait(false);
                     return 0;
                 }
 
@@ -120,9 +137,23 @@ public static partial class RunnerExecution
                     tasks, agents, crew.ProcessType, crew.ManagerAgentId);
                 foreach (var finding in findings)
                     await console.ErrorOutput.WriteLineAsync($"WARNING: {finding.Message}").ConfigureAwait(false);
+                string[] withheldTools;
+                lock (withheld)
+                    withheldTools = [.. withheld.Distinct(StringComparer.Ordinal)];
+                foreach (var message in withheldTools)
+                    await console.ErrorOutput.WriteLineAsync($"WARNING: {message}").ConfigureAwait(false);
+
+                string[] modeWarnings;
+                lock (decisionWarnings)
+                    modeWarnings = [.. decisionWarnings.Distinct(StringComparer.Ordinal)];
+                foreach (var message in modeWarnings)
+                    await console.ErrorOutput.WriteLineAsync($"WARNING: {message}").ConfigureAwait(false);
+                foreach (var message in RefusalsUnderTheCircuit(crew, tasks, Orkeon.Application.Crew.Execution.DecisionCircuit.Of(scope.ServiceProvider)))
+                    await console.ErrorOutput.WriteLineAsync($"WARNING: {message}").ConfigureAwait(false);
 
                 await console.Output.WriteLineAsync(
-                    $"VALIDATION OK: {configPath} (agents={crew.Agents.Count}, tasks={crew.Tasks.Count}, tools resolved={toolsResolved})").ConfigureAwait(false);
+                    $"VALIDATION OK: {configPath} (agents={crew.Agents.Count}, tasks={crew.Tasks.Count}, tools resolved={toolsResolved}, " +
+                    $"decision={Runs.RunEventObserver.WireMode(crew.DecisionMode)})").ConfigureAwait(false);
                 return 0;
             }
             catch (OperationCanceledException)
@@ -138,6 +169,30 @@ public static partial class RunnerExecution
                 return 1;
             }
         }
+    }
+
+    /// <summary>
+    /// What a run of the crew would be refused for now, with this host's decision circuit (#429): a crew that
+    /// requires System One with the circuit off, or a decision task left with nothing to answer by. Reported by
+    /// <c>--validate</c>, which exits 0: the circuit is the launch's, not the crew's.
+    /// </summary>
+    private static IEnumerable<string> RefusalsUnderTheCircuit(
+        Orkeon.Domain.Crew.Crew crew, IReadOnlyList<Orkeon.Domain.Task.CrewTask> tasks, Orkeon.Application.Crew.Execution.DecisionCircuit circuit)
+    {
+        if (circuit.Enabled)
+            yield break;
+        if (crew.DecisionMode == Orkeon.Domain.Crew.CrewDecisionMode.Required)
+        {
+            yield return $"crew requires System One; a run would be refused now: {circuit.OffReason}";
+            yield break;
+        }
+
+        var declarations = tasks
+            .Select(t => new Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration(
+                t.Key ?? t.Description.Value, t.Decision, t.Condition, t.AssignedAgent is not null))
+            .ToList();
+        foreach (var message in Orkeon.Domain.Task.DecisionTaskRules.CheckFallbacks(crew.DecisionMode, declarations))
+            yield return $"a run would be refused now ({circuit.OffReason}): {message}";
     }
 
     /// <summary>

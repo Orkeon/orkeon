@@ -46,6 +46,7 @@ internal sealed class ChatClientAgentLoop
     private readonly ChatToolDispatcher _toolDispatcher;
     private readonly ILlmDeltaSink? _deltaSink;
     private readonly ToolCallDeltaDlp? _toolCallDlp;
+    private readonly Compaction.ContextCompaction? _compaction;
 
     internal ChatClientAgentLoop(
         ILogger logger,
@@ -63,6 +64,7 @@ internal sealed class ChatClientAgentLoop
         _optionsComposer = optionsComposer;
         _toolDispatcher = toolDispatcher;
         _deltaSink = options?.DeltaSink;
+        _compaction = options?.Compaction;
     }
 
     /// <summary>
@@ -72,10 +74,12 @@ internal sealed class ChatClientAgentLoop
     /// <param name="DeltaSink">Where streamed deltas go besides the run's stream; null for none.</param>
     /// <param name="VerboseLogger">The verbose logger; null for none.</param>
     /// <param name="ToolCallDlp">The DLP applied to streamed tool call arguments; null for none.</param>
+    /// <param name="Compaction">The loop's conversation compaction (#432); null for the 40-message trim alone.</param>
     internal sealed record ChatClientAgentLoopOptions(
         ILlmDeltaSink? DeltaSink = null,
         ILogger? VerboseLogger = null,
-        ToolCallDeltaDlp? ToolCallDlp = null);
+        ToolCallDeltaDlp? ToolCallDlp = null,
+        Compaction.ContextCompaction? Compaction = null);
 
     /// <summary>
     /// Tracks circuit breaker state between iterations without requiring ref parameters in async methods.
@@ -147,11 +151,22 @@ internal sealed class ChatClientAgentLoop
         // Circuit breaker state: detect repeated identical tool call errors
         var cbState = new CircuitBreakerState();
 
+        // The conversation's compaction (#432): null when it is off, and the loop trims as it always has.
+        var compactor = _compaction?.Begin(agent, task.Id,
+            Domain.SharedKernel.ValueObjects.LlmConfig.OnProfile() with
+            {
+                Model = options.ModelId ?? string.Empty,
+                ContextWindowTokens = agent.LlmConfig?.ContextWindowTokens,
+            },
+            options.MaxOutputTokens, SummaryOverOwnClient(agent, options), _llmGate);
+        var view = compactor is null ? null : new Compaction.ChatConversationView(messages, Compaction.ReadToolChecks.Over(availableTools));
+
         // Every exit carries the prompt/completion and cache split accumulated so far.
+        // The summary calls of a compaction count on both sides too (#432).
         AgentLoopResult WithTokenSplit(AgentLoopResult result) => result with
         {
-            PromptTokens = promptTokensTotal,
-            CompletionTokens = completionTokensTotal,
+            PromptTokens = promptTokensTotal + (compactor?.SpentPromptTokens ?? 0),
+            CompletionTokens = completionTokensTotal + (compactor?.SpentCompletionTokens ?? 0),
             CacheHitTokens = cacheHitTotal,
             CacheMissTokens = cacheMissTotal,
         };
@@ -176,12 +191,16 @@ internal sealed class ChatClientAgentLoop
 
             ExecutionLog.LogChatClientIteration(_logger, agent.Role, iteration + 1, maxIter, messages.Count);
 
+            if (compactor is not null)
+                totalTokensUsed += await compactor.BeforeCallAsync(view!, cancellationToken).ConfigureAwait(false);
+
             var iterSw = System.Diagnostics.Stopwatch.StartNew();
             var (chatResponse, failedCall) = await CallChatClientAsync(
                 agent, task.Id, messages, options, iteration, totalTokensUsed, cancellationToken).ConfigureAwait(false);
             if (failedCall is not null)
                 return WithTokenSplit(failedCall);
             iterSw.Stop();
+            compactor?.Observe((int?)chatResponse!.Usage?.InputTokenCount, view!);
 
             totalTokensUsed += (int)(chatResponse!.Usage?.TotalTokenCount ?? 0);
             promptTokensTotal += (int)(chatResponse.Usage?.InputTokenCount ?? 0);
@@ -190,7 +209,7 @@ internal sealed class ChatClientAgentLoop
 
             var dispatch = await TryDispatchToolCallsAsync(
                 chatResponse,
-                new ToolCallDispatchContext(chatResponse, messages, availableTools, toolsUsed, agent, task, iteration),
+                new ToolCallDispatchContext(chatResponse, messages, availableTools, toolsUsed, agent, task, iteration, compactor),
                 iterSw.ElapsedMilliseconds, totalTokensUsed, cbState, cancellationToken).ConfigureAwait(false);
             cbState = dispatch.CircuitBreaker;
 
@@ -232,10 +251,40 @@ internal sealed class ChatClientAgentLoop
                 AgentExitReason.Completed, IterationsUsed: iteration + 1));
         }
 
+        // The synthesis call at the cap goes through the same measure as every call: the last iteration's results
+        // were added after the last one, and with compaction on no trim bounds them (#432).
+        if (compactor is not null)
+            totalTokensUsed += await compactor.BeforeCallAsync(view!, cancellationToken).ConfigureAwait(false);
+
         var maxIterResult = await HandleMaxIterExhaustedAsync(
             agent, messages, options, maxIter, task.Id, totalTokensUsed, cancellationToken).ConfigureAwait(false);
         return WithTokenSplit(maxIterResult);
     }
+
+    /// <summary>
+    /// The summary call of a compaction on the loop's own client (#432): the task's model and output
+    /// cap, no tool, after a turn in the agent's and the crew's windows. A failure is the breaker's
+    /// to count, never the task's; the caller's cancellation still propagates.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A summary call that fails is a compaction failure the breaker counts, never the task's: the caller's cancellation still propagates.")]
+    private Compaction.SummaryCall SummaryOverOwnClient(DomainAgent agent, ChatOptions taskOptions) =>
+        async (instructions, transcript, cancellationToken) =>
+        {
+            try
+            {
+                await _llmGate.WaitTurnAsync(agent, cancellationToken).ConfigureAwait(false);
+                var response = await _chatClient.GetResponseAsync(
+                    [new ChatMessage(ChatRole.System, instructions), new ChatMessage(ChatRole.User, transcript)],
+                    new ChatOptions { ModelId = taskOptions.ModelId, MaxOutputTokens = taskOptions.MaxOutputTokens },
+                    cancellationToken).ConfigureAwait(false);
+                return new Compaction.CompactionSummary(response.Text, (int)(response.Usage?.TotalTokenCount ?? 0), null,
+                    (int)(response.Usage?.InputTokenCount ?? 0), (int)(response.Usage?.OutputTokenCount ?? 0));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                return new Compaction.CompactionSummary(null, 0, ex.Message);
+            }
+        };
 
     /// <summary>
     /// One iteration's chat call, after its turn in the agent's and the crew's windows (GAP-38), under
@@ -470,7 +519,11 @@ internal sealed class ChatClientAgentLoop
 
         cbState.LastErrorMessage = lastError;
         cbState.ConsecutiveIdenticalErrors = count;
-        ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages);
+        // With compaction on, the token measure replaces the message count; the trim is its fallback (#432).
+        // A trim rewrites the conversation: the next estimate counts it again.
+        if (dispatch.Compactor is not { ReplacesTrim: true }
+            && ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages))
+            dispatch.Compactor?.Rewritten();
         return (null, cbState);
     }
 
@@ -502,7 +555,11 @@ internal sealed class ChatClientAgentLoop
 
         cbState.LastErrorMessage = lastError;
         cbState.ConsecutiveIdenticalErrors = count;
-        ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages);
+        // With compaction on, the token measure replaces the message count; the trim is its fallback (#432).
+        // A trim rewrites the conversation: the next estimate counts it again.
+        if (dispatch.Compactor is not { ReplacesTrim: true }
+            && ConversationPolicy.TrimConversationHistory(messages, AgentDefaults.MaxContextMessages))
+            dispatch.Compactor?.Rewritten();
         return (null, cbState);
     }
 

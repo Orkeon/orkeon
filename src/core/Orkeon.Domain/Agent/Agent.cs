@@ -98,6 +98,18 @@ public sealed class Agent : AggregateRoot<AgentId>
     public bool AnnounceMounts { get; internal set; } = true;
 
     /// <summary>
+    /// What the agent overrides of the host's conversation compaction (<c>compaction:</c>, #432);
+    /// null when it overrides nothing and <c>Orkeon:Compaction</c> decides.
+    /// </summary>
+    public AgentCompaction? Compaction { get; internal set; }
+
+    /// <summary>
+    /// The skills the agent's prompt carries (<c>skills:</c>, #434): a fixed list, or a pick of the decision
+    /// model with its fallback; null when the agent declares none.
+    /// </summary>
+    public AgentSkills? Skills { get; internal set; }
+
+    /// <summary>
     /// Gets the system template for prompts.
     /// </summary>
     public string? SystemTemplate { get; private set; }

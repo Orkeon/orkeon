@@ -62,7 +62,9 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
 
 La CLI émet le résultat du script en JSON sur stdout ; les codes de sortie suivent la
 convention habituelle (`0` ok, `1` erreur de script, `2` erreur runtime, `130` annulé ;
-`75` quand un run de crew s'arrête sur une question humaine durable).
+`75` quand un run de crew s'arrête sur une question humaine durable ; `69` quand une crew est refusée
+parce qu'elle a besoin de System One et que le circuit de décision est coupé, tandis qu'une crew `optional` reprise
+sous l'autre circuit que celui de ses décisions enregistrées sort en `1`, voir [la référence CLI](../reference/cli.md)).
 
 Le même verbe `run` accepte aussi un **crew YAML** — la cible sélectionne
 la voie (`.yaml`/`.yml` **ou un dossier portant une crew multi-fichiers** → le runner de
@@ -193,7 +195,8 @@ complétion (le total du fournisseur). Chaque appel renvoie tout le contexte, si
 compté de nouveau à chaque appel : un tour de n appels dont le contexte croît régulièrement le paie
 environ n fois, et le chiffre ne borne ni la taille de la conversation ni ce qu'un fournisseur facture
 avec son cache. Chaque appel journalise la somme courante à côté de la limite (`act: agent '<nom>' call
-used <n> tokens, running sum <somme>/<limite> tokens over <n> calls`, Information).
+used <n> tokens, running sum <somme>/<limite> tokens over <n> calls`, Information), ou, sans plafond de
+tokens, le dit (`running sum <somme> tokens over <n> calls, no limit`).
 
 `budget({ contextTokens })` compte le contexte une fois (#224) : chaque appel ajoute sa complétion plus,
 quand le fournisseur rapporte des hits de cache (`cacheHitTokens`), la part de son prompt que le cache n'a
@@ -235,8 +238,9 @@ d'enfants épuisé n'est pas vérifié à la garde : il refuse seulement le lanc
   (profondeur 2, 3 spawns, comptés par run d'agent : chaque tentative et chaque hook) et ne fixe ni
   horloge, ni plafond d'appels d'outils ou de tokens, comme son act n'en fixe aucun : un spawn tardif
   n'est pas refusé faute de temps, et son enfant n'y est pas tenu. Un `budget({...})` qui omet une
-  dimension la prend d'`AgentExecutionBudget.Default` (15 appels d'outils, 16 000 tokens, 5 minutes),
-  pour ses `act` comme pour ses spawns ([clés de `budget`](../reference/scripting-dsl.md)).
+  dimension lui donne cette même valeur, pour ses `act` comme pour ses spawns : nommer
+  `spawnedAgents` ou `delegationDepth` seul n'ajoute ni horloge, ni plafond d'appels d'outils ou de
+  tokens ([clés de `budget`](../reference/scripting-dsl.md)).
   Un refus (profondeur ou budget de spawn épuisé, agent inconnu) est un résultat d'outil en échec que
   le modèle lit, jamais une exception.
   Les `act` de l'enfant tournent sous le plus strict de leur propre `permissionMode` et de celui de

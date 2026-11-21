@@ -222,8 +222,29 @@ internal static class CrewYamlKeyCheck
                 WalkKnowledge(value, keyPath, context);
             else
                 WalkValue(value, property.PropertyType, keyPath, context, ShapeHint(model, property));
+            if (property.Name == nameof(TaskYamlConfig.When) && property.PropertyType == typeof(Dictionary<string, object>))
+                WalkWhen(value, keyPath, context);
         }
     }
+
+    // An option clause of a when: map (#430): an unquoted no is read as a boolean by YAML, and refused with the
+    // hint to quote it, where the deserializer would read it as the string no.
+    private static void WalkWhen(YamlNode node, string path, Context context)
+    {
+        if (node is not YamlMappingNode when || !context.FirstJudgement(when, typeof(WhenClauseParser)))
+            return;
+
+        foreach (var (key, value) in when.Children)
+        {
+            if (key is not YamlScalarNode { Value: { } name } || value is not YamlSequenceNode list)
+                continue;
+            if (list.Children.OfType<YamlScalarNode>().FirstOrDefault(IsUnquotedNo) is { } no)
+                context.Faults.Add($"{context.Where(no)}: '{Entry(path, name)}' lists an unquoted {no.Value}, which YAML reads as a boolean: quote it, \"{no.Value}\".");
+        }
+    }
+
+    private static bool IsUnquotedNo(YamlScalarNode scalar)
+        => scalar.Style == ScalarStyle.Plain && scalar.Value is "no" or "No" or "NO";
 
     // A key no property takes: retired with its guidance, else unknown with the names it may mean.
     private static string UnknownKeyFault(string where, string keyPath, string key, string[] names, Type model, YamlNode value)

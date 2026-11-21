@@ -13,4 +13,17 @@ public static class RunEventErrorCodes
 
     /// <summary>The run was cancelled — a timeout, Ctrl+C, a consumer that left the stream.</summary>
     public const string CrewCancelled = "crew_cancelled";
+
+    /// <summary>
+    /// The run was refused before its first task: the crew requires System One (<c>decision.mode: required</c>)
+    /// and the decision circuit is off. The message names the crew and the cause (#429).
+    /// </summary>
+    public const string DecisionUnavailable = "decision_unavailable";
+
+    /// <summary>
+    /// The resume was refused before its first task: an <c>optional</c> crew is resumed under the other decision
+    /// circuit than the one its recorded decisions were taken with (recorded on, resumed off, or the reverse). The
+    /// message names the crew and both circuits; <c>orkeon run</c> exits 1 (#430).
+    /// </summary>
+    public const string DecisionCircuitMismatch = "decision_circuit_mismatch";
 }

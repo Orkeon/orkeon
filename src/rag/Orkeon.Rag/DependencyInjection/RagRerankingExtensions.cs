@@ -2,6 +2,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Rag.Factories;
 using Orkeon.Rag.Reranking;
@@ -40,11 +41,23 @@ public static class RagRerankingExtensions
                     sp.GetService<ILogger<LlmListwiseReranker>>()),
                 "listwise");
 
+            // The decision reranker follows the decision circuit (#433): off - the switch, the settings,
+            // or no provider - it passes the passages through in their retrieval order, as noop does,
+            // and says so once.
+            var warned = 0;
             factory.Register(
                 DecisionModelReranker.RerankerName,
-                () => new DecisionModelReranker(sp.GetService<IDecisionModel>()
-                    ?? throw new InvalidOperationException(
-                        "The 'decision' reranker needs a decision model: name a provider in Orkeon:Decision:Provider, or call AddOrkeonDecisionProvider.")));
+                () =>
+                {
+                    var circuit = DecisionCircuit.Of(sp);
+                    if (circuit.Enabled)
+                        return new DecisionModelReranker(sp.GetRequiredService<IDecisionModel>());
+                    if (Interlocked.Exchange(ref warned, 1) == 0)
+                        RagRerankingLog.DecisionRerankerPassesThrough(
+                            sp.GetService<ILogger<DecisionModelReranker>>() ?? (ILogger)Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance,
+                            circuit.OffReason!);
+                    return new NoopReranker();
+                });
 
             foreach (var registrar in sp.GetServices<IRerankerRegistrar>())
             {
@@ -56,4 +69,12 @@ public static class RagRerankingExtensions
 
         return services;
     }
+}
+
+/// <summary>The warnings of the reranking stage.</summary>
+internal static partial class RagRerankingLog
+{
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "The 'decision' reranker passes the passages through in their retrieval order: {Reason}.")]
+    public static partial void DecisionRerankerPassesThrough(ILogger logger, string reason);
 }

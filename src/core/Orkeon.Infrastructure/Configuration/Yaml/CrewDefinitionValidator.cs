@@ -191,6 +191,11 @@ public static class CrewDefinitionValidator
         }
 
         errors.AddRange(DecisionTaskRules.Check(config.Process, config.DecisionDeclarations()));
+        var agentKeys = config.Agents is { } agents && agents.All(a => a.Key is not null)
+            ? agents.Select(a => a.Key!).ToList()
+            : null;
+        errors.AddRange(DecisionTaskRules.CheckMode(
+            config.DecisionMode, config.Process, config.DecisionDeclarations(), config.SystemOneUses(), agentKeys).Refusals);
 
         if (HasCircularDependencies(config.Tasks))
             errors.Add("Circular task dependencies detected.");
@@ -206,7 +211,8 @@ public static class CrewDefinitionValidator
         if (string.IsNullOrWhiteSpace(task.Description))
             errors.Add($"Task '{name}' must have a description.");
 
-        if (string.IsNullOrWhiteSpace(task.ExpectedOutput))
+        // A decision task runs no agent and writes nothing: its result is the answers it routes on (#431).
+        if (task.Decision is null && string.IsNullOrWhiteSpace(task.ExpectedOutput))
             errors.Add($"Task '{name}' must have an expected output.");
 
         if (task.AssignedAgentId != null && !agentIds.Contains(task.AssignedAgentId))

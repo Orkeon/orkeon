@@ -34,6 +34,11 @@ public partial class CrewFactory : ICrewFactory
     private readonly Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? _ragBootstrapper;
     private readonly ICrewLinkRegistry? _linkRegistry;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
+    private readonly Orkeon.Application.Crew.Execution.DecisionCircuit? _decisionCircuit;
+    private readonly Action<string>? _onWithheldTool;
+    private readonly Action<string>? _onDecisionWarning;
+    private readonly IReadOnlyCollection<string>? _decisionProfiles;
+    private readonly System.Collections.Immutable.ImmutableList<string> _routeLadder;
 
     /// <summary>Initializes a new instance of <see cref="CrewFactory"/>.</summary>
     /// <param name="loader">The crew definition loader.</param>
@@ -61,6 +66,21 @@ public partial class CrewFactory : ICrewFactory
     /// task naming a profile the host does not offer fails the load with the list of known ones
     /// (GAP-17). Null offers the default profile alone.
     /// </param>
+    /// <param name="decisionCircuit">
+    /// The host's decision circuit (registered by <c>AddOrkeonInfrastructure</c>): off, a crew naming
+    /// <c>system_one_decide</c> is told the tool is withheld and why, rather than that it is unknown
+    /// (#433). Null reports it as any missing tool.
+    /// </param>
+    /// <param name="decisionProfiles">
+    /// The host's decision profiles (<c>Orkeon:Decision:Profiles</c>): a crew with <c>decision.mode: none</c>
+    /// naming one is refused, and a <c>required</c> one naming none, with no decision task and no
+    /// <c>system_one_decide</c>, is warned that it asks System One nothing (#429). Null leaves both rules aside.
+    /// </param>
+    /// <param name="route">
+    /// The ladder an agent on <c>llm.profile: auto</c> is routed among (<c>Orkeon:Decision:Route:Ladder</c>, #434):
+    /// a crew naming <c>auto</c> fails its load when the host declares no ladder or the ladder names a profile the
+    /// host does not offer. Null declares none.
+    /// </param>
 #pragma warning disable S107 // DI-composed factory: one optional collaborator per opt-in subsystem
     public CrewFactory(
         ICrewDefinitionLoader loader,
@@ -72,7 +92,10 @@ public partial class CrewFactory : ICrewFactory
         IOptions<CrewFactoryOptions>? options = null,
         Orkeon.Rag.Abstractions.Interfaces.IRagCollectionsBootstrapper? ragBootstrapper = null,
         ICrewLinkRegistry? linkRegistry = null,
-        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null)
+        Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? llmProfiles = null,
+        Orkeon.Application.Crew.Execution.DecisionCircuit? decisionCircuit = null,
+        IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionProfilesOptions>? decisionProfiles = null,
+        IOptions<Orkeon.Application.Crew.Routing.AgentRouteOptions>? route = null)
 #pragma warning restore S107
     {
         ArgumentNullException.ThrowIfNull(loader);
@@ -93,6 +116,11 @@ public partial class CrewFactory : ICrewFactory
         _ragBootstrapper = ragBootstrapper;
         _linkRegistry = linkRegistry;
         _llmProfiles = llmProfiles;
+        _decisionCircuit = decisionCircuit;
+        _onWithheldTool = options?.Value.OnWithheldTool;
+        _onDecisionWarning = options?.Value.OnDecisionWarning;
+        _decisionProfiles = decisionProfiles?.Value.Profiles.Keys.ToList();
+        _routeLadder = [.. route?.Value.Ladder ?? []];
     }
 
     /// <inheritdoc />
@@ -108,6 +136,9 @@ public partial class CrewFactory : ICrewFactory
         CrewConfiguration config,
         CancellationToken ct)
     {
+        // The decision.mode rules first (#429): a configuration handed straight to the factory is refused in the
+        // one spelling every loader uses, not among the validator's errors.
+        ValidateDecisionMode(config);
         ValidateConfiguration(config);
         ValidateLlmProfiles(config);
 
@@ -116,8 +147,17 @@ public partial class CrewFactory : ICrewFactory
 
         LogCreatingCrewWithAgentsAnd(config.Name, config.Agents.Count, config.Tasks.Count);
 
-        var agentMap = await CreateAgentsAsync(config.Agents, config.Rag?.DefaultProfile, ct).ConfigureAwait(false);
-        var taskMap = await CreateTasksAsync(config.Tasks, agentMap, ct).ConfigureAwait(false);
+        // A required crew with the circuit off loads, and its run is refused before the first task with the
+        // typed error (#429): a withheld system_one_decide must not fail the load first.
+        var refuseWithheld = config.DecisionMode != Orkeon.Domain.Crew.CrewDecisionMode.Required;
+        var agentMap = await CreateAgentsAsync(config.Agents, config.Rag?.DefaultProfile, refuseWithheld, ct).ConfigureAwait(false);
+        // A without: relay names its agent by key (#430): resolved here to the agent built for that key.
+        // A script may give two agents one name: a relay then names the first of them.
+        var agentIdByKey = config.Agents
+            .Where(a => a.Key is not null && agentMap.ContainsKey(a.Id))
+            .GroupBy(a => a.Key!, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => agentMap[g.First().Id].Id, StringComparer.Ordinal);
+        var taskMap = await CreateTasksAsync(config.Tasks, agentMap, agentIdByKey, refuseWithheld, ct).ConfigureAwait(false);
 
         SetupTaskDependencies(config.Tasks, taskMap);
         AddTaskContextData(config.Tasks, taskMap);
@@ -240,14 +280,109 @@ public partial class CrewFactory : ICrewFactory
     /// </summary>
     private void ValidateLlmProfiles(CrewConfiguration config)
     {
+        var unrouted = UnroutedAgents(config);
         foreach (var agent in config.Agents)
-            Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(
-                _llmProfiles, agent.LlmConfig?.Profile, $"Crew '{config.Name}': agent '{agent.Role}'");
+        {
+            // A model beside auto would run on every rung System One picks (#434): the rung's own model must.
+            if (agent.LlmConfig is { } llm && AgentBuilder.AutoProfileModel(llm) is { } model)
+                throw new InvalidOperationException(AgentBuilder.AutoProfileModelRefusal(
+                    $"Crew '{config.Name}': agent '{agent.Key ?? agent.Role}' (its llm: block, or the crew's)", model));
+
+            if (unrouted.Contains(agent.Id) && Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(agent.LlmConfig?.Profile))
+                continue;
+            EnsureProfile(agent.LlmConfig?.Profile, $"Crew '{config.Name}': agent '{agent.Role}'");
+        }
 
         foreach (var task in config.Tasks)
-            Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(
-                _llmProfiles, task.LlmOverride?.Profile, $"Crew '{config.Name}': task '{Shorten(task.Description)}'");
+            EnsureProfile(task.LlmOverride?.Profile, $"Crew '{config.Name}': task '{Shorten(task.Description)}'");
     }
+
+    /// <summary>
+    /// The agents no task is assigned to that the crew names as its manager or as a decision relay
+    /// (<c>without.agent</c>): one on <c>llm.profile: auto</c> runs on the default profile, System One routes only an
+    /// agent's tasks (#434), so it is left out of the <c>auto</c> checks.
+    /// </summary>
+    private static HashSet<AgentId> UnroutedAgents(CrewConfiguration config)
+    {
+        var relays = config.Tasks.Select(t => t.Decision?.Without?.Agent).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        var assigned = config.Tasks.Select(t => t.AssignedAgentId).OfType<AgentId>().ToHashSet();
+        return config.Agents
+            .Where(a => !assigned.Contains(a.Id)
+                && (a.Id.Equals(config.ManagerAgentId) || relays.Contains(a.Key ?? a.Role)))
+            .Select(a => a.Id)
+            .ToHashSet();
+    }
+
+    /// <summary>
+    /// A profile the host offers, or <c>auto</c> (#434) on a host whose ladder holds profiles it offers, each of
+    /// them checked as if the crew named it.
+    /// </summary>
+    private void EnsureProfile(string? profile, string where)
+    {
+        if (!Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(profile))
+        {
+            Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(_llmProfiles, profile, where);
+            return;
+        }
+
+        if (_routeLadder.Count == 0)
+            throw new InvalidOperationException(
+                $"{where} names the LLM profile '{Orkeon.Application.Interfaces.Ports.LlmProfiles.Auto}', and this host declares no " +
+                $"{Orkeon.Application.Interfaces.Ports.LlmProfiles.RouteLadderKey}: list there the profiles System One may pick, " +
+                "cheapest first, or name a profile.");
+
+        foreach (var rung in _routeLadder)
+            Orkeon.Application.Interfaces.Ports.LlmProfiles.EnsureKnown(
+                _llmProfiles, rung, $"{where} names '{Orkeon.Application.Interfaces.Ports.LlmProfiles.Auto}', and " +
+                Orkeon.Application.Interfaces.Ports.LlmProfiles.RouteLadderKey);
+    }
+
+    /// <summary>
+    /// The rules of the crew's <c>decision.mode</c> with what only the host knows, its decision profiles (#429):
+    /// a refusal fails the load, a warning goes to <see cref="CrewFactoryOptions.OnDecisionWarning"/> when set,
+    /// to the log otherwise.
+    /// </summary>
+    private void ValidateDecisionMode(CrewConfiguration config)
+    {
+        var profiles = _decisionProfiles;
+        // An agent on llm.profile: auto asks System One for its profile, as a decision profile does (#434), but
+        // not a manager or a relay with no task of its own: it runs on the default profile.
+        // Without the host's decision profiles, auto is still known: System One picks it.
+        var uses = config.SystemOneUses(p => (profiles is not null && profiles.Contains(p, StringComparer.OrdinalIgnoreCase))
+            || Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(p));
+        var unroutedIds = UnroutedAgents(config);
+        var unrouted = config.Agents.Where(a => unroutedIds.Contains(a.Id))
+            .Select(a => $"agent '{a.Key ?? a.Role}'").ToHashSet(StringComparer.Ordinal);
+        if (uses.DecisionProfiles is { } named && unrouted.Count > 0)
+            uses = uses with
+            {
+                DecisionProfiles = named
+                    .Where(u => !(unrouted.Contains(u.Holder) && Orkeon.Application.Interfaces.Ports.LlmProfiles.IsAuto(u.Profile)))
+                    .ToList(),
+            };
+        var findings = Orkeon.Domain.Task.DecisionTaskRules.CheckMode(
+            config.DecisionMode,
+            config.Process,
+            config.DecisionDeclarations(),
+            uses,
+            RelayNames(config));
+        if (findings.Refusals.Count > 0)
+            throw new InvalidOperationException(
+                $"Crew '{config.Name}': {Orkeon.Domain.Task.DecisionTaskRules.ModeRefusal(findings.Refusals)}");
+
+        foreach (var warning in findings.Warnings)
+        {
+            if (_onDecisionWarning is not null)
+                _onDecisionWarning(warning);
+            else
+                LogCrewDefinitionWarning(warning);
+        }
+    }
+
+    // The names a without.agent may give (#430), as the loader checks them: an agent's key, or the role of an
+    // agent without one, which a crew built in code is matched on at run time.
+    private static List<string> RelayNames(CrewConfiguration config) =>
+        [.. config.Agents.Select(a => a.Key ?? a.Role).Distinct(StringComparer.Ordinal)];
 
     private static string Shorten(string text) => text.Length <= 60 ? text : string.Concat(text.AsSpan(0, 57), "...");
 
@@ -271,16 +406,17 @@ public partial class CrewFactory : ICrewFactory
     /// The crew's <c>rag.defaults.profile</c>: copied onto every knowledge attachment that
     /// names no profile of its own (GAP-02). <c>null</c> leaves those to the host default.
     /// </param>
+    /// <param name="refuseWithheld">Whether a withheld tool fails a strict load (#429: not for a required crew).</param>
     /// <param name="ct">Cancellation token.</param>
     private async Task<Dictionary<string, DomainAgent>> CreateAgentsAsync(
-        IReadOnlyList<AgentConfiguration> agentConfigs, string? defaultKnowledgeProfile, CancellationToken ct)
+        IReadOnlyList<AgentConfiguration> agentConfigs, string? defaultKnowledgeProfile, bool refuseWithheld, CancellationToken ct)
     {
         var agentMap = new Dictionary<string, DomainAgent>();
 
         foreach (var agentConfig in agentConfigs)
         {
             ct.ThrowIfCancellationRequested();
-            var resolvedTools = await ResolveToolsAsync(agentConfig.Tools, ct).ConfigureAwait(false);
+            var resolvedTools = await ResolveToolsAsync(agentConfig.Tools, refuseWithheld, ct).ConfigureAwait(false);
 
             var agent = BuildAgent(agentConfig, resolvedTools, defaultKnowledgeProfile);
 
@@ -318,6 +454,8 @@ public partial class CrewFactory : ICrewFactory
         if (agentConfig.FileSystem.Count > 0)
             builder.FileSystem([.. agentConfig.FileSystem]);
         builder.AnnounceMounts(agentConfig.AnnounceMounts);
+        builder.Compaction(agentConfig.Compaction);
+        builder.Skills(agentConfig.Skills);
         if (resolvedTools.Count > 0)
             builder.WithTools(resolvedTools);
         // The agent's llm block — profile, model, sampling, thinking, response format, cache.
@@ -367,7 +505,8 @@ public partial class CrewFactory : ICrewFactory
     /// belt for that task only (GAP-07).
     /// </summary>
     private async Task<Dictionary<string, CrewTask>> CreateTasksAsync(
-        IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, DomainAgent> agentMap, CancellationToken ct)
+        IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, DomainAgent> agentMap,
+        IReadOnlyDictionary<string, AgentId> agentIdByKey, bool refuseWithheld, CancellationToken ct)
     {
         var created = new Dictionary<string, CrewTask>();
         var idByName = new Dictionary<string, TaskId>(StringComparer.Ordinal);
@@ -376,9 +515,9 @@ public partial class CrewFactory : ICrewFactory
         foreach (var taskConfig in taskConfigs.Where(t => t.Decision is not null).Concat(taskConfigs.Where(t => t.Decision is null)))
         {
             ct.ThrowIfCancellationRequested();
-            var resolvedTools = await ResolveToolsAsync(taskConfig.Tools, ct).ConfigureAwait(false);
+            var resolvedTools = await ResolveToolsAsync(taskConfig.Tools, refuseWithheld, ct).ConfigureAwait(false);
 
-            var task = BuildTask(taskConfig, resolvedTools, idByName, agentMap);
+            var task = BuildTask(taskConfig, resolvedTools, idByName, agentMap, agentIdByKey);
 
             created[taskConfig.Id] = task;
             if (taskConfig.Decision is not null)
@@ -396,7 +535,8 @@ public partial class CrewFactory : ICrewFactory
 
     private static CrewTask BuildTask(
         TaskConfiguration taskConfig, IReadOnlyList<IBaseTool> resolvedTools,
-        Dictionary<string, TaskId> idByName, Dictionary<string, DomainAgent> agentMap)
+        Dictionary<string, TaskId> idByName, Dictionary<string, DomainAgent> agentMap,
+        IReadOnlyDictionary<string, AgentId> agentIdByKey)
     {
         var builder = new CrewTaskBuilder()
             .Description(TaskDescription.From(taskConfig.Description))
@@ -407,8 +547,13 @@ public partial class CrewFactory : ICrewFactory
             .WithTools(resolvedTools)
             .WithKey(taskConfig.Key);
 
-        if (taskConfig.Decision is not null)
-            builder.WithDecision(taskConfig.Decision);
+        if (taskConfig.Decision is { } decision)
+        {
+            // The relay's agent, by the id of the agent its key names; a key no agent has was refused at load.
+            builder.WithDecision(decision.Without is { } relay && agentIdByKey.TryGetValue(relay.Agent, out var relayAgentId)
+                ? decision.WithRelay(relay.ResolvedTo(relayAgentId))
+                : decision);
+        }
 
         if (taskConfig.Condition is not null)
         {
@@ -491,6 +636,10 @@ public partial class CrewFactory : ICrewFactory
         if (config.Budget is not null)
             builder.Budget(config.Budget);
 
+        // Whether the crew needs System One: a required crew is refused before its first task when the
+        // decision circuit is off (#429).
+        builder.DecisionMode(config.DecisionMode);
+
         // The graph config is a crew-definition setting that must survive to execution time —
         // the GraphProcessStrategy reads it off the domain crew (P2-O-01).
         if (config.GraphConfig is not null)
@@ -550,15 +699,28 @@ public partial class CrewFactory : ICrewFactory
     }
 
     private async Task<List<IBaseTool>> ResolveToolsAsync(
-        IReadOnlyList<string> toolNames, CancellationToken ct)
+        IReadOnlyList<string> toolNames, bool refuseWithheld, CancellationToken ct)
     {
         var tools = new List<IBaseTool>();
         if (toolNames == null || toolNames.Count == 0)
             return tools;
 
         List<string>? missing = null;
+        List<string>? withheld = null;
         foreach (var toolName in toolNames)
         {
+            if (WithheldReason(toolName) is { } reason)
+            {
+                var message = $"tool '{toolName}' withheld: {reason}";
+                if (_onWithheldTool is not null)
+                    _onWithheldTool(message);
+                else if (_strictTools && refuseWithheld)
+                    (withheld ??= []).Add(message);
+                else
+                    LogToolWithheld(toolName, reason);
+                continue;
+            }
+
             var tool = await _toolRegistry.GetToolByNameAsync(toolName, ct).ConfigureAwait(false);
             if (tool is not null)
             {
@@ -573,11 +735,23 @@ public partial class CrewFactory : ICrewFactory
             }
         }
 
+        if (withheld is { Count: > 0 })
+            throw new InvalidOperationException($"Crew configuration references {string.Join("; ", withheld)}.");
         if (_strictTools && missing is { Count: > 0 })
             throw await BuildMissingToolsExceptionAsync(missing, ct).ConfigureAwait(false);
 
         return tools;
     }
+
+    /// <summary>
+    /// Why the host withholds a tool a crew names, or null when it offers it: <c>system_one_decide</c>
+    /// with the decision circuit off (#433), whatever the cause - the switch, the settings, no provider.
+    /// </summary>
+    private string? WithheldReason(string toolName) =>
+        _decisionCircuit is { Enabled: false } circuit
+        && string.Equals(toolName, Orkeon.Infrastructure.Tools.SystemOneDecideTool.ToolName, StringComparison.OrdinalIgnoreCase)
+            ? circuit.OffReason
+            : null;
 
     private async Task<InvalidOperationException> BuildMissingToolsExceptionAsync(IReadOnlyList<string> missing, CancellationToken ct)
     {
@@ -607,5 +781,8 @@ public partial class CrewFactory : ICrewFactory
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Tool '{ToolName}' not found in registry; skipping.")]
     private partial void LogToolNotFoundInRegistry(object toolName);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Tool '{ToolName}' withheld: {Reason}; skipping.")]
+    private partial void LogToolWithheld(string toolName, string reason);
 
 }

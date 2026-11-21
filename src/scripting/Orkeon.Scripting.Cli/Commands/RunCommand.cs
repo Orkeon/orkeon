@@ -109,9 +109,15 @@ internal sealed class RunCommandOptions : CliOptions
         public bool Test { get; set; }
 
         /// <summary>Switches the decision circuit off for this run, whatever the configuration says.</summary>
-        [Option("no-decision", Required = false, Default = false,
+        [Option(RunOptionNames.NoDecision, Required = false, Default = false,
             HelpText = "Switch the decision circuit off for this run, even when Orkeon:Decision:Enabled is true: "
-                       + "decision tasks answer from their fallback.")]
+                       + "no call reaches the decision model. A crew with decision.mode: required is refused before its first "
+                       + "task (exit 69); with optional, each decision task is answered by its without: relay; with none or no "
+                       + "mode, decision tasks answer from their fallback. system_one_decide "
+                       + "is withheld, decision profiles route to their fallback without escalation, a fail-closed LLM "
+                       + "judge refuses to start and a fail-open one is left out, the decision reranker keeps the "
+                       + "retrieval order, an agent with skills auto carries its fallback skills, llm.profile: auto runs on "
+                       + "the host's default profile and tool-result pruning prunes nothing. See docs/architecture/decision-models.md.")]
         public bool NoDecision { get; set; }
 
         /// <summary>Verbosity level 0-2 (aligned with YAML runner).</summary>

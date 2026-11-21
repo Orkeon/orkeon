@@ -211,4 +211,32 @@ public sealed class DecisionTaskYamlRefusalTests
         Assert.Contains("'triage'", message);
         Assert.Contains("decision.questions.category", message);
     }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldRefuseAnOptionListOnAScore_NamingTheQuestion()
+    {
+        // Arrange
+        var yaml = Crew("sequential", Triage + Sibling("refund", "      triage.urgency: [high]"));
+
+        // Act
+        var message = await RefusalAsync(yaml);
+
+        // Assert
+        Assert.Contains("Question 'urgency' is a score: it has no chosen level and takes a threshold", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldRefuseAnOptionOtherThanYesOrNo_OnAYesNoQuestion()
+    {
+        // Arrange
+        var yaml = Crew("sequential", Triage + Sibling("refund", "      triage.refund_requested: [maybe]"));
+
+        // Act
+        var message = await RefusalAsync(yaml);
+
+        // Assert
+        Assert.Contains("The listed options are not all options of question 'refund_requested'", message, StringComparison.Ordinal);
+    }
 }

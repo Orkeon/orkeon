@@ -119,6 +119,35 @@ public class SystemOneDecisionModelTests
     }
 
     [Fact]
+    [Trait("BR", "CH-430")]
+    public async Task ShouldWriteQuestionsCriteriaAndAssetsInOrdinalOrder_WhenTheirMapsEnumerateInHashOrder()
+    {
+        // Arrange: twelve questions of twelve options and three images, given in maps whose order is their
+        // per-process hash order; the declared order does not travel in the port's types.
+        string[] names = ["whiskey", "alpha", "tango", "bravo", "oscar", "charlie", "kilo", "delta", "zulu", "echo", "mike", "foxtrot"];
+        string[] images = ["img-z", "img-a", "img-m"];
+        var criteria = names.ToImmutableDictionary(n => n, n => (JsonNode?)JsonValue.Create("when " + n));
+        var request = ChoiceRequest() with
+        {
+            Questions = names.ToImmutableDictionary(n => "q-" + n, _ => (DecisionQuestion)new ChoiceQuestion { Criteria = criteria }),
+            Assets = images.ToImmutableDictionary(n => n, _ => new DecisionImage { Format = "png", DataBase64 = "AAAA" }),
+        };
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, ChoiceBody);
+        var model = Create(handler);
+
+        // Act
+        await model.DecideAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert: the same body in every process, its maps in the ordinal order of their names.
+        var body = JsonNode.Parse(await handler.CapturedRequests[0].Content!.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+        var ordinal = names.Order(StringComparer.Ordinal).ToList();
+        Assert.Equal(ordinal.Select(n => "q-" + n), body["questions"]!.AsObject().Select(q => q.Key));
+        foreach (var (_, question) in body["questions"]!.AsObject())
+            Assert.Equal(ordinal, question!["criteria"]!.AsObject().Select(c => c.Key));
+        Assert.Equal(["img-a", "img-m", "img-z"], body["assets"]!.AsObject().Select(a => a.Key));
+    }
+
+    [Fact]
     [Trait("BR", "BR-08")]
     public async Task ShouldSendNoAuthorization_WhenKevHasNoKey()
     {
@@ -511,8 +540,8 @@ public class SystemOneDecisionModelTests
         services.AddOrkeonDecisionProvider(configuration, DecisionProviderDescriptor.TypeSafe);
         services.AddOrkeonDecisionProvider(configuration, DecisionProviderDescriptor.TypeSafe);
 
-        var tool = Assert.Single(services, d => d.ServiceType == typeof(Orkeon.Domain.Tools.IBaseTool)
-            && d.ImplementationType == typeof(Orkeon.Infrastructure.Tools.SystemOneDecideTool));
+        // The tool is offered through a factory that follows the decision circuit (#433).
+        var tool = Assert.Single(services, d => d.ServiceType == typeof(Orkeon.Domain.Tools.IBaseTool));
         Assert.Equal(ServiceLifetime.Singleton, tool.Lifetime);
         Assert.Single(services, d => d.ServiceType == typeof(IDecisionModel));
     }

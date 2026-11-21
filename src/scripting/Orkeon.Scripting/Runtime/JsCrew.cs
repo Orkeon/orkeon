@@ -68,6 +68,9 @@ public sealed partial class JsCrew
     internal bool Memory { get; }
     internal bool Planning { get; }
     internal int? MaxRpm { get; }
+
+    /// <summary>Whether the crew needs System One (<c>crewBuilder().decision({ mode })</c>, #429).</summary>
+    internal Orkeon.Domain.Crew.CrewDecisionMode DecisionMode { get; }
     /// <summary>Tasks captured by <c>crewBuilder().withTask(...)</c>. Exposed for the
     /// JS→orchestrator adapter.</summary>
     internal IReadOnlyList<JsTask> Tasks => _tasks;
@@ -86,6 +89,7 @@ public sealed partial class JsCrew
         Memory = definition.Memory;
         Planning = definition.Planning;
         MaxRpm = definition.MaxRpm;
+        DecisionMode = definition.DecisionMode;
         ConcurrencyGate = new SemaphoreSlim(definition.Concurrency, definition.Concurrency);
         Instances = new AgentInstanceRegistry(definition.MaxInstances, definition.AgentInstances);
         _logger = definition.Logger ?? NullLogger.Instance;

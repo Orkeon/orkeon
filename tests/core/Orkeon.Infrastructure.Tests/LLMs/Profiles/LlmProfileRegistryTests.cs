@@ -110,6 +110,36 @@ public sealed class LlmProfileRegistryTests
     }
 
     [Fact]
+    [Trait("BR", "CH-434")]
+    public void ShouldRefuseTheProfile_WhenARegistrationIsNamedAuto()
+    {
+        // Arrange
+        var registrations = new[] { new LlmProfileRegistration("Auto", _ => new MockLlmProvider()) };
+
+        // Act
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            new LlmProfileRegistry(new ServiceCollection().BuildServiceProvider(), registrations));
+
+        // Assert
+        Assert.Contains("'auto' is a reserved profile name", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public void ShouldFailTheHostStartNamingTheKeyToRename_WhenTheSettingsDeclareAProfileNamedAuto()
+    {
+        // Arrange
+        var configuration = Configuration(("Llm:Profiles:auto:Model", "x"));
+
+        // Act
+        var error = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddOrkeonLlmProfiles(configuration));
+
+        // Assert
+        Assert.StartsWith("Llm:Profiles:auto: 'auto' is a reserved profile name", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Rename the profile", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Profiles_are_read_with_the_shape_of_the_Llm_section()
     {
         var configuration = Configuration(

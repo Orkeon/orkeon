@@ -419,4 +419,87 @@ public sealed class UnknownCrewYamlKeysTests : IDisposable
 
         Assert.Empty(offenders);
     }
+
+    // #432: an agent's compaction override, in either spelling of its key.
+    [Theory]
+    [Trait("BR", "CH-432")]
+    [InlineData("triggerShare")]
+    [InlineData("trigger_share")]
+    public async Task ShouldAcceptTheCompactionBlock_WhenAnAgentOverridesIt(string key)
+    {
+        // Arrange
+        Write("crew.yaml", Crew(agent: $"    compaction:\n      enabled: false\n      {key}: 0.6"));
+
+        // Act
+        var crew = await NewLoader().LoadFromFileAsync(VirtualRoot + "/crew.yaml", TestContext.Current.CancellationToken);
+
+        // Assert
+        var compaction = Assert.Single(crew.Agents).Compaction;
+        Assert.NotNull(compaction);
+        Assert.False(compaction.Enabled);
+        Assert.Equal(0.6, compaction.TriggerShare);
+    }
+
+    // #434: an agent turns the pruning of its read-tool results on or off over the host's setting.
+    [Theory]
+    [Trait("BR", "CH-434")]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    public async Task ShouldReadThePruneKey_WhenAnAgentsCompactionBlockSetsIt(string value, bool expected)
+    {
+        // Arrange
+        Write("crew.yaml", Crew(agent: $"    compaction:\n      prune: {value}"));
+
+        // Act
+        var crew = await NewLoader().LoadFromFileAsync(VirtualRoot + "/crew.yaml", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(expected, Assert.Single(crew.Agents).Compaction?.Prune);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async Task ShouldRefuseTheCrew_WhenACompactionKeyIsMisspelled()
+    {
+        // Arrange
+        var yaml = Crew(agent: "    compaction:\n      trigerShare: 0.6");
+
+        // Act
+        var message = await RefusalOfFileAsync(yaml);
+
+        // Assert
+        Assert.Contains("agents[researcher].compaction.trigerShare", message);
+        Assert.Contains("triggerShare", message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-432")]
+    public async Task ShouldRefuseTheCrew_WhenTheTriggerShareIsNotAShareOfTheWindow()
+    {
+        // Arrange
+        var yaml = Crew(agent: "    compaction:\n      triggerShare: 1.5");
+
+        // Act
+        var message = await RefusalOfFileAsync(yaml);
+
+        // Assert
+        Assert.Contains("Agent 'researcher' compaction.triggerShare is '1.5'", message);
+    }
+
+    // #434: an agent's skills, in both shapes, are keys Orkeon reads.
+    [Theory]
+    [Trait("BR", "CH-434")]
+    [InlineData("    skills:\n      - /workspace/skills/review.md")]
+    [InlineData("    skills:\n      auto: true\n      fallback:\n        - /workspace/skills/review.md")]
+    public async Task ShouldAcceptTheSkillsKey_WhenAnAgentDeclaresSkills(string lines)
+    {
+        // Arrange
+        Write("crew.yaml", Crew(agent: lines));
+
+        // Act
+        var crew = await NewLoader().LoadFromFileAsync(VirtualRoot + "/crew.yaml", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(Assert.Single(crew.Agents).Skills);
+    }
 }

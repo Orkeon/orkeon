@@ -358,7 +358,7 @@ Bound over the selected preset — every key is an individual override.
 | `Orkeon:Rag:QueryTransform:Mode` | `none` | `none` / `multi-query` / `rag-fusion` / `hyde` |
 | `Orkeon:Rag:QueryTransform:VariantCount` | 3 | Variants requested from non-`none` transformers |
 | `Orkeon:Rag:Rerank:Enabled` | false (`fast`) | Whether the rerank stage runs |
-| `Orkeon:Rag:Rerank:Kind` | `none` | `none` / `llm` / `onnx` / `decision` / any registered name |
+| `Orkeon:Rag:Rerank:Kind` | `none` | `none` / `llm` / `onnx` / `decision` / any registered name; `decision` keeps the retrieval order, with one warning, when the decision circuit is off ([Decision models](./decision-models.md#every-consumer-follows-the-circuit)) |
 | `Orkeon:Rag:Rerank:TopN` | 5 | Chunks kept after reranking |
 | `Orkeon:Rag:Context:MaxTokens` | 2000 | Context budget (≈ 4 chars/token; excess chunks dropped, never overrun) |
 | `Orkeon:Rag:Context:Ordering` | `edges` | `edges` (anti-Lost-in-the-Middle) or `linear` |

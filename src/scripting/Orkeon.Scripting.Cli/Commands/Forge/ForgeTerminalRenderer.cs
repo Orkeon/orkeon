@@ -116,6 +116,10 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                     _console.WriteLine($"  by hand: {command}");
                 break;
 
+            case ForgeSystemOne.AnsweredKind:
+                RenderSystemOneAnswered(e);
+                break;
+
             case "run.finished":
                 _console.WriteLine(e.GetRawText());
                 RenderSimulatedActions(e);
@@ -133,6 +137,35 @@ internal sealed class ForgeTerminalRenderer : TextWriter
         }
 
         _console.Flush();
+    }
+
+    /// <summary>
+    /// System One's advice (#435), one line: the stage, the use, the trial pass it read when it names one, and each
+    /// answer as its choice, its score or its probability — advice for the user, which changes nothing in the cycle.
+    /// </summary>
+    private void RenderSystemOneAnswered(JsonElement e)
+    {
+        var answers = new List<string>();
+        if (e.TryGetProperty("answers", out var all) && all.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var answer in all.EnumerateObject().Where(static a => a.Value.ValueKind == JsonValueKind.Object))
+                answers.Add($"{answer.Name}: {AnswerText(answer.Value)}");
+        }
+
+        var pass = Text(e, "circuit") is { Length: > 0 } circuit ? $", {circuit} pass" : "";
+        _console.WriteLine($"◇ System One advises ({Text(e, "stage")}, {Text(e, "use")}{pass}): {string.Join("; ", answers)}");
+    }
+
+    private static string AnswerText(JsonElement answer)
+    {
+        var confidence = answer.TryGetProperty("confidence", out var c) && c.ValueKind == JsonValueKind.Number
+            ? c.GetDouble().ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+            : "?";
+        if (answer.TryGetProperty("score", out var score) && score.ValueKind == JsonValueKind.Number)
+            return $"score {score.GetDouble().ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} (confidence {confidence})";
+        if (answer.TryGetProperty("probability", out var p) && p.ValueKind == JsonValueKind.Number)
+            return $"{Text(answer, "chosen")} (p {p.GetDouble().ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)})";
+        return $"{Text(answer, "chosen")} (confidence {confidence})";
     }
 
     /// <summary>One line per mail action the trial simulated; nothing when it simulated none.</summary>

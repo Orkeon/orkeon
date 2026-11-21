@@ -43,6 +43,9 @@ internal sealed class ScriptedFullLlmProvider : ILlmProvider
 
     public string Name => "scripted-full";
 
+    /// <summary>The configuration the provider was built with: its model and window, null by default.</summary>
+    public LlmConfig? BaseConfig { get; init; }
+
     public List<LlmMessage[]> ReceivedTurns { get; } = [];
 
     public List<LlmConfig?> ReceivedConfigs { get; } = [];
@@ -52,11 +55,12 @@ internal sealed class ScriptedFullLlmProvider : ILlmProvider
     public void EnqueueText(string content) =>
         _responses.Enqueue(new LlmResponse { Content = content });
 
-    /// <summary>Enqueues a response whose raw body carries OpenAI-shaped tool calls.</summary>
-    public void EnqueueOpenAiToolCall(string callId, string toolName, string argumentsJson) =>
+    /// <summary>Enqueues a response whose raw body carries OpenAI-shaped tool calls; it reports <paramref name="promptTokens"/> when set.</summary>
+    public void EnqueueOpenAiToolCall(string callId, string toolName, string argumentsJson, int? promptTokens = null) =>
         _responses.Enqueue(new LlmResponse
         {
             Content = "",
+            PromptTokens = promptTokens,
             RawResponseBody =
                 $$$"""{"choices":[{"message":{"tool_calls":[{"id":"{{{callId}}}","type":"function","function":{"name":"{{{toolName}}}","arguments":"{{{argumentsJson.Replace("\"", "\\\"", StringComparison.Ordinal)}}}"}}]}}]}""",
         });
@@ -198,6 +202,9 @@ internal sealed class SpyTool : IBaseTool
         });
 
     public List<DomainToolCallRequest> Calls { get; } = [];
+
+    /// <summary>What the tool declares it does; unspecified by default.</summary>
+    public ToolAccess Access { get; init; } = ToolAccess.Unspecified;
 
     /// <summary>Runs inside <see cref="CallAsync"/>, before it answers: what a tool does to the run around it.</summary>
     public Action? OnCall { get; set; }

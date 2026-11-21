@@ -61,7 +61,9 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
 ```
 
 The CLI emits the script result as JSON on stdout; exit codes follow the usual
-convention (`0` ok, `1` script error, `2` runtime error, `130` cancelled; `75` when a crew run stops on a durable human-input question).
+convention (`0` ok, `1` script error, `2` runtime error, `130` cancelled; `75` when a crew run stops on a durable human-input question; `69` when a crew is refused
+because it needs System One and the decision circuit is off, while an `optional` crew resumed under the other
+circuit than its recorded decisions were taken with exits `1`, see [the CLI reference](../reference/cli.md)).
 
 The same `run` verb also accepts a **YAML crew** — the target selects the
 path (`.yaml`/`.yml` **or a directory holding a multi-file crew** → the shared
@@ -187,7 +189,7 @@ model below); `onToolCall` always comes before the permission gate.
 call: a turn of n calls whose context grows evenly pays it about n times, and the figure bounds neither
 the size of the conversation nor what a provider bills with its cache. Each call logs the running sum
 next to the limit (`act: agent '<name>' call used <n> tokens, running sum <sum>/<limit> tokens over <n>
-calls`, Information).
+calls`, Information), or, with no token cap, says so (`running sum <sum> tokens over <n> calls, no limit`).
 
 `budget({ contextTokens })` counts the context once (#224): each call adds its completion plus, when the
 provider reports cache hits (`cacheHitTokens`), the part of its prompt the cache did not serve, else what
@@ -223,9 +225,9 @@ error, and the act goes on.
   (delegation depth + 1). A run that names no budget keeps the delegation-depth and spawn-count
   defaults of `AgentExecutionBudget` (depth 2, 3 spawns, counted per agent run: each attempt and each
   hook) and sets no wall clock, tool-call or token cap, as its act sets none: a late spawn is not
-  refused on time, and its child is not held to one. A `budget({...})` that leaves a dimension out takes
-  it from `AgentExecutionBudget.Default` (15 tool calls, 16,000 tokens, 5 minutes) for its acts and its
-  spawns alike ([`budget` keys](../reference/scripting-dsl.md)). A
+  refused on time, and its child is not held to one. A `budget({...})` that leaves a dimension out gives
+  it that same value, for its acts and its spawns alike: naming `spawnedAgents` or
+  `delegationDepth` alone adds no wall clock, tool-call or token cap ([`budget` keys](../reference/scripting-dsl.md)). A
   refusal (depth or spawn budget exhausted, unknown agent) is a failed tool result the model reads,
   never an exception. The child's acts run under the stricter of their own
   `permissionMode` and the spawner's act (plan, dontAsk > default > acceptEdits > bypassPermissions), as

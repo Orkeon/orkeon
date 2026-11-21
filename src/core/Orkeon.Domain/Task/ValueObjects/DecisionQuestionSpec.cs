@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using Orkeon.Constants.Llm;
 
 namespace Orkeon.Domain.Task.ValueObjects;
@@ -24,6 +25,32 @@ internal static class ContentEquality
     }
 }
 
+/// <summary>
+/// The options of a choice, read-only and in a fixed order (#430): the enumeration order of the map they were given
+/// in - the declaration order of YAML, <c>.ork.ts</c> and a C# <see cref="Dictionary{TKey, TValue}"/> - and the
+/// ordinal order of the names for a map whose order is its hash codes'.
+/// </summary>
+internal sealed class DeclaredOptions : ReadOnlyDictionary<string, string>
+{
+    internal static readonly DeclaredOptions None = new([]);
+
+    private DeclaredOptions(IEnumerable<KeyValuePair<string, string>> options)
+        : base(new OrderedDictionary<string, string>(options, StringComparer.Ordinal))
+    {
+    }
+
+    internal static IReadOnlyDictionary<string, string> Of(IReadOnlyDictionary<string, string> options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return options switch
+        {
+            DeclaredOptions declared => declared,
+            ImmutableDictionary<string, string> hashed => new DeclaredOptions(hashed.OrderBy(o => o.Key, StringComparer.Ordinal)),
+            _ => new DeclaredOptions(options),
+        };
+    }
+}
+
 /// <summary>A question a decision task asks.</summary>
 public abstract record DecisionQuestionSpec
 {
@@ -39,14 +66,22 @@ public sealed record ChoiceQuestionSpec : DecisionQuestionSpec
     /// <summary>Gets the instructions.</summary>
     public string Instructions { get; init; } = string.Empty;
 
-    /// <summary>Gets the options, name to description.</summary>
-    public IReadOnlyDictionary<string, string> Options { get; init; } = ImmutableDictionary<string, string>.Empty;
+    /// <summary>
+    /// Gets the options, name to description, in the order they were declared: the order a relay lists them in
+    /// and breaks a tie by. Options given as an <see cref="ImmutableDictionary{TKey, TValue}"/>, whose order
+    /// changes from one process to the next, are kept in the ordinal order of their names.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Options
+    {
+        get;
+        init => field = DeclaredOptions.Of(value);
+    } = DeclaredOptions.None;
 
     /// <summary>Creates a choice question.</summary>
     public static ChoiceQuestionSpec Create(string name, string instructions, IReadOnlyDictionary<string, string> options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        var spec = new ChoiceQuestionSpec { Name = name, Instructions = instructions, Options = options.ToImmutableDictionary() };
+        var spec = new ChoiceQuestionSpec { Name = name, Instructions = instructions, Options = options };
         spec.Validate();
         return spec;
     }

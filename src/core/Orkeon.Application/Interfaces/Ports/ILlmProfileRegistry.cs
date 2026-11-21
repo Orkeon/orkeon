@@ -89,6 +89,31 @@ public static class LlmProfiles
     /// </summary>
     public const string Default = Orkeon.Constants.Llm.LlmProfileNames.Default;
 
+    /// <summary>
+    /// The name an agent writes to have System One pick its profile for each task (<c>llm.profile: auto</c>,
+    /// #434), among the profiles of <see cref="RouteLadderKey"/>. Reserved like <see cref="Default"/>: no host
+    /// profile and no decision profile may take it. Declared once in the constants satellite (ADR-009).
+    /// </summary>
+    public const string Auto = Orkeon.Constants.Llm.LlmProfileNames.Auto;
+
+    /// <summary>The setting that lists the profiles an <see cref="Auto"/> agent is routed among, cheapest first.</summary>
+    public const string RouteLadderKey = "Orkeon:Decision:Route:Ladder";
+
+    /// <summary>Whether <paramref name="name"/> is <see cref="Auto"/>, the profile System One picks for each task.</summary>
+    /// <param name="name">A profile name, or null.</param>
+    /// <returns>True for <c>auto</c>, whatever its case and surrounding blanks.</returns>
+    public static bool IsAuto(string? name) =>
+        name is not null && string.Equals(name.Trim(), Auto, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The message a host start fails with when its settings declare a profile named <see cref="Auto"/>.
+    /// </summary>
+    /// <param name="key">The setting that declares it, such as <c>Llm:Profiles:auto</c>.</param>
+    /// <returns>The operator-facing message, naming the key to rename.</returns>
+    public static string AutoReservedMessage(string key) =>
+        $"{key}: '{Auto}' is a reserved profile name: an agent's llm.profile: {Auto} has System One pick, for each " +
+        $"task, a profile of {RouteLadderKey}. Rename the profile (and every crew that names it).";
+
     /// <summary>Whether <paramref name="name"/> designates the default profile (null, blank or <see cref="Default"/>).</summary>
     /// <param name="name">A profile name, or null.</param>
     /// <returns>True for the default profile.</returns>

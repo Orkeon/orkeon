@@ -155,6 +155,12 @@ public sealed record TaskResult(
     public Orkeon.Domain.Task.ValueObjects.DecisionOutcome? Decision { get; init; }
 
     /// <summary>
+    /// What answered a decision task that was asked (<c>DecisionSources</c>: <c>model</c>, <c>relay</c> or
+    /// <c>fallback</c>), set on a failed one too (#430); null for any other task.
+    /// </summary>
+    public string? DecisionSource { get; init; }
+
+    /// <summary>
     /// Bare-form prose citations (e.g. <c>ts::Symbol</c>) that the validator resolved
     /// uniquely to a canonical long FQN via local-name lookup. Mapping is bare → canonical.
     /// </summary>

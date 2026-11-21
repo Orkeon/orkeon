@@ -7,35 +7,93 @@ using Orkeon.Tools.Web.Tests.Doubles;
 
 namespace Orkeon.Tools.Web.Tests.Firefox;
 
-/// <summary>The start of a browser: one that leaves its first <c>session.new</c> unanswered is started again once (#335).</summary>
+/// <summary>
+/// The start of a browser: <c>session.new</c> waits the start's timeout (#437), and a browser that leaves
+/// it unanswered is started again once (#335).
+/// </summary>
 public class FirefoxBrowserTests : FirefoxSessionTestBase
 {
-    private static readonly FirefoxToolOptions Options = new() { CommandTimeoutSeconds = 30 };
+    // Two timeouts apart: each test lets pass the one its command waits.
+    private static readonly FirefoxToolOptions Options = new() { StartupTimeoutSeconds = 90, CommandTimeoutSeconds = 30 };
+
+    private static TimeSpan Startup => TimeSpan.FromSeconds(Options.StartupTimeoutSeconds);
+
+    private static TimeSpan Command => TimeSpan.FromSeconds(Options.CommandTimeoutSeconds);
 
     private readonly ManualTimeProvider _clock = new();
     private readonly RecordingLogger _logger = new();
 
-    private Task<FirefoxBrowser> OpenBrowserAsync() =>
+    private Task<FirefoxBrowser> OpenBrowserAsync(FirefoxToolOptions? options = null) =>
         FirefoxBrowser.OpenAsync(
-            Launcher, FirefoxProfileChoice.Disposable, Options,
+            Launcher, FirefoxProfileChoice.Disposable, options ?? Options,
             Timings with { Clock = _clock, CloseWait = TimeSpan.Zero }, _logger, Ct);
 
     /// <summary>
     /// Waits until browser <paramref name="count"/> has sent <paramref name="method"/> and only its wait
-    /// is armed on the clock, then lets the command timeout pass. Waiting on the timer count alone races:
-    /// the wait of an answered <c>session.new</c> is armed for an instant before the answer disarms it.
+    /// is armed on the clock. Waiting on the timer count alone races: the wait of an answered
+    /// <c>session.new</c> is armed for an instant before the answer disarms it.
     /// </summary>
-    private async Task TimeOutAsync(int count, string method)
-    {
-        await Polling.WaitUntilAsync(() =>
+    private Task WaitForAsync(int count, string method) =>
+        Polling.WaitUntilAsync(() =>
             Launcher.Browsers.Count == count
             && Launcher.Browsers[count - 1].Wire.Methods is [.., var last] && last == method
             && _clock.PendingTimers == 1);
-        _clock.Advance(TimeSpan.FromSeconds(Options.CommandTimeoutSeconds));
+
+    /// <summary>Waits as <see cref="WaitForAsync"/> does, then lets <paramref name="timeout"/> pass.</summary>
+    private async Task TimeOutAsync(int count, string method, TimeSpan timeout)
+    {
+        await WaitForAsync(count, method);
+        _clock.Advance(timeout);
     }
 
     /// <summary>The start, bounded: a start that never ends fails the test instead of hanging the run.</summary>
     private static Task<FirefoxBrowser> Bounded(Task<FirefoxBrowser> opening) => opening.WaitAsync(Polling.DefaultTimeout);
+
+    [Fact]
+    public async Task Should_WaitTheStartupTimeoutForTheSession_When_ItIsLongerThanTheCommandTimeout()
+    {
+        // Firefox answers 'session.new' once its first window has loaded: on a loaded runner that
+        // outlasted the 30 s of a command while the start's timeout still held (#437).
+        var launched = 0;
+        Launcher.Configure += browser =>
+        {
+            if (++launched == 1)
+                browser.Wire.Unanswered.Add("session.new");
+        };
+
+        var opening = OpenBrowserAsync();
+        await WaitForAsync(1, "session.new");
+
+        Assert.Equal([Startup], _clock.DueIns);
+
+        // The second browser answers: the start ends and its browser is disposed.
+        _clock.Advance(Startup);
+        await using var browser = await Bounded(opening);
+    }
+
+    [Fact]
+    public async Task Should_WaitTheCommandTimeoutForTheSession_When_ItIsLongerThanTheStartupTimeout()
+    {
+        // A host that raised the command timeout keeps it for the session: the start's timeout is a floor, not a cap.
+        var options = new FirefoxToolOptions { StartupTimeoutSeconds = 30, CommandTimeoutSeconds = 120 };
+        var launched = 0;
+        Launcher.Configure += browser =>
+        {
+            if (++launched == 1)
+                browser.Wire.Unanswered.Add("session.new");
+        };
+
+        var opening = OpenBrowserAsync(options);
+        await WaitForAsync(1, "session.new");
+
+        Assert.Equal([TimeSpan.FromSeconds(120)], _clock.DueIns);
+
+        _clock.Advance(TimeSpan.FromSeconds(120));
+        await using var browser = await Bounded(opening);
+
+        var warning = Assert.Single(_logger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("within 120 s", warning.Message, StringComparison.Ordinal);
+    }
 
     [Fact]
     public async Task Should_StartAnotherBrowser_When_TheFirstLeavesTheSessionUnanswered()
@@ -48,7 +106,7 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
         };
 
         var opening = OpenBrowserAsync();
-        await TimeOutAsync(1, "session.new");
+        await TimeOutAsync(1, "session.new", Startup);
         await using var browser = await Bounded(opening);
 
         Assert.Equal(2, Launcher.Browsers.Count);
@@ -67,8 +125,8 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
         Launcher.Configure += browser => browser.Wire.Unanswered.Add("session.new");
 
         var opening = OpenBrowserAsync();
-        await TimeOutAsync(1, "session.new");
-        await TimeOutAsync(2, "session.new");
+        await TimeOutAsync(1, "session.new", Startup);
+        await TimeOutAsync(2, "session.new", Startup);
         var error = await Assert.ThrowsAsync<BiDiException>(() => Bounded(opening));
 
         Assert.Equal(BiDiException.Timeout, error.Code);
@@ -78,12 +136,43 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
     }
 
     [Fact]
+    public async Task Should_NameTheStartupTimeoutInTheWarning_When_TheFirstBrowserLeavesTheSessionUnanswered()
+    {
+        var launched = 0;
+        Launcher.Configure += browser =>
+        {
+            if (++launched == 1)
+                browser.Wire.Unanswered.Add("session.new");
+        };
+
+        var opening = OpenBrowserAsync();
+        await TimeOutAsync(1, "session.new", Startup);
+        await using var browser = await Bounded(opening);
+
+        var warning = Assert.Single(_logger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("within 90 s", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_NameTheStartupTimeoutInTheError_When_TheSecondBrowserLeavesTheSessionUnansweredToo()
+    {
+        Launcher.Configure += browser => browser.Wire.Unanswered.Add("session.new");
+
+        var opening = OpenBrowserAsync();
+        await TimeOutAsync(1, "session.new", Startup);
+        await TimeOutAsync(2, "session.new", Startup);
+        var error = await Assert.ThrowsAsync<BiDiException>(() => Bounded(opening));
+
+        Assert.Contains("within 90 s", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_NotStartAnotherBrowser_When_ALaterStartCommandTimesOut()
     {
         Launcher.Configure += browser => browser.Wire.Unanswered.Add("browsingContext.getTree");
 
         var opening = OpenBrowserAsync();
-        await TimeOutAsync(1, "browsingContext.getTree");
+        await TimeOutAsync(1, "browsingContext.getTree", Command);
         var error = await Assert.ThrowsAsync<BiDiException>(() => Bounded(opening));
 
         Assert.Equal(BiDiException.Timeout, error.Code);

@@ -162,7 +162,8 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         IReadOnlyList<string>? crewTools = null,
         ForgeSession? session = null,
         string? language = null,
-        ILoggerFactory? loggerFactory = null)
+        ILoggerFactory? loggerFactory = null,
+        IReadOnlyList<ForgeToolInfo>? catalogue = null)
     {
         session ??= _session;
         var packPath = ForgePack.Ensure(session.Directory);
@@ -184,7 +185,8 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         foreach (var tool in crewTools ?? [])
             services.AddSingleton<IBaseTool>(new StubBaseTool(tool) { Description = $"The {tool} tool." });
 
-        return new ForgeCrewAssistant(services.BuildServiceProvider(), session, packPath, reference: reference, language: language);
+        return new ForgeCrewAssistant(
+            services.BuildServiceProvider(), session, packPath, reference: reference, language: language, crewTools: catalogue);
     }
 
     /// <summary>
@@ -322,6 +324,112 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.Contains("client://", section, StringComparison.Ordinal);
         Assert.Contains("never sends an e-mail", section, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("email_send", section, StringComparison.Ordinal);
+    }
+
+    /// <summary>#431: the catalogue the command built once is the one the design prompt shows, never a second one.</summary>
+    [Fact]
+    public async Task The_design_prompt_shows_the_catalogue_the_caller_built()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider, crewTools: ["json_tool"], catalogue: [new ForgeToolInfo("given_tool", "The tool the caller built.")]);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        var header = provider.Chats[0][0].Content;
+        var start = header.IndexOf("## Tools the team may use", StringComparison.Ordinal);
+        var next = header.IndexOf("\n## ", start + 3, StringComparison.Ordinal);
+        var section = next < 0 ? header[start..] : header[start..next];
+        Assert.Contains("given_tool", section, StringComparison.Ordinal);
+        Assert.DoesNotContain("json_tool", section, StringComparison.Ordinal);
+    }
+
+    /// <summary>#431: a decision crew's design prompt states the processes that run decision tasks.</summary>
+    [Theory]
+    [InlineData("optional")]
+    [InlineData("required")]
+    public async Task The_design_prompt_of_a_decision_crew_names_the_processes_that_run_decision_tasks(string mode)
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider, session: ForgeSession.Create(_workspace, "process-" + mode, crewDecision: mode));
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains("A crew with a decision task runs 'sequential', 'parallel' or 'graph'", provider.Chats[0][0].Content, StringComparison.Ordinal);
+    }
+
+    /// <summary>#431: a decision task also estimates the probability that something holds.</summary>
+    [Fact]
+    public async Task The_design_prompt_of_a_decision_crew_names_the_probability_use()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider, session: ForgeSession.Create(_workspace, "probability", crewDecision: ForgeCrewDecision.Optional));
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains("the probability that something holds", provider.Chats[0][0].Content, StringComparison.Ordinal);
+    }
+
+    /// <summary>#431: the design prompt states what the session's crew decision mode lets the plan hold.</summary>
+    [Theory]
+    [InlineData("none", "this crew asks System One nothing")]
+    [InlineData("optional", "Every decision task names its relay")]
+    [InlineData("required", "The crew needs System One")]
+    public async Task The_design_prompt_states_the_rules_of_the_crew_decision_mode(string mode, string rule)
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider, session: ForgeSession.Create(_workspace, "tri-" + mode, crewDecision: mode));
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains(rule, provider.Chats[0][0].Content, StringComparison.Ordinal);
+    }
+
+    /// <summary>#435: System One's process suggestion reaches the design prompt as a suggestion, never as a rule.</summary>
+    [Fact]
+    public async Task The_design_prompt_names_the_process_hint_as_a_suggestion()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief, ProcessHint = new ForgeProcessHint("parallel", 0.9) },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains("Suggestion only: a decision model rates 'parallel'", provider.Chats[0][0].Content, StringComparison.Ordinal);
+    }
+
+    /// <summary>#435: without a suggestion, the design prompt says nothing of System One's process advice.</summary>
+    [Fact]
+    public async Task The_design_prompt_has_no_suggestion_without_a_process_hint()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain("Suggestion only", provider.Chats[0][0].Content, StringComparison.Ordinal);
     }
 
     private async Task<string> PlanHeaderWith(IReadOnlyList<ForgeLargeFile>? large)

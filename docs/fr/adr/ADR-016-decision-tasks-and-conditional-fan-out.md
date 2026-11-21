@@ -48,6 +48,8 @@ d'un modèle sans qu'un agent écrive un texte que la tâche suivante devait ana
 
    > Amendement 2026-10-31 : le modèle de décision derrière une tâche de décision peut être TypeSafe, Liquid ou Kev ; la tâche, son circuit et son repli ne changent pas.
 
+   > Amendement 2026-11-20 (#433), sur le point 5 : le circuit couvre chaque consommateur du modèle de décision, pas les seules tâches de décision. Coupé, quelle qu'en soit la cause (l'option, le réglage, aucun fournisseur), le run ne fait aucun appel à `IDecisionModel` : `system_one_decide` est retiré, un profil de décision ne décide rien (sa `route` prend son repli, son `verify` n'escalade jamais, son `guard` laisse passer l'appel sauf dans un profil fail-closed), le juge LLM refuse de démarrer en fail-closed et est retiré en fail-open, et le reranker `decision` garde l'ordre de récupération. Chaque consommateur lit le circuit par `DecisionCircuit.Of` ou par la surcharge de la portée (`DecisionCircuitOverride`, ouverte pour le run en `DecisionCircuitScope`), qui nomme la cause (`DecisionCircuitCause`), et le dit en un avertissement. Voir [Modèles de décision](../architecture/decision-models.md#chaque-consommateur-suit-le-circuit).
+
 ## Conséquences
 
 - Une tâche de décision coûte une requête par évaluation ; les seules répétitions sont les
@@ -66,10 +68,40 @@ correctifs des profils gardés ; regroupement du reranker et surfaces doctor ; q
 images. Une nouvelle tentative ou un repli quand une requête échoue n'est pas prévu : le repli
 n'existe que pour un circuit coupé.
 
+## Amendement — le mode de décision d'une crew (#429)
+
+Circuit coupé, une tâche de décision répond par son repli, ce qui convient à une crew capable de tourner sans System
+One et trompe celle qui ne l'est pas. Une crew déclare désormais laquelle elle est, dans un `decision: { mode }` au
+niveau de la crew : `none` (elle ne demande jamais rien à System One), `optional` (chaque tâche de décision nomme un
+relais `without:`, un agent de la crew qui répond circuit coupé, à la place d'un repli) ou `required` (un run circuit
+coupé est refusé avant sa première tâche, sortie `69`, code `decision_unavailable`). Une crew sans mode garde la
+sémantique de repli ci-dessus. Les règles vivent dans `DecisionTaskRules` à côté des autres, si bien que les crews
+YAML, `.ork.ts` et C# passent les mêmes vérifications (le relais d'une crew C# nomme un agent par son rôle, et ses
+profils de décision ne sont vérifiés que par la fabrique de crew, qui connaît les profils de l'hôte) ; le refus se tient dans l'orchestrateur, avant la mémoire et la
+planification, si bien que chaque processus et chaque hôte l'applique à une crew que l'orchestrateur exécute (une
+crew `.ork.ts` procédurale, qu'il n'exécute pas, n'applique aucun mode). Le relais lui-même est déclaré et vérifié au
+chargement ici, et exécuté par un changement ultérieur (#430). Voir
+[Modèles de décision](../architecture/decision-models.md#le-mode-de-décision-dune-crew).
+
+## Amendement — le relais `without:` (#430)
+
+Ceci amende le §5 : circuit coupé, une tâche de décision d'une crew `optional` ne répond pas par un repli mais par
+son relais `without:`. Le relais fait un appel LLM avec le fournisseur de l'agent relais, sans outil ni historique,
+et l'agent ne donne que des probabilités, dans un objet JSON dont le schéma est généré depuis les questions. Le
+moteur les vérifie comme il vérifie la réponse du modèle (chaque question, des valeurs dans [0, 1], des
+distributions qui somment à 1 à 0,05 près), redemande une fois quand elles échouent, et dérive `chosen`, le score et
+la confiance selon les mêmes règles que la voie du modèle ; un second refus fait échouer la tâche, et aucun repli
+n'est utilisé. `task.completed` dit qui a répondu (`decisionSource: model | relay | fallback`), le checkpoint
+l'enregistre pour que chaque processus rejoue une décision à la reprise, et une crew `optional` reprise sous l'autre
+circuit est refusée (code `decision_circuit_mismatch`, sortie `1`). Voir [Modèles de décision](../architecture/decision-models.md#le-relais-without).
+
 ## Alternatives écartées
 
 - **Un agent qui classe et écrit l'aiguillage** : écarté. Il dépense un appel au LLM pour un
-  jugement et rend un texte que la tâche suivante doit analyser.
+  jugement et rend un texte que la tâche suivante doit analyser. Le relais `without:` (#430) n'est pas cet agent :
+  c'est un appel LLM contraint par un schéma à des probabilités, vérifié comme la réponse du modèle et lu par les
+  mêmes conditions, et seulement un second mode qu'une crew `optional` déclare pour un circuit coupé. Rien n'extrait
+  un aiguillage de son texte.
 - **Une condition qui fait échouer la tâche quand elle est fausse** : écarté. Une branche non prise
   est le cas attendu, et un échec déclencherait les nouvelles tentatives et la gestion d'erreur de
   l'équipage.
