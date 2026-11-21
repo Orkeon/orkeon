@@ -50,8 +50,9 @@ said in the prompt and in the event's `cut`, a skill left out (no room left, a f
 With `auto`, each task asks the decision model one `choice` among the `.md` files of `Orkeon:Skills:Library`
 (`/workspace/.orkeon/skills`), reading one line per skill (its front-matter `name` and `description`, else its first
 heading and line) and never a body; the options at a probability of 0.3 or more are kept, three at most. With the
-decision circuit off, an empty or unreadable library or a failed call, the agent carries its `fallback`, else no
-skill, with one warning per run and no error. The choice holds for every attempt of the task by that agent in the run. Under
+decision circuit off, an empty or unreadable library, a failed call or an answer that names no offered skill (a
+deliberate `none` aside), the agent carries its `fallback`, else no skill; a skill file is read no further than its
+cap, and a cut one ends with `[skill cut: the first N characters shown]`, with one warning per run and no error. The choice holds for every attempt of the task by that agent in the run. Under
 `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` (their run history), it emits `agent.skills` (`mode`, `skills`, `offered`, `cut`, `reason`, `detail`) once per task and agent
 of a run: a fallback's `reason` is `circuit-off`, `empty-library` or `pick-failed`, and `detail` says it in a
 sentence. **Compatibility**: an engine at 1.3.0 refuses a crew that writes `skills:`; an unknown key of the map
@@ -120,8 +121,10 @@ passes and keeps the lowest score, and findings carry `circuit`. Without a decis
 pass runs, with `FORGE-DECISION-PASS-SKIPPED` (and its `cause`) and the info finding `F-PASS-ON-SKIPPED`. A budget
 used up by the first pass ends the session with `FORGE-BUDGET-EXHAUSTED`, and the resume keeps that pass, runs the
 second only, even without a decision model, and asks no second estimate. A `required` session with the circuit off is
-refused before its interview with `FORGE-DECISION-UNAVAILABLE` (exit 1, its `cause` on the `error` event); a new
-session so refused is deleted, a refused resume keeps its session, which resumes once a decision model is configured; `--dry` only warns and `--adopt` is not refused. `forge.json` records `crewDecision`, `FORGE.md` and the launcher state the mode,
+refused before its interview with `FORGE-DECISION-UNAVAILABLE` (exit 1, its `cause` on the `error` event, written after `session.started` and followed by `session.finished`, so
+the terminal also prints `● <slug>` and `■ <status> (exit 1)`); a new session so refused is deleted, a refused resume keeps its session, which resumes once a decision model is configured; `--dry` only warns and `--adopt` is not refused. A resume, `--adopt` included, with a `--crew-decision` other than the
+session's is refused before anything is saved; a session from before this version gets the mode its plan implies,
+with `FORGE-DECISION-MODE-DERIVED` after `session.started`. `forge.json` records `crewDecision`, `FORGE.md` and the launcher state the mode,
 and `reopen` reads `decision`, `when` and `without` back with the crew's mode. The shared crew validator no longer
 asks a decision task for an expected output. See
 [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md#a-crew-that-decides).
@@ -150,8 +153,8 @@ again: the check is made at kickoff, before any task's fingerprint is compared),
 that resumes. A decision is replayed only while its task is unchanged: its questions, fallback and
 relay now count in the task's checkpoint fingerprint, so a decision task edited since the run is decided again, with
 the tasks after it. A checkpoint written before this version lacks that part: on resume, its first recorded decision
-task is decided again once, and every task after it runs again. `DecisionTaskRunner.SourceOf` is a new public member. A `when:` takes `[yes]` / `[no]` on a yes-no question,
-gated by `minConfidence`; an option list on a score question is refused at load, naming the question. See
+task is decided again once, and every task after it runs again. `DecisionTaskRunner.SourceOf` is a new public member. A `when:` takes `[yes]` / `["no"]` on a yes-no question,
+gated by `minConfidence`; an unquoted `no` (which YAML reads as a boolean) is refused at load with a hint to quote it; an option list on a score question is refused at load, naming the question. See
 [Decision models](docs/architecture/decision-models.md#the-without-relay).
 
 ### Added — a crew declares what it needs from System One: `decision: { mode }` (#429)
@@ -192,7 +195,10 @@ start, the message naming the key. **Migration**: rename that profile, and every
 tokens. **Now**: `Orkeon:Compaction:Enabled` is `true` by default, so a long run pays a summary call where it was
 trimmed, and a conversation of more than 40 messages under the trigger keeps them all. A model the table does not
 document, on a profile with no `ContextWindowTokens`, is measured against `Orkeon:Cli:Session:ContextWindowTokens`
-(200000 by default): for a smaller model, the loop neither compacts nor trims before its real window is full.
+(200000 by default); since that window is only assumed, the loop keeps the 40-message trim beside compaction, so a
+smaller model is still trimmed as before. Compaction also keeps a mid-run system message (the soft-budget notice) after
+its summary, never splits a tool call from its result when a response carries several assistant messages, and, when
+every turn is recent, keeps as many of them as fit under the trigger (at least the last one).
 **What to do**: set `Llm:ContextWindowTokens` (or the profile's) to the window of a model the table does not know;
 `Orkeon:Compaction:Enabled=false`, or an agent's `compaction: { enabled: false }`, restores the exact trim.
 
@@ -235,17 +241,32 @@ and a fail-open one passing; so are the decision tasks, answered by their relay 
 with the circuit off sets `Orkeon:Guardian:Llm:FailMode` to `Open` or turns the judge off. See
 [Decision models](docs/architecture/decision-models.md#every-consumer-follows-the-circuit).
 
+### Changed — two public constructors take new optional parameters **[breaking]** (#429, #433, #434)
+
+**Before**: `CrewFactory` ended with `ILlmProfileRegistry? llmProfiles = null` and `SequentialCrewOrchestrator` with
+`ICostBudgetManager? budget = null`. **Now**: `CrewFactory` adds `DecisionCircuit? decisionCircuit`,
+`IOptions<DecisionProfilesOptions>? decisionProfiles` and `IOptions<AgentRouteOptions>? route`, and
+`SequentialCrewOrchestrator` adds `DecisionCircuit? decisionCircuit`, all trailing and defaulting to `null`. The
+old signatures are gone: source that calls them compiles unchanged, but an assembly built against the shipped ones
+fails with `MissingMethodException`. **Migration**: recompile against this version; a host that builds them by hand
+passes its `DecisionCircuit` (`DecisionCircuit.OfHost(services)`) so the crew's decision mode and relay see the
+host's circuit.
+
+| Member | Before | Now |
+|---|---|---|
+| `CrewFactory(..., llmProfiles)` | last parameter `llmProfiles` | `+ decisionCircuit, decisionProfiles, route` |
+| `SequentialCrewOrchestrator(..., budget)` | last parameter `budget` | `+ decisionCircuit` |
+
 ### Fixed
 
 - **The `firefox` tool no longer fails to start on a loaded machine whose `StartupTimeoutSeconds` covers the
   start (#437).** Firefox announces its remote protocol early and answers `session.new` only once its first
   window has loaded; that wait was bounded by `CommandTimeoutSeconds` (30 s), not by the start's timeout, so a
   slow start that the announcement survived failed on the session, twice in a row since the retry of #335
-  started Firefox cold again. `session.new` now waits `StartupTimeoutSeconds`, and the error and the warning
-  name it. The session wait no longer follows `CommandTimeoutSeconds`: a `CommandTimeoutSeconds` raised above
-  `StartupTimeoutSeconds` no longer lengthens it, so raise `StartupTimeoutSeconds` instead. A start that hangs
-  fails on the announcement or the session after at most 2 attempts × 2 × `StartupTimeoutSeconds`; the connection
-and the two commands after the session are outside that bound.
+  started Firefox cold again. `session.new` now waits the larger of `StartupTimeoutSeconds` and
+  `CommandTimeoutSeconds`, and the error and the warning name that figure, so a host that raised either one keeps
+  its wait. A start that hangs fails on the announcement or the session after at most 2 attempts × 2 × that
+  figure; the connection and the two commands after the session are outside that bound.
 - **`spawn_agent` and `ctx.spawnBackground` are no longer refused five minutes into a run that names no
   budget (#426).** Without `.budget(...)` the act runs with no wall clock, but the spawn tool took
   `AgentExecutionBudget.Default`, built with each agent's context: every spawn made more than five minutes
