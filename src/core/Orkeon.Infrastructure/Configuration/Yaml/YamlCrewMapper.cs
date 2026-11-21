@@ -316,17 +316,20 @@ public sealed partial class YamlCrewMapper
             case IList<object> list:
                 return new Orkeon.Domain.Agent.AgentSkills { Paths = SkillPaths(agentKey, "skills", list) };
             case IDictionary<object, object> map:
-                bool? auto = null;
+                var auto = false;
                 IReadOnlyList<string> fallback = [];
                 foreach (var (key, value) in map)
                 {
                     switch (key?.ToString())
                     {
                         case "auto":
-                            auto = bool.TryParse(value?.ToString(), out var on)
-                                ? on
-                                : throw new InvalidOperationException(
+                            if (!bool.TryParse(value?.ToString(), out var on))
+                                throw new InvalidOperationException(
                                     $"Agent '{agentKey}' skills.auto: '{value}' is not true or false.");
+                            if (!on)
+                                throw new InvalidOperationException(
+                                    $"Agent '{agentKey}' skills: 'auto: false' is not read; the map form is System One's pick ('auto: true'). For a fixed list, write the paths as a list: 'skills: [/workspace/skills/review.md]'.");
+                            auto = true;
                             break;
                         case "fallback":
                             fallback = value is IList<object> paths
@@ -341,14 +344,10 @@ public sealed partial class YamlCrewMapper
                                 $"Agent '{agentKey}' skills: unknown key '{key}'; the map form has auto and fallback.");
                     }
                 }
-                return auto switch
-                {
-                    true => new Orkeon.Domain.Agent.AgentSkills { Auto = true, Fallback = fallback },
-                    false => throw new InvalidOperationException(
-                        $"Agent '{agentKey}' skills: 'auto: false' is not read; the map form is System One's pick ('auto: true'). For a fixed list, write the paths as a list: 'skills: [/workspace/skills/review.md]'."),
-                    null => throw new InvalidOperationException(
-                        $"Agent '{agentKey}' skills: the map form needs 'auto: true' for System One's pick among the library; for a fixed list, write the paths as a list: 'skills: [/workspace/skills/review.md]'."),
-                };
+                return auto
+                    ? new Orkeon.Domain.Agent.AgentSkills { Auto = true, Fallback = fallback }
+                    : throw new InvalidOperationException(
+                        $"Agent '{agentKey}' skills: the map form needs 'auto: true' for System One's pick among the library; for a fixed list, write the paths as a list: 'skills: [/workspace/skills/review.md]'.");
             default:
                 throw new InvalidOperationException(
                     $"Agent '{agentKey}' skills: expected a list of virtual paths or a map with auto and fallback; got '{DescribeYamlValue(written)}'. " +

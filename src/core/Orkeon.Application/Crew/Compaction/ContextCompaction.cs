@@ -97,10 +97,14 @@ internal sealed class ContextCompaction
     /// results, which the decision model judges. Read per run, never written onto the agent: an agent another crew
     /// shares keeps the host's setting there.
     /// </summary>
-    internal static AgentCompaction? RunCompaction(AgentCompaction? own) =>
-        SystemOneRunScope.Current?.Mode == CrewDecisionMode.None && own?.Prune is null
-            ? (own ?? new AgentCompaction()) with { Prune = false }
-            : own;
+    internal static AgentCompaction? RunCompaction(AgentCompaction? own)
+    {
+        if (SystemOneRunScope.Current?.Mode != CrewDecisionMode.None)
+            return own;
+        if (own is null)
+            return new AgentCompaction { Prune = false };
+        return own.Prune is null ? own with { Prune = false } : own;
+    }
 
     /// <summary>
     /// The prompt a summary call on <c>Orkeon:Compaction:Profile</c> can take: that profile's window (its own

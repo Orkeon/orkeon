@@ -57,5 +57,7 @@ public sealed class ManagerLlm
     /// <c>auto</c>, which routes tasks and a manager has none (#434).
     /// </summary>
     private static string ProfileOf(LlmConfig? config) =>
-        LlmProfiles.IsDefault(config?.Profile) || LlmProfiles.IsAuto(config?.Profile) ? LlmProfiles.Default : config!.Profile!.Trim();
+        config?.Profile is not { } profile || LlmProfiles.IsDefault(profile) || LlmProfiles.IsAuto(profile)
+            ? LlmProfiles.Default
+            : profile.Trim();
 }

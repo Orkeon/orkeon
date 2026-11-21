@@ -181,6 +181,7 @@ public sealed class JsonlMockLlmProviderTests
         {
             await foreach (var _ in provider.GenerateStreamingAsync("something else", null, TestContext.Current.CancellationToken))
             {
+                // Draining the stream is what throws.
             }
         });
 
@@ -196,6 +197,7 @@ public sealed class JsonlMockLlmProviderTests
         {
             await foreach (var _ in provider.GenerateStreamingAsync("hello", null, TestContext.Current.CancellationToken))
             {
+                // Draining the stream is what throws.
             }
         });
 

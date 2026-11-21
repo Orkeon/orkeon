@@ -120,13 +120,13 @@ public sealed partial class ManagerLlmResolver
 
         // A manager on llm.profile: auto takes turns, not tasks: it has no task for System One to route (#434),
         // and manages on the default profile.
-        if (LlmProfiles.IsDefault(config?.Profile) || LlmProfiles.IsAuto(config?.Profile))
+        if (config?.Profile is not { } profile || LlmProfiles.IsDefault(profile) || LlmProfiles.IsAuto(profile))
             return new ManagerLlm { ChatClient = TakingTurns(_defaultChatClient, managerAgent), Model = model, Name = name };
 
-        LlmProfiles.EnsureKnown(_profiles, config!.Profile, $"Manager agent '{managerAgent!.Role.Value}'");
+        LlmProfiles.EnsureKnown(_profiles, profile, $"Manager agent '{managerAgent!.Role.Value}'");
         return new ManagerLlm
         {
-            ChatClient = TakingTurns(_profiles!.Resolve(config.Profile).ChatClient, managerAgent),
+            ChatClient = TakingTurns(_profiles!.Resolve(profile).ChatClient, managerAgent),
             Model = model,
             Name = name,
         };

@@ -451,7 +451,7 @@ public sealed class ForgeSystemOneTests : IDisposable
     public async Task An_on_forge_leaves_the_brief_as_the_assistant_submitted_it()
     {
         var off = await RunAsync("off", ForgeSystemOne.Off("switch"));
-        var model = new StubDecisionModel { Score = new ScoreAnswer { Score = 0, Confidence = 0.95, Probabilities = ImmutableDictionary<string, double>.Empty.Add("0", 0.95) } };
+        var model = new StubDecisionModel { Score = new ScoreAnswer { Score = 0, Confidence = 0.95, Probabilities = ImmutableDictionary.CreateRange<string, double>([new("0", 0.95)]) } };
 
         var on = await RunAsync("on", ForgeSystemOne.On(model));
 

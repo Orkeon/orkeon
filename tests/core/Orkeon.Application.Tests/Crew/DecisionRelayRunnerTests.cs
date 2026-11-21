@@ -160,7 +160,8 @@ public sealed class DecisionRelayRunnerTests
         var result = await RunOffAsync(Decision(Route()));
 
         // Assert
-        Assert.Equal((false, 2, DecisionSources.Relay, (object?)null), (result.Success, _relay.Requests.Count, result.DecisionSource, (object?)result.Decision));
+        Assert.Equal((false, 2, DecisionSources.Relay), (result.Success, _relay.Requests.Count, result.DecisionSource));
+        Assert.Null(result.Decision);
     }
 
     [Fact]

@@ -37,7 +37,7 @@ internal sealed class FakeDecidingTestBench : IForgeTestBench
                 new DecisionRequest
                 {
                     State = new JsonObject { ["demande"] = "Mon colis n'est pas arrive" },
-                    Questions = ImmutableDictionary<string, DecisionQuestion>.Empty.Add("urgent", new NoulQuestion()),
+                    Questions = ImmutableDictionary.CreateRange<string, DecisionQuestion>([new("urgent", new NoulQuestion())]),
                 },
                 cancellationToken);
         }
