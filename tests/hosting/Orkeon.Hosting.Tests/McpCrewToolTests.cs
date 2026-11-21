@@ -6,6 +6,7 @@ using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Runs;
 using Orkeon.Constants.Protocol;
 using Orkeon.Hosting.Tests.Doubles;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.MCP;
 using Orkeon.Tests.Shared.Timing;
 
@@ -308,6 +309,64 @@ public sealed class McpCrewToolTests : IDisposable
         Assert.Equal(RunEventKinds.RunStarted, kinds[0]);
         Assert.Equal(RunEventKinds.RunFinished, kinds[^1]);
         Assert.True(kinds.Count > 2, string.Join(", ", kinds));
+    }
+
+    // A crew whose agent declares one skill, run by the real agent loop on a model double: the loop tells its skills
+    // observer (agent.skills, #434). The skill file does not exist, so the notice names it as cut.
+    private async Task<McpCrewToolHost> OpenSkilledCrewOnAModelAsync()
+    {
+        var dir = Path.Combine(_root, "skilled");
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "appsettings.json"), History, Ct);
+        var path = Path.Combine(dir, "crew.yaml");
+        await File.WriteAllTextAsync(path, """
+            name: "Skilled Writer"
+            goal: "Write about a topic"
+            process: "sequential"
+            agents:
+              worker:
+                role: "Worker"
+                goal: "Work"
+                backstory: "A minimal test agent."
+                maxIter: 1
+                skills: [/workspace/skills/style.md]
+            tasks:
+              draft:
+                description: "Draft a text about {topic}."
+                expectedOutput: "A draft."
+                agent: "worker"
+            """, Ct);
+        var host = await McpCrewToolHost.OpenAsync(
+            [path],
+            new McpCrewHostOptions
+            {
+                WorkingDirectory = _root, AllowExternalMounts = true,
+                Console = _console,
+                ConfigureServices = (_, services) => services.AddOrkeonLlmProvider(_ => new CountingLlmProvider()),
+            },
+            Ct);
+        Assert.True(host is not null, _console.ErrorOutput.ToString());
+        return host;
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWriteTheAgentSkillsEventInTheCallsHistory_WhenTheCrewsAgentDeclaresSkills()
+    {
+        // Arrange
+        using var host = await OpenSkilledCrewOnAModelAsync();
+
+        // Act
+        var result = await host.CallToolAsync("run_crew_skilled_writer", Args(new { topic = "bees" }), new RecordingProgress(), Ct);
+
+        // Assert
+        Assert.False(result.IsError, JsonSerializer.Serialize(result));
+        var reader = Assert.Single(host.Hosts).Services.GetRequiredService<IRunHistoryReader>();
+        var run = Assert.Single(await reader.ListAsync(new RunQuery(), Ct));
+        var events = await reader.ReadEventsAsync(run.RunId, 1, Ct);
+        var skills = Assert.Single(events, e => e.Kind == RunEventKinds.AgentSkills);
+        Assert.Equal("Worker", skills.Payload?["agentRole"]?.GetValue<string>());
+        Assert.Equal(run.RunId, skills.CorrelationId);
     }
 
     [Fact]

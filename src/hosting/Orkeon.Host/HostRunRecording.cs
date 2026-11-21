@@ -43,6 +43,12 @@ internal sealed class HostRunRecording
     /// <summary>True once <see cref="Begin"/> opened a recording.</summary>
     public bool IsActive => _publisher is not null;
 
+    /// <summary>
+    /// The run's publisher once <see cref="Begin"/> opened a recording, else null: the agent loops' observers write to it
+    /// (agent.compacted, agent.skills, agent.route, agent.pruned) through a <see cref="DeferredRunEventSink"/>.
+    /// </summary>
+    public IRunEventSink? Events => _publisher;
+
     /// <summary>Records that the run's crew completed (or not); read when the recording ends.</summary>
     public bool Succeeded { get; set; }
 

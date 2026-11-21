@@ -169,4 +169,64 @@ public sealed class HostPublishesRunEventsTests : IDisposable
         Assert.Null(host.Services.GetService<IRunHistoryReader>());
         Assert.False(Directory.Exists(Path.Combine(_root, ".orkeon", "runs")));
     }
+
+    // The crew's agent declares one skill: its task's prompt carries the skills block, and the agent loop tells its
+    // observer (agent.skills, #434). The file does not exist, so the notice names it as cut: the event is what is checked.
+    private void WriteSkilledCrew() => File.WriteAllText(CrewPath, """
+        name: support
+        goal: Answer one question offline
+        process: sequential
+        agents:
+          helper:
+            role: Helper
+            goal: Help
+            backstory: A minimal test agent.
+            maxIter: 1
+            skills: [/workspace/skills/style.md]
+        tasks:
+          answer:
+            description: Answer the question.
+            expected_output: An answer.
+            agent: helper
+        """);
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldWriteTheAgentSkillsEventInTheRunHistory_WhenAHostedAgentDeclaresSkills()
+    {
+        // Arrange
+        WriteSkilledCrew();
+        using var host = Build(new HeldLlmProvider("the answer"));
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+
+        // Act
+        var result = await runner.RunAsync("support", "What changed?", "test");
+
+        // Assert
+        Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
+        var reader = host.Services.GetRequiredService<IRunHistoryReader>();
+        var summary = Assert.Single(await reader.ListAsync(new RunQuery(), Ct));
+        var events = await reader.ReadEventsAsync(summary.RunId, 1, Ct);
+        var skills = Assert.Single(events, e => e.Kind == RunEventKinds.AgentSkills);
+        Assert.Equal("Helper", skills.Payload?["agentRole"]?.GetValue<string>());
+        Assert.Equal(summary.RunId, skills.CorrelationId);
+        Assert.Equal(Enumerable.Range(1, events.Count), events.Select(e => e.Seq));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-434")]
+    public async Task ShouldCompleteTheRun_WhenAnAgentDeclaresSkillsAndTheHistoryIsOff()
+    {
+        // Arrange
+        WriteSkilledCrew();
+        using var host = Build(new HeldLlmProvider("the answer"), history: false);
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+
+        // Act
+        var result = await runner.RunAsync("support", "hello", "test");
+
+        // Assert
+        Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
+        Assert.Null(host.Services.GetService<IRunHistoryReader>());
+    }
 }

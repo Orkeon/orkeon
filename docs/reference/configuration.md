@@ -1840,8 +1840,8 @@ the figure assumed. That figure overstates a smaller model the table does not kn
 its loop neither compacts nor trims before the real window is full, so set `ContextWindowTokens`
 on that model's profile. Three failed compactions in a row bring the 40-message trim back for the
 rest of the task attempt (a retried task compacts again), and the pruning below stops with them.
-Under `orkeon run`, each compaction emits `agent.compacted` on the run's event stream; the other
-hosts write no such event. An agent overrides `Enabled` and
+Each compaction emits `agent.compacted` on the run's event stream and in its history, under
+`orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` alike. An agent overrides `Enabled` and
 `TriggerShare` with its YAML `compaction:` key; a `.ork.ts` crew follows these settings. The
 text-protocol loop keeps its trim. A provider with explicit cache breakpoints (Anthropic) keeps
 its cached system prompt and tools; a provider with an automatic prefix cache bills the
@@ -1871,7 +1871,7 @@ and needed whole. Not needed drops the result, needed in part keeps its first `H
 characters, needed whole keeps it; a pruned result leaves a line saying how to get it back, the
 call's whole input in it, and its call stays. A result kept, or one the decision model failed to
 judge, is judged again after eight more model turns. Each pruning that cut or dropped a result
-emits `agent.pruned` under `orkeon run` (the other hosts write no such event); a turn that kept
+emits `agent.pruned` under `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew`; a turn that kept
 everything emits nothing. With the decision circuit
 off, nothing is pruned: one warning, no decision call, no error. Once compaction's breaker opens
 (three failures in a row), the loop prunes no more for the rest of the task attempt. An agent

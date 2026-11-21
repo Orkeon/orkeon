@@ -16,7 +16,7 @@ trigger if that comes first, the decision model judges each result of a read too
 drop it, leaving a line that says how to get it back, the call's whole input in it. It reads the task and each call
 (tool, input, size, age), never the result: two yes/no questions per call, eight calls to a request, 24 at most at a
 time. A kept result, or one the decision model failed to judge, is judged again eight model turns later. Under
-`orkeon run`, each pruning that cut or dropped a result emits `agent.pruned`. With the decision circuit off nothing is
+`orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` (their run history), each pruning that cut or dropped a result emits `agent.pruned`. With the decision circuit off nothing is
 pruned and no decision call is made, with one warning and no error; an agent that does not compact does not prune.
 **Compatibility**: `compaction.prune` is a new agent key, refused by a 1.3.0 loader; `Orkeon:Compaction:Prune` is
 a new settings section and `agent.pruned` a new run event kind; `ConversationView` gains `ToolCallAt` (the call a
@@ -31,7 +31,7 @@ and revisions included, and another agent on the task (a voter) has its own pick
 agent's role and the task, cut at 4000 characters. Under a probability of 0.6, without an answer, when the call fails
 or with the decision circuit off, the host's default profile stands, with no error; an off circuit makes no decision
 call. A warning is logged once when the circuit is off or the ladder is missing, and when the call fails. Under
-`orkeon run`, each pick emits `agent.route` (`profile`, `reason`, `picked`, `probability`, `ladder`), once per task
+`orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` (their run history), each pick emits `agent.route` (`profile`, `reason`, `picked`, `probability`, `ladder`), once per task
 and agent of a run. A crew naming `auto` on a host without a ladder, or with a rung the host does not offer, fails
 its load, as does `auto` in a crew with `decision.mode: none`; a manager or a decision relay on `auto` with no task
 of its own runs on the default profile and is left out of those checks. In a `.ork.ts` crew, routing works at task
@@ -51,7 +51,7 @@ With `auto`, each task asks the decision model one `choice` among the `.md` file
 heading and line) and never a body; the options at a probability of 0.3 or more are kept, three at most. With the
 decision circuit off, an empty or unreadable library or a failed call, the agent carries its `fallback`, else no
 skill, with one warning and no error. The choice holds for every attempt of the task by that agent in the run. Under
-`orkeon run`, it emits `agent.skills` (`mode`, `skills`, `offered`, `cut`, `reason`, `detail`) once per task and agent
+`orkeon run`, `orkeon-host` and `orkeon mcp serve --crew` (their run history), it emits `agent.skills` (`mode`, `skills`, `offered`, `cut`, `reason`, `detail`) once per task and agent
 of a run: a fallback's `reason` is `circuit-off`, `empty-library` or `pick-failed`, and `detail` says it in a
 sentence. **Compatibility**: an engine at 1.3.0 refuses a crew that writes `skills:`; an unknown key of the map
 form, a non-boolean `auto` or a map without `auto` now fails the load. The `Orkeon:Skills` section and the event are
@@ -73,7 +73,8 @@ not offer, one `Llm:Profiles` lacks or one `Orkeon:Host:LlmProfiles` leaves out,
 tokens are charged to the task, in the chat-client loop's prompt/completion split too (the native loop reports no
 split; its task `tokens` were 0 and now carry them). Three failures in a row bring the 40-message trim back,
 and stop the pruning, for the rest of the task attempt; a call whose turns are all recent ones waits for a later turn
-and counts as no failure. Under `orkeon run`, each attempt emits `agent.compacted`. An agent overrides `enabled` and
+and counts as no failure. Under `orkeon run`, `orkeon-host` and `orkeon mcp serve --crew`
+(their run history), each attempt emits `agent.compacted`. An agent overrides `enabled` and
 `triggerShare` with a YAML `compaction:` block; a `.ork.ts` crew follows the global settings. `IContextPressureStage`
 runs registered stages on the same measure before compaction.
 **Compatibility**: compaction is on by default, a breaking change described under *Changed* below. An engine at 1.3.0

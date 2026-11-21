@@ -190,6 +190,9 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
 
         public ICrewExecutionHook Observer => _observer;
 
+        /// <summary>The call's publisher, which the agent loops' observers write to.</summary>
+        public IRunEventSink Events => _publisher;
+
         public bool Succeeded { get; set; }
 
         public bool Cancelled { get; set; }
@@ -232,9 +235,12 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
     private sealed class McpCrewOptions : RunnerOptionsBase;
 
     /// <summary>What a call reports: the tasks that finished, out of the crew's tasks.</summary>
-    private sealed class RunProgress(IMcpProgress progress, int total, ICrewExecutionHook? recorder)
+    private sealed class RunProgress(IMcpProgress progress, int total, ICrewExecutionHook? recorder, IRunEventSink? events)
     {
         public ICrewExecutionHook? Recorder => recorder;
+
+        /// <summary>The call's publisher when the history is on, else null.</summary>
+        public IRunEventSink? Events => events;
 
         private int _done;
 
@@ -402,7 +408,10 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
         return new CrewDescription(crew.Name, crew.Goal.Value, tasks);
     }
 
-    /// <summary>Puts the progress hook on the crew's hook: what <c>AutoSummaryWriter</c> registered stays inside it.</summary>
+    /// <summary>
+    /// Puts the progress hook on the crew's hook (what <c>AutoSummaryWriter</c> registered stays inside it) and the agent
+    /// loops' observers on the call's history.
+    /// </summary>
     private static void ObserveTasks(IServiceCollection services)
     {
         var existing = services.LastOrDefault(d => d.ServiceType == typeof(ICrewExecutionHook));
@@ -410,6 +419,10 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
             services.Remove(existing);
 
         services.AddScoped<ICrewExecutionHook>(sp => new ProgressHook(existing is null ? null : Materialize(sp, existing)));
+
+        // The agent loops' events (agent.compacted, agent.skills, agent.route, agent.pruned) go to the history of the call
+        // in flight on this control flow; with the history off, or outside a call, they are dropped.
+        services.AddAgentRunEventObservers(ServiceLifetime.Singleton, _ => new DeferredRunEventSink(() => s_current.Value?.Events));
     }
 
     private static ICrewExecutionHook? Materialize(IServiceProvider sp, ServiceDescriptor descriptor)
@@ -513,7 +526,7 @@ internal sealed partial class McpCrewToolHost : IMcpServerExtension, IDisposable
         ServedCrew crew, Dictionary<string, string> variables, IMcpProgress progress, CancellationToken ct)
     {
         using var recording = CallRecording.Begin(crew.Entry.Host, crew.Name);
-        s_current.Value = new RunProgress(progress, crew.Tasks.Count, recording?.Observer);
+        s_current.Value = new RunProgress(progress, crew.Tasks.Count, recording?.Observer, recording?.Events);
         try
         {
             var run = await crew.Entry.RunAsync(

@@ -443,7 +443,8 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
     son propre état de tâches, et un `notifications/cancelled` du client annule la crew en cours : ses agents voient le
     jeton et l'appel n'est pas répondu.
   - **Le run est enregistré comme tout run de l'hôte.** Avec `Orkeon:RunHistory:Enabled` activé dans les réglages de la
-    crew, chaque appel est un run de l'historique : `run.started`, les événements de tâche, `run.finished`, sous son
+    crew, chaque appel est un run de l'historique : `run.started`, les événements de tâche, les `agent.compacted`,
+    `agent.skills`, `agent.route` et `agent.pruned` des boucles d'agent, `run.finished`, sous son
     propre identifiant de run (celui des checkpoints), lu avec `orkeon runs`. Historique éteint, rien n'est écrit. `run.finished` porte `success`, `exitCode`,
     `durationMs`, `cappedTasks` et `missingDeliverables`, et aucun champ de tokens (voir [le bus d'événements de
     run](./run-event-bus.md)). Les

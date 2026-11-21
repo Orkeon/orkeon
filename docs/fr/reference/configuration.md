@@ -1898,9 +1898,9 @@ nomme le chiffre supposé. Ce chiffre surestime un modèle plus petit que la tab
 compaction active, sa boucle ne compacte ni ne coupe avant que la vraie fenêtre soit pleine ;
 donnez donc `ContextWindowTokens` au profil de ce modèle. Trois compactions ratées de suite
 ramènent la coupe à 40 messages pour le reste de la tentative de la tâche (une tâche relancée
-compacte de nouveau), et l'élagage ci-dessous s'arrête avec elles. Sous `orkeon run`, chaque
-compaction émet `agent.compacted` sur le flux d'événements du run ; les autres hôtes n'écrivent
-pas cet événement. Un agent remplace `Enabled` et `TriggerShare` par sa clé YAML `compaction:` ; une crew `.ork.ts` suit
+compacte de nouveau), et l'élagage ci-dessous s'arrête avec elles. Chaque
+compaction émet `agent.compacted` sur le flux d'événements du run et dans son historique, sous
+`orkeon run`, `orkeon-host` et `orkeon mcp serve --crew` également. Un agent remplace `Enabled` et `TriggerShare` par sa clé YAML `compaction:` ; une crew `.ork.ts` suit
 ces réglages. La boucle à protocole texte garde sa coupe. Un fournisseur aux points de cache
 explicites (Anthropic) garde son prompt système et ses outils en cache ; un fournisseur au cache
 de préfixe automatique facture de nouveau la conversation après la coupe.
@@ -1930,7 +1930,7 @@ résultat, utile en partie en garde les `HeadChars` premiers caractères, utile 
 un résultat élagué laisse une ligne qui dit comment le retrouver, l'entrée entière de l'appel
 comprise, et son appel reste. Un résultat gardé, ou que le modèle de décision n'a pas su juger,
 est jugé de nouveau après huit tours du modèle de plus. Chaque élagage qui a coupé ou retiré un
-résultat émet `agent.pruned` sous `orkeon run` (les autres hôtes n'écrivent pas cet événement) ;
+résultat émet `agent.pruned` sous `orkeon run`, `orkeon-host` et `orkeon mcp serve --crew` ;
 un tour qui a tout gardé n'émet rien. Circuit de décision coupé, rien
 n'est élagué : un avertissement, aucun appel de décision, aucune erreur. Une fois le disjoncteur de
 la compaction ouvert (trois échecs de suite), la boucle n'élague plus pour le reste de la tentative
