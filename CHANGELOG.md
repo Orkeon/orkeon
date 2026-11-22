@@ -116,18 +116,21 @@ It used to send the caller's schema unchanged, and Anthropic answers a 400 to an
 `additionalProperties: false`: `ctx.llm.extract`, `withResponseSchema`, a YAML `response_format`, a
 `structured_output` deliverable and the decision circuit failed on any ordinary schema. The provider now works on a
 copy: it closes every object that does not set `additionalProperties`, and moves the constraints the API does not take
-(`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `minLength`, `maxLength`, `maxItems`,
+(`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `maxItems`,
 `uniqueItems`, a `minItems` above 1, a `format` off Anthropic's list) into the node's `description`. What would change
 the schema's meaning — `oneOf`, `not`, an `additionalProperties` set to `true` or to a schema, an external `$ref`, a
 recursive schema, an object schema with no `properties` that does not close itself with `additionalProperties: false`,
-the keywords the dialect cannot walk (`if` / `then` / `else`, `patternProperties`, `dependentSchemas`, `dependencies`,
-`contains`, `propertyNames`, `unevaluatedProperties`, `unevaluatedItems`, `additionalItems`), a `description` that is
-no string, messages ending on an
+the keywords the dialect cannot walk (`patternProperties`, `dependentSchemas`, `dependencies`, `contains`,
+`propertyNames`, `unevaluatedProperties`), `if` / `then` / `else`, `unevaluatedItems` and `additionalItems` on an object
+node (and `if` / `then` / `else` on an `anyOf` node), `prefixItems`, a tuple or boolean `items`, a `$ref` beside a
+constraint, an empty or untyped schema, a root that is not a JSON object, a `description` that is no string, messages ending on an
 `assistant` turn — is refused before any HTTP call, naming the keyword and its path (``ctx.llm.extract: the provider
 failed: Anthropic cannot take the response schema 'extract': `oneOf` at `#/properties/pick` is not supported; use
 `anyOf`.``); these requests were refused by the API before. The refusal's error type is `UnsupportedResponseSchema`,
 classed as refused: the fallback chain does not move on to its next profile (a task with a retry policy still runs again, and is refused again). A task's `output_json` is still validated against the author's schema. See
-`docs/guides/llm-response-format.md`, "Anthropic's schema dialect".
+`docs/guides/llm-response-format.md`, "Anthropic's schema dialect". The dialect follows what the Messages API was
+measured to take: `minLength` and `maxLength` are sent as written, and the keywords above are refused only where the
+API refuses them.
 
 ### Fixed — a watched run no longer dies before its first event with the decision circuit off (#448)
 
