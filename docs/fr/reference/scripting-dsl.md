@@ -194,7 +194,7 @@ Transmettez-le (`crew.run({ signal: ctx.signal })`) plutôt que de l'interroger.
 
 `ctx.llm` — `complete(prompt)`, `chat(messages)`, `stream(prompt)` (itérable async ;
 `usage` et `reasoningChunks` se lisent après la boucle, `reasoning` aussitôt), `extract(prompt, schema)`,
-`decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, et `interrupt()` /
+`decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, `pick(request, options)` (plus bas), et `interrupt()` /
 `isInterrupted`. Chaque appel part vers le fournisseur de l'agent (celui de l'hôte, ou celui de son
 profil), ou vers le profil que nomme `{ llm: { profile } }` ; sans fournisseur,
 un écho `<undefined-llm:…>` répond, ce qui permet aux exemples de tourner sans clé. Un appel
@@ -209,7 +209,7 @@ configuration du fournisseur de l'appel : `responseFormat` (`"json_object"`, `"j
 température et son plafond de jetons ne s'appliqueraient pas) et `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : la réflexion du fournisseur, activée à cet effort ;
 toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max` ; `"auto"` aussi, un choix se faisant par tâche, jamais par appel) et `cache` (la demande de cache de prompt, telle que la prend `agentBuilder().cache(...)`). `act` en prend davantage : voir
 [Options de `act`](../architecture/scripting.md#options-de-act) (`tools`, `effort`, `onToolCall`,
-`onToolResult`, `onContextPressure`, `waitFor`). Il n'y a ni fournisseur nommé, ni température, ni plafond de
+`onToolResult`, `onContextPressure`, `prune`, `waitFor`). Il n'y a ni fournisseur nommé, ni température, ni plafond de
 jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte. `embed` est un stub local :
 il n'appelle aucun fournisseur et ne lit aucune de ces options.
 
@@ -261,12 +261,42 @@ vide. `chat`, comme `complete`,
 répond à un appel en échec par le marqueur `<undefined-llm:…>` qui porte la phrase du fournisseur,
 jamais par un contenu vide.
 
+`pick(request, { profile, effort })` demande à System One ce qu'une tâche en `llm.profile: auto` et `effort: auto`
+recevrait, pour un corps qui n'exécute aucune tâche (#460) : le profil dont `request` a besoin parmi une échelle, le
+niveau de réflexion parmi ceux de l'hôte, ou les deux en **un seul** appel de décision, chacun tenu à une probabilité
+de 0,6 ou à son repli, la requête coupée au milieu à 4 000 caractères. Il répond `{ profile?, effort? }`, une clé par
+partie demandée, chacune `{ value, reason, picked, probability }` ; l'hôte ne garde rien, et le script passe `value`
+à ses appels suivants (`{ llm: { profile } }`, `{ effort }`).
+
+- `profile: { ladder?, floor?, ceiling?, fallback? }`. `ladder` compte deux profils ou plus que l'hôte déclare, du
+  moins cher au plus cher, chacun une fois ; omise, c'est
+  [`Orkeon:Decision:Route:Ladder`](configuration.md#orkeondecisionroute), et sans elle le repli tient (`no-ladder`).
+  `floor` et `ceiling` sont des barreaux de l'échelle : ils bornent le choix du modèle sans autre appel (`value` est
+  le barreau retenu, `picked` celui du modèle, raison `floor` ou `ceiling`), et quand ils ne laissent qu'un barreau,
+  c'est la réponse, sans appel. `fallback` est n'importe quel profil déclaré (par défaut : `default`), jamais borné.
+- `effort: { min?, max?, fallback? }`. Les niveaux offerts sont ceux de
+  [`Orkeon:Decision:Effort:Levels`](configuration.md#orkeondecisioneffort) entre `min` et `max` ; un seul niveau
+  restant est la réponse, sans appel (`single-level`). `fallback` est un niveau ; omis, `value` vaut `null` et la
+  réflexion propre au profil tient.
+- Raisons : `model`, `low-confidence`, `no-answer` (aucune option répondue, ou l'appel a échoué), `circuit-off` (le
+  circuit de décision est coupé, ou la crew tourne en `decision({ mode: "none" })` : aucun appel), plus `no-ladder`,
+  `floor`, `ceiling` pour le profil et `single-level` pour l'effort. Chaque réponse est aussi un événement
+  `agent.route` ou `agent.effort` du run, avec le rôle de l'agent et sans `taskId`.
+- Refusé par une `InvalidScriptError` qui nomme l'option, avant tout appel : une échelle de moins de deux barreaux ;
+  un barreau répété, vide ou `auto` ; un barreau, plancher, plafond ou repli que l'hôte ne déclare pas ; un plancher ou
+  un plafond hors de l'échelle ; un plancher au-dessus du plafond ; un niveau inconnu ; `min` au-dessus de `max` ;
+  aucun niveau entre eux ; ni `profile` ni `effort`. Un hôte qui ne câble aucun choix
+  (`ScriptingHostPorts.SystemOnePicker`, `ORKEXP008`) rejette l'appel ; `orkeon run`, `orkeon eval`, le REPL,
+  `orkeon-host`, `mcp serve --crew`, les essais de la forge et le `CrewScriptRunner` d'un intégrateur le câblent. L'annulation du run annule l'appel, sauf dans un hook `onAgentStart` ou `onAgentStop`
+  (exécuté quand un agent rejoint ou quitte une crew), dont le `ctx` n'a pas d'annulation : un choix fait là va à son terme.
+
 `act` est la boucle LLM ⇄ appels d'outils : elle propose au modèle les outils intégrés que
 l'agent a choisis avec `.tools([...])` et ses instances `withAutonomousTool` — dont le
 `execute` s'exécute dans le script, sur le fil du moteur — jusqu'à ce que le modèle cesse de
 demander ou que `maxIterations` (défaut 10, `0` = illimité) soit atteint. Elle se résout en
 `{ output, iterations }` (plus `interrupted` ou `exhausted` quand la boucle s'est arrêtée
-avant). Chaque appel d'outil d'un tour s'exécute, dans l'ordre, et le tour est rejoué dans le
+avant, et `pruned` — `{ offered, judged, kept, cut, dropped, freedTokens }`, additionnés sur la boucle — quand
+son option `prune` a jugé au moins un résultat ; absent sinon). Chaque appel d'outil d'un tour s'exécute, dans l'ordre, et le tour est rejoué dans le
 protocole d'outils du fournisseur — le tour de l'assistant avec ses appels, puis un résultat
 `tool` par appel, refus de permission ou erreur d'outil compris —, que le fournisseur réponde
 au format OpenAI (la plupart des fournisseurs, Ollama compris) ou avec le corps Messages

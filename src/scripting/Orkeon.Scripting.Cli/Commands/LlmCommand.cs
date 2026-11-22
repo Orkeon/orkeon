@@ -130,6 +130,14 @@ internal sealed class LlmModelsCommandOptions : CliOptions
         HelpText = "Name of the environment variable holding the API key.")]
     public string ApiKeyEnv { get; set; } = EnvironmentVariableNames.LlmCommandApiKey;
 
+    /// <summary>
+    /// Workspace the listing acts in: Anthropic's identity-linked keys are refused <c>/v1/models</c> without it
+    /// (#468). An identifier, not a secret; no other provider is sent it, and the command warns.
+    /// </summary>
+    [Option("workspace-id", Required = false,
+        HelpText = "Workspace id for workspace-scoped keys (Anthropic identity-linked keys require it).")]
+    public string? WorkspaceId { get; set; }
+
     /// <summary>Shell-style glob restricting the listing.</summary>
     [Option('f', "filter", Required = false, HelpText = "Shell-style glob, e.g. 'gpt-5.6-*'.")]
     public string? Filter { get; set; }
@@ -172,12 +180,21 @@ internal static class LlmCommand
         using var interrupt = CancelOnInterrupt(console, cts);
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
 
+        // An option the provider cannot honour is reported, never dropped (LLM-02): the probe's provider logs
+        // event 110 for it; the listing builds no provider, so it says the same here (#468).
+        if (!string.IsNullOrWhiteSpace(options.WorkspaceId) && !LlmCatalogClient.SendsWorkspaceId(options.Provider))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon llm models: warning: option '--workspace-id' was declared but {options.Provider} does not support it — " +
+                "it was not sent. Only Anthropic scopes a key to a workspace; drop --workspace-id for this provider.").ConfigureAwait(false);
+        }
+
         IReadOnlyList<string> models;
         try
         {
             var baseUrl = LlmCatalogClient.ResolveBaseUrl(options.Provider, options.BaseUrl);
             var all = await LlmCatalogClient
-                .ListAsync(client, options.Provider, baseUrl, apiKey, cts.Token).ConfigureAwait(false);
+                .ListAsync(client, options.Provider, baseUrl, apiKey, options.WorkspaceId, cts.Token).ConfigureAwait(false);
             models = LlmCatalogClient.Filter(all, options.Filter);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)

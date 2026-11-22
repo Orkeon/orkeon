@@ -490,6 +490,7 @@ public sealed class ForgeRunStagesTests : IDisposable
         var error = Events().Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal("FORGE-BLUEPRINT-INVALID", error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());
+        Assert.False(error.GetProperty("terminal").GetBoolean());
         Assert.Contains("telepathy", error.GetProperty("message").GetString(), StringComparison.Ordinal);
 
         // The arbitration was asked twice: once before the bad edit, once after.
@@ -523,6 +524,7 @@ public sealed class ForgeRunStagesTests : IDisposable
         var error = Events().Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal("FORGE-BUDGET-EXHAUSTED", error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());
+        Assert.False(error.GetProperty("terminal").GetBoolean());
 
         var saved = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
         Assert.Equal("veille-fournisseur", saved!.Crew!.Name);   // untouched
@@ -587,6 +589,7 @@ public sealed class ForgeRunStagesTests : IDisposable
         var error = Events().Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal("FORGE-BUDGET-EXHAUSTED", error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());
+        Assert.False(error.GetProperty("terminal").GetBoolean());
     }
 
     [Fact]

@@ -248,11 +248,12 @@ public sealed class DoctorCommandTests : IDisposable
         Assert.Equal(Program.ExitScriptError, exit);
         var config = Assert.Single(lines, l => l.Check == "llm-config");
         Assert.Equal("fail", config.Status);
-        Assert.Contains("'other-cli'", config.Detail, StringComparison.Ordinal);
+        Assert.Contains("Llm:Provider names a provider module this host does not register", config.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("'other-cli'", config.Detail, StringComparison.Ordinal); // #465: never the value
         Assert.Contains("registered: fake-cli", config.Detail, StringComparison.Ordinal);
         // The run's start refuses the same key: the two checks agree.
         Assert.Contains(lines, l => l.Check == "runner-settings" && l.Status == "fail"
-            && l.Detail.Contains("Llm:Provider: 'other-cli'", StringComparison.Ordinal));
+            && l.Detail.Contains("Llm:Provider names no provider of this host", StringComparison.Ordinal));
     }
 
     private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(
@@ -598,6 +599,39 @@ public sealed class DoctorCommandTests : IDisposable
             using var doc = JsonDocument.Parse(console.Stdout);
             Assert.Equal("ok", ByCheck(doc)["llm-reachability"].GetProperty("status").GetString());
             Assert.Equal("Bearer sk-resolved-0123456789", Assert.Single(server.Authorizations));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
+
+    /// <summary>
+    /// #468: an <c>Llm:WorkspaceId</c> the inferred provider cannot send is said once, on <c>llm-config</c>, as a
+    /// warning; the catalogue line says nothing of it.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-468")]
+    public async Task ShouldWarnOnLlmConfigOnce_WhenAProviderOtherThanAnthropicIsGivenAWorkspace()
+    {
+        var variable = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        Environment.SetEnvironmentVariable(variable, "test-key");
+        using var server = new CatalogueServer();
+        try
+        {
+            using var scratch = new ScriptScratch();
+            scratch.WriteFile("appsettings.json", $$"""
+                { "RaggableTree": { "Enabled": false }, "Llm": { "Model": "test-model", "BaseUrl": "{{server.BaseUrl}}", "ApiKeyEnvVar": "{{variable}}", "WorkspaceId": "wrkspc_test" } }
+                """);
+
+            var (_, lines) = await DoctorJsonAsync(scratch);
+
+            var config = Assert.Single(lines, l => l.Check == "llm-config");
+            Assert.Equal("warn", config.Status);
+            Assert.Contains("Llm:WorkspaceId is set but", config.Detail, StringComparison.Ordinal);
+            Assert.Contains("it is not sent", config.Detail, StringComparison.Ordinal);
+            Assert.Single(lines, l => l.Detail.Contains("WorkspaceId", StringComparison.Ordinal));
+            Assert.Equal("ok", Assert.Single(lines, l => l.Check == "llm-reachability").Status);
         }
         finally
         {

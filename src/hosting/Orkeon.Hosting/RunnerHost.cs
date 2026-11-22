@@ -160,6 +160,13 @@ public static partial class RunnerHost
     public const string LlmNotConfiguredMessage = OperatorMessages.LlmNotConfigured;
 
     /// <summary>
+    /// Registered by a caller that refuses to run without a default LLM (<c>orkeon forge rephrase</c>,
+    /// #466): the host does not announce the echo-provider fallback that caller never takes, so its
+    /// stderr holds the caller's refusal alone. Every other warning of the host is kept.
+    /// </summary>
+    internal sealed class EchoFallbackUnannounced;
+
+    /// <summary>
     /// Builds a fully-configured host with all Orkeon services.
     /// </summary>
     /// <param name="settingsPath">Resolved appsettings.json path (nullable).</param>
@@ -534,7 +541,7 @@ public static partial class RunnerHost
     private static partial void LogSettingsNotice(ILogger logger, string notice);
 
     /// <summary>A setting a registration or a check refused, as the one type every entry point translates (GAP-35).</summary>
-    private static RunnerSettingsException Refused(InvalidOperationException ex) => new(ex.Message, ex);
+    private static RunnerSettingsException Refused(InvalidOperationException ex) => new(BinderRefusal.WithoutValue(ex.Message), ex);
 
     /// <summary>
     /// One <c>Information</c> line per decision taken on the settings' mounts: an entry a
@@ -697,6 +704,8 @@ public static partial class RunnerHost
             return;
         }
 
+        if (host.Services.GetService<EchoFallbackUnannounced>() is not null)
+            return;
         RunnerOperatorLog.Warn(operatorLogger, "WARNING: " + LlmNotConfiguredMessage);
         LogLlmNotConfigured(logger);
     }
@@ -2057,7 +2066,7 @@ public static partial class RunnerHost
             return null;
         return bool.TryParse(raw, out var value)
             ? value
-            : throw new InvalidOperationException($"{section.Path}:{key} is '{raw}', which is not true or false.");
+            : throw new InvalidOperationException($"{section.Path}:{key} is not true or false."); // no value echoed (#465)
     }
 
     /// <summary>A whole number of a section read raw, written invariant; blank is unset; anything else is refused by its key.</summary>
@@ -2068,7 +2077,7 @@ public static partial class RunnerHost
             return null;
         return int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
             ? value
-            : throw new InvalidOperationException($"{section.Path}:{key} is '{raw}', which is not a whole number.");
+            : throw new InvalidOperationException($"{section.Path}:{key} is not a whole number."); // no value echoed (#465)
     }
 
     /// <summary>
@@ -2169,7 +2178,7 @@ public static partial class RunnerHost
         return name is not null
             ? Enum.Parse<EmbeddingProviderKind>(name)
             : throw new InvalidOperationException(
-                $"{embedding.Path}:Provider is '{raw}', which is not an embedding provider: write one of {string.Join(", ", names)}.");
+                $"{embedding.Path}:Provider is not an embedding provider: write one of {string.Join(", ", names)}.");
     }
 
     /// <summary>

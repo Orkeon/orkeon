@@ -1,11 +1,15 @@
+using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.DependencyInjection;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Jint;
+using Jint.Native;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.Security;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Scripting.Tests.Doubles;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -354,5 +358,258 @@ public sealed class ActToolCallbacksTests
 
         Assert.Equal("done", run.Output);
         Assert.Equal("", run.Recorded);
+    }
+
+    // #461: prune. Three reads of a large result, then an answer; the host's pruning - the crew loops' stage,
+    // resolved from AddOrkeonApplication - is asked before each model turn. A result is offered once a model turn
+    // answered it: read /a before the third turn, /b before the fourth.
+    private sealed record PruneRun(
+        FakeToolCallingLlmProvider Provider, StubPruneDecisionModel Model, FakeAgentPruneObserver Observer, RecordingLogger Logger, JsValue Result)
+    {
+        public string Output => Result.Get("output").AsString();
+
+        public JsValue Pruned => Result.Get("pruned");
+
+        public int PrunedCount(string field) => (int)Pruned.Get(field).AsNumber();
+    }
+
+    // A fill share this small judges from the first read on: the window is the 200,000-token default.
+    private const string Eager = "{ fillShare: 0.0001, keepRecentMessages: 0 }";
+
+    private static async Task<PruneRun> RunPruneAsync(
+        string optionsJs,
+        Orkeon.Application.Crew.Compaction.ToolResultPruningOptions? configured = null,
+        ToolAccess access = ToolAccess.Read,
+        Orkeon.Application.Crew.Execution.DecisionCircuit? circuit = null,
+        Action<StubPruneDecisionModel, JsLlmFacade>? arrange = null,
+        Orkeon.Domain.Autonomous.AgentExecutionBudget? budget = null,
+        int tokensPerTurn = 0,
+        bool withPruner = true)
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var model = new StubPruneDecisionModel();
+        var observer = new FakeAgentPruneObserver();
+        using var loggers = new RecordingLoggerFactory();
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>(loggers);
+        services.AddLogging();
+        services.AddSingleton<Orkeon.Application.Interfaces.Ports.IDecisionModel>(model);
+        services.AddSingleton<Orkeon.Application.Interfaces.Ports.IAgentPruneObserver>(observer);
+        if (circuit is not null)
+            services.AddSingleton(circuit);
+        if (configured is not null)
+            services.AddSingleton(Microsoft.Extensions.Options.Options.Create(configured));
+        services.AddOrkeonApplication();
+        await using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var pruner = scope.ServiceProvider.GetRequiredService<Orkeon.Application.Crew.Compaction.IConversationPruner>();
+
+        var tool = new StubLargeResultTool("file_read", 8_000, access);
+        var llm = new FakeToolCallingLlmProvider(
+            FakeToolCallingLlmProvider.ScriptStep.Call("file_read", "{\"path\":\"/a\"}"),
+            FakeToolCallingLlmProvider.ScriptStep.Call("file_read", "{\"path\":\"/b\"}"),
+            FakeToolCallingLlmProvider.ScriptStep.Call("file_read", "{\"path\":\"/c\"}"),
+            FakeToolCallingLlmProvider.ScriptStep.Answer("done"))
+        {
+            TokensPerTurn = tokensPerTurn,
+        };
+        // The agent is named Reader and plays the Analyst: the notice names the role, as a pick does (#460).
+        var facade = new JsLlmFacade(engine, llm, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget },
+            new JsLlmObservability { AgentName = "Reader", Logger = loggers.CreateLogger("act") },
+            new JsLlmPicking(null, "Analyst"), withPruner ? pruner : null);
+        arrange?.Invoke(model, facade);
+
+        var options = await engine.EvaluateAsync("(" + optionsJs + ")", null, TestContext.Current.CancellationToken);
+        var result = await facade.ActAsync(engine, "read both", options);
+        return new PruneRun(llm, model, observer, loggers.Logger, result);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async Task ShouldDropTheOlderReadsAndSaySo_WhenPruneIsTrue()
+    {
+        // Arrange: the configured numbers judge from the first read on.
+        var configured = new Orkeon.Application.Crew.Compaction.ToolResultPruningOptions { FillShare = 0.0001, KeepRecentMessages = 0 };
+
+        // Act
+        var run = await RunPruneAsync("{ prune: true }", configured);
+
+        // Assert
+        Assert.Equal("done", run.Output);
+        Assert.StartsWith("[pruned to save context: the result of file_read {\"path\":\"/a\"}", run.Provider.Turns[2].First(m => m.Role == "tool").Content, StringComparison.Ordinal);
+        Assert.Equal(2, run.Model.Requests.Count);
+        Assert.Equal((2, 2, 0, 0, 2), (run.PrunedCount("offered"), run.PrunedCount("judged"), run.PrunedCount("kept"), run.PrunedCount("cut"), run.PrunedCount("dropped")));
+        Assert.True(run.PrunedCount("freedTokens") > 3_000);
+        Assert.Equal(2, run.Observer.Notices.Count);
+        Assert.All(run.Observer.Notices, n => Assert.Equal("Analyst", n.AgentRole));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async Task ShouldKeepTheResultsAndWarnOnce_WhenPruneIsAskedOfAHostWithoutAPruner()
+    {
+        // Act: three reads, so three turns asked for a pruning the host cannot give.
+        var run = await RunPruneAsync("{ prune: " + Eager + " }", withPruner: false);
+
+        // Assert
+        Assert.Equal("done", run.Output);
+        Assert.Empty(run.Model.Requests);
+        Assert.True(run.Pruned.IsUndefined());
+        Assert.All(run.Provider.Turns[3].Where(m => m.Role == "tool"), m => Assert.True(m.Content.Length > 8_000));
+        var warning = Assert.Single(run.Logger.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+        Assert.Contains("prune", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("provides no pruner", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async Task ShouldTellTheDecisionModelThePromptAsTheTask_WhenPruneJudges()
+    {
+        // Act
+        var run = await RunPruneAsync("{ prune: " + Eager + " }");
+
+        // Assert
+        Assert.All(run.Model.Requests, r => Assert.Contains("read both", r.State.ToString(), StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-461")]
+    [InlineData("{}")]
+    [InlineData("{ prune: false }")]
+    [InlineData("{ prune: null }")]
+    public async Task ShouldMakeNoDecisionCall_WhenTheCallSetsNoPruneEvenWithPruningEnabled(string optionsJs)
+    {
+        // Arrange: Orkeon:Compaction:Prune:Enabled is the crew loops' switch.
+        var configured = new Orkeon.Application.Crew.Compaction.ToolResultPruningOptions { Enabled = true, FillShare = 0.0001, KeepRecentMessages = 0 };
+
+        // Act
+        var run = await RunPruneAsync(optionsJs, configured);
+
+        // Assert
+        Assert.Equal("done", run.Output);
+        Assert.Empty(run.Model.Requests);
+        Assert.True(run.Pruned.IsUndefined());
+        Assert.All(run.Provider.Turns[3].Where(m => m.Role == "tool"), m => Assert.True(m.Content.Length > 8_000));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async Task ShouldJudgeOnTheCallsNumbers_WhenPruneIsAnObject()
+    {
+        // Act: the configured fill share (0.4 of 200,000 tokens) is never reached; the call's own is.
+        var configured = await RunPruneAsync("{ prune: true }");
+        var overridden = await RunPruneAsync("{ prune: " + Eager + " }");
+
+        // Assert
+        Assert.Empty(configured.Model.Requests);
+        Assert.True(configured.Pruned.IsUndefined());
+        Assert.Equal(2, overridden.PrunedCount("dropped"));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-461")]
+    [InlineData(ToolAccess.Edit)]
+    [InlineData(ToolAccess.Execute)]
+    public async Task ShouldOfferNoResult_WhenTheToolIsNotARead(ToolAccess access)
+    {
+        // Act
+        var run = await RunPruneAsync("{ prune: " + Eager + " }", access: access);
+
+        // Assert
+        Assert.Equal("done", run.Output);
+        Assert.Empty(run.Model.Requests);
+        Assert.True(run.Pruned.IsUndefined());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async Task ShouldSayWhatWasPruned_WhenTheActIsExhausted()
+    {
+        // Act
+        var run = await RunPruneAsync("{ maxIterations: 3, prune: " + Eager + " }");
+
+        // Assert
+        Assert.True(run.Result.Get("exhausted").AsBoolean());
+        Assert.Equal(1, run.PrunedCount("dropped"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async Task ShouldSayWhatWasPruned_WhenTheActIsInterrupted()
+    {
+        // Arrange: the script interrupts while the second pruning is asked.
+        void InterruptOnSecond(StubPruneDecisionModel model, JsLlmFacade facade) =>
+            model.OnDecide = n => { if (n == 2) facade.interrupt(); };
+
+        // Act
+        var run = await RunPruneAsync("{ prune: " + Eager + " }", arrange: InterruptOnSecond);
+
+        // Assert
+        Assert.True(run.Result.Get("interrupted").AsBoolean());
+        Assert.Equal(1, run.PrunedCount("dropped"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async Task ShouldSayWhatWasPruned_WhenTheTokenBudgetEndsTheAct()
+    {
+        // Arrange: the third call spends the budget; the wrap-up answers.
+        var budget = new Orkeon.Domain.Autonomous.AgentExecutionBudget { MaxToolCalls = 10, MaxTokensConsumed = 150 };
+
+        // Act
+        var run = await RunPruneAsync("{ prune: " + Eager + " }", budget: budget, tokensPerTurn: 60);
+
+        // Assert
+        Assert.True(run.Result.Get("budgetExhausted").AsBoolean());
+        Assert.Equal(1, run.PrunedCount("dropped"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async Task ShouldAskNothingAndWarnOnce_WhenTheDecisionCircuitIsOff()
+    {
+        // Act
+        var run = await RunPruneAsync("{ prune: " + Eager + " }", circuit: Orkeon.Application.Crew.Execution.DecisionCircuit.Off);
+
+        // Assert
+        Assert.Equal("done", run.Output);
+        Assert.Empty(run.Model.Requests);
+        Assert.True(run.Pruned.IsUndefined());
+        var warning = Assert.Single(run.Logger.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+        Assert.Contains("decision circuit is off", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-461")]
+    [InlineData("{ prune: true, onContextPressure: (p) => ({}) }", "onContextPressure")]
+    [InlineData("{ prune: true, contextPressure: { thresholdTokens: 0 } }", "contextPressure")]
+    public async Task ShouldRefuseTheCall_WhenPruneComesWithTheScriptsOwnPruning(string optionsJs, string other)
+    {
+        // Act
+        var refused = await Assert.ThrowsAsync<Orkeon.Scripting.Exceptions.InvalidScriptException>(() => RunPruneAsync(optionsJs));
+
+        // Assert
+        Assert.Contains("prune", refused.Message, StringComparison.Ordinal);
+        Assert.Contains(other, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-461")]
+    [InlineData("{ prune: { fillShare: 0 } }", "fillShare")]
+    [InlineData("{ prune: { fillShare: 1.5 } }", "fillShare")]
+    [InlineData("{ prune: { fillShare: 'half' } }", "fillShare takes a number")]
+    [InlineData("{ prune: { keepRecentMessages: -1 } }", "keepRecentMessages")]
+    [InlineData("{ prune: { keepRecentMessages: 2.5 } }", "keepRecentMessages takes a whole number")]
+    [InlineData("{ prune: { headChars: 0 } }", "headChars")]
+    [InlineData("{ prune: 'yes' }", "prune")]
+    [InlineData("{ prune: [] }", "takes true or {")]
+    public async Task ShouldRefuseTheCall_WhenAPruneNumberIsOutOfItsBounds(string optionsJs, string named)
+    {
+        // Act
+        var refused = await Assert.ThrowsAsync<Orkeon.Scripting.Exceptions.InvalidScriptException>(() => RunPruneAsync(optionsJs));
+
+        // Assert
+        Assert.Contains(named, refused.Message, StringComparison.Ordinal);
     }
 }

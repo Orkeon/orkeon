@@ -303,6 +303,44 @@ public sealed class HostStartupSequenceTests : IDisposable
     }
 
     /// <summary>
+    /// #449 - no declared section of the daemon lists as a key a value the binder cannot write: a
+    /// computed property (ListenerPrefix, NeedsBrowserGuard), one behind a private setter.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-449")]
+    public void ShouldListNoComputedValueAsAKey_WhenTheDeclaredShapesAreWalked()
+    {
+        var launch = Prepare(Settings());
+        using var host = launch.Host;
+        Assert.NotNull(host);
+        var pending = new Stack<Type>(host.Services.GetServices<SettingsDeclaration>().Select(d => d.Shape));
+        var seen = new HashSet<Type>();
+        var listed = new SortedSet<string>(StringComparer.Ordinal);
+        while (pending.TryPop(out var type))
+        {
+            if (!seen.Add(type) || type.Namespace?.StartsWith("Orkeon.", StringComparison.Ordinal) != true || type.IsEnum)
+            {
+                foreach (var argument in type.GetGenericArguments())
+                    pending.Push(argument);
+                continue;
+            }
+
+            var keys = SettingsShape.Of(type).Named;
+            foreach (var property in type.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            {
+                pending.Push(property.PropertyType);
+                var target = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                var scalar = target.IsPrimitive || target.IsEnum || target == typeof(string) || target == typeof(TimeSpan);
+                if (scalar && property.GetSetMethod() is null && keys.ContainsKey(property.Name))
+                    listed.Add($"{type.Name}.{property.Name}");
+            }
+        }
+
+        Assert.Contains(typeof(Orkeon.Host.HostA2AOptions), seen);
+        Assert.Empty(listed);
+    }
+
+    /// <summary>
     /// CH-10 - a folder granted to a crew that is missing, or a grant that is malformed, is refused at
     /// the start, exit 78, the line naming the crew.
     /// </summary>

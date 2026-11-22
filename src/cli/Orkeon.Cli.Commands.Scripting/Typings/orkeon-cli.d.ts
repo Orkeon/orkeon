@@ -293,7 +293,8 @@ export interface ServiceLocator {
    *   `"permissions"` → {@link PermissionRulesFacade} (the session's tool-call rules, in `orkeon-repl`),
    *   `"approvals"` → {@link PendingApprovals} (the tool approvals waiting for the operator, read-only, in `orkeon-repl`),
    *   `"session"` → {@link SessionFacade} (save the persisted session now, here or to another file, load a saved one, in `orkeon-repl`),
-   *   `"usage"` → {@link SessionUsage} (the session's LLM usage by model and by command, with its cost, read-only).
+   *   `"usage"` → {@link SessionUsage} (the session's LLM usage by model and by command, with its cost, read-only),
+   *   `"pick"` → {@link PickService} (System One's profile and thinking-level pick, as `ctx.llm.pick`, in a host that runs scripted commands and wires an `ISystemOnePicker` — `orkeon-repl` among the shipped ones; `orkeon run`, `orkeon-host` and `mcp serve --crew` load no scripted command; experimental, ORKEXP008).
    *
    * The host configuration is deliberately not served: it carries API keys and connection
    * strings (SEC-009), so `get("configuration")` throws.
@@ -305,8 +306,68 @@ export interface ServiceLocator {
   get(name: "session"): SessionFacade;
   get(name: "runtime"): RuntimeInfo;
   get(name: "usage"): SessionUsage;
+  get(name: "pick"): PickService;
   get<T = unknown>(name: string): T;
   has(name: string): boolean;
+}
+
+/** A thinking level of a pick. */
+export type PickEffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
+
+/** The profile part of a pick: profiles the host declares, cheapest first. */
+export interface PickProfileOptions {
+  /** Two or more profiles the host declares, each once, none blank nor `"auto"`. Left out: `Orkeon:Decision:Route:Ladder`. */
+  readonly ladder?: readonly string[];
+  /** The lowest rung the answer may be: a rung of the ladder. A pick under it answers it, reason `"floor"`. */
+  readonly floor?: string;
+  /** The highest rung the answer may be: a rung of the ladder. A pick above it answers it, reason `"ceiling"`. */
+  readonly ceiling?: string;
+  /** What stands without a pick: any profile the host declares. Left out: the host's `"default"`. */
+  readonly fallback?: string;
+}
+
+/** The thinking-level part of a pick: the levels of `Orkeon:Decision:Effort:Levels` between `min` and `max`. */
+export interface PickEffortOptions {
+  readonly min?: PickEffortLevel;
+  readonly max?: PickEffortLevel;
+  /** The level that stands without a pick. Left out: `null`, and the profile's own thinking stands. */
+  readonly fallback?: PickEffortLevel;
+}
+
+/** What a pick asks: a profile, a thinking level, or both (one decision call). */
+export interface PickOptions {
+  readonly profile?: PickProfileOptions;
+  readonly effort?: PickEffortOptions;
+}
+
+/** One answer of a pick. */
+export interface PickAnswer<TValue, TReason> {
+  /** The profile or level to use: the model's pick (held between floor and ceiling), else the fallback. */
+  readonly value: TValue;
+  readonly reason: TReason;
+  /** What the decision model answered, when it answered one of the options; else `null`. */
+  readonly picked: string | null;
+  /** The probability the answer gave `picked`; else `null`. */
+  readonly probability: number | null;
+}
+
+/** The answer of a pick: a key for each part asked, the other absent. */
+export interface PickResult {
+  readonly profile?: PickAnswer<string, "model" | "low-confidence" | "no-answer" | "circuit-off" | "no-ladder" | "floor" | "ceiling">;
+  readonly effort?: PickAnswer<PickEffortLevel | null, "model" | "low-confidence" | "no-answer" | "circuit-off" | "single-level">;
+}
+
+/**
+ * System One's pick for a command — `ctx.services.get("pick")`, present when `ctx.services.has("pick")`.
+ * Experimental (ORKEXP008). The contract of `ctx.llm.pick`, with these differences: a refusal is
+ * prefixed `services.get("pick").pick { <option> } ...` (not `ctx.llm.pick { <option> } ...`); the call follows
+ * the running command's cancellation (`ctx.signal`) by itself; the LLM usage is metered like the command's other
+ * LLM calls (a `decision` call, in the session's total); there is no agent role (the decision model reads an empty
+ * one). The service is bound to the run that got it: get it inside the handler, never once at module scope (a value
+ * kept there follows the first run's cancellation).
+ */
+export interface PickService {
+  pick(request: string, options: PickOptions): Promise<PickResult>;
 }
 
 /**

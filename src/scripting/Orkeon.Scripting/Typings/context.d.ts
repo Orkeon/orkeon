@@ -36,6 +36,55 @@ declare global {
         delete(key: string): Promise<boolean>;
     }
 
+    // ctx.llm.pick (#460): System One's profile and thinking-level pick for a script that runs no task.
+    /** The profile part of `ctx.llm.pick`: profiles the host declares, cheapest first. */
+    interface PickProfileOptions {
+        /** Two or more profiles the host declares, each once, none blank nor `"auto"`. Left out: `Orkeon:Decision:Route:Ladder`. */
+        readonly ladder?: readonly string[];
+        /** The lowest rung the answer may be: a rung of the ladder. A pick under it answers it, reason `"floor"`. */
+        readonly floor?: string;
+        /** The highest rung the answer may be: a rung of the ladder. A pick above it answers it, reason `"ceiling"`. */
+        readonly ceiling?: string;
+        /** What stands without a pick: any profile the host declares. Left out: the host's `"default"`. */
+        readonly fallback?: string;
+    }
+
+    /** The thinking-level part of `ctx.llm.pick`: the levels of `Orkeon:Decision:Effort:Levels` between `min` and `max`. */
+    interface PickEffortOptions {
+        readonly min?: EffortLevel;
+        readonly max?: EffortLevel;
+        /** The level that stands without a pick. Left out: `null`, and the profile's own thinking stands. */
+        readonly fallback?: EffortLevel;
+    }
+
+    /** What `ctx.llm.pick` asks: a profile, a thinking level, or both (one decision call). */
+    interface PickOptions {
+        readonly profile?: PickProfileOptions;
+        readonly effort?: PickEffortOptions;
+    }
+
+    /** Why a profile pick answers what it answers. */
+    type PickProfileReason = "model" | "low-confidence" | "no-answer" | "circuit-off" | "no-ladder" | "floor" | "ceiling";
+    /** Why a thinking-level pick answers what it answers. */
+    type PickEffortReason = "model" | "low-confidence" | "no-answer" | "circuit-off" | "single-level";
+
+    /** One answer of `ctx.llm.pick`. */
+    interface PickAnswer<TValue, TReason> {
+        /** The profile or level to use: the model's pick (held between floor and ceiling), else the fallback. */
+        readonly value: TValue;
+        readonly reason: TReason;
+        /** What the decision model answered, when it answered one of the options; else `null`. */
+        readonly picked: string | null;
+        /** The probability the answer gave `picked`; else `null`. */
+        readonly probability: number | null;
+    }
+
+    /** The answer of `ctx.llm.pick`: a key for each part asked, the other absent. */
+    interface PickResult {
+        readonly profile?: PickAnswer<string, PickProfileReason>;
+        readonly effort?: PickAnswer<EffortLevel | null, PickEffortReason>;
+    }
+
     interface LlmFacade {
         /**
          * One prompt, the answer. A call a stage of the host's decision profile blocks rejects
@@ -84,6 +133,21 @@ declare global {
          */
         extract<T>(prompt: string | readonly Message[] | MessageList, schema: JsonSchema, opts?: ExtractOptions): Promise<T>;
         decide<T extends string>(prompt: string, choices: readonly T[], opts?: LlmCallOptions): Promise<T>;
+        /**
+         * System One's pick for a script that runs no task (#460): the profile among a ladder and the thinking level
+         * among the host's levels that `request` needs, in ONE decision call for both, each held to a probability of
+         * 0.6 or its fallback. No call when one rung or one level is left, with the decision circuit off, or in a
+         * crew on `decision.mode: "none"` (`"circuit-off"`). Nothing is kept: the answer is a value the script
+         * holds. Every refused option rejects with an `InvalidScriptError` naming it, before any call.
+         *
+         * ```ts
+         * const { profile, effort } = await ctx.llm.pick(request, {
+         *     profile: { ladder: ["small", "large"], fallback: "small" },
+         *     effort: { min: "low", max: "high" },
+         * });
+         * ```
+         */
+        pick(request: string, options: PickOptions): Promise<PickResult>;
         /**
          * A deterministic local vector per text, for exercising the API without a model: no provider is
          * called, so `opts` is read by nothing (an unknown `llm.profile` does not throw here).
@@ -148,8 +212,11 @@ declare global {
          * `LlmConfig` is not accepted here (it throws): its temperature and token cap would not apply.
          */
         llm?: { profile?: string; model?: string; provider?: never };
-        /** Turns the provider's thinking on at this effort for the call. */
-        effort?: EffortLevel;
+        /**
+         * Turns the provider's thinking on at this effort for the call. `null` means "not set", as
+         * absent: a pick's `effort.value` (`EffortLevel | null`) is handed over as it is.
+         */
+        effort?: EffortLevel | null;
         /**
          * The prompt-cache request of the call, as `agentBuilder().cache(...)` takes it; it wins over the
          * agent's own. `{}` turns caching off for the call.
@@ -305,6 +372,25 @@ declare global {
             headChars?: number;
         };
         /**
+         * The orchestrator's pruning of older read-tool results, for this loop (#461): before a model
+         * turn whose estimated prompt reaches `fillShare` of the call's usable window, the decision
+         * model judges each result of a read this call ran, outside the last `keepRecentMessages`
+         * messages and of a turn the model has answered since, from its call alone (never its
+         * result): kept, cut to its first `headChars` characters, or dropped. A pruned result leaves
+         * a line that says how to get it back. `true` takes the host's `Orkeon:Compaction:Prune`
+         * numbers; an object overrides them. Without `prune` no decision call is made, whatever
+         * `Orkeon:Compaction:Prune:Enabled` says. With the decision circuit off, nothing is asked
+         * and the run warns once. Refused next to `onContextPressure` or `contextPressure`.
+         */
+        prune?: boolean | {
+            /** The share of the usable window from which results are judged, above 0 and at most 1. The host's setting, 0.4 unless set. */
+            fillShare?: number;
+            /** The last messages whose results are never offered, 0 or more. The host's setting, 6 unless set. */
+            keepRecentMessages?: number;
+            /** Characters a cut result keeps, 1 or more. The host's setting, 300 unless set. */
+            headChars?: number;
+        };
+        /**
          * Subset of the agent's tools to offer the model for this call. A name the agent does
          * not hold throws `UnknownToolError` before the model is asked. Omitted: all its tools.
          */
@@ -355,6 +441,24 @@ declare global {
         readonly budgetExhausted?: true;
         /** The effort the loop's turns ask for and the one the provider sends; `null` when none is asked. */
         readonly reasoning: LlmReasoning | null;
+        /** What `prune` judged and did over the loop, summed; absent when nothing was judged (#461). */
+        readonly pruned?: ActPruned;
+    }
+
+    /** What the `prune` option of `act(...)` judged and did over the loop. */
+    interface ActPruned {
+        /** The results offered to the decision model. */
+        readonly offered: number;
+        /** The results it answered for. */
+        readonly judged: number;
+        /** The results kept whole. */
+        readonly kept: number;
+        /** The results cut to their first characters. */
+        readonly cut: number;
+        /** The results replaced by a line naming their call. */
+        readonly dropped: number;
+        /** The tokens freed, at four characters a token. */
+        readonly freedTokens: number;
     }
 
     interface Message {

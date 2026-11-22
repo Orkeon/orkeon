@@ -493,6 +493,7 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.Equal(2, errors.Count);
         Assert.All(errors, e => Assert.Equal("FORGE-FOLDERS-INVALID", e.GetProperty("code").GetString()));
         Assert.All(errors, e => Assert.True(e.GetProperty("recoverable").GetBoolean()));
+        Assert.All(errors, e => Assert.False(e.GetProperty("terminal").GetBoolean()));
         Assert.Contains("does not exist", errors[1].GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.Equal(["/outmd"], ForgeFolders.Confirmed(session)!.Select(f => f.Path));
     }
@@ -522,6 +523,7 @@ public sealed class ForgeFoldersTests : IDisposable
         var error = Assert.Single(Events(), e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal("FORGE-FOLDERS-INVALID", error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());
+        Assert.False(error.GetProperty("terminal").GetBoolean());
         var message = error.GetProperty("message").GetString()!;
         Assert.Contains("'/inpdf'", message, StringComparison.Ordinal);
         Assert.Contains($"orkeon forge resume {session.Document.Slug} --dry", message, StringComparison.Ordinal);

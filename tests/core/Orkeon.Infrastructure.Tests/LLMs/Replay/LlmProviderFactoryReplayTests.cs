@@ -122,6 +122,33 @@ public sealed class LlmProviderFactoryReplayTests
 
         Assert.Contains("Llm:Replay:Cassette", noCassette.Message, StringComparison.Ordinal);
         Assert.Contains("Llm:Replay:Mode", unknown.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("tape", unknown.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-464")]
+    [InlineData("1")]
+    [InlineData("2")]
+    [InlineData("off, record")]
+    [InlineData("Record,Replay")]
+    public void A_mode_written_as_a_number_or_a_list_refuses_the_start_like_an_unknown_mode(string mode)
+    {
+        var refused = Assert.Throws<InvalidOperationException>(() => LlmSettings.ReadReplay(Settings(("Llm:Replay:Mode", mode), ("Llm:Replay:Cassette", "/c/x.jsonl"))));
+
+        Assert.Contains("Llm:Replay:Mode", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("is not a replay mode", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-464")]
+    [InlineData(" Record ", LlmReplayMode.Record)]
+    [InlineData("REPLAY", LlmReplayMode.Replay)]
+    [InlineData("off", LlmReplayMode.Off)]
+    public void A_mode_written_by_its_name_in_any_case_is_read(string mode, LlmReplayMode expected)
+    {
+        var options = LlmSettings.ReadReplay(Settings(("Llm:Replay:Mode", mode), ("Llm:Replay:Cassette", "/c/x.jsonl")));
+
+        Assert.Equal(expected, options.Mode);
     }
 
     [Fact]

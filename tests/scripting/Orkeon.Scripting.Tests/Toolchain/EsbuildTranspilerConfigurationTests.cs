@@ -51,6 +51,29 @@ public sealed class EsbuildTranspilerConfigurationTests : IDisposable
         Assert.Equal(new ScriptingToolchainOptions(), ScriptingToolchainOptions.FromConfiguration(null));
     }
 
+    [Theory]
+    [InlineData("1")]
+    [InlineData("Off, Always")]
+    [InlineData("sk-secret-example")]
+    public void FromConfiguration_refuses_a_TypeCheck_that_is_not_a_name(string value)
+    {
+        // #464: the configuration binder read "1" as Validate and a comma list as a combination.
+        var configuration = Configure(("Orkeon:Scripting:Toolchain:TypeCheck", value));
+
+        var refused = Assert.Throws<InvalidOperationException>(() => ScriptingToolchainOptions.FromConfiguration(configuration));
+
+        Assert.Equal("Orkeon:Scripting:Toolchain:TypeCheck is not a type-check mode: write one of Off, Validate, Always.", refused.Message);
+        Assert.DoesNotContain(value, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FromConfiguration_reads_TypeCheck_by_name_in_any_case()
+    {
+        var configuration = Configure(("Orkeon:Scripting:Toolchain:TypeCheck", " always "));
+
+        Assert.Equal(TypeCheckMode.Always, ScriptingToolchainOptions.FromConfiguration(configuration).TypeCheck);
+    }
+
     private static IConfiguration Configure(params (string Key, string Value)[] pairs)
         => new ConfigurationBuilder()
             .AddInMemoryCollection(pairs.Select(p => new KeyValuePair<string, string?>(p.Key, p.Value)))

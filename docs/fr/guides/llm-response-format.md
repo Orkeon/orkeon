@@ -145,8 +145,10 @@ const res = await ctx.llm.complete(
 celui de l'hôte, ou celui du profil de l'hôte que nomme `llm.profile(...)` ; `.llm(...)` règle le
 modèle. Un format de réponse est vérifié contre le fournisseur sur lequel l'agent tourne vraiment. `withResponseSchema(name, schema, strict?)` prend un objet
 littéral ou une chaîne JSON et implique `json_schema`. `ctx.llm.extract(prompt, schema)` envoie le
-schéma comme contrainte `json_schema` (nom `extract`, `strict: false`, car un schéma écrit à la main
-porte rarement le `additionalProperties: false` et le `required` complet qu'exige un schéma strict)
+schéma comme contrainte `json_schema` (nom `extract`, `strict: false` : le mode strict du dialecte
+OpenAI exige le `additionalProperties: false` et le `required` complet qu'un schéma écrit à la main
+porte rarement ; Anthropic n'a pas de `strict` sur un format de réponse et adapte le schéma
+lui-même, voir [le dialecte de schéma d'Anthropic](#le-dialecte-de-schéma-danthropic))
 quand le fournisseur en valide une (`ResponseFormatSupport.JsonSchema`), et demande `json_object`
 sinon ; un `responseFormat`
 explicite sur l'appel l'emporte, `"text"` compris.
@@ -217,12 +219,84 @@ raison.
 | Provider | Capacité déclarée | Notes |
 |---|---|---|
 | OpenAI, Azure OpenAI, Grok, Gemini, Mistral, Together AI | `JsonSchema` | Validation de schéma côté serveur. |
-| **Anthropic** | `JsonSchema` | Dialecte propre (`output_config`) — schéma uniquement, pas de `json_object` nu. |
+| **Anthropic** | `JsonSchema` | Dialecte propre (`output_config`) — schéma uniquement, pas de `json_object` nu ; le fournisseur envoie une copie du schéma adaptée au sous-ensemble de JSON Schema d'Anthropic, ou le refuse avant l'appel ([ci-dessous](#le-dialecte-de-schéma-danthropic)). |
 | **Ollama** | `JsonSchema` | Dialecte propre (`format`). |
 | **DeepSeek**, Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. DeepSeek exige en plus le mot-clé `json` (ci-dessus). |
 | **MiniMax** | `None` | Accepté mais non contraignant (un schéma est ignoré, `json_object` revient clôturé en markdown) ; un format déclaré produit l'avertissement structuré de capacité. |
 | **OpenRouter** | `JsonSchema` | Documenté par endpoint. Le provider n'envoie pas `provider.require_parameters` : un endpoint sans prise en charge du schéma peut donc encore l'ignorer. |
 | **Mammouth AI** | `None` | Accepté mais non contraignant (`json_object` rend du JSON nu, un schéma strict n'est pas appliqué) ; un format déclaré produit l'avertissement structuré de capacité. |
+
+## Le dialecte de schéma d'Anthropic
+
+Les sorties structurées d'Anthropic prennent un sous-ensemble de JSON Schema et répondent un 400 au
+reste ([JSON Schema limitations](https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations)).
+Un script, une crew ou un fichier YAML n'écrit jamais un schéma pour un seul fournisseur : quelle que
+soit l'entrée (`ctx.llm.extract`, `withResponseSchema`, `response_format`, un livrable
+`structured_output`, le circuit de décision), `AnthropicLlmProvider` travaille sur une copie du
+schéma, comme le font les aides des SDK d'Anthropic. Ce qui suit a été vérifié contre l'API Messages
+elle-même.
+
+- Tout nœud objet qui ne fixe pas `additionalProperties` reçoit `"additionalProperties": false`, où
+  qu'il se trouve (`properties`, `items`, branches `anyOf`/`allOf`, `$defs`/`definitions`) ; un
+  `false` explicite est laissé tel qu'écrit. Une propriété absente de `required` reste facultative.
+- Les contraintes que l'API refuse sont retirées et écrites dans la `description` du nœud
+  (`{minimum: 18, maximum: 120}`), pour que le modèle les lise encore : `minimum`, `maximum`,
+  `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `maxItems`, `uniqueItems: true`, un
+  `minItems` supérieur à 1, un `format` autre que `date-time`, `time`, `date`, `duration`, `email`,
+  `hostname`, `uri`, `ipv4`, `ipv6` et `uuid`. Un `uniqueItems: false`, que l'API refuse aussi et
+  qui ne contraint rien, est retiré.
+- Ce que l'API prend est envoyé tel qu'écrit : `minLength`, `maxLength` et `pattern` (la réponse
+  respecte `maxLength` et `pattern` ; un `minLength` est pris sans être tenu), `enum`, `const`,
+  `anyOf`, `allOf`, un `$ref` local vers `$defs` ou `definitions`, une liste de `type`
+  (`["string", "null"]`), `title`, `default` et `examples`. Hors d'un nœud objet, `if`, `then` et
+  `else` sont pris aussi, sur un nœud chaîne, nombre ou `allOf`, comme `unevaluatedItems` et
+  `additionalItems` sur un tableau : l'API n'y tient la réponse à aucun d'eux, et ne parcourt aucun
+  sous-schéma qu'ils portent.
+
+La racine est parcourue de la même façon quel que soit son `type` : une racine `array` ne reçoit pas
+d'`additionalProperties` propre, les objets sous elle sont fermés ; une racine `{"type": "string"}`
+est envoyée telle quelle.
+
+Ce que l'API refuse et qu'Orkeon ne peut pas réécrire sans changer le sens du schéma est **refusé
+avant tout appel HTTP**, la phrase nommant le mot-clé et son chemin :
+
+- `oneOf` (écrire `anyOf`) et `not` ;
+- un `additionalProperties` à `true` ou à un schéma ;
+- un objet qui ne déclare pas de `properties`, ou un `properties: {}` vide, sans
+  `additionalProperties: false` explicite — un `{"type": "object"}` libre (un sac `metadata`), la
+  racine comprise : le fermer ne laisserait au modèle que `{}` à répondre. Lister les clés que
+  l'objet peut porter, écrire `additionalProperties: false` quand c'est un objet vide qui est voulu,
+  ou prendre un tableau d'éléments clé et valeur pour des clés arbitraires ;
+- sur un nœud objet, `if`, `then`, `else`, `patternProperties`, `dependentSchemas`,
+  `dependencies`, `contains`, `propertyNames`, `unevaluatedProperties`, `unevaluatedItems` et
+  `additionalItems` ; sur un nœud tableau, `contains` et `prefixItems`, et un `items` qui n'est pas
+  un seul objet schéma (un tuple, `true`) ; sur un nœud `anyOf`, `if`, `then` et `else` ;
+- un `$ref` à côté d'une contrainte (`type`, par exemple) — les annotations `description`, `title`,
+  `default` et `examples` peuvent s'y trouver, et une contrainte que le fournisseur reporte ne
+  compte plus ;
+- un `$ref` externe, et un schéma récursif (un `$ref` vers un nœud qui le contient) ;
+- un schéma qui accepte n'importe quelle valeur — `{}`, un schéma booléen (`true`), la racine
+  comprise — ou un nœud qui ne nomme aucun `type` (ni `anyOf`, `allOf`, `$ref`, `const` ou `enum`) ;
+- une `description` qui n'est pas une chaîne ;
+- des messages qui finissent sur un tour `assistant` (un pré-remplissage, qu'Anthropic refuse avec
+  une sortie JSON).
+
+Un script lit par exemple :
+
+```
+ctx.llm.extract: the provider failed: Anthropic cannot take the response schema 'extract': `oneOf` at `#/properties/pick` is not supported; use `anyOf`.
+```
+
+Le refus est une réponse d'erreur de type `UnsupportedResponseSchema`, classée comme refusée : une
+chaîne de repli ne la passe pas à son profil suivant. Une tâche dotée d'une politique de reprise
+s'exécute encore après son délai, et est refusée de nouveau : corriger le schéma plutôt qu'augmenter
+le nombre de tentatives.
+
+Le schéma de l'appelant n'est jamais modifié. L'`output_json` d'une tâche est validé contre le
+schéma de l'auteur (`OutputValidationCoordinator`), toutes contraintes comprises : une contrainte
+reportée dans une description est donc encore vérifiée après l'appel, et un écart déclenche le tour
+de correction. Ailleurs (`ctx.llm.extract`, un livrable), la réponse est lue comme du JSON, et une
+contrainte reportée n'atteint le modèle que sous forme de texte.
 
 ## Livrables `structured_output`
 
@@ -234,7 +308,8 @@ honore — jamais les deux, ce que `llama-server` refuse :
   (`"Llm": { "Grammar": true }` — Docker Model Runner, `llama-server`) ;
 - sinon un **format de réponse `json_schema`** (nom `structured_output`, `strict: false`, car le
   mode strict d'OpenAI refuse un schéma qui laisse un objet ouvert ou une propriété optionnelle),
-  sur un fournisseur qui déclare `JsonSchema` dans la matrice ci-dessus ;
+  sur un fournisseur qui déclare `JsonSchema` dans la matrice ci-dessus (Anthropic l'envoie dans
+  [son propre dialecte](#le-dialecte-de-schéma-danthropic)) ;
 - sinon rien ne contraint : la grammaire atteint le fournisseur, qui l'abandonne avec un
   avertissement structuré nommant `Llm:Grammar`.
 

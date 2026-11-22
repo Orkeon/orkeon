@@ -52,6 +52,10 @@ public sealed class ForgeEditAtPauseTests : IDisposable
         return $$"""{"kind":"blueprint.edited","blueprint":{{compact}}}""";
     }
 
+    /// <summary>The <c>error</c> lines of a jsonl run, in order.</summary>
+    private static List<string> ErrorLines(TestConsole console) =>
+        [.. console.Stdout.Split('\n').Where(l => l.Contains("\"kind\":\"error\"", StringComparison.Ordinal))];
+
     [Fact]
     public async Task Edit_without_resume_is_refused()
     {
@@ -145,6 +149,9 @@ public sealed class ForgeEditAtPauseTests : IDisposable
         Assert.Equal(1, exitCode);
         Assert.Contains("FORGE-BLUEPRINT-INVALID", console.Stdout, StringComparison.Ordinal);
         Assert.Contains("\"status\":\"paused\"", console.Stdout, StringComparison.Ordinal);
+        // #453: the verb returns after the refusal, so the error says the process ends.
+        Assert.NotEmpty(ErrorLines(console));
+        Assert.All(ErrorLines(console), line => Assert.Contains("\"terminal\":true", line, StringComparison.Ordinal));
 
         // Untouched: same state, same blueprint, nothing rendered.
         Assert.True(ForgeSession.TryLoadBySlug(_workspace, "veille", out var reloaded, out _));
@@ -219,6 +226,7 @@ public sealed class ForgeEditAtPauseTests : IDisposable
         // Assert
         Assert.Equal(1, exitCode);
         Assert.Contains(ForgeEngine.CodeBudgetExhausted, console.Stdout, StringComparison.Ordinal);
+        Assert.Contains("\"terminal\":true", Assert.Single(ErrorLines(console)), StringComparison.Ordinal);
         Assert.True(ForgeSession.TryLoadBySlug(_workspace, "tri", out var reloaded, out _));
         Assert.Equal(ForgeState.Test, reloaded!.State);
         Assert.Equal(1, reloaded.Document.Budget.ConsumedIterations);

@@ -427,7 +427,7 @@
       "category": "orchestration-and-persistence",
       "hosts": [],
       "registration": "AddOrkeonInfrastructure",
-      "description": "How the agent loops prune their older read-tool results before they compact, bound to the `ToolResultPruningOptions.SectionName` section by `AddOrkeonInfrastructure()`. Once the estimated prompt reaches `ToolResultPruningOptions.FillShare` of the usable window (or the compaction trigger, whichever comes first), the decision model judges each result of a read tool older than the `ToolResultPruningOptions.KeepRecentMessages` last messages: keep it, keep its first `ToolResultPruningOptions.HeadChars` characters, or drop it. It sees the call (tool, input, size, age), never the result. With the decision circuit off, nothing is pruned. Pruning rides compaction: an agent that does not compact does not prune."
+      "description": "How the agent loops prune their older read-tool results before they compact, bound to the `ToolResultPruningOptions.SectionName` section by `AddOrkeonInfrastructure()`. Once the estimated prompt reaches `ToolResultPruningOptions.FillShare` of the usable window (or the compaction trigger, whichever comes first), the decision model judges each result of a read tool older than the `ToolResultPruningOptions.KeepRecentMessages` last messages: keep it, keep its first `ToolResultPruningOptions.HeadChars` characters, or drop it. It sees the call (tool, input, size, age), never the result. With the decision circuit off, nothing is pruned. A crew loop prunes where it compacts: an agent that does not compact does not prune. A script's `ctx.llm.act` does not compact, and prunes only when the call asks for it (`prune`, #461), whatever `ToolResultPruningOptions.Enabled` says."
     },
     {
       "path": "Orkeon:Consensus",
@@ -848,6 +848,12 @@
       "description": "How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off."
     },
     {
+      "path": "Llm:Profiles:<name>:WorkspaceId",
+      "section": "Llm",
+      "type": "string",
+      "description": "The Anthropic workspace the key acts in, sent as `anthropic-workspace-id`: an identity-linked key refuses every call without it. Not a secret. Another provider warns that it does not send it."
+    },
+    {
       "path": "Llm:Provider",
       "section": "Llm",
       "type": "string",
@@ -901,6 +907,12 @@
       "type": "integer",
       "default": 30,
       "description": "How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off."
+    },
+    {
+      "path": "Llm:WorkspaceId",
+      "section": "Llm",
+      "type": "string",
+      "description": "The Anthropic workspace the key acts in, sent as `anthropic-workspace-id`: an identity-linked key refuses every call without it. Not a secret. Another provider warns that it does not send it."
     },
     {
       "path": "LlmLogging:FullEmbeddingLog",

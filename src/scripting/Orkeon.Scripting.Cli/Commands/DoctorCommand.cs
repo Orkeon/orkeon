@@ -226,6 +226,8 @@ internal static class DoctorCommand
         public string? ApiKey { get; init; }
         /// <summary>Where that key comes from (<see cref="LlmSettings.DescribeApiKey(IConfigurationSection)"/>) — never the key.</summary>
         public string? ApiKeySource { get; init; }
+        /// <summary>The default's <c>Llm:WorkspaceId</c>, which an Anthropic identity-linked key needs for the catalogue (#468).</summary>
+        public string? WorkspaceId { get; init; }
         /// <summary>Why the <c>Llm</c> section cannot be read: the runner would refuse to start on it.</summary>
         public string? SettingsError { get; init; }
         public string? ProviderTypeName { get; init; }
@@ -273,7 +275,7 @@ internal static class DoctorCommand
         try
         {
             settings = LlmSettings.ReadDefault(configuration);
-            context = context with { ApiKey = ApiKeyOf(settings), ApiKeySource = LlmSettings.DescribeApiKey(section) };
+            context = context with { ApiKey = ApiKeyOf(settings), ApiKeySource = LlmSettings.DescribeApiKey(section), WorkspaceId = settings.WorkspaceId };
         }
         catch (InvalidOperationException ex)
         {
@@ -470,14 +472,28 @@ internal static class DoctorCommand
         // names, none —, never the key nor the variable's name; a reference set nowhere warns.
         var unresolved = llm.UnresolvedReferences.Contains(DefaultApiKeyReference, StringComparer.Ordinal);
         var provider = llm.ProviderDisplayName ?? "unrecognised";
+        var workspaceNotSent = WorkspaceIdNotSent(llm);
         return new DoctorCheckResult
         {
             Check = "llm-config",
-            Status = llm.ProviderDisplayName is not null && !unresolved && llm.SilentDefault is null ? StatusOk : StatusWarn,
+            Status = llm.ProviderDisplayName is not null && !unresolved && llm.SilentDefault is null && workspaceNotSent is null
+                ? StatusOk : StatusWarn,
             Detail = $"provider {provider}, model {llm.Model ?? "(default)"}, endpoint {llm.BaseUrl ?? "(provider default)"}, " +
-                     $"API key {llm.ApiKeySource}" + (llm.SilentDefault is null ? "" : " — " + llm.SilentDefault),
+                     $"API key {llm.ApiKeySource}" + (llm.SilentDefault is null ? "" : " — " + llm.SilentDefault) +
+                     (workspaceNotSent is null ? "" : " — " + workspaceNotSent),
         };
     }
+
+    /// <summary>
+    /// The phrase for an <c>Llm:WorkspaceId</c> the inferred provider cannot send, else null: a run's provider logs
+    /// event 110 for it and the catalogue request leaves it out, so doctor says it once, on this line (#468). A
+    /// provider module is left out: what it sends is its own.
+    /// </summary>
+    private static string? WorkspaceIdNotSent(LlmContext llm) =>
+        string.IsNullOrWhiteSpace(llm.WorkspaceId) || llm.ModuleKey is not null || llm.ProviderTypeName is null
+            || string.Equals(llm.ProviderTypeName, "AnthropicLlmProvider", StringComparison.Ordinal)
+            ? null
+            : $"Llm:WorkspaceId is set but {llm.ProviderDisplayName} does not support it — it is not sent; only Anthropic scopes a key to a workspace";
 
     private static readonly CompositeFormat UnresolvedApiKeyReferenceFormat =
         CompositeFormat.Parse(OperatorMessages.LlmApiKeyReferenceUnresolved);
@@ -602,7 +618,7 @@ internal static class DoctorCommand
         if (catalogKey is null)
             return new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = $"endpoint {baseUrl} accepts TCP connections (no catalogue endpoint to query)" };
 
-        return await ProbeCatalogueAsync(Check, catalogKey, baseUrl, llm.ApiKey, ct).ConfigureAwait(false);
+        return await ProbeCatalogueAsync(Check, catalogKey, baseUrl, llm.ApiKey, llm.WorkspaceId, ct).ConfigureAwait(false);
     }
 
     /// <summary>The provider's default endpoint for a catalogue key; null without a key, or when the provider declares none.</summary>
@@ -624,13 +640,13 @@ internal static class DoctorCommand
 
     /// <summary>The catalogue request, and what each way it can fail says of the endpoint.</summary>
     private static async Task<DoctorCheckResult> ProbeCatalogueAsync(
-        string check, string catalogKey, string baseUrl, string? apiKey, CancellationToken ct)
+        string check, string catalogKey, string baseUrl, string? apiKey, string? workspaceId, CancellationToken ct)
     {
         using var client = new HttpClient { Timeout = CatalogTimeout };
         try
         {
             var models = await LlmCatalogClient
-                .ListAsync(client, catalogKey, baseUrl.TrimEnd('/'), apiKey, ct).ConfigureAwait(false);
+                .ListAsync(client, catalogKey, baseUrl.TrimEnd('/'), apiKey, workspaceId, ct).ConfigureAwait(false);
             return new DoctorCheckResult
             {
                 Check = check,

@@ -67,7 +67,9 @@ internal static partial class LlmFailureClassifier
         {
             case ExhaustedErrorType:
                 return LlmFailureKind.Exhausted;
-            case BlockedErrorType:
+            // A call a decision stage blocked, or a request the provider refused before sending it
+            // (issue #459): the same request fails the same way, on this profile as on the next one.
+            case BlockedErrorType or AnthropicSchemaDialect.RefusedErrorType:
                 return LlmFailureKind.Refused;
             case "TaskCanceledException" or "TimeoutException" or "OperationCanceledException" or "StreamIdleTimeout":
                 return LlmFailureKind.Timeout;

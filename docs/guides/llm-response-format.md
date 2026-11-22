@@ -144,9 +144,10 @@ const res = await ctx.llm.complete(
 the host's, or the one of the host profile `llm.profile(...)` names; `.llm(...)` sets the model.
 A response format is checked against the provider the agent actually runs on. `withResponseSchema(name, schema, strict?)` takes an object
 literal or a JSON string and implies `json_schema`. `ctx.llm.extract(prompt, schema)` sends the
-schema as a `json_schema` constraint (name `extract`, `strict: false`, since a hand-written schema
-rarely carries the `additionalProperties: false` and full `required` a strict one needs) when the
-provider validates one (`ResponseFormatSupport.JsonSchema`), and asks for `json_object` otherwise; an explicit
+schema as a `json_schema` constraint (name `extract`, `strict: false`: the OpenAI dialect's strict
+mode needs the `additionalProperties: false` and full `required` a hand-written schema rarely
+carries; Anthropic has no `strict` on a response format and adapts the schema itself, see
+[Anthropic's schema dialect](#anthropics-schema-dialect)) when the provider validates one (`ResponseFormatSupport.JsonSchema`), and asks for `json_object` otherwise; an explicit
 `responseFormat` on the call wins, `"text"` included.
 
 ## C# fluent surface
@@ -213,12 +214,78 @@ own error, which surfaces as `LlmResponse.Error` and fails the task with that re
 | Provider | Declared capability | Notes |
 |---|---|---|
 | OpenAI, Azure OpenAI, Grok, Gemini, Mistral, Together AI | `JsonSchema` | Server-side schema validation. |
-| **Anthropic** | `JsonSchema` | Own dialect (`output_config`) — schema-only, no bare `json_object`. |
+| **Anthropic** | `JsonSchema` | Own dialect (`output_config`) — schema-only, no bare `json_object`; the provider sends a copy of the schema adapted to Anthropic's subset of JSON Schema, or refuses it before the call ([below](#anthropics-schema-dialect)). |
 | **Ollama** | `JsonSchema` | Own dialect (`format`). |
 | **DeepSeek**, Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | Well-formed JSON guaranteed; a schema is downgraded with a warning. DeepSeek also requires the `json` keyword (above). |
 | **MiniMax** | `None` | Accepted but non-binding (a schema is ignored, `json_object` comes back fenced in markdown); a declared format produces the structured capability warning. |
 | **OpenRouter** | `JsonSchema` | Documented per endpoint. The provider does not send `provider.require_parameters`, so an endpoint that lacks schema support may still ignore a schema. |
 | **Mammouth AI** | `None` | Accepted but non-binding (`json_object` returns bare JSON, a strict schema is not enforced); a declared format produces the structured capability warning. |
+
+## Anthropic's schema dialect
+
+Anthropic's structured outputs take a subset of JSON Schema and answer a 400 to the rest
+([JSON Schema limitations](https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations)).
+A script, a crew or a YAML file never writes a schema for one provider: whatever the way in
+(`ctx.llm.extract`, `withResponseSchema`, `response_format`, a `structured_output` deliverable, the
+decision circuit), `AnthropicLlmProvider` works on a copy of the schema, as Anthropic's SDK helpers do.
+What follows was checked against the Messages API itself.
+
+- Every object node that does not set `additionalProperties` gets `"additionalProperties": false`,
+  wherever it sits (`properties`, `items`, `anyOf`/`allOf` branches, `$defs`/`definitions`); an
+  explicit `false` is left as written. A property left out of `required` stays optional.
+- The constraints the API refuses are removed and written into the node's `description`
+  (`{minimum: 18, maximum: 120}`), so the model still reads them: `minimum`, `maximum`,
+  `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `maxItems`, `uniqueItems: true`, a
+  `minItems` above 1, a `format` other than `date-time`, `time`, `date`, `duration`, `email`,
+  `hostname`, `uri`, `ipv4`, `ipv6` and `uuid`. A `uniqueItems: false`, which the API refuses as
+  well and which constrains nothing, is dropped.
+- What the API takes is sent as written: `minLength`, `maxLength` and `pattern` (the answer keeps to
+  `maxLength` and `pattern`; a `minLength` is taken without being held to), `enum`, `const`,
+  `anyOf`, `allOf`, a local `$ref` to `$defs` or `definitions`, a `type` list (`["string",
+  "null"]`), `title`, `default` and `examples`. Off an object node, `if`, `then` and `else` are
+  taken too, on a string, number or `allOf` node, as are `unevaluatedItems` and `additionalItems`
+  on an array: the API holds the answer to none of them, and walks no sub-schema under them.
+
+The root is walked the same way whatever its `type`: a root `array` keeps no `additionalProperties`
+of its own, the objects below it are closed; a root `{"type": "string"}` is sent as is.
+
+What the API refuses and Orkeon cannot rewrite without changing the schema's meaning is **refused
+before any HTTP call**, the sentence naming the keyword and its path:
+
+- `oneOf` (write `anyOf`) and `not`;
+- an `additionalProperties` set to `true` or to a schema;
+- an object that declares no `properties`, or an empty `properties: {}`, without an explicit
+  `additionalProperties: false` — a free-form `{"type": "object"}` (a `metadata` bag), the root
+  included: closing it would leave the model nothing to answer but `{}`. List the keys the object
+  may hold, write `additionalProperties: false` when an empty object is what you mean, or use an
+  array of key and value items for arbitrary keys;
+- on an object node, `if`, `then`, `else`, `patternProperties`, `dependentSchemas`,
+  `dependencies`, `contains`, `propertyNames`, `unevaluatedProperties`, `unevaluatedItems` and
+  `additionalItems`; on an array node, `contains` and `prefixItems`, and an `items` that is not one
+  schema object (a tuple, `true`); on an `anyOf` node, `if`, `then` and `else`;
+- a `$ref` beside a constraint (`type`, for one) — the annotations `description`, `title`,
+  `default` and `examples` may sit beside it, and a constraint the provider moves no longer counts;
+- an external `$ref`, and a recursive schema (a `$ref` back to a node it sits in);
+- a schema that accepts any value — `{}`, a boolean schema (`true`), the root included — or a node
+  that names no `type` (nor `anyOf`, `allOf`, `$ref`, `const` or `enum`);
+- a `description` that is not a string;
+- messages that end on an `assistant` turn (a prefill, which Anthropic refuses with a JSON output).
+
+A script reads, for example:
+
+```
+ctx.llm.extract: the provider failed: Anthropic cannot take the response schema 'extract': `oneOf` at `#/properties/pick` is not supported; use `anyOf`.
+```
+
+The refusal is an error answer of type `UnsupportedResponseSchema`, classed as refused: a fallback
+chain does not move it to its next profile. A task with a retry policy still runs again after its
+delay, and is refused again: fix the schema rather than raise the attempts.
+
+The caller's schema is never changed. A task's `output_json` is validated against the author's own
+schema (`OutputValidationCoordinator`), every constraint included, so a constraint moved into a
+description is still checked after the call and a miss runs the correction round. Elsewhere
+(`ctx.llm.extract`, a deliverable) the answer is parsed as JSON, and a moved constraint reaches the
+model as text only.
 
 ## `structured_output` deliverables
 
@@ -230,7 +297,8 @@ never both, which `llama-server` refuses:
   (`"Llm": { "Grammar": true }` — Docker Model Runner, `llama-server`);
 - otherwise a **`json_schema` response format** (name `structured_output`, `strict: false`, since
   OpenAI's strict mode refuses a schema that leaves an object open or a property optional), on a
-  provider that declares `JsonSchema` in the matrix above;
+  provider that declares `JsonSchema` in the matrix above (Anthropic sends it in
+  [its own dialect](#anthropics-schema-dialect));
 - otherwise nothing binds: the grammar reaches the provider, which drops it with a structured
   warning naming `Llm:Grammar`.
 

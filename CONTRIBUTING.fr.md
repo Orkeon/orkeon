@@ -317,6 +317,9 @@ réponses et inspecter les appels. La référence est
 
 ### Scripts et commits
 
+* Avant d'ouvrir une pull request, et avant chaque push vers l'une d'elles, lancez
+  `bash scripts/pre-pr-check.sh` : il vérifie ce que la CI refuse et qu'un build local accepte, listé
+  dans `.github/pre-pr-checks.md`.
 * Un script `.sh`, ou tout script à ligne shebang destiné à être exécuté directement, est
   commité **exécutable** (mode `100755`) : `git update-index --chmod=+x path/to/script.sh`.
   La gate `file-modes.yml` lit le mode dans l'index git — le seul qu'un clone macOS/Linux

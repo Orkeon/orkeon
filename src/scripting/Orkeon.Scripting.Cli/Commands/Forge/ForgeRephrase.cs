@@ -3,11 +3,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
-using Orkeon.Constants.Configuration;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Scripting.Cli.Commands.Run;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
@@ -61,16 +61,35 @@ internal static class ForgeRephrase
             configureServices: (_, services) =>
             {
                 services.AddSingleton(console);
+                // The verb refuses without a default LLM: the host's echo fallback is never taken (#466).
+                services.AddSingleton<RunnerHost.EchoFallbackUnannounced>();
                 if (events is not null)
                     services.AddSingleton<ILlmCallObserver>(new RunEventsLlmCallObserver(events, TimeProvider.System));
             });
 
-        if (!host.Services.GetRequiredService<IConfiguration>().GetSection(ConfigurationKeys.LlmSection).Exists()
-            || host.Services.GetService<ILlmProvider>() is not { } provider)
+        // The host's own predicate: a section holding profiles alone wires the echo provider, not a model.
+        var provider = LlmSettings.HasDefault(host.Services.GetRequiredService<IConfiguration>())
+            ? host.Services.GetService<ILlmProvider>()
+            : null;
+        return await AnswerAsync(console, options, events, provider).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The verb once the host is built: refuses without <paramref name="provider"/>
+    /// (<c>FORGE-LLM-UNAVAILABLE</c>), asks it once, refuses an answer it did not give
+    /// (<c>FORGE-REPHRASE-EMPTY</c>) or writes the rewritten request.
+    /// </summary>
+    internal static async Task<int> AnswerAsync(
+        IRunnerConsole console, ForgeCommandOptions options, ForgeEventWriter? events, ILlmProvider? provider)
+    {
+        ArgumentNullException.ThrowIfNull(console);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (provider is null)
         {
             const string Message = "no LLM is configured — run `orkeon init`, or pass --settings.";
             if (events is not null)
-                events.Error(LlmUnavailableCode, Message, recoverable: false);
+                events.Error(LlmUnavailableCode, Message, recoverable: false, terminal: true);
             else
                 await console.ErrorOutput.WriteLineAsync($"orkeon forge: {Message}").ConfigureAwait(false);
             return ExitError;
@@ -81,7 +100,7 @@ internal static class ForgeRephrase
         {
             const string Message = "the model gave no rewritten request.";
             if (events is not null)
-                events.Error(EmptyCode, Message, recoverable: false);
+                events.Error(EmptyCode, Message, recoverable: false, terminal: true);
             else
                 await console.ErrorOutput.WriteLineAsync($"orkeon forge: {Message}").ConfigureAwait(false);
             return ExitError;

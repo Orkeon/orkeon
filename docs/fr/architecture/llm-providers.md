@@ -301,6 +301,7 @@ ne guérit pas passe à `b`, puis à `c` ; un profil enregistré en code prend l
 | le délai HTTP, un 408, un flux silencieux au-delà de `StreamIdleSeconds` | `timeout` | oui |
 | tous les profils d'une chaîne imbriquée ont échoué | `exhausted` | oui |
 | tout autre 4xx (400, 401, 403, 422...), un contenu bloqué (les étages de décision), un échec dont on ne sait rien | — | **non** : c'est la réponse |
+| un schéma de réponse que le dialecte Anthropic refuse avant l'appel (`UnsupportedResponseSchema`) | — | **non** : c'est la réponse |
 | l'annulation de l'appelant, levée ou rapportée dans la réponse par le fournisseur | — | non : l'appel est annulé, rien n'est basculé ni essayé |
 
 `LlmFailureClassifier` est l'unique classement : `ResiliencePolicies` en tire sa liste de statuts à rejouer (5xx, 408, 429), si bien

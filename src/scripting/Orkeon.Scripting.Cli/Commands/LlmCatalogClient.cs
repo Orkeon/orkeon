@@ -87,6 +87,10 @@ internal static class LlmCatalogClient
     /// <param name="provider">Provider key, as accepted by the factory.</param>
     /// <param name="baseUrl">Effective base URL.</param>
     /// <param name="apiKey">API key, or <see langword="null"/> for providers that need none.</param>
+    /// <param name="workspaceId">
+    /// The Anthropic workspace the key acts in, sent as the provider's own <c>anthropic-workspace-id</c> header:
+    /// an identity-linked key is refused <c>/v1/models</c> without it (#468). Ignored by every other provider.
+    /// </param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <returns>
     /// The model identifiers, deduplicated and sorted ordinally. Sorted rather than left in
@@ -96,14 +100,14 @@ internal static class LlmCatalogClient
     /// <exception cref="NotSupportedException">The provider exposes no catalogue endpoint.</exception>
     /// <exception cref="HttpRequestException">The catalogue endpoint refused the request.</exception>
     public static async Task<IReadOnlyList<string>> ListAsync(
-        HttpClient client, string provider, string baseUrl, string? apiKey,
+        HttpClient client, string provider, string baseUrl, string? apiKey, string? workspaceId,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentException.ThrowIfNullOrWhiteSpace(provider);
         ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl);
 
-        using var request = BuildRequest(provider, baseUrl.TrimEnd('/'), apiKey);
+        using var request = BuildRequest(provider, baseUrl.TrimEnd('/'), apiKey, workspaceId);
         using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
@@ -152,7 +156,7 @@ internal static class LlmCatalogClient
     public static bool IsGlob(string? value) =>
         value is not null && (value.Contains('*', StringComparison.Ordinal) || value.Contains('?', StringComparison.Ordinal));
 
-    private static HttpRequestMessage BuildRequest(string provider, string baseUrl, string? apiKey)
+    private static HttpRequestMessage BuildRequest(string provider, string baseUrl, string? apiKey, string? workspaceId)
     {
         if (IsAzure(provider))
         {
@@ -169,6 +173,8 @@ internal static class LlmCatalogClient
             var anthropic = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1/models");
             anthropic.Headers.Add("x-api-key", apiKey ?? "");
             anthropic.Headers.Add("anthropic-version", "2023-06-01");
+            if (!string.IsNullOrWhiteSpace(workspaceId))
+                anthropic.Headers.Add(HttpDefaults.AnthropicWorkspaceIdHeader, workspaceId.Trim());
             return anthropic;
         }
 
@@ -243,6 +249,13 @@ internal static class LlmCatalogClient
 
     private static bool IsAnthropic(string provider) =>
         string.Equals(provider, "anthropic", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether the listing of <paramref name="provider"/> sends a workspace id: Anthropic alone scopes a key to a
+    /// workspace, so no other provider is sent one, and its caller says so rather than dropping it (#468).
+    /// </summary>
+    /// <param name="provider">The provider key of the listing.</param>
+    internal static bool SendsWorkspaceId(string provider) => IsAnthropic(provider);
 
     private static bool IsAzure(string provider) =>
         string.Equals(provider, "azure", StringComparison.OrdinalIgnoreCase)

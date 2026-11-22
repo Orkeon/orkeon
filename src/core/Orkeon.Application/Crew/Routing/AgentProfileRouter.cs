@@ -129,7 +129,8 @@ internal sealed class AgentProfileRouter
         ArgumentNullException.ThrowIfNull(agent);
         var role = agent.Role.Value;
         var levels = thinking is { HasAuto: true } ? ImmutableList.CreateRange(thinking.AutoOptions(_effortLevels)) : null;
-        var route = await PickAsync(role, request, routeProfile, levels, scopeCircuit, cancellationToken).ConfigureAwait(false);
+        var route = await PickAsync(role, request, routeProfile ? _ladder : null, LlmProfiles.Default, levels, scopeCircuit, cancellationToken)
+            .ConfigureAwait(false);
         var profile = route.Profile is { } picked ? picked with { TaskId = taskId, AgentRole = role } : null;
         if (profile is not null)
             AgentRouteLog.Routed(_logger, role, taskId, profile.Profile, profile.Reason);
@@ -138,9 +139,24 @@ internal sealed class AgentProfileRouter
         return new TaskRoute(profile, route.Effort);
     }
 
-    private async System.Threading.Tasks.Task<TaskRoute> PickAsync(
-        string role, string request, bool routeProfile, ImmutableList<string>? levels, DecisionCircuit? scopeCircuit, CancellationToken cancellationToken)
+    /// <summary>
+    /// What System One picks, per call: a rung of <paramref name="ladder"/> when given (empty: no ladder), a level of
+    /// <paramref name="levels"/> when given, both in one decision call when both are asked. A task's route passes the
+    /// host's ladder and the default profile; a script's pick (<c>ctx.llm.pick</c>, #460) its own.
+    /// </summary>
+    /// <param name="role">The agent's role, as the decision model reads it.</param>
+    /// <param name="request">What the decision model reads (cut at <see cref="RequestChars"/>).</param>
+    /// <param name="ladder">The rungs, cheapest first; null asks no profile.</param>
+    /// <param name="fallback">The profile that stands without a pick.</param>
+    /// <param name="levels">The thinking levels offered, cheapest first; null asks no effort.</param>
+    /// <param name="scopeCircuit">The circuit of the run's scope when it is not the container's; null follows the container's.</param>
+    /// <param name="cancellationToken">Cancels the decision call.</param>
+    internal async System.Threading.Tasks.Task<TaskRoute> PickAsync(
+        string role, string request, ImmutableList<string>? ladder, string fallback, ImmutableList<string>? levels,
+        DecisionCircuit? scopeCircuit, CancellationToken cancellationToken)
     {
+        var routeProfile = ladder is not null;
+        ladder ??= [];
         // One answer offered is no choice (#439): that answer, with no call; none left, the effort without auto.
         var askEffort = levels is { Count: > 1 };
         EffortPick? fixedEffort = null;
@@ -154,15 +170,15 @@ internal sealed class AgentProfileRouter
         // A crew on decision.mode: none asks System One nothing (#429), as its pruning does: no call, no warning.
         if (SystemOneRunScope.Current?.Mode == CrewDecisionMode.None)
             return new TaskRoute(
-                routeProfile ? Standing(AgentRouteReasons.DecisionNone) : null,
+                routeProfile ? Standing(AgentRouteReasons.DecisionNone, ladder, fallback) : null,
                 askEffort ? EffortStanding(AgentEffortReasons.DecisionNone, levels!) : fixedEffort);
 
         AgentRouteNotice? unrouted = null;
-        if (routeProfile && _ladder.Count == 0)
+        if (routeProfile && ladder.Count == 0)
         {
             if (RunWarnings.Of(_warnings).First("route.no-ladder"))
                 AgentRouteLog.NoLadder(_logger, role, LlmProfiles.RouteLadderKey);
-            unrouted = Standing(AgentRouteReasons.NoLadder);
+            unrouted = Standing(AgentRouteReasons.NoLadder, ladder, fallback);
             routeProfile = false;
         }
 
@@ -179,7 +195,7 @@ internal sealed class AgentProfileRouter
             if (askEffort && RunWarnings.Of(_warnings).First("effort.circuit-off"))
                 AgentRouteLog.EffortCircuitOff(_logger, reason);
             return new TaskRoute(
-                routeProfile ? Standing(AgentRouteReasons.CircuitOff) : unrouted,
+                routeProfile ? Standing(AgentRouteReasons.CircuitOff, ladder, fallback) : unrouted,
                 askEffort ? EffortStanding(AgentEffortReasons.CircuitOff, levels!) : fixedEffort);
         }
 
@@ -187,7 +203,7 @@ internal sealed class AgentProfileRouter
         try
         {
             response = await model.DecideAsync(
-                Question(routeProfile ? _ladder : null, askEffort ? levels : null, role, request), cancellationToken).ConfigureAwait(false);
+                Question(routeProfile ? ladder : null, askEffort ? levels : null, role, request), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
@@ -196,16 +212,17 @@ internal sealed class AgentProfileRouter
             if (askEffort)
                 AgentRouteLog.EffortPickFailed(_logger, role, ex.Message);
             return new TaskRoute(
-                routeProfile ? Standing(AgentRouteReasons.NoAnswer) : unrouted,
+                routeProfile ? Standing(AgentRouteReasons.NoAnswer, ladder, fallback) : unrouted,
                 askEffort ? EffortStanding(AgentEffortReasons.NoAnswer, levels!) : fixedEffort);
         }
 
         return new TaskRoute(
-            routeProfile ? Decide(response, _ladder) : unrouted,
+            routeProfile ? Decide(response, ladder, fallback) : unrouted,
             askEffort ? DecideEffort(response, levels!) : fixedEffort);
     }
 
-    private AgentRouteNotice Standing(string reason) => Notice(LlmProfiles.Default, reason, null, null, _ladder);
+    private static AgentRouteNotice Standing(string reason, ImmutableList<string> ladder, string fallback) =>
+        Notice(fallback, reason, null, null, ladder);
 
     private static EffortPick EffortStanding(string reason, ImmutableList<string> levels) => new(null, reason, null, null, levels);
 
@@ -241,20 +258,21 @@ internal sealed class AgentProfileRouter
 
     /// <summary>
     /// The profile an answer gives: its rung when the probability the answer gives it (else the answer's own
-    /// confidence) reaches <see cref="MinProbability"/>, the default profile otherwise.
+    /// confidence) reaches <see cref="MinProbability"/>, <paramref name="fallback"/> otherwise (the default profile for a
+    /// task; a script's own for <c>ctx.llm.pick</c>, #460).
     /// </summary>
-    internal static AgentRouteNotice Decide(DecisionResponse response, ImmutableList<string> ladder)
+    internal static AgentRouteNotice Decide(DecisionResponse response, ImmutableList<string> ladder, string fallback = LlmProfiles.Default)
     {
         ArgumentNullException.ThrowIfNull(response);
         if (!response.Answers.TryGetValue(QuestionName, out var answer) || answer is not ChoiceAnswer choice
             || !ladder.Contains(choice.Choice, StringComparer.OrdinalIgnoreCase))
-            return Notice(LlmProfiles.Default, AgentRouteReasons.NoAnswer, null, null, ladder);
+            return Notice(fallback, AgentRouteReasons.NoAnswer, null, null, ladder);
 
         var rung = ladder.First(r => string.Equals(r, choice.Choice, StringComparison.OrdinalIgnoreCase));
         var probability = choice.Probabilities.TryGetValue(choice.Choice, out var given) ? given : choice.Confidence;
         return probability >= MinProbability
             ? Notice(rung, AgentRouteReasons.Model, rung, probability, ladder)
-            : Notice(LlmProfiles.Default, AgentRouteReasons.LowConfidence, rung, probability, ladder);
+            : Notice(fallback, AgentRouteReasons.LowConfidence, rung, probability, ladder);
     }
 
     /// <summary>One choice among the rungs, each described by its place on the ladder.</summary>

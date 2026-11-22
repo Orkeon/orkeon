@@ -212,6 +212,7 @@ public sealed class ForgeRenameTests : IDisposable
         Assert.Contains("not renamed", error.GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.Contains("Access is denied.", error.GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.False(error.TryGetProperty("command", out _));
+        Assert.True(error.GetProperty("terminal").GetBoolean());
 
         Assert.Equal(before, Tree());
         Assert.Equal(registered, Registrations(os, platform));

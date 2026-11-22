@@ -127,7 +127,7 @@ public static partial class DefaultEmbeddingProviderResolver
         var provider = options.Provider?.Trim();
         return KnownProviders.Contains(provider ?? string.Empty, StringComparer.OrdinalIgnoreCase)
             ? null
-            : $"{EmbeddingsSectionKey}:Provider is '{options.Provider}', which is not an embedding provider: write " +
+            : $"{EmbeddingsSectionKey}:Provider is not an embedding provider: write " +
               $"{OpenAiProvider} (any M.E.AI embedding generator the host registers), {OllamaProvider}, " +
               $"{MistralProvider}, {AzureOpenAiProvider} or {GeminiProvider}.";
     }

@@ -41,7 +41,7 @@ internal sealed class CommandRuntimeContext
         this.command = command;
         _ct = ct;
         log = new JsLogShim(logger ?? NullLogger.Instance);
-        this.services = services ?? ScriptServiceLocator.Empty;
+        this.services = (services ?? ScriptServiceLocator.Empty).BoundTo(engine, ct);
         _progressBroker = progressBroker;
     }
 

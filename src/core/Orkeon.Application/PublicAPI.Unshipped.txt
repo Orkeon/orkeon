@@ -1,8 +1,13 @@
 #nullable enable
+Orkeon.Application.Configuration.CommaSeparatedSettingAttribute
+Orkeon.Application.Configuration.CommaSeparatedSettingAttribute.CommaSeparatedSettingAttribute() -> void
 Orkeon.Application.Crew.Execution.DecisionCircuit.Cause.get -> Orkeon.Application.Crew.Execution.DecisionCircuitCause?
 Orkeon.Application.Crew.Execution.DecisionCircuit.Cause.init -> void
 Orkeon.Application.Crew.Execution.DecisionCircuit.OffReason.get -> string?
+Orkeon.Application.Crew.Execution.DecisionCircuit.Detail.get -> string?
+Orkeon.Application.Crew.Execution.DecisionCircuit.Detail.init -> void
 Orkeon.Application.Crew.Execution.DecisionCircuitCause
+Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoKey = 4 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
 Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider = 2 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
 Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings = 1 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
 Orkeon.Application.Crew.Execution.DecisionCircuitCause.Switch = 0 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
@@ -430,3 +435,157 @@ Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext.FileSystem.init -> 
 Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext.LlmProviderModuleContext() -> void
 Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext.LoggerFactory.get -> Microsoft.Extensions.Logging.ILoggerFactory!
 Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext.LoggerFactory.init -> void
+[ORKEXP008]const Orkeon.Application.Crew.Routing.SystemOnePickReasons.Ceiling = "ceiling" -> string!
+[ORKEXP008]const Orkeon.Application.Crew.Routing.SystemOnePickReasons.CircuitOff = "circuit-off" -> string!
+[ORKEXP008]const Orkeon.Application.Crew.Routing.SystemOnePickReasons.Floor = "floor" -> string!
+[ORKEXP008]const Orkeon.Application.Crew.Routing.SystemOnePickReasons.LowConfidence = "low-confidence" -> string!
+[ORKEXP008]const Orkeon.Application.Crew.Routing.SystemOnePickReasons.Model = "model" -> string!
+[ORKEXP008]const Orkeon.Application.Crew.Routing.SystemOnePickReasons.NoAnswer = "no-answer" -> string!
+[ORKEXP008]const Orkeon.Application.Crew.Routing.SystemOnePickReasons.NoLadder = "no-ladder" -> string!
+[ORKEXP008]const Orkeon.Application.Crew.Routing.SystemOnePickReasons.SingleLevel = "single-level" -> string!
+[ORKEXP008]Orkeon.Application.Crew.Routing.EffortPickRequest
+[ORKEXP008]Orkeon.Application.Crew.Routing.EffortPickRequest.<Clone>$() -> Orkeon.Application.Crew.Routing.EffortPickRequest!
+[ORKEXP008]Orkeon.Application.Crew.Routing.EffortPickRequest.EffortPickRequest() -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.EffortPickRequest.Equals(Orkeon.Application.Crew.Routing.EffortPickRequest? other) -> bool
+[ORKEXP008]Orkeon.Application.Crew.Routing.EffortPickRequest.Fallback.get -> string?
+[ORKEXP008]Orkeon.Application.Crew.Routing.EffortPickRequest.Fallback.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.EffortPickRequest.Max.get -> string?
+[ORKEXP008]Orkeon.Application.Crew.Routing.EffortPickRequest.Max.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.EffortPickRequest.Min.get -> string?
+[ORKEXP008]Orkeon.Application.Crew.Routing.EffortPickRequest.Min.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.ISystemOnePicker
+[ORKEXP008]Orkeon.Application.Crew.Routing.ISystemOnePicker.PickAsync(Orkeon.Application.Crew.Routing.SystemOnePickRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Application.Crew.Routing.SystemOnePickResponse!>!
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.<Clone>$() -> Orkeon.Application.Crew.Routing.ProfilePickRequest!
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.Ceiling.get -> string?
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.Ceiling.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.Equals(Orkeon.Application.Crew.Routing.ProfilePickRequest? other) -> bool
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.Fallback.get -> string?
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.Fallback.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.Floor.get -> string?
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.Floor.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.Ladder.get -> System.Collections.Immutable.ImmutableList<string!>?
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.Ladder.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.ProfilePickRequest.ProfilePickRequest() -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.<Clone>$() -> Orkeon.Application.Crew.Routing.SystemOnePickAnswer!
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.Equals(Orkeon.Application.Crew.Routing.SystemOnePickAnswer? other) -> bool
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.Picked.get -> string?
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.Picked.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.Probability.get -> double?
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.Probability.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.Reason.get -> string!
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.Reason.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.SystemOnePickAnswer() -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.Value.get -> string?
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickAnswer.Value.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickReasons
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.<Clone>$() -> Orkeon.Application.Crew.Routing.SystemOnePickRequest!
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.AgentRole.get -> string!
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.AgentRole.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.Effort.get -> Orkeon.Application.Crew.Routing.EffortPickRequest?
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.Effort.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.Equals(Orkeon.Application.Crew.Routing.SystemOnePickRequest? other) -> bool
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.Profile.get -> Orkeon.Application.Crew.Routing.ProfilePickRequest?
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.Profile.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.Request.get -> string!
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.Request.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickRequest.SystemOnePickRequest() -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickResponse
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickResponse.<Clone>$() -> Orkeon.Application.Crew.Routing.SystemOnePickResponse!
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickResponse.Effort.get -> Orkeon.Application.Crew.Routing.SystemOnePickAnswer?
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickResponse.Effort.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickResponse.Equals(Orkeon.Application.Crew.Routing.SystemOnePickResponse? other) -> bool
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickResponse.Profile.get -> Orkeon.Application.Crew.Routing.SystemOnePickAnswer?
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickResponse.Profile.init -> void
+[ORKEXP008]Orkeon.Application.Crew.Routing.SystemOnePickResponse.SystemOnePickResponse() -> void
+[ORKEXP008]override Orkeon.Application.Crew.Routing.EffortPickRequest.Equals(object? obj) -> bool
+[ORKEXP008]override Orkeon.Application.Crew.Routing.EffortPickRequest.GetHashCode() -> int
+[ORKEXP008]override Orkeon.Application.Crew.Routing.EffortPickRequest.ToString() -> string!
+[ORKEXP008]override Orkeon.Application.Crew.Routing.ProfilePickRequest.Equals(object? obj) -> bool
+[ORKEXP008]override Orkeon.Application.Crew.Routing.ProfilePickRequest.GetHashCode() -> int
+[ORKEXP008]override Orkeon.Application.Crew.Routing.ProfilePickRequest.ToString() -> string!
+[ORKEXP008]override Orkeon.Application.Crew.Routing.SystemOnePickAnswer.Equals(object? obj) -> bool
+[ORKEXP008]override Orkeon.Application.Crew.Routing.SystemOnePickAnswer.GetHashCode() -> int
+[ORKEXP008]override Orkeon.Application.Crew.Routing.SystemOnePickAnswer.ToString() -> string!
+[ORKEXP008]override Orkeon.Application.Crew.Routing.SystemOnePickRequest.Equals(object? obj) -> bool
+[ORKEXP008]override Orkeon.Application.Crew.Routing.SystemOnePickRequest.GetHashCode() -> int
+[ORKEXP008]override Orkeon.Application.Crew.Routing.SystemOnePickRequest.ToString() -> string!
+[ORKEXP008]override Orkeon.Application.Crew.Routing.SystemOnePickResponse.Equals(object? obj) -> bool
+[ORKEXP008]override Orkeon.Application.Crew.Routing.SystemOnePickResponse.GetHashCode() -> int
+[ORKEXP008]override Orkeon.Application.Crew.Routing.SystemOnePickResponse.ToString() -> string!
+[ORKEXP008]static Orkeon.Application.Crew.Routing.EffortPickRequest.operator ==(Orkeon.Application.Crew.Routing.EffortPickRequest? left, Orkeon.Application.Crew.Routing.EffortPickRequest? right) -> bool
+[ORKEXP008]static Orkeon.Application.Crew.Routing.EffortPickRequest.operator !=(Orkeon.Application.Crew.Routing.EffortPickRequest? left, Orkeon.Application.Crew.Routing.EffortPickRequest? right) -> bool
+[ORKEXP008]static Orkeon.Application.Crew.Routing.ProfilePickRequest.operator ==(Orkeon.Application.Crew.Routing.ProfilePickRequest? left, Orkeon.Application.Crew.Routing.ProfilePickRequest? right) -> bool
+[ORKEXP008]static Orkeon.Application.Crew.Routing.ProfilePickRequest.operator !=(Orkeon.Application.Crew.Routing.ProfilePickRequest? left, Orkeon.Application.Crew.Routing.ProfilePickRequest? right) -> bool
+[ORKEXP008]static Orkeon.Application.Crew.Routing.SystemOnePickAnswer.operator ==(Orkeon.Application.Crew.Routing.SystemOnePickAnswer? left, Orkeon.Application.Crew.Routing.SystemOnePickAnswer? right) -> bool
+[ORKEXP008]static Orkeon.Application.Crew.Routing.SystemOnePickAnswer.operator !=(Orkeon.Application.Crew.Routing.SystemOnePickAnswer? left, Orkeon.Application.Crew.Routing.SystemOnePickAnswer? right) -> bool
+[ORKEXP008]static Orkeon.Application.Crew.Routing.SystemOnePickRequest.operator ==(Orkeon.Application.Crew.Routing.SystemOnePickRequest? left, Orkeon.Application.Crew.Routing.SystemOnePickRequest? right) -> bool
+[ORKEXP008]static Orkeon.Application.Crew.Routing.SystemOnePickRequest.operator !=(Orkeon.Application.Crew.Routing.SystemOnePickRequest? left, Orkeon.Application.Crew.Routing.SystemOnePickRequest? right) -> bool
+[ORKEXP008]static Orkeon.Application.Crew.Routing.SystemOnePickResponse.operator ==(Orkeon.Application.Crew.Routing.SystemOnePickResponse? left, Orkeon.Application.Crew.Routing.SystemOnePickResponse? right) -> bool
+[ORKEXP008]static Orkeon.Application.Crew.Routing.SystemOnePickResponse.operator !=(Orkeon.Application.Crew.Routing.SystemOnePickResponse? left, Orkeon.Application.Crew.Routing.SystemOnePickResponse? right) -> bool
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ActConversationView
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ActConversationView.ActConversationView(System.Collections.Generic.List<Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage!>! messages) -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ActConversationView.NoteReadCall(int index, string! callId, string! toolName, System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.<Clone>$() -> Orkeon.Application.Crew.Compaction.ConversationPruneRequest!
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.AgentRole.get -> string!
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.AgentRole.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.ContextWindowTokens.get -> int?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.ContextWindowTokens.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.ConversationPruneRequest() -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Equals(Orkeon.Application.Crew.Compaction.ConversationPruneRequest? other) -> bool
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.EstimatedTokens.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.EstimatedTokens.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.FillShare.get -> double?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.FillShare.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.FirstIndex.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.FirstIndex.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.HeadChars.get -> int?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.HeadChars.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.KeepRecentMessages.get -> int?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.KeepRecentMessages.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.MaxOutputTokens.get -> int?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.MaxOutputTokens.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Model.get -> string?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Model.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Profile.get -> string!
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Profile.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Task.get -> string!
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Task.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.<Clone>$() -> Orkeon.Application.Crew.Compaction.ConversationPruneResponse!
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.ConversationPruneResponse() -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Cut.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Cut.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Dropped.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Dropped.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Equals(Orkeon.Application.Crew.Compaction.ConversationPruneResponse? other) -> bool
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.FreedTokens.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.FreedTokens.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Judged.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Judged.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Kept.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Kept.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Offered.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Offered.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.ThresholdTokens.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.ThresholdTokens.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.IConversationPruner
+[ORKEXP009]Orkeon.Application.Crew.Compaction.IConversationPruner.PruneAsync(Orkeon.Application.Crew.Compaction.ConversationPruneRequest! request, Orkeon.Application.Crew.Compaction.ActConversationView! conversation, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Orkeon.Application.Crew.Compaction.ConversationPruneResponse?>
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ActConversationView.Count.get -> int
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ActConversationView.ReplaceToolResult(int index, string! text) -> bool
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ActConversationView.RoleAt(int index) -> string!
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ActConversationView.TextAt(int index) -> string!
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ActConversationView.ToolCallAt(int index) -> Orkeon.Application.Crew.Compaction.ConversationToolCall?
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Equals(object? obj) -> bool
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneRequest.GetHashCode() -> int
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneRequest.ToString() -> string!
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Equals(object? obj) -> bool
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneResponse.GetHashCode() -> int
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneResponse.ToString() -> string!
+[ORKEXP009]static Orkeon.Application.Crew.Compaction.ConversationPruneRequest.operator ==(Orkeon.Application.Crew.Compaction.ConversationPruneRequest? left, Orkeon.Application.Crew.Compaction.ConversationPruneRequest? right) -> bool
+[ORKEXP009]static Orkeon.Application.Crew.Compaction.ConversationPruneRequest.operator !=(Orkeon.Application.Crew.Compaction.ConversationPruneRequest? left, Orkeon.Application.Crew.Compaction.ConversationPruneRequest? right) -> bool
+[ORKEXP009]static Orkeon.Application.Crew.Compaction.ConversationPruneResponse.operator ==(Orkeon.Application.Crew.Compaction.ConversationPruneResponse? left, Orkeon.Application.Crew.Compaction.ConversationPruneResponse? right) -> bool
+[ORKEXP009]static Orkeon.Application.Crew.Compaction.ConversationPruneResponse.operator !=(Orkeon.Application.Crew.Compaction.ConversationPruneResponse? left, Orkeon.Application.Crew.Compaction.ConversationPruneResponse? right) -> bool

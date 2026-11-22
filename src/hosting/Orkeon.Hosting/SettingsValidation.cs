@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,7 +37,9 @@ internal sealed record SettingsNoticeHint(string Sentence, IReadOnlyList<string>
 /// registration validated without declaring;</item>
 /// <item>the section names under the containers of <see cref="SettingsSections"/>;</item>
 /// <item>the keys of every declared section, against the shapes its readers declared — and, under those keys, a number the binder reads as a float or a double that
-/// is not finite, which it takes without a word.</item>
+/// is not finite, which it takes without a word; a non-string value written without one, which it
+/// binds to its type's default (#450); a single value where a list or a section is expected; and,
+/// inside a list or a dictionary, where it drops what it cannot convert, a value not of its type (#454).</item>
 /// </list>
 /// Nothing is built but the options and the named factories, which hold functions: no store, provider,
 /// model or connection. Only what the binder, a rule, the names or the keys refuse becomes a refusal —
@@ -101,7 +104,19 @@ internal static class SettingsValidation
             RunStartupValidator(services, refusals);
 
         refusals.AddRange(UnknownSectionNames(configuration));
-        refusals.AddRange(UnknownKeys(configuration, declarations));
+        foreach (var (path, refusal, kind) in UnknownKeys(configuration, declarations).ToList())
+        {
+            // One refusal per key. A value written without one explains what a rule then says of the
+            // default the binder wrote ('0' for a file that says null): it replaces that sentence.
+            // Otherwise the sentence of a rule or of the binder that names the key wins over the walk's.
+            if (kind == Found.Empty)
+                refusals.RemoveAll(earlier => NamesExactly(earlier, path));
+            else if (kind == Found.Value && refusals.Any(earlier => Names(earlier, path)))
+                continue;
+
+            refusals.Add(refusal);
+        }
+
         refusals.AddRange(UnansweredProviderKeys(configuration, services));
         return [.. refusals.Distinct(StringComparer.Ordinal)];
     }
@@ -135,8 +150,8 @@ internal static class SettingsValidation
                 continue;
 
             var known = modules.Count == 0 ? "this host registers none" : "registered: " + string.Join(", ", modules);
-            yield return $"{section.Path}:Provider: '{named.Trim()}' names no provider of this host. "
-                + $"Provider takes '{LlmProviderKeys.Mock}' or the key of a provider module ({known}); "
+            yield return $"{section.Path}:Provider names no provider of this host: "
+                + $"write {LlmProviderKeys.Mock} or the key of a provider module ({known}); "
                 + "leave it out and the provider follows from BaseUrl, the model's name and the key.";
         }
     }
@@ -232,7 +247,7 @@ internal static class SettingsValidation
                 }
 
                 throw new InvalidOperationException(
-                    $"{path} is '{value}', which is not a log level: write one of {string.Join(", ", s_logLevels)}.");
+                    $"{path} is not a log level: write one of {string.Join(", ", s_logLevels)}.");
             }
         }
 
@@ -259,8 +274,8 @@ internal static class SettingsValidation
             }
             catch (InvalidOperationException ex) when (IsBinderRefusal(ex))
             {
-                // The binder's refusal: "Failed to convert configuration value 'x' at 'Key' to type 'T'."
-                refusals.Add(ex.Message);
+                // The binder's refusal, which names the value: reworded without it (#465).
+                refusals.Add(BinderRefusal.WithoutValue(ex.Message));
             }
         }
     }
@@ -292,7 +307,7 @@ internal static class SettingsValidation
         }
         catch (InvalidOperationException ex) when (IsBinderRefusal(ex))
         {
-            refusals.Add(ex.Message);
+            refusals.Add(BinderRefusal.WithoutValue(ex.Message));
         }
     }
 
@@ -365,7 +380,7 @@ internal static class SettingsValidation
     /// section together, a sub-section another reader declares included. Only the declared sections
     /// are walked: the keys of a section this host does not read are another host's to judge.
     /// </summary>
-    private static IEnumerable<string> UnknownKeys(IConfiguration configuration, List<SettingsDeclaration> declarations)
+    private static IEnumerable<(string Path, string Refusal, Found Kind)> UnknownKeys(IConfiguration configuration, List<SettingsDeclaration> declarations)
     {
         var tree = SettingsShape.Empty();
         foreach (var declaration in declarations)
@@ -382,7 +397,7 @@ internal static class SettingsValidation
             if (!section.Exists())
                 continue;
 
-            foreach (var refusal in Walk(section, NodeAt(tree, root)))
+            foreach (var refusal in Walk(section, NodeAt(tree, root), inCollection: false))
                 yield return refusal;
         }
     }
@@ -408,24 +423,203 @@ internal static class SettingsValidation
         return node;
     }
 
-    private static IEnumerable<string> Walk(IConfigurationSection section, SettingsShape shape)
+    /// <summary>
+    /// Whether <paramref name="refusal"/> names the key at <paramref name="path"/> — or, for a list
+    /// item, the list —, a whole key and not the start of a longer one.
+    /// </summary>
+    private static bool Names(string refusal, string path)
+    {
+        var last = path.LastIndexOf(':');
+        var parent = last > 0 && path[(last + 1)..].All(char.IsAsciiDigit) ? path[..last] : null;
+        return NamesExactly(refusal, path) || (parent is not null && NamesExactly(refusal, parent));
+    }
+
+    private static bool NamesExactly(string refusal, string key)
+    {
+        for (var at = refusal.IndexOf(key, StringComparison.OrdinalIgnoreCase); at >= 0;
+             at = refusal.IndexOf(key, at + 1, StringComparison.OrdinalIgnoreCase))
+        {
+            var end = at + key.Length;
+            if (end == refusal.Length || !char.IsAsciiLetterOrDigit(refusal[end]))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>What the walk of the keys found at a key.</summary>
+    private enum Found
+    {
+        /// <summary>A key no declaration knows.</summary>
+        Key,
+
+        /// <summary>A value the binder would take, drop or misread without a word.</summary>
+        Value,
+
+        /// <summary>A key written without a value, which the binder would bind to its type's default.</summary>
+        Empty,
+    }
+
+    /// <summary>
+    /// The refusals below <paramref name="section"/>: a key no declaration knows, and a value the
+    /// binder would take without a word: written without a value on a setting it would then bind to
+    /// its type's default (#450), a single value where a list or a section is expected (#454, #455),
+    /// a number that is not finite, and, below a list or a dictionary, where the binder drops the item
+    /// it cannot convert, a value that is not of its type (#454), and an enumeration written as a number
+    /// or, unless it is <c>[Flags]</c>, as a comma list (#464).
+    /// </summary>
+    private static IEnumerable<(string Path, string Refusal, Found Kind)> Walk(
+        IConfigurationSection section, SettingsShape shape, bool inCollection)
     {
         foreach (var child in section.GetChildren())
         {
-            if (shape.Child(child.Key) is { } below)
+            if (shape.Child(child.Key) is not { } below)
             {
-                if (IsNotFinite(child.Value, below.Number))
-                {
-                    yield return $"{child.Path} is '{child.Value}', which is not a finite number.";
-                    continue;
-                }
-
-                foreach (var refusal in Walk(child, below))
-                    yield return refusal;
+                yield return (child.Path, Unknown(section, child, shape), Found.Key);
                 continue;
             }
 
-            yield return Unknown(section, child, shape);
+            var item = inCollection || (!shape.Open && shape.Entries is not null && !shape.Named.ContainsKey(child.Key));
+            if (ValueRefusal(child, below, item) is { } refusal)
+            {
+                yield return (child.Path, refusal, child.Value is null ? Found.Empty : Found.Value);
+                continue;
+            }
+
+            foreach (var found in Walk(child, below, item))
+                yield return found;
+        }
+    }
+
+    /// <summary>What is wrong with the value of <paramref name="child"/>, or null.</summary>
+    private static string? ValueRefusal(IConfigurationSection child, SettingsShape below, bool inCollection)
+    {
+        if (below.Open || child.GetChildren().Any())
+            return null;
+
+        var value = child.Value;
+        if (value is null)
+        {
+            // JSON null and {} read alike: no value, no child, and the binder writes the type's default.
+            var bound = below.TakesKeys ? null : below.Values.FirstOrDefault(IsDefaultedWhenEmpty);
+            return bound is null
+                ? null
+                : $"{child.Path} is written without a value, which would bind it to {Default(bound)}: "
+                  + $"write {Expected(bound)}, or leave the key out and its default applies.";
+        }
+
+        if (below.Values.Count == 0)
+        {
+            // An empty JSON array reads as an empty value.
+            // A list whose reader splits one comma-separated value takes that form (an environment variable's).
+            if (!below.TakesKeys || value.Length == 0 || (below.IsList && below.TakesCommaSeparated))
+                return null;
+
+            // The value is not echoed: written where a section is expected, it may be a secret.
+            return below.IsList
+                ? $"{child.Path} is a single value where a list is expected: write its items as a list, or leave the key out."
+                : $"{child.Path} is a single value where a section of keys is expected: write its keys, or leave the key out.";
+        }
+
+        if (IsNotFinite(value, below.Number))
+            // The value is not echoed (#465): every refusal of the check leaves out what the key holds.
+            return $"{child.Path} is not a finite number: write a number within the type's range.";
+
+        if (NotAMemberName(child.Path, value, below.Values) is { } notAName)
+            return notAName;
+
+        if (!inCollection)
+            return null;
+
+        foreach (var declared in below.Values)
+        {
+            if (Unconverted(child.Path, value, declared) is { } refusal)
+                return refusal;
+        }
+
+        return null;
+    }
+
+    /// <summary>A value type the binder writes its default to when the key holds no value: <c>false</c>, <c>0</c>, the first member.</summary>
+    private static bool IsDefaultedWhenEmpty(Type type) => type.IsValueType && Nullable.GetUnderlyingType(type) is null;
+
+    private static string Default(Type type) =>
+        type == typeof(bool) ? "false"
+        : IsNumber(type) ? "0"
+        : type.IsEnum ? Enum.ToObject(type, 0).ToString() ?? type.Name
+        : $"the default of {type.Name}";
+
+    private static string Expected(Type type) =>
+        type == typeof(bool) ? "true or false"
+        : type.IsEnum ? "one of " + string.Join(", ", Enum.GetNames(type))
+        : IsNumber(type) ? "a number"
+        : $"a {type.Name}";
+
+    private static bool IsNumber(Type type) =>
+        !type.IsEnum && Type.GetTypeCode(type) is >= TypeCode.SByte and <= TypeCode.Decimal;
+
+    /// <summary>
+    /// The refusal of an enumeration's value the binder would read without a word (#464): a number, which it
+    /// takes as the member holding it (<c>Guardian:Llm:FailMode: "1"</c> binds <c>Open</c>), and a comma list
+    /// where the enumeration is not <c>[Flags]</c>, which it takes as a combination of members. A
+    /// <c>[Flags]</c> enumeration keeps its comma list of names, never of numbers. Any other spelling is left to
+    /// the binder, which refuses a name it does not know, or to a reader that takes its own
+    /// (<c>oauth2-device</c>). Null when a declaration of the key is not an enumeration. The value is not
+    /// echoed, as no refusal of the check does.
+    /// </summary>
+    private static string? NotAMemberName(string path, string value, HashSet<Type> declared)
+    {
+        if (value.Trim().Length == 0 || declared.Count == 0)
+            return null;
+
+        var enums = declared.Select(type => Nullable.GetUnderlyingType(type) ?? type).Distinct().ToList();
+        if (!enums.TrueForAll(type => type.IsEnum))
+            return null;
+
+        foreach (var type in enums)
+        {
+            var names = string.Join(", ", Enum.GetNames(type));
+            if (type.IsDefined(typeof(FlagsAttribute), inherit: false))
+            {
+                if (value.Split(',').Any(IsNumber))
+                    return $"{path} holds a number where {type.Name} takes names: write one or more of {names}, separated by commas.";
+                continue;
+            }
+
+            if (IsNumber(value))
+                return $"{path} is a number where a name is expected: write one of {names}.";
+            if (value.Contains(',', StringComparison.Ordinal))
+                return $"{path} is a list where a single name is expected: write one of {names}.";
+        }
+
+        return null;
+
+        static bool IsNumber(string token) =>
+            long.TryParse(token.Trim(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _)
+            || ulong.TryParse(token.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out _);
+    }
+
+    /// <summary>
+    /// The refusal of <paramref name="value"/> as <paramref name="declared"/>, worded as the binder words
+    /// it where it refuses it itself, or null when it converts. Neither a string nor an enumeration is
+    /// judged: their readers may take what the binder does not.
+    /// </summary>
+    private static string? Unconverted(string path, string value, Type declared)
+    {
+        var type = Nullable.GetUnderlyingType(declared) ?? declared;
+        if (type == typeof(string) || type.IsEnum || (value.Length == 0 && type != declared))
+            return null;
+
+        try
+        {
+            _ = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(value);
+            return null;
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException or NotSupportedException or OverflowException
+                                       || ex.InnerException is FormatException or OverflowException)
+        {
+            // The value is not echoed (#465): it is not of the key's type, so it may be anything, a secret included.
+            return BinderRefusal.Unconvertible(path, type.ToString());
         }
     }
 

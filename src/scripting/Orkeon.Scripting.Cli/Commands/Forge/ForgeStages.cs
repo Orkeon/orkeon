@@ -95,7 +95,7 @@ internal sealed class BriefStage : IForgeStageRunner
 
             if (reply.BriefJson is { } json)
             {
-                var outcome = HandleSubmission(session, events, json, usage, ref submissionAttempts, ref errors);
+                var outcome = HandleSubmission(session, events, json, usage, lastTurn: turn == MaxTurns - 1, ref submissionAttempts, ref errors);
                 if (outcome is not null)
                     return await SettleAsync(session, events, outcome, cancellationToken).ConfigureAwait(false);
 
@@ -156,13 +156,16 @@ internal sealed class BriefStage : IForgeStageRunner
     /// <summary>
     /// One <c>brief_submit</c>: the accepted brief becomes the stage's outcome, an exhausted
     /// repair budget becomes a failure, and anything else returns <see langword="null"/> —
-    /// the interview takes another turn carrying <paramref name="errors"/>.
+    /// the interview takes another turn carrying <paramref name="errors"/>. A refusal on the
+    /// interview's <paramref name="lastTurn"/> is final like one at the cap: no turn is left to
+    /// ask again, so its <c>error</c> event says so (#453).
     /// </summary>
     private static ForgeStageOutcome? HandleSubmission(
         ForgeSession session,
         ForgeEventWriter events,
         string json,
         ForgeUsageSnapshot usage,
+        bool lastTurn,
         ref int submissionAttempts,
         ref IReadOnlyList<string>? errors)
     {
@@ -176,13 +179,20 @@ internal sealed class BriefStage : IForgeStageRunner
         }
 
         submissionAttempts++;
+        var atCap = submissionAttempts >= MaxSubmissionAttempts;
+        var final = atCap || lastTurn;
         events.Error(
             ForgeErrorCodes.BriefIncomplete,
             string.Join(" ", briefErrors),
-            recoverable: submissionAttempts < MaxSubmissionAttempts);
+            recoverable: !final,
+            // At the cap, or on the last turn, the stage fails: the engine's own error and
+            // session.finished follow (#453).
+            terminal: final);
 
-        if (submissionAttempts >= MaxSubmissionAttempts)
+        if (atCap)
             return Abandon(usage, $"No schema-valid brief after {MaxSubmissionAttempts} submissions.");
+        if (lastTurn)
+            return Abandon(usage, $"The interview did not converge within {MaxTurns} turns.");
 
         errors = briefErrors;
         return null;
@@ -221,7 +231,7 @@ internal sealed class BriefStage : IForgeStageRunner
 
             if (errors.Count > 0)
             {
-                events.Error(ForgeErrorCodes.FoldersInvalid, string.Join(" ", errors), recoverable: true);
+                events.Error(ForgeErrorCodes.FoldersInvalid, string.Join(" ", errors), recoverable: true, terminal: false);
                 continue;
             }
 
@@ -451,7 +461,9 @@ internal sealed class BlueprintStage : IForgeStageRunner
                 events.Error(
                     ForgeErrorCodes.BlueprintInvalid,
                     string.Join(" ", blueprintErrors),
-                    recoverable: attempt < MaxSubmissionAttempts);
+                    recoverable: attempt < MaxSubmissionAttempts,
+                    // At the cap the stage fails: the engine's own error and session.finished follow (#453).
+                    terminal: attempt >= MaxSubmissionAttempts);
                 errors = blueprintErrors;
                 continue;
             }

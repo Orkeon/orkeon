@@ -168,31 +168,25 @@ public sealed partial class SystemOneDecisionModel : IDecisionModel
         }
     }
 
+    /// <summary>
+    /// What this model lacks to be called, read by the host's decision circuit when it is resolved (#451):
+    /// the sentence naming the key variable and setting when the provider requires a key and none is found,
+    /// else null. The same predicate, sources and environment as a call's refusal. No network call.
+    /// </summary>
+    internal string? MissingKey() =>
+        _provider.KeyRequired && DecisionApiKey.Resolve(_provider, _options, _keyEnvironment) is null
+            ? DecisionApiKey.Missing(_provider, _options)
+            : null;
+
     private string? ResolveApiKey()
     {
-        if (!string.IsNullOrWhiteSpace(_options.ApiKey))
-            return _options.ApiKey.Trim();
-        var variable = string.IsNullOrWhiteSpace(_options.ApiKeyEnvVar)
-            ? _provider.DefaultApiKeyVariable
-            : _options.ApiKeyEnvVar.Trim();
-        var key = _keyEnvironment.Process(variable);
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            try
-            {
-                key = _keyEnvironment.User(variable);
-            }
-            catch (Exception ex) when (ex is System.Security.SecurityException or PlatformNotSupportedException or IOException)
-            {
-                key = null;
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(key))
-            return key.Trim();
+        // The same sources the host's circuit reads through MissingKey (#451).
+        var key = DecisionApiKey.Resolve(_provider, _options, _keyEnvironment);
+        if (key is not null)
+            return key;
         return _provider.KeyRequired
             ? throw new DecisionModelException(
-                $"No {Name} API key: set the environment variable {variable}, or {_provider.Section}:ApiKey.",
+                $"No {_provider.DisplayName} API key: {DecisionApiKey.Remedy(_provider, _options)}.",
                 null, isTransient: false)
             : null;
     }
@@ -209,7 +203,7 @@ public sealed partial class SystemOneDecisionModel : IDecisionModel
             400 when body.Contains("max_tokens_exceeded", StringComparison.Ordinal) => longContext
                 ? $"{Name} refused the request: the state is over the model's long context limit ({DecisionLimits.LongContextTokens} tokens)."
                 : $"{Name} refused the request: the state is over the model's context limit ({DecisionLimits.StandardContextTokens} tokens); set long context on the task to use {DecisionLimits.LongContextTokens}.",
-            401 or 403 => $"{Name} refused the key: set {_options.ApiKeyEnvVar} or {_provider.Section}:ApiKey.",
+            401 or 403 => $"{Name} refused the key: {DecisionApiKey.Remedy(_provider, _options)}.",
             429 => $"{Name} rate limit reached (429) after the retries.",
             529 => $"{Name} is overloaded (529) after the retries.",
             >= 400 and < 500 => $"{Name} refused the request: {detail}",

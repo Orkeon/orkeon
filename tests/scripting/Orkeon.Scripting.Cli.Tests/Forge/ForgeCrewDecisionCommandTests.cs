@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Scripting.Cli.Commands.Forge;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
@@ -151,6 +152,7 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
             .Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal(ForgeCrewDecision.UnavailableCode, error.GetProperty("code").GetString());
         Assert.Equal("no-provider", error.GetProperty("cause").GetString());
+        Assert.True(error.GetProperty("terminal").GetBoolean());
     }
 
     [Fact]
@@ -166,6 +168,84 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
             .Select(line => JsonElement.Parse(line))
             .Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal((ForgeCrewDecision.UnavailableCode, "settings"), (error.GetProperty("code").GetString(), error.GetProperty("cause").GetString()));
+        // #467: a cause without a sentence writes no detail.
+        Assert.False(error.TryGetProperty("detail", out _));
+    }
+
+    /// <summary>#467 — a hosted decision provider without its key: the refusal on the stream carries where the key is read from.</summary>
+    [Fact]
+    [Trait("BR", "CH-467")]
+    public async Task A_required_crew_refusal_for_a_missing_key_carries_the_circuits_detail()
+    {
+        const string Variable = "ORKEON_TEST_467_NO_SUCH_KEY";
+        Directory.CreateDirectory(_workspace);
+        var settings = Path.Combine(_workspace, "settings-no-key.json");
+        await File.WriteAllTextAsync(settings,
+            $$"""{ "Llm": { "Model": "never-called", "BaseUrl": "http://127.0.0.1:9" }, "Orkeon": { "Liquid": { "Model": "lfm", "ApiKeyEnvVar": "{{Variable}}" } } }""",
+            TestContext.Current.CancellationToken);
+        SessionAtDryPause(ForgeCrewDecision.Required);
+        using var console = new TestConsole();
+
+        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--events", "jsonl", "--settings", settings], _workspace);
+
+        var events = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonElement.Parse(line))
+            .ToList();
+        var error = events.Single(e => e.GetProperty("kind").GetString() == "error");
+        var started = events.Single(e => e.GetProperty("kind").GetString() == "session.started");
+        // Not the provider's default variable: the sentence names the setting paths, never the value.
+        const string Sentence = "no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey";
+        Assert.Equal((ForgeCrewDecision.UnavailableCode, "no-key"), (error.GetProperty("code").GetString(), error.GetProperty("cause").GetString()));
+        Assert.Equal(Sentence, error.GetProperty("detail").GetString());
+        Assert.Equal(("no-key", Sentence), (started.GetProperty("forgeCircuitCause").GetString(), started.GetProperty("forgeCircuitDetail").GetString()));
+        Assert.DoesNotContain(Variable, console.Stdout + console.Stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>Keys pasted into <c>ApiKeyEnvVar</c> by mistake, built at run time: a dashed one, and one shaped like a variable name.</summary>
+    public static TheoryData<string> PastedKeys =>
+        [string.Concat("sk", "-ant-test-", "0123456789abcdef"), string.Concat("lk", "_live_", "0123456789ABCDEFabcdef")];
+
+    /// <summary>#467 — a key pasted into <c>ApiKeyEnvVar</c> never reaches the forge's events: the sentence names the setting.</summary>
+    [Theory]
+    [MemberData(nameof(PastedKeys))]
+    [Trait("BR", "CH-467")]
+    public async Task A_key_pasted_into_the_variable_setting_never_reaches_the_forges_events(string pasted)
+    {
+        Directory.CreateDirectory(_workspace);
+        var settings = Path.Combine(_workspace, "settings-pasted-key.json");
+        await File.WriteAllTextAsync(settings,
+            $$"""{ "Llm": { "Model": "never-called", "BaseUrl": "http://127.0.0.1:9" }, "Orkeon": { "Liquid": { "Model": "lfm", "ApiKeyEnvVar": "{{pasted}}" } } }""",
+            TestContext.Current.CancellationToken);
+        SessionAtDryPause(ForgeCrewDecision.Required);
+        using var console = new TestConsole();
+
+        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--events", "jsonl", "--settings", settings], _workspace);
+
+        var events = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonElement.Parse(line))
+            .ToList();
+        var error = events.Single(e => e.GetProperty("kind").GetString() == "error");
+        var started = events.Single(e => e.GetProperty("kind").GetString() == "session.started");
+        const string Sentence = "no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey";
+        Assert.Equal((Sentence, Sentence), (error.GetProperty("detail").GetString(), started.GetProperty("forgeCircuitDetail").GetString()));
+        Assert.DoesNotContain(pasted, console.Stdout + console.Stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>A missing key is not cured by turning the circuit on: the refusal names the key to give, not the switch.</summary>
+    [Fact]
+    public void A_required_crew_refusal_for_a_missing_key_asks_for_the_key()
+    {
+        var circuit = new DecisionCircuit(Enabled: false)
+        {
+            Cause = DecisionCircuitCause.NoKey,
+            Detail = "no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey",
+        };
+
+        var message = ForgeCommand.UnavailableDecisionMessage(circuit);
+
+        Assert.Contains("set the environment variable LIQUID_API_KEY", message, StringComparison.Ordinal);
+        Assert.EndsWith("give the decision provider its key before its trial.", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("Orkeon:Decision:Enabled=true", message, StringComparison.Ordinal);
     }
 
     [Fact]

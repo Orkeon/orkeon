@@ -36,6 +36,27 @@ public sealed class OutputValidationCoordinatorTests
         Assert.Equal(string.Empty, Assert.Single(provider.ReceivedConfigs)!.Model);
     }
 
+    // Issue #459: a provider sends a copy of the schema adapted to its dialect (Anthropic closes every
+    // object and moves `minimum` into a description); the answer is validated against the author's own
+    // schema, every constraint included.
+    [Fact]
+    public void ShouldValidateAgainstTheOriginalSchema_WhenAProviderSendsAnAdaptedCopy()
+    {
+        const string original = """{"type":"object","properties":{"n":{"type":"integer","minimum":1}}}""";
+        var schema = Orkeon.Domain.Task.JsonSchema.From(original);
+        var task = new Orkeon.Domain.Task.CrewTaskBuilder()
+            .Description("Count")
+            .ExpectedOutput("A JSON object")
+            .OutputJson(schema)
+            .Build();
+
+        var context = OutputValidationCoordinator.BuildOutputValidationContext(task);
+
+        Assert.NotNull(context);
+        Assert.Same(schema, context!.Schema);
+        Assert.Equal(original, context.Schema!.Schema);
+    }
+
     /// <summary>Answers the validation verdicts it was given, in order.</summary>
     private sealed class ScriptedValidationPipeline(params bool[] valid) : IOutputValidationPipeline
     {

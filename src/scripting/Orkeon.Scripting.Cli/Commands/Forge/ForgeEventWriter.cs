@@ -66,6 +66,8 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
             // The forge's own System One circuit (#435), next to the crew's mode and orthogonal to it.
             forgeCircuit = SystemOne?.CircuitName,
             forgeCircuitCause = SystemOne?.Cause,
+            // The host circuit's sentence when it has one (#467): where a missing key is read from, never the key.
+            forgeCircuitDetail = SystemOne?.Detail,
             // The use case the session is composed from: what a client reopening the
             // session shows again. Absent for a session started from nothing.
             reference = session.Document.Reference,
@@ -82,17 +84,31 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
     public void StageEntered(ForgeState stage, int iteration) =>
         Emit("stage.entered", new { stage = Spell(stage), iteration });
 
-    /// <summary>An anomaly, recoverable or not.</summary>
-    public void Error(string code, string message, bool recoverable) =>
-        Emit("error", new { code, message, recoverable });
+    /// <summary>
+    /// An anomaly. <paramref name="recoverable"/> says whether the SESSION stays resumable;
+    /// <paramref name="terminal"/> whether this process goes no further — a <c>session.finished</c>
+    /// follows, or the command returns. Two independent answers: a budget stop is recoverable and
+    /// terminal, an invalid edit at the arbitration recoverable and not terminal (#453).
+    /// </summary>
+    public void Error(string code, string message, bool recoverable, bool terminal) =>
+        Emit("error", new { code, message, recoverable, terminal });
 
     /// <summary>
     /// An anomaly with the command a person can run instead: the operating
     /// system refused a schedule verb, and <paramref name="command"/> does by hand what Orkeon
     /// could not. Omitted from the line when there is none.
     /// </summary>
-    public void Error(string code, string message, bool recoverable, string? command) =>
-        Emit("error", new { code, message, recoverable, command });
+    public void Error(string code, string message, bool recoverable, bool terminal, string? command) =>
+        Emit("error", new { code, message, recoverable, terminal, command });
+
+    /// <summary>
+    /// An anomaly with its <paramref name="cause"/>: the machine-readable reason a refusal
+    /// happened — the decision circuit's <c>disabled</c> or <c>no-key</c> when the crew's
+    /// decision mode is <c>required</c>. Same <paramref name="terminal"/> obligation as the others.
+    /// <paramref name="detail"/> is the circuit's own sentence when it has one (#467), omitted otherwise.
+    /// </summary>
+    public void ErrorWithCause(string code, string message, bool recoverable, bool terminal, string? cause, string? detail = null) =>
+        Emit("error", new { code, message, recoverable, terminal, cause, detail });
 
     /// <summary>
     /// Where a team folder's schedule stands after <c>forge schedule</c>, <c>--check</c> or

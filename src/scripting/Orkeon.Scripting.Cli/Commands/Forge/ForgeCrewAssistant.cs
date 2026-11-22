@@ -96,7 +96,9 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
     /// <paramref name="sessionVirtualRoot"/>. <paramref name="reference"/> is the use case the
     /// composition starts from, when there is one. <paramref name="crewTools"/> is the sandbox catalogue the caller
     /// built once for the session (<see cref="ForgeSandbox.SelectCrewTools"/>), which its validation also enforces;
-    /// null builds it here from the host's tools and decision circuit.
+    /// null builds it here from the host's tools and decision circuit. <paramref name="scopeServices"/> is the scope the
+    /// caller keeps open for the session, which the scoped ports (the pruning an act's <c>prune</c> asks for, #461) come
+    /// from; null wires none.
     /// </summary>
     public ForgeCrewAssistant(
         IServiceProvider services,
@@ -105,7 +107,8 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         string sessionVirtualRoot = "/forge",
         ForgeReference? reference = null,
         string? language = null,
-        IReadOnlyList<ForgeToolInfo>? crewTools = null)
+        IReadOnlyList<ForgeToolInfo>? crewTools = null,
+        IServiceProvider? scopeServices = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         _session = session ?? throw new ArgumentNullException(nameof(session));
@@ -146,6 +149,9 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
                     : null,
                 LlmProfiles = services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
                 ToolLimits = configuration.GetSection(Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName).Get<Orkeon.Domain.Tools.ToolResultLimitsOptions>(),
+                // #461: what an act's prune option asks for, the pruning stage of the crew loops: scoped, so the
+                // session's scope (scopeServices); none without one, since a scoped service is never resolved from the root.
+                ConversationPruner = scopeServices?.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
                 AgentInstances = configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName).Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(),
                 FileSystem = services.GetService<IFileSystemService>(),
             });

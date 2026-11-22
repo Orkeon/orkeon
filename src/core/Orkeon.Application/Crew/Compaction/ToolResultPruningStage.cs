@@ -20,7 +20,7 @@ namespace Orkeon.Application.Crew.Compaction;
 /// <see cref="RejudgeTurns"/> model turns. With the decision circuit off (one warning per run, no call), nothing is pruned.
 /// Nothing here fails a task.
 /// </summary>
-internal sealed class ToolResultPruningStage : IContextPressureStage
+internal sealed class ToolResultPruningStage : IContextPressureStage, IConversationPruner
 {
     /// <summary>The probability of a yes from which a call counts as needed, or needed whole.</summary>
     internal const double YesProbability = 0.5;
@@ -84,8 +84,19 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
     internal sealed record Candidate(int Index, ConversationToolCall Call, int ResultChars, int Age);
 
     /// <summary>The estimate from which results are judged: the fill share of the usable window, at most the trigger.</summary>
-    internal int ThresholdTokens(ContextPressure pressure) =>
-        Math.Min((int)Math.Floor(_options.FillShare * Math.Max(0, pressure.BudgetTokens)), pressure.TriggerTokens);
+    internal int ThresholdTokens(ContextPressure pressure) => ThresholdTokens(pressure, _options.FillShare);
+
+    private static int ThresholdTokens(ContextPressure pressure, double fillShare) =>
+        Math.Min((int)Math.Floor(fillShare * Math.Max(0, pressure.BudgetTokens)), pressure.TriggerTokens);
+
+    /// <summary>Where one pruning reads: its numbers, the task the decision model is told, the first message scanned.</summary>
+    /// <param name="Options">The fill share, the recent messages kept and the head.</param>
+    /// <param name="Task">The task as the decision model reads it, before the cut.</param>
+    /// <param name="FirstIndex">The first message whose result may be offered.</param>
+    private sealed record PruneScope(ToolResultPruningOptions Options, string Task, int FirstIndex);
+
+    /// <summary>What one pruning asked and did.</summary>
+    private sealed record PruneOutcome(int Threshold, int Offered, int Judged, int Kept, int Cut, int Dropped, int FreedTokens);
 
     /// <inheritdoc />
     public async ValueTask<bool> RelieveAsync(ContextPressure pressure, ConversationView conversation, CancellationToken cancellationToken)
@@ -94,9 +105,86 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
         ArgumentNullException.ThrowIfNull(conversation);
         if (!(pressure.AgentCompaction?.Prune ?? _options.Enabled))
             return false;
-        var threshold = ThresholdTokens(pressure);
+        // A crew loop: index 0 is the system prompt and index 1 the task, neither a tool result.
+        var task = conversation.Count > 1 ? conversation.TextAt(1) : string.Empty;
+        var outcome = await PruneAsync(pressure, conversation, new PruneScope(_options, task, 2), cancellationToken).ConfigureAwait(false);
+        return outcome is { } done && done.Cut + done.Dropped > 0;
+    }
+
+    /// <summary>
+    /// The pruning of an act's conversation (#461): the caller hands the task and the first message scanned, and the
+    /// numbers it overrides; the window is resolved as a crew loop's is, and the fill share of the usable window
+    /// alone sets the threshold, since an act does not compact. Asked by the caller, so <c>Enabled</c> is not read.
+    /// </summary>
+    public async ValueTask<ConversationPruneResponse?> PruneAsync(
+        ConversationPruneRequest request, ActConversationView conversation, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(conversation);
+        // A crew run with decision.mode: none asks System One nothing (#429), an act of it included.
+        if (SystemOneRunScope.Current?.Mode == Domain.Crew.CrewDecisionMode.None)
+            return null;
+        var options = new ToolResultPruningOptions
+        {
+            Enabled = true,
+            FillShare = request.FillShare ?? _options.FillShare,
+            KeepRecentMessages = request.KeepRecentMessages ?? _options.KeepRecentMessages,
+            HeadChars = request.HeadChars ?? _options.HeadChars,
+        };
+        var window = Window(request);
+        var reserved = ContextCompaction.ReservedOutput(request.MaxOutputTokens, request.Model, window.Tokens);
+        var pressure = new ContextPressure
+        {
+            // An act runs on no task of a crew: the notice names none.
+            TaskId = string.Empty,
+            AgentRole = request.AgentRole,
+            EstimatedTokens = request.EstimatedTokens,
+            Window = window,
+            ReservedOutputTokens = reserved,
+            // No compaction trigger: the usable window, so the fill share alone sets the threshold.
+            TriggerTokens = Math.Max(0, window.Tokens - reserved),
+        };
+        var outcome = await PruneAsync(pressure, conversation, new PruneScope(options, request.Task, request.FirstIndex), cancellationToken)
+            .ConfigureAwait(false);
+        return outcome is null
+            ? null
+            : new ConversationPruneResponse
+            {
+                ThresholdTokens = outcome.Threshold,
+                Offered = outcome.Offered,
+                Judged = outcome.Judged,
+                Kept = outcome.Kept,
+                Cut = outcome.Cut,
+                Dropped = outcome.Dropped,
+                FreedTokens = outcome.FreedTokens,
+            };
+    }
+
+    /// <summary>The window of an act's call, as a crew loop resolves it; without a resolver, the model table, else the session's default.</summary>
+    private ContextWindow Window(ConversationPruneRequest request)
+    {
+        if (_services.GetService<IContextWindowResolver>() is { } resolver)
+            return resolver.Resolve(request.Profile, request.Model, request.ContextWindowTokens);
+        if (request.ContextWindowTokens is > 0)
+            return new ContextWindow(request.ContextWindowTokens.Value, ContextWindowSources.Profile);
+        return Orkeon.Constants.Llm.LlmModelContextWindows.ContextWindowTokens(request.Model) is { } documented
+            ? new ContextWindow(documented, ContextWindowSources.Table)
+            : new ContextWindow(SessionWindowTokens, ContextWindowSources.Settings);
+    }
+
+    /// <summary>The window assumed without a resolver nor a documented one: the session setting's default.</summary>
+    internal const int SessionWindowTokens = 200_000;
+
+    /// <summary>
+    /// One pruning: past the threshold, the candidates are asked in batches, all at once, and the verdicts applied.
+    /// Null when nothing was asked: below the threshold, the circuit off, or nothing to offer.
+    /// </summary>
+    private async ValueTask<PruneOutcome?> PruneAsync(
+        ContextPressure pressure, ConversationView conversation, PruneScope scope, CancellationToken cancellationToken)
+    {
+        var threshold = ThresholdTokens(pressure, scope.Options.FillShare);
         if (pressure.EstimatedTokens < threshold)
-            return false;
+            return null;
 
         var circuit = DecisionCircuit.Of(_services, _scopeCircuit);
         var model = circuit.Enabled ? _services.GetService<IDecisionModel>() : null;
@@ -104,38 +192,42 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
         {
             if (RunWarnings.Of(_warnings).First("prune.circuit-off"))
                 PruneLog.CircuitOff(_logger, circuit.OffReason ?? DecisionCircuit.OffBy(DecisionCircuitCause.NoProvider).OffReason!);
-            return false;
+            return null;
         }
 
+        // The memory of one conversation is read and written by its own loop alone, one model turn after the other:
+        // the batches below run at once, but none writes it; the loop does, once they are all back.
         var memory = _memories.GetValue(conversation, static _ => new Memory());
-        var candidates = Candidates(conversation, memory);
+        var candidates = Candidates(conversation, memory, scope);
         if (candidates.Count == 0)
-            return false;
+            return null;
 
-        var request = Cut(conversation.Count > 1 ? conversation.TextAt(1).Trim() : string.Empty, RequestChars);
+        var request = Cut(scope.Task.Trim(), RequestChars);
+        // The batches of one pressure are asked together (#461): the model turn waits for the slowest, not their sum.
+        var answers = await System.Threading.Tasks.Task.WhenAll(
+            candidates.Chunk(BatchCalls).Select(batch => AskAsync(model, request, batch, cancellationToken))).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         var verdicts = new Dictionary<string, PruneVerdict>(StringComparer.Ordinal);
-        foreach (var batch in candidates.Chunk(BatchCalls))
+        foreach (var (batch, response, failure) in answers)
         {
-            try
-            {
-                var response = await model.DecideAsync(Question(request, batch), cancellationToken).ConfigureAwait(false);
-                foreach (var (callId, verdict) in Verdicts(batch, response))
-                    verdicts[callId] = verdict;
-            }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            if (response is null)
             {
                 // A batch the decision model failed on waits RejudgeTurns turns, as a kept one does, rather than
                 // being asked again at the next turn (#434).
-                PruneLog.JudgeFailed(_logger, pressure.AgentRole, batch.Length, ex.Message);
+                PruneLog.JudgeFailed(_logger, pressure.AgentRole, batch.Length, failure ?? string.Empty);
                 foreach (var candidate in batch)
                     memory.KeptAtAge[candidate.Call.CallId] = candidate.Age;
+                continue;
             }
+            foreach (var (callId, verdict) in Verdicts(batch, response))
+                verdicts[callId] = verdict;
         }
 
-        var tally = Apply(conversation, memory, candidates, verdicts);
+        var tally = Apply(conversation, memory, candidates, verdicts, scope.Options.HeadChars);
+        var outcome = new PruneOutcome(threshold, candidates.Count, verdicts.Count, tally.Kept, tally.Cut, tally.Dropped, tally.FreedTokens);
         // A turn that changed nothing is no event: agent.pruned says what was cut or dropped (#434).
         if (tally.Cut + tally.Dropped == 0)
-            return false;
+            return outcome;
 
         PruneLog.Pruned(_logger, pressure.AgentRole, pressure.TaskId, candidates.Count, verdicts.Count, tally.Dropped, tally.Cut, tally.FreedTokens);
         _observer?.Pruned(new AgentPruneNotice
@@ -151,7 +243,22 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
             Dropped = tally.Dropped,
             FreedTokens = tally.FreedTokens,
         });
-        return true;
+        return outcome;
+    }
+
+    /// <summary>One batch's request: its answer, or the message of its failure; the caller's cancellation propagates.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A batch the decision model fails on is kept and asked again later; nothing here fails a task.")]
+    private static async System.Threading.Tasks.Task<(Candidate[] Batch, DecisionResponse? Response, string? Failure)> AskAsync(
+        IDecisionModel model, string request, Candidate[] batch, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return (batch, await model.DecideAsync(Question(request, batch), cancellationToken).ConfigureAwait(false), null);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            return (batch, null, ex.Message);
+        }
     }
 
     /// <summary>
@@ -159,16 +266,16 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
     /// messages and of a turn the model has answered since, longer than twice the head, neither settled nor kept
     /// less than <see cref="RejudgeTurns"/> ago.
     /// </summary>
-    private List<Candidate> Candidates(ConversationView conversation, Memory memory)
+    private static List<Candidate> Candidates(ConversationView conversation, Memory memory, PruneScope scope)
     {
         var candidates = new List<Candidate>();
-        var reachable = conversation.Count - _options.KeepRecentMessages;
+        var reachable = conversation.Count - scope.Options.KeepRecentMessages;
         var turnsAfter = new int[conversation.Count + 1];
         for (var i = conversation.Count - 1; i >= 0; i--)
             turnsAfter[i] = turnsAfter[i + 1] + (conversation.RoleAt(i) == ConversationView.AssistantRole ? 1 : 0);
 
-        // Index 0 is the system prompt and index 1 the task: neither is a tool result.
-        for (var i = 2; i < reachable && candidates.Count < MaxCalls; i++)
+        // Before the first index: a crew loop's system prompt and task, an act's seed and prompt (#461).
+        for (var i = Math.Max(0, scope.FirstIndex); i < reachable && candidates.Count < MaxCalls; i++)
         {
             if (conversation.RoleAt(i) != ConversationView.ToolRole
                 || conversation.ToolCallAt(i) is not { IsRead: true } call
@@ -179,7 +286,7 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
             // A result of a turn the model has not answered yet is one it has not read: never offered, however many
             // results that turn holds (#434).
             if (age == 0
-                || chars <= 2 * _options.HeadChars
+                || chars <= 2 * scope.Options.HeadChars
                 || (memory.KeptAtAge.TryGetValue(call.CallId, out var keptAt) && age - keptAt < RejudgeTurns))
                 continue;
             candidates.Add(new Candidate(i, call, chars, age));
@@ -223,7 +330,8 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
 
     private readonly record struct Tally(int Kept, int Cut, int Dropped, int FreedTokens);
 
-    private Tally Apply(ConversationView conversation, Memory memory, List<Candidate> candidates, Dictionary<string, PruneVerdict> verdicts)
+    private static Tally Apply(
+        ConversationView conversation, Memory memory, List<Candidate> candidates, Dictionary<string, PruneVerdict> verdicts, int headChars)
     {
         int kept = 0, cut = 0, dropped = 0;
         long freedChars = 0;
@@ -246,7 +354,7 @@ internal sealed class ToolResultPruningStage : IContextPressureStage
             // The note carries the call's whole input, so the agent can make the same call again (#434).
             var input = candidate.Call.Input;
             var content = conversation.TextAt(candidate.Index);
-            var head = TextCut.HeadLength(content, _options.HeadChars);
+            var head = TextCut.HeadLength(content, headChars);
             var pruned = verdict == PruneVerdict.Drop
                 ? PrunePrompts.Dropped(candidate.Call.ToolName, input, content.Length)
                 : string.Concat(content.AsSpan(0, head),

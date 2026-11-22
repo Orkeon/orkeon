@@ -983,6 +983,10 @@ internal static partial class RunCommand
 
         var ragBackend = Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(host.Services);
 
+        // ctx.llm.pick (#460) and act's prune (#461): System One's pick and the pruning stage are scoped (the run
+        // scope's circuit and observer); the script is the run, so its scope lasts as long as this method.
+        using var runScope = host.Services.CreateScope();
+
         var engineFactory = new JsEngineFactory(
             limits: cliLimits,
             loggerFactory: loggerFactory,
@@ -1002,9 +1006,12 @@ internal static partial class RunCommand
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
                 LlmProfiles = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
                 ToolLimits = Microsoft.Extensions.Configuration.ConfigurationBinder.Get<Orkeon.Domain.Tools.ToolResultLimitsOptions>(configuration.GetSection(Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName)),
+                // #461: what an act's prune option asks for, the pruning stage of the crew loops, from the run's scope.
+                ConversationPruner = runScope.ServiceProvider.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
                 AgentInstances = Microsoft.Extensions.Configuration.ConfigurationBinder.Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName)),
                 // RT-06: a script agent's .workingRoot(...) is checked against these mounts.
                 FileSystem = fileSystem,
+                SystemOnePicker = runScope.ServiceProvider.GetService<Orkeon.Application.Crew.Routing.ISystemOnePicker>(),
             },
             ragBackend: ragBackend)
         {

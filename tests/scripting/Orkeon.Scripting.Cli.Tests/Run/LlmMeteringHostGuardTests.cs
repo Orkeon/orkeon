@@ -117,7 +117,8 @@ public sealed class LlmMeteringHostGuardTests : IDisposable
 
         var ex = Assert.Throws<RunnerSettingsException>(() => BuildHost(settings, _ => { }));
 
-        Assert.Contains("Llm:Provider: 'fake-cli'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Llm:Provider names no provider of this host", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("'fake-cli'", ex.Message, StringComparison.Ordinal); // #465: never the value
     }
 
     [Fact]

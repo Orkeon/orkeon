@@ -23,6 +23,8 @@
       mode, which is the only one a macOS/Linux clone restores.
 - [ ] No credential, token or key in the diff — the secret scan runs gitleaks over the
       whole history of the PR, and a hit means rotate first, force-push second.
+- [ ] `bash scripts/pre-pr-check.sh` prints no `FAIL` — it checks what CI refuses and a local build
+      accepts (the .NET 11 analyzers, CodeQL, gitleaks); see `.github/pre-pr-checks.md`.
 - [ ] No direct `System.IO` in framework code — route through `IFileSystemService`
       (the VFS analyzer enforces this).
 - [ ] First contribution? The CLA check will ask for one sentence — see [CLA.md](https://github.com/Orkeon/orkeon/blob/main/CLA.md).

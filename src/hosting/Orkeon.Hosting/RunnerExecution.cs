@@ -1635,7 +1635,8 @@ public static partial class RunnerExecution
         ICrewFactory factory,
         string configPath,
         ILogger logger,
-        CancellationToken ct)
+        CancellationToken ct,
+        IServiceProvider? scopeServices = null)
     {
         var sp = host.Services;
         var fileSystem = sp.GetRequiredService<IFileSystemService>();
@@ -1668,9 +1669,15 @@ public static partial class RunnerExecution
                 LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
                 AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
                 ToolLimits = sp.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
+                // #461: what an act's prune option asks for, the pruning stage of the crew loops: scoped like the pick
+                // below, the run scope's (its circuit, and its observer writing to the run's history); none without one.
+                ConversationPruner = scopeServices?.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
                 AgentInstances = configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName).Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(),
                 // RT-06: a script agent's .workingRoot(...) is checked against these mounts.
                 FileSystem = sp.GetService<IFileSystemService>(),
+                // ctx.llm.pick (#460): the run scope's pick, its circuit and its observer (agent.route, agent.effort);
+                // a load without a run scope wires none, and a pick made there is refused.
+                SystemOnePicker = scopeServices?.GetService<Orkeon.Application.Crew.Routing.ISystemOnePicker>(),
             },
             ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
 

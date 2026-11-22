@@ -63,20 +63,32 @@ public class FirefoxToolOptionsTests
         Assert.Equal(1500, options.MaxTextLength);
     }
 
+    [Theory]
+    [InlineData("1")]
+    [InlineData("7")]
+    [InlineData("Host, Run")]
+    [InlineData("sk-secret-example")]
+    public void Should_RefuseTheLifetime_When_ItIsNotAName(string value)
+    {
+        // #464: Enum.TryParse read "1" as Host, a browser kept across runs, without a word.
+        var refused = Assert.Throws<InvalidOperationException>(() => FirefoxToolOptions.From(Configuration(("Lifetime", value))));
+
+        Assert.Equal("Orkeon:Tools:Firefox:Lifetime is not a browser lifetime: write one of Run, Host.", refused.Message);
+        Assert.DoesNotContain(value, refused.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Should_KeepTheDefault_When_AValueIsUnreadableOrNotPositive()
     {
         var options = FirefoxToolOptions.From(Configuration(
             ("ExecutablePath", "  "),
             ("Headless", "maybe"),
-            ("Lifetime", "7"),
             ("StartupTimeoutSeconds", "soon"),
             ("CommandTimeoutSeconds", "0"),
             ("MaxNodes", "-3")));
 
         Assert.Null(options.ExecutablePath);
         Assert.False(options.Headless);
-        Assert.Equal(FirefoxBrowserLifetime.Run, options.Lifetime);
         Assert.Equal(30, options.StartupTimeoutSeconds);
         Assert.Equal(30, options.CommandTimeoutSeconds);
         Assert.Equal(40, options.MaxNodes);

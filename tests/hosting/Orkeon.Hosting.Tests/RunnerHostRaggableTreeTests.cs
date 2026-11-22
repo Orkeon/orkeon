@@ -57,7 +57,8 @@ public sealed class RunnerHostRaggableTreeTests
         var ex = Assert.Throws<InvalidOperationException>(() => Register(configuration));
 
         Assert.Contains(named, ex.Message, StringComparison.Ordinal);
-        Assert.Contains(value, ex.Message, StringComparison.Ordinal);
+        // No refusal repeats the value (#465): it may be a secret pasted under the wrong key.
+        Assert.DoesNotContain(value, ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

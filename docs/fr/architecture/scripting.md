@@ -135,7 +135,7 @@ script a déclaré, et rien d'autre (épinglé par `ReplAutonomousToolActTests`)
 
 ## Options de act
 
-Cinq options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la liste complète est
+Six options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la liste complète est
 `ActOptions` dans `context.d.ts`). Elles sont fixées au début de l'appel (une `ActSession` par appel) :
 
 - **`tools: ["file_read"]`** n'offre au modèle que ce sous-ensemble des outils de l'agent. Un nom que
@@ -148,7 +148,7 @@ Cinq options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la
   avec `effort must be low|medium|high|xhigh|max`. `agentBuilder().effort(...)`, `LlmConfig.with({ effort })` et
   `taskBuilder().withEffort(...)` prennent aussi `"auto"` (le choix de System One au début de chaque tâche, #439) et
   refusent toute autre valeur avec `effort must be low|medium|high|xhigh|max|auto, not '<value>'` ; un appel `ctx.llm`
-  refuse `"auto"`, un choix se faisant par tâche, jamais par appel. Anthropic prend les cinq niveaux ; un fournisseur dont le
+  refuse `"auto"`, un choix se faisant par tâche, jamais par appel ; un corps qui n'exécute aucune tâche en demande un lui-même avec `ctx.llm.pick(request, { profile, effort })` (#460, [DSL de script](../reference/scripting-dsl.md)), par l'`ISystemOnePicker` de l'hôte (`ORKEXP008`) résolu depuis la portée du run, et passe la réponse à ses appels. Anthropic prend les cinq niveaux ; un fournisseur dont le
   champ en connaît moins (ses `EffortLevels` déclarés : les trois par défaut pour `think`
   d'Ollama, Gemini, Azure OpenAI et Mistral ; jusqu'à `xhigh` pour OpenAI et Grok ; les cinq pour Z.ai, Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI, Hugging Face, MiniMax et Mammouth AI), ou un modèle qui en prend moins (la table par modèle de `docs/fr/architecture/llm-providers.md`), envoie le plus haut niveau que les deux prennent en dessous de celui demandé, et le dit dans un
   avertissement, jamais un changement silencieux.
@@ -187,6 +187,20 @@ Cinq options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la
   n'élague rien. L'estimation compte le texte, les appels d'outil et le raisonnement des messages, ni les
   images ni les schémas d'outils. `token_budget` lit le tampon de session, qui ne voit jamais les messages
   de la boucle : il ne mesure pas cette pression.
+- **`prune: true | { fillShare, keepRecentMessages, headChars }`** donne à la boucle l'élagage des anciens
+  résultats d'outils de lecture de l'orchestrateur (`Orkeon:Compaction:Prune`, #461), par l'`IConversationPruner`
+  de l'hôte (l'étape même des boucles d'équipage, expérimental `ORKEXP009`). Avant chaque tour du modèle dont
+  le prompt estimé atteint `fillShare` de la fenêtre utile de l'appel, le modèle de décision juge chaque
+  résultat d'une lecture que cet appel a exécutée, hors des `keepRecentMessages` derniers messages et auquel
+  un tour du modèle a répondu depuis, sur son seul appel ; tous les lots d'un tour sont demandés ensemble.
+  `true` prend les nombres de l'hôte, un objet les remplace dans les mêmes bornes (`fillShare` au-dessus de 0
+  et au plus 1, `keepRecentMessages` 0 ou plus, `headChars` 1 ou plus). Sans `prune`, aucun appel de décision
+  n'est fait, quoi que dise `Enabled` ; circuit de décision coupé, rien n'est demandé et le run avertit une
+  fois ; une crew en `decision.mode: none` n'élague rien, sans appel ni avertissement, et un hôte qui ne fournit
+  aucun élagueur ignore `prune` avec un avertissement. Un élagage qui a coupé ou retiré un résultat émet `agent.pruned`, et `result.pruned` (`offered`,
+  `judged`, `kept`, `cut`, `dropped`, `freedTokens`) totalise la boucle sur chaque issue (interrompue, épuisée
+  et budget épuisé comprises) ; il est absent quand rien n'a été jugé. `prune` à côté d'`onContextPressure`
+  ou de `contextPressure` lève `InvalidScriptError` en nommant les deux.
 
 Les rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
 le modèle de threading ci-dessous) ; `onToolCall` passe toujours avant la porte de permission.

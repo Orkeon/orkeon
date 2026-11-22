@@ -41,7 +41,7 @@ public sealed record ContextWindowSettings : ValueObjectRecord
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxTokens);
         if (CompressionRatio < 0.0 || CompressionRatio > 1.0)
             throw new ArgumentOutOfRangeException(nameof(CompressionRatio),
-                $"CompressionRatio must be between 0.0 and 1.0, but was {CompressionRatio}.");
+                $"CompressionRatio must be between 0.0 and 1.0, but was {CompressionRatio.ToString(System.Globalization.CultureInfo.InvariantCulture)}.");
         ArgumentException.ThrowIfNullOrWhiteSpace(SummaryPrompt);
 
         this.MaxTokens = MaxTokens;

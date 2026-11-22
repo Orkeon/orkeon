@@ -74,13 +74,31 @@ public sealed class RunnerHostMcpTests : IDisposable
     }
 
     /// <summary>
+    /// #464: an <c>Auth:Type</c> written as a number is refused at start, as every enumeration setting written
+    /// as one, naming the members: the reader would set the server aside, the binder would take the member
+    /// holding that number.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-464")]
+    public void An_Auth_Type_written_as_a_number_is_refused_at_start()
+    {
+        var settings = Settings("""
+            { "MCP": { "Servers": { "tracker": { "Transport": "Sse", "Url": "https://mcp.example.test/", "Auth": { "Type": "3" } } } } }
+            """);
+
+        var ex = Assert.ThrowsAny<Exception>(() => RunnerHost.Build(settings, Mounts()).Dispose());
+
+        Assert.Contains("MCP:Servers:tracker:Auth:Type is a number where a name is expected", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("OAuth2Device", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// FWK-16: an <c>Auth:Type</c> that is not one of the listed spellings sets the server aside with a line that
     /// names it, the key and the accepted spellings: the binder alone would drop the server without a word.
     /// </summary>
     [Theory]
     [InlineData("OAUTH2DEVICE")]
     [InlineData("o-auth2-device")]
-    [InlineData("3")]
     public async Task An_unlisted_Auth_Type_sets_the_server_aside_and_lists_the_accepted_spellings(string type)
     {
         var settings = Settings($$"""

@@ -251,6 +251,9 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                 mode = WireMode(notice.Mode),
                 circuit = notice.Circuit.Enabled ? DecisionCircuitStates.On : DecisionCircuitStates.Off,
                 cause = notice.Circuit.Enabled ? null : WireCause(notice.Circuit.Cause),
+                // The circuit's own sentence (#467): the variable and the setting a missing key is read from,
+                // never the key. Present only when the circuit is off and its cause has one.
+                detail = notice.Circuit.Enabled ? null : notice.Circuit.Detail,
             });
         return _inner?.OnRunDecisionAsync(notice, ct) ?? Task.CompletedTask;
     }
@@ -271,6 +274,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
         Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings => DecisionCircuitCauses.Settings,
         Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider => DecisionCircuitCauses.NoProvider,
         Orkeon.Application.Crew.Execution.DecisionCircuitCause.Trial => DecisionCircuitCauses.Trial,
+        Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoKey => DecisionCircuitCauses.NoKey,
         _ => null,
     };
 

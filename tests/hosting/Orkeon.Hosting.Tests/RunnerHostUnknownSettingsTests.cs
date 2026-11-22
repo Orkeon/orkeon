@@ -97,6 +97,20 @@ public sealed class RunnerHostUnknownSettingsTests : IDisposable
         Assert.NotNull(host);
     }
 
+    /// <summary>#468: the workspace key of the root section and of a profile is declared, never an unknown key.</summary>
+    [Theory]
+    [Trait("BR", "CH-468")]
+    [InlineData("Llm:WorkspaceId")]
+    [InlineData("Llm:Profiles:mon-profil:WorkspaceId")]
+    public void ShouldAcceptTheWorkspaceKey_OfTheRootSectionAndOfAProfile(string key)
+    {
+        using var host = RunnerHost.Build(
+            Settings((key, "wrkspc_01Test"), ("Llm:Profiles:mon-profil:Model", "qwen3"), ("Llm:Profiles:mon-profil:BaseUrl", "http://localhost:11434")),
+            new RunnerMountPlan());
+
+        Assert.NotNull(host);
+    }
+
     /// <summary>
     /// Configuration keys are case-insensitive, and the configuration reports each one as it was
     /// written: <c>ORKEON_LLM__APIKEY</c> is read as <c>Llm:ApiKey</c> under a root child <c>LLM</c>,

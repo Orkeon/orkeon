@@ -7,6 +7,232 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `ctx.services.get("pick")`, System One's pick for a command (#463)
+
+A scripted command (`*.cmd.ts`) can ask System One for a profile and/or a thinking level:
+`ctx.services.get("pick").pick(request, options)`, with the contract of `ctx.llm.pick` (#460) and the same answer
+`{ profile?, effort? }`. A refusal is prefixed `services.get("pick").pick { <option> } ...`; the call follows the
+command's cancellation (`ctx.signal`) by itself; the LLM usage carries no crew nor agent and is metered like the
+command's other LLM calls (a `decision` call, in the session's total); there is no agent role (the decision model reads
+an empty one). The service is optional: `ctx.services.has("pick")` is true in a host that runs scripted commands and
+wires an `ISystemOnePicker` (`AddOrkeonApplication` and `AddScriptCommands`) — `orkeon-repl` among the shipped ones;
+`orkeon run`, `orkeon-host` and `mcp serve --crew` load no scripted command. The picker comes from the scope the script
+engines read their scoped ports from, as for `ctx.llm.pick`; without that scope the service is absent. The service is bound to the run that got it: get it inside the handler.
+Experimental (`ORKEXP008`), like `ctx.llm.pick`. The typings declare `PickService` in `orkeon-cli.d.ts`.
+
+### Added — `Llm:WorkspaceId`, the Anthropic workspace from the settings (#468)
+
+An Anthropic identity-linked key refuses every call that does not name its workspace (`anthropic-workspace-id`).
+`LlmConfig.WorkspaceId` and the header existed, but only `orkeon llm probe --workspace-id` set them: `orkeon run`,
+`orkeon-host`, the forge and a crew could not use such a key. `LlmSettings` now reads `WorkspaceId` under `Llm` and
+under `Llm:Profiles:<name>` (environment form `Llm__WorkspaceId`, `Llm__Profiles__<name>__WorkspaceId`); a profile
+does not inherit the section's. `orkeon llm probe` reads no settings: its `--workspace-id` stays its only source, and
+`orkeon llm models` takes the same option. The Anthropic model listing sends the header too (`orkeon llm models`,
+`orkeon doctor` from `Llm:WorkspaceId`). A provider other than Anthropic, the mock included, does not send it and logs
+the structured unhonoured-option warning once per provider (event `110`) instead of dropping it in silence; the mock
+keeps no configuration, so the factory that builds it passes it the profile's (or the section's) configuration and the
+mock warns from that. Without a provider to log it, `orkeon llm models --workspace-id` for another provider writes the
+same warning on stderr, and `orkeon doctor` says it on its `llm-config` line (`warn`).
+
+### Added — an off decision circuit's sentence on `run.decision` and the forge's events (`detail`, #467)
+
+`run.decision` carries `detail` beside `cause` when the circuit is off and its cause has a sentence: for `no-key`, the
+environment variable and the setting the decision provider's key is read from
+(`no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey`), never the key. A client
+(Studio, Orkeon Code) shows the remedy without parsing stderr. The forge carries the same sentence as
+`forgeCircuitDetail` on `session.started` and as `detail` on its `FORGE-DECISION-UNAVAILABLE` error, its
+`FORGE-DECISION-PASS-SKIPPED` warning and the off pass's `run.started`. Every other cause writes none, and the key is
+absent from the line when there is none: the fields are additive. The sentence names the variable only when
+`Orkeon:<Provider>:ApiKeyEnvVar` is unset or holds the provider's default; any other value (another variable, or a
+key pasted there by mistake, whatever its shape) is never repeated, the sentence names the setting paths alone:
+`no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey`. A call's refusal (`No Liquid API key: …`, the
+display name) and a 401 or 403 refusal (`liquid refused the key: …`) end with the same remedy.
+
+### Fixed — `orkeon forge rephrase` without a default LLM says one thing (#466)
+
+With no `Llm` section, `orkeon forge rephrase` printed the host's echo-provider warning before refusing with
+`no LLM is configured`; with a `Llm` section holding `Profiles` alone, it ran on the echo provider, printed the
+request back and exited 0. It now decides with the host's predicate (a default provider is configured) and refuses,
+`FORGE-LLM-UNAVAILABLE`, exit 1, the refusal alone on stderr.
+
+### Added — the forge's `error` event says whether the process goes on (`terminal`, #453)
+
+Every `error` line of `orkeon forge --events jsonl` now carries `terminal` beside `recoverable`, and the two have a
+documented contract ([CLI reference](docs/reference/cli.md#orkeon-forge)): `recoverable` says whether the session stays
+resumable, `terminal` whether this process goes no further (a `session.finished` follows, or the command returns). A
+budget stop is recoverable and terminal; an invalid edit, an edit or a retry refused at the arbitration for want of an
+iteration, invalid folders, and a brief or a plan refused below the attempts cap are recoverable and not terminal. At
+the cap the two `error` lines stay two, both `terminal: true`, and a brief refused on the interview's last turn is
+`terminal: true` too, the interview ending there. The values of `recoverable` do not change, the envelope stays at
+`v: 2`, and the run's own `error` event is unchanged. For a client of the forge stream the field is additive.
+
+### Changed — an enumeration setting is written by its name, never as a number **[breaking]** (#464)
+
+**Before**: the binder took a number as the member holding it (`Orkeon:Guardian:Llm:FailMode: "1"` bound `Open`, the
+fail-open policy), and a comma list as a combination of members, without a word; `Llm:Replay:Mode` took `"1"` as
+`record`; an e-mail or drive account took its `Rights` as a number (`"3"` for `Read, Organize` on an e-mail account,
+`Read, Write` on a drive account) and a comma list on an enumeration that takes one name (`Incoming:Security:
+"SslOnConnect, StartTls"` bound `StartTls`, a drive's `Provider: "GoogleDrive, OneDrive"` bound `OneDrive`). **Now**:
+the host refuses at start an enumeration setting written as a number — in a value, a list or a dictionary — or as a
+comma list where it takes one name, and the refusal names the key and the members, never the value
+(`Orkeon:Guardian:Llm:FailMode is a number where a name is expected: write one of Closed, Open.`). `Llm:Replay:Mode`
+written so, or as a name it does not hold, is refused naming the key and the modes, never the value
+(`Llm:Replay:Mode is not a replay mode: write one of off, record, replay.`). `Orkeon:Tools:Firefox:Lifetime` and
+`Orkeon:Scripting:Toolchain:TypeCheck` take a name only wherever they are read, a host the Hosting check does not
+walk included (`FirefoxToolOptions.From`, `ScriptingToolchainOptions.FromConfiguration`): a number (`"1"` read as `Host`,
+a browser kept across runs, and as `Validate`), a comma list or an unknown name throws
+`Orkeon:Tools:Firefox:Lifetime is not a browser lifetime: write one of Run, Host.` /
+`Orkeon:Scripting:Toolchain:TypeCheck is not a type-check mode: write one of Off, Validate, Always.`; an unknown
+`Lifetime` used to keep `Run`. A name is still read in any case. An account whose `Rights` or other
+enumeration holds a number, or a comma list where it takes one name, is misconfigured, as one holding an unknown name,
+and its problem names the key and the members, never the value
+(`Rights holds a number where EmailRights takes names: write one or more of None, Read, Organize, Draft, Send, Delete, Purge, separated by commas`,
+`Incoming:Security is a list where a single name is expected: write one of SslOnConnect, StartTls, None`); it lists every name the key takes,
+`None` of a `[Flags]` enumeration included, as the host's check does, and carries no final period, being one clause of
+the registry's sentence (`The e-mail account '<name>' is misconfigured: <problem>; <problem> (…).`).
+**Exception**: outside a host that `RunnerHost` builds, an options class a library binds with `.Bind()` is not
+walked, and the binder's parse stands for its enumerations: `Orkeon:Checkpointing:Store`,
+`Orkeon:HumanInput:Pause`, `MCP:Servers:<name>:Transport`, `Orkeon:RunHistory:Store`
+and `Orkeon:Rag:WebFallback:SuspiciousAction`. A host `RunnerHost` builds walks them.
+
+| Before | Now |
+|---|---|
+| `"FailMode": "1"` | `"FailMode": "Open"` |
+| `"EnabledCategories": [ "0", "2" ]` | `"EnabledCategories": [ "LlmCall", "FileAccess" ]` |
+| `"Rights": "3"` (an e-mail account) | `"Rights": "Read, Organize"` |
+| `"Rights": "3"` (a drive account) | `"Rights": "Read, Write"` |
+| `"Replay": { "Mode": "1" }` | `"Replay": { "Mode": "record" }` |
+
+### Changed — a hosted decision provider without its key turns the circuit off (`no-key`) **[breaking]** (#451)
+
+**Before**: a host whose decision provider is hosted (TypeSafe, Liquid) and has no key started with its circuit on, and
+a `required` crew started and failed at its first decision call. **Now**: a host that finds the key neither in the
+`ApiKey` setting nor in the environment variable (`ApiKeyEnvVar`, else `TYPESAFE_API_KEY` / `LIQUID_API_KEY`) resolves
+its circuit off, with the new cause `no-key` (`DecisionCircuitCause.NoKey`, `DecisionCircuitCauses.NoKey`). The key is
+read from the same sources as the provider reads it at each call, when the circuit is resolved, with no network call,
+and only when the decision model is that System One provider: a local provider (Kev) and a decision model that is no
+System One provider are never turned off. The circuit's sentence names both places
+(`the decision circuit is off: no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey`,
+carried by the new `DecisionCircuit.Detail`). A `required` crew on such a host is refused before its first task
+(`orkeon run` exits `69`, as `orkeon-host` and `mcp serve --crew` record it), an `optional` crew takes its `without:`
+relays, and `--validate` warns. On the wire, `no-key` is a new value of `cause` on `run.decision`, of `cause` on the
+forge's `FORGE-DECISION-UNAVAILABLE` error and of `forgeCircuitCause` on its `session.started`: a client that lists the
+causes adds it. For `no-key`, the forge's refusal asks for the key (`… give the decision provider its key before its
+trial.`) rather than for a decision model or `Orkeon:Decision:Enabled=true`, which would change nothing. **Migration**: set the provider's key (its variable or `ApiKey`), or run without System One on purpose
+(`--no-decision`, `Orkeon:Decision:Enabled=false`).
+
+### Fixed — `--validate` names a fail-closed guarded profile with the circuit off (#452)
+
+- `--validate`, with the circuit off, prints a `WARNING:` per agent whose `llm.profile` names a decision profile that is
+  `FailClosed` and holds a `guard` stage, since a run would block every call through it. The run is not refused. The
+  rule is one predicate, `DecisionProfileServiceCollectionExtensions.BlocksEveryCallWithTheCircuitOff`, used by the
+  profile's build too.
+
+### Added — `ctx.llm.pick`: System One's profile and thinking level for a script that runs no task (#460)
+
+`ctx.llm.pick(request, { profile: { ladder?, floor?, ceiling?, fallback? }, effort: { min?, max?, fallback? } })`
+answers what a task on `llm.profile: auto` and `effort: auto` would be given: `{ profile?, effort? }`, each
+`{ value, reason, picked, probability }`, in one decision call for both, each held to 0.6 or its fallback. The ladder
+defaults to `Orkeon:Decision:Route:Ladder`, the levels are `Orkeon:Decision:Effort:Levels` between `min` and `max`;
+`floor` and `ceiling` clamp the model's pick with no other call (reasons `floor`, `ceiling`), one rung or one level
+left answers with no call, and the circuit off or a crew on `decision.mode: none` answers `circuit-off` with no call.
+Every refused option throws an `InvalidScriptError` naming it before any call. Each answer is an `agent.route` or
+`agent.effort` event with the agent's role and no `taskId` (the observer's `AgentRouteNotice` and
+`AgentEffortNotice` carry an empty `TaskId`). The seam is public and experimental (`ORKEXP008`): `ISystemOnePicker` and
+its records in `Orkeon.Application`, registered scoped by `AddOrkeonApplication`, and `ScriptingHostPorts.SystemOnePicker`,
+which `orkeon run`, `orkeon eval`, the REPL, `orkeon-host`, `mcp serve --crew`, the forge's trials and an embedder's
+`CrewScriptRunner` set. The task path of System One
+is unchanged. On the wire, `agent.route` and `agent.effort` can now come without a `taskId` (a pick belongs to no task)
+and, on `agent.route`, the reasons `floor` and `ceiling`: a client that keyed these events by task reads the role.
+
+### Added — `prune` on `ctx.llm.act`: a script's own loop gets the orchestrator's read-result pruning (#461)
+
+`ctx.llm.act(prompt, { prune: true })` asks the host, before each model turn, for the pruning the crew loops run
+(`Orkeon:Compaction:Prune`): once the estimated prompt reaches `FillShare` of the call's usable window, the decision
+model judges each older result of a read the call ran, from its call alone, and keeps, cuts or drops it. `true` takes
+the host's numbers; `{ fillShare, keepRecentMessages, headChars }` overrides them within the same bounds. Without
+`prune` no decision call is made, whatever `Enabled` says. `prune` next to `onContextPressure` or `contextPressure` is
+refused with a message naming both. `result.pruned` (`offered`, `judged`, `kept`, `cut`, `dropped`, `freedTokens`)
+sums the loop on every outcome and is absent when nothing was judged; a pruning that cut or dropped a result emits
+`agent.pruned`. The seam is a new experimental port in `Orkeon.Application`, `IConversationPruner` with
+`ConversationPruneRequest`, `ConversationPruneResponse` and `ActConversationView` (`ORKEXP009`), which the host hands
+the scripting runtime through `ScriptingHostPorts.ConversationPruner`, taken from the run's scope: `orkeon run`,
+`orkeon-host` (which records the act's `agent.pruned` in the run's history), `mcp serve --crew`, the REPL, the forge's
+trials and its assistant hand it. A host that hands no pruner ignores `prune` with one warning, and a crew on `decision.mode: none` prunes
+nothing. The act's `agent.pruned` carries no `taskId` and the agent's role, as a pick's events. The pruning stage
+asks the batches of one pruning together instead of one after the other, for the crew loops too.
+
+### Changed — the start-time settings check refuses what the binder took without a word **[breaking]** (#449, #450, #454, #455, #456)
+
+**Before**: each value below was accepted at start and read as something the file did not say. **Now**: it is refused
+at start, the refusal naming the key; a refusal of a single value where a list or a section is expected no longer prints
+that value, nor does a refusal of a value a boolean or number key cannot read (#465, below) (a guardian phase, judged against its list of names, aside). A list setting whose reader takes one comma-separated value (`Llm:AvailableModels`,
+`Llm:ModelCapabilities:<id>:ReasoningEfforts`, `Llm:Profiles:<name>:Fallback`,
+`Orkeon:Tools:Firefox:AllowedProfiles` and `DeniedProfiles`) is not refused when written as one string, such as
+`Llm__AvailableModels=gpt-4o,claude`; its shape carries the new `CommaSeparatedSettingAttribute`. **Migration**: the last column of the table.
+
+| Written | Was read as | Now | Migration |
+|---|---|---|---|
+| a non-string key written `null` or `{}` (`"Orkeon:Decision:Enabled": null`, `Orkeon:Compaction:TriggerShare`) | the type's default (`false`, `0`), not the setting's | refused: `… is written without a value, which would bind it to …` | write the value, or leave the key out for its default; a string written `null` is still accepted |
+| a single value where a list or a section is expected (`"Orkeon:Guardian:Llm:Phases": "Input"`, a decision profile or a stage written as a string) | ignored, or one phase | refused: `… a single value where a list is expected` | write a list, `["Input"]`, or the section's keys |
+| a guardian phase, or a stage's `Phase` or `Steps`, written as a number (`"0"`) | the enum member of that number | refused: a guardian phase as an unknown name, which the refusal quotes (`'0' is not a phase a model judges`); a stage's `Phase` or `Steps` naming the key and the names, never the value (`…:Steps is not a verify scope: write one of final, all.`) | write the name (`Input`, `request`, `both`) |
+| a decision profile or stage holding a value the binder cannot convert (`"FailClosed": "maybe"`, a threshold `"high"`) | the entry dropped from the list, silently | refused with the binder's sentence, without the value (`Failed to convert the configuration value at '…' to type '…'.`) | write a value of the key's type |
+| `IsEnabled`, `IsDockerHostOverHttp`, `NeedsBrowserGuard`, `ListenerPrefix` (computed, never read) | ignored | refused as unknown keys | remove them |
+
+- A threshold of `Orkeon:Guardian:Llm` outside [0, 1] now has one sentence per key, with its value:
+  `Orkeon:Guardian:Llm:BlockThreshold: 1.5 is not a probability between 0 and 1.` The single sentence naming
+  both keys is gone.
+- **No value under a boolean or number key is echoed** (#465): a value the key cannot read is not of its type, so it
+  may be anything written there by mistake, an API key included, and the refusal reaches the start-up output and the
+  logs. The binder's sentence is reworded (`Failed to convert the configuration value at '<path>' to type '<type>'.`,
+  in `orkeon doctor`, `--validate` and the host's start alike), and so are `Llm:<key> is not a number.`,
+  `… is not a finite number: write a number within the type's range.`, `… is not true or false.`,
+  `… is not a whole number.` (`Llm`, `RaggableTree:Embedding`, `Orkeon:Rag:Hybrid`) and the Email and Drive
+  accounts' `… is neither true nor false` / `… is not a whole number`. `Orkeon:Guardian:Llm:Phases` written as a single
+  value is refused without it. **No refusal of a closed list repeats the value** either: an enumeration setting
+  (#464), a `Logging` level, a provider (`Llm:Provider` and a profile's, `RaggableTree:Embedding:Provider`,
+  `Orkeon:Embeddings:Provider`), `Llm:Replay:Mode`, `CallMode`, a model's `Thinking`, a decision stage's `Kind`,
+  `Phase` and `Steps` name the key and the accepted names
+  (`Logging:LogLevel:Default is not a log level: write one of Trace, Debug, Information, Warning, Error, Critical, None.`,
+  `Llm:Provider names no provider of this host: write mock or the key of a provider module (…); …`), and so does an e-mail or drive account's, whose binder refusal is reworded
+  as the host's. Only the guardian's `Phases` still quotes the names it refused, to show the typo. The warning of a
+  checkpoint store named while `Orkeon:Checkpointing:Enabled` is not true no longer names the store.
+- A value echoed in a refusal is written in the invariant culture (`1.5`, never `1,5`): decision-profile
+  thresholds, the guardian thresholds, an agent's `maxExecutionTime`, `ContextWindowSettings.CompressionRatio`,
+  `KnowledgeAttachment.MinScore`.
+
+### Fixed — the Anthropic provider sends a `json_schema` response format in Anthropic's own dialect (#459)
+
+It used to send the caller's schema unchanged, and Anthropic answers a 400 to an object that does not say
+`additionalProperties: false`: `ctx.llm.extract`, `withResponseSchema`, a YAML `response_format`, a
+`structured_output` deliverable and the decision circuit failed on any ordinary schema. The provider now works on a
+copy: it closes every object that does not set `additionalProperties`, and moves the constraints the API does not take
+(`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `maxItems`,
+`uniqueItems`, a `minItems` above 1, a `format` off Anthropic's list) into the node's `description`. What would change
+the schema's meaning — `oneOf`, `not`, an `additionalProperties` set to `true` or to a schema, an external `$ref`, a
+recursive schema, an object schema with no `properties` that does not close itself with `additionalProperties: false`,
+the keywords the dialect cannot walk (`patternProperties`, `dependentSchemas`, `dependencies`, `contains`,
+`propertyNames`, `unevaluatedProperties`), `if` / `then` / `else`, `unevaluatedItems` and `additionalItems` on an object
+node (and `if` / `then` / `else` on an `anyOf` node), `prefixItems`, a tuple or boolean `items`, a `$ref` beside a
+constraint, an empty or untyped schema, a root that is not a JSON object, a `description` that is no string, messages ending on an
+`assistant` turn — is refused before any HTTP call, naming the keyword and its path (``ctx.llm.extract: the provider
+failed: Anthropic cannot take the response schema 'extract': `oneOf` at `#/properties/pick` is not supported; use
+`anyOf`.``); these requests were refused by the API before. The refusal's error type is `UnsupportedResponseSchema`,
+classed as refused: the fallback chain does not move on to its next profile (a task with a retry policy still runs again, and is refused again). A task's `output_json` is still validated against the author's schema. See
+`docs/guides/llm-response-format.md`, "Anthropic's schema dialect". The dialect follows what the Messages API was
+measured to take: `minLength` and `maxLength` are sent as written, and the keywords above are refused only where the
+API refuses them.
+
+### Fixed — a watched run no longer dies before its first event with the decision circuit off (#448)
+
+With the circuit off (`--no-decision`, `Orkeon:Decision:Enabled=false`) `system_one_decide` resolves to null in the
+host's tool collection; the decorator that turns every tool call into an event wrapped that null and the run ended
+with `Value cannot be null. (Parameter 'inner')`, exit 2, no `run.decision`. The decorator now passes the null
+through, as the withheld tool it is; the orchestrator and the toolbelt composer (`ExecutionOrchestrator`,
+`TaskToolbelt.Compose`) skip it as defence in depth, beside the DI factory, `ScriptToolCatalogue` and `ToolRegistry`,
+which filter it too. A watched run behaves as an unwatched one: `run.decision` says `circuit: off` with its cause, and
+a `decision.mode: required` crew is refused with exit 69.
+
 ### Added — LLM provider modules: `Llm:Provider` names a provider shipped outside the core
 
 A provider can now live outside `Orkeon.Infrastructure` and be chosen by name. A host registers an

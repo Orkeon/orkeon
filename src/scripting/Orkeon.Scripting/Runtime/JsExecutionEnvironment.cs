@@ -71,11 +71,17 @@ internal sealed record JsExecutionEnvironment
     /// <summary>Optional run event stream: told each time this agent spawns a child (<c>agent.spawned</c>).</summary>
     public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
 
+    /// <summary>System One's pick behind <c>ctx.llm.pick</c> (#460); null when the host wires none.</summary>
+    public Orkeon.Application.Crew.Routing.ISystemOnePicker? Picker { get; init; }
+
     /// <summary>
     /// The configured tool-result cuts and fan-out bound of <c>ctx.llm.act</c>; a host sets it from
     /// <c>IOptions&lt;ToolResultLimitsOptions&gt;</c>, the defaults apply otherwise.
     /// </summary>
     public Orkeon.Domain.Tools.ToolResultLimitsOptions ToolLimits { get; init; } = new();
+
+    /// <summary>The pruning an act's <c>prune</c> option asks for (#461); null leaves it without effect.</summary>
+    public Orkeon.Application.Crew.Compaction.IConversationPruner? ConversationPruner { get; init; }
 
     /// <summary>The agent run's working root (RT-06), already checked against the mounts; null for an unrooted run or a context that is no run.</summary>
     internal string? WorkingRoot { get; init; }

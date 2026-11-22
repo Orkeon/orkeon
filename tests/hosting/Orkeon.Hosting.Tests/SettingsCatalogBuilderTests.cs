@@ -219,8 +219,10 @@ public sealed class SettingsCatalogBuilderTests
         var refusals = SettingsValidation.Refusals(provider);
 
         Assert.Equal(2, refusals.Count);
-        Assert.Contains(refusals, r => r.StartsWith("Llm:Provider: 'mok'", StringComparison.Ordinal) && r.Contains("this host registers none", StringComparison.Ordinal));
-        Assert.Contains(refusals, r => r.StartsWith("Llm:Profiles:cli:Provider: 'Agent-CLI'", StringComparison.Ordinal));
+        Assert.Contains(refusals, r => r.StartsWith("Llm:Provider names no provider of this host: write mock or the key of a provider module (this host registers none)", StringComparison.Ordinal));
+        Assert.Contains(refusals, r => r.StartsWith("Llm:Profiles:cli:Provider names no provider of this host", StringComparison.Ordinal));
+        // #465: the value is never repeated; it may be a secret pasted under the wrong key.
+        Assert.DoesNotContain(refusals, r => r.Contains("mok", StringComparison.Ordinal) || r.Contains("Agent-CLI", StringComparison.Ordinal));
     }
 
     private enum Level

@@ -182,7 +182,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
             messages.Add(new { role = LlmRoles.User, content = prompt });
 
-            var requestPayload = BuildRequestPayload(effectiveConfig, messages, systemMessage);
+            var requestPayload = BuildRequestPayload(effectiveConfig, messages, systemMessage, out var refusal);
+            if (refusal is not null)
+                return RefuseRequest(refusal);
             var json = JsonSerializer.Serialize(requestPayload, JsonOptions);
             using var content = new StringContent(json, Encoding.UTF8, HttpDefaults.JsonContentType);
 
@@ -311,7 +313,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         var (conversationMessages, systemMessage) = SeparateSystemMessages(messages, effectiveConfig);
 
-        var requestPayload = BuildRequestPayload(effectiveConfig, conversationMessages, systemMessage);
+        var requestPayload = BuildRequestPayload(effectiveConfig, conversationMessages, systemMessage, out var refusal);
+        if (refusal is not null)
+            return RefuseRequest(refusal);
         var json = JsonSerializer.Serialize(requestPayload, JsonOptions);
         using var content = new StringContent(json, Encoding.UTF8, HttpDefaults.JsonContentType);
 
@@ -542,7 +546,23 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                 .ToDictionary()
         };
 
-    private Dictionary<string, object> BuildRequestPayload(LlmConfig config, List<object> messages, string? systemMessage)
+    /// <summary>
+    /// The answer to a request the provider refuses before any HTTP call (issue #459): an error
+    /// response of its own type, which <c>LlmFailureClassifier</c> classes as refused, so neither the
+    /// retry policy nor a fallback chain tries it again.
+    /// </summary>
+    private LlmResponse RefuseRequest(string refusal)
+    {
+        LogRequestRefused(refusal);
+        return BuildErrorResponse(refusal, AnthropicSchemaDialect.RefusedErrorType);
+    }
+
+    /// <summary>
+    /// Builds the Messages API payload; <paramref name="refusal"/> is set, and the payload must not be
+    /// sent, when the response format cannot be expressed in Anthropic's dialect.
+    /// </summary>
+    private Dictionary<string, object> BuildRequestPayload(
+        LlmConfig config, List<object> messages, string? systemMessage, out string? refusal)
     {
         var payload = new Dictionary<string, object>
         {
@@ -589,7 +609,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         }
 
         ApplyThinking(payload, config.Thinking, ResolveModel(config));
-        ApplyResponseFormat(payload, config.ResponseFormat);
+        refusal = ApplyResponseFormat(payload, config.ResponseFormat, messages);
         // The Messages API has no grammar field, whatever Llm:Grammar says (CanCarryGrammar).
         if (!string.IsNullOrWhiteSpace(config.GrammarGbnf))
             LogUnsupportedOption("grammar", GrammarRemedy);
@@ -782,29 +802,52 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// has no equivalent of <c>json_object</c>, so a bare "give me JSON" request cannot be
     /// expressed at the API level and is reported instead of being sent in a shape the API
     /// would reject. (<c>strict</c> exists on Anthropic, but on individual tools, not here.)
+    /// The schema leaves as a copy adapted to Anthropic's dialect (<see cref="AnthropicSchemaDialect"/>);
+    /// the caller's own schema is left as it is, and stays the one an answer is validated against.
     /// </remarks>
-    private void ApplyResponseFormat(Dictionary<string, object> payload, LlmResponseFormat? responseFormat)
+    /// <returns>The refusal when the request cannot be sent, else <see langword="null"/>.</returns>
+    private string? ApplyResponseFormat(
+        Dictionary<string, object> payload, LlmResponseFormat? responseFormat, List<object> messages)
     {
         if (responseFormat is null
             || string.IsNullOrWhiteSpace(responseFormat.Type)
             || string.Equals(responseFormat.Type, "text", StringComparison.OrdinalIgnoreCase))
         {
-            return;
+            return null;
         }
 
         if (responseFormat.Schema is not { } schema)
         {
             LogUnsupportedOption("response_format without a schema",
                 "Anthropic constrains output only through a JSON Schema — supply one, or state the shape in the prompt");
-            return;
+            return null;
         }
+
+        if (EndsOnAssistantTurn(messages))
+            return AnthropicSchemaDialect.PrefillRefusal(schema.Name);
+
+        var adaptation = AnthropicSchemaDialect.Adapt(schema.Name, schema.Schema);
+        if (adaptation.Refusal is not null)
+            return adaptation.Refusal;
 
         MergeOutputConfig(payload, "format", new Dictionary<string, object?>
         {
             ["type"] = "json_schema",
-            ["schema"] = JsonSerializer.Deserialize<JsonElement>(schema.Schema),
+            ["schema"] = adaptation.Schema,
         });
+        return null;
     }
+
+    /// <summary>
+    /// True when the last message is an assistant turn: a prefill, which the API refuses with a JSON
+    /// output. An assistant turn carrying tool calls is followed by its results, so it is never last.
+    /// </summary>
+    private static bool EndsOnAssistantTurn(List<object> messages) =>
+        messages.Count > 0
+        && JsonSerializer.SerializeToElement(messages[^1]) is { ValueKind: JsonValueKind.Object } last
+        && last.TryGetProperty("role", out var role)
+        && role.ValueKind == JsonValueKind.String
+        && LlmRoles.IsAssistant(role.GetString());
 
     /// <summary>
     /// Adds one key to the shared <c>output_config</c> object without clobbering the keys the
@@ -844,7 +887,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         var endpoint = new Uri($"{baseUrl}/v1/messages");
 
         var messages = new List<object> { new { role = LlmRoles.User, content = prompt } };
-        var payload = BuildRequestPayload(effectiveConfig, messages, null);
+        var payload = BuildRequestPayload(effectiveConfig, messages, null, out var refusal);
+        if (refusal is not null)
+            throw Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.ToException(RefuseRequest(refusal));
 
         // Add stream flag
         payload["stream"] = true;
@@ -949,7 +994,12 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         var endpoint = new Uri($"{baseUrl}/v1/messages");
 
         var (conversationMessages, systemMessage) = SeparateSystemMessages(messages, effectiveConfig);
-        var payload = BuildRequestPayload(effectiveConfig, conversationMessages, systemMessage);
+        var payload = BuildRequestPayload(effectiveConfig, conversationMessages, systemMessage, out var refusal);
+        if (refusal is not null)
+        {
+            yield return LlmStreamEvent.Complete(RefuseRequest(refusal));
+            yield break;
+        }
         payload["stream"] = true;
         var json = JsonSerializer.Serialize(payload, JsonOptions);
 
@@ -1481,6 +1531,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Anthropic streaming error: {StatusCode}")]
     private partial void LogStreamingError(System.Net.HttpStatusCode statusCode);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Anthropic request refused before the call: {Refusal}")]
+    private partial void LogRequestRefused(string refusal);
 
     [LoggerMessage(EventId = 110, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
         Message = "Option '{Option}' was declared but Anthropic does not support it — it was not sent. {Remedy}.")]

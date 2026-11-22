@@ -61,8 +61,25 @@ public sealed record ScriptingToolchainOptions
     /// Binds the <c>Orkeon:Scripting:Toolchain</c> section of <paramref name="configuration"/>.
     /// A missing section, or a <see langword="null"/> configuration, yields the defaults.
     /// </summary>
+    /// <exception cref="InvalidOperationException"><c>TypeCheck</c> is not the name of a <see cref="TypeCheckMode"/>.</exception>
     public static ScriptingToolchainOptions FromConfiguration(IConfiguration? configuration)
-        => configuration?.GetSection(SectionName).Get<ScriptingToolchainOptions>() ?? new ScriptingToolchainOptions();
+    {
+        if (configuration is null)
+            return new ScriptingToolchainOptions();
+
+        var section = configuration.GetSection(SectionName);
+        // By name only (#464): the configuration binder reads "1" as Validate and a comma list as a
+        // combination. The refusal names the key and the members, never the value.
+        var typeCheck = section[nameof(TypeCheck)];
+        if (!string.IsNullOrWhiteSpace(typeCheck)
+            && !Orkeon.Infrastructure.Configuration.EnumSetting.TryParseName<TypeCheckMode>(typeCheck, out _))
+        {
+            throw new InvalidOperationException(
+                $"{SectionName}:{nameof(TypeCheck)} is not a type-check mode: write one of {string.Join(", ", Enum.GetNames<TypeCheckMode>())}.");
+        }
+
+        return section.Get<ScriptingToolchainOptions>() ?? new ScriptingToolchainOptions();
+    }
 }
 
 /// <summary>When <c>tsc</c> type-checks a <c>.ork.ts</c> script (<see cref="ScriptingToolchainOptions.TypeCheck"/>).</summary>

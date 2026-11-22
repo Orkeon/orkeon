@@ -45,8 +45,14 @@ internal sealed record JsCrewDefinition
     /// <summary>Optional run event stream a scripted spawn reports to (<c>agent.spawned</c>).</summary>
     public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
 
+    /// <summary>System One's pick behind <c>ctx.llm.pick</c> (#460); null when the host wires none.</summary>
+    public Orkeon.Application.Crew.Routing.ISystemOnePicker? Picker { get; init; }
+
     /// <summary>Optional cut of each tool result and fan-out bound of <c>ctx.llm.act</c>.</summary>
     public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
+
+    /// <summary>The pruning an act's <c>prune</c> option asks for (#461); null leaves it without effect.</summary>
+    public Orkeon.Application.Crew.Compaction.IConversationPruner? ConversationPruner { get; init; }
 
     /// <summary>The mounts an agent's working root is checked against (RT-06); null refuses every root.</summary>
     public Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }

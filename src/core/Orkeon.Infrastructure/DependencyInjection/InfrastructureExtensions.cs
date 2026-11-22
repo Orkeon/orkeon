@@ -899,10 +899,8 @@ public static class InfrastructureExtensions
     public static IServiceCollection AddOrkeonGuardian(this IServiceCollection services)
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<GuardianOptions>, GuardianLlmPhasesValidator>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<GuardianOptions>, GuardianLlmThresholdsValidator>());
         services.AddOrkeonSettings<GuardianOptions>("Orkeon:Guardian")
-            .Validate(
-                o => o.Llm.BlockThreshold is >= 0 and <= 1 && o.Llm.WarnThreshold is >= 0 and <= 1,
-                $"{GuardianLlmOptions.SectionName}:BlockThreshold and WarnThreshold: probabilities in [0, 1].")
             .Validate(
                 o => o.Llm.MaxContentChars > 0,
                 $"{GuardianLlmOptions.SectionName}:MaxContentChars: one character or more.");
@@ -967,16 +965,22 @@ public static class InfrastructureExtensions
         });
         services.TryAddSingleton<IGuardianPipeline>(sp => sp.GetRequiredService<GuardianPipeline>());
 
-        // The decision circuit: on when Orkeon:Decision:Enabled allows it and a decision model is
-        // registered; off, it carries its cause - the settings before the missing provider. The
-        // --no-decision switch registers its own circuit after this one, and wins.
+        // The decision circuit: on when Orkeon:Decision:Enabled allows it, a decision model is
+        // registered and, for the System One model when its provider requires a key, that key is found; off, it carries its cause - the
+        // settings, then the missing provider, then the missing key (#451). The --no-decision switch
+        // registers its own circuit after this one, and wins.
         services.AddOrkeonSettings<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>(Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.SectionName);
         services.TryAddSingleton<Orkeon.Application.Crew.Execution.DecisionCircuit>(sp =>
         {
             if (!sp.GetRequiredService<IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>>().Value.Enabled)
                 return Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings);
-            return sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is null
-                ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider)
+            if (sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is not { } model)
+                return Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider);
+            // Only the System One model is asked for its key: a model the embedder registered needs none of
+            // Orkeon's, whatever TypeSafe or Liquid section the settings also carry (#451).
+            return model is Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel systemOne
+                && systemOne.MissingKey() is { } missing
+                ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoKey) with { Detail = missing }
                 : Orkeon.Application.Crew.Execution.DecisionCircuit.On;
         });
         // The circuit of one run scope, set by a host that runs the same crew with and without System One (#431).

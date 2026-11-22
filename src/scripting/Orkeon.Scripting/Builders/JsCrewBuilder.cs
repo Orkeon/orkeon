@@ -70,11 +70,17 @@ internal sealed partial class JsCrewBuilder
     /// <summary>The run's event stream a scripted spawn reports to (<c>agent.spawned</c>); null when nobody watches.</summary>
     internal Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
 
+    /// <summary>System One's pick behind <c>ctx.llm.pick</c> (#460); null when the host wires none.</summary>
+    internal Orkeon.Application.Crew.Routing.ISystemOnePicker? Picker { get; init; }
+
     /// <summary>The host's DLP for streamed tool calls; null streams the fragments as they arrive.</summary>
     internal Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
 
     /// <summary>The tool-result limits the host wired.</summary>
     internal Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
+
+    /// <summary>The pruning an act's <c>prune</c> option asks for (#461); null leaves it without effect.</summary>
+    internal Orkeon.Application.Crew.Compaction.IConversationPruner? ConversationPruner { get; init; }
 
     /// <summary>The agent-instance transcript caps the host wired.</summary>
     internal Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
@@ -268,7 +274,9 @@ internal sealed partial class JsCrewBuilder
             ToolInvocation = _toolInvocation,
             AgentMemoryStore = AgentMemoryStore,
             RunEvents = RunEvents,
+            Picker = Picker,
             ToolLimits = ToolLimits,
+            ConversationPruner = ConversationPruner,
             AgentInstances = AgentInstances,
             Mounts = Mounts,
             WorkingDirectory = WorkingDirectory,

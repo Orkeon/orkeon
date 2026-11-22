@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 
 namespace Orkeon.Tools.Drive.Configuration;
@@ -15,7 +16,7 @@ namespace Orkeon.Tools.Drive.Configuration;
 /// call or <c>orkeon drive</c> names it, and the others work. This is the one exception to the
 /// rule that a host refuses at its start a setting it cannot honour.
 /// </summary>
-internal static class DriveOptionsBinder
+internal static partial class DriveOptionsBinder
 {
     private const string AccountsKey = "Accounts";
     private const string WithholdRejectedKey = "Screening:WithholdRejected";
@@ -53,7 +54,7 @@ internal static class DriveOptionsBinder
             {
                 // Unreadable, the stricter policy holds until an operator fixes the value.
                 options.Screening.WithholdRejected = true;
-                options.SectionProblems.Add($"{Constants.DriveDefaults.SectionName}:{WithholdRejectedKey} '{withhold}' is neither true nor false");
+                options.SectionProblems.Add($"{Constants.DriveDefaults.SectionName}:{WithholdRejectedKey} is neither true nor false");
             }
         }
 
@@ -69,7 +70,7 @@ internal static class DriveOptionsBinder
                 }
                 catch (InvalidOperationException ex)
                 {
-                    problems.Add(ex.Message);
+                    problems.Add(WithoutValue(ex.Message));
                 }
             }
 
@@ -125,9 +126,15 @@ internal static class DriveOptionsBinder
 
     // The converter the configuration binder itself uses, so a value accepted here binds. A
     // number the enum does not define is refused too: the converter takes "5" for a security
-    // mode that does not exist, which no later check would then recognise.
+    // mode that does not exist, which no later check would then recognise. A number is refused
+    // even when the enum defines it (#464): a right is written by its name, never by its value.
+    // A comma list is a combination of flags: on an enum that is not [Flags] the converter would
+    // bind "SslOnConnect, StartTls" to whichever member the two values OR to, so it is refused.
     private static bool Converts(Type type, string value)
     {
+        if (type.IsEnum && (HoldsNumber(value) || (!IsFlags(type) && value.Contains(',', StringComparison.Ordinal))))
+            return false;
+
         object? converted;
         try
         {
@@ -141,6 +148,9 @@ internal static class DriveOptionsBinder
         return converted is not Enum member || IsDefined(type, member);
     }
 
+    private static bool HoldsNumber(string value) =>
+        value.Split(',').Any(token => long.TryParse(token.Trim(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _));
+
     private static bool IsDefined(Type type, Enum member)
     {
         if (!IsFlags(type))
@@ -150,23 +160,51 @@ internal static class DriveOptionsBinder
         return (Convert.ToInt64(member, CultureInfo.InvariantCulture) & ~declared) == 0;
     }
 
+    // No refusal repeats the value (#465): written in the wrong key, it may be a secret. The
+    // sentence names the key and what it takes, in the words of the host's settings check.
     private static string Describe(string key, Type type, string value)
     {
         if (type.IsEnum)
         {
-            return IsFlags(type)
-                ? $"{key} '{value}' is not a list of {Names(type)}, separated by commas"
-                : $"{key} '{value}' is not one of {Names(type)}";
+            if (IsFlags(type))
+            {
+                return HoldsNumber(value)
+                    ? $"{key} holds a number where {type.Name} takes names: write one or more of {Names(type)}, separated by commas"
+                    : $"{key} is not a list of {Names(type)}, separated by commas";
+            }
+
+            return HoldsNumber(value) ? $"{key} is a number where a name is expected: write one of {Names(type)}"
+                : value.Contains(',', StringComparison.Ordinal) ? $"{key} is a list where a single name is expected: write one of {Names(type)}"
+                : $"{key} is not one of {Names(type)}";
         }
 
         return type == typeof(bool)
-            ? $"{key} '{value}' is neither true nor false"
-            : $"{key} '{value}' is not a whole number";
+            ? $"{key} is neither true nor false"
+            : $"{key} is not a whole number";
     }
 
     private static bool IsFlags(Type type) => type.IsDefined(typeof(FlagsAttribute), inherit: false);
 
-    // "None" of a flags enum grants nothing and is no answer to "what may an agent do".
-    private static string Names(Type type) =>
-        string.Join(", ", Enum.GetNames(type).Where(name => !(IsFlags(type) && name.Equals("None", StringComparison.Ordinal))));
+    // Every name the key accepts, None of a flags enum included, as the host's settings check lists them.
+    private static string Names(Type type) => string.Join(", ", Enum.GetNames(type));
+
+    /// <summary>
+    /// The configuration binder's refusal without the value it quotes (#465), as the host's settings
+    /// check rewords it: <c>Failed to convert configuration value '…' at '…' to type '…'.</c> becomes
+    /// <c>Failed to convert the configuration value at '…' to type '…'.</c>; any other message is kept.
+    /// </summary>
+    internal static string WithoutValue(string message)
+    {
+        var match = BinderSentence().Match(message);
+        return match.Success
+            ? $"Failed to convert the configuration value at '{match.Groups["path"].Value}' to type '{match.Groups["type"].Value}'."
+            : message;
+    }
+
+    // The value may hold quotes; a path and a type hold none, so the last " at '" ends the value.
+    [GeneratedRegex(
+        @"^Failed to convert configuration value '.*' at '(?<path>[^']*)' to type '(?<type>[^']*)'\.$",
+        RegexOptions.Singleline | RegexOptions.CultureInvariant,
+        matchTimeoutMilliseconds: 1000)]
+    private static partial Regex BinderSentence();
 }

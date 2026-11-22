@@ -34,7 +34,7 @@ public sealed class EmailOptionsBinderTests
 
         Assert.Equal(["broken", "sound"], options.Accounts.Keys.Order(StringComparer.Ordinal));
         Assert.Equal(EmailRights.None, options.Accounts["broken"].Rights);
-        Assert.Equal(["Rights 'Read, Organise' is not a list of Read, Organize, Draft, Send, Delete, Purge, separated by commas"], options.AccountProblems["broken"]);
+        Assert.Equal(["Rights is not a list of None, Read, Organize, Draft, Send, Delete, Purge, separated by commas"], options.AccountProblems["broken"]);
         Assert.Equal(EmailRights.Read, options.Accounts["sound"].Rights);
         Assert.False(options.AccountProblems.ContainsKey("sound"));
     }
@@ -65,15 +65,15 @@ public sealed class EmailOptionsBinderTests
     }
 
     [Theory]
-    [InlineData("Provider", "Yahoo", "Provider 'Yahoo' is not one of Custom, Gmail, Outlook")]
-    [InlineData("Provider", "", "Provider '' is not one of Custom, Gmail, Outlook")]
-    [InlineData("Rights", "", "Rights '' is not a list of Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
-    [InlineData("Incoming:Port", "nine", "Incoming:Port 'nine' is not a whole number")]
-    [InlineData("Incoming:Security", "Tls", "Incoming:Security 'Tls' is not one of SslOnConnect, StartTls, None")]
-    [InlineData("Outgoing:Security", "5", "Outgoing:Security '5' is not one of SslOnConnect, StartTls, None")]
-    [InlineData("Auth:Method", "OAuth", "Auth:Method 'OAuth' is not one of Password, OAuth2")]
-    [InlineData("Send:MaxPerHour", "ten", "Send:MaxPerHour 'ten' is not a whole number")]
-    [InlineData("SaveSentCopy", "yes", "SaveSentCopy 'yes' is neither true nor false")]
+    [InlineData("Provider", "Yahoo", "Provider is not one of Custom, Gmail, Outlook")]
+    [InlineData("Provider", "", "Provider is not one of Custom, Gmail, Outlook")]
+    [InlineData("Rights", "", "Rights is not a list of None, Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
+    [InlineData("Incoming:Port", "nine", "Incoming:Port is not a whole number")]
+    [InlineData("Incoming:Security", "Tls", "Incoming:Security is not one of SslOnConnect, StartTls, None")]
+    [InlineData("Outgoing:Security", "5", "Outgoing:Security is a number where a name is expected: write one of SslOnConnect, StartTls, None")]
+    [InlineData("Auth:Method", "OAuth", "Auth:Method is not one of Password, OAuth2")]
+    [InlineData("Send:MaxPerHour", "ten", "Send:MaxPerHour is not a whole number")]
+    [InlineData("SaveSentCopy", "yes", "SaveSentCopy is neither true nor false")]
     public void Should_name_each_value_that_cannot_be_read_in_the_operator_s_terms(string key, string value, string problem)
     {
         var options = Bind(new Dictionary<string, string?>
@@ -84,6 +84,67 @@ public sealed class EmailOptionsBinderTests
         });
 
         Assert.Equal([problem], options.AccountProblems["perso"]);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-464")]
+    [InlineData("Rights", "3", "Rights holds a number where EmailRights takes names: write one or more of None, Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
+    [InlineData("Rights", "Read, 4", "Rights holds a number where EmailRights takes names: write one or more of None, Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
+    [InlineData("Provider", "1", "Provider is a number where a name is expected: write one of Custom, Gmail, Outlook")]
+    public void Should_refuse_a_number_even_one_the_enumeration_defines(string key, string value, string problem)
+    {
+        var options = Bind(new Dictionary<string, string?>
+        {
+            ["Accounts:perso:Address"] = "me@example.com",
+            ["Accounts:perso:Rights"] = "Read",
+            [$"Accounts:perso:{key}"] = value,
+        });
+
+        Assert.Equal([problem], options.AccountProblems["perso"]);
+    }
+
+    /// <summary>
+    /// A comma list is a combination of flags: on an enumeration that is not <c>[Flags]</c> the
+    /// converter bound <c>"SslOnConnect, StartTls"</c> to <c>StartTls</c> (#464).
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-464")]
+    [InlineData("Incoming:Security", "SslOnConnect, StartTls", "Incoming:Security is a list where a single name is expected: write one of SslOnConnect, StartTls, None")]
+    [InlineData("Provider", "Gmail,Outlook", "Provider is a list where a single name is expected: write one of Custom, Gmail, Outlook")]
+    [InlineData("Auth:Method", "Password, OAuth2", "Auth:Method is a list where a single name is expected: write one of Password, OAuth2")]
+    public void Should_refuse_a_comma_list_where_one_name_is_expected(string key, string value, string problem)
+    {
+        var options = Bind(new Dictionary<string, string?>
+        {
+            ["Accounts:perso:Address"] = "me@example.com",
+            ["Accounts:perso:Rights"] = "Read",
+            [$"Accounts:perso:{key}"] = value,
+        });
+
+        Assert.Equal([problem], options.AccountProblems["perso"]);
+    }
+
+    /// <summary>No refusal repeats the value (#465): pasted in the wrong key, it may be a secret.</summary>
+    [Theory]
+    [Trait("BR", "CH-465")]
+    [InlineData("Rights", "sk-test-0123456789abcdef")]
+    [InlineData("Rights", "Read, sk-test-0123456789abcdef")]
+    [InlineData("Provider", "sk-test-0123456789abcdef")]
+    [InlineData("Incoming:Security", "sk-test-0123, StartTls")]
+    [InlineData("Incoming:Port", "sk-test-0123456789abcdef")]
+    [InlineData("SaveSentCopy", "sk-test-0123456789abcdef")]
+    public void Should_never_repeat_the_refused_value(string key, string value)
+    {
+        var options = Bind(new Dictionary<string, string?>
+        {
+            ["Accounts:perso:Address"] = "me@example.com",
+            ["Accounts:perso:Rights"] = "Read",
+            [$"Accounts:perso:{key}"] = value,
+        });
+
+        var problem = Assert.Single(options.AccountProblems["perso"]);
+        Assert.StartsWith(key, problem, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-test", problem, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -115,7 +176,8 @@ public sealed class EmailOptionsBinderTests
     }
 
     [Fact]
-    public void Should_accept_the_rights_in_any_case_and_as_a_number()
+    [Trait("BR", "CH-464")]
+    public void Should_accept_the_rights_in_any_case_and_never_as_a_number()
     {
         var options = Bind(new Dictionary<string, string?>
         {
@@ -123,9 +185,9 @@ public sealed class EmailOptionsBinderTests
             ["Accounts:number:Rights"] = "3",
         });
 
-        Assert.Empty(options.AccountProblems);
+        Assert.False(options.AccountProblems.ContainsKey("words"));
         Assert.Equal(EmailRights.Read | EmailRights.Organize, options.Accounts["words"].Rights);
-        Assert.Equal(EmailRights.Read | EmailRights.Organize, options.Accounts["number"].Rights);
+        Assert.True(options.AccountProblems.ContainsKey("number"));
     }
 
     [Fact]
@@ -142,7 +204,7 @@ public sealed class EmailOptionsBinderTests
         var options = Bind(new Dictionary<string, string?> { ["Screening:WithholdRejected"] = "yes" });
 
         Assert.True(options.Screening.WithholdRejected);
-        Assert.Equal(["Orkeon:Tools:Email:Screening:WithholdRejected 'yes' is neither true nor false"], options.SectionProblems);
+        Assert.Equal(["Orkeon:Tools:Email:Screening:WithholdRejected is neither true nor false"], options.SectionProblems);
     }
 
     [Fact]
@@ -173,7 +235,7 @@ public sealed class EmailOptionsBinderTests
 
         Assert.Equal(EmailErrorCode.InvalidConfiguration, error.Code);
         Assert.StartsWith(
-            "The e-mail account 'perso' is misconfigured: Rights 'Read, Organise' is not a list of",
+            "The e-mail account 'perso' is misconfigured: Rights is not a list of",
             error.Message,
             StringComparison.Ordinal);
     }
@@ -193,7 +255,7 @@ public sealed class EmailOptionsBinderTests
         var resolution = registry.Inspect("perso");
 
         Assert.Null(resolution.Account);
-        Assert.Equal(["Orkeon:Tools:Email:Screening:WithholdRejected 'maybe' is neither true nor false"], resolution.Problems);
+        Assert.Equal(["Orkeon:Tools:Email:Screening:WithholdRejected is neither true nor false"], resolution.Problems);
     }
 
     [Fact]
@@ -256,5 +318,16 @@ public sealed class EmailOptionsBinderTests
                 yield return (key, propertyType);
             }
         }
+    }
+
+    [Fact]
+    public void Should_drop_the_value_from_the_binder_refusal()
+    {
+        // #465: the configuration binder quotes the value it cannot convert, which may be a secret.
+        var refusal = EmailOptionsBinder.WithoutValue(
+            "Failed to convert configuration value 'sk-secret-example' at 'Accounts:a:Port' to type 'System.Int32'.");
+
+        Assert.Equal("Failed to convert the configuration value at 'Accounts:a:Port' to type 'System.Int32'.", refusal);
+        Assert.Equal("another message", EmailOptionsBinder.WithoutValue("another message"));
     }
 }

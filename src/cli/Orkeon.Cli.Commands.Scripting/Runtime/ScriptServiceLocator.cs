@@ -23,6 +23,8 @@ public sealed class ScriptServiceLocator
     private readonly IServiceProvider _services;
     private readonly System.Collections.Immutable.ImmutableDictionary<string, Func<IServiceProvider, object?>> _entries;
     private readonly System.Collections.Immutable.ImmutableHashSet<string> _optional;
+    private readonly Jint.Engine? _engine;
+    private readonly CancellationToken _ct;
 
     /// <summary>Shared empty locator — used in unit-test contexts where no host services exist.</summary>
     public static ScriptServiceLocator Empty => _empty;
@@ -45,6 +47,22 @@ public sealed class ScriptServiceLocator
         _services = services;
         _optional = optional;
     }
+
+    private ScriptServiceLocator(ScriptServiceLocator unbound, Jint.Engine engine, CancellationToken ct)
+    {
+        _entries = unbound._entries;
+        _optional = unbound._optional;
+        _services = unbound._services;
+        _engine = engine;
+        _ct = ct;
+    }
+
+    /// <summary>
+    /// The locator one command run reads as <c>ctx.services</c>: the same entries, and a service that works through the
+    /// script engine (<see cref="IScriptEngineBoundService"/>) handed bound to <paramref name="engine"/> and to the run's
+    /// <paramref name="ct"/>.
+    /// </summary>
+    internal ScriptServiceLocator BoundTo(Jint.Engine engine, CancellationToken ct) => new(this, engine, ct);
 
     /// <summary>True when the whitelist contains <paramref name="name"/> and (for optional entries) the resolver returns non-null.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Availability probe: any failure resolving an optional service is treated as 'not available' (returns false) rather than propagating.")]
@@ -72,7 +90,7 @@ public sealed class ScriptServiceLocator
         if (instance is null)
             throw new InvalidOperationException(
                 $"ctx.services.get('{name}') resolved to null — the optional service is not registered in this host.");
-        return instance;
+        return instance is IScriptEngineBoundService bound && _engine is not null ? bound.Bind(_engine, _ct) : instance;
     }
 
     private sealed class EmptyServiceProvider : IServiceProvider

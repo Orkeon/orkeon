@@ -50,9 +50,11 @@ public sealed partial class JsCrew
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
     private readonly Orkeon.Application.Runs.IRunEventSink? _runEvents;
+    private readonly Orkeon.Application.Crew.Routing.ISystemOnePicker? _picker;
     private readonly Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? _mounts;
     private readonly Func<string?>? _workingDirectory;
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
+    private readonly Orkeon.Application.Crew.Compaction.IConversationPruner? _conversationPruner;
 
     /// <summary>Crew display name (defaults to <c>"crew"</c> when none was supplied).</summary>
     public string name { get; }
@@ -101,7 +103,9 @@ public sealed partial class JsCrew
         _toolInvocation = definition.ToolInvocation;
         _agentMemoryStore = definition.AgentMemoryStore;
         _runEvents = definition.RunEvents;
+        _picker = definition.Picker;
         _toolLimits = definition.ToolLimits;
+        _conversationPruner = definition.ConversationPruner;
         _mounts = definition.Mounts;
         _workingDirectory = definition.WorkingDirectory;
         _agents = new List<JsAgent>();
@@ -145,7 +149,9 @@ public sealed partial class JsCrew
         ToolInvocation = _toolInvocation,
         AgentMemoryStore = _agentMemoryStore,
         RunEvents = _runEvents,
+        Picker = _picker,
         ToolLimits = _toolLimits ?? new(),
+        ConversationPruner = _conversationPruner,
         WorkingRoot = workingRoot,
         FileSystem = fileSystem,
         PermissionFloor = permissionFloor,

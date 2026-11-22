@@ -173,7 +173,8 @@ public sealed class RunnerHostCheckpointingTests : IDisposable
 
         var warning = Assert.Single(logs.Entries, e => e.Message.Contains("Orkeon:Checkpointing:Enabled", StringComparison.Ordinal));
         Assert.Equal(LogLevel.Warning, warning.Level);
-        Assert.Contains("'sqlite'", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Checkpointing:Store names a durable store", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("sqlite", warning.Message, StringComparison.Ordinal);
         Assert.Contains("Orkeon:Checkpointing:Enabled", stderr.ToString(), StringComparison.Ordinal);
     }
 

@@ -543,8 +543,9 @@ public static class JsCrewConfigurationAdapter
             if (IsSet(builder.OnAgentStartHandler) || IsSet(builder.OnAgentStopHandler))
             {
                 ignored.Add(
-                    $"agent '{agent.name}': .onAgentStart/.onAgentStop are ignored — agent "
-                    + "lifecycle hooks are invoked by JsCrew.RunAsync, which this path does not use.");
+                    $"agent '{agent.name}': .onAgentStart/.onAgentStop are ignored during the run — a "
+                    + "lifecycle hook fires when the script adds or removes the agent (onAgentStart ran once, "
+                    + "at load), and this path adds or removes none.");
             }
         }
 

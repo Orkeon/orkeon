@@ -625,6 +625,16 @@ internal static class ForgeCommand
     }
 
     /// <summary>
+    /// The refusal of a <c>required</c> crew's trial with <paramref name="hostCircuit"/> off. A missing key has its own
+    /// remedy, which the off reason already names (the variable to set): turning the circuit on would change nothing.
+    /// </summary>
+    internal static string UnavailableDecisionMessage(DecisionCircuit hostCircuit) =>
+        $"The crew's decision mode is 'required' and {hostCircuit.OffReason}: "
+        + (hostCircuit.Cause == DecisionCircuitCause.NoKey
+            ? "give the decision provider its key before its trial."
+            : "configure a decision model, or set Orkeon:Decision:Enabled=true, before its trial.");
+
+    /// <summary>
     /// <c>FORGE-DECISION-UNAVAILABLE</c> (#431): a <c>required</c> crew's trial with the host's decision circuit off
     /// (<c>Orkeon:Decision:Enabled=false</c>, no decision model) is refused on stderr, and with <c>--events</c> on the
     /// stream too, exit 1; <c>--dry</c>, which stops before the trial, only warns. Null when the cycle may go on.
@@ -640,8 +650,7 @@ internal static class ForgeCommand
             return null;
 
         var cause = ForgeCrewDecision.CauseName(hostCircuit);
-        var message = $"The crew's decision mode is 'required' and {hostCircuit.OffReason}: "
-            + "configure a decision model, or set Orkeon:Decision:Enabled=true, before its trial.";
+        var message = UnavailableDecisionMessage(hostCircuit);
         if (options.Dry)
         {
             events.WarningAfterStart(ForgeCrewDecision.UnavailableCode, message);
@@ -650,7 +659,7 @@ internal static class ForgeCommand
 
         events.SessionStarted(session, resumed);
         if (options.Events)
-            events.Emit("error", new { code = ForgeCrewDecision.UnavailableCode, message, recoverable = false, cause });
+            events.ErrorWithCause(ForgeCrewDecision.UnavailableCode, message, recoverable: false, terminal: true, cause, hostCircuit.Detail);
         events.SessionFinished(resumed ? StatusWord(session) : "failed", ExitError);
         await console.ErrorOutput.WriteLineAsync($"orkeon forge: {message} ({ForgeCrewDecision.UnavailableCode})").ConfigureAwait(false);
         return ExitError;
@@ -810,8 +819,11 @@ internal static class ForgeCommand
         var knownTools = crewTools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
 
         var packPath = ForgePack.Ensure(session.Directory, options.PackDirectory);
+        // The interview's scoped ports (act's prune, #461) come from one scope of the session's life, left before the host.
+        using var assistantScope = host.Services.CreateScope();
         var assistant = new ForgeCrewAssistant(
-            host.Services, session, packPath, reference: reference, language: options.Language, crewTools: crewTools);
+            host.Services, session, packPath, reference: reference, language: options.Language, crewTools: crewTools,
+            scopeServices: assistantScope.ServiceProvider);
 
         observer.Attach(events, withCalls: options.Events);
         IForgeUserChannel channel = options.Events
@@ -1088,7 +1100,7 @@ internal static class ForgeCommand
         }
 
         var events = new ForgeEventWriter(console.Output);
-        events.Error(UseCases.UnknownUseCase.Code, error, recoverable: false);
+        events.Error(UseCases.UnknownUseCase.Code, error, recoverable: false, terminal: true);
         events.SessionFinished("failed", ExitError);
         return ExitError;
     }
@@ -1265,7 +1277,7 @@ internal static class ForgeCommand
             var detail =
                 $"session '{session.Document.Slug}' stopped between the two passes of its trial, and an edited crew is a new"
                 + $" cycle: its {session.Document.Budget.MaxIterations} iteration(s) are spent — raise --max-iterations, or resume without --edit.";
-            events.Error(ForgeEngine.CodeBudgetExhausted, detail, recoverable: true);
+            events.Error(ForgeEngine.CodeBudgetExhausted, detail, recoverable: true, terminal: true);
             events.SessionFinished(StatusWord(session), ExitError);
             await console.ErrorOutput.WriteLineAsync($"orkeon forge: {detail} ({ForgeEngine.CodeBudgetExhausted})").ConfigureAwait(false);
             return ExitError;
@@ -1273,7 +1285,7 @@ internal static class ForgeCommand
 
         var json = await channel.ReadBlueprintAsync(CancellationToken.None).ConfigureAwait(false)
             ?? throw new OperationCanceledException("The user channel closed while sending the edited blueprint.");
-        if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events, ForgeFolders.ExistingPaths(session), ForgeFolders.Of(session), session.Document.CrewDecision) is not { } edited)
+        if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events, terminal: true, ForgeFolders.ExistingPaths(session), ForgeFolders.Of(session), session.Document.CrewDecision) is not { } edited)
         {
             // The session has not moved: it waits at the same pause, resumable again.
             events.SessionFinished("paused", ExitError);
@@ -1351,7 +1363,7 @@ internal static class ForgeCommand
             // Recoverable, and finished on the status the session ACTUALLY holds: nothing
             // moved on disk, so calling the session failed would strand a client on a
             // verdict about the session rather than about the command it just refused.
-            events.Error(ForgeErrorCodes.InvalidState, detail, recoverable: true);
+            events.Error(ForgeErrorCodes.InvalidState, detail, recoverable: true, terminal: true);
             events.SessionFinished(StatusWord(session), ExitError);
             if (!options.Events)
                 await console.ErrorOutput.WriteLineAsync($"orkeon forge: {detail}").ConfigureAwait(false);
@@ -1507,7 +1519,7 @@ internal static class ForgeCommand
     /// </summary>
     private static async Task<int> RefuseReopenAsync(IRunnerConsole console, ForgeEventWriter events, ForgeCommandOptions options, string detail)
     {
-        events.Error(ForgeErrorCodes.TeamUnreadable, detail, recoverable: false);
+        events.Error(ForgeErrorCodes.TeamUnreadable, detail, recoverable: false, terminal: true);
         events.SessionFinished("failed", ExitError);
         if (!options.Events)
             await console.ErrorOutput.WriteLineAsync($"orkeon forge: {detail}").ConfigureAwait(false);
@@ -1530,7 +1542,7 @@ internal static class ForgeCommand
 
         if (!Directory.Exists(teamDirectory))
         {
-            events.Error(ForgeErrorCodes.TeamUnreadable, $"{verb} names no directory: '{teamDirectory}'.", recoverable: false);
+            events.Error(ForgeErrorCodes.TeamUnreadable, $"{verb} names no directory: '{teamDirectory}'.", recoverable: false, terminal: true);
             return ExitError;
         }
 
@@ -1548,7 +1560,7 @@ internal static class ForgeCommand
 
         if (outcome.Failure is { } failure)
         {
-            events.Error(failure.Code, failure.Message, recoverable: true, failure.Command);
+            events.Error(failure.Code, failure.Message, recoverable: true, terminal: true, failure.Command);
             return ExitError;
         }
 
@@ -1574,7 +1586,7 @@ internal static class ForgeCommand
         var outcome = ForgeTeamRenamer.Rename(workspace, teamDirectory, options.TeamName!, host);
         if (outcome.Failure is { } failure)
         {
-            events.Error(failure.Code, failure.Message, failure.Recoverable);
+            events.Error(failure.Code, failure.Message, failure.Recoverable, terminal: true);
             return ExitError;
         }
 
@@ -1668,7 +1680,7 @@ internal static class ForgeCommand
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            events.Error(ForgeErrorCodes.PromoteFailed, ex.Message, recoverable: true);
+            events.Error(ForgeErrorCodes.PromoteFailed, ex.Message, recoverable: true, terminal: true);
             events.SessionFinished("ready", ExitError);
             return ExitError;
         }

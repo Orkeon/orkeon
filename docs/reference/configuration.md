@@ -130,6 +130,38 @@ refusals on the same file, one `runner-settings` row each. What is refused:
 - **A blank model id**: an entry of `Llm:ModelCapabilities` named `""` or `" "`, or `:Vision` (a key with
   no id before its field), whatever it holds, is refused with `Llm:ModelCapabilities: an entry has no
   model id; name each entry by the model it describes.`
+- **A value the binder would take without a word**: a key written without a value (`null` or `{}`)
+  on a switch, a number or an enumeration declared without `?`, which the binder would bind to its
+  type's default (`false`, `0`, the first member) rather than to the setting's — any other setting
+  (a string, a nullable value, a list, a section) written `null` is still accepted, and a key left
+  out takes its default; a single value where a list or a section is expected (`"Phases": "Input"`
+  for `["Input"]`, or `Orkeon__Guardian__Llm__Phases__0=Input` in the environment), named by its
+  path without its value, which may be a secret written in the wrong place — except at the lists
+  whose reader splits one comma-separated value, the form an environment variable writes:
+  `Llm:AvailableModels`, `Llm:ModelCapabilities:<id>:ReasoningEfforts`,
+  `Llm:Profiles:<name>:Fallback`, `Orkeon:Tools:Firefox:AllowedProfiles` and `:DeniedProfiles`
+  (`Llm__AvailableModels=gpt-4o,claude`); inside a list or a dictionary, an entry the binder would drop because it cannot
+  convert it (a decision profile whose `FailClosed` is `"maybe"`, a stage whose threshold is no
+  number); an enumeration written as a number (`Orkeon:Guardian:Llm:FailMode: "1"`, which the binder
+  would take as `Open`), in a value, a list or a dictionary, or written as a comma list where it takes one
+  name — the refusal names its members, never the value. Every enumeration is written by its name, in
+  any case; a `[Flags]` one (an e-mail or drive account's `Rights`) as a comma list of names. On an e-mail
+  or drive account, a number, or a comma list where the enumeration takes one name (`Incoming:Security`,
+  `Provider`), makes the account misconfigured, and its problem names the key and the members, never the
+  value (`Rights holds a number where EmailRights takes names: write one or more of …`), every name the key
+  takes listed, `None` of a `[Flags]` enumeration included. No refusal of a closed list repeats the value,
+  which may be a secret pasted in the wrong key: a `Logging` level, a provider (`Llm:Provider`,
+  `RaggableTree:Embedding:Provider`, `Orkeon:Embeddings:Provider`), `Llm:Replay:Mode`, `CallMode`, a model's
+  `Thinking`, a decision stage's `Kind`, `Phase` and `Steps` name the key and the accepted names
+  (`Logging:LogLevel:Default is not a log level: write one of Trace, Debug, Information, Warning, Error, Critical, None.`);
+  only the guardian's `Phases` quotes the names it refused, to show the typo. `Orkeon:Tools:Firefox:Lifetime`
+  and `Orkeon:Scripting:Toolchain:TypeCheck` take a name only wherever they are read, outside a host this
+  check walks included (`Orkeon:Tools:Firefox:Lifetime is not a browser lifetime: write one of Run, Host.`).
+  Outside a host `RunnerHost` builds, the enumerations of an options class a library binds
+  (`Orkeon:Checkpointing:Store`, `Orkeon:HumanInput:Pause`, `MCP:Servers:<name>:Transport`,
+  `Orkeon:RunHistory:Store`, `Orkeon:Rag:WebFallback:SuspiciousAction`) keep the binder's parse. A value quoted in a refusal is written in the invariant culture (`1.5`, never `1,5`), and
+  each threshold of `Orkeon:Guardian:Llm` outside [0, 1] has its own sentence, with its value. Only
+  settings are keys: a computed property (`IsEnabled`, `NeedsBrowserGuard`) is an unknown key.
 
 **What stays open**: the configuration root — it also holds the environment variables without a
 prefix, and nothing tells a misspelt section there from a variable of the machine —, `Logging`
@@ -178,7 +210,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 107 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 109 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -190,7 +222,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-87 sections, 566 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+87 sections, 568 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -312,6 +344,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Profiles:<name>:Thinking:Effort` | string | — | How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. `auto` is refused at start: it is a crew's word (`thinking: { effort: auto }`). |
 | `Profiles:<name>:Thinking:Enabled` | boolean | — | Whether the model thinks before it answers. Left out, the provider's own behaviour. |
 | `Profiles:<name>:TimeoutSeconds` | integer | `30` | How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off. |
+| `Profiles:<name>:WorkspaceId` | string | — | The Anthropic workspace the key acts in, sent as `anthropic-workspace-id`: an identity-linked key refuses every call without it. Not a secret. Another provider warns that it does not send it. |
 | `Provider` | string | — | `mock`, the offline provider that answers from the JSONL file `Responses` names, or the key of a provider module the host registers. Never a vendor of the catalogue. Left out, the provider follows from `BaseUrl`, the model's name and the key. |
 | `Replay:Cassette` | string | — | The virtual path of the cassette, a JSONL file; `record` and `replay` need it. |
 | `Replay:Mode` | string | — | `record` writes every call of the run and its answer to the cassette; `replay` answers every call from it, and a call it does not hold fails; `off` does neither. Left out, `off`. |
@@ -321,6 +354,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Thinking:Effort` | string | — | How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. `auto` is refused at start: it is a crew's word (`thinking: { effort: auto }`). |
 | `Thinking:Enabled` | boolean | — | Whether the model thinks before it answers. Left out, the provider's own behaviour. |
 | `TimeoutSeconds` | integer | `30` | How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off. |
+| `WorkspaceId` | string | — | The Anthropic workspace the key acts in, sent as `anthropic-workspace-id`: an identity-linked key refuses every call without it. Not a secret. Another provider warns that it does not send it. |
 <!-- /settings -->
 
 - **The key.** `ApiKeyEnvVar` names the environment variable that holds the key —
@@ -331,6 +365,8 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 - **`Temperature`.** Left out, none is sent and the model applies its own — often 1; write `0.7`
   for a moderate one.
 - **`Thinking:Enabled`, `Thinking:Effort`** are for thinking-capable providers.
+- **`WorkspaceId`** is read in its own section only: a profile does not inherit the section's, so a
+  profile on an identity-linked Anthropic key writes its own `Profiles:<name>:WorkspaceId`.
 - **`Profiles:<name>`** holds the named profiles a crew picks per agent or per task, each with
   the same keys as the section itself ([below](#named-profiles-llmprofiles)); a client can write
   one per model setting, naming the variable holding its key, never the key.
@@ -371,7 +407,7 @@ A profile — or the `Llm` section itself — written `"Provider": "mock", "Resp
 
 #### `Replay` records or replays the calls
 
-`Llm:Replay:Mode` set to `record` writes every call a provider makes, with its answer, to the JSONL file `Llm:Replay:Cassette` names; `replay` answers every call from that file and calls no model; `off` (the default) does neither. The decorator sits in the provider factory, under the call-mode layer, so the cassette holds what really went over the wire. `orkeon run --llm-record` and `--llm-replay` set both keys and mount the folder; see [Record and replay LLM calls](../guides/testing.md). A mode without a cassette, or a mode that is none of the three, refuses the start naming the key.
+`Llm:Replay:Mode` set to `record` writes every call a provider makes, with its answer, to the JSONL file `Llm:Replay:Cassette` names; `replay` answers every call from that file and calls no model; `off` (the default) does neither. The decorator sits in the provider factory, under the call-mode layer, so the cassette holds what really went over the wire. `orkeon run --llm-record` and `--llm-replay` set both keys and mount the folder; see [Record and replay LLM calls](../guides/testing.md). A mode without a cassette, or a mode that is none of the three, refuses the start naming the key and the modes, never the value (`Llm:Replay:Mode is not a replay mode: write one of off, record, replay.`); a mode is written by its name, in any case, and a number (`"1"`) or a comma list is none of the three.
 
 #### `Grammar` is for a llama.cpp-compatible server
 
@@ -613,7 +649,7 @@ the second; `orkeon eval run --llm-judge` sets it for one run, `--offline` force
 The decision provider TypeSafe (model Jev, key required), bound by `AddOrkeonDecisionProvider(configuration, provider)`, which the three
 shipped binaries call when it is the active provider (one provider is active at a time, see [`Orkeon:Decision`](#orkeondecision)): this section is present — even empty, `TypeSafe: {}` counts — or `TYPESAFE_API_KEY` is set, or `Orkeon:Decision:Provider` is `typesafe`: the key, the
 endpoint, the default model, the timeout and retries of each call (the LLM judge of the guardian is
-[`Orkeon:Guardian:Llm`](#orkeonguardian)). See [Decision models](../architecture/decision-models.md).
+[`Orkeon:Guardian:Llm`](#orkeonguardian)). Without a key — neither `ApiKey` nor the variable `ApiKeyEnvVar` names — the decision circuit is off at start with the cause `no-key` (#451), and no call is made. See [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -632,7 +668,7 @@ endpoint, the default model, the timeout and retries of each call (the LLM judge
 
 The decision model Liquid, bound by `AddOrkeonDecisionProvider(configuration, provider)` when it is the active decision
 provider: this section is present (even empty), or `LIQUID_API_KEY` is set, or `Orkeon:Decision:Provider` is `liquid`. One
-provider is active at a time (see [`Orkeon:Decision`](#orkeondecision)). See [Decision models](../architecture/decision-models.md).
+provider is active at a time (see [`Orkeon:Decision`](#orkeondecision)). Without a key — neither `ApiKey` nor the variable `ApiKeyEnvVar` names — the decision circuit is off at start with the cause `no-key` (#451), and no call is made. See [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Liquid -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -713,7 +749,7 @@ that agent in the run, retries and revisions included (another agent on the task
 its own picked); the decision model reads the agent's role and the task (cut at 4 000 characters
 in the middle), never the conversation. Under a probability of 0.6, without an answer, when the
 call fails or when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`,
-no decision provider), the host's `default` profile (the `Llm` section) stands, never the agent's own, with no
+no decision provider, no key for a hosted one), the host's `default` profile (the `Llm` section) stands, never the agent's own, with no
 error: an off circuit makes no decision call. In a crew with `decision.mode: none`, the `default` profile stands
 too, with no call and no warning (`reason: decision-none`). A warning is logged once per run when the circuit is off or `Ladder`
 is missing (outside a run, once per host), and at each failed call; a low
@@ -1352,7 +1388,7 @@ output of a task (`Phases`), a risk at or over `BlockThreshold` blocks, and when
 `FailMode` decides: `Closed` (default) refuses, `Open` lets the text in; both audit
 `guardian.judge.unavailable`. While the output phase is guarded a task's streaming waits for the judgement. It needs a decision model (`AddOrkeonDecisionProvider`); enabled with
 `FailMode: Closed` and without one, the host refuses to start.
-The judge follows the decision circuit (`--no-decision`, `Orkeon:Decision:Enabled=false`, no provider): off,
+The judge follows the decision circuit (`--no-decision`, `Orkeon:Decision:Enabled=false`, no provider, no key): off,
 `FailMode: Closed` refuses to start naming the cause, and `Open` leaves the judge out with one warning
 ([Decision models](../architecture/decision-models.md#every-consumer-follows-the-circuit)).
 
@@ -1994,7 +2030,9 @@ emits `agent.pruned` under `orkeon run`, `orkeon-host` and `orkeon mcp serve --c
 everything emits nothing. With the decision circuit
 off, nothing is pruned: one warning per run, no decision call, no error. Once compaction's breaker opens
 (three failures in a row), the loop prunes no more for the rest of the task attempt. An agent
-overrides `Enabled` with `compaction: { prune }`; an agent that does not compact does not prune.
+overrides `Enabled` with `compaction: { prune }`; an agent that does not compact does not prune: pruning rides
+compaction. A script's `ctx.llm.act` does not compact and prunes only when the call asks (`prune: true` takes these
+numbers, an object overrides them within the same bounds, #461), whatever `Enabled` says.
 
 <!-- settings:Orkeon:Compaction:Prune -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -2026,7 +2064,7 @@ first 24 files of the library in name order (ordinal) alone: a file past the 24t
 The question is one choice, so the skills that fit split the model's probability: a skill is
 picked when its share reaches 0.3, the largest share first. When the
 decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`, no decision
-provider), when the library holds no skill or cannot be read, or when the decision model fails or
+provider, no key for a hosted one), when the library holds no skill or cannot be read, or when the decision model fails or
 answers no usable choice (`reason: pick-failed`), the agent carries its `fallback` list, else no skill, with one warning per run for each cause (outside a run,
 once per host) and no error; in a crew with `decision.mode: none`, its `fallback` list stands too, with no
 decision call and no warning (`reason: decision-none`). The choice holds

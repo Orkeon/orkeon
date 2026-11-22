@@ -348,16 +348,23 @@ marked **defaulted** (`defaulted` in the task's event; the question name `defaul
 
 With the circuit off, the run makes **no** `IDecisionModel` call, whatever the cause. The cause is
 named in every message, as `the decision circuit is off: <cause>`, the cause being `--no-decision`,
-`Orkeon:Decision:Enabled=false` or `no decision provider resolved`, and, in the relay pass of a forge
-trial, `the forge's trial pass without System One` (cause `trial`); when the switch and the setting
-both hold, the switch is named. A forge trial emits no `run.decision`: its pass reports `circuit` and `cause` on the
-forge stream's `run.started`, `task.completed` and `llm.call.*` lines. Each consumer that degrades says so in one warning:
+`Orkeon:Decision:Enabled=false`, `no decision provider resolved` or, for a hosted provider (TypeSafe, Liquid)
+whose key is in neither its setting nor its environment variable, `no Liquid API key: set the environment variable
+LIQUID_API_KEY, or Orkeon:Liquid:ApiKey` (cause `no-key`; the variable is named only when `ApiKeyEnvVar` is unset or holds
+the provider's default; any other value, another variable or a key pasted there by mistake, is never repeated: the
+setting paths alone, `no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey`; a call's refusal, `No Liquid API key: …`, and a 401 or 403
+refusal, `liquid refused the key: …`, end with the same remedy), and, in the
+relay pass of a forge trial, `the forge's trial pass without System One` (cause `trial`); when the switch and the
+setting both hold, the switch is named. The key is looked for where the provider reads it at each call, the setting
+first, when the host resolves its circuit, with no network call, and only when the decision model is that System One
+provider: a local provider (Kev) and a decision model that is no System One provider are never turned off by it. A forge
+trial emits no `run.decision`: its pass reports `circuit` and `cause` on the forge stream's `run.started`, `task.completed` and `llm.call.*` lines, and `run.started` adds `detail`, the circuit's sentence, only when the pass's circuit is off for a missing key (`no-key`). Each consumer that degrades says so in one warning:
 
 | Consumer | Circuit off |
 | --- | --- |
 | Decision task | Answers by its fallback, as above. |
 | `system_one_decide` tool | Withheld: a crew that lists it fails to load under `StrictTools` (the runners' default), naming the tool and the cause (`tool 'system_one_decide' withheld: the decision circuit is off: --no-decision`); a `required` crew meets the mode refusal instead; otherwise it is skipped with a warning. Under `--validate` it is a `WARNING:` line, the tool is not counted in `tools resolved`, and the exit stays 0. |
-| Decision profile | Built without the model: its calls go to the `route`'s `fallback`, else to the `target`; a `verify` never escalates; a `guard` lets the call go on, except in a `failClosed` profile, where every call is blocked. One warning when the profile is first resolved. |
+| Decision profile | Built without the model: its calls go to the `route`'s `fallback`, else to the `target`; a `verify` never escalates; a `guard` lets the call go on, except in a `failClosed` profile, where every call is blocked. One warning when the profile is first resolved. `--validate` says it of each agent whose `llm.profile` names a `failClosed` profile with a `guard`, as a `WARNING:` line (`agent 'A' runs on the decision profile 'guarded', fail-closed with a guard stage: a run would block every call through it now (the decision circuit is off: --no-decision)`); the exit stays 0 and the run is not refused before its first task. |
 | LLM judge (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuses to start, naming the cause (the runner host checks it with its settings); `Open` leaves the judge out of the pipeline, with one warning, and the other guards stay. |
 | `decision` reranker | Passes the passages through in their retrieval order, as `none` does, with one warning. |
 | Agent skills (`skills: { auto: true }`) | The agent carries its `fallback` list, else no skill, and the task runs; `agent.skills` reports `mode: fallback` and `reason: circuit-off`, with the cause as `detail`. One warning per run. |
@@ -417,7 +424,8 @@ refusal rather than an unknown tool. With `mode: optional` and the circuit off, 
 `without:` relay ([below](#the-without-relay)). `--validate` reports the refusal a run would meet as a `WARNING:` line and exits `0`
 ([the CLI](../reference/cli.md#orkeon-run)), and a run emits one `run.decision` event with the mode, the circuit the run
 follows and its cause: `off` with the cause `no-provider` on a host whose circuit is on but that has no decision model,
-as the refusal says ([the run event bus](./run-event-bus.md)).
+and `no-key` on a host whose hosted provider has no key, as the refusal says, with `detail`, the circuit's sentence, absent
+unless the circuit is off for a missing key ([the run event bus](./run-event-bus.md)).
 
 #### Circuit off, by mode
 
@@ -574,7 +582,8 @@ never on its own.
   the verdict or the arbitration; each call is one `systemone.answered` event, its tokens are charged to the
   session's budget (`systemOneTokens` on `cost.updated`), and a failed call is one `FORGE-SYSTEMONE-FAILED` warning.
   These calls are the forge's own and are split from the trial's: `--no-decision` (announced on `session.started`
-  as `forgeCircuit: off`, `forgeCircuitCause: switch`, like `settings` and `no-provider`) turns them off without
+  as `forgeCircuit: off`, `forgeCircuitCause: switch`, like `settings`, `no-provider` and `no-key`, and `forgeCircuitDetail`, the circuit's sentence, absent unless the
+  circuit is off for a missing key) turns them off without
   touching the engine host's circuit, which the trial of an `optional` or `required` crew follows
   ([the CLI](../reference/cli.md#orkeon-forge)). The assistant and the judge name no decision profile.
 
