@@ -88,6 +88,21 @@ public sealed class ForgeCrewDecisionTeamTests : IDisposable
     ];
 
     [Fact]
+    [Trait("BR", "CH-476")]
+    public async Task A_composed_crew_whose_decision_task_has_no_expected_output_loads()
+    {
+        Assert.Null(Triage(ForgeCrewDecision.Optional).Tasks!.Single(task => task.Key == "triage").ExpectedOutput);
+        var crew = RenderTriage(ForgeCrewDecision.Optional);
+        using var console = new TestConsole(stdin: string.Empty);
+
+        var exit = await Orkeon.Scripting.Cli.Commands.RunCommand.ExecuteAsync(
+            console,
+            new Orkeon.Scripting.Cli.Commands.RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true, Validate = true });
+
+        Assert.True(exit == Program.ExitOk, $"exit {exit}: {console.Stderr}");
+    }
+
+    [Fact]
     public async Task A_promoted_team_records_its_mode_in_forge_json()
     {
         Promote(ForgeCrewDecision.Optional);

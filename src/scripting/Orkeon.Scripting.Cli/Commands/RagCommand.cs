@@ -13,7 +13,6 @@ using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.DependencyInjection;
 using Orkeon.Rag.Evaluation;
 using Orkeon.Rag.Ingestion;
-using Orkeon.Rag.Onnx.DependencyInjection;
 using Orkeon.Tools.Rag;
 
 namespace Orkeon.Scripting.Cli.Commands;
@@ -538,8 +537,9 @@ internal static class RagCommand
                 options.ConfigureTestServices?.Invoke(ctx, services);
                 // ONNX cross-encoder (embedded weights via Orkeon.Rag.Onnx.Model):
                 // required by the balanced/quality profiles, loaded lazily at
-                // first use — profiles that never rerank pay nothing.
-                services.AddOrkeonOnnxReranker();
+                // first use — profiles that never rerank pay nothing. The same call as
+                // `orkeon run`, so the tool's provider modules come with it (#472).
+                RunCommand.AddCliRagServices(services);
             },
             // --offline: the extractive stub answers in place of every model — the profile
             // Orkeon:Rag:LlmProfile names included, which is then neither checked nor

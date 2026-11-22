@@ -300,6 +300,12 @@ internal static class ForgeErrorCodes
     /// </summary>
     public const string LauncherTooLong = "FORGE-LAUNCHER-TOO-LONG";
 
+    /// <summary>
+    /// A settings file the host refuses at its start (#473, #475): a cycle's engine host, or the
+    /// host of <c>forge rephrase</c>. The message is the host's own sentence.
+    /// </summary>
+    public const string SettingsRefused = "FORGE-SETTINGS-REFUSED";
+
     /// <summary>A command was asked of a session that is not where that command applies.</summary>
     public const string InvalidState = "FORGE-INVALID-STATE";
 

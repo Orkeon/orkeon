@@ -30,6 +30,12 @@ public sealed class CrewTaskBuilder
     private TaskCondition? _condition;
     private string? _key;
 
+    /// <summary>
+    /// The expected output of a decision task that declares none; the scripting builder
+    /// (<c>JsTaskBuilder</c>) writes the same word.
+    /// </summary>
+    private const string DecisionExpectedOutput = "decision";
+
     /// <summary>Sets the task description from a string value.</summary>
     public CrewTaskBuilder Description(string description)
     {
@@ -251,13 +257,21 @@ public sealed class CrewTaskBuilder
     /// <summary>
     /// Builds and returns a new <see cref="CrewTask"/> instance.
     /// </summary>
+    /// <remarks>
+    /// A decision task runs no agent and writes nothing: without an expected output it gets
+    /// <c>decision</c>, the one a scripted decision task carries (#476).
+    /// </remarks>
     /// <exception cref="BuilderValidationException">
-    /// Thrown when <see cref="Description(string)"/> or <see cref="ExpectedOutput(ExpectedOutput)"/> have not been set.
+    /// Thrown when <see cref="Description(string)"/> has not been set, or when
+    /// <see cref="ExpectedOutput(ExpectedOutput)"/> has not been set on a task that carries no decision.
     /// </exception>
     public CrewTask Build()
     {
         if (_description is null)
             throw new BuilderValidationException("Task", "Description is required.");
+
+        if (_decision is not null)
+            _expectedOutput ??= Task.ValueObjects.ExpectedOutput.From(DecisionExpectedOutput);
 
         if (_expectedOutput is null)
             throw new BuilderValidationException("Task", "ExpectedOutput is required.");
