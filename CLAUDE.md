@@ -41,6 +41,10 @@ Bandwidth on this machine is capped. Never re-download anything that is already 
 
 Before the first change of a new piece of work, read `git branch --show-current`. On `main`, create a branch before any file is touched: `feature/<slug>` (a new capability or behaviour), `fix/<slug>` (a bug, regression or CI repair) or `chore/<slug>` (no behaviour change: docs, refactoring, dependencies, tooling). On any other branch, continue on it. The slug is short, lowercase and hyphenated. Nothing is ever committed directly to `main`.
 
+### Before a pull request is opened or updated
+
+Run `bash scripts/pre-pr-check.sh` before every `gh pr create` and before every push to a branch that has an open pull request, and read `.github/pre-pr-checks.md` first: it lists what the CI refuses and a local build accepts (the .NET 11 SDK's analyzers, the CodeQL rules that have fired, the gitleaks scan of the history). A `FAIL` line is fixed before the push; a `note` line is read against the file's tables. After the push, read `gh pr checks <n>` until every check has ended. When the CI refuses something the script let through, add the rule to the file and its pattern to the script in the same pull request.
+
 ### Virtual File System: mandatory for all I/O
 
 Framework code never calls `System.IO.File.*`, `System.IO.Directory.*`, or `new FileStream/FileInfo/DirectoryInfo/FileSystemWatcher`; the `Orkeon.Compliance.Vfs` analyzer enforces it. Inject `IFileSystemService` and work in virtual paths (`/workspace/...`, `/output/...`, `/tmp/...`): it checks mounts and `FileAccessRights` and redacts physical paths from errors. Exceptions:
