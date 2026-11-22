@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -128,5 +129,61 @@ public class GuardianLlmOptionsBindingTests
         var ex = Assert.Throws<OptionsValidationException>(() => container.GetRequiredService<IOptions<GuardianOptions>>().Value);
 
         Assert.Contains("Outptu", ex.Message, StringComparison.Ordinal);
+    }
+
+    private static string Refusal(Dictionary<string, string?> settings)
+    {
+        using var container = Services(settings).BuildServiceProvider();
+        return Assert.Throws<OptionsValidationException>(() => container.GetRequiredService<IOptions<GuardianOptions>>().Value).Message;
+    }
+
+    /// <summary>#455 — a phase is written by its name: a number read as whichever member holds it, "1" as Output.</summary>
+    [Theory]
+    [Trait("BR", "CH-455")]
+    [InlineData("0")]
+    [InlineData("1")]
+    [InlineData("7")]
+    public void ShouldRefuseAPhaseWrittenAsANumber_WithTheSentenceOfAnUnknownPhase(string phase)
+    {
+        var message = Refusal(new() { ["Orkeon:Guardian:Llm:Phases:0"] = phase });
+
+        Assert.Contains($"Orkeon:Guardian:Llm:Phases: '{phase}' is not a phase a model judges.", message, StringComparison.Ordinal);
+    }
+
+    /// <summary>#455 — a single value where the list is expected bound an empty list, and both phases were judged.</summary>
+    [Fact]
+    [Trait("BR", "CH-455")]
+    public void ShouldRefuseASinglePhase_WhereAListIsExpected()
+    {
+        var message = Refusal(new() { ["Orkeon:Guardian:Llm:Phases"] = "Input" });
+
+        Assert.Contains("Orkeon:Guardian:Llm:Phases is 'Input', a single value where a list is expected", message, StringComparison.Ordinal);
+    }
+
+    /// <summary>#456 — one sentence per threshold out of [0, 1], naming its key and its value, in the invariant culture.</summary>
+    [Fact]
+    [Trait("BR", "CH-456")]
+    public void ShouldNameEachThresholdOutOfRangeWithItsValue()
+    {
+        var culture = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+        try
+        {
+            var one = Refusal(new() { ["Orkeon:Guardian:Llm:BlockThreshold"] = "2" });
+            var both = Refusal(new()
+            {
+                ["Orkeon:Guardian:Llm:BlockThreshold"] = "1.5",
+                ["Orkeon:Guardian:Llm:WarnThreshold"] = "-0.25",
+            });
+
+            Assert.Contains("Orkeon:Guardian:Llm:BlockThreshold: 2 is not a probability between 0 and 1.", one, StringComparison.Ordinal);
+            Assert.DoesNotContain("WarnThreshold", one, StringComparison.Ordinal);
+            Assert.Contains("Orkeon:Guardian:Llm:BlockThreshold: 1.5 is not a probability between 0 and 1.", both, StringComparison.Ordinal);
+            Assert.Contains("Orkeon:Guardian:Llm:WarnThreshold: -0.25 is not a probability between 0 and 1.", both, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Decision.DTOs;
@@ -130,5 +131,84 @@ public class DecisionProfileRegistrationTests
 
         // Assert
         Assert.StartsWith("Orkeon:Decision:Profiles:auto: 'auto' is a reserved profile name", ex.Message, StringComparison.Ordinal);
+    }
+
+    private static string BuildRefusal(params (string Key, string Value)[] values) =>
+        Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddOrkeonDecisionProfiles(Configuration(values))).Message;
+
+    /// <summary>#454 — the binder dropped a stage it could not convert: the guard did not exist at run time.</summary>
+    [Fact]
+    [Trait("BR", "CH-454")]
+    public void ShouldRefuseTheStage_WhenOneOfItsValuesCannotBeConverted()
+    {
+        var message = BuildRefusal(
+            ("p:Target", "cheap"),
+            ("p:Stages:0:Kind", "guard"), ("p:Stages:0:Risks:x", "y"), ("p:Stages:0:BlockThreshold", "x"),
+            ("p:Stages:1:Kind", "guard"), ("p:Stages:1:Risks:x", "y"));
+
+        Assert.Equal(
+            "Failed to convert configuration value 'x' at 'Orkeon:Decision:Profiles:p:Stages:0:BlockThreshold' to type 'System.Double'.",
+            message);
+    }
+
+    /// <summary>#454 — a FailClosed that is no boolean dropped the profile, or read as false: a fail-closed profile ran fail-open.</summary>
+    [Fact]
+    [Trait("BR", "CH-454")]
+    public void ShouldRefuseTheProfile_WhenItsFailClosedIsNoBoolean()
+    {
+        var message = BuildRefusal(
+            ("p:Target", "cheap"), ("p:FailClosed", "x"),
+            ("p:Stages:0:Kind", "guard"), ("p:Stages:0:Risks:x", "y"));
+
+        Assert.Equal(
+            "Failed to convert configuration value 'x' at 'Orkeon:Decision:Profiles:p:FailClosed' to type 'System.Boolean'.",
+            message);
+    }
+
+    /// <summary>#454 — a profile or a stage written as a single value was ignored.</summary>
+    [Theory]
+    [Trait("BR", "CH-454")]
+    [InlineData("p", "Orkeon:Decision:Profiles:p is 'x', a single value where a decision profile is expected")]
+    [InlineData("p:Stages:0", "Orkeon:Decision:Profiles:p:Stages:0 is 'x', a single value where a stage is expected")]
+    [InlineData("p:Stages", "Orkeon:Decision:Profiles:p:Stages is 'x', a single value where a list of stages is expected")]
+    public void ShouldRefuseASingleValue_WhereAProfileOrAStageIsExpected(string key, string expected)
+    {
+        var values = key == "p" ? [("p", "x")] : new[] { ("p:Target", "cheap"), (key, "x") };
+
+        Assert.StartsWith(expected, BuildRefusal(values), StringComparison.Ordinal);
+    }
+
+    /// <summary>#455 — a stage's Phase and Steps are written by name: "1" read as the member that holds it.</summary>
+    [Theory]
+    [Trait("BR", "CH-455")]
+    [InlineData("triage:Stages:1:Steps", "0", "is not final or all")]
+    [InlineData("triage:Stages:1:Steps", "1", "is not final or all")]
+    [InlineData("triage:Stages:0:Phase", "1", "is not request, response or both")]
+    public void ShouldRefuseAPhaseOrStepsWrittenAsANumber(string key, string value, string expected)
+    {
+        var values = key.Contains("Phase", StringComparison.Ordinal)
+            ? [("triage:Target", "cheap"), ("triage:Stages:0:Kind", "guard"), ("triage:Stages:0:Risks:x", "y"), (key, value)]
+            : Triage.Append((key, value)).ToArray();
+
+        Assert.Contains($"'{value}' {expected}", BuildRefusal(values), StringComparison.Ordinal);
+    }
+
+    /// <summary>#456 — a value echoed back is written as the file wrote it, whatever the culture of the machine.</summary>
+    [Fact]
+    [Trait("BR", "CH-456")]
+    public void ShouldEchoAThresholdInTheInvariantCulture()
+    {
+        var culture = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+        try
+        {
+            var message = BuildRefusal(("p:Target", "cheap"), ("p:Stages:0:Kind", "guard"), ("p:Stages:0:Risks:x", "y"), ("p:Stages:0:BlockThreshold", "1.5"));
+
+            Assert.Equal("Orkeon:Decision:Profiles:p:Stages:0:BlockThreshold: 1.5 is not a probability between 0 and 1.", message);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
     }
 }

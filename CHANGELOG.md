@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the start-time settings check refuses what the binder took without a word (#449, #450, #454, #455, #456)
+
+**Breaking — values now refused at start.** Each was accepted before and read as something the file did not
+say; each refusal names the key.
+
+| Written | Was read as | Now | Migration |
+|---|---|---|---|
+| a non-string key written `null` or `{}` (`"Orkeon:Decision:Enabled": null`, `Orkeon:Compaction:TriggerShare`) | the type's default (`false`, `0`), not the setting's | refused: `… is written without a value, which would bind it to …` | write the value, or leave the key out for its default; a string written `null` is still accepted |
+| a single value where a list or a section is expected (`"Orkeon:Guardian:Llm:Phases": "Input"`, a decision profile or a stage written as a string) | ignored, or one phase | refused: `… a single value where a list is expected` | write a list, `["Input"]`, or the section's keys |
+| a guardian phase, or a stage's `Phase` or `Steps`, written as a number (`"0"`) | the enum member of that number | refused as an unknown name | write the name (`Input`, `request`, `both`) |
+| a decision profile or stage holding a value the binder cannot convert (`"FailClosed": "maybe"`, a threshold `"high"`) | the entry dropped from the list, silently | refused with the binder's sentence | write a value of the key's type |
+| `IsEnabled`, `IsDockerHostOverHttp`, `NeedsBrowserGuard`, `ListenerPrefix` (computed, never read) | ignored | refused as unknown keys | remove them |
+
+- A threshold of `Orkeon:Guardian:Llm` outside [0, 1] now has one sentence per key, with its value:
+  `Orkeon:Guardian:Llm:BlockThreshold: 1.5 is not a probability between 0 and 1.` The single sentence naming
+  both keys is gone.
+- A value echoed in a refusal is written in the invariant culture (`1.5`, never `1,5`): decision-profile
+  thresholds, the guardian thresholds, an agent's `maxExecutionTime`, `ContextWindowSettings.CompressionRatio`,
+  `KnowledgeAttachment.MinScore`.
+
 ### Added — LLM provider modules: `Llm:Provider` names a provider shipped outside the core
 
 A provider can now live outside `Orkeon.Infrastructure` and be chosen by name. A host registers an

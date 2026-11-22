@@ -161,7 +161,7 @@ public static class CrewDefinitionValidator
             && (limit <= TimeSpan.Zero || limit > Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeCeiling))
         {
             errors.Add(
-                $"Agent '{CrewEntryNames.Of(agent)}' maxExecutionTime: {limit.TotalSeconds} — the seconds the agent may spend on a task " +
+                $"Agent '{CrewEntryNames.Of(agent)}' maxExecutionTime: {limit.TotalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)} — the seconds the agent may spend on a task " +
                 $"must be more than 0 and at most {(long)Orkeon.Domain.Constants.Agent.AgentDefaults.MaxExecutionTimeCeiling.TotalSeconds}. " +
                 "Leave maxExecutionTime: out for no limit.");
         }

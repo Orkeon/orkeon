@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,7 +37,9 @@ internal sealed record SettingsNoticeHint(string Sentence, IReadOnlyList<string>
 /// registration validated without declaring;</item>
 /// <item>the section names under the containers of <see cref="SettingsSections"/>;</item>
 /// <item>the keys of every declared section, against the shapes its readers declared — and, under those keys, a number the binder reads as a float or a double that
-/// is not finite, which it takes without a word.</item>
+/// is not finite, which it takes without a word; a non-string value written without one, which it
+/// binds to its type's default (#450); a single value where a list or a section is expected; and,
+/// inside a list or a dictionary, where it drops what it cannot convert, a value not of its type (#454).</item>
 /// </list>
 /// Nothing is built but the options and the named factories, which hold functions: no store, provider,
 /// model or connection. Only what the binder, a rule, the names or the keys refuse becomes a refusal —
@@ -101,7 +104,19 @@ internal static class SettingsValidation
             RunStartupValidator(services, refusals);
 
         refusals.AddRange(UnknownSectionNames(configuration));
-        refusals.AddRange(UnknownKeys(configuration, declarations));
+        foreach (var (path, refusal, kind) in UnknownKeys(configuration, declarations).ToList())
+        {
+            // One refusal per key. A value written without one explains what a rule then says of the
+            // default the binder wrote ('0' for a file that says null): it replaces that sentence.
+            // Otherwise the sentence of a rule or of the binder that names the key wins over the walk's.
+            if (kind == Found.Empty)
+                refusals.RemoveAll(earlier => NamesExactly(earlier, path));
+            else if (kind == Found.Value && refusals.Any(earlier => Names(earlier, path)))
+                continue;
+
+            refusals.Add(refusal);
+        }
+
         refusals.AddRange(UnansweredProviderKeys(configuration, services));
         return [.. refusals.Distinct(StringComparer.Ordinal)];
     }
@@ -365,7 +380,7 @@ internal static class SettingsValidation
     /// section together, a sub-section another reader declares included. Only the declared sections
     /// are walked: the keys of a section this host does not read are another host's to judge.
     /// </summary>
-    private static IEnumerable<string> UnknownKeys(IConfiguration configuration, List<SettingsDeclaration> declarations)
+    private static IEnumerable<(string Path, string Refusal, Found Kind)> UnknownKeys(IConfiguration configuration, List<SettingsDeclaration> declarations)
     {
         var tree = SettingsShape.Empty();
         foreach (var declaration in declarations)
@@ -382,7 +397,7 @@ internal static class SettingsValidation
             if (!section.Exists())
                 continue;
 
-            foreach (var refusal in Walk(section, NodeAt(tree, root)))
+            foreach (var refusal in Walk(section, NodeAt(tree, root), inCollection: false))
                 yield return refusal;
         }
     }
@@ -408,24 +423,155 @@ internal static class SettingsValidation
         return node;
     }
 
-    private static IEnumerable<string> Walk(IConfigurationSection section, SettingsShape shape)
+    /// <summary>
+    /// Whether <paramref name="refusal"/> names the key at <paramref name="path"/> — or, for a list
+    /// item, the list —, a whole key and not the start of a longer one.
+    /// </summary>
+    private static bool Names(string refusal, string path)
+    {
+        var last = path.LastIndexOf(':');
+        var parent = last > 0 && path[(last + 1)..].All(char.IsAsciiDigit) ? path[..last] : null;
+        return NamesExactly(refusal, path) || (parent is not null && NamesExactly(refusal, parent));
+    }
+
+    private static bool NamesExactly(string refusal, string key)
+    {
+        for (var at = refusal.IndexOf(key, StringComparison.OrdinalIgnoreCase); at >= 0;
+             at = refusal.IndexOf(key, at + 1, StringComparison.OrdinalIgnoreCase))
+        {
+            var end = at + key.Length;
+            if (end == refusal.Length || !char.IsAsciiLetterOrDigit(refusal[end]))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>What the walk of the keys found at a key.</summary>
+    private enum Found
+    {
+        /// <summary>A key no declaration knows.</summary>
+        Key,
+
+        /// <summary>A value the binder would take, drop or misread without a word.</summary>
+        Value,
+
+        /// <summary>A key written without a value, which the binder would bind to its type's default.</summary>
+        Empty,
+    }
+
+    /// <summary>
+    /// The refusals below <paramref name="section"/>: a key no declaration knows, and a value the
+    /// binder would take without a word: written without a value on a setting it would then bind to
+    /// its type's default (#450), a single value where a list or a section is expected (#454, #455),
+    /// a number that is not finite, and, below a list or a dictionary, where the binder drops the item
+    /// it cannot convert, a value that is not of its type (#454). An enumeration is left to its
+    /// reader, which may take its own spellings.
+    /// </summary>
+    private static IEnumerable<(string Path, string Refusal, Found Kind)> Walk(
+        IConfigurationSection section, SettingsShape shape, bool inCollection)
     {
         foreach (var child in section.GetChildren())
         {
-            if (shape.Child(child.Key) is { } below)
+            if (shape.Child(child.Key) is not { } below)
             {
-                if (IsNotFinite(child.Value, below.Number))
-                {
-                    yield return $"{child.Path} is '{child.Value}', which is not a finite number.";
-                    continue;
-                }
-
-                foreach (var refusal in Walk(child, below))
-                    yield return refusal;
+                yield return (child.Path, Unknown(section, child, shape), Found.Key);
                 continue;
             }
 
-            yield return Unknown(section, child, shape);
+            var item = inCollection || (!shape.Open && shape.Entries is not null && !shape.Named.ContainsKey(child.Key));
+            if (ValueRefusal(child, below, item) is { } refusal)
+            {
+                yield return (child.Path, refusal, child.Value is null ? Found.Empty : Found.Value);
+                continue;
+            }
+
+            foreach (var found in Walk(child, below, item))
+                yield return found;
+        }
+    }
+
+    /// <summary>What is wrong with the value of <paramref name="child"/>, or null.</summary>
+    private static string? ValueRefusal(IConfigurationSection child, SettingsShape below, bool inCollection)
+    {
+        if (below.Open || child.GetChildren().Any())
+            return null;
+
+        var value = child.Value;
+        if (value is null)
+        {
+            // JSON null and {} read alike: no value, no child, and the binder writes the type's default.
+            var bound = below.TakesKeys ? null : below.Values.FirstOrDefault(IsDefaultedWhenEmpty);
+            return bound is null
+                ? null
+                : $"{child.Path} is written without a value, which would bind it to {Default(bound)}: "
+                  + $"write {Expected(bound)}, or leave the key out and its default applies.";
+        }
+
+        if (below.Values.Count == 0)
+        {
+            // An empty JSON array reads as an empty value.
+            if (!below.TakesKeys || value.Length == 0)
+                return null;
+
+            return below.IsList
+                ? $"{child.Path} is '{value}', a single value where a list is expected: write its items as a list, or leave the key out."
+                : $"{child.Path} is '{value}', a single value where a section of keys is expected: write its keys, or leave the key out.";
+        }
+
+        if (IsNotFinite(value, below.Number))
+            return $"{child.Path} is '{value}', which is not a finite number.";
+
+        if (!inCollection)
+            return null;
+
+        foreach (var declared in below.Values)
+        {
+            if (Unconverted(child.Path, value, declared) is { } refusal)
+                return refusal;
+        }
+
+        return null;
+    }
+
+    /// <summary>A value type the binder writes its default to when the key holds no value: <c>false</c>, <c>0</c>, the first member.</summary>
+    private static bool IsDefaultedWhenEmpty(Type type) => type.IsValueType && Nullable.GetUnderlyingType(type) is null;
+
+    private static string Default(Type type) =>
+        type == typeof(bool) ? "false"
+        : IsNumber(type) ? "0"
+        : type.IsEnum ? Enum.ToObject(type, 0).ToString() ?? type.Name
+        : $"the default of {type.Name}";
+
+    private static string Expected(Type type) =>
+        type == typeof(bool) ? "true or false"
+        : type.IsEnum ? "one of " + string.Join(", ", Enum.GetNames(type))
+        : IsNumber(type) ? "a number"
+        : $"a {type.Name}";
+
+    private static bool IsNumber(Type type) =>
+        !type.IsEnum && Type.GetTypeCode(type) is >= TypeCode.SByte and <= TypeCode.Decimal;
+
+    /// <summary>
+    /// The refusal of <paramref name="value"/> as <paramref name="declared"/>, worded as the binder words
+    /// it where it refuses it itself, or null when it converts. Neither a string nor an enumeration is
+    /// judged: their readers may take what the binder does not.
+    /// </summary>
+    private static string? Unconverted(string path, string value, Type declared)
+    {
+        var type = Nullable.GetUnderlyingType(declared) ?? declared;
+        if (type == typeof(string) || type.IsEnum || (value.Length == 0 && type != declared))
+            return null;
+
+        try
+        {
+            _ = TypeDescriptor.GetConverter(type).ConvertFromInvariantString(value);
+            return null;
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException or NotSupportedException or OverflowException
+                                       || ex.InnerException is FormatException or OverflowException)
+        {
+            return $"Failed to convert configuration value '{value}' at '{path}' to type '{type}'.";
         }
     }
 

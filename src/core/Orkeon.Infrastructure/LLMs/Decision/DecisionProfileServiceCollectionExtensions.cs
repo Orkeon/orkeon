@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -7,6 +8,7 @@ using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
+using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.LLMs.Decision.Stages;
 
@@ -54,7 +56,7 @@ public static class DecisionProfileServiceCollectionExtensions
 
         var options = new DecisionProfilesOptions();
         configuration.GetSection(DecisionProfilesOptions.SectionName).Bind(options);
-        Validate(options);
+        Validate(options, configuration.GetSection(DecisionProfilesOptions.SectionName));
         foreach (var (name, profile) in options.Profiles)
             services.AddOrkeonLlmProfile(name, sp => Build(sp, name, profile));
         return services;
@@ -62,10 +64,18 @@ public static class DecisionProfileServiceCollectionExtensions
 
     /// <summary>Checks the section; throws with the key to fix.</summary>
     /// <param name="options">The bound section.</param>
+    /// <param name="section">
+    /// The section as the configuration holds it, or null: the binder drops a profile or a stage it
+    /// cannot convert, and one written as a single value, without a word (#454), so the raw entries
+    /// are read again.
+    /// </param>
     /// <exception cref="InvalidOperationException">The section is invalid.</exception>
-    internal static void Validate(DecisionProfilesOptions options)
+    internal static void Validate(DecisionProfilesOptions options, IConfiguration? section = null)
     {
         ArgumentNullException.ThrowIfNull(options);
+        if (section is not null)
+            ValidateEntries(section.GetSection("Profiles"));
+
         foreach (var (name, profile) in options.Profiles)
         {
             var path = $"{DecisionProfilesOptions.SectionName}:Profiles:{name}";
@@ -77,6 +87,35 @@ public static class DecisionProfileServiceCollectionExtensions
             for (var i = 0; i < profile.Stages.Count; i++)
                 ValidateStage(options, $"{path}:Stages:{i}", profile.Stages[i]);
         }
+    }
+
+    /// <summary>
+    /// Each profile and each stage bound on its own, so the binder's refusal of a value it cannot
+    /// convert reaches the caller — inside a dictionary or a list it drops the entry instead — and
+    /// none written as a single value.
+    /// </summary>
+    private static void ValidateEntries(IConfigurationSection profiles)
+    {
+        foreach (var profile in profiles.GetChildren())
+        {
+            SingleValue(profile, "a decision profile is expected: write its Target and Stages");
+            _ = profile.Get<DecisionProfileOptions>();
+
+            var stages = profile.GetSection(nameof(DecisionProfileOptions.Stages));
+            SingleValue(stages, "a list of stages is expected: write each stage as an item of the list");
+            foreach (var stage in stages.GetChildren())
+            {
+                SingleValue(stage, "a stage is expected: write its Kind and the keys of that kind");
+                _ = stage.Get<DecisionStageOptions>();
+            }
+        }
+    }
+
+    /// <summary>Throws when <paramref name="section"/> holds a value and no key — an empty JSON array, read as "", aside.</summary>
+    private static void SingleValue(IConfigurationSection section, string expected)
+    {
+        if (section.Value is { Length: > 0 } value && !section.GetChildren().Any())
+            throw new InvalidOperationException($"{section.Path} is '{value}', a single value where {expected}.");
     }
 
     private static void ValidateStage(DecisionProfilesOptions options, string path, DecisionStageOptions stage)
@@ -140,14 +179,15 @@ public static class DecisionProfileServiceCollectionExtensions
     private static void Probability(string key, double value)
     {
         if (value is < 0 or > 1 || double.IsNaN(value))
-            throw new InvalidOperationException($"{key}: {value} is not a probability between 0 and 1.");
+            throw new InvalidOperationException(string.Create(
+                CultureInfo.InvariantCulture, $"{key}: {value} is not a probability between 0 and 1."));
     }
 
     private static DecisionStagePhase ParsePhase(string path, string? phase)
     {
         if (string.IsNullOrWhiteSpace(phase))
             return DecisionStagePhase.Both;
-        if (Enum.TryParse<DecisionStagePhase>(phase.Trim(), ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
+        if (EnumSetting.TryParseName<DecisionStagePhase>(phase, out var parsed))
             return parsed;
         throw new InvalidOperationException($"{path}:Phase: '{phase}' is not request, response or both.");
     }
@@ -156,7 +196,7 @@ public static class DecisionProfileServiceCollectionExtensions
     {
         if (string.IsNullOrWhiteSpace(steps))
             return DecisionVerifySteps.Final;
-        if (Enum.TryParse<DecisionVerifySteps>(steps.Trim(), ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
+        if (EnumSetting.TryParseName<DecisionVerifySteps>(steps, out var parsed))
             return parsed;
         throw new InvalidOperationException($"{path}:Steps: '{steps}' is not final or all.");
     }

@@ -8,9 +8,12 @@ namespace Orkeon.Hosting;
 /// <summary>
 /// The keys a declared section may carry (GAP-40), read off the type its reader declares the way the
 /// configuration binder reads it: a public property is a key (its <see cref="ConfigurationKeyNameAttribute"/>
-/// name when it has one), a dictionary takes any key, a list any index, and a value — anything the
-/// binder converts from text — none; a value it reads as a float or a double must also be finite. The
-/// shapes declared at one path are merged: the readers of one section together.
+/// name when it has one) when the binder writes it — a public <c>set</c> or <c>init</c> — or fills
+/// it — a dictionary, a list or an object behind a getter —, a computed value or one behind a private
+/// setter none (#449); a dictionary takes any key, a list any index, and a value — anything the
+/// binder converts from text — none. A value carries the types it is bound to (<see cref="Values"/>),
+/// which the start validation converts it to. The shapes declared at one path are merged: the readers
+/// of one section together.
 /// </summary>
 internal sealed class SettingsShape
 {
@@ -28,10 +31,27 @@ internal sealed class SettingsShape
     public bool Open { get; private set; }
 
     /// <summary>
-    /// The number type the binder reads the node's value as — <see cref="float"/> or
-    /// <see cref="double"/> —, or null: a value it takes as such a number must be finite.
+    /// The types the binder converts the node's value to, as declared — a nullable one included —, one
+    /// per reader that declares a different one; empty when the node is no value.
     /// </summary>
-    public Type? Number { get; private set; }
+    public HashSet<Type> Values { get; } = [];
+
+    /// <summary>Whether the binder reads the node's items as a list (an array, a collection), not a dictionary's entries.</summary>
+    public bool IsList { get; private set; }
+
+    /// <summary>
+    /// The number type the binder reads the node's value as — <see cref="float"/> or
+    /// <see cref="double"/> —, or null: a value it takes as such a number must be finite. A float when
+    /// one reader reads it so: what overflows a <see cref="float"/> is still a finite <see cref="double"/>.
+    /// </summary>
+    public Type? Number
+    {
+        get
+        {
+            var types = Values.Select(type => Nullable.GetUnderlyingType(type) ?? type).ToList();
+            return types.Contains(typeof(float)) ? typeof(float) : types.Contains(typeof(double)) ? typeof(double) : null;
+        }
+    }
 
     /// <summary>A node with no key of its own — a value —, which declarations below it extend.</summary>
     public static SettingsShape Empty() => new();
@@ -70,7 +90,8 @@ internal sealed class SettingsShape
             return;
 
         Open |= other.Open;
-        Number = Narrower(Number, other.Number);
+        IsList |= other.IsList;
+        Values.UnionWith(other.Values);
         if (other.Entries is not null)
             Entries = Entries is null ? other.Entries : Merged(Entries, other.Entries);
 
@@ -83,13 +104,6 @@ internal sealed class SettingsShape
         }
     }
 
-    /// <summary>
-    /// Of two number types read at one key, the one whose range is narrower: what overflows a
-    /// <see cref="float"/> is still a finite <see cref="double"/>.
-    /// </summary>
-    private static Type? Narrower(Type? first, Type? second) =>
-        first == typeof(float) || second == typeof(float) ? typeof(float) : first ?? second;
-
     private static SettingsShape Merged(SettingsShape first, SettingsShape second)
     {
         var merged = new SettingsShape();
@@ -101,7 +115,7 @@ internal sealed class SettingsShape
     private static SettingsShape Of(Type type, HashSet<Type> visiting)
     {
         var target = Nullable.GetUnderlyingType(type) ?? type;
-        if (Leaf(target, visiting) is { } leaf)
+        if (Leaf(type, target, visiting) is { } leaf)
             return leaf;
 
         // A type that contains itself takes anything below its second appearance.
@@ -111,7 +125,7 @@ internal sealed class SettingsShape
         var shape = new SettingsShape();
         foreach (var property in target.GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
-            if (property.GetIndexParameters().Length > 0 || property.GetMethod is null)
+            if (property.GetIndexParameters().Length > 0 || property.GetGetMethod() is null || !IsBound(property))
                 continue;
 
             shape.AddNamed(property.GetCustomAttribute<ConfigurationKeyNameAttribute>()?.Name ?? property.Name, Of(property.PropertyType, visiting));
@@ -121,19 +135,38 @@ internal sealed class SettingsShape
         return shape;
     }
 
+    /// <summary>
+    /// Whether the binder sets or fills <paramref name="property"/>: a public setter — <c>init</c>
+    /// included — writes any of them; behind a getter alone or a private setter, the binder fills a
+    /// dictionary, a list or an object it reads, and cannot write a value.
+    /// </summary>
+    private static bool IsBound(PropertyInfo property)
+    {
+        if (property.GetSetMethod() is not null)
+            return true;
+
+        var target = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+        return !IsValue(target) || target == typeof(object) || IsJsonValue(target);
+    }
+
     /// <summary>The shape of a type the binder does not walk property by property — open, a value, a dictionary, a list —, or null for an object with properties.</summary>
-    private static SettingsShape? Leaf(Type target, HashSet<Type> visiting)
+    private static SettingsShape? Leaf(Type declared, Type target, HashSet<Type> visiting)
     {
         if (target == typeof(object) || typeof(IConfiguration).IsAssignableFrom(target) || IsJsonValue(target))
             return new SettingsShape { Open = true };
         if (IsValue(target))
-            return new SettingsShape { Number = target == typeof(double) || target == typeof(float) ? target : null };
+        {
+            var value = new SettingsShape();
+            value.Values.Add(declared);
+            return value;
+        }
+
         if (DictionaryValueType(target) is { } valueType)
             return new SettingsShape { Entries = Of(valueType, visiting) };
         if (typeof(IDictionary).IsAssignableFrom(target))
             return new SettingsShape { Open = true };
         if (ItemType(target) is { } itemType)
-            return new SettingsShape { Entries = Of(itemType, visiting) };
+            return new SettingsShape { Entries = Of(itemType, visiting), IsList = true };
 
         return null;
     }
