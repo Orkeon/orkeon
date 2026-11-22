@@ -35,9 +35,9 @@ internal sealed record ForgeRenameResult
 
 /// <summary>
 /// Why a rename did not happen: the code, and the sentence — which says whether everything was put back. The verb
-/// returns after it, so its <c>error</c> event is terminal (#453).
+/// returns after it, so its <c>error</c> event is always terminal (#453).
 /// </summary>
-internal sealed record ForgeRenameFailure(string Code, string Message, bool Recoverable = true, bool Terminal = true);
+internal sealed record ForgeRenameFailure(string Code, string Message, bool Recoverable = true);
 
 /// <summary>What <c>forge rename</c> produced: the rename, or the refusal — and what it could not do while succeeding.</summary>
 internal sealed record ForgeRenameOutcome

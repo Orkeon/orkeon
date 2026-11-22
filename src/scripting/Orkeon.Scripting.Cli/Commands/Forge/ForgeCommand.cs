@@ -650,7 +650,7 @@ internal static class ForgeCommand
 
         events.SessionStarted(session, resumed);
         if (options.Events)
-            events.Emit("error", new { code = ForgeCrewDecision.UnavailableCode, message, recoverable = false, terminal = true, cause });
+            events.ErrorWithCause(ForgeCrewDecision.UnavailableCode, message, recoverable: false, terminal: true, cause);
         events.SessionFinished(resumed ? StatusWord(session) : "failed", ExitError);
         await console.ErrorOutput.WriteLineAsync($"orkeon forge: {message} ({ForgeCrewDecision.UnavailableCode})").ConfigureAwait(false);
         return ExitError;
@@ -1574,7 +1574,7 @@ internal static class ForgeCommand
         var outcome = ForgeTeamRenamer.Rename(workspace, teamDirectory, options.TeamName!, host);
         if (outcome.Failure is { } failure)
         {
-            events.Error(failure.Code, failure.Message, failure.Recoverable, failure.Terminal);
+            events.Error(failure.Code, failure.Message, failure.Recoverable, terminal: true);
             return ExitError;
         }
 

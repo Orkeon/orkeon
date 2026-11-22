@@ -211,6 +211,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         Assert.Equal(ForgeErrorCodes.ScheduleRefused, error.GetProperty("code").GetString());
         Assert.Contains(message, error.GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.Equal(ForgeScheduleAdapters.ManualInstallCommand(platform, Team, "ma-veille"), error.GetProperty("command").GetString());
+        Assert.True(error.GetProperty("terminal").GetBoolean());
         Assert.Null(ForgeScheduleInstallation.TryRead(Team));
         Assert.False(File.Exists(InstallationRecord(Team)));
         Assert.Equal(0, RegistrationCount(os, platform));
@@ -679,6 +680,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         var (missing, missingEvents) = await RunAsync(host, "unschedule", Path.Combine(_workspace, "nowhere"));
         Assert.Equal(1, missing);
         Assert.Equal(ForgeErrorCodes.TeamUnreadable, Assert.Single(missingEvents).GetProperty("code").GetString());
+        Assert.True(Assert.Single(missingEvents).GetProperty("terminal").GetBoolean());
     }
 
     /// <summary>

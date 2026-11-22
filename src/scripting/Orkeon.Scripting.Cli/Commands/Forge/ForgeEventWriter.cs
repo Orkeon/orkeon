@@ -100,6 +100,14 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
         Emit("error", new { code, message, recoverable, terminal, command });
 
     /// <summary>
+    /// An anomaly with its <paramref name="cause"/>: the machine-readable reason a refusal
+    /// happened — the decision circuit's <c>disabled</c> or <c>no-key</c> when the crew's
+    /// decision mode is <c>required</c>. Same <paramref name="terminal"/> obligation as the others.
+    /// </summary>
+    public void ErrorWithCause(string code, string message, bool recoverable, bool terminal, string? cause) =>
+        Emit("error", new { code, message, recoverable, terminal, cause });
+
+    /// <summary>
     /// Where a team folder's schedule stands after <c>forge schedule</c>, <c>--check</c> or
     /// <c>forge unschedule</c>: <c>installed</c>, <c>absent</c> or <c>stale</c> — to
     /// reinstall, <c>reason</c> saying why — with the schedule the folder declares, this machine's

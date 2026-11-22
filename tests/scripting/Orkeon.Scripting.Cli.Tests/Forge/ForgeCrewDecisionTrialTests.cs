@@ -380,6 +380,7 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
         Assert.Equal(ForgeEngineOutcome.Failed, result.Outcome);
         var error = Event("error");
         Assert.Equal(ForgeEngine.CodeEngineCrashed, error.GetProperty("code").GetString());
+        Assert.True(error.GetProperty("terminal").GetBoolean());
         Assert.Contains(ForgeFolders.SessionDirectoryName, error.GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.False(File.Exists(Path.Combine(session.Directory, TestStage.RunsDirectoryName, "1", "on", "run.json")));
     }

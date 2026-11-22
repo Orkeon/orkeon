@@ -112,6 +112,33 @@ public sealed class ForgeRephraseTests
             Task.FromResult(new LlmResponse { Content = answer, PromptTokens = 12, CompletionTokens = 5, TokensUsed = 17 });
     }
 
+    /// <summary>#453: with no LLM configured the verb refuses on the stream, and its error says the process ends.</summary>
+    [Fact]
+    public async Task Without_an_llm_the_refusal_on_the_stream_is_terminal()
+    {
+        var workspace = Path.Combine(Path.GetTempPath(), "orkeon-forge-rephrase-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(workspace);
+        try
+        {
+            var settings = Path.Combine(workspace, "settings.json");
+            await File.WriteAllTextAsync(settings, "{}", TestContext.Current.CancellationToken);
+            using var console = new TestConsole();
+
+            var exitCode = await ForgeCommand.DispatchAsync(console, ["rephrase", "un besoin", "--events", "jsonl", "--settings", settings], workspace);
+
+            Assert.Equal(1, exitCode);
+            var error = JsonElement.Parse(Assert.Single(console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries),
+                l => l.Contains("\"kind\":\"error\"", StringComparison.Ordinal)));
+            Assert.Equal(ForgeRephrase.LlmUnavailableCode, error.GetProperty("code").GetString());
+            Assert.False(error.GetProperty("recoverable").GetBoolean());
+            Assert.True(error.GetProperty("terminal").GetBoolean());
+        }
+        finally
+        {
+            Directory.Delete(workspace, recursive: true);
+        }
+    }
+
     [Fact]
     public void The_event_line_carries_the_text_and_the_original()
     {
