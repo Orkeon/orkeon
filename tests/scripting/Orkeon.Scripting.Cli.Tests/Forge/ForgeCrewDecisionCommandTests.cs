@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Scripting.Cli.Commands.Forge;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
@@ -167,6 +168,23 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
             .Select(line => JsonElement.Parse(line))
             .Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal((ForgeCrewDecision.UnavailableCode, "settings"), (error.GetProperty("code").GetString(), error.GetProperty("cause").GetString()));
+    }
+
+    /// <summary>A missing key is not cured by turning the circuit on: the refusal names the key to give, not the switch.</summary>
+    [Fact]
+    public void A_required_crew_refusal_for_a_missing_key_asks_for_the_key()
+    {
+        var circuit = new DecisionCircuit(Enabled: false)
+        {
+            Cause = DecisionCircuitCause.NoKey,
+            Detail = "no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey",
+        };
+
+        var message = ForgeCommand.UnavailableDecisionMessage(circuit);
+
+        Assert.Contains("set the environment variable LIQUID_API_KEY", message, StringComparison.Ordinal);
+        Assert.EndsWith("give the decision provider its key before its trial.", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("Orkeon:Decision:Enabled=true", message, StringComparison.Ordinal);
     }
 
     [Fact]

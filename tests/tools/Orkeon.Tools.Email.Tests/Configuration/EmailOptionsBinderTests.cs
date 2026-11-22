@@ -68,12 +68,12 @@ public sealed class EmailOptionsBinderTests
     [InlineData("Provider", "Yahoo", "Provider 'Yahoo' is not one of Custom, Gmail, Outlook")]
     [InlineData("Provider", "", "Provider '' is not one of Custom, Gmail, Outlook")]
     [InlineData("Rights", "", "Rights '' is not a list of Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
-    [InlineData("Incoming:Port", "nine", "Incoming:Port 'nine' is not a whole number")]
+    [InlineData("Incoming:Port", "nine", "Incoming:Port is not a whole number")]
     [InlineData("Incoming:Security", "Tls", "Incoming:Security 'Tls' is not one of SslOnConnect, StartTls, None")]
     [InlineData("Outgoing:Security", "5", "Outgoing:Security '5' is not one of SslOnConnect, StartTls, None")]
     [InlineData("Auth:Method", "OAuth", "Auth:Method 'OAuth' is not one of Password, OAuth2")]
-    [InlineData("Send:MaxPerHour", "ten", "Send:MaxPerHour 'ten' is not a whole number")]
-    [InlineData("SaveSentCopy", "yes", "SaveSentCopy 'yes' is neither true nor false")]
+    [InlineData("Send:MaxPerHour", "ten", "Send:MaxPerHour is not a whole number")]
+    [InlineData("SaveSentCopy", "yes", "SaveSentCopy is neither true nor false")]
     public void Should_name_each_value_that_cannot_be_read_in_the_operator_s_terms(string key, string value, string problem)
     {
         var options = Bind(new Dictionary<string, string?>
@@ -142,7 +142,7 @@ public sealed class EmailOptionsBinderTests
         var options = Bind(new Dictionary<string, string?> { ["Screening:WithholdRejected"] = "yes" });
 
         Assert.True(options.Screening.WithholdRejected);
-        Assert.Equal(["Orkeon:Tools:Email:Screening:WithholdRejected 'yes' is neither true nor false"], options.SectionProblems);
+        Assert.Equal(["Orkeon:Tools:Email:Screening:WithholdRejected is neither true nor false"], options.SectionProblems);
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public sealed class EmailOptionsBinderTests
         var resolution = registry.Inspect("perso");
 
         Assert.Null(resolution.Account);
-        Assert.Equal(["Orkeon:Tools:Email:Screening:WithholdRejected 'maybe' is neither true nor false"], resolution.Problems);
+        Assert.Equal(["Orkeon:Tools:Email:Screening:WithholdRejected is neither true nor false"], resolution.Problems);
     }
 
     [Fact]

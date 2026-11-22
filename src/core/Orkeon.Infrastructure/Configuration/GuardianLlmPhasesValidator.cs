@@ -18,11 +18,12 @@ internal sealed class GuardianLlmPhasesValidator(IConfiguration? configuration =
     {
         var section = configuration?.GetSection($"{GuardianLlmOptions.SectionName}:Phases");
         // A single value binds an empty list, which judges both phases; an empty JSON array reads as "".
-        if (section is { Value: { Length: > 0 } single } && !section.GetChildren().Any())
+        // The value is not echoed (#465): written where a list is expected, it may be anything.
+        if (section is { Value.Length: > 0 } && !section.GetChildren().Any())
         {
             return ValidateOptionsResult.Fail(
-                $"{section.Path} is '{single}', a single value where a list is expected: write its items as a list, " +
-                $"[\"{single}\"] (the environment variable Orkeon__Guardian__Llm__Phases__0={single}), or leave the key out to judge both phases.");
+                $"{section.Path} is a single value where a list is expected: write its items as a list, " +
+                "[\"Input\"] (the environment variable Orkeon__Guardian__Llm__Phases__0=Input), or leave the key out to judge both phases.");
         }
 
         var values = section?.GetChildren()

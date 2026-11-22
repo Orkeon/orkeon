@@ -549,10 +549,11 @@ public static class LlmSettings
     }
 
     private static InvalidOperationException NotANumber(IConfigurationSection section, string key, string raw) =>
-        new($"{section.Path}:{key} is not a number: '{raw}'.");
+        // The value is not echoed (#465): it is not of the key's type, so it may be anything, a secret included.
+        new($"{section.Path}:{key} is not a number.");
 
     private static InvalidOperationException NotAFiniteNumber(IConfigurationSection section, string key, string raw) =>
-        new($"{section.Path}:{key} is not a finite number: '{raw}'.");
+        new($"{section.Path}:{key} is not a finite number: NaN, an infinity and a number past the type's range are refused.");
 
     /// <summary>A switch of the section: <c>true</c> or <c>false</c>, any case; blank is unset.</summary>
     private static bool? ReadBool(IConfigurationSection section, string key)
@@ -562,7 +563,7 @@ public static class LlmSettings
             return null;
         if (bool.TryParse(raw, out var value))
             return value;
-        throw new InvalidOperationException($"{section.Path}:{key} is not true or false: '{raw}'.");
+        throw new InvalidOperationException($"{section.Path}:{key} is not true or false.");
     }
 
     /// <summary>

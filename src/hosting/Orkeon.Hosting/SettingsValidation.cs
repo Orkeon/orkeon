@@ -274,8 +274,8 @@ internal static class SettingsValidation
             }
             catch (InvalidOperationException ex) when (IsBinderRefusal(ex))
             {
-                // The binder's refusal: "Failed to convert configuration value 'x' at 'Key' to type 'T'."
-                refusals.Add(ex.Message);
+                // The binder's refusal, which names the value: reworded without it (#465).
+                refusals.Add(BinderRefusal.WithoutValue(ex.Message));
             }
         }
     }
@@ -307,7 +307,7 @@ internal static class SettingsValidation
         }
         catch (InvalidOperationException ex) when (IsBinderRefusal(ex))
         {
-            refusals.Add(ex.Message);
+            refusals.Add(BinderRefusal.WithoutValue(ex.Message));
         }
     }
 
@@ -522,7 +522,8 @@ internal static class SettingsValidation
         }
 
         if (IsNotFinite(value, below.Number))
-            return $"{child.Path} is '{value}', which is not a finite number.";
+            // The value is not echoed (#465): every refusal of the check leaves out what the key holds.
+            return $"{child.Path} is not a finite number: NaN, an infinity and a number past the type's range are refused.";
 
         if (!inCollection)
             return null;
@@ -573,10 +574,8 @@ internal static class SettingsValidation
         catch (Exception ex) when (ex is FormatException or ArgumentException or NotSupportedException or OverflowException
                                        || ex.InnerException is FormatException or OverflowException)
         {
-            // A boolean or a number cannot be a secret, and is echoed; any other value is not.
-            return type == typeof(bool) || IsNumber(type)
-                ? $"Failed to convert configuration value '{value}' at '{path}' to type '{type}'."
-                : $"Failed to convert the configuration value at '{path}' to type '{type}'.";
+            // The value is not echoed (#465): it is not of the key's type, so it may be anything, a secret included.
+            return BinderRefusal.Unconvertible(path, type.ToString());
         }
     }
 

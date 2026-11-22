@@ -145,10 +145,10 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
     [Trait("BR", "CH-454")]
     [InlineData(
         """ "Decision": { "Profiles": { "p": { "Target": "default", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" }, "BlockThreshold": "x" }, { "Kind": "guard", "Risks": { "x": "y" } } ] } } } """,
-        "Failed to convert configuration value 'x' at 'Orkeon:Decision:Profiles:p:Stages:0:BlockThreshold' to type 'System.Double'.")]
+        "Failed to convert the configuration value at 'Orkeon:Decision:Profiles:p:Stages:0:BlockThreshold' to type 'System.Double'.")]
     [InlineData(
         """ "Decision": { "Profiles": { "p": { "Target": "default", "FailClosed": "x", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" } } ] } } } """,
-        "Failed to convert configuration value 'x' at 'Orkeon:Decision:Profiles:p:FailClosed' to type 'System.Boolean'.")]
+        "Failed to convert the configuration value at 'Orkeon:Decision:Profiles:p:FailClosed' to type 'System.Boolean'.")]
     [InlineData(
         """ "Decision": { "Profiles": { "p": "x" } } """,
         "Orkeon:Decision:Profiles:p is a single value where a decision profile is expected")]
@@ -174,7 +174,7 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
     /// <summary>#455 — a single phase where the list is expected judged both phases; a number read as the member holding it.</summary>
     [Theory]
     [Trait("BR", "CH-455")]
-    [InlineData(""" "Guardian": { "Llm": { "Phases": "Input" } } """, "Orkeon:Guardian:Llm:Phases is 'Input', a single value where a list is expected")]
+    [InlineData(""" "Guardian": { "Llm": { "Phases": "Input" } } """, "Orkeon:Guardian:Llm:Phases is a single value where a list is expected")]
     [InlineData(""" "Guardian": { "Llm": { "Phases": ["1"] } } """, "Orkeon:Guardian:Llm:Phases: '1' is not a phase a model judges.")]
     [InlineData(""" "Guardian": { "Llm": { "Phases": ["7"] } } """, "Orkeon:Guardian:Llm:Phases: '7' is not a phase a model judges.")]
     public void ShouldRefuseTheGuardianPhasesOnce_WhenTheyAreNoListOfNames(string orkeon, string expected)
@@ -219,6 +219,39 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
         var refusal = Assert.Single(refusals);
         Assert.StartsWith("Security:Url:AllowedDomains is a single value where a list is expected", refusal, StringComparison.Ordinal);
         Assert.DoesNotContain("sk-secret-example", refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// #465 — no refusal of the start-time check names the value written under the key: a value the key
+    /// cannot read may be anything written there by mistake, an API key included, and the refusal reaches
+    /// the start-up output and the logs.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-465")]
+    [InlineData(""" "Orkeon": { "Decision": { "Enabled": "sk-secret-example" } } """, "Orkeon:Decision:Enabled")]
+    [InlineData(""" "Orkeon": { "Compaction": { "TriggerShare": "sk-secret-example" } } """, "Orkeon:Compaction:TriggerShare")]
+    [InlineData(""" "Llm": { "TimeoutSeconds": "sk-secret-example" } """, "Llm:TimeoutSeconds")]
+    [InlineData(""" "Orkeon": { "Decision": { "Profiles": { "p": { "Target": "default", "FailClosed": "sk-secret-example", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" } } ] } } } } """, "Orkeon:Decision:Profiles:p:FailClosed")]
+    [InlineData(""" "Orkeon": { "Decision": { "Profiles": { "p": { "Target": "default", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" }, "BlockThreshold": "sk-secret-example" } ] } } } } """, "Orkeon:Decision:Profiles:p:Stages:0:BlockThreshold")]
+    [InlineData(""" "Orkeon": { "Guardian": { "Llm": { "Phases": "sk-secret-example" } } } """, "Orkeon:Guardian:Llm:Phases")]
+    [InlineData(""" "Orkeon": { "Guardian": { "Llm": { "BlockThreshold": "sk-secret-example" } } } """, "Orkeon:Guardian:Llm:BlockThreshold")]
+    public void ShouldRefuseAValueTheKeyCannotRead_WithoutEchoingIt(string sections, string key)
+    {
+        var refusals = RefusalsOfFile($$"""{ "RaggableTree": { "Enabled": false }, {{sections}} }""");
+
+        Assert.Contains(refusals, refusal => refusal.Contains(key, StringComparison.Ordinal));
+        Assert.DoesNotContain(refusals, refusal => refusal.Contains("sk-secret-example", StringComparison.Ordinal));
+    }
+
+    /// <summary>#465 — a number that is not finite is refused by its key, without the value.</summary>
+    [Fact]
+    [Trait("BR", "CH-465")]
+    public void ShouldRefuseANumberThatIsNotFinite_WithoutEchoingIt()
+    {
+        var refusal = Assert.Single(RefusalsOfFile("""{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Rag": { "Generation": { "Temperature": "NaN" } } } }"""));
+
+        Assert.StartsWith("Orkeon:Rag:Generation:Temperature is not a finite number", refusal, StringComparison.Ordinal);
+        Assert.DoesNotContain("'NaN'", refusal, StringComparison.Ordinal);
     }
 
     /// <summary>#454 — a profile written as a string, a key in the wrong place, is refused without its value.</summary>

@@ -89,9 +89,10 @@ public static class HybridRetrievalExtensions
 
     /// <summary>What a host says of a flat value of the section that is no boolean, or null.</summary>
     private static string? FlatValueProblem(IConfigurationSection section) =>
+        // The value is not echoed (#465): it is not of the key's type, so it may be anything, a secret included.
         section.Value is not { } value || string.IsNullOrWhiteSpace(value) || bool.TryParse(value, out _)
             ? null
-            : $"{HybridSectionKey} is '{value}', which is not true or false: write true or false, or the section " +
+            : $"{HybridSectionKey} is not true or false: write true or false, or the section " +
               $"form {HybridSectionKey}:Enabled.";
 
     private static int? LastDocumentStoreIndex(IServiceCollection services)

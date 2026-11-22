@@ -32,7 +32,8 @@ carried by the new `DecisionCircuit.Detail`). A `required` crew on such a host i
 (`orkeon run` exits `69`, as `orkeon-host` and `mcp serve --crew` record it), an `optional` crew takes its `without:`
 relays, and `--validate` warns. On the wire, `no-key` is a new value of `cause` on `run.decision`, of `cause` on the
 forge's `FORGE-DECISION-UNAVAILABLE` error and of `forgeCircuitCause` on its `session.started`: a client that lists the
-causes adds it. **Migration**: set the provider's key (its variable or `ApiKey`), or run without System One on purpose
+causes adds it. For `no-key`, the forge's refusal asks for the key (`… give the decision provider its key before its
+trial.`) rather than for a decision model or `Orkeon:Decision:Enabled=true`, which would change nothing. **Migration**: set the provider's key (its variable or `ApiKey`), or run without System One on purpose
 (`--no-decision`, `Orkeon:Decision:Enabled=false`).
 
 ### Fixed — `--validate` names a fail-closed guarded profile with the circuit off (#452)
@@ -80,7 +81,7 @@ asks the batches of one pruning together instead of one after the other, for the
 
 **Before**: each value below was accepted at start and read as something the file did not say. **Now**: it is refused
 at start, the refusal naming the key; a refusal of a single value where a list or a section is expected no longer prints
-that value (the guardian's `Phases`, an enumeration's name, aside). A list setting whose reader takes one comma-separated value (`Llm:AvailableModels`,
+that value, nor does a refusal of a value a boolean or number key cannot read (#465, below) (a guardian phase or an enumeration's name, judged against its list of names, aside). A list setting whose reader takes one comma-separated value (`Llm:AvailableModels`,
 `Llm:ModelCapabilities:<id>:ReasoningEfforts`, `Llm:Profiles:<name>:Fallback`,
 `Orkeon:Tools:Firefox:AllowedProfiles` and `DeniedProfiles`) is not refused when written as one string, such as
 `Llm__AvailableModels=gpt-4o,claude`; its shape carries the new `CommaSeparatedSettingAttribute`. **Migration**: the last column of the table.
@@ -90,12 +91,21 @@ that value (the guardian's `Phases`, an enumeration's name, aside). A list setti
 | a non-string key written `null` or `{}` (`"Orkeon:Decision:Enabled": null`, `Orkeon:Compaction:TriggerShare`) | the type's default (`false`, `0`), not the setting's | refused: `… is written without a value, which would bind it to …` | write the value, or leave the key out for its default; a string written `null` is still accepted |
 | a single value where a list or a section is expected (`"Orkeon:Guardian:Llm:Phases": "Input"`, a decision profile or a stage written as a string) | ignored, or one phase | refused: `… a single value where a list is expected` | write a list, `["Input"]`, or the section's keys |
 | a guardian phase, or a stage's `Phase` or `Steps`, written as a number (`"0"`) | the enum member of that number | refused as an unknown name | write the name (`Input`, `request`, `both`) |
-| a decision profile or stage holding a value the binder cannot convert (`"FailClosed": "maybe"`, a threshold `"high"`) | the entry dropped from the list, silently | refused with the binder's sentence | write a value of the key's type |
+| a decision profile or stage holding a value the binder cannot convert (`"FailClosed": "maybe"`, a threshold `"high"`) | the entry dropped from the list, silently | refused with the binder's sentence, without the value (`Failed to convert the configuration value at '…' to type '…'.`) | write a value of the key's type |
 | `IsEnabled`, `IsDockerHostOverHttp`, `NeedsBrowserGuard`, `ListenerPrefix` (computed, never read) | ignored | refused as unknown keys | remove them |
 
 - A threshold of `Orkeon:Guardian:Llm` outside [0, 1] now has one sentence per key, with its value:
   `Orkeon:Guardian:Llm:BlockThreshold: 1.5 is not a probability between 0 and 1.` The single sentence naming
   both keys is gone.
+- **No value under a boolean or number key is echoed** (#465): a value the key cannot read is not of its type, so it
+  may be anything written there by mistake, an API key included, and the refusal reaches the start-up output and the
+  logs. The binder's sentence is reworded (`Failed to convert the configuration value at '<path>' to type '<type>'.`,
+  in `orkeon doctor`, `--validate` and the host's start alike), and so are `Llm:<key> is not a number.`,
+  `… is not a finite number: NaN, an infinity and a number past the type's range are refused.`, `… is not true or
+  false.`, `… is not a whole number.` (`Llm`, `RaggableTree:Embedding`, `Orkeon:Rag:Hybrid`) and the Email and Drive
+  accounts' `… is neither true nor false` / `… is not a whole number`. `Orkeon:Guardian:Llm:Phases` written as a single
+  value is refused without it. A value judged against a closed list of names (a phase, a provider, a log level, an
+  enumeration) is still named, to show the typo.
 - A value echoed in a refusal is written in the invariant culture (`1.5`, never `1,5`): decision-profile
   thresholds, the guardian thresholds, an agent's `maxExecutionTime`, `ContextWindowSettings.CompressionRatio`,
   `KnowledgeAttachment.MinScore`.

@@ -237,7 +237,8 @@ public sealed class LlmProfileRegistryTests
         var error = Assert.Throws<InvalidOperationException>(() => LlmSettings.ReadDefault(configuration));
 
         Assert.Contains(key, error.Message, StringComparison.Ordinal);
-        Assert.Contains(value, error.Message, StringComparison.Ordinal);
+        // #465 — the value is not echoed: it is not of the key's type, so it may be anything, a secret included.
+        Assert.DoesNotContain($"'{value}'", error.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -276,7 +277,8 @@ public sealed class LlmProfileRegistryTests
         });
 
         Assert.Contains(key, error.Message, StringComparison.Ordinal);
-        Assert.Contains(value, error.Message, StringComparison.Ordinal);
+        // #465 — the value is not echoed: it is not of the key's type, so it may be anything, a secret included.
+        Assert.DoesNotContain($"'{value}'", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

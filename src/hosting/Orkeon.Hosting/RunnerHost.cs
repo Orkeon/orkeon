@@ -534,7 +534,7 @@ public static partial class RunnerHost
     private static partial void LogSettingsNotice(ILogger logger, string notice);
 
     /// <summary>A setting a registration or a check refused, as the one type every entry point translates (GAP-35).</summary>
-    private static RunnerSettingsException Refused(InvalidOperationException ex) => new(ex.Message, ex);
+    private static RunnerSettingsException Refused(InvalidOperationException ex) => new(BinderRefusal.WithoutValue(ex.Message), ex);
 
     /// <summary>
     /// One <c>Information</c> line per decision taken on the settings' mounts: an entry a
@@ -2057,7 +2057,7 @@ public static partial class RunnerHost
             return null;
         return bool.TryParse(raw, out var value)
             ? value
-            : throw new InvalidOperationException($"{section.Path}:{key} is '{raw}', which is not true or false.");
+            : throw new InvalidOperationException($"{section.Path}:{key} is not true or false."); // no value echoed (#465)
     }
 
     /// <summary>A whole number of a section read raw, written invariant; blank is unset; anything else is refused by its key.</summary>
@@ -2068,7 +2068,7 @@ public static partial class RunnerHost
             return null;
         return int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
             ? value
-            : throw new InvalidOperationException($"{section.Path}:{key} is '{raw}', which is not a whole number.");
+            : throw new InvalidOperationException($"{section.Path}:{key} is not a whole number."); // no value echoed (#465)
     }
 
     /// <summary>

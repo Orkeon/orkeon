@@ -53,7 +53,7 @@ internal static class DriveOptionsBinder
             {
                 // Unreadable, the stricter policy holds until an operator fixes the value.
                 options.Screening.WithholdRejected = true;
-                options.SectionProblems.Add($"{Constants.DriveDefaults.SectionName}:{WithholdRejectedKey} '{withhold}' is neither true nor false");
+                options.SectionProblems.Add($"{Constants.DriveDefaults.SectionName}:{WithholdRejectedKey} is neither true nor false");
             }
         }
 
@@ -159,9 +159,10 @@ internal static class DriveOptionsBinder
                 : $"{key} '{value}' is not one of {Names(type)}";
         }
 
+        // A boolean or a number is not echoed (#465): the value is not of the key's type, so it may be anything.
         return type == typeof(bool)
-            ? $"{key} '{value}' is neither true nor false"
-            : $"{key} '{value}' is not a whole number";
+            ? $"{key} is neither true nor false"
+            : $"{key} is not a whole number";
     }
 
     private static bool IsFlags(Type type) => type.IsDefined(typeof(FlagsAttribute), inherit: false);

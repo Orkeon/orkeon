@@ -625,6 +625,16 @@ internal static class ForgeCommand
     }
 
     /// <summary>
+    /// The refusal of a <c>required</c> crew's trial with <paramref name="hostCircuit"/> off. A missing key has its own
+    /// remedy, which the off reason already names (the variable to set): turning the circuit on would change nothing.
+    /// </summary>
+    internal static string UnavailableDecisionMessage(DecisionCircuit hostCircuit) =>
+        $"The crew's decision mode is 'required' and {hostCircuit.OffReason}: "
+        + (hostCircuit.Cause == DecisionCircuitCause.NoKey
+            ? "give the decision provider its key before its trial."
+            : "configure a decision model, or set Orkeon:Decision:Enabled=true, before its trial.");
+
+    /// <summary>
     /// <c>FORGE-DECISION-UNAVAILABLE</c> (#431): a <c>required</c> crew's trial with the host's decision circuit off
     /// (<c>Orkeon:Decision:Enabled=false</c>, no decision model) is refused on stderr, and with <c>--events</c> on the
     /// stream too, exit 1; <c>--dry</c>, which stops before the trial, only warns. Null when the cycle may go on.
@@ -640,8 +650,7 @@ internal static class ForgeCommand
             return null;
 
         var cause = ForgeCrewDecision.CauseName(hostCircuit);
-        var message = $"The crew's decision mode is 'required' and {hostCircuit.OffReason}: "
-            + "configure a decision model, or set Orkeon:Decision:Enabled=true, before its trial.";
+        var message = UnavailableDecisionMessage(hostCircuit);
         if (options.Dry)
         {
             events.WarningAfterStart(ForgeCrewDecision.UnavailableCode, message);
