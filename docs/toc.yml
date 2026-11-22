@@ -192,6 +192,10 @@
       href: adr/ADR-017-transcript-display-model.md
     - name: ADR-018 — Graph engines and the YAML graph block
       href: adr/ADR-018-graph-engines-shared-topology-and-yaml-graph-block.md
+    - name: ADR-019 — A tool bridge
+      href: adr/ADR-019-tool-bridge.md
+    - name: ADR-020 — An experimental agent-cli provider
+      href: adr/ADR-020-agent-cli-provider.md
     - name: ADR — RaggableTree semantic graph
       href: architecture/raggable-tree-adr.md
 - name: Templates

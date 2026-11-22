@@ -56,7 +56,7 @@ a new one needs a motivated exception.
    `Command` or a `.cmd`/`.bat` one (which Windows runs through `cmd.exe`), a `MaxProcesses` or `AutocompactTokens`
    under 1 and a `MaxToolResultCharacters` under 1000 are refused, naming the key.
 7. **Experimental.** Every public type and member of `Orkeon.Interop.AgentCli` carries `[Experimental("ORKEXP010")]`
-   — but `AgentCliDiagnostics`, which holds that identifier, and the class that holds `AddOrkeonAgentCli`, itself
+   — except `AgentCliDiagnostics`, which holds that identifier, and the class that holds `AddOrkeonAgentCli`, itself
    experimental. The seam of decision 1 (`ILlmProviderModule`, `LlmProviderModuleContext`,
    `LlmProviderFactoryOptions.Modules`) is stable. The project lives in `src/interop`, and the provider is not
    counted among the sixteen. It is meant for personal use, on the subscription of whoever

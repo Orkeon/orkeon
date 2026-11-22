@@ -93,4 +93,8 @@ Read the alerts of a pull request with
   (`UPDATE_PRODUCED_FILES=1` on the `SettingsCatalogFile`, then `SettingsReferencePage|SettingsSampleFile`
   tests), and write its French sentence in `docs/fr/reference/configuration.settings.json`.
 - A changed docs page is mirrored in `docs/fr/` in the same commit; `CHANGELOG.md` names the issue.
+- A branch that adds an experimental id (`ORKEXP…`) checks it against `main` before it is rebased or
+  re-applied: another branch may have taken the same number meanwhile.
+- A fake-clock test advances the clock only once the timer it means is armed (wait on that timer), never
+  on a count of pending timers: another timer may make up the count.
 - After the push, read `gh pr checks <n>` until every check has ended: a pending check is not a green one.
