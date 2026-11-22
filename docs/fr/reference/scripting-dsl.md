@@ -286,8 +286,8 @@ partie demandée, chacune `{ value, reason, picked, probability }` ; l'hôte ne 
   un barreau répété, vide ou `auto` ; un barreau, plancher, plafond ou repli que l'hôte ne déclare pas ; un plancher ou
   un plafond hors de l'échelle ; un plancher au-dessus du plafond ; un niveau inconnu ; `min` au-dessus de `max` ;
   aucun niveau entre eux ; ni `profile` ni `effort`. Un hôte qui ne câble aucun choix
-  (`ScriptingHostPorts.SystemOnePicker`, `ORKEXP008`) rejette l'appel ; `orkeon run`, le REPL, `orkeon-host` et
-  `mcp serve --crew` le câblent. L'annulation du run annule l'appel, sauf dans un hook `onAgentStart` ou `onAgentStop`
+  (`ScriptingHostPorts.SystemOnePicker`, `ORKEXP008`) rejette l'appel ; `orkeon run`, `orkeon eval`, le REPL,
+  `orkeon-host`, `mcp serve --crew`, les essais de la forge et le `CrewScriptRunner` d'un intégrateur le câblent. L'annulation du run annule l'appel, sauf dans un hook `onAgentStart` ou `onAgentStop`
   (exécuté quand un agent rejoint ou quitte une crew), dont le `ctx` n'a pas d'annulation : un choix fait là va à son terme.
 
 `act` est la boucle LLM ⇄ appels d'outils : elle propose au modèle les outils intégrés que

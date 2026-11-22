@@ -1676,7 +1676,7 @@ public static partial class RunnerExecution
                 // RT-06: a script agent's .workingRoot(...) is checked against these mounts.
                 FileSystem = sp.GetService<IFileSystemService>(),
                 // ctx.llm.pick (#460): the run scope's pick, its circuit and its observer (agent.route, agent.effort);
-                // a load without a run scope (--validate) runs no body and wires none.
+                // a load without a run scope wires none, and a pick made there is refused.
                 SystemOnePicker = scopeServices?.GetService<Orkeon.Application.Crew.Routing.ISystemOnePicker>(),
             },
             ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));

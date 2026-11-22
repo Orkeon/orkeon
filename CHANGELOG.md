@@ -54,7 +54,8 @@ Every refused option throws an `InvalidScriptError` naming it before any call. E
 `agent.effort` event with the agent's role and no `taskId` (the observer's `AgentRouteNotice` and
 `AgentEffortNotice` carry an empty `TaskId`). The seam is public and experimental (`ORKEXP008`): `ISystemOnePicker` and
 its records in `Orkeon.Application`, registered scoped by `AddOrkeonApplication`, and `ScriptingHostPorts.SystemOnePicker`,
-which `orkeon run`, the REPL, `orkeon-host`, `mcp serve --crew` and the forge's trials set. The task path of System One
+which `orkeon run`, `orkeon eval`, the REPL, `orkeon-host`, `mcp serve --crew`, the forge's trials and an embedder's
+`CrewScriptRunner` set. The task path of System One
 is unchanged. On the wire, `agent.route` and `agent.effort` can now come without a `taskId` (a pick belongs to no task)
 and, on `agent.route`, the reasons `floor` and `ceiling`: a client that keyed these events by task reads the role.
 
@@ -70,8 +71,8 @@ sums the loop on every outcome and is absent when nothing was judged; a pruning 
 `agent.pruned`. The seam is a new experimental port in `Orkeon.Application`, `IConversationPruner` with
 `ConversationPruneRequest`, `ConversationPruneResponse` and `ActConversationView` (`ORKEXP009`), which the host hands
 the scripting runtime through `ScriptingHostPorts.ConversationPruner`, taken from the run's scope: `orkeon run`,
-`orkeon-host` (which records the act's `agent.pruned` in the run's history), `mcp serve --crew` and the forge's trials
-hand it. A host that hands no pruner ignores `prune` with one warning, and a crew on `decision.mode: none` prunes
+`orkeon-host` (which records the act's `agent.pruned` in the run's history), `mcp serve --crew`, the REPL, the forge's
+trials and its assistant hand it. A host that hands no pruner ignores `prune` with one warning, and a crew on `decision.mode: none` prunes
 nothing. The act's `agent.pruned` carries no `taskId` and the agent's role, as a pick's events. The pruning stage
 asks the batches of one pruning together instead of one after the other, for the crew loops too.
 
@@ -79,7 +80,7 @@ asks the batches of one pruning together instead of one after the other, for the
 
 **Before**: each value below was accepted at start and read as something the file did not say. **Now**: it is refused
 at start, the refusal naming the key; a refusal of a single value where a list or a section is expected no longer prints
-that value. A list setting whose reader takes one comma-separated value (`Llm:AvailableModels`,
+that value (the guardian's `Phases`, an enumeration's name, aside). A list setting whose reader takes one comma-separated value (`Llm:AvailableModels`,
 `Llm:ModelCapabilities:<id>:ReasoningEfforts`, `Llm:Profiles:<name>:Fallback`,
 `Orkeon:Tools:Firefox:AllowedProfiles` and `DeniedProfiles`) is not refused when written as one string, such as
 `Llm__AvailableModels=gpt-4o,claude`; its shape carries the new `CommaSeparatedSettingAttribute`. **Migration**: the last column of the table.

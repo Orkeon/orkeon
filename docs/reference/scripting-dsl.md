@@ -270,7 +270,7 @@ the middle at 4,000 characters. It answers `{ profile?, effort? }`, a key for ea
   repeated, blank or `auto` rung; a rung, floor, ceiling or fallback the host does not declare; a floor or ceiling off
   the ladder; a floor above the ceiling; an unknown level; `min` above `max`; no level left between them; neither
   `profile` nor `effort`. A host that wires no pick (`ScriptingHostPorts.SystemOnePicker`, `ORKEXP008`) rejects the
-  call; `orkeon run`, the REPL, `orkeon-host` and `mcp serve --crew` wire it. The run's cancellation cancels the call, except in an `onAgentStart` or `onAgentStop`
+  call; `orkeon run`, `orkeon eval`, the REPL, `orkeon-host`, `mcp serve --crew`, the forge's trials and an embedder's `CrewScriptRunner` wire it. The run's cancellation cancels the call, except in an `onAgentStart` or `onAgentStop`
   hook (run when an agent joins or leaves a crew), whose `ctx` has no cancellation: a pick made there runs to its end.
 
 `act` is the LLM ⇄ tool-call loop: it offers the model the built-ins the agent selected with
