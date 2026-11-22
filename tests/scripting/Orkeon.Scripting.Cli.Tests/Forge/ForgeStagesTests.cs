@@ -288,6 +288,51 @@ public sealed class ForgeStagesTests : IDisposable
         Assert.All(assistant.Requests.Skip(1), r => Assert.NotEmpty(r.Errors!));
     }
 
+    /// <summary>
+    /// #453: below the cap a refused brief is asked again (recoverable, not terminal); at the cap the stage's own
+    /// error already says the process ends, and the engine's error that follows says it too — both kept (decision 4).
+    /// </summary>
+    [Fact]
+    public async Task At_the_brief_cap_both_errors_say_the_process_ends_and_the_earlier_ones_that_it_goes_on()
+    {
+        var assistant = new ScriptedAssistant()
+            .SubmitsBrief("{}")
+            .SubmitsBrief("{}")
+            .SubmitsBrief("{}");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        await Engine(session, DryRunners(assistant, new ScriptedUserChannel()))
+            .RunAsync(stopBefore: ForgeState.Test, cancellationToken: TestContext.Current.CancellationToken);
+
+        var errors = Events().Where(e => e.GetProperty("kind").GetString() == "error").ToList();
+        Assert.Equal(4, errors.Count);
+        Assert.All(errors, e => Assert.Equal(ForgeErrorCodes.BriefIncomplete, e.GetProperty("code").GetString()));
+        Assert.Equal([true, true, false, false], errors.Select(e => e.GetProperty("recoverable").GetBoolean()));
+        Assert.Equal([false, false, true, true], errors.Select(e => e.GetProperty("terminal").GetBoolean()));
+        Assert.Equal("session.finished", Kinds()[^1]);
+    }
+
+    [Fact]
+    public async Task At_the_blueprint_cap_both_errors_say_the_process_ends_and_the_earlier_ones_that_it_goes_on()
+    {
+        var assistant = new ScriptedAssistant()
+            .SubmitsBrief(ForgeDocuments.ValidBrief)
+            .SubmitsBlueprint("{}")
+            .SubmitsBlueprint("{}")
+            .SubmitsBlueprint("{}");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        await Engine(session, DryRunners(assistant, new ScriptedUserChannel()))
+            .RunAsync(stopBefore: ForgeState.Test, cancellationToken: TestContext.Current.CancellationToken);
+
+        var errors = Events().Where(e => e.GetProperty("kind").GetString() == "error").ToList();
+        Assert.Equal(4, errors.Count);
+        Assert.All(errors, e => Assert.Equal(ForgeErrorCodes.BlueprintInvalid, e.GetProperty("code").GetString()));
+        Assert.Equal([true, true, false, false], errors.Select(e => e.GetProperty("recoverable").GetBoolean()));
+        Assert.Equal([false, false, true, true], errors.Select(e => e.GetProperty("terminal").GetBoolean()));
+        Assert.Equal("session.finished", Kinds()[^1]);
+    }
+
     [Fact]
     public async Task A_closed_channel_interrupts_instead_of_answering_for_the_user()
     {

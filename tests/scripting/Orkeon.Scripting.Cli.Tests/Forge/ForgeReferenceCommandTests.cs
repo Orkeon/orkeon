@@ -113,6 +113,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
         Assert.Equal(UnknownUseCase.Code, events[0].GetProperty("code").GetString());
         Assert.Contains("'99-nowhere'", events[0].GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.False(events[0].GetProperty("recoverable").GetBoolean());
+        Assert.True(events[0].GetProperty("terminal").GetBoolean());
         Assert.Equal("failed", events[1].GetProperty("status").GetString());
         Assert.Empty(ForgeSession.List(_workspace));
     }

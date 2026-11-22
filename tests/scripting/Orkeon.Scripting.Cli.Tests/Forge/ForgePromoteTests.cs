@@ -502,6 +502,7 @@ public sealed class ForgePromoteTests : IDisposable
         var error = Events(console.Stdout).Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal(ForgeErrorCodes.PromoteFailed, error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());
+        Assert.True(error.GetProperty("terminal").GetBoolean());
 
         // Nothing moved: the name, the folder and the state all wait for a promotion that is written.
         Assert.True(ForgeSession.TryLoadBySlug(_workspace, "veille", out var session, out _));

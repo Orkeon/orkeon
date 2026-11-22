@@ -82,17 +82,22 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
     public void StageEntered(ForgeState stage, int iteration) =>
         Emit("stage.entered", new { stage = Spell(stage), iteration });
 
-    /// <summary>An anomaly, recoverable or not.</summary>
-    public void Error(string code, string message, bool recoverable) =>
-        Emit("error", new { code, message, recoverable });
+    /// <summary>
+    /// An anomaly. <paramref name="recoverable"/> says whether the SESSION stays resumable;
+    /// <paramref name="terminal"/> whether this process goes no further — a <c>session.finished</c>
+    /// follows, or the command returns. Two independent answers: a budget stop is recoverable and
+    /// terminal, an invalid edit at the arbitration recoverable and not terminal (#453).
+    /// </summary>
+    public void Error(string code, string message, bool recoverable, bool terminal) =>
+        Emit("error", new { code, message, recoverable, terminal });
 
     /// <summary>
     /// An anomaly with the command a person can run instead: the operating
     /// system refused a schedule verb, and <paramref name="command"/> does by hand what Orkeon
     /// could not. Omitted from the line when there is none.
     /// </summary>
-    public void Error(string code, string message, bool recoverable, string? command) =>
-        Emit("error", new { code, message, recoverable, command });
+    public void Error(string code, string message, bool recoverable, bool terminal, string? command) =>
+        Emit("error", new { code, message, recoverable, terminal, command });
 
     /// <summary>
     /// Where a team folder's schedule stands after <c>forge schedule</c>, <c>--check</c> or

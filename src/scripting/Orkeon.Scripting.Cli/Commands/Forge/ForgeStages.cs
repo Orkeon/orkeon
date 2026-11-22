@@ -179,7 +179,9 @@ internal sealed class BriefStage : IForgeStageRunner
         events.Error(
             ForgeErrorCodes.BriefIncomplete,
             string.Join(" ", briefErrors),
-            recoverable: submissionAttempts < MaxSubmissionAttempts);
+            recoverable: submissionAttempts < MaxSubmissionAttempts,
+            // At the cap the stage fails: the engine's own error and session.finished follow (#453).
+            terminal: submissionAttempts >= MaxSubmissionAttempts);
 
         if (submissionAttempts >= MaxSubmissionAttempts)
             return Abandon(usage, $"No schema-valid brief after {MaxSubmissionAttempts} submissions.");
@@ -221,7 +223,7 @@ internal sealed class BriefStage : IForgeStageRunner
 
             if (errors.Count > 0)
             {
-                events.Error(ForgeErrorCodes.FoldersInvalid, string.Join(" ", errors), recoverable: true);
+                events.Error(ForgeErrorCodes.FoldersInvalid, string.Join(" ", errors), recoverable: true, terminal: false);
                 continue;
             }
 
@@ -451,7 +453,9 @@ internal sealed class BlueprintStage : IForgeStageRunner
                 events.Error(
                     ForgeErrorCodes.BlueprintInvalid,
                     string.Join(" ", blueprintErrors),
-                    recoverable: attempt < MaxSubmissionAttempts);
+                    recoverable: attempt < MaxSubmissionAttempts,
+                    // At the cap the stage fails: the engine's own error and session.finished follow (#453).
+                    terminal: attempt >= MaxSubmissionAttempts);
                 errors = blueprintErrors;
                 continue;
             }

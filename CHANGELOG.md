@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the forge's `error` event says whether the process goes on (`terminal`, #453)
+
+Every `error` line of `orkeon forge --events jsonl` now carries `terminal` beside `recoverable`, and the two have a
+documented contract ([CLI reference](docs/reference/cli.md#orkeon-forge)): `recoverable` says whether the session stays
+resumable, `terminal` whether this process goes no further (a `session.finished` follows, or the command returns). A
+budget stop is recoverable and terminal; an invalid edit or a refused retry at the arbitration, invalid folders, and a
+brief or a plan refused below the attempts cap are recoverable and not terminal. At the cap the two `error` lines stay
+two, both `terminal: true`. The values of `recoverable` do not change, the envelope stays at `v: 2`, and the run's own
+`error` event is unchanged.
+
 ### Added — LLM provider modules: `Llm:Provider` names a provider shipped outside the core
 
 A provider can now live outside `Orkeon.Infrastructure` and be chosen by name. A host registers an

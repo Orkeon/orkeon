@@ -127,6 +127,7 @@ public sealed class ForgeEngineTests : IDisposable
         var error = Assert.Single(events, e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal(ForgeEngine.CodeBudgetExhausted, error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());
+        Assert.True(error.GetProperty("terminal").GetBoolean());
         Assert.Equal("abandoned", events[^1].GetProperty("status").GetString());
     }
 
