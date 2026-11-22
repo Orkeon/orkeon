@@ -16,7 +16,9 @@ null or whitespace. (Parameter 'value')`, exit 2, before the first task. `CrewTa
 task that declares none the expected output `decision`, the one a scripted decision task (`taskBuilder().decision(...)`)
 already carries, and the factory passes on only the one the file declares. A task without a decision is refused
 without one, as before. `YamlCrewExporter` writes no `expectedOutput` key for a task that has none, where it wrote
-`expectedOutput: ""`. The YAML schema page said a decision task needs one: it no longer does.
+`expectedOutput: ""`. In a script, `taskBuilder().decision(...)` with a blank `.expectedOutput("")` was refused
+(`taskBuilder() requires .expectedOutput(...)`) where the same YAML task loads: it gets `decision` too. The YAML schema
+page said a decision task needs one: it no longer does.
 
 ### Fixed — a forge cycle says a settings refusal on the event stream, and a new one leaves no session behind (#475)
 

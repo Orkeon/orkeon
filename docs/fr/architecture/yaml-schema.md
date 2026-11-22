@@ -293,8 +293,10 @@ tasks:
   `instructions` un texte facultatif ajouté aux questions. L'agent ne donne que des probabilités, vérifiées et lues comme la réponse du modèle : voir
   [le relais](./decision-models.md#le-relais-without).
 - Une tâche de décision exige toujours une `description` comme toute tâche, mais aucun `expectedOutput` : elle
-  n'exécute aucun agent et sa sortie est faite des réponses (celui qu'elle déclare est conservé, et réécrit par un
-  export). La crew exige toujours un agent, même si aucune tâche ne l'utilise.
+  n'exécute aucun agent et sa sortie, ce sont les réponses. Sans lui, la tâche porte le mot `decision` comme résultat
+  attendu partout où celui d'une tâche est montré (le plan, la tâche lue par l'API), et un export n'écrit aucune clé
+  `expectedOutput` ; celui qu'elle déclare est conservé, et un export l'écrit. La crew exige toujours un agent, même
+  si aucune tâche ne l'utilise.
 
 **Le bloc `when:`.** Un `when:` nomme une seule tâche de décision ; chaque clause s'écrit `<task>`,
 `<task>.<question>` ou `<task>.<question>.<option>`, où `<task>` est la clé de la tâche de décision.

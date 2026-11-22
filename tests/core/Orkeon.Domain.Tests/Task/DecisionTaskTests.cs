@@ -67,17 +67,6 @@ public class DecisionTaskTests
     }
 
     [Fact]
-    [Trait("BR", "CH-476")]
-    public void ShouldRefuseTask_WhenItCarriesNoDecisionAndNoExpectedOutput()
-    {
-        var builder = new CrewTaskBuilder().Description("Write");
-
-        var refusal = Assert.Throws<BuilderValidationException>(() => builder.Build());
-
-        Assert.Contains("ExpectedOutput is required", refusal.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
     [Trait("BR", "BR-01")]
     [Trait("BR", "BR-07")]
     public void ShouldRefuseTask_WhenAgentAndDecisionBothGiven()

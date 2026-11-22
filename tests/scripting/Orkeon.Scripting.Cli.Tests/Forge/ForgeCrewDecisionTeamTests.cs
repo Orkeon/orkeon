@@ -91,6 +91,7 @@ public sealed class ForgeCrewDecisionTeamTests : IDisposable
     [Trait("BR", "CH-476")]
     public async Task A_composed_crew_whose_decision_task_has_no_expected_output_loads()
     {
+        Assert.Null(Triage(ForgeCrewDecision.Optional).Tasks!.Single(task => task.Key == "triage").ExpectedOutput);
         var crew = RenderTriage(ForgeCrewDecision.Optional);
         using var console = new TestConsole(stdin: string.Empty);
 

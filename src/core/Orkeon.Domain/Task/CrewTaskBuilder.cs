@@ -30,7 +30,10 @@ public sealed class CrewTaskBuilder
     private TaskCondition? _condition;
     private string? _key;
 
-    /// <summary>The expected output of a decision task that declares none.</summary>
+    /// <summary>
+    /// The expected output of a decision task that declares none; the scripting builder
+    /// (<c>JsTaskBuilder</c>) writes the same word.
+    /// </summary>
     private const string DecisionExpectedOutput = "decision";
 
     /// <summary>Sets the task description from a string value.</summary>
@@ -259,8 +262,8 @@ public sealed class CrewTaskBuilder
     /// <c>decision</c>, the one a scripted decision task carries (#476).
     /// </remarks>
     /// <exception cref="BuilderValidationException">
-    /// Thrown when <see cref="Description(string)"/> has not been set, or
-    /// <see cref="ExpectedOutput(ExpectedOutput)"/> on a task that carries no decision.
+    /// Thrown when <see cref="Description(string)"/> has not been set, or when
+    /// <see cref="ExpectedOutput(ExpectedOutput)"/> has not been set on a task that carries no decision.
     /// </exception>
     public CrewTask Build()
     {

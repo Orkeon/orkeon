@@ -190,6 +190,22 @@ public sealed class TaskBuilderTests
         Assert.Contains(triage.Id, config.Tasks.Single(t => t.Key == "other").Dependencies);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(".expectedOutput(\"\")")]
+    [InlineData(".expectedOutput(\"   \")")]
+    [Trait("BR", "CH-476")]
+    public void ShouldGiveTheDecisionTaskItsExpectedOutput_WhenItDeclaresNoneOrABlankOne(string expectedOutput)
+    {
+        var config = Configure($$"""
+            const triage = taskBuilder().name("triage"){{expectedOutput}}
+                .decision({ questions: { category: { choice: { bug: "a defect" } } } }).build();
+            const allTasks = [intake, triage];
+            """);
+
+        Assert.Equal("decision", config.Tasks.Single(t => t.Key == "triage").ExpectedOutput);
+    }
+
     [Fact]
     [Trait("BR", "BR-07")]
     public void ShouldRefuseScript_WhenAgentAndDecisionBothSet_NamingTask()
