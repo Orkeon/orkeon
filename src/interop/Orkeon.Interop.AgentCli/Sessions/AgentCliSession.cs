@@ -271,7 +271,6 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
         var idle = bounds.StreamIdleSeconds is { } idleSeconds ? TimeSpan.FromSeconds(idleSeconds) : (TimeSpan?)null;
         var text = new StringBuilder();
         var toolCalls = new List<AgentCliToolCall>();
-        var blocks = new JsonArray();
         JsonObject? usage = null;
         string? stopReason = null;
         string? model = null;
@@ -324,7 +323,6 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
                     {
                         if (block is not JsonObject item)
                             continue;
-                        blocks.Add(item.DeepClone());
                         if (ReadBlock(item, text, toolCalls) is { } malformed)
                             return AgentCliTurn.Failed(malformed, null);
                     }

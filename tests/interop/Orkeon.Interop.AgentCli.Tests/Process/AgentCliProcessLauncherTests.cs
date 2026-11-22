@@ -49,7 +49,7 @@ public sealed class AgentCliProcessLauncherTests
 
         // Act
         string folder;
-        await using (var process = launcher.Start(new ClaudeCodeEngine(options), marker, "haiku"))
+        await using (launcher.Start(new ClaudeCodeEngine(options), marker, "haiku"))
         {
             folder = Assert.Single(AgentCliProcessLauncher.LiveFolders.Current, candidate =>
                 File.Exists(Path.Join(candidate, "system-prompt.md"))
