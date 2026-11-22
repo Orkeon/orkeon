@@ -71,7 +71,7 @@ agents:
 tasks:
   <task_id>:              # Clé = identifiant unique de la tâche
     description: string   # Description détaillée de la tâche (requis)
-    expectedOutput: string # Format/contenu attendu en résultat (requis)
+    expectedOutput: string # Format/contenu attendu en résultat (requis ; facultatif sur une tâche de décision)
     agent: string         # Clé de l'agent assigné à la tâche (une clé inconnue fait échouer le chargement)
     dependencies: [string] # Clés des tâches prérequises (garantit l'ordre ; une clé inconnue fait échouer le chargement)
     asyncExecution: bool  # default: false — sequential : tourne pendant les tâches suivantes, une dépendante l'attend ; parallel : sans effet propre ; autres modes : true fait échouer le chargement

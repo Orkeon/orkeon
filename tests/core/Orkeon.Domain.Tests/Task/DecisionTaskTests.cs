@@ -48,6 +48,36 @@ public class DecisionTaskTests
     }
 
     [Fact]
+    [Trait("BR", "CH-476")]
+    public void ShouldGiveTheDecisionTaskItsExpectedOutput_WhenNoneIsDeclared()
+    {
+        var task = new CrewTaskBuilder().Description("Decide").WithDecision(OneQuestion()).Build();
+
+        Assert.True(task.IsDecision);
+        Assert.Equal("decision", task.ExpectedOutput.Value);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-476")]
+    public void ShouldKeepTheDeclaredExpectedOutput_WhenADecisionTaskDeclaresOne()
+    {
+        var task = Minimal().WithDecision(OneQuestion()).Build();
+
+        Assert.Equal("An outcome", task.ExpectedOutput.Value);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-476")]
+    public void ShouldRefuseTask_WhenItCarriesNoDecisionAndNoExpectedOutput()
+    {
+        var builder = new CrewTaskBuilder().Description("Write");
+
+        var refusal = Assert.Throws<BuilderValidationException>(() => builder.Build());
+
+        Assert.Contains("ExpectedOutput is required", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     [Trait("BR", "BR-01")]
     [Trait("BR", "BR-07")]
     public void ShouldRefuseTask_WhenAgentAndDecisionBothGiven()

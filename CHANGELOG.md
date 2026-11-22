@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a crew whose decision task declares no `expected_output` loads (#476)
+
+The crew validator and the forge ask a decision task for no expected output (#431: it runs no agent and its output is
+the answers it routes on), so a team `orkeon forge` composes carries one without it. `CrewFactory` built every task
+with its expected output all the same: `orkeon run` on such a crew ended on `Crew configuration error: value cannot be
+null or whitespace. (Parameter 'value')`, exit 2, before the first task. `CrewTaskBuilder.Build` now gives a decision
+task that declares none the expected output `decision`, the one a scripted decision task (`taskBuilder().decision(...)`)
+already carries, and the factory passes on only the one the file declares. A task without a decision is refused
+without one, as before. `YamlCrewExporter` writes no `expectedOutput` key for a task that has none, where it wrote
+`expectedOutput: ""`. The YAML schema page said a decision task needs one: it no longer does.
+
 ### Fixed — a forge cycle says a settings refusal on the event stream, and a new one leaves no session behind (#475)
 
 A cycle of `orkeon forge` whose settings file the engine host refuses (an `Llm:Provider` it does not know, a key that

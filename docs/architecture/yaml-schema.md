@@ -131,7 +131,7 @@ agents:
 tasks:
   <task_id>:              # Key = unique task identifier
     description: string   # Detailed task description (required)
-    expectedOutput: string # Expected result format/content (required)
+    expectedOutput: string # Expected result format/content (required; optional on a decision task)
     agent: string         # Key of the agent assigned to the task (a key matching no agent fails the load, listing the crew's agents)
     dependencies: [string] # Keys of prerequisite tasks (guarantees ordering; an unknown key fails the load, listing the crew's tasks; so does a cycle)
     asyncExecution: bool  # default: false — sequential: runs alongside the next tasks, a dependant waits for it; parallel: no effect of its own; other modes: true fails the load
@@ -183,7 +183,7 @@ tasks:
 ```
 
 Validation happens at load time (`CrewDefinitionValidator`): a crew needs a `name`, a `goal`, at least one agent (each
-with a goal) and at least one task (each with a `description` and an `expectedOutput`); circular
+with a goal) and at least one task (each with a `description` and, unless it is a decision task, an `expectedOutput`); circular
 `dependencies`, a `mounts:` item listed twice or two ids selecting the same root fail the load. So
 does a `circuitBreaker:` key, at the root or on a task: the block was removed (see "Removed: `circuitBreaker`" below), and the load names the `graph` block
 instead of ignoring it. And so does a task's `asyncExecution: true` outside `process: sequential` and
@@ -287,8 +287,9 @@ tasks:
   `instructions` an optional text added to the questions.
   The agent gives probabilities only, checked and read as the model's answer: see
   [the relay](./decision-models.md#the-without-relay).
-- A decision task still needs a `description` and an `expectedOutput` like any task, and the crew
-  still needs one agent, even when no task uses it.
+- A decision task still needs a `description` like any task, but no `expectedOutput`: it runs no agent and its
+  output is the answers (one it declares is kept, and written back by an export). The crew still needs one agent,
+  even when no task uses it.
 
 **The `when:` block.** A `when:` names one decision task; every clause is `<task>`, `<task>.<question>`
 or `<task>.<question>.<option>`, where `<task>` is the key of the decision task. Several clauses are

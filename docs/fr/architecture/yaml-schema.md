@@ -133,7 +133,7 @@ agents:
 tasks:
   <task_id>:              # Clé = identifiant unique de la tâche
     description: string   # Description détaillée de la tâche (requis)
-    expectedOutput: string # Format/contenu attendu en résultat (requis)
+    expectedOutput: string # Format/contenu attendu en résultat (requis ; facultatif sur une tâche de décision)
     agent: string         # Clé de l'agent assigné à la tâche (une clé qui ne désigne aucun agent fait échouer le chargement, en listant les agents de la crew)
     dependencies: [string] # Clés des tâches prérequises (garantit l'ordre ; une clé inconnue fait échouer le chargement, en listant les tâches de la crew ; un cycle aussi)
     asyncExecution: bool  # default: false — sequential : tourne pendant les tâches suivantes, une dépendante l'attend ; parallel : sans effet propre ; autres modes : true fait échouer le chargement
@@ -186,7 +186,7 @@ tasks:
 
 La validation a lieu
 au chargement (`CrewDefinitionValidator`) : une crew exige un `name`, un `goal`, au moins un agent
-(chacun avec un goal) et au moins une tâche (chacune avec une `description` et un
+(chacun avec un goal) et au moins une tâche (chacune avec une `description` et, sauf tâche de décision, un
 `expectedOutput`) ; des `dependencies` circulaires, un item de `mounts:` listé deux fois ou deux
 identifiants qui sélectionnent la même racine font échouer le chargement. Une clé
 `circuitBreaker:` aussi, à la racine comme sur une tâche : le bloc a été supprimé (voir « Supprimé :
@@ -292,8 +292,9 @@ tasks:
   avertissement sans jamais s'en servir, et une crew sans mode ou en `none` le refuse. `agent` est une clé des `agents:` de la crew et
   `instructions` un texte facultatif ajouté aux questions. L'agent ne donne que des probabilités, vérifiées et lues comme la réponse du modèle : voir
   [le relais](./decision-models.md#le-relais-without).
-- Une tâche de décision exige toujours une `description` et un `expectedOutput` comme toute tâche, et
-  la crew exige toujours un agent, même si aucune tâche ne l'utilise.
+- Une tâche de décision exige toujours une `description` comme toute tâche, mais aucun `expectedOutput` : elle
+  n'exécute aucun agent et sa sortie est faite des réponses (celui qu'elle déclare est conservé, et réécrit par un
+  export). La crew exige toujours un agent, même si aucune tâche ne l'utilise.
 
 **Le bloc `when:`.** Un `when:` nomme une seule tâche de décision ; chaque clause s'écrit `<task>`,
 `<task>.<question>` ou `<task>.<question>.<option>`, où `<task>` est la clé de la tâche de décision.

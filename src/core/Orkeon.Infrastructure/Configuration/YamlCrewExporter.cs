@@ -533,7 +533,8 @@ public partial class YamlCrewExporter
         return new TaskYamlConfig
         {
             Description = task.Description,
-            ExpectedOutput = task.ExpectedOutput,
+            // A decision task may declare none (#476): no empty key is written.
+            ExpectedOutput = string.IsNullOrWhiteSpace(task.ExpectedOutput) ? null : task.ExpectedOutput,
             Agent = task.AssignedAgentId is { } agent ? names.Of(agent) : null,
             Tools = task.Tools.Count > 0 ? new Collection<string>(task.Tools.ToList()) : null,
             Dependencies = ExplicitDependencies(task, names) is { Count: > 0 } explicitDependencies

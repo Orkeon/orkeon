@@ -69,7 +69,7 @@ agents:
 tasks:
   <task_id>:              # Key = unique task identifier
     description: string   # Detailed task description (required)
-    expectedOutput: string # Expected output format/content (required)
+    expectedOutput: string # Expected output format/content (required; optional on a decision task)
     agent: string         # Key of the agent assigned to the task (an unknown key fails the load)
     dependencies: [string] # Keys of prerequisite tasks (guarantees ordering; an unknown key fails the load)
     asyncExecution: bool  # default: false — sequential: runs alongside the next tasks, a dependant waits for it; parallel: no effect of its own; other modes: true fails the load

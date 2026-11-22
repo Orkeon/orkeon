@@ -154,16 +154,41 @@ tasks:
         Assert.Contains(triage.Id, refund.Dependencies);
     }
 
+    /// <summary><paramref name="yaml"/> without the expected output of its decision task, which the validator does not ask for.</summary>
+    private static string WithoutDecisionExpectedOutput(string yaml)
+    {
+        var lines = yaml.Split('\n');
+        var kept = lines.Where(line => line.Trim() != "expectedOutput: A classification.").ToList();
+        Assert.Equal(lines.Length - 1, kept.Count);
+        return string.Join('\n', kept);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-476")]
+    public async System.Threading.Tasks.Task ShouldCreateTheDecisionTask_WhenItDeclaresNoExpectedOutput()
+    {
+        var tasks = await TasksOfAsync(await BuildAsync(WithoutDecisionExpectedOutput(CrewYaml)));
+
+        var triage = tasks.Single(t => t.Key == "triage");
+        Assert.True(triage.IsDecision);
+        Assert.Equal("decision", triage.ExpectedOutput.Value);
+        Assert.Equal("A summary", tasks.Single(t => t.Key == "intake").ExpectedOutput.Value);
+        Assert.Contains(triage.Id, tasks.Single(t => t.Key == "refund").Dependencies);
+    }
+
     [Theory]
-    [InlineData("billing", true, 2)]
-    [InlineData("bug", false, 1)]
+    [InlineData("billing", true, 2, true)]
+    [InlineData("bug", false, 1, true)]
+    [InlineData("billing", true, 2, false)]
+    [InlineData("bug", false, 1, false)]
     [Trait("BR", "UC-01")]
     [Trait("BR", "UC-02")]
     [Trait("BR", "UC-04")]
+    [Trait("BR", "CH-476")]
     public async System.Threading.Tasks.Task ShouldRunYamlLoadedCrew_WhenItsOnlyAgentIsUsedByNoTask(
-        string category, bool notifyRuns, int expectedRequests)
+        string category, bool notifyRuns, int expectedRequests, bool expectedOutputDeclared)
     {
-        var built = await BuildAsync(DecisionOnlyYaml);
+        var built = await BuildAsync(expectedOutputDeclared ? DecisionOnlyYaml : WithoutDecisionExpectedOutput(DecisionOnlyYaml));
         var model = new FakeDecisionModel
         {
             Respond = request => new DecisionResponse
