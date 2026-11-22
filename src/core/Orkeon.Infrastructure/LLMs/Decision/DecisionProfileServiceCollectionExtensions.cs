@@ -242,6 +242,19 @@ public static class DecisionProfileServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Whether <paramref name="profile"/> blocks every call through it while the decision circuit is off: it is
+    /// fail-closed and holds a guard stage, a guard that cannot judge (#433). Known from the settings alone, so
+    /// the profile built off says it and <c>--validate</c> warns of it (#452).
+    /// </summary>
+    /// <param name="profile">The decision profile.</param>
+    /// <returns>True when every call is blocked with the circuit off.</returns>
+    public static bool BlocksEveryCallWithTheCircuitOff(DecisionProfileOptions profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        return profile.FailClosed && profile.Stages.Any(stage => KindOf(stage.Kind) == GuardKind);
+    }
+
+    /// <summary>
     /// The profile with the decision circuit off (#433): no stage asks the model. A route acts as an
     /// answer under its floor - its fallback when it declares one, else the profile so far - a verify
     /// never escalates, and a guard lets the call go on, unless the profile is fail-closed: a guard
@@ -258,7 +271,6 @@ public static class DecisionProfileServiceCollectionExtensions
         IAuditLogger? audit)
     {
         var to = profile.Target.Trim();
-        var guarded = false;
         foreach (var stage in profile.Stages)
         {
             switch (KindOf(stage.Kind))
@@ -268,9 +280,6 @@ public static class DecisionProfileServiceCollectionExtensions
                         resolve(route);
                     if (!string.IsNullOrWhiteSpace(stage.Fallback))
                         to = stage.Fallback.Trim();
-                    break;
-                case GuardKind:
-                    guarded = true;
                     break;
                 case VerifyKind:
                     resolve(stage.EscalateTo!.Trim());
@@ -282,7 +291,7 @@ public static class DecisionProfileServiceCollectionExtensions
         var provider = string.Equals(to, profile.Target.Trim(), StringComparison.OrdinalIgnoreCase) ? target : resolve(to);
         var logger = loggerFactory.CreateLogger<DecisionLlmProvider>();
         IDecisionStage[] request = [];
-        if (guarded && profile.FailClosed)
+        if (BlocksEveryCallWithTheCircuitOff(profile))
         {
             request = [new CircuitOffGuardStage(reason)];
             Orkeon.Infrastructure.Decision.DecisionCircuitLog.ProfileBlocksEveryCall(logger, name, reason);

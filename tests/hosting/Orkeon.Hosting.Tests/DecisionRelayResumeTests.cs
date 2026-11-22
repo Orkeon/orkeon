@@ -146,6 +146,29 @@ public sealed class DecisionRelayResumeTests
                 run.Stdout.Contains("Tokens used: 100", StringComparison.Ordinal)));
     }
 
+    [Fact]
+    [Trait("BR", "CH-451")]
+    public async Task ShouldFollowTheRelay_WhenTheHostedDecisionProviderHasNoKey()
+    {
+        // Arrange: a Liquid section whose key variable no machine sets, and no key setting.
+        using var harness = new ResumeRunHarness();
+        var settings = """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Liquid": { "Model": "lfm", "ApiKeyEnvVar": "ORKEON_TEST_451_NO_SUCH_KEY" } } }""";
+        var crew = harness.WriteCrewYaml("crew", Crew(harness.CrewName, "sequential"), settings);
+        var relay = new FakeDecisionRelay { Answer = RelayAnswer, Tokens = 50 };
+        var service = new FakeAgentExecutionService();
+        var hook = new FakeCrewExecutionHook();
+
+        // Act
+        var run = await harness.RunAsync(
+            crew, service, hook: hook, configure: services => services.AddSingleton<IDecisionRelay>(relay), ct: TestContext.Current.CancellationToken);
+
+        // Assert
+        var decision = hook.Completed.Single(s => s.IsDecision);
+        Assert.True(
+            run.Exit == 0 && decision.DecisionSource == DecisionSources.Relay && relay.Calls == 1 && service.Calls.Contains("answer"),
+            $"exit={run.Exit} source={decision.DecisionSource} relay={relay.Calls} stderr={run.Stderr}");
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

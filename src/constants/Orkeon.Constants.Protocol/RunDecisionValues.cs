@@ -41,6 +41,9 @@ public static class DecisionCircuitCauses
     /// <summary>No decision provider resolved.</summary>
     public const string NoProvider = "no-provider";
 
+    /// <summary>The decision provider is hosted and has no API key, neither in its setting nor in its environment variable (#451).</summary>
+    public const string NoKey = "no-key";
+
     /// <summary>The forge's trial pass without System One: an <c>optional</c> crew's relay pass (#431).</summary>
     public const string Trial = "trial";
 }

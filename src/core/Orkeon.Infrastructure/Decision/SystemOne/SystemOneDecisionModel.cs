@@ -170,29 +170,13 @@ public sealed partial class SystemOneDecisionModel : IDecisionModel
 
     private string? ResolveApiKey()
     {
-        if (!string.IsNullOrWhiteSpace(_options.ApiKey))
-            return _options.ApiKey.Trim();
-        var variable = string.IsNullOrWhiteSpace(_options.ApiKeyEnvVar)
-            ? _provider.DefaultApiKeyVariable
-            : _options.ApiKeyEnvVar.Trim();
-        var key = _keyEnvironment.Process(variable);
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            try
-            {
-                key = _keyEnvironment.User(variable);
-            }
-            catch (Exception ex) when (ex is System.Security.SecurityException or PlatformNotSupportedException or IOException)
-            {
-                key = null;
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(key))
-            return key.Trim();
+        // The same sources the host's circuit reads when it is resolved (#451).
+        var key = DecisionApiKey.Resolve(_provider, _options, _keyEnvironment);
+        if (key is not null)
+            return key;
         return _provider.KeyRequired
             ? throw new DecisionModelException(
-                $"No {Name} API key: set the environment variable {variable}, or {_provider.Section}:ApiKey.",
+                $"No {Name} API key: set the environment variable {DecisionApiKey.Variable(_provider, _options)}, or {_provider.Section}:ApiKey.",
                 null, isTransient: false)
             : null;
     }

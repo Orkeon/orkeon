@@ -2,6 +2,7 @@
 Orkeon.Constants.Protocol.DecisionCircuitCauses
 Orkeon.Constants.Protocol.DecisionCircuitStates
 Orkeon.Constants.Protocol.RunDecisionModes
+const Orkeon.Constants.Protocol.DecisionCircuitCauses.NoKey = "no-key" -> string!
 const Orkeon.Constants.Protocol.DecisionCircuitCauses.NoProvider = "no-provider" -> string!
 const Orkeon.Constants.Protocol.DecisionCircuitCauses.Settings = "settings" -> string!
 const Orkeon.Constants.Protocol.DecisionCircuitCauses.Switch = "switch" -> string!

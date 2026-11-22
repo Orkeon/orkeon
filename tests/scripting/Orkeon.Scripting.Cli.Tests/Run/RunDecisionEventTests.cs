@@ -70,6 +70,27 @@ public sealed class RunDecisionEventTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-451")]
+    public async Task ShouldNameNoKeyAsTheCause_WhenTheHostedDecisionProviderHasNoKey()
+    {
+        // Arrange
+        var observer = Observer();
+        var circuit = DecisionCircuit.OffBy(DecisionCircuitCause.NoKey) with
+        {
+            Detail = "no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey",
+        };
+
+        // Act
+        await observer.OnRunDecisionAsync(new RunDecisionNotice(CrewDecisionMode.Required, circuit), TestContext.Current.CancellationToken);
+
+        // Assert
+        var e = Assert.Single(Events());
+        Assert.Equal(
+            ("required", "off", "no-key"),
+            (e.GetProperty("mode").GetString(), e.GetProperty("circuit").GetString(), e.GetProperty("cause").GetString()));
+    }
+
+    [Fact]
     [Trait("BR", "CH-429")]
     public async Task ShouldLeaveTheCauseOut_WhenTheCircuitIsOn()
     {

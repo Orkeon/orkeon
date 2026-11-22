@@ -271,6 +271,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
         Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings => DecisionCircuitCauses.Settings,
         Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider => DecisionCircuitCauses.NoProvider,
         Orkeon.Application.Crew.Execution.DecisionCircuitCause.Trial => DecisionCircuitCauses.Trial,
+        Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoKey => DecisionCircuitCauses.NoKey,
         _ => null,
     };
 

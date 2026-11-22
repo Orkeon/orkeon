@@ -24,6 +24,13 @@ public sealed record DecisionCircuit(bool Enabled)
     public DecisionCircuitCause? Cause { get; init; }
 
     /// <summary>
+    /// Gets what the cause alone does not say, ended into <see cref="OffReason"/>: for
+    /// <see cref="DecisionCircuitCause.NoKey"/>, the provider and where its key is read
+    /// (<c>no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey</c>); null otherwise.
+    /// </summary>
+    public string? Detail { get; init; }
+
+    /// <summary>
     /// Gets the sentence a degraded consumer says, <c>the decision circuit is off: &lt;cause&gt;</c>; null when
     /// the circuit is on.
     /// </summary>
@@ -35,6 +42,7 @@ public sealed record DecisionCircuit(bool Enabled)
             DecisionCircuitCause.Settings => "the decision circuit is off: Orkeon:Decision:Enabled=false",
             DecisionCircuitCause.NoProvider => "the decision circuit is off: no decision provider resolved",
             DecisionCircuitCause.Trial => "the decision circuit is off: the forge's trial pass without System One",
+            DecisionCircuitCause.NoKey => "the decision circuit is off: " + (Detail ?? "the decision provider has no API key"),
             _ => "the decision circuit is off",
         };
 

@@ -149,7 +149,10 @@ public static partial class RunnerExecution
                     modeWarnings = [.. decisionWarnings.Distinct(StringComparer.Ordinal)];
                 foreach (var message in modeWarnings)
                     await console.ErrorOutput.WriteLineAsync($"WARNING: {message}").ConfigureAwait(false);
-                foreach (var message in RefusalsUnderTheCircuit(crew, tasks, Orkeon.Application.Crew.Execution.DecisionCircuit.Of(scope.ServiceProvider)))
+                var circuit = Orkeon.Application.Crew.Execution.DecisionCircuit.Of(scope.ServiceProvider);
+                var decisionProfiles = scope.ServiceProvider
+                    .GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionProfilesOptions>>()?.Value;
+                foreach (var message in RefusalsUnderTheCircuit(crew, tasks, agents, decisionProfiles, circuit))
                     await console.ErrorOutput.WriteLineAsync($"WARNING: {message}").ConfigureAwait(false);
 
                 await console.Output.WriteLineAsync(
@@ -174,14 +177,21 @@ public static partial class RunnerExecution
 
     /// <summary>
     /// What a run of the crew would be refused for now, with this host's decision circuit (#429): a crew that
-    /// requires System One with the circuit off, or a decision task left with nothing to answer by. Reported by
+    /// requires System One with the circuit off, or a decision task left with nothing to answer by; and, first,
+    /// what its calls would be blocked for (#452): an agent on a fail-closed guarded decision profile. Reported by
     /// <c>--validate</c>, which exits 0: the circuit is the launch's, not the crew's.
     /// </summary>
     private static IEnumerable<string> RefusalsUnderTheCircuit(
-        Orkeon.Domain.Crew.Crew crew, IReadOnlyList<Orkeon.Domain.Task.CrewTask> tasks, Orkeon.Application.Crew.Execution.DecisionCircuit circuit)
+        Orkeon.Domain.Crew.Crew crew,
+        IReadOnlyList<Orkeon.Domain.Task.CrewTask> tasks,
+        IReadOnlyList<Domain.Agent.Agent> agents,
+        Orkeon.Infrastructure.LLMs.Decision.DecisionProfilesOptions? decisionProfiles,
+        Orkeon.Application.Crew.Execution.DecisionCircuit circuit)
     {
         if (circuit.Enabled)
             yield break;
+        foreach (var message in BlockedProfilesUnderTheCircuit(agents, decisionProfiles, circuit))
+            yield return message;
         if (crew.DecisionMode == Orkeon.Domain.Crew.CrewDecisionMode.Required)
         {
             yield return $"crew requires System One; a run would be refused now: {circuit.OffReason}";
@@ -194,6 +204,29 @@ public static partial class RunnerExecution
             .ToList();
         foreach (var message in Orkeon.Domain.Task.DecisionTaskRules.CheckFallbacks(crew.DecisionMode, declarations))
             yield return $"a run would be refused now ({circuit.OffReason}): {message}";
+    }
+
+    /// <summary>
+    /// The agents whose <c>llm.profile</c> names a decision profile that blocks every call with this host's
+    /// decision circuit off: fail-closed, with a guard stage (#452). Reported by <c>--validate</c>, which exits 0;
+    /// a run is not refused for it, its first call through the profile fails.
+    /// </summary>
+    private static IEnumerable<string> BlockedProfilesUnderTheCircuit(
+        IReadOnlyList<Domain.Agent.Agent> agents,
+        Orkeon.Infrastructure.LLMs.Decision.DecisionProfilesOptions? profiles,
+        Orkeon.Application.Crew.Execution.DecisionCircuit circuit)
+    {
+        if (circuit.Enabled || profiles is null || profiles.Profiles.Count == 0)
+            yield break;
+        foreach (var agent in agents)
+        {
+            var name = agent.LlmConfig?.Profile?.Trim();
+            if (string.IsNullOrEmpty(name) || !profiles.Profiles.TryGetValue(name, out var profile)
+                || !Orkeon.Infrastructure.LLMs.Decision.DecisionProfileServiceCollectionExtensions.BlocksEveryCallWithTheCircuitOff(profile))
+                continue;
+            yield return $"agent '{agent.Role.Value}' runs on the decision profile '{name}', fail-closed with a guard stage: " +
+                $"a run would block every call through it now ({circuit.OffReason})";
+        }
     }
 
     /// <summary>

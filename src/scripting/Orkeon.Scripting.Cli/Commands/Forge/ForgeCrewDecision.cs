@@ -96,13 +96,14 @@ internal static class ForgeCrewDecision
     public static string CircuitName(DecisionCircuit circuit) =>
         circuit.Enabled ? DecisionCircuitStates.On : DecisionCircuitStates.Off;
 
-    /// <summary>The cause of an off circuit as the stream spells it (<c>switch</c>, <c>settings</c>, <c>no-provider</c>, <c>trial</c>).</summary>
+    /// <summary>The cause of an off circuit as the stream spells it (<c>switch</c>, <c>settings</c>, <c>no-provider</c>, <c>trial</c>, <c>no-key</c>).</summary>
     public static string? CauseName(DecisionCircuit circuit) => circuit.Cause switch
     {
         DecisionCircuitCause.Switch => DecisionCircuitCauses.Switch,
         DecisionCircuitCause.Settings => DecisionCircuitCauses.Settings,
         DecisionCircuitCause.NoProvider => DecisionCircuitCauses.NoProvider,
         DecisionCircuitCause.Trial => DecisionCircuitCauses.Trial,
+        DecisionCircuitCause.NoKey => DecisionCircuitCauses.NoKey,
         _ => null,
     };
 

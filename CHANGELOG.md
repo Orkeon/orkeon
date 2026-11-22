@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a hosted decision provider without its key turns the circuit off (`no-key`), and `--validate` names a fail-closed guarded profile (#451, #452)
+
+- A host whose decision provider is hosted (TypeSafe, Liquid) and finds its key neither in its `ApiKey` setting nor in
+  its environment variable (`ApiKeyEnvVar`, else `TYPESAFE_API_KEY` / `LIQUID_API_KEY`) now resolves its circuit off,
+  with the new cause `no-key` (`DecisionCircuitCause.NoKey`, `DecisionCircuitCauses.NoKey`). The key is read from the
+  same sources as the provider reads it at each call, when the circuit is resolved, with no network call; a local
+  provider (Kev) is never turned off. The circuit's sentence names both places
+  (`the decision circuit is off: no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey`,
+  carried by the new `DecisionCircuit.Detail`). Behaviour change: a `required` crew on such a host used to start and
+  fail at its first decision call; it is now refused before its first task (`orkeon run` exits `69`), an `optional`
+  crew takes its `without:` relays, `--validate` warns, and `run.decision` reports `circuit: off`, `cause: no-key`.
+- `--validate`, with the circuit off, prints a `WARNING:` per agent whose `llm.profile` names a decision profile that is
+  `FailClosed` and holds a `guard` stage, since a run would block every call through it. The run is not refused. The
+  rule is one predicate, `DecisionProfileServiceCollectionExtensions.BlocksEveryCallWithTheCircuitOff`, used by the
+  profile's build too.
+
 ### Added — LLM provider modules: `Llm:Provider` names a provider shipped outside the core
 
 A provider can now live outside `Orkeon.Infrastructure` and be chosen by name. A host registers an
