@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a forge cycle says a settings refusal on the event stream, and a new one leaves no session behind (#475)
+
+A cycle of `orkeon forge` whose settings file the engine host refuses (an `Llm:Provider` it does not know, a key that
+is no setting) said so on stderr only: under `--events jsonl` stdout stayed empty — no `error`, no `session.finished`
+— so a client read an empty stream and exit 1. A new cycle also left the session it had opened before the host was
+built (`.orkeon/forge/<slug>/session.json`, state `Brief`, status `Active`), which `orkeon forge list` then showed
+though it never started. The refusal is now `FORGE-SETTINGS-REFUSED`, the code `forge rephrase` already answers with,
+exit 1 unchanged: with `--events jsonl` one `error` line on stdout, the host's sentence as its `message`, `terminal:
+true`, then `session.finished`, and nothing on stderr; in the terminal `orkeon forge: <the host's sentence>` on stderr,
+as before. A new session is deleted with the refusal (`recoverable: false`, `session.finished` on `failed`); a
+`resume`, with or without `--edit`, leaves its session as it was (`recoverable: true`, `session.finished` on the
+status the session holds), resumable once the settings are fixed. `resume --adopt` and `reopen` build no host and are
+unchanged.
+
+### Fixed — every verb of `orkeon` accepts a settings file that names the `agent-cli` module (#472)
+
+The tool registered its provider modules in the hosts of `run`, `mcp`, `bridge`, `doctor` and the forge cycle only.
+`orkeon email`, `orkeon drive`, `orkeon runs`, `orkeon rag`, `orkeon eval` (its scoring host and the crew of `eval run
+--crew`), the crews of `orkeon mcp serve --crew` and `orkeon forge rephrase` built their host without them, so a
+settings file `orkeon run` and `orkeon doctor` accept was refused there: `"Provider": "agent-cli"` with `Llm:Provider
+names no provider of this host`, and an `Llm:AgentCli` section with `Llm:AgentCli is not a setting`. Each of these
+hosts now registers the modules and the shape of their section, and one settings file is judged the same way by every
+verb. The crews of `eval run --crew` and `mcp serve --crew` get with them the ONNX reranker `orkeon run` registers
+for the `balanced` and `quality` RAG profiles.
+
+### Fixed — `orkeon forge rephrase` says a settings refusal, where it ended on an unhandled exception (#473)
+
+A settings file the host refuses at its start (an `Llm:Provider` it does not know, a key that is no setting) ended
+`orkeon forge rephrase` on an unhandled `RunnerSettingsException`: a stack trace on stderr, exit 134 on Linux and
+macOS, and no line at all under `--events jsonl`. The verb now refuses as it does for its other errors, exit 1: with `--events jsonl` one
+`error` line, code `FORGE-SETTINGS-REFUSED`, the host's sentence as its `message`, `recoverable: false`, `terminal:
+true`; in the terminal `orkeon forge: <the host's sentence>` on stderr. A model call that fails (a provider that
+cannot be reached, an `agent-cli` command that is not installed) ended the verb the same way: it is now the forge's
+unexpected error, its sentence on stderr and exit 2.
+
 ### Fixed — the binder's refusal never keeps the value, whatever the key path holds (#469)
 
 The start-up check reworded the configuration binder's `Failed to convert configuration value '…' at '…' to type '…'.`

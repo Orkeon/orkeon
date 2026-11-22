@@ -1,6 +1,7 @@
 using Orkeon.Hosting.Runs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel;
@@ -19,7 +20,8 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 /// session is opened, nothing is written: the verb answers and exits. With <c>--events jsonl</c>
 /// the answer is one <c>need.rephrased</c> line (<c>text</c>, <c>original</c>); in the terminal
 /// it is the text itself. A missing LLM is <c>FORGE-LLM-UNAVAILABLE</c>, an answer the model
-/// did not give <c>FORGE-REPHRASE-EMPTY</c>; both exit 1.
+/// did not give <c>FORGE-REPHRASE-EMPTY</c>, a settings file the host refuses
+/// <c>FORGE-SETTINGS-REFUSED</c>; the three exit 1.
 /// </summary>
 internal static class ForgeRephrase
 {
@@ -32,6 +34,9 @@ internal static class ForgeRephrase
     /// <summary>The code of a host with no LLM to ask.</summary>
     public const string LlmUnavailableCode = "FORGE-LLM-UNAVAILABLE";
 
+    /// <summary>The code of a settings file the host refuses at its start (#473): the one a cycle answers with (#475).</summary>
+    public const string SettingsRefusedCode = ForgeErrorCodes.SettingsRefused;
+
     private const int ExitError = 1;
 
     /// <summary>Runs the verb: builds the host on the settings, asks the default LLM once, answers.</summary>
@@ -43,7 +48,35 @@ internal static class ForgeRephrase
 
         var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, console.ErrorOutput);
         var events = options.Events ? new ForgeEventWriter(console.Output) : null;
-        using var host = RunnerHost.Build(
+        IHost host;
+        try
+        {
+            host = BuildHost(console, settingsPath, events);
+        }
+        catch (RunnerSettingsException ex)
+        {
+            // A setting the host refuses is a refusal like the verb's others, exit 1 (GAP-35, #473):
+            // the error line for a client that reads the events, the sentence on stderr otherwise.
+            if (events is not null)
+                events.Error(SettingsRefusedCode, ex.Message, recoverable: false, terminal: true);
+            else
+                await console.ErrorOutput.WriteLineAsync($"orkeon forge: {ex.Message}").ConfigureAwait(false);
+            return ExitError;
+        }
+
+        using (host)
+        {
+            // The host's own predicate: a section holding profiles alone wires the echo provider, not a model.
+            var provider = LlmSettings.HasDefault(host.Services.GetRequiredService<IConfiguration>())
+                ? host.Services.GetService<ILlmProvider>()
+                : null;
+            return await AnswerAsync(console, options, events, provider).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>The verb's host: the settings, the console, the tool's provider modules, no agent-facing mount.</summary>
+    internal static IHost BuildHost(IRunnerConsole console, string? settingsPath, ForgeEventWriter? events) =>
+        RunnerHost.Build(
             settingsPath,
             new RunnerMountPlan(),
             configureLogging: (_, logging) =>
@@ -63,16 +96,11 @@ internal static class ForgeRephrase
                 services.AddSingleton(console);
                 // The verb refuses without a default LLM: the host's echo fallback is never taken (#466).
                 services.AddSingleton<RunnerHost.EchoFallbackUnannounced>();
+                // The provider modules of the tool: a settings file `orkeon run` accepts is accepted here (#472).
+                CliLlmProviderModules.AddTo(services);
                 if (events is not null)
                     services.AddSingleton<ILlmCallObserver>(new RunEventsLlmCallObserver(events, TimeProvider.System));
             });
-
-        // The host's own predicate: a section holding profiles alone wires the echo provider, not a model.
-        var provider = LlmSettings.HasDefault(host.Services.GetRequiredService<IConfiguration>())
-            ? host.Services.GetService<ILlmProvider>()
-            : null;
-        return await AnswerAsync(console, options, events, provider).ConfigureAwait(false);
-    }
 
     /// <summary>
     /// The verb once the host is built: refuses without <paramref name="provider"/>

@@ -356,6 +356,8 @@ internal static class DriveCommand
             configureServices: (context, services) =>
             {
                 services.AddSingleton(console);
+                // The provider modules of the tool: a settings file `orkeon run` accepts is accepted here (#472).
+                CliLlmProviderModules.AddTo(services);
                 options.ConfigureTestServices?.Invoke(context, services);
             });
     }

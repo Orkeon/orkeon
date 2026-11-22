@@ -70,7 +70,9 @@ internal static class RunsCommand
             host = RunnerHost.Build(
                 parsed.SettingsPath,
                 new RunnerMountPlan { WorkingDirectory = workingDirectory },
-                configureLogging: (_, logging) => logging.SetMinimumLevel(LogLevel.Error));
+                configureLogging: (_, logging) => logging.SetMinimumLevel(LogLevel.Error),
+                // The provider modules of the tool: a settings file `orkeon run` accepts is accepted here (#472).
+                configureServices: (_, services) => CliLlmProviderModules.AddTo(services));
         }
         catch (RunnerSettingsException ex)
         {

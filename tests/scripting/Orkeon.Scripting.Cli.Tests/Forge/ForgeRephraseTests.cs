@@ -10,6 +10,7 @@ namespace Orkeon.Scripting.Cli.Tests.Forge;
 /// refuses every cycle option; one call to the LLM rewrites the request and the answer comes
 /// back cleaned of what a model wraps it in.
 /// </summary>
+[Collection(CliCollection.Name)]
 public sealed class ForgeRephraseTests
 {
     private sealed class ScriptedLlm(string answer) : ILlmProvider
@@ -110,6 +111,43 @@ public sealed class ForgeRephraseTests
 
         public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
             Task.FromResult(new LlmResponse { Content = answer, PromptTokens = 12, CompletionTokens = 5, TokensUsed = 17 });
+    }
+
+    /// <summary>#473: a settings file the host refuses is an error line on the stream and exit 1, not an unhandled exception.</summary>
+    [Fact]
+    [Trait("BR", "CH-473")]
+    public async Task ShouldWriteATerminalErrorLine_WhenTheHostRefusesTheSettingsWithEvents()
+    {
+        using var scratch = new ScriptScratch();
+        var settings = scratch.WriteFile("settings.json", """{ "Llm": { "Provider": "acme", "Model": "m" } }""");
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["rephrase", "un besoin", "--events", "jsonl", "--settings", settings], scratch.Root);
+
+        Assert.Equal(1, exitCode);
+        var error = JsonElement.Parse(Assert.Single(console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)));
+        Assert.Equal("error", error.GetProperty("kind").GetString());
+        Assert.Equal(ForgeRephrase.SettingsRefusedCode, error.GetProperty("code").GetString());
+        Assert.Contains("Llm:Provider names no provider of this host", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.False(error.GetProperty("recoverable").GetBoolean());
+        Assert.True(error.GetProperty("terminal").GetBoolean());
+        Assert.DoesNotContain("orkeon forge:", console.Stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>#473: without the stream, the same refusal is the engine's sentence on stderr and exit 1.</summary>
+    [Fact]
+    [Trait("BR", "CH-473")]
+    public async Task ShouldSayTheRefusalOnStderr_WhenTheHostRefusesTheSettingsWithoutEvents()
+    {
+        using var scratch = new ScriptScratch();
+        var settings = scratch.WriteFile("settings.json", """{ "Llm": { "Provider": "acme", "Model": "m" } }""");
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["rephrase", "un besoin", "--settings", settings], scratch.Root);
+
+        Assert.Equal(1, exitCode);
+        Assert.Empty(console.Stdout);
+        Assert.Contains("orkeon forge: Llm:Provider names no provider of this host", console.Stderr, StringComparison.Ordinal);
     }
 
     /// <summary>#453: with no LLM configured the verb refuses on the stream, and its error says the process ends.</summary>

@@ -706,8 +706,9 @@ internal static partial class RunCommand
     {
         services.AddOrkeonOnnxReranker();
 
-        // Every host of the tool composes through here: the provider modules it ships are registered
-        // once, for all of them, and doctor and llm probe read the same list.
+        // The hosts that run a crew, a script, a tool or the RAG pipeline compose through here; the ones
+        // that do none of it (email, drive, runs, forge rephrase) call AddTo themselves (#472). doctor
+        // and llm probe read the same list.
         CliLlmProviderModules.AddTo(services);
     }
 

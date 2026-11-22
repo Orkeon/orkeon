@@ -558,7 +558,18 @@ internal static class EvalCommand
             WorkingDirectory = cwd,
         };
 
-        if (!CrewRunEntryPoint.TryOpen(crewOptions, "Orkeon.Eval", options.ConfigureTestServices, out var entry, out var errorCode))
+        // The crew's host is composed as `orkeon run` composes its own: the ONNX reranker and the tool's
+        // provider modules (#472); a test's doubles are the last registration, so they win.
+        if (!CrewRunEntryPoint.TryOpen(
+                crewOptions,
+                "Orkeon.Eval",
+                (context, services) =>
+                {
+                    RunCommand.AddCliRagServices(services);
+                    options.ConfigureTestServices?.Invoke(context, services);
+                },
+                out var entry,
+                out var errorCode))
             return (errorCode, null);
 
         using (entry)

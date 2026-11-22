@@ -10,7 +10,8 @@ namespace Orkeon.Scripting.Cli;
 /// The provider modules the <c>orkeon</c> tool ships: <c>agent-cli</c> (ADR-020, experimental). The commands
 /// that build a provider without a container (<c>orkeon doctor</c>, <c>orkeon llm probe</c>) read
 /// <see cref="All"/>, on the module's default options, or <see cref="For"/>, on the options a settings file gives; every host the tool builds registers the same modules
-/// through <see cref="AddTo"/>, where their options bind from the host's settings.
+/// through <see cref="AddTo"/>, where their options bind from the host's settings (#472: a test refuses a file of the tool that
+/// composes a host and registers none).
 /// </summary>
 internal static class CliLlmProviderModules
 {
