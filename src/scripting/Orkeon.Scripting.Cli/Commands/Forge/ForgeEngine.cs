@@ -334,7 +334,8 @@ internal sealed class ForgeEngine
             Checkpoint();
             _engine._events.Error(CodeBudgetExhausted,
                 $"The session's {Spell(dimension)} budget is exhausted; resume with a raised budget to continue.",
-                recoverable: true);
+                recoverable: true,
+                terminal: true);
             _engine._events.SessionFinished("abandoned", 0);
             return new ForgeEngineResult(ForgeEngineOutcome.BudgetExhausted, 0);
         }
@@ -347,7 +348,7 @@ internal sealed class ForgeEngine
             _engine._session.SetStatus(ForgeSessionStatus.Failed);
             _engine._session.Document.Error = $"{code}: {message}";
             Checkpoint();
-            _engine._events.Error(code, message, recoverable: false);
+            _engine._events.Error(code, message, recoverable: false, terminal: true);
             _engine._events.SessionFinished("failed", 2);
             return new ForgeEngineResult(ForgeEngineOutcome.Failed, 2);
         }

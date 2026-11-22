@@ -70,7 +70,7 @@ internal static class ForgeRephrase
         {
             const string Message = "no LLM is configured — run `orkeon init`, or pass --settings.";
             if (events is not null)
-                events.Error(LlmUnavailableCode, Message, recoverable: false);
+                events.Error(LlmUnavailableCode, Message, recoverable: false, terminal: true);
             else
                 await console.ErrorOutput.WriteLineAsync($"orkeon forge: {Message}").ConfigureAwait(false);
             return ExitError;
@@ -81,7 +81,7 @@ internal static class ForgeRephrase
         {
             const string Message = "the model gave no rewritten request.";
             if (events is not null)
-                events.Error(EmptyCode, Message, recoverable: false);
+                events.Error(EmptyCode, Message, recoverable: false, terminal: true);
             else
                 await console.ErrorOutput.WriteLineAsync($"orkeon forge: {Message}").ConfigureAwait(false);
             return ExitError;

@@ -801,7 +801,8 @@ internal sealed class VerdictStage : IForgeStageRunner
                         events.Error(
                             ForgeEngine.CodeBudgetExhausted,
                             "No iteration remains in the budget for the re-run; raise --max-iterations and resume, or accept/abort.",
-                            recoverable: true);
+                            recoverable: true,
+                            terminal: false);
                         continue;
                     }
 
@@ -844,11 +845,12 @@ internal sealed class VerdictStage : IForgeStageRunner
             events.Error(
                 ForgeEngine.CodeBudgetExhausted,
                 "No iteration remains in the budget for the edit's re-render; raise --max-iterations and resume, or accept/abort.",
-                recoverable: true);
+                recoverable: true,
+                terminal: false);
             return false;
         }
 
-        if (ValidateEditedBlueprint(json, _knownTools, events, ForgeFolders.ExistingPaths(session), ForgeFolders.Of(session), session.Document.CrewDecision) is not { } blueprint)
+        if (ValidateEditedBlueprint(json, _knownTools, events, terminal: false, ForgeFolders.ExistingPaths(session), ForgeFolders.Of(session), session.Document.CrewDecision) is not { } blueprint)
             return false;
 
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint);
@@ -862,16 +864,16 @@ internal sealed class VerdictStage : IForgeStageRunner
     /// Validates one amended blueprint in full — the same parse, compile and
     /// tool-catalogue checks a generated one goes through. Returns null when it is
     /// invalid, with the recoverable <c>FORGE-BLUEPRINT-INVALID</c> already on the
-    /// stream. Shared between the arbitration's edit decision and
-    /// <c>forge resume --edit</c> at the dry pause.
+    /// stream. Shared between the arbitration's edit decision, which asks again (<paramref name="terminal"/>
+    /// false), and <c>forge resume --edit</c> at the dry pause, which returns after it (true).
     /// </summary>
     internal static ForgeBlueprint? ValidateEditedBlueprint(
-        string json, IReadOnlyCollection<string> knownTools, ForgeEventWriter events, IReadOnlyCollection<string> existingPaths,
+        string json, IReadOnlyCollection<string> knownTools, ForgeEventWriter events, bool terminal, IReadOnlyCollection<string> existingPaths,
         IReadOnlyList<ForgeFolder>? folders = null, string? crewDecision = null)
     {
         if (!ForgeBlueprint.TryParse(json, out var blueprint, out var errors, existingPaths, crewDecision))
         {
-            events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", errors), recoverable: true);
+            events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", errors), recoverable: true, terminal);
             return null;
         }
 
@@ -879,7 +881,7 @@ internal sealed class VerdictStage : IForgeStageRunner
         var validation = ForgeBlueprintCompiler.Validate(compilation, knownTools, folders);
         if (validation.Errors.Count > 0)
         {
-            events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", validation.Errors), recoverable: true);
+            events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", validation.Errors), recoverable: true, terminal);
             return null;
         }
 

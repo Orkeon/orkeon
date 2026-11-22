@@ -55,6 +55,27 @@ public class ForgeEventWriterTests
         Assert.DoesNotContain("simulated", none, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// #453: <c>recoverable</c> says whether the session stays resumable, <c>terminal</c> whether this process goes
+    /// no further — two answers the writer always writes, so an error the engine loops on reads apart from one it ends on.
+    /// </summary>
+    [Fact]
+    public void An_error_says_whether_the_process_goes_on_beside_whether_the_session_is_resumable()
+    {
+        var output = new StringWriter();
+        var writer = new ForgeEventWriter(output, new FakeOrkeonClock());
+
+        writer.Error("FORGE-BLUEPRINT-INVALID", "agents[0] has no role.", recoverable: true, terminal: false);
+        writer.Error("FORGE-STAGE-FAILED", "boom", recoverable: false, terminal: true);
+
+        var expected = string.Join('\n',
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"error","code":"FORGE-BLUEPRINT-INVALID","message":"agents[0] has no role.","recoverable":true,"terminal":false}""",
+            """{"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"error","code":"FORGE-STAGE-FAILED","message":"boom","recoverable":false,"terminal":true}""",
+            "");
+
+        Assert.Equal(expected.ReplaceLineEndings("\n"), output.ToString().ReplaceLineEndings("\n"));
+    }
+
     [Fact]
     public void The_envelope_is_the_pinned_golden_form()
     {
@@ -63,13 +84,13 @@ public class ForgeEventWriterTests
 
         writer.Emit("stage.entered", new { stage = "brief", iteration = 1 });
         writer.Emit("question.asked", new { id = "q1", text = "Quel est l'objectif ?", answerKind = "free" });
-        writer.Error("FORGE-BUDGET-EXHAUSTED", "The session's token budget is exhausted.", recoverable: true);
+        writer.Error("FORGE-BUDGET-EXHAUSTED", "The session's token budget is exhausted.", recoverable: true, terminal: true);
         writer.SessionFinished("abandoned", 0);
 
         var expected = string.Join('\n',
             """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"stage.entered","stage":"brief","iteration":1}""",
             """{"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"question.asked","id":"q1","text":"Quel est l'objectif ?","answerKind":"free"}""",
-            """{"v":2,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"error","code":"FORGE-BUDGET-EXHAUSTED","message":"The session's token budget is exhausted.","recoverable":true}""",
+            """{"v":2,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"error","code":"FORGE-BUDGET-EXHAUSTED","message":"The session's token budget is exhausted.","recoverable":true,"terminal":true}""",
             """{"v":2,"seq":4,"ts":"2026-08-19T12:00:03Z","kind":"session.finished","status":"abandoned","exitCode":0}""",
             "");
 
@@ -190,14 +211,14 @@ public class ForgeEventWriterTests
             Names = ["orkeon:ma-veille"],
             Removed = true,
         });
-        writer.Error(ForgeErrorCodes.ScheduleRefused, "The other scheduler refused: crontab: permission denied", recoverable: true,
+        writer.Error(ForgeErrorCodes.ScheduleRefused, "The other scheduler refused: crontab: permission denied", recoverable: true, terminal: true,
             "( crontab -l 2>/dev/null; cat \"/home/u/Orkeon/teams/ma-veille/schedule/cron.txt\" ) | crontab -");
 
         var expected = string.Join('\n',
             """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"schedule.state","path":"/home/u/Orkeon/teams/ma-veille","state":"installed","expression":"daily@08:00","family":"windows","names":["Orkeon ma-veille"]}""",
             """{"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"schedule.state","path":"/home/u/Orkeon/teams/ma-veille","state":"stale","reason":"moved","expression":"daily@08:00","family":"linux","names":["orkeon-ma-veille.timer","orkeon-ma-veille.service"]}""",
             """{"v":2,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"schedule.state","path":"/home/u/Orkeon/teams/ma-veille","state":"absent","reason":"not-installed","family":"other","names":["orkeon:ma-veille"],"removed":true}""",
-            """{"v":2,"seq":4,"ts":"2026-08-19T12:00:03Z","kind":"error","code":"FORGE-SCHEDULE-REFUSED","message":"The other scheduler refused: crontab: permission denied","recoverable":true,"command":"( crontab -l 2>/dev/null; cat \"/home/u/Orkeon/teams/ma-veille/schedule/cron.txt\" ) | crontab -"}""",
+            """{"v":2,"seq":4,"ts":"2026-08-19T12:00:03Z","kind":"error","code":"FORGE-SCHEDULE-REFUSED","message":"The other scheduler refused: crontab: permission denied","recoverable":true,"terminal":true,"command":"( crontab -l 2>/dev/null; cat \"/home/u/Orkeon/teams/ma-veille/schedule/cron.txt\" ) | crontab -"}""",
             "");
 
         Assert.Equal(expected.ReplaceLineEndings("\n"), output.ToString().ReplaceLineEndings("\n"));
@@ -217,12 +238,13 @@ public class ForgeEventWriterTests
         writer.TeamRenamed("/home/u/Orkeon/teams/ma-veille", "/home/u/Orkeon/teams/veille-du-matin", "Veille du matin");
         writer.Error(ForgeErrorCodes.RenameTaken,
             "The name's folder '/home/u/Orkeon/teams/veille-du-matin' is taken: another team is already there. Choose another name.",
-            recoverable: true);
+            recoverable: true,
+            terminal: true);
 
         var expected = string.Join('\n',
             """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"session.renamed","from":"ma-veille","to":"veille-du-matin","dir":"/home/u/.config/Orkeon/.orkeon/forge/veille-du-matin","suffixed":false}""",
             """{"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"team.renamed","from":"/home/u/Orkeon/teams/ma-veille","path":"/home/u/Orkeon/teams/veille-du-matin","name":"Veille du matin"}""",
-            """{"v":2,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"error","code":"FORGE-RENAME-TAKEN","message":"The name's folder '/home/u/Orkeon/teams/veille-du-matin' is taken: another team is already there. Choose another name.","recoverable":true}""",
+            """{"v":2,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"error","code":"FORGE-RENAME-TAKEN","message":"The name's folder '/home/u/Orkeon/teams/veille-du-matin' is taken: another team is already there. Choose another name.","recoverable":true,"terminal":true}""",
             "");
 
         Assert.Equal(expected.ReplaceLineEndings("\n"), output.ToString().ReplaceLineEndings("\n"));
@@ -251,7 +273,7 @@ public class ForgeEventWriterTests
             TeamDirectory = "/t/ma-veille", State = ForgeScheduleState.Absent, Reason = ForgeScheduleReasons.NotInstalled,
             Family = "windows", Names = ["Orkeon ma-veille"], Removed = true,
         });
-        writer.Error(ForgeErrorCodes.ScheduleRefused, "The windows scheduler refused: ERROR: Access is denied.", recoverable: true,
+        writer.Error(ForgeErrorCodes.ScheduleRefused, "The windows scheduler refused: ERROR: Access is denied.", recoverable: true, terminal: true,
             "schtasks /Delete /TN \"Orkeon ma-veille\" /F");
 
         var lines = console.ToString().ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);

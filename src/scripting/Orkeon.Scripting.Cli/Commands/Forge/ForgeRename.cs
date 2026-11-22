@@ -33,8 +33,11 @@ internal sealed record ForgeRenameResult
     public ForgeScheduleReport? Schedule { get; init; }
 }
 
-/// <summary>Why a rename did not happen: the code, and the sentence — which says whether everything was put back.</summary>
-internal sealed record ForgeRenameFailure(string Code, string Message, bool Recoverable = true);
+/// <summary>
+/// Why a rename did not happen: the code, and the sentence — which says whether everything was put back. The verb
+/// returns after it, so its <c>error</c> event is terminal (#453).
+/// </summary>
+internal sealed record ForgeRenameFailure(string Code, string Message, bool Recoverable = true, bool Terminal = true);
 
 /// <summary>What <c>forge rename</c> produced: the rename, or the refusal — and what it could not do while succeeding.</summary>
 internal sealed record ForgeRenameOutcome

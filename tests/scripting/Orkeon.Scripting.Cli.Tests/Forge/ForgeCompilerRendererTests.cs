@@ -161,7 +161,7 @@ public class ForgeBlueprintCompilerTests
             "\"tasks\": [", "\"manager\": \"redacteur\",\n  \"tasks\": [", StringComparison.Ordinal);
         using var output = new StringWriter();
 
-        var edited = VerdictStage.ValidateEditedBlueprint(json, ForgeDocuments.KnownTools, new ForgeEventWriter(output), []);
+        var edited = VerdictStage.ValidateEditedBlueprint(json, ForgeDocuments.KnownTools, new ForgeEventWriter(output), terminal: false, []);
 
         Assert.Null(edited);
         using var line = System.Text.Json.JsonDocument.Parse(Assert.Single(
@@ -170,6 +170,7 @@ public class ForgeBlueprintCompilerTests
         Assert.Equal("error", error.GetProperty("kind").GetString());
         Assert.Equal(ForgeErrorCodes.BlueprintInvalid, error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());
+        Assert.False(error.GetProperty("terminal").GetBoolean());
         Assert.Contains("'redacteur'", error.GetProperty("message").GetString(), StringComparison.Ordinal);
     }
 
@@ -184,7 +185,7 @@ public class ForgeBlueprintCompilerTests
         ForgeFolder[] folders = [new() { Path = "/output", Role = "output", Purpose = "The results", Contents = ["template.md"], Existing = ["template.md"] }];
         using var output = new StringWriter();
 
-        var edited = VerdictStage.ValidateEditedBlueprint(json, ForgeDocuments.KnownTools, new ForgeEventWriter(output), ForgeFolders.ExistingPaths(folders), folders);
+        var edited = VerdictStage.ValidateEditedBlueprint(json, ForgeDocuments.KnownTools, new ForgeEventWriter(output), terminal: false, ForgeFolders.ExistingPaths(folders), folders);
 
         Assert.NotNull(edited);
         Assert.Equal(string.Empty, output.ToString());

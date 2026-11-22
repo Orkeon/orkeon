@@ -164,6 +164,7 @@ public sealed class ForgeCommandTests : IDisposable
         var error = Assert.Single(lines, l => l.GetProperty("kind").GetString() == "error");
         Assert.Equal("FORGE-INVALID-STATE", error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());
+        Assert.True(error.GetProperty("terminal").GetBoolean());
         Assert.Equal("paused", lines[^1].GetProperty("status").GetString());
 
         Assert.True(ForgeSession.TryLoadBySlug(_workspace, "demo", out var reloaded, out _));
