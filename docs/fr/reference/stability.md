@@ -63,10 +63,11 @@ signature ne porte aucun type de ce genre reste sous l'engagement ci-dessus.
   | `ORKEXP001` | A2A (protocole agent à agent) |
   | `ORKEXP002` | Orchestration autonome |
   | `ORKEXP003` | RAG correctif |
-  | `ORKEXP004` | Intégration MCP |
+  | `ORKEXP004` | Intégration MCP (les types de l'enveloppe JSON-RPC sont stables) |
   | `ORKEXP005` | Capacités par modèle |
   | `ORKEXP006` | Sécurité HTTP de l'hôte |
   | `ORKEXP007` | Ports d'historique des exécutions |
+  | `ORKEXP008` | Le fournisseur `agent-cli` |
 
 - **Types internes** : tout ce qui n'est listé dans aucun `PublicAPI.Shipped.txt`.
 - **Le protocole d'événements d'exécution** (`--events jsonl`) est un protocole versionné :

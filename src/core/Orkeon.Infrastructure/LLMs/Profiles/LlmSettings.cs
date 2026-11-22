@@ -32,7 +32,8 @@ public static class LlmSettings
 {
     /// <summary>
     /// Whether the host configures a default provider: an <c>Llm</c> section with at least one
-    /// key besides <c>Profiles</c> that holds a value. A section holding profiles alone leaves the
+    /// key that holds a value, besides <c>Profiles</c> and the sections that describe no provider
+    /// (<c>ModelCapabilities</c>, <c>Replay</c>, <c>AgentCli</c>). A section holding profiles alone leaves the
     /// default unset, and so does one whose every value is blank — a client launch on a "no
     /// model" setting blanks the whole default, and its team runs on the echo provider.
     /// </summary>
@@ -45,6 +46,7 @@ public static class LlmSettings
             .Any(c => !string.Equals(c.Key, ConfigurationKeys.LlmProfiles, StringComparison.OrdinalIgnoreCase)
                       && !string.Equals(c.Key, ModelCapabilitiesKey, StringComparison.OrdinalIgnoreCase)
                       && !string.Equals(c.Key, ReplayKey, StringComparison.OrdinalIgnoreCase)
+                      && !string.Equals(c.Key, AgentCliKey, StringComparison.OrdinalIgnoreCase)
                       && HoldsValue(c));
     }
 
@@ -254,6 +256,10 @@ public static class LlmSettings
     }
 
     private const string ReplayKey = "Replay";
+
+    // The options of the agent-cli provider module (ADR-020): they tune a provider a section names, and
+    // describe none themselves.
+    private const string AgentCliKey = "AgentCli";
 
     /// <summary>
     /// The record-and-replay settings (<c>Llm:Replay</c>, FWK-11). Left out, nothing is recorded or replayed.

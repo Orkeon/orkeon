@@ -123,6 +123,13 @@ public sealed class ModelCapabilitySettingsTests
     }
 
     [Fact]
+    public void The_options_of_the_agent_cli_module_alone_are_not_a_default_provider()
+    {
+        Assert.False(LlmSettings.HasDefault(Settings(
+            ("Llm:Profiles:writer:Provider", "agent-cli"), ("Llm:AgentCli:Command", "/opt/claude"))));
+    }
+
+    [Fact]
     public void A_host_without_the_section_still_has_the_built_in_table()
     {
         var registry = Resolved(Settings(("Llm:Model", "gpt-4o")));

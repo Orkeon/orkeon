@@ -29,6 +29,28 @@ public sealed class ClaudeCodeEngineTests
     }
 
     [Fact]
+    public void ShouldRemoveCloudSwitches_WhenCommandLineBuilt()
+    {
+        var line = Engine.BuildCommandLine(new AgentCliLaunch("/p", "{}", null, "/w"));
+
+        Assert.Contains("CLAUDE_CODE_USE_BEDROCK", line.RemovedEnvironment);
+        Assert.Contains("CLAUDE_CODE_USE_VERTEX", line.RemovedEnvironment);
+        Assert.Contains("CLAUDE_CODE_USE_FOUNDRY", line.RemovedEnvironment);
+    }
+
+    [Theory]
+    [InlineData(100_000_000, "100000000")]
+    [InlineData(5_000, "100000")]
+    public void ShouldPushCompactionAway_WhenCommandLineBuilt(long configured, string sent)
+    {
+        var engine = new ClaudeCodeEngine(new AgentCliOptions { AutocompactTokens = configured });
+
+        var line = engine.BuildCommandLine(new AgentCliLaunch("/p", "{}", null, "/w"));
+
+        AssertFlag(line, "--autocompact", sent);
+    }
+
+    [Fact]
     public void ShouldOmitModel_WhenNoneGiven()
     {
         var line = Engine.BuildCommandLine(new AgentCliLaunch("/p", "{}", null, "/w"));

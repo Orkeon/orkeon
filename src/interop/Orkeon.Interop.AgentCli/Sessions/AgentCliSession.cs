@@ -72,6 +72,9 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
         Volatile.Write(ref _busy, 0);
     }
 
+    /// <summary>Gives the session back untouched, when the caller that took it has no call for it.</summary>
+    public void Abandon() => Volatile.Write(ref _busy, 0);
+
     /// <summary>
     /// Whether the call whose history reads <paramref name="keys"/> continues this session: it starts with what
     /// was delivered, then answers every pending tool call and nothing else of the CLI's, then adds what is new.
@@ -198,12 +201,29 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
             && (text.StartsWith("DENIED", StringComparison.Ordinal) || text.StartsWith("Error:", StringComparison.Ordinal));
     }
 
+    /// <summary>How long the CLI has to start the relay and reach the host's socket.</summary>
+    internal static readonly TimeSpan BridgeTimeout = TimeSpan.FromSeconds(60);
+
     private async Task<AgentCliBridge> BridgeAsync(IReadOnlyList<ToolSchema> tools, CancellationToken cancellationToken)
     {
         if (_bridge is { } bridge)
             return bridge;
 
-        var channel = await _process.Bridge.WaitAsync(cancellationToken).ConfigureAwait(false);
+        IAgentCliLineChannel channel;
+        try
+        {
+            channel = await _process.Bridge.WaitAsync(BridgeTimeout, cancellationToken).ConfigureAwait(false);
+        }
+        catch (System.TimeoutException)
+        {
+            // The CLI waits on its input whether or not its MCP server started: without a bound, a relay
+            // that cannot start (no dotnet to run it, a binary of another platform) hangs the call.
+            var tail = _process.StandardErrorTail;
+            throw new InvalidOperationException(
+                $"The agent CLI did not connect to Orkeon's tool bridge within {BridgeTimeout.TotalSeconds:0} seconds: its relay did not start"
+                + (string.IsNullOrWhiteSpace(tail) ? "." : $": {tail}"));
+        }
+
         _bridge = new AgentCliBridge(channel, _options.MaxToolResultCharacters, _logger);
         await _bridge.SetToolsAsync(tools, cancellationToken).ConfigureAwait(false);
         return _bridge;
@@ -339,9 +359,15 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
         if (Interlocked.Exchange(ref _closed, 1) == 1)
             return;
         Diverged = true;
-        if (_bridge is not null)
-            await _bridge.DisposeAsync().ConfigureAwait(false);
-        await _process.DisposeAsync().ConfigureAwait(false);
+        try
+        {
+            if (_bridge is not null)
+                await _bridge.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            await _process.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     [LoggerMessage(EventId = 30, Level = LogLevel.Warning,

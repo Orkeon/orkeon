@@ -58,10 +58,11 @@ stays under the commitment above.
   | `ORKEXP001` | A2A (agent-to-agent protocol) |
   | `ORKEXP002` | Autonomous orchestration |
   | `ORKEXP003` | Corrective RAG |
-  | `ORKEXP004` | MCP integration |
+  | `ORKEXP004` | MCP integration (the JSON-RPC envelope types are stable) |
   | `ORKEXP005` | Per-model capabilities |
   | `ORKEXP006` | Host HTTP security |
   | `ORKEXP007` | Run history ports |
+  | `ORKEXP008` | The `agent-cli` provider |
 
 - **Internal types**: anything not listed in a `PublicAPI.Shipped.txt`.
 - **The run event protocol** (`--events jsonl`) is a versioned protocol: every line carries

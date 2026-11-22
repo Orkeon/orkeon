@@ -56,7 +56,7 @@
     "Orkeon:Kev:MaxRetries": "Les nouvelles tentatives après un 429, un 529, un autre 5xx ou une erreur réseau.",
     "Orkeon:Kev:Model": "Le modèle sur lequel tourne une requête qui n'en nomme aucun.",
     "Orkeon:Kev:TimeoutSeconds": "Le délai HTTP d'une tentative, en secondes.",
-    "Llm:AgentCli:AutocompactTokens": "La taille de contexte à laquelle la CLI compacterait elle-même la conversation (`--autocompact`), 100000000 par défaut : au-dessus de toute fenêtre, puisqu'Orkeon garde l'historique et le compacte le premier. La CLI refuse moins de 100000.",
+    "Llm:AgentCli:AutocompactTokens": "La taille de contexte à laquelle la CLI compacterait elle-même la conversation (`--autocompact`), 100000000 par défaut : au-dessus de toute fenêtre, puisqu'Orkeon garde l'historique et le compacte le premier. Une valeur plus basse est relevée à 100000, le minimum que prend la CLI.",
     "Llm:AgentCli:Command": "L'exécutable de la CLI : un nom cherché dans le `PATH`, ou un chemin complet. `claude` par défaut. Elle tourne sur sa propre connexion (`claude /login`) : les variables de clé d'API de l'hôte sont retirées de son environnement.",
     "Llm:AgentCli:Engine": "Le moteur qui répond : la CLI dont le fournisseur parle la ligne de commande et le flux. `claude` (Claude Code, `claude -p` en stream-json) est le seul.",
     "Llm:AgentCli:MaxProcesses": "Combien de processus CLI peuvent vivre à la fois dans l'hôte, 4 par défaut. Jamais une attente : au-delà, une session inactive est fermée d'abord, et quand aucune ne l'est la nouvelle démarre avec un avertissement.",

@@ -41,7 +41,7 @@ public sealed class AgentCliOptions
     /// <summary>
     /// The context size at which the CLI would compact the conversation itself (<c>--autocompact</c>),
     /// 100000000 by default — above every window, since Orkeon keeps the history and compacts it first.
-    /// The CLI refuses less than 100000.
+    /// A lower value is raised to 100000, the least the CLI takes.
     /// </summary>
     public long AutocompactTokens { get; set; } = 100_000_000;
 

@@ -29,10 +29,12 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
     private readonly Task _loop;
 
     // Under _gate: the calls received and not answered, by tool use id; the results that came first; the
-    // tool use ids the session expects calls for, with their tool names, for a call without the id.
+    // tool use ids the session expects calls for, with their tool names, for a call without the id; the
+    // calls without an id that came before the session expected them.
     private readonly Dictionary<string, JsonElement> _waiting = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string Text, bool IsError)> _stashed = new(StringComparer.Ordinal);
     private readonly List<(string Id, string Name)> _expected = [];
+    private readonly List<(JsonElement RequestId, string Name)> _early = [];
     private IReadOnlyList<ToolSchema> _tools = [];
     private string _toolsKey = "";
     private bool _listed;
@@ -83,7 +85,23 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
     public void Expect(IEnumerable<(string Id, string Name)> calls)
     {
         lock (_gate)
-            _expected.AddRange(calls);
+        {
+            foreach (var call in calls)
+            {
+                // A call without its id that arrived before the message ended waits here: it is this one's.
+                var early = _waiting.ContainsKey(call.Id)
+                    ? -1
+                    : _early.FindIndex(received => string.Equals(received.Name, call.Name, StringComparison.Ordinal));
+                if (early < 0)
+                {
+                    _expected.Add(call);
+                    continue;
+                }
+
+                _waiting[call.Id] = _early[early].RequestId;
+                _early.RemoveAt(early);
+            }
+        }
     }
 
     /// <summary>
@@ -216,7 +234,8 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
     private async Task ReceiveCallAsync(JsonElement requestId, JsonObject? parameters)
     {
         var name = parameters?["name"] is JsonValue nameValue && nameValue.TryGetValue<string>(out var called) ? called : "";
-        var toolUseId = parameters?["_meta"]?[ToolUseIdMeta] is JsonValue meta && meta.TryGetValue<string>(out var metaId) ? metaId : null;
+        var toolUseId = parameters?["_meta"] is JsonObject metaObject && metaObject[ToolUseIdMeta] is JsonValue meta
+            && meta.TryGetValue<string>(out var metaId) ? metaId : null;
 
         (string Text, bool IsError) result;
         lock (_gate)
@@ -234,8 +253,10 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
 
             if (toolUseId is null)
             {
-                LogUnmatchedCall(name);
-                toolUseId = "unmatched-" + requestId.GetRawText();
+                // Not expected yet: the session reads the tool use blocks only once the message ends, and
+                // this call came first. Expect() gives it its id.
+                _early.Add((requestId.Clone(), name));
+                return;
             }
 
             if (!_stashed.Remove(toolUseId, out result))
@@ -260,6 +281,8 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
                 if (string.Equals(requestId.GetRawText(), cancelled, StringComparison.Ordinal))
                     _waiting.Remove(toolUseId);
             }
+
+            _early.RemoveAll(received => string.Equals(received.RequestId.GetRawText(), cancelled, StringComparison.Ordinal));
         }
     }
 
@@ -294,8 +317,6 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
         _stop.Dispose();
     }
 
-    [LoggerMessage(EventId = 20, Level = LogLevel.Warning, Message = "The agent CLI called tool '{Tool}' for no tool use block of its message; the call is left unanswered.")]
-    private partial void LogUnmatchedCall(string tool);
 
     [LoggerMessage(EventId = 21, Level = LogLevel.Debug, Message = "The agent CLI's bridge closed: {Reason}")]
     private partial void LogBridgeClosed(string reason);

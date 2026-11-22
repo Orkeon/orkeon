@@ -36,6 +36,7 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
     {
         var folder = Directory.CreateTempSubdirectory("orkeon-agent-cli-").FullName;
         LiveFolders.Track(folder);
+        Socket? listener = null;
         try
         {
             var promptPath = Path.Join(folder, "system-prompt.md");
@@ -44,7 +45,7 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
             Directory.CreateDirectory(workingDirectory);
             var socketPath = Path.Join(folder, "b.sock");
 
-            var listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+            listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
             try
             {
                 listener.Bind(new UnixDomainSocketEndPoint(socketPath));
@@ -74,13 +75,14 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
         }
         catch
         {
+            listener?.Dispose();
             TryDelete(folder);
             throw;
         }
     }
 
     /// <summary>
-    /// How the CLI starts the relay: its apphost when the host's output carries one, else <c>dotnet exec</c> on
+    /// How the CLI starts the relay: its apphost in a host that carries its own runtime, else <c>dotnet exec</c> on
     /// its assembly — with the runtime configuration beside it, or one written to the session's folder, since a
     /// package's <c>lib/</c> folder carries the assembly alone. Looked for next to the host
     /// (<see cref="AppContext.BaseDirectory"/>), then next to this assembly.
@@ -98,12 +100,18 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
             .Cast<string>()
             .ToList();
 
-        var apphost = OperatingSystem.IsWindows() ? RelayName + ".exe" : RelayName;
-        foreach (var candidateFolder in folders)
+        // The apphost only in a host that carries its own runtime: it was published for that host's
+        // platform. A host on a shared runtime (the dotnet tool, a build from the sources) may carry the
+        // apphost of the machine that packed it, so the assembly runs on the runtime this host runs on.
+        if (SharedRuntimeHost() is null)
         {
-            var candidate = Path.Join(candidateFolder, apphost);
-            if (File.Exists(candidate))
-                return (candidate, [socketPath]);
+            var apphost = OperatingSystem.IsWindows() ? RelayName + ".exe" : RelayName;
+            foreach (var candidateFolder in folders)
+            {
+                var candidate = Path.Join(candidateFolder, apphost);
+                if (File.Exists(candidate))
+                    return (candidate, [socketPath]);
+            }
         }
 
         foreach (var candidateFolder in folders)
@@ -150,7 +158,25 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
         if (processPath is not null
             && string.Equals(Path.GetFileNameWithoutExtension(processPath), "dotnet", StringComparison.OrdinalIgnoreCase))
             return processPath;
+        if (SharedRuntimeHost() is { } shared)
+            return shared;
         return Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") is { Length: > 0 } hostPath ? hostPath : "dotnet";
+    }
+
+    /// <summary>
+    /// The <c>dotnet</c> of the shared runtime this host runs on (<c>&lt;root&gt;/shared/Microsoft.NETCore.App/&lt;version&gt;</c>),
+    /// or null when the host carries its own runtime (a self-contained publish) or the layout is another.
+    /// </summary>
+    private static string? SharedRuntimeHost()
+    {
+        // OUT-OF-SCOPE: probing the layout of the .NET installation this process runs on.
+        var runtime = Path.GetDirectoryName(typeof(object).Assembly.Location);
+        var root = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(runtime)));
+        if (string.IsNullOrEmpty(root)
+            || !string.Equals(Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(runtime))), "shared", StringComparison.OrdinalIgnoreCase))
+            return null;
+        var muxer = Path.Join(root, OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
+        return File.Exists(muxer) ? muxer : null;
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best effort: a folder left behind in the temporary directory is not a failure of the call.")]

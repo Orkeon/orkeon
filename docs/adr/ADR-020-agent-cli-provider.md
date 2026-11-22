@@ -29,25 +29,29 @@ a new one needs a motivated exception.
    vendor's name in the provider's key, so that another CLI is a second engine, not a second provider.
 3. **Orkeon's tools, run by Orkeon.** The CLI starts with its own tools turned off (`--tools ""`, `--strict-mcp-config`)
    and one MCP server, `orkeon`, reached through a relay the CLI starts (`Orkeon.Interop.AgentCli.Relay`, over a Unix
-   domain socket in a private scratch folder); the bridge speaks JSON-RPC through Orkeon's own `JsonRpcTypes`,
-   a stable envelope. When the model calls a tool, the provider stops the turn on the
-   `message_stop` that ends it and answers the crew with Anthropic `tool_use` blocks; the crew runs the tool through
-   its own pipeline, and the next call hands the result to the call the CLI is waiting on. A denied call reaches the
-   CLI as an error result.
+   domain socket in a private scratch folder); the bridge speaks JSON-RPC through Orkeon's own `JsonRpcTypes`, a
+   stable envelope. When the model calls a tool, the provider stops the turn on the `message_stop` that ends it and
+   answers the crew with Anthropic `tool_use` blocks; the crew runs the tool through its own pipeline, and the next
+   call hands the result to the call the CLI is waiting on. A denied call reaches the CLI as an error result.
 4. **Orkeon keeps the history.** Each call sends the whole history, as with any provider. The provider keeps one CLI
    process per conversation for the run (`AgentRunScope`), and continues it when the history extends what the CLI
    already holds; any other history — rewritten, compacted by Orkeon, or a CLI that compacted itself — starts a new
    process seeded with the history as text. The CLI's own compaction is pushed beyond every window
    (`Llm:AgentCli:AutocompactTokens`).
-5. **On the login, never a key.** The API key variables of the host are removed from the CLI's environment, and an
-   answer on a key rather than the login is refused (`Llm:AgentCli:RequireLogin`). The cost is 0: the vendor's
+5. **On the login, never a key.** The host's `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN`, and the switches to a
+   cloud vendor's account (`CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `CLAUDE_CODE_USE_FOUNDRY`), are
+   removed from the CLI's environment, and an answer on a key rather than the login is refused
+   (`Llm:AgentCli:RequireLogin`). The cost is 0: the vendor's
    figure is kept as `agent_cli_notional_cost_usd`. A subscription limit (`rate_limit_event` rejected) is a rate
    limit, so `Fallback` takes over.
 6. **Processes are bounded and never outlive the host.** `Llm:AgentCli:MaxProcesses` (4) closes an idle session
    first and never waits; a cancelled call interrupts the turn and closes its process; the relay kills the CLI's
    process tree when the host's socket closes, even after a `kill -9` of the host.
-7. **Experimental.** Every public symbol carries `[Experimental("ORKEXP008")]`, the project lives in `src/interop`,
-   and the provider is not counted among the sixteen. It is meant for personal use, on the subscription of whoever
+7. **Experimental.** Every public type and member of `Orkeon.Interop.AgentCli` carries `[Experimental("ORKEXP008")]`
+   — but `AgentCliDiagnostics`, which holds that identifier, and the class that holds `AddOrkeonAgentCli`, itself
+   experimental. The seam of decision 1 (`ILlmProviderModule`, `LlmProviderModuleContext`,
+   `LlmProviderFactoryOptions.Modules`) is stable. The project lives in `src/interop`, and the provider is not
+   counted among the sixteen. It is meant for personal use, on the subscription of whoever
    runs it.
 
 ## Consequences
@@ -55,7 +59,7 @@ a new one needs a motivated exception.
 - Orkeon runs on a Claude subscription with the crew, the tools and the pipeline it has on an API key.
 - A call costs a CLI process start on a new conversation, and the vendor's system prompt and tool rules surround
   Orkeon's; the answers may differ from the same model behind the API.
-- Options the CLI cannot receive (temperature, top-p, a JSON schema, a thinking budget) are warned about once and not
-  sent.
+- Options the CLI cannot receive (temperature, max tokens, top-p, the penalties, a seed, stop sequences, a response
+  format, a thinking budget, a grammar, cache breakpoints) are each warned about once per run and not sent.
 - The CLI's stream is a vendor's protocol that may change with its releases; the experimental status covers it.
 - Left for later: the CLI's own tools behind Orkeon's gate, a provider that keeps the context itself, more engines.

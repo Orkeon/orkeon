@@ -285,7 +285,7 @@ internal static class DoctorCommand
         var named = Blank(section["Provider"]);
         if (named is not null && !string.Equals(named, LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
 #pragma warning disable CA1308 // the key is shown in its lowercase wire form, as the runner logs it
-            return ReadModuleProvider(context with { ModuleKey = named.Trim().ToLowerInvariant() }, settings, modules);
+            return ReadModuleProvider(context with { ModuleKey = named.Trim().ToLowerInvariant() }, settings, modules, configuration);
 #pragma warning restore CA1308
 
         // The provider of the configuration the run reads, built by the factory's own inference.
@@ -314,10 +314,15 @@ internal static class DoctorCommand
 
     /// <summary>The default's provider module, built as a run builds it, or the reason it cannot be.</summary>
     private static LlmContext ReadModuleProvider(
-        LlmContext context, LlmConfig settings, IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule> modules)
+        LlmContext context, LlmConfig settings, IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule> modules,
+        IConfiguration configuration)
     {
+        Orkeon.Interop.AgentCli.AgentCliProviderModule? bound = null;
         try
         {
+            // The shipped modules on the options the file gives them, as the run's container binds them.
+            if (ReferenceEquals(modules, CliLlmProviderModules.All))
+                modules = [bound = CliLlmProviderModules.For(configuration)];
             using var httpFactory = new CliHttpClientFactory();
             var factory = LlmProviderFactory.WithoutMounts(httpFactory, NullLoggerFactory.Instance, modules);
             if (factory.Create(settings) is LlmProviderAdapter adapter)
@@ -332,6 +337,11 @@ internal static class DoctorCommand
         {
             // No module answers the key, or the module refused the section it was given.
             return context with { ModuleError = ex.Message };
+        }
+        finally
+        {
+            // It started no process: nothing to wait for.
+            bound?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
     }
 

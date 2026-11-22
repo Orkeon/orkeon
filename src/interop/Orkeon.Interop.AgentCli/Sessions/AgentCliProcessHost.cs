@@ -49,7 +49,9 @@ internal sealed partial class AgentCliProcessHost : IAsyncDisposable
             _sessions.RemoveAll(session => session.IsClosed);
             if (_sessions.Count >= Math.Max(1, _options.MaxProcesses))
             {
-                evicted = _sessions.Where(session => !session.IsBusy).MinBy(session => session.LastUsed);
+                // Taken here, so that no call can pick the session up between this choice and its end.
+                evicted = _sessions.Where(session => !session.IsBusy).OrderBy(session => session.LastUsed)
+                    .FirstOrDefault(session => session.TryAcquire());
                 if (evicted is null)
                     crowded = true;
                 else
@@ -122,8 +124,12 @@ internal sealed class AgentCliSessionStore : IAsyncDisposable
             _sessions.RemoveAll(session => session.IsClosed);
             foreach (var session in _sessions)
             {
-                if (session.Fingerprint == fingerprint && session.Continues(keys) && session.TryAcquire())
+                // Acquired first: the history of a session in a call is being written by that call.
+                if (session.Fingerprint != fingerprint || !session.TryAcquire())
+                    continue;
+                if (session.Continues(keys))
                     return session;
+                session.Abandon();
             }
 
             foreach (var session in _sessions.Where(session => session.Fingerprint == fingerprint && session.Diverged && !session.IsBusy).ToList())

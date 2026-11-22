@@ -35,7 +35,7 @@ loggerFactory, modules)` is the overload for a tool without a container.
   (`<key> (provider module)`), skips the reachability check, and fails `llm-config` when no module answers the key.
 - A module declares the shape of its own `Llm:<Sub>` section (`DeclareSettingsShape`): its keys pass the start
   validation, and a misspelt one is refused.
-- No module ships yet. The shipped hosts register none, so a key other than `mock` is refused.
+- The shipped hosts register one module, `agent-cli` (below); any other key is refused.
 
 ### Changed — the JSON-RPC envelope types are stable
 
@@ -57,17 +57,25 @@ agent CLI signed in to its own subscription; the one engine is Claude Code, `cla
   pipeline and the next call hands the result back.
 - Orkeon keeps the history. One CLI process per conversation of a run (`AgentRunScope`) is continued while the history
   extends what it holds; any other history starts a new process seeded with it as text.
-- Never on a key: the API key variables are removed from the CLI's environment, and an answer on a key is refused
-  (`Llm:AgentCli:RequireLogin`). The cost is 0, the vendor's figure kept as `agent_cli_notional_cost_usd`. A rejected
+- Never on a key: `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` and the cloud switches (`CLAUDE_CODE_USE_BEDROCK`,
+  `CLAUDE_CODE_USE_VERTEX`, `CLAUDE_CODE_USE_FOUNDRY`) are removed from the CLI's environment, and an answer on a key
+  is refused (`Llm:AgentCli:RequireLogin`). The cost is 0, the vendor's figure kept as `agent_cli_notional_cost_usd`. A rejected
   subscription limit throws `LlmRateLimitException`, so `Fallback` takes over.
 - New section `Llm:AgentCli`: `Engine`, `Command`, `MaxProcesses` (4, an idle session is closed first, never a wait),
   `MaxToolResultCharacters` (100000), `AutocompactTokens`, `RequireLogin`. Options the CLI cannot receive
-  (temperature, top-p, a JSON schema, thinking) are warned about once per run and not sent.
+  (temperature, max tokens, top-p, the penalties, a seed, stop sequences, a response format, thinking, a grammar,
+  cache breakpoints) are each warned about once per run and not sent.
 - A cancelled call interrupts the turn and closes its process; the relay kills the CLI's tree when the host's socket
   closes, `kill -9` of the host included. The private scratch folder of each process (prompt file, socket, working
   folder) is removed when its session ends, when the host exits, or by the relay once the host is gone.
 - `Llm:AgentCli:Command` names an executable, so it refuses a variable reference like `MCP:Servers:<id>:Command`.
-- `orkeon llm probe --provider agent-cli` needs no API key, and reads its tool calls in the Anthropic shape.
+- `orkeon llm probe --provider agent-cli` needs no API key, and reads its tool calls in the Anthropic shape. Like
+  every probe it takes its provider from the command line alone: it runs the `claude` of the `PATH`, whatever
+  `Llm:AgentCli` says. `orkeon doctor` builds the module on the file's `Llm:AgentCli` and starts no CLI: a `claude`
+  that is missing or signed out shows on the first call.
+- The relay runs on the runtime of its host: `dotnet exec` in a host on a shared runtime (the dotnet tool), its own
+  executable in a self-contained one. A relay the CLI cannot start fails the call after 60 seconds, with the CLI's
+  error output.
 - The provider is not counted among the sixteen, and is meant for personal use.
 
 ### Added — a tool bridge: some tools of a run execute on another machine, `orkeon bridge serve` (#445)

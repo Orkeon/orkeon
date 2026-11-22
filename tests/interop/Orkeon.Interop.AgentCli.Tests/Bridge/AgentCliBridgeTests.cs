@@ -90,6 +90,41 @@ public sealed class AgentCliBridgeTests
     }
 
     [Fact]
+    public async Task ShouldAnswerCall_WhenItCameBeforeItsToolUseBlockWasExpected()
+    {
+        var connection = new FakeBridgeConnection();
+        await using var bridge = new AgentCliBridge(connection, 100_000, NullLogger.Instance);
+
+        // The call reaches the bridge before the session has read the message that asks for it.
+        await connection.CallAsync(1, "write", toolUseId: null);
+        await connection.SendAsync(Request(2, "ping"));
+        await connection.NextAsync();
+        bridge.Expect([("toolu_b", "write")]);
+        await bridge.ResolveAsync("toolu_b", "written", isError: false, TestContext.Current.CancellationToken);
+        var answer = await connection.NextAsync();
+
+        Assert.Equal(1, answer["id"]!.GetValue<int>());
+        Assert.Equal("written", answer["result"]!["content"]![0]!["text"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task ShouldKeepServing_WhenMetaIsNoObject()
+    {
+        var connection = new FakeBridgeConnection();
+        await using var bridge = new AgentCliBridge(connection, 100_000, NullLogger.Instance);
+        bridge.Expect([("toolu_a", "read")]);
+
+        await connection.SendAsync(Request(1, "tools/call", new JsonObject { ["name"] = "read", ["_meta"] = "none" }));
+        await connection.SendAsync(Request(2, "ping"));
+        var pong = await connection.NextAsync();
+        await bridge.ResolveAsync("toolu_a", "content", isError: false, TestContext.Current.CancellationToken);
+        var answer = await connection.NextAsync();
+
+        Assert.Equal(2, pong["id"]!.GetValue<int>());
+        Assert.Equal(1, answer["id"]!.GetValue<int>());
+    }
+
+    [Fact]
     public async Task ShouldCutResult_WhenLongerThanTheLimit()
     {
         var connection = new FakeBridgeConnection();

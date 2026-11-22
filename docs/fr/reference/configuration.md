@@ -554,7 +554,7 @@ l'abonnement de qui le lance.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
-| `AutocompactTokens` | entier | `100000000` | La taille de contexte à laquelle la CLI compacterait elle-même la conversation (`--autocompact`), 100000000 par défaut : au-dessus de toute fenêtre, puisqu'Orkeon garde l'historique et le compacte le premier. La CLI refuse moins de 100000. |
+| `AutocompactTokens` | entier | `100000000` | La taille de contexte à laquelle la CLI compacterait elle-même la conversation (`--autocompact`), 100000000 par défaut : au-dessus de toute fenêtre, puisqu'Orkeon garde l'historique et le compacte le premier. Une valeur plus basse est relevée à 100000, le minimum que prend la CLI. |
 | `Command` | chaîne | `"claude"` | L'exécutable de la CLI : un nom cherché dans le `PATH`, ou un chemin complet. `claude` par défaut. Elle tourne sur sa propre connexion (`claude /login`) : les variables de clé d'API de l'hôte sont retirées de son environnement. |
 | `Engine` | chaîne | `"claude"` | Le moteur qui répond : la CLI dont le fournisseur parle la ligne de commande et le flux. `claude` (Claude Code, `claude -p` en stream-json) est le seul. |
 | `MaxProcesses` | entier | `4` | Combien de processus CLI peuvent vivre à la fois dans l'hôte, 4 par défaut. Jamais une attente : au-delà, une session inactive est fermée d'abord, et quand aucune ne l'est la nouvelle démarre avec un avertissement. |

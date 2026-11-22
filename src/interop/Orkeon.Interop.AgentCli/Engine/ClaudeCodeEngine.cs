@@ -15,10 +15,15 @@ internal sealed class ClaudeCodeEngine : IAgentCliEngine
     internal const string BridgeServerName = "orkeon";
 
     /// <summary>
-    /// The variables removed from the CLI's environment: either one would put the CLI on an API key
-    /// instead of its login (probe 24, <c>apiKeySource: "ANTHROPIC_API_KEY"</c>).
+    /// The variables removed from the CLI's environment. The first two would put the CLI on an API key
+    /// instead of its login (probe 24, <c>apiKeySource: "ANTHROPIC_API_KEY"</c>); the others switch it to a
+    /// cloud vendor's account, which bills that account and not the subscription.
     /// </summary>
-    internal static readonly IReadOnlyList<string> RemovedVariables = ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"];
+    internal static readonly IReadOnlyList<string> RemovedVariables =
+    [
+        "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN",
+        "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY",
+    ];
 
     private readonly AgentCliOptions _options;
 

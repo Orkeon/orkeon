@@ -529,7 +529,7 @@ the provider shares it. The provider is meant for personal use, on the subscript
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `AutocompactTokens` | integer | `100000000` | The context size at which the CLI would compact the conversation itself (`--autocompact`), 100000000 by default — above every window, since Orkeon keeps the history and compacts it first. The CLI refuses less than 100000. |
+| `AutocompactTokens` | integer | `100000000` | The context size at which the CLI would compact the conversation itself (`--autocompact`), 100000000 by default — above every window, since Orkeon keeps the history and compacts it first. A lower value is raised to 100000, the least the CLI takes. |
 | `Command` | string | `"claude"` | The CLI's executable: a name looked up on the `PATH`, or a full path. `claude` by default. It runs on its own login (`claude /login`): the API key variables of the host are removed from its environment. |
 | `Engine` | string | `"claude"` | The engine that answers: the CLI whose command line and stream the provider speaks. `claude` (Claude Code, `claude -p` in stream-json) is the only one. |
 | `MaxProcesses` | integer | `4` | How many CLI processes may live at once across the host, 4 by default. Never a wait: past it, an idle session is closed first, and when none is idle the new one starts with a warning. |
