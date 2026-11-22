@@ -1,3 +1,4 @@
+using Orkeon.Application.Configuration;
 using Orkeon.Domain.Constants.Llm;
 
 namespace Orkeon.Infrastructure.LLMs.Profiles;
@@ -25,6 +26,7 @@ internal class LlmSectionShape : LlmProfileShape
     public Dictionary<string, LlmNamedProfileShape>? Profiles { get; set; }
 
     /// <summary>The models a scripted <c>/model</c> may offer: a list, or one comma-separated value.</summary>
+    [CommaSeparatedSetting]
     public List<string>? AvailableModels { get; set; }
 
     /// <summary>
@@ -67,6 +69,7 @@ internal sealed class LlmModelCapabilityShape
     /// The reasoning efforts the model takes: a list, or one comma-separated value; written empty, none.
     /// Left out, the built-in list of the model (no restriction for a model the table does not know) and the provider's own levels rule.
     /// </summary>
+    [CommaSeparatedSetting]
     public List<string>? ReasoningEfforts { get; set; }
 
     /// <summary>
@@ -85,6 +88,7 @@ internal sealed class LlmNamedProfileShape : LlmProfileShape
     /// error, a 5xx, a 429 once <c>MaxRetries</c> is spent, a timeout. A list of profile names, or one
     /// comma-separated value; <c>default</c> names the host's own. Left out, a failure is the call's.
     /// </summary>
+    [CommaSeparatedSetting]
     public List<string>? Fallback { get; set; }
 
     /// <summary>

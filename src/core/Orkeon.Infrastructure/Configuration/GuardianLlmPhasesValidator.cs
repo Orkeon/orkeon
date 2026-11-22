@@ -22,7 +22,7 @@ internal sealed class GuardianLlmPhasesValidator(IConfiguration? configuration =
         {
             return ValidateOptionsResult.Fail(
                 $"{section.Path} is '{single}', a single value where a list is expected: write its items as a list, " +
-                $"[\"{single}\"], or leave the key out to judge both phases.");
+                $"[\"{single}\"] (the environment variable Orkeon__Guardian__Llm__Phases__0={single}), or leave the key out to judge both phases.");
         }
 
         var values = section?.GetChildren()

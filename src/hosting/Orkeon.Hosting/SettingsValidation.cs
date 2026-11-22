@@ -511,12 +511,14 @@ internal static class SettingsValidation
         if (below.Values.Count == 0)
         {
             // An empty JSON array reads as an empty value.
-            if (!below.TakesKeys || value.Length == 0)
+            // A list whose reader splits one comma-separated value takes that form (an environment variable's).
+            if (!below.TakesKeys || value.Length == 0 || (below.IsList && below.TakesCommaSeparated))
                 return null;
 
+            // The value is not echoed: written where a section is expected, it may be a secret.
             return below.IsList
-                ? $"{child.Path} is '{value}', a single value where a list is expected: write its items as a list, or leave the key out."
-                : $"{child.Path} is '{value}', a single value where a section of keys is expected: write its keys, or leave the key out.";
+                ? $"{child.Path} is a single value where a list is expected: write its items as a list, or leave the key out."
+                : $"{child.Path} is a single value where a section of keys is expected: write its keys, or leave the key out.";
         }
 
         if (IsNotFinite(value, below.Number))
@@ -571,7 +573,10 @@ internal static class SettingsValidation
         catch (Exception ex) when (ex is FormatException or ArgumentException or NotSupportedException or OverflowException
                                        || ex.InnerException is FormatException or OverflowException)
         {
-            return $"Failed to convert configuration value '{value}' at '{path}' to type '{type}'.";
+            // A boolean or a number cannot be a secret, and is echoed; any other value is not.
+            return type == typeof(bool) || IsNumber(type)
+                ? $"Failed to convert configuration value '{value}' at '{path}' to type '{type}'."
+                : $"Failed to convert the configuration value at '{path}' to type '{type}'.";
         }
     }
 

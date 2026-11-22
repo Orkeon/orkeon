@@ -1,4 +1,6 @@
 #nullable enable
+Orkeon.Application.Configuration.CommaSeparatedSettingAttribute
+Orkeon.Application.Configuration.CommaSeparatedSettingAttribute.CommaSeparatedSettingAttribute() -> void
 Orkeon.Application.Crew.Execution.DecisionCircuit.Cause.get -> Orkeon.Application.Crew.Execution.DecisionCircuitCause?
 Orkeon.Application.Crew.Execution.DecisionCircuit.Cause.init -> void
 Orkeon.Application.Crew.Execution.DecisionCircuit.OffReason.get -> string?

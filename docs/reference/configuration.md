@@ -131,10 +131,16 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   no id before its field), whatever it holds, is refused with `Llm:ModelCapabilities: an entry has no
   model id; name each entry by the model it describes.`
 - **A value the binder would take without a word**: a key written without a value (`null` or `{}`)
-  on a setting that is no string, which the binder would bind to its type's default (`false`, `0`)
-  rather than to the setting's — a string written `null` is still accepted, and a key left out takes
-  its default; a single value where a list or a section is expected (`"Phases": "Input"` for
-  `["Input"]`); inside a list or a dictionary, an entry the binder would drop because it cannot
+  on a switch, a number or an enumeration declared without `?`, which the binder would bind to its
+  type's default (`false`, `0`, the first member) rather than to the setting's — any other setting
+  (a string, a nullable value, a list, a section) written `null` is still accepted, and a key left
+  out takes its default; a single value where a list or a section is expected (`"Phases": "Input"`
+  for `["Input"]`, or `Orkeon__Guardian__Llm__Phases__0=Input` in the environment), named by its
+  path without its value, which may be a secret written in the wrong place — except at the lists
+  whose reader splits one comma-separated value, the form an environment variable writes:
+  `Llm:AvailableModels`, `Llm:ModelCapabilities:<id>:ReasoningEfforts`,
+  `Llm:Profiles:<name>:Fallback`, `Orkeon:Tools:Firefox:AllowedProfiles` and `:DeniedProfiles`
+  (`Llm__AvailableModels=gpt-4o,claude`); inside a list or a dictionary, an entry the binder would drop because it cannot
   convert it (a decision profile whose `FailClosed` is `"maybe"`, a stage whose threshold is no
   number). The guardian's phases and a stage's `Phase` and `Steps` are written by name, never as a
   number. A value quoted in a refusal is written in the invariant culture (`1.5`, never `1,5`), and

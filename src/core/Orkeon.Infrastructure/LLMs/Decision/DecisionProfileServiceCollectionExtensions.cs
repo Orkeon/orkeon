@@ -114,8 +114,9 @@ public static class DecisionProfileServiceCollectionExtensions
     /// <summary>Throws when <paramref name="section"/> holds a value and no key — an empty JSON array, read as "", aside.</summary>
     private static void SingleValue(IConfigurationSection section, string expected)
     {
-        if (section.Value is { Length: > 0 } value && !section.GetChildren().Any())
-            throw new InvalidOperationException($"{section.Path} is '{value}', a single value where {expected}.");
+        // The value is not echoed: written where a section is expected, it may be a secret.
+        if (section.Value is { Length: > 0 } && !section.GetChildren().Any())
+            throw new InvalidOperationException($"{section.Path} is a single value where {expected}.");
     }
 
     private static void ValidateStage(DecisionProfilesOptions options, string path, DecisionStageOptions stage)
