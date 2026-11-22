@@ -114,6 +114,95 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.Equal("un-besoin-concret", session.Slug);
     }
 
+    /// <summary>A settings file the engine host refuses: it names a provider no module of the tool ships.</summary>
+    private string RefusedSettings()
+    {
+        Directory.CreateDirectory(_workspace);
+        var path = Path.Combine(_workspace, "refused-settings.json");
+        File.WriteAllText(path, """{ "Llm": { "Provider": "acme", "Model": "m" } }""");
+        return path;
+    }
+
+    private static System.Text.Json.JsonElement[] EventLines(TestConsole console) =>
+        [.. console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => System.Text.Json.JsonElement.Parse(line))];
+
+    /// <summary>#475: a new cycle whose settings the host refuses says it on the stream, closes it, and leaves no session.</summary>
+    [Fact]
+    [Trait("BR", "CH-475")]
+    public async Task ShouldWriteOneErrorLineAndLeaveNoSession_WhenTheHostRefusesTheSettingsOfANewCycleWithEvents()
+    {
+        var settings = RefusedSettings();
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(
+            console, ["un", "besoin", "concret", "--settings", settings, "--events", "jsonl"], _workspace);
+
+        Assert.Equal(1, exitCode);
+        var lines = EventLines(console);
+        Assert.Equal(2, lines.Length);
+        var error = lines[0];
+        Assert.Equal("error", error.GetProperty("kind").GetString());
+        Assert.Equal(ForgeErrorCodes.SettingsRefused, error.GetProperty("code").GetString());
+        Assert.Equal("FORGE-SETTINGS-REFUSED", ForgeRephrase.SettingsRefusedCode);
+        Assert.Contains("Llm:Provider names no provider of this host", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.False(error.GetProperty("recoverable").GetBoolean());
+        Assert.True(error.GetProperty("terminal").GetBoolean());
+        Assert.Equal("session.finished", lines[1].GetProperty("kind").GetString());
+        Assert.Equal("failed", lines[1].GetProperty("status").GetString());
+        Assert.Equal(1, lines[1].GetProperty("exitCode").GetInt32());
+        Assert.DoesNotContain("orkeon forge:", console.Stderr, StringComparison.Ordinal);
+
+        Assert.Empty(ForgeSession.List(_workspace));
+        Assert.False(Directory.Exists(Path.Combine(ForgeSession.RootFor(_workspace), "un-besoin-concret")));
+    }
+
+    /// <summary>#475: without the stream, the same refusal is the host's sentence on stderr, and no session is left either.</summary>
+    [Fact]
+    [Trait("BR", "CH-475")]
+    public async Task ShouldSayTheRefusalOnStderrAndLeaveNoSession_WhenTheHostRefusesTheSettingsOfANewCycleWithoutEvents()
+    {
+        var settings = RefusedSettings();
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["un", "besoin", "concret", "--settings", settings], _workspace);
+
+        Assert.Equal(1, exitCode);
+        Assert.Empty(console.Stdout);
+        Assert.Contains("orkeon forge: Llm:Provider names no provider of this host", console.Stderr, StringComparison.Ordinal);
+        Assert.Empty(ForgeSession.List(_workspace));
+        Assert.False(Directory.Exists(Path.Combine(ForgeSession.RootFor(_workspace), "un-besoin-concret")));
+    }
+
+    /// <summary>#475: a resumed session refused for its settings is left as it was, and the error says it is resumable.</summary>
+    [Fact]
+    [Trait("BR", "CH-475")]
+    public async Task ShouldLeaveTheSessionUntouchedAndRecoverable_WhenTheHostRefusesTheSettingsOfAResume()
+    {
+        var session = ForgeSession.Create(_workspace, "veille");
+        var sessionFile = Path.Combine(session.Directory, ForgeSession.SessionFileName);
+        var before = await File.ReadAllBytesAsync(sessionFile, TestContext.Current.CancellationToken);
+        var settings = RefusedSettings();
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(
+            console, ["resume", "veille", "--settings", settings, "--events", "jsonl"], _workspace);
+
+        Assert.Equal(1, exitCode);
+        var lines = EventLines(console);
+        Assert.Equal(2, lines.Length);
+        Assert.Equal("error", lines[0].GetProperty("kind").GetString());
+        Assert.Equal(ForgeErrorCodes.SettingsRefused, lines[0].GetProperty("code").GetString());
+        Assert.Contains("Llm:Provider names no provider of this host", lines[0].GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.True(lines[0].GetProperty("recoverable").GetBoolean());
+        Assert.True(lines[0].GetProperty("terminal").GetBoolean());
+        Assert.Equal("session.finished", lines[1].GetProperty("kind").GetString());
+        Assert.Equal("paused", lines[1].GetProperty("status").GetString());
+        Assert.DoesNotContain("orkeon forge:", console.Stderr, StringComparison.Ordinal);
+
+        Assert.Equal(before, await File.ReadAllBytesAsync(sessionFile, TestContext.Current.CancellationToken));
+        Assert.Equal("veille", Assert.Single(ForgeSession.List(_workspace)).Slug);
+    }
+
     /// <summary>
     /// <c>resume --adopt</c> end to end: the dry pause goes to Ready, offline, and the
     /// stream closes on «ready» so a client knows the wizard may save the team.

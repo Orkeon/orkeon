@@ -34,8 +34,8 @@ internal static class ForgeRephrase
     /// <summary>The code of a host with no LLM to ask.</summary>
     public const string LlmUnavailableCode = "FORGE-LLM-UNAVAILABLE";
 
-    /// <summary>The code of a settings file the host refuses at its start (#473).</summary>
-    public const string SettingsRefusedCode = "FORGE-SETTINGS-REFUSED";
+    /// <summary>The code of a settings file the host refuses at its start (#473): the one a cycle answers with (#475).</summary>
+    public const string SettingsRefusedCode = ForgeErrorCodes.SettingsRefused;
 
     private const int ExitError = 1;
 

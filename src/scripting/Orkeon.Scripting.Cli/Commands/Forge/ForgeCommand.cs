@@ -712,7 +712,9 @@ internal static class ForgeCommand
         catch (RunnerSettingsException ex)
         {
             // A setting the engine host refuses is a refusal like the others, exit 1 (GAP-35) —
-            // not the unexpected error it fell into.
+            // not the unexpected error it fell into. The cycle answers the refusal of its own host
+            // where it builds it (RefuseSettingsAsync, #475), with the error event and the session
+            // it knows; adoption builds no host. This is the net under both: the sentence, exit 1.
             await console.ErrorOutput.WriteLineAsync($"orkeon forge: {ex.Message}").ConfigureAwait(false);
             return ExitError;
         }
@@ -781,7 +783,12 @@ internal static class ForgeCommand
         if (session.CrewDecisionDerived)
             events.WarningAfterStart(ForgeCrewDecision.DerivedWarning, DerivedCrewDecisionMessage(session));
 
-        using var host = BuildEngineHost(console, settingsPath, mountPlan, box, tally, observer);
+        // A settings file the host refuses (#475) is judged here, where the host is built: the
+        // mount plan the build needs is the session's own, so the session is opened first, and a
+        // new one is deleted with the refusal.
+        using var host = TryBuildEngineHost(console, settingsPath, mountPlan, box, tally, observer, out var settingsRefusal);
+        if (host is null)
+            return await RefuseSettingsAsync(console, options, session, resumed, settingsRefusal!).ConfigureAwait(false);
 
         // No Llm section = no interview. Refuse with the remedy, before spending a turn —
         // the silent echo degrade that is acceptable for `orkeon run` would make the
@@ -962,6 +969,53 @@ internal static class ForgeCommand
                 AddEngineServices(services, box, tally, observer);
             },
             configureBuilder: b => EmbeddingFingerprintDefault.Apply(b, ForgeFingerprintPath));
+
+    /// <summary>
+    /// The engine host, or null with <paramref name="refusal"/> — the host's own sentence — when
+    /// it refuses the settings it is built on.
+    /// </summary>
+    private static Microsoft.Extensions.Hosting.IHost? TryBuildEngineHost(IRunnerConsole console,
+        string? settingsPath, RunnerMountPlan mountPlan, ForgeSubmissionBox box, ForgeUsageTally tally, ForgeRunObserver observer,
+        out string? refusal)
+    {
+        refusal = null;
+        try
+        {
+            return BuildEngineHost(console, settingsPath, mountPlan, box, tally, observer);
+        }
+        catch (RunnerSettingsException ex)
+        {
+            refusal = ex.Message;
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// A cycle whose settings the engine host refuses (#475): <c>FORGE-SETTINGS-REFUSED</c>, exit 1.
+    /// Written as an unknown <c>--reference</c> is: with <c>--events</c> the <c>error</c> — the
+    /// host's sentence as its message — then <c>session.finished</c> on the stream and nothing on
+    /// stderr; in the terminal the one line on stderr. No <c>session.started</c> precedes: it names
+    /// the circuits of a host that was never built. A new session never started and is deleted
+    /// (<c>recoverable: false</c>, closed on «failed»); a resumed one is left as it was and is
+    /// resumable once the settings are fixed (<c>recoverable: true</c>, closed on the status it holds).
+    /// </summary>
+    private static async Task<int> RefuseSettingsAsync(
+        IRunnerConsole console, ForgeCommandOptions options, ForgeSession session, bool resumed, string refusal)
+    {
+        if (!resumed)
+            session.DeleteQuietly();
+
+        if (!options.Events)
+        {
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {refusal}").ConfigureAwait(false);
+            return ExitError;
+        }
+
+        var events = new ForgeEventWriter(console.Output);
+        events.Error(ForgeErrorCodes.SettingsRefused, refusal, recoverable: resumed, terminal: true);
+        events.SessionFinished(resumed ? StatusWord(session) : "failed", ExitError);
+        return ExitError;
+    }
 
     /// <summary>The embedding fingerprint's default home: the session's writable mount.</summary>
     private const string ForgeFingerprintPath = "/forge/embedding-fingerprint.json";
