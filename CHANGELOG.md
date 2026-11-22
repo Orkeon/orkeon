@@ -461,6 +461,14 @@ host's circuit.
 
 ### Fixed
 
+- **A watched run (`--events`) no longer dies before its first event when the decision circuit is off and a
+  decision provider is configured (#448).** With the circuit off (`--no-decision`, `Orkeon:Decision:Enabled=false`)
+  `system_one_decide` resolves to null in the host's tool collection; the decorator that turns every tool call
+  into an event wrapped that null and the run ended with `Value cannot be null. (Parameter 'inner')`, exit 2, no
+  `run.decision`. The decorator now lets a withheld tool through as withheld, and the orchestration skips a null
+  tool once, where it receives the host's tools (`ExecutionOrchestrator`, `TaskToolbelt.Compose`), rather than
+  each consumer on its own. A watched run behaves as an unwatched one: `run.decision` says `circuit: off` with its
+  cause, and a `decision.mode: required` crew is refused with exit 69.
 - **The `firefox` tool no longer fails to start on a loaded machine whose `StartupTimeoutSeconds` covers the
   start (#437).** Firefox announces its remote protocol early and answers `session.new` only once its first
   window has loaded; that wait was bounded by `CommandTimeoutSeconds` (30 s), not by the start's timeout, so a

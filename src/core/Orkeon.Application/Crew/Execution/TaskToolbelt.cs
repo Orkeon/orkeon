@@ -39,6 +39,9 @@ public static class TaskToolbelt
         ArgumentNullException.ThrowIfNull(agent);
         ArgumentNullException.ThrowIfNull(task);
 
+        // A withheld tool resolves to null in a host's collection (#448): it is never a candidate.
+        registeredTools = registeredTools?.Where(static tool => tool is not null);
+
         var belt = new List<IBaseTool>();
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 

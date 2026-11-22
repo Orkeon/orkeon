@@ -332,7 +332,10 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         Domain.FileSystem.IFileSystemService fileSystem)
         : this(logger, llmProvider, chatClient, fileSystem)
     {
-        _registeredTools = registeredTools;
+        // A tool the container withholds resolves to null (system_one_decide with the decision circuit off,
+        // a dropped plugin tool): skipped here, once, for the composer and both loops (#448). Lazy, so a
+        // live collection is still read at each composition.
+        _registeredTools = registeredTools?.Where(static tool => tool is not null);
     }
 
     /// <summary>Constructor taking the logger of category <c>Orkeon.Verbose</c>, which carries the Information turn lines of verbose agents.</summary>
