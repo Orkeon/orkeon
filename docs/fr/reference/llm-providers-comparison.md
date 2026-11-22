@@ -160,8 +160,11 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
   liste `text, image` du vendeur. Les tarifs sont les bornes hautes du vendeur
   (`gemini-3.8-flash`, comme `gemini-3.7-flash` avant lui, à 1,5 / 7,5 $/M, le double du direct).
 - **Clés identity-linked Anthropic** : refusent toute requête sans en-tête
-  `anthropic-workspace-id` (2026-08-30). Renseigner `LlmConfig.WorkspaceId`
-  (CLI : `--workspace-id`) ; les clés classiques n'en ont pas besoin.
+  `anthropic-workspace-id` (2026-08-30). Renseigner `LlmConfig.WorkspaceId` : dans les réglages
+  `Llm:WorkspaceId`, ou `Llm:Profiles:<nom>:WorkspaceId` pour un profil (un profil n'hérite pas de
+  celui de la section), lu par chaque hôte et par `orkeon doctor` ; `orkeon llm probe` et
+  `orkeon llm models` ne lisent aucun réglage et prennent `--workspace-id`. Les clés classiques n'en
+  ont pas besoin.
 - **Polly** et **Sanitization clé API** : fournis par `HttpLlmProviderBase` → actifs partout.
 
 ## Clés d'API : la variable par fournisseur

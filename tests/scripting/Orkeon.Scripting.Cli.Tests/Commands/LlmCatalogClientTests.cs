@@ -43,12 +43,12 @@ public sealed class LlmCatalogClientTests
         """{"object":"list","data":[{"id":"models/gemini-3.8-flash","object":"model","owned_by":"google"},{"id":"models/gemini-3.7-flash","object":"model","owned_by":"google"}]}""";
 
     private static async Task<IReadOnlyList<string>> ListAsync(
-        StubHttpMessageHandler handler, string provider, string? apiKey = "unused-in-tests")
+        StubHttpMessageHandler handler, string provider, string? apiKey = "unused-in-tests", string? workspaceId = null)
     {
         using var client = new HttpClient(handler);
         var baseUrl = LlmCatalogClient.ResolveBaseUrl(provider, overrideUrl: null);
         return await LlmCatalogClient.ListAsync(
-            client, provider, baseUrl, apiKey, TestContext.Current.CancellationToken);
+            client, provider, baseUrl, apiKey, workspaceId, TestContext.Current.CancellationToken);
     }
 
     // ── Dialects ────────────────────────────────────────────────────────────
@@ -151,6 +151,40 @@ public sealed class LlmCatalogClientTests
         Assert.Contains("2023-06-01", request.Headers.GetValues("anthropic-version"));
     }
 
+    /// <summary>
+    /// #468: an identity-linked Anthropic key is refused <c>/v1/models</c> without its workspace, so the listing
+    /// sends the header the provider sends; no id, no header (a classic key).
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-468")]
+    [InlineData("wrkspc_01Test", "wrkspc_01Test")]
+    [InlineData(null, null)]
+    [InlineData("  ", null)]
+    public async Task ShouldSendTheWorkspaceHeader_WhenTheAnthropicListingIsGivenOne(string? workspaceId, string? expected)
+    {
+        using var handler = new StubHttpMessageHandler(AnthropicBody);
+
+        await ListAsync(handler, "anthropic", workspaceId: workspaceId);
+
+        var request = Assert.Single(handler.Requests);
+        if (expected is null)
+            Assert.False(request.Headers.Contains("anthropic-workspace-id"));
+        else
+            Assert.Equal(expected, Assert.Single(request.Headers.GetValues("anthropic-workspace-id")));
+    }
+
+    /// <summary>#468: the workspace is Anthropic's alone; an OpenAI-compatible listing never carries it.</summary>
+    [Fact]
+    [Trait("BR", "CH-468")]
+    public async Task ShouldSendNoWorkspaceHeader_WhenTheProviderIsNotAnthropic()
+    {
+        using var handler = new StubHttpMessageHandler(OpenAiBody);
+
+        await ListAsync(handler, "openai", workspaceId: "wrkspc_01Test");
+
+        Assert.False(Assert.Single(handler.Requests).Headers.Contains("anthropic-workspace-id"));
+    }
+
     /// <summary>Ollama is local, unauthenticated, and names its endpoint and its field differently.</summary>
     [Fact]
     public async Task ShouldReadTheOllamaCatalogue_FromItsTagsEndpointWithoutAuth()
@@ -173,7 +207,7 @@ public sealed class LlmCatalogClientTests
         using var client = new HttpClient(handler);
 
         await LlmCatalogClient.ListAsync(
-            client, "ollama", "http://gpu-box:11434/v1", null, TestContext.Current.CancellationToken);
+            client, "ollama", "http://gpu-box:11434/v1", null, null, TestContext.Current.CancellationToken);
 
         var request = Assert.Single(handler.Requests);
         Assert.Equal("http://gpu-box:11434/api/tags", request.RequestUri?.ToString());
@@ -193,7 +227,7 @@ public sealed class LlmCatalogClientTests
         using var client = new HttpClient(handler);
 
         var ex = await Assert.ThrowsAsync<NotSupportedException>(() => LlmCatalogClient.ListAsync(
-            client, provider, "https://example.openai.azure.com", "k",
+            client, provider, "https://example.openai.azure.com", "k", null,
             TestContext.Current.CancellationToken));
 
         Assert.Contains("deployment", ex.Message, StringComparison.OrdinalIgnoreCase);

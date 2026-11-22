@@ -41,13 +41,60 @@ public sealed class AnthropicWorkspaceHeaderTests : IDisposable
     private AnthropicLlmProvider CreateProvider(LlmConfig config) =>
         new(config, _httpClientFactory, _noOpPolicy);
 
-    [Fact]
-    public async Task ShouldSendTheWorkspaceHeader_WhenTheConfigCarriesOne()
+    private const string MinimalStream =
+        "event: message_start\n" +
+        "data: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\n\n" +
+        "event: content_block_delta\n" +
+        "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"ok\"}}\n\n" +
+        "event: message_delta\n" +
+        "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":1}}\n\n" +
+        "event: message_stop\n" +
+        "data: {\"type\":\"message_stop\"}\n\n";
+
+    /// <summary>
+    /// #468: every call path of the provider names the workspace - the plain and the chat call, and both
+    /// streaming paths, each of which builds its own client.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-468")]
+    [InlineData("generate")]
+    [InlineData("chat")]
+    [InlineData("generate-stream")]
+    [InlineData("chat-stream")]
+    public async Task ShouldSendTheWorkspaceHeader_WhenTheConfigCarriesOne(string path)
     {
         var config = LlmConfig.Create(ModelClaude3Opus, TestApiKey) with { WorkspaceId = WorkspaceId };
         using var provider = CreateProvider(config);
+        var ct = TestContext.Current.CancellationToken;
+        if (path.EndsWith("-stream", StringComparison.Ordinal))
+        {
+            _handler.SetResponseFactory(_ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(MinimalStream, System.Text.Encoding.UTF8, "text/event-stream")
+            });
+        }
 
-        await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+        switch (path)
+        {
+            case "generate":
+                await provider.GenerateAsync("hello", cancellationToken: ct);
+                break;
+            case "chat":
+                await provider.ChatAsync([LlmMessage.User("hello")], cancellationToken: ct);
+                break;
+            case "generate-stream":
+                await foreach (var _ in provider.GenerateStreamingAsync("hello", cancellationToken: ct))
+                {
+                    // drained: only the request matters
+                }
+                break;
+            default:
+                await foreach (var _ in provider.ChatStreamingAsync([LlmMessage.User("hello")], cancellationToken: ct))
+                {
+                    // drained: only the request matters
+                }
+                break;
+        }
 
         Assert.NotNull(_handler.LastRequest);
         Assert.True(_handler.LastRequest!.Headers.TryGetValues("anthropic-workspace-id", out var values));

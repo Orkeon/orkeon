@@ -24,9 +24,12 @@ Experimental (`ORKEXP008`), like `ctx.llm.pick`. The typings declare `PickServic
 An Anthropic identity-linked key refuses every call that does not name its workspace (`anthropic-workspace-id`).
 `LlmConfig.WorkspaceId` and the header existed, but only `orkeon llm --workspace-id` set them: `orkeon run`,
 `orkeon-host`, the forge and a crew could not use such a key. `LlmSettings` now reads `WorkspaceId` under `Llm` and
-under `Llm:Profiles:<name>` (environment form `Llm__WorkspaceId`, `Llm__Profiles__<name>__WorkspaceId`); the
-command's option still wins. A provider other than Anthropic, the mock included, does not send it and logs the
-structured unhonoured-option warning once (event `110`) instead of dropping it in silence.
+under `Llm:Profiles:<name>` (environment form `Llm__WorkspaceId`, `Llm__Profiles__<name>__WorkspaceId`); a profile
+does not inherit the section's. `orkeon llm probe` reads no settings: its `--workspace-id` stays its only source, and
+`orkeon llm models` takes the same option. The Anthropic model listing sends the header too (`orkeon llm models`,
+`orkeon doctor` from `Llm:WorkspaceId`). A provider other than Anthropic, the mock included, does not send it and logs
+the structured unhonoured-option warning once per provider (event `110`) instead of dropping it in silence; the mock
+reports the section's id when the factory builds it.
 
 ### Added — an off decision circuit's sentence on `run.decision` and the forge's events (`detail`, #467)
 

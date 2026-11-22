@@ -131,6 +131,15 @@ internal sealed class LlmModelsCommandOptions : CliOptions
     public string ApiKeyEnv { get; set; } = EnvironmentVariableNames.LlmCommandApiKey;
 
     /// <summary>Shell-style glob restricting the listing.</summary>
+    /// <summary>
+    /// Workspace the listing acts in: Anthropic's identity-linked keys are refused <c>/v1/models</c> without it
+    /// (#468). An identifier, not a secret; ignored by every other provider.
+    /// </summary>
+    [Option("workspace-id", Required = false,
+        HelpText = "Workspace id for workspace-scoped keys (Anthropic identity-linked keys require it).")]
+    public string? WorkspaceId { get; set; }
+
+    /// <summary>Shell-style glob restricting the listing.</summary>
     [Option('f', "filter", Required = false, HelpText = "Shell-style glob, e.g. 'gpt-5.6-*'.")]
     public string? Filter { get; set; }
 
@@ -177,7 +186,7 @@ internal static class LlmCommand
         {
             var baseUrl = LlmCatalogClient.ResolveBaseUrl(options.Provider, options.BaseUrl);
             var all = await LlmCatalogClient
-                .ListAsync(client, options.Provider, baseUrl, apiKey, cts.Token).ConfigureAwait(false);
+                .ListAsync(client, options.Provider, baseUrl, apiKey, options.WorkspaceId, cts.Token).ConfigureAwait(false);
             models = LlmCatalogClient.Filter(all, options.Filter);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)

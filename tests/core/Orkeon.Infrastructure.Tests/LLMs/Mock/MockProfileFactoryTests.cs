@@ -59,6 +59,28 @@ public sealed class MockProfileFactoryTests
                                            && e.Message.Contains("temperature", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// #468: the mock keeps no configuration and a call may not carry the section's WorkspaceId, so the factory
+    /// reports the one of <c>Llm:WorkspaceId</c> when it builds the mock - once, never in silence.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-468")]
+    public async Task ShouldWarnOnce_WhenTheMockSectionNamesAWorkspace()
+    {
+        using var logs = new Orkeon.Infrastructure.Tests.Doubles.FakeLoggerFactory();
+        var factory = new LlmProviderFactory(
+            new NoHttpClientFactory(),
+            logs,
+            fileSystem: new FakeFileSystemService().AddMount("/llm-mock").AddFile("/llm-mock/a.jsonl", """{"match":"ping","content":"pong"}"""));
+        var config = LlmSettings.ReadDefault(Settings(("Llm:Provider", "mock"), ("Llm:Responses", "/llm-mock/a.jsonl"), ("Llm:WorkspaceId", "wrkspc_01Test")));
+
+        var provider = Assert.IsType<LlmProviderAdapter>(factory.Create(config)).UnderlyingProvider;
+        await provider.GenerateAsync("ping", config, TestContext.Current.CancellationToken);
+
+        Assert.Single(logs.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning
+                                         && e.Message.Contains("'WorkspaceId'", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Default_section_with_provider_mock_resolves_the_jsonl_provider()
     {

@@ -354,6 +354,8 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 - **`Temperature`.** Left out, none is sent and the model applies its own — often 1; write `0.7`
   for a moderate one.
 - **`Thinking:Enabled`, `Thinking:Effort`** are for thinking-capable providers.
+- **`WorkspaceId`** is read in its own section only: a profile does not inherit the section's, so a
+  profile on an identity-linked Anthropic key writes its own `Profiles:<name>:WorkspaceId`.
 - **`Profiles:<name>`** holds the named profiles a crew picks per agent or per task, each with
   the same keys as the section itself ([below](#named-profiles-llmprofiles)); a client can write
   one per model setting, naming the variable holding its key, never the key.

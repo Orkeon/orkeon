@@ -352,7 +352,13 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         var path = MockProviderSettings.ResponsesOf(config)
             ?? throw new InvalidOperationException("The mock LLM provider needs the virtual path of its responses file (Responses).");
         LogMockProvider(_loggerFactory.CreateLogger<LlmProviderFactory>(), MockProviderSettings.ProfileOf(config), path);
-        return Adapt<JsonlMockLlmProvider>(config, logger => new JsonlMockLlmProvider(_fileSystem, path, logger));
+        return Adapt<JsonlMockLlmProvider>(config, logger =>
+        {
+            var mock = new JsonlMockLlmProvider(_fileSystem, path, logger);
+            // The mock keeps no configuration of its own: the profile's WorkspaceId is reported here (#468).
+            mock.ReportUnsentWorkspace(config);
+            return mock;
+        });
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The LLM provider of profile {Profile} is the mock: it answers from {Responses} and calls no model. A host that serves real traffic must not run it.")]

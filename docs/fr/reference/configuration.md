@@ -375,6 +375,9 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 - **`Temperature`.** Omise, rien n'est envoyé et le modèle applique la sienne — souvent 1 ;
   écrivez `0.7` pour une température modérée.
 - **`Thinking:Enabled`, `Thinking:Effort`** concernent les providers à raisonnement.
+- **`WorkspaceId`** n'est lu que dans sa propre section : un profil n'hérite pas de celui de la
+  section, si bien qu'un profil sur une clé Anthropic liée à une identité écrit son propre
+  `Profiles:<nom>:WorkspaceId`.
 - **`Profiles:<nom>`** porte les profils nommés qu'une crew choisit par agent ou par tâche,
   chacun avec les mêmes clés que la section elle-même ([plus bas](#profils-nommés-llmprofiles)) ;
   un client peut en écrire un par réglage de modèle, avec le nom de la variable qui contient

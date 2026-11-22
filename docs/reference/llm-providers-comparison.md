@@ -145,8 +145,10 @@ details the `response_format` surfaces.
   `none` refused; campaign M18, 2026-11-13); vision is declared from the vendor's own `text, image` model list. Prices are
   the vendor's upper bounds (`gemini-3.8-flash`, like `gemini-3.7-flash` before it, at 1.5 / 7.5 $/M, twice the direct price).
 - **Anthropic identity-linked keys**: refuse every request without an `anthropic-workspace-id`
-  header (2026-08-30). Set `LlmConfig.WorkspaceId` (CLI: `--workspace-id`); classic keys need
-  nothing.
+  header (2026-08-30). Set `LlmConfig.WorkspaceId`: in the settings `Llm:WorkspaceId`, or
+  `Llm:Profiles:<name>:WorkspaceId` for a profile (a profile does not inherit the section's), read by
+  every host and by `orkeon doctor`; `orkeon llm probe` and `orkeon llm models` read no settings and take
+  `--workspace-id`. Classic keys need nothing.
 - **Polly** and **API key sanitization**: provided by `HttpLlmProviderBase` → active everywhere.
 
 ## API keys: the variable per provider

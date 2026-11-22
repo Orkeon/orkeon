@@ -49,6 +49,9 @@ public sealed partial class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmPr
     // rounds of one conversation never carry the same id.
     private int _lastCallId;
 
+    // 1 once the WorkspaceId the mock cannot send has been reported: once per provider, as the HTTP providers do (#468).
+    private int _workspaceIdReported;
+
     /// <summary>Creates a provider over the JSONL file at <paramref name="responsesPath"/>.</summary>
     /// <param name="fileSystem">The virtual file system the file is read through.</param>
     /// <param name="responsesPath">The virtual path of the JSONL file; it is read on the first call.</param>
@@ -129,9 +132,23 @@ public sealed partial class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmPr
             LogUnsupportedOption("thinking", "the mock does not reason");
         if (config.Temperature is not null)
             LogUnsupportedOption("temperature", "the mock does not sample");
-        if (!string.IsNullOrWhiteSpace(config.WorkspaceId))
-            LogUnsupportedOption("WorkspaceId", "the mock calls no workspace-scoped API");
+        ReportUnsentWorkspace(config);
     }
+
+    /// <summary>
+    /// Reports once, with the structured warning of the HTTP providers (event 110), a <c>WorkspaceId</c> the mock
+    /// cannot send: from a call's configuration, or from the profile the factory built the mock from (#468).
+    /// </summary>
+    /// <param name="config">The configuration that may name a workspace.</param>
+    internal void ReportUnsentWorkspace(LlmConfig? config)
+    {
+        if (!string.IsNullOrWhiteSpace(config?.WorkspaceId) && Interlocked.Exchange(ref _workspaceIdReported, 1) == 0)
+            LogOptionNotSent("WorkspaceId", Name, "Only Anthropic scopes a key to a workspace; remove Llm:WorkspaceId (or the profile's) for this provider");
+    }
+
+    [LoggerMessage(EventId = 110, Level = LogLevel.Warning,
+        Message = "Option '{Option}' was declared but {ProviderName} does not support it — it was not sent. {Remedy}.")]
+    private partial void LogOptionNotSent(string option, string providerName, string remedy);
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
         Message = "Option '{Option}' was declared but the mock LLM provider does not support it - it was ignored. {Remedy}.")]

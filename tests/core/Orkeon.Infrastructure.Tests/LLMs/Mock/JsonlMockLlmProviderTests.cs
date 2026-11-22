@@ -288,6 +288,23 @@ public sealed class JsonlMockLlmProviderTests
         Assert.Contains(warnings, w => w.Contains("temperature", StringComparison.Ordinal));
     }
 
+    /// <summary>#468: a WorkspaceId the mock cannot send is reported once per provider, as the HTTP providers do.</summary>
+    [Fact]
+    [Trait("BR", "CH-468")]
+    public async Task ShouldWarnOnce_WhenEveryCallNamesAWorkspace()
+    {
+        using var logs = new Orkeon.Infrastructure.Tests.Doubles.FakeLoggerFactory();
+        var fs = new FakeFileSystemService().AddMount("/llm-mock").AddFile(Path, """{"match":"hi","content":"yo"}""");
+        var provider = new JsonlMockLlmProvider(fs, Path, logs.CreateLogger("mock"));
+        var config = LlmConfig.OnProfile() with { WorkspaceId = "wrkspc_01Test" };
+
+        await provider.ChatAsync(User("hi"), config, TestContext.Current.CancellationToken);
+        await provider.GenerateAsync("hi", config, TestContext.Current.CancellationToken);
+
+        var warning = Assert.Single(logs.Entries, e => e.Message.Contains("'WorkspaceId'", StringComparison.Ordinal));
+        Assert.Contains("mock does not support it", warning.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task A_call_without_those_options_warns_of_nothing()
     {
