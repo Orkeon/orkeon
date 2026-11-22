@@ -12,6 +12,9 @@ public sealed class BinderRefusalTests
     private const string Withheld =
         "Failed to convert a configuration value; the binder's message is withheld, since it quotes the value.";
 
+    // Key-shaped, built at run time.
+    private static readonly string Value = string.Concat("sk-", "ant-", Guid.NewGuid().ToString("N"));
+
     private static string Sentence(string value, string path, string type) =>
         $"Failed to convert configuration value '{value}' at '{path}' to type '{type}'.";
 
@@ -89,5 +92,52 @@ public sealed class BinderRefusalTests
         Assert.True(BinderRefusal.QuotesAValue(new InvalidOperationException("wrapped", binder)));
         Assert.False(BinderRefusal.QuotesAValue(new InvalidOperationException("a registration's own refusal")));
         Assert.False(BinderRefusal.QuotesAValue(null));
+    }
+
+    /// <summary>The converters' and parsers' messages, each quoting the value it refused.</summary>
+    public static TheoryData<string> ConverterMessages() =>
+    [
+        $"{Value} is not a valid value for TimeSpan.",
+        $"Requested value '{Value}' was not found.",
+        $"The input string '{Value}' was not in a correct format.",
+        $"String '{Value}' was not recognized as a valid Boolean.",
+    ];
+
+    [Theory]
+    [Trait("BR", "CH-469")]
+    [MemberData(nameof(ConverterMessages))]
+    public void ShouldTellTheChainQuotesAValue_WhenItHoldsAConverterMessageAlone(string message)
+    {
+        Assert.True(BinderRefusal.QuotesAValue(new InvalidOperationException("wrapped", new ArgumentException(message))));
+        Assert.Equal(Withheld, BinderRefusal.WithoutValue(message));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-469")]
+    [InlineData(typeof(FormatException))]
+    [InlineData(typeof(UriFormatException))]
+    [InlineData(typeof(OverflowException))]
+    [InlineData(typeof(InvalidCastException))]
+    public void ShouldTellTheChainQuotesAValue_WhenItHoldsAConversionException(Type type)
+    {
+        var conversion = (Exception)Activator.CreateInstance(type, "a message of any shape")!;
+
+        Assert.True(BinderRefusal.QuotesAValue(new InvalidOperationException("wrapped", conversion)));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-469")]
+    public void ShouldReadTheBindersSentenceFromTheChain_AndNeverPrintAMessageThatQuotesTheValue()
+    {
+        var converter = new FormatException($"{Value} is not a valid value for TimeSpan.");
+        var binder = new InvalidOperationException(Sentence(Value, "MCP:Servers:x:CallTimeout", "System.TimeSpan"), converter);
+
+        Assert.Equal(
+            "Failed to convert the configuration value at 'MCP:Servers:x:CallTimeout' to type 'System.TimeSpan'.",
+            BinderRefusal.WithoutValue(new InvalidOperationException("wrapped", binder), "MCP:Servers:x"));
+        Assert.Equal(
+            "Failed to convert a configuration value under 'MCP:Servers:x'; the binder's message is withheld, since it quotes the value.",
+            BinderRefusal.WithoutValue(new InvalidOperationException("wrapped", converter), "MCP:Servers:x"));
+        Assert.Equal("a registration's own refusal", BinderRefusal.WithoutValue(new InvalidOperationException("a registration's own refusal")));
     }
 }

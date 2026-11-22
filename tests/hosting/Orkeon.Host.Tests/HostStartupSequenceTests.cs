@@ -74,6 +74,24 @@ public sealed class HostStartupSequenceTests : IDisposable
         AssertRefused(launch, "Orkeon:Host:RunTimeout");
     }
 
+    /// <summary>
+    /// #469: a value of the daemon's own sections the binder cannot convert is refused by its key, never
+    /// quoted: it may be anything written there by mistake, a key included.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-469")]
+    [InlineData("\"RunTimeout\": \"{0}\"", "Orkeon:Host:RunTimeout")]
+    [InlineData("\"Discord\": {{ \"ProgressInterval\": \"{0}\" }}", "Orkeon:Host:Discord:ProgressInterval")]
+    public void ShouldRefuseByTheKeyWithoutTheValue_WhenADaemonSectionDoesNotBind(string setting, string named)
+    {
+        var value = string.Concat("sk-", "ant-", Guid.NewGuid().ToString("N"));
+
+        var launch = Prepare(Settings(host: ", " + string.Format(System.Globalization.CultureInfo.InvariantCulture, setting, value)));
+
+        AssertRefused(launch, named);
+        Assert.DoesNotContain(value, _failures.Reported[0], StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_Discord_ProgressInterval_the_binder_cannot_convert_is_reported_and_exits_78()
     {

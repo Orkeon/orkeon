@@ -55,7 +55,9 @@ public sealed class McpOAuthConfigurationTests
 
         var ex = Assert.Throws<FormatException>(() => converter.ConvertFromInvariantString(text));
 
-        Assert.Contains($"'{text}' is not an MCP Auth:Type", ex.Message, StringComparison.Ordinal);
+        // #469: never quoted, what was written there may be a key.
+        Assert.StartsWith("The value written is not an MCP Auth:Type.", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain($"'{text}'", ex.Message, StringComparison.Ordinal);
         Assert.Contains("oauth2-device", ex.Message, StringComparison.Ordinal);
         Assert.Contains("oauth2-client-credentials", ex.Message, StringComparison.Ordinal);
         Assert.Contains("OAuth2Device", ex.Message, StringComparison.Ordinal);

@@ -18,6 +18,17 @@ replaced by a fixed sentence naming the section when the caller knows it (an `Or
 `Orkeon:Tools:Drive` account), and a refusal the host build raises keeps no inner exception that quotes the value. The
 host and the two tool binders now share one implementation instead of three copies.
 
+Three more places printed the value. An MCP server set aside because its settings did not bind (an `Auth:Type` the
+converter refuses) was reported with the converter's message, which quoted what was written there; it is now reported
+by its section path, the key and type the binder names, and the accepted spellings, and the `Auth:Type` converter's own
+message no longer quotes its input. `orkeon-host`'s own sections (`Orkeon:Host:RunTimeout`, `Orkeon:Host:Discord`, …)
+were refused with the binder's sentence as written, value included; they are now refused by the key. A registration of
+`orkeon-repl` that refuses a setting goes through the same rewording. The rule, in one place: a refusal built from a
+binding or conversion exception names the key path or the section and never prints a message that may quote the value
+— the binder's sentence, a converter's or a parser's (`… is not a valid value for …`, `Requested value '…' was not
+found.`, `The input string '…' was not in a correct format.`), or any `FormatException`, `OverflowException` or
+`InvalidCastException` in the chain.
+
 ### Added — `ctx.services.get("pick")`, System One's pick for a command (#463)
 
 A scripted command (`*.cmd.ts`) can ask System One for a profile and/or a thinking level:
@@ -282,7 +293,7 @@ specification, and the stability commitment now covers them, with their shape un
 no longer needs to suppress `ORKEXP004`. The rest of the MCP integration (client, server, transports, protocol types)
 stays under `ORKEXP004`.
 
-### Added — the experimental `agent-cli` provider: Orkeon on a Claude subscription (ADR-020, `ORKEXP010`)
+### Added — the experimental `agent-cli` provider: Orkeon on a Claude subscription (ADR-020, `ORKEXP010`, #458)
 
 The first provider module, `Orkeon.Interop.AgentCli` (package of the same name), registered by `orkeon`,
 `orkeon-repl` and `orkeon-host` (`AddOrkeonAgentCli()`). A section written `"Provider": "agent-cli"` is answered by an

@@ -194,5 +194,5 @@ internal static class DriveOptionsBinder
     /// back names the account's section instead.
     /// </summary>
     internal static string Refusal(string account, InvalidOperationException ex) =>
-        BinderRefusal.WithoutValue(ex.Message, $"{Constants.DriveDefaults.SectionName}:{AccountsKey}:{account}");
+        BinderRefusal.WithoutValue(ex, $"{Constants.DriveDefaults.SectionName}:{AccountsKey}:{account}");
 }

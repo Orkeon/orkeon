@@ -201,5 +201,5 @@ internal static class EmailOptionsBinder
     /// back names the account's section instead.
     /// </summary>
     internal static string Refusal(string account, InvalidOperationException ex) =>
-        BinderRefusal.WithoutValue(ex.Message, $"{Constants.EmailDefaults.SectionName}:{AccountsKey}:{account}");
+        BinderRefusal.WithoutValue(ex, $"{Constants.EmailDefaults.SectionName}:{AccountsKey}:{account}");
 }

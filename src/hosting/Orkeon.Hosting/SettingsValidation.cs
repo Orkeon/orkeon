@@ -276,7 +276,7 @@ internal static class SettingsValidation
             catch (InvalidOperationException ex) when (IsBinderRefusal(ex))
             {
                 // The binder's refusal, which names the value: reworded without it (#465).
-                refusals.Add(BinderRefusal.WithoutValue(ex.Message));
+                refusals.Add(BinderRefusal.WithoutValue(ex));
             }
         }
     }
@@ -308,7 +308,7 @@ internal static class SettingsValidation
         }
         catch (InvalidOperationException ex) when (IsBinderRefusal(ex))
         {
-            refusals.Add(BinderRefusal.WithoutValue(ex.Message));
+            refusals.Add(BinderRefusal.WithoutValue(ex));
         }
     }
 

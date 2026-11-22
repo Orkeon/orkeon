@@ -547,21 +547,8 @@ public static partial class RunnerHost
     /// </summary>
     internal static RunnerSettingsException Refused(InvalidOperationException ex) =>
         BinderRefusal.QuotesAValue(ex)
-            ? new RunnerSettingsException(BinderRefusal.WithoutValue(QuotingMessage(ex)))
+            ? new RunnerSettingsException(BinderRefusal.WithoutValue(ex))
             : new RunnerSettingsException(ex.Message, ex);
-
-    // The innermost message of the chain that quotes the value, the binder's sentence when it was wrapped.
-    private static string QuotingMessage(Exception ex)
-    {
-        var quoting = ex.Message;
-        for (var current = ex.InnerException; current is not null; current = current.InnerException)
-        {
-            if (BinderRefusal.QuotesAValue(current))
-                quoting = current.Message;
-        }
-
-        return quoting;
-    }
 
     /// <summary>
     /// One <c>Information</c> line per decision taken on the settings' mounts: an entry a
