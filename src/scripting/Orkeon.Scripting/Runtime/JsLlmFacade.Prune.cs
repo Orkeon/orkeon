@@ -91,7 +91,7 @@ public sealed partial class JsLlmFacade
             var number = Number(settings, name);
             if (number is not { } value)
                 return null;
-            if (value != Math.Floor(value) || value > int.MaxValue || value < int.MinValue)
+            if (!double.IsInteger(value) || value > int.MaxValue || value < int.MinValue)
                 throw Refused($"{name} takes a whole number.");
             return (int)value;
         }

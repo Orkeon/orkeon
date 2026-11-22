@@ -19,6 +19,7 @@ internal sealed class SystemOnePicker : ISystemOnePicker
     private readonly IAgentRouteObserver? _observer;
     private readonly DecisionCircuit? _scopeCircuit;
 
+    /// <summary>Creates the pick over a router's ladder, levels, circuit and decision model.</summary>
     /// <param name="router">The router whose ladder, levels, circuit and decision model the pick uses.</param>
     /// <param name="profiles">The host's profiles; null offers the default alone.</param>
     /// <param name="observer">Told each answer; null logs nothing more.</param>

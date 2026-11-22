@@ -358,10 +358,12 @@ public sealed class HostPublishesRunEventsTests : IDisposable
         Assert.NotEmpty(pruned);
         Assert.All(pruned, e =>
         {
-            Assert.Equal(("Reader", summary.RunId), (e.Payload?["agentRole"]?.GetValue<string>(), e.CorrelationId));
+            var payload = e.Payload;
+            Assert.NotNull(payload);
+            Assert.Equal(("Reader", summary.RunId), (payload["agentRole"]?.GetValue<string>(), e.CorrelationId));
             // The wire omits a null property: an act's event carries no taskId at all, never an empty one.
-            Assert.False(e.Payload!.ContainsKey("taskId"));
-            Assert.True(e.Payload["dropped"]!.GetValue<int>() > 0);
+            Assert.False(payload.ContainsKey("taskId"));
+            Assert.True(payload["dropped"]!.GetValue<int>() > 0);
         });
         Assert.Equal(Enumerable.Range(1, events.Count), events.Select(e => e.Seq));
     }

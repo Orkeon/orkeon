@@ -393,6 +393,7 @@ public sealed class AnthropicSchemaDialectPayloadTests : IDisposable
                 WithSchema("""{"type":"object","properties":{"c":{"not":{"type":"string"}}}}"""),
                 TestContext.Current.CancellationToken))
             {
+                // Nothing to read: the refusal comes while the stream is opened.
             }
         });
 

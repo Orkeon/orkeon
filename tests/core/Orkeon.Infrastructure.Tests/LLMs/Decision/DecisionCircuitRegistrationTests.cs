@@ -206,9 +206,8 @@ public class DecisionCircuitRegistrationTests
         var after = model.MissingKey();
 
         // Assert
-        Assert.Equal(
-            ("no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey", (string?)null),
-            (before, after));
+        Assert.Equal("no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey", before);
+        Assert.Null(after);
     }
 
     [Fact]
@@ -264,8 +263,10 @@ public class DecisionCircuitRegistrationTests
         var request = new DecisionRequest
         {
             State = JsonValue.Create("a ticket"),
-            Questions = ImmutableDictionary<string, DecisionQuestion>.Empty
-                .Add("refund", new NoulQuestion { Instructions = JsonValue.Create("Is it a refund?") }),
+            Questions = new Dictionary<string, DecisionQuestion>
+            {
+                ["refund"] = new NoulQuestion { Instructions = JsonValue.Create("Is it a refund?") },
+            }.ToImmutableDictionary(),
         };
 
         // Act

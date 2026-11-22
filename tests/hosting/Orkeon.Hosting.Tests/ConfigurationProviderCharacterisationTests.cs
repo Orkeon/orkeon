@@ -15,8 +15,12 @@ namespace Orkeon.Hosting.Tests;
 /// </summary>
 public sealed class ConfigurationProviderCharacterisationTests
 {
-    private static IConfigurationRoot Json(string json) =>
-        new ConfigurationBuilder().AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(json))).Build();
+    private static IConfigurationRoot Json(string json)
+    {
+        // Build reads the stream to its end, so it is released here.
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        return new ConfigurationBuilder().AddJsonStream(stream).Build();
+    }
 
     private sealed class Switches
     {
