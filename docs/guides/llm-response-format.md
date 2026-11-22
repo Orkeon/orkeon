@@ -235,21 +235,40 @@ decision circuit), `AnthropicLlmProvider` works on a copy of the schema, as Anth
 - the constraints the API does not take are removed and written into the node's `description`
   (`{minimum: 18, maximum: 120}`), so the model still reads them: `minimum`, `maximum`,
   `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `minLength`, `maxLength`, `maxItems`,
-  `uniqueItems`, a `minItems` above 1, a `format` other than `date-time`, `time`, `date`,
-  `duration`, `email`, `hostname`, `uri`, `ipv4`, `ipv6` and `uuid`.
+  `uniqueItems: true`, a `minItems` above 1, a `format` other than `date-time`, `time`, `date`,
+  `duration`, `email`, `hostname`, `uri`, `ipv4`, `ipv6` and `uuid`; a `uniqueItems: false`,
+  which constrains nothing, is dropped.
 
-What would change the schema's meaning is **refused before any HTTP call**, the sentence naming the
-keyword and its path: `oneOf` (write `anyOf`), `not`, an `additionalProperties` set to `true` or
-to a schema, an external `$ref`, a recursive schema (a `$ref` back to a node it sits in), and
-messages that end on an `assistant` turn (a prefill, which Anthropic refuses with a JSON output).
+The root is walked the same way whatever its `type`: a root `array` keeps no `additionalProperties`
+of its own, the objects below it are closed. A root that is not a JSON object at all (`true`) is
+sent as written.
+
+What would change the schema's meaning, or what Orkeon cannot walk, is **refused before any HTTP
+call**, the sentence naming the keyword and its path:
+
+- `oneOf` (write `anyOf`) and `not`;
+- an `additionalProperties` set to `true` or to a schema;
+- an object that declares no `properties`, or an empty `properties: {}`, without an explicit
+  `additionalProperties: false` — a free-form `{"type": "object"}` (a `metadata` bag), the root
+  included: closing it would leave the model nothing to answer but `{}`. List the keys the object
+  may hold, write `additionalProperties: false` when an empty object is what you mean, or use an
+  array of key and value items for arbitrary keys;
+- `if`, `then`, `else`, `patternProperties`, `dependentSchemas`, `dependencies`, `contains`,
+  `propertyNames`, `unevaluatedProperties`, `unevaluatedItems` and `additionalItems`: Orkeon does
+  not walk the sub-schemas under them, so an object below one could not be closed;
+- a `description` that is not a string;
+- an external `$ref`, and a recursive schema (a `$ref` back to a node it sits in);
+- messages that end on an `assistant` turn (a prefill, which Anthropic refuses with a JSON output).
+
 A script reads, for example:
 
 ```
 ctx.llm.extract: the provider failed: Anthropic cannot take the response schema 'extract': `oneOf` at `#/properties/pick` is not supported; use `anyOf`.
 ```
 
-The refusal is an error answer of type `UnsupportedResponseSchema`, classed as refused: it is not
-retried, and a fallback chain does not move it to its next profile.
+The refusal is an error answer of type `UnsupportedResponseSchema`, classed as refused: a fallback
+chain does not move it to its next profile. A task with a retry policy still runs again after its
+delay, and is refused again: fix the schema rather than raise the attempts.
 
 The caller's schema is never changed. A task's `output_json` is validated against the author's own
 schema (`OutputValidationCoordinator`), every constraint included, so a constraint moved into a

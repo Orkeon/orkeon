@@ -10,7 +10,8 @@ namespace Orkeon.Infrastructure.LLMs;
 /// subset of JSON Schema and answers a 400 to the rest. The provider works on a copy of the caller's
 /// schema, as Anthropic's own SDK helpers do: it closes every object, moves the constraints the API
 /// does not take into the node's <c>description</c>, and refuses what it cannot rewrite without
-/// changing what the schema means.
+/// changing what the schema means (a free-form object, which closing would empty) or cannot walk (the
+/// keywords of <see cref="UnwalkedKeywords"/>).
 /// </summary>
 /// <remarks>
 /// The lists follow "JSON Schema limitations" of
@@ -41,6 +42,16 @@ internal static class AnthropicSchemaDialect
 
     /// <summary>The keywords whose value is a list of sub-schemas.</summary>
     private static readonly string[] SchemaLists = ["anyOf", "allOf", "prefixItems"];
+
+    /// <summary>
+    /// Keywords whose sub-schemas the dialect does not walk: an object below them would stay open, so
+    /// the schema is refused before the call rather than sent.
+    /// </summary>
+    private static readonly string[] UnwalkedKeywords =
+    [
+        "if", "then", "else", "patternProperties", "dependentSchemas", "dependencies", "contains",
+        "propertyNames", "unevaluatedProperties", "unevaluatedItems", "additionalItems",
+    ];
 
     /// <summary>The adapted copy, or the reason the schema is refused.</summary>
     internal sealed record Adaptation(JsonNode? Schema, string? Refusal);
@@ -84,8 +95,30 @@ internal static class AnthropicSchemaDialect
                 + "inline the definition under `$defs`.";
         }
 
+        foreach (var keyword in UnwalkedKeywords)
+        {
+            if (node.ContainsKey(keyword))
+                return $"`{keyword}` at `{path}` is not supported: the objects below it could not be closed.";
+        }
+
+        if (node.TryGetPropertyValue("description", out var description)
+            && description?.GetValueKind() != JsonValueKind.String)
+        {
+            return $"`description` at `{path}` must be a string.";
+        }
+
         if (IsObjectNode(node) && !node.ContainsKey("additionalProperties"))
+        {
+            // Closing an object that lists no key would leave the model nothing to answer but `{}`.
+            if (node["properties"] is not JsonObject { Count: > 0 })
+            {
+                return $"the object at `{path}` declares no `properties`: closing it would drop every key. "
+                    + "List the keys it may hold, or set `additionalProperties: false` to mean an empty object "
+                    + "(use an array of key and value items for arbitrary keys).";
+            }
+
             node["additionalProperties"] = false;
+        }
 
         MoveUnsupportedConstraints(node);
         return WalkChildren(node, path);
@@ -143,6 +176,10 @@ internal static class AnthropicSchemaDialect
 
     private static void MoveUnsupportedConstraints(JsonObject node)
     {
+        // `uniqueItems: false` constrains nothing: it is dropped rather than written into the description.
+        if (node["uniqueItems"] is JsonValue unique && unique.GetValueKind() == JsonValueKind.False)
+            node.Remove("uniqueItems");
+
         // In the node's own order, so the description reads the constraints as the author wrote them.
         var keys = node.Where(p => IsUnsupportedConstraint(p.Key, p.Value)).Select(p => p.Key).ToList();
         if (keys.Count == 0)
@@ -157,8 +194,8 @@ internal static class AnthropicSchemaDialect
 
         // The SDK helpers' shape, so the model still reads the constraint: "{minimum: 100}".
         var note = "{" + string.Join(", ", moved) + "}";
-        node["description"] = node["description"] is JsonValue d && d.GetValueKind() == JsonValueKind.String
-            && d.GetValue<string>() is { Length: > 0 } existing
+        // Walk refused a description that is not a string before this point.
+        node["description"] = node["description"] is JsonValue d && d.GetValue<string>() is { Length: > 0 } existing
             ? existing + "\n\n" + note
             : note;
     }
@@ -166,7 +203,9 @@ internal static class AnthropicSchemaDialect
     private static bool IsUnsupportedConstraint(string key, JsonNode? value) => key switch
     {
         // Only 0 and 1 are taken for minItems.
-        "minItems" => value is JsonValue n && n.GetValueKind() == JsonValueKind.Number && n.GetValue<decimal>() > 1,
+        // A number too large for a double (1e400) is above 1 all the same.
+        "minItems" => value is JsonValue n && n.GetValueKind() == JsonValueKind.Number
+            && (!n.TryGetValue<double>(out var count) || count > 1),
         "format" => value is JsonValue f && f.GetValueKind() == JsonValueKind.String
             && !SupportedFormats.Contains(f.GetValue<string>()),
         _ => Array.IndexOf(MovedConstraints, key) >= 0,

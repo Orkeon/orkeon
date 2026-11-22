@@ -241,21 +241,42 @@ schéma, comme le font les aides des SDK d'Anthropic :
 - les contraintes que l'API ne prend pas sont retirées et écrites dans la `description` du nœud
   (`{minimum: 18, maximum: 120}`), pour que le modèle les lise encore : `minimum`, `maximum`,
   `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `minLength`, `maxLength`, `maxItems`,
-  `uniqueItems`, un `minItems` supérieur à 1, un `format` autre que `date-time`, `time`, `date`,
-  `duration`, `email`, `hostname`, `uri`, `ipv4`, `ipv6` et `uuid`.
+  `uniqueItems: true`, un `minItems` supérieur à 1, un `format` autre que `date-time`, `time`,
+  `date`, `duration`, `email`, `hostname`, `uri`, `ipv4`, `ipv6` et `uuid` ; un
+  `uniqueItems: false`, qui ne contraint rien, est retiré.
 
-Ce qui changerait le sens du schéma est **refusé avant tout appel HTTP**, la phrase nommant le
-mot-clé et son chemin : `oneOf` (écrire `anyOf`), `not`, un `additionalProperties` à `true` ou à un
-schéma, un `$ref` externe, un schéma récursif (un `$ref` vers un nœud qui le contient), et des
-messages qui finissent sur un tour `assistant` (un pré-remplissage, qu'Anthropic refuse avec une
-sortie JSON). Un script lit par exemple :
+La racine est parcourue de la même façon quel que soit son `type` : une racine `array` ne reçoit pas
+d'`additionalProperties` propre, les objets sous elle sont fermés. Une racine qui n'est pas du tout
+un objet JSON (`true`) est envoyée telle qu'écrite.
+
+Ce qui changerait le sens du schéma, ou ce qu'Orkeon ne sait pas parcourir, est **refusé avant tout
+appel HTTP**, la phrase nommant le mot-clé et son chemin :
+
+- `oneOf` (écrire `anyOf`) et `not` ;
+- un `additionalProperties` à `true` ou à un schéma ;
+- un objet qui ne déclare pas de `properties`, ou un `properties: {}` vide, sans
+  `additionalProperties: false` explicite — un `{"type": "object"}` libre (un sac `metadata`), la
+  racine comprise : le fermer ne laisserait au modèle que `{}` à répondre. Lister les clés que
+  l'objet peut porter, écrire `additionalProperties: false` quand c'est un objet vide qui est voulu,
+  ou prendre un tableau d'éléments clé et valeur pour des clés arbitraires ;
+- `if`, `then`, `else`, `patternProperties`, `dependentSchemas`, `dependencies`, `contains`,
+  `propertyNames`, `unevaluatedProperties`, `unevaluatedItems` et `additionalItems` : Orkeon ne
+  parcourt pas les sous-schémas qu'ils portent, un objet sous l'un d'eux ne pourrait pas être fermé ;
+- une `description` qui n'est pas une chaîne ;
+- un `$ref` externe, et un schéma récursif (un `$ref` vers un nœud qui le contient) ;
+- des messages qui finissent sur un tour `assistant` (un pré-remplissage, qu'Anthropic refuse avec
+  une sortie JSON).
+
+Un script lit par exemple :
 
 ```
 ctx.llm.extract: the provider failed: Anthropic cannot take the response schema 'extract': `oneOf` at `#/properties/pick` is not supported; use `anyOf`.
 ```
 
-Le refus est une réponse d'erreur de type `UnsupportedResponseSchema`, classée comme refusée : elle
-n'est pas retentée, et une chaîne de repli ne la passe pas à son profil suivant.
+Le refus est une réponse d'erreur de type `UnsupportedResponseSchema`, classée comme refusée : une
+chaîne de repli ne la passe pas à son profil suivant. Une tâche dotée d'une politique de reprise
+s'exécute encore après son délai, et est refusée de nouveau : corriger le schéma plutôt qu'augmenter
+le nombre de tentatives.
 
 Le schéma de l'appelant n'est jamais modifié. L'`output_json` d'une tâche est validé contre le
 schéma de l'auteur (`OutputValidationCoordinator`), toutes contraintes comprises : une contrainte
