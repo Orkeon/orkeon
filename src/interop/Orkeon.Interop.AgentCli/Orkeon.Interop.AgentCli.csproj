@@ -12,9 +12,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <!-- ORKEXP004: the MCP bridge speaks JSON-RPC through Orkeon's own JsonRpcTypes (Orkeon.Infrastructure.MCP),
-         experimental like this project; a change there is a change of the bridge's envelope. -->
-    <NoWarn>$(NoWarn);CS1591;ORKEXP004</NoWarn>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

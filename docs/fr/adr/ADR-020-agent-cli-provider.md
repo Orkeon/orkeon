@@ -30,8 +30,8 @@ périmètre du framework est gelé à ses seize fournisseurs ; un nouveau demand
 3. **Les outils d'Orkeon, exécutés par Orkeon.** La CLI démarre avec ses propres outils coupés (`--tools ""`,
    `--strict-mcp-config`) et un seul serveur MCP, `orkeon`, joint par un relais que la CLI lance
    (`Orkeon.Interop.AgentCli.Relay`, sur une socket de domaine Unix dans un dossier temporaire privé) ; le pont parle
-   JSON-RPC par les `JsonRpcTypes` d'Orkeon (`ORKEXP004`). Quand le modèle appelle un outil, le fournisseur arrête le tour sur le `message_stop` qui le termine et répond à la crew par
-   des blocs Anthropic `tool_use` ; la crew exécute l'outil par son propre pipeline, et l'appel suivant remet le
+   JSON-RPC par les `JsonRpcTypes` d'Orkeon, une enveloppe stable. Quand le modèle appelle un outil, le
+   fournisseur arrête le tour sur le `message_stop` qui le termine et répond à la crew par des blocs Anthropic `tool_use` ; la crew exécute l'outil par son propre pipeline, et l'appel suivant remet le
    résultat à l'appel que la CLI attend. Un appel refusé parvient à la CLI comme un résultat en erreur.
 4. **Orkeon garde l'historique.** Chaque appel envoie tout l'historique, comme pour tout fournisseur. Le fournisseur
    garde un processus CLI par conversation pour la durée du run (`AgentRunScope`), et le poursuit quand l'historique

@@ -47,3 +47,89 @@ Orkeon.Infrastructure.Configuration.ThinkingYamlConfig.Enabled.get -> object?
 Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.Modules.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule!>?
 Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.Modules.init -> void
 static Orkeon.Infrastructure.LLMs.LlmProviderFactory.WithoutMounts(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Ports.ILlmProviderModule!>! modules) -> Orkeon.Infrastructure.LLMs.LlmProviderFactory!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError.Code.get -> int
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError.Code.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError.Data.get -> System.Text.Json.JsonElement?
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError.Data.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError.JsonRpcError() -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError.JsonRpcError(int code, string! message) -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError.Message.get -> string!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcError.Message.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcErrorCodes
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcNotification
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcNotification.JsonRpcNotification() -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcNotification.Jsonrpc.get -> string!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcNotification.Jsonrpc.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcNotification.Method.get -> string!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcNotification.Method.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcNotification.Params.get -> System.Text.Json.JsonElement?
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcNotification.Params.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Id.get -> System.Text.Json.JsonElement?
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Id.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.JsonRpcRequest() -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Jsonrpc.get -> string!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Jsonrpc.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Method.get -> string!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Method.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Params.get -> System.Text.Json.JsonElement?
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcRequest.Params.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Error.get -> Orkeon.Infrastructure.MCP.JsonRpcError?
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Error.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Id.get -> System.Text.Json.JsonElement?
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Id.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.JsonRpcResponse() -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Jsonrpc.get -> string!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Jsonrpc.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Result.get -> System.Text.Json.JsonElement?
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.JsonRpcResponse.Result.set -> void
+*REMOVED*[ORKEXP004]const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.InternalError = -32603 -> int
+*REMOVED*[ORKEXP004]const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.InvalidParams = -32602 -> int
+*REMOVED*[ORKEXP004]const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.InvalidRequest = -32600 -> int
+*REMOVED*[ORKEXP004]const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.MethodNotFound = -32601 -> int
+*REMOVED*[ORKEXP004]const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.ParseError = -32700 -> int
+Orkeon.Infrastructure.MCP.JsonRpcError
+Orkeon.Infrastructure.MCP.JsonRpcError.Code.get -> int
+Orkeon.Infrastructure.MCP.JsonRpcError.Code.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcError.Data.get -> System.Text.Json.JsonElement?
+Orkeon.Infrastructure.MCP.JsonRpcError.Data.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcError.JsonRpcError() -> void
+Orkeon.Infrastructure.MCP.JsonRpcError.JsonRpcError(int code, string! message) -> void
+Orkeon.Infrastructure.MCP.JsonRpcError.Message.get -> string!
+Orkeon.Infrastructure.MCP.JsonRpcError.Message.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcErrorCodes
+Orkeon.Infrastructure.MCP.JsonRpcNotification
+Orkeon.Infrastructure.MCP.JsonRpcNotification.JsonRpcNotification() -> void
+Orkeon.Infrastructure.MCP.JsonRpcNotification.Jsonrpc.get -> string!
+Orkeon.Infrastructure.MCP.JsonRpcNotification.Jsonrpc.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcNotification.Method.get -> string!
+Orkeon.Infrastructure.MCP.JsonRpcNotification.Method.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcNotification.Params.get -> System.Text.Json.JsonElement?
+Orkeon.Infrastructure.MCP.JsonRpcNotification.Params.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcRequest
+Orkeon.Infrastructure.MCP.JsonRpcRequest.Id.get -> System.Text.Json.JsonElement?
+Orkeon.Infrastructure.MCP.JsonRpcRequest.Id.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcRequest.JsonRpcRequest() -> void
+Orkeon.Infrastructure.MCP.JsonRpcRequest.Jsonrpc.get -> string!
+Orkeon.Infrastructure.MCP.JsonRpcRequest.Jsonrpc.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcRequest.Method.get -> string!
+Orkeon.Infrastructure.MCP.JsonRpcRequest.Method.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcRequest.Params.get -> System.Text.Json.JsonElement?
+Orkeon.Infrastructure.MCP.JsonRpcRequest.Params.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcResponse
+Orkeon.Infrastructure.MCP.JsonRpcResponse.Error.get -> Orkeon.Infrastructure.MCP.JsonRpcError?
+Orkeon.Infrastructure.MCP.JsonRpcResponse.Error.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcResponse.Id.get -> System.Text.Json.JsonElement?
+Orkeon.Infrastructure.MCP.JsonRpcResponse.Id.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcResponse.JsonRpcResponse() -> void
+Orkeon.Infrastructure.MCP.JsonRpcResponse.Jsonrpc.get -> string!
+Orkeon.Infrastructure.MCP.JsonRpcResponse.Jsonrpc.set -> void
+Orkeon.Infrastructure.MCP.JsonRpcResponse.Result.get -> System.Text.Json.JsonElement?
+Orkeon.Infrastructure.MCP.JsonRpcResponse.Result.set -> void
+const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.InternalError = -32603 -> int
+const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.InvalidParams = -32602 -> int
+const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.InvalidRequest = -32600 -> int
+const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.MethodNotFound = -32601 -> int
+const Orkeon.Infrastructure.MCP.JsonRpcErrorCodes.ParseError = -32700 -> int

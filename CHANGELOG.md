@@ -37,6 +37,14 @@ loggerFactory, modules)` is the overload for a tool without a container.
   validation, and a misspelt one is refused.
 - No module ships yet. The shipped hosts register none, so a key other than `mock` is refused.
 
+### Changed — the JSON-RPC envelope types are stable
+
+`JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcNotification`, `JsonRpcError` and `JsonRpcErrorCodes`
+(`Orkeon.Infrastructure.MCP`) no longer carry `[Experimental("ORKEXP004")]`: they follow JSON-RPC 2.0, a fixed
+specification, and the stability commitment now covers them, with their shape unchanged. Code that names only them
+no longer needs to suppress `ORKEXP004`. The rest of the MCP integration (client, server, transports, protocol types)
+stays under `ORKEXP004`.
+
 ### Added — the experimental `agent-cli` provider: Orkeon on a Claude subscription (ADR-020, `ORKEXP008`)
 
 The first provider module, `Orkeon.Interop.AgentCli` (package of the same name), registered by `orkeon`,
