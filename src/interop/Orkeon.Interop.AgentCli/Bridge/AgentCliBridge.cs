@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Tools.Protocol;
+using Orkeon.Infrastructure.MCP;
 using Orkeon.Interop.AgentCli.Process;
 
 namespace Orkeon.Interop.AgentCli.Bridge;
@@ -12,7 +13,9 @@ namespace Orkeon.Interop.AgentCli.Bridge;
 /// current call and holds every <c>tools/call</c> until Orkeon's loop has run the tool: it never runs one
 /// itself. A call is matched to the <c>tool_use</c> block it answers by <c>_meta["claudecode/toolUseId"]</c>,
 /// and a result may come before its call or after it — the provider ends <c>ChatAsync</c> on the assistant
-/// message, and the CLI sends the call around that moment, before or after (probe 21).
+/// message, and the CLI sends the call around that moment, before or after (probe 21). The JSON-RPC envelope is
+/// Orkeon's own (<see cref="JsonRpcRequest"/>, <see cref="JsonRpcResponse"/>, <see cref="JsonRpcNotification"/>);
+/// the MCP payloads inside it are read and written as JSON objects.
 /// </summary>
 internal sealed partial class AgentCliBridge : IAsyncDisposable
 {
@@ -27,7 +30,7 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
 
     // Under _gate: the calls received and not answered, by tool use id; the results that came first; the
     // tool use ids the session expects calls for, with their tool names, for a call without the id.
-    private readonly Dictionary<string, JsonNode> _waiting = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, JsonElement> _waiting = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string Text, bool IsError)> _stashed = new(StringComparer.Ordinal);
     private readonly List<(string Id, string Name)> _expected = [];
     private IReadOnlyList<ToolSchema> _tools = [];
@@ -72,7 +75,7 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
 
         if (notify)
             await _channel.WriteLineAsync(
-                new JsonObject { ["jsonrpc"] = "2.0", ["method"] = "notifications/tools/list_changed" }.ToJsonString(),
+                JsonSerializer.Serialize(new JsonRpcNotification { Method = "notifications/tools/list_changed" }),
                 cancellationToken).ConfigureAwait(false);
     }
 
@@ -91,7 +94,7 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
     public async ValueTask ResolveAsync(string toolUseId, string text, bool isError, CancellationToken cancellationToken)
     {
         var capped = Cap(text);
-        JsonNode? requestId;
+        JsonElement requestId;
         lock (_gate)
         {
             _expected.RemoveAll(expected => string.Equals(expected.Id, toolUseId, StringComparison.Ordinal));
@@ -134,23 +137,24 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
 
     private async Task HandleAsync(string line)
     {
-        JsonObject? message;
+        JsonRpcRequest? request;
         try
         {
-            message = JsonNode.Parse(line) as JsonObject;
+            request = JsonSerializer.Deserialize<JsonRpcRequest>(line);
         }
         catch (JsonException)
         {
             return;
         }
 
-        if (message is null || message["method"] is not JsonValue methodValue || !methodValue.TryGetValue<string>(out var method))
+        if (request is null || string.IsNullOrEmpty(request.Method))
             return;
 
-        var id = message["id"];
-        var parameters = message["params"] as JsonObject;
+        var method = request.Method;
+        var parameters = request.Params is { ValueKind: JsonValueKind.Object } payload ? JsonObject.Create(payload) : null;
 
-        if (id is null)
+        // A message without an id (or with a null one) is a notification: it gets no answer.
+        if (request.Id is not { ValueKind: not JsonValueKind.Null } id)
         {
             if (method == "notifications/cancelled")
                 DropCancelled(parameters);
@@ -177,11 +181,10 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
                 await AnswerAsync(id, new JsonObject()).ConfigureAwait(false);
                 break;
             default:
-                await WriteAsync(new JsonObject
+                await WriteAsync(new JsonRpcResponse
                 {
-                    ["jsonrpc"] = "2.0",
-                    ["id"] = id.DeepClone(),
-                    ["error"] = new JsonObject { ["code"] = -32601, ["message"] = $"Method not found: {method}" },
+                    Id = id,
+                    Error = new JsonRpcError(JsonRpcErrorCodes.MethodNotFound, $"Method not found: {method}"),
                 }).ConfigureAwait(false);
                 break;
         }
@@ -210,7 +213,7 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
         return new JsonObject { ["tools"] = list };
     }
 
-    private async Task ReceiveCallAsync(JsonNode requestId, JsonObject? parameters)
+    private async Task ReceiveCallAsync(JsonElement requestId, JsonObject? parameters)
     {
         var name = parameters?["name"] is JsonValue nameValue && nameValue.TryGetValue<string>(out var called) ? called : "";
         var toolUseId = parameters?["_meta"]?[ToolUseIdMeta] is JsonValue meta && meta.TryGetValue<string>(out var metaId) ? metaId : null;
@@ -232,12 +235,12 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
             if (toolUseId is null)
             {
                 LogUnmatchedCall(name);
-                toolUseId = "unmatched-" + requestId.ToJsonString();
+                toolUseId = "unmatched-" + requestId.GetRawText();
             }
 
             if (!_stashed.Remove(toolUseId, out result))
             {
-                _waiting[toolUseId] = requestId.DeepClone();
+                _waiting[toolUseId] = requestId.Clone();
                 return;
             }
         }
@@ -254,26 +257,26 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
         {
             foreach (var (toolUseId, requestId) in _waiting.ToList())
             {
-                if (string.Equals(requestId.ToJsonString(), cancelled, StringComparison.Ordinal))
+                if (string.Equals(requestId.GetRawText(), cancelled, StringComparison.Ordinal))
                     _waiting.Remove(toolUseId);
             }
         }
     }
 
-    private Task AnswerCallAsync(JsonNode requestId, string text, bool isError, CancellationToken cancellationToken) =>
+    private Task AnswerCallAsync(JsonElement requestId, string text, bool isError, CancellationToken cancellationToken) =>
         AnswerAsync(requestId, new JsonObject
         {
             ["content"] = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = text }),
             ["isError"] = isError,
         }, cancellationToken);
 
-    private Task AnswerAsync(JsonNode id, JsonObject result, CancellationToken cancellationToken = default) =>
-        WriteAsync(new JsonObject { ["jsonrpc"] = "2.0", ["id"] = id.DeepClone(), ["result"] = result }, cancellationToken);
+    private Task AnswerAsync(JsonElement id, JsonObject result, CancellationToken cancellationToken = default) =>
+        WriteAsync(new JsonRpcResponse { Id = id, Result = JsonSerializer.SerializeToElement(result) }, cancellationToken);
 
-    private async Task WriteAsync(JsonObject message, CancellationToken cancellationToken = default)
+    private async Task WriteAsync(JsonRpcResponse message, CancellationToken cancellationToken = default)
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _stop.Token);
-        await _channel.WriteLineAsync(message.ToJsonString(), linked.Token).ConfigureAwait(false);
+        await _channel.WriteLineAsync(JsonSerializer.Serialize(message), linked.Token).ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()

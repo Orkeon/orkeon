@@ -12,7 +12,9 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- ORKEXP004: the MCP bridge speaks JSON-RPC through Orkeon's own JsonRpcTypes (Orkeon.Infrastructure.MCP),
+         experimental like this project; a change there is a change of the bridge's envelope. -->
+    <NoWarn>$(NoWarn);CS1591;ORKEXP004</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,6 +26,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
+    <!-- JsonRpcTypes, the JSON-RPC envelope the bridge reads and writes. -->
+    <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
     <!-- The relay executable travels with the provider: every host that references this project gets
          Orkeon.Interop.AgentCli.Relay next to its own assembly, where the provider looks for it. -->
     <ProjectReference Include="..\Orkeon.Interop.AgentCli.Relay\Orkeon.Interop.AgentCli.Relay.csproj" />

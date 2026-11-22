@@ -29,7 +29,8 @@ a new one needs a motivated exception.
    vendor's name in the provider's key, so that another CLI is a second engine, not a second provider.
 3. **Orkeon's tools, run by Orkeon.** The CLI starts with its own tools turned off (`--tools ""`, `--strict-mcp-config`)
    and one MCP server, `orkeon`, reached through a relay the CLI starts (`Orkeon.Interop.AgentCli.Relay`, over a Unix
-   domain socket in a private scratch folder). When the model calls a tool, the provider stops the turn on the
+   domain socket in a private scratch folder); the bridge speaks JSON-RPC through Orkeon's own `JsonRpcTypes`
+   (`ORKEXP004`). When the model calls a tool, the provider stops the turn on the
    `message_stop` that ends it and answers the crew with Anthropic `tool_use` blocks; the crew runs the tool through
    its own pipeline, and the next call hands the result to the call the CLI is waiting on. A denied call reaches the
    CLI as an error result.

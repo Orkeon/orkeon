@@ -300,6 +300,21 @@
           "YamlDotNet": "[18.1.0, )"
         }
       },
+      "orkeon.analysis": {
+        "type": "Project",
+        "dependencies": {
+          "Markdig": "[1.5.0, )",
+          "Microsoft.Data.Sqlite": "[10.0.13, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
+          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
+          "Orkeon.Constants.FileSystem": "[1.3.0, )",
+          "Orkeon.Constants.Llm": "[1.3.0, )",
+          "Orkeon.Domain": "[1.3.0, )",
+          "SQLitePCLRaw.lib.e_sqlite3": "[3.53.3, )",
+          "TreeSitter.DotNet": "[1.3.0, )",
+          "YamlDotNet": "[18.1.0, )"
+        }
+      },
       "orkeon.analysis.abstractions": {
         "type": "Project",
         "dependencies": {
@@ -320,6 +335,12 @@
           "Orkeon.Rag.Abstractions": "[1.3.0, )"
         }
       },
+      "orkeon.constants.configuration": {
+        "type": "Project"
+      },
+      "orkeon.constants.filesystem": {
+        "type": "Project"
+      },
       "orkeon.constants.llm": {
         "type": "Project"
       },
@@ -335,6 +356,54 @@
           "Ulid": "[1.4.1, )"
         }
       },
+      "orkeon.infrastructure": {
+        "type": "Project",
+        "dependencies": {
+          "AWSSDK.SecretsManager": "[4.0.100.21, )",
+          "Apache.Arrow": "[23.0.0, )",
+          "Azure.Identity": "[1.21.0, )",
+          "Azure.Security.KeyVault.Secrets": "[4.11.2, )",
+          "CsvHelper": "[33.1.0, )",
+          "HtmlAgilityPack": "[1.13.1, )",
+          "Markdig": "[1.5.0, )",
+          "Microsoft.CodeAnalysis.CSharp.Scripting": "[5.9.0, )",
+          "Microsoft.Data.Sqlite": "[10.0.13, )",
+          "Microsoft.Extensions.AI": "[10.11.0, )",
+          "Microsoft.Extensions.AI.OpenAI": "[10.11.0, )",
+          "Microsoft.Extensions.Configuration": "[10.0.13, )",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "[10.0.13, )",
+          "Microsoft.Extensions.FileSystemGlobbing": "[10.0.13, )",
+          "Microsoft.Extensions.Hosting.Abstractions": "[10.0.13, )",
+          "Microsoft.Extensions.Http": "[10.0.13, )",
+          "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
+          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "[8.23.0, )",
+          "Microsoft.IdentityModel.Tokens": "[8.23.0, )",
+          "Npgsql": "[10.0.3, )",
+          "OpenTelemetry": "[1.20.1, )",
+          "OpenTelemetry.Api": "[1.20.1, )",
+          "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.20.1, )",
+          "OpenTelemetry.Extensions.Hosting": "[1.20.1, )",
+          "OpenTelemetry.Instrumentation.Http": "[1.20.1, )",
+          "OpenTelemetry.Instrumentation.Runtime": "[1.20.1, )",
+          "Orkeon.Analysis": "[1.3.0, )",
+          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
+          "Orkeon.Application": "[1.3.0, )",
+          "Orkeon.Constants.Configuration": "[1.3.0, )",
+          "Orkeon.Constants.FileSystem": "[1.3.0, )",
+          "Orkeon.Constants.Llm": "[1.3.0, )",
+          "Orkeon.Domain": "[1.3.0, )",
+          "Orkeon.Rag": "[1.3.0, )",
+          "Orkeon.Rag.Abstractions": "[1.3.0, )",
+          "Orkeon.Tools.Abstractions": "[1.3.0, )",
+          "Polly": "[8.8.0, )",
+          "SQLitePCLRaw.lib.e_sqlite3": "[3.53.3, )",
+          "StackExchange.Redis": "[3.4.20, )",
+          "System.IdentityModel.Tokens.Jwt": "[8.23.0, )",
+          "System.Security.Cryptography.ProtectedData": "[10.0.13, )",
+          "System.Threading.RateLimiting": "[10.0.13, )",
+          "YamlDotNet": "[18.1.0, )"
+        }
+      },
       "orkeon.interop.agentcli": {
         "type": "Project",
         "dependencies": {
@@ -343,16 +412,43 @@
           "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
           "Orkeon.Application": "[1.3.0, )",
           "Orkeon.Domain": "[1.3.0, )",
+          "Orkeon.Infrastructure": "[1.3.0, )",
           "Orkeon.Interop.AgentCli.Relay": "[1.3.0, )"
         }
       },
       "orkeon.interop.agentcli.relay": {
         "type": "Project"
       },
+      "orkeon.rag": {
+        "type": "Project",
+        "dependencies": {
+          "HtmlAgilityPack": "[1.13.1, )",
+          "Microsoft.Extensions.AI.Abstractions": "[10.11.0, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
+          "Microsoft.Extensions.Http": "[10.0.13, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
+          "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
+          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
+          "Orkeon.Application": "[1.3.0, )",
+          "Orkeon.Constants.Configuration": "[1.3.0, )",
+          "Orkeon.Domain": "[1.3.0, )",
+          "Orkeon.Rag.Abstractions": "[1.3.0, )",
+          "PdfPig": "[0.1.16, )",
+          "YamlDotNet": "[18.1.0, )"
+        }
+      },
       "orkeon.rag.abstractions": {
         "type": "Project",
         "dependencies": {
           "Orkeon.Domain": "[1.3.0, )"
+        }
+      },
+      "orkeon.tools.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.Extensions.Http": "[10.0.13, )",
+          "Orkeon.Domain": "[1.3.0, )",
+          "YamlDotNet": "[18.1.0, )"
         }
       },
       "Apache.Arrow": {

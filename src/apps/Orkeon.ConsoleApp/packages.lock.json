@@ -790,6 +790,7 @@
           "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
           "Orkeon.Application": "[1.3.0, )",
           "Orkeon.Domain": "[1.3.0, )",
+          "Orkeon.Infrastructure": "[1.3.0, )",
           "Orkeon.Interop.AgentCli.Relay": "[1.3.0, )"
         }
       },
