@@ -189,7 +189,8 @@ Six options of `ctx.llm.act(prompt, options)` shape the loop itself (the full li
   from its call alone; all batches of one turn are asked together. `true` takes the host's numbers, an object
   overrides them within the same bounds (`fillShare` above 0 and at most 1, `keepRecentMessages` 0 or more,
   `headChars` 1 or more). Without `prune` no decision call is made, whatever `Enabled` says; with the decision
-  circuit off nothing is asked and the run warns once. A pruning that cut or dropped a result emits
+  circuit off nothing is asked and the run warns once; a crew on `decision.mode: none` prunes nothing, with no
+  call and no warning, and a host that hands no pruner ignores `prune` with one warning. A pruning that cut or dropped a result emits
   `agent.pruned`, and `result.pruned` (`offered`, `judged`, `kept`, `cut`, `dropped`, `freedTokens`) sums the
   loop on every outcome (interrupted, exhausted and budget-exhausted included); it is absent when nothing
   was judged. `prune` next to `onContextPressure` or `contextPressure` throws `InvalidScriptError` naming both.

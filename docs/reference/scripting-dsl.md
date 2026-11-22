@@ -184,7 +184,7 @@ state is a JS `Proxy` whose `set` trap exists to make that loud rather than lost
 
 `ctx.llm` — `complete(prompt)`, `chat(messages)`, `stream(prompt)` (async-iterable; `usage`
 and `reasoningChunks` are read after the loop, `reasoning` at once), `extract(prompt, schema)`,
-`decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, and `interrupt()` /
+`decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, `pick(request, options)` (below), and `interrupt()` /
 `isInterrupted`. Every call goes to the agent's provider (the host's, or its profile's), or to the
 profile `{ llm: { profile } }` names; without one, a `<undefined-llm:…>` echo answers, which is what lets the examples run keyless. A call takes these
 options, all for that call only: `llm: { profile }` runs it on the host profile of that name
@@ -270,13 +270,15 @@ the middle at 4,000 characters. It answers `{ profile?, effort? }`, a key for ea
   repeated, blank or `auto` rung; a rung, floor, ceiling or fallback the host does not declare; a floor or ceiling off
   the ladder; a floor above the ceiling; an unknown level; `min` above `max`; no level left between them; neither
   `profile` nor `effort`. A host that wires no pick (`ScriptingHostPorts.SystemOnePicker`, `ORKEXP008`) rejects the
-  call; `orkeon run`, the REPL, `orkeon-host` and `mcp serve --crew` wire it. The run's cancellation cancels the call.
+  call; `orkeon run`, the REPL, `orkeon-host` and `mcp serve --crew` wire it. The run's cancellation cancels the call, except in an `onAgentStart` or `onAgentStop`
+  hook (run when an agent joins or leaves a crew), whose `ctx` has no cancellation: a pick made there runs to its end.
 
 `act` is the LLM ⇄ tool-call loop: it offers the model the built-ins the agent selected with
 `.tools([...])` and its `withAutonomousTool` instances — whose `execute` runs in the script,
 on the engine's own thread — until the model stops asking or `maxIterations` (default 10,
 `0` = unlimited) is reached. It resolves to `{ output, iterations }` (plus `interrupted` or
-`exhausted` when the loop stopped early). Every tool call of a turn runs, in order, and the
+`exhausted` when the loop stopped early, and `pruned` — `{ offered, judged, kept, cut, dropped, freedTokens }`,
+summed over the loop — when its `prune` option judged at least one result; absent otherwise). Every tool call of a turn runs, in order, and the
 turn is replayed in the provider's own tool protocol — the assistant turn with its calls, then
 one `tool` result per call, a permission refusal or a tool error included — whether the
 provider answers in the OpenAI shape (most providers, Ollama included) or with the Anthropic

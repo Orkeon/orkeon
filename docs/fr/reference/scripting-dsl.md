@@ -194,7 +194,7 @@ Transmettez-le (`crew.run({ signal: ctx.signal })`) plutôt que de l'interroger.
 
 `ctx.llm` — `complete(prompt)`, `chat(messages)`, `stream(prompt)` (itérable async ;
 `usage` et `reasoningChunks` se lisent après la boucle, `reasoning` aussitôt), `extract(prompt, schema)`,
-`decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, et `interrupt()` /
+`decide(prompt, choices)`, `embed(text)`, `act(prompt, opts)`, `pick(request, options)` (plus bas), et `interrupt()` /
 `isInterrupted`. Chaque appel part vers le fournisseur de l'agent (celui de l'hôte, ou celui de son
 profil), ou vers le profil que nomme `{ llm: { profile } }` ; sans fournisseur,
 un écho `<undefined-llm:…>` répond, ce qui permet aux exemples de tourner sans clé. Un appel
@@ -287,14 +287,16 @@ partie demandée, chacune `{ value, reason, picked, probability }` ; l'hôte ne 
   un plafond hors de l'échelle ; un plancher au-dessus du plafond ; un niveau inconnu ; `min` au-dessus de `max` ;
   aucun niveau entre eux ; ni `profile` ni `effort`. Un hôte qui ne câble aucun choix
   (`ScriptingHostPorts.SystemOnePicker`, `ORKEXP008`) rejette l'appel ; `orkeon run`, le REPL, `orkeon-host` et
-  `mcp serve --crew` le câblent. L'annulation du run annule l'appel.
+  `mcp serve --crew` le câblent. L'annulation du run annule l'appel, sauf dans un hook `onAgentStart` ou `onAgentStop`
+  (exécuté quand un agent rejoint ou quitte une crew), dont le `ctx` n'a pas d'annulation : un choix fait là va à son terme.
 
 `act` est la boucle LLM ⇄ appels d'outils : elle propose au modèle les outils intégrés que
 l'agent a choisis avec `.tools([...])` et ses instances `withAutonomousTool` — dont le
 `execute` s'exécute dans le script, sur le fil du moteur — jusqu'à ce que le modèle cesse de
 demander ou que `maxIterations` (défaut 10, `0` = illimité) soit atteint. Elle se résout en
 `{ output, iterations }` (plus `interrupted` ou `exhausted` quand la boucle s'est arrêtée
-avant). Chaque appel d'outil d'un tour s'exécute, dans l'ordre, et le tour est rejoué dans le
+avant, et `pruned` — `{ offered, judged, kept, cut, dropped, freedTokens }`, additionnés sur la boucle — quand
+son option `prune` a jugé au moins un résultat ; absent sinon). Chaque appel d'outil d'un tour s'exécute, dans l'ordre, et le tour est rejoué dans le
 protocole d'outils du fournisseur — le tour de l'assistant avec ses appels, puis un résultat
 `tool` par appel, refus de permission ou erreur d'outil compris —, que le fournisseur réponde
 au format OpenAI (la plupart des fournisseurs, Ollama compris) ou avec le corps Messages

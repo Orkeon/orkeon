@@ -659,7 +659,7 @@ lient avec le second ; `orkeon eval run --llm-judge` la fixe pour un run, `--off
 Le fournisseur de décision TypeSafe (modèle Jev, clé requise), lié par `AddOrkeonDecisionProvider(configuration, provider)`, que les trois
 binaires livrés appellent quand il est le fournisseur actif (un seul est actif à la fois, voir [`Orkeon:Decision`](#orkeondecision)) : cette section est présente — même vide, `TypeSafe: {}` compte — ou `TYPESAFE_API_KEY` est définie, ou `Orkeon:Decision:Provider` vaut `typesafe` : la clé,
 l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel (le juge LLM du gardien est
-[`Orkeon:Guardian:Llm`](#orkeonguardian)). Voir [Modèles de décision](../architecture/decision-models.md).
+[`Orkeon:Guardian:Llm`](#orkeonguardian)). Sans clé — ni `ApiKey` ni la variable que nomme `ApiKeyEnvVar` — le circuit de décision est coupé dès le démarrage avec la cause `no-key` (#451), et aucun appel n'est fait. Voir [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -678,7 +678,7 @@ l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de cha
 
 Le modèle de décision Liquid, lié par `AddOrkeonDecisionProvider(configuration, provider)` quand il est le fournisseur de
 décision actif : cette section est présente (même vide), ou `LIQUID_API_KEY` est définie, ou `Orkeon:Decision:Provider` vaut `liquid`.
-Un seul fournisseur est actif à la fois (voir [`Orkeon:Decision`](#orkeondecision)). Voir [Modèles de décision](../architecture/decision-models.md).
+Un seul fournisseur est actif à la fois (voir [`Orkeon:Decision`](#orkeondecision)). Sans clé — ni `ApiKey` ni la variable que nomme `ApiKeyEnvVar` — le circuit de décision est coupé dès le démarrage avec la cause `no-key` (#451), et aucun appel n'est fait. Voir [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Liquid -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -759,7 +759,7 @@ les appels de cet agent dans le run, nouvelles tentatives et révisions comprise
 sur la tâche, un votant, a le sien) ; le modèle de décision lit le rôle de l'agent et la tâche
 (coupée au milieu à 4 000 caractères), jamais la conversation. Sous une probabilité de 0,6, sans
 réponse, quand l'appel échoue ou quand le circuit de décision est coupé (`--no-decision`,
-`Orkeon:Decision:Enabled: false`, aucun fournisseur de décision), le profil `default` de l'hôte
+`Orkeon:Decision:Enabled: false`, aucun fournisseur de décision, aucune clé pour un fournisseur hébergé), le profil `default` de l'hôte
 (la section `Llm`) s'applique, jamais celui de l'agent, sans erreur : un circuit coupé ne fait aucun
 appel de décision. Dans une crew en `decision.mode: none`, le profil `default` s'applique aussi, sans
 appel ni avertissement (`reason: decision-none`). Un avertissement est journalisé une fois par run quand le circuit est coupé ou que
@@ -1417,7 +1417,7 @@ sortie d'une tâche (`Phases`), un risque à `BlockThreshold` ou au-dessus bloqu
 répond pas `FailMode` tranche : `Closed` (défaut) refuse, `Open` laisse passer le texte ; les deux auditent
 `guardian.judge.unavailable`. Tant que la phase de sortie est gardée, le streaming d'une tâche attend le jugement. Il demande un modèle de décision (`AddOrkeonDecisionProvider`) ; activé
 en `FailMode: Closed` et sans lui, l'hôte refuse de démarrer.
-Le juge suit le circuit de décision (`--no-decision`, `Orkeon:Decision:Enabled=false`, aucun fournisseur) : coupé,
+Le juge suit le circuit de décision (`--no-decision`, `Orkeon:Decision:Enabled=false`, aucun fournisseur, aucune clé) : coupé,
 `FailMode: Closed` refuse de démarrer en nommant la cause, et `Open` retire le juge avec un avertissement
 ([Modèles de décision](../architecture/decision-models.md#chaque-consommateur-suit-le-circuit)).
 
@@ -2112,7 +2112,7 @@ au-delà du 24e n'est jamais proposé. La question est un choix unique, si bien 
 conviennent se partagent la probabilité du modèle : un skill est choisi quand sa part atteint 0,3,
 la plus grande part d'abord.
 Quand le circuit de décision est coupé (`--no-decision`, `Orkeon:Decision:Enabled: false`, aucun
-fournisseur de décision), quand la bibliothèque ne contient aucun skill ou ne peut être lue, ou
+fournisseur de décision, aucune clé pour un fournisseur hébergé), quand la bibliothèque ne contient aucun skill ou ne peut être lue, ou
 quand le modèle de décision échoue ou ne répond aucun choix utilisable (`reason: pick-failed`),
 l'agent porte sa liste `fallback`, sinon aucun skill, avec un
 avertissement par run pour chaque cause (hors d'un run, une fois par hôte) et sans erreur ; dans une
