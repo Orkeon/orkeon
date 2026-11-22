@@ -14,9 +14,10 @@ A scripted command (`*.cmd.ts`) can ask System One for a profile and/or a thinki
 `{ profile?, effort? }`. A refusal is prefixed `services.get("pick").pick { <option> } ...`; the call follows the
 command's cancellation (`ctx.signal`) by itself; the LLM usage carries no crew nor agent and is metered like the
 command's other LLM calls (a `decision` call, in the session's total); there is no agent role (the decision model reads
-an empty one). The service is optional: `ctx.services.has("pick")` is true only in `orkeon-repl`, the host that runs
-scripted commands, when it wires an `ISystemOnePicker`; the picker comes from the scope the script engines read their
-scoped ports from, as for `ctx.llm.pick`. The service is bound to the run that got it: get it inside the handler.
+an empty one). The service is optional: `ctx.services.has("pick")` is true in a host that runs scripted commands and
+wires an `ISystemOnePicker` (`AddOrkeonApplication` and `AddScriptCommands`) — `orkeon-repl` among the shipped ones;
+`orkeon run`, `orkeon-host` and `mcp serve --crew` load no scripted command. The picker comes from the scope the script
+engines read their scoped ports from, as for `ctx.llm.pick`; without that scope the service is absent. The service is bound to the run that got it: get it inside the handler.
 Experimental (`ORKEXP008`), like `ctx.llm.pick`. The typings declare `PickService` in `orkeon-cli.d.ts`.
 
 ### Added — `Llm:WorkspaceId`, the Anthropic workspace from the settings (#468)

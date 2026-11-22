@@ -294,9 +294,11 @@ answers `{ profile?, effort? }`, each `{ value, reason, picked, probability }`, 
 `ctx.llm.pick`. It differs in four points: a refusal is prefixed `services.get("pick").pick { <option> } ...`;
 the call follows the command's cancellation (`ctx.signal`) by itself; the LLM usage carries no crew nor agent
 and is metered like the command's other LLM calls (a `decision` call, in the session's total); there is no agent
-role (the decision model reads an empty one). The service is optional: `ctx.services.has("pick")` is true only in
-`orkeon-repl`, the host that runs scripted commands, when it wires an `ISystemOnePicker` (read from the scope the
-script engines read their scoped ports from, as for `ctx.llm.pick`). The service is bound to the run that got it:
+role (the decision model reads an empty one). The service is optional: `ctx.services.has("pick")` is true in a
+host that runs scripted commands and wires an `ISystemOnePicker` (`AddOrkeonApplication` and `AddScriptCommands`, as
+[a host of your own](#building-a-repl-host-in-c) does) — `orkeon-repl` among the shipped ones; `orkeon run`, `orkeon-host` and
+`mcp serve --crew` load no scripted command. The picker is read from the scope the script engines read their scoped
+ports from, as for `ctx.llm.pick`. The service is bound to the run that got it:
 get it inside the handler, never once at module scope, where it would keep the first run's cancellation.
 
 ## Dispatching commands to agents

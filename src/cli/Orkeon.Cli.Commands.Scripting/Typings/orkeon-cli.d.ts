@@ -294,7 +294,7 @@ export interface ServiceLocator {
    *   `"approvals"` → {@link PendingApprovals} (the tool approvals waiting for the operator, read-only, in `orkeon-repl`),
    *   `"session"` → {@link SessionFacade} (save the persisted session now, here or to another file, load a saved one, in `orkeon-repl`),
    *   `"usage"` → {@link SessionUsage} (the session's LLM usage by model and by command, with its cost, read-only),
-   *   `"pick"` → {@link PickService} (System One's profile and thinking-level pick, as `ctx.llm.pick`, in `orkeon-repl`, the host that runs scripted commands, when it wires an `ISystemOnePicker`; experimental, ORKEXP008).
+   *   `"pick"` → {@link PickService} (System One's profile and thinking-level pick, as `ctx.llm.pick`, in a host that runs scripted commands and wires an `ISystemOnePicker` — `orkeon-repl` among the shipped ones; `orkeon run`, `orkeon-host` and `mcp serve --crew` load no scripted command; experimental, ORKEXP008).
    *
    * The host configuration is deliberately not served: it carries API keys and connection
    * strings (SEC-009), so `get("configuration")` throws.

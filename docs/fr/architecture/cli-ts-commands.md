@@ -297,9 +297,11 @@ répond `{ profile?, effort? }`, chacun `{ value, reason, picked, probability }`
 l'appel suit de lui-même l'annulation de la commande (`ctx.signal`) ; la consommation LLM ne porte ni crew ni
 agent et se compte comme les autres appels LLM de la commande (un appel `decision`, dans le total de la session) ;
 il n'y a pas de rôle d'agent (le modèle de décision en lit un vide). Le service est optionnel :
-`ctx.services.has("pick")` n'est vrai que dans `orkeon-repl`, l'hôte qui exécute les commandes scriptées, lorsqu'il
-câble un `ISystemOnePicker` (lu dans la portée où les moteurs de script lisent leurs ports scopés, comme pour
-`ctx.llm.pick`). Le service est lié à l'exécution qui l'a obtenu : on le prend dans le handler, jamais une fois au
+`ctx.services.has("pick")` est vrai dans un hôte qui exécute les commandes scriptées et câble un `ISystemOnePicker`
+(`AddOrkeonApplication` et `AddScriptCommands`, comme le fait [un hôte à vous](#construire-un-hôte-repl-en-c)) —
+`orkeon-repl` parmi les hôtes livrés ; `orkeon run`, `orkeon-host` et `mcp serve --crew` ne chargent aucune commande
+scriptée. Le sélecteur est lu dans la portée où les moteurs de script lisent leurs ports scopés, comme pour
+`ctx.llm.pick`. Le service est lié à l'exécution qui l'a obtenu : on le prend dans le handler, jamais une fois au
 niveau du module, où il garderait l'annulation de la première exécution.
 
 ## Dispatcher des commandes vers des agents

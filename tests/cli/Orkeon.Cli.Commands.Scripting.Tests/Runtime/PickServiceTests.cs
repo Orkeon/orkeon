@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Crew.Routing;
+using Orkeon.Application.DependencyInjection;
+using Orkeon.Cli.Commands.Scripting.DependencyInjection;
 using Orkeon.Cli.Abstractions.Commands;
 using Orkeon.Cli.Commands.Scripting.Loading;
 using Orkeon.Cli.Commands.Scripting.Runtime;
@@ -23,28 +25,42 @@ public sealed class PickServiceTests
         new(DefaultScriptServiceWhitelist.Build().Build(), services);
 
     /// <summary>Runs a command whose handler body is <paramref name="body"/> and returns what it wrote.</summary>
+    /// <summary>The picker as a host offers it: beside the run scope AddScriptCommands registers, which the service reads.</summary>
+    private static ServiceCollection WithRunScope(ServiceCollection services)
+    {
+        services.AddSingleton(sp => new Orkeon.Cli.Commands.Scripting.DependencyInjection.ScriptEngineRunScope(sp));
+        return services;
+    }
+
     private static Task<string> RunAsync(ISystemOnePicker picker, string body, CancellationToken? ct = null) =>
-        RunAsync(new ServiceCollection().AddSingleton(picker).BuildServiceProvider(), body, ct ?? Ct);
+        RunAsync(WithRunScope(new ServiceCollection()).AddSingleton(picker).BuildServiceProvider(), body, ct ?? Ct);
+
+    /// <summary>Writes the command whose handler body is <paramref name="body"/> under <c>cmd/</c> of a new directory.</summary>
+    private static async Task<string> WriteCommandAsync(string body)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "orkeon-pick-cmd-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(directory, "cmd"));
+        await File.WriteAllTextAsync(Path.Combine(directory, "cmd", "choose.cmd.ts"), $$"""
+            defineCommand({
+              name: "choose",
+              description: "Asks System One.",
+              async handler(args, ctx) {
+                const pick = ctx.services.get("pick");
+                {{body}}
+                return ctx.continue();
+              },
+            });
+            """, Ct);
+        return directory;
+    }
 
     /// <summary>Runs the command over <paramref name="services"/> (disposed after the run) and returns what it wrote.</summary>
     private static async Task<string> RunAsync(ServiceProvider services, string body, CancellationToken ct)
     {
         using var owned = services;
-        var directory = Path.Combine(Path.GetTempPath(), "orkeon-pick-cmd-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(Path.Combine(directory, "cmd"));
+        var directory = await WriteCommandAsync(body);
         try
         {
-            await File.WriteAllTextAsync(Path.Combine(directory, "cmd", "choose.cmd.ts"), $$"""
-                defineCommand({
-                  name: "choose",
-                  description: "Asks System One.",
-                  async handler(args, ctx) {
-                    const pick = ctx.services.get("pick");
-                    {{body}}
-                    return ctx.continue();
-                  },
-                });
-                """, Ct);
             var fs = new DiskBackedFileSystemService(directory, virtualRoot: "/workspace");
             var loader = new ScriptCommandLoader(
                 fs,
@@ -77,13 +93,73 @@ public sealed class PickServiceTests
     [Trait("BR", "CH-463")]
     public void ShouldOfferThePick_OnlyWhenTheHostWiresOne()
     {
-        using var bare = new ServiceCollection().BuildServiceProvider();
-        using var wired = new ServiceCollection().AddSingleton<ISystemOnePicker>(new StubSystemOnePicker()).BuildServiceProvider();
+        using var bare = WithRunScope(new ServiceCollection()).BuildServiceProvider();
+        using var wired = WithRunScope(new ServiceCollection()).AddSingleton<ISystemOnePicker>(new StubSystemOnePicker()).BuildServiceProvider();
 
         Assert.False(Locator(bare).has(ScriptServiceKeys.Pick));
         Assert.True(Locator(wired).has(ScriptServiceKeys.Pick));
         using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = Orkeon.Tests.Shared.Timing.HangGuards.EnginePromise);
         Assert.IsType<PickService>(Locator(wired).BoundTo(engine, Ct).get(ScriptServiceKeys.Pick));
+    }
+
+    /// <summary>
+    /// A container with a picker but no run scope (a host that did not call AddScriptCommands): the scoped picker is
+    /// never read from the root, so the service is absent and refused as any service that is not registered.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-463")]
+    public void ShouldNotOfferThePick_WhenNoRunScopeIsRegistered()
+    {
+        using var services = new ServiceCollection()
+            .AddScoped<ISystemOnePicker>(_ => new StubSystemOnePicker())
+            .BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+
+        Assert.False(Locator(services).has(ScriptServiceKeys.Pick));
+        using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = Orkeon.Tests.Shared.Timing.HangGuards.EnginePromise);
+        var refusal = Assert.ThrowsAny<Exception>(() => Locator(services).BoundTo(engine, Ct).get(ScriptServiceKeys.Pick));
+        Assert.Contains("not registered in this host", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The wiring a host ships (<c>orkeon-repl</c>'s Program): AddOrkeonApplication registers the scoped picker,
+    /// AddScriptCommands the run scope and the loader, under a container that validates scopes.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-463")]
+    public async Task ShouldOfferAndAnswerThePick_ThroughTheHostWiring_WhenTheContainerValidatesScopes()
+    {
+        var directory = await WriteCommandAsync("""
+            ctx.writeLine("has:" + ctx.services.has("pick"));
+            const answer = await pick.pick("r", { effort: { fallback: "medium" } });
+            ctx.writeLine("answer:" + answer.effort.value);
+            """);
+        try
+        {
+            var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
+            var collection = new ServiceCollection();
+            collection.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(configuration);
+            collection.AddLogging();
+            collection.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(new DiskBackedFileSystemService(directory, virtualRoot: "/workspace"));
+            collection.AddOrkeonApplication();
+            collection.AddScriptCommands(configuration, cfg =>
+            {
+                cfg.Directories = ["/workspace/cmd"];
+                cfg.EsbuildTranspile = false;
+            });
+            await using var services = collection.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+
+            var (registry, _) = await services.GetRequiredService<ScriptCommandLoader>().LoadAndRegisterAsync(Ct);
+            var output = new ScriptedTestConsole();
+            await registry.ScriptCommands.Single(c => c.Name == "choose").ExecuteAsync(
+                new CommandContext { RawInput = "/choose", Args = [], Console = output, Scope = services }, Ct);
+
+            Assert.Contains("has:true", output.Output, StringComparison.Ordinal);
+            Assert.Contains("answer:medium", output.Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            try { Directory.Delete(directory, recursive: true); } catch (IOException) { /* best-effort */ }
+        }
     }
 
     [Fact]

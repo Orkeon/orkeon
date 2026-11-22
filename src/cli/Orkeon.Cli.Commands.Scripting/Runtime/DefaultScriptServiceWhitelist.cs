@@ -72,9 +72,10 @@ public static class DefaultScriptServiceWhitelist
             // Optional, experimental: System One's pick (#463), the contract of ctx.llm.pick for a command — present
             // when the host wires an ISystemOnePicker. The picker is scoped and a scoped service is never resolved from
             // the root: it comes from the scope the script engines read their scoped ports from (ScriptEngineRunScope,
-            // the one ctx.llm.pick reads), else from the provider the locator was given (a host's own scope).
+            // registered by AddScriptCommands, the one ctx.llm.pick reads). Without that scope the service is absent:
+            // has("pick") is false and get("pick") is refused as any service that is not registered.
             .AddOptional(ScriptServiceKeys.Pick, sp =>
-                (sp.GetService<ScriptEngineRunScope>()?.Services ?? sp).GetService<ISystemOnePicker>() is { } picker
+                sp.GetService<ScriptEngineRunScope>()?.Services.GetService<ISystemOnePicker>() is { } picker
                     ? new PickService.Registration(picker)
                     : null);
     }
