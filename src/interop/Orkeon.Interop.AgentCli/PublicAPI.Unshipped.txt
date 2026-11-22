@@ -1,0 +1,29 @@
+#nullable enable
+const Orkeon.Interop.AgentCli.AgentCliDiagnostics.ExperimentalId = "ORKEXP008" -> string!
+const Orkeon.Interop.AgentCli.AgentCliDiagnostics.ExperimentalUrl = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md" -> string!
+const Orkeon.Interop.AgentCli.AgentCliDiagnostics.ProviderKey = "agent-cli" -> string!
+Orkeon.Interop.AgentCli.AgentCliDiagnostics
+Orkeon.Interop.AgentCli.DependencyInjection.AgentCliServiceCollectionExtensions
+[ORKEXP008]const Orkeon.Interop.AgentCli.AgentCliEngines.Claude = "claude" -> string!
+[ORKEXP008]const Orkeon.Interop.AgentCli.AgentCliOptions.SectionName = "Llm:AgentCli" -> string!
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliEngines
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.AgentCliOptions() -> void
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.AutocompactTokens.get -> long
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.AutocompactTokens.set -> void
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.Command.get -> string!
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.Command.set -> void
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.Engine.get -> string!
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.Engine.set -> void
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.MaxProcesses.get -> int
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.MaxProcesses.set -> void
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.MaxToolResultCharacters.get -> int
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.MaxToolResultCharacters.set -> void
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.RequireLogin.get -> bool
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliOptions.RequireLogin.set -> void
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliProviderModule
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliProviderModule.AgentCliProviderModule(Orkeon.Interop.AgentCli.AgentCliOptions! options) -> void
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliProviderModule.Create(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext! context) -> Orkeon.Domain.SharedKernel.ILlmProvider!
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliProviderModule.DisposeAsync() -> System.Threading.Tasks.ValueTask
+[ORKEXP008]Orkeon.Interop.AgentCli.AgentCliProviderModule.Key.get -> string!
+[ORKEXP008]static Orkeon.Interop.AgentCli.DependencyInjection.AgentCliServiceCollectionExtensions.AddOrkeonAgentCli(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Packed by the src/packaging/Orkeon.Interop.AgentCli wrapper (nuspec depends on the `Orkeon` umbrella). -->
+    <IsPackable>false</IsPackable>
+    <Description>Experimental agent CLI provider for Orkeon (ADR-020): an Orkeon agent answered by the claude CLI on its own login, Orkeon's tools reaching it through an MCP bridge.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Claude;CLI;MCP;Interop</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Orkeon/orkeon</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
+    <!-- The relay executable travels with the provider: every host that references this project gets
+         Orkeon.Interop.AgentCli.Relay next to its own assembly, where the provider looks for it. -->
+    <ProjectReference Include="..\Orkeon.Interop.AgentCli.Relay\Orkeon.Interop.AgentCli.Relay.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Interop.AgentCli.Tests" />
+  </ItemGroup>
+
+</Project>

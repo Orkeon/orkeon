@@ -255,6 +255,37 @@ public sealed class DoctorCommandTests : IDisposable
             && l.Detail.Contains("Llm:Provider: 'other-cli'", StringComparison.Ordinal));
     }
 
+    /// <summary>ADR-020: the tool ships the agent-cli module, and its <c>Llm:AgentCli</c> settings pass the run's start.</summary>
+    [Fact]
+    public async Task ShouldDescribeAgentCli_WhenToolShipsItsModule()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "agent-cli", "Model": "haiku", "AgentCli": { "MaxProcesses": 2 } } }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains("agent-cli (provider module)", Assert.Single(lines, l => l.Check == "llm-config").Detail, StringComparison.Ordinal);
+        Assert.Equal("ok", Assert.Single(lines, l => l.Check == "runner-settings").Status);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseUnknownAgentCliKey_WhenSettingsMisspellIt()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "agent-cli", "AgentCli": { "MaxProcess": 2 } } }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains(lines, l => l.Check == "runner-settings" && l.Status == "fail"
+            && l.Detail.Contains("MaxProcess", StringComparison.Ordinal));
+    }
+
     private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(
         ScriptScratch scratch, Func<string>? tscResolver = null,
         IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule>? modules = null)

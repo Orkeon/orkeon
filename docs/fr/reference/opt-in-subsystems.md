@@ -78,6 +78,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Outils e-mail | `AddOrkeonEmailTools(configuration)` (`Orkeon:Tools:Email`, inerte tant qu'aucun compte n'est déclaré) · `AddOrkeonEmailTokenStore(fileSystem, virtualDirectory)` (store des jetons OAuth) — tous deux câblés par `RunnerHost` ; le REPL ne câble que les outils | Tools.Email | les 13 outils `email_*` — voir [Outils e-mail](../guides/email.md) | Stable |
 | Outils drive | `AddOrkeonDriveTools(configuration)` (`Orkeon:Tools:Drive`, inertes tant qu'aucun compte n'est déclaré) · `AddOrkeonDriveTokenStore(fileSystem, virtualDirectory)` (store des jetons OAuth) — tous deux câblés par `RunnerHost` ; le REPL ne câble que les outils | Tools.Drive | les 11 outils `drive_*` — voir [Outils drive](../guides/drive.md) | Stable |
 | Pont Microsoft Agent Framework | `AddOrkeonAgentFramework()` | Interop.AgentFramework | `ICrewAgentFactory` (une crew vue comme `AIAgent`, chargée et lancée dans un scope à elle à chaque tour) — voir [ADR-010](../adr/ADR-010-agent-framework-interop.md) | Stable |
+| Fournisseur LLM `agent-cli` | `AddOrkeonAgentCli()` — câblé par `orkeon`, `orkeon-repl` et `orkeon-host` ; inerte tant qu'aucune section ne dit `"Provider": "agent-cli"` | Interop.AgentCli | `ILlmProviderModule` `agent-cli` (une CLI d'agent sur son propre abonnement, les outils d'Orkeon par un pont MCP, réglages `Llm:AgentCli`) — voir [ADR-020](../adr/ADR-020-agent-cli-provider.md) | Expérimental (`ORKEXP008`) |
 
 
 > **Hors de ce catalogue — enregistrés par `AddOrkeonInfrastructure()` et

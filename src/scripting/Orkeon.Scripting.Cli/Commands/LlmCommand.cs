@@ -217,7 +217,9 @@ internal static class LlmCommand
             return await ExecuteDecisionProbeAsync(console, options, decisionProvider).ConfigureAwait(false);
 
         var apiKey = Environment.GetEnvironmentVariable(options.ApiKeyEnv);
-        var needsKey = !string.Equals(options.Provider, "ollama", StringComparison.OrdinalIgnoreCase);
+        // Ollama runs keyless, and a provider module (agent-cli) signs in its own way.
+        var needsKey = !string.Equals(options.Provider, "ollama", StringComparison.OrdinalIgnoreCase)
+            && !CliLlmProviderModules.All.Any(module => string.Equals(module.Key, options.Provider, StringComparison.OrdinalIgnoreCase));
         if (needsKey && string.IsNullOrWhiteSpace(apiKey))
         {
             await console.ErrorOutput.WriteLineAsync(
@@ -524,10 +526,12 @@ internal static class LlmCommand
 
     /// <summary>
     /// Picks the parser matching the provider's wire dialect, exactly as the factory picks the
-    /// strategy it hands the provider: Anthropic speaks its own, everything else speaks OpenAI.
+    /// strategy it hands the provider: Anthropic speaks its own, and so does agent-cli, whose answers take
+    /// the Anthropic shape (ADR-020); everything else speaks OpenAI.
     /// </summary>
     private static IToolCallParser ResolveToolCallParser(string provider) =>
         string.Equals(provider, "anthropic", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(provider, Orkeon.Interop.AgentCli.AgentCliDiagnostics.ProviderKey, StringComparison.OrdinalIgnoreCase)
             ? new AnthropicToolCallingStrategy().Parser
             : new OpenAIToolCallingStrategy(NullLogger<OpenAIToolCallParser>.Instance).Parser;
 

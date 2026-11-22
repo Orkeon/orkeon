@@ -1,22 +1,21 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Interop.AgentCli;
+using Orkeon.Interop.AgentCli.DependencyInjection;
 
 namespace Orkeon.Scripting.Cli;
 
 /// <summary>
-/// The provider modules the <c>orkeon</c> tool ships, for the commands that build a provider without a
-/// container (<c>orkeon doctor</c>, <c>orkeon llm probe</c>), and registered in every host the tool
-/// builds (<see cref="AddTo"/>): one list for both. None ships yet.
+/// The provider modules the <c>orkeon</c> tool ships: <c>agent-cli</c> (ADR-020, experimental). The commands
+/// that build a provider without a container (<c>orkeon doctor</c>, <c>orkeon llm probe</c>) read
+/// <see cref="All"/>, on the module's default options; every host the tool builds registers the same modules
+/// through <see cref="AddTo"/>, where their options bind from the host's settings.
 /// </summary>
 internal static class CliLlmProviderModules
 {
     /// <summary>The modules, by the key a section names them with in <c>Provider</c>.</summary>
-    internal static IReadOnlyList<ILlmProviderModule> All { get; } = [];
+    internal static IReadOnlyList<ILlmProviderModule> All { get; } = [new AgentCliProviderModule(new AgentCliOptions())];
 
-    /// <summary>Registers <see cref="All"/> in a host's container, where the provider factory reads them.</summary>
-    internal static void AddTo(IServiceCollection services)
-    {
-        foreach (var module in All)
-            services.AddSingleton(module);
-    }
+    /// <summary>Registers the modules in a host's container, where the provider factory reads them.</summary>
+    internal static void AddTo(IServiceCollection services) => services.AddOrkeonAgentCli();
 }

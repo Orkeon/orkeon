@@ -30,6 +30,8 @@
          companion embeds the int8 weights: offline, nothing to download. -->
     <ProjectReference Include="..\..\rag\Orkeon.Rag.Onnx\Orkeon.Rag.Onnx.csproj" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag.Onnx.Model\Orkeon.Rag.Onnx.Model.csproj" />
+    <!-- ADR-020: the experimental agent-cli provider module (Llm:Provider = agent-cli) and its relay. -->
+    <ProjectReference Include="..\..\interop\Orkeon.Interop.AgentCli\Orkeon.Interop.AgentCli.csproj" />
   </ItemGroup>
 
   <ItemGroup>

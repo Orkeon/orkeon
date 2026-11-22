@@ -7,7 +7,7 @@ workflows (`ci.yml` validation, `publish.yml` pack + push on tag and the dev cha
 `main`, `release.yml` installers)
 never drift.
 
-> **Status.** Distribution is one `Orkeon` package plus thirteen opt-ins — fourteen packages, the
+> **Status.** Distribution is one `Orkeon` package plus fourteen opt-ins — fifteen packages, the
 > list `publish.yml` pushes — guarded by the `scripts/check-package-closure.py` gate and pushed to
 > NuGet.org through Trusted Publishing. The scripting naming is settled by
 > [ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md): the command library is
@@ -30,6 +30,7 @@ runtimes, a pre-release upstream).
 | `Orkeon.Scripting.Cli` | The `orkeon` dotnet tool (`PackAsTool`; the PackageId is the install command — ADR-007). Publishable on NuGet.org: the iOS/Android onnxruntime natives a CLI tool can never load are excluded, in every tool package: about 187 MB with the natives of every desktop runtime (win, linux, osx), under the 250 MB nuget.org limit. |
 | `Orkeon.Compliance.Vfs` | The Roslyn analyzer that refuses direct `System.IO` in your own code (rules `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Standalone by design: it depends on nothing from Orkeon and works in any C# project — add the `PackageReference`, build, and every `File.*`/`Directory.*` call is a diagnostic. |
 | `Orkeon.Interop.AgentFramework` | The bridge to Microsoft Agent Framework, both ways: an Orkeon crew as a MAF `AIAgent` (`CrewAgent`), a MAF `AIAgent` as the brain (`WithAgentFrameworkAgent`) or as a tool (`WithAgentFrameworkTool`) of an Orkeon agent. Separate from `Orkeon` because the `Microsoft.Agents.AI.Abstractions` dependency is a consumer's choice. Depends on `Orkeon`. |
+| `Orkeon.Interop.AgentCli` | **Experimental** (`ORKEXP008`, [ADR-020](../adr/ADR-020-agent-cli-provider.md)): the `agent-cli` LLM provider module, an agent CLI signed in to its own subscription (`claude -p`) with Orkeon's tools behind an MCP bridge, and its relay (`Orkeon.Interop.AgentCli.Relay.dll`, started with `dotnet exec`). The `orkeon` tool, the REPL and `orkeon-host` already carry it. Depends on `Orkeon`. |
 | `Orkeon.Hosting.Aspire` | The .NET Aspire hosting integration: `AddOrkeonHost` (the `orkeon-host` daemon) and `AddOrkeonCrewRun` (one `orkeon run`) as AppHost resources, `WithOrkeonModel` / `WithOrkeonSetting` for the `ORKEON_` environment, OTLP export wired so the dashboard reads the run. Separate from `Orkeon` because `Aspire.Hosting` is an AppHost's choice. Depends on `Orkeon`. |
 | `Orkeon.Cli.Abstractions` | The contracts of the interactive runners and command registries (`IConsoleAdapter`, the command registry, the runner options). No Orkeon dependency: two `Microsoft.Extensions` abstractions only, packed straight from its project. |
 | `Orkeon.Cli.TerminalGui` | The Terminal.Gui v2 split-pane console (REPL + logs pane) that terminal applications build on. Separate from `Orkeon` for its `Terminal.Gui` dependency. Depends on `Orkeon` (which carries the `Orkeon.Constants.Configuration` it reads) and `Orkeon.Cli.Abstractions`. |
@@ -37,9 +38,9 @@ runtimes, a pre-release upstream).
 
 ### How the packaging projects are built
 
-- The lineup nupkgs come from dedicated **packaging projects** under `src/packaging/` — nine
+- The lineup nupkgs come from dedicated **packaging projects** under `src/packaging/` — ten
   of them: the `Orkeon` and `Orkeon.Tools` umbrellas, the `Orkeon.Templates` content package, plus the `Orkeon.Rag.Onnx.Package`,
-  `Orkeon.Tools.Embeddings.Local.Package`, `Orkeon.Interop.AgentFramework.Package`,
+  `Orkeon.Tools.Embeddings.Local.Package`, `Orkeon.Interop.AgentFramework.Package`, `Orkeon.Interop.AgentCli.Package`,
   `Orkeon.Hosting.Aspire.Package`, `Orkeon.Scripting.Package` and `Orkeon.Cli.TerminalGui.Package`
   **wrappers**, which pack the
   opt-in assemblies with a nuspec dependency on the `Orkeon` umbrella — and, for

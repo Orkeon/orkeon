@@ -37,6 +37,31 @@ loggerFactory, modules)` is the overload for a tool without a container.
   validation, and a misspelt one is refused.
 - No module ships yet. The shipped hosts register none, so a key other than `mock` is refused.
 
+### Added — the experimental `agent-cli` provider: Orkeon on a Claude subscription (ADR-020, `ORKEXP008`)
+
+The first provider module, `Orkeon.Interop.AgentCli` (package of the same name), registered by `orkeon`,
+`orkeon-repl` and `orkeon-host` (`AddOrkeonAgentCli()`). A section written `"Provider": "agent-cli"` is answered by an
+agent CLI signed in to its own subscription; the one engine is Claude Code, `claude -p` in stream-json.
+
+- The CLI runs with none of its own tools. Orkeon's tools reach it through an MCP server the provider serves over a
+  Unix domain socket, by way of a relay the CLI starts (`Orkeon.Interop.AgentCli.Relay`); a turn that calls tools ends
+  on its assistant message, returned as Anthropic `tool_use` blocks, so the crew runs each tool through its own
+  pipeline and the next call hands the result back.
+- Orkeon keeps the history. One CLI process per conversation of a run (`AgentRunScope`) is continued while the history
+  extends what it holds; any other history starts a new process seeded with it as text.
+- Never on a key: the API key variables are removed from the CLI's environment, and an answer on a key is refused
+  (`Llm:AgentCli:RequireLogin`). The cost is 0, the vendor's figure kept as `agent_cli_notional_cost_usd`. A rejected
+  subscription limit throws `LlmRateLimitException`, so `Fallback` takes over.
+- New section `Llm:AgentCli`: `Engine`, `Command`, `MaxProcesses` (4, an idle session is closed first, never a wait),
+  `MaxToolResultCharacters` (100000), `AutocompactTokens`, `RequireLogin`. Options the CLI cannot receive
+  (temperature, top-p, a JSON schema, thinking) are warned about once per run and not sent.
+- A cancelled call interrupts the turn and closes its process; the relay kills the CLI's tree when the host's socket
+  closes, `kill -9` of the host included. The private scratch folder of each process (prompt file, socket, working
+  folder) is removed when its session ends, when the host exits, or by the relay once the host is gone.
+- `Llm:AgentCli:Command` names an executable, so it refuses a variable reference like `MCP:Servers:<id>:Command`.
+- `orkeon llm probe --provider agent-cli` needs no API key, and reads its tool calls in the Anthropic shape.
+- The provider is not counted among the sixteen, and is meant for personal use.
+
 ### Added — a tool bridge: some tools of a run execute on another machine, `orkeon bridge serve` (#445)
 
 An Orkeon in a container can drive what lives on the user's machine, the browser first: `orkeon bridge serve`, run on

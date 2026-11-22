@@ -48,7 +48,7 @@ public static class SettingPlaceholders
         const string brave = "Remove the entry, Orkeon reads the variable.";
         string[] values =
         [
-            "MCP:Servers:*:Command", "MCP:Servers:*:Args:*", "MCP:Servers:*:Url",
+            "MCP:Servers:*:Command", "MCP:Servers:*:Args:*", "MCP:Servers:*:Url", "Llm:AgentCli:Command",
             "MCP:Servers:*:Auth:TokenUrl", "MCP:Servers:*:Auth:DeviceAuthorizationUrl",
             "Orkeon:Redis:ConnectionString", "Orkeon:Sqlite:ConnectionString", "Orkeon:Checkpointing:ConnectionString",
             "RaggableTree:Embedding:ApiKey", "Orkeon:Pinecone:ApiKey", "Orkeon:LanceDb:ApiKey",

@@ -178,7 +178,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 107 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`Llm:AgentCli`](#llmagentcli), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 113 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -190,7 +190,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-87 sections, 566 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+88 sections, 572 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -435,7 +435,7 @@ covers is not the one read, so it is not judged. The settings judged, from
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<name>:ApiKey`, `Orkeon:Embeddings:ApiKey` | write `"ApiKeyEnvVar": "<NAME>"` instead |
 | `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
-| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority`; `Orkeon:Tools:GitHub:Token` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
+| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Llm:AgentCli:Command`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority`; `Orkeon:Tools:GitHub:Token` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
 | `MCP:Servers:<id>:Env:<name>` | remove the entry: the server inherits the environment Orkeon runs in, set the variable there |
 | `Secrets:<name>` | remove the entry and set `ORKEON_<name>`, which the secret chain reads first |
 | `BRAVE_API_KEY` | remove the entry, Orkeon reads the variable |
@@ -516,6 +516,26 @@ default ([CLI](./cli.md#orkeon-run)): for that run the `Llm` section is that pro
 leaves unset is unset, its key is its own —, and every role above that runs on the default runs on
 it. An id the configuration does not define refuses the run, listing the ones it does. It is what
 a scheduled team's launchers pass.
+
+### `Llm:AgentCli`
+
+Experimental (`ORKEXP008`, [ADR-020](../adr/ADR-020-agent-cli-provider.md)). The `agent-cli` provider
+(`"Provider": "agent-cli"`) answers through an agent CLI signed in to its own subscription, `claude -p` today,
+and hands it Orkeon's tools through a bridge; this section tells it how to start that CLI. Every profile on
+the provider shares it. The provider is meant for personal use, on the subscription of whoever runs it.
+
+<!-- settings:Llm:AgentCli -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `AutocompactTokens` | integer | `100000000` | The context size at which the CLI would compact the conversation itself (`--autocompact`), 100000000 by default — above every window, since Orkeon keeps the history and compacts it first. The CLI refuses less than 100000. |
+| `Command` | string | `"claude"` | The CLI's executable: a name looked up on the `PATH`, or a full path. `claude` by default. It runs on its own login (`claude /login`): the API key variables of the host are removed from its environment. |
+| `Engine` | string | `"claude"` | The engine that answers: the CLI whose command line and stream the provider speaks. `claude` (Claude Code, `claude -p` in stream-json) is the only one. |
+| `MaxProcesses` | integer | `4` | How many CLI processes may live at once across the host, 4 by default. Never a wait: past it, an idle session is closed first, and when none is idle the new one starts with a warning. |
+| `MaxToolResultCharacters` | integer | `100000` | The longest tool result handed to the CLI, in characters, 100000 by default: a longer one is cut with a note saying so. The CLI's own limit is raised above it, so that a result is never replaced by a file the model cannot read. |
+| `RequireLogin` | boolean | `true` | Whether a CLI that answers on an API key rather than its login is refused, true by default: the provider exists to run on the subscription the CLI is signed in to. |
+<!-- /settings -->
 
 ### `LlmLogging`
 
