@@ -83,6 +83,25 @@ public class KnowledgeAttachmentTests
         Assert.Contains("MinScore", ex.Message);
     }
 
+    /// <summary>#456 — the value is echoed as the file wrote it, whatever the culture of the machine.</summary>
+    [Fact]
+    [Trait("BR", "CH-456")]
+    public void Create_WithMinScoreOutOfRange_EchoesTheValueInTheInvariantCulture()
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+        try
+        {
+            var ex = Assert.Throws<ArgumentException>(() => KnowledgeAttachment.Create("produits", minScore: 1.5));
+
+            Assert.Contains("(got 1.5)", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = culture;
+        }
+    }
+
     [Theory]
     [InlineData(0.0)]
     [InlineData(1.0)]

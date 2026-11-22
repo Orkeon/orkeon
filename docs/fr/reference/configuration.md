@@ -139,6 +139,17 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
 - **Un identifiant de modèle vide** : une entrée de `Llm:ModelCapabilities` nommée `""` ou `" "`, ou
   `:Vision` (une clé sans identifiant avant son champ), quoi qu'elle contienne, est refusée avec
   `Llm:ModelCapabilities: an entry has no model id; name each entry by the model it describes.`
+- **Une valeur que le binder prendrait sans un mot** : une clé écrite sans valeur (`null` ou `{}`)
+  sur un réglage qui n'est pas une chaîne, que le binder lierait à la valeur par défaut de son type
+  (`false`, `0`) et non à celle du réglage — une chaîne écrite `null` reste acceptée, et une clé
+  absente prend son défaut ; une valeur seule là où une liste ou une section est attendue
+  (`"Phases": "Input"` au lieu de `["Input"]`) ; dans une liste ou un dictionnaire, une entrée que
+  le binder écarterait faute de pouvoir la convertir (un profil de décision dont un `FailClosed`
+  vaut `"peut-être"`, une étape dont un seuil n'est pas un nombre). Les phases du gardien et la
+  `Phase` et les `Steps` d'une étape s'écrivent par leur nom, jamais par un nombre. Une valeur
+  citée dans un refus l'est dans la culture invariante (`1.5`, jamais `1,5`), et chaque seuil de
+  `Orkeon:Guardian:Llm` hors de [0, 1] a sa propre phrase, avec sa valeur. Seuls les réglages sont
+  des clés : une propriété calculée (`IsEnabled`, `NeedsBrowserGuard`) est une clé inconnue.
 
 **Ce qui reste ouvert** : la racine de la configuration — elle reçoit aussi les variables
 d'environnement sans préfixe, et rien n'y distingue une section mal écrite d'une variable de la

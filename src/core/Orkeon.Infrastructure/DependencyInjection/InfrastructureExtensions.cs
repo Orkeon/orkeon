@@ -899,10 +899,8 @@ public static class InfrastructureExtensions
     public static IServiceCollection AddOrkeonGuardian(this IServiceCollection services)
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<GuardianOptions>, GuardianLlmPhasesValidator>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<GuardianOptions>, GuardianLlmThresholdsValidator>());
         services.AddOrkeonSettings<GuardianOptions>("Orkeon:Guardian")
-            .Validate(
-                o => o.Llm.BlockThreshold is >= 0 and <= 1 && o.Llm.WarnThreshold is >= 0 and <= 1,
-                $"{GuardianLlmOptions.SectionName}:BlockThreshold and WarnThreshold: probabilities in [0, 1].")
             .Validate(
                 o => o.Llm.MaxContentChars > 0,
                 $"{GuardianLlmOptions.SectionName}:MaxContentChars: one character or more.");

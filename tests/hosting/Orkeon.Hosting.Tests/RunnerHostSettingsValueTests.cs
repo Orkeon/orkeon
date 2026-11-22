@@ -1,0 +1,273 @@
+using System.Globalization;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.Configuration;
+
+namespace Orkeon.Hosting.Tests;
+
+/// <summary>
+/// #449, #450, #454, #455, #456 — what the start validation of a shipped host makes of a value the
+/// binder takes without a word: a computed property it lists as a key, a switch written without a
+/// value it binds to the type's default, an entry of a list or a dictionary it drops when it cannot
+/// convert it, a single value where a list is expected, and the culture a value is echoed in.
+/// </summary>
+[Collection(ConsoleSerialCollection.Name)]
+public sealed class RunnerHostSettingsValueTests : IDisposable
+{
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "orkeon-settings-value-" + Guid.NewGuid().ToString("N"));
+
+    public RunnerHostSettingsValueTests() => Directory.CreateDirectory(_root);
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_root, recursive: true); } catch (IOException) { /* best-effort */ }
+    }
+
+    private IReadOnlyList<string> Refusals(string orkeon)
+    {
+        var path = Path.Combine(_root, "appsettings.json");
+        File.WriteAllText(path, $$"""{ "RaggableTree": { "Enabled": false }, "Orkeon": { {{orkeon}} } }""");
+        return RunnerHost.InspectSettings(path, configureServices: null).Refusals;
+    }
+
+    [Fact]
+    [Trait("BR", "CH-449")]
+    public void ShouldRefuseAComputedPropertyAsAnUnknownKey_AndListOnlyTheSettings()
+    {
+        var refusals = Refusals("""
+            "Tools": { "Bridge": { "IsEnabled": true } }
+            """);
+
+        var refusal = Assert.Single(refusals);
+        Assert.StartsWith("Orkeon:Tools:Bridge:IsEnabled is not a setting: Orkeon:Tools:Bridge carries", refusal, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsDockerHostOverHttp", refusal, StringComparison.Ordinal);
+        Assert.DoesNotContain(", IsEnabled", refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// #449 — no declared section of the runner host lists as a key a value the binder cannot write:
+    /// a computed property, one behind a private setter. A collection or an object behind a getter
+    /// stays a key: the binder fills it.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-449")]
+    public void ShouldListNoValueTheBinderCannotWrite_InAnyDeclaredSection()
+    {
+        var declarations = new List<SettingsDeclaration>();
+        using (RunnerHost.Build(SettingsFile(), new RunnerMountPlan(),
+                   configureServices: (_, services) => declarations.AddRange(services
+                       .Where(descriptor => descriptor.ServiceType == typeof(SettingsDeclaration))
+                       .Select(descriptor => (SettingsDeclaration)descriptor.ImplementationInstance!))))
+        {
+        }
+
+        Assert.NotEmpty(declarations);
+        Assert.Empty(SettingsShapeSweep.Unwritable(declarations.Select(declaration => declaration.Shape)));
+        Assert.Equal(["Filled", "Initialised", "Settable"], SettingsShape.Of(typeof(Witness)).Named.Keys.Order(StringComparer.Ordinal));
+    }
+
+    private sealed class Witness
+    {
+        public bool Settable { get; set; }
+
+        public bool Initialised { get; init; }
+
+        public bool Private { get; private set; }
+
+        public bool Computed => Settable;
+
+        public List<string> Filled { get; } = [];
+    }
+
+    private string SettingsFile()
+    {
+        var path = Path.Combine(_root, "sweep.json");
+        File.WriteAllText(path, """{ "RaggableTree": { "Enabled": false } }""");
+        return path;
+    }
+
+    public static TheoryData<string, string> WrittenWithoutValue() => new()
+    {
+        { """ "Decision": { "Enabled": null } """, "Orkeon:Decision:Enabled" },
+        { """ "Decision": { "Enabled": {} } """, "Orkeon:Decision:Enabled" },
+        { """ "Guardian": { "Enabled": null } """, "Orkeon:Guardian:Enabled" },
+        { """ "Compaction": { "Enabled": null } """, "Orkeon:Compaction:Enabled" },
+        { """ "Compaction": { "TriggerShare": null } """, "Orkeon:Compaction:TriggerShare" },
+    };
+
+    /// <summary>#450 — null and {} read alike, and the binder wrote false: the decision circuit or the guardian went off.</summary>
+    [Theory]
+    [Trait("BR", "CH-450")]
+    [MemberData(nameof(WrittenWithoutValue))]
+    public void ShouldRefuseASettingWrittenWithoutAValue_WhenItIsNoString(string orkeon, string key)
+    {
+        var refusal = Assert.Single(Refusals(orkeon));
+
+        Assert.StartsWith($"{key} is written without a value, which would bind it to ", refusal, StringComparison.Ordinal);
+        Assert.Contains("leave the key out and its default applies", refusal, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-450")]
+    public void ShouldAcceptAStringWrittenWithoutAValue()
+    {
+        Assert.Empty(Refusals("""
+            "Decision": { "Provider": null }
+            """));
+    }
+
+    /// <summary>
+    /// #450 — the settings the <c>orkeon-host</c> template hands out write <c>"SettingsPath": null</c>, a
+    /// string: none of their values is refused as written without one.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-450")]
+    public void ShouldNotRefuseTheTemplatesSettingsForAValueWrittenNull()
+    {
+        var template = Path.Combine(RepositoryRoot(), "src", "packaging", "Orkeon.Templates", "templates", "orkeon-host", "appsettings.json");
+        Assert.Contains("null", File.ReadAllText(template), StringComparison.Ordinal);
+
+        var verdict = RunnerHost.InspectSettings(template, configureServices: null);
+
+        Assert.DoesNotContain(verdict.Refusals, refusal => refusal.Contains("without a value", StringComparison.Ordinal));
+    }
+
+    /// <summary>#454 — the binder dropped a stage or a profile it could not convert, or one written as a single value.</summary>
+    [Theory]
+    [Trait("BR", "CH-454")]
+    [InlineData(
+        """ "Decision": { "Profiles": { "p": { "Target": "default", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" }, "BlockThreshold": "x" }, { "Kind": "guard", "Risks": { "x": "y" } } ] } } } """,
+        "Failed to convert configuration value 'x' at 'Orkeon:Decision:Profiles:p:Stages:0:BlockThreshold' to type 'System.Double'.")]
+    [InlineData(
+        """ "Decision": { "Profiles": { "p": { "Target": "default", "FailClosed": "x", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" } } ] } } } """,
+        "Failed to convert configuration value 'x' at 'Orkeon:Decision:Profiles:p:FailClosed' to type 'System.Boolean'.")]
+    [InlineData(
+        """ "Decision": { "Profiles": { "p": "x" } } """,
+        "Orkeon:Decision:Profiles:p is 'x', a single value where a decision profile is expected")]
+    public void ShouldRefuseADecisionProfileTheBinderWouldDrop(string orkeon, string expected)
+    {
+        var refusal = Assert.Single(Refusals(orkeon));
+
+        Assert.StartsWith(expected, refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>#454 — a stage written null in a list bound its type's default: a guard threshold of 0 blocks every request.</summary>
+    [Fact]
+    [Trait("BR", "CH-450")]
+    public void ShouldRefuseAStageThresholdWrittenWithoutAValue()
+    {
+        var refusal = Assert.Single(Refusals("""
+            "Decision": { "Profiles": { "p": { "Target": "default", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" }, "BlockThreshold": null } ] } } }
+            """));
+
+        Assert.StartsWith("Orkeon:Decision:Profiles:p:Stages:0:BlockThreshold is written without a value, which would bind it to 0", refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>#455 — a single phase where the list is expected judged both phases; a number read as the member holding it.</summary>
+    [Theory]
+    [Trait("BR", "CH-455")]
+    [InlineData(""" "Guardian": { "Llm": { "Phases": "Input" } } """, "Orkeon:Guardian:Llm:Phases is 'Input', a single value where a list is expected")]
+    [InlineData(""" "Guardian": { "Llm": { "Phases": ["1"] } } """, "Orkeon:Guardian:Llm:Phases: '1' is not a phase a model judges.")]
+    [InlineData(""" "Guardian": { "Llm": { "Phases": ["7"] } } """, "Orkeon:Guardian:Llm:Phases: '7' is not a phase a model judges.")]
+    public void ShouldRefuseTheGuardianPhasesOnce_WhenTheyAreNoListOfNames(string orkeon, string expected)
+    {
+        var refusal = Assert.Single(Refusals(orkeon));
+
+        Assert.StartsWith(expected, refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>An empty JSON array reads as an empty value, and stays an empty list.</summary>
+    [Fact]
+    [Trait("BR", "CH-455")]
+    public void ShouldAcceptAnEmptyListOfPhases()
+    {
+        Assert.Empty(Refusals("""
+            "Guardian": { "Llm": { "Phases": [] } }
+            """));
+    }
+
+    /// <summary>#456 — a value is echoed as the file wrote it, whatever the culture; each threshold has its own sentence.</summary>
+    [Fact]
+    [Trait("BR", "CH-456")]
+    public void ShouldEchoTheValuesInTheInvariantCulture_OneSentencePerKey()
+    {
+        var culture = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+        try
+        {
+            var stage = Assert.Single(Refusals("""
+                "Decision": { "Profiles": { "p": { "Target": "default", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" }, "BlockThreshold": 1.5 } ] } } }
+                """));
+            var guardian = Refusals("""
+                "Guardian": { "Llm": { "BlockThreshold": 2, "WarnThreshold": 1.25 } }
+                """);
+
+            Assert.Equal("Orkeon:Decision:Profiles:p:Stages:0:BlockThreshold: 1.5 is not a probability between 0 and 1.", stage);
+            Assert.Equal(
+                ["Orkeon:Guardian:Llm:BlockThreshold: 2 is not a probability between 0 and 1.",
+                 "Orkeon:Guardian:Llm:WarnThreshold: 1.25 is not a probability between 0 and 1."],
+                guardian);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
+    }
+
+    private static string RepositoryRoot([CallerFilePath] string thisFile = "") =>
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(thisFile)!, "..", "..", ".."));
+}
+
+/// <summary>
+/// #449 — the properties of the declared shapes, and of every Orkeon type below them, that the
+/// binder cannot write — a value behind no public setter — yet <see cref="SettingsShape"/> lists as
+/// keys.
+/// </summary>
+internal static class SettingsShapeSweep
+{
+    public static List<string> Unwritable(IEnumerable<Type> roots)
+    {
+        var found = new SortedSet<string>(StringComparer.Ordinal);
+        var seen = new HashSet<Type>();
+        var pending = new Stack<Type>(roots);
+        while (pending.Count > 0)
+        {
+            var type = Nullable.GetUnderlyingType(pending.Peek()) ?? pending.Peek();
+            pending.Pop();
+            if (!seen.Add(type))
+                continue;
+
+            foreach (var argument in type.IsArray ? [type.GetElementType()!] : type.GetGenericArguments())
+                pending.Push(argument);
+            if (!IsOrkeon(type) || type.IsEnum)
+                continue;
+
+            var keys = SettingsShape.Of(type).Named;
+            foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (property.GetIndexParameters().Length > 0)
+                    continue;
+
+                pending.Push(property.PropertyType);
+                if (property.GetSetMethod() is null && IsScalar(property.PropertyType) && keys.ContainsKey(property.Name)
+                    && !type.GetProperties().Any(other => other != property && other.Name == property.Name))
+                {
+                    found.Add($"{type.Name}.{property.Name}");
+                }
+            }
+        }
+
+        return [.. found];
+    }
+
+    private static bool IsOrkeon(Type type) =>
+        type.Namespace?.StartsWith("Orkeon.", StringComparison.Ordinal) == true || type.DeclaringType is not null && IsOrkeon(type.DeclaringType);
+
+    private static bool IsScalar(Type type)
+    {
+        var target = Nullable.GetUnderlyingType(type) ?? type;
+        return target.IsPrimitive || target.IsEnum || target == typeof(string) || target == typeof(decimal)
+               || target == typeof(TimeSpan) || target == typeof(Uri) || target == typeof(DateTimeOffset);
+    }
+}

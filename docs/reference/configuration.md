@@ -130,6 +130,16 @@ refusals on the same file, one `runner-settings` row each. What is refused:
 - **A blank model id**: an entry of `Llm:ModelCapabilities` named `""` or `" "`, or `:Vision` (a key with
   no id before its field), whatever it holds, is refused with `Llm:ModelCapabilities: an entry has no
   model id; name each entry by the model it describes.`
+- **A value the binder would take without a word**: a key written without a value (`null` or `{}`)
+  on a setting that is no string, which the binder would bind to its type's default (`false`, `0`)
+  rather than to the setting's — a string written `null` is still accepted, and a key left out takes
+  its default; a single value where a list or a section is expected (`"Phases": "Input"` for
+  `["Input"]`); inside a list or a dictionary, an entry the binder would drop because it cannot
+  convert it (a decision profile whose `FailClosed` is `"maybe"`, a stage whose threshold is no
+  number). The guardian's phases and a stage's `Phase` and `Steps` are written by name, never as a
+  number. A value quoted in a refusal is written in the invariant culture (`1.5`, never `1,5`), and
+  each threshold of `Orkeon:Guardian:Llm` outside [0, 1] has its own sentence, with its value. Only
+  settings are keys: a computed property (`IsEnabled`, `NeedsBrowserGuard`) is an unknown key.
 
 **What stays open**: the configuration root — it also holds the environment variables without a
 prefix, and nothing tells a misspelt section there from a variable of the machine —, `Logging`

@@ -82,7 +82,7 @@ public sealed record KnowledgeAttachment
             throw new ArgumentException($"Knowledge attachment TopK must be positive (got {TopK}).", nameof(TopK));
 
         if (MinScore is < 0.0 or > 1.0)
-            throw new ArgumentException($"Knowledge attachment MinScore must be within [0, 1] (got {MinScore}).", nameof(MinScore));
+            throw new ArgumentException($"Knowledge attachment MinScore must be within [0, 1] (got {MinScore.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}).", nameof(MinScore));
 
         if (MaxContextTokens is <= 0)
             throw new ArgumentException($"Knowledge attachment MaxContextTokens must be positive (got {MaxContextTokens}).", nameof(MaxContextTokens));
