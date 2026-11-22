@@ -78,7 +78,7 @@ public sealed class JsLlmFacadePickTests
         return result.tasks[0].output!.ToString()!;
     }
 
-    private static JsonElement Part(string json, string part) => JsonDocument.Parse(json).RootElement.GetProperty(part);
+    private static JsonElement Part(string json, string part) => JsonElement.Parse(json).GetProperty(part);
 
     private static string? Str(JsonElement answer, string key) =>
         answer.GetProperty(key).ValueKind == JsonValueKind.Null ? null : answer.GetProperty(key).GetString();
@@ -99,7 +99,7 @@ public sealed class JsLlmFacadePickTests
         Assert.Equal("model", Str(profile, "reason"));
         Assert.Equal("large", Str(profile, "picked"));
         Assert.Equal(0.8, profile.GetProperty("probability").GetDouble());
-        Assert.False(JsonDocument.Parse(json).RootElement.TryGetProperty("effort", out _));
+        Assert.False(JsonElement.Parse(json).TryGetProperty("effort", out _));
         Assert.Single(_model.Requests);
     }
 
@@ -250,7 +250,7 @@ public sealed class JsLlmFacadePickTests
         var json = await PickAsync("""{ effort: { min: "medium", max: "high" } }""");
 
         Assert.Equal("medium", Str(Part(json, "effort"), "value"));
-        Assert.False(JsonDocument.Parse(json).RootElement.TryGetProperty("profile", out _));
+        Assert.False(JsonElement.Parse(json).TryGetProperty("profile", out _));
         var question = Assert.IsType<ChoiceQuestion>(Assert.Single(Assert.Single(_model.Requests).Questions).Value);
         Assert.Equal(["high", "medium"], question.Criteria.Keys.Order(StringComparer.Ordinal));
     }
