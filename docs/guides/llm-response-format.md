@@ -227,24 +227,30 @@ Anthropic's structured outputs take a subset of JSON Schema and answer a 400 to 
 ([JSON Schema limitations](https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations)).
 A script, a crew or a YAML file never writes a schema for one provider: whatever the way in
 (`ctx.llm.extract`, `withResponseSchema`, `response_format`, a `structured_output` deliverable, the
-decision circuit), `AnthropicLlmProvider` works on a copy of the schema, as Anthropic's SDK helpers do:
+decision circuit), `AnthropicLlmProvider` works on a copy of the schema, as Anthropic's SDK helpers do.
+What follows was checked against the Messages API itself.
 
-- every object node that does not set `additionalProperties` gets `"additionalProperties": false`,
-  wherever it sits (`properties`, `items`, `prefixItems`, `anyOf`/`allOf` branches,
-  `$defs`/`definitions`); an explicit `false` is left as written;
-- the constraints the API does not take are removed and written into the node's `description`
+- Every object node that does not set `additionalProperties` gets `"additionalProperties": false`,
+  wherever it sits (`properties`, `items`, `anyOf`/`allOf` branches, `$defs`/`definitions`); an
+  explicit `false` is left as written. A property left out of `required` stays optional.
+- The constraints the API refuses are removed and written into the node's `description`
   (`{minimum: 18, maximum: 120}`), so the model still reads them: `minimum`, `maximum`,
-  `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `minLength`, `maxLength`, `maxItems`,
-  `uniqueItems: true`, a `minItems` above 1, a `format` other than `date-time`, `time`, `date`,
-  `duration`, `email`, `hostname`, `uri`, `ipv4`, `ipv6` and `uuid`; a `uniqueItems: false`,
-  which constrains nothing, is dropped.
+  `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `maxItems`, `uniqueItems: true`, a
+  `minItems` above 1, a `format` other than `date-time`, `time`, `date`, `duration`, `email`,
+  `hostname`, `uri`, `ipv4`, `ipv6` and `uuid`. A `uniqueItems: false`, which the API refuses as
+  well and which constrains nothing, is dropped.
+- What the API takes is sent as written: `minLength`, `maxLength` and `pattern` (the answer keeps to
+  `maxLength` and `pattern`; a `minLength` is taken without being held to), `enum`, `const`,
+  `anyOf`, `allOf`, a local `$ref` to `$defs` or `definitions`, a `type` list (`["string",
+  "null"]`), `title`, `default` and `examples`. Off an object node, `if`, `then` and `else` are
+  taken too, on a string, number or `allOf` node, as are `unevaluatedItems` and `additionalItems`
+  on an array: the API holds the answer to none of them, and walks no sub-schema under them.
 
 The root is walked the same way whatever its `type`: a root `array` keeps no `additionalProperties`
-of its own, the objects below it are closed. A root that is not a JSON object at all (`true`) is
-sent as written.
+of its own, the objects below it are closed; a root `{"type": "string"}` is sent as is.
 
-What would change the schema's meaning, or what Orkeon cannot walk, is **refused before any HTTP
-call**, the sentence naming the keyword and its path:
+What the API refuses and Orkeon cannot rewrite without changing the schema's meaning is **refused
+before any HTTP call**, the sentence naming the keyword and its path:
 
 - `oneOf` (write `anyOf`) and `not`;
 - an `additionalProperties` set to `true` or to a schema;
@@ -253,11 +259,16 @@ call**, the sentence naming the keyword and its path:
   included: closing it would leave the model nothing to answer but `{}`. List the keys the object
   may hold, write `additionalProperties: false` when an empty object is what you mean, or use an
   array of key and value items for arbitrary keys;
-- `if`, `then`, `else`, `patternProperties`, `dependentSchemas`, `dependencies`, `contains`,
-  `propertyNames`, `unevaluatedProperties`, `unevaluatedItems` and `additionalItems`: Orkeon does
-  not walk the sub-schemas under them, so an object below one could not be closed;
-- a `description` that is not a string;
+- on an object node, `if`, `then`, `else`, `patternProperties`, `dependentSchemas`,
+  `dependencies`, `contains`, `propertyNames`, `unevaluatedProperties`, `unevaluatedItems` and
+  `additionalItems`; on an array node, `contains` and `prefixItems`, and an `items` that is not one
+  schema object (a tuple, `true`); on an `anyOf` node, `if`, `then` and `else`;
+- a `$ref` beside a constraint (`type`, for one) — the annotations `description`, `title`,
+  `default` and `examples` may sit beside it, and a constraint the provider moves no longer counts;
 - an external `$ref`, and a recursive schema (a `$ref` back to a node it sits in);
+- a schema that accepts any value — `{}`, a boolean schema (`true`), the root included — or a node
+  that names no `type` (nor `anyOf`, `allOf`, `$ref`, `const` or `enum`);
+- a `description` that is not a string;
 - messages that end on an `assistant` turn (a prefill, which Anthropic refuses with a JSON output).
 
 A script reads, for example:
