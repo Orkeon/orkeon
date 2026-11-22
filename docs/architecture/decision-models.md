@@ -350,8 +350,10 @@ With the circuit off, the run makes **no** `IDecisionModel` call, whatever the c
 named in every message, as `the decision circuit is off: <cause>`, the cause being `--no-decision`,
 `Orkeon:Decision:Enabled=false`, `no decision provider resolved` or, for a hosted provider (TypeSafe, Liquid)
 whose key is in neither its setting nor its environment variable, `no Liquid API key: set the environment variable
-LIQUID_API_KEY, or Orkeon:Liquid:ApiKey` (cause `no-key`, naming the variable `ApiKeyEnvVar` chooses; when `ApiKeyEnvVar` holds no environment variable
-name, a key pasted there by mistake, `no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey`, never its value), and, in the
+LIQUID_API_KEY, or Orkeon:Liquid:ApiKey` (cause `no-key`; the variable is named only when `ApiKeyEnvVar` is unset or holds
+the provider's default; any other value, another variable or a key pasted there by mistake, is never repeated: the
+setting paths alone, `no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey`; a call's refusal, `No Liquid API key: …`, and a 401 or 403
+refusal, `liquid refused the key: …`, end with the same remedy), and, in the
 relay pass of a forge trial, `the forge's trial pass without System One` (cause `trial`); when the switch and the
 setting both hold, the switch is named. The key is looked for where the provider reads it at each call, the setting
 first, when the host resolves its circuit, with no network call, and only when the decision model is that System One

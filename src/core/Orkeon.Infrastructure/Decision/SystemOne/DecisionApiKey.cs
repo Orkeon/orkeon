@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Orkeon.Infrastructure.LLMs.Profiles;
 
 namespace Orkeon.Infrastructure.Decision.SystemOne;
@@ -11,7 +10,7 @@ namespace Orkeon.Infrastructure.Decision.SystemOne;
 /// <see cref="LlmKeyEnvironment"/>, else the machine's) and one predicate (the provider's
 /// <c>KeyRequired</c>), so the two cannot disagree on whether a key is missing.
 /// </summary>
-internal static partial class DecisionApiKey
+internal static class DecisionApiKey
 {
     /// <summary>The environment variable the key is read from.</summary>
     /// <param name="provider">The provider.</param>
@@ -57,21 +56,21 @@ internal static partial class DecisionApiKey
         $"no {provider.DisplayName} API key: {Remedy(provider, options)}";
 
     /// <summary>
-    /// The remedy after <c>API key: </c>: the variable to set and the setting, or, when <c>ApiKeyEnvVar</c> does
-    /// not hold an environment variable name (a key pasted there by mistake), the setting path alone. The value
-    /// itself is never repeated: the sentence lands in <c>run.decision</c>, the forge's events and stderr (#467).
+    /// The remedy after <c>API key: </c>. The variable is named only when <c>ApiKeyEnvVar</c> holds the provider's
+    /// own default (<see cref="DecisionProviderDescriptor.DefaultApiKeyVariable"/>, a constant; unset reads as
+    /// that default). Any other value may be a key pasted there by mistake, whatever its shape: the remedy then
+    /// names the setting paths only, never the value they hold. The sentence lands in <c>run.decision</c>, the
+    /// forge's events and stderr (#467).
     /// </summary>
     /// <param name="provider">The provider.</param>
     /// <param name="options">Its bound options.</param>
     /// <returns>The remedy, without a capital or a full stop.</returns>
     public static string Remedy(DecisionProviderDescriptor provider, SystemOneProviderOptions options)
     {
-        var variable = Variable(provider, options);
-        return VariableName().IsMatch(variable)
-            ? $"set the environment variable {variable}, or {provider.Section}:ApiKey"
-            : $"{provider.Section}:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set {provider.Section}:ApiKey";
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentNullException.ThrowIfNull(options);
+        return string.Equals(Variable(provider, options), provider.DefaultApiKeyVariable, StringComparison.Ordinal)
+            ? $"set the environment variable {provider.DefaultApiKeyVariable}, or {provider.Section}:ApiKey"
+            : $"set the variable named by {provider.Section}:ApiKeyEnvVar, or {provider.Section}:ApiKey";
     }
-
-    [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex VariableName();
 }

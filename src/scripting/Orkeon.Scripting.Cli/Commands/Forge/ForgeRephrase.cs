@@ -3,11 +3,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
-using Orkeon.Constants.Configuration;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Scripting.Cli.Commands.Run;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
@@ -61,11 +61,14 @@ internal static class ForgeRephrase
             configureServices: (_, services) =>
             {
                 services.AddSingleton(console);
+                // The verb refuses without a default LLM: the host's echo fallback is never taken (#466).
+                services.AddSingleton<RunnerHost.EchoFallbackUnannounced>();
                 if (events is not null)
                     services.AddSingleton<ILlmCallObserver>(new RunEventsLlmCallObserver(events, TimeProvider.System));
             });
 
-        var provider = host.Services.GetRequiredService<IConfiguration>().GetSection(ConfigurationKeys.LlmSection).Exists()
+        // The host's own predicate: a section holding profiles alone wires the echo provider, not a model.
+        var provider = LlmSettings.HasDefault(host.Services.GetRequiredService<IConfiguration>())
             ? host.Services.GetService<ILlmProvider>()
             : null;
         return await AnswerAsync(console, options, events, provider).ConfigureAwait(false);

@@ -79,7 +79,8 @@ public class DecisionCircuitRegistrationTests
 
     [Fact]
     [Trait("BR", "CH-451")]
-    public void ShouldNameTheVariableTheSettingsChose_WhenTheHostedProviderHasNoKey()
+    [Trait("BR", "CH-467")]
+    public void ShouldNameTheSettingPathsOnly_WhenTheSettingsChoseAnotherVariable()
     {
         // Act
         var circuit = HostCircuit(
@@ -88,8 +89,9 @@ public class DecisionCircuitRegistrationTests
 
         // Assert
         Assert.Equal(
-            "the decision circuit is off: no TypeSafe API key: set the environment variable MY_TYPESAFE_KEY, or Orkeon:TypeSafe:ApiKey",
+            "the decision circuit is off: no TypeSafe API key: set the variable named by Orkeon:TypeSafe:ApiKeyEnvVar, or Orkeon:TypeSafe:ApiKey",
             circuit.OffReason);
+        Assert.DoesNotContain("MY_TYPESAFE_KEY", circuit.OffReason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -212,45 +214,49 @@ public class DecisionCircuitRegistrationTests
 
     [Fact]
     [Trait("BR", "CH-467")]
-    public void ShouldNameTheVariable_WhenApiKeyEnvVarHoldsAWellFormedName()
+    public void ShouldNameTheDefaultVariable_WhenApiKeyEnvVarHoldsTheDefaultName()
     {
         // Act
         var circuit = HostCircuit(
             DecisionProviderDescriptor.Liquid,
-            new() { ["Orkeon:Liquid:Model"] = "lfm", ["Orkeon:Liquid:ApiKeyEnvVar"] = " _My_Liquid_Key2 " });
+            new() { ["Orkeon:Liquid:Model"] = "lfm", ["Orkeon:Liquid:ApiKeyEnvVar"] = " LIQUID_API_KEY " });
 
         // Assert
         Assert.Equal(
-            "the decision circuit is off: no Liquid API key: set the environment variable _My_Liquid_Key2, or Orkeon:Liquid:ApiKey",
+            "the decision circuit is off: no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey",
             circuit.OffReason);
     }
 
-    [Fact]
+    public static TheoryData<string> PastedValues => [FakeKeys.Pasted, FakeKeys.NameShaped, FakeKeys.CustomVariable];
+
+    [Theory]
+    [MemberData(nameof(PastedValues))]
     [Trait("BR", "CH-467")]
-    public void ShouldNameTheSettingAndNeverItsValue_WhenApiKeyEnvVarHoldsAKey()
+    public void ShouldNameTheSettingPathsAndNeverTheValue_WhenApiKeyEnvVarHoldsAnythingButTheDefault(string value)
     {
         // Act
         var circuit = HostCircuit(
             DecisionProviderDescriptor.Liquid,
-            new() { ["Orkeon:Liquid:Model"] = "lfm", ["Orkeon:Liquid:ApiKeyEnvVar"] = FakeKeys.Pasted });
+            new() { ["Orkeon:Liquid:Model"] = "lfm", ["Orkeon:Liquid:ApiKeyEnvVar"] = value });
 
         // Assert
         Assert.Equal(
             (DecisionCircuitCause.NoKey, FakeKeys.LiquidSentence),
             (circuit.Cause, circuit.Detail));
-        Assert.DoesNotContain(FakeKeys.Pasted, circuit.OffReason, StringComparison.Ordinal);
+        Assert.DoesNotContain(value, circuit.OffReason, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [Theory]
+    [MemberData(nameof(PastedValues))]
     [Trait("BR", "CH-467")]
-    public async Task ShouldNeverRepeatTheValueInTheCallsRefusal_WhenApiKeyEnvVarHoldsAKey()
+    public async Task ShouldNeverRepeatTheValueInTheCallsRefusal_WhenApiKeyEnvVarHoldsAnythingButTheDefault(string value)
     {
         // Arrange
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Orkeon:Liquid:Model"] = "lfm",
-                ["Orkeon:Liquid:ApiKeyEnvVar"] = FakeKeys.Pasted,
+                ["Orkeon:Liquid:ApiKeyEnvVar"] = value,
             })
             .Build();
         var services = new ServiceCollection()
@@ -275,8 +281,9 @@ public class DecisionCircuitRegistrationTests
 
         // Assert
         Assert.Equal(
-            "No liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey.",
+            "No Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey.",
             error.Message);
+        Assert.DoesNotContain(value, error.Message, StringComparison.Ordinal);
     }
 
     /// <summary>A key pasted into <c>ApiKeyEnvVar</c> by mistake: the shape of a real key, built at run time.</summary>
@@ -284,7 +291,13 @@ public class DecisionCircuitRegistrationTests
     {
         public static readonly string Pasted = string.Concat("sk", "-ant-test-", "0123456789abcdef");
 
+        /// <summary>A key made of letters, digits and underscores only: the shape of a variable name.</summary>
+        public static readonly string NameShaped = string.Concat("lk", "_live_", "0123456789ABCDEFabcdef");
+
+        /// <summary>A real variable name, but not the provider's default: not printed either.</summary>
+        public const string CustomVariable = "_My_Liquid_Key2";
+
         public const string LiquidSentence =
-            "no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey";
+            "no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey";
     }
 }

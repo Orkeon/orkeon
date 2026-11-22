@@ -361,9 +361,11 @@ Circuit coupé, l'exécution ne fait **aucun** appel à `IDecisionModel`, quelle
 cause est nommée dans chaque message, sous la forme `the decision circuit is off: <cause>`, la cause
 étant `--no-decision`, `Orkeon:Decision:Enabled=false`, `no decision provider resolved` ou, pour un fournisseur
 hébergé (TypeSafe, Liquid) dont la clé n'est ni dans son réglage ni dans sa variable d'environnement, `no Liquid API
-key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey` (cause `no-key`, qui nomme la variable
-que choisit `ApiKeyEnvVar` ; quand `ApiKeyEnvVar` ne contient pas un nom de variable d'environnement, une clé
-collée là par erreur, `no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey`, jamais sa valeur), et, dans le passage par les relais d'un essai de la forge, `the forge's trial pass
+key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey` (cause `no-key` ; la variable n'est
+nommée que si `ApiKeyEnvVar` est vide ou contient la variable par défaut du fournisseur ; toute autre valeur, une
+autre variable ou une clé collée là par erreur, n'est jamais répétée : les seuls chemins des réglages,
+`no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey` ; le refus d'un appel, `No Liquid API key: …`, et un refus 401
+ou 403, `liquid refused the key: …`, finissent par le même remède), et, dans le passage par les relais d'un essai de la forge, `the forge's trial pass
 without System One` (cause `trial`) ; quand l'option et le réglage valent tous deux, c'est l'option qui est nommée.
 La clé est cherchée là où le fournisseur la lit à chaque appel, le réglage d'abord, quand l'hôte résout son
 circuit, sans aucun appel réseau, et seulement quand le modèle de décision est ce fournisseur System One : un

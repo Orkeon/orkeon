@@ -193,18 +193,24 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
             .ToList();
         var error = events.Single(e => e.GetProperty("kind").GetString() == "error");
         var started = events.Single(e => e.GetProperty("kind").GetString() == "session.started");
-        const string Sentence = $"no Liquid API key: set the environment variable {Variable}, or Orkeon:Liquid:ApiKey";
+        // Not the provider's default variable: the sentence names the setting paths, never the value.
+        const string Sentence = "no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey";
         Assert.Equal((ForgeCrewDecision.UnavailableCode, "no-key"), (error.GetProperty("code").GetString(), error.GetProperty("cause").GetString()));
         Assert.Equal(Sentence, error.GetProperty("detail").GetString());
         Assert.Equal(("no-key", Sentence), (started.GetProperty("forgeCircuitCause").GetString(), started.GetProperty("forgeCircuitDetail").GetString()));
+        Assert.DoesNotContain(Variable, console.Stdout + console.Stderr, StringComparison.Ordinal);
     }
 
+    /// <summary>Keys pasted into <c>ApiKeyEnvVar</c> by mistake, built at run time: a dashed one, and one shaped like a variable name.</summary>
+    public static TheoryData<string> PastedKeys =>
+        [string.Concat("sk", "-ant-test-", "0123456789abcdef"), string.Concat("lk", "_live_", "0123456789ABCDEFabcdef")];
+
     /// <summary>#467 — a key pasted into <c>ApiKeyEnvVar</c> never reaches the forge's events: the sentence names the setting.</summary>
-    [Fact]
+    [Theory]
+    [MemberData(nameof(PastedKeys))]
     [Trait("BR", "CH-467")]
-    public async Task A_key_pasted_into_the_variable_setting_never_reaches_the_forges_events()
+    public async Task A_key_pasted_into_the_variable_setting_never_reaches_the_forges_events(string pasted)
     {
-        var pasted = string.Concat("sk", "-ant-test-", "0123456789abcdef");
         Directory.CreateDirectory(_workspace);
         var settings = Path.Combine(_workspace, "settings-pasted-key.json");
         await File.WriteAllTextAsync(settings,
@@ -220,8 +226,7 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
             .ToList();
         var error = events.Single(e => e.GetProperty("kind").GetString() == "error");
         var started = events.Single(e => e.GetProperty("kind").GetString() == "session.started");
-        const string Sentence =
-            "no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey";
+        const string Sentence = "no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey";
         Assert.Equal((Sentence, Sentence), (error.GetProperty("detail").GetString(), started.GetProperty("forgeCircuitDetail").GetString()));
         Assert.DoesNotContain(pasted, console.Stdout + console.Stderr, StringComparison.Ordinal);
     }

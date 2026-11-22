@@ -307,7 +307,7 @@ public class SystemOneDecisionModelTests
 
         var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(ChoiceRequest(), TestContext.Current.CancellationToken));
 
-        Assert.Contains(provider, ex.Message, StringComparison.Ordinal);
+        Assert.Contains(provider, ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(variable, ex.Message, StringComparison.Ordinal);
         Assert.Contains(setting, ex.Message, StringComparison.Ordinal);
         Assert.False(ex.IsTransient);
@@ -395,7 +395,28 @@ public class SystemOneDecisionModelTests
 
         var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(ChoiceRequest(), TestContext.Current.CancellationToken));
 
-        Assert.Equal($"{name} refused the key: set {variable} or {section}:ApiKey.", ex.Message);
+        Assert.Equal($"{name} refused the key: set the environment variable {variable}, or {section}:ApiKey.", ex.Message);
+    }
+
+    public static TheoryData<string> ApiKeyEnvVarValues =>
+    [
+        string.Concat("sk", "-ant-test-", "0123456789abcdef"),
+        string.Concat("lk", "_live_", "0123456789ABCDEFabcdef"),
+        "MY_LIQUID_KEY",
+    ];
+
+    [Theory]
+    [MemberData(nameof(ApiKeyEnvVarValues))]
+    [Trait("BR", "CH-467")]
+    public async Task ShouldNameTheSettingPathsOnly_WhenTheApiRefusesTheKeyAndApiKeyEnvVarIsNotTheDefault(string value)
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.Unauthorized, "{}");
+        var model = Create(handler, "liquid", o => o.ApiKeyEnvVar = value);
+
+        var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(ChoiceRequest(), TestContext.Current.CancellationToken));
+
+        Assert.Equal("liquid refused the key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey.", ex.Message);
+        Assert.DoesNotContain(value, ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -641,7 +662,7 @@ public class SystemOneDecisionModelTests
 
         var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(ChoiceRequest(), TestContext.Current.CancellationToken));
 
-        Assert.Equal("typesafe refused the key: set TYPESAFE_API_KEY or Orkeon:TypeSafe:ApiKey.", ex.Message);
+        Assert.Equal("typesafe refused the key: set the environment variable TYPESAFE_API_KEY, or Orkeon:TypeSafe:ApiKey.", ex.Message);
     }
 
     [Theory]

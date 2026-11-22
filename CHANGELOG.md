@@ -39,10 +39,18 @@ environment variable and the setting the decision provider's key is read from
 (Studio, Orkeon Code) shows the remedy without parsing stderr. The forge carries the same sentence as
 `forgeCircuitDetail` on `session.started` and as `detail` on its `FORGE-DECISION-UNAVAILABLE` error, its
 `FORGE-DECISION-PASS-SKIPPED` warning and the off pass's `run.started`. Every other cause writes none, and the key is
-absent from the line when there is none: the fields are additive. When `Orkeon:<Provider>:ApiKeyEnvVar` holds no
-environment variable name (a key pasted there by mistake), the sentence, and a call's refusal, name the setting and
-never repeat its value: `no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name;
-set it to one, or set Orkeon:Liquid:ApiKey`.
+absent from the line when there is none: the fields are additive. The sentence names the variable only when
+`Orkeon:<Provider>:ApiKeyEnvVar` is unset or holds the provider's default; any other value (another variable, or a
+key pasted there by mistake, whatever its shape) is never repeated, the sentence names the setting paths alone:
+`no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey`. A call's refusal (`No Liquid API key: …`, the
+display name) and a 401 or 403 refusal (`liquid refused the key: …`) end with the same remedy.
+
+### Fixed — `orkeon forge rephrase` without a default LLM says one thing (#466)
+
+With no `Llm` section, `orkeon forge rephrase` printed the host's echo-provider warning before refusing with
+`no LLM is configured`; with a `Llm` section holding `Profiles` alone, it ran on the echo provider, printed the
+request back and exited 0. It now decides with the host's predicate (a default provider is configured) and refuses,
+`FORGE-LLM-UNAVAILABLE`, exit 1, the refusal alone on stderr.
 
 ### Added — the forge's `error` event says whether the process goes on (`terminal`, #453)
 

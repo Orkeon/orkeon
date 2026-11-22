@@ -144,26 +144,30 @@ public sealed class ForgeRephraseTests
 
     private const string NoLlmMessage = "no LLM is configured — run `orkeon init`, or pass --settings.";
 
-    /// <summary>#466: through the real dispatch, settings wiring no LLM and no --events: one stderr line, exit 1.</summary>
-    [Fact]
+    /// <summary>
+    /// #466: through the real dispatch, settings wiring no default LLM and no --events: the refusal is the
+    /// only stderr line (the host's echo-provider warning would contradict it), exit 1, nothing on stdout. A
+    /// section holding profiles alone wires no default either: the host would run on the echo provider.
+    /// </summary>
+    [Theory]
     [Trait("BR", "CH-466")]
-    public async Task Without_an_llm_through_the_dispatch_the_terminal_refusal_is_one_error_line()
+    [InlineData("{}")]
+    [InlineData("""{ "Llm": { "Profiles": { "local": { "BaseUrl": "http://localhost:8080/v1", "Model": "m" } } } }""")]
+    public async Task Without_an_llm_through_the_dispatch_the_terminal_refusal_is_one_error_line(string settingsJson)
     {
         var workspace = Path.Combine(Path.GetTempPath(), "orkeon-forge-rephrase-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(workspace);
         try
         {
             var settings = Path.Combine(workspace, "settings.json");
-            await File.WriteAllTextAsync(settings, "{}", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(settings, settingsJson, TestContext.Current.CancellationToken);
             using var console = new TestConsole();
 
             var exitCode = await ForgeCommand.DispatchAsync(console, ["rephrase", "un besoin", "--settings", settings], workspace);
 
-            // The host's own warning on the missing Llm section comes first; the refusal is the last line.
-            Assert.Equal(1, exitCode);
+            Assert.True(exitCode == 1, $"exit {exitCode}: {console.Stderr}{console.Stdout}");
             var errors = console.Stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            Assert.Equal("orkeon forge: " + NoLlmMessage, errors[^1]);
-            Assert.Single(errors, l => l.StartsWith("orkeon forge:", StringComparison.Ordinal));
+            Assert.Equal(["orkeon forge: " + NoLlmMessage], errors);
             Assert.Empty(console.Stdout);
         }
         finally

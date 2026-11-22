@@ -17,8 +17,11 @@ public sealed class DecisionCircuitAtStartTests
     private const string NoKeySettings =
         $$"""{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Liquid": { "Model": "lfm", "ApiKeyEnvVar": "{{NoKeyVariable}}" } } }""";
 
-    private const string NoKeyReason =
-        $"the decision circuit is off: no Liquid API key: set the environment variable {NoKeyVariable}, or Orkeon:Liquid:ApiKey";
+    // The variable is not the provider's default: the sentence names the setting paths, never the value (#467).
+    private const string NoKeySentence =
+        "no Liquid API key: set the variable named by Orkeon:Liquid:ApiKeyEnvVar, or Orkeon:Liquid:ApiKey";
+
+    private const string NoKeyReason = "the decision circuit is off: " + NoKeySentence;
 
     private const string RequiredCrew = """
         name: triage-crew
@@ -109,16 +112,22 @@ public sealed class DecisionCircuitAtStartTests
         Assert.True(exit == 69, $"exit {exit}: {console.Stderr}{console.Stdout}");
         var decision = RunDecision(console);
         Assert.Equal(
-            ("no-key", $"no Liquid API key: set the environment variable {NoKeyVariable}, or Orkeon:Liquid:ApiKey"),
+            ("no-key", NoKeySentence),
             (decision.GetProperty("cause").GetString(), decision.GetProperty("detail").GetString()));
+        Assert.DoesNotContain(NoKeyVariable, console.Stdout + console.Stderr, StringComparison.Ordinal);
     }
 
-    [Fact]
+    // Keys pasted into the variable setting by mistake, built at run time: a dashed one, and one made of
+    // letters, digits and underscores only, the shape of a variable name.
+    public static TheoryData<string> PastedKeys =>
+        [string.Concat("sk", "-ant-test-", "0123456789abcdef"), string.Concat("lk", "_live_", "0123456789ABCDEFabcdef")];
+
+    [Theory]
+    [MemberData(nameof(PastedKeys))]
     [Trait("BR", "CH-467")]
-    public async Task ShouldNeverWriteAKeyPastedIntoTheVariableSetting_WhenAWatchedRunHasNoKey()
+    public async Task ShouldNeverWriteAKeyPastedIntoTheVariableSetting_WhenAWatchedRunHasNoKey(string pasted)
     {
-        // Arrange: the shape of a real key, built at run time.
-        var pasted = string.Concat("sk", "-ant-test-", "0123456789abcdef");
+        // Arrange
         var settings =
             $$"""{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Liquid": { "Model": "lfm", "ApiKeyEnvVar": "{{pasted}}" } } }""";
 
@@ -128,9 +137,7 @@ public sealed class DecisionCircuitAtStartTests
         // Assert
         using var _ = console;
         Assert.True(exit == 69, $"exit {exit}: {console.Stderr}{console.Stdout}");
-        Assert.Equal(
-            "no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey",
-            RunDecision(console).GetProperty("detail").GetString());
+        Assert.Equal(NoKeySentence, RunDecision(console).GetProperty("detail").GetString());
         Assert.DoesNotContain(pasted, console.Stdout + console.Stderr, StringComparison.Ordinal);
     }
 

@@ -186,7 +186,7 @@ public sealed partial class SystemOneDecisionModel : IDecisionModel
             return key;
         return _provider.KeyRequired
             ? throw new DecisionModelException(
-                $"No {Name} API key: {DecisionApiKey.Remedy(_provider, _options)}.",
+                $"No {_provider.DisplayName} API key: {DecisionApiKey.Remedy(_provider, _options)}.",
                 null, isTransient: false)
             : null;
     }
@@ -203,7 +203,7 @@ public sealed partial class SystemOneDecisionModel : IDecisionModel
             400 when body.Contains("max_tokens_exceeded", StringComparison.Ordinal) => longContext
                 ? $"{Name} refused the request: the state is over the model's long context limit ({DecisionLimits.LongContextTokens} tokens)."
                 : $"{Name} refused the request: the state is over the model's context limit ({DecisionLimits.StandardContextTokens} tokens); set long context on the task to use {DecisionLimits.LongContextTokens}.",
-            401 or 403 => $"{Name} refused the key: set {_options.ApiKeyEnvVar} or {_provider.Section}:ApiKey.",
+            401 or 403 => $"{Name} refused the key: {DecisionApiKey.Remedy(_provider, _options)}.",
             429 => $"{Name} rate limit reached (429) after the retries.",
             529 => $"{Name} is overloaded (529) after the retries.",
             >= 400 and < 500 => $"{Name} refused the request: {detail}",

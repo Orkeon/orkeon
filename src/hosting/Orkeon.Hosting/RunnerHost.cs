@@ -160,6 +160,13 @@ public static partial class RunnerHost
     public const string LlmNotConfiguredMessage = OperatorMessages.LlmNotConfigured;
 
     /// <summary>
+    /// Registered by a caller that refuses to run without a default LLM (<c>orkeon forge rephrase</c>,
+    /// #466): the host does not announce the echo-provider fallback that caller never takes, so its
+    /// stderr holds the caller's refusal alone. Every other warning of the host is kept.
+    /// </summary>
+    internal sealed class EchoFallbackUnannounced;
+
+    /// <summary>
     /// Builds a fully-configured host with all Orkeon services.
     /// </summary>
     /// <param name="settingsPath">Resolved appsettings.json path (nullable).</param>
@@ -697,6 +704,8 @@ public static partial class RunnerHost
             return;
         }
 
+        if (host.Services.GetService<EchoFallbackUnannounced>() is not null)
+            return;
         RunnerOperatorLog.Warn(operatorLogger, "WARNING: " + LlmNotConfiguredMessage);
         LogLlmNotConfigured(logger);
     }
