@@ -624,12 +624,15 @@ public partial class CrewFactory : ICrewFactory
     {
         var builder = new CrewTaskBuilder()
             .Description(TaskDescription.From(taskConfig.Description))
-            .ExpectedOutput(taskConfig.ExpectedOutput)
             .Async(taskConfig.AsyncExecution)
             .Retry(taskConfig.Retry)
             .HumanInput(taskConfig.HumanInput)
             .WithTools(resolvedTools)
             .WithKey(taskConfig.Key);
+
+        // A decision task may declare no expected output, as the validator allows: the builder gives it one (#476).
+        if (taskConfig.Decision is null || !string.IsNullOrWhiteSpace(taskConfig.ExpectedOutput))
+            builder.ExpectedOutput(taskConfig.ExpectedOutput);
 
         if (taskConfig.Decision is { } decision)
         {

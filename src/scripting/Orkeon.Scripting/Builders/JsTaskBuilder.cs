@@ -278,7 +278,9 @@ internal sealed class JsTaskBuilder
             if (string.IsNullOrWhiteSpace(_name))
                 throw new InvalidScriptException("taskBuilder() decision task requires .name(...).");
             _description ??= _name;
-            _expectedOutput ??= "decision";
+            // Blank counts as absent, as it does for a YAML decision task (CrewFactory, #476).
+            if (string.IsNullOrWhiteSpace(_expectedOutput))
+                _expectedOutput = "decision";
         }
 
         if (_decisionSpec is not null && _retry is not null)

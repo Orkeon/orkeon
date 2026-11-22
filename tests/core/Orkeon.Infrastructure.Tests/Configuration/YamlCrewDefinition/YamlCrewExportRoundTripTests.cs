@@ -192,6 +192,37 @@ public partial class YamlCrewExportRoundTripTests
     }
 
     [Fact]
+    [Trait("BR", "CH-476")]
+    public async Task ShouldWriteNoExpectedOutput_WhenTheDecisionTaskDeclaresNone()
+    {
+        var crew = await _loader.LoadFromStringAsync(
+            """
+            name: routing
+            goal: Route without an expected output
+            agents:
+              worker:
+                goal: Work
+            tasks:
+              triage:
+                description: Classify
+                decision:
+                  questions:
+                    escalate:
+                      noul: the change needs an escalation
+                  fallback:
+                    escalate: "no"
+            """,
+            TestContext.Current.CancellationToken);
+
+        var exported = _exporter.ExportToString(crew);
+        var reloaded = await _loader.LoadFromStringAsync(exported, TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain("expectedOutput", exported, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("expected_output", exported, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(string.Empty, Assert.Single(reloaded.Tasks).ExpectedOutput);
+    }
+
+    [Fact]
     [Trait("BR", "BR-02")]
     public async Task ShouldOmitMinConfidence_WhenDecisionFloorIsTheDefault()
     {
