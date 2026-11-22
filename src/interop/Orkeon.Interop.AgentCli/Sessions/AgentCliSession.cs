@@ -186,9 +186,17 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
         }
     }
 
-    /// <summary>A tool result Orkeon's gate refused, returned to the model as an error (probe 7).</summary>
-    private static bool IsRefusal(string? content) =>
-        content is not null && content.TrimStart().StartsWith("DENIED", StringComparison.Ordinal);
+    /// <summary>
+    /// A tool result Orkeon refused or that failed, returned to the model as an error (probe 7). The two loops
+    /// mark it in the text alone: <c>act</c> writes <c>DENIED: ...</c>, the crew's chat loop <c>Error: ...</c>
+    /// (the permission gate, the Guardian, an unknown tool, a tool that threw).
+    /// </summary>
+    private static bool IsRefusal(string? content)
+    {
+        var text = content?.TrimStart();
+        return text is not null
+            && (text.StartsWith("DENIED", StringComparison.Ordinal) || text.StartsWith("Error:", StringComparison.Ordinal));
+    }
 
     private async Task<AgentCliBridge> BridgeAsync(IReadOnlyList<ToolSchema> tools, CancellationToken cancellationToken)
     {

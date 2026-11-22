@@ -52,6 +52,11 @@
           "xunit.v3.mtp-v2": "[4.0.2]"
         }
       },
+      "Acornima": {
+        "type": "Transitive",
+        "resolved": "1.7.0",
+        "contentHash": "a2I4O4qkuAdB0oSaGz6/k0n/bXxMbGcLBra5dNTTVSLmTwM7uORA8ebpOrNMmDfFWOMwvuaRL6gPprRV4HTV0w=="
+      },
       "Apache.Arrow.Scalars": {
         "type": "Transitive",
         "resolved": "23.0.0",
@@ -560,6 +565,20 @@
           "Orkeon.Domain": "[1.3.0, )"
         }
       },
+      "orkeon.scripting": {
+        "type": "Project",
+        "dependencies": {
+          "Jint": "[4.17.0, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
+          "Microsoft.Extensions.Options": "[10.0.13, )",
+          "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
+          "Orkeon.Application": "[1.3.0, )",
+          "Orkeon.Domain": "[1.3.0, )",
+          "Orkeon.Infrastructure": "[1.3.0, )",
+          "Orkeon.Rag.Abstractions": "[1.3.0, )"
+        }
+      },
       "orkeon.tests.shared": {
         "type": "Project",
         "dependencies": {
@@ -625,6 +644,15 @@
         "requested": "[1.13.1, )",
         "resolved": "1.13.1",
         "contentHash": "wkKKu0oltLJQRBf862+O0yqBAvo+RVisLXFFTlThWCuw1gjATkna1ZKQBcwHUyJUUZhkPUvyxFJcyqXSAvNkag=="
+      },
+      "Jint": {
+        "type": "CentralTransitive",
+        "requested": "[4.17.0, )",
+        "resolved": "4.17.0",
+        "contentHash": "9jdpLQQYsWTjOn2THpiR8zRJ34ksV6ofW0gJvZxJW/fIGK+A+TkpWonhuuLDRwqLDjP+9WsxYt2MEge6lWjk2A==",
+        "dependencies": {
+          "Acornima": "1.7.0"
+        }
       },
       "Markdig": {
         "type": "CentralTransitive",

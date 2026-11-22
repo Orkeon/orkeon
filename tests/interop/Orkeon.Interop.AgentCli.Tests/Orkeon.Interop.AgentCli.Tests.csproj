@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\interop\Orkeon.Interop.AgentCli\Orkeon.Interop.AgentCli.csproj" />
     <ProjectReference Include="..\..\..\src\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\scripting\Orkeon.Scripting\Orkeon.Scripting.csproj" />
     <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
   </ItemGroup>
 
