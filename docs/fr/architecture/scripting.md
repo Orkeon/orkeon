@@ -196,7 +196,8 @@ Six options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la 
   `true` prend les nombres de l'hôte, un objet les remplace dans les mêmes bornes (`fillShare` au-dessus de 0
   et au plus 1, `keepRecentMessages` 0 ou plus, `headChars` 1 ou plus). Sans `prune`, aucun appel de décision
   n'est fait, quoi que dise `Enabled` ; circuit de décision coupé, rien n'est demandé et le run avertit une
-  fois. Un élagage qui a coupé ou retiré un résultat émet `agent.pruned`, et `result.pruned` (`offered`,
+  fois ; une crew en `decision.mode: none` n'élague rien, sans appel ni avertissement, et un hôte qui ne fournit
+  aucun élagueur ignore `prune` avec un avertissement. Un élagage qui a coupé ou retiré un résultat émet `agent.pruned`, et `result.pruned` (`offered`,
   `judged`, `kept`, `cut`, `dropped`, `freedTokens`) totalise la boucle sur chaque issue (interrompue, épuisée
   et budget épuisé comprises) ; il est absent quand rien n'a été jugé. `prune` à côté d'`onContextPressure`
   ou de `contextPressure` lève `InvalidScriptError` en nommant les deux.

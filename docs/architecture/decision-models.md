@@ -353,8 +353,9 @@ whose key is in neither its setting nor its environment variable, `no Liquid API
 LIQUID_API_KEY, or Orkeon:Liquid:ApiKey` (cause `no-key`, naming the variable `ApiKeyEnvVar` chooses), and, in the
 relay pass of a forge trial, `the forge's trial pass without System One` (cause `trial`); when the switch and the
 setting both hold, the switch is named. The key is looked for where the provider reads it at each call, the setting
-first, when the host resolves its circuit, with no network call; a local provider (Kev) is never turned off by it. A forge trial emits no `run.decision`: its pass reports `circuit` and `cause` on the
-forge stream's `run.started`, `task.completed` and `llm.call.*` lines. Each consumer that degrades says so in one warning:
+first, when the host resolves its circuit, with no network call, and only when the decision model is that System One
+provider: a local provider (Kev) and a decision model that is no System One provider are never turned off by it. A forge
+trial emits no `run.decision`: its pass reports `circuit` and `cause` on the forge stream's `run.started`, `task.completed` and `llm.call.*` lines. Each consumer that degrades says so in one warning:
 
 | Consumer | Circuit off |
 | --- | --- |
@@ -577,7 +578,7 @@ never on its own.
   the verdict or the arbitration; each call is one `systemone.answered` event, its tokens are charged to the
   session's budget (`systemOneTokens` on `cost.updated`), and a failed call is one `FORGE-SYSTEMONE-FAILED` warning.
   These calls are the forge's own and are split from the trial's: `--no-decision` (announced on `session.started`
-  as `forgeCircuit: off`, `forgeCircuitCause: switch`, like `settings` and `no-provider`) turns them off without
+  as `forgeCircuit: off`, `forgeCircuitCause: switch`, like `settings`, `no-provider` and `no-key`) turns them off without
   touching the engine host's circuit, which the trial of an `optional` or `required` crew follows
   ([the CLI](../reference/cli.md#orkeon-forge)). The assistant and the judge name no decision profile.
 

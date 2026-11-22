@@ -12,22 +12,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Every `error` line of `orkeon forge --events jsonl` now carries `terminal` beside `recoverable`, and the two have a
 documented contract ([CLI reference](docs/reference/cli.md#orkeon-forge)): `recoverable` says whether the session stays
 resumable, `terminal` whether this process goes no further (a `session.finished` follows, or the command returns). A
-budget stop is recoverable and terminal; an invalid edit or a refused retry at the arbitration, invalid folders, and a
-brief or a plan refused below the attempts cap are recoverable and not terminal. At the cap the two `error` lines stay
-two, both `terminal: true`. The values of `recoverable` do not change, the envelope stays at `v: 2`, and the run's own
-`error` event is unchanged.
+budget stop is recoverable and terminal; an invalid edit, an edit or a retry refused at the arbitration for want of an
+iteration, invalid folders, and a brief or a plan refused below the attempts cap are recoverable and not terminal. At
+the cap the two `error` lines stay two, both `terminal: true`, and a brief refused on the interview's last turn is
+`terminal: true` too, the interview ending there. The values of `recoverable` do not change, the envelope stays at
+`v: 2`, and the run's own `error` event is unchanged. For a client of the forge stream the field is additive.
 
-### Fixed — a hosted decision provider without its key turns the circuit off (`no-key`), and `--validate` names a fail-closed guarded profile (#451, #452)
+### Changed — a hosted decision provider without its key turns the circuit off (`no-key`) **[breaking]** (#451)
 
-- A host whose decision provider is hosted (TypeSafe, Liquid) and finds its key neither in its `ApiKey` setting nor in
-  its environment variable (`ApiKeyEnvVar`, else `TYPESAFE_API_KEY` / `LIQUID_API_KEY`) now resolves its circuit off,
-  with the new cause `no-key` (`DecisionCircuitCause.NoKey`, `DecisionCircuitCauses.NoKey`). The key is read from the
-  same sources as the provider reads it at each call, when the circuit is resolved, with no network call; a local
-  provider (Kev) is never turned off. The circuit's sentence names both places
-  (`the decision circuit is off: no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey`,
-  carried by the new `DecisionCircuit.Detail`). Behaviour change: a `required` crew on such a host used to start and
-  fail at its first decision call; it is now refused before its first task (`orkeon run` exits `69`), an `optional`
-  crew takes its `without:` relays, `--validate` warns, and `run.decision` reports `circuit: off`, `cause: no-key`.
+**Before**: a host whose decision provider is hosted (TypeSafe, Liquid) and has no key started with its circuit on, and
+a `required` crew started and failed at its first decision call. **Now**: a host that finds the key neither in the
+`ApiKey` setting nor in the environment variable (`ApiKeyEnvVar`, else `TYPESAFE_API_KEY` / `LIQUID_API_KEY`) resolves
+its circuit off, with the new cause `no-key` (`DecisionCircuitCause.NoKey`, `DecisionCircuitCauses.NoKey`). The key is
+read from the same sources as the provider reads it at each call, when the circuit is resolved, with no network call,
+and only when the decision model is that System One provider: a local provider (Kev) and a decision model that is no
+System One provider are never turned off. The circuit's sentence names both places
+(`the decision circuit is off: no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey`,
+carried by the new `DecisionCircuit.Detail`). A `required` crew on such a host is refused before its first task
+(`orkeon run` exits `69`, as `orkeon-host` and `mcp serve --crew` record it), an `optional` crew takes its `without:`
+relays, and `--validate` warns. On the wire, `no-key` is a new value of `cause` on `run.decision`, of `cause` on the
+forge's `FORGE-DECISION-UNAVAILABLE` error and of `forgeCircuitCause` on its `session.started`: a client that lists the
+causes adds it. **Migration**: set the provider's key (its variable or `ApiKey`), or run without System One on purpose
+(`--no-decision`, `Orkeon:Decision:Enabled=false`).
+
+### Fixed — `--validate` names a fail-closed guarded profile with the circuit off (#452)
+
 - `--validate`, with the circuit off, prints a `WARNING:` per agent whose `llm.profile` names a decision profile that is
   `FailClosed` and holds a `guard` stage, since a run would block every call through it. The run is not refused. The
   rule is one predicate, `DecisionProfileServiceCollectionExtensions.BlocksEveryCallWithTheCircuitOff`, used by the
@@ -45,7 +54,9 @@ Every refused option throws an `InvalidScriptError` naming it before any call. E
 `agent.effort` event with the agent's role and a null `taskId` (the observer's `AgentRouteNotice` and
 `AgentEffortNotice` carry an empty `TaskId`). The seam is public and experimental (`ORKEXP008`): `ISystemOnePicker` and
 its records in `Orkeon.Application`, registered scoped by `AddOrkeonApplication`, and `ScriptingHostPorts.SystemOnePicker`,
-which `orkeon run`, the REPL, `orkeon-host` and `mcp serve --crew` set. The task path of System One is unchanged.
+which `orkeon run`, the REPL, `orkeon-host`, `mcp serve --crew` and the forge's trials set. The task path of System One
+is unchanged. On the wire, `agent.route` and `agent.effort` can now carry a null `taskId` (a pick belongs to no task)
+and, on `agent.route`, the reasons `floor` and `ceiling`: a client that keyed these events by task reads the role.
 
 ### Added — `prune` on `ctx.llm.act`: a script's own loop gets the orchestrator's read-result pruning (#461)
 
@@ -58,13 +69,19 @@ refused with a message naming both. `result.pruned` (`offered`, `judged`, `kept`
 sums the loop on every outcome and is absent when nothing was judged; a pruning that cut or dropped a result emits
 `agent.pruned`. The seam is a new experimental port in `Orkeon.Application`, `IConversationPruner` with
 `ConversationPruneRequest`, `ConversationPruneResponse` and `ActConversationView` (`ORKEXP009`), which the host hands
-the scripting runtime through `ScriptingHostPorts.ConversationPruner`. The pruning stage asks the batches of one
-pruning together instead of one after the other, for the crew loops too.
+the scripting runtime through `ScriptingHostPorts.ConversationPruner`, taken from the run's scope: `orkeon run`,
+`orkeon-host` (which records the act's `agent.pruned` in the run's history), `mcp serve --crew` and the forge's trials
+hand it. A host that hands no pruner ignores `prune` with one warning, and a crew on `decision.mode: none` prunes
+nothing. The act's `agent.pruned` carries a null `taskId` and the agent's role, as a pick's events. The pruning stage
+asks the batches of one pruning together instead of one after the other, for the crew loops too.
 
-### Fixed — the start-time settings check refuses what the binder took without a word (#449, #450, #454, #455, #456)
+### Changed — the start-time settings check refuses what the binder took without a word **[breaking]** (#449, #450, #454, #455, #456)
 
-**Breaking — values now refused at start.** Each was accepted before and read as something the file did not
-say; each refusal names the key.
+**Before**: each value below was accepted at start and read as something the file did not say. **Now**: it is refused
+at start, the refusal naming the key; a refusal of a single value where a list or a section is expected no longer prints
+that value. A list setting whose reader takes one comma-separated value (`Llm:AvailableModels`,
+`Llm:ModelCapabilities:<id>:ReasoningEfforts`, `Llm:Profiles:<name>:Fallback`) is not refused when written as one
+string. **Migration**: the last column of the table.
 
 | Written | Was read as | Now | Migration |
 |---|---|---|---|
@@ -80,6 +97,33 @@ say; each refusal names the key.
 - A value echoed in a refusal is written in the invariant culture (`1.5`, never `1,5`): decision-profile
   thresholds, the guardian thresholds, an agent's `maxExecutionTime`, `ContextWindowSettings.CompressionRatio`,
   `KnowledgeAttachment.MinScore`.
+
+### Fixed — the Anthropic provider sends a `json_schema` response format in Anthropic's own dialect (#459)
+
+It used to send the caller's schema unchanged, and Anthropic answers a 400 to an object that does not say
+`additionalProperties: false`: `ctx.llm.extract`, `withResponseSchema`, a YAML `response_format`, a
+`structured_output` deliverable and the decision circuit failed on any ordinary schema. The provider now works on a
+copy: it closes every object that does not set `additionalProperties`, and moves the constraints the API does not take
+(`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `minLength`, `maxLength`, `maxItems`,
+`uniqueItems`, a `minItems` above 1, a `format` off Anthropic's list) into the node's `description`. What would change
+the schema's meaning — `oneOf`, `not`, an `additionalProperties` set to `true` or to a schema, an external `$ref`, a
+recursive schema, an object schema with no `properties`, the keywords the dialect cannot walk (`if` / `then` / `else`,
+`patternProperties`, `dependentSchemas`, `contains`, `propertyNames`, `unevaluatedProperties`), messages ending on an
+`assistant` turn — is refused before any HTTP call, naming the keyword and its path (``ctx.llm.extract: the provider
+failed: Anthropic cannot take the response schema 'extract': `oneOf` at `#/properties/pick` is not supported; use
+`anyOf`.``); these requests were refused by the API before. The refusal's error type is `UnsupportedResponseSchema`,
+classed as refused: no retry, no fallback. A task's `output_json` is still validated against the author's schema. See
+`docs/guides/llm-response-format.md`, "Anthropic's schema dialect".
+
+### Fixed — a watched run no longer dies before its first event with the decision circuit off (#448)
+
+With the circuit off (`--no-decision`, `Orkeon:Decision:Enabled=false`) `system_one_decide` resolves to null in the
+host's tool collection; the decorator that turns every tool call into an event wrapped that null and the run ended
+with `Value cannot be null. (Parameter 'inner')`, exit 2, no `run.decision`. The decorator now passes the null
+through, as the withheld tool it is; the orchestrator and the toolbelt composer (`ExecutionOrchestrator`,
+`TaskToolbelt.Compose`) skip it as defence in depth, beside the DI factory, `ScriptToolCatalogue` and `ToolRegistry`,
+which filter it too. A watched run behaves as an unwatched one: `run.decision` says `circuit: off` with its cause, and
+a `decision.mode: required` crew is refused with exit 69.
 
 ### Added — LLM provider modules: `Llm:Provider` names a provider shipped outside the core
 
@@ -535,28 +579,6 @@ host's circuit.
 
 ### Fixed
 
-- **The Anthropic provider sends a `json_schema` response format in Anthropic's own dialect (#459).** It used to
-  send the caller's schema unchanged, and Anthropic answers a 400 to an object that does not say
-  `additionalProperties: false`: `ctx.llm.extract`, `withResponseSchema`, a YAML `response_format`, a
-  `structured_output` deliverable and the decision circuit failed on any ordinary schema. The provider now works on
-  a copy: it closes every object that does not set `additionalProperties`, and moves the constraints the API does
-  not take (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `minLength`, `maxLength`,
-  `maxItems`, `uniqueItems`, a `minItems` above 1, a `format` off Anthropic's list) into the node's `description`.
-  What would change the schema's meaning — `oneOf`, `not`, an `additionalProperties` set to `true` or to a schema,
-  an external `$ref`, a recursive schema, messages ending on an `assistant` turn — is refused before any HTTP call,
-  naming the keyword and its path (``ctx.llm.extract: the provider failed: Anthropic cannot take the response schema
-  'extract': `oneOf` at `#/properties/pick` is not supported; use `anyOf`.``); these requests were refused by the API
-  before. The refusal's error type is `UnsupportedResponseSchema`, classed as refused: no retry, no fallback. A
-  task's `output_json` is still validated against the author's schema. See `docs/guides/llm-response-format.md`,
-  "Anthropic's schema dialect".
-- **A watched run (`--events`) no longer dies before its first event when the decision circuit is off and a
-  decision provider is configured (#448).** With the circuit off (`--no-decision`, `Orkeon:Decision:Enabled=false`)
-  `system_one_decide` resolves to null in the host's tool collection; the decorator that turns every tool call
-  into an event wrapped that null and the run ended with `Value cannot be null. (Parameter 'inner')`, exit 2, no
-  `run.decision`. The decorator now lets a withheld tool through as withheld, and the orchestration skips a null
-  tool once, where it receives the host's tools (`ExecutionOrchestrator`, `TaskToolbelt.Compose`), rather than
-  each consumer on its own. A watched run behaves as an unwatched one: `run.decision` says `circuit: off` with its
-  cause, and a `decision.mode: required` crew is refused with exit 69.
 - **The `firefox` tool no longer fails to start on a loaded machine whose `StartupTimeoutSeconds` covers the
   start (#437).** Firefox announces its remote protocol early and answers `session.new` only once its first
   window has loaded; that wait was bounded by `CommandTimeoutSeconds` (30 s), not by the start's timeout, so a

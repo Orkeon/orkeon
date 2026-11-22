@@ -623,7 +623,7 @@ the second; `orkeon eval run --llm-judge` sets it for one run, `--offline` force
 The decision provider TypeSafe (model Jev, key required), bound by `AddOrkeonDecisionProvider(configuration, provider)`, which the three
 shipped binaries call when it is the active provider (one provider is active at a time, see [`Orkeon:Decision`](#orkeondecision)): this section is present — even empty, `TypeSafe: {}` counts — or `TYPESAFE_API_KEY` is set, or `Orkeon:Decision:Provider` is `typesafe`: the key, the
 endpoint, the default model, the timeout and retries of each call (the LLM judge of the guardian is
-[`Orkeon:Guardian:Llm`](#orkeonguardian)). See [Decision models](../architecture/decision-models.md).
+[`Orkeon:Guardian:Llm`](#orkeonguardian)). Without a key — neither `ApiKey` nor the variable `ApiKeyEnvVar` names — the decision circuit is off at start with the cause `no-key` (#451), and no call is made. See [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -642,7 +642,7 @@ endpoint, the default model, the timeout and retries of each call (the LLM judge
 
 The decision model Liquid, bound by `AddOrkeonDecisionProvider(configuration, provider)` when it is the active decision
 provider: this section is present (even empty), or `LIQUID_API_KEY` is set, or `Orkeon:Decision:Provider` is `liquid`. One
-provider is active at a time (see [`Orkeon:Decision`](#orkeondecision)). See [Decision models](../architecture/decision-models.md).
+provider is active at a time (see [`Orkeon:Decision`](#orkeondecision)). Without a key — neither `ApiKey` nor the variable `ApiKeyEnvVar` names — the decision circuit is off at start with the cause `no-key` (#451), and no call is made. See [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Liquid -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -723,7 +723,7 @@ that agent in the run, retries and revisions included (another agent on the task
 its own picked); the decision model reads the agent's role and the task (cut at 4 000 characters
 in the middle), never the conversation. Under a probability of 0.6, without an answer, when the
 call fails or when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`,
-no decision provider), the host's `default` profile (the `Llm` section) stands, never the agent's own, with no
+no decision provider, no key for a hosted one), the host's `default` profile (the `Llm` section) stands, never the agent's own, with no
 error: an off circuit makes no decision call. In a crew with `decision.mode: none`, the `default` profile stands
 too, with no call and no warning (`reason: decision-none`). A warning is logged once per run when the circuit is off or `Ladder`
 is missing (outside a run, once per host), and at each failed call; a low
@@ -1362,7 +1362,7 @@ output of a task (`Phases`), a risk at or over `BlockThreshold` blocks, and when
 `FailMode` decides: `Closed` (default) refuses, `Open` lets the text in; both audit
 `guardian.judge.unavailable`. While the output phase is guarded a task's streaming waits for the judgement. It needs a decision model (`AddOrkeonDecisionProvider`); enabled with
 `FailMode: Closed` and without one, the host refuses to start.
-The judge follows the decision circuit (`--no-decision`, `Orkeon:Decision:Enabled=false`, no provider): off,
+The judge follows the decision circuit (`--no-decision`, `Orkeon:Decision:Enabled=false`, no provider, no key): off,
 `FailMode: Closed` refuses to start naming the cause, and `Open` leaves the judge out with one warning
 ([Decision models](../architecture/decision-models.md#every-consumer-follows-the-circuit)).
 
@@ -2038,7 +2038,7 @@ first 24 files of the library in name order (ordinal) alone: a file past the 24t
 The question is one choice, so the skills that fit split the model's probability: a skill is
 picked when its share reaches 0.3, the largest share first. When the
 decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled: false`, no decision
-provider), when the library holds no skill or cannot be read, or when the decision model fails or
+provider, no key for a hosted one), when the library holds no skill or cannot be read, or when the decision model fails or
 answers no usable choice (`reason: pick-failed`), the agent carries its `fallback` list, else no skill, with one warning per run for each cause (outside a run,
 once per host) and no error; in a crew with `decision.mode: none`, its `fallback` list stands too, with no
 decision call and no warning (`reason: decision-none`). The choice holds

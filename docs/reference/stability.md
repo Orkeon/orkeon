@@ -62,6 +62,8 @@ stays under the commitment above.
   | `ORKEXP005` | Per-model capabilities |
   | `ORKEXP006` | Host HTTP security |
   | `ORKEXP007` | Run history ports |
+  | `ORKEXP008` | System One's pick for a caller that runs no task |
+  | `ORKEXP009` | Conversation pruning port |
 
 - **Internal types**: anything not listed in a `PublicAPI.Shipped.txt`.
 - **The run event protocol** (`--events jsonl`) is a versioned protocol: every line carries

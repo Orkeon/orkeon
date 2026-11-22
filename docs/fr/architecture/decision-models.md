@@ -365,7 +365,9 @@ key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey` (caus
 que choisit `ApiKeyEnvVar`), et, dans le passage par les relais d'un essai de la forge, `the forge's trial pass
 without System One` (cause `trial`) ; quand l'option et le réglage valent tous deux, c'est l'option qui est nommée.
 La clé est cherchée là où le fournisseur la lit à chaque appel, le réglage d'abord, quand l'hôte résout son
-circuit, sans aucun appel réseau ; un fournisseur local (Kev) n'est jamais coupé par elle. Un essai de la forge n'émet aucun
+circuit, sans aucun appel réseau, et seulement quand le modèle de décision est ce fournisseur System One : un
+fournisseur local (Kev) et un modèle de décision qui n'est pas un fournisseur System One ne sont jamais coupés par elle.
+Un essai de la forge n'émet aucun
 `run.decision` : son passage indique `circuit` et `cause` sur les lignes `run.started`, `task.completed` et
 `llm.call.*` du flux de la forge. Chaque consommateur qui se
 dégrade le dit en un avertissement :
@@ -603,7 +605,7 @@ seule, jamais de lui-même.
   `systemone.answered`, ses jetons sont imputés au budget de la session (`systemOneTokens` dans `cost.updated`), et un
   appel en échec donne un avertissement `FORGE-SYSTEMONE-FAILED`. Ces appels sont ceux de la forge, séparés de ceux
   de l'essai : `--no-decision` (annoncé dans `session.started` par `forgeCircuit: off`, `forgeCircuitCause: switch`,
-  comme `settings` et `no-provider`) les éteint sans toucher le circuit de l'hôte du moteur, que suit l'essai d'une
+  comme `settings`, `no-provider` et `no-key`) les éteint sans toucher le circuit de l'hôte du moteur, que suit l'essai d'une
   équipe `optional` ou `required` ([la CLI](../reference/cli.md#orkeon-forge)). L'assistant et le juge ne nomment
   aucun profil de décision.
 

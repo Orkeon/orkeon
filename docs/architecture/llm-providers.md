@@ -290,6 +290,7 @@ to `b`, then to `c`; a profile registered in code takes the same list with
 | the HTTP timeout, a 408, a stream idle past `StreamIdleSeconds` | `timeout` | yes |
 | every profile of a nested chain failed | `exhausted` | yes |
 | any other 4xx (400, 401, 403, 422...), a blocked content (the decision stages), a failure nothing is known about | — | **no**: it is the answer |
+| a response schema the Anthropic dialect refuses before the call (`UnsupportedResponseSchema`) | — | **no**: it is the answer |
 | the caller's own cancellation, thrown or reported in-band by the provider | — | no: the call is cancelled, nothing is switched or tried |
 
 `LlmFailureClassifier` is the one classification: `ResiliencePolicies` takes its list of retryable statuses from it (5xx, 408,
