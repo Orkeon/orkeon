@@ -168,9 +168,19 @@ public sealed partial class SystemOneDecisionModel : IDecisionModel
         }
     }
 
+    /// <summary>
+    /// What this model lacks to be called, read by the host's decision circuit when it is resolved (#451):
+    /// the sentence naming the key variable and setting when the provider requires a key and none is found,
+    /// else null. The same predicate, sources and environment as a call's refusal. No network call.
+    /// </summary>
+    internal string? MissingKey() =>
+        _provider.KeyRequired && DecisionApiKey.Resolve(_provider, _options, _keyEnvironment) is null
+            ? DecisionApiKey.Missing(_provider, _options)
+            : null;
+
     private string? ResolveApiKey()
     {
-        // The same sources the host's circuit reads when it is resolved (#451).
+        // The same sources the host's circuit reads through MissingKey (#451).
         var key = DecisionApiKey.Resolve(_provider, _options, _keyEnvironment);
         if (key is not null)
             return key;

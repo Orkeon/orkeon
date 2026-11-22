@@ -333,8 +333,9 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         : this(logger, llmProvider, chatClient, fileSystem)
     {
         // A tool the container withholds resolves to null (system_one_decide with the decision circuit off,
-        // a dropped plugin tool): skipped here, once, for the composer and both loops (#448). Lazy, so a
-        // live collection is still read at each composition.
+        // a dropped plugin tool): skipped here for the composer and both loops (#448), in defence in depth -
+        // the DI factory, TaskToolbelt.Compose, ScriptToolCatalogue and ToolRegistry filter it too. Lazy, so
+        // a live collection is still read at each composition.
         _registeredTools = registeredTools?.Where(static tool => tool is not null);
     }
 

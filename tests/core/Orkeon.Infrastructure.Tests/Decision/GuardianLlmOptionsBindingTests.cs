@@ -24,9 +24,11 @@ public class GuardianLlmOptionsBindingTests
         services.AddSingleton<IConfiguration>(configuration);
         if (model is not null)
             services.AddSingleton(model);
+        else
+            // The System One model is served: without its key the circuit is off (#451). The key here is
+            // read from a fixed environment, never the machine's.
+            services.AddSingleton(new Orkeon.Infrastructure.LLMs.Profiles.LlmKeyEnvironment(_ => "ts-test", _ => null));
         services.AddOrkeonDecisionProvider(configuration, DecisionProviderDescriptor.TypeSafe);
-        // A hosted provider without its key turns the circuit off (#451): the provider here has one.
-        services.AddSingleton(new Orkeon.Infrastructure.LLMs.Profiles.LlmKeyEnvironment(_ => "ts-test", _ => null));
         services.AddSingleton<IPromptSanitizer>(new MockPromptSanitizer());
         services.AddOrkeonGuardian();
         return services;

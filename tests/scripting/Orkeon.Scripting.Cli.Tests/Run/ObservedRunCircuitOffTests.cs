@@ -22,7 +22,12 @@ public sealed class ObservedRunCircuitOffTests
     private const string ProviderSettingsCircuitOff =
         """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "TypeSafe": { "ApiKey": "xxxxxxxx" }, "Decision": { "Enabled": false } } }""";
 
-    private static string Crew(string decisionMode = "none", bool humanInput = false) =>
+    // The circuit on, the provider pointed at a closed loopback port with no retry: a call that gets past the
+    // tool's own checks fails at once, never reaching a real service.
+    private const string ProviderSettingsCircuitOn =
+        """{ "RaggableTree": { "Enabled": false }, "Orkeon": { "TypeSafe": { "ApiKey": "xxxxxxxx", "BaseUrl": "http://127.0.0.1:9/", "MaxRetries": 0 } } }""";
+
+    private static string Crew(string decisionMode = "none", bool humanInput = false, string tools = "[]") =>
         $$"""
         name: notes-crew
         goal: Draft the notes
@@ -35,6 +40,7 @@ public sealed class ObservedRunCircuitOffTests
             role: "Writer"
             goal: "Write"
             backstory: "An agent."
+            tools: {{tools}}
 
         tasks:
           draft:
@@ -45,12 +51,12 @@ public sealed class ObservedRunCircuitOffTests
         """;
 
     private static async Task<(int Exit, TestConsole Console)> RunAsync(
-        string crewYaml, string settingsJson, bool noDecision, bool watched = true)
+        string crewYaml, string settingsJson, bool noDecision, bool watched = true, string? answersJsonl = null)
     {
         using var scratch = new ScriptScratch();
         var crew = scratch.WriteScript("crew.yaml", crewYaml);
         var settings = scratch.WriteFile("appsettings.json", settingsJson);
-        var answers = scratch.WriteFile(Path.Combine("out", "answers.jsonl"), "{\"match\":\"Draft it\",\"content\":\"A draft.\"}\n");
+        var answers = scratch.WriteFile(Path.Combine("out", "answers.jsonl"), answersJsonl ?? "{\"match\":\"Draft it\",\"content\":\"A draft.\"}\n");
         var console = new TestConsole(stdin: string.Empty);
         var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
@@ -123,5 +129,30 @@ public sealed class ObservedRunCircuitOffTests
         // Assert
         using var _ = console;
         Assert.True(exit == Program.ExitOk, $"watched={watched}: exit {exit}: {console.Stderr}{console.Stdout}");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-448")]
+    public async Task ShouldOfferAndObserveSystemOneDecide_WhenAWatchedRunHasTheCircuitOn()
+    {
+        // Arrange - the agent calls the tool once, then answers
+        const string answers =
+            "{\"match\":\"Draft it\",\"toolCalls\":[{\"name\":\"system_one_decide\",\"arguments\":{}}]}\n"
+            + "{\"match\":\"Draft it\",\"content\":\"A draft.\"}\n";
+
+        // Act
+        var (exit, console) = await RunAsync(
+            Crew("required", tools: "[system_one_decide]"), ProviderSettingsCircuitOn, noDecision: false, answersJsonl: answers);
+
+        // Assert
+        using var _ = console;
+        Assert.True(exit == Program.ExitOk, $"exit {exit}: {console.Stderr}{console.Stdout}");
+        var events = Events(console);
+        Assert.Equal(
+            "on",
+            Assert.Single(events, e => e.GetProperty("kind").GetString() == "run.decision").GetProperty("circuit").GetString());
+        Assert.Contains(events, e => e.GetProperty("kind").GetString() == "tool.called"
+            && e.GetProperty("toolName").GetString() == "system_one_decide");
+        Assert.Contains(events, e => e.GetProperty("kind").GetString() == "tool.returned");
     }
 }
