@@ -248,11 +248,12 @@ public sealed class DoctorCommandTests : IDisposable
         Assert.Equal(Program.ExitScriptError, exit);
         var config = Assert.Single(lines, l => l.Check == "llm-config");
         Assert.Equal("fail", config.Status);
-        Assert.Contains("'other-cli'", config.Detail, StringComparison.Ordinal);
+        Assert.Contains("Llm:Provider names a provider module this host does not register", config.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("'other-cli'", config.Detail, StringComparison.Ordinal); // #465: never the value
         Assert.Contains("registered: fake-cli", config.Detail, StringComparison.Ordinal);
         // The run's start refuses the same key: the two checks agree.
         Assert.Contains(lines, l => l.Check == "runner-settings" && l.Status == "fail"
-            && l.Detail.Contains("Llm:Provider: 'other-cli'", StringComparison.Ordinal));
+            && l.Detail.Contains("Llm:Provider names no provider of this host", StringComparison.Ordinal));
     }
 
     private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(

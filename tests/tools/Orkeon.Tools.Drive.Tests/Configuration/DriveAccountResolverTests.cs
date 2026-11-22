@@ -273,4 +273,15 @@ public class DriveAccountResolverTests
 
     private static IConfiguration Section(Dictionary<string, string?> values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+    [Fact]
+    public void The_binder_refusal_never_repeats_the_value()
+    {
+        // #465: the configuration binder quotes the value it cannot convert, which may be a secret.
+        var refusal = DriveOptionsBinder.WithoutValue(
+            "Failed to convert configuration value 'sk-secret-example' at 'Accounts:a:Port' to type 'System.Int32'.");
+
+        Assert.Equal("Failed to convert the configuration value at 'Accounts:a:Port' to type 'System.Int32'.", refusal);
+        Assert.Equal("another message", DriveOptionsBinder.WithoutValue("another message"));
+    }
 }

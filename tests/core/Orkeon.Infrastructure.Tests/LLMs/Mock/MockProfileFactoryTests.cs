@@ -150,6 +150,7 @@ public sealed class MockProfileFactoryTests
 
         var ex = Assert.Throws<NotSupportedException>(() => Factory().Create(config));
 
-        Assert.Contains("'agent-cli'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Llm:Provider names a provider module this host does not register", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("agent-cli", ex.Message, StringComparison.Ordinal); // #465: never the value
     }
 }

@@ -249,7 +249,7 @@ public static class LlmSettings
         if (value.Contains(',', StringComparison.Ordinal) || int.TryParse(value, out _)
             || !Enum.TryParse<ThinkingSupport>(value, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
             throw new InvalidOperationException(
-                $"{section.Path}:Thinking: '{value}' is not a thinking support; the values are None, EffortOnly, Toggle and Budget.");
+                $"{section.Path}:Thinking is not a thinking support: write one of {string.Join(", ", Enum.GetNames<ThinkingSupport>())}.");
         return parsed;
     }
 
@@ -270,7 +270,7 @@ public static class LlmSettings
 
         // By name only (#464): Enum.TryParse reads "1" as Record and "off, record" as a combination.
         if (!EnumSetting.TryParseName<LlmReplayMode>(mode, out var parsed))
-            throw new InvalidOperationException($"{section.Path}:Mode: '{mode}' is not a mode; the values are off, record and replay.");
+            throw new InvalidOperationException($"{section.Path}:Mode is not a replay mode: write one of off, record, replay.");
         options.Mode = parsed;
         if (parsed != LlmReplayMode.Off && options.Cassette is null)
             throw new InvalidOperationException($"{section.Path}:Cassette: the {mode} mode needs the virtual path of the cassette.");
@@ -376,13 +376,13 @@ public static class LlmSettings
 #pragma warning restore CA1308
         if (Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.IsBuiltInKey(key))
             throw new InvalidOperationException(
-                $"{section.Path}:Provider: '{provider}' is a vendor of the catalogue, which Provider never names. "
+                $"{section.Path}:Provider names a vendor of the catalogue, which Provider never names. "
                 + "Leave Provider out and the provider follows from BaseUrl, the model's name and the key; "
                 + "Provider takes 'mock' or the key of a provider module.");
 
         if (!string.IsNullOrWhiteSpace(responses))
             throw new InvalidOperationException(
-                $"{section.Path}:Responses: only the mock provider reads a responses file; Provider is '{provider}'.");
+                $"{section.Path}:Responses: only the mock provider reads a responses file, and {section.Path}:Provider names another.");
 
         return Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.ApplyModule(config, key, profile);
     }
@@ -547,7 +547,7 @@ public static class LlmSettings
         catch (ArgumentException)
         {
             throw new InvalidOperationException(
-                $"{section.Path}:CallMode is not a call mode: '{section["CallMode"]}'. Use Auto, Buffer or Stream.");
+                $"{section.Path}:CallMode is not a call mode: write one of Auto, Buffer, Stream.");
         }
     }
 
@@ -556,7 +556,7 @@ public static class LlmSettings
         new($"{section.Path}:{key} is not a number.");
 
     private static InvalidOperationException NotAFiniteNumber(IConfigurationSection section, string key, string raw) =>
-        new($"{section.Path}:{key} is not a finite number: NaN, an infinity and a number past the type's range are refused.");
+        new($"{section.Path}:{key} is not a finite number: write a number within the type's range.");
 
     /// <summary>A switch of the section: <c>true</c> or <c>false</c>, any case; blank is unset.</summary>
     private static bool? ReadBool(IConfigurationSection section, string key)

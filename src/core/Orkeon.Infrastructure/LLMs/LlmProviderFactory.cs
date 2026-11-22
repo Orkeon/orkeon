@@ -324,7 +324,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         {
             var known = _modules.Count == 0 ? "none is registered" : "registered: " + string.Join(", ", _modules.Keys.Order(StringComparer.Ordinal));
             throw new NotSupportedException(
-                $"Llm:Provider '{key}' names a provider module this host does not register ({known}). "
+                $"Llm:Provider names a provider module this host does not register ({known}). "
                 + "Register the module, or leave Provider out so the provider follows from BaseUrl, the model's name and the key.");
         }
 

@@ -34,7 +34,7 @@ public sealed class EmailOptionsBinderTests
 
         Assert.Equal(["broken", "sound"], options.Accounts.Keys.Order(StringComparer.Ordinal));
         Assert.Equal(EmailRights.None, options.Accounts["broken"].Rights);
-        Assert.Equal(["Rights is not a list of Read, Organize, Draft, Send, Delete, Purge, separated by commas"], options.AccountProblems["broken"]);
+        Assert.Equal(["Rights is not a list of None, Read, Organize, Draft, Send, Delete, Purge, separated by commas"], options.AccountProblems["broken"]);
         Assert.Equal(EmailRights.Read, options.Accounts["sound"].Rights);
         Assert.False(options.AccountProblems.ContainsKey("sound"));
     }
@@ -67,7 +67,7 @@ public sealed class EmailOptionsBinderTests
     [Theory]
     [InlineData("Provider", "Yahoo", "Provider is not one of Custom, Gmail, Outlook")]
     [InlineData("Provider", "", "Provider is not one of Custom, Gmail, Outlook")]
-    [InlineData("Rights", "", "Rights is not a list of Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
+    [InlineData("Rights", "", "Rights is not a list of None, Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
     [InlineData("Incoming:Port", "nine", "Incoming:Port is not a whole number")]
     [InlineData("Incoming:Security", "Tls", "Incoming:Security is not one of SslOnConnect, StartTls, None")]
     [InlineData("Outgoing:Security", "5", "Outgoing:Security is a number where a name is expected: write one of SslOnConnect, StartTls, None")]
@@ -88,8 +88,8 @@ public sealed class EmailOptionsBinderTests
 
     [Theory]
     [Trait("BR", "CH-464")]
-    [InlineData("Rights", "3", "Rights holds a number where EmailRights takes names: write one or more of Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
-    [InlineData("Rights", "Read, 4", "Rights holds a number where EmailRights takes names: write one or more of Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
+    [InlineData("Rights", "3", "Rights holds a number where EmailRights takes names: write one or more of None, Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
+    [InlineData("Rights", "Read, 4", "Rights holds a number where EmailRights takes names: write one or more of None, Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
     [InlineData("Provider", "1", "Provider is a number where a name is expected: write one of Custom, Gmail, Outlook")]
     public void Should_refuse_a_number_even_one_the_enumeration_defines(string key, string value, string problem)
     {
@@ -318,5 +318,16 @@ public sealed class EmailOptionsBinderTests
                 yield return (key, propertyType);
             }
         }
+    }
+
+    [Fact]
+    public void Should_drop_the_value_from_the_binder_refusal()
+    {
+        // #465: the configuration binder quotes the value it cannot convert, which may be a secret.
+        var refusal = EmailOptionsBinder.WithoutValue(
+            "Failed to convert configuration value 'sk-secret-example' at 'Accounts:a:Port' to type 'System.Int32'.");
+
+        Assert.Equal("Failed to convert the configuration value at 'Accounts:a:Port' to type 'System.Int32'.", refusal);
+        Assert.Equal("another message", EmailOptionsBinder.WithoutValue("another message"));
     }
 }

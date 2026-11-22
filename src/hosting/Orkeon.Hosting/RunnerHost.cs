@@ -2178,7 +2178,7 @@ public static partial class RunnerHost
         return name is not null
             ? Enum.Parse<EmbeddingProviderKind>(name)
             : throw new InvalidOperationException(
-                $"{embedding.Path}:Provider is '{raw}', which is not an embedding provider: write one of {string.Join(", ", names)}.");
+                $"{embedding.Path}:Provider is not an embedding provider: write one of {string.Join(", ", names)}.");
     }
 
     /// <summary>

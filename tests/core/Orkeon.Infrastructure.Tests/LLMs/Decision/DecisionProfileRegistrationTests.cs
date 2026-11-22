@@ -87,7 +87,7 @@ public class DecisionProfileRegistrationTests
     [InlineData("triage:Target", "other", "is a decision profile")]
     [InlineData("triage:Stages:0:MinConfidence", "1.5", "is not a probability")]
     [InlineData("triage:Stages:1:EscalateTo", "", "a profile name is required")]
-    [InlineData("triage:Stages:1:Steps", "some", "is not final or all")]
+    [InlineData("triage:Stages:1:Steps", "some", "Steps is not a verify scope: write one of final, all.")]
     public void ShouldFailTheBuildWithTheKey_WhenTheSectionIsInvalid(string key, string value, string expected)
     {
         var values = Triage.Where(v => v.Item1 != key).Append((key, value))
@@ -181,16 +181,21 @@ public class DecisionProfileRegistrationTests
     /// <summary>#455 — a stage's Phase and Steps are written by name: "1" read as the member that holds it.</summary>
     [Theory]
     [Trait("BR", "CH-455")]
-    [InlineData("triage:Stages:1:Steps", "0", "is not final or all")]
-    [InlineData("triage:Stages:1:Steps", "1", "is not final or all")]
-    [InlineData("triage:Stages:0:Phase", "1", "is not request, response or both")]
+    [InlineData("triage:Stages:1:Steps", "0", "triage:Stages:1:Steps is not a verify scope: write one of final, all.")]
+    [InlineData("triage:Stages:1:Steps", "1", "triage:Stages:1:Steps is not a verify scope: write one of final, all.")]
+    [InlineData("triage:Stages:0:Phase", "sk-secret-example", "triage:Stages:0:Phase is not a stage phase: write one of request, response, both.")]
+    [InlineData("triage:Stages:0:Phase", "1", "triage:Stages:0:Phase is not a stage phase: write one of request, response, both.")]
     public void ShouldRefuseAPhaseOrStepsWrittenAsANumber(string key, string value, string expected)
     {
         var values = key.Contains("Phase", StringComparison.Ordinal)
             ? [("triage:Target", "cheap"), ("triage:Stages:0:Kind", "guard"), ("triage:Stages:0:Risks:x", "y"), (key, value)]
             : Triage.Append((key, value)).ToArray();
 
-        Assert.Contains($"'{value}' {expected}", BuildRefusal(values), StringComparison.Ordinal);
+        // #465: the refusal names the key and the names, never the value.
+        var refusal = BuildRefusal(values);
+        Assert.Contains(expected, refusal, StringComparison.Ordinal);
+        Assert.DoesNotContain($"'{value}'", refusal, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-secret-example", refusal, StringComparison.Ordinal);
     }
 
     /// <summary>#456 — a value echoed back is written as the file wrote it, whatever the culture of the machine.</summary>

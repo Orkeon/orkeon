@@ -76,11 +76,24 @@ fail-open policy), and a comma list as a combination of members, without a word;
 the host refuses at start an enumeration setting written as a number — in a value, a list or a dictionary — or as a
 comma list where it takes one name, and the refusal names the key and the members, never the value
 (`Orkeon:Guardian:Llm:FailMode is a number where a name is expected: write one of Closed, Open.`). `Llm:Replay:Mode`
-written so is refused as an unknown mode. A name is still read in any case. An account whose `Rights` or other
+written so, or as a name it does not hold, is refused naming the key and the modes, never the value
+(`Llm:Replay:Mode is not a replay mode: write one of off, record, replay.`). `Orkeon:Tools:Firefox:Lifetime` and
+`Orkeon:Scripting:Toolchain:TypeCheck` take a name only wherever they are read, a host the Hosting check does not
+walk included (`FirefoxToolOptions.From`, `ScriptingToolchainOptions.FromConfiguration`): a number (`"1"` read as `Host`,
+a browser kept across runs, and as `Validate`), a comma list or an unknown name throws
+`Orkeon:Tools:Firefox:Lifetime is not a browser lifetime: write one of Run, Host.` /
+`Orkeon:Scripting:Toolchain:TypeCheck is not a type-check mode: write one of Off, Validate, Always.`; an unknown
+`Lifetime` used to keep `Run`. A name is still read in any case. An account whose `Rights` or other
 enumeration holds a number, or a comma list where it takes one name, is misconfigured, as one holding an unknown name,
-and its problem names the key and the members, never the value (`Rights holds a number where EmailRights takes names:
-write one or more of Read, Organize, Draft, Send, Delete, Purge, separated by commas`, `Provider is not one of Custom,
-Gmail, Outlook`).
+and its problem names the key and the members, never the value
+(`Rights holds a number where EmailRights takes names: write one or more of None, Read, Organize, Draft, Send, Delete, Purge, separated by commas`,
+`Incoming:Security is a list where a single name is expected: write one of SslOnConnect, StartTls, None`); it lists every name the key takes,
+`None` of a `[Flags]` enumeration included, as the host's check does, and carries no final period, being one clause of
+the registry's sentence (`The e-mail account '<name>' is misconfigured: <problem>; <problem> (…).`).
+**Exception**: outside a host that `RunnerHost` builds, an options class a library binds with `.Bind()` is not
+walked, and the binder's parse stands for its enumerations: `Orkeon:Checkpointing:Store`,
+`Orkeon:HumanInput:Pause`, `MCP:Servers:<name>:Transport`, `Orkeon:RunHistory:Store`
+and `Orkeon:Rag:WebFallback:SuspiciousAction`. A host `RunnerHost` builds walks them.
 
 | Before | Now |
 |---|---|
@@ -153,7 +166,7 @@ asks the batches of one pruning together instead of one after the other, for the
 
 **Before**: each value below was accepted at start and read as something the file did not say. **Now**: it is refused
 at start, the refusal naming the key; a refusal of a single value where a list or a section is expected no longer prints
-that value, nor does a refusal of a value a boolean or number key cannot read (#465, below) (a guardian phase or an enumeration's name, judged against its list of names, aside). A list setting whose reader takes one comma-separated value (`Llm:AvailableModels`,
+that value, nor does a refusal of a value a boolean or number key cannot read (#465, below) (a guardian phase, judged against its list of names, aside). A list setting whose reader takes one comma-separated value (`Llm:AvailableModels`,
 `Llm:ModelCapabilities:<id>:ReasoningEfforts`, `Llm:Profiles:<name>:Fallback`,
 `Orkeon:Tools:Firefox:AllowedProfiles` and `DeniedProfiles`) is not refused when written as one string, such as
 `Llm__AvailableModels=gpt-4o,claude`; its shape carries the new `CommaSeparatedSettingAttribute`. **Migration**: the last column of the table.
@@ -162,7 +175,7 @@ that value, nor does a refusal of a value a boolean or number key cannot read (#
 |---|---|---|---|
 | a non-string key written `null` or `{}` (`"Orkeon:Decision:Enabled": null`, `Orkeon:Compaction:TriggerShare`) | the type's default (`false`, `0`), not the setting's | refused: `… is written without a value, which would bind it to …` | write the value, or leave the key out for its default; a string written `null` is still accepted |
 | a single value where a list or a section is expected (`"Orkeon:Guardian:Llm:Phases": "Input"`, a decision profile or a stage written as a string) | ignored, or one phase | refused: `… a single value where a list is expected` | write a list, `["Input"]`, or the section's keys |
-| a guardian phase, or a stage's `Phase` or `Steps`, written as a number (`"0"`) | the enum member of that number | refused as an unknown name | write the name (`Input`, `request`, `both`) |
+| a guardian phase, or a stage's `Phase` or `Steps`, written as a number (`"0"`) | the enum member of that number | refused: a guardian phase as an unknown name, which the refusal quotes (`'0' is not a phase a model judges`); a stage's `Phase` or `Steps` naming the key and the names, never the value (`…:Steps is not a verify scope: write one of final, all.`) | write the name (`Input`, `request`, `both`) |
 | a decision profile or stage holding a value the binder cannot convert (`"FailClosed": "maybe"`, a threshold `"high"`) | the entry dropped from the list, silently | refused with the binder's sentence, without the value (`Failed to convert the configuration value at '…' to type '…'.`) | write a value of the key's type |
 | `IsEnabled`, `IsDockerHostOverHttp`, `NeedsBrowserGuard`, `ListenerPrefix` (computed, never read) | ignored | refused as unknown keys | remove them |
 
@@ -173,12 +186,17 @@ that value, nor does a refusal of a value a boolean or number key cannot read (#
   may be anything written there by mistake, an API key included, and the refusal reaches the start-up output and the
   logs. The binder's sentence is reworded (`Failed to convert the configuration value at '<path>' to type '<type>'.`,
   in `orkeon doctor`, `--validate` and the host's start alike), and so are `Llm:<key> is not a number.`,
-  `… is not a finite number: NaN, an infinity and a number past the type's range are refused.`, `… is not true or
-  false.`, `… is not a whole number.` (`Llm`, `RaggableTree:Embedding`, `Orkeon:Rag:Hybrid`) and the Email and Drive
+  `… is not a finite number: write a number within the type's range.`, `… is not true or false.`,
+  `… is not a whole number.` (`Llm`, `RaggableTree:Embedding`, `Orkeon:Rag:Hybrid`) and the Email and Drive
   accounts' `… is neither true nor false` / `… is not a whole number`. `Orkeon:Guardian:Llm:Phases` written as a single
-  value is refused without it. A value judged against a closed list of names (a phase, a provider, a log level) is
-  still named, to show the typo; an enumeration setting's refusal names the key and the members instead (#464), and so
-  does an e-mail or drive account's.
+  value is refused without it. **No refusal of a closed list repeats the value** either: an enumeration setting
+  (#464), a `Logging` level, a provider (`Llm:Provider` and a profile's, `RaggableTree:Embedding:Provider`,
+  `Orkeon:Embeddings:Provider`), `Llm:Replay:Mode`, `CallMode`, a model's `Thinking`, a decision stage's `Kind`,
+  `Phase` and `Steps` name the key and the accepted names
+  (`Logging:LogLevel:Default is not a log level: write one of Trace, Debug, Information, Warning, Error, Critical, None.`,
+  `Llm:Provider names no provider of this host: write mock or the key of a provider module (…); …`), and so does an e-mail or drive account's, whose binder refusal is reworded
+  as the host's. Only the guardian's `Phases` still quotes the names it refused, to show the typo. The warning of a
+  checkpoint store named while `Orkeon:Checkpointing:Enabled` is not true no longer names the store.
 - A value echoed in a refusal is written in the invariant culture (`1.5`, never `1,5`): decision-profile
   thresholds, the guardian thresholds, an agent's `maxExecutionTime`, `ContextWindowSettings.CompressionRatio`,
   `KnowledgeAttachment.MinScore`.

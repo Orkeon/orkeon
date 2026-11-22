@@ -83,9 +83,10 @@ public sealed class FirefoxToolOptions
 
     /// <summary>
     /// The options of the section <see cref="SectionName"/>. A value that is absent, unreadable or not
-    /// positive keeps its default.
+    /// positive keeps its default, except a <see cref="Lifetime"/> that names no member, which is refused.
     /// </summary>
     /// <param name="configuration">The host's configuration, or <see langword="null"/> when there is none.</param>
+    /// <exception cref="InvalidOperationException"><see cref="Lifetime"/> is not the name of a <see cref="FirefoxBrowserLifetime"/>.</exception>
     public static FirefoxToolOptions From(IConfiguration? configuration)
     {
         var options = new FirefoxToolOptions();
@@ -104,13 +105,31 @@ public sealed class FirefoxToolOptions
             options.Headless = headless;
         if (bool.TryParse(section[nameof(SharedInstance)], out var shared))
             options.SharedInstance = shared;
-        if (Enum.TryParse<FirefoxBrowserLifetime>(section[nameof(Lifetime)], ignoreCase: true, out var lifetime) && Enum.IsDefined(lifetime))
-            options.Lifetime = lifetime;
+        options.Lifetime = ReadLifetime(section, options.Lifetime);
         options.StartupTimeoutSeconds = Positive(section[nameof(StartupTimeoutSeconds)], options.StartupTimeoutSeconds);
         options.CommandTimeoutSeconds = Positive(section[nameof(CommandTimeoutSeconds)], options.CommandTimeoutSeconds);
         options.MaxNodes = Positive(section[nameof(MaxNodes)], options.MaxNodes);
         options.MaxTextLength = Positive(section[nameof(MaxTextLength)], options.MaxTextLength);
         return options;
+    }
+
+    /// <summary>
+    /// The lifetime by its name only, any case (#464): <see cref="Enum.TryParse{TEnum}(string?, bool, out TEnum)"/>
+    /// read <c>"1"</c> as <see cref="FirefoxBrowserLifetime.Host"/>, a browser kept across runs. Anything
+    /// else is refused, naming the key and the members, never the value.
+    /// </summary>
+    private static FirefoxBrowserLifetime ReadLifetime(IConfigurationSection section, FirefoxBrowserLifetime fallback)
+    {
+        var value = Text(section[nameof(Lifetime)]);
+        if (value is null)
+            return fallback;
+
+        var names = Enum.GetNames<FirefoxBrowserLifetime>();
+        var name = names.FirstOrDefault(member => string.Equals(member, value, StringComparison.OrdinalIgnoreCase));
+        return name is not null
+            ? Enum.Parse<FirefoxBrowserLifetime>(name)
+            : throw new InvalidOperationException(
+                $"{SectionName}:{nameof(Lifetime)} is not a browser lifetime: write one of {string.Join(", ", names)}.");
     }
 
     private static string? Text(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

@@ -145,7 +145,7 @@ public static class DecisionProfileServiceCollectionExtensions
                 break;
             default:
                 throw new InvalidOperationException(
-                    $"{path}:Kind: '{stage.Kind}' is not a stage; expected {RouteKind}, {GuardKind} or {VerifyKind}.");
+                    $"{path}:Kind is not a stage: write one of {RouteKind}, {GuardKind}, {VerifyKind}.");
         }
     }
 
@@ -190,7 +190,8 @@ public static class DecisionProfileServiceCollectionExtensions
             return DecisionStagePhase.Both;
         if (EnumSetting.TryParseName<DecisionStagePhase>(phase, out var parsed))
             return parsed;
-        throw new InvalidOperationException($"{path}:Phase: '{phase}' is not request, response or both.");
+        // The value is not echoed (#465): it may be a secret pasted under the wrong key.
+        throw new InvalidOperationException($"{path}:Phase is not a stage phase: write one of request, response, both.");
     }
 
     private static DecisionVerifySteps ParseSteps(string path, string? steps)
@@ -199,7 +200,7 @@ public static class DecisionProfileServiceCollectionExtensions
             return DecisionVerifySteps.Final;
         if (EnumSetting.TryParseName<DecisionVerifySteps>(steps, out var parsed))
             return parsed;
-        throw new InvalidOperationException($"{path}:Steps: '{steps}' is not final or all.");
+        throw new InvalidOperationException($"{path}:Steps is not a verify scope: write one of final, all.");
     }
 
     private static void AddStage(

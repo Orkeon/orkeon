@@ -122,6 +122,7 @@ public sealed class LlmProviderFactoryReplayTests
 
         Assert.Contains("Llm:Replay:Cassette", noCassette.Message, StringComparison.Ordinal);
         Assert.Contains("Llm:Replay:Mode", unknown.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("tape", unknown.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -135,7 +136,7 @@ public sealed class LlmProviderFactoryReplayTests
         var refused = Assert.Throws<InvalidOperationException>(() => LlmSettings.ReadReplay(Settings(("Llm:Replay:Mode", mode), ("Llm:Replay:Cassette", "/c/x.jsonl"))));
 
         Assert.Contains("Llm:Replay:Mode", refused.Message, StringComparison.Ordinal);
-        Assert.Contains("is not a mode", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("is not a replay mode", refused.Message, StringComparison.Ordinal);
     }
 
     [Theory]

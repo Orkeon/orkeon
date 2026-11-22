@@ -46,19 +46,19 @@ public sealed class RunnerHostRaggableTreeTests
     /// dimension that was none fell back on the provider's own, all without a word.
     /// </summary>
     [Theory]
-    [InlineData("Provider", "Olama", "RaggableTree:Embedding:Provider", true)]
-    [InlineData("Provider", "7", "RaggableTree:Embedding:Provider", true)]
-    [InlineData("Dimensions", "auto", "RaggableTree:Embedding:Dimensions", false)]
-    [InlineData("MaxTextChars", "lots", "RaggableTree:Embedding:MaxTextChars", false)]
-    public void An_embedding_value_the_host_cannot_read_is_refused_by_its_key(string key, string value, string named, bool echoed)
+    [InlineData("Provider", "Olama", "RaggableTree:Embedding:Provider")]
+    [InlineData("Provider", "7", "RaggableTree:Embedding:Provider")]
+    [InlineData("Dimensions", "auto", "RaggableTree:Embedding:Dimensions")]
+    [InlineData("MaxTextChars", "lots", "RaggableTree:Embedding:MaxTextChars")]
+    public void An_embedding_value_the_host_cannot_read_is_refused_by_its_key(string key, string value, string named)
     {
         var configuration = Settings(new() { ["RaggableTree:Embedding:" + key] = value });
 
         var ex = Assert.Throws<InvalidOperationException>(() => Register(configuration));
 
         Assert.Contains(named, ex.Message, StringComparison.Ordinal);
-        // A provider's name is echoed against the list of names; a number is not (#465): it may be anything.
-        Assert.Equal(echoed, ex.Message.Contains($"'{value}'", StringComparison.Ordinal));
+        // No refusal repeats the value (#465): it may be a secret pasted under the wrong key.
+        Assert.DoesNotContain(value, ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

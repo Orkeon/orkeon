@@ -148,7 +148,18 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   any case; a `[Flags]` one (an e-mail or drive account's `Rights`) as a comma list of names. On an e-mail
   or drive account, a number, or a comma list where the enumeration takes one name (`Incoming:Security`,
   `Provider`), makes the account misconfigured, and its problem names the key and the members, never the
-  value (`Rights holds a number where EmailRights takes names: write one or more of …`). A value quoted in a refusal is written in the invariant culture (`1.5`, never `1,5`), and
+  value (`Rights holds a number where EmailRights takes names: write one or more of …`), every name the key
+  takes listed, `None` of a `[Flags]` enumeration included. No refusal of a closed list repeats the value,
+  which may be a secret pasted in the wrong key: a `Logging` level, a provider (`Llm:Provider`,
+  `RaggableTree:Embedding:Provider`, `Orkeon:Embeddings:Provider`), `Llm:Replay:Mode`, `CallMode`, a model's
+  `Thinking`, a decision stage's `Kind`, `Phase` and `Steps` name the key and the accepted names
+  (`Logging:LogLevel:Default is not a log level: write one of Trace, Debug, Information, Warning, Error, Critical, None.`);
+  only the guardian's `Phases` quotes the names it refused, to show the typo. `Orkeon:Tools:Firefox:Lifetime`
+  and `Orkeon:Scripting:Toolchain:TypeCheck` take a name only wherever they are read, outside a host this
+  check walks included (`Orkeon:Tools:Firefox:Lifetime is not a browser lifetime: write one of Run, Host.`).
+  Outside a host `RunnerHost` builds, the enumerations of an options class a library binds
+  (`Orkeon:Checkpointing:Store`, `Orkeon:HumanInput:Pause`, `MCP:Servers:<name>:Transport`,
+  `Orkeon:RunHistory:Store`, `Orkeon:Rag:WebFallback:SuspiciousAction`) keep the binder's parse. A value quoted in a refusal is written in the invariant culture (`1.5`, never `1,5`), and
   each threshold of `Orkeon:Guardian:Llm` outside [0, 1] has its own sentence, with its value. Only
   settings are keys: a computed property (`IsEnabled`, `NeedsBrowserGuard`) is an unknown key.
 
@@ -396,7 +407,7 @@ A profile — or the `Llm` section itself — written `"Provider": "mock", "Resp
 
 #### `Replay` records or replays the calls
 
-`Llm:Replay:Mode` set to `record` writes every call a provider makes, with its answer, to the JSONL file `Llm:Replay:Cassette` names; `replay` answers every call from that file and calls no model; `off` (the default) does neither. The decorator sits in the provider factory, under the call-mode layer, so the cassette holds what really went over the wire. `orkeon run --llm-record` and `--llm-replay` set both keys and mount the folder; see [Record and replay LLM calls](../guides/testing.md). A mode without a cassette, or a mode that is none of the three, refuses the start naming the key; a mode is written by its name, in any case, and a number (`"1"`) or a comma list is none of the three.
+`Llm:Replay:Mode` set to `record` writes every call a provider makes, with its answer, to the JSONL file `Llm:Replay:Cassette` names; `replay` answers every call from that file and calls no model; `off` (the default) does neither. The decorator sits in the provider factory, under the call-mode layer, so the cassette holds what really went over the wire. `orkeon run --llm-record` and `--llm-replay` set both keys and mount the folder; see [Record and replay LLM calls](../guides/testing.md). A mode without a cassette, or a mode that is none of the three, refuses the start naming the key and the modes, never the value (`Llm:Replay:Mode is not a replay mode: write one of off, record, replay.`); a mode is written by its name, in any case, and a number (`"1"`) or a comma list is none of the three.
 
 #### `Grammar` is for a llama.cpp-compatible server
 

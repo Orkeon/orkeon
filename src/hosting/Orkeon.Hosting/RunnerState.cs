@@ -31,8 +31,8 @@ internal static class RunnerState
         if (string.IsNullOrWhiteSpace(store) || string.Equals(store, "memory", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        return $"{section.Path}:Store is '{store}' but {section.Path}:Enabled is not true: checkpoint sessions stay in memory "
-            + $"and nothing survives the process. Set {section.Path}:Enabled to true to use the {store} store.";
+        return $"{section.Path}:Store names a durable store but {section.Path}:Enabled is not true: checkpoint sessions stay in memory "
+            + $"and nothing survives the process. Set {section.Path}:Enabled to true to use that store.";
     }
 
     /// <summary>

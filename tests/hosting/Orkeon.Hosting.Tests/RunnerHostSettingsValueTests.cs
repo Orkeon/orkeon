@@ -285,6 +285,27 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
         AssertNeverEchoes(refusals, "sk-secret-example");
     }
 
+    /// <summary>
+    /// #465 — the refusals of a closed list, and of a provider key, name the key and what it takes,
+    /// never the value: the log level, the provider, the replay mode, the call mode, a model's thinking
+    /// support, the embedding providers.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-465")]
+    [InlineData("""{ "Logging": { "LogLevel": { "Default": "sk-secret-example" } } }""", "Logging:LogLevel:Default is not a log level: write one of ")]
+    [InlineData("""{ "Llm": { "Provider": "sk-secret-example" } }""", "Llm:Provider names no provider of this host: write mock or ")]
+    [InlineData("""{ "Llm": { "Replay": { "Mode": "sk-secret-example" } } }""", "Llm:Replay:Mode is not a replay mode: write one of off, record, replay.")]
+    [InlineData("""{ "Llm": { "Model": "m", "CallMode": "sk-secret-example" } }""", "Llm:CallMode is not a call mode: write one of Auto, Buffer, Stream.")]
+    [InlineData("""{ "Llm": { "Model": "m", "ModelCapabilities": { "m": { "Thinking": "sk-secret-example" } } } }""", "Thinking is not a thinking support: write one of None, EffortOnly, Toggle, Budget.")]
+    [InlineData("""{ "RaggableTree": { "Enabled": true, "Embedding": { "Provider": "sk-secret-example" } } }""", "RaggableTree:Embedding:Provider is not an embedding provider: write one of ")]
+    public void ShouldRefuseAClosedListValue_WithoutEchoingIt(string file, string expected)
+    {
+        var refusals = RefusalsOfFile(file);
+
+        Assert.Contains(refusals, refusal => refusal.Contains(expected, StringComparison.Ordinal));
+        AssertNeverEchoes(refusals, "sk-secret-example");
+    }
+
     /// <summary>#465 — a number that is not finite is refused by its key, without the value.</summary>
     [Fact]
     [Trait("BR", "CH-465")]
@@ -293,7 +314,7 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
         var refusal = Assert.Single(RefusalsOfFile("""{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Rag": { "Generation": { "Temperature": "NaN" } } } }"""));
 
         Assert.StartsWith("Orkeon:Rag:Generation:Temperature is not a finite number", refusal, StringComparison.Ordinal);
-        AssertNeverEchoes([refusal], "'NaN'");
+        AssertNeverEchoes([refusal], "NaN");
     }
 
     /// <summary>#464 — an enumeration written as a number is refused, naming the members, never the value.</summary>

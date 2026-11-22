@@ -150,8 +150,8 @@ internal static class SettingsValidation
                 continue;
 
             var known = modules.Count == 0 ? "this host registers none" : "registered: " + string.Join(", ", modules);
-            yield return $"{section.Path}:Provider: '{named.Trim()}' names no provider of this host. "
-                + $"Provider takes '{LlmProviderKeys.Mock}' or the key of a provider module ({known}); "
+            yield return $"{section.Path}:Provider names no provider of this host: "
+                + $"write {LlmProviderKeys.Mock} or the key of a provider module ({known}); "
                 + "leave it out and the provider follows from BaseUrl, the model's name and the key.";
         }
     }
@@ -247,7 +247,7 @@ internal static class SettingsValidation
                 }
 
                 throw new InvalidOperationException(
-                    $"{path} is '{value}', which is not a log level: write one of {string.Join(", ", s_logLevels)}.");
+                    $"{path} is not a log level: write one of {string.Join(", ", s_logLevels)}.");
             }
         }
 
@@ -523,7 +523,7 @@ internal static class SettingsValidation
 
         if (IsNotFinite(value, below.Number))
             // The value is not echoed (#465): every refusal of the check leaves out what the key holds.
-            return $"{child.Path} is not a finite number: NaN, an infinity and a number past the type's range are refused.";
+            return $"{child.Path} is not a finite number: write a number within the type's range.";
 
         if (NotAMemberName(child.Path, value, below.Values) is { } notAName)
             return notAName;
